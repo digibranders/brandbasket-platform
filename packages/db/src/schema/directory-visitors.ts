@@ -4,7 +4,7 @@ import { uuidv7 } from "uuidv7";
 import { createdAt } from "./columns";
 
 /**
- * A website visitor's account: made the first time a texted code is confirmed anywhere on the directory (a review, a
+ * A website visitor's account: made the first time a code is confirmed anywhere on the directory (a review, a
  * comment on one), after which the same browser sends enquiries, reviews and comments under this number with no
  * further code. Just a name and a verified phone, no password and no email. Not a dashboard login: owners have
  * `users`. Staff-only like the rest of the directory (0118): the website reaches it through the platform's

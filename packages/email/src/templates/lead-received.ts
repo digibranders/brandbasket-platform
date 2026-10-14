@@ -6,7 +6,8 @@ export interface LeadReceivedInput {
   readonly businessName: string;
   readonly businessType: string;
   readonly email: string;
-  readonly phone: string;
+  /** Null when they left no number: the email is what every lead has. */
+  readonly phone: string | null;
   readonly message: string | null;
   readonly leadUrl: string;
 }
@@ -18,7 +19,7 @@ export function leadReceivedEmail(input: LeadReceivedInput): EmailMessage {
     `${input.name} got in touch about ${input.businessName}.`,
     `Business type: ${input.businessType}`,
     `Email: ${input.email}`,
-    `Phone: ${input.phone}`,
+    `Phone: ${input.phone ?? "not given"}`,
     input.message === null ? "No message." : `Message: ${input.message}`,
     `Open the lead: ${leadUrl}`,
   ];

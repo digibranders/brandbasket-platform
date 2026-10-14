@@ -168,7 +168,7 @@ export default async function PrivacyRequestsPage({ searchParams }: { readonly s
             </div>
             <div>
               <label htmlFor="request-contact" className="block text-sm font-medium">
-                Email or mobile number<RequiredMark />
+                Email or phone number<RequiredMark />
               </label>
               <input id="request-contact" name="contact" required minLength={3} maxLength={320} autoComplete="off" className={INPUT} />
             </div>

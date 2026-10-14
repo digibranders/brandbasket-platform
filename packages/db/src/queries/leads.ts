@@ -27,12 +27,13 @@ export interface NewLead {
   readonly name: string;
   readonly businessName: string;
   readonly email: string;
-  readonly phone: string;
+  /** How to call them; null when they gave none (the email is what every lead has). */
+  readonly phone: string | null;
   /** A business type slug owned by the marketing site; null for leads captured before the form asked. */
   readonly businessType: string | null;
   /**
    * Required, so no path can create a lead without deciding: every lead used to default to USD, which asked Indian
-   * customers for $75. Callers derive it from the phone number (billingCurrencyForPhone in @fynix/shared).
+   * customers for $75. Callers derive it from the phone number when there is one (billingCurrencyForPhone in @fynix/shared).
    */
   readonly currency: BillingCurrency;
   readonly message: string | null;
@@ -43,7 +44,7 @@ export interface Lead {
   readonly name: string;
   readonly businessName: string;
   readonly email: string;
-  readonly phone: string;
+  readonly phone: string | null;
   readonly businessType: string | null;
   readonly currency: BillingCurrency;
   readonly message: string | null;
@@ -81,6 +82,71 @@ export async function createLead(db: Database, lead: NewLead): Promise<{ readonl
   const id = uuidv7();
   await db.insert(leads).values({ ...lead, id });
   return { id };
+}
+
+/** What a customer who opened an account on their own (no setup link from staff) is recorded as. */
+export interface SignupLead {
+  readonly name: string;
+  readonly businessName: string;
+  readonly email: string;
+  /** The business their account opened. */
+  readonly businessId: string;
+  /** The plan they chose on the sign-up form, for the note staff read. */
+  readonly plan: "care" | "premium" | null;
+}
+
+const SIGNUP_PLAN_LABEL = { care: "Care", premium: "Premium" } as const;
+
+/**
+ * Puts a customer who opened an account on their own on the leads list, so staff can follow up one who never pays.
+ * Staff connection only. It is the lead a setup link would have had: status `account_created`, pointing at the business,
+ * and `markLeadPaidForBusiness` moves it to `paid` on the first payment. A lead that already exists for the same email
+ * and has no account yet (the marketing form, or one staff typed in) is taken over rather than duplicated; a business
+ * that already has a lead is left alone, so a repeat call changes nothing.
+ */
+export async function recordSignupLead(db: Database, signup: SignupLead): Promise<{ readonly id: string }> {
+  const email = signup.email.trim().toLowerCase();
+  return db.transaction(async (tx) => {
+    const existing = await tx.select({ id: leads.id }).from(leads).where(eq(leads.businessId, signup.businessId)).limit(1);
+    if (existing[0] !== undefined) return { id: existing[0].id };
+
+    const business = await tx.select({ currency: businesses.currency }).from(businesses).where(eq(businesses.id, signup.businessId)).limit(1);
+    const currency = business[0]?.currency;
+    if (currency === undefined) throw new Error(`No business with id ${signup.businessId} to record a sign-up lead for`);
+
+    const note = `Signed up on the dashboard${signup.plan === null ? "" : ` and chose the ${SIGNUP_PLAN_LABEL[signup.plan]} plan`}. Has not paid yet.`;
+    const taken = await tx
+      .select({ id: leads.id, notes: leads.notes })
+      .from(leads)
+      .where(and(sql`lower(${leads.email}) = ${email}`, sql`${leads.businessId} is null`, ne(leads.status, "lost")))
+      .orderBy(desc(leads.createdAt))
+      .limit(1)
+      .for("update");
+    const lead = taken[0];
+    if (lead !== undefined) {
+      await tx
+        .update(leads)
+        .set({ status: "account_created", businessId: signup.businessId, notes: lead.notes === null ? note : `${lead.notes}\n${note}` })
+        .where(eq(leads.id, lead.id));
+      return { id: lead.id };
+    }
+
+    const id = uuidv7();
+    await tx.insert(leads).values({
+      id,
+      name: signup.name,
+      businessName: signup.businessName,
+      email,
+      phone: null,
+      businessType: null,
+      currency,
+      message: null,
+      status: "account_created",
+      notes: note,
+      businessId: signup.businessId,
+    });
+    return { id };
+  });
 }
 
 export async function listLeads(db: Database, filter: { readonly status?: LeadStatus }): Promise<Lead[]> {

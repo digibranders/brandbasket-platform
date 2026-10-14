@@ -36,8 +36,6 @@ export function getAppDb(): Database {
  *   through lib/server/directory-reviews.ts, lib/server/directory-enquiries.ts, lib/server/directory-verifications.ts,
  *   lib/server/directory-signals.ts and lib/server/open-listings-api.ts. A directory listing is not a platform
  *   business, so there is no tenant to scope under, and the directory tables are staff-only (0055, 0057, 0059).
- * - lib/server/sms/index.ts (createSmsSender's default "outbox" provider), for the same reason: it writes to
- *   sms_messages on behalf of whichever of the above called it.
  * - lib/server/clinic-booking.ts and app/app-host/(protected)/appointments/new/actions.ts (reception's Add booking),
  *   which read every doctor's calendar for one day and book through bookSlot, so a hand-added booking takes the
  *   same lock and overlap rules as an online one. The business id comes only from the signed-in customer's session,
@@ -56,9 +54,8 @@ export function getAppDb(): Database {
  *   connection; the business id comes only from the session, the slot is one of three fixed names, and the file is
  *   re-encoded to the slot's size before it is stored. It also serves GET /api/directory/pictures/<id> to the
  *   marketing website, like the other directory routes above.
- * - lib/server/account-otp.ts (the codes texted to open a free listing account with a phone number, or to choose a
- *   new password for it): whoever asks has no session yet, and account_otps is staff-only (0073). It writes and
- *   reads those codes and the rate-limit counters, nothing else.
+ * - lib/server/account-email-code.ts (the code emailed to open an account): whoever asks has no session yet, and
+ *   account_otps is staff-only (0073). It writes and reads those codes and the rate-limit counters, nothing else.
  * - Support submission rate limits, private screenshot lifecycle/closure checks, and the upload/erasure lock.
  *   Requester-owned ticket and attachment metadata use getAppDb with user scope. Staff access only finalizes
  *   private file lifecycle changes and records redacted automatic errors; it does not read customer messages.

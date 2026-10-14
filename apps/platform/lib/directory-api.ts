@@ -14,7 +14,7 @@ export const DIRECTORY_REVIEWS_PATH = "/api/directory/reviews";
 export const DIRECTORY_REVIEW_OTP_PATH = "/api/directory/reviews/otp";
 export const DIRECTORY_REVIEW_CONFIRM_PATH = "/api/directory/reviews/confirm";
 export const DIRECTORY_ENQUIRIES_PATH = "/api/directory/enquiries";
-/** Review actions (added 2026-10-08): mark a review Helpful, and comment on it with the same texted code as a review. */
+/** Review actions (added 2026-10-08): mark a review Helpful, and comment on it with the same kind of code as a review. */
 export const DIRECTORY_REVIEW_HELPFUL_PATH = "/api/directory/reviews/helpful";
 export const DIRECTORY_COMMENT_OTP_PATH = "/api/directory/reviews/comments/otp";
 export const DIRECTORY_COMMENT_CONFIRM_PATH = "/api/directory/reviews/comments/confirm";
@@ -126,7 +126,7 @@ export type ReviewsResponse = z.infer<typeof reviewsResponseSchema>;
 
 const phoneEntrySchema = z.object({ country: z.string().max(8), number: z.string().max(40) });
 /**
- * The token of a visitor whose number a texted code has already proven (added 2026-10-09), as the platform issued it.
+ * The token of a visitor whose number a code has already proven (added 2026-10-09), as the platform issued it.
  * With one, the platform takes the visitor's name and number from their account and sends no code; `name` and `phone`
  * in the same request are ignored. A token that is forged, expired or unknown is answered with `signed_out`.
  */
@@ -248,7 +248,7 @@ export type EnquiryResponse = z.infer<typeof enquiryResponseSchema>;
 
 // ---------------------------------------------------------------------------------------------------------------
 // Review actions (added 2026-10-08). A visitor can mark a published review Helpful (once a week per visitor address,
-// nothing stored about the visitor), or comment on it: the comment waits for the same texted code as a review
+// nothing stored about the visitor), or comment on it: the comment waits for the same kind of code as a review
 // (`/comments/otp` answers like `/reviews/otp`, `/comments/confirm` like `/reviews/confirm`).
 // ---------------------------------------------------------------------------------------------------------------
 

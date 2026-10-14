@@ -22,7 +22,7 @@ import { purgeExpiredAccountOtps } from "./account-otps";
 /*
  * The scheduled purge (DPDP Act s.8(7): erase personal data once its purpose is served). Two kinds of rule:
  *
- * - What has only a technical life: a session, a reset or confirmation token and a texted code are useless once they run
+ * - What has only a technical life: a session, a reset or confirmation token and an emailed code are useless once they run
  *   out; a rate-limit bucket is keyed by a phone number or an address and is useless once its window has passed.
  * - The approved retention schedule (M1 in docs/privacy/PRIVACY-PLAN.md): leads, enquiries, visitor accounts, exit
  *   feedback, privacy requests, the breach register, the staff access log and consent records, each after its period.

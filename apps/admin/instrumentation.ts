@@ -2,7 +2,7 @@ import type { Instrumentation } from "next";
 
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  // A console real staff can reach must not start with settings missing or an OTP bypass set.
+  // A console real staff can reach must not start with settings missing or the code bypass set.
   const { assertRuntimeEnvironment } = await import("@fynix/shared/server/runtime-environment");
   const { runtimeRequirements } = await import("@fynix/shared/lib/production-requirements");
   assertRuntimeEnvironment(process.env, runtimeRequirements("admin"));

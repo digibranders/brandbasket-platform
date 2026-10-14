@@ -45,7 +45,7 @@ const HIGHLIGHT_ARRAY_LITERAL = `ARRAY[${DIRECTORY_REVIEW_HIGHLIGHT_IDS.map((id)
 export const directoryReviewStatus = pgEnum("directory_review_status", ["published", "hidden"]);
 export type DirectoryReviewStatus = (typeof directoryReviewStatus.enumValues)[number];
 
-/** Who wrote a comment: a visitor (confirmed by a texted code) or the business's own verified owner (signed in). */
+/** Who wrote a comment: a visitor (confirmed by a code) or the business's own verified owner (signed in). */
 export const directoryCommentAuthor = pgEnum("directory_comment_author", ["visitor", "owner"]);
 export type DirectoryCommentAuthor = (typeof directoryCommentAuthor.enumValues)[number];
 
@@ -63,7 +63,7 @@ export const ERASED_VISITOR_NAME = "Erased visitor";
 export type DirectoryEnquiryStatus = (typeof directoryEnquiryStatus.enumValues)[number];
 
 /**
- * One visitor's review of one directory business, confirmed by a code texted to `phone`. One per business and phone
+ * One visitor's review of one directory business, confirmed by a code sent to `phone`. One per business and phone
  * (by place, or by listing key for a key no place has): a second review from the same number replaces the first and
  * publishes it again (see publishDirectoryReviewFromOtp). Hidden reviews stay stored but stop counting and stop showing; staff can restore
  * them. The full name and phone are never shown publicly: the website only ever sees a first name and an initial.
@@ -140,9 +140,9 @@ export const directoryReviews = pgTable(
 );
 
 /**
- * The pending-review code challenge: the review itself waits in `payload` until the code texted to `phone` is
+ * The pending-review code challenge: the review itself waits in `payload` until the code sent to `phone` is
  * confirmed, then becomes (or replaces) a directory_reviews row and this row is deleted. Same shape and rules as
- * booking_otps, without a business: 6 digits, HMAC-hashed with BOOKING_OTP_SECRET and salted with the row's id,
+ * booking_otps, without a business: 6 digits, HMAC-hashed with the account code secret and salted with the row's id,
  * 10 minutes, 5 attempts. Rows left behind are purged an hour after they expire.
  */
 export const directoryReviewOtps = pgTable(
@@ -183,7 +183,7 @@ export const directoryReviewOtps = pgTable(
 );
 
 /**
- * A visitor's comment on a published review, confirmed by a code texted to `phone` like the review itself (the code waits
+ * A visitor's comment on a published review, confirmed by a code sent to `phone` like the review itself (the code waits
  * in directory_review_otps with its review_id set). Shown under the review as the commenter's first name and initial;
  * the full name and phone stay with staff. Like a review, a hidden comment stays stored but stops showing, and staff can
  * restore it. Its writer can delete it (a privacy request, 0156), and it goes with its review when that is deleted.
@@ -205,7 +205,7 @@ export const directoryReviewComments = pgTable(
     authorKind: directoryCommentAuthor("author_kind").notNull().default("visitor"),
     /** For staff only: a visitor's full name, or the owner's account name. Publicly an owner's comment is signed with the business's name. */
     commenterName: text("commenter_name").notNull(),
-    /** The visitor's confirmed number; null for an owner, who is signed in rather than texted a code. */
+    /** The visitor's confirmed number; null for an owner, who is signed in and needs no code. */
     phone: text("phone"),
     /** The signed-in account behind an owner's comment; null for a visitor's. */
     ownerUserId: text("owner_user_id").references(() => users.id),

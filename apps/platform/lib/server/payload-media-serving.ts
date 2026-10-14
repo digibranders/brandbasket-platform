@@ -4,6 +4,12 @@ import path from "node:path";
 import { getPayload } from "payload";
 import config from "@/payload.config";
 
+/**
+ * Who may embed and cache the file: `public` for an image already published on a client's website, `preview` for a
+ * draft's image shown to its own author on their website's preview page. Left out, only this dashboard may use it.
+ */
+export type MediaSharing = "public" | "preview";
+
 const NOT_FOUND_HEADERS = { "Cache-Control": "no-store" } as const;
 
 function notFound(): Response {
@@ -40,7 +46,7 @@ interface RawMediaDoc {
 export async function servePayloadMediaFile(
   mediaId: string,
   allowedBusinessId: string | null,
-  options: { readonly publicContent?: boolean } = {},
+  options: { readonly sharing?: MediaSharing } = {},
 ): Promise<Response> {
   const payload = await getPayload({ config });
 
@@ -76,17 +82,22 @@ export async function servePayloadMediaFile(
 
   const mimeType = typeof doc.mimeType === "string" && doc.mimeType.length > 0 ? doc.mimeType : "application/octet-stream";
 
-  // `publicContent` is for an image already published on a client's website (the site API's media route), which any
-  // origin must be able to embed and which a shared cache may keep for a short while. Everything else stays private.
-  const sharing: Record<string, string> = options.publicContent === true
-    ? { "Cache-Control": "public, max-age=300", "Cross-Origin-Resource-Policy": "cross-origin", "Access-Control-Allow-Origin": "*" }
-    : {
-        // Revalidates every time (no-cache, not no-store): the file itself never changes under a given id, but
-        // access can be withdrawn (a business could stop being able to see media that was never theirs), so a shared
-        // or browser cache must not serve this to a different viewer without asking again.
-        "Cache-Control": "private, no-cache",
-        "Cross-Origin-Resource-Policy": "same-origin",
-      };
+  // Both shared kinds are loaded by a browser on another origin, so they must be embeddable there; only a published
+  // image may be cached by anyone, a draft's never leaves the viewer's own browser.
+  const sharing: Record<string, string> =
+    options.sharing === undefined
+      ? {
+          // Revalidates every time (no-cache, not no-store): the file itself never changes under a given id, but
+          // access can be withdrawn (a business could stop being able to see media that was never theirs), so a shared
+          // or browser cache must not serve this to a different viewer without asking again.
+          "Cache-Control": "private, no-cache",
+          "Cross-Origin-Resource-Policy": "same-origin",
+        }
+      : {
+          "Cache-Control": options.sharing === "public" ? "public, max-age=300" : "private, no-store",
+          "Cross-Origin-Resource-Policy": "cross-origin",
+          "Access-Control-Allow-Origin": "*",
+        };
 
   return new Response(new Uint8Array(bytes), {
     status: 200,

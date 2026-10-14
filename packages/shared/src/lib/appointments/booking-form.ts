@@ -8,6 +8,7 @@
  * booking-form.ts (the client site posts plain form fields over HTTP; it never runs this parser itself). */
 import { z } from "zod";
 import { isIsoDate } from "../calendar/local-date";
+import { EMAIL_FORMAT_MESSAGE, requiredEmail } from "../validation/contact";
 import { parsePhoneEntry } from "../validation/phone";
 import { cleanLine } from "../validation/text";
 
@@ -15,10 +16,14 @@ import { cleanLine } from "../validation/text";
 const RAW_MAX_LENGTH = 2000;
 const rawString = z.string().max(RAW_MAX_LENGTH);
 
-/** The booking asks for no email and no note. z.object drops unknown keys, so a client site built before they were
- * removed can still post them: they are discarded here rather than rejected, and never reach the database. */
+/** The booking asks for no note. z.object drops unknown keys, so a client site built before it was removed can still
+ * post one: it is discarded here rather than rejected, and never reaches the database. */
 export const bookingFieldsSchema = z.object({
   name: rawString,
+  /** The address the confirmation code is emailed to. Optional in the shape so a client site built before the code moved
+   * to email gets a 422 that names the field, not an unexplained 400. */
+  email: rawString.nullish(),
+  /** A number the clinic can call. Collected, never verified: nothing is sent to it. */
   phone: rawString,
   serviceId: rawString.nullish(),
   date: rawString,
@@ -38,7 +43,9 @@ export const NAME_MAX_LENGTH = 80;
 
 export interface BookingInput {
   readonly name: string;
-  /** E.164, e.g. "+919876543210". */
+  /** Trimmed and lowercased: the address the confirmation code is emailed to. */
+  readonly email: string;
+  /** E.164, e.g. "+919876543210": how the clinic reaches the patient. Never verified: nothing is sent to it. */
   readonly phone: string;
   readonly serviceId: string | null;
   readonly date: string; // YYYY-MM-DD
@@ -55,7 +62,8 @@ export type BookingParseResult =
   | { readonly success: false; readonly field: keyof BookingFields; readonly message: string };
 
 const uuidFormat = z.uuid();
-const PHONE_MESSAGE = "Enter a phone number we can text, like +91 98765 43210.";
+const EMAIL_MISSING_MESSAGE = "Enter your email address.";
+const PHONE_MESSAGE = "Enter a phone number the clinic can call, like +91 98765 43210.";
 const START_TIME = /^([01]\d|2[0-3]):[0-5]\d$/; // 00:00-23:59, the range findSlot can ever match
 
 export function parseBookingFields(fields: BookingFields): BookingParseResult {
@@ -65,6 +73,11 @@ export function parseBookingFields(fields: BookingFields): BookingParseResult {
   }
   if (name.length > NAME_MAX_LENGTH) {
     return { success: false, field: "name", message: `Keep your name to ${NAME_MAX_LENGTH} characters.` };
+  }
+
+  const email = requiredEmail(EMAIL_MISSING_MESSAGE).safeParse(fields.email ?? "");
+  if (!email.success) {
+    return { success: false, field: "email", message: email.error.issues[0]?.message ?? EMAIL_FORMAT_MESSAGE };
   }
 
   const phone = normalisePhone(fields.phone);
@@ -101,7 +114,7 @@ export function parseBookingFields(fields: BookingFields): BookingParseResult {
   }
 
   const noticeVersion = (fields.noticeVersion ?? "").trim();
-  return { success: true, data: { name, phone, serviceId, date, start, practitionerId, ...(noticeVersion === "" ? {} : { noticeVersion }) } };
+  return { success: true, data: { name, email: email.data, phone, serviceId, date, start, practitionerId, ...(noticeVersion === "" ? {} : { noticeVersion }) } };
 }
 
 /**

@@ -33,7 +33,7 @@ describe("buildSiteInfo", () => {
     expect(info.timeZone).toBe("Asia/Kolkata");
   });
 
-  it("falls back to UTC for today's date when the business has no time zone", () => {
+  it("reads today in India time, and says so, when the business has not chosen a time zone", () => {
     const info = buildSiteInfo({
       businessName: "Smile Dental",
       facts: facts({ timeZone: null }),
@@ -41,8 +41,8 @@ describe("buildSiteInfo", () => {
       practitioners: [],
       now: NOW,
     });
-    expect(info.today).toBe("2026-01-01");
-    expect(info.timeZone).toBeNull();
+    expect(info.today).toBe("2026-01-02");
+    expect(info.timeZone).toBe("Asia/Kolkata");
   });
 
   it("slices HH:MM:SS times from the database down to HH:MM", () => {

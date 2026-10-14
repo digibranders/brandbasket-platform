@@ -5,8 +5,8 @@ account with their **email address**, chooses **Care** or **Premium**, pays, and
 billing and support from the dashboard. Fynix staff run the same data from a separate staff console.
 
 It lives at `app.fynix.digital`, on Fynix's own server, with its own database, its own staff console and its own secrets.
-It still carries dormant code (directory and listing features, the free plan, SMS sign-up) that a later clean-up removes:
-the dashboard sells Care and Premium only, and registers owners by email.
+It still carries dormant code (directory and listing features, the free plan) that a later clean-up removes: the dashboard
+sells Care and Premium only, and registers owners by email. Nothing is ever sent to a phone: every code is emailed.
 
 Built with Next.js 16 (App Router), TypeScript, Tailwind CSS 4, zod, PostgreSQL, Drizzle and Better Auth, in a pnpm
 workspace. The Fynix marketing site (`fynix.digital`) is a separate repository.

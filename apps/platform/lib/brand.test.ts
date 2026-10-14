@@ -13,10 +13,6 @@ describe("the brand", () => {
     expect(BRAND.shortName).toBe("Fynix");
   });
 
-  it("opens accounts with an email address", () => {
-    expect(BRAND.signUpWith).toBe("email");
-  });
-
   it("opens a sign-up on a plan it sells", () => {
     expect(offersChoice(BRAND, FYNIX_DEFAULT_CHOICE)).toBe(true);
   });

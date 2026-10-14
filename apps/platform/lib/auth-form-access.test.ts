@@ -4,11 +4,9 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SetupForm } from "@/components/panel/setup-form";
 import { ResetPasswordForm } from "@/components/panel/reset-password-form";
-import { VerifyBusiness } from "@/components/panel/business/verify-business";
 import { StepFormError, StepTextField, useStepForm } from "@/components/panel/step-form";
 import { DeleteAccountFlow } from "@/components/panel/delete-account-flow";
 import type { SetupFormState } from "@/lib/setup-form";
-import type { VerifyBusinessState } from "@/lib/verify-business-form";
 import type { StepFormState } from "@/lib/onboarding/form-state";
 
 let root: Root;
@@ -82,51 +80,6 @@ describe("auth form access", () => {
     await type("confirmPassword", "a-long-new-password");
     await submit();
     expect(document.activeElement?.getAttribute("role")).toBe("alert");
-  });
-
-  it("keeps the returned verification destination, offers resend and focuses code failures", async () => {
-    const sent: VerifyBusinessState = { status: "sent", otpId: "11111111-1111-1111-1111-111111111111", texted: true, phoneHint: "••••4321" };
-    const action = vi.fn().mockResolvedValueOnce(sent).mockResolvedValueOnce({
-      status: "error", message: "Wrong code", step: { ...sent },
-    }).mockResolvedValueOnce({ ...sent, otpId: "22222222-2222-2222-2222-222222222222" });
-    await render(createElement(VerifyBusiness, { action, phoneHint: "••••1234" }));
-    await submit();
-    expect(container.textContent).toContain("••••4321");
-    expect(document.activeElement).toBe(input("code"));
-    await type("code", "123456");
-    await submit("Confirm");
-    expect(input("code").getAttribute("aria-invalid")).toBe("true");
-    expect(document.activeElement).toBe(input("code"));
-    await submit("Send a new code");
-    expect(action.mock.calls[2]?.[1].get("intent")).toBe("resend");
-  });
-
-  it("hides stale verification errors and invalid state during a pending retry", async () => {
-    let resolve: ((state: VerifyBusinessState) => void) | undefined;
-    const sent: VerifyBusinessState = { status: "sent", otpId: "11111111-1111-1111-1111-111111111111", texted: true, phoneHint: "••••4321" };
-    const action = vi.fn().mockResolvedValueOnce(sent).mockResolvedValueOnce({ status: "error", message: "Wrong code", step: sent })
-      .mockImplementationOnce(() => new Promise<VerifyBusinessState>((done) => { resolve = done; }));
-    await render(createElement(VerifyBusiness, { action, phoneHint: "••••1234" }));
-    await submit();
-    await type("code", "123456");
-    await submit("Confirm");
-    await type("code", "123456");
-    await submit("Confirm");
-    expect(container.querySelector('[role="alert"]')).toBeNull();
-    expect(input("code").hasAttribute("aria-invalid")).toBe(false);
-    expect(container.querySelector('form')?.getAttribute("aria-busy")).toBe("true");
-    await act(async () => resolve?.(sent));
-  });
-
-  it("retains the returned destination when an expired code returns to sending", async () => {
-    const action = vi.fn().mockResolvedValueOnce({ status: "sent", otpId: "11111111-1111-1111-1111-111111111111", texted: true, phoneHint: "••••4321" })
-      .mockResolvedValueOnce({ status: "error", message: "Expired", step: "send", phoneHint: "••••4321" });
-    await render(createElement(VerifyBusiness, { action, phoneHint: "••••1234" }));
-    await submit();
-    await type("code", "123456");
-    await submit("Confirm");
-    expect(container.textContent).toContain("••••4321");
-    expect(document.activeElement?.textContent).toBe("Verify my business");
   });
 
   it("associates each of two step errors with only that form's input", async () => {

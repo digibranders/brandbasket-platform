@@ -8,7 +8,7 @@ const NOW = new Date("2026-11-01T06:00:00.000Z");
 const OTP_ID = "0198f2c0-0000-7000-8000-000000000001";
 const WEBSITE = "https://fynix.digital";
 const REVIEW_PAGE = "https://fynix.digital/in/mh/business/wow-momo/h3t9qcv2fv#review-0198f2c0-0000-7000-8000-0000000000bb";
-const BODY = { kind: "erasure", name: "Meera", phone: { country: "IN", number: "9876543210" }, details: "", website: "", clientIp: "203.0.113.9" };
+const BODY = { kind: "erasure", name: "Meera", email: "Meera@Example.com", details: "", website: "", clientIp: "203.0.113.9" };
 
 function post(path: string, body: unknown, headers: Record<string, string> = {}): Request {
   return new Request(`http://app.test${path}`, {
@@ -18,7 +18,7 @@ function post(path: string, body: unknown, headers: Record<string, string> = {})
   });
 }
 
-function otpDeps(outcome: Awaited<ReturnType<Parameters<typeof handlePrivacyRequestOtp>[1]["requestOtp"]>> = { kind: "otp_sent", otpId: OTP_ID, expiresInSeconds: 600, phoneHint: "•••• 3210" }) {
+function otpDeps(outcome: Awaited<ReturnType<Parameters<typeof handlePrivacyRequestOtp>[1]["requestOtp"]>> = { kind: "otp_sent", otpId: OTP_ID, expiresInSeconds: 600, emailHint: "m•••@example.com" }) {
   const requestOtp = vi.fn(async () => outcome);
   return { deps: { token: TOKEN, websiteOrigin: WEBSITE, requestOtp, now: () => NOW }, requestOtp };
 }
@@ -35,19 +35,19 @@ describe("POST /api/privacy-requests/otp", () => {
     expect(requestOtp).not.toHaveBeenCalled();
   });
 
-  it("accepts a visitor erasure and keeps no name or words from it", async () => {
+  it("no longer takes a visitor erasure: proving a phone number needs a text, and nothing is texted", async () => {
     const { deps, requestOtp } = otpDeps();
     const response = await handlePrivacyRequestOtp(post("/x", { ...BODY, kind: "visitor_erasure", name: "Meera Rao", details: "Delete my reviews." }), deps);
-    expect(response.status).toBe(200);
-    expect(requestOtp).toHaveBeenCalledWith({ kind: "visitor_erasure", name: null, phone: "+919876543210", details: null, noticeVersion: null }, "203.0.113.9", NOW);
+    expect(response.status).toBe(400);
+    expect(requestOtp).not.toHaveBeenCalled();
   });
 
   it("asks for a code with the cleaned input, the visitor's address and the time", async () => {
     const { deps, requestOtp } = otpDeps();
     const response = await handlePrivacyRequestOtp(post("/x", { ...BODY, noticeVersion: "2026-10-13" }), deps);
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ status: "otp_sent", otpId: OTP_ID, expiresInSeconds: 600, phoneHint: "•••• 3210" });
-    expect(requestOtp).toHaveBeenCalledWith({ kind: "erasure", name: "Meera", phone: "+919876543210", details: null, noticeVersion: "2026-10-13" }, "203.0.113.9", NOW);
+    expect(await response.json()).toEqual({ status: "otp_sent", otpId: OTP_ID, expiresInSeconds: 600, emailHint: "m•••@example.com" });
+    expect(requestOtp).toHaveBeenCalledWith({ kind: "erasure", name: "Meera", email: "meera@example.com", details: null, noticeVersion: "2026-10-13" }, "203.0.113.9", NOW);
   });
 
   it("keeps the page a report is about above what the person wrote", async () => {
@@ -55,7 +55,7 @@ describe("POST /api/privacy-requests/otp", () => {
     const response = await handlePrivacyRequestOtp(post("/x", { ...BODY, kind: "content_report", details: "It names my child.", about: REVIEW_PAGE }), deps);
     expect(response.status).toBe(200);
     expect(requestOtp).toHaveBeenCalledWith(
-      { kind: "content_report", name: "Meera", phone: "+919876543210", details: `About: ${REVIEW_PAGE}\n\nIt names my child.`, noticeVersion: null },
+      { kind: "content_report", name: "Meera", email: "meera@example.com", details: `About: ${REVIEW_PAGE}\n\nIt names my child.`, noticeVersion: null },
       "203.0.113.9",
       NOW,
     );
@@ -95,7 +95,17 @@ describe("POST /api/privacy-requests/otp", () => {
     const { deps, requestOtp } = otpDeps();
     const response = await handlePrivacyRequestOtp(post("/x", { ...BODY, website: "http://spam.example" }), deps);
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ status: "otp_sent", phoneHint: "•••• 3210" });
+    expect(await response.json()).toMatchObject({ status: "otp_sent", emailHint: "m•••@example.com" });
+    expect(requestOtp).not.toHaveBeenCalled();
+  });
+
+  it("asks for a valid email address, naming the field, before any code is sent", async () => {
+    const { deps, requestOtp } = otpDeps();
+    for (const email of ["", "meera", "98765 43210"]) {
+      const response = await handlePrivacyRequestOtp(post("/x", { ...BODY, email }), deps);
+      expect(response.status).toBe(422);
+      expect(await response.json()).toMatchObject({ status: "error", code: "invalid", field: "email" });
+    }
     expect(requestOtp).not.toHaveBeenCalled();
   });
 
@@ -112,7 +122,6 @@ describe("POST /api/privacy-requests/otp", () => {
       [{ kind: "limited" }, 429, "limited"],
       [{ kind: "unavailable" }, 503, "unavailable"],
       [{ kind: "failed" }, 500, "failed"],
-      [{ kind: "invalid", field: "phone", message: "Not that country." }, 422, "invalid"],
     ] as const;
     for (const [outcome, status, code] of cases) {
       const response = await handlePrivacyRequestOtp(post("/x", BODY), otpDeps(outcome).deps);
@@ -145,21 +154,6 @@ describe("POST /api/privacy-requests/confirm", () => {
     expect(confirmOtp).not.toHaveBeenCalled();
   });
 
-  it("reports a finished visitor erasure with its counts and reference", async () => {
-    const response = await handlePrivacyRequestConfirm(post("/x", BODY_CONFIRM), confirm({ kind: "erased", reference: "PR-ERASED01", reviews: 2, comments: 1, enquiries: 3 }).deps);
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ status: "erased", reference: "PR-ERASED01", reviews: 2, comments: 1, enquiries: 3 });
-  });
-
-  it("reports one review or comment deleted with its reference, or not found", async () => {
-    const deleted = await handlePrivacyRequestConfirm(post("/x", BODY_CONFIRM), confirm({ kind: "deleted", reference: "PR-DELETED1" }).deps);
-    expect(deleted.status).toBe(200);
-    expect(await deleted.json()).toEqual({ status: "deleted", reference: "PR-DELETED1" });
-    const missing = await handlePrivacyRequestConfirm(post("/x", BODY_CONFIRM), confirm({ kind: "not_found" }).deps);
-    expect(missing.status).toBe(200);
-    expect(await missing.json()).toEqual({ status: "not_found" });
-  });
-
   it("maps each outcome onto its status", async () => {
     const cases = [
       [{ kind: "expired" }, 410, "expired"],
@@ -179,7 +173,7 @@ describe("POST /api/privacy-requests/confirm", () => {
 describe("POST /api/privacy-requests/contribution", () => {
   const REVIEW_ID = "0198f2c0-0000-7000-8000-0000000000bb";
   const TARGET = { kind: "review", id: REVIEW_ID } as const;
-  const DELETION = { target: TARGET, clientIp: "203.0.113.9", noticeVersion: "2026-10-13" };
+  const DELETION = { target: TARGET, clientIp: "203.0.113.9", noticeVersion: "2026-10-13", visitorToken: "token" };
   const deletion = (outcome: Awaited<ReturnType<Parameters<typeof handleContributionDeletion>[1]["requestDeletion"]>>, visitorPhone: string | null = "+919876543210") => {
     const requestDeletion = vi.fn(async () => outcome);
     const resolveVisitorPhone = vi.fn(async () => visitorPhone);
@@ -188,11 +182,11 @@ describe("POST /api/privacy-requests/contribution", () => {
 
   it("deletes at once for a recognised visitor, under the number the token proves", async () => {
     const { deps, requestDeletion, resolveVisitorPhone } = deletion({ kind: "deleted", reference: "PR-DELETED1" });
-    const response = await handleContributionDeletion(post("/x", { ...DELETION, visitorToken: "token", phone: { country: "IN", number: "9811111111" } }), deps);
+    const response = await handleContributionDeletion(post("/x", DELETION), deps);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "deleted", reference: "PR-DELETED1" });
     expect(resolveVisitorPhone).toHaveBeenCalledWith("token", NOW);
-    expect(requestDeletion).toHaveBeenCalledWith({ target: TARGET, requester: { kind: "visitor", phone: "+919876543210" }, noticeVersion: "2026-10-13" }, "203.0.113.9", NOW);
+    expect(requestDeletion).toHaveBeenCalledWith({ target: TARGET, phone: "+919876543210", noticeVersion: "2026-10-13" }, NOW);
   });
 
   it("answers a stale visitor token with signed_out, and deletes nothing", async () => {
@@ -203,33 +197,30 @@ describe("POST /api/privacy-requests/contribution", () => {
     expect(requestDeletion).not.toHaveBeenCalled();
   });
 
-  it("asks for a code for a typed number, and answers not found the same way as deleted", async () => {
-    const sent = deletion({ kind: "otp_sent", otpId: OTP_ID, expiresInSeconds: 600, phoneHint: "•••• 3210" });
-    const response = await handleContributionDeletion(post("/x", { ...DELETION, phone: { country: "IN", number: "98765 43210" } }), sent.deps);
-    expect(await response.json()).toEqual({ status: "otp_sent", otpId: OTP_ID, expiresInSeconds: 600, phoneHint: "•••• 3210" });
-    expect(sent.requestDeletion).toHaveBeenCalledWith({ target: TARGET, requester: { kind: "number", phone: "+919876543210" }, noticeVersion: "2026-10-13" }, "203.0.113.9", NOW);
-    expect(sent.resolveVisitorPhone).not.toHaveBeenCalled();
-
-    const missing = await handleContributionDeletion(post("/x", { ...DELETION, visitorToken: "token" }), deletion({ kind: "not_found" }).deps);
+  it("answers not found as it answers deleted, and a failure as a failure", async () => {
+    const missing = await handleContributionDeletion(post("/x", DELETION), deletion({ kind: "not_found" }).deps);
     expect(missing.status).toBe(200);
     expect(await missing.json()).toEqual({ status: "not_found" });
+    const failed = await handleContributionDeletion(post("/x", DELETION), deletion({ kind: "failed" }).deps);
+    expect(failed.status).toBe(500);
+    expect(await failed.json()).toMatchObject({ status: "error", code: "failed" });
   });
 
-  it("asks for the number when neither a token nor a usable number is sent", async () => {
-    const { deps, requestDeletion } = deletion({ kind: "not_found" });
-    const none = await handleContributionDeletion(post("/x", DELETION), deps);
-    expect(none.status).toBe(422);
-    expect(await none.json()).toEqual({ status: "error", code: "invalid", message: "Enter the mobile number you posted with.", field: "phone" });
-    const blank = await handleContributionDeletion(post("/x", { ...DELETION, phone: { country: "IN", number: "" } }), deps);
-    expect(await blank.json()).toMatchObject({ code: "invalid", field: "phone" });
+  it("no longer takes a typed number: with no visitor token there is no code to send, so the body is refused", async () => {
+    const { deps, requestDeletion, resolveVisitorPhone } = deletion({ kind: "not_found" });
+    const withoutToken = Object.fromEntries(Object.entries(DELETION).filter(([key]) => key !== "visitorToken"));
+    for (const body of [withoutToken, { ...withoutToken, phone: { country: "IN", number: "98765 43210" } }]) {
+      expect((await handleContributionDeletion(post("/x", body), deps)).status).toBe(400);
+    }
     expect(requestDeletion).not.toHaveBeenCalled();
+    expect(resolveVisitorPhone).not.toHaveBeenCalled();
   });
 
   it("takes everything on one business page as a target, by its place id only", async () => {
-    const { deps, requestDeletion } = deletion({ kind: "otp_sent", otpId: OTP_ID, expiresInSeconds: 600, phoneHint: "•••• 3210" });
-    const ok = await handleContributionDeletion(post("/x", { ...DELETION, target: { kind: "business", id: "k7m2q9a" }, phone: { country: "IN", number: "9876543210" } }), deps);
+    const { deps, requestDeletion } = deletion({ kind: "deleted", reference: "PR-DELETED1" });
+    const ok = await handleContributionDeletion(post("/x", { ...DELETION, target: { kind: "business", id: "k7m2q9a" } }), deps);
     expect(ok.status).toBe(200);
-    expect(requestDeletion).toHaveBeenCalledWith(expect.objectContaining({ target: { kind: "business", id: "k7m2q9a" } }), "203.0.113.9", NOW);
+    expect(requestDeletion).toHaveBeenCalledWith(expect.objectContaining({ target: { kind: "business", id: "k7m2q9a" } }), NOW);
     expect((await handleContributionDeletion(post("/x", { ...DELETION, target: { kind: "business", id: REVIEW_ID } }), deps)).status).toBe(400);
   });
 

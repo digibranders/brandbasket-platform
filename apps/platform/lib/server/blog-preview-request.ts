@@ -2,6 +2,22 @@ import "server-only";
 import { verifyBlogPreviewToken } from "./blog-preview-token";
 import type { SiteApiTenant, SitePost } from "./site-api";
 
+/** The query parameter that lets `/api/site/media/<id>` show an image of a draft, carrying the same preview token. */
+export const MEDIA_PREVIEW_PARAM = "preview";
+
+function withPreviewPass(path: string | null, previewToken: string): string | null {
+  return path === null ? null : `${path}?${MEDIA_PREVIEW_PARAM}=${encodeURIComponent(previewToken)}`;
+}
+
+/** A draft's cover and author photo are not public yet, so their addresses carry the preview pass that unlocks them. */
+function withPreviewMedia(post: SitePost, previewToken: string): SitePost {
+  return {
+    ...post,
+    coverImagePath: withPreviewPass(post.coverImagePath, previewToken),
+    author: post.author === null ? null : { ...post.author, photoPath: withPreviewPass(post.author.photoPath, previewToken) },
+  };
+}
+
 /**
  * `GET /api/site/posts/preview?token=…`: one draft post, for a client site's "Preview on my website" page.
  *
@@ -52,5 +68,6 @@ export async function handleBlogPreviewRequest(request: Request, deps: BlogPrevi
 
   const post = await deps.findPreviewPost(tenant.businessId, claims.postId);
   if (post === null) return reply(404, NOT_AVAILABLE);
-  return reply(200, { business: tenant.name, post });
+  // `previewToken` is non-null here: `claims` only exists when it verified.
+  return reply(200, { business: tenant.name, post: withPreviewMedia(post, previewToken ?? "") });
 }

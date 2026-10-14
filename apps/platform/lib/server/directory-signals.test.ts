@@ -17,12 +17,12 @@ import {
 } from "@fynix/db";
 import { signalsResponseSchema } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
-import { bookingOtpSecret } from "./env";
+import { accountCodeSecret } from "./env";
 import { directoryDay, readSignals, recordDirectoryEvent, type DirectoryEvent } from "./directory-signals";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("./env", () => ({ bookingOtpSecret: vi.fn() }));
+vi.mock("./env", () => ({ accountCodeSecret: vi.fn() }));
 vi.mock("@fynix/db", async () => {
   const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
@@ -81,7 +81,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   vi.mocked(getStaffDb).mockReturnValue(DB);
-  vi.mocked(bookingOtpSecret).mockReturnValue(SECRET);
+  vi.mocked(accountCodeSecret).mockReturnValue(SECRET);
   vi.mocked(consumeRateLimit).mockResolvedValue(ALLOWED);
   vi.mocked(incrementDirectoryDailyCount).mockResolvedValue(1);
   vi.mocked(purgeOldDirectoryDailyCounts).mockResolvedValue(0);
@@ -204,7 +204,7 @@ describe("recordDirectoryEvent", () => {
   });
 
   it("fails, counting nothing, when the hashing secret is not configured", async () => {
-    vi.mocked(bookingOtpSecret).mockImplementation(() => {
+    vi.mocked(accountCodeSecret).mockImplementation(() => {
       throw new Error("Invalid booking configuration");
     });
     expect(await recordDirectoryEvent(event(), freshNow())).toBe("failed");

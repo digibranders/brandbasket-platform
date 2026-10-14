@@ -4,14 +4,14 @@ import { phoneHint } from "@fynix/shared/lib/appointments/booking-form";
 import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import type { VisitorSessionPayload } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
-import { bookingOtpSecret } from "./env";
+import { accountCodeSecret } from "./env";
 import type { VisitorIdentity } from "./directory-fields";
 import { recordContributionConsent } from "./visitor-consent";
 import { issueVisitorToken, verifyVisitorToken } from "./visitor-token";
 
 /**
  * Website visitor accounts (docs/superpowers/specs/2026-10-09-visitor-account-design.md). A number that has just been
- * proven by a texted code gets an account, and the website keeps the signed token this module issues; from then on the
+ * proven by a code gets an account, and the website keeps the signed token this module issues; from then on the
  * same browser reviews, comments and enquires under that number with no further code. The token is the proof, so only
  * code that has just checked a real code may call `startVisitorSession`.
  */
@@ -27,7 +27,7 @@ export interface ResolvedVisitor {
 }
 
 function sessionFor(visitor: { readonly id: string; readonly name: string; readonly phone: string }, now: Date): VisitorSession {
-  return { token: issueVisitorToken(visitor.id, now, bookingOtpSecret()), name: visitor.name, phoneHint: phoneHint(visitor.phone) };
+  return { token: issueVisitorToken(visitor.id, now, accountCodeSecret()), name: visitor.name, phoneHint: phoneHint(visitor.phone) };
 }
 
 /**
@@ -49,7 +49,7 @@ export async function startVisitorSession(phone: string, name: string, now: Date
 
 /** The visitor a token names, or null when it is forged, expired, or names an account that is gone. */
 export async function resolveVisitor(token: string, now: Date): Promise<ResolvedVisitor | null> {
-  const id = verifyVisitorToken(token, now, bookingOtpSecret());
+  const id = verifyVisitorToken(token, now, accountCodeSecret());
   if (id === null) return null;
   const db = getStaffDb();
   const visitor = await findDirectoryVisitor(db, id);

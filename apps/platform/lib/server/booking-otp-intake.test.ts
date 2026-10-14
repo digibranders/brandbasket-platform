@@ -13,6 +13,7 @@ const NOW = new Date("2026-01-05T12:00:00Z");
 
 const FIELDS = {
   name: "Asha Rao",
+  email: "asha@example.com",
   phone: "98765 43210",
   serviceId: "",
   date: "2026-01-07",
@@ -45,7 +46,7 @@ function post(body: unknown, headers: Record<string, string> = {}): Request {
 
 beforeEach(() => {
   requested = [];
-  outcome = { kind: "otp_sent", otpId: "otp-1", expiresInSeconds: 600, phoneHint: "•••• 3210" };
+  outcome = { kind: "otp_sent", otpId: "otp-1", expiresInSeconds: 600, emailHint: "a•••@example.com" };
 });
 
 describe("handleBookingOtpRequest", () => {
@@ -130,8 +131,16 @@ describe("handleBookingOtpRequest", () => {
     expect(typeof body.otpId).toBe("string");
     expect(body.otpId.length).toBeGreaterThan(10);
     expect(body.expiresInSeconds).toBe(600);
-    expect(typeof body.phoneHint).toBe("string");
+    expect(body.emailHint).toBe("a•••@example.com");
+    expect(body).not.toHaveProperty("phoneHint");
     expect(requested).toHaveLength(0);
+  });
+
+  it("answers the honeypot's fake hint from the address the bot sent, and a plausible one when it sent none", async () => {
+    const fake = (fields: Record<string, unknown>) =>
+      handleBookingOtpRequest(post({ fields: { ...FIELDS, website: "spam", ...fields }, clientIp: "1.2.3.4" }), deps()).then((response) => response.json());
+    expect((await fake({ email: "Bot@Spam.example" })).emailHint).toBe("b•••@spam.example");
+    expect((await fake({ email: undefined })).emailHint).toBe("•••");
   });
 
   it("gives the honeypot response a different random id on each call", async () => {
@@ -149,6 +158,21 @@ describe("handleBookingOtpRequest", () => {
     expect(response.status).toBe(422);
     expect(await response.json()).toMatchObject({ status: "error", code: "invalid", field: "phone" });
     expect(requested).toHaveLength(0);
+  });
+
+  it("returns 422 on email, naming the field, when the address is missing or is not one", async () => {
+    const withoutEmail = Object.fromEntries(Object.entries(FIELDS).filter(([key]) => key !== "email"));
+    for (const fields of [withoutEmail, { ...FIELDS, email: "" }, { ...FIELDS, email: "asha" }]) {
+      const response = await handleBookingOtpRequest(post({ fields, clientIp: "1.2.3.4" }), deps());
+      expect(response.status).toBe(422);
+      expect(await response.json()).toMatchObject({ status: "error", code: "invalid", field: "email" });
+    }
+    expect(requested).toHaveLength(0);
+  });
+
+  it("passes the address, lowercased, and the phone number on to requestOtp", async () => {
+    await handleBookingOtpRequest(post({ fields: { ...FIELDS, email: " Asha@Example.COM " }, clientIp: "1.2.3.4" }), deps());
+    expect(requested[0]?.input).toMatchObject({ email: "asha@example.com", phone: "+919876543210" });
   });
 
   it("passes the chosen doctor through to requestOtp, and a missing one as any doctor (null)", async () => {
@@ -179,7 +203,7 @@ describe("handleBookingOtpRequest", () => {
   });
 
   it.each<[BookingOtpOutcome, number, Record<string, unknown>]>([
-    [{ kind: "otp_sent", otpId: "otp-1", expiresInSeconds: 600, phoneHint: "•••• 3210" }, 200, { status: "otp_sent", otpId: "otp-1" }],
+    [{ kind: "otp_sent", otpId: "otp-1", expiresInSeconds: 600, emailHint: "a•••@example.com" }, 200, { status: "otp_sent", otpId: "otp-1" }],
     [{ kind: "unavailable" }, 403, { status: "error", code: "unavailable" }],
     [{ kind: "paused", message: "Back on Monday" }, 409, { status: "error", code: "paused", message: "Back on Monday" }],
     [{ kind: "invalid", field: "start", message: "Choose an available time." }, 422, { status: "error", code: "invalid", field: "start" }],

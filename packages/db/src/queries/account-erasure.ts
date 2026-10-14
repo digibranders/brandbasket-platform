@@ -45,7 +45,6 @@ import {
   services,
   sessions,
   setupInvites,
-  smsMessages,
   staffMembers,
   subscriptions,
   userPrivacySettings,
@@ -252,7 +251,7 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     if (block !== null) return skipped(block);
 
     const [user] = await tx
-      .select({ email: users.email, phone: users.phoneNumber })
+      .select({ email: users.email })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -297,7 +296,6 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(projectBriefs).where(eq(projectBriefs.businessId, businessId));
     await tx.delete(projects).where(eq(projects.businessId, businessId));
     await tx.delete(domains).where(eq(domains.businessId, businessId));
-    await tx.delete(smsMessages).where(eq(smsMessages.businessId, businessId));
     await tx.delete(mediaAssets).where(eq(mediaAssets.businessId, businessId));
 
     // The directory listing: what the owner wrote and uploaded goes; the place itself is public and stays, unclaimed.
@@ -337,7 +335,7 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     if (user !== undefined) {
       await tx.delete(verifications).where(eq(verifications.identifier, user.email));
       await tx.delete(emailMessages).where(eq(emailMessages.toAddress, user.email));
-      if (user.phone !== null) await tx.delete(accountOtps).where(eq(accountOtps.phone, user.phone));
+      await tx.delete(accountOtps).where(eq(accountOtps.email, user.email));
     }
     await tx
       .update(users)

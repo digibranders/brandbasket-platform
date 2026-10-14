@@ -1,7 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
-import { parsePhoneEntry } from "@fynix/shared/lib/validation/phone";
+import { emailHint } from "@/lib/email-hint";
 import {
   contributionDeletionRequestSchema,
   ownContributionsRequestSchema,
@@ -41,8 +41,7 @@ const LIMITED_MESSAGE = "You've sent a few of these already. Please try again la
 const FAILED_MESSAGE = "Something went wrong. Please try again in a moment.";
 const UNAVAILABLE_MESSAGE = "We can't send a code right now. Please email us instead.";
 const EXPIRED_MESSAGE = "That code has expired. Please ask for a new one.";
-const SIGNED_OUT_MESSAGE = "Enter the number you posted with, and we'll text you a code.";
-const DELETION_PHONE_MESSAGE = "Enter the mobile number you posted with.";
+const SIGNED_OUT_MESSAGE = "Your sign-in has run out, so we can't tell which reviews are yours. Please email us instead.";
 
 function reply(status: number, body: object): Response {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -78,20 +77,17 @@ async function readJsonBody(request: Request, limit: number): Promise<JsonBody> 
   }
 }
 
-/** A meaningless but plausible hint for the honeypot's fake success, from whatever digits the bot sent. */
-function fakePhoneHint(rawNumber: string): string {
-  const digits = rawNumber.replace(/\D/g, "");
-  return `•••• ${digits.length >= 4 ? digits.slice(-4) : "0000"}`;
+/** A meaningless but plausible hint for the honeypot's fake success, from whatever address the bot sent. */
+function fakeEmailHint(rawEmail: string): string {
+  return emailHint(rawEmail.trim().toLowerCase());
 }
 
 export function otpResponse(outcome: PrivacyRequestOtpOutcome): Response {
   switch (outcome.kind) {
     case "otp_sent": {
-      const body: PrivacyRequestOtpResponse = { status: "otp_sent", otpId: outcome.otpId, expiresInSeconds: outcome.expiresInSeconds, phoneHint: outcome.phoneHint };
+      const body: PrivacyRequestOtpResponse = { status: "otp_sent", otpId: outcome.otpId, expiresInSeconds: outcome.expiresInSeconds, emailHint: outcome.emailHint };
       return reply(200, body);
     }
-    case "invalid":
-      return failure(422, "invalid", outcome.message, outcome.field);
     case "unavailable":
       return failure(503, "unavailable", UNAVAILABLE_MESSAGE);
     case "limited":
@@ -109,18 +105,6 @@ export function confirmResponse(outcome: PrivacyRequestConfirmOutcome): Response
   switch (outcome.kind) {
     case "received": {
       const body: PrivacyRequestConfirmResponse = { status: "received", reference: outcome.reference, dueAt: outcome.dueAt.toISOString() };
-      return reply(200, body);
-    }
-    case "erased": {
-      const body: PrivacyRequestConfirmResponse = { status: "erased", reference: outcome.reference, reviews: outcome.reviews, comments: outcome.comments, enquiries: outcome.enquiries };
-      return reply(200, body);
-    }
-    case "deleted": {
-      const body: PrivacyRequestConfirmResponse = { status: "deleted", reference: outcome.reference };
-      return reply(200, body);
-    }
-    case "not_found": {
-      const body: PrivacyRequestConfirmResponse = { status: "not_found" };
       return reply(200, body);
     }
     case "expired":
@@ -148,7 +132,7 @@ export interface PrivacyRequestOtpIntakeDeps {
   readonly now: () => Date;
 }
 
-/** `POST /api/privacy-requests/otp`: a request, held until the code texted to the number on it is confirmed. */
+/** `POST /api/privacy-requests/otp`: a request, held until the code emailed to the address on it is confirmed. */
 export async function handlePrivacyRequestOtp(request: Request, deps: PrivacyRequestOtpIntakeDeps): Promise<Response> {
   const refused = refuseUnauthorised(request, deps.token);
   if (refused !== null) return refused;
@@ -160,7 +144,7 @@ export async function handlePrivacyRequestOtp(request: Request, deps: PrivacyReq
 
   // A bot gets the same answer as a person, so it learns nothing. Nothing is stored or sent.
   if (parsed.data.website.trim() !== "") {
-    return otpResponse({ kind: "otp_sent", otpId: randomUUID(), expiresInSeconds: OTP_TTL_SECONDS, phoneHint: fakePhoneHint(parsed.data.phone.number) });
+    return otpResponse({ kind: "otp_sent", otpId: randomUUID(), expiresInSeconds: OTP_TTL_SECONDS, emailHint: fakeEmailHint(parsed.data.email) });
   }
 
   const about = requestAbout(parsed.data.about, deps.websiteOrigin);
@@ -176,7 +160,7 @@ export interface PrivacyRequestConfirmIntakeDeps {
   readonly now: () => Date;
 }
 
-/** `POST /api/privacy-requests/confirm`: the code from the text, which files the request it was holding. */
+/** `POST /api/privacy-requests/confirm`: the code from the email, which files the request it was holding. */
 export async function handlePrivacyRequestConfirm(request: Request, deps: PrivacyRequestConfirmIntakeDeps): Promise<Response> {
   const refused = refuseUnauthorised(request, deps.token);
   if (refused !== null) return refused;
@@ -199,8 +183,12 @@ export function deletionResponse(outcome: ContributionDeletionOutcome): Response
       const body: ContributionDeletionResponse = { status: "not_found" };
       return reply(200, body);
     }
-    default:
-      return otpResponse(outcome);
+    case "failed":
+      return failure(500, "failed", FAILED_MESSAGE);
+    default: {
+      const unhandled: never = outcome;
+      throw new Error(`Unhandled contribution deletion outcome: ${JSON.stringify(unhandled)}`);
+    }
   }
 }
 
@@ -208,14 +196,13 @@ export interface ContributionDeletionIntakeDeps {
   readonly token: string | null;
   /** The phone a visitor token proves, or null when the token is forged, expired or names an account that is gone. */
   readonly resolveVisitorPhone: (token: string, now: Date) => Promise<string | null>;
-  readonly requestDeletion: (input: ContributionDeletionInput, clientIp: string, now: Date) => Promise<ContributionDeletionOutcome>;
+  readonly requestDeletion: (input: ContributionDeletionInput, now: Date) => Promise<ContributionDeletionOutcome>;
   readonly now: () => Date;
 }
 
 /**
- * `POST /api/privacy-requests/contribution`: a visitor deleting one review or comment of theirs. With a visitor token it is
- * deleted at once (a stale token is `signed_out`, so the website asks for the number instead); with a number, a code is
- * texted and the deletion waits for `/confirm`.
+ * `POST /api/privacy-requests/contribution`: a recognised visitor deleting one review or comment of theirs. It is deleted at
+ * once; a stale token is `signed_out`.
  */
 export async function handleContributionDeletion(request: Request, deps: ContributionDeletionIntakeDeps): Promise<Response> {
   const refused = refuseUnauthorised(request, deps.token);
@@ -225,20 +212,12 @@ export async function handleContributionDeletion(request: Request, deps: Contrib
 
   const parsed = contributionDeletionRequestSchema.safeParse(body.value);
   if (!parsed.success) return reply(400, { error: "The body is not a deletion request." });
-  const { target, visitorToken, phone, clientIp, noticeVersion } = parsed.data;
+  const { target, visitorToken, noticeVersion } = parsed.data;
   const now = deps.now();
 
-  if (visitorToken !== undefined) {
-    const visitorPhone = await deps.resolveVisitorPhone(visitorToken, now);
-    if (visitorPhone === null) return failure(401, "signed_out", SIGNED_OUT_MESSAGE);
-    return deletionResponse(await deps.requestDeletion({ target, requester: { kind: "visitor", phone: visitorPhone }, noticeVersion: noticeVersion ?? null }, clientIp, now));
-  }
-
-  if (phone === undefined) return failure(422, "invalid", DELETION_PHONE_MESSAGE, "phone");
-  const entry = parsePhoneEntry(phone, DELETION_PHONE_MESSAGE);
-  if (!entry.success) return failure(422, "invalid", entry.message, entry.part === "country" ? "phoneCountry" : "phone");
-  if (entry.e164 === null) return failure(422, "invalid", DELETION_PHONE_MESSAGE, "phone");
-  return deletionResponse(await deps.requestDeletion({ target, requester: { kind: "number", phone: entry.e164 }, noticeVersion: noticeVersion ?? null }, clientIp, now));
+  const phone = await deps.resolveVisitorPhone(visitorToken, now);
+  if (phone === null) return failure(401, "signed_out", SIGNED_OUT_MESSAGE);
+  return deletionResponse(await deps.requestDeletion({ target, phone, noticeVersion: noticeVersion ?? null }, now));
 }
 
 export interface OwnContributionsIntakeDeps {

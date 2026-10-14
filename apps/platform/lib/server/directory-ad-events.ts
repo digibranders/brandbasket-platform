@@ -9,7 +9,7 @@ import {
 import type { DirectoryAdEventRequest } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
 import { directoryDay, IP_HOURLY_RULE, ONCE_A_DAY_RULE, visitorHash } from "./directory-signals";
-import { bookingOtpSecret } from "./env";
+import { accountCodeSecret } from "./env";
 import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { ipRateLimitKey } from "./ip-key";
 
@@ -57,7 +57,7 @@ function purgeOnceADay(db: Database, now: Date): void {
  */
 export async function recordDirectoryAdEvent(event: DirectoryAdEvent, now: Date): Promise<DirectoryAdEventOutcome> {
   try {
-    const secret = bookingOtpSecret();
+    const secret = accountCodeSecret();
     const db = getStaffDb();
     const day = directoryDay(now);
     purgeOnceADay(db, now);

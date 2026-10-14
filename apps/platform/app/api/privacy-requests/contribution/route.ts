@@ -5,8 +5,7 @@ import { leadsApiToken } from "@/lib/server/website-api-auth";
 
 /**
  * `POST /api/privacy-requests/contribution` — a visitor deleting one of their reviews or comments from the Delete link under
- * it. Deleted at once for a visitor the website recognises; otherwise a code is texted and `/confirm` does the deletion.
- * Server-to-server only, with LEADS_API_TOKEN (see lib/server/privacy-request-intake.ts): no CORS.
+ * it. Deleted at once, for a visitor the website recognises. Server-to-server only, with LEADS_API_TOKEN (see lib/server/privacy-request-intake.ts): no CORS.
  */
 export function POST(request: Request): Promise<Response> {
   return handleContributionDeletion(request, {

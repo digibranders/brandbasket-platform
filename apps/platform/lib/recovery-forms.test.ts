@@ -42,47 +42,109 @@ async function type(name: string, value: string): Promise<void> {
   });
 }
 
+const JOIN_PROPS = { initialChoice: "care", preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { care: null, premium: null }, confirmsCodes: true } as const;
+const codeStep = { otpId: "challenge", emailHint: "o•••@example.test", confirmRequired: true };
+
+/** Fills the details a Care sign-up asks for and asks for the code. */
+async function askForCode(): Promise<void> {
+  await type("businessName", "Smile Dental");
+  await type("name", "Owner");
+  await type("email", "owner@example.test");
+  await type("password", "a-long-password");
+  await act(async () => container.querySelector<HTMLInputElement>('input[name="agree"]')?.click());
+  await click("Email me a code");
+}
+
 it("focuses the email result, preserving a clear stage announcement", async () => {
   await render(createElement(ForgotPasswordForm, { action: async (): Promise<ForgotPasswordFormState> => ({ status: "sent", email: "owner@example.com" }) }));
   await type("identifier", "owner@example.com");
-  await click("Continue");
+  await click("Email me a link");
   expect(document.activeElement?.getAttribute("role")).toBe("status");
+  expect(container.textContent).toContain("emailed it a link");
 });
 
-it("keeps the identifier and focuses a neutral delivery failure", async () => {
-  await render(createElement(ForgotPasswordForm, { action: async (): Promise<ForgotPasswordFormState> => ({ status: "error", message: "Please try again.", otp: null }) }));
-  await type("identifier", "9820000001");
-  await click("Continue");
-  expect(container.querySelector('input[name="identifier"]')).not.toBeNull();
+it("keeps the address and focuses a neutral delivery failure", async () => {
+  await render(createElement(ForgotPasswordForm, { action: async (): Promise<ForgotPasswordFormState> => ({ status: "error", message: "Please try again." }) }));
+  await type("identifier", "owner@example.com");
+  await click("Email me a link");
+  expect(container.querySelector<HTMLInputElement>('input[name="identifier"]')?.value).toBe("owner@example.com");
   expect(document.activeElement?.getAttribute("role")).toBe("alert");
+});
+
+it("asks a password reset for an email only, and never offers a code or a mobile number", async () => {
+  await render(createElement(ForgotPasswordForm, { action: async (): Promise<ForgotPasswordFormState> => ({ status: "idle" }) }));
+  expect(container.querySelector('input[name="identifier"][type="email"]')).not.toBeNull();
+  expect(container.querySelector('input[name="code"]')).toBeNull();
+  expect(container.textContent).not.toMatch(/mobile|number|text(ed)?\b|code/i);
 });
 
 it("focuses signup details when replacing the plan chooser", async () => {
   await render(createElement(JoinForm, {
-    action: async (): Promise<JoinFormState> => ({ status: "idle" }), initialChoice: null, preselected: null, choices: LISTING_BRAND.joinChoices, legalLinks: legalLinksFor(BRAND),
-    listing: null, placeId: null, businessName: "", signature: "", prices: { care: null, premium: null }, signUpWith: "phone", textsCodes: true,
+    ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "idle" }), initialChoice: null, choices: LISTING_BRAND.joinChoices,
   }));
   await act(async () => container.querySelector<HTMLInputElement>('input[value="listing_only"]')?.click());
   await click("Continue");
   expect(document.activeElement?.getAttribute("name")).toBe("name");
 });
 
-it("asks a Fynix sign-up for an email address, and never for a mobile number", async () => {
-  await render(createElement(JoinForm, {
-    action: async (): Promise<JoinFormState> => ({ status: "idle" }), initialChoice: "care", preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND),
-    listing: null, placeId: null, businessName: "", signature: "", prices: { care: null, premium: null }, signUpWith: "email", textsCodes: true,
-  }));
+it("asks a sign-up for an email address, and never for a mobile number", async () => {
+  await render(createElement(JoinForm, { ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "idle" }) }));
   expect(container.querySelector('input[name="email"][type="email"]')).not.toBeNull();
   expect(container.querySelector('input[name="phone"]')).toBeNull();
   expect(container.textContent).toContain("Email me a code");
-  expect(container.textContent).not.toMatch(/mobile number/i);
+  expect(container.textContent).not.toMatch(/mobile number|text(ed)? (it|you)|send me a code/i);
 });
 
-it("tells a Fynix owner where the code was emailed, and offers to change the address", async () => {
-  const otp = { otpId: "challenge", phoneHint: "o•••@example.test", via: "email" as const, texted: true };
+it("tells the owner where the code was emailed, and offers to change the address", async () => {
+  await render(createElement(JoinForm, { ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "code", otp: codeStep }) }));
+  await askForCode();
+  expect(container.textContent).toContain("We emailed a 6-digit code to o•••@example.test");
+  expect(container.querySelector('input[type="hidden"][name="email"]')).not.toBeNull();
+  expect(container.querySelector('input[type="hidden"][name="phone"]')).toBeNull();
+  expect(container.textContent).toContain("Change email");
+  expect(container.textContent).not.toMatch(/texted|text message|mobile/i);
+});
+
+it("goes back to the details, with the address as typed, on Change email", async () => {
+  await render(createElement(JoinForm, { ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "code", otp: codeStep }) }));
+  await askForCode();
+  await click("Change email");
+  expect(container.querySelector<HTMLInputElement>('input[name="email"]:not([type="hidden"])')?.value).toBe("owner@example.test");
+  expect(container.textContent).toContain("Email me a code");
+});
+
+it("says so, and takes any six digits, while the local test mode is on", async () => {
   await render(createElement(JoinForm, {
-    action: async (): Promise<JoinFormState> => ({ status: "code", otp }), initialChoice: "care", preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND),
-    listing: null, placeId: null, businessName: "", signature: "", prices: { care: null, premium: null }, signUpWith: "email", textsCodes: true,
+    ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "code", otp: { ...codeStep, confirmRequired: false } }),
+  }));
+  await askForCode();
+  expect(container.textContent).toContain("Test mode: enter any 6 digits");
+  expect(container.textContent).not.toContain("Send a new code");
+  expect(button("Continue")).toBeDefined();
+});
+
+it("keeps the emailed code usable while a blocked resend counts down", async () => {
+  vi.useFakeTimers();
+  const action = vi.fn().mockResolvedValueOnce({ status: "code", otp: codeStep }).mockResolvedValueOnce({
+    status: "error", message: "Too many code requests for this email address. Try again in 3 seconds.", otp: codeStep,
+    retry: { scope: "email", operation: "send", retryAfterSeconds: 3 },
+  });
+  await render(createElement(JoinForm, { ...JOIN_PROPS, action }));
+  await askForCode();
+  await click("Send a new code");
+  const resend = container.querySelector<HTMLButtonElement>('button[name="resend"]');
+  expect(resend?.disabled).toBe(true);
+  await type("code", "123456");
+  expect(button("Verify and continue").disabled).toBe(false);
+  expect(container.querySelector('input[name="otpId"]')?.getAttribute("value")).toBe(codeStep.otpId);
+  await act(async () => vi.advanceTimersByTime(3000));
+  expect(resend?.disabled).toBe(false);
+});
+
+it("locks the details while a code is being sent", async () => {
+  let release: ((state: JoinFormState) => void) | undefined;
+  await render(createElement(JoinForm, {
+    ...JOIN_PROPS, action: () => new Promise<JoinFormState>((resolve) => { release = resolve; }),
   }));
   await type("businessName", "Smile Dental");
   await type("name", "Owner");
@@ -90,66 +152,8 @@ it("tells a Fynix owner where the code was emailed, and offers to change the add
   await type("password", "a-long-password");
   await act(async () => container.querySelector<HTMLInputElement>('input[name="agree"]')?.click());
   await click("Email me a code");
-  expect(container.textContent).toContain("We emailed a 6-digit code to o•••@example.test");
-  expect(container.querySelector('input[type="hidden"][name="email"]')).not.toBeNull();
-  expect(container.textContent).toContain("Change email");
-  expect(container.textContent).not.toMatch(/texted/i);
-});
-
-it("asks a Fynix password reset for an email only, and sends a link", async () => {
-  await render(createElement(ForgotPasswordForm, { action: async (): Promise<ForgotPasswordFormState> => ({ status: "sent", email: "owner@example.com" }), emailOnly: true }));
-  expect(container.querySelector('input[name="identifier"][type="email"]')).not.toBeNull();
-  expect(container.textContent).not.toMatch(/mobile number/i);
-  await type("identifier", "owner@example.com");
-  await click("Email me a link");
-  expect(container.textContent).toContain("emailed it a link");
-});
-
-it("keeps an old phone code usable while a blocked resend counts down", async () => {
-  vi.useFakeTimers();
-  const otp = { otpId: "challenge", phoneHint: "••••1234" };
-  const action = vi.fn().mockResolvedValueOnce({ status: "code", otp }).mockResolvedValueOnce({
-    status: "error", message: "Code delivery is temporarily busy. Try again in 3 seconds.", otp,
-    retry: { scope: "global", operation: "send", retryAfterSeconds: 3 },
-  });
-  await render(createElement(ForgotPasswordForm, { action }));
-  await type("identifier", "9820000001");
-  await click("Continue");
-  await click("Send a new code");
-  const resend = container.querySelector<HTMLButtonElement>('button[name="resend"]');
-  expect(resend?.disabled).toBe(true);
-  expect(button("Set new password").disabled).toBe(true);
-  await type("code", "123456");
-  await type("password", "a-long-new-password");
-  await type("confirmPassword", "a-long-new-password");
-  expect(button("Set new password").disabled).toBe(false);
-  expect(container.querySelector('input[name="otpId"]')?.getAttribute("value")).toBe(otp.otpId);
-  await act(async () => vi.advanceTimersByTime(3000));
-  expect(resend?.disabled).toBe(false);
-});
-
-it.each(["phone", "network", "global"] as const)("keeps %s scope accurate when changing the recovery destination", async (scope) => {
-  const action = async (): Promise<ForgotPasswordFormState> => ({
-    status: "error", message: "Try again soon.", otp: null,
-    retry: { scope, operation: "send", retryAfterSeconds: 137 },
-  });
-  await render(createElement(ForgotPasswordForm, { action }));
-  expect(button("Continue").disabled).toBe(true);
-  await type("identifier", "9820000002");
-  expect(button("Continue").disabled).toBe(false);
-  await click("Continue");
-  expect(button("Continue").disabled).toBe(true);
-  const input = container.querySelector<HTMLInputElement>('input[name="identifier"]');
-  if (!input) throw new Error("Missing identifier");
-  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-  await act(async () => {
-    setValue?.call(input, "9820000001");
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  expect(button("Continue").disabled).toBe(scope !== "phone");
-  await act(async () => {
-    setValue?.call(input, "owner@example.com");
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  expect(button("Continue").disabled).toBe(false);
+  for (const name of ["businessName", "name", "email", "password"]) {
+    expect(container.querySelector<HTMLInputElement>(`input[name="${name}"]`)?.readOnly, name).toBe(true);
+  }
+  await act(async () => release?.({ status: "code", otp: codeStep }));
 });

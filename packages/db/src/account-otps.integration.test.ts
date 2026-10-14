@@ -15,15 +15,16 @@ import { captureErrorText, openTestDatabases, resetTestDatabase, type TestDataba
 const NOW = new Date("2026-09-30T10:00:00.000Z");
 const IN_TEN_MINUTES = new Date(NOW.getTime() + 10 * 60 * 1000);
 const PHONE = "+919820011223";
+const EMAIL = "owner@example.test";
 
 let dbs: TestDatabases;
 
-async function newOtp(overrides: { readonly expiresAt?: Date; readonly purpose?: "signup" | "password_reset" } = {}): Promise<string> {
+async function newOtp(overrides: { readonly expiresAt?: Date; readonly email?: string } = {}): Promise<string> {
   const id = randomUUID();
   await createAccountOtp(dbs.staff.db, {
     id,
-    purpose: overrides.purpose ?? "signup",
-    phone: PHONE,
+    purpose: "signup",
+    email: overrides.email ?? EMAIL,
     codeHash: "a".repeat(64),
     expiresAt: overrides.expiresAt ?? IN_TEN_MINUTES,
   });
@@ -43,13 +44,12 @@ beforeEach(async () => {
 });
 
 describe("account codes", () => {
-  it("hands back what the code is for with each try, and counts the tries", async () => {
-    const otpId = await newOtp({ purpose: "password_reset" });
+  it("hands back what the code is for and the address it was emailed to with each try, and counts the tries", async () => {
+    const otpId = await newOtp();
     expect(await claimAccountOtpAttempt(dbs.staff.db, { otpId, maxAttempts: 5, now: NOW })).toEqual({
       attempts: 1,
-      purpose: "password_reset",
-      phone: PHONE,
-      email: null,
+      purpose: "signup",
+      email: EMAIL,
       codeHash: "a".repeat(64),
     });
     expect((await claimAccountOtpAttempt(dbs.staff.db, { otpId, maxAttempts: 5, now: NOW }))?.attempts).toBe(2);
@@ -92,42 +92,31 @@ describe("account codes", () => {
   });
 });
 
-describe("a code emailed to an address", () => {
-  const EMAIL = "owner@example.test";
-
-  async function newEmailOtp(email: string = EMAIL): Promise<string> {
-    const id = randomUUID();
-    await createAccountOtp(dbs.staff.db, { id, purpose: "signup", email, codeHash: "b".repeat(64), expiresAt: IN_TEN_MINUTES });
-    return id;
-  }
-
-  it("hands back the address the code was sent to, and no number", async () => {
-    const otpId = await newEmailOtp();
-    expect(await claimAccountOtpAttempt(dbs.staff.db, { otpId, maxAttempts: 5, now: NOW })).toEqual({
-      attempts: 1,
-      purpose: "signup",
-      phone: null,
-      email: EMAIL,
-      codeHash: "b".repeat(64),
-    });
-  });
-
-  it("is used up exactly once, like a texted code", async () => {
-    const otpId = await newEmailOtp();
-    expect(await consumeAccountOtp(dbs.staff.db, otpId)).toBe(true);
-    expect(await consumeAccountOtp(dbs.staff.db, otpId)).toBe(false);
-  });
-
-  it("must be addressed to a phone or an email, never both and never neither", async () => {
-    const insert = (phone: string | null, email: string | null): Promise<unknown> =>
+describe("the address a code is for", () => {
+  it("must be an email address, and the row has no phone to hold a number", async () => {
+    const insert = (email: string | null): Promise<unknown> =>
       dbs.owner.db.execute(
-        sql`INSERT INTO account_otps (id, purpose, phone, email, code_hash, expires_at)
-            VALUES (${randomUUID()}, 'signup', ${phone}, ${email}, ${"c".repeat(64)}, ${IN_TEN_MINUTES.toISOString()})`,
+        sql`INSERT INTO account_otps (id, purpose, email, code_hash, expires_at)
+            VALUES (${randomUUID()}, 'signup', ${email}, ${"c".repeat(64)}, ${IN_TEN_MINUTES.toISOString()})`,
       );
-    expect(await captureErrorText(insert(PHONE, EMAIL))).toContain("account_otps_contact_check");
-    expect(await captureErrorText(insert(null, null))).toContain("account_otps_contact_check");
-    expect(await captureErrorText(insert(null, "not an address"))).toContain("account_otps_email_check");
-    await insert(null, EMAIL);
+    expect(await captureErrorText(insert(null))).toContain("not-null constraint");
+    expect(await captureErrorText(insert("not an address"))).toContain("account_otps_email_check");
+    expect(await captureErrorText(insert(`${"a".repeat(250)}@x.com`))).toContain("account_otps_email_check");
+    await insert(EMAIL);
+    const columns = await dbs.owner.db.execute<{ column_name: string }>(
+      sql`SELECT column_name FROM information_schema.columns WHERE table_name = 'account_otps' AND column_name = 'phone'`,
+    );
+    expect(columns.rows).toHaveLength(0);
+  });
+
+  it("only knows the sign-up purpose: a password reset is a link, never a code", async () => {
+    const insert = (purpose: string): Promise<unknown> =>
+      dbs.owner.db.execute(
+        sql`INSERT INTO account_otps (id, purpose, email, code_hash, expires_at)
+            VALUES (${randomUUID()}, ${purpose}, ${EMAIL}, ${"c".repeat(64)}, ${IN_TEN_MINUTES.toISOString()})`,
+      );
+    expect(await captureErrorText(insert("password_reset"))).toContain("account_otp_purpose");
+    expect(await captureErrorText(insert("verify_business"))).toContain("account_otp_purpose");
   });
 });
 

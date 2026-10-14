@@ -41,7 +41,7 @@ const DB = {} as Database;
 const send = vi.fn<(message: EmailMessage) => Promise<void>>();
 
 function attempt(overrides: Partial<AccountOtpAttempt> = {}): AccountOtpAttempt {
-  return { attempts: 1, purpose: "signup", phone: null, email: EMAIL, codeHash: hashOtpCode(OTP_ID, "123456", SECRET), ...overrides };
+  return { attempts: 1, purpose: "signup", email: EMAIL, codeHash: hashOtpCode(OTP_ID, "123456", SECRET), ...overrides };
 }
 
 /** The six digits emailed in the message the code was sent in. */
@@ -73,7 +73,7 @@ describe("requestAccountEmailCode", () => {
 
     const stored = vi.mocked(createAccountOtp).mock.calls[0]?.[1];
     expect(stored).toMatchObject({ purpose: "signup", email: EMAIL, expiresAt: new Date(NOW.getTime() + 600_000) });
-    expect(stored?.phone).toBeUndefined();
+    expect(stored).not.toHaveProperty("phone");
 
     const message = send.mock.calls[0]?.[0];
     expect(message).toMatchObject({ to: EMAIL, template: "signup-code", subject: "Your Fynix Digital verification code" });
@@ -159,12 +159,8 @@ describe("confirmAccountEmailCode", () => {
     expect(await confirmAccountEmailCode(input, IP, NOW)).toEqual({ kind: "expired" });
   });
 
-  it("does not let a code for one address, one purpose, or a phone number confirm this one", async () => {
+  it("does not let a code for another address confirm this one", async () => {
     expect(await confirmAccountEmailCode({ ...input, email: "someone.else@example.test" }, IP, NOW)).toMatchObject({ kind: "wrong_code" });
-    vi.mocked(claimAccountOtpAttempt).mockResolvedValue(attempt({ purpose: "password_reset" }));
-    expect(await confirmAccountEmailCode(input, IP, NOW)).toMatchObject({ kind: "wrong_code" });
-    vi.mocked(claimAccountOtpAttempt).mockResolvedValue(attempt({ phone: "+919876543210", email: null }));
-    expect(await confirmAccountEmailCode(input, IP, NOW)).toMatchObject({ kind: "wrong_code" });
     expect(consumeAccountOtp).not.toHaveBeenCalled();
   });
 

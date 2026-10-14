@@ -23,7 +23,7 @@ import { DEFAULT_PAUSED_MESSAGE } from "./availability";
 import { loggableBookingError } from "./booking-log";
 import { getStaffDb } from "./db";
 import { loadClinicCalendars } from "./clinic-calendars";
-import { bookingOtpBypassed, bookingOtpSecret } from "./env";
+import { accountCodeSecret, emailCodeBypassed } from "./env";
 import { ipRateLimitKey } from "./ip-key";
 import { otpCodeMatches } from "./otp-crypto";
 import { resolveRequestedSlot } from "./slot-check";
@@ -46,12 +46,6 @@ const IP_RULE = { limit: 30, windowSeconds: 60 * 60 };
 const NO_TRIES_LEFT_MESSAGE = "No tries left. Send a new code.";
 const TOO_MANY_ATTEMPTS_MESSAGE = "Too many attempts. Send a new code.";
 export const TAKEN_MESSAGE = "Someone just booked that slot. Please pick another.";
-/**
- * Said only after the patient has proved their phone with the code, and never when asking for one: answering it
- * earlier would let anyone who knows a name and a number find out whether that person has a booking at a given time.
- * Sent as a "taken" error so client sites already built keep working; the message is what differs.
- */
-export const PATIENT_OVERLAP_MESSAGE = "You already have an appointment at that time. Please pick another time.";
 const SLOT_STARTED_MESSAGE = "That time has passed. Please pick another slot.";
 const SLOT_NO_LONGER_AVAILABLE_MESSAGE = "That time is no longer available. Please pick another slot.";
 
@@ -131,7 +125,7 @@ export async function confirmBookingOtp(businessId: string, otpId: string, code:
   try {
     // Resolved first, before the rate limit is even spent: a misconfigured secret must fail immediately, not
     // after the request has already cost the caller part of a rate-limit budget it can never get back.
-    const secret = bookingOtpSecret();
+    const secret = accountCodeSecret();
 
     const db = getStaffDb();
 
@@ -156,9 +150,10 @@ export async function confirmBookingOtp(businessId: string, otpId: string, code:
 
     // Salted with the OTP's own id (see hashOtpCode's doc comment): requestBookingOtp generates it up front and
     // hands it to createBookingOtp as an explicit id, precisely so it is available here, unchanged, via otp.id.
-    // With the bypass on (see bookingOtpBypassed), any 6-digit code matches: no code was ever sent. The attempt was
-    // still claimed above, so the attempts ceiling and expiry keep applying.
-    const matches = bookingOtpBypassed() || otpCodeMatches(otp.codeHash, otp.id, code, secret);
+    // With the local bypass on (see emailCodeBypassed), any 6-digit code matches: the code was still emailed (to the
+    // outbox), but the address is not proven. The attempt was still claimed above, so the attempts ceiling and expiry
+    // keep applying.
+    const matches = emailCodeBypassed() || otpCodeMatches(otp.codeHash, otp.id, code, secret);
     if (!matches) {
       const triesLeft = Math.max(OTP_MAX_ATTEMPTS - claim.attempts, 0);
       if (triesLeft === 0) return { kind: "too_many_attempts", message: NO_TRIES_LEFT_MESSAGE };
@@ -218,7 +213,7 @@ export async function confirmBookingOtp(businessId: string, otpId: string, code:
       const appointment = await bookSlot(db, businessId, newAppointmentFrom(otp.payload, candidateIds));
       await keepNoticeProof(db, appointment.patientId, otp.payload.noticeVersion);
       try {
-        // The OTP row (patient name, phone, and the code hash) is redundant once its slot is booked -- the
+        // The OTP row (patient email, phone, and the code hash) is redundant once its slot is booked -- the
         // appointment itself is now the record. Its own try/catch: a cleanup failure must never turn a booking
         // that already succeeded into a failed response, so it is only ever logged, in the same safe shape as
         // every other unexpected error here (never otp.payload, which carries the patient data).
@@ -235,7 +230,10 @@ export async function confirmBookingOtp(businessId: string, otpId: string, code:
       };
     } catch (error) {
       if (error instanceof SlotTakenError) return { kind: "taken", message: TAKEN_MESSAGE };
-      if (error instanceof PatientOverlapError) return { kind: "taken", message: PATIENT_OVERLAP_MESSAGE };
+      // Worded as any other slot that is no longer on offer, never as "you already have a booking": the phone number
+      // given is the clinic's to call, not proved, so anyone who knew a name and a number could otherwise find out
+      // whether that person has a booking at a given time by proving an address of their own.
+      if (error instanceof PatientOverlapError) return { kind: "taken", message: SLOT_NO_LONGER_AVAILABLE_MESSAGE };
       // Awaited (not just returned) so a failure in this follow-up read is caught by the outer try/catch below,
       // same as every other dependency call here, instead of rejecting confirmBookingOtp's own promise.
       if (error instanceof BookingClosedError) return await describeBookingClosed(businessId);

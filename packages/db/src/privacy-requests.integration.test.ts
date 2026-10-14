@@ -114,7 +114,7 @@ describe("the code that proves a public-form request", () => {
   const OTP_ID = "0198f2c0-0000-7000-8000-000000000001";
   const OTP = {
     id: OTP_ID,
-    phone: "+919876543210",
+    email: "meera@example.com",
     codeHash: "hash",
     payload: { kind: "erasure", name: "Meera", details: "Delete my account.", noticeVersion: "2026-10-13" },
     expiresAt: new Date(NOW.getTime() + 10 * 60 * 1000),
@@ -126,11 +126,11 @@ describe("the code that proves a public-form request", () => {
     expect(await claimPrivacyRequestOtpAttempt(dbs.staff.db, attempt)).toEqual({ attempts: 1 });
     const dueAt = new Date("2026-12-01T06:00:00.000Z");
     const received = await receiveVerifiedPrivacyRequest(dbs.staff.db, { ...attempt, dueAt });
-    expect(received).toMatchObject({ outcome: "filed", dueAt });
-    expect(received?.outcome === "filed" ? received.reference : "").toMatch(/^PR-/);
+    expect(received).toMatchObject({ dueAt });
+    expect(received?.reference ?? "").toMatch(/^PR-/);
 
     const [row] = await listPrivacyRequests(dbs.staff.db);
-    expect(row).toMatchObject({ kind: "erasure", channel: "web", subjectName: "Meera", subjectContact: "+919876543210", status: "received", details: "Delete my account." });
+    expect(row).toMatchObject({ kind: "erasure", channel: "web", subjectName: "Meera", subjectContact: "meera@example.com", status: "received", details: "Delete my account." });
     expect(row?.identityVerifiedAt).toEqual(NOW);
     expect(row?.receivedAt).toEqual(NOW);
     expect(await findPrivacyRequestOtp(dbs.staff.db, OTP_ID)).toBeNull();
@@ -163,11 +163,11 @@ describe("the code that proves a public-form request", () => {
     expect(await dbs.owner.db.select().from(privacyRequestOtps)).toHaveLength(1);
   });
 
-  it("is invisible to the customer's role and to the public form role, and refuses a malformed number", async () => {
+  it("is invisible to the customer's role and to the public form role, and refuses a malformed address", async () => {
     await createPrivacyRequestOtp(dbs.staff.db, OTP);
     expect(await captureErrorText(dbs.app.db.select().from(privacyRequestOtps))).toContain("permission denied");
     expect(await captureErrorText(dbs.publicRole.db.select().from(privacyRequestOtps))).toContain("permission denied");
-    expect(await captureErrorText(createPrivacyRequestOtp(dbs.staff.db, { ...OTP, id: "0198f2c0-0000-7000-8000-000000000004", phone: "98765" }))).toContain("privacy_request_otps_phone_check");
+    expect(await captureErrorText(createPrivacyRequestOtp(dbs.staff.db, { ...OTP, id: "0198f2c0-0000-7000-8000-000000000004", email: "98765" }))).toContain("privacy_request_otps_email_check");
   });
 });
 

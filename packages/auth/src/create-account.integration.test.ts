@@ -54,7 +54,7 @@ describe("createAccountWithGrant", () => {
     expect(signedIn.user.id).toBe(created.userId);
   });
 
-  it("refuses an address in the placeholder domain, which only a phone account may hold", async () => {
+  it("refuses an address in the phone placeholder domain, which is never anybody's inbox", async () => {
     await expect(createAccountWithGrant(auth, dbs.app.db, { ...OWNER, email: "919820011223@phone.fynix.invalid" })).rejects.toThrow(
       RangeError,
     );

@@ -5,7 +5,7 @@ import { updatedAt } from "./columns";
 
 /**
  * What a signed-in owner has chosen about their own data. Today that is one thing: the person they name to use their rights
- * for them if they die or cannot act (DPDP Act s.14), with a mobile number to reach that person. A row exists only while a nominee is
+ * for them if they die or cannot act (DPDP Act s.14), with a phone number to reach that person. A row exists only while a nominee is
  * named; clearing the nominee deletes it. One row per user, read and written by that user alone (row-level security on the
  * customer connection), and read by staff when a nominee comes forward.
  *
@@ -19,7 +19,7 @@ export const userPrivacySettings = pgTable(
       .primaryKey()
       .references(() => users.id, { onDelete: "cascade" }),
     nomineeName: text("nominee_name").notNull(),
-    /** The nominee's mobile number, E.164: how to reach them. Fynix holds no email addresses, so a number is the only contact. */
+    /** The nominee's phone number, E.164: how staff reach them when they come forward. Nothing is ever sent to it. */
     nomineePhone: text("nominee_phone").notNull(),
     updatedAt: updatedAt(),
   },

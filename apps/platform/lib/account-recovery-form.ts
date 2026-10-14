@@ -1,12 +1,9 @@
 import { z } from "zod";
-import type { OtpRetry } from "@/lib/auth-retry";
 import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
 
 /*
  * Getting back into an account, and proving an email address is its owner's: the forms behind /forgot-password and
  * /reset-password/<token>, and the addresses the emails link to. Browser-safe, so the form components share the limits.
- * What is typed into /forgot-password (a mobile number or an email) is read on the server: see
- * lib/server/phone-password-reset.ts.
  */
 
 export const FORGOT_PASSWORD_PATH = "/forgot-password";
@@ -36,25 +33,15 @@ const resetSchema = z
     path: ["confirmPassword"],
   });
 
-/** The code step of a reset by mobile number: which texted code the form is waiting for, and where it went. */
-export interface ResetCodeStep {
-  readonly otpId: string;
-  readonly phoneHint: string;
-}
-
 /**
  * The form holds what was typed itself (its inputs are controlled), so a state carries only where the person is. An
- * account that signs in with an email is sent a link (`sent`); one that signs in with a mobile number is texted a
- * code (`code`) and chooses the new password on the same form. An error says whether it happened on the code step
- * (`otp` kept) or before.
+ * address is sent a link (`sent`) whether or not it has an account.
  */
 export type ForgotPasswordFormState =
   | { readonly status: "idle" }
-  | { readonly status: "error"; readonly message: string; readonly retry?: OtpRetry; readonly otp: ResetCodeStep | null }
+  | { readonly status: "error"; readonly message: string }
   /** Said whether or not the address has an account, so the form never tells a stranger which addresses do. */
-  | { readonly status: "sent"; readonly email: string }
-  /** Said whether or not the number has an account, for the same reason. */
-  | { readonly status: "code"; readonly otp: ResetCodeStep };
+  | { readonly status: "sent"; readonly email: string };
 
 export const initialForgotPasswordState: ForgotPasswordFormState = { status: "idle" };
 

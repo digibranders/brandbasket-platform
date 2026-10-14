@@ -12,7 +12,6 @@ import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
 import { TurnstileWidget } from "@fynix/shared/ui/turnstile";
 import { ArrowIcon, CrownIcon, EyeIcon, EyeOffIcon, HeartIcon, PinIcon } from "@fynix/shared/ui/icons";
 import { ENTRY_LEDE_SLOT_ID, ENTRY_PATH, entryHrefForPlan } from "@/lib/account-entry";
-import { DIRECTORY_CLAIM_ID_PARAM } from "@/lib/directory-api";
 import {
   AGREE_FIELD,
   AGREE_VALUE,
@@ -21,13 +20,11 @@ import {
   JOIN_BUSINESS_NAME_MAX_LENGTH,
   JOIN_NAME_MAX_LENGTH,
   type JoinChoice,
-  type JoinContactKind,
   type JoinFormState,
 } from "@/lib/join-form";
 import type { LegalLinks } from "@/lib/legal-links";
 import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
 import { useOtpRetryCooldown } from "@/lib/use-otp-retry-cooldown";
-import { useSmsOtpAutofill } from "@/lib/use-sms-otp-autofill";
 
 /** The two paid plans' price lines. */
 export interface PlanPrices {
@@ -71,14 +68,6 @@ const PLAN_OPTIONS: readonly {
 
 interface JoinFormProps {
   readonly action: (state: JoinFormState, formData: FormData) => Promise<JoinFormState>;
-  /** The listing being claimed by its listing key, or null (for a claim by `placeId`, or a business not on the local directory yet). */
-  readonly listing: string | null;
-  /** The listing being claimed by its permanent id, or null; at most one of `listing` and `placeId` is set. */
-  readonly placeId: string | null;
-  /** The claimed listing's name; ignored without a listing or an id. */
-  readonly businessName: string;
-  /** The website's signature over the listing and name, passed back so the server can check them; ignored without a listing or an id. */
-  readonly signature: string;
   /** A plan the link already chose (the website's plan buttons): the form opens on the details with it set. */
   readonly initialChoice: JoinChoice | null;
   /** The plan the plans open with already ticked, when the link chose none (Fynix: Care); null ticks none. */
@@ -89,13 +78,11 @@ interface JoinFormProps {
   readonly legalLinks: LegalLinks;
   /** Each paid plan's price as the page says it ("₹2,999 a month + 18% GST"); null when no plan of that tier is on sale. */
   readonly prices: PlanPrices;
-  /** What the account is opened with, and so what the code goes to: a mobile number (texted) or an email address (emailed). */
-  readonly signUpWith: JoinContactKind;
   /**
-   * False while sign-up codes are not being sent (SIGNUP_OTP_BYPASS, EMAIL_CODE_BYPASS; lib/server/env.ts): the details
-   * step then promises no code. What the code step says comes from the server's own answer (JoinCodeStep.texted).
+   * False while the local bypass is on (EMAIL_CODE_BYPASS; lib/server/env.ts): the details step then promises no real
+   * check. What the code step says comes from the server's own answer (JoinCodeStep.confirmRequired).
    */
-  readonly textsCodes: boolean;
+  readonly confirmsCodes: boolean;
 }
 
 function subscribeToNothing(): () => void {
@@ -192,26 +179,19 @@ const INPUT_CLASSES =
   "mt-2 block w-full rounded-control border border-ink-soft/65 bg-white px-3.5 py-2.5 text-sm text-ink sm:px-4 sm:py-3 sm:text-base transition-colors duration-300 ease-calm placeholder:text-ink-soft/80 focus:border-accent";
 
 /**
- * Creating an account, in three steps on one form: which plan the owner wants (the free listing, Care or Premium, all
- * shown at once), then their name, mobile number (or email address, under Fynix) and a password, then the code we text
- * (or email) to it. Every value is
- * held here, so the code step sends the details again with the code and a refused submission leaves the form as it
- * was. "Go back" returns to the plans, "Change number" to the details, and "Send a new code" sends them again without
- * a code.
+ * Creating an account, in three steps on one form: which plan the owner wants (all shown at once), then their name,
+ * email address and a password, then the code we email to that address. Every value is held here, so the code step sends
+ * the details again with the code and a refused submission leaves the form as it was. "Go back" returns to the plans,
+ * "Change email" to the details, and "Send a new code" sends them again without a code.
  */
 export function JoinForm({
   action,
-  listing,
-  placeId,
-  businessName,
-  signature,
   initialChoice,
   preselected,
   choices,
   legalLinks,
   prices,
-  signUpWith,
-  textsCodes,
+  confirmsCodes,
 }: JoinFormProps): ReactElement {
   const cooldown = useOtpRetryCooldown();
   const runAction = async (previous: JoinFormState, formData: FormData): Promise<JoinFormState> => {
@@ -221,35 +201,22 @@ export function JoinForm({
   };
   /** A code belongs to the exact challenge that requested it, including before its send response renders. */
   const [codeEntry, setCodeEntry] = useState<{ readonly otpId: string; readonly value: string }>({ otpId: "", value: "" });
-  const smsOtp = useSmsOtpAutofill((otpId, value) => {
-    setCodeEntry((current) => current.otpId === otpId && current.value !== "" ? current : { otpId, value });
-  });
-  const [state, formAction, isPending] = useActionState(async (previous: JoinFormState, formData: FormData): Promise<JoinFormState> => {
-    const sending = !formData.get("otpId") || formData.get("resend") === "1";
-    // A texted code can be read off the phone by the browser; an emailed one is typed in.
-    if (sending && textsCodes && signUpWith === "phone") {
-      return smsOtp.receive(() => runAction(previous, formData), (result) =>
-        result.status === "code" && result.otp.texted ? result.otp.otpId : null);
-    }
-    smsOtp.cancel();
-    return runAction(previous, formData);
-  }, initialJoinFormState);
+  const [state, formAction, isPending] = useActionState(runAction, initialJoinFormState);
   /** The plan picked; a link that already chose one has picked it for the owner. */
   const [choice, setChoice] = useState<JoinChoice | null>(initialChoice ?? preselected);
   /** True once the owner has pressed Continue on the plans (or a link picked one for them). */
   const [choiceMade, setChoiceMade] = useState(initialChoice !== null);
   const [name, setName] = useState("");
-  /** Asked only of a Care or Premium sign-up with no listing to claim; a claim carries its listing's name. */
+  /** Asked only of a Care or Premium sign-up. */
   const [newBusinessName, setNewBusinessName] = useState("");
-  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   /** Never ticked for the owner: agreeing to the Terms and Privacy Notice is their own act (DPDP Act s.6). */
   const [agreed, setAgreed] = useState(false);
-  /** The result the person has moved on from with "Change number": its error is not shown on the step they went back to. */
+  /** The result the person has moved on from with "Change email": its error is not shown on the step they went back to. */
   const [leftState, setLeftState] = useState<JoinFormState | null>(null);
   const [revealed, setRevealed] = useState(false);
-  /** The texted code the owner walked away from with "Change number": the form is back on the details until a new one is sent. */
+  /** The emailed code the owner walked away from with "Change email": the form is back on the details until a new one is sent. */
   const [leftOtpId, setLeftOtpId] = useState<string | null>(null);
   const codeRef = useRef<HTMLInputElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -259,13 +226,11 @@ export function JoinForm({
   /** Continuing with a plan puts it in the address (`?new=1&plan=free`), and going back to the plans takes it out. */
   const settleChoice = (made: boolean): void => {
     if (isPending) return;
-    smsOtp.cancel();
     setChoiceMade(made);
     window.history.replaceState(window.history.state, "", entryHrefForPlan(window.location.search, made ? choice : null));
   };
 
-  const claiming = listing !== null || placeId !== null;
-  const asksBusinessName = !claiming && choice !== null && isPaidChoice(choice);
+  const asksBusinessName = choice !== null && isPaidChoice(choice);
 
   const otp = state.status === "idle" ? null : state.otp;
   const onCodeStep = choice !== null && choiceMade && otp !== null && otp.otpId !== leftOtpId;
@@ -285,14 +250,6 @@ export function JoinForm({
   const sentFields = (
     <>
       {choice === null ? null : <input type="hidden" name="choice" value={choice} />}
-      {!claiming ? null : (
-        <>
-          {listing === null ? null : <input type="hidden" name="listing" value={listing} />}
-          {placeId === null ? null : <input type="hidden" name={DIRECTORY_CLAIM_ID_PARAM} value={placeId} />}
-          <input type="hidden" name="businessName" value={businessName} />
-          <input type="hidden" name="sig" value={signature} />
-        </>
-      )}
     </>
   );
   const signInLine = (
@@ -333,10 +290,7 @@ export function JoinForm({
                       className="sr-only"
                       checked={choice === option.choice}
                       disabled={isPending}
-                      onChange={() => {
-                        smsOtp.cancel();
-                        setChoice(option.choice);
-                      }}
+                      onChange={() => setChoice(option.choice)}
                     />
                     {option.icon(choice === option.choice)}
                     <span className="min-w-0 flex-1">
@@ -371,34 +325,21 @@ export function JoinForm({
         {/* The details again: nothing about the owner is kept on the server until the code is confirmed. */}
         <input type="hidden" name="name" value={name} />
         {asksBusinessName ? <input type="hidden" name="businessName" value={newBusinessName} /> : null}
-        {signUpWith === "email" ? <input type="hidden" name="email" value={email} /> : <input type="hidden" name="phone" value={phone} />}
+        <input type="hidden" name="email" value={email} />
         <input type="hidden" name="password" value={password} />
         {agreed ? <input type="hidden" name={AGREE_FIELD} value={AGREE_VALUE} /> : null}
         <input type="hidden" name="otpId" value={otp.otpId} />
 
         <p role="status" className="text-sm text-ink-soft">
-          {otp.via === "email" ? (
-            otp.texted ? (
-              <>
-                We emailed a {OTP_LENGTH}-digit code to <span className="font-medium text-ink">{otp.phoneHint}</span>. It works for 10 minutes.
-                Nothing there? Check your spam folder.
-              </>
-            ) : (
-              // Local testing only (EMAIL_CODE_BYPASS): the code is in the outbox, but any six digits are accepted.
-              <>
-                Test mode: enter any {OTP_LENGTH} digits to continue with <span className="font-medium text-ink">{otp.phoneHint}</span>.
-              </>
-            )
-          ) : otp.texted ? (
+          {otp.confirmRequired ? (
             <>
-              We texted a {OTP_LENGTH}-digit code to <span className="font-medium tabular-nums text-ink">{otp.phoneHint}</span>. It works for
-              10 minutes.
+              We emailed a {OTP_LENGTH}-digit code to <span className="font-medium text-ink">{otp.emailHint}</span>. It works for 10 minutes.
+              Nothing there? Check your spam folder.
             </>
           ) : (
-            // Codes are not being texted yet (SIGNUP_OTP_BYPASS): the form must not say one is on its way.
+            // Local testing only (EMAIL_CODE_BYPASS): the code is in the outbox, but any six digits are accepted.
             <>
-              We aren&rsquo;t texting codes just yet. Enter any {OTP_LENGTH} digits to continue with{" "}
-              <span className="font-medium tabular-nums text-ink">{otp.phoneHint}</span>.
+              Test mode: enter any {OTP_LENGTH} digits to continue with <span className="font-medium text-ink">{otp.emailHint}</span>.
             </>
           )}
         </p>
@@ -420,10 +361,7 @@ export function JoinForm({
             placeholder={"0".repeat(OTP_LENGTH)}
             value={code}
             readOnly={isPending}
-            onChange={(event) => {
-              smsOtp.cancel();
-              setCodeEntry({ otpId: otp.otpId, value: event.target.value });
-            }}
+            onChange={(event) => setCodeEntry({ otpId: otp.otpId, value: event.target.value })}
             aria-invalid={errorMessage === null ? undefined : true}
             aria-describedby={describedBy}
             className={`${INPUT_CLASSES} text-center text-xl tracking-[0.4em] tabular-nums`}
@@ -435,11 +373,11 @@ export function JoinForm({
         <TurnstileWidget action="join" resetKey={state} />
 
         <SubmitButton disabled={isPending || cooldown.confirmSeconds > 0} className="w-full py-3 sm:py-3.5">
-          {isPending ? "Checking…" : otp.texted ? "Verify and continue" : "Continue"}
+          {isPending ? "Checking…" : otp.confirmRequired ? "Verify and continue" : "Continue"}
         </SubmitButton>
         <p className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-ink-soft">
-          {/* With no code texted there is nothing to send again. */}
-          {otp.texted ? (
+          {/* With the bypass on there is nothing to send again. */}
+          {otp.confirmRequired ? (
             <button type="submit" name="resend" value="1" formNoValidate disabled={isPending || cooldown.sendSeconds > 0} className="link-underline">
               {cooldown.sendSeconds > 0 ? `Send a new code in ${cooldown.sendSeconds}s` : "Send a new code"}
             </button>
@@ -449,13 +387,12 @@ export function JoinForm({
             disabled={isPending}
             onClick={() => {
               if (isPending) return;
-              smsOtp.cancel();
               setLeftOtpId(otp.otpId);
               setLeftState(state);
             }}
             className="link-underline"
           >
-            {otp.via === "email" ? "Change email" : "Change number"}
+            Change email
           </button>
         </p>
       </form>
@@ -512,63 +449,32 @@ export function JoinForm({
           className={INPUT_CLASSES}
         />
       </div>
-      {signUpWith === "email" ? (
-        <div>
-          <label htmlFor="join-email" className="block text-xs font-medium sm:text-sm">
-            Email
-            <RequiredMark />
-          </label>
-          <input
-            id="join-email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            maxLength={254}
-            placeholder="you@yourbusiness.com"
-            value={email}
-            readOnly={isPending}
-            onChange={(event) => {
-              cooldown.clearPhoneLimits();
-              setEmail(event.target.value);
-            }}
-            aria-describedby={`join-email-hint${describedBy === undefined ? "" : ` ${describedBy}`}`}
-            className={INPUT_CLASSES}
-          />
-          <p id="join-email-hint" className="mt-2 text-xs text-ink-soft sm:text-sm">
-            {textsCodes ? <>You sign in with it. We&rsquo;ll email it a code now.</> : "You sign in with it."}
-          </p>
-        </div>
-      ) : (
-        <div>
-          <label htmlFor="join-phone" className="block text-xs font-medium sm:text-sm">
-            Mobile number
-            <RequiredMark />
-          </label>
-          <RuleInput
-            id="join-phone"
-            name="phone"
-            rule="phone"
-            type="tel"
-            required
-            autoComplete="tel"
-            maxLength={40}
-            placeholder="98200 00000"
-            value={phone}
-            readOnly={isPending}
-            onChange={(event) => {
-              smsOtp.cancel();
-              cooldown.clearPhoneLimits();
-              setPhone(event.target.value);
-            }}
-            aria-describedby={`join-phone-hint${describedBy === undefined ? "" : ` ${describedBy}`}`}
-            className={`${INPUT_CLASSES} tabular-nums`}
-          />
-          <p id="join-phone-hint" className="mt-2 text-xs text-ink-soft sm:text-sm">
-            {textsCodes ? <>You sign in with it. We&rsquo;ll text it a code now.</> : "You sign in with it."}
-          </p>
-        </div>
-      )}
+      <div>
+        <label htmlFor="join-email" className="block text-xs font-medium sm:text-sm">
+          Email
+          <RequiredMark />
+        </label>
+        <input
+          id="join-email"
+          name="email"
+          type="email"
+          required
+          autoComplete="email"
+          maxLength={254}
+          placeholder="you@yourbusiness.com"
+          value={email}
+          readOnly={isPending}
+          onChange={(event) => {
+            cooldown.clearAddressLimits();
+            setEmail(event.target.value);
+          }}
+          aria-describedby={`join-email-hint${describedBy === undefined ? "" : ` ${describedBy}`}`}
+          className={INPUT_CLASSES}
+        />
+        <p id="join-email-hint" className="mt-2 text-xs text-ink-soft sm:text-sm">
+          {confirmsCodes ? <>You sign in with it. We&rsquo;ll email it a code now.</> : "You sign in with it."}
+        </p>
+      </div>
       <div>
         <label htmlFor="join-password" className="block text-xs font-medium sm:text-sm">
           Choose a password
@@ -635,7 +541,7 @@ export function JoinForm({
       <TurnstileWidget action="join" resetKey={state} />
 
       <SubmitButton disabled={isPending || cooldown.sendSeconds > 0} className="w-full py-3 sm:py-3.5">
-        {textsCodes ? (isPending ? "Sending your code…" : signUpWith === "email" ? "Email me a code" : "Send me a code") : isPending ? "One moment…" : "Continue"}
+        {confirmsCodes ? (isPending ? "Sending your code…" : "Email me a code") : isPending ? "One moment…" : "Continue"}
       </SubmitButton>
       {isPaidChoice(choice) ? <p className="text-center text-xs text-ink-soft sm:text-sm">You pay on the next page.</p> : null}
       {signInLine}

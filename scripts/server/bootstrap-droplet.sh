@@ -160,6 +160,12 @@ if [[ $AUTH_ROOT_KEYS -eq 1 ]]; then
     run "copy root's ssh keys to $DEPLOY_USER" bash -c "mkdir -p '$home/.ssh' && cp '$PREFIX/root/.ssh/authorized_keys' '$home/.ssh/authorized_keys' && chown -R '$DEPLOY_USER:$DEPLOY_USER' '$home/.ssh' && chmod 700 '$home/.ssh' && chmod 600 '$home/.ssh/authorized_keys'"
   fi
 else say "  (ssh keys for $DEPLOY_USER: not touched; add yours with: ssh-copy-id $DEPLOY_USER@<address>, or re-run with --authorize-root-keys)"; fi
+# /srv/fynix itself belongs to the deploy user: a deploy creates the links `deploying`, `current-platform` and `current-admin`
+# directly inside it, which root's ownership would refuse. Only the folders below it that hold root-only data stay root's.
+fynix_owner="$(stat -c '%U' "$FYNIX" 2>/dev/null || echo unknown)"
+if [[ "$fynix_owner" == "$DEPLOY_USER" ]]; then done_already "$FYNIX is owned by $DEPLOY_USER"; elif [[ -d "$FYNIX" || $APPLY -eq 0 ]]; then
+  run "make $FYNIX owned by $DEPLOY_USER (the deploy links live in it)" bash -c "mkdir -p '$FYNIX' && chown '$DEPLOY_USER:$DEPLOY_USER' '$FYNIX'"
+fi
 for dir in releases shared media support-private; do
   if [[ -d "$FYNIX/$dir" ]]; then done_already "$FYNIX/$dir exists"; else run "create $FYNIX/$dir" bash -c "mkdir -p '$FYNIX/$dir' && chown '$DEPLOY_USER:$DEPLOY_USER' '$FYNIX/$dir'"; fi
 done

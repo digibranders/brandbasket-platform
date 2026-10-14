@@ -29,19 +29,24 @@ function isLeadStatus(value: string | undefined): value is LeadStatus {
 /** Matches the search box: business, contact name, email or phone. */
 function matchesSearch(lead: Lead, term: string): boolean {
   // Both the stored number and its readable layout, so "98765 43210" finds "+919876543210".
-  const haystack = [lead.businessName, lead.name, lead.email, lead.phone, displayPhone(lead.phone).text]
+  const haystack = [lead.businessName, lead.name, lead.email, lead.phone ?? "", lead.phone === null ? "" : displayPhone(lead.phone).text]
     .join(" ")
     .toLowerCase();
   return haystack.includes(term);
 }
 
+/** The view Leads opens on: people who made an account and have not paid, the ones staff follow up. */
+const DEFAULT_STATUS: LeadStatus = "account_created";
+/** The address's way of asking for every lead, whatever its status. */
+const ALL_STATUSES = "all";
+
 function filterHref(status: LeadStatus | null, search: string | undefined, sort: string | undefined): string {
   const params = new URLSearchParams();
-  if (status !== null) params.set("status", status);
+  params.set("status", status ?? ALL_STATUSES);
   if (search !== undefined && search !== "") params.set("q", search);
   if (sort !== undefined) params.set("sort", sort);
   const query = params.toString();
-  return query === "" ? "/leads" : `/leads?${query}`;
+  return `/leads?${query}`;
 }
 
 /** New is waiting on us; the middle of the funnel is moving; signed-up and paid are done; lost is quiet. */
@@ -64,9 +69,11 @@ export default async function LeadsPage({
   await requireStaffAccess();
   const params = await searchParams;
   const requested = first(params.status);
-  const status = isLeadStatus(requested) ? requested : null;
   const rawSearch = first(params.q)?.trim();
   const search = rawSearch?.toLowerCase();
+  // A search from the top bar names no status and is looking for one person, wherever they are in the pipeline.
+  const searching = search !== undefined && search !== "";
+  const status = requested === ALL_STATUSES ? null : isLeadStatus(requested) ? requested : searching ? null : DEFAULT_STATUS;
   const oldestFirst = first(params.sort) === "oldest";
   const sortParam = oldestFirst ? "oldest" : undefined;
 
@@ -93,7 +100,7 @@ export default async function LeadsPage({
 
       <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
         <form action="/leads" role="search" className="w-full sm:w-80">
-          {status === null ? null : <input type="hidden" name="status" value={status} />}
+          <input type="hidden" name="status" value={status ?? ALL_STATUSES} />
           {sortParam === undefined ? null : <input type="hidden" name="sort" value={sortParam} />}
           <label htmlFor="leads-search" className="sr-only">
             Search leads
@@ -144,7 +151,13 @@ export default async function LeadsPage({
       )}
 
       {rows.length === 0 ? (
-        <EmptyLine>{allLeads.length === 0 ? "No leads yet." : "No leads match this."}</EmptyLine>
+        <EmptyLine>
+          {allLeads.length === 0
+            ? "No leads yet."
+            : status === DEFAULT_STATUS && !searching
+              ? "No unpaid sign-ups. Everyone who made an account has paid."
+              : "No leads match this."}
+        </EmptyLine>
       ) : (
         <HairlineList label="Leads">
           {rows.map((lead) => (
@@ -153,7 +166,7 @@ export default async function LeadsPage({
               href={`/leads/${lead.id}`}
               lead={<Avatar id={lead.id} name={lead.businessName} />}
               title={lead.businessName}
-              sub={leadContactLine(lead.name, lead.phone)}
+              sub={leadContactLine(lead.name, lead.phone, lead.email)}
               meta={<StatusDot tone={STATUS_TONES[lead.status]} label={LEAD_STATUS_LABELS[lead.status]} />}
               trail={<LocalDateTime iso={lead.createdAt.toISOString()} variant="timestamp" />}
             />

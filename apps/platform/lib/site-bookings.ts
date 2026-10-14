@@ -1,6 +1,13 @@
 /**
  * Week availability and the two-step OTP booking a client site's server calls. A copy of the platform's
  * apps/platform/lib/site-bookings.ts. ADDITIVE CHANGES ONLY.
+ *
+ * The booking is two calls, both server-to-server with the site's bearer token:
+ *  1. `POST /api/site/bookings/otp` with a `SiteOtpRequest`: the patient's name, EMAIL and phone, and the slot. The
+ *     platform EMAILS a 6-digit code to that address (the phone is the clinic's to call: it is collected, never verified
+ *     and nothing is sent to it) and answers `otp_sent` with an `otpId` and an `emailHint` to show ("p•••@gmail.com").
+ *  2. `POST /api/site/bookings/confirm` with a `SiteOtpConfirm`: the `otpId` and the code the patient typed. The slot
+ *     is booked only now.
  */
 export type SiteSlotState = "free" | "taken" | "past";
 export interface SiteSlot {
@@ -28,10 +35,12 @@ export interface SiteAvailability {
 }
 export interface SiteBookingFields {
   readonly name: string;
-  readonly phone: string;
-  /** @deprecated Ignored since 2026-09-28: the booking no longer asks for an email. Kept so older client sites
-   * that still send it keep type-checking against this contract. */
+  /** The address the confirmation code is emailed to (added 2026-10-14, when the code moved to email). Typed
+   * optional only so a client site built before it existed still compiles: a body without one is answered 422 with
+   * `field: "email"`, and nothing is emailed. */
   readonly email?: string | null;
+  /** A number the clinic can call. Collected, but never verified: nothing is sent to it. */
+  readonly phone: string;
   readonly serviceId?: string | null;
   readonly date: string;  // YYYY-MM-DD
   readonly start: string; // HH:MM
@@ -65,7 +74,13 @@ export type SiteBookingError = {
   readonly field: string | null;
 };
 export type SiteOtpResponse =
-  | { readonly status: "otp_sent"; readonly otpId: string; readonly expiresInSeconds: number; readonly phoneHint: string }
+  | {
+      readonly status: "otp_sent";
+      readonly otpId: string;
+      readonly expiresInSeconds: number;
+      /** Where the code went, with most of it hidden ("p•••@gmail.com"). Replaces `phoneHint`, which is no longer sent. */
+      readonly emailHint: string;
+    }
   | SiteBookingError;
 export type SiteConfirmResponse =
   | {

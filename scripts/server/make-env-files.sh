@@ -32,7 +32,7 @@ PLATFORM_FILE="$SHARED/platform.env.local"
 ADMIN_FILE="$SHARED/admin.env.local"
 
 say() { printf '%s\n' "$*"; }
-secret() { grep -E "^$1=" "$SECRETS_FILE" | head -n 1 | cut -d= -f2-; }
+secret() { { grep -E "^$1=" "$SECRETS_FILE" || true; } | head -n 1 | cut -d= -f2-; }
 
 if [[ ! -f "$SECRETS_FILE" ]]; then say "No $SECRETS_FILE: run setup-database.sh --apply first." >&2; exit 1; fi
 APP_PW="$(secret APP_PW)"; STAFF_PW="$(secret STAFF_PW)"; PUBLIC_PW="$(secret PUBLIC_PW)"; CMS_PW="$(secret CMS_PW)"

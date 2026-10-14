@@ -52,8 +52,7 @@ export async function requestPasswordReset(email: string): Promise<ResetRequestO
   const perEmail = await consumeRateLimit(db, `password-reset:email:${email}`, RESET_REQUESTS_PER_EMAIL);
   if (!perEmail.allowed) return "accepted";
 
-  // An account opened with a mobile number has only a placeholder address: there is nobody to write to, and its way
-  // back in is a texted code (lib/server/phone-password-reset.ts).
+  // An account opened with a mobile number has only a placeholder address: there is nobody to write to.
   if (isPhoneAccountEmail(email)) return "accepted";
 
   try {

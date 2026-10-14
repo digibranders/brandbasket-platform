@@ -23,7 +23,7 @@ import { ServicesTab } from "@/components/panel/business/services-tab";
 import { TrustTab } from "@/components/panel/business/trust-tab";
 import { ProfileTabs } from "@/components/panel/business/profile-tabs";
 import { ReviewTab } from "@/components/panel/business/review-tab";
-import { VerifiedLine, VerifyBusiness } from "@/components/panel/business/verify-business";
+import { VerifiedLine } from "@/components/panel/business/verified-line";
 import { LivePreviewLayout } from "@/components/panel/live-preview/live-preview-layout";
 import { StatusLine, type StatusTone } from "@/components/panel/status-line";
 import { extraCategoryOptions } from "@/lib/extra-categories-form";
@@ -40,8 +40,7 @@ import { videoAccessOf, videoTiles } from "@/lib/videos-view";
 import type { OptionalPageTab } from "@fynix/shared/lib/directory/page-tabs";
 import { GALLERY_SLOTS } from "@fynix/shared/lib/directory/pictures";
 import { getBusinessProfilePage, getOwnExtraCategories, lookupPincode, type BusinessProfilePage } from "@/lib/server/business-profile";
-import { ownerVerificationState } from "@/lib/server/owner-verification";
-import { verificationRefusalMessage } from "@/lib/owner-verification";
+import { verifiedSince } from "@/lib/server/business-verification";
 import { opensClaimPages } from "@/lib/listing-sections";
 import { DEALS_PATH } from "@/lib/deals";
 import { LEADS_PATH } from "@/lib/leads";
@@ -56,7 +55,6 @@ import { upcomingClosures } from "@fynix/shared/lib/business-facts/closures";
 import { DEFAULT_BUSINESS_TIME_ZONE, localDateIn } from "@fynix/shared/lib/calendar/local-date";
 import {
   publishAction,
-  verifyBusinessAction,
   removeFaqAction,
   removePhotoAction,
   removeProductAction,
@@ -313,13 +311,10 @@ function ListingTab({ claim, profile, state, businessName, address, pin, extras,
 
 const VERIFIED_DATE = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" });
 
-/** The Review tab's Verification section: the form, the done line, or why it cannot be done yet (nothing before a listing exists). */
+/** The Review tab's Verification section: the done line once the business is verified, nothing before. */
 async function verificationSection(customer: Awaited<ReturnType<typeof requireCustomerAccess>>): Promise<ReactElement | null> {
-  const verification = await ownerVerificationState(customer);
-  if (verification.kind === "verified") return <VerifiedLine since={VERIFIED_DATE.format(verification.verifiedAt)} />;
-  if (verification.kind === "ready") return <VerifyBusiness action={verifyBusinessAction} phoneHint={verification.phoneHint} />;
-  if (verification.refusal === "no_listing" || verification.refusal === "no_place") return null;
-  return <p className="text-sm text-ink-soft">{verificationRefusalMessage(verification.refusal)}</p>;
+  const verifiedAt = await verifiedSince(customer);
+  return verifiedAt === null ? null : <VerifiedLine since={VERIFIED_DATE.format(verifiedAt)} />;
 }
 
 /** The count and a word for it: "1 service", "3 services". */

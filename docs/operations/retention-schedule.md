@@ -22,7 +22,7 @@ is served; each period below is that purpose, written down. The Privacy Policy s
 | Tax invoices, payments, affiliate payouts | 8 years (Companies Act s.128(5); CGST Act s.35 and s.36) | not yet: the first fall due in 2034 |
 | Server and access logs on the VPS | 400 days (DPDP Rules r.8(3) asks for at least one year) | journald and logrotate (`vps-setup`) |
 | Backups | on the server 14 daily and 8 weekly copies; offsite daily copies 35 days, weekly 90 days | the backup script and the R2 lifecycle rule (`vps-setup`) |
-| Sessions, tokens, texted codes, rate-limit windows | a day or less after they expire | nightly run |
+| Sessions, tokens, emailed codes, rate-limit windows | a day or less after they expire | nightly run |
 
 ## How the nightly run decides
 

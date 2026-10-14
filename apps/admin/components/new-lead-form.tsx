@@ -110,7 +110,14 @@ export function NewLeadForm({ action, phoneCountries, defaultPhoneCountry }: New
           />
         </Field>
 
-        <Field id="new-lead-phone" label="Phone" required>
+        <Field
+          id="new-lead-phone"
+          label={
+            <>
+              Phone <span className="text-ink-soft">(optional)</span>
+            </>
+          }
+        >
           <PhoneField
             id="new-lead-phone"
             countries={phoneCountries}
@@ -118,7 +125,6 @@ export function NewLeadForm({ action, phoneCountries, defaultPhoneCountry }: New
             defaultCountry={defaultPhoneCountry}
             number={values.phone}
             size="roomy"
-            required
             numberStatus={fieldStatus("phone")}
             countryStatus={fieldStatus("phoneCountry")}
             className="mt-2"

@@ -4,9 +4,9 @@ import { accountOtps, users, type AccountOtpPurpose } from "../schema";
 import { isUuid } from "./tenant";
 
 /*
- * The codes texted to a phone number or emailed to an address for an account (schema/account-otps.ts), and the lookup
- * of the account a number signs in to. The codes are written and read on the staff connection only: whoever asks for
- * one has no session yet.
+ * The codes emailed to an address to open an account (schema/account-otps.ts), and the lookups of the account an address
+ * or a phone number signs in to. The codes are written and read on the staff connection only: whoever asks for one has
+ * no session yet.
  */
 
 /** A code is kept this long after it runs out, so a late confirm is told "expired" rather than "no such code". */
@@ -20,12 +20,10 @@ interface NewAccountOtpBase {
   readonly expiresAt: Date;
 }
 
-/** A code is addressed to a phone number (E.164) or to an email address (trimmed, lowercase), never both. */
-export type NewAccountOtp = NewAccountOtpBase &
-  (
-    | { readonly phone: string; readonly email?: undefined }
-    | { readonly email: string; readonly phone?: undefined }
-  );
+/** A code is addressed to an email address (trimmed, lowercase). */
+export interface NewAccountOtp extends NewAccountOtpBase {
+  readonly email: string;
+}
 
 export async function createAccountOtp(db: Database, input: NewAccountOtp): Promise<string> {
   const rows = await db.insert(accountOtps).values(input).returning({ id: accountOtps.id });
@@ -38,10 +36,8 @@ export interface AccountOtpAttempt {
   /** Tries used, this one included. */
   readonly attempts: number;
   readonly purpose: AccountOtpPurpose;
-  /** The number the code was texted to, or null for a code that was emailed. */
-  readonly phone: string | null;
-  /** The address the code was emailed to, or null for a code that was texted. */
-  readonly email: string | null;
+  /** The address the code was emailed to. */
+  readonly email: string;
   readonly codeHash: string;
 }
 
@@ -49,7 +45,7 @@ export interface AccountOtpAttempt {
  * Atomically claims one of the code's `maxAttempts` tries and returns what the code is for, or null when there was
  * none to claim (no such code, used, expired, or out of tries). Every condition is in the one UPDATE's WHERE, so two
  * confirms racing for the last try can never both get it. Callers compare the submitted code, and that the purpose
- * and number or address are the ones they expect, only after a successful claim.
+ * and address are the ones they expect, only after a successful claim.
  */
 export async function claimAccountOtpAttempt(
   db: Database,
@@ -63,7 +59,6 @@ export async function claimAccountOtpAttempt(
     .returning({
       attempts: accountOtps.attempts,
       purpose: accountOtps.purpose,
-      phone: accountOtps.phone,
       email: accountOtps.email,
       codeHash: accountOtps.codeHash,
     });

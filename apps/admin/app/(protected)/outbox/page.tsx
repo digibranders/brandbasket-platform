@@ -1,4 +1,4 @@
-import { listRecentEmails, listSmsMessages } from "@fynix/db";
+import { listRecentEmails } from "@fynix/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
@@ -14,11 +14,7 @@ const MAX_MESSAGES = 50;
 
 export default async function OutboxPage(): Promise<ReactElement> {
   await requireStaffAccess();
-  const db = getStaffDb();
-  const [messages, smsMessages] = await Promise.all([
-    listRecentEmails(db, MAX_MESSAGES),
-    listSmsMessages(db, MAX_MESSAGES),
-  ]);
+  const messages = await listRecentEmails(getStaffDb(), MAX_MESSAGES);
 
   return (
     <>
@@ -48,32 +44,6 @@ export default async function OutboxPage(): Promise<ReactElement> {
             ))}
           </HairlineList>
         </div>
-      )}
-
-      <h2 className="mt-16 font-serif text-[1.375rem] leading-tight">Text messages</h2>
-      <p className="mt-2 max-w-2xl text-sm text-ink-soft">
-        Not sent anywhere yet, OTP codes included. This is the only place a code is visible locally.
-      </p>
-
-      {smsMessages.length === 0 ? (
-        <EmptyLine>No text messages yet.</EmptyLine>
-      ) : (
-        <ul aria-label="Text messages" className="mt-6 border-t border-line">
-          {smsMessages.map((message) => (
-            <li
-              key={message.id}
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-6 gap-y-1 border-b border-line py-4 pl-1 pr-2"
-            >
-              <span className="min-w-0">
-                <span className="block font-semibold tabular-nums">{message.toPhone}</span>
-                <span className="mt-0.5 block break-words text-sm tabular-nums text-ink-soft">{message.body}</span>
-              </span>
-              <span className="text-right text-sm tabular-nums text-ink-soft">
-                <LocalDateTime iso={message.createdAt.toISOString()} variant="timestamp" />
-              </span>
-            </li>
-          ))}
-        </ul>
       )}
     </>
   );

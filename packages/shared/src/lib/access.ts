@@ -7,7 +7,7 @@ export interface SessionUser {
   /** The user opened a link we emailed to that address (a free listing sign-up's confirmation). */
   readonly emailConfirmed: boolean;
   /**
-   * The number the user signs in with, E.164, proven theirs by a code we texted; null for an account that signs in
+   * The number the user signs in with, E.164, proven theirs when the account was opened; null for an account that signs in
    * with an email. With a number, `email` is only a placeholder (isPhoneAccountEmail) and must not be shown or
    * written to.
    */

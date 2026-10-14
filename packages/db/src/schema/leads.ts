@@ -27,7 +27,8 @@ export const leads = pgTable(
     name: text("name").notNull(),
     businessName: text("business_name").notNull(),
     email: text("email").notNull(),
-    phone: text("phone").notNull(),
+    /** How to call them, when they gave a number: the email is what every lead has. */
+    phone: text("phone"),
     /** One of the marketing site's business types. Nullable because leads captured before the question existed have none. */
     businessType: text("business_type"),
     /** Set by staff on the call, never inferred from an IP address. */

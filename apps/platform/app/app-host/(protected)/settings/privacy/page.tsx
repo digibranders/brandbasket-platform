@@ -71,8 +71,7 @@ export default async function PrivacySettingsPage(): Promise<ReactElement> {
             <a href="/settings" className="link-underline text-ink">
               Settings
             </a>{" "}
-            page. To correct something else, have your data deleted, or make a complaint, send us a request. We check it is you with a code texted to your
-            number and reply within 30 days.
+            page. To correct something else, have your data deleted, or make a complaint, send us a request. We check it is you with a code emailed to the address you give and reply within 30 days.
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
             <ButtonLink href={legalLinks.privacyRequest} variant="secondary" size="sm">

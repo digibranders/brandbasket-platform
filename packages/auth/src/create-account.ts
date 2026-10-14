@@ -27,7 +27,7 @@ export interface CreatedAccount {
  */
 export async function createAccountWithGrant(auth: Auth, db: Database, account: NewAccount): Promise<CreatedAccount> {
   const email = normaliseEmail(account.email);
-  // That domain stands for "this account signs in with a phone number": only createPhoneAccountWithGrant makes one.
+  // That domain stood for "this account signs in with a phone number": no account is opened that way now, so an address in it is never real.
   if (isPhoneAccountEmail(email)) throw new RangeError("An account's email cannot be in the phone placeholder domain.");
   const result = await withAccountCreationGrant(email, () =>
     auth.api.signUpEmail({ body: { name: account.name, email, password: account.password } }),

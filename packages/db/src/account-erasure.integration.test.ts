@@ -6,7 +6,7 @@ import { openAccountClosure, restoreAccountClosure } from "./queries/account-clo
 import { findActivePlan, insertSubscription, recordPaymentAndActivate, type Plan } from "./queries/billing";
 import { insertTaxInvoice } from "./queries/tax-invoices";
 import { supportAttachments } from "./schema/support";
-import { accountClosures, accounts, addOnSubscriptions, billingProfiles, businessMembers, businesses, payments, sessions, staffMembers, subscriptions, userPrivacySettings, users, verifications } from "./schema";
+import { accountClosures, accountOtps, accounts, addOnSubscriptions, billingProfiles, businessMembers, businesses, payments, sessions, staffMembers, subscriptions, userPrivacySettings, users, verifications } from "./schema";
 import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
 
 const USER_ID = "closing-user";
@@ -40,6 +40,11 @@ async function seedClosedAccount(withSupport = false): Promise<{ closureId: stri
   await db.insert(accounts).values({ id: "a1", accountId: USER_ID, providerId: "credential", userId: USER_ID, password: "hash" });
   await db.insert(userPrivacySettings).values({ userId: USER_ID, nomineeName: "Meera Rao", nomineePhone: "+919876543210" });
   await db.insert(verifications).values({ id: "v1", identifier: "meera@example.com", value: "x", expiresAt: NOW });
+  // A sign-up code still waiting for her address, and one for somebody else's.
+  await db.insert(accountOtps).values([
+    { id: "00000000-0000-7000-8000-0000000000a1", purpose: "signup", email: "meera@example.com", codeHash: "h", expiresAt: NOW },
+    { id: "00000000-0000-7000-8000-0000000000a2", purpose: "signup", email: "someone-else@example.com", codeHash: "h", expiresAt: NOW },
+  ]);
   const [business] = await db
     .insert(businesses)
     .values({ slug: "aster-physio", name: "Aster Physio", currency: "INR", websiteUrl: "https://aster.example" })
@@ -201,6 +206,8 @@ describe("eraseClosedAccount", () => {
     // The nominee is another person's number, kept only for this account's use of its rights.
     expect(await count("user_privacy_settings")).toBe(0);
     expect(await count("verifications")).toBe(0);
+    expect(await count("account_otps", "email = 'meera@example.com'")).toBe(0);
+    expect(await count("account_otps", "email = 'someone-else@example.com'")).toBe(1);
     const [user] = await dbs.owner.db.select().from(users).where(eq(users.id, USER_ID));
     expect(user).toMatchObject({ name: "Deleted user", email: erasedUserEmail(USER_ID), emailVerified: false, phoneNumber: null, phoneNumberVerified: false, image: null });
 
@@ -410,7 +417,7 @@ describe("what the erase knows about", () => {
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
     "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "onboarding_progress",
     "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "projects", "services",
-    "setup_invites", "sms_messages", "support_tickets",
+    "setup_invites", "support_tickets",
   ];
 
   it("sorts every table that points at a business into erased or kept, so a new one cannot be forgotten", async () => {

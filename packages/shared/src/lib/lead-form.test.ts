@@ -40,10 +40,16 @@ describe("parseLeadForm", () => {
     expect(result).toMatchObject({ success: true, data: { message: null } });
   });
 
-  it("requires a name, business name and phone", () => {
+  it("requires a name, business name and email", () => {
     expect(parseLeadForm(form({ ...valid, name: " " })).success).toBe(false);
     expect(parseLeadForm(form({ ...valid, businessName: "" })).success).toBe(false);
-    expect(parseLeadForm(form({ ...valid, phone: "" })).success).toBe(false);
+    expect(parseLeadForm(form({ ...valid, email: "" }))).toMatchObject({ success: false, field: "email", message: "Enter your email address." });
+  });
+
+  it("does not require a phone: a blank one is stored as none, with or without a country", () => {
+    for (const phoneCountry of ["IN", ""]) {
+      expect(parseLeadForm(form({ ...valid, phone: "", phoneCountry }))).toMatchObject({ success: true, data: { phone: null } });
+    }
   });
 
   it("reports the first problem with the field it belongs to", () => {
@@ -145,14 +151,6 @@ describe("parseLeadForm", () => {
     }
     const withoutCountry = Object.fromEntries(Object.entries(valid).filter(([key]) => key !== "phoneCountry"));
     expect(parseLeadForm(form(withoutCountry))).toMatchObject({ success: false, field: "phoneCountry" });
-  });
-
-  it("says a phone is required before asking for its country", () => {
-    expect(parseLeadForm(form({ ...valid, phone: " ", phoneCountry: "" }))).toMatchObject({
-      success: false,
-      field: "phone",
-      message: "Enter a phone number we can reach you on.",
-    });
   });
 
   it("does not ask for a country when the number carries its own", () => {

@@ -11,7 +11,6 @@ import {
   findDirectoryReviewOtp,
   listPublishedDirectoryReviews,
   publishDirectoryReviewFromOtp,
-  purgeExpiredDirectoryReviewOtps,
   readDirectoryRatings,
   readDirectoryReviewComments,
   resolveDirectoryAsk,
@@ -23,7 +22,6 @@ import {
   type DirectoryReviewOtpPayload,
   type RateLimitRule,
 } from "@fynix/db";
-import { phoneHint as toPhoneHint } from "@fynix/shared/lib/appointments/booking-form";
 import { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
 import {
   REVIEW_HIGHLIGHTS,
@@ -38,12 +36,10 @@ import { getStaffDb } from "./db";
 import { startVisitorSession, type ResolvedVisitor, type VisitorSession } from "./directory-visitor";
 import { recordContributionConsent } from "./visitor-consent";
 import type { ReviewInput } from "./directory-fields";
-import { bookingOtpBypassed, bookingOtpSecret, smsAllowedCountryCodes } from "./env";
+import { accountCodeSecret } from "./env";
 import { errorLogInfo, type SafeErrorLog } from "@fynix/shared/server/error-log-info";
 import { ipRateLimitKey } from "./ip-key";
-import { generateOtpCode, hashOtpCode, otpCodeMatches } from "./otp-crypto";
-import { disallowedPhoneMessage, isPhoneCountryAllowed } from "./sms-country-guard";
-import { createSmsSender, otpMessage, SmsProviderUnavailableError } from "./sms";
+import { otpCodeMatches } from "./otp-crypto";
 
 /**
  * The work behind the local directory's ratings and reviews routes (/api/directory/ratings, /reviews, /reviews/otp,
@@ -51,26 +47,18 @@ import { createSmsSender, otpMessage, SmsProviderUnavailableError } from "./sms"
  * exceptions on `getStaffDb` in ./db.ts): the directory tables are staff-only, and the website's shared secret has
  * already been checked by the route.
  *
- * A review is confirmed by a code texted to the reviewer, with the booking OTP rules: 6 digits, 10 minutes, 5
- * attempts, HMAC with BOOKING_OTP_SECRET, the same SMS sender and country allow-list, and the same temporary
- * BOOKING_OTP_BYPASS switch (no text is sent and any 6-digit code confirms).
+ * A review used to be confirmed by a code sent to the reviewer's phone. Fynix sends nothing to phones and the directory is
+ * closed, so a code can no longer be asked for (`requestReviewOtp`); a recognised visitor's review (`publishReviewAsVisitor`) and
+ * the confirmation of a code already held (`confirmReviewOtp`, 6 digits, 10 minutes, 5 attempts, HMAC with the account code
+ * secret) are left as they were.
  */
 
 const ONE_MINUTE_SECONDS = 60;
 const ONE_HOUR_SECONDS = 60 * ONE_MINUTE_SECONDS;
 const ONE_DAY_SECONDS = 24 * ONE_HOUR_SECONDS;
 
-/** Per visitor address. */
-const IP_RULE: RateLimitRule = { limit: 10, windowSeconds: ONE_HOUR_SECONDS };
-/** Per phone number: a short-burst and a daily budget, each under its own key (a shared key would let the shorter
- * window's rule wipe the longer one's counter, see booking-otp.ts). */
-const PHONE_SHORT_RULE: RateLimitRule = { limit: 3, windowSeconds: 10 * ONE_MINUTE_SECONDS };
-const PHONE_DAY_RULE: RateLimitRule = { limit: 8, windowSeconds: ONE_DAY_SECONDS };
 /** Per business: a sudden run of codes for one listing is a pile-on, not customers. */
 const LISTING_DAY_RULE: RateLimitRule = { limit: 30, windowSeconds: ONE_DAY_SECONDS };
-/** Every review code together: the visitor address is only as honest as the website that forwarded it, so this caps
- * the SMS spend if that ever goes wrong. */
-const ALL_DAY_RULE: RateLimitRule = { limit: 500, windowSeconds: ONE_DAY_SECONDS };
 /** Confirm attempts per visitor address, only to slow code guessing (each code also has its own 5 tries). */
 const CONFIRM_IP_RULE: RateLimitRule = { limit: 30, windowSeconds: ONE_HOUR_SECONDS };
 
@@ -111,94 +99,12 @@ function loggable(business: DirectoryNamed | null, error: unknown): SafeErrorLog
 }
 
 /**
- * Asks for a code to publish `input`. Checks, in order: the OTP secret and SMS provider are configured (unavailable
- * when production would only reach the local outbox); the phone's country is on the SMS allow-list (invalid, before
- * any rate limit is spent); the business exists (unknown_business, before any rate limit is spent too: a business
- * named by key always does, by its place or, for a key no place has, by the key alone); the rate limits, narrowest
- * first (limited), one budget per business however it is named. Then stores the review with a hashed code and texts
- * the code -- or, with BOOKING_OTP_BYPASS on, sends nothing.
+ * Asks for a code to publish a review. Always `unavailable`: the code went to the reviewer's phone, Fynix sends nothing to
+ * phones, and the directory pages are closed, so there is no way to prove a number. A client that still asks gets the answer
+ * it already handles for a deployment that cannot send codes.
  */
-export async function requestReviewOtp(input: ReviewInput, clientIp: string, now: Date): Promise<ReviewOtpOutcome> {
-  try {
-    // Before any rate limit is spent: a misconfiguration must fail at once, not after costing the visitor a try.
-    const secret = bookingOtpSecret();
-    const bypassed = bookingOtpBypassed();
-    let smsSender: ReturnType<typeof createSmsSender> | null = null;
-    try {
-      if (!bypassed) smsSender = createSmsSender();
-    } catch (error) {
-      if (!(error instanceof SmsProviderUnavailableError)) throw error;
-      console.error("A directory review code was requested but SMS is not configured for production.", {
-        business: businessLabel(input.business),
-      });
-      return { kind: "unavailable" };
-    }
-
-    const allowedCountryCodes = smsAllowedCountryCodes();
-    if (!isPhoneCountryAllowed(input.phone, allowedCountryCodes)) {
-      return { kind: "invalid", field: "phone", message: disallowedPhoneMessage(allowedCountryCodes) };
-    }
-
-    const db = getStaffDb();
-    const business = await resolveDirectoryNamed(db, input.business);
-    if (business === null) return { kind: "unknown_business" };
-
-    // Opportunistic housekeeping, like purgeExpiredBookingData: not awaited, so it never slows or fails this request.
-    purgeExpiredDirectoryReviewOtps(db, now).catch((error: unknown) => {
-      console.error("Could not purge expired directory review codes.", loggable(null, error));
-    });
-
-    for (const check of [
-      { key: `dir-review-otp:ip:${ipRateLimitKey(clientIp)}`, rule: IP_RULE },
-      { key: `dir-review-otp:phone:10m:${input.phone}`, rule: PHONE_SHORT_RULE },
-      { key: `dir-review-otp:phone:day:${input.phone}`, rule: PHONE_DAY_RULE },
-      { key: `dir-review-otp:listing:day:${directoryRefId(business)}`, rule: LISTING_DAY_RULE },
-      { key: "dir-review-otp:all", rule: ALL_DAY_RULE },
-    ]) {
-      const result = await consumeRateLimit(db, check.key, check.rule, now);
-      if (!result.allowed) return { kind: "limited" };
-    }
-
-    // The id salts the code's hash (see hashOtpCode), so it is made here rather than by the insert.
-    const otpId = randomUUID();
-    const code = generateOtpCode();
-    const payload: DirectoryReviewOtpPayload = {
-      businessName: input.businessName,
-      reviewerName: input.name,
-      rating: input.rating,
-      text: input.text,
-      highlights: input.highlights,
-      ownerContact: input.ownerContact,
-      ...(input.consent === undefined ? {} : { consent: input.consent }),
-    };
-    await createDirectoryReviewOtp(db, {
-      id: otpId,
-      business,
-      phone: input.phone,
-      codeHash: hashOtpCode(otpId, code, secret),
-      payload,
-      expiresAt: new Date(now.getTime() + OTP_TTL_SECONDS * 1000),
-    });
-
-    try {
-      if (smsSender === null) {
-        console.warn("Booking OTP bypass is on: no directory review code was sent and any 6-digit code will confirm.", {
-          business: businessLabel(input.business),
-        });
-      } else {
-        await smsSender.send({ to: input.phone, body: otpMessage(code, "website"), businessId: null });
-      }
-    } catch (sendError) {
-      await deleteDirectoryReviewOtp(db, otpId);
-      console.error("Could not send a directory review code.", loggable(input.business, sendError));
-      return { kind: "failed" };
-    }
-
-    return { kind: "otp_sent", otpId, expiresInSeconds: OTP_TTL_SECONDS, phoneHint: toPhoneHint(input.phone) };
-  } catch (error) {
-    console.error("Could not request a directory review code.", loggable(input.business, error));
-    return { kind: "failed" };
-  }
+export async function requestReviewOtp(): Promise<ReviewOtpOutcome> {
+  return { kind: "unavailable" };
 }
 
 /** Per visitor address and per phone for a recognised visitor's reviews: the code limits, under keys of their own so
@@ -209,8 +115,7 @@ const VISITOR_PHONE_DAY_RULE: RateLimitRule = { limit: 20, windowSeconds: ONE_DA
 /**
  * Publishes `input` for a recognised visitor, whose number a code proved earlier: no code is asked for or sent. It goes
  * through exactly the path a confirmed code does (the held review is created, its one attempt claimed and published), so
- * a second review from the number still replaces the first. Same rate limits as asking for a code, narrowest first, minus
- * the SMS budget it never spends.
+ * a second review from the number still replaces the first. Same rate limits as asking for a code, narrowest first.
  */
 export async function publishReviewAsVisitor(input: ReviewInput, visitor: ResolvedVisitor, clientIp: string, now: Date): Promise<ReviewOtpOutcome> {
   try {
@@ -273,7 +178,7 @@ function wrongCodeMessage(triesLeft: number): string {
  */
 export async function confirmReviewOtp(otpId: string, code: string, clientIp: string, now: Date): Promise<ReviewConfirmOutcome> {
   try {
-    const secret = bookingOtpSecret();
+    const secret = accountCodeSecret();
     const db = getStaffDb();
 
     const rateLimit = await consumeRateLimit(db, `dir-review-confirm:ip:${ipRateLimitKey(clientIp)}`, CONFIRM_IP_RULE, now);
@@ -292,9 +197,7 @@ export async function confirmReviewOtp(otpId: string, code: string, clientIp: st
       return { kind: "too_many_attempts", message: TOO_MANY_ATTEMPTS_MESSAGE };
     }
 
-    // With the bypass on no code was sent, so any 6-digit code matches; the attempt was still claimed above, so the
-    // ceiling and expiry keep applying.
-    const matches = bookingOtpBypassed() || otpCodeMatches(otp.codeHash, otp.id, code, secret);
+    const matches = otpCodeMatches(otp.codeHash, otp.id, code, secret);
     if (!matches) {
       const triesLeft = Math.max(OTP_MAX_ATTEMPTS - claim.attempts, 0);
       if (triesLeft === 0) return { kind: "too_many_attempts", message: NO_TRIES_LEFT_MESSAGE };

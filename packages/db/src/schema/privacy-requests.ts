@@ -108,9 +108,9 @@ export const privacyRequests = pgTable(
 
 /**
  * The pending-request code challenge: a request made on the public form waits in `payload` (what was asked, by whom) until
- * the code texted to `phone` is confirmed, which proves the person controls that number. Only then does it become a
- * privacy_requests row, with the identity check stamped, and this row is deleted. Same rules as directory_review_otps: 6
- * digits, HMAC-hashed with BOOKING_OTP_SECRET and salted with the row's id, 10 minutes, 5 attempts. Rows left behind are
+ * the code emailed to `email` is confirmed, which proves the person controls that address. Only then does it become a
+ * privacy_requests row, with the identity check stamped, and this row is deleted. Same rules as booking_otps: 6 digits,
+ * HMAC-hashed with the account code secret and salted with the row's id, 10 minutes, 5 attempts. Rows left behind are
  * purged an hour after they expire. Staff connection only.
  */
 export const privacyRequestOtps = pgTable(
@@ -119,7 +119,8 @@ export const privacyRequestOtps = pgTable(
     id: uuid("id")
       .primaryKey()
       .$defaultFn(() => uuidv7()),
-    phone: text("phone").notNull(),
+    /** Trimmed and lowercased: where the code was emailed. */
+    email: text("email").notNull(),
     codeHash: text("code_hash").notNull(),
     payload: jsonb("payload").notNull(),
     attempts: integer("attempts").notNull().default(0),
@@ -129,7 +130,7 @@ export const privacyRequestOtps = pgTable(
   },
   (table) => [
     index("privacy_request_otps_expires_at_idx").on(table.expiresAt),
-    check("privacy_request_otps_phone_check", sql`${table.phone} ~ '^\\+[0-9]{8,15}$'`),
+    check("privacy_request_otps_email_check", sql`${table.email} ~ '^[^@[:space:]]+@[^@[:space:]]+$' AND char_length(${table.email}) <= 254`),
     check("privacy_request_otps_code_hash_check", sql`char_length(${table.codeHash}) > 0`),
     check("privacy_request_otps_attempts_check", sql`${table.attempts} >= 0`),
   ],

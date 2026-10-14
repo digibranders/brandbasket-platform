@@ -8,7 +8,7 @@ const DEFAULT_PHONE_COUNTRY = "IN";
 
 const NAME_MISSING_MESSAGE = "Enter the name of the person you are naming.";
 const NAME_TOO_LONG_MESSAGE = `Keep the name to ${NOMINEE_NAME_MAX_LENGTH} characters.`;
-const PHONE_MISSING_MESSAGE = "Enter their mobile number.";
+const PHONE_MISSING_MESSAGE = "Enter their phone number.";
 const OWN_NUMBER_MESSAGE = "Name someone else: a nominee acts for you when you cannot, so it cannot be your own number.";
 
 export type NomineeParse =
@@ -21,8 +21,8 @@ function text(formData: FormData, key: string): string {
 }
 
 /**
- * The nominee a form names, cleaned and checked: a name, and a mobile number as E.164 (Fynix holds no email addresses,
- * so a number is the only way to reach them). `ownPhone` is the account's own number, which cannot also be the nominee's.
+ * The nominee a form names, cleaned and checked: a name, and a phone number as E.164 (how staff reach them when
+ * they come forward; nothing is ever sent to it). `ownPhone` is the account's own number, which cannot also be the nominee's.
  */
 export function parseNomineeForm(formData: FormData, ownPhone: string | null): NomineeParse {
   const name = cleanLine(text(formData, "name")).replace(/\s+/g, " ");

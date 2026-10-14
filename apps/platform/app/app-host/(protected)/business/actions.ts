@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { BusinessDetailsFormState } from "@/lib/business-details-fields";
 import { parseBusinessDetailsForm } from "@/lib/business-details-form";
@@ -17,7 +16,6 @@ import { profileHref, type ProfileNotice } from "@/lib/business-profile-notices"
 import { ownerFormCheck } from "@/lib/owner-form";
 import { parseYoutubeLink } from "@/lib/youtube-video";
 import { forgetGoogleImport } from "@/lib/server/google-import-cookie";
-import { clientIpFrom } from "@fynix/shared/lib/client-ip";
 import { getMediaStorage } from "@fynix/shared/server/media-storage";
 import { getStaffDb } from "@/lib/server/db";
 import { removeListingPictures } from "@/lib/server/listing-pictures";
@@ -42,9 +40,6 @@ import {
   saveOwnTrust,
   setOwnVideo,
 } from "@/lib/server/business-profile";
-import { confirmOwnerVerification, requestOwnerVerification } from "@/lib/server/owner-verification";
-import { verificationRefusalMessage } from "@/lib/owner-verification";
-import { codeFromForm, verifyMessage, type VerifyBusinessState } from "@/lib/verify-business-form";
 
 /*
  * The Business profile's actions (docs/superpowers/specs/2026-10-01-business-profile-design.md). Each checks the
@@ -274,48 +269,4 @@ export async function discardGoogleImportAction(formData: FormData): Promise<voi
   if (!isEmptyForm(formData)) done("details", "invalid");
   await forgetGoogleImport();
   done("details");
-}
-
-/** "Verify my business", step one: a code to the number the business gave (none is sent while VERIFY_OTP_BYPASS is on). */
-async function sendVerificationCode(previous: VerifyBusinessState): Promise<VerifyBusinessState> {
-  const current = previous.status === "sent" ? previous : previous.status === "error" ? previous.step : "send";
-  const phoneHint = current === "send" ? (previous.status === "error" ? previous.phoneHint : undefined) : current.phoneHint;
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
-  const outcome = await requestOwnerVerification(customer, clientIpFrom(await headers()), new Date());
-  switch (outcome.kind) {
-    case "sent":
-      return { status: "sent", otpId: outcome.otpId, phoneHint: outcome.phoneHint, texted: outcome.texted };
-    case "refused":
-      return { status: "error", message: verificationRefusalMessage(outcome.refusal), phoneHint, step: "send" };
-    case "already_verified":
-      return done("review", "verified");
-    default:
-      return { status: "error", message: verifyMessage(outcome), phoneHint, step: current };
-  }
-}
-
-/** Step two: the code is checked and, when right, the business is marked Verified, by its owner. */
-async function confirmVerificationCode(previous: VerifyBusinessState, formData: FormData): Promise<VerifyBusinessState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
-  const parsed = codeFromForm(formData);
-  const otpId = formData.get("otpId");
-  const current = previous.status === "sent" ? previous : previous.status === "error" && previous.step !== "send" ? previous.step : null;
-  const live = current !== null && current.otpId === otpId ? current : null;
-  if (live === null) return { status: "error", message: "Ask for a new code before confirming.", step: "send" };
-  if (!parsed.ok) return { status: "error", message: parsed.message, phoneHint: live.phoneHint, step: live };
-  const outcome = await confirmOwnerVerification(customer, parsed.value, clientIpFrom(await headers()), new Date());
-  if (outcome.kind === "verified") return done("review", "verified");
-  if (outcome.kind === "refused") return { status: "error", message: verificationRefusalMessage(outcome.refusal), phoneHint: live.phoneHint, step: "send" };
-  // A code that ran out or is out of tries needs a new one; any other problem keeps the same step.
-  return { status: "error", message: verifyMessage(outcome), phoneHint: live.phoneHint, step: outcome.kind === "expired" ? "send" : live };
-}
-
-/**
- * The Verify form's one action: a post with a code is step two, any other is step one. The business comes only from
- * the session.
- */
-export async function verifyBusinessAction(previous: VerifyBusinessState, formData: FormData): Promise<VerifyBusinessState> {
-  return formData.get("intent") === "resend" || !formData.has("code")
-    ? sendVerificationCode(previous)
-    : confirmVerificationCode(previous, formData);
 }

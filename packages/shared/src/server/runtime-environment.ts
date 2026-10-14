@@ -7,7 +7,7 @@ export class RuntimeEnvironmentError extends Error {
   }
 }
 
-const OTP_BYPASS_SWITCHES = ["BOOKING_OTP_BYPASS", "SIGNUP_OTP_BYPASS", "VERIFY_OTP_BYPASS", "EMAIL_CODE_BYPASS"] as const;
+const CODE_BYPASS_SWITCHES = ["EMAIL_CODE_BYPASS"] as const;
 
 /**
  * Stops a server that real customers can reach from starting with settings missing or unsafe. Runs at start from
@@ -27,8 +27,8 @@ export function assertRuntimeEnvironment(
     throw new RuntimeEnvironmentError(`This deployment is missing required settings: ${missing.join(", ")}. See .env.production.example (Fynix) or .env.example.`);
   }
 
-  const bypasses = OTP_BYPASS_SWITCHES.filter((name) => env[name]?.trim() === "true");
+  const bypasses = CODE_BYPASS_SWITCHES.filter((name) => env[name]?.trim() === "true");
   if (bypasses.length > 0) {
-    throw new RuntimeEnvironmentError(`OTP bypass switches must not be set here: ${bypasses.join(", ")}.`);
+    throw new RuntimeEnvironmentError(`Code bypass switches must not be set here: ${bypasses.join(", ")}.`);
   }
 }

@@ -13,9 +13,11 @@ const INDIA_CALLING_CODE = "91";
  * and then asked for $75 at checkout. This makes the right answer the default; staff can still change it on the lead
  * until the customer starts paying.
  *
- * A number without a country code cannot be placed, so it keeps the USD default rather than guessing.
+ * A number without a country code cannot be placed, and a lead with no number at all has nothing to place, so both keep
+ * the USD default rather than guessing.
  */
-export function billingCurrencyForPhone(phone: string): BillingCurrency {
+export function billingCurrencyForPhone(phone: string | null): BillingCurrency {
+  if (phone === null) return "USD";
   const parsed = parsePhoneNumberFromString(phone.trim(), { extract: false });
   return parsed?.countryCallingCode === INDIA_CALLING_CODE ? "INR" : "USD";
 }

@@ -3,7 +3,8 @@ import type { JoinChoice } from "@/lib/join-form";
 
 /*
  * The name and look of this dashboard: Fynix Digital. One product, one brand, so there is one constant. It says the name and
- * logo shown, which plans are offered at sign-up and upgrade (Care and Premium), and what a new account is opened with.
+ * logo shown and which plans are offered at sign-up and upgrade (Care and Premium). An account is opened with an email
+ * address and the code emailed to it.
  * Browser-safe and pure.
  */
 export interface Brand {
@@ -23,11 +24,6 @@ export interface Brand {
   readonly logo: { readonly white: string; readonly dark: string; readonly width: number; readonly height: number };
   /** The plans offered at sign-up and on the Upgrade page, in the order they are shown. */
   readonly joinChoices: readonly JoinChoice[];
-  /**
-   * What a new account is opened with, and so what its sign-up code is sent to: an email address (a code is emailed).
-   * Signing in takes either, whichever an account has; this only decides what the create-account form asks for.
-   */
-  readonly signUpWith: "phone" | "email";
   /** Whether the plans are sold with the directory listing and what comes with it: they are websites, so no. */
   readonly showsListing: boolean;
 }
@@ -41,7 +37,6 @@ export const BRAND: Brand = {
   siteUrl: "https://fynix.digital",
   logo: { white: "/brand/fynix-logo-white.svg", dark: "/brand/fynix-logo-dark.svg", width: 89, height: 37 },
   joinChoices: ["care", "premium"],
-  signUpWith: "email",
   showsListing: false,
 };
 

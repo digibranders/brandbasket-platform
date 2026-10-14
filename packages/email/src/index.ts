@@ -10,10 +10,12 @@ export {
 } from "./message";
 export { emailBrandName, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress } from "./brand";
 export { createOutboxTransport, OUTBOX_TRANSPORT_NAME, type EmailTransport, type OutboxOptions } from "./outbox";
+export { bookingCodeEmail, type BookingCodeInput } from "./templates/booking-code";
 export { confirmEmailEmail, type ConfirmEmailInput } from "./templates/confirm-email";
 export { leadReceivedEmail, type LeadReceivedInput } from "./templates/lead-received";
 export { listingEnquiryEmail, type ListingEnquiryInput } from "./templates/listing-enquiry";
 export { passwordResetEmail, type PasswordResetInput } from "./templates/password-reset";
+export { privacyRequestCodeEmail, type PrivacyRequestCodeInput } from "./templates/privacy-request-code";
 export { previewApprovedEmail, type PreviewApprovedInput } from "./templates/preview-approved";
 export { previewReadyEmail, type PreviewReadyInput } from "./templates/preview-ready";
 export {

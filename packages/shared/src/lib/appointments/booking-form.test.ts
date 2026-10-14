@@ -11,6 +11,7 @@ const { bookingFieldsSchema, isBookingHoneypotFilled, normalisePhone, parseBooki
 
 const valid: BookingFields = {
   name: " Priya Sharma ",
+  email: " Priya@Example.com ",
   phone: " 98765 43210 ",
   serviceId: "5b6a7c8d-1234-4a2b-9c3d-4e5f6a7b8c9d",
   date: "2026-10-05",
@@ -33,11 +34,16 @@ describe("bookingFieldsSchema", () => {
     expect(bookingFieldsSchema.safeParse(required).success).toBe(true);
   });
 
-  it("drops an email or note an older client site still sends, since the booking no longer collects them", () => {
-    const parsed = bookingFieldsSchema.safeParse({ ...valid, email: "priya@example.com", note: "First visit" });
+  it("drops a note an older client site still sends, since the booking no longer collects one", () => {
+    const parsed = bookingFieldsSchema.safeParse({ ...valid, note: "First visit" });
     expect(parsed.success).toBe(true);
-    expect(parsed.data).not.toHaveProperty("email");
     expect(parsed.data).not.toHaveProperty("note");
+  });
+
+  it("accepts a body with no email, so the form can answer with a message that names the field", () => {
+    const { email: _email, ...withoutEmail } = valid;
+    expect(bookingFieldsSchema.safeParse(withoutEmail).success).toBe(true);
+    expect(bookingFieldsSchema.safeParse({ ...valid, email: "x".repeat(2001) }).success).toBe(false);
   });
 });
 
@@ -62,6 +68,7 @@ describe("parseBookingFields", () => {
       success: true,
       data: {
         name: "Priya Sharma",
+        email: "priya@example.com",
         phone: "+919876543210",
         serviceId: "5b6a7c8d-1234-4a2b-9c3d-4e5f6a7b8c9d",
         date: "2026-10-05",
@@ -120,11 +127,32 @@ describe("parseBookingFields", () => {
     expect(parseBookingFields({ ...valid, name: "x".repeat(80) })).toMatchObject({ success: true });
   });
 
-  it("requires a phone number normalisePhone can turn into E.164", () => {
+  it("requires an email address, with its own message when it is missing", () => {
+    const { email: _email, ...withoutEmail } = valid;
+    for (const fields of [withoutEmail, { ...valid, email: null }, { ...valid, email: "   " }]) {
+      expect(parseBookingFields(fields)).toEqual({ success: false, field: "email", message: "Enter your email address." });
+    }
+  });
+
+  it("rejects something that is not an email address, and one that is too long", () => {
+    for (const email of ["priya", "priya@", "priya@@example.com", "priya example@x.com"]) {
+      expect(parseBookingFields({ ...valid, email })).toEqual({ success: false, field: "email", message: "Enter a valid email address." });
+    }
+    expect(parseBookingFields({ ...valid, email: `${"a".repeat(250)}@x.com` })).toMatchObject({ success: false, field: "email" });
+  });
+
+  it("trims and lowercases the email, since accounts and rate limits key on that form", () => {
+    expect(parseBookingFields({ ...valid, email: "  PRIYA+clinic@Example.COM " })).toMatchObject({
+      success: true,
+      data: { email: "priya+clinic@example.com" },
+    });
+  });
+
+  it("requires a phone number normalisePhone can turn into E.164, which the clinic calls and nobody texts", () => {
     expect(parseBookingFields({ ...valid, phone: "123" })).toMatchObject({
       success: false,
       field: "phone",
-      message: "Enter a phone number we can text, like +91 98765 43210.",
+      message: "Enter a phone number the clinic can call, like +91 98765 43210.",
     });
     expect(parseBookingFields({ ...valid, phone: "call me maybe" })).toMatchObject({
       success: false,
@@ -192,7 +220,8 @@ describe("parseBookingFields", () => {
   });
 
   it("checks fields in order and reports the first failure", () => {
-    expect(parseBookingFields({ ...valid, name: "", phone: "" })).toMatchObject({ field: "name" });
+    expect(parseBookingFields({ ...valid, name: "", email: "", phone: "" })).toMatchObject({ field: "name" });
+    expect(parseBookingFields({ ...valid, email: "", phone: "", serviceId: "bad" })).toMatchObject({ field: "email" });
     expect(parseBookingFields({ ...valid, phone: "", serviceId: "bad" })).toMatchObject({ field: "phone" });
   });
 });

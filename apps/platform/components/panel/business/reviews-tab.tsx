@@ -17,7 +17,7 @@ interface ReviewPart {
 
 /** The sheet's Reviews section, part by part. Nothing here is typed in: reviews come from visitors. */
 const PARTS: readonly ReviewPart[] = [
-  { name: "Reviews", text: "Visitors write about you on your page. Each review is confirmed by a code texted to the reviewer's phone.", live: true },
+  { name: "Reviews", text: "Visitors write about you on your page. Each review is confirmed with a code.", live: true },
   { name: "Ratings", text: "Your stars are the average of those reviews.", live: true },
   { name: "Business responses", text: "After someone calls you from your page, we ask them whether they spoke with you.", live: false },
   { name: "Customer photos", text: "Reviewers add photos of your work.", live: false },

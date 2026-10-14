@@ -46,7 +46,7 @@ export default async function LeadDetailPage({
   const strandedAccount = lead.businessId === null ? await findUserIdByEmail(db, lead.email) : null;
   // Once billing has started the currency is fixed (every amount recorded is in it), so "Billed in" is shown read-only.
   const currencyLocked = lead.businessId !== null && (await isBillingStarted(db, lead.businessId));
-  const phone = displayPhone(lead.phone);
+  const phone = lead.phone === null ? null : displayPhone(lead.phone);
   const suggested = suggestedModules(lead.businessType);
 
   return (
@@ -88,7 +88,7 @@ export default async function LeadDetailPage({
               {
                 label: "Phone",
                 value:
-                  phone.href === null ? (
+                  phone === null ? null : phone.href === null ? (
                     phone.text
                   ) : (
                     <a href={phone.href} className="link-underline">
@@ -192,7 +192,7 @@ export default async function LeadDetailPage({
                   </label>
                   <SelectField id="lead-currency" name="currency" required options={CURRENCY_OPTIONS} defaultValue={lead.currency} className={fieldClasses} />
                   <p className={hintClasses}>
-                    India is billed in INR; everywhere else in USD. New leads start from their phone number.
+                    India is billed in INR; everywhere else in USD. New leads start from their phone number, and in USD when they gave none.
                     {lead.businessId === null ? null : " They have signed up, so this also changes what checkout charges them."}
                   </p>
                 </div>

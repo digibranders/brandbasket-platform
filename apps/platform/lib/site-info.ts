@@ -41,7 +41,7 @@ export interface SiteInfoBooking {
 }
 export interface SiteInfo {
   readonly business: string;
-  readonly timeZone: string | null;
+  readonly timeZone: string;
   /** Today where the business is, YYYY-MM-DD. */
   readonly today: string;
   readonly hours: readonly SiteInfoHours[];

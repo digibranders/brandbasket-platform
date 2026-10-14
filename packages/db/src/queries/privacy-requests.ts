@@ -3,12 +3,7 @@ import { and, asc, desc, eq, gt, isNull, lt, ne, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import type { DirectoryRef } from "./directory-refs";
-import {
-  deleteOwnDirectoryContribution,
-  eraseDirectoryVisitorData,
-  type DirectoryContributionTarget,
-  type DirectoryVisitorErasure,
-} from "./directory-visitors";
+import { deleteOwnDirectoryContribution, type DirectoryContributionTarget } from "./directory-visitors";
 import {
   privacyRequestOtps,
   privacyRequests,
@@ -172,22 +167,28 @@ export async function listPrivacyRequests(db: Database): Promise<readonly Stored
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// The code that proves a public-form request comes from the person whose number it names
+// The code that proves a public-form request comes from the person whose address it names
 // ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * The kinds of request a person can make on the public form: everything but the two carried out automatically for a
+ * visitor whose phone number the website already knew (`visitor_erasure`, `contribution_deletion`), which no emailed code can
+ * stand in for. The rest wait for staff.
+ */
+export type PrivacyRequestFormKind = Exclude<PrivacyRequestKind, "visitor_erasure" | "contribution_deletion">;
 
 /** What the person asked for, held until their code is confirmed. */
 export interface PrivacyRequestOtpPayload {
-  readonly kind: PrivacyRequestKind;
+  readonly kind: PrivacyRequestFormKind;
   readonly name: string | null;
   readonly details: string | null;
   readonly noticeVersion: string | null;
-  /** The review or comment a `contribution_deletion` request is about; absent for every other kind. */
-  readonly target?: DirectoryContributionTarget;
 }
 
 export interface NewPrivacyRequestOtp {
   readonly id: string;
-  readonly phone: string;
+  /** Trimmed and lowercased: the address the code is emailed to, and the contact the filed request keeps. */
+  readonly email: string;
   readonly codeHash: string;
   readonly payload: PrivacyRequestOtpPayload;
   readonly expiresAt: Date;
@@ -195,7 +196,7 @@ export interface NewPrivacyRequestOtp {
 
 export interface PrivacyRequestOtpRow {
   readonly id: string;
-  readonly phone: string;
+  readonly email: string;
   readonly codeHash: string;
   readonly payload: PrivacyRequestOtpPayload;
   readonly attempts: number;
@@ -208,7 +209,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function createPrivacyRequestOtp(db: Database, input: NewPrivacyRequestOtp): Promise<string> {
   const rows = await db
     .insert(privacyRequestOtps)
-    .values({ id: input.id, phone: input.phone, codeHash: input.codeHash, payload: input.payload, expiresAt: input.expiresAt })
+    .values({ id: input.id, email: input.email, codeHash: input.codeHash, payload: input.payload, expiresAt: input.expiresAt })
     .returning({ id: privacyRequestOtps.id });
   const row = rows[0];
   if (row === undefined) throw new Error("A privacy request code insert returned no row");
@@ -262,19 +263,12 @@ function maskedContact(phone: string): string {
   return `${phone.slice(0, 3)}${"•".repeat(Math.max(phone.length - 6, 0))}${phone.slice(-3)}`;
 }
 
-/**
- * What a confirmed code turned into:
- * - `filed`: a request waiting for staff, due on `dueAt`;
- * - `erased`: a `visitor_erasure`, carried out and filed closed, with what was done;
- * - `deleted`: a `contribution_deletion`, carried out and filed closed, with the business whose page showed it;
- * - `not_found`: a `contribution_deletion` for a review or comment this number did not post (or that is already gone).
- *   Nothing is filed, since nothing was done.
- */
-export type ReceivedPrivacyRequest =
-  | { readonly outcome: "filed"; readonly id: string; readonly reference: string; readonly dueAt: Date }
-  | { readonly outcome: "erased"; readonly id: string; readonly reference: string; readonly erased: DirectoryVisitorErasure }
-  | { readonly outcome: "deleted"; readonly id: string; readonly reference: string; readonly business: DirectoryRef }
-  | { readonly outcome: "not_found" };
+/** A request a confirmed code filed for staff, due on `dueAt`. */
+export interface FiledPrivacyRequest {
+  readonly id: string;
+  readonly reference: string;
+  readonly dueAt: Date;
+}
 
 /** A request carried out the moment the number was proven: filed closed, with the number masked and nothing they wrote. */
 function closedAutomaticRequest(input: {
@@ -339,18 +333,14 @@ export async function deleteContributionForProvenNumber(
 
 /**
  * Turns a confirmed code into the request it was holding, as one transaction: marks the code used (only if it is unused,
- * unexpired and within `maxAttempts`, so a double submit or a confirm after expiry creates nothing and returns null), carries
- * out or files the request, and deletes the code. The caller must already have claimed an attempt and matched the code.
- * `dueAt` is chosen by the caller from the day the request is received.
- *
- * `visitor_erasure` and `contribution_deletion` need nothing but the proven number, so they are carried out in the same
- * transaction and filed already closed (see `closedAutomaticRequest`). Every other kind is filed for staff with what the
- * person wrote.
+ * unexpired and within `maxAttempts`, so a double submit or a confirm after expiry creates nothing and returns null), files
+ * the request for staff with what the person wrote, and deletes the code. The caller must already have claimed an attempt
+ * and matched the code. `dueAt` is chosen by the caller from the day the request is received.
  */
 export async function receiveVerifiedPrivacyRequest(
   db: Database,
   input: PrivacyRequestOtpAttempt & { readonly dueAt: Date },
-): Promise<ReceivedPrivacyRequest | null> {
+): Promise<FiledPrivacyRequest | null> {
   if (!UUID.test(input.otpId)) return null;
   return db.transaction(async (tx) => {
     const used = await tx
@@ -364,54 +354,26 @@ export async function receiveVerifiedPrivacyRequest(
           sql`${privacyRequestOtps.attempts} <= ${input.maxAttempts}`,
         ),
       )
-      .returning({ phone: privacyRequestOtps.phone, payload: privacyRequestOtps.payload });
+      .returning({ email: privacyRequestOtps.email, payload: privacyRequestOtps.payload });
     const otp = used[0];
     if (otp === undefined) return null;
     const payload = otp.payload as PrivacyRequestOtpPayload;
-    const result = await carryOut(tx, otp.phone, payload, input);
-    await tx.delete(privacyRequestOtps).where(eq(privacyRequestOtps.id, input.otpId));
-    return result;
-  });
-}
 
-async function carryOut(
-  tx: ScopedTransaction,
-  phone: string,
-  payload: PrivacyRequestOtpPayload,
-  input: { readonly now: Date; readonly dueAt: Date },
-): Promise<ReceivedPrivacyRequest> {
-  if (payload.kind === "contribution_deletion") {
-    if (payload.target === undefined) throw new Error("A contribution deletion code carries no review or comment");
-    const deleted = await deleteContributionForProvenNumber(tx, { phone, target: payload.target, now: input.now, dueAt: input.dueAt });
-    return deleted === null ? { outcome: "not_found" } : { outcome: "deleted", ...deleted };
-  }
-
-  if (payload.kind === "visitor_erasure") {
-    const erased = await eraseDirectoryVisitorData(tx, { phone, noticeVersion: payload.noticeVersion ?? "unknown", now: input.now });
-    const values = closedAutomaticRequest({
+    const reference = newPrivacyRequestReference();
+    const id = await insertRequest(tx, {
+      reference,
       kind: payload.kind,
-      phone,
-      resolution: `Erased automatically. ${erased.accountDeleted ? "Visitor account deleted" : "No visitor account"}. Deleted: reviews ${erased.reviews}, comments ${erased.comments}. Made anonymous: enquiries ${erased.enquiries}.`,
-      now: input.now,
+      channel: "web",
+      subjectName: payload.name,
+      subjectContact: otp.email,
+      details: payload.details,
+      receivedAt: input.now,
       dueAt: input.dueAt,
+      identityVerifiedAt: input.now,
     });
-    const id = await insertRequest(tx, values);
-    return { outcome: "erased", id, reference: values.reference, erased };
-  }
-
-  const reference = newPrivacyRequestReference();
-  const id = await insertRequest(tx, {
-    reference,
-    kind: payload.kind,
-    channel: "web",
-    subjectName: payload.name,
-    subjectContact: phone,
-    details: payload.details,
-    receivedAt: input.now,
-    dueAt: input.dueAt,
-    identityVerifiedAt: input.now,
+    await tx.delete(privacyRequestOtps).where(eq(privacyRequestOtps.id, input.otpId));
+    return { id, reference, dueAt: input.dueAt };
   });
-  return { outcome: "filed", id, reference, dueAt: input.dueAt };
 }
 
 /** How long after expiry an unused code is kept, the same grace as booking and review codes. */

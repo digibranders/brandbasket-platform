@@ -6,7 +6,7 @@ import { typedSignInIdentifier, type SignInFormState } from "@fynix/shared/lib/s
 import { offersChoice } from "@/lib/brand";
 import { parseJoinForm, type JoinCodeStep, type JoinFormState } from "@/lib/join-form";
 import { membershipPathFor, membershipTierForChoice } from "@/lib/membership";
-import { LISTING_ACCOUNT_HOME, LISTING_PAGE_PATH } from "@/lib/server/customer-access";
+import { LISTING_PAGE_PATH } from "@/lib/server/customer-access";
 import { createListingAccount, requestJoinCode } from "@/lib/server/listing-account";
 import { landingForSignedInUser } from "@/lib/server/affiliate-access";
 import { requestBrand } from "@/lib/server/request-brand";
@@ -23,13 +23,13 @@ export async function signInCustomer(_previous: SignInFormState, formData: FormD
 }
 
 /**
- * Creating an account on the entry page, sent twice by the same form. First with no code: we text one to the owner's
- * number (under Fynix, email one to their address) and the form moves to its code step. Then with the code: the account is opened and the owner is in. "Send a
+ * Creating an account on the entry page, sent twice by the same form. First with no code: we email one to the owner's
+ * address and the form moves to its code step. Then with the code: the account is opened and the owner is in. "Send a
  * new code" is the first send again.
  *
  * Where they land depends on what they chose (docs/superpowers/specs/2026-09-30-single-entry-premium-design.md,
  * 2026-10-07-care-plan-design.md): an owner who chose Care or Premium goes to that plan's payment page, which holds
- * them until they pay; a claim goes on to advertising; a business that is not in the directory yet is added first.
+ * them until they pay; a business that is not in the directory yet is added first.
  */
 export async function joinForListing(previous: JoinFormState, formData: FormData): Promise<JoinFormState> {
   // Where the form was: on its code step (a code is out) or still on the details.
@@ -42,16 +42,15 @@ export async function joinForListing(previous: JoinFormState, formData: FormData
     formData.delete("code");
   }
 
-  // What the form asks for depends on the brand the host is sold under: a mobile number (Fynix) or an email address (Fynix).
   const brand = await requestBrand();
-  const parsed = parseJoinForm(formData, brand.signUpWith);
+  const parsed = parseJoinForm(formData);
   if (!parsed.success) {
     const onCodeStep = formData.get("otpId") !== null && formData.get("otpId") !== "";
     return { status: "error", message: parsed.message, otp: onCodeStep ? current : null };
   }
-  // The form only offers what the host sells, but a form is whatever it is sent: Fynix sells Care and Premium, for a new
-  // business (no claim), and a post for the free listing is refused here as it would be on the plans page.
-  if (!offersChoice(brand, parsed.data.choice) || (!brand.showsListing && parsed.data.kind === "claim")) {
+  // The form only offers what the host sells, but a form is whatever it is sent: Fynix sells Care and Premium, and a post
+  // for the free listing is refused here as it would be on the plans page.
+  if (!offersChoice(brand, parsed.data.choice)) {
     const onCodeStep = formData.get("otpId") !== null && formData.get("otpId") !== "";
     return { status: "error", message: "Choose a plan to continue.", otp: onCodeStep ? current : null };
   }
@@ -76,5 +75,5 @@ export async function joinForListing(previous: JoinFormState, formData: FormData
   if (outcome.kind === "refused") return { status: "error", message: outcome.message, otp: null };
   const paid = membershipTierForChoice(parsed.data.choice);
   if (paid !== null) redirect(membershipPathFor(paid));
-  redirect(parsed.data.kind === "claim" ? LISTING_ACCOUNT_HOME : LISTING_PAGE_PATH);
+  redirect(LISTING_PAGE_PATH);
 }

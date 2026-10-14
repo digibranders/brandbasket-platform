@@ -20,8 +20,7 @@ export interface DataRecipient {
 export const DATA_RECIPIENTS: readonly DataRecipient[] = [
   { name: "Hostinger", service: "Servers, database and file storage", receives: "Everything you give us", location: "Mumbai, India" },
   { name: "Cloudflare", service: "Passes web traffic through, and keeps encrypted backups and public media", receives: "Your web traffic, and what you upload", location: "Worldwide network" },
-  { name: "MSG91", service: "Sends the codes we text you", receives: "Your mobile number and the code", location: "India" },
-  { name: "Brevo", service: `Sends alerts to the ${ambientBrandShortName()} team about support requests and feedback`, receives: "The text of a request you send us, with your name and number", location: "European Union" },
+  { name: "Brevo", service: `Emails you the codes you ask for, and alerts the ${ambientBrandShortName()} team about support requests and feedback`, receives: "Your email address and the code, and the text of a request you send us, with your name and number", location: "European Union" },
   { name: "Razorpay", service: "Takes payments", receives: "Your mobile number, to fill in the payment form, and the payment details you enter there", location: "India" },
   { name: "Sentry", service: "Finds faults in the service", receives: "Fault reports with personal details removed", location: "United States" },
   { name: "Zoho", service: "The support and grievance mailbox", receives: "Anything you write to us by email", location: "India" },

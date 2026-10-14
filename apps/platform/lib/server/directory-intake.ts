@@ -393,7 +393,7 @@ export async function handleReviewsRequest(request: Request, deps: ReviewsIntake
 
 export interface ReviewOtpIntakeDeps {
   readonly token: string | null;
-  /** Rate-limits, stores the review with a hashed code and texts the code. */
+  /** Rate-limits, stores the review with a hashed code and sends the code (no code can be asked for any more: always `unavailable`). */
   readonly requestOtp: (input: ReviewInput, clientIp: string, now: Date) => Promise<ReviewOtpOutcome>;
   /** Looks up the visitor a request's token names (null when it is no good). */
   readonly resolveVisitor: ResolveVisitor;
@@ -443,7 +443,7 @@ export function reviewOtpResponse(outcome: ReviewOtpOutcome): Response {
   }
 }
 
-/** `POST /api/directory/reviews/otp`: a visitor's review, held until the code texted to them is confirmed. */
+/** `POST /api/directory/reviews/otp`: a visitor's review, held until the code sent to them is confirmed. */
 export async function handleReviewOtpRequest(request: Request, deps: ReviewOtpIntakeDeps): Promise<Response> {
   const refused = refuseUnauthorised(request, "POST", deps.token);
   if (refused !== null) return refused;
@@ -576,7 +576,7 @@ export async function handleReviewHelpfulRequest(request: Request, deps: ReviewH
 
 export interface CommentOtpIntakeDeps {
   readonly token: string | null;
-  /** Rate-limits, stores the comment with a hashed code and texts the code. */
+  /** Rate-limits, stores the comment with a hashed code and sends the code (no code can be asked for any more: always `unavailable`). */
   readonly requestOtp: (input: CommentInput, clientIp: string, now: Date) => Promise<CommentOtpOutcome>;
   /** Looks up the visitor a request's token names (null when it is no good). */
   readonly resolveVisitor: ResolveVisitor;
@@ -591,7 +591,7 @@ export function commentOtpResponse(outcome: CommentOtpOutcome): Response {
   return reviewOtpResponse(outcome);
 }
 
-/** `POST /api/directory/reviews/comments/otp`: a visitor's comment on a review, held until the code texted to them is
+/** `POST /api/directory/reviews/comments/otp`: a visitor's comment on a review, held until the code sent to them is
  * confirmed (at `/comments/confirm`, which answers like `/reviews/confirm`). */
 export async function handleCommentOtpRequest(request: Request, deps: CommentOtpIntakeDeps): Promise<Response> {
   const refused = refuseUnauthorised(request, "POST", deps.token);

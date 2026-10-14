@@ -1,6 +1,6 @@
 /** Browser-safe retry facts, carried from the budget which actually blocked the request. */
 export interface OtpRateLimit {
-  readonly scope: "network" | "phone" | "email" | "global";
+  readonly scope: "network" | "email" | "global";
   readonly retryAfterSeconds: number;
 }
 
@@ -14,6 +14,6 @@ export function otpLimitMessage(limit: OtpRateLimit, operation: OtpRetry["operat
   const unit = seconds < 60 ? "second" : "minute";
   const wait = `Try again in ${count} ${unit}${count === 1 ? "" : "s"}.`;
   if (limit.scope === "global") return `Code delivery is temporarily busy. ${wait}`;
-  const scope = limit.scope === "network" ? "from this network" : limit.scope === "email" ? "for this email address" : "for this number";
+  const scope = limit.scope === "network" ? "from this network" : "for this email address";
   return `Too many code ${operation === "send" ? "requests" : "checks"} ${scope}. ${wait}`;
 }

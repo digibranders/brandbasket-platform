@@ -978,8 +978,8 @@ export interface StaffDirectoryClaim extends DirectoryClaim {
   /** Null for an owner who signs in with a phone number: the account's address is only a placeholder. */
   readonly ownerEmail: string | null;
   /**
-   * The owner has proven a way to reach them is theirs: opened the link we emailed, or entered the code we texted to
-   * the number they sign in with. Null only for a claim with no owner, which cannot happen.
+   * The owner has proven a way to reach them is theirs: opened the link we emailed, or signed in with a number
+   * that was proven when their account was made. Null only for a claim with no owner, which cannot happen.
    */
   readonly ownerEmailConfirmed: boolean | null;
 }
@@ -1229,7 +1229,7 @@ export async function decideDirectoryClaim(
           .innerJoin(users, eq(users.id, businessMembers.userId))
           .where(eq(directoryClaims.id, input.claimId))
           .limit(1);
-        // Either proof will do: the link we emailed, or the code we texted to the number the owner signs in with.
+        // Either proof will do: the link we emailed, or the number the owner signs in with, proven when their account was made.
         if (owners[0] !== undefined && !owners[0].emailVerified && !owners[0].phoneNumberVerified) return "email-unconfirmed";
       }
       const updated = await tx
@@ -1329,7 +1329,7 @@ export async function publishAddedBusiness(
         )
         .limit(1);
       const owner = owners[0];
-      // Either proof will do, as for staff approval: the link we emailed, or the code we texted to the sign-in number.
+      // Either proof will do, as for staff approval: the link we emailed, or the sign-in number, proven when the account was made.
       if (owner === undefined || (!owner.emailVerified && !owner.phoneNumberVerified)) return { kind: "refused", reason: "owner-unconfirmed" };
 
       await tx

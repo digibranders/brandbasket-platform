@@ -14,13 +14,8 @@ describe("assertRuntimeEnvironment", () => {
     );
   });
 
-  it("refuses an OTP bypass on a real deployment", () => {
-    expect(() => assertRuntimeEnvironment({ ...REAL, BOOKING_OTP_BYPASS: "true" }, ["BREVO_API_KEY"])).toThrow(
-      RuntimeEnvironmentError,
-    );
-  });
-
-  it("refuses the email sign-up code bypass on a real deployment", () => {
+  it("refuses the emailed code bypass on a real deployment", () => {
+    expect(() => assertRuntimeEnvironment({ ...REAL, EMAIL_CODE_BYPASS: "true" }, ["BREVO_API_KEY"])).toThrow(RuntimeEnvironmentError);
     expect(() => assertRuntimeEnvironment({ ...REAL, EMAIL_CODE_BYPASS: "true" }, ["BREVO_API_KEY"])).toThrow(/EMAIL_CODE_BYPASS/);
   });
 

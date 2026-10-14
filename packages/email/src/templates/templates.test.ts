@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { bookingCodeEmail } from "./booking-code";
 import { confirmEmailEmail } from "./confirm-email";
 import { leadReceivedEmail } from "./lead-received";
 import { listingEnquiryEmail } from "./listing-enquiry";
 import { passwordResetEmail } from "./password-reset";
+import { privacyRequestCodeEmail } from "./privacy-request-code";
 import { previewApprovedEmail } from "./preview-approved";
 import { privacyRequestAlertEmail, privacyRequestsDueEmail } from "./privacy-request-alert";
 import { securityEventAlertEmail, staffAccessReviewEmail } from "./security-alert";
@@ -41,6 +43,21 @@ describe("leadReceivedEmail", () => {
       expect(email.bodyHtml).toContain(detail);
     }
     expect(email.bodyHtml).toContain("http://admin.localhost:3000/leads/0192f3c4");
+  });
+
+  it("says so when they left no phone number", () => {
+    const withoutPhone = leadReceivedEmail({
+      to: "team@example.com",
+      name: "Riley Owner",
+      businessName: "Riverside Plumbing",
+      businessType: "Home services (plumbing, electrical, repairs)",
+      email: "owner@example.com",
+      phone: null,
+      message: null,
+      leadUrl: "http://admin.localhost:3000/leads/0192f3c4",
+    });
+    expect(withoutPhone.bodyText).toContain("Phone: not given");
+    expect(withoutPhone.bodyHtml).toContain("Phone: not given");
   });
 
   it("escapes HTML in customer-supplied values", () => {
@@ -619,5 +636,67 @@ describe("signupCodeEmail", () => {
 
   it("is addressed without header-breaking characters", () => {
     expect(signupCodeEmail({ ...input, to: "owner@example.com\r\nBcc: x@y.z" }).to).not.toMatch(/[\r\n]/);
+  });
+});
+
+describe("bookingCodeEmail", () => {
+  const input = { to: "patient@example.com", code: "061427", expiresInMinutes: 10 };
+  const email = bookingCodeEmail(input);
+
+  it("carries the code and how long it lasts", () => {
+    expect(email.template).toBe("booking-code");
+    expect(email.subject).toBe("Your appointment confirmation code");
+    for (const body of [email.bodyText, email.bodyHtml]) {
+      expect(body).toContain("061427");
+      expect(body).toContain("expires in 10 minutes");
+    }
+  });
+
+  it("keeps the code out of the subject, and out of the copy the outbox stores", () => {
+    expect(email.subject).not.toContain("061427");
+    expect(email.outboxCopy?.subject).not.toContain("061427");
+    expect(email.outboxCopy?.bodyText).not.toContain("061427");
+    expect(email.outboxCopy?.bodyHtml).not.toContain("061427");
+    expect(email.outboxCopy?.bodyText).toContain("not stored here");
+    expect(email.outboxCopy?.linkWithheld).toBe(true);
+  });
+
+  it("refuses anything but a six-digit code, so nothing else can be written into the message", () => {
+    for (const code of ["12345", "1234567", "12345a", "<b>1</b>", ""]) {
+      expect(() => bookingCodeEmail({ ...input, code })).toThrow("code");
+    }
+  });
+
+  it("is addressed without header-breaking characters", () => {
+    expect(bookingCodeEmail({ ...input, to: "patient@example.com\r\nBcc: x@y.z" }).to).not.toMatch(/[\r\n]/);
+  });
+});
+
+describe("privacyRequestCodeEmail", () => {
+  const input = { to: "meera@example.com", code: "730512", expiresInMinutes: 10 };
+  const email = privacyRequestCodeEmail(input);
+
+  it("carries the code and how long it lasts, and says what it is for", () => {
+    expect(email.template).toBe("privacy-request-code");
+    expect(email.subject).toBe("Your privacy request confirmation code");
+    for (const body of [email.bodyText, email.bodyHtml]) {
+      expect(body).toContain("730512");
+      expect(body).toContain("expires in 10 minutes");
+      expect(body).toContain("privacy request");
+    }
+  });
+
+  it("keeps the code out of the subject, and out of the copy the outbox stores", () => {
+    expect(email.subject).not.toContain("730512");
+    expect(email.outboxCopy?.subject).not.toContain("730512");
+    expect(email.outboxCopy?.bodyText).not.toContain("730512");
+    expect(email.outboxCopy?.bodyHtml).not.toContain("730512");
+    expect(email.outboxCopy?.linkWithheld).toBe(true);
+  });
+
+  it("refuses anything but a six-digit code", () => {
+    for (const code of ["12345", "1234567", "12345a", "<b>1</b>", ""]) {
+      expect(() => privacyRequestCodeEmail({ ...input, code })).toThrow("code");
+    }
   });
 });

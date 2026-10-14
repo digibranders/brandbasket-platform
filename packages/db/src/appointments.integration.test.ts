@@ -12,11 +12,9 @@ import {
   findAppointment,
   findAppointmentSettings,
   findBookingOtp,
-  insertSmsMessage,
   listAppointmentServices,
   listAppointmentsForDates,
   listBusyIntervals,
-  listSmsMessages,
   markAppointmentSeen,
   markOtpVerified,
   PatientNotFoundError,
@@ -47,7 +45,6 @@ import {
   practitionerHours,
   practitionerLeave,
   practitioners,
-  smsMessages,
   users,
 } from "./schema";
 import { withTenantScope, type ScopedTransaction, type TenantScope } from "./scope";
@@ -171,6 +168,7 @@ function newOtpPayload(overrides: Partial<BookingOtpPayload> = {}): BookingOtpPa
 function newOtpInput(overrides: Partial<NewBookingOtp> = {}): NewBookingOtp {
   return {
     businessId: businessA,
+    email: "priya@example.com",
     phone: "+919876543210",
     codeHash: "deadbeefcafe",
     payload: newOtpPayload(),
@@ -285,11 +283,6 @@ describe("row-level security once appointments is on", () => {
     expect(message).toMatch(/permission denied for table booking_otps/);
   });
 
-  it("fynix_app cannot SELECT sms_messages", async () => {
-    await insertSmsMessage(dbs.staff.db, { businessId: businessA, toPhone: "+919876543210", body: "111111 is your code" });
-    const message = await captureErrorText(as("ownerA", (tx) => tx.select().from(smsMessages)));
-    expect(message).toMatch(/permission denied for table sms_messages/);
-  });
 });
 
 describe("security properties", () => {
@@ -306,11 +299,6 @@ describe("security properties", () => {
   it("fynix_public is denied on patients", async () => {
     const message = await captureErrorText(dbs.publicRole.db.select().from(patients));
     expect(message).toMatch(/permission denied for table patients/);
-  });
-
-  it("fynix_public is denied on sms_messages", async () => {
-    const message = await captureErrorText(dbs.publicRole.db.select().from(smsMessages));
-    expect(message).toMatch(/permission denied for table sms_messages/);
   });
 
   it("app_module_enabled is not SECURITY DEFINER", async () => {
@@ -1406,10 +1394,18 @@ describe("booking OTPs", () => {
   it("creates and finds an OTP with its payload intact", async () => {
     const otpId = await createBookingOtp(dbs.staff.db, newOtpInput());
     const found = await findBookingOtp(dbs.staff.db, { otpId, businessId: businessA });
+    expect(found?.email).toBe("priya@example.com");
     expect(found?.phone).toBe("+919876543210");
     expect(found?.attempts).toBe(0);
     expect(found?.verifiedAt).toBeNull();
     expect(found?.payload).toEqual(newOtpPayload());
+  });
+
+  it("refuses a code addressed to something that is not an email address, and keeps no table of texts", async () => {
+    const message = await captureErrorText(createBookingOtp(dbs.staff.db, newOtpInput({ email: "9876543210" })));
+    expect(message).toContain("booking_otps_email_check");
+    const tables = await dbs.owner.db.execute<{ tablename: string }>(sql`select tablename from pg_tables where schemaname = 'public' and tablename = 'sms_messages'`);
+    expect(tables.rows).toEqual([]);
   });
 
   it("returns null from findBookingOtp for a non-UUID id", async () => {
@@ -1512,7 +1508,7 @@ describe("purgeExpiredBookingData", () => {
   it("deletes a booking_otps row expired more than an hour ago", async () => {
     const otpId = await createBookingOtp(dbs.staff.db, newOtpInput({ expiresAt: new Date(NOW.getTime() - 61 * 60 * 1000) }));
     const result = await purgeExpiredBookingData(dbs.staff.db, NOW);
-    expect(result).toEqual({ deletedOtps: 1, deletedSmsMessages: 0 });
+    expect(result).toEqual({ deletedOtps: 1 });
     expect(await findBookingOtp(dbs.staff.db, { otpId, businessId: businessA })).toBeNull();
   });
 
@@ -1530,67 +1526,11 @@ describe("purgeExpiredBookingData", () => {
     expect(await findBookingOtp(dbs.staff.db, { otpId, businessId: businessA })).not.toBeNull();
   });
 
-  it("deletes an sms_messages row older than 7 days, keeps one inside the window", async () => {
-    const oldEnough = new Date(NOW.getTime() - 7 * 24 * 60 * 60 * 1000 - 1000);
-    const stillFresh = new Date(NOW.getTime() - 7 * 24 * 60 * 60 * 1000 + 1000);
-    const [oldRow] = await dbs.staff.db
-      .insert(smsMessages)
-      .values({ businessId: businessA, toPhone: "+919876543210", body: "old", createdAt: oldEnough })
-      .returning({ id: smsMessages.id });
-    const [freshRow] = await dbs.staff.db
-      .insert(smsMessages)
-      .values({ businessId: businessA, toPhone: "+919876543210", body: "fresh", createdAt: stillFresh })
-      .returning({ id: smsMessages.id });
-
-    const result = await purgeExpiredBookingData(dbs.staff.db, NOW);
-
-    expect(result).toEqual({ deletedOtps: 0, deletedSmsMessages: 1 });
-    const remaining = await listSmsMessages(dbs.staff.db, 10);
-    expect(remaining.map((row) => row.id)).toEqual([freshRow?.id]);
-    expect(remaining.map((row) => row.id)).not.toContain(oldRow?.id);
-  });
-
   it("is a no-op, returning zero counts, when there is nothing to purge", async () => {
-    // The real clock, not NOW: the SMS row is stamped by the database as it is saved.
-    const now = new Date();
-    await createBookingOtp(dbs.staff.db, newOtpInput({ expiresAt: new Date(now.getTime() + 10 * 60 * 1000) }));
-    await insertSmsMessage(dbs.staff.db, { businessId: businessA, toPhone: "+919876543210", body: "111111 is your code" });
-    expect(await purgeExpiredBookingData(dbs.staff.db, now)).toEqual({ deletedOtps: 0, deletedSmsMessages: 0 });
+    await createBookingOtp(dbs.staff.db, newOtpInput({ expiresAt: new Date(NOW.getTime() + 10 * 60 * 1000) }));
+    expect(await purgeExpiredBookingData(dbs.staff.db, NOW)).toEqual({ deletedOtps: 0 });
   });
 });
-
-describe("SMS outbox", () => {
-  it("records and lists messages, newest first", async () => {
-    await insertSmsMessage(dbs.staff.db, { businessId: businessA, toPhone: "+919876543210", body: "111111 is your code" });
-    await insertSmsMessage(dbs.staff.db, { businessId: businessA, toPhone: "+919876543210", body: "222222 is your code" });
-    const listed = await listSmsMessages(dbs.staff.db, 10);
-    expect(listed.map((row) => row.body)).toEqual(["222222 is your code", "111111 is your code"]);
-    expect(listed[0]?.transport).toBe("outbox");
-  });
-
-  it("clamps the limit to between 1 and 200", async () => {
-    await insertSmsMessage(dbs.staff.db, { businessId: businessA, toPhone: "+919876543210", body: "111111 is your code" });
-    await insertSmsMessage(dbs.staff.db, { businessId: businessA, toPhone: "+919876543210", body: "222222 is your code" });
-    expect(await listSmsMessages(dbs.staff.db, 0)).toHaveLength(1);
-    expect(await listSmsMessages(dbs.staff.db, -5)).toHaveLength(1);
-    expect(await listSmsMessages(dbs.staff.db, 1.9)).toHaveLength(1);
-    expect(await listSmsMessages(dbs.staff.db, 10_000)).toHaveLength(2);
-  });
-
-  it("breaks ties on id when several messages share the same created_at", async () => {
-    // A single multi-row INSERT: created_at's DEFAULT now() is evaluated once for the whole statement, so both
-    // rows land with an identical created_at. A shared created_at must still come back in one stable order across
-    // calls, which only an id tiebreaker in the ORDER BY can guarantee.
-    await dbs.staff.db.insert(smsMessages).values([
-      { businessId: businessA, toPhone: "+919876543210", body: "first" },
-      { businessId: businessA, toPhone: "+919876543210", body: "second" },
-    ]);
-    const first = await listSmsMessages(dbs.staff.db, 10);
-    const second = await listSmsMessages(dbs.staff.db, 10);
-    expect(first.map((row) => row.id)).toEqual(second.map((row) => row.id));
-  });
-});
-
 
 describe("bookSlot and a patient who already has a booking at that time", () => {
   let first = "";

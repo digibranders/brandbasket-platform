@@ -108,8 +108,8 @@ export function createAuth(config: AuthConfig) {
           },
         }),
     user: {
-      // A free listing owner's number (packages/db schema/auth.ts). Set only by createPhoneAccountWithGrant: this
-      // app serves none of Better Auth's own HTTP routes, so no request body ever reaches these fields.
+      // The number an older account signs in with (packages/db schema/auth.ts). Nothing opens an account with one any
+      // more, and this app serves none of Better Auth's own HTTP routes, so no request body ever reaches these fields.
       additionalFields: {
         phoneNumber: { type: "string", required: false },
         phoneNumberVerified: { type: "boolean", required: false, defaultValue: false },

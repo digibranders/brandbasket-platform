@@ -20,9 +20,9 @@ import { generateOtpCode, hashOtpCode, otpCodeMatches } from "./otp-crypto";
 import { getPublicDb } from "./public-db";
 
 /**
- * The code emailed to an address to open an account with it (the Fynix sign-up): the same rules as the code texted to a
- * mobile number (./account-otp.ts) -- 6 digits, 10 minutes, 5 tries, HMAC with ACCOUNT_CODE_SECRET (or BOOKING_OTP_SECRET), used once -- and the
- * same budgets, with the address in the phone number's place. Only a sign-up has one: a forgotten password is a link
+ * The code emailed to an address to open an account with it (the Fynix sign-up): 6 digits, 10 minutes, 5 tries, HMAC with
+ * ACCOUNT_CODE_SECRET (see accountCodeSecret in ./env.ts), used once, with a budget per network, per address and overall.
+ * A patient's booking code (./booking-otp.ts) and a privacy request's (./privacy-requests.ts) follow the same rules. Only a sign-up has one here: a forgotten password is a link
  * (./account-recovery.ts), never a code that could be guessed.
  *
  * EMAIL_CODE_BYPASS (see emailCodeBypassed in ./env.ts) is for local development: the code is still emailed, and so is
@@ -153,7 +153,7 @@ export type AccountEmailCodeConfirmOutcome =
 
 /**
  * Checks the code and, when it is right, uses it up: `confirmed` is returned to exactly one caller, who then acts on it.
- * A code for another address, or one that is not a sign-up's, counts as a wrong code and costs a try like one.
+ * A code for another address counts as a wrong code and costs a try like one.
  */
 export async function confirmAccountEmailCode(
   input: AccountEmailCodeConfirmation,
@@ -171,11 +171,8 @@ export async function confirmAccountEmailCode(
   if (attempt === null) return { kind: "expired" };
 
   // With the local bypass on any six digits match; the attempt was still claimed above, so the step keeps its expiry and
-  // its tries, and still has to be this address's and a sign-up's own.
-  const matches =
-    attempt.purpose === "signup" &&
-    attempt.email === input.email &&
-    (emailCodeBypassed() || otpCodeMatches(attempt.codeHash, input.otpId, input.code, secret));
+  // its tries, and still has to be this address's own.
+  const matches = attempt.email === input.email && (emailCodeBypassed() || otpCodeMatches(attempt.codeHash, input.otpId, input.code, secret));
   if (!matches) {
     const triesLeft = OTP_MAX_ATTEMPTS - attempt.attempts;
     return triesLeft > 0 ? { kind: "wrong_code", triesLeft } : { kind: "expired" };

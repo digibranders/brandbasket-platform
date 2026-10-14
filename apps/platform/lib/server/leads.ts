@@ -71,7 +71,7 @@ async function notifyTeam(leadId: string, lead: LeadInput): Promise<void> {
         businessName: lead.businessName,
         businessType: businessTypeLabel(lead.businessType),
         email: lead.email,
-        phone: displayPhone(lead.phone).text,
+        phone: lead.phone === null ? null : displayPhone(lead.phone).text,
         message: lead.message,
         leadUrl: new URL(`/leads/${leadId}`, serverEnv().ADMIN_ORIGIN).toString(),
       }),

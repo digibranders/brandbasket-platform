@@ -255,7 +255,7 @@ export interface StaffDirectoryComment {
   /** The full name, for staff only (an owner's account name). */
   readonly commenterName: string;
   readonly authorKind: DirectoryCommentAuthor;
-  /** The visitor's number; null for the business's own owner, who is signed in rather than texted a code. */
+  /** The visitor's number; null for the business's own owner, who is signed in and needs no code. */
   readonly phone: string | null;
   readonly text: string;
   readonly status: DirectoryReviewStatus;

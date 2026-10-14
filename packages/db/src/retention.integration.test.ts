@@ -61,8 +61,8 @@ beforeEach(async () => {
     { key: "dir-review-otp:ip:203.0.113.9", windowStart: ago(30 * DAY), count: 1 },
   ]);
   await dbs.owner.db.insert(accountOtps).values([
-    { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b", purpose: "signup", phone: "+919820011223", codeHash: "h", expiresAt: ago(3 * 60 * 60 * 1000) },
-    { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c", purpose: "signup", phone: "+919820011224", codeHash: "h", expiresAt: ahead(60 * 1000) },
+    { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b", purpose: "signup", email: "ran.out@example.test", codeHash: "h", expiresAt: ago(3 * 60 * 60 * 1000) },
+    { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c", purpose: "signup", email: "live@example.test", codeHash: "h", expiresAt: ahead(60 * 1000) },
   ]);
 });
 

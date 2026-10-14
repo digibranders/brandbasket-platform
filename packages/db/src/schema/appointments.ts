@@ -30,7 +30,7 @@ export const appointmentStatus = pgEnum("appointment_status", ["booked", "cancel
 export type AppointmentStatus = (typeof appointmentStatus.enumValues)[number];
 
 /** How a booking was made: `online` through the client site's OTP flow, `clinic` by reception's Add booking (a walk-in
- * or a phone call), which skips the SMS code because the clinic is booking deliberately for someone in front of it. */
+ * or a phone call), which skips the emailed code because the clinic is booking deliberately for someone in front of it. */
 export const appointmentSource = pgEnum("appointment_source", ["online", "clinic"]);
 export type AppointmentSource = (typeof appointmentSource.enumValues)[number];
 
@@ -231,12 +231,13 @@ export const appointments = pgTable(
 );
 
 /**
- * One pending booking's OTP challenge. `payload` holds the parsed booking fields the OTP will turn into an
- * appointment once verified (name, phone, email, serviceId, serviceName, date, start, end, note, startsAt, endsAt),
- * so the confirm step only needs `{otpId, code}` -- nothing about the booking is re-sent by the client. `code_hash`
- * is an HMAC-SHA256 of the 6-digit code with BOOKING_OTP_SECRET; the plaintext code is never stored. Staff-only:
- * the client site never reads or writes this table directly, only through the platform's own server routes on the
- * staff connection.
+ * One pending booking's code challenge. `payload` holds the parsed booking fields the code will turn into an
+ * appointment once confirmed (name, phone, serviceId, serviceName, date, start, end, startsAt, endsAt, practitionerId),
+ * so the confirm step only needs `{otpId, code}` -- nothing about the booking is re-sent by the client. `email` is the
+ * address the code was emailed to and so the one the patient proved; `phone` is the number the clinic calls, collected
+ * but never verified, and nothing is sent to it (the patients registry keys on it). `code_hash` is an HMAC-SHA256 of the 6-digit code
+ * with the account code secret; the plaintext code is never stored. Staff-only: the client site never reads or writes
+ * this table directly, only through the platform's own server routes on the staff connection.
  */
 export const bookingOtps = pgTable(
   "booking_otps",
@@ -247,6 +248,8 @@ export const bookingOtps = pgTable(
     businessId: uuid("business_id")
       .notNull()
       .references(() => businesses.id),
+    /** Trimmed and lowercased: where the code was emailed. */
+    email: text("email").notNull(),
     phone: text("phone").notNull(),
     codeHash: text("code_hash").notNull(),
     payload: jsonb("payload").notNull(),
@@ -257,29 +260,9 @@ export const bookingOtps = pgTable(
   },
   (table) => [
     index("booking_otps_business_id_phone_created_at_idx").on(table.businessId, table.phone, table.createdAt),
+    check("booking_otps_email_check", sql`${table.email} ~ '^[^@[:space:]]+@[^@[:space:]]+$' AND char_length(${table.email}) <= 254`),
     check("booking_otps_phone_check", sql`${table.phone} ~ '^\\+[0-9]{8,15}$'`),
     check("booking_otps_code_hash_check", sql`char_length(${table.codeHash}) > 0`),
     check("booking_otps_attempts_check", sql`${table.attempts} >= 0`),
   ],
-);
-
-/**
- * Every SMS the platform sends, most of all the OTP codes: there is no SMS provider configured yet, so
- * createSmsSender()'s default "outbox" transport records the message here instead of sending it, and the admin
- * outbox page is the only place the code is visible locally. `business_id` is nullable because a future transport
- * failure notice or platform-level message may not belong to one tenant. Staff-only, same as booking_otps.
- */
-export const smsMessages = pgTable(
-  "sms_messages",
-  {
-    id: uuid("id")
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
-    businessId: uuid("business_id").references(() => businesses.id),
-    toPhone: text("to_phone").notNull(),
-    body: text("body").notNull(),
-    transport: text("transport").notNull().default("outbox"),
-    createdAt: createdAt(),
-  },
-  (table) => [index("sms_messages_created_at_idx").on(table.createdAt)],
 );

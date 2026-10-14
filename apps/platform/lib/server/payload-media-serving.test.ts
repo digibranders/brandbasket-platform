@@ -97,7 +97,7 @@ describe("servePayloadMediaFile for published website content", () => {
     findByID.mockResolvedValue({ filename: "photo.png", mimeType: "image/png", businessId: BUSINESS_A });
     mockedReadFile.mockResolvedValue(Buffer.from("fake-bytes"));
 
-    const publicResponse = await servePayloadMediaFile("5", null, { publicContent: true });
+    const publicResponse = await servePayloadMediaFile("5", null, { sharing: "public" });
     const privateResponse = await servePayloadMediaFile("5", null);
 
     expect(publicResponse.headers.get("Cross-Origin-Resource-Policy")).toBe("cross-origin");
@@ -105,5 +105,15 @@ describe("servePayloadMediaFile for published website content", () => {
     expect(publicResponse.headers.get("Cache-Control")).toBe("public, max-age=300");
     expect(privateResponse.headers.get("Cross-Origin-Resource-Policy")).toBe("same-origin");
     expect(privateResponse.headers.get("Cache-Control")).toBe("private, no-cache");
+  });
+
+  it("keeps a draft's image out of every shared cache while letting its author's website show it", async () => {
+    findByID.mockResolvedValue({ filename: "photo.png", mimeType: "image/png", businessId: BUSINESS_A });
+    mockedReadFile.mockResolvedValue(Buffer.from("fake-bytes"));
+
+    const response = await servePayloadMediaFile("5", BUSINESS_A, { sharing: "preview" });
+
+    expect(response.headers.get("Cross-Origin-Resource-Policy")).toBe("cross-origin");
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
   });
 });

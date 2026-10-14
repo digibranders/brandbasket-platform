@@ -40,7 +40,7 @@ interface ReviewTabProps {
   /** The brand the dashboard is sold under: it names the directory the page goes live on. */
   readonly brand: Brand;
   readonly publishAction: (formData: FormData) => Promise<void>;
-  /** The Verify section's body (components/panel/business/verify-business.tsx), or null when there is nothing to show. */
+  /** The Verify section's body (components/panel/business/verified-line.tsx), or null when there is nothing to show. */
   readonly verification: ReactNode;
 }
 

@@ -42,7 +42,6 @@ export type ProfileNotice =
   | "video-invalid"
   | "needs-details"
   | "published"
-  | "verified"
   | "google-imported"
   | "google-failed"
   | "google-empty"
@@ -87,7 +86,6 @@ export const PROFILE_NOTICES: Readonly<Record<ProfileNotice, NoticeText>> = {
   "video-invalid": { ok: false, text: "Paste the link to one YouTube video, like youtube.com/watch?v=… or youtu.be/…." },
   "needs-details": { ok: false, text: "Save your Identity first, then add the video." },
   published: { ok: true, text: "Your business is live on the local directory." },
-  verified: { ok: true, text: "Your business is verified." },
   "google-imported": { ok: true, text: "We found your Google Business Profile. Check the details below, then save." },
   "google-failed": { ok: false, text: "We couldn't read your Google Business Profile. Try again, or fill in the details yourself." },
   "google-empty": { ok: false, text: "That Google account doesn't manage any business locations." },

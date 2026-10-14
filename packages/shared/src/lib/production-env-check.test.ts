@@ -78,8 +78,8 @@ describe("checkProductionEnv", () => {
     expect(problems({ ...PLATFORM, NEXT_PUBLIC_APP_URL: "https://elsewhere.example" }, ADMIN).join("\n")).toMatch(/NEXT_PUBLIC_APP_URL/);
   });
 
-  it("refuses every bypass switch and the fake billing allowance, in either file", () => {
-    for (const name of ["EMAIL_CODE_BYPASS", "SIGNUP_OTP_BYPASS", "BOOKING_OTP_BYPASS", "VERIFY_OTP_BYPASS", "FYNIX_ALLOW_FAKE_BILLING"]) {
+  it("refuses the emailed code bypass and the fake billing allowance, in either file", () => {
+    for (const name of ["EMAIL_CODE_BYPASS", "FYNIX_ALLOW_FAKE_BILLING"]) {
       expect(problems({ ...PLATFORM, [name]: "true" }, ADMIN).join("\n")).toContain(name);
       expect(problems(PLATFORM, { ...ADMIN, [name]: "1" }).join("\n")).toContain(name);
     }

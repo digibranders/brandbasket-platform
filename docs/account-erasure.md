@@ -15,7 +15,7 @@ with the month they paid for. Their data is kept, restorable, for 30 days after 
    account is left open and the next run tries again.
 3. **Erases the rows** in one transaction: patients, bookings, practitioners, the business's details, hours, content,
    directory listing, pictures, claims and deals, the sales lead and its setup links, the sign-in (sessions, accounts,
-   verification tokens), the outbox emails and texted codes to that person. The person's row is scrubbed (name, email,
+   verification tokens), the outbox emails and sign-up codes to that person. The person's row is scrubbed (name, email,
    phone and image), not deleted.
 4. **Removes the stored files** (pictures and uploads) the erased rows pointed at. A file that cannot be removed is logged
    and counted in `filesNotRemoved`; it is unreferenced and cannot be served.

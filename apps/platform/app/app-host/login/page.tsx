@@ -13,38 +13,22 @@ import { requestBrand } from "@/lib/server/request-brand";
 import { readEntryRequest } from "@/lib/account-entry";
 import { RESTORE_ACCOUNT_PATH } from "@/lib/account-settings-form";
 import { FORGOT_PASSWORD_PATH } from "@/lib/account-recovery-form";
-import { claimedBusinessName, LISTING_KEY_PATTERN, PLACE_ID_PATTERN } from "@/lib/directory-api";
 import { membershipPathFor, membershipPriceLine, membershipTierForChoice } from "@/lib/membership";
 import { AFFILIATE_PATH } from "@fynix/shared/lib/affiliate-links";
 import { accountLabel } from "@/lib/server/account-label";
 import { getAffiliateAccess } from "@/lib/server/affiliate-access";
 import { getCustomerAccess } from "@/lib/server/customer-access";
-import { emailCodeBypassed, signupOtpBypassed } from "@/lib/server/env";
+import { emailCodeBypassed } from "@/lib/server/env";
 
 import { legalLinksFor } from "@/lib/legal-links";
-import { checkClaimLink, type ClaimLink } from "@/lib/server/listing-account";
 import { getMembershipPlan } from "@/lib/server/membership";
 import { signOut } from "@/lib/server/sign-out";
 import { joinForListing, signInCustomer } from "./actions";
 
 export const metadata: Metadata = { title: "Sign in or create your account" };
 
-// Never cached: it reads the session, and a claim link's signature is checked against the address it arrived with.
+// Never cached: it reads the session.
 export const dynamic = "force-dynamic";
-
-const CLAIM_LINK_FAILED_MESSAGE =
-  "That claim link didn\u2019t work. Open your business\u2019s page on the local directory and tap \u201cClaim this business\u201d again, or create your account below and add your business.";
-
-/**
- * The claim a link asks for, when it is shaped like one: a name and exactly one of a listing key or a place id. Null
- * otherwise. The signature and the place are checked by checkClaimLink.
- */
-function claimLinkOf(listing: string, id: string, businessName: string, signature: string): ClaimLink | null {
-  if (businessName === "") return null;
-  if (id === "" && LISTING_KEY_PATTERN.test(listing)) return { listing, businessName, signature };
-  if (listing === "" && PLACE_ID_PATTERN.test(id)) return { placeId: id, businessName, signature };
-  return null;
-}
 
 interface AppLoginPageProps {
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;
@@ -52,12 +36,11 @@ interface AppLoginPageProps {
 
 /**
  * The one entry page (docs/superpowers/specs/2026-09-30-single-entry-premium-design.md). Everyone signs in here, and
- * everyone creates their account here, choosing the free listing, the Care plan or the Premium membership. The
- * Create account view shows the three at once (docs/superpowers/specs/2026-10-07-care-plan-design.md).
+ * everyone creates their account here, choosing the Care plan or the Premium membership
+ * (docs/superpowers/specs/2026-10-07-care-plan-design.md).
  *
- * A business's page on the local directory links to it as a claim (`listing`, `name` and the website's signature over
- * both); the website's plan buttons link to it with `plan=care` or `plan=premium`. Someone already signed in goes to
- * their dashboard, or to the plan's page when that is what they came for.
+ * The website's plan buttons link to it with `plan=care` or `plan=premium`. Someone already signed in goes to their
+ * dashboard, or to the plan's page when that is what they came for.
  */
 export default async function AppLoginPage({ searchParams }: AppLoginPageProps): Promise<ReactElement> {
   const params = await searchParams;
@@ -113,7 +96,7 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
             action={signInCustomer}
             turnstileAction="sign_in"
             submitLabel="Sign in"
-            identifier={brand.signUpWith === "email" ? "customer-email" : "phone-or-email"}
+            identifier="customer-email"
             forgotPasswordHref={FORGOT_PASSWORD_PATH}
             notice={noticeText}
             agreementNote={
@@ -140,50 +123,8 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
     care: carePlan === null ? null : membershipPriceLine(carePlan),
     premium: premiumPlan === null ? null : membershipPriceLine(premiumPlan),
   };
-  // While codes are not sent (SIGNUP_OTP_BYPASS, or EMAIL_CODE_BYPASS under Fynix) the form must not promise one.
-  const textsCodes = brand.signUpWith === "email" ? !emailCodeBypassed() : !signupOtpBypassed();
-
-  const { listing, id, signature } = entry.claim;
-  const businessName = claimedBusinessName(entry.claim.name);
-  const claimAsked = listing !== "" || id !== "" || businessName !== "";
-  // A claim is only taken from a link the directory's own page made: the business (its listing key or its permanent
-  // id, never both) and the name it is claimed under are signed, so neither can be typed into the address bar. A
-  // place that cannot be claimed (it has an owner already) is refused here too, rather than after the code is texted.
-  const link = claimLinkOf(listing, id, businessName, signature);
-  const claimCheck = link === null ? null : await checkClaimLink(link);
-  const claimValid = claimCheck?.ok === true;
-  const claimMessage = claimCheck !== null && !claimCheck.ok ? claimCheck.message : null;
-
-  if (claimValid) {
-    return (
-      <EntryScreen
-        title={
-          <>
-            Claim <em>{businessName}.</em>
-          </>
-        }
-        lede="Create your account with the business's mobile number: we'll call it to confirm it's yours."
-        switcher={<EntrySwitch current="create" />}
-      >
-        <TurnstileScope>
-          <JoinForm
-            action={joinForListing}
-            listing={listing === "" ? null : listing}
-            placeId={id === "" ? null : id}
-            businessName={businessName}
-            signature={signature}
-            initialChoice={entry.choice}
-            preselected={entry.preselected}
-            choices={brand.joinChoices}
-            legalLinks={legalLinks}
-            prices={prices}
-            signUpWith={brand.signUpWith}
-            textsCodes={textsCodes}
-          />
-        </TurnstileScope>
-      </EntryScreen>
-    );
-  }
+  // With the local bypass on (EMAIL_CODE_BYPASS) any six digits are accepted, so the form must not promise a real check.
+  const confirmsCodes = !emailCodeBypassed();
 
   return (
     <EntryScreen
@@ -195,25 +136,15 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
       lede={`One account for your business on ${brand.name}.`}
       switcher={<EntrySwitch current="create" />}
     >
-      {claimAsked ? (
-        <p role="alert" className="mb-5 rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
-          {claimMessage ?? CLAIM_LINK_FAILED_MESSAGE}
-        </p>
-      ) : null}
       <TurnstileScope>
         <JoinForm
           action={joinForListing}
-          listing={null}
-          placeId={null}
-          businessName=""
-          signature=""
           initialChoice={entry.choice}
           preselected={entry.preselected}
           choices={brand.joinChoices}
           legalLinks={legalLinks}
           prices={prices}
-          signUpWith={brand.signUpWith}
-          textsCodes={textsCodes}
+          confirmsCodes={confirmsCodes}
         />
       </TurnstileScope>
     </EntryScreen>

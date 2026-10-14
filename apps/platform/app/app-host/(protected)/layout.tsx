@@ -46,7 +46,7 @@ export default async function AppProtectedLayout({ children }: AppProtectedLayou
         businessId={businessId}
         newLeadCount={newLeadCount}
       >
-        {/* An account opened with a mobile number proved it with a texted code, and has no address to confirm. */}
+        {/* An account opened with a mobile number has no address to confirm. */}
         {user.emailConfirmed || user.phone !== null ? null : (
           <EmailConfirmationBanner email={user.email} resend={resendEmailConfirmationAction} />
         )}

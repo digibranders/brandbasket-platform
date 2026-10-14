@@ -31,7 +31,7 @@ if [[ ! -r "$SECRETS_FILE" ]]; then
 fi
 
 # Read the one value needed rather than sourcing the whole file into this shell.
-owner_pw="$(grep -E '^OWNER_PW=' "$SECRETS_FILE" | head -n 1 | cut -d= -f2-)"
+owner_pw="$({ grep -E '^OWNER_PW=' "$SECRETS_FILE" || true; } | head -n 1 | cut -d= -f2-)"
 owner_pw="${owner_pw#\"}"; owner_pw="${owner_pw%\"}"
 owner_pw="${owner_pw#\'}"; owner_pw="${owner_pw%\'}"
 if [[ -z "$owner_pw" ]]; then
@@ -40,8 +40,15 @@ if [[ -z "$owner_pw" ]]; then
 fi
 
 # Percent-encode the password so any character is safe inside the URL.
-owner_url="$(OWNER_PW="$owner_pw" DB_OWNER="$DB_OWNER" DB_NAME="$DB_NAME" node -e \
-  'process.stdout.write("postgresql://" + process.env.DB_OWNER + ":" + encodeURIComponent(process.env.OWNER_PW) + "@localhost:5432/" + process.env.DB_NAME)')"
+# The values go to node under names of their own: DB_OWNER and DB_NAME are read-only above, and bash 5 refuses to set a
+# read-only variable even as a one-command prefix, which left node with no user and built "postgresql://undefined:...".
+owner_url="$(OWNER_PW="$owner_pw" PG_USER="$DB_OWNER" PG_DB="$DB_NAME" node -e \
+  'process.stdout.write("postgresql://" + process.env.PG_USER + ":" + encodeURIComponent(process.env.OWNER_PW) + "@localhost:5432/" + process.env.PG_DB)')"
+# A malformed address would only show up as a confusing "password authentication failed" later: refuse it here, loudly.
+case "$owner_url" in
+  "postgresql://$DB_OWNER:"*"@localhost:5432/$DB_NAME") ;;
+  *) echo "fynix-migrate: could not build the owner connection address (internal error)." >&2; exit 1 ;;
+esac
 
 # Only ever a release directory: the symlink is deploy's to set, but the code it points at runs as deploy below, never as
 # root, so following it hands deploy nothing it does not already have.
@@ -54,7 +61,7 @@ cd "$app_root"
 # packages/db/scripts/migrate.ts lets an already-set variable win over the env file, so the owner connection exists only
 # for this one process and is never written to disk.
 if [[ "${FYNIX_MIGRATE_DRY_RUN:-0}" == 1 ]]; then
-  echo "[dry-run] would run as $DEPLOY_USER in $app_root: pnpm db:migrate (database $DB_NAME as $DB_OWNER)"
+  echo "[dry-run] would run as $DEPLOY_USER in $app_root: pnpm db:migrate (database $DB_NAME as $DB_OWNER; address user: $(printf %s "$owner_url" | sed -E 's#^postgresql://([^:]*):.*/([^/]*)$#\1 db \2#'))"
   exit 0
 fi
 exec runuser -u "$DEPLOY_USER" -- env HOME="/home/$DEPLOY_USER" DATABASE_URL_OWNER="$owner_url" pnpm db:migrate

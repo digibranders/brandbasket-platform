@@ -6,7 +6,7 @@ import { issueVisitorToken } from "./visitor-token";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({})) }));
-vi.mock("./env", () => ({ bookingOtpSecret: () => "s".repeat(32) }));
+vi.mock("./env", () => ({ accountCodeSecret: () => "s".repeat(32) }));
 vi.mock("./visitor-consent", () => ({ recordContributionConsent: vi.fn() }));
 vi.mock("@fynix/db", () => ({ findDirectoryVisitor: vi.fn(), touchDirectoryVisitor: vi.fn(), upsertDirectoryVisitor: vi.fn() }));
 

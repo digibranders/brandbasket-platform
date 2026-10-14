@@ -4,6 +4,13 @@ import { activeAnnouncement } from "@fynix/shared/lib/business-facts/announcemen
 import { upcomingClosures } from "@fynix/shared/lib/business-facts/closures";
 import type { SiteInfo, SiteInfoBooking, SiteInfoClosure, SiteInfoHours, SiteInfoPractitioner } from "@/lib/site-info";
 
+/**
+ * The zone a business's hours, closures and announcement are read in until it has chosen one (it is set when
+ * Appointments is switched on). Fynix serves businesses in India, so this is the right answer far more often than
+ * UTC, which would roll "today" over at 5:30 am local time.
+ */
+export const DEFAULT_SITE_TIME_ZONE = "Asia/Kolkata";
+
 export interface BuildSiteInfoInput {
   readonly businessName: string;
   readonly facts: SiteFacts;
@@ -74,12 +81,13 @@ function toBooking(booking: BookingContext, practitioners: readonly Practitioner
 
 /** Pure: turns a business's facts and booking context into what `GET /api/site/info` returns. No I/O. */
 export function buildSiteInfo(input: BuildSiteInfoInput): SiteInfo {
-  const today = localDateIn(input.facts.timeZone ?? "UTC", input.now);
+  const timeZone = input.facts.timeZone ?? DEFAULT_SITE_TIME_ZONE;
+  const today = localDateIn(timeZone, input.now);
   const announcement = activeAnnouncement(input.facts.announcement, today);
 
   return {
     business: input.businessName,
-    timeZone: input.facts.timeZone,
+    timeZone,
     today,
     hours: toHours(input.facts),
     closures: toClosures(input.facts, today),

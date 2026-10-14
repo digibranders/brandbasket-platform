@@ -35,7 +35,7 @@ export function parseEnvFile(text: string): Record<string, string> {
 
 const MIN_SECRET_LENGTH = 32;
 /** Never set where real customers can reach the app. */
-const FORBIDDEN = ["EMAIL_CODE_BYPASS", "SIGNUP_OTP_BYPASS", "BOOKING_OTP_BYPASS", "VERIFY_OTP_BYPASS", "FYNIX_ALLOW_FAKE_BILLING"] as const;
+const FORBIDDEN = ["EMAIL_CODE_BYPASS", "FYNIX_ALLOW_FAKE_BILLING"] as const;
 const SHARED_EQUAL = ["BETTER_AUTH_SECRET", "PAYLOAD_SECRET", "APP_ORIGIN", "ADMIN_ORIGIN", "DATABASE_URL_PAYLOAD"] as const;
 const SECRETS: Readonly<Record<RequirementsApp, readonly string[]>> = {
   platform: ["BETTER_AUTH_SECRET", "PAYLOAD_SECRET", "ACCOUNT_CODE_SECRET"],

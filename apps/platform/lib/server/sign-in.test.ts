@@ -3,11 +3,8 @@ import type { Auth } from "@fynix/auth";
 import { isInvalidCredentialsError } from "@fynix/auth";
 import { consumeRateLimit, findUserByPhone, type Database, type RateLimitResult } from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BRAND } from "@/lib/brand";
-import { LISTING_BRAND } from "@/lib/testing/listing-brand";
 import { getAuth } from "./auth";
 import { getAppDb } from "./db";
-import { requestBrand } from "./request-brand";
 import { signInWithPassword } from "./sign-in";
 import { noteSecurityEvent } from "./security-events";
 
@@ -44,7 +41,6 @@ vi.mock("./customer-sign-in", async () => {
   };
 });
 vi.mock("./db", () => ({ getAppDb: vi.fn() }));
-vi.mock("./request-brand", () => ({ requestBrand: vi.fn() }));
 vi.mock("./security-events", () => ({ noteSecurityEvent: vi.fn(async () => undefined) }));
 
 const mockedHeaders = vi.mocked(headers);
@@ -78,7 +74,6 @@ describe("signInWithPassword", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mockedHeaders.mockResolvedValue(requestHeaders);
-    vi.mocked(requestBrand).mockResolvedValue(LISTING_BRAND);
     mockedGetAppDb.mockReturnValue({} as unknown as Database);
     mockedGetAuth.mockReturnValue({ api: { signInEmail } } as unknown as Auth);
     mockedConsumeRateLimit.mockResolvedValue(ALLOWED);
@@ -89,13 +84,12 @@ describe("signInWithPassword", () => {
   it("returns the parse error for invalid form input, never checking limits or calling signInEmail", async () => {
     const outcome = await signInWithPassword(form({ identifier: "", password: "secret-pass" }));
 
-    expect(outcome).toEqual({ status: "error", message: "Enter your mobile number.", email: "" });
+    expect(outcome).toEqual({ status: "error", message: "Enter your email address.", email: "" });
     expect(mockedConsumeRateLimit).not.toHaveBeenCalled();
     expect(signInEmail).not.toHaveBeenCalled();
   });
 
-  it("asks a Fynix sign-in for an email address, and signs in with one", async () => {
-    vi.mocked(requestBrand).mockResolvedValue(BRAND);
+  it("asks for an email address, and signs in with one", async () => {
     expect(await signInWithPassword(form({ identifier: " ", password: "secret-pass" }))).toEqual({ status: "error", message: "Enter your email address.", email: "" });
     expect(await signInWithPassword(form(VALID_FORM))).toEqual({ status: "signed-in", userId: "user-1" });
     expect(signInEmail).toHaveBeenCalledWith({ body: { email: NORMALISED_EMAIL, password: VALID_FORM.password }, headers: requestHeaders });

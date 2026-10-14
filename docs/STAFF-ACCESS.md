@@ -61,7 +61,7 @@ is unusually high; bursts of blocked sign-ins also email the team (`docs/operati
 
 ## Two-factor authentication: it does not exist
 
-There is **no second factor** in this console today: not an authenticator app, not an email or SMS code, not a passkey. A
+There is **no second factor** in this console today: not an authenticator app, not an emailed code, not a passkey. A
 staff account is protected by its password alone (plus the limits above). Treat that as the main risk of exposing the console to the internet.
 
 ## Recommendations

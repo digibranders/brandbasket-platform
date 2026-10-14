@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 import { isBookingHoneypotFilled, parseBookingFields } from "@fynix/shared/lib/appointments/booking-form";
 import type { BookingInput } from "@fynix/shared/lib/appointments/booking-form";
 import { OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
-import type { SiteBookingFields, SiteOtpResponse } from "@/lib/site-bookings";
+import { emailHint } from "@/lib/email-hint";
+import type { SiteOtpResponse } from "@/lib/site-bookings";
 import { siteOtpRequestSchema } from "@/lib/site-bookings-schema";
 import { TAKEN_MESSAGE } from "./booking-confirm";
 import type { BookingOtpOutcome } from "./booking-otp";
@@ -21,7 +22,7 @@ const UNAVAILABLE_MESSAGE = "Online booking isn't available. Please call us.";
 
 export interface BookingOtpIntakeDeps {
   readonly findTenant: (token: string) => Promise<SiteApiTenant | null>;
-  /** Decides, rate-limits, creates and sends the OTP. */
+  /** Decides, rate-limits, creates the code and emails it. */
   readonly requestOtp: (businessId: string, input: BookingInput, clientIp: string, now: Date) => Promise<BookingOtpOutcome>;
   readonly now: () => Date;
 }
@@ -31,13 +32,10 @@ function reply(status: number, body: SiteOtpResponse | { readonly error: string 
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
-/** A plausible-looking (but meaningless) phone hint for the honeypot's fake success, from whatever digits the bot
- * happened to send -- never validated or normalised, since nothing about a honeypot hit is ever stored or acted
- * on. */
-function fakePhoneHint(rawPhone: string): string {
-  const digits = rawPhone.replace(/\D/g, "");
-  const lastFour = digits.length >= 4 ? digits.slice(-4) : "0000";
-  return `•••• ${lastFour}`;
+/** A plausible-looking (but meaningless) email hint for the honeypot's fake success, from whatever the bot happened to
+ * send -- never validated or normalised, since nothing about a honeypot hit is ever stored or acted on. */
+function fakeEmailHint(rawEmail: string | null | undefined): string {
+  return emailHint((rawEmail ?? "").trim().toLowerCase());
 }
 
 /**
@@ -48,10 +46,11 @@ function fakePhoneHint(rawPhone: string): string {
  * 3. a JSON content type, or 415
  * 4. a body within 16 KB, or 413
  * 5. the agreed shape, or 400
- * 6. a filled honeypot answers a fake 200 `otp_sent` with a random id; nothing is stored or sent
+ * 6. a filled honeypot answers a fake 200 `otp_sent` with a random id; nothing is stored or emailed
  * 7. the form's own validation, or 422 with the message and field to show
  * Then `requestOtp` decides whether the business is taking bookings, whether the service and slot are valid,
- * applies its rate limits, and creates and sends the OTP; its outcome maps onto the response below.
+ * applies its rate limits, and creates the code and emails it to the patient's address; its outcome maps onto the
+ * response below.
  */
 export async function handleBookingOtpRequest(request: Request, deps: BookingOtpIntakeDeps): Promise<Response> {
   if (request.method !== "POST") return reply(405, { error: "Method not allowed." });
@@ -88,12 +87,11 @@ export async function handleBookingOtpRequest(request: Request, deps: BookingOtp
 
   // A bot gets a fake success, so it learns nothing. Nothing is recorded or sent.
   if (isBookingHoneypotFilled(parsedRequest.data.fields)) {
-    const fields: SiteBookingFields = parsedRequest.data.fields;
     return reply(200, {
       status: "otp_sent",
       otpId: randomUUID(),
       expiresInSeconds: OTP_TTL_SECONDS,
-      phoneHint: fakePhoneHint(fields.phone),
+      emailHint: fakeEmailHint(parsedRequest.data.fields.email),
     });
   }
 
@@ -105,7 +103,7 @@ export async function handleBookingOtpRequest(request: Request, deps: BookingOtp
   const outcome = await deps.requestOtp(tenant.businessId, parsed.data, parsedRequest.data.clientIp, deps.now());
   switch (outcome.kind) {
     case "otp_sent":
-      return reply(200, { status: "otp_sent", otpId: outcome.otpId, expiresInSeconds: outcome.expiresInSeconds, phoneHint: outcome.phoneHint });
+      return reply(200, { status: "otp_sent", otpId: outcome.otpId, expiresInSeconds: outcome.expiresInSeconds, emailHint: outcome.emailHint });
     case "unavailable":
       return reply(403, { status: "error", code: "unavailable", message: UNAVAILABLE_MESSAGE, field: null });
     case "paused":

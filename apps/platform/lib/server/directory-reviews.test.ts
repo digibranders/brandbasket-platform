@@ -3,11 +3,9 @@ import {
   claimDirectoryReviewOtpAttempt,
   consumeRateLimit,
   createDirectoryReviewOtp,
-  deleteDirectoryReviewOtp,
   findDirectoryReviewOtp,
   listPublishedDirectoryReviews,
   publishDirectoryReviewFromOtp,
-  purgeExpiredDirectoryReviewOtps,
   readDirectoryRatings,
   readDirectoryReviewComments,
   resolveDirectoryAsk,
@@ -18,9 +16,8 @@ import {
 } from "@fynix/db";
 import { getStaffDb } from "./db";
 import type { ReviewInput } from "./directory-fields";
-import { bookingOtpBypassed, bookingOtpSecret, smsAllowedCountryCodes } from "./env";
+import { accountCodeSecret } from "./env";
 import { hashOtpCode } from "./otp-crypto";
-import { createSmsSender, SmsProviderUnavailableError } from "./sms";
 import { startVisitorSession, type ResolvedVisitor } from "./directory-visitor";
 import { recordContributionConsent } from "./visitor-consent";
 import { confirmReviewOtp, publishReviewAsVisitor, readRatings, readReviews, requestReviewOtp } from "./directory-reviews";
@@ -29,11 +26,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./directory-visitor", () => ({ startVisitorSession: vi.fn(async () => undefined) }));
 vi.mock("./visitor-consent", () => ({ recordContributionConsent: vi.fn() }));
-vi.mock("./env", () => ({ bookingOtpSecret: vi.fn(), bookingOtpBypassed: vi.fn(), smsAllowedCountryCodes: vi.fn() }));
-vi.mock("./sms", async () => {
-  const actual = await vi.importActual<typeof import("./sms")>("./sms");
-  return { createSmsSender: vi.fn(), otpMessage: actual.otpMessage, SmsProviderUnavailableError: actual.SmsProviderUnavailableError };
-});
+vi.mock("./env", () => ({ accountCodeSecret: vi.fn() }));
 vi.mock("@fynix/db", async () => {
   const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
@@ -50,7 +43,6 @@ vi.mock("@fynix/db", async () => {
   findDirectoryReviewOtp: vi.fn(),
   listPublishedDirectoryReviews: vi.fn(),
   publishDirectoryReviewFromOtp: vi.fn(),
-    purgeExpiredDirectoryReviewOtps: vi.fn(),
     readDirectoryRatings: vi.fn(),
     readDirectoryReviewComments: vi.fn(),
   };
@@ -75,8 +67,6 @@ const INPUT: ReviewInput = {
   ownerContact: false,
 };
 
-const send = vi.fn<(message: { to: string; body: string; businessId: string | null }) => Promise<void>>();
-
 function otpRow(overrides: Partial<DirectoryReviewOtpRow> = {}): DirectoryReviewOtpRow {
   return {
     id: OTP_ID,
@@ -99,13 +89,8 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   vi.mocked(getStaffDb).mockReturnValue(DB);
-  vi.mocked(bookingOtpSecret).mockReturnValue(SECRET);
-  vi.mocked(bookingOtpBypassed).mockReturnValue(false);
-  vi.mocked(smsAllowedCountryCodes).mockReturnValue(["91"]);
-  vi.mocked(createSmsSender).mockReturnValue({ send });
-  send.mockResolvedValue(undefined);
+  vi.mocked(accountCodeSecret).mockReturnValue(SECRET);
   vi.mocked(consumeRateLimit).mockResolvedValue({ allowed: true, remaining: 1, retryAfterSeconds: 0 });
-  vi.mocked(purgeExpiredDirectoryReviewOtps).mockResolvedValue(0);
   vi.mocked(readDirectoryReviewComments).mockResolvedValue(new Map());
   vi.mocked(createDirectoryReviewOtp).mockImplementation(async (_db, otp) => otp.id);
   vi.mocked(claimDirectoryReviewOtpAttempt).mockResolvedValue({ attempts: 1 });
@@ -114,108 +99,26 @@ beforeEach(() => {
 });
 
 describe("requestReviewOtp", () => {
-  it("stores the review with a hashed code and texts the code, for no business", async () => {
-    const outcome = await requestReviewOtp(INPUT, "203.0.113.9", NOW);
-    expect(outcome).toMatchObject({ kind: "otp_sent", expiresInSeconds: 600, phoneHint: "•••• 3210" });
-
-    expect(resolveDirectoryNamed).toHaveBeenCalledWith(DB, { by: "key", key: KEY });
-    const stored = vi.mocked(createDirectoryReviewOtp).mock.calls[0]?.[1];
-    expect(stored).toMatchObject({
-      business: { placeId: ID, listingKey: KEY },
-      phone: INPUT.phone,
-      payload: { businessName: "Smile Dental", reviewerName: "Priya Sharma", rating: 4, text: "Gentle.", highlights: ["on_time"] },
-      expiresAt: new Date(NOW.getTime() + 600_000),
-    });
-    const message = send.mock.calls[0]?.[0];
-    const code = /^(\d{6}) is your Fynix code\. It expires in 10 minutes\. Do not share it\.$/.exec(message?.body ?? "")?.[1];
-    expect(code).toBeDefined();
-    expect(message).toMatchObject({ to: INPUT.phone, businessId: null });
-    expect(stored?.codeHash).toBe(hashOtpCode(stored?.id ?? "", code ?? "", SECRET));
-    expect(outcome).toMatchObject({ otpId: stored?.id });
-  });
-
-  it("consumes the IP, phone, listing and overall budgets, and stops at the first one spent", async () => {
-    await requestReviewOtp(INPUT, "203.0.113.9", NOW);
-    expect(vi.mocked(consumeRateLimit).mock.calls.map((call) => call[1])).toEqual([
-      "dir-review-otp:ip:203.0.113.9",
-      `dir-review-otp:phone:10m:${INPUT.phone}`,
-      `dir-review-otp:phone:day:${INPUT.phone}`,
-      // Per business: one budget for a place, whichever address or id it is reviewed by.
-      `dir-review-otp:listing:day:${ID}`,
-      "dir-review-otp:all",
-    ]);
-
-    vi.mocked(consumeRateLimit).mockClear();
-    vi.mocked(resolveDirectoryNamed).mockResolvedValueOnce({ placeId: null, listingKey: KEY });
-    await requestReviewOtp(INPUT, "203.0.113.9", NOW);
-    expect(vi.mocked(consumeRateLimit).mock.calls.map((call) => call[1])).toContain(`dir-review-otp:listing:day:${KEY}`);
-
-    vi.mocked(consumeRateLimit).mockClear();
-    vi.mocked(consumeRateLimit).mockResolvedValueOnce({ allowed: true, remaining: 0, retryAfterSeconds: 0 });
-    vi.mocked(consumeRateLimit).mockResolvedValueOnce({ allowed: false, remaining: 0, retryAfterSeconds: 60 });
-    expect(await requestReviewOtp(INPUT, "203.0.113.9", NOW)).toEqual({ kind: "limited" });
-    expect(consumeRateLimit).toHaveBeenCalledTimes(2);
-  });
-
-  it("refuses a business that does not exist before spending any budget", async () => {
-    vi.mocked(resolveDirectoryNamed).mockResolvedValueOnce(null);
-    const outcome = await requestReviewOtp({ ...INPUT, business: { by: "id", id: "zzzzzz2" } }, "203.0.113.9", NOW);
-    expect(outcome).toEqual({ kind: "unknown_business" });
-    expect(consumeRateLimit).not.toHaveBeenCalled();
+  it("is unavailable and touches nothing: Fynix sends no code to a phone, so there is no way to prove a number", async () => {
+    expect(await requestReviewOtp()).toEqual({ kind: "unavailable" });
+    expect(resolveDirectoryNamed).not.toHaveBeenCalled();
     expect(createDirectoryReviewOtp).not.toHaveBeenCalled();
-    expect(send).not.toHaveBeenCalled();
-  });
-
-  it("refuses a number outside the SMS allow-list before spending any budget", async () => {
-    const outcome = await requestReviewOtp({ ...INPUT, phone: "+14155550123" }, "203.0.113.9", NOW);
-    expect(outcome).toEqual({ kind: "invalid", field: "phone", message: "We can only text Indian mobile numbers right now." });
     expect(consumeRateLimit).not.toHaveBeenCalled();
-    expect(createDirectoryReviewOtp).not.toHaveBeenCalled();
-  });
-
-  it("is unavailable when production would only reach the outbox", async () => {
-    vi.mocked(createSmsSender).mockImplementation(() => {
-      throw new SmsProviderUnavailableError();
-    });
-    expect(await requestReviewOtp(INPUT, "203.0.113.9", NOW)).toEqual({ kind: "unavailable" });
-    expect(consumeRateLimit).not.toHaveBeenCalled();
-  });
-
-  it("with the bypass on, needs no SMS provider and sends nothing, but still stores the code", async () => {
-    vi.mocked(bookingOtpBypassed).mockReturnValue(true);
-    vi.mocked(createSmsSender).mockImplementation(() => {
-      throw new SmsProviderUnavailableError();
-    });
-    expect(await requestReviewOtp(INPUT, "203.0.113.9", NOW)).toMatchObject({ kind: "otp_sent" });
-    expect(createSmsSender).not.toHaveBeenCalled();
-    expect(send).not.toHaveBeenCalled();
-    expect(createDirectoryReviewOtp).toHaveBeenCalledTimes(1);
-  });
-
-  it("deletes the code and fails when the text cannot be sent", async () => {
-    send.mockRejectedValue(new Error("provider down"));
-    expect(await requestReviewOtp(INPUT, "203.0.113.9", NOW)).toEqual({ kind: "failed" });
-    const stored = vi.mocked(createDirectoryReviewOtp).mock.calls[0]?.[1];
-    expect(deleteDirectoryReviewOtp).toHaveBeenCalledWith(DB, stored?.id);
-  });
-
-  it("fails without logging the reviewer's details when the database breaks", async () => {
-    vi.mocked(createDirectoryReviewOtp).mockRejectedValue(new Error(`insert failed for ${INPUT.phone}`));
-    expect(await requestReviewOtp(INPUT, "203.0.113.9", NOW)).toEqual({ kind: "failed" });
-    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(INPUT.phone);
   });
 });
+
+const VISITOR = { id: "visitor-1", identity: { name: "Priya Sharma", phone: INPUT.phone }, session: { token: "t", name: "Priya Sharma", phoneHint: "•••• 3210" } } as ResolvedVisitor;
 
 const CONSENT = { noticeVersion: "pre-dpdp", adult: true } as const;
 
 describe("what a reviewer agreed to", () => {
-  it("is kept with the held review, to record once the code is confirmed", async () => {
-    await requestReviewOtp({ ...INPUT, consent: CONSENT }, "203.0.113.9", NOW);
+  it("is kept with the held review, to record once it is published", async () => {
+    await publishReviewAsVisitor({ ...INPUT, consent: CONSENT }, VISITOR, "203.0.113.9", NOW);
     expect(vi.mocked(createDirectoryReviewOtp).mock.calls[0]?.[1].payload).toMatchObject({ consent: CONSENT });
   });
 
   it("leaves the held review as it was for a request that carried none", async () => {
-    await requestReviewOtp(INPUT, "203.0.113.9", NOW);
+    await publishReviewAsVisitor(INPUT, VISITOR, "203.0.113.9", NOW);
     expect(vi.mocked(createDirectoryReviewOtp).mock.calls[0]?.[1].payload).not.toHaveProperty("consent");
   });
 
@@ -228,8 +131,7 @@ describe("what a reviewer agreed to", () => {
   });
 
   it("is recorded against a recognised visitor's account when their review is published without a code", async () => {
-    const visitor = { id: "visitor-1", identity: { name: "Priya Sharma", phone: INPUT.phone }, session: { token: "t", name: "Priya Sharma", phoneHint: "•••• 3210" } } as ResolvedVisitor;
-    expect(await publishReviewAsVisitor({ ...INPUT, consent: CONSENT }, visitor, "203.0.113.9", NOW)).toMatchObject({ kind: "published" });
+    expect(await publishReviewAsVisitor({ ...INPUT, consent: CONSENT }, VISITOR, "203.0.113.9", NOW)).toMatchObject({ kind: "published" });
     expect(recordContributionConsent).toHaveBeenCalledWith(DB, "visitor-1", CONSENT);
   });
 
@@ -264,12 +166,6 @@ describe("confirmReviewOtp", () => {
       message: "No tries left. Ask for a new code.",
     });
     expect(publishDirectoryReviewFromOtp).not.toHaveBeenCalled();
-  });
-
-  it("with the bypass on, accepts any 6-digit code but still claims the attempt", async () => {
-    vi.mocked(bookingOtpBypassed).mockReturnValue(true);
-    expect(await confirmReviewOtp(OTP_ID, "999999", "203.0.113.9", NOW)).toEqual({ kind: "published" });
-    expect(claimDirectoryReviewOtpAttempt).toHaveBeenCalledTimes(1);
   });
 
   it("reads a missing, used or expired code as expired, and an exhausted one as too many attempts", async () => {

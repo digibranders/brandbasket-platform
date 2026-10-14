@@ -18,7 +18,7 @@ import {
 } from "@fynix/db";
 import type { DirectoryEventKind, ListingSignals, SignalsResponse } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
-import { bookingOtpSecret } from "./env";
+import { accountCodeSecret } from "./env";
 import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { ipRateLimitKey } from "./ip-key";
 
@@ -29,7 +29,7 @@ import { ipRateLimitKey } from "./ip-key";
  * shared secret has already been checked by the route.
  *
  * Only aggregate daily counts are stored. A visitor is counted once per business, kind and day through a rate-limit
- * key that is an HMAC (keyed with BOOKING_OTP_SECRET) of their address, never the address itself, and the address is
+ * key that is an HMAC (keyed with the account code secret) of their address, never the address itself, and the address is
  * then dropped.
  */
 
@@ -110,7 +110,7 @@ function purgeOnceADay(db: Database, day: string): void {
  */
 export async function recordDirectoryEvent(event: DirectoryEvent, now: Date): Promise<DirectoryEventOutcome> {
   try {
-    const secret = bookingOtpSecret();
+    const secret = accountCodeSecret();
     const db = getStaffDb();
     const day = directoryDay(now);
     purgeOnceADay(db, day);

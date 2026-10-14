@@ -8,11 +8,15 @@ vi.mock("server-only", () => ({}));
 
 describe("leadContactLine", () => {
   it("puts the lead's name beside their number with all but its last three digits hidden", () => {
-    expect(leadContactLine("Asha Rao", "+919820011223")).toBe("Asha Rao · +91 ••••••• 223");
+    expect(leadContactLine("Asha Rao", "+919820011223", "asha@example.test")).toBe("Asha Rao · +91 ••••••• 223");
+  });
+
+  it("shows their email address beside the name for a lead who gave no number", () => {
+    expect(leadContactLine("Asha Rao", null, "asha@example.test")).toBe("Asha Rao · asha@example.test");
   });
 
   it("hides a number it cannot read entirely", () => {
-    expect(leadContactLine("Asha Rao", "not a number")).toBe("Asha Rao · ••••••••••");
+    expect(leadContactLine("Asha Rao", "not a number", "asha@example.test")).toBe("Asha Rao · ••••••••••");
   });
 });
 

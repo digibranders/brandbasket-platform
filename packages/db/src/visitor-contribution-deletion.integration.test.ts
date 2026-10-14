@@ -1,16 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { consentRecords, directoryEnquiries, directoryPlaces, directoryReviewComments, directoryReviewOtps, directoryReviews, directoryVisitors, privacyRequests, smsMessages, users } from "./schema";
-import { listConsents, recordConsent } from "./queries/consent-records";
-import { ERASED_VISITOR_NAME, listOwnDirectoryContributions } from "./queries/directory-visitors";
-import {
-  claimPrivacyRequestOtpAttempt,
-  createPrivacyRequestOtp,
-  deleteContributionForProvenNumber,
-  listPrivacyRequests,
-  receiveVerifiedPrivacyRequest,
-  type PrivacyRequestOtpPayload,
-} from "./queries/privacy-requests";
+import { directoryEnquiries, directoryPlaces, directoryReviewComments, directoryReviewOtps, directoryReviews, directoryVisitors, users } from "./schema";
+import { listOwnDirectoryContributions } from "./queries/directory-visitors";
+import { deleteContributionForProvenNumber, listPrivacyRequests } from "./queries/privacy-requests";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
 const NOW = new Date("2026-11-01T06:00:00.000Z");
@@ -19,7 +11,6 @@ const PRIYA = "+919876543210";
 const RAHUL = "+919811111111";
 const DENTIST = "dentists/thane/naupada/smile-dental";
 const BAKERY = "bakeries/thane/naupada/sweet-crumbs";
-const OTP_ID = "0198f2c0-0000-7000-8000-0000000000aa";
 const UNKNOWN_ID = "0198f2c0-0000-7000-8000-0000000000ff";
 let dbs: TestDatabases;
 
@@ -34,7 +25,6 @@ beforeEach(async () => {
 });
 
 interface Seeded {
-  readonly priyaVisitorId: string;
   readonly priyaReviewId: string;
   readonly rahulReviewId: string;
   /** Priya's comment on Rahul's review. */
@@ -49,7 +39,7 @@ interface Seeded {
  */
 async function seed(): Promise<Seeded> {
   const db = dbs.owner.db;
-  const [priya] = await db.insert(directoryVisitors).values({ phone: PRIYA, name: "Priya Sharma" }).returning({ id: directoryVisitors.id });
+  await db.insert(directoryVisitors).values({ phone: PRIYA, name: "Priya Sharma" });
   await db.insert(directoryVisitors).values({ phone: RAHUL, name: "Rahul Rao" });
   const [priyaReview] = await db
     .insert(directoryReviews)
@@ -74,24 +64,13 @@ async function seed(): Promise<Seeded> {
   // A comment code someone else is waiting on, for Priya's review: it must go with the review.
   await db.insert(directoryReviewOtps).values({ listingKey: DENTIST, reviewId: priyaReview!.id, phone: RAHUL, codeHash: "hash", payload: {}, expiresAt: new Date(NOW.getTime() + 600000) });
   await db.insert(directoryReviewOtps).values({ listingKey: DENTIST, phone: PRIYA, codeHash: "hash", payload: {}, expiresAt: new Date(NOW.getTime() + 600000) });
-  await db.insert(smsMessages).values([{ businessId: null, toPhone: PRIYA, body: "123456 is your Fynix code." }, { businessId: null, toPhone: RAHUL, body: "654321 is your Fynix code." }]);
-  await recordConsent(db, { subject: { type: "visitor", ref: priya!.id }, purpose: "directory_contribution", noticeVersion: "2026-10-13", channel: "web" });
-  return { priyaVisitorId: priya!.id, priyaReviewId: priyaReview!.id, rahulReviewId: rahulReview!.id, priyaCommentId: priyaComment!.id, rahulCommentId: rahulComment!.id };
+  return { priyaReviewId: priyaReview!.id, rahulReviewId: rahulReview!.id, priyaCommentId: priyaComment!.id, rahulCommentId: rahulComment!.id };
 }
 
-async function confirmAsPriya(payload: PrivacyRequestOtpPayload) {
-  await createPrivacyRequestOtp(dbs.staff.db, { id: OTP_ID, phone: PRIYA, codeHash: "hash", payload, expiresAt: new Date(NOW.getTime() + 600000) });
-  const attempt = { otpId: OTP_ID, maxAttempts: 5, now: NOW };
-  await claimPrivacyRequestOtpAttempt(dbs.staff.db, attempt);
-  return receiveVerifiedPrivacyRequest(dbs.staff.db, { ...attempt, dueAt: DUE });
-}
-
-function eraseAsPriya() {
-  return confirmAsPriya({ kind: "visitor_erasure", name: "Priya Sharma", details: "Please delete everything.", noticeVersion: "2026-10-13" });
-}
-
-function deleteAsPriya(target: { readonly kind: "review" | "comment" | "business"; readonly id: string }) {
-  return confirmAsPriya({ kind: "contribution_deletion", name: null, details: null, noticeVersion: "2026-10-13", target });
+/** What the website's Delete link does for a visitor it already recognises: the number is proven, so it is deleted at once. */
+async function deleteAsPriya(target: { readonly kind: "review" | "comment" | "business"; readonly id: string }) {
+  const deleted = await dbs.staff.db.transaction((tx) => deleteContributionForProvenNumber(tx, { phone: PRIYA, target, now: NOW, dueAt: DUE }));
+  return deleted === null ? ({ outcome: "not_found" } as const) : ({ outcome: "deleted", ...deleted } as const);
 }
 
 async function reviewIds(): Promise<string[]> {
@@ -101,81 +80,6 @@ async function reviewIds(): Promise<string[]> {
 async function commentIds(): Promise<string[]> {
   return (await dbs.owner.db.select({ id: directoryReviewComments.id }).from(directoryReviewComments)).map((row) => row.id);
 }
-
-describe("a visitor erasing their data", () => {
-  it("deletes the account, their reviews with everything under them, and their comments, and makes their enquiries anonymous", async () => {
-    const { priyaVisitorId, rahulReviewId } = await seed();
-    const received = await eraseAsPriya();
-    expect(received).toMatchObject({
-      outcome: "erased",
-      erased: { accountDeleted: true, reviews: 1, comments: 1, enquiries: 1 },
-    });
-
-    expect(await dbs.owner.db.select().from(directoryVisitors).where(eq(directoryVisitors.id, priyaVisitorId))).toEqual([]);
-    // Her review is gone, stars and all; Rahul's comment and the code waiting on it went with it.
-    expect(await reviewIds()).toEqual([rahulReviewId]);
-    expect(await commentIds()).toEqual([]);
-    expect(await dbs.owner.db.select().from(directoryReviewOtps)).toEqual([]);
-
-    const [enquiry] = await dbs.owner.db.select().from(directoryEnquiries).where(eq(directoryEnquiries.erasedAt, NOW));
-    expect(enquiry).toMatchObject({ phone: null, name: ERASED_VISITOR_NAME, message: null });
-  });
-
-  it("names each business whose page changed, once", async () => {
-    await seed();
-    const received = await eraseAsPriya();
-    const businesses = received?.outcome === "erased" ? received.erased.businesses : [];
-    expect(businesses.map((business) => business.listingKey).sort()).toEqual([BAKERY, DENTIST]);
-  });
-
-  it("leaves everyone else's data alone", async () => {
-    const { rahulReviewId } = await seed();
-    await eraseAsPriya();
-    const [review] = await dbs.owner.db.select().from(directoryReviews).where(eq(directoryReviews.id, rahulReviewId));
-    expect(review).toMatchObject({ phone: RAHUL, reviewerName: "Rahul Rao", text: "Great.", rating: 5 });
-    expect(await dbs.owner.db.select().from(directoryVisitors).where(eq(directoryVisitors.phone, RAHUL))).toHaveLength(1);
-    expect(await dbs.owner.db.select().from(directoryEnquiries).where(eq(directoryEnquiries.phone, RAHUL))).toHaveLength(1);
-    expect(await dbs.owner.db.select().from(smsMessages).where(eq(smsMessages.toPhone, RAHUL))).toHaveLength(1);
-  });
-
-  it("deletes the texts to the number, and marks the consent withdrawn while keeping the history", async () => {
-    const { priyaVisitorId } = await seed();
-    await eraseAsPriya();
-    expect(await dbs.owner.db.select().from(directoryReviewOtps).where(eq(directoryReviewOtps.phone, PRIYA))).toEqual([]);
-    expect(await dbs.owner.db.select().from(smsMessages).where(and(eq(smsMessages.toPhone, PRIYA)))).toEqual([]);
-    const consents = await listConsents(dbs.staff.db, { type: "visitor", ref: priyaVisitorId });
-    expect(consents.map((consent) => consent.event)).toEqual(["given", "withdrawn"]);
-  });
-
-  it("files the request already closed, as the record that it was done, with the number masked and nothing they wrote", async () => {
-    await seed();
-    const received = await eraseAsPriya();
-    const [row] = await listPrivacyRequests(dbs.staff.db);
-    expect(row).toMatchObject({
-      reference: received?.outcome === "erased" ? received.reference : "",
-      kind: "visitor_erasure",
-      channel: "web",
-      status: "closed",
-      outcome: "fulfilled",
-      subjectName: null,
-      details: null,
-    });
-    expect(row?.subjectContact).toBe("+91•••••••210");
-    expect(row?.closedAt).toEqual(NOW);
-    expect(row?.identityVerifiedAt).toEqual(NOW);
-    expect(row?.resolution).toBe("Erased automatically. Visitor account deleted. Deleted: reviews 1, comments 1. Made anonymous: enquiries 1.");
-    expect(JSON.stringify(await dbs.owner.db.select().from(privacyRequests))).not.toContain(PRIYA);
-  });
-
-  it("is harmless for a number with nothing on file, and posting again afterwards starts fresh", async () => {
-    const received = await eraseAsPriya();
-    expect(received).toMatchObject({ outcome: "erased", erased: { accountDeleted: false, reviews: 0, comments: 0, enquiries: 0, businesses: [] } });
-    await dbs.owner.db.insert(directoryVisitors).values({ phone: PRIYA, name: "Priya S" });
-    await dbs.owner.db.insert(directoryReviews).values({ listingKey: DENTIST, businessName: "Smile Dental", reviewerName: "Priya S", phone: PRIYA, rating: 3, highlights: [] });
-    expect(await dbs.owner.db.select().from(consentRecords).where(eq(consentRecords.event, "withdrawn"))).toEqual([]);
-    expect(await dbs.owner.db.select().from(directoryReviews).where(eq(directoryReviews.phone, PRIYA))).toHaveLength(1);
-  });
-});
 
 describe("a visitor deleting one review or comment", () => {
   it("deletes their review completely, stars and the comments under it, and nothing else", async () => {

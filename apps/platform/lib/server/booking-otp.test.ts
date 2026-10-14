@@ -12,21 +12,20 @@ import {
   type PractitionerScheduleRow,
   type SiteFacts,
 } from "@fynix/db";
+import { EmailConfigurationError, type EmailMessage } from "@fynix/email";
 import type { BookingInput } from "@fynix/shared/lib/appointments/booking-form";
 import { getStaffDb } from "./db";
-import { bookingOtpBypassed, bookingOtpSecret, smsAllowedCountryCodes } from "./env";
+import { customerEmailTransport } from "./email";
+import { accountCodeSecret, emailCodeBypassed } from "./env";
 import { hashOtpCode } from "./otp-crypto";
-import { createSmsSender, otpMessage, SmsProviderUnavailableError } from "./sms";
-import { otpMessage as realOtpMessage } from "./sms/otp-message";
+import { getPublicDb } from "./public-db";
 import { requestBookingOtp } from "./booking-otp";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("./env", () => ({ bookingOtpSecret: vi.fn(), bookingOtpBypassed: vi.fn(() => false), smsAllowedCountryCodes: vi.fn() }));
-vi.mock("./sms", async () => {
-  const actual = await vi.importActual<typeof import("./sms")>("./sms");
-  return { createSmsSender: vi.fn(), otpMessage: vi.fn(), SmsProviderUnavailableError: actual.SmsProviderUnavailableError };
-});
+vi.mock("./env", () => ({ accountCodeSecret: vi.fn(), emailCodeBypassed: vi.fn(() => false) }));
+vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
+vi.mock("./public-db", () => ({ getPublicDb: vi.fn() }));
 vi.mock("@fynix/db", () => ({
   consumeRateLimit: vi.fn(),
   createBookingOtp: vi.fn(),
@@ -39,10 +38,9 @@ vi.mock("@fynix/db", () => ({
 }));
 
 const mockedGetStaffDb = vi.mocked(getStaffDb);
-const mockedBookingOtpSecret = vi.mocked(bookingOtpSecret);
-const mockedSmsAllowedCountryCodes = vi.mocked(smsAllowedCountryCodes);
-const mockedCreateSmsSender = vi.mocked(createSmsSender);
-const mockedOtpMessage = vi.mocked(otpMessage);
+const mockedAccountCodeSecret = vi.mocked(accountCodeSecret);
+const mockedCustomerEmailTransport = vi.mocked(customerEmailTransport);
+const mockedGetPublicDb = vi.mocked(getPublicDb);
 const mockedConsumeRateLimit = vi.mocked(consumeRateLimit);
 const mockedCreateBookingOtp = vi.mocked(createBookingOtp);
 const mockedDeleteBookingOtp = vi.mocked(deleteBookingOtp);
@@ -95,6 +93,7 @@ function busyAt16(practitionerId: string): { startsAt: Date; endsAt: Date; pract
 function input(overrides: Partial<BookingInput> = {}): BookingInput {
   return {
     name: "Asha Rao",
+    email: "asha@example.com",
     phone: "+919876543210",
     serviceId: null,
     date: "2026-01-05", // Monday, open 09:00-18:00 local
@@ -104,18 +103,22 @@ function input(overrides: Partial<BookingInput> = {}): BookingInput {
   };
 }
 
-type SentMessage = { readonly to: string; readonly body: string; readonly businessId: string };
-const sendMock = vi.fn<(message: SentMessage) => Promise<undefined>>(async () => undefined);
+const PUBLIC_DB = { name: "public-db" } as never;
+const sendMock = vi.fn<(message: EmailMessage) => Promise<void>>(async () => undefined);
+
+/** The six digits in the emailed message: the only place the code is ever written in the clear. */
+function emailedCode(): string {
+  return /\b(\d{6})\b/.exec(sendMock.mock.calls[0]?.[0]?.bodyText ?? "")?.[1] ?? "";
+}
 
 beforeEach(() => {
-  vi.mocked(bookingOtpBypassed).mockReturnValue(false);
   vi.clearAllMocks();
+  vi.mocked(emailCodeBypassed).mockReturnValue(false);
   mockedGetStaffDb.mockReturnValue({} as never);
-  mockedBookingOtpSecret.mockReturnValue(SECRET);
-  mockedSmsAllowedCountryCodes.mockReturnValue(["91"]);
-  mockedOtpMessage.mockReturnValue("482913 is your code...");
+  mockedGetPublicDb.mockReturnValue(PUBLIC_DB);
+  mockedAccountCodeSecret.mockReturnValue(SECRET);
   sendMock.mockReset().mockResolvedValue(undefined);
-  mockedCreateSmsSender.mockReturnValue({ send: sendMock });
+  mockedCustomerEmailTransport.mockReturnValue({ send: sendMock } as unknown as ReturnType<typeof customerEmailTransport>);
   mockedReadBookingContext.mockResolvedValue(context());
   mockedReadSiteFacts.mockResolvedValue(facts());
   mockedListBusyIntervals.mockResolvedValue([]);
@@ -123,7 +126,7 @@ beforeEach(() => {
   mockedConsumeRateLimit.mockResolvedValue({ allowed: true, remaining: 1, retryAfterSeconds: 0 });
   mockedCreateBookingOtp.mockResolvedValue("db-assigned-id-unused");
   mockedDeleteBookingOtp.mockResolvedValue(true);
-  mockedPurgeExpiredBookingData.mockResolvedValue({ deletedOtps: 0, deletedSmsMessages: 0 });
+  mockedPurgeExpiredBookingData.mockResolvedValue({ deletedOtps: 0 });
 });
 
 describe("requestBookingOtp", () => {
@@ -215,7 +218,7 @@ describe("requestBookingOtp", () => {
     expect(mockedCreateBookingOtp).not.toHaveBeenCalled();
   });
 
-  it("sends an OTP for any doctor while one of them is still free, storing no doctor in the payload", async () => {
+  it("emails a code for any doctor while one of them is still free, storing no doctor in the payload", async () => {
     mockedReadPractitionerSchedules.mockResolvedValue([doctor(DOCTOR_A), doctor(DOCTOR_B)]);
     mockedListBusyIntervals.mockResolvedValue([busyAt16(DOCTOR_A)]);
     const outcome = await requestBookingOtp(BUSINESS_ID, input(), "1.2.3.4", NOW);
@@ -244,7 +247,7 @@ describe("requestBookingOtp", () => {
     expect(outcome).toEqual({ kind: "invalid", field: "start", message: "Choose an available time." });
   });
 
-  it("consumes the rate limits narrowest first: IP, then phone (short, day, global), then business -- each phone rule under its own key", async () => {
+  it("consumes the rate limits narrowest first: IP, then email (short, day, global), then business -- each email rule under its own key", async () => {
     await requestBookingOtp(BUSINESS_ID, input(), "203.0.113.9", NOW);
 
     expect(mockedConsumeRateLimit).toHaveBeenCalledTimes(5);
@@ -252,12 +255,12 @@ describe("requestBookingOtp", () => {
     const rules = mockedConsumeRateLimit.mock.calls.map((call) => call[2]);
     expect(keys).toEqual([
       `otp:ip:${BUSINESS_ID}:203.0.113.9`,
-      `otp:phone:10m:${BUSINESS_ID}:+919876543210`,
-      `otp:phone:day:${BUSINESS_ID}:+919876543210`,
-      `otp:phone:any:+919876543210`,
+      `otp:email:10m:${BUSINESS_ID}:asha@example.com`,
+      `otp:email:day:${BUSINESS_ID}:asha@example.com`,
+      `otp:email:any:asha@example.com`,
       `otp:business:${BUSINESS_ID}`,
     ]);
-    // The two per-business phone rules use distinct keys precisely so neither can wipe the other's counter (see
+    // The two per-business email rules use distinct keys precisely so neither can wipe the other's counter (see
     // consumeRateLimit's window-cleanup behaviour) -- asserted explicitly since it's the whole point of the fix.
     expect(keys[1]).not.toBe(keys[2]);
     expect(rules[0]).toEqual({ limit: 10, windowSeconds: 3600 });
@@ -267,18 +270,23 @@ describe("requestBookingOtp", () => {
     expect(rules[4]).toEqual({ limit: 300, windowSeconds: 86400 });
   });
 
-  it("keys the global per-phone limit on the phone alone, so the same number is capped across different businesses", async () => {
+  it("never keys a rate limit on the phone number: it is collected, not used to send anything", async () => {
+    await requestBookingOtp(BUSINESS_ID, input(), "203.0.113.9", NOW);
+    for (const call of mockedConsumeRateLimit.mock.calls) expect(call[1]).not.toContain("+919876543210");
+  });
+
+  it("keys the global per-email limit on the address alone, so the same address is capped across different businesses", async () => {
     const otherBusinessId = "33333333-3333-3333-3333-333333333333";
     await requestBookingOtp(otherBusinessId, input(), "203.0.113.9", NOW);
 
-    const globalCall = mockedConsumeRateLimit.mock.calls.find((call) => (call[1] as string).startsWith("otp:phone:any:"));
-    expect(globalCall?.[1]).toBe("otp:phone:any:+919876543210");
+    const globalCall = mockedConsumeRateLimit.mock.calls.find((call) => (call[1] as string).startsWith("otp:email:any:"));
+    expect(globalCall?.[1]).toBe("otp:email:any:asha@example.com");
     expect(globalCall?.[2]).toEqual({ limit: 10, windowSeconds: 86400 });
   });
 
-  it("is limited when only the global per-phone rule refuses, even though every per-business rule allows", async () => {
+  it("is limited when only the global per-email rule refuses, even though every per-business rule allows", async () => {
     mockedConsumeRateLimit.mockImplementation(async (_db, key) => {
-      if ((key as string).startsWith("otp:phone:any:")) return { allowed: false, remaining: 0, retryAfterSeconds: 3600 };
+      if ((key as string).startsWith("otp:email:any:")) return { allowed: false, remaining: 0, retryAfterSeconds: 3600 };
       return { allowed: true, remaining: 1, retryAfterSeconds: 0 };
     });
 
@@ -289,7 +297,7 @@ describe("requestBookingOtp", () => {
     expect(sendMock).not.toHaveBeenCalled();
   });
 
-  it("stops at the first refused rate limit and never creates or sends an OTP", async () => {
+  it("stops at the first refused rate limit and never creates or sends a code", async () => {
     mockedConsumeRateLimit
       .mockResolvedValueOnce({ allowed: false, remaining: 0, retryAfterSeconds: 60 })
       .mockResolvedValue({ allowed: true, remaining: 1, retryAfterSeconds: 0 });
@@ -302,14 +310,15 @@ describe("requestBookingOtp", () => {
     expect(sendMock).not.toHaveBeenCalled();
   });
 
-  it("creates the OTP, sends it by SMS and returns otp_sent with the phone hint", async () => {
+  it("creates the code, emails it to the patient's address and returns otp_sent with the email hint", async () => {
     const outcome = await requestBookingOtp(BUSINESS_ID, input(), "203.0.113.9", NOW);
 
     expect(outcome.kind).toBe("otp_sent");
     if (outcome.kind !== "otp_sent") throw new Error("expected otp_sent");
     expect(outcome.otpId).toMatch(UUID_PATTERN);
     expect(outcome.expiresInSeconds).toBe(600);
-    expect(outcome.phoneHint).toBe("•••• 3210");
+    expect(outcome.emailHint).toBe("a•••@example.com");
+    expect(outcome).not.toHaveProperty("phoneHint");
 
     expect(mockedCreateBookingOtp).toHaveBeenCalledTimes(1);
     const createCall = mockedCreateBookingOtp.mock.calls[0]?.[1];
@@ -317,6 +326,7 @@ describe("requestBookingOtp", () => {
     // exactly the otpId the caller gets back, not whatever createBookingOtp's own return value would have been.
     expect(createCall?.id).toBe(outcome.otpId);
     expect(createCall?.businessId).toBe(BUSINESS_ID);
+    expect(createCall?.email).toBe("asha@example.com");
     expect(createCall?.phone).toBe("+919876543210");
     expect(createCall?.payload).toMatchObject({
       name: "Asha Rao",
@@ -326,30 +336,36 @@ describe("requestBookingOtp", () => {
       end: "16:30",
       practitionerId: null,
     });
+    // The address proves who asked; it is not kept on the booking itself.
+    expect(createCall?.payload).not.toHaveProperty("email");
+    expect(mockedCustomerEmailTransport).toHaveBeenCalledWith(PUBLIC_DB);
     expect(sendMock).toHaveBeenCalledTimes(1);
-    expect(sendMock).toHaveBeenCalledWith({ to: "+919876543210", body: "482913 is your code...", businessId: BUSINESS_ID });
+    expect(sendMock.mock.calls[0]?.[0]).toMatchObject({ to: "asha@example.com", template: "booking-code", subject: "Your appointment confirmation code" });
   });
 
-  it("with the OTP bypass on, creates the OTP but sends nothing and needs no SMS provider (even one that would refuse)", async () => {
-    vi.mocked(bookingOtpBypassed).mockReturnValue(true);
-    mockedCreateSmsSender.mockImplementation(() => {
-      throw new SmsProviderUnavailableError();
-    });
+  it("never texts anything: the phone number is not an address a code goes to", async () => {
+    await requestBookingOtp(BUSINESS_ID, input(), "203.0.113.9", NOW);
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(sendMock.mock.calls)).not.toContain("+919876543210");
+  });
+
+  it("with the local code bypass on, still emails the code and applies every check, and says so without naming the patient", async () => {
+    vi.mocked(emailCodeBypassed).mockReturnValue(true);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     const outcome = await requestBookingOtp(BUSINESS_ID, input(), "203.0.113.9", NOW);
 
     expect(outcome.kind).toBe("otp_sent");
-    expect(mockedCreateSmsSender).not.toHaveBeenCalled();
-    expect(sendMock).not.toHaveBeenCalled();
+    expect(sendMock).toHaveBeenCalledTimes(1);
     expect(mockedCreateBookingOtp).toHaveBeenCalledTimes(1);
-    // The warning names the business only -- never the patient's phone or name.
+    // The warning names the business only -- never the patient's address, phone or name.
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("asha@example.com");
     expect(JSON.stringify(warn.mock.calls)).not.toContain("+919876543210");
     warn.mockRestore();
   });
 
-  it("with the OTP bypass on, still applies the rate limits", async () => {
-    vi.mocked(bookingOtpBypassed).mockReturnValue(true);
+  it("with the local code bypass on, still applies the rate limits", async () => {
+    vi.mocked(emailCodeBypassed).mockReturnValue(true);
     mockedConsumeRateLimit.mockResolvedValueOnce({ allowed: false, remaining: 0, retryAfterSeconds: 60 });
     const outcome = await requestBookingOtp(BUSINESS_ID, input(), "203.0.113.9", NOW);
     expect(outcome.kind).toBe("limited");
@@ -362,7 +378,7 @@ describe("requestBookingOtp", () => {
     expect(mockedPurgeExpiredBookingData).toHaveBeenCalledWith({}, NOW);
   });
 
-  it("still sends the OTP, and never logs patient data, when the opportunistic purge rejects", async () => {
+  it("still emails the code, and never logs patient data, when the opportunistic purge rejects", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     mockedPurgeExpiredBookingData.mockRejectedValue(new Error("connection reset"));
 
@@ -373,6 +389,7 @@ describe("requestBookingOtp", () => {
     expect(outcome.kind).toBe("otp_sent");
     for (const call of consoleError.mock.calls) {
       expect(JSON.stringify(call)).not.toContain("Asha Rao");
+      expect(JSON.stringify(call)).not.toContain("asha@example.com");
       expect(JSON.stringify(call)).not.toContain("+919876543210");
     }
     consoleError.mockRestore();
@@ -385,17 +402,12 @@ describe("requestBookingOtp", () => {
     expect(first.otpId).not.toBe(second.otpId);
   });
 
-  it("hashes and texts the same code: the stored codeHash verifies against the code actually put in the SMS body", async () => {
-    mockedOtpMessage.mockImplementation(realOtpMessage);
-
+  it("hashes and emails the same code: the stored codeHash verifies against the code actually put in the email", async () => {
     const outcome = await requestBookingOtp(BUSINESS_ID, input(), "203.0.113.9", NOW);
     if (outcome.kind !== "otp_sent") throw new Error("expected otp_sent");
 
-    const sentBody = sendMock.mock.calls[0]?.[0]?.body ?? "";
-    const match = /^(\d{6}) is your Fynix code/.exec(sentBody);
-    expect(match).not.toBeNull();
-    const sentCode = match?.[1] ?? "";
-    expect(sentCode).not.toBe(""); // never a blank/placeholder code in the message that was actually sent
+    const sentCode = emailedCode();
+    expect(sentCode).toMatch(/^\d{6}$/);
 
     const createCall = mockedCreateBookingOtp.mock.calls[0]?.[1];
     expect(createCall?.codeHash).toBe(hashOtpCode(outcome.otpId, sentCode, SECRET));
@@ -410,46 +422,28 @@ describe("requestBookingOtp", () => {
     expect(payload?.serviceName).toBe("Cleaning");
   });
 
-  it("deletes the OTP and returns failed when sending the SMS fails", async () => {
+  it("deletes the code and returns failed when emailing it fails", async () => {
     sendMock.mockRejectedValue(new Error("provider down"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     const outcome = await requestBookingOtp(BUSINESS_ID, input(), "203.0.113.9", NOW);
 
     expect(outcome).toEqual({ kind: "failed" });
+    for (const call of consoleError.mock.calls) expect(JSON.stringify(call)).not.toContain("asha@example.com");
+    consoleError.mockRestore();
     const createCall = mockedCreateBookingOtp.mock.calls[0]?.[1];
     expect(mockedDeleteBookingOtp).toHaveBeenCalledWith({}, createCall?.id);
   });
 
-  it("is invalid on phone when the number is outside the allowed countries, before any rate limit is spent", async () => {
-    mockedSmsAllowedCountryCodes.mockReturnValue(["91"]);
+  it("accepts a phone number from any country: it is collected for the clinic to call, and nothing is sent to it", async () => {
     const outcome = await requestBookingOtp(BUSINESS_ID, input({ phone: "+14155551234" }), "1.2.3.4", NOW);
-    expect(outcome).toEqual({ kind: "invalid", field: "phone", message: "We can only text Indian mobile numbers right now." });
-    expect(mockedConsumeRateLimit).not.toHaveBeenCalled();
-    expect(mockedCreateBookingOtp).not.toHaveBeenCalled();
-    expect(sendMock).not.toHaveBeenCalled();
+    expect(outcome.kind).toBe("otp_sent");
+    expect(mockedCreateBookingOtp.mock.calls[0]?.[1]?.phone).toBe("+14155551234");
   });
 
-  it("allows a number in a widened allow-list and reports the widened wording when refused", async () => {
-    mockedSmsAllowedCountryCodes.mockReturnValue(["91", "1"]);
-    const allowed = await requestBookingOtp(BUSINESS_ID, input({ phone: "+14155551234" }), "1.2.3.4", NOW);
-    expect(allowed.kind).toBe("otp_sent");
-
-    mockedSmsAllowedCountryCodes.mockReturnValue(["91", "44"]);
-    const refused = await requestBookingOtp(BUSINESS_ID, input({ phone: "+14155551234" }), "1.2.3.4", NOW);
-    expect(refused).toEqual({ kind: "invalid", field: "phone", message: "We can only text numbers in +91, +44 right now." });
-  });
-
-  it("checks the phone's country after the slot check but before any rate limit", async () => {
-    // A slot that is already taken must still be reported as taken, not as a disallowed country, even for a
-    // disallowed number -- the slot check runs first.
-    mockedListBusyIntervals.mockResolvedValue([busyAt16(DOCTOR_A)]);
-    const outcome = await requestBookingOtp(BUSINESS_ID, input({ phone: "+14155551234" }), "1.2.3.4", NOW);
-    expect(outcome).toEqual({ kind: "taken" });
-  });
-
-  it("returns failed, without spending a rate limit or reading anything, when bookingOtpSecret() throws", async () => {
-    mockedBookingOtpSecret.mockImplementation(() => {
-      throw new Error("BOOKING_OTP_SECRET must be at least 32 characters");
+  it("returns failed, without spending a rate limit or reading anything, when the code secret is missing", async () => {
+    mockedAccountCodeSecret.mockImplementation(() => {
+      throw new Error("Invalid email code configuration: ACCOUNT_CODE_SECRET is required (at least 32 characters)");
     });
     const outcome = await requestBookingOtp(BUSINESS_ID, input(), "203.0.113.9", NOW);
     expect(outcome).toEqual({ kind: "failed" });
@@ -457,9 +451,9 @@ describe("requestBookingOtp", () => {
     expect(mockedConsumeRateLimit).not.toHaveBeenCalled();
   });
 
-  it("returns failed, without spending a rate limit or reading anything, when createSmsSender() throws", async () => {
-    mockedCreateSmsSender.mockImplementation(() => {
-      throw new Error('Unknown SMS_PROVIDER "twilio".');
+  it("returns failed, without spending a rate limit or reading anything, when the email transport cannot be built", async () => {
+    mockedCustomerEmailTransport.mockImplementation(() => {
+      throw new Error("DATABASE_URL_PUBLIC is missing");
     });
     const outcome = await requestBookingOtp(BUSINESS_ID, input(), "203.0.113.9", NOW);
     expect(outcome).toEqual({ kind: "failed" });
@@ -467,10 +461,10 @@ describe("requestBookingOtp", () => {
     expect(mockedConsumeRateLimit).not.toHaveBeenCalled();
   });
 
-  it("is unavailable, not failed, without spending a rate limit or reading anything, when createSmsSender() refuses the production outbox", async () => {
+  it("is unavailable, not failed, without spending a rate limit or reading anything, when production has no email provider", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    mockedCreateSmsSender.mockImplementation(() => {
-      throw new SmsProviderUnavailableError();
+    mockedCustomerEmailTransport.mockImplementation(() => {
+      throw new EmailConfigurationError("BREVO_API_KEY is not set");
     });
 
     const outcome = await requestBookingOtp(BUSINESS_ID, input(), "203.0.113.9", NOW);
@@ -482,6 +476,7 @@ describe("requestBookingOtp", () => {
     expect(sendMock).not.toHaveBeenCalled();
     for (const call of consoleError.mock.calls) {
       expect(JSON.stringify(call)).not.toContain("Asha Rao");
+      expect(JSON.stringify(call)).not.toContain("asha@example.com");
       expect(JSON.stringify(call)).not.toContain("+919876543210");
     }
     consoleError.mockRestore();
@@ -495,12 +490,13 @@ describe("requestBookingOtp", () => {
 
   it("never logs patient data when a dependency throws a params-carrying error", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    mockedCreateBookingOtp.mockRejectedValue(new Error('Failed query params: ["Asha Rao","+919876543210"]'));
+    mockedCreateBookingOtp.mockRejectedValue(new Error('Failed query params: ["Asha Rao","asha@example.com","+919876543210"]'));
 
     await requestBookingOtp(BUSINESS_ID, input(), "203.0.113.9", NOW);
 
     for (const call of consoleError.mock.calls) {
       expect(JSON.stringify(call)).not.toContain("Asha Rao");
+      expect(JSON.stringify(call)).not.toContain("asha@example.com");
       expect(JSON.stringify(call)).not.toContain("+919876543210");
     }
     consoleError.mockRestore();

@@ -1,14 +1,14 @@
 /*
  * The settings a real deployment must have before it starts (instrumentation.ts of each app) or builds on Vercel
  * (next.config.ts). Fynix is its own product on its own server: it has no marketing website to take leads from, no team
- * inbox named in the environment (alerts default to Fynix's own address), and no directory, SMS or video accounts, so
- * none of those settings is demanded. Every safety guard that is not about a feature (secrets, origins, no OTP bypass, a
- * Brevo key for account mail) is demanded.
+ * inbox named in the environment (alerts default to Fynix's own address), and no directory or video accounts, so none
+ * of those settings is demanded. It sends nothing to phones: every code is emailed. Every safety guard that is not about a
+ * feature (secrets, origins, no code bypass, a Brevo key for the emailed codes) is demanded.
  */
 export type RequirementsApp = "platform" | "admin";
 
 const RUNTIME: Readonly<Record<RequirementsApp, readonly string[]>> = {
-  // DATABASE_URL_PUBLIC carries the sign-up code and reset emails (insert-only outbox writes); ACCOUNT_CODE_SECRET signs the code.
+  // DATABASE_URL_PUBLIC carries the emailed codes (sign-up, a patient's booking, a privacy request) and reset emails (insert-only outbox writes); ACCOUNT_CODE_SECRET signs the codes.
   platform: [
     "APP_ORIGIN", "ADMIN_ORIGIN", "DATABASE_URL", "DATABASE_URL_STAFF", "DATABASE_URL_PUBLIC", "DATABASE_URL_PAYLOAD",
     "BETTER_AUTH_SECRET", "PAYLOAD_SECRET", "ACCOUNT_CODE_SECRET", "BREVO_API_KEY",

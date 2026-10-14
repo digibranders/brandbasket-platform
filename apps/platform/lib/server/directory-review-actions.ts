@@ -9,12 +9,10 @@ import {
   findPublishedDirectoryReviewForComment,
   incrementDirectoryReviewHelpful,
   publishDirectoryCommentFromOtp,
-  purgeExpiredDirectoryReviewOtps,
   readDirectoryReviewHelpful,
   type DirectoryCommentOtpPayload,
   type RateLimitRule,
 } from "@fynix/db";
-import { phoneHint as toPhoneHint } from "@fynix/shared/lib/appointments/booking-form";
 import { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
 import { getStaffDb } from "./db";
 import { startVisitorSession, type ResolvedVisitor } from "./directory-visitor";
@@ -22,12 +20,10 @@ import { recordContributionConsent } from "./visitor-consent";
 import type { CommentInput } from "./directory-fields";
 import { visitorHash } from "./directory-signals";
 import type { ReviewConfirmOutcome, ReviewOtpOutcome } from "./directory-reviews";
-import { bookingOtpBypassed, bookingOtpSecret, smsAllowedCountryCodes } from "./env";
+import { accountCodeSecret } from "./env";
 import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { ipRateLimitKey } from "./ip-key";
-import { generateOtpCode, hashOtpCode, otpCodeMatches } from "./otp-crypto";
-import { disallowedPhoneMessage, isPhoneCountryAllowed } from "./sms-country-guard";
-import { createSmsSender, otpMessage, SmsProviderUnavailableError } from "./sms";
+import { otpCodeMatches } from "./otp-crypto";
 
 /**
  * The work behind the local directory's review actions (/api/directory/reviews/helpful and /comments/*), called by the
@@ -37,13 +33,13 @@ import { createSmsSender, otpMessage, SmsProviderUnavailableError } from "./sms"
  * Helpful: a visitor marks a published review once a week. Who they are is never stored: the only trace is a rate-limit
  * bucket keyed by an HMAC of their address and the review, which expires by itself, and the review's own count.
  *
- * A comment is confirmed by a code texted to the commenter, with the review code's rules (6 digits, 10 minutes, 5
- * attempts, HMAC with BOOKING_OTP_SECRET, the same SMS sender and country allow-list, and the same temporary
- * BOOKING_OTP_BYPASS switch).
+ * A comment used to be confirmed by a code sent to the commenter's phone. Fynix sends nothing to phones and the directory
+ * is closed, so a code can no longer be asked for (`requestCommentOtp`); a recognised visitor's comment
+ * (`publishCommentAsVisitor`) and the confirmation of a code already held (`confirmCommentOtp`, 6 digits, 10 minutes, 5
+ * attempts, HMAC with the account code secret) are left as they were.
  */
 
-const ONE_MINUTE_SECONDS = 60;
-const ONE_HOUR_SECONDS = 60 * ONE_MINUTE_SECONDS;
+const ONE_HOUR_SECONDS = 60 * 60;
 const ONE_DAY_SECONDS = 24 * ONE_HOUR_SECONDS;
 
 /** One Helpful per visitor and review a week: a rate-limit bucket under a hashed key, not a row about the visitor. */
@@ -51,16 +47,8 @@ export const HELPFUL_ONCE_A_WEEK_RULE: RateLimitRule = { limit: 1, windowSeconds
 /** Every Helpful from one address, whatever the review: far above a person reading, well below a bot's crawl. */
 export const HELPFUL_IP_HOURLY_RULE: RateLimitRule = { limit: 60, windowSeconds: ONE_HOUR_SECONDS };
 
-/** Per visitor address. */
-const COMMENT_IP_RULE: RateLimitRule = { limit: 10, windowSeconds: ONE_HOUR_SECONDS };
-/** Per phone number: a short-burst and a daily budget, each under its own key (a shared key would let the shorter
- * window's rule wipe the longer one's counter, see booking-otp.ts). */
-const COMMENT_PHONE_SHORT_RULE: RateLimitRule = { limit: 3, windowSeconds: 10 * ONE_MINUTE_SECONDS };
-const COMMENT_PHONE_DAY_RULE: RateLimitRule = { limit: 8, windowSeconds: ONE_DAY_SECONDS };
-/** Per review: a sudden run of codes for one review is a pile-on, not conversation. */
+/** Per review: a sudden run of comments for one review is a pile-on, not conversation. */
 const COMMENT_REVIEW_DAY_RULE: RateLimitRule = { limit: 30, windowSeconds: ONE_DAY_SECONDS };
-/** Every comment code together, to cap the SMS spend if the forwarded visitor address is ever not honest. */
-const COMMENT_ALL_DAY_RULE: RateLimitRule = { limit: 500, windowSeconds: ONE_DAY_SECONDS };
 /** Confirm attempts per visitor address, only to slow code guessing (each code also has its own 5 tries). */
 const COMMENT_CONFIRM_IP_RULE: RateLimitRule = { limit: 30, windowSeconds: ONE_HOUR_SECONDS };
 
@@ -88,7 +76,7 @@ export type CommentOtpOutcome =
  */
 export async function markReviewHelpful(reviewId: string, clientIp: string, now: Date): Promise<ReviewHelpfulOutcome> {
   try {
-    const secret = bookingOtpSecret();
+    const secret = accountCodeSecret();
     const db = getStaffDb();
     const visitor = ipRateLimitKey(clientIp);
 
@@ -106,89 +94,18 @@ export async function markReviewHelpful(reviewId: string, clientIp: string, now:
 }
 
 /**
- * Asks for a code to publish `input`. Checks, in order: the OTP secret and SMS provider are configured (unavailable
- * when production would only reach the local outbox); the phone's country is on the SMS allow-list (invalid, before
- * any rate limit is spent); the review is published (unknown_review, before any rate limit is spent too); the rate
- * limits, narrowest first (limited). Then stores the comment with a hashed code and texts the code -- or, with
- * BOOKING_OTP_BYPASS on, sends nothing.
+ * Asks for a code to publish a comment. Always `unavailable`: the code went to the commenter's phone, Fynix sends nothing to
+ * phones, and the directory pages are closed, so there is no way to prove a number. A client that still asks gets the answer
+ * it already handles for a deployment that cannot send codes.
  */
-export async function requestCommentOtp(input: CommentInput, clientIp: string, now: Date): Promise<CommentOtpOutcome> {
-  try {
-    // Before any rate limit is spent: a misconfiguration must fail at once, not after costing the visitor a try.
-    const secret = bookingOtpSecret();
-    const bypassed = bookingOtpBypassed();
-    let smsSender: ReturnType<typeof createSmsSender> | null = null;
-    try {
-      if (!bypassed) smsSender = createSmsSender();
-    } catch (error) {
-      if (!(error instanceof SmsProviderUnavailableError)) throw error;
-      console.error("A directory comment code was requested but SMS is not configured for production.", { reviewId: input.reviewId });
-      return { kind: "unavailable" };
-    }
-
-    const allowedCountryCodes = smsAllowedCountryCodes();
-    if (!isPhoneCountryAllowed(input.phone, allowedCountryCodes)) {
-      return { kind: "invalid", field: "phone", message: disallowedPhoneMessage(allowedCountryCodes) };
-    }
-
-    const db = getStaffDb();
-    const review = await findPublishedDirectoryReviewForComment(db, input.reviewId);
-    if (review === null) return { kind: "unknown_review" };
-
-    // Opportunistic housekeeping, like the review codes': not awaited, so it never slows or fails this request.
-    purgeExpiredDirectoryReviewOtps(db, now).catch((error: unknown) => {
-      console.error("Could not purge expired directory comment codes.", errorLogInfo(error));
-    });
-
-    for (const check of [
-      { key: `dir-comment-otp:ip:${ipRateLimitKey(clientIp)}`, rule: COMMENT_IP_RULE },
-      { key: `dir-comment-otp:phone:10m:${input.phone}`, rule: COMMENT_PHONE_SHORT_RULE },
-      { key: `dir-comment-otp:phone:day:${input.phone}`, rule: COMMENT_PHONE_DAY_RULE },
-      { key: `dir-comment-otp:review:day:${review.id}`, rule: COMMENT_REVIEW_DAY_RULE },
-      { key: "dir-comment-otp:all", rule: COMMENT_ALL_DAY_RULE },
-    ]) {
-      const result = await consumeRateLimit(db, check.key, check.rule, now);
-      if (!result.allowed) return { kind: "limited" };
-    }
-
-    // The id salts the code's hash (see hashOtpCode), so it is made here rather than by the insert.
-    const otpId = randomUUID();
-    const code = generateOtpCode();
-    const payload: DirectoryCommentOtpPayload = { commenterName: input.name, text: input.text, ...(input.consent === undefined ? {} : { consent: input.consent }) };
-    await createDirectoryCommentOtp(db, {
-      id: otpId,
-      review,
-      phone: input.phone,
-      codeHash: hashOtpCode(otpId, code, secret),
-      payload,
-      expiresAt: new Date(now.getTime() + OTP_TTL_SECONDS * 1000),
-    });
-
-    try {
-      if (smsSender === null) {
-        console.warn("Booking OTP bypass is on: no directory comment code was sent and any 6-digit code will confirm.", {
-          reviewId: input.reviewId,
-        });
-      } else {
-        await smsSender.send({ to: input.phone, body: otpMessage(code, "website"), businessId: null });
-      }
-    } catch (sendError) {
-      await deleteDirectoryReviewOtp(db, otpId);
-      console.error("Could not send a directory comment code.", { reviewId: input.reviewId, ...errorLogInfo(sendError) });
-      return { kind: "failed" };
-    }
-
-    return { kind: "otp_sent", otpId, expiresInSeconds: OTP_TTL_SECONDS, phoneHint: toPhoneHint(input.phone) };
-  } catch (error) {
-    console.error("Could not request a directory comment code.", { reviewId: input.reviewId, ...errorLogInfo(error) });
-    return { kind: "failed" };
-  }
+export async function requestCommentOtp(): Promise<CommentOtpOutcome> {
+  return { kind: "unavailable" };
 }
 
 /**
- * Publishes `input` for a recognised visitor, whose number a code proved earlier: no code is asked for or sent. Same
+ * Publishes `input` for a recognised visitor, whose number a code proved earlier: no code is asked for. Same
  * path as a confirmed code (the held comment is created, its attempt claimed and published) and the same limits as
- * asking for one, under keys of their own, minus the SMS budget.
+ * asking for one, under keys of their own.
  */
 export async function publishCommentAsVisitor(input: CommentInput, visitor: ResolvedVisitor, clientIp: string, now: Date): Promise<CommentOtpOutcome> {
   try {
@@ -242,7 +159,7 @@ function wrongCodeMessage(triesLeft: number): string {
  */
 export async function confirmCommentOtp(otpId: string, code: string, clientIp: string, now: Date): Promise<ReviewConfirmOutcome> {
   try {
-    const secret = bookingOtpSecret();
+    const secret = accountCodeSecret();
     const db = getStaffDb();
 
     const rateLimit = await consumeRateLimit(db, `dir-comment-confirm:ip:${ipRateLimitKey(clientIp)}`, COMMENT_CONFIRM_IP_RULE, now);
@@ -260,9 +177,7 @@ export async function confirmCommentOtp(otpId: string, code: string, clientIp: s
       return { kind: "too_many_attempts", message: TOO_MANY_ATTEMPTS_MESSAGE };
     }
 
-    // With the bypass on no code was sent, so any 6-digit code matches; the attempt was still claimed above, so the
-    // ceiling and expiry keep applying.
-    const matches = bookingOtpBypassed() || otpCodeMatches(otp.codeHash, otp.id, code, secret);
+    const matches = otpCodeMatches(otp.codeHash, otp.id, code, secret);
     if (!matches) {
       const triesLeft = Math.max(OTP_MAX_ATTEMPTS - claim.attempts, 0);
       if (triesLeft === 0) return { kind: "too_many_attempts", message: NO_TRIES_LEFT_MESSAGE };

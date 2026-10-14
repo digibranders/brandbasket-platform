@@ -4,7 +4,7 @@ import { reportRequestError } from "./lib/request-error";
 
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    // A server real customers can reach must not start with settings missing or an OTP bypass set.
+    // A server real customers can reach must not start with settings missing or the code bypass set.
     const { assertRuntimeEnvironment } = await import("@fynix/shared/server/runtime-environment");
     const { runtimeRequirements } = await import("@fynix/shared/lib/production-requirements");
     assertRuntimeEnvironment(process.env, runtimeRequirements("platform"));

@@ -17,7 +17,7 @@ export function useOtpRetryCooldown(): {
   readonly sendSeconds: number;
   readonly confirmSeconds: number;
   readonly begin: (retry: OtpRetry) => void;
-  readonly clearPhoneLimits: () => void;
+  readonly clearAddressLimits: () => void;
 } {
   const [state, setState] = useState<CooldownState>({ sendScope: null, confirmScope: null, sendUntil: 0, confirmUntil: 0, sendSeconds: 0, confirmSeconds: 0 });
   const { sendUntil, confirmUntil } = state;
@@ -42,13 +42,13 @@ export function useOtpRetryCooldown(): {
       ? { ...current, sendScope: retry.scope, sendUntil: until, sendSeconds: seconds }
       : { ...current, confirmScope: retry.scope, confirmUntil: until, confirmSeconds: seconds });
   }
-  /** The limits that belong to the number or address typed: another one is not held back by them. */
-  function clearPhoneLimits(): void {
+  /** The limits that belong to the address typed: another one is not held back by them. */
+  function clearAddressLimits(): void {
     setState((current) => ({
       ...current,
-      ...(current.sendScope === "phone" || current.sendScope === "email" ? { sendUntil: 0, sendSeconds: 0, sendScope: null } : {}),
-      ...(current.confirmScope === "phone" || current.confirmScope === "email" ? { confirmUntil: 0, confirmSeconds: 0, confirmScope: null } : {}),
+      ...(current.sendScope === "email" ? { sendUntil: 0, sendSeconds: 0, sendScope: null } : {}),
+      ...(current.confirmScope === "email" ? { confirmUntil: 0, confirmSeconds: 0, confirmScope: null } : {}),
     }));
   }
-  return { sendSeconds: state.sendSeconds, confirmSeconds: state.confirmSeconds, begin, clearPhoneLimits };
+  return { sendSeconds: state.sendSeconds, confirmSeconds: state.confirmSeconds, begin, clearAddressLimits };
 }

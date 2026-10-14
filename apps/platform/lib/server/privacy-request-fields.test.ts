@@ -5,14 +5,14 @@ import { parsePrivacyRequestFields } from "./privacy-request-fields";
 vi.mock("server-only", () => ({}));
 
 function request(overrides: Partial<PrivacyRequestOtpRequest> = {}): PrivacyRequestOtpRequest {
-  return { kind: "access", name: "  Meera Rao ", phone: { country: "IN", number: "98765 43210" }, details: "", website: "", clientIp: "203.0.113.9", ...overrides };
+  return { kind: "access", name: "  Meera Rao ", email: "  Meera@Example.com ", details: "", website: "", clientIp: "203.0.113.9", ...overrides };
 }
 
 describe("parsePrivacyRequestFields", () => {
-  it("cleans the name and number, and leaves empty optional fields null", () => {
+  it("cleans the name and address, and leaves empty optional fields null", () => {
     expect(parsePrivacyRequestFields(request({ noticeVersion: "2026-10-13" }))).toEqual({
       success: true,
-      data: { kind: "access", name: "Meera Rao", phone: "+919876543210", details: null, noticeVersion: "2026-10-13" },
+      data: { kind: "access", name: "Meera Rao", email: "meera@example.com", details: null, noticeVersion: "2026-10-13" },
     });
     expect(parsePrivacyRequestFields(request({ name: "   " }))).toMatchObject({ success: true, data: { name: null, noticeVersion: null } });
   });
@@ -28,9 +28,15 @@ describe("parsePrivacyRequestFields", () => {
   });
 
   it("names the one field to put right", () => {
-    expect(parsePrivacyRequestFields(request({ phone: { country: "IN", number: "" } }))).toMatchObject({ success: false, field: "phone" });
-    expect(parsePrivacyRequestFields(request({ phone: { country: "IN", number: "12345" } }))).toMatchObject({ success: false, field: "phone" });
+    expect(parsePrivacyRequestFields(request({ email: "" }))).toEqual({ success: false, field: "email", message: "Enter the email address we should send the code to." });
+    expect(parsePrivacyRequestFields(request({ email: "meera" }))).toMatchObject({ success: false, field: "email", message: "Enter a valid email address." });
+    expect(parsePrivacyRequestFields(request({ email: `${"m".repeat(250)}@x.co` }))).toMatchObject({ success: false, field: "email" });
     expect(parsePrivacyRequestFields(request({ name: "n".repeat(201) }))).toMatchObject({ success: false, field: "name" });
     expect(parsePrivacyRequestFields(request({ details: "d".repeat(2001) }))).toMatchObject({ success: false, field: "details" });
+  });
+
+  it("asks for an email address, not a phone number: nothing about a request is texted", () => {
+    expect(parsePrivacyRequestFields(request({ email: "98765 43210" }))).toMatchObject({ success: false, field: "email" });
+    expect(JSON.stringify(parsePrivacyRequestFields(request({ email: "" })))).not.toMatch(/mobile|phone|text/i);
   });
 });

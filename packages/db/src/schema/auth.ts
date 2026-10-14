@@ -23,7 +23,7 @@ export const users = pgTable(
      * field (packages/auth) so it is set when the account is created and read back with the session.
      */
     phoneNumber: text("phone_number").unique(),
-    /** The owner entered the code we texted to `phoneNumber`. Only a verified number signs in or resets a password. */
+    /** The number was proven when the account was made. Only a verified number signs in. Nothing opens an account with a number any more. */
     phoneNumberVerified: boolean("phone_number_verified").notNull().default(false),
     image: text("image"),
     createdAt: createdAt(),

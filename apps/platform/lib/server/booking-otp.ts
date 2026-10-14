@@ -10,26 +10,29 @@ import {
   type BookingOtpPayload,
 } from "@fynix/db";
 import { addDays, zonedTimeToUtc } from "@fynix/shared/lib/calendar/local-date";
+import { bookingCodeEmail, EmailConfigurationError } from "@fynix/email";
 import type { BookingInput } from "@fynix/shared/lib/appointments/booking-form";
-import { phoneHint as toPhoneHint } from "@fynix/shared/lib/appointments/booking-form";
 import { OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
+import { emailHint } from "@/lib/email-hint";
 import { DEFAULT_PAUSED_MESSAGE } from "./availability";
 import { loggableBookingError } from "./booking-log";
 import { getStaffDb } from "./db";
 import { loadClinicCalendars } from "./clinic-calendars";
-import { bookingOtpBypassed, bookingOtpSecret, smsAllowedCountryCodes } from "./env";
+import { customerEmailTransport } from "./email";
+import { accountCodeSecret, emailCodeBypassed } from "./env";
 import { ipRateLimitKey } from "./ip-key";
 import { generateOtpCode, hashOtpCode } from "./otp-crypto";
-import { disallowedPhoneMessage, isPhoneCountryAllowed } from "./sms-country-guard";
-import { createSmsSender, otpMessage, SmsProviderUnavailableError } from "./sms";
+import { getPublicDb } from "./public-db";
 import { resolveRequestedSlot } from "./slot-check";
 
 /**
- * The write side of `POST /api/site/bookings/otp`: checks whether the requested slot can be booked at all, guards
- * against SMS pumping, rate limits, creates the pending OTP and sends it by SMS. Runs against the staff
- * connection (see the sanctioned-exceptions comment on `getStaffDb` in `./db.ts`): the public role can't read
- * module settings, services, opening hours or existing appointments, all of which this decision needs before it
- * writes anything.
+ * The write side of `POST /api/site/bookings/otp`: checks whether the requested slot can be booked at all, rate limits,
+ * creates the pending code and emails it to the patient's address. The phone number the patient gives is how the clinic
+ * reaches them: it is kept on the booking but never verified, and nothing is sent to it. Runs against the staff connection (see the
+ * sanctioned-exceptions comment on `getStaffDb` in `./db.ts`): the public role can't read module settings, services,
+ * opening hours or existing appointments, all of which this decision needs before it writes anything. The email itself is
+ * written through the intake connection, which may only add outbox messages, like every email sent for someone who is not
+ * signed in (the same path as the sign-up code, ./account-email-code.ts).
  */
 
 const ONE_MINUTE_SECONDS = 60;
@@ -38,18 +41,18 @@ const ONE_DAY_SECONDS = 24 * ONE_HOUR_SECONDS;
 
 /** Per visitor address, scoped to the business: one clinic's flood of traffic never spends another's budget. */
 const IP_RULE = { limit: 10, windowSeconds: ONE_HOUR_SECONDS };
-/** Per phone number, scoped to the business: two separate budgets (short-burst and daily), each under its own key
+/** Per email address, scoped to the business: two separate budgets (short-burst and daily), each under its own key
  * -- consumeRateLimit deletes windows older than the current one for a key on every call, so sharing one key
  * between two rules with different window lengths would let the shorter-window rule silently wipe the longer
  * one's counter. The daily rule alone can't be flooded by rotating IPs, and the short rule alone can't silently
  * exhaust the whole day's allowance in one burst. */
-const PHONE_SHORT_RULE = { limit: 3, windowSeconds: 10 * ONE_MINUTE_SECONDS };
-const PHONE_DAY_RULE = { limit: 8, windowSeconds: ONE_DAY_SECONDS };
-/** Per phone number, across every business: the per-business daily rule above resets for each clinic the same
- * number ever books through, so this is the backstop that actually caps one phone number's total OTP volume for
+const EMAIL_SHORT_RULE = { limit: 3, windowSeconds: 10 * ONE_MINUTE_SECONDS };
+const EMAIL_DAY_RULE = { limit: 8, windowSeconds: ONE_DAY_SECONDS };
+/** Per email address, across every business: the per-business daily rule above resets for each clinic the same
+ * address ever books through, so this is the backstop that actually caps one address's total code volume for
  * the day regardless of how many different businesses it is aimed at. Generous relative to a single business's
  * budget, since a patient legitimately booking with several clinics in one day must not be blocked by it. */
-const PHONE_GLOBAL_DAY_RULE = { limit: 10, windowSeconds: ONE_DAY_SECONDS };
+const EMAIL_GLOBAL_DAY_RULE = { limit: 10, windowSeconds: ONE_DAY_SECONDS };
 /** The budget across the whole business: generous, since a busy clinic should never be blocked by its own traffic. */
 const BUSINESS_RULE = { limit: 300, windowSeconds: ONE_DAY_SECONDS };
 
@@ -58,7 +61,7 @@ const SLOT_MESSAGE = "Choose an available time.";
 const PRACTITIONER_MESSAGE = "Choose a doctor from the list.";
 
 export type BookingOtpOutcome =
-  | { readonly kind: "otp_sent"; readonly otpId: string; readonly expiresInSeconds: number; readonly phoneHint: string }
+  | { readonly kind: "otp_sent"; readonly otpId: string; readonly expiresInSeconds: number; readonly emailHint: string }
   | { readonly kind: "unavailable" }
   | { readonly kind: "paused"; readonly message: string }
   | { readonly kind: "invalid"; readonly field: string; readonly message: string }
@@ -66,14 +69,13 @@ export type BookingOtpOutcome =
   | { readonly kind: "limited" }
   | { readonly kind: "failed" };
 
-/** Requests a booking OTP for `input` against `businessId`. Checks,
- * in order: the OTP secret and SMS provider are configured -- in production, the local outbox does not count as
- * configured (unavailable, see `SmsProviderUnavailableError`); the module is on and accepting (unavailable/paused);
+/** Requests a booking code for `input` against `businessId`. Checks,
+ * in order: the code secret and an email provider are configured -- in production, the local outbox does not count as
+ * configured (unavailable, see `EmailConfigurationError`); the module is on and accepting (unavailable/paused);
  * the service, if one was requested, exists (invalid); the doctor, if one was picked, is an active practitioner
  * (invalid); the slot exists in that day's generated slots and is free -- with the picked doctor, or with any doctor
  * when none was picked (invalid when past/outside the window/misaligned, taken when someone else holds it); the
- * phone's country is on the SMS-pumping allow-list (invalid); the rate limits, narrowest first (limited); then
- * creates the OTP and sends it by SMS. */
+ * rate limits, narrowest first (limited); then creates the code and emails it to the patient's address. */
 export async function requestBookingOtp(
   businessId: string,
   input: BookingInput,
@@ -81,23 +83,19 @@ export async function requestBookingOtp(
   now: Date,
 ): Promise<BookingOtpOutcome> {
   try {
-    // Resolved first, before any DB read or rate limit is spent: a misconfigured secret or SMS provider must fail
+    // Resolved first, before any DB read or rate limit is spent: a misconfigured secret or email provider must fail
     // immediately, not after the request has already cost the caller (and the business) part of a rate-limit
     // budget it can never get back.
-    const secret = bookingOtpSecret();
-
-    // With the bypass on (see bookingOtpBypassed), nothing is sent, so no SMS provider is needed -- not even in
-    // production, where the local outbox is otherwise refused.
-    const bypassed = bookingOtpBypassed();
-    let smsSender: ReturnType<typeof createSmsSender> | null = null;
+    const secret = accountCodeSecret();
+    let transport: ReturnType<typeof customerEmailTransport>;
     try {
-      if (!bypassed) smsSender = createSmsSender();
+      transport = customerEmailTransport(getPublicDb());
     } catch (error) {
-      if (!(error instanceof SmsProviderUnavailableError)) throw error;
+      if (!(error instanceof EmailConfigurationError)) throw error;
       // A deployment configuration problem, not a transient one -- reported as "unavailable" (403) rather than
       // "failed" (500) so it reads the same as the module being off, and logged with no patient data (the error
       // itself carries none; nothing else about this request is attached to the log line).
-      console.error("Booking OTP requested but SMS is not configured for production.", { businessId });
+      console.error("Booking code requested but email is not configured for production.", { businessId });
       return { kind: "unavailable" };
     }
 
@@ -105,7 +103,7 @@ export async function requestBookingOtp(
 
     // Opportunistic housekeeping, not a scheduled job (see purgeExpiredBookingData's doc comment for why): fired
     // alongside this request's own reads rather than awaited, so a slow or failing purge never adds latency to,
-    // or fails, the visitor's own OTP request. Deleting old OTP/SMS rows a request cycle late is harmless.
+    // or fails, the visitor's own code request. Deleting old code rows a request cycle late is harmless.
     purgeExpiredBookingData(db, now).catch((error: unknown) => {
       console.error("Could not purge expired booking data.", loggableBookingError(businessId, error));
     });
@@ -151,23 +149,16 @@ export async function requestBookingOtp(
     }
     const { slot } = resolved;
 
-    // The anti SMS-pumping (toll fraud) guard: refuses a destination outside the allow-list before any rate
-    // limit is spent, since pumping abuses cheap-to-request traffic rather than any single budget.
-    const allowedCountryCodes = smsAllowedCountryCodes();
-    if (!isPhoneCountryAllowed(input.phone, allowedCountryCodes)) {
-      return { kind: "invalid", field: "phone", message: disallowedPhoneMessage(allowedCountryCodes) };
-    }
-
-    // Narrowest budget first: an abusive single IP is stopped before it can spend the shared per-phone or
-    // per-business allowance on anyone else's behalf. The two per-business phone rules use distinct keys (see
-    // PHONE_SHORT_RULE's doc comment) even though they share a phone number and business, and the global phone
-    // rule is keyed on the phone alone, with no businessId, since it is meant to catch the same number spread
+    // Narrowest budget first: an abusive single IP is stopped before it can spend the shared per-address or
+    // per-business allowance on anyone else's behalf. The two per-business address rules use distinct keys (see
+    // EMAIL_SHORT_RULE's doc comment) even though they share an address and business, and the global address
+    // rule is keyed on the address alone, with no businessId, since it is meant to catch the same address spread
     // across many businesses.
     for (const check of [
       { key: `otp:ip:${businessId}:${ipRateLimitKey(clientIp)}`, rule: IP_RULE },
-      { key: `otp:phone:10m:${businessId}:${input.phone}`, rule: PHONE_SHORT_RULE },
-      { key: `otp:phone:day:${businessId}:${input.phone}`, rule: PHONE_DAY_RULE },
-      { key: `otp:phone:any:${input.phone}`, rule: PHONE_GLOBAL_DAY_RULE },
+      { key: `otp:email:10m:${businessId}:${input.email}`, rule: EMAIL_SHORT_RULE },
+      { key: `otp:email:day:${businessId}:${input.email}`, rule: EMAIL_DAY_RULE },
+      { key: `otp:email:any:${input.email}`, rule: EMAIL_GLOBAL_DAY_RULE },
       { key: `otp:business:${businessId}`, rule: BUSINESS_RULE },
     ]) {
       const result = await consumeRateLimit(db, check.key, check.rule, now);
@@ -203,23 +194,22 @@ export async function requestBookingOtp(
       ...(input.noticeVersion === undefined ? {} : { noticeVersion: input.noticeVersion }),
     };
 
-    await createBookingOtp(db, { id: otpId, businessId, phone: input.phone, codeHash, payload, expiresAt });
+    await createBookingOtp(db, { id: otpId, businessId, email: input.email, phone: input.phone, codeHash, payload, expiresAt });
 
+    if (emailCodeBypassed()) {
+      console.warn("The email code bypass is on: any 6-digit code will confirm a booking. The code is in the outbox.", { businessId });
+    }
     try {
-      if (smsSender === null) {
-        console.warn("Booking OTP bypass is on: no code was sent and any 6-digit code will confirm.", { businessId });
-      } else {
-        await smsSender.send({ to: input.phone, body: otpMessage(code), businessId });
-      }
+      await transport.send(bookingCodeEmail({ to: input.email, code, expiresInMinutes: OTP_TTL_SECONDS / 60 }));
     } catch (sendError) {
       await deleteBookingOtp(db, otpId);
-      console.error("Could not send a booking OTP.", loggableBookingError(businessId, sendError));
+      console.error("Could not email a booking code.", loggableBookingError(businessId, sendError));
       return { kind: "failed" };
     }
 
-    return { kind: "otp_sent", otpId, expiresInSeconds: OTP_TTL_SECONDS, phoneHint: toPhoneHint(input.phone) };
+    return { kind: "otp_sent", otpId, expiresInSeconds: OTP_TTL_SECONDS, emailHint: emailHint(input.email) };
   } catch (error) {
-    console.error("Could not request a booking OTP.", loggableBookingError(businessId, error));
+    console.error("Could not request a booking code.", loggableBookingError(businessId, error));
     return { kind: "failed" };
   }
 }

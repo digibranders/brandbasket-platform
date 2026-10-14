@@ -66,7 +66,7 @@ export function NomineeForm({ save, clear, current }: NomineeFormProps): ReactEl
         </div>
         <div>
           <label htmlFor="nominee-phone" className="block text-sm font-medium">
-            Their mobile number
+            Their phone number
             <RequiredMark />
           </label>
           <RuleInput

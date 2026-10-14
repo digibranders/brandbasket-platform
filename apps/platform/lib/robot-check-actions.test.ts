@@ -18,13 +18,9 @@ vi.mock("@fynix/auth", () => ({ AccountAlreadyExistsError: class extends Error {
 vi.mock("@fynix/db", () => ({ InviteNoLongerRedeemableError: class extends Error {} }));
 vi.mock("@/lib/server/sign-in", () => ({ signInWithPassword: vi.fn() }));
 vi.mock("@/lib/server/affiliate-access", () => ({ landingForSignedInUser: vi.fn() }));
-vi.mock("@/lib/server/customer-access", () => ({ LISTING_ACCOUNT_HOME: "/", LISTING_PAGE_PATH: "/listing" }));
+vi.mock("@/lib/server/customer-access", () => ({ LISTING_PAGE_PATH: "/listing" }));
 vi.mock("@/lib/server/listing-account", () => ({ requestJoinCode: vi.fn(), createListingAccount: vi.fn() }));
 vi.mock("@/lib/server/account-recovery", () => ({ requestPasswordReset: vi.fn(), resetPassword: vi.fn() }));
-vi.mock("@/lib/server/phone-password-reset", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/server/phone-password-reset")>("@/lib/server/phone-password-reset");
-  return { parseForgotPasswordRequest: actual.parseForgotPasswordRequest, requestPhonePasswordReset: vi.fn(), resetPasswordWithCode: vi.fn() };
-});
 vi.mock("@/lib/server/setup", () => ({ redeemSetupInvite: vi.fn(), InviteNotUsableError: class extends Error {}, TooManySetupAttemptsError: class extends Error {} }));
 vi.mock("@/lib/server/affiliate-setup", () => ({ redeemAffiliateLogin: vi.fn(), AffiliateAccountTakenError: class extends Error {} }));
 
@@ -49,17 +45,17 @@ describe("the robot check on the unauthenticated forms", () => {
     expect(signInWithPassword).not.toHaveBeenCalled();
   });
 
-  it("refuses a sign-up before it texts a code or opens an account", async () => {
-    const result = await joinForListing({ status: "idle" }, form({ choice: "listing_only", name: "Meera", phone: "9820011223", password: "correct-horse-battery" }));
+  it("refuses a sign-up before it emails a code or opens an account", async () => {
+    const result = await joinForListing({ status: "idle" }, form({ choice: "listing_only", name: "Meera", email: "meera@example.com", password: "correct-horse-battery" }));
     expect(result).toEqual({ status: "error", message: REFUSAL.message, otp: null });
     expect(checkHuman).toHaveBeenCalledWith(expect.any(FormData), "join");
     expect(requestJoinCode).not.toHaveBeenCalled();
     expect(createListingAccount).not.toHaveBeenCalled();
   });
 
-  it("refuses a password reset request before it sends a link or a code", async () => {
+  it("refuses a password reset request before it sends a link", async () => {
     const result = await requestPasswordResetAction({ status: "idle" }, form({ identifier: "owner@example.com" }));
-    expect(result).toEqual({ status: "error", message: REFUSAL.message, otp: null });
+    expect(result).toEqual({ status: "error", message: REFUSAL.message });
     expect(checkHuman).toHaveBeenCalledWith(expect.any(FormData), "forgot_password");
     expect(requestPasswordReset).not.toHaveBeenCalled();
   });

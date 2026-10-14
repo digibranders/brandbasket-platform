@@ -22,4 +22,8 @@ describe("billingCurrencyForPhone", () => {
   it.each(["98765 43210", "call me", ""])("falls back to USD for a number it cannot place (%j)", (phone) => {
     expect(billingCurrencyForPhone(phone)).toBe("USD");
   });
+
+  it("falls back to USD for a lead that gave no number at all", () => {
+    expect(billingCurrencyForPhone(null)).toBe("USD");
+  });
 });

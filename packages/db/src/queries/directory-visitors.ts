@@ -8,7 +8,6 @@ import {
   directoryReviews,
   directoryVisitors,
   ERASED_VISITOR_NAME,
-  smsMessages,
   type DirectoryVisitor,
 } from "../schema";
 import type { ScopedTransaction } from "../scope";
@@ -17,7 +16,7 @@ import { directoryRefId, matchesDirectoryRef, type DirectoryRef } from "./direct
 import { isUuid } from "./tenant";
 
 /**
- * Website visitor accounts (0118): a name and a number that a texted code has proven. Every function runs on the staff
+ * Website visitor accounts (0118): a name and a number that a code proved when the account was made. Every function runs on the staff
  * connection, from the platform's /api/directory/* routes. What a visitor typed is validated in the platform first;
  * the table's CHECKs are the backstop.
  */
@@ -132,18 +131,6 @@ export async function deleteDirectoryVisitor(db: Database, id: string): Promise<
 }
 
 export { ERASED_VISITOR_NAME };
-
-export interface DirectoryVisitorErasure {
-  readonly accountDeleted: boolean;
-  /** Reviews deleted, each with every comment and owner answer under it. */
-  readonly reviews: number;
-  /** The visitor's own comments deleted from other people's reviews. */
-  readonly comments: number;
-  /** Enquiries made anonymous: the business has already been told about them, so only the person is taken out. */
-  readonly enquiries: number;
-  /** Each business whose page showed something that was deleted, once, so its page can be refreshed. */
-  readonly businesses: readonly DirectoryRef[];
-}
 
 /**
  * What a visitor deletes: one review or one comment by its id, or (`business`, by the business's place id) everything they
@@ -295,65 +282,3 @@ export async function listOwnDirectoryContributions(
   return { reviews: reviews.map((row) => row.id), comments: comments.map((row) => row.id) };
 }
 
-/**
- * Erases everything the directory holds about the person behind `phone`, as one step of the caller's transaction (DPDP Act
- * s.12(3) and s.8(7)). Their number must already be proven: this does not check who is asking.
- *
- * - The visitor account is deleted, so their browser's token reads as signed out.
- * - Their reviews are deleted, stars included, with every comment and owner answer under them.
- * - Their comments on other people's reviews are deleted.
- * - Their enquiries lose the name, the number and the message, so nothing is left for staff to pass on. The row stays
- *   because the business was already told about it.
- * - A review or comment code still waiting for them is deleted, and so are the texts logged to their number.
- * - The consent each had given is marked withdrawn (the record that they gave it stays, as the history of what was agreed).
- *
- * Nothing here is undone by posting again with the same number: that starts a new account with nothing carried over.
- */
-export async function eraseDirectoryVisitorData(
-  tx: ScopedTransaction,
-  input: { readonly phone: string; readonly noticeVersion: string; readonly now: Date },
-): Promise<DirectoryVisitorErasure> {
-  const { phone, noticeVersion, now } = input;
-
-  const accounts = await tx.delete(directoryVisitors).where(eq(directoryVisitors.phone, phone)).returning({ id: directoryVisitors.id });
-
-  const reviews = await tx
-    .select({ id: directoryReviews.id, placeId: directoryReviews.placeId, listingKey: directoryReviews.listingKey })
-    .from(directoryReviews)
-    .where(eq(directoryReviews.phone, phone))
-    .for("update");
-  await deleteReviewThreads(tx, reviews.map((review) => review.id));
-
-  // Only a visitor's comments carry a number, so an owner's answer is never matched here.
-  const comments = await tx
-    .delete(directoryReviewComments)
-    .where(eq(directoryReviewComments.phone, phone))
-    .returning({ reviewId: directoryReviewComments.reviewId });
-  const commentedBusinesses = await businessesOfReviews(tx, [...new Set(comments.map((comment) => comment.reviewId))]);
-
-  const enquiries = await tx
-    .update(directoryEnquiries)
-    .set({ phone: null, name: ERASED_VISITOR_NAME, message: null, erasedAt: now })
-    .where(eq(directoryEnquiries.phone, phone))
-    .returning({ id: directoryEnquiries.id });
-
-  await tx.delete(directoryReviewOtps).where(eq(directoryReviewOtps.phone, phone));
-  // Only the website's own codes (no clinic): a clinic's patient texts are that clinic's records, not the directory's.
-  await tx.delete(smsMessages).where(and(eq(smsMessages.toPhone, phone), isNull(smsMessages.businessId)));
-
-  const withdrawals = [
-    ...accounts.map((account) => ({ subjectType: "visitor", subjectRef: account.id, purpose: "directory_contribution" })),
-    ...enquiries.map((enquiry) => ({ subjectType: "enquiry", subjectRef: enquiry.id, purpose: "directory_enquiry" })),
-  ];
-  if (withdrawals.length > 0) {
-    await tx.insert(consentRecords).values(withdrawals.map((withdrawal) => ({ ...withdrawal, event: "withdrawn" as const, noticeVersion, channel: "web", language: "en", ipHash: null })));
-  }
-
-  return {
-    accountDeleted: accounts.length > 0,
-    reviews: reviews.length,
-    comments: comments.length,
-    enquiries: enquiries.length,
-    businesses: distinctBusinesses([...reviews.map(reviewBusiness), ...commentedBusinesses]),
-  };
-}

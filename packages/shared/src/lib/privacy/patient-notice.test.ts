@@ -9,6 +9,13 @@ describe("patientNotice", () => {
     expect(text.length).toBeGreaterThan(120);
   });
 
+  it("says the code goes by email to the address given, and never mentions a text message or a mobile number", () => {
+    const text = patientNotice("Smile Dental", "en");
+    expect(text).toContain("We email a code to your email address");
+    expect(text).not.toMatch(/\btext(s|ed)?\b|\bsms\b|mobile/i);
+    expect(PATIENT_NOTICE_VERSION).toBe("patient-2026-10-14");
+  });
+
   it("covers who holds the details and how to ask about them, in English", () => {
     const text = patientNotice("Smile Dental", "en");
     expect(text).toContain("confirm your appointment");

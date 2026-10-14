@@ -6,7 +6,6 @@ import { clientIpFrom } from "@fynix/shared/lib/client-ip";
 import type { SignInFormState } from "@fynix/shared/lib/sign-in-form";
 import { retryMessage } from "@fynix/shared/lib/sign-in-limits";
 import { parseCustomerSignInForm } from "./customer-sign-in-form";
-import { requestBrand } from "./request-brand";
 import { getAppDb } from "./db";
 import { signInCustomer } from "./customer-sign-in";
 import { firstBlockedSignInLimit } from "@fynix/shared/server/rate-limits";
@@ -23,7 +22,7 @@ export type SignInOutcome = SignInFormState | { readonly status: "signed-in"; re
  */
 export async function signInWithPassword(formData: FormData): Promise<SignInOutcome> {
   // A brand whose accounts are opened with an email asks for one; the number sign-in still works for an account that has one.
-  const parsed = parseCustomerSignInForm(formData, (await requestBrand()).signUpWith === "email" ? "email" : "phone-or-email");
+  const parsed = parseCustomerSignInForm(formData, "email");
   if (!parsed.success) return { status: "error", message: parsed.message, email: parsed.typed };
 
   const { identifier, password } = parsed.data;

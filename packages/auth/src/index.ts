@@ -17,4 +17,3 @@ export {
 } from "./create-auth";
 export { createVerifiedEmailAccountWithGrant } from "./email-account";
 export { isAuthApiError, isInvalidCredentialsError, isInvalidTokenError, isWrongPasswordError } from "./errors";
-export { createPhoneAccountWithGrant, setAccountPassword, type NewPhoneAccount } from "./phone-account";

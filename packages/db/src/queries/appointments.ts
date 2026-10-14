@@ -10,7 +10,6 @@ import {
   businessModules,
   patients,
   practitioners,
-  smsMessages,
   type AppointmentSource,
   type AppointmentStatus,
 } from "../schema";
@@ -30,9 +29,8 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
  * affect zero rows) rather than an error.
  *
  * The system (staff-connection) queries at the bottom -- readBookingContext, listBusyIntervals, the booking_otps
- * functions, bookSlot, insertSmsMessage/listSmsMessages, countAppointments -- are what the platform's /api/site/*
- * routes and the SMS sender use: they have no per-visitor tenant scope, since a booking page visitor is not signed
- * in to anything, and bookSlot in particular must run its overlap check and insert as one atomic unit rather than
+ * functions, bookSlot, countAppointments -- are what the platform's /api/site/* routes use: they have no per-visitor
+ * tenant scope, since a booking page visitor is not signed in to anything, and bookSlot in particular must run its overlap check and insert as one atomic unit rather than
  * inside a caller-supplied tenant transaction.
  */
 
@@ -421,7 +419,7 @@ export async function transitionAppointment(
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// System (staff connection): what the platform's /api/site/* routes and the SMS sender need
+// System (staff connection): what the platform's /api/site/* routes need
 // ---------------------------------------------------------------------------------------------------------------
 
 export interface BookingContext {
@@ -514,6 +512,9 @@ export interface NewBookingOtp {
    * column default applies as usual. */
   readonly id?: string;
   readonly businessId: string;
+  /** Trimmed and lowercased: the address the code is emailed to. */
+  readonly email: string;
+  /** E.164, the number the clinic calls. Never verified. */
   readonly phone: string;
   readonly codeHash: string;
   readonly payload: BookingOtpPayload;
@@ -523,6 +524,7 @@ export interface NewBookingOtp {
 export interface BookingOtpRow {
   readonly id: string;
   readonly businessId: string;
+  readonly email: string;
   readonly phone: string;
   readonly codeHash: string;
   readonly payload: BookingOtpPayload;
@@ -535,6 +537,7 @@ export interface BookingOtpRow {
 const BOOKING_OTP_COLUMNS = {
   id: bookingOtps.id,
   businessId: bookingOtps.businessId,
+  email: bookingOtps.email,
   phone: bookingOtps.phone,
   codeHash: bookingOtps.codeHash,
   payload: bookingOtps.payload,
@@ -550,6 +553,7 @@ export async function createBookingOtp(db: Database, input: NewBookingOtp): Prom
     .values({
       ...(input.id === undefined ? {} : { id: input.id }),
       businessId: input.businessId,
+      email: input.email,
       phone: input.phone,
       codeHash: input.codeHash,
       payload: input.payload,
@@ -753,9 +757,10 @@ async function bookingPerson(tx: ScopedTransaction, businessId: string, input: N
 /**
  * Whether `person` already has a non-cancelled booking at `businessId` that overlaps [startsAt, endsAt), with any
  * doctor. The question bookSlot asks under its lock before it inserts. A person is the phone number plus the name,
- * compared without regard to case or spacing (see PatientOverlapError). It is asked only once the patient has proved
- * their phone: asking it of an anonymous visitor would tell anyone with a name and a number whether that person has
- * a booking at a given time.
+ * compared without regard to case or spacing (see PatientOverlapError). It is asked only once the visitor has proved
+ * an email address, and the platform answers a refusal as it answers any slot that is no longer on offer: asking it
+ * outright of an anonymous visitor would tell anyone with a name and a number whether that person has a booking at a
+ * given time.
  */
 export async function personHasBookingOverlapping(
   db: Database | ScopedTransaction,
@@ -999,83 +1004,19 @@ export async function reassignAppointment(
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// SMS outbox
-// ---------------------------------------------------------------------------------------------------------------
-
-export interface NewSmsMessage {
-  readonly businessId: string | null;
-  readonly toPhone: string;
-  readonly body: string;
-  /** Defaults to "outbox" at the column level; only ever something else once a real provider exists. */
-  readonly transport?: string;
-}
-
-export async function insertSmsMessage(db: Database, message: NewSmsMessage): Promise<void> {
-  await db.insert(smsMessages).values({
-    businessId: message.businessId,
-    toPhone: message.toPhone,
-    body: message.body,
-    ...(message.transport === undefined ? {} : { transport: message.transport }),
-  });
-}
-
-export interface SmsMessageRow {
-  readonly id: string;
-  readonly businessId: string | null;
-  readonly toPhone: string;
-  readonly body: string;
-  readonly transport: string;
-  readonly createdAt: Date;
-}
-
-const SMS_MESSAGE_COLUMNS = {
-  id: smsMessages.id,
-  businessId: smsMessages.businessId,
-  toPhone: smsMessages.toPhone,
-  body: smsMessages.body,
-  transport: smsMessages.transport,
-  createdAt: smsMessages.createdAt,
-} as const;
-
-/** Between 1 and 200 inclusive: a limit is a page size, not a way to ask for everything or for nothing. */
-const MAX_SMS_LIST_LIMIT = 200;
-
-function clampSmsLimit(limit: number): number {
-  return Math.min(Math.max(Math.trunc(limit), 1), MAX_SMS_LIST_LIMIT);
-}
-
-/** Newest first, for the admin outbox page. created_at is not unique across rows sent in the same instant, so
- * every row also carries the id as a tiebreaker -- without it, rows tied on created_at could come back in a
- * different relative order across calls (or across pages, once this gets pagination). */
-export async function listSmsMessages(db: Database, limit: number): Promise<SmsMessageRow[]> {
-  const safeLimit = clampSmsLimit(limit);
-  return db
-    .select(SMS_MESSAGE_COLUMNS)
-    .from(smsMessages)
-    .orderBy(desc(smsMessages.createdAt), desc(smsMessages.id))
-    .limit(safeLimit);
-}
-
-// ---------------------------------------------------------------------------------------------------------------
 // Patient data retention
 // ---------------------------------------------------------------------------------------------------------------
 
 /** An hour past expiry, not the moment of expiry itself: a short grace window in case anything (a support
  * question about a code that "didn't work") still needs to read a just-expired row before it is gone for good. */
 const BOOKING_OTP_PURGE_GRACE_MS = 60 * 60 * 1000;
-/** How long a locally-outboxed SMS (the code itself, in the clear) stays readable on the admin outbox page before
- * it is purged. Only ever populated by the local outbox provider -- a real provider sends the SMS itself and never
- * writes a row here. */
-const SMS_MESSAGE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
 export interface PurgeExpiredBookingDataResult {
   readonly deletedOtps: number;
-  readonly deletedSmsMessages: number;
 }
 
 /**
- * Deletes booking_otps rows that expired more than an hour ago, and sms_messages rows older than 7 days -- the two
- * places patient data (name, phone, note, and the OTP code itself while the local outbox is the SMS provider) sits
+ * Deletes booking_otps rows that expired more than an hour ago -- the one place patient data (name, phone, email) sits
  * on the staff connection after it is no longer needed for anything. Called opportunistically from
  * requestBookingOtp (see its doc comment) rather than on a schedule: this app has no cron/worker process today, so
  * "run it, best-effort, on the traffic that already touches this table" is the simpler of the two options
@@ -1085,12 +1026,8 @@ export interface PurgeExpiredBookingDataResult {
  */
 export async function purgeExpiredBookingData(db: Database, now: Date): Promise<PurgeExpiredBookingDataResult> {
   const otpCutoff = new Date(now.getTime() - BOOKING_OTP_PURGE_GRACE_MS);
-  const smsCutoff = new Date(now.getTime() - SMS_MESSAGE_RETENTION_MS);
-  const [deletedOtps, deletedSms] = await Promise.all([
-    db.delete(bookingOtps).where(lt(bookingOtps.expiresAt, otpCutoff)).returning({ id: bookingOtps.id }),
-    db.delete(smsMessages).where(lt(smsMessages.createdAt, smsCutoff)).returning({ id: smsMessages.id }),
-  ]);
-  return { deletedOtps: deletedOtps.length, deletedSmsMessages: deletedSms.length };
+  const deletedOtps = await db.delete(bookingOtps).where(lt(bookingOtps.expiresAt, otpCutoff)).returning({ id: bookingOtps.id });
+  return { deletedOtps: deletedOtps.length };
 }
 
 // ---------------------------------------------------------------------------------------------------------------

@@ -17,7 +17,7 @@ const DETAILS_MAX_LENGTH = 4000;
 const RESOLUTION_MAX_LENGTH = 2000;
 
 const KIND_MISSING = "Choose what the person is asking for.";
-const CONTACT_MISSING = "Enter an email address or mobile number to reach the person.";
+const CONTACT_MISSING = "Enter an email address or phone number to reach the person.";
 const CONTACT_TOO_LONG = `Keep the contact to ${CONTACT_MAX_LENGTH} characters.`;
 const NAME_TOO_LONG = `Keep the name to ${NAME_MAX_LENGTH} characters.`;
 const DETAILS_TOO_LONG = `Keep the details to ${DETAILS_MAX_LENGTH} characters.`;

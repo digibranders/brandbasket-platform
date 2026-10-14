@@ -18,13 +18,13 @@ import {
   type SiteFacts,
 } from "@fynix/db";
 import { getStaffDb } from "./db";
-import { bookingOtpBypassed, bookingOtpSecret } from "./env";
+import { accountCodeSecret, emailCodeBypassed } from "./env";
 import { hashOtpCode } from "./otp-crypto";
-import { confirmBookingOtp, PATIENT_OVERLAP_MESSAGE, TAKEN_MESSAGE } from "./booking-confirm";
+import { confirmBookingOtp, TAKEN_MESSAGE } from "./booking-confirm";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("./env", () => ({ bookingOtpSecret: vi.fn(), bookingOtpBypassed: vi.fn(() => false) }));
+vi.mock("./env", () => ({ accountCodeSecret: vi.fn(), emailCodeBypassed: vi.fn(() => false) }));
 vi.mock("@fynix/db", async () => {
   const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
@@ -46,7 +46,7 @@ vi.mock("@fynix/db", async () => {
 });
 
 const mockedGetStaffDb = vi.mocked(getStaffDb);
-const mockedBookingOtpSecret = vi.mocked(bookingOtpSecret);
+const mockedAccountCodeSecret = vi.mocked(accountCodeSecret);
 const mockedConsumeRateLimit = vi.mocked(consumeRateLimit);
 const mockedDeleteBookingOtp = vi.mocked(deleteBookingOtp);
 const mockedFindBookingOtp = vi.mocked(findBookingOtp);
@@ -112,6 +112,7 @@ function otpRow(overrides: Partial<BookingOtpRow> = {}): BookingOtpRow {
   return {
     id: OTP_ID,
     businessId: BUSINESS_ID,
+    email: "asha@example.com",
     phone: PHONE,
     codeHash: hashOtpCode(OTP_ID, CODE, SECRET),
     payload: {
@@ -157,10 +158,10 @@ function facts(overrides: Partial<SiteFacts> = {}): SiteFacts {
 }
 
 beforeEach(() => {
-  vi.mocked(bookingOtpBypassed).mockReturnValue(false);
+  vi.mocked(emailCodeBypassed).mockReturnValue(false);
   vi.clearAllMocks();
   mockedGetStaffDb.mockReturnValue({} as never);
-  mockedBookingOtpSecret.mockReturnValue(SECRET);
+  mockedAccountCodeSecret.mockReturnValue(SECRET);
   mockedConsumeRateLimit.mockResolvedValue({ allowed: true, remaining: 1, retryAfterSeconds: 0 });
   mockedFindBookingOtp.mockResolvedValue(otpRow());
   mockedClaimOtpAttempt.mockResolvedValue({ attempts: 1 });
@@ -174,9 +175,9 @@ beforeEach(() => {
 });
 
 describe("confirmBookingOtp", () => {
-  it("returns failed, without ever spending the rate limit, when bookingOtpSecret() throws", async () => {
-    mockedBookingOtpSecret.mockImplementation(() => {
-      throw new Error("BOOKING_OTP_SECRET must be at least 32 characters");
+  it("returns failed, without ever spending the rate limit, when the code secret is missing", async () => {
+    mockedAccountCodeSecret.mockImplementation(() => {
+      throw new Error("Invalid email code configuration: ACCOUNT_CODE_SECRET is required (at least 32 characters)");
     });
     const outcome = await confirmBookingOtp(BUSINESS_ID, OTP_ID, CODE, "1.2.3.4", NOW);
     expect(outcome).toEqual({ kind: "failed" });
@@ -249,15 +250,15 @@ describe("confirmBookingOtp", () => {
     expect(mockedMarkOtpVerified).not.toHaveBeenCalled();
   });
 
-  it("with the OTP bypass on, books on any 6-digit code", async () => {
-    vi.mocked(bookingOtpBypassed).mockReturnValue(true);
+  it("with the local code bypass on, books on any 6-digit code", async () => {
+    vi.mocked(emailCodeBypassed).mockReturnValue(true);
     const outcome = await confirmBookingOtp(BUSINESS_ID, OTP_ID, "000000", "1.2.3.4", NOW);
     expect(outcome.kind).toBe("booked");
     expect(mockedClaimOtpAttempt).toHaveBeenCalled();
   });
 
-  it("with the OTP bypass on, still refuses an expired OTP and one at the attempts ceiling", async () => {
-    vi.mocked(bookingOtpBypassed).mockReturnValue(true);
+  it("with the local code bypass on, still refuses an expired OTP and one at the attempts ceiling", async () => {
+    vi.mocked(emailCodeBypassed).mockReturnValue(true);
     mockedFindBookingOtp.mockResolvedValueOnce(null);
     expect((await confirmBookingOtp(BUSINESS_ID, OTP_ID, "000000", "1.2.3.4", NOW)).kind).toBe("expired");
     mockedClaimOtpAttempt.mockResolvedValueOnce(null);
@@ -343,12 +344,14 @@ describe("confirmBookingOtp", () => {
     expect(TAKEN_MESSAGE).toBe("Someone just booked that slot. Please pick another.");
   });
 
-  it("tells a patient who already has a booking at that time so, in its own words, not as a taken slot", async () => {
+  it("answers a booking the same name and phone already hold at that time as any slot that is no longer on offer, never as 'you already have one'", async () => {
+    // The phone is the clinic's to call, not proved: saying "you already have an appointment" would let anyone who knew
+    // a name and a number find out whether that person has a booking at a given time, by proving an address of their own.
     const { PatientOverlapError } = await import("@fynix/db");
     mockedBookSlot.mockRejectedValue(new PatientOverlapError());
     const outcome = await confirmBookingOtp(BUSINESS_ID, OTP_ID, CODE, "1.2.3.4", NOW);
-    expect(outcome).toEqual({ kind: "taken", message: PATIENT_OVERLAP_MESSAGE });
-    expect(PATIENT_OVERLAP_MESSAGE).toBe("You already have an appointment at that time. Please pick another time.");
+    expect(outcome).toEqual({ kind: "taken", message: "That time is no longer available. Please pick another slot." });
+    expect(JSON.stringify(outcome)).not.toMatch(/already have/i);
   });
 
   it("returns taken with its own message when the slot's start time has already passed", async () => {

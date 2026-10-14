@@ -54,6 +54,19 @@ describe("handleBlogPreviewRequest", () => {
     expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
   });
 
+  it("adds the preview pass to the draft's image addresses, so they load while it is still a draft", async () => {
+    const pass = token();
+    const withImages = {
+      ...POST,
+      coverImagePath: "/api/site/media/4",
+      author: { name: "Asha", bio: null, role: null, photoPath: "/api/site/media/9", links: {} },
+    } as never;
+    const response = await handleBlogPreviewRequest(request(pass), deps({ findPreviewPost: vi.fn(async () => withImages) }));
+    const body = (await response.json()) as { post: { coverImagePath: string; author: { photoPath: string } } };
+    expect(body.post.coverImagePath).toBe(`/api/site/media/4?preview=${encodeURIComponent(pass)}`);
+    expect(body.post.author.photoPath).toBe(`/api/site/media/9?preview=${encodeURIComponent(pass)}`);
+  });
+
   it("refuses a missing or wrong site token with 401", async () => {
     expect((await handleBlogPreviewRequest(request(token(), null), deps())).status).toBe(401);
     expect((await handleBlogPreviewRequest(request(token(), "0".repeat(64)), deps())).status).toBe(401);

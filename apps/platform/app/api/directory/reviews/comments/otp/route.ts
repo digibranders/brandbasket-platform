@@ -5,7 +5,7 @@ import { leadsApiToken } from "@/lib/server/website-api-auth";
 
 /**
  * `POST /api/directory/reviews/comments/otp` — a visitor's comment on a published review, held until they confirm the
- * code texted to them. Server-to-server only, with LEADS_API_TOKEN (see lib/server/directory-intake.ts): no CORS,
+ * code sent to them. Server-to-server only, with LEADS_API_TOKEN (see lib/server/directory-intake.ts): no CORS,
  * since a browser is never the caller.
  */
 export function POST(request: Request): Promise<Response> {
