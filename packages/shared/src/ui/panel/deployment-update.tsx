@@ -5,7 +5,7 @@ import { clientBrandName } from "../../lib/deployment-brand";
 import { reloadForDeploymentUpdate } from "../../lib/stale-deploy";
 
 /** Inline styles also work when a global error replaces the app's stylesheet. */
-/** `brandName` is the product the page belongs to: this deployment's (PLATFORM_BRAND at build time) unless the dashboard is sold under another name. */
+/** `brandName` is the product the page belongs to: the product's. */
 export function DeploymentUpdate({ brandName = clientBrandName() }: { readonly brandName?: string } = {}): ReactElement {
   const headingId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);

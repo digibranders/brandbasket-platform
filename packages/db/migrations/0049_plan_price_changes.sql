@@ -18,19 +18,19 @@ CREATE INDEX "plan_price_changes_created_idx" ON "plan_price_changes" USING btre
 
 -- Superadmins change prices from the staff console, so the staff connection may now add a plan version and retire
 -- the old one, or edit a plan's extra prices. The customer's connection still only reads plans.
-GRANT INSERT, UPDATE ON plans TO webfold_staff;
+GRANT INSERT, UPDATE ON plans TO fynix_staff;
 --> statement-breakpoint
 
-CREATE POLICY plans_staff_insert ON plans FOR INSERT TO webfold_staff WITH CHECK (true);
+CREATE POLICY plans_staff_insert ON plans FOR INSERT TO fynix_staff WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY plans_staff_update ON plans FOR UPDATE TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY plans_staff_update ON plans FOR UPDATE TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT ON plan_price_changes TO webfold_staff;
+GRANT SELECT, INSERT ON plan_price_changes TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE plan_price_changes ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY plan_price_changes_staff ON plan_price_changes FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY plan_price_changes_staff ON plan_price_changes FOR ALL TO fynix_staff USING (true) WITH CHECK (true);

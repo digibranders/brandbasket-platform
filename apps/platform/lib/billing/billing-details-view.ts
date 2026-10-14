@@ -1,9 +1,9 @@
-import type { BillingDetailsStart, SavedBillingDetails } from "@firstfold/shared/lib/billing/billing-details-start";
+import type { BillingDetailsStart, SavedBillingDetails } from "@fynix/shared/lib/billing/billing-details-start";
 
 /**
  * What Billing shows and asks for as the customer's billing details. The view is plain data and has no database or
  * request access; lib/server/billing-details.ts reads the rows and builds it with the helpers in
- * @firstfold/shared/lib/billing/billing-details-start, which the staff client page uses too.
+ * @fynix/shared/lib/billing/billing-details-start, which the staff client page uses too.
  */
 
 export interface BillingDetailsView {

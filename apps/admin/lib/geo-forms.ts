@@ -4,8 +4,8 @@ import {
   geoSlugProblem,
   readKeywordList,
   readPinList,
-} from "@firstfold/db/geo-catalog-rules";
-import { isIndiaStateCode } from "@firstfold/db/india-states";
+} from "@fynix/db/geo-catalog-rules";
+import { isIndiaStateCode } from "@fynix/db/india-states";
 
 /*
  * Reading the Geography page's forms (districts, areas, categories) into values the catalog queries take, or a message

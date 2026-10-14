@@ -145,8 +145,8 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await dbs.staff.db.insert(users).values([
-    { id: STAFF_USER, name: "Sam Staff", email: "sam@firstfold.test" },
-    { id: OTHER_STAFF_USER, name: "Olu Other", email: "olu@firstfold.test" },
+    { id: STAFF_USER, name: "Sam Staff", email: "sam@fynix.test" },
+    { id: OTHER_STAFF_USER, name: "Olu Other", email: "olu@fynix.test" },
   ]);
 });
 
@@ -452,7 +452,7 @@ describe("table rules", () => {
   });
 
   it("gives the app and public roles no access", async () => {
-    for (const role of ["firstfold_app", "firstfold_public"]) {
+    for (const role of ["fynix_app", "fynix_public"]) {
       for (const table of [
         "directory_reviews",
         "directory_review_otps",

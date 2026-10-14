@@ -4,7 +4,7 @@ import {
   VIDEO_TOO_LARGE_MESSAGE,
   videoTooLongMessage,
   type VideoSlot,
-} from "@firstfold/shared/lib/directory/videos";
+} from "@fynix/shared/lib/directory/videos";
 
 /*
  * The browser's side of a Premium member's video upload (docs/superpowers/specs/2026-10-07-business-videos-design.md).

@@ -1,18 +1,18 @@
 # The Care plan (2026-10-07)
 
-There are now three plans on Firstfold: **Free** (the directory listing), **Care** and **Premium**. The comparison table
+There are now three plans on Fynix: **Free** (the directory listing), **Care** and **Premium**. The comparison table
 the website shows (Free / Care / Premium, 16 rows) is the source of truth for what each includes.
 
 **Care** is the website only:
 
 | Included in Care | Not in Care (Premium only) |
 | --- | --- |
-| Next.js business website | Firstfold listing management, images, videos |
+| Next.js business website | Fynix listing management, images, videos |
 | Website management | No competitor ads on the listing |
 | OyeChats professional chatbot | Appointment management system |
 | Server and hosting | Homepage featured placement, better listing ranking |
 | | Google Business Profile, Facebook, Instagram management |
-| | 10% off Firstfold digital marketing |
+| | 10% off Fynix digital marketing |
 
 Premium is everything in Care, plus everything in the right-hand column.
 

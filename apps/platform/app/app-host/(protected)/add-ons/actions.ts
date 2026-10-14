@@ -1,10 +1,10 @@
 "use server";
 
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { MONTHLY_ADD_ON_IDS } from "@firstfold/shared/lib/billing/add-ons";
+import { MONTHLY_ADD_ON_IDS } from "@fynix/shared/lib/billing/add-ons";
 import type { AddOnStartState } from "@/lib/billing/add-on-form";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import {

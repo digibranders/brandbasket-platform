@@ -71,13 +71,13 @@ export function createLocalSupportStorage(rootDir: string): SupportStorage {
 export function localSupportRoot(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): string {
-  const configured = env.FIRSTFOLD_SUPPORT_ROOT?.trim();
+  const configured = env.FYNIX_SUPPORT_ROOT?.trim();
   const root = configured
     ? path.resolve(/*turbopackIgnore: true*/ configured)
     : path.resolve(/*turbopackIgnore: true*/ process.cwd(), "..", "..", ".data", "support-private");
   const media = path.resolve(
     /*turbopackIgnore: true*/
-    env.FIRSTFOLD_MEDIA_ROOT?.trim() ||
+    env.FYNIX_MEDIA_ROOT?.trim() ||
       path.resolve(/*turbopackIgnore: true*/ process.cwd(), "..", "..", ".data", "media"),
   );
   const inside = (parent: string, child: string): boolean => {

@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, type ReactElement } from "react";
-import { useBrand } from "@/components/panel/brand-provider";
-import { brandText } from "@/lib/brand";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { Button, ExternalButtonLink } from "@firstfold/shared/ui/panel/button";
+
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { Button, ExternalButtonLink } from "@fynix/shared/ui/panel/button";
 
 interface ListingLinkProps {
   readonly url: string;
@@ -12,13 +11,13 @@ interface ListingLinkProps {
   readonly live: boolean;
 }
 
-const VIEW_LABEL = "View on Firstfold Local";
+const VIEW_LABEL = "View on the local directory";
 
 /** The listing's address, a link to open it, and a copy button that falls back to asking for the text to be
  * selected when the clipboard is not available (an insecure origin, or permission refused). */
 export function ListingLink({ url, live }: ListingLinkProps): ReactElement {
   const [note, setNote] = useState("");
-  const viewLabel = brandText(VIEW_LABEL, useBrand());
+  const viewLabel = VIEW_LABEL;
 
   async function copy(): Promise<void> {
     try {

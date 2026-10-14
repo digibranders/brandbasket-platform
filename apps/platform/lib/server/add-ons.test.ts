@@ -1,4 +1,4 @@
-import { addMonthsUtc, createFakeBillingProvider, FAKE_ADD_ON_CONFIRM_PATH, FAKE_PAYMENT_METHOD, type BillingProvider } from "@firstfold/billing";
+import { addMonthsUtc, createFakeBillingProvider, FAKE_ADD_ON_CONFIRM_PATH, FAKE_PAYMENT_METHOD, type BillingProvider } from "@fynix/billing";
 import {
   cancelStaleAddOnCheckout,
   changeAddOnEndKind,
@@ -19,9 +19,9 @@ import {
   type Charge,
   type Database,
   type ScopedTransaction,
-} from "@firstfold/db";
-import { applyAddOnPayment } from "@firstfold/shared/server/add-on-activation";
-import { ensureAddOnPlan } from "@firstfold/shared/server/add-on-plans";
+} from "@fynix/db";
+import { applyAddOnPayment } from "@fynix/shared/server/add-on-activation";
+import { ensureAddOnPlan } from "@fynix/shared/server/add-on-plans";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { getBillingProvider } from "./billing";
 import { startCustomerChargePayment } from "./charges";
@@ -48,9 +48,9 @@ vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./charges", () => ({ startCustomerChargePayment: vi.fn() }));
 vi.mock("./customer-access", () => ({ getCustomerBusinessKind: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
-vi.mock("@firstfold/shared/server/add-on-plans", () => ({ ensureAddOnPlan: vi.fn() }));
-vi.mock("@firstfold/shared/server/add-on-activation", () => ({ applyAddOnPayment: vi.fn() }));
-vi.mock("@firstfold/db", () => {
+vi.mock("@fynix/shared/server/add-on-plans", () => ({ ensureAddOnPlan: vi.fn() }));
+vi.mock("@fynix/shared/server/add-on-activation", () => ({ applyAddOnPayment: vi.fn() }));
+vi.mock("@fynix/db", () => {
   return {
     cancelStaleAddOnCheckout: vi.fn(),
     changeAddOnEndKind: vi.fn(),
@@ -465,7 +465,7 @@ describe("startAddOnCheckoutFor: an unpaid checkout already there", () => {
 
     expect(cancelStaleAddOnCheckout).toHaveBeenCalledWith(expect.anything(), recent.id, NOW);
     // It cannot be cancelled from here, so it is logged for staff instead.
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] provider-cancel-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] provider-cancel-failed /);
   });
 
   it("logs, and still sends the customer on, when the replaced checkout cannot be cancelled at the provider", async () => {
@@ -474,7 +474,7 @@ describe("startAddOnCheckoutFor: an unpaid checkout already there", () => {
 
     redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW));
 
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] provider-cancel-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] provider-cancel-failed /);
   });
 });
 
@@ -635,7 +635,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
     await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).resolves.toEqual({ kind: "refused", message: PROVIDER_DOWN });
     expect(events).toEqual(["tx1:begin", "tx1:commit"]);
     expect(started).not.toHaveBeenCalled();
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] add-on-plan-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-plan-failed /);
     expect(String(logged.mock.calls[0]?.[0])).not.toContain("Razorpay is down");
   });
 
@@ -646,7 +646,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
     expect(events).toEqual(["tx1:begin", "tx1:commit"]);
     expect(insertAddOnSubscription).not.toHaveBeenCalled();
     expect(cancelStaleAddOnCheckout).not.toHaveBeenCalled();
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] add-on-checkout-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-checkout-failed /);
   });
 
   it("cancels its own new subscription, records nothing and asks to retry when the add-on changed meanwhile", async () => {
@@ -660,7 +660,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
     expect(insertAddOnSubscription).not.toHaveBeenCalled();
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:start", "tx2:begin", "tx2:commit", "provider:cancel"]);
     expect(cancelled).toHaveBeenCalledWith(expect.stringMatching(/^fake_sub_[0-9a-f]{24}$/));
-    expect(String(warned.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] checkout-orphaned .*changed-meanwhile/);
+    expect(String(warned.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] checkout-orphaned .*changed-meanwhile/);
   });
 
   it("notices a pause that was undone between the two transactions, and leaves the row it saw alone", async () => {
@@ -680,7 +680,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
 
     await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).rejects.toThrow("connection lost");
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:start", "tx2:begin", "tx2:rollback", "provider:cancel"]);
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] checkout-orphaned .*record-failed/);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] checkout-orphaned .*record-failed/);
     // The error is named, never quoted: a database error's message carries the failed query's params.
     expect(String(logged.mock.calls[0]?.[0])).not.toContain("connection lost");
   });
@@ -716,7 +716,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
       kind: "refused",
       message: "Something is wrong with this add-on. We're looking into it.",
     });
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] add-on-view-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-view-failed /);
     expect(started).not.toHaveBeenCalled();
   });
 });
@@ -1260,7 +1260,7 @@ describe("loadAddOnsPage", () => {
 
     expect(page.addOns[0]).toEqual({ kind: "broken", addOn: "local-seo", rowId: broken.id });
     expect(page.addOns[1]).toMatchObject({ kind: "ready", addOn: "performance-marketing", view: { state: "active" } });
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] add-on-view-failed .*"addOn":"local-seo"/);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-view-failed .*"addOn":"local-seo"/);
     expect(String(logged.mock.calls[0]?.[0])).toContain(`"addOnSubscriptionId":"${broken.id}"`);
   });
 

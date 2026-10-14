@@ -1,4 +1,4 @@
-import type { DirectoryAdPlacement } from "@firstfold/db";
+import type { DirectoryAdPlacement } from "@fynix/db";
 
 /*
  * What the Advertise page calls each spot, in the owner's words. Its own small file because both the server page and

@@ -1,7 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { OTP_TTL_SECONDS } from "@firstfold/shared/lib/appointments/otp";
-import { parsePhoneEntry } from "@firstfold/shared/lib/validation/phone";
+import { OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
+import { parsePhoneEntry } from "@fynix/shared/lib/validation/phone";
 import {
   contributionDeletionRequestSchema,
   ownContributionsRequestSchema,

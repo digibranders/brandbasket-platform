@@ -15,7 +15,7 @@
 # Options:
 #   --apply                 really do it
 #   --app-host NAME         the dashboard's hostname      (default app.fynix.digital)
-#   --admin-host NAME       the staff console's hostname  (default staff.fynix.digital)
+#   --admin-host NAME       the staff console's hostname  (default console.fynix.digital)
 #   --deploy-user NAME      the unprivileged user that owns releases and runs the apps (default deploy)
 #   --authorize-root-keys   give the deploy user the same ssh keys root already has (otherwise add one yourself, see the runbook)
 #   --swap SIZE             create /swapfile of this size (e.g. 2G) if the machine has no swap; recommended on 2 GB droplets
@@ -31,7 +31,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 APPLY=0; HOST=""; ON_SERVER=0
-APP_HOST="app.fynix.digital"; ADMIN_HOST="staff.fynix.digital"; DEPLOY_USER="deploy"
+APP_HOST="app.fynix.digital"; ADMIN_HOST="console.fynix.digital"; DEPLOY_USER="deploy"
 AUTH_ROOT_KEYS=0; SWAP=""; CERTBOT_EMAIL=""; SKIP_NODE=0; SKIP_CF=0; PNPM_VERSION=""
 SSH_OPTS="${FYNIX_SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=15}"
 ARGS=("$@")
@@ -99,7 +99,8 @@ planned=0; failed=0
 
 if [[ $APPLY -eq 1 && "${FYNIX_TEST:-0}" != 1 && "$(id -u)" -ne 0 ]]; then echo "--apply must run as root on the droplet." >&2; exit 1; fi
 say "Fynix droplet bootstrap ($([[ $APPLY -eq 1 ]] && echo APPLY || echo dry-run)): dashboard $APP_HOST, console $ADMIN_HOST, deploy user $DEPLOY_USER"
-if [[ -z "$PNPM_VERSION" ]]; then PNPM_VERSION="$(sed -n 's/.*"packageManager": *"pnpm@\([0-9.]*\)".*/\1/p' "$REPO/package.json" 2>/dev/null | head -n 1)"; fi
+# The kit copied to the droplet holds no package.json, so a failed read must not stop the script (set -e): fall back to the default below.
+if [[ -z "$PNPM_VERSION" ]]; then PNPM_VERSION="$(sed -n 's/.*"packageManager": *"pnpm@\([0-9.]*\)".*/\1/p' "$REPO/package.json" 2>/dev/null | head -n 1)" || PNPM_VERSION=""; fi
 PNPM_VERSION="${PNPM_VERSION:-10.30.3}"
 
 # Does one step: prints it, and (only with --apply) runs it.
@@ -198,7 +199,7 @@ say "  (the timers are installed but NOT enabled yet: enable them at go-live, ru
 say; say "5. nginx (nothing already served is touched; only two new server names are added)"
 if ! have nginx && [[ $APPLY -eq 1 ]]; then echo "nginx is not installed (step 1 did not install it)." >&2; exit 1; fi
 SITES="$ETC/nginx/sites-available"; ENABLED="$ETC/nginx/sites-enabled"
-HOSTSED="s/app\\.fynix\\.digital/$APP_HOST/g;s/staff\\.fynix\\.digital/$ADMIN_HOST/g"
+HOSTSED="s/app\\.fynix\\.digital/$APP_HOST/g;s/console\\.fynix\\.digital/$ADMIN_HOST/g"
 install_file "$KIT_DEPLOY/nginx/fynix-proxy.conf.example" "$ETC/nginx/snippets/fynix-proxy.conf" 644
 install_file "$KIT_DEPLOY/nginx/fynix-acme.conf.example" "$SITES/fynix-acme.conf" 644 "$HOSTSED"
 added=()

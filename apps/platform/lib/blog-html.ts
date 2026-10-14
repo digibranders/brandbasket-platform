@@ -1,4 +1,4 @@
-import { escapeHtml } from "@firstfold/email";
+import { escapeHtml } from "@fynix/email";
 import { asNodes, headingIds, headingLevel, inlineText, rootOf, type LexicalNode } from "./blog-text";
 
 export { lexicalOutline, lexicalToPlainText, type OutlineHeading, type OutlineLevel } from "./blog-text";

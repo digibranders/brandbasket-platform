@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { findDirectoryVisitor, touchDirectoryVisitor, upsertDirectoryVisitor } from "@firstfold/db";
+import { findDirectoryVisitor, touchDirectoryVisitor, upsertDirectoryVisitor } from "@fynix/db";
 import { startVisitorSession, resolveVisitor } from "./directory-visitor";
 import { recordContributionConsent } from "./visitor-consent";
 import { issueVisitorToken } from "./visitor-token";
@@ -8,7 +8,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({})) }));
 vi.mock("./env", () => ({ bookingOtpSecret: () => "s".repeat(32) }));
 vi.mock("./visitor-consent", () => ({ recordContributionConsent: vi.fn() }));
-vi.mock("@firstfold/db", () => ({ findDirectoryVisitor: vi.fn(), touchDirectoryVisitor: vi.fn(), upsertDirectoryVisitor: vi.fn() }));
+vi.mock("@fynix/db", () => ({ findDirectoryVisitor: vi.fn(), touchDirectoryVisitor: vi.fn(), upsertDirectoryVisitor: vi.fn() }));
 
 const SECRET = "s".repeat(32);
 const NOW = new Date("2026-10-09T10:00:00.000Z");

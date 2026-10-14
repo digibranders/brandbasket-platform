@@ -1,9 +1,9 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { SUPPORT_CATEGORIES, SUPPORT_CATEGORY_LABELS, type SupportCategory } from "@firstfold/shared/lib/support";
-import { cn } from "@firstfold/shared/lib/cn";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+import { SUPPORT_CATEGORIES, SUPPORT_CATEGORY_LABELS, type SupportCategory } from "@fynix/shared/lib/support";
+import { cn } from "@fynix/shared/lib/cn";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 
 export interface SupportCategorySelectProps {
   readonly id: string;

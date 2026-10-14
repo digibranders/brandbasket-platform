@@ -6,7 +6,7 @@
 
 **Architecture:** A new `change_requests` table holds one row per request with its own small state machine, separate from `projects` (a live project is closed by `projects_one_open_per_business_idx`, and reopening it would break the live dashboard). Every transition is a single conditional `UPDATE … WHERE status = …` in `packages/db/src/queries/change-requests.ts` ("the condition is the gate", as in `queries/projects.ts`), run on the staff connection even when a customer triggers it, after `requireCustomerAccess()` has proved it is their business. Pricing is a pure function in `packages/shared`. Emails are two templates (one to the customer, one to the team) written to the outbox. Payment for extra hours is recorded by staff by hand; no payment-provider change.
 
-**Tech Stack:** Next.js 16 server actions, Drizzle ORM + hand-written SQL migrations on Postgres 16 with row-level security, Vitest (unit + `*.integration.test.ts` against `webfold_test`), `@firstfold/email` outbox.
+**Tech Stack:** Next.js 16 server actions, Drizzle ORM + hand-written SQL migrations on Postgres 16 with row-level security, Vitest (unit + `*.integration.test.ts` against `fynix_platform_test`), `@fynix/email` outbox.
 
 **Decided with the user (2026-09-23):**
 - The customer asks in writing, in the dashboard.
@@ -154,15 +154,15 @@ describe("quoteChange", () => {
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/billing/change-pricing.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/billing/change-pricing.test.ts`
 Expected: FAIL, "Cannot find module './change-pricing'".
 
 - [ ] **Step 3: Implement**
 
 ```ts
 // The subpath, not the package index: this module reaches client components, and the index pulls in the database.
-import { chargedAmountCents } from "@firstfold/billing/tax";
-import type { MoneyCurrency } from "@firstfold/shared/lib/money";
+import { chargedAmountCents } from "@fynix/billing/tax";
+import type { MoneyCurrency } from "@fynix/shared/lib/money";
 
 /** The parts of a plan that price a change. */
 export interface ChangePricingPlan {
@@ -213,7 +213,7 @@ export function quoteChange(plan: ChangePricingPlan, estimateMinutes: number, fr
 
 - [ ] **Step 4: Run the tests and see them pass**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/billing/change-pricing.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/billing/change-pricing.test.ts`
 Expected: PASS (7 tests).
 
 - [ ] **Step 5: Commit**
@@ -333,21 +333,21 @@ export * from "./change-requests";
 
 - [ ] **Step 3: Generate the table migration**
 
-Run: `pnpm --filter @firstfold/db exec drizzle-kit generate --name change_requests`
+Run: `pnpm --filter @fynix/db exec drizzle-kit generate --name change_requests`
 Expected: `packages/db/migrations/0040_change_requests.sql` is created, containing `CREATE TYPE "public"."change_request_status"`, `CREATE TABLE "change_requests"`, the partial unique index and the four checks.
 
 - [ ] **Step 4: Write the grants migration**
 
-Run: `pnpm --filter @firstfold/db exec drizzle-kit generate --custom --name change_request_grants`, then put this in the new `0041_change_request_grants.sql`:
+Run: `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name change_request_grants`, then put this in the new `0041_change_request_grants.sql`:
 
 ```sql
 -- Staff do every write, including the ones a customer triggers (the same shape as projects: see
 -- approveProjectPreview's doc comment). The customer connection may only read its own business's requests.
-GRANT SELECT, INSERT, UPDATE ON change_requests TO webfold_staff;--> statement-breakpoint
-GRANT SELECT ON change_requests TO webfold_app;--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE ON change_requests TO fynix_staff;--> statement-breakpoint
+GRANT SELECT ON change_requests TO fynix_app;--> statement-breakpoint
 ALTER TABLE change_requests ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
-CREATE POLICY change_requests_staff_all ON change_requests FOR ALL TO webfold_staff USING (true) WITH CHECK (true);--> statement-breakpoint
-CREATE POLICY change_requests_tenant_select ON change_requests FOR SELECT TO webfold_app
+CREATE POLICY change_requests_staff_all ON change_requests FOR ALL TO fynix_staff USING (true) WITH CHECK (true);--> statement-breakpoint
+CREATE POLICY change_requests_tenant_select ON change_requests FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
 ```
 
@@ -558,7 +558,7 @@ describe("reads", () => {
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `pnpm db:migrate:test && pnpm --filter @firstfold/db exec vitest run --config vitest.integration.config.ts src/change-requests.integration.test.ts`
+Run: `pnpm db:migrate:test && pnpm --filter @fynix/db exec vitest run --config vitest.integration.config.ts src/change-requests.integration.test.ts`
 Expected: FAIL, "Cannot find module './queries/change-requests'".
 
 - [ ] **Step 3: Implement the queries**
@@ -793,7 +793,7 @@ One point to check while implementing: `usedFreeEstimateMinutes` counts a reques
 
 - [ ] **Step 4: Run the tests and see them pass**
 
-Run: `pnpm --filter @firstfold/db exec vitest run --config vitest.integration.config.ts src/change-requests.integration.test.ts`
+Run: `pnpm --filter @fynix/db exec vitest run --config vitest.integration.config.ts src/change-requests.integration.test.ts`
 Expected: PASS (11 tests).
 
 - [ ] **Step 5: Commit**
@@ -838,13 +838,13 @@ describe("change request status copy", () => {
 
 - [ ] **Step 2: Run it and see it fail**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/change-request-status.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/change-request-status.test.ts`
 Expected: FAIL, the module is not found.
 
 - [ ] **Step 3: Implement**
 
 ```ts
-import { CHANGE_REQUEST_STATUSES_WAITING_ON_STAFF, type ChangeRequestStatus } from "@firstfold/db";
+import { CHANGE_REQUEST_STATUSES_WAITING_ON_STAFF, type ChangeRequestStatus } from "@fynix/db";
 
 interface StatusCopy {
   /** One line for the customer's dashboard. */
@@ -873,12 +873,12 @@ export function isWaitingOnStaff(status: ChangeRequestStatus): boolean {
 }
 ```
 
-This module reaches client components, so importing a value from the `@firstfold/db` index would pull the database driver into the browser bundle. If `@firstfold/db` has no client-safe subpath for schema constants, move `CHANGE_REQUEST_STATUSES_WAITING_ON_STAFF` and the status union into a dependency-free file (`packages/db/src/schema/change-request-statuses.ts`, which has no drizzle imports), export it through a `package.json` subpath the way `@firstfold/billing/tax` is, and import it from there in both places.
+This module reaches client components, so importing a value from the `@fynix/db` index would pull the database driver into the browser bundle. If `@fynix/db` has no client-safe subpath for schema constants, move `CHANGE_REQUEST_STATUSES_WAITING_ON_STAFF` and the status union into a dependency-free file (`packages/db/src/schema/change-request-statuses.ts`, which has no drizzle imports), export it through a `package.json` subpath the way `@fynix/billing/tax` is, and import it from there in both places.
 
 - [ ] **Step 4: Run it and see it pass**, then **commit**
 
 ```bash
-pnpm --filter @firstfold/shared exec vitest run src/lib/change-request-status.test.ts
+pnpm --filter @fynix/shared exec vitest run src/lib/change-request-status.test.ts
 git add packages/shared/src/lib/change-request-status.ts packages/shared/src/lib/change-request-status.test.ts
 git commit -m "Shared wording for each change request status"
 ```
@@ -901,18 +901,18 @@ describe("changeRequestUpdateEmail", () => {
   it("tells the customer the price and where to accept it", () => {
     const email = changeRequestUpdateEmail({
       to: "riley@example.com", businessName: "Harbour Bakery", event: { kind: "quoted", amount: "₹3,363" },
-      dashboardUrl: "https://app.firstfold.io/changes",
+      dashboardUrl: "https://app.fynix.digital/changes",
     });
     expect(email.template).toBe("change-request-update");
     expect(email.bodyText).toContain("₹3,363");
-    expect(email.bodyText).toContain("https://app.firstfold.io/changes");
+    expect(email.bodyText).toContain("https://app.fynix.digital/changes");
   });
 
   it("links the preview", () => {
     const email = changeRequestUpdateEmail({
       to: "riley@example.com", businessName: "Harbour Bakery",
       event: { kind: "preview", previewUrl: "https://harbour-git-menu.vercel.app" },
-      dashboardUrl: "https://app.firstfold.io/changes",
+      dashboardUrl: "https://app.fynix.digital/changes",
     });
     expect(email.bodyHtml).toContain('href="https://harbour-git-menu.vercel.app"');
   });
@@ -920,7 +920,7 @@ describe("changeRequestUpdateEmail", () => {
   it("escapes a decline reason", () => {
     const email = changeRequestUpdateEmail({
       to: "riley@example.com", businessName: "Harbour Bakery", event: { kind: "declined", reason: "<b>no</b>" },
-      dashboardUrl: "https://app.firstfold.io/changes",
+      dashboardUrl: "https://app.fynix.digital/changes",
     });
     expect(email.bodyHtml).not.toContain("<b>no</b>");
   });
@@ -929,19 +929,19 @@ describe("changeRequestUpdateEmail", () => {
 describe("changeRequestTeamEmail", () => {
   it("names the business, the event and the admin link", () => {
     const email = changeRequestTeamEmail({
-      to: "team@firstfold.io", businessName: "Harbour Bakery", event: "requested",
-      clientUrl: "https://admin.firstfold.io/clients/abc",
+      to: "team@fynix.digital", businessName: "Harbour Bakery", event: "requested",
+      clientUrl: "https://console.fynix.digital/clients/abc",
     });
     expect(email.template).toBe("change-request-team");
     expect(email.subject).toContain("Harbour Bakery");
-    expect(email.bodyText).toContain("https://admin.firstfold.io/clients/abc");
+    expect(email.bodyText).toContain("https://console.fynix.digital/clients/abc");
   });
 });
 ```
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `pnpm --filter @firstfold/email exec vitest run`
+Run: `pnpm --filter @fynix/email exec vitest run`
 Expected: FAIL, the exports don't exist.
 
 - [ ] **Step 3: Implement the customer email**
@@ -1054,7 +1054,7 @@ export * from "./templates/change-request-team";
 - [ ] **Step 6: Run and commit**
 
 ```bash
-pnpm --filter @firstfold/email exec vitest run
+pnpm --filter @fynix/email exec vitest run
 git add packages/email/src
 git commit -m "Change request emails: one to the customer, one to the team"
 ```
@@ -1069,26 +1069,26 @@ git commit -m "Change request emails: one to the customer, one to the team"
 
 What it does: every customer action checks the website is live (`getLiveWebsite()` from `lib/server/onboarding.ts` returns non-null), runs the query on `getStaffDb()`, then sends the team email. The email is best-effort and never undoes the write, the same as `respondToPreview` in `lib/server/project-response.ts`.
 
-- [ ] **Step 1: Write the failing tests.** Follow `apps/platform/lib/server/project-response.test.ts`: `vi.mock("server-only")`, mock `@firstfold/db` and `@firstfold/email`, and set `process.env.FIRSTFOLD_TEAM_EMAIL`.
+- [ ] **Step 1: Write the failing tests.** Follow `apps/platform/lib/server/project-response.test.ts`: `vi.mock("server-only")`, mock `@fynix/db` and `@fynix/email`, and set `process.env.FYNIX_TEAM_EMAIL`.
 
 ```ts
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { acceptChangeQuote, approveChangePreview, createChangeRequest, requestChangeRevisions, withdrawChangeRequest } from "@firstfold/db";
-import { changeRequestTeamEmail, createOutboxTransport } from "@firstfold/email";
+import { acceptChangeQuote, approveChangePreview, createChangeRequest, requestChangeRevisions, withdrawChangeRequest } from "@fynix/db";
+import { changeRequestTeamEmail, createOutboxTransport } from "@fynix/email";
 import { respondToChange, submitChangeRequest } from "./change-requests";
 
 vi.mock("server-only", () => ({}));
-vi.mock("./env", () => ({ serverEnv: () => ({ ADMIN_ORIGIN: "https://admin.firstfold.io" }) }));
-vi.mock("@firstfold/db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@firstfold/db")>()),
+vi.mock("./env", () => ({ serverEnv: () => ({ ADMIN_ORIGIN: "https://console.fynix.digital" }) }));
+vi.mock("@fynix/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@fynix/db")>()),
   createChangeRequest: vi.fn(),
   acceptChangeQuote: vi.fn(),
   approveChangePreview: vi.fn(),
   requestChangeRevisions: vi.fn(),
   withdrawChangeRequest: vi.fn(),
 }));
-vi.mock("@firstfold/email", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@firstfold/email")>()),
+vi.mock("@fynix/email", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@fynix/email")>()),
   createOutboxTransport: vi.fn(),
 }));
 
@@ -1099,7 +1099,7 @@ const TENANT = { businessId: "b-1", businessName: "Harbour Bakery", userId: "u-1
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.FIRSTFOLD_TEAM_EMAIL = "team@firstfold.io";
+  process.env.FYNIX_TEAM_EMAIL = "team@fynix.digital";
   vi.mocked(createOutboxTransport).mockReturnValue({ send } as never);
 });
 
@@ -1112,8 +1112,8 @@ describe("submitChangeRequest", () => {
     await expect(submitChangeRequest(db, TENANT, "  New menu prices  ", NOW)).resolves.toEqual({ ok: true });
     expect(createChangeRequest).toHaveBeenCalledWith(db, { businessId: "b-1", userId: "u-1", description: "New menu prices", now: NOW });
     expect(send).toHaveBeenCalledWith(changeRequestTeamEmail({
-      to: "team@firstfold.io", businessName: "Harbour Bakery", event: "requested",
-      clientUrl: "https://admin.firstfold.io/clients/b-1",
+      to: "team@fynix.digital", businessName: "Harbour Bakery", event: "requested",
+      clientUrl: "https://console.fynix.digital/clients/b-1",
     }));
   });
 
@@ -1135,8 +1135,8 @@ describe("respondToChange", () => {
     await respondToChange(db, TENANT, { kind, requestId: "cr-1" }, NOW);
     expect(query).toHaveBeenCalledWith(db, { businessId: "b-1", requestId: "cr-1", now: NOW });
     expect(send).toHaveBeenCalledWith(changeRequestTeamEmail({
-      to: "team@firstfold.io", businessName: "Harbour Bakery", event,
-      clientUrl: "https://admin.firstfold.io/clients/b-1",
+      to: "team@fynix.digital", businessName: "Harbour Bakery", event,
+      clientUrl: "https://console.fynix.digital/clients/b-1",
     }));
   });
 });
@@ -1144,7 +1144,7 @@ describe("respondToChange", () => {
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `pnpm --filter @firstfold/platform exec vitest run lib/server/change-requests.test.ts`
+Run: `pnpm --filter @fynix/platform exec vitest run lib/server/change-requests.test.ts`
 Expected: FAIL, the module is not found.
 
 - [ ] **Step 3: Implement**
@@ -1159,9 +1159,9 @@ import {
   requestChangeRevisions,
   withdrawChangeRequest,
   type Database,
-} from "@firstfold/db";
-import { changeRequestTeamEmail, createOutboxTransport, type ChangeRequestTeamEvent } from "@firstfold/email";
-import { cleanMultiline } from "@firstfold/shared/lib/validation/text";
+} from "@fynix/db";
+import { changeRequestTeamEmail, createOutboxTransport, type ChangeRequestTeamEvent } from "@fynix/email";
+import { cleanMultiline } from "@fynix/shared/lib/validation/text";
 import { serverEnv } from "./env";
 
 export type ChangeFormResult = { readonly ok: true } | { readonly ok: false; readonly message: string };
@@ -1186,7 +1186,7 @@ const RESPONSES = {
 
 /**
  * Opens a change request after the caller proved the business is theirs and its website is live. Runs as staff for
- * the same reason as every customer-triggered transition (see approveProjectPreview in @firstfold/db).
+ * the same reason as every customer-triggered transition (see approveProjectPreview in @fynix/db).
  */
 export async function submitChangeRequest(db: Database, tenant: ChangeTenant, description: string, now: Date): Promise<ChangeFormResult> {
   const cleaned = cleanMultiline(description);
@@ -1207,9 +1207,9 @@ export async function respondToChange(db: Database, tenant: ChangeTenant, respon
 
 /** Best-effort, after the write has committed: a failed email must never undo what the customer did. */
 async function notifyTeam(db: Database, tenant: ChangeTenant, event: ChangeRequestTeamEvent): Promise<void> {
-  const teamInbox = process.env.FIRSTFOLD_TEAM_EMAIL;
+  const teamInbox = process.env.FYNIX_TEAM_EMAIL;
   if (teamInbox === undefined || teamInbox.trim() === "") {
-    console.error("FIRSTFOLD_TEAM_EMAIL is not set, so nobody was told about a change request.", { businessId: tenant.businessId, event });
+    console.error("FYNIX_TEAM_EMAIL is not set, so nobody was told about a change request.", { businessId: tenant.businessId, event });
     return;
   }
   const clientUrl = new URL(`/clients/${tenant.businessId}`, serverEnv().ADMIN_ORIGIN).toString();
@@ -1221,12 +1221,12 @@ async function notifyTeam(db: Database, tenant: ChangeTenant, event: ChangeReque
 }
 ```
 
-Check two names while implementing: that `cleanMultiline` exists at `@firstfold/shared/lib/validation/text` (the blog actions use it), and that `MAX_CHANGE_REQUEST_LENGTH` is exported from `@firstfold/db` through the schema (Task 2).
+Check two names while implementing: that `cleanMultiline` exists at `@fynix/shared/lib/validation/text` (the blog actions use it), and that `MAX_CHANGE_REQUEST_LENGTH` is exported from `@fynix/db` through the schema (Task 2).
 
 - [ ] **Step 4: Run and commit**
 
 ```bash
-pnpm --filter @firstfold/platform exec vitest run lib/server/change-requests.test.ts
+pnpm --filter @fynix/platform exec vitest run lib/server/change-requests.test.ts
 git add apps/platform/lib/server/change-requests.ts apps/platform/lib/server/change-requests.test.ts
 git commit -m "Customer change-request operations: submit, accept, approve, revise, withdraw"
 ```
@@ -1247,7 +1247,7 @@ git commit -m "Customer change-request operations: submit, accept, approve, revi
 ```ts
 "use server";
 
-import { ChangeRequestAlreadyOpenError, ChangeRequestNotInStateError } from "@firstfold/db";
+import { ChangeRequestAlreadyOpenError, ChangeRequestNotInStateError } from "@fynix/db";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -1304,7 +1304,7 @@ Make sure `requireCustomerAccess()` returns `user`. It does: `GrantedCustomer` h
 "use client";
 
 import { useActionState, type ReactElement } from "react";
-import { Button } from "@firstfold/shared/ui/panel/button";
+import { Button } from "@fynix/shared/ui/panel/button";
 import type { ChangeFormResult } from "@/lib/server/change-requests";
 
 const initialState: ChangeFormResult = { ok: true };
@@ -1355,7 +1355,7 @@ Importing the `ChangeFormResult` type from a `server-only` module is type-only a
 
 - [ ] **Step 4: Entry points.** In `project/page.tsx`, change the live "Something bigger?" card's "email us" text to a `ButtonLink href="/changes"` reading "Request a change". Add `{ href: "/changes", label: "Changes", icon: … }` to the nav items in `components/panel/customer-shell.tsx`, shown only when the website is live. Pass a `hasLiveWebsite` prop from the layout that renders the shell, and read both files before editing.
 
-- [ ] **Step 5: Check it in a browser.** Start the platform dev server (`preview_start` with the `webfold-platform-dev` config), sign in as a live test customer and:
+- [ ] **Step 5: Check it in a browser.** Start the platform dev server (`preview_start` with the `fynix_platform-platform-dev` config), sign in as a live test customer and:
   - submit a request, then check the form is replaced by "We’ve got your request";
   - withdraw it, then check the form is back;
   - a second submit while one is open shows "You already have a change with us";
@@ -1386,7 +1386,7 @@ git commit -m "Customers request, accept, approve and withdraw website changes f
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `pnpm --filter @firstfold/admin exec vitest run lib/server/change-requests.test.ts`
+Run: `pnpm --filter @fynix/admin exec vitest run lib/server/change-requests.test.ts`
 
 - [ ] **Step 3: Implement**
 
@@ -1402,10 +1402,10 @@ import {
   sendChangePreview,
   usedFreeEstimateMinutes,
   type Database,
-} from "@firstfold/db";
-import { changeRequestUpdateEmail, createOutboxTransport, type ChangeRequestCustomerEvent } from "@firstfold/email";
-import { freeMinutesRemaining, quoteChange } from "@firstfold/shared/lib/billing/change-pricing";
-import { formatMoney } from "@firstfold/shared/lib/money";
+} from "@fynix/db";
+import { changeRequestUpdateEmail, createOutboxTransport, type ChangeRequestCustomerEvent } from "@fynix/email";
+import { freeMinutesRemaining, quoteChange } from "@fynix/shared/lib/billing/change-pricing";
+import { formatMoney } from "@fynix/shared/lib/money";
 import { serverEnv } from "./env";
 
 export class ChangeRecipientMissingError extends Error {
@@ -1477,7 +1477,7 @@ export function recordChangePaymentBy(
 - [ ] **Step 4: Run and commit**
 
 ```bash
-pnpm --filter @firstfold/admin exec vitest run lib/server/change-requests.test.ts
+pnpm --filter @fynix/admin exec vitest run lib/server/change-requests.test.ts
 git add apps/admin/lib/server/change-requests.ts apps/admin/lib/server/change-requests.test.ts
 git commit -m "Staff change-request operations: estimate, preview, ship, decline, record payment"
 ```
@@ -1525,7 +1525,7 @@ git commit -m "Staff change-request operations: estimate, preview, ship, decline
 
 - [ ] **Step 4: Render it** on the client page when the latest project is `live`, after the Build section. Load `open`, `history` and `freeMinutes` in the page's existing data loading, with the staff db, `findOpenChangeRequest`, `listChangeRequests`, `usedFreeEstimateMinutes` and `freeMinutesRemaining`.
 
-- [ ] **Step 5: Check it in a browser**, with the admin dev server (`firstfold-admin-dev`) and a live test client that has an open request:
+- [ ] **Step 5: Check it in a browser**, with the admin dev server (`fynix-admin-dev`) and a live test client that has an open request:
   - estimate 30 minutes on a fresh client: it shows "Within their free time", and the customer's page shows "We’re working on it";
   - estimate 120 on a second request: the customer sees the amount and Accept;
   - send a preview, approve as the customer, mark shipped, record the payment, and check each step's notice and email in the Dev outbox.

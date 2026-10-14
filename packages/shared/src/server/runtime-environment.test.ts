@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { assertRuntimeEnvironment, RuntimeEnvironmentError } from "./runtime-environment";
 
-const REAL = { APP_ORIGIN: "https://app.firstfold.io", BREVO_API_KEY: "k", DATABASE_URL: "postgres://x" };
+const REAL = { APP_ORIGIN: "https://app.fynix.digital", BREVO_API_KEY: "k", DATABASE_URL: "postgres://x" };
 
 describe("assertRuntimeEnvironment", () => {
   it("checks nothing on a local machine", () => {

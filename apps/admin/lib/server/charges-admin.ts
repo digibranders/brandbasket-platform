@@ -10,11 +10,11 @@ import {
   waiveCharge,
   type Charge,
   type ChargePaymentOutcome,
-} from "@firstfold/db";
-import { chargeAmountCents, chargePricing } from "@firstfold/shared/lib/billing/charges";
-import type { ChargeRequest } from "@firstfold/shared/lib/billing/charge-form";
-import type { ManualPaymentDetails } from "@firstfold/shared/lib/billing/manual-payment-form";
-import { recordChargePaymentWithInvoice } from "@firstfold/shared/server/charge-payments";
+} from "@fynix/db";
+import { chargeAmountCents, chargePricing } from "@fynix/shared/lib/billing/charges";
+import type { ChargeRequest } from "@fynix/shared/lib/billing/charge-form";
+import type { ManualPaymentDetails } from "@fynix/shared/lib/billing/manual-payment-form";
+import { recordChargePaymentWithInvoice } from "@fynix/shared/server/charge-payments";
 import { getStaffDb } from "./db";
 import { finishUpgradeForChargeAfterManualPayment } from "./plan-upgrade-admin";
 

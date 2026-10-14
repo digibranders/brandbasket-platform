@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "@firstfold/db";
+import type { ProjectStatus } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { nextStep } from "./next-step";
 

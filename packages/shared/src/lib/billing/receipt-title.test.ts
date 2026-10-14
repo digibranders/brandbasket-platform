@@ -45,7 +45,7 @@ describe("paymentDescription", () => {
 describe("planLabel", () => {
   it("adds \"plan\" to a bare name, and leaves a name that already has it", () => {
     expect(planLabel("Care")).toBe("Care plan");
-    expect(planLabel("Firstfold care plan")).toBe("Firstfold care plan");
+    expect(planLabel("Fynix care plan")).toBe("Fynix care plan");
     expect(planLabel("Care Plan ")).toBe("Care Plan");
     expect(planLabel("Explanation")).toBe("Explanation plan");
   });

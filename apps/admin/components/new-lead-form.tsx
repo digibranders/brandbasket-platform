@@ -1,14 +1,14 @@
 "use client";
 
 import { useActionState, useEffect, useRef, type ReactElement, type ReactNode } from "react";
-import { PhoneField } from "@firstfold/shared/ui/phone-field";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
-import { BUSINESS_TYPES } from "@firstfold/shared/lib/business-types";
-import { EMPTY_LEAD_VALUES, initialLeadFormState, type LeadField, type LeadFormState } from "@firstfold/shared/lib/lead-form-fields";
-import type { PhoneCountryOption } from "@firstfold/shared/lib/phone/fields";
+import { PhoneField } from "@fynix/shared/ui/phone-field";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
+import { BUSINESS_TYPES } from "@fynix/shared/lib/business-types";
+import { EMPTY_LEAD_VALUES, initialLeadFormState, type LeadField, type LeadFormState } from "@fynix/shared/lib/lead-form-fields";
+import type { PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
 

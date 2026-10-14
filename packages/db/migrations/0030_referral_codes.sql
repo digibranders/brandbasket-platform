@@ -40,17 +40,17 @@ ALTER TABLE "businesses" ADD CONSTRAINT "businesses_referral_code_id_referral_co
 ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_discount_check" CHECK ("subscriptions"."discount_amount_cents" >= 0 and ("subscriptions"."referral_code_id" is null) = ("subscriptions"."discount_amount_cents" = 0));
 --> statement-breakpoint
 
--- Referral codes are staff-only. webfold_app is deliberately granted nothing: the customer's own role never reads
+-- Referral codes are staff-only. fynix_app is deliberately granted nothing: the customer's own role never reads
 -- this table, and every lookup made on a customer's behalf runs on the staff connection, like the rest of billing.
-GRANT SELECT, INSERT, UPDATE ON referral_codes TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON referral_codes TO fynix_staff;
 --> statement-breakpoint
 
 -- Applying and removing a code writes businesses.referral_code_id, which is billing state, so only staff may do it.
--- webfold_app keeps its existing SELECT on businesses and gains no write.
-GRANT UPDATE (referral_code_id) ON businesses TO webfold_staff;
+-- fynix_app keeps its existing SELECT on businesses and gains no write.
+GRANT UPDATE (referral_code_id) ON businesses TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE referral_codes ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY referral_codes_staff_all ON referral_codes FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY referral_codes_staff_all ON referral_codes FOR ALL TO fynix_staff USING (true) WITH CHECK (true);

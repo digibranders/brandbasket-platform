@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
-import type { ListingEnquiry } from "@firstfold/db";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
-import { displayPhone } from "@firstfold/shared/server/phone-display";
+import type { ListingEnquiry } from "@fynix/db";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import { displayPhone } from "@fynix/shared/server/phone-display";
 
 interface EnquiriesListProps {
   /** Newest first. */
@@ -11,7 +11,7 @@ interface EnquiriesListProps {
 }
 
 /**
- * What visitors sent this business from its page on Firstfold Local: who, their number to call back, and what they
+ * What visitors sent this business from its page on the local directory: who, their number to call back, and what they
  * asked. The same enquiries are emailed to the owner as they arrive.
  */
 export function EnquiriesList({ enquiries, limit }: EnquiriesListProps): ReactElement {

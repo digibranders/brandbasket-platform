@@ -231,7 +231,7 @@ Restyle to the cream frame: hairline list and a plain message. No behaviour chan
 - Existing admin tests stay green. No server action changes, so their tests are untouched.
 - **Checks:** `pnpm --filter admin lint`, `typecheck`, `test` and `build`.
 - **Browser verification:**
-  - Run the admin dev server (`firstfold-admin-dev`) against the local database.
+  - Run the admin dev server (`fynix-admin-dev`) against the local database.
   - Screenshot every page at 1440px and 390px, including an empty map, a crowded band (more than 6) and focus
     mode.
   - Check keyboard focus order: tabbing through the avatars must show their hover cards, and Esc must leave focus

@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
-import { WordmarkLogo, type BrandLogo } from "@firstfold/shared/ui/logo";
-import { CrownIcon, HeartIcon } from "@firstfold/shared/ui/icons";
+import { WordmarkLogo, type BrandLogo } from "@fynix/shared/ui/logo";
+import { CrownIcon, HeartIcon } from "@fynix/shared/ui/icons";
 import { AccountBar, type AccountBarAccount } from "./account-bar";
 import { SidebarNav, type SidebarNavItem } from "./sidebar-nav";
 import { cn } from "../../lib/cn";
@@ -35,8 +35,8 @@ interface DashboardFrameProps {
   readonly children: ReactNode;
   /** The plan chip under the wordmark. Left off where there is no plan to name (the support and affiliate frames). */
   readonly plan?: DashboardPlanChip;
-  /** The logo of the brand this dashboard is sold under, when it is not Firstfold. */
-  readonly brand?: BrandLogo;
+  /** The logo to draw. */
+  readonly brand: BrandLogo;
   /** "dark" (both dashboards today) frames the panel in deep burgundy; "light" is the cream frame. */
   readonly variant?: "light" | "dark";
 }
@@ -63,9 +63,9 @@ export function DashboardFrame({
     account,
     panel,
     dark,
-    docsUrl: brand?.siteUrl ?? `${siteConfig.url}/faq`,
-    contactEmail: brand?.email ?? siteConfig.email,
-    ...(brand === undefined ? {} : { brandName: brand.name }),
+    docsUrl: brand.siteUrl ?? `${siteConfig.url}/faq`,
+    contactEmail: brand.email ?? siteConfig.email,
+    brandName: brand.name,
   };
   return (
     <div className={cn("dashboard-type flex min-h-dvh flex-col lg:flex-row", dark ? "bg-dark-surface" : "bg-paper-deep")}>

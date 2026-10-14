@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { setAccountPassword } from "@firstfold/auth";
-import { findUserByPhone, type Database } from "@firstfold/db";
+import { setAccountPassword } from "@fynix/auth";
+import { findUserByPhone, type Database } from "@fynix/db";
 import { confirmAccountOtp, requestAccountOtp } from "./account-otp";
 import { getAuth } from "./auth";
 import { getAppDb } from "./db";
@@ -11,9 +11,9 @@ vi.mock("next/headers", () => ({ headers: vi.fn(async () => new Headers({ "x-for
 vi.mock("./db", () => ({ getAppDb: vi.fn() }));
 vi.mock("./auth", () => ({ getAuth: vi.fn() }));
 vi.mock("./account-otp", () => ({ requestAccountOtp: vi.fn(), confirmAccountOtp: vi.fn() }));
-vi.mock("@firstfold/auth", () => ({ setAccountPassword: vi.fn() }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/auth", () => ({ setAccountPassword: vi.fn() }));
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return { findUserByPhone: vi.fn(), isPhoneAccountEmail: actual.isPhoneAccountEmail };
 });
 
@@ -21,7 +21,7 @@ const DB = {} as Database;
 const AUTH = {} as ReturnType<typeof getAuth>;
 const E164 = "+919820011223";
 const OTP_ID = "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
-const ACCOUNT = { id: "user-1", name: "Meera", email: "919820011223@phone.firstfold.invalid" };
+const ACCOUNT = { id: "user-1", name: "Meera", email: "919820011223@phone.fynix.invalid" };
 
 function form(entries: Record<string, string>): FormData {
   const data = new FormData();

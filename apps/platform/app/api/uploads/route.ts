@@ -2,7 +2,7 @@ import { getCustomerTenant } from "@/lib/server/customer-tenant";
 import { getAppDb } from "@/lib/server/db";
 import { serverEnv } from "@/lib/server/env";
 import { allowsAnyLocalHost } from "@/lib/surfaces";
-import { getMediaStorage } from "@firstfold/shared/server/media-storage";
+import { getMediaStorage } from "@fynix/shared/server/media-storage";
 import { BUSY_MESSAGE, BUSY_RETRY_AFTER_SECONDS, hasDecodeCapacity } from "@/lib/server/media-upload";
 import { consumeUploadAllowance, isOnboardingOpen, storeOnboardingImage } from "@/lib/server/onboarding-media";
 import { handleUploadRequest } from "@/lib/server/upload-request";

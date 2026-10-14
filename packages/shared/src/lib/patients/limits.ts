@@ -3,7 +3,7 @@
  * same as an HTML input's `maxlength`.
  *
  * Kept free of imports so client components can use them: patient-form.ts is server-only (it parses phones).
- * packages/db cannot import @firstfold/shared, so the database's own checks repeat these as literal numbers. */
+ * packages/db cannot import @fynix/shared, so the database's own checks repeat these as literal numbers. */
 
 /** The same 80 as a name a patient types when booking online (appointments/booking-form.ts NAME_MAX_LENGTH): the
  * register's name starts as a booking's name, so a longer limit here could never be filled from a booking. */

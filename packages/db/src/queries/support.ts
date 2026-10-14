@@ -100,7 +100,7 @@ export async function createSupportTicketWithOutcome(db: Database, input: Create
       if (membership.length === 0) throw new SupportQueryError("forbidden", "The selected business does not belong to your account.");
     }
     const id = uuidv7();
-    const [ticket] = await tx.insert(supportTickets).values({ id, displayRef: `FF-${id.replaceAll("-", "").toUpperCase()}`, requesterUserId: input.userId, businessId, category: input.category, subject, submissionKey: input.submissionKey, submissionHash }).returning();
+    const [ticket] = await tx.insert(supportTickets).values({ id, displayRef: `FY-${id.replaceAll("-", "").toUpperCase()}`, requesterUserId: input.userId, businessId, category: input.category, subject, submissionKey: input.submissionKey, submissionHash }).returning();
     if (!ticket) throw new SupportQueryError("conflict", "The support ticket could not be created.");
     const [message] = await tx.insert(supportMessages).values({ ticketId: id, authorRole: "customer", authorUserId: input.userId, body: description, details, submissionKey: input.submissionKey, submissionHash }).returning();
     if (!message) throw new SupportQueryError("conflict", "The initial support message could not be created.");

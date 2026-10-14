@@ -4,9 +4,8 @@ import type { ReactElement } from "react";
 import { DomainStepForm } from "@/components/panel/domain-step-form";
 import { DomainSummary, SummaryCard } from "@/components/panel/onboarding-summary";
 import { StepHeading } from "@/components/panel/step-heading";
-import { clientSiteBaseDomain, isTemporarySubdomain } from "@firstfold/shared/lib/onboarding/domain-form";
-import { brandText } from "@/lib/brand";
-import { requestBrand } from "@/lib/server/request-brand";
+import { clientSiteBaseDomain, isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
+
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
 import { saveDomainStep, useTemporarySubdomainAction } from "./actions";
@@ -15,7 +14,6 @@ export const metadata: Metadata = { title: "Your domain" };
 
 export default async function DomainStepPage(): Promise<ReactElement> {
   await requireCustomerAccess();
-  const brand = await requestBrand();
   const snapshot = await getOnboardingSnapshot();
   const temporaryAddressOffered = clientSiteBaseDomain() !== null;
 
@@ -35,7 +33,7 @@ export default async function DomainStepPage(): Promise<ReactElement> {
       <StepHeading step="domain">
         <p>
           The web address your website will live at.{" "}
-          {temporaryAddressOffered ? brandText("Don’t have one yet? Use a free firstfold.io address for now and switch to your own domain later.", brand) : null} Any questions, email us at{" "}
+          {temporaryAddressOffered ? "Don’t have one yet? Use a free temporary address for now and switch to your own domain later." : null} Any questions, email us at{" "}
           <EmailUs />
           .
         </p>

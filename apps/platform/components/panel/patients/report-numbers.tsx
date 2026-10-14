@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import type { PatientReport } from "@firstfold/db";
+import type { PatientReport } from "@fynix/db";
 
 /** The row of big numbers at the top of Reports. */
 export function ReportNumbers({ report }: { readonly report: PatientReport }): ReactElement {

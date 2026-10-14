@@ -5,7 +5,7 @@ import { businesses } from "./businesses";
 import { createdAt, updatedAt } from "./columns";
 
 /*
- * A listing owner's deals and offers on Firstfold Local (docs/superpowers/specs/2026-10-07-deals-offers-design.md): a
+ * A listing owner's deals and offers on the local directory (docs/superpowers/specs/2026-10-07-deals-offers-design.md): a
  * short offer ("20% off your first haircut") that shows on the website's home page for its area, on the business's own
  * page and as an "Offer" tag on its list-page card. A deal goes up the moment its owner saves it, with no check from
  * us; staff can take one down afterwards (status `taken_down`). It is on show from its first day to its last, so

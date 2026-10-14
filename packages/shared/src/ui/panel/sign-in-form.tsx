@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { TurnstileWidget } from "../turnstile";
 import { SubmitButton } from "./submit-button";
-import { ArrowIcon, EyeIcon, EyeOffIcon, LockIcon, MailIcon, PhoneIcon } from "@firstfold/shared/ui/icons";
+import { ArrowIcon, EyeIcon, EyeOffIcon, LockIcon, MailIcon, PhoneIcon } from "@fynix/shared/ui/icons";
 import { initialSignInState, type SignInFormState } from "../../lib/sign-in-form";
 
 interface SignInFormProps {

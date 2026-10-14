@@ -10,7 +10,7 @@
 - Publish approves the owner's own added claim through the same place-approval path staff use.
 - All writes go through the staff connection after `requireCustomerAccess`. Reads go through the tenant scope.
 
-**Tech Stack:** Next 16 (app router, server actions, `useActionState`), Drizzle + Postgres (RLS roles `webfold_app` / `webfold_staff`), Vitest (unit, plus integration against `webfold_ads_test`), Tailwind tokens from `packages/shared/src/styles/theme.css`.
+**Tech Stack:** Next 16 (app router, server actions, `useActionState`), Drizzle + Postgres (RLS roles `fynix_app` / `fynix_staff`), Vitest (unit, plus integration against `fynix_platform_branch`), Tailwind tokens from `packages/shared/src/styles/theme.css`.
 
 Spec: `docs/superpowers/specs/2026-10-01-business-profile-design.md`. The checkout is `directory-ads`, chosen by the user over `login-logo`, because place ids already live here. login-logo's new look was ported in on 2026-10-01.
 
@@ -27,7 +27,7 @@ Spec: `docs/superpowers/specs/2026-10-01-business-profile-design.md`. The checko
 **DB**
 - Create `packages/db/src/schema/directory-business-profiles.ts`, the `directoryBusinessProfiles` table, and export it from `schema/index.ts`.
 - Modify `packages/db/src/schema/directory-ads.ts` to add `publishedAt` on `directoryClaims`.
-- Create `packages/db/migrations/0080_business_profiles.sql` (DDL) and `0081_business_profiles_grants.sql` (grants and RLS), plus their journal entries and snapshots via `pnpm --filter @firstfold/db db:generate`, renamed.
+- Create `packages/db/migrations/0080_business_profiles.sql` (DDL) and `0081_business_profiles_grants.sql` (grants and RLS), plus their journal entries and snapshots via `pnpm --filter @fynix/db db:generate`, renamed.
 - Create `packages/db/src/queries/directory-business-profiles.ts`:
   - `findBusinessProfile`
   - `saveBusinessDetails` (profile upsert, plus mirroring to the claim and to `businesses.name`)
@@ -100,10 +100,10 @@ Spec: `docs/superpowers/specs/2026-10-01-business-profile-design.md`. The checko
 
 - [ ] Add `directory_claims.published_at timestamptz` with the check `published_at is null or status <> 'pending'`.
 - [ ] Generate with drizzle-kit, rename to `0080_business_profiles`, and write `0081_business_profiles_grants.sql` by hand:
-  - `GRANT SELECT` to `webfold_app`, and `SELECT, INSERT, UPDATE` to `webfold_staff`
+  - `GRANT SELECT` to `fynix_app`, and `SELECT, INSERT, UPDATE` to `fynix_staff`
   - enable RLS
   - add a tenant-read policy and a staff-all policy, the same as 0070
-- [ ] Run `pnpm db:migrate` and `pnpm db:migrate:test` (both `webfold_ads` databases).
+- [ ] Run `pnpm db:migrate` and `pnpm db:migrate:test` (both `fynix_platform_branch` databases).
 
 ### Task 2: DB queries (TDD, integration)
 
@@ -117,7 +117,7 @@ Spec: `docs/superpowers/specs/2026-10-01-business-profile-design.md`. The checko
   - pictures:
     - the `listing` slot records as approved and retires the old live one
     - an upload with no claim is allowed for a listing account
-- [ ] Implement, then run `pnpm --filter @firstfold/db test:integration -- directory-business-profiles`.
+- [ ] Implement, then run `pnpm --filter @fynix/db test:integration -- directory-business-profiles`.
 
 ### Task 3: Pure platform libs (TDD, unit)
 

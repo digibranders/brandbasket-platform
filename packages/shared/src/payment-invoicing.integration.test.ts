@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { chargedAmountCents, discountCentsFor } from "@firstfold/billing";
+import { chargedAmountCents, discountCentsFor } from "@fynix/billing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyRetentionDiscount,
@@ -19,8 +19,8 @@ import {
   users,
   type Plan,
   type Subscription,
-} from "@firstfold/db";
-import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@firstfold/db/testing";
+} from "@fynix/db";
+import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@fynix/db/testing";
 import { chargeAmountCents } from "./lib/billing/charges";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment, type RenewalInvoicedPrice } from "./server/billing-activation";
 import { recordChargePaymentWithInvoice } from "./server/charge-payments";
@@ -182,7 +182,7 @@ async function payAddOn(premiumMember: boolean, providerPaymentId: string) {
 
 /** The next serial the counter would hand out for 26-27, or null when no invoice has taken one. */
 async function nextSerial(): Promise<number | null> {
-  const rows = await querySql<{ next_serial: number }>(dbs.owner, "select next_serial from tax_invoice_series where prefix = 'FF' and financial_year = '26-27'");
+  const rows = await querySql<{ next_serial: number }>(dbs.owner, "select next_serial from tax_invoice_series where prefix = 'FY' and financial_year = '26-27'");
   return rows[0]?.next_serial ?? null;
 }
 
@@ -222,7 +222,7 @@ describe("invoicing every payment path", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice).toMatchObject({
-      number: "FF/26-27/000001",
+      number: "FY/26-27/000001",
       issuedOn: "2026-10-09",
       paidOn: "2026-10-09",
       supplyType: "intra_state",
@@ -266,7 +266,7 @@ describe("invoicing every payment path", () => {
     );
 
     expect(await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id)).toMatchObject({
-      number: "FF/26-27/000002",
+      number: "FY/26-27/000002",
       lines: [expect.objectContaining({ detail: "Monthly subscription, 09 Nov to 08 Dec 2026" })],
     });
   });
@@ -354,7 +354,7 @@ describe("invoicing every payment path", () => {
 
     expect(recorded.outcome).toBe("paid");
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, recorded.payment.id);
-    expect(invoice).toMatchObject({ number: "FF/26-27/000002", totalCents: recorded.payment.amountCents });
+    expect(invoice).toMatchObject({ number: "FY/26-27/000002", totalCents: recorded.payment.amountCents });
     expect(invoice?.lines[0]?.description).toMatch(/^Upgrade to Premium, \d+ days left$/);
     expect(invoice?.lines[0]?.description).toBe(charge.description.replace(" \u00B7 ", ", "));
     expect(vi.mocked(console.error)).not.toHaveBeenCalled();
@@ -467,7 +467,7 @@ describe("what the invoice describes", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id);
     expect(invoice?.lines[0]).toMatchObject({
-      description: "Firstfold Premium plan",
+      description: "Fynix Premium plan",
       unitAmountCents: premium.recurringAmountCents,
       discountAmountCents: pendingDiscountCents,
       note: "Coupon GAURAV applied, 20% off",

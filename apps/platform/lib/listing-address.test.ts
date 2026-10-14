@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { DIRECTORY_AREAS, DIRECTORY_CATEGORIES, DIRECTORY_CITIES } from "@firstfold/shared/lib/directory/places";
+import { DIRECTORY_AREAS, DIRECTORY_CATEGORIES, DIRECTORY_CITIES } from "@fynix/shared/lib/directory/places";
 import { areaOptions, categoryOptions, cityOptions, filterOptions, listingChangeRequestHref } from "./listing-address";
 
 describe("listingChangeRequestHref", () => {
   it("opens an email to us that already names the listing and asks what to change", () => {
-    const href = listingChangeRequestHref("support@example.com", "Smile Dental", "firstfold.io/in/mh/business/smile-dental/9f94ykmdjp");
+    const href = listingChangeRequestHref("support@example.com", "Smile Dental", "fynix.digital/in/mh/business/smile-dental/9f94ykmdjp");
     const url = new URL(href);
     expect(url.protocol).toBe("mailto:");
     expect(url.pathname).toBe("support@example.com");
     expect(url.searchParams.get("subject")).toBe("Change my listing: Smile Dental");
     expect(url.searchParams.get("body")).toBe(
-      "Please change my listing (firstfold.io/in/mh/business/smile-dental/9f94ykmdjp).\n\nWhat to change (name, category, city, area, address or phone):\n",
+      "Please change my listing (fynix.digital/in/mh/business/smile-dental/9f94ykmdjp).\n\nWhat to change (name, category, city, area, address or phone):\n",
     );
     // Spaces must be %20 in a mailto link: mail apps show a + as a plus sign.
     expect(href).not.toContain("+");

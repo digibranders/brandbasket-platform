@@ -1,9 +1,9 @@
 import type { ReactElement } from "react";
-import type { OwnerReview } from "@firstfold/db";
-import { cn } from "@firstfold/shared/lib/cn";
-import { StarIcon } from "@firstfold/shared/ui/icons";
-import { displayPhone } from "@firstfold/shared/server/phone-display";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
+import type { OwnerReview } from "@fynix/db";
+import { cn } from "@fynix/shared/lib/cn";
+import { StarIcon } from "@fynix/shared/ui/icons";
+import { displayPhone } from "@fynix/shared/server/phone-display";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import type { PanelFormAction } from "@/components/panel/form/panel-form";
 import { OwnerReplyControls, OwnerTag, PostReplyForm } from "./reply-forms";
 

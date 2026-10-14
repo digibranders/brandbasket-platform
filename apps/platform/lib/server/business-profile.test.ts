@@ -20,14 +20,14 @@ import {
   type DirectoryClaim,
   type DirectoryProfile,
   type PincodeRecord,
-} from "@firstfold/db";
+} from "@fynix/db";
 import type { BusinessListingInput } from "@/lib/business-listing-form";
 import { getAppDb, getStaffDb } from "./db";
 import { lookupPincode, saveOwnFaq, saveOwnListing, saveOwnPageTabs, saveOwnService, saveOwnTrust } from "./business-profile";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   addBusinessFaq: vi.fn(),
   addBusinessListing: vi.fn(),
   addBusinessService: vi.fn(),

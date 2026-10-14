@@ -1,7 +1,7 @@
 /**
  * Failures specific to Appointments. The generic pieces -- isCheckViolation, paymentRequiredState,
  * unexpectedErrorState -- live in lib/server/panel-form-errors.ts, shared with "Your details" (and errorLogInfo
- * in @firstfold/shared/server/error-log-info, shared more widely still); this file keeps only what's particular to the week grid
+ * in @fynix/shared/server/error-log-info, shared more widely still); this file keeps only what's particular to the week grid
  * and settings pages.
  */
 import { panelFormErrorState, type PanelFormState } from "@/lib/panel-form-state";

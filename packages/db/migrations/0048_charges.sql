@@ -42,17 +42,17 @@ CREATE UNIQUE INDEX "charges_one_open_blog_unlock_idx" ON "charges" USING btree 
 -- The customer reads its own charges (the Billing page's "To pay" list and the blog allowance) and never writes
 -- them through the app connection: every write goes through a server path that checks access first and then uses
 -- the staff connection, the same way payments are recorded.
-GRANT SELECT ON charges TO webfold_app;
+GRANT SELECT ON charges TO fynix_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON charges TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON charges TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE charges ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY charges_tenant_select ON charges FOR SELECT TO webfold_app
+CREATE POLICY charges_tenant_select ON charges FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
 
-CREATE POLICY charges_staff_all ON charges FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY charges_staff_all ON charges FOR ALL TO fynix_staff USING (true) WITH CHECK (true);

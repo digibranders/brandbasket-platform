@@ -14,12 +14,12 @@ Each business's page gets a **Photos & videos gallery**. A **Premium member** (a
 | How many | 3 per business (slots 1 to 3). A new upload to a slot replaces its video once the new one is ready. |
 | Length | At most 16 s (the server accepts up to 16.5 s). The browser checks before sending when it can read the length; the server checks the length Vimeo reports and deletes a clip that is too long. |
 | Upload size | At most 50 MB as sent. |
-| Where videos live | **Vimeo**, in Firstfold's own account (Starter plan), inside its **"Firstfold" folder** (found by name; with no such folder uploads say "not available" instead of filing videos loose), as unlisted, embeddable, not-downloadable videos. The user chose Vimeo over Cloudflare R2 on 2026-10-08 after comparing price, API access and limits. |
+| Where videos live | **Vimeo**, in Fynix Digital's own account (Starter plan), inside its **"Fynix" folder** (found by name; with no such folder uploads say "not available" instead of filing videos loose), as unlisted, embeddable, not-downloadable videos. The user chose Vimeo over Cloudflare R2 on 2026-10-08 after comparing price, API access and limits. |
 | Who sends the file | The member's browser, straight to Vimeo's upload server (resumable "tus" protocol). Our servers never carry the video, so there is no ffmpeg and no big upload through the droplet. |
 | Approval | **None.** Live as soon as Vimeo has prepared it (about 20 to 30 s for a 12 s clip). Staff can **Take down** any video from the Ads page, Videos list; that deletes it from Vimeo too. |
 | What visitors see | A poster tile with a play icon and the length; pressing it opens Vimeo's embedded player. Nothing is requested from Vimeo until a visitor presses play. |
 | When Premium ends | Videos stop showing publicly (the public read joins `businesses.kind`) and are not deleted. |
-| Who can reach a video | Unlisted on Vimeo: only people with its address (which carries a privacy hash) can open it. Starter cannot limit playback to firstfold.io; Standard and above can. |
+| Who can reach a video | Unlisted on Vimeo: only people with its address (which carries a privacy hash) can open it. Starter cannot limit playback to fynix.digital; Standard and above can. |
 
 ## The flow
 

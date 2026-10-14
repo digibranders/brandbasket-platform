@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import { ChangelogArt } from "@firstfold/shared/ui/changelog-art";
+import { ChangelogArt } from "@fynix/shared/ui/changelog-art";
 
 /**
  * Which of the website's changelog drawings an empty screen shows. The builder is the same person in each; what

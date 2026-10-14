@@ -14,11 +14,11 @@ import {
   type OwnDirectoryContributions,
   type PrivacyRequestOtpPayload,
   type RateLimitRule,
-} from "@firstfold/db";
-import { phoneHint as toPhoneHint } from "@firstfold/shared/lib/appointments/booking-form";
-import { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@firstfold/shared/lib/appointments/otp";
-import { requestDeadlines, requestDeadlinesFor } from "@firstfold/shared/lib/privacy-request-deadlines";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+} from "@fynix/db";
+import { phoneHint as toPhoneHint } from "@fynix/shared/lib/appointments/booking-form";
+import { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
+import { requestDeadlines, requestDeadlinesFor } from "@fynix/shared/lib/privacy-request-deadlines";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { getStaffDb } from "./db";
 import { bookingOtpBypassed, bookingOtpSecret, smsAllowedCountryCodes } from "./env";
 import { ipRateLimitKey } from "./ip-key";

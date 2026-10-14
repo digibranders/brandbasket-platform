@@ -1,5 +1,5 @@
 import "server-only";
-import { siteConfig } from "@firstfold/shared/lib/site-config";
+import { siteConfig } from "@fynix/shared/lib/site-config";
 
 /**
  * The marketing website's own origin (NEXT_PUBLIC_SITE_URL): the one page-origin whose visitors' browsers may call the

@@ -1,10 +1,10 @@
-import type { Payment, TaxInvoice } from "@firstfold/db";
+import type { Payment, TaxInvoice } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { missingInvoiceRow, taxInvoiceRow } from "./tax-invoice-rows";
 
 const INVOICE = {
   id: "01920000-0000-7000-8000-000000000001",
-  number: "FF/26-27/000001",
+  number: "FY/26-27/000001",
   issuedOn: "2026-10-09",
   paidOn: "2026-10-09",
   placeOfSupplyStateCode: "mh",
@@ -15,11 +15,11 @@ describe("taxInvoiceRow", () => {
   it("names the number, the day, the place of supply and the total, and links the download", () => {
     expect(taxInvoiceRow(INVOICE)).toEqual({
       id: INVOICE.id,
-      number: "FF/26-27/000001",
+      number: "FY/26-27/000001",
       detail: "Issued 9 October 2026 · Maharashtra",
       total: "₹3,538.82",
       downloadHref: `/invoices/${INVOICE.id}`,
-      downloadLabel: "Download tax invoice FF/26-27/000001",
+      downloadLabel: "Download tax invoice FY/26-27/000001",
     });
   });
 

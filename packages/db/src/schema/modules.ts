@@ -3,7 +3,7 @@ import { users } from "./auth";
 import { businesses } from "./businesses";
 
 /** Must match BUSINESS_MODULES in packages/shared/src/lib/business-modules.ts; packages/db does not depend on
- * @firstfold/shared, so the values are written literally here and
+ * @fynix/shared, so the values are written literally here and
  * packages/shared/src/lib/appointments/status-db-parity.test.ts asserts they agree. */
 export const businessModule = pgEnum("business_module", ["appointments"]);
 export type BusinessModule = (typeof businessModule.enumValues)[number];

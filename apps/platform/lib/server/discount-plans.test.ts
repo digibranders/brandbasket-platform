@@ -1,13 +1,13 @@
-import { createFakeBillingProvider, type BillingProvider } from "@firstfold/billing";
-import { findProviderDiscountPlan, saveProviderDiscountPlan, type Database, type Plan } from "@firstfold/db";
+import { createFakeBillingProvider, type BillingProvider } from "@fynix/billing";
+import { findProviderDiscountPlan, saveProviderDiscountPlan, type Database, type Plan } from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffDb } from "./db";
 import { ensureDiscountPlan, UnevenPlanDiscountError } from "./discount-plans";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return { ...actual, findProviderDiscountPlan: vi.fn(), saveProviderDiscountPlan: vi.fn() };
 });
 

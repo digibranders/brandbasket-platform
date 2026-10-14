@@ -1,6 +1,6 @@
 "use server";
 
-import { clearNominee, saveNominee } from "@firstfold/db";
+import { clearNominee, saveNominee } from "@fynix/db";
 import { revalidatePath } from "next/cache";
 import { PRIVACY_SETTINGS_PATH, type NomineeFormState } from "@/lib/privacy-settings-form";
 import { requireCustomerAccess } from "@/lib/server/customer-access";

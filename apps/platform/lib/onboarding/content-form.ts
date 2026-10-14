@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { cleanLine, cleanMultiline } from "@firstfold/shared/lib/validation/text";
+import { cleanLine, cleanMultiline } from "@fynix/shared/lib/validation/text";
 import { httpsUrl } from "@/lib/validation/url";
-import { fieldNameOf, textField, type StepParseResult } from "@firstfold/shared/lib/onboarding/form-result";
+import { fieldNameOf, textField, type StepParseResult } from "@fynix/shared/lib/onboarding/form-result";
 
 export const MAX_SERVICES = 20;
 export const MAX_REFERENCE_URLS = 5;

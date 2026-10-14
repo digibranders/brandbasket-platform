@@ -1,4 +1,4 @@
-import type { SubscriptionStatus } from "@firstfold/db";
+import type { SubscriptionStatus } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { hasBillingAccess } from "./access";
 

@@ -1,4 +1,4 @@
-import { isPhoneAccountEmail, users, type Database } from "@firstfold/db";
+import { isPhoneAccountEmail, users, type Database } from "@fynix/db";
 import { eq } from "drizzle-orm";
 import { normaliseEmail, withAccountCreationGrant } from "./account-creation-grant";
 import type { Auth } from "./create-auth";

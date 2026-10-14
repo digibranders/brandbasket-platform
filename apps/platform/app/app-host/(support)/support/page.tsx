@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { listSupportTickets } from "@firstfold/db";
+import { listSupportTickets } from "@fynix/db";
 import type { ReactElement } from "react";
-import { ArrowIcon, ChatIcon } from "@firstfold/shared/ui/icons";
-import { SupportCategoryBadge, SupportStatusBadge } from "@firstfold/shared/ui/panel/support-status-badge";
+import { ArrowIcon, ChatIcon } from "@fynix/shared/ui/icons";
+import { SupportCategoryBadge, SupportStatusBadge } from "@fynix/shared/ui/panel/support-status-badge";
 import { getAppDb } from "@/lib/server/db";
 import { requireSupportAccess } from "@/lib/server/support-access";
 import { SupportButton } from "@/components/panel/support/support-button";

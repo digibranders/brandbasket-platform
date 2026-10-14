@@ -4,7 +4,7 @@ export type ListingStage = "building" | "live" | "hidden" | "paused";
 
 export const LISTING_STAGE_LABELS: Readonly<Record<ListingStage, string>> = {
   building: "Goes live with your website",
-  live: "Live on Firstfold Local",
+  live: "Live on the local directory",
   hidden: "Hidden",
   paused: "Paused",
 };

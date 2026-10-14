@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { setLeadReplied } from "@firstfold/db";
+import { setLeadReplied } from "@fynix/db";
 import { LEADS_PATH } from "@/lib/leads";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getStaffDb } from "@/lib/server/db";

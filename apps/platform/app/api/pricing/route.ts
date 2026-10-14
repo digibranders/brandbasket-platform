@@ -1,8 +1,8 @@
 import "server-only";
-import { listActivePlans, type BillingCurrency } from "@firstfold/db";
+import { listActivePlans, type BillingCurrency } from "@fynix/db";
 import { publicPrices, type PublicPrices } from "@/lib/billing/public-prices";
 import { getStaffDb } from "@/lib/server/db";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 
 /** How long the website and any cache in front of it may reuse an answer: prices show up within five minutes. */
 const CACHE_CONTROL = "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
@@ -22,7 +22,7 @@ export async function GET(): Promise<Response> {
     for (const plan of plans) (plan.tier === "care" ? carePrices : prices)[plan.currency] = publicPrices(plan);
     return Response.json({ prices, carePrices }, { status: 200, headers: { "Cache-Control": CACHE_CONTROL } });
   } catch (error) {
-    console.error("[firstfold:pricing] GET /api/pricing failed", errorLogInfo(error));
+    console.error("[fynix:pricing] GET /api/pricing failed", errorLogInfo(error));
     return Response.json({ error: "Prices are unavailable right now." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }

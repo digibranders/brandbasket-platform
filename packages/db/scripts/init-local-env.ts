@@ -17,6 +17,7 @@ const secrets = {
   appPassword: randomBytes(24).toString("hex"),
   staffPassword: randomBytes(24).toString("hex"),
   publicPassword: randomBytes(24).toString("hex"),
+  cmsPassword: randomBytes(24).toString("hex"),
   authSecret: randomBytes(32).toString("base64"),
   leadsApiToken: randomBytes(32).toString("hex"),
   payloadSecret: randomBytes(32).toString("base64"),

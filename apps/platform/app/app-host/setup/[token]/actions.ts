@@ -1,11 +1,10 @@
 "use server";
 
-import { brandText } from "@/lib/brand";
-import { currentBrand } from "@/lib/server/request-brand";
-import { AccountAlreadyExistsError } from "@firstfold/auth";
-import { InviteNoLongerRedeemableError } from "@firstfold/db";
+
+import { AccountAlreadyExistsError } from "@fynix/auth";
+import { InviteNoLongerRedeemableError } from "@fynix/db";
 import { redirect } from "next/navigation";
-import { checkHuman } from "@firstfold/shared/server/turnstile-request";
+import { checkHuman } from "@fynix/shared/server/turnstile-request";
 import { parseSetupForm, SETUP_AGREE_MESSAGE, type SetupFormState } from "@/lib/setup-form";
 import { InviteNotUsableError, redeemSetupInvite, TermsNotAgreedError, TooManySetupAttemptsError } from "@/lib/server/setup";
 
@@ -38,7 +37,7 @@ export async function completeSetup(_previous: SetupFormState, formData: FormDat
     }
     // Both a duplicate creation attempt and a failed ownership check lead to the same explicit verification step.
     if (error instanceof AccountAlreadyExistsError) {
-      return { status: "error", message: brandText("This email already has a Firstfold account. Enter that account’s password to finish setup.", await currentBrand()), mode: "verify-existing", field: "password" };
+      return { status: "error", message: "This email already has a Fynix account. Enter that account’s password to finish setup.", mode: "verify-existing", field: "password" };
     }
     throw error;
   }

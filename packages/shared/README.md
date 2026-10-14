@@ -1,4 +1,4 @@
-# @firstfold/shared
+# @fynix/shared
 
 Code used by both apps: `apps/website` (the marketing site) and `apps/platform` (the customer app, the staff admin
 and their API routes).
@@ -8,4 +8,4 @@ and their API routes).
 - `src/server/` server-only helpers (phone number defaults and display)
 - `src/styles/theme.css` the palette, fonts, base styles and shared motion, imported by each app's `globals.css`
 
-Import by path, e.g. `import { cn } from "@firstfold/shared/lib/cn"`. Anything only one app uses belongs in that app.
+Import by path, e.g. `import { cn } from "@fynix/shared/lib/cn"`. Anything only one app uses belongs in that app.

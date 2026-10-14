@@ -4,9 +4,9 @@ import {
   type BusyInterval,
   type Database,
   type PractitionerScheduleRow,
-} from "@firstfold/db";
-import type { PractitionerCalendar } from "@firstfold/shared/lib/appointments/clinic-availability";
-import type { WeekAvailabilityHoursRow } from "@firstfold/shared/lib/appointments/slots";
+} from "@fynix/db";
+import type { PractitionerCalendar } from "@fynix/shared/lib/appointments/clinic-availability";
+import type { WeekAvailabilityHoursRow } from "@fynix/shared/lib/appointments/slots";
 import { utcIntervalToLocal } from "./local-time";
 
 /**

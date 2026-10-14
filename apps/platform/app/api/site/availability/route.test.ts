@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { listBusyIntervals, readBookingContext, readPractitionerSchedules, readSiteFacts } from "@firstfold/db";
+import { listBusyIntervals, readBookingContext, readPractitionerSchedules, readSiteFacts } from "@fynix/db";
 import { getStaffDb } from "@/lib/server/db";
 import { findTenantBySiteToken } from "@/lib/server/site-api";
 import { GET, OPTIONS } from "./route";
@@ -12,7 +12,7 @@ import { GET, OPTIONS } from "./route";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("@/lib/server/site-api", () => ({ findTenantBySiteToken: vi.fn() }));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   readBookingContext: vi.fn(),
   readSiteFacts: vi.fn(),
   listBusyIntervals: vi.fn(),

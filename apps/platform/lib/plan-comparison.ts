@@ -1,4 +1,4 @@
-import { BRANDS, brandedLabel, featureShownTo, type Brand } from "@/lib/brand";
+import { BRAND, featureShownTo, type Brand } from "@/lib/brand";
 import type { MembershipTier } from "@/lib/plan-features";
 
 /*
@@ -29,7 +29,7 @@ export const COMPARISON_COLUMNS: readonly { readonly id: ComparisonColumnId; rea
 ];
 
 export const COMPARISON_ROWS: readonly ComparisonRow[] = [
-  { id: "listing", label: "Firstfold business listing", free: true, care: true, premium: true },
+  { id: "listing", label: "Business listing", free: true, care: true, premium: true },
   { id: "images", label: "Images", free: true, care: true, premium: true },
   { id: "videos", label: "Videos", free: false, care: false, premium: true },
   {
@@ -40,7 +40,7 @@ export const COMPARISON_ROWS: readonly ComparisonRow[] = [
     care: "Allowed",
     premium: "Not allowed",
   },
-  { id: "listing-management", label: "Firstfold business listing management", free: false, care: false, premium: true },
+  { id: "listing-management", label: "Business listing management", free: false, care: false, premium: true },
   { id: "website", label: "Next.js business website", free: false, care: true, premium: true },
   { id: "website-management", label: "Website management", free: false, care: true, premium: true },
   { id: "chatbot", label: "OyeChats professional chatbot", free: false, care: true, premium: true },
@@ -60,22 +60,17 @@ export const COMPARISON_ROWS: readonly ComparisonRow[] = [
   { id: "instagram", label: "Instagram account management", free: false, care: false, premium: true },
   {
     id: "marketing-discount",
-    label: "Firstfold digital marketing services",
-    premiumSentence: "10% off Firstfold digital marketing services",
+    label: "Digital marketing services",
+    premiumSentence: "10% off digital marketing services",
     free: false,
     care: false,
     premium: "10% off",
   },
 ];
 
-/** The table's rows for a brand: Firstfold's own, or, under another brand, the same rows worded without Firstfold's name and without the rows about the listing it does not sell. */
+/** The table's rows: without those about a listing the product does not sell. */
 export function comparisonRowsFor(brand: Brand): readonly ComparisonRow[] {
-  if (brand.id === "firstfold") return COMPARISON_ROWS;
-  return COMPARISON_ROWS.filter((row) => featureShownTo(row.id, brand)).map((row) => ({
-    ...row,
-    label: brandedLabel(row.label, brand),
-    ...(row.premiumSentence === undefined ? {} : { premiumSentence: brandedLabel(row.premiumSentence, brand) }),
-  }));
+  return COMPARISON_ROWS.filter((row) => featureShownTo(row.id, brand));
 }
 
 /** What a cell says in words, for a screen reader that cannot see the tick: every cell has one. */
@@ -89,7 +84,7 @@ export function cellWords(row: ComparisonRow, column: ComparisonColumnId): strin
  * What a plan card lists: the rows the plan ticks, and for Premium the rows that carry a word, said as a sentence.
  * Free's own rows are not listed anywhere: nobody buys the plan they are on.
  */
-export function planListFor(tier: MembershipTier, brand: Brand = BRANDS.firstfold): readonly string[] {
+export function planListFor(tier: MembershipTier, brand: Brand = BRAND): readonly string[] {
   return comparisonRowsFor(brand).flatMap((row) => {
     const cell = row[tier];
     if (cell === true) return [row.label];

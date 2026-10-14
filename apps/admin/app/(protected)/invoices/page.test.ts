@@ -1,5 +1,5 @@
-import type { Payment, TaxInvoice, TaxInvoiceLineRecord } from "@firstfold/db";
-import { listMissingTaxInvoices, listTaxInvoicesIssuedBetween } from "@firstfold/db";
+import type { Payment, TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
+import { listMissingTaxInvoices, listTaxInvoicesIssuedBetween } from "@fynix/db";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireStaffAccess } from "@/lib/server/staff-access";
@@ -16,13 +16,13 @@ vi.mock("next/navigation", async (importOriginal) => ({
   }),
 }));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return { ...actual, listTaxInvoicesIssuedBetween: vi.fn(), listMissingTaxInvoices: vi.fn() };
 });
 
 const line: TaxInvoiceLineRecord = {
-  description: "Firstfold Premium plan",
+  description: "Fynix Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: null,
   sac: "998361",
@@ -42,12 +42,12 @@ function invoiceOf(overrides: Partial<TaxInvoice> & { readonly id: string; reado
   return {
     businessId: "01920000-0000-7000-8000-0000000000b1",
     paymentId: `payment-${overrides.id}`,
-    prefix: "FF",
+    prefix: "FY",
     financialYear: "26-27",
-    number: `FF/26-27/${String(overrides.serial).padStart(6, "0")}`,
+    number: `FY/26-27/${String(overrides.serial).padStart(6, "0")}`,
     issuedOn: "2026-10-09",
     paidOn: "2026-10-09",
-    supplier: { legalName: "Digibranders Private Limited", tradeName: "Firstfold", gstin: "27AAICD9268J1Z0", cin: null, addressLines: ["Thane West"], stateCode: "mh", email: null, phone: null },
+    supplier: { legalName: "Digibranders Private Limited", tradeName: "Fynix", gstin: "27AAICD9268J1Z0", cin: null, addressLines: ["Thane West"], stateCode: "mh", email: null, phone: null },
     recipient: { legalName: "QA Premium Business", tradeName: null, gstin: "27AAPFU0939F1ZV", cin: null, addressLines: ["Mumbai"], stateCode: "mh", email: null, phone: null },
     placeOfSupplyStateCode: "mh",
     placeOfSupplyBasis: "gstin",
@@ -150,13 +150,13 @@ describe("the Invoices page", () => {
     expect(text).toContain("1 invoice, ₹5,599.20 taxable, ₹1,007.86 tax");
 
     // Each row, with the PDF link /invoices/{id}.
-    expect(text).toContain("FF/26-27/000001");
+    expect(text).toContain("FY/26-27/000001");
     expect(text).toContain("GSTIN 27AAPFU0939F1ZV · Maharashtra · 9 October 2026");
     expect(text).toContain("Sharma & Rao Traders");
     expect(text).toContain("Unregistered · Karnataka · 9 October 2026");
     expect(html).toContain('href="/invoices/inv-1"');
     expect(html).toContain('href="/invoices/inv-2"');
-    expect(html).toContain('aria-label="Download tax invoice FF/26-27/000002"');
+    expect(html).toContain('aria-label="Download tax invoice FY/26-27/000002"');
   });
 
   it("reads the neighbouring month links to a screen reader as Previous month and Next month, with the visible words unchanged", async () => {

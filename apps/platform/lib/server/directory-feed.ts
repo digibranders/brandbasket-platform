@@ -1,5 +1,5 @@
 import "server-only";
-import { hasBillingAccess } from "@firstfold/billing";
+import { hasBillingAccess } from "@fynix/billing";
 import {
   findBillingState,
   findDirectoryProfile,
@@ -16,10 +16,10 @@ import {
   readLiveDirectoryPictures,
   readSiteFacts,
   type Database,
-} from "@firstfold/db";
-import { DEFAULT_BUSINESS_TIME_ZONE, localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import { GALLERY_SLOTS } from "@firstfold/shared/lib/directory/pictures";
-import { buildAddedFeedListing, buildAddedProfile, buildFeedListing, type FeedPlace } from "@firstfold/shared/lib/directory/feed";
+} from "@fynix/db";
+import { DEFAULT_BUSINESS_TIME_ZONE, localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { GALLERY_SLOTS } from "@fynix/shared/lib/directory/pictures";
+import { buildAddedFeedListing, buildAddedProfile, buildFeedListing, type FeedPlace } from "@fynix/shared/lib/directory/feed";
 import {
   DIRECTORY_FEED_VERSION,
   type DirectoryFeed,
@@ -27,7 +27,7 @@ import {
   type DirectoryFeedAddedProfile,
   type DirectoryFeedClaimedProfile,
   type DirectoryFeedListing,
-} from "@firstfold/shared/lib/directory/feed-contract";
+} from "@fynix/shared/lib/directory/feed-contract";
 
 /**
  * The registry record of each place id, from one read of the places and one of their old addresses however many

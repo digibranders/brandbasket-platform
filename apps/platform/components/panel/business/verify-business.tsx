@@ -1,12 +1,12 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, type ReactElement } from "react";
-import { OTP_LENGTH } from "@firstfold/shared/lib/appointments/otp";
-import { FIELD_PATTERNS } from "@firstfold/shared/lib/forms/input-rules";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import { OTP_LENGTH } from "@fynix/shared/lib/appointments/otp";
+import { FIELD_PATTERNS } from "@fynix/shared/lib/forms/input-rules";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { StatusLine } from "@/components/panel/status-line";
 import { initialVerifyBusinessState, type VerifyBusinessState } from "@/lib/verify-business-form";
 import { useSmsOtpAutofill } from "@/lib/use-sms-otp-autofill";

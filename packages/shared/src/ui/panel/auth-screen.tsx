@@ -1,13 +1,13 @@
 import type { ReactElement, ReactNode } from "react";
-import { ContourField } from "@firstfold/shared/ui/contour-field";
-import { WordmarkLogo, type BrandLogo } from "@firstfold/shared/ui/logo";
+import { ContourField } from "@fynix/shared/ui/contour-field";
+import { WordmarkLogo, type BrandLogo } from "@fynix/shared/ui/logo";
 import { siteConfig } from "../../lib/site-config";
 
 interface AuthScreenProps {
   readonly title: ReactNode;
   readonly lede: string;
-  /** The logo of the brand this dashboard is sold under, when it is not Firstfold. */
-  readonly brand?: BrandLogo;
+  /** The logo to draw. */
+  readonly brand: BrandLogo;
   readonly children: ReactNode;
 }
 
@@ -25,7 +25,7 @@ export function AuthScreen({ title, lede, brand, children }: AuthScreenProps): R
 
       <header className="flex items-center gap-4">
         {/* The logo doubles as the way back to the marketing site. */}
-        <WordmarkLogo href={brand?.siteUrl ?? siteConfig.url} brand={brand} />
+        <WordmarkLogo href={brand.siteUrl ?? siteConfig.url} brand={brand} />
       </header>
 
       <main id="main" className="grid flex-1 place-items-center py-12">

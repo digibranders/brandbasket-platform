@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createLocalMediaStorage, mediaStorageKey, type MediaStorage } from "@firstfold/shared/server/media-storage";
+import { createLocalMediaStorage, mediaStorageKey, type MediaStorage } from "@fynix/shared/server/media-storage";
 import { backfillPictureCopies, formatBackfillReport } from "./picture-copy-backfill";
 
 vi.mock("server-only", () => ({}));
@@ -22,7 +22,7 @@ async function webp(width: number, height: number): Promise<Uint8Array> {
 }
 
 beforeEach(async () => {
-  sandbox = await mkdtemp(path.join(tmpdir(), "firstfold-backfill-"));
+  sandbox = await mkdtemp(path.join(tmpdir(), "fynix-backfill-"));
   storage = createLocalMediaStorage(sandbox);
   await storage.put(keyOf(A), await webp(960, 600), "image/webp");
   await storage.put(keyOf(B), await webp(640, 640), "image/webp");

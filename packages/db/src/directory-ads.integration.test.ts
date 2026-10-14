@@ -218,7 +218,7 @@ describe("free listing accounts and claims", () => {
   it("takes a proven phone number in place of a confirmed email, and shows staff no placeholder address", async () => {
     await dbs.staff.db
       .update(users)
-      .set({ emailVerified: false, email: "919820000000@phone.firstfold.invalid", phoneNumber: "+919820000000", phoneNumberVerified: true })
+      .set({ emailVerified: false, email: "919820000000@phone.fynix.invalid", phoneNumber: "+919820000000", phoneNumberVerified: true })
       .where(eq(users.id, OWNERS[0]));
     const claim = await findClaimForBusiness(dbs.staff.db, id(0));
     const listed = await listDirectoryClaimsForStaff(dbs.staff.db, { filter: "pending", limit: 10, offset: 0 });
@@ -1583,9 +1583,9 @@ describe("staff-placed ads", () => {
       expect(error).toContain("directory_staff_ad_pictures_storage_key_check");
     });
 
-    it("may be read, added and marked removed by both staff role names, and deleted by neither", async () => {
-      // 0155 granted only the legacy webfold_staff; the staff connection logs in as firstfold_staff (0132, 0157).
-      for (const role of ["firstfold_staff", "webfold_staff"] as const) {
+    it("may be read, added and marked removed by the staff role, and deleted by it never", async () => {
+      // 0155 created the policy and the grants; 0157 makes sure of the grant for the role the staff connection logs in as.
+      for (const role of ["fynix_staff"] as const) {
         for (const [privilege, expected] of [["SELECT", true], ["INSERT", true], ["UPDATE", true], ["DELETE", false]] as const) {
           const result = await dbs.owner.db.execute<{ allowed: boolean }>(
             sql`select has_table_privilege(${role}, 'public.directory_staff_ad_pictures', ${privilege}) as allowed`,
@@ -1598,7 +1598,7 @@ describe("staff-placed ads", () => {
         where schemaname = 'public' and tablename = 'directory_staff_ad_pictures'
         order by 1
       `);
-      expect(policies.rows.map((row) => row.role)).toEqual(["firstfold_staff", "webfold_staff"]);
+      expect(policies.rows.map((row) => row.role)).toEqual(["fynix_staff"]);
     });
   });
 

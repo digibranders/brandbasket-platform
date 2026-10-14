@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useActionState, useCallback, useEffect, useId, useRef, useState, type ClipboardEvent, type FormEvent, type ReactElement } from "react";
-import type { SupportCategory } from "@firstfold/shared/lib/support";
-import { ArrowIcon, CopyIcon, TickIcon } from "@firstfold/shared/ui/icons";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import type { SupportCategory } from "@fynix/shared/lib/support";
+import { ArrowIcon, CopyIcon, TickIcon } from "@fynix/shared/ui/icons";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { createSupportRequest } from "@/app/app-host/(support)/support/actions";
 import { INITIAL_SUPPORT_STATE } from "@/lib/support-form-state";
 import { handleImagePaste } from "@/lib/support-paste";

@@ -4,7 +4,7 @@
 
 **Goal:** A new customer who sets their password lands in their dashboard and can look around everything they are about to get, with a banner and a locked marker on each part explaining that the first payment brings it to life. Nothing that writes anything can run until the payment clears. A fake payment provider stands in for Razorpay so the whole flow runs locally.
 
-**Architecture:** Billing lives in its own workspace package (`@firstfold/billing`) holding the provider interface, the Razorpay status mapping and the pure access rule, so none of that logic is tangled into Next.js. The database gains `plans`, `subscriptions` and `payments`. Website and dashboard visibility is *derived* from the subscription row at read time and never stored, so reactivation later writes one row and nothing else. The fake provider implements the same interface Razorpay will, and swapping it is one environment variable.
+**Architecture:** Billing lives in its own workspace package (`@fynix/billing`) holding the provider interface, the Razorpay status mapping and the pure access rule, so none of that logic is tangled into Next.js. The database gains `plans`, `subscriptions` and `payments`. Website and dashboard visibility is *derived* from the subscription row at read time and never stored, so reactivation later writes one row and nothing else. The fake provider implements the same interface Razorpay will, and swapping it is one environment variable.
 
 **Tech Stack:** pnpm workspace, Next.js 16 App Router (server actions, `proxy.ts`), drizzle-orm + PostgreSQL 14 with RLS, Better Auth, zod 4, Vitest.
 
@@ -17,14 +17,14 @@
 >   page, "Paying customers" on the Overview, and an admin-only "Record a manual payment" with provider `manual`,
 >   migration 0017).
 > - **How confirmation stays atomic:** one staff transaction records the payment, opens the subscription, marks the
->   lead paid and then switches to `webfold_app` with `SET LOCAL ROLE` (`withCustomerRole`, migration 0018) to send
+>   lead paid and then switches to `fynix_app` with `SET LOCAL ROLE` (`withCustomerRole`, migration 0018) to send
 >   onboarding through the same guarded transition and checklist as the Send button. A checklist failure rolls back
 >   only that savepoint.
 > - **Not done:** Task 10's browser walk-through, and everything under "Deliberately not in this phase".
 > - **Security review fixes (2026-09-16), migration 0020:**
 >   - A correctly signed confirmation for a checkout we replaced or cancelled, for a business that already has
 >     access, or for an amount that is not the plan's is now **recorded** (`captured`, with
->     `payments.attention_reason`), activates nothing, is logged (`[firstfold:billing] confirmation-refused`), and the
+>     `payments.attention_reason`), activates nothing, is logged (`[fynix:billing] confirmation-refused`), and the
 >     customer is told *"We've received your payment. Our team will be in touch shortly to sort out your account."*
 >     Staff see it under "Payments needing attention" (Overview and the client page) and an admin marks it sorted.
 >     While one is open the customer is not offered another payment. A failed submission after a recorded payment is
@@ -36,7 +36,7 @@
 >     cancelled at the provider and logged.
 >   - Billing state reads the newest subscription whatever its status, so a cancelled subscription keeps access until
 >     `paidThroughAt`; a business that has ever paid is "needs reactivation", never a new first payment.
->   - The fake provider is refused on a real deployment unless `FIRSTFOLD_ALLOW_FAKE_BILLING=1`. Manual payments store
+>   - The fake provider is refused on a real deployment unless `FYNIX_ALLOW_FAKE_BILLING=1`. Manual payments store
 >     who recorded them, a bank or payment reference, and the date the money arrived. Staff can no longer choose
 >     `paid` or `account_created` for a lead, or move a lead out of either.
 >   - **For the Razorpay adapter:** the webhook path (Razorpay notifying us directly, not the customer returning from
@@ -77,15 +77,15 @@ live. The recommended flow, written from the customer's side:
 
 ## Ground rules for the engineer
 
-- **Read before writing.** `docs/superpowers/specs/2026-09-15-firstfold-platform-design.md` §4.2 (billing tables), §5.2 (subscription lifecycle), §5.4 (visibility) is the source of truth. Where this plan and the spec disagree, this plan wins — it carries decisions made after the spec was written.
+- **Read before writing.** `docs/superpowers/specs/2026-09-15-fynix-platform-design.md` §4.2 (billing tables), §5.2 (subscription lifecycle), §5.4 (visibility) is the source of truth. Where this plan and the spec disagree, this plan wins — it carries decisions made after the spec was written.
 - **No grace period.** The customer's decision, overriding the spec's softer wording: the moment a subscription is not paid for, access ends. There is no "one failed payment is fine" window. Razorpay `pending` (still retrying) keeps access; `halted` does not.
 - **The wall is on the actions, not the door** (decided 2026-09-16, overriding the spec's "sees only the payment screen"). An unpaid customer can open the dashboard and read every screen, so they can see what they are buying. They cannot submit onboarding, request anything, publish anything, or cause any write. Locked parts say so plainly and point at the payment.
 - **Enforce locking on the server, every time.** A disabled button is a courtesy, not a control. Every mutating action re-checks billing access itself and refuses. Assume the customer can call any server action directly, because they can.
 - **The first payment is not a build fee.** It is the first month of the subscription ($75 or ₹2,500 since 2026-09-16; originally $225 for three months). Never call it anything else in code comments, copy or admin.
 - **Money is integer cents (or paise), always.** No floats anywhere. The existing `formatPrice` in `apps/web/lib/pricing.ts` is for marketing copy only; dashboard amounts are formatted from the plan row.
 - **Do not commit.** The user keeps this repo uncommitted for now.
-- **Do not start a dev server.** The user runs their own on port 3000. A verification server exists on 3100 (`.claude/launch.json`, config `firstfold-verify`), which needs `pnpm build` first.
-- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`. Database tasks also run `pnpm --filter @firstfold/db test:integration`.
+- **Do not start a dev server.** The user runs their own on port 3000. A verification server exists on 3100 (`.claude/launch.json`, config `fynix-verify`), which needs `pnpm build` first.
+- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`. Database tasks also run `pnpm --filter @fynix/db test:integration`.
 
 ---
 
@@ -122,7 +122,7 @@ Add the same column to `businesses` in `packages/db/src/schema/businesses.ts` (i
 - [ ] **Step 2: Generate and annotate the migration**
 
 ```bash
-pnpm --filter @firstfold/db exec drizzle-kit generate --name billing_currency
+pnpm --filter @fynix/db exec drizzle-kit generate --name billing_currency
 ```
 
 Open the generated `packages/db/migrations/0008_billing_currency.sql` and add a comment at the top explaining that existing rows default to USD because every customer so far is outside India.
@@ -145,7 +145,7 @@ Also show the currency in the read-only `<dl>` at the top of the page.
 
 In `packages/db/src/funnel.integration.test.ts`, extend the redemption test to assert the business inherits the lead's currency, and add a case where the lead is INR.
 
-Run: `pnpm --filter @firstfold/db test:integration`
+Run: `pnpm --filter @fynix/db test:integration`
 Expected: all pass.
 
 ---
@@ -274,7 +274,7 @@ Export everything from `packages/db/src/schema/index.ts`.
 - [ ] **Step 2: Generate the migration**
 
 ```bash
-pnpm --filter @firstfold/db exec drizzle-kit generate --name billing
+pnpm --filter @fynix/db exec drizzle-kit generate --name billing
 ```
 
 - [ ] **Step 3: Seed the two plans in the same migration**
@@ -282,12 +282,12 @@ pnpm --filter @firstfold/db exec drizzle-kit generate --name billing
 Append to the generated `0009_billing.sql`:
 
 ```sql
--- The live plans. Prices are decided in docs/superpowers/specs/2026-09-15-firstfold-platform-design.md §1.
+-- The live plans. Prices are decided in docs/superpowers/specs/2026-09-15-fynix-platform-design.md §1.
 INSERT INTO plans (id, code, name, currency, initial_amount_cents, initial_term_months,
                    recurring_amount_cents, included_publishes_per_month, extra_publish_amount_cents)
 VALUES
-  (gen_random_uuid(), 'care-usd', 'Firstfold care plan', 'USD', 22500, 3, 7500, 3, 300),
-  (gen_random_uuid(), 'care-inr', 'Firstfold care plan', 'INR', 750000, 3, 250000, 3, 30000)  -- corrected by a later migration: see below
+  (gen_random_uuid(), 'care-usd', 'Fynix care plan', 'USD', 22500, 3, 7500, 3, 300),
+  (gen_random_uuid(), 'care-inr', 'Fynix care plan', 'INR', 750000, 3, 250000, 3, 30000)  -- corrected by a later migration: see below
 ON CONFLICT (code) DO NOTHING;
 ```
 
@@ -304,26 +304,26 @@ Create `packages/db/migrations/0010_billing_grants.sql` by hand, following `0004
 ```sql
 -- Customers read their own billing rows and never write them: every write is a consequence of a
 -- provider event, applied by the app's own code paths under the staff role.
-GRANT SELECT ON plans TO webfold_app, webfold_staff;
-GRANT SELECT ON subscriptions, payments TO webfold_app;
-GRANT SELECT, INSERT, UPDATE ON subscriptions, payments TO webfold_staff;
+GRANT SELECT ON plans TO fynix_app, fynix_staff;
+GRANT SELECT ON subscriptions, payments TO fynix_app;
+GRANT SELECT, INSERT, UPDATE ON subscriptions, payments TO fynix_staff;
 
 ALTER TABLE plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY plans_readable ON plans FOR SELECT TO webfold_app, webfold_staff USING (true);
+CREATE POLICY plans_readable ON plans FOR SELECT TO fynix_app, fynix_staff USING (true);
 
 CREATE POLICY subscriptions_tenant_read ON subscriptions
-  FOR SELECT TO webfold_app
+  FOR SELECT TO fynix_app
   USING (business_id = current_business_id());
 
 CREATE POLICY payments_tenant_read ON payments
-  FOR SELECT TO webfold_app
+  FOR SELECT TO fynix_app
   USING (business_id = current_business_id());
 
-CREATE POLICY subscriptions_staff_all ON subscriptions FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
-CREATE POLICY payments_staff_all ON payments FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY subscriptions_staff_all ON subscriptions FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY payments_staff_all ON payments FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 ```
 
 Check `current_business_id()`'s exact name in `0001_rls_and_grants.sql` before writing this and match it.
@@ -367,11 +367,11 @@ New file `packages/db/src/billing.integration.test.ts`, modelled on `funnel.inte
 - the app role can read its own subscription but **cannot** insert or update one (`captureErrorText` + `/permission denied/`)
 - the app role cannot read another tenant's subscription (set the tenant GUC to a different business and expect no rows)
 
-Run: `pnpm --filter @firstfold/db test:integration`
+Run: `pnpm --filter @fynix/db test:integration`
 
 ---
 
-### Task 4: The `@firstfold/billing` package
+### Task 4: The `@fynix/billing` package
 
 **Files:**
 - Create: `packages/billing/package.json`, `tsconfig.json`, `vitest.config.ts`, `src/index.ts`, `src/status.ts`, `src/access.ts`, `src/provider.ts`, `src/fake-provider.ts`
@@ -385,7 +385,7 @@ Copy `packages/email/package.json` and its tsconfig/vitest config as the templat
 `src/status.ts`:
 
 ```ts
-import type { SubscriptionStatus } from "@firstfold/db";
+import type { SubscriptionStatus } from "@fynix/db";
 
 /**
  * Razorpay's vocabulary, mapped to ours. `pending` means Razorpay is still retrying a failed charge and
@@ -495,7 +495,7 @@ Tests: a token round-trips; a tampered amount is rejected; a token signed with a
 
 `getCustomerAccess` already resolves the user and their business. Extend its `granted` result with
 `billing: { hasAccess: boolean; subscription: Subscription | null; plan: Plan | null }`, read through the app
-(RLS-scoped) connection, using `hasBillingAccess` from `@firstfold/billing`. The plan comes from the business's
+(RLS-scoped) connection, using `hasBillingAccess` from `@fynix/billing`. The plan comes from the business's
 currency, so every screen can name the real price without a second query.
 
 One query per request: the layout, the banner and the billing page all read the same result.
@@ -530,7 +530,7 @@ in preview, and a paid customer opening `/billing` sees their receipts.
 
 - [ ] **Step 4: Unit tests**
 
-Mock `@firstfold/db` and `./auth` the way `apps/web/lib/server/sign-in.test.ts` does, and assert: no subscription
+Mock `@fynix/db` and `./auth` the way `apps/web/lib/server/sign-in.test.ts` does, and assert: no subscription
 → no access; `incomplete` → no access; active with a future `paidThroughAt` → access; and that
 `requireBillingAccess` throws for the first two and returns for the third.
 
@@ -654,7 +654,7 @@ Add "Paying customers" to the admin overview stats.
 ```bash
 pnpm build
 ```
-Then start `firstfold-verify` (port 3100) through the preview tooling.
+Then start `fynix-verify` (port 3100) through the preview tooling.
 
 - [ ] **Step 2: Walk the whole funnel**
 

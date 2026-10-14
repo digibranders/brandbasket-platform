@@ -29,7 +29,7 @@ one-time link, as before.
   with the code. `account_otps` holds the number and the hashed code only.
 - Codes follow the booking and review code rules: 6 digits, 10 minutes, 5 tries, HMAC with `BOOKING_OTP_SECRET`,
   salted with the row's id, used once, purged an hour after they run out. One fixed SMS text for both purposes:
-  "`<code>` is your Firstfold code. It expires in 10 minutes. Do not share it."
+  "`<code>` is your Fynix code. It expires in 10 minutes. Do not share it."
 - Budgets for asking: 10 an hour per network, 3 per 10 minutes and 8 a day per number, 1,000 a day overall. For
   confirming: 30 an hour per network. Only countries on `SMS_ALLOWED_COUNTRY_CODES` (India by default) are texted.
 - A number that already has an account is told to sign in at sign-up, and is texted nothing. Because that answer
@@ -43,7 +43,7 @@ one-time link, as before.
   anyone's password. Where production has no SMS provider (today it has none: `SMS_PROVIDER=outbox` is refused in
   production), asking for a code answers "We can't text a code right now". Going live needs a real SMS provider and,
   for Indian numbers, the text above registered as a DLT template.
-- Better Auth signs in by email, so a phone account holds a placeholder address, `<digits>@phone.firstfold.invalid`
+- Better Auth signs in by email, so a phone account holds a placeholder address, `<digits>@phone.fynix.invalid`
   (`phoneAccountEmail`). It is never shown and never written to: the account bar, Settings and the staff console
   show the number; the confirm-email banner, the confirmation email, the enquiry email and the emailed reset link
   are all skipped for it (`isPhoneAccountEmail`, `SessionUser.phone`).

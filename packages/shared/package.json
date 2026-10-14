@@ -1,10 +1,10 @@
 {
-  "name": "@firstfold/shared",
+  "name": "@fynix/shared",
   "version": "0.1.0",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/digibranders/firstfold-platform.git",
+    "url": "https://github.com/digibranders/fynix-platform.git",
     "directory": "packages/shared"
   },
   "type": "module",
@@ -21,8 +21,8 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1147.0",
-    "@firstfold/billing": "workspace:*",
-    "@firstfold/db": "workspace:*",
+    "@fynix/billing": "workspace:*",
+    "@fynix/db": "workspace:*",
     "@pdf-lib/fontkit": "1.1.1",
     "libphonenumber-js": "1.13.13",
     "pdf-lib": "1.17.1",

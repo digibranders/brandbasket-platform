@@ -1,15 +1,14 @@
 import "server-only";
 import fontkit from "@pdf-lib/fontkit";
-import { amountInWords } from "@firstfold/billing/amount-in-words";
-import { gstStateCodeOf } from "@firstfold/billing/gst-states";
-import type { TaxInvoice, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@firstfold/db";
-import { stateName } from "@firstfold/db/india-states";
+import { amountInWords } from "@fynix/billing/amount-in-words";
+import { gstStateCodeOf } from "@fynix/billing/gst-states";
+import type { TaxInvoice, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@fynix/db";
+import { stateName } from "@fynix/db/india-states";
 import { PDFDocument, PDFString, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
-import { deploymentBrandId, deploymentBrandName } from "../lib/deployment-brand";
-import { businessDetails, deploymentBusinessDetails } from "../lib/site-config";
+import { deploymentBrandName } from "../lib/deployment-brand";
+import { businessDetails } from "../lib/site-config";
 import { FYNIX_LETTERHEAD } from "./fynix-letterhead";
 import { HANKEN_BOLD, HANKEN_REGULAR, HANKEN_SEMIBOLD, RUPEE_ADVANCE, RUPEE_PATH, RUPEE_UNITS_PER_EM } from "./tax-invoice-fonts.generated";
-import { WORDMARK_HEIGHT, WORDMARK_PATHS } from "./tax-invoice-wordmark";
 
 /**
  * Tax invoices as A4 PDFs in the approved design (invoice-design/invoice-template.html and the CA samples), drawn from
@@ -191,10 +190,10 @@ function hexColor(hex: string): ReturnType<typeof rgb> {
 function header(page: PDFPage, fonts: Fonts, continued: boolean, options: TaxInvoiceRenderOptions): number {
   const logoHeight = 9.5 * MM;
   const headBottom = TOP - 34;
-  const letterhead = options.letterhead ?? deploymentLetterhead();
-  const scale = logoHeight / (letterhead?.height ?? WORDMARK_HEIGHT);
-  const color = letterhead === undefined ? ACCENT : hexColor(letterhead.colorHex);
-  for (const path of letterhead?.paths ?? WORDMARK_PATHS) page.drawSvgPath(path, { x: LEFT, y: headBottom + logoHeight, scale, color });
+  const letterhead = options.letterhead ?? FYNIX_LETTERHEAD;
+  const scale = logoHeight / letterhead.height;
+  const color = hexColor(letterhead.colorHex);
+  for (const path of letterhead.paths) page.drawSvgPath(path, { x: LEFT, y: headBottom + logoHeight, scale, color });
   spaced(page, "Tax invoice", RIGHT, TOP - 15.5, fonts.bold, 19, 0.04, ACCENT, "right");
   spaced(page, continued ? "Continued" : "Original for recipient", RIGHT, TOP - 31, fonts.regular, 7.6, 0.1, INK_SOFT, "right");
   return headBottom - 6 * MM - 1;
@@ -242,22 +241,17 @@ function facts(page: PDFPage, invoice: TaxInvoice, top: number, fonts: Fonts): n
   return top - height;
 }
 
-/** The letterhead a deployment draws when the caller names none: Fynix's logo on a Fynix server, Firstfold's wordmark otherwise. */
-function deploymentLetterhead(): TaxInvoiceRenderOptions["letterhead"] {
-  return deploymentBrandId(process.env) === "fynix" ? FYNIX_LETTERHEAD : undefined;
-}
-
 /** What a render may add that an invoice's stored snapshot deliberately does not hold. */
 export interface TaxInvoiceRenderOptions {
-  /** The name the PDF files itself under (its title and creator): "Firstfold" unless the dashboard is sold under another brand. */
+  /** The name the PDF files itself under (its title and creator): "Fynix Digital" unless the caller names another. */
   readonly brandName?: string;
   /**
-   * A letterhead to draw in place of Firstfold's wordmark: the logo's SVG paths, the height of the viewBox they are
+   * A letterhead to draw in place of Fynix Digital's own: the logo's SVG paths, the height of the viewBox they are
    * drawn in, and the colour to fill them (a hex like "#0C1E2E"). The company on the invoice (name, GSTIN, address) is
    * the stored snapshot's and never changes; this is only the name the customer knows it by.
    */
   readonly letterhead?: { readonly paths: readonly string[]; readonly height: number; readonly colorHex: string };
-  /** The address and site the footer sends questions to: the brand's own. Firstfold's (`businessDetails`) when unset. */
+  /** The address and site the footer sends questions to: `businessDetails` when unset. */
   readonly contact?: { readonly email: string; readonly website: string };
   /**
    * The customer's own mobile number as people read it ("+91 90000 00002"), read from their account when the PDF is
@@ -307,7 +301,7 @@ function parties(page: PDFPage, doc: PDFDocument, invoice: TaxInvoice, top: numb
     text(page, value, LEFT + width + 3, left, fonts.regular, 9);
     left -= 14.4;
   }
-  const email = supplier.email ?? deploymentBusinessDetails().email;
+  const email = supplier.email ?? businessDetails.email;
   const emailWidth = text(page, email, LEFT, left, fonts.regular, 9, INK_SOFT);
   link(doc, page, `mailto:${email}`, LEFT, left, emailWidth, 9);
   if (supplier.phone !== null) text(page, supplier.phone, LEFT + emailWidth + 6.6, left, fonts.regular, 9, INK_SOFT);
@@ -499,7 +493,7 @@ function settle(page: PDFPage, invoice: TaxInvoice, top: number, fonts: Fonts): 
 
 /** The contact line on every page, and the declaration above it on the invoice's last page. */
 function footer(page: PDFPage, doc: PDFDocument, fonts: Fonts, withDeclaration: boolean, options: TaxInvoiceRenderOptions): void {
-  const here = deploymentBusinessDetails();
+  const here = businessDetails;
   const contact = options.contact ?? { email: here.email, website: here.website };
   if (withDeclaration) {
     let y = BOTTOM + 78.5;
@@ -532,7 +526,7 @@ function continuationPage(doc: PDFDocument, invoice: TaxInvoice, fonts: Fonts, o
 }
 
 /**
- * Draws one invoice from a fresh page. It is one page in every case Firstfold issues today (one line); lines that
+ * Draws one invoice from a fresh page. It is one page in every case Fynix issues today (one line); lines that
  * do not fit carry on to a continuation page, and the totals and declaration always end the invoice. Every page of
  * an invoice that runs to more than one says "Page n of N".
  */

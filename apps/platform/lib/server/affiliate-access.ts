@@ -1,9 +1,9 @@
 import "server-only";
-import { findAffiliateByUserId, listMembershipsForUser, type Affiliate } from "@firstfold/db";
+import { findAffiliateByUserId, listMembershipsForUser, type Affiliate } from "@fynix/db";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import type { SessionUser } from "@firstfold/shared/lib/access";
-import { AFFILIATE_PATH } from "@firstfold/shared/lib/affiliate-links";
+import type { SessionUser } from "@fynix/shared/lib/access";
+import { AFFILIATE_PATH } from "@fynix/shared/lib/affiliate-links";
 import { getAppDb, getStaffDb } from "./db";
 import { getSessionUser } from "./session";
 
@@ -12,7 +12,7 @@ import { getSessionUser } from "./session";
  * no page, form or address ever names one, so an affiliate can only ever see their own figures.
  *
  * Runs on the staff connection, against the rule in ./db.ts, because the affiliate tables are staff-only by design
- * (`firstfold_app` holds no grant on them) and an affiliate has no business to scope a customer connection under.
+ * (`fynix_app` holds no grant on them) and an affiliate has no business to scope a customer connection under.
  */
 export type AffiliateAccess =
   | { readonly kind: "none" }

@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState, useMemo, type ReactElement } from "react";
-import { ArrowIcon, ChatIcon } from "@firstfold/shared/ui/icons";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SupportCategoryBadge, SupportStatusBadge } from "@firstfold/shared/ui/panel/support-status-badge";
+import { ArrowIcon, ChatIcon } from "@fynix/shared/ui/icons";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SupportCategoryBadge, SupportStatusBadge } from "@fynix/shared/ui/panel/support-status-badge";
 import { readMySupportRequests, type MySupportRequestItem } from "@/app/app-host/(support)/support/actions";
 import { formatRelativeTime } from "./support-format";
 

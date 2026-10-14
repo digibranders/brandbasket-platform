@@ -2,8 +2,8 @@
 
 import type { ReactElement } from "react";
 import { HoursEditor } from "@/components/panel/hours-editor";
-import type { OpeningHours } from "@firstfold/shared/lib/onboarding/hours";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import type { OpeningHours } from "@fynix/shared/lib/onboarding/hours";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 interface HoursPanelProps {

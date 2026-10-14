@@ -1,7 +1,7 @@
-import type { ProjectStatus } from "@firstfold/db";
-import type { SiteStatus } from "@firstfold/billing";
-import { PAYMENT_STEP_HREF, type BillingBannerModel } from "@firstfold/shared/lib/billing/payment-step";
-import type { NextStep } from "@firstfold/shared/lib/next-step";
+import type { ProjectStatus } from "@fynix/db";
+import type { SiteStatus } from "@fynix/billing";
+import { PAYMENT_STEP_HREF, type BillingBannerModel } from "@fynix/shared/lib/billing/payment-step";
+import type { NextStep } from "@fynix/shared/lib/next-step";
 
 /**
  * One line in the bell's panel.

@@ -1,12 +1,12 @@
 "use client";
 
 import { useActionState, type ReactElement } from "react";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { Button } from "@firstfold/shared/ui/panel/button";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { Button } from "@fynix/shared/ui/panel/button";
 import { initialReactivateFormState, type ReactivateFormState } from "@/lib/billing/reactivate-form";
 
 interface ReactivatePlanProps {
-  /** "Firstfold Premium plan". */
+  /** "Fynix Premium plan". */
   readonly planName: string;
   /** What a month takes now, tax included: the figure on the button is the figure charged. */
   readonly monthlyAmount: string;

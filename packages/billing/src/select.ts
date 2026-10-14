@@ -1,11 +1,11 @@
-import type { BillingProviderName } from "@firstfold/db";
+import type { BillingProviderName } from "@fynix/db";
 
 /** The providers this build can configure by name. Razorpay is accepted as a provider name but its adapter is not yet constructible (a later task finishes it). */
 export const SUPPORTED_BILLING_PROVIDERS = ["fake", "razorpay"] as const satisfies readonly BillingProviderName[];
 export type SupportedBillingProvider = (typeof SUPPORTED_BILLING_PROVIDERS)[number];
 
 /** The environment variable that lets a real deployment run the fake provider anyway, set to exactly "1". */
-export const ALLOW_FAKE_BILLING_VARIABLE = "FIRSTFOLD_ALLOW_FAKE_BILLING";
+export const ALLOW_FAKE_BILLING_VARIABLE = "FYNIX_ALLOW_FAKE_BILLING";
 
 export class BillingConfigurationError extends Error {
   constructor(message: string) {
@@ -21,7 +21,7 @@ export interface BillingEnvironment {
   readonly VERCEL_ENV?: string | undefined;
   /** The customer dashboard's origin. An https origin on a public host means real customers can reach it. */
   readonly APP_ORIGIN?: string | undefined;
-  readonly FIRSTFOLD_ALLOW_FAKE_BILLING?: string | undefined;
+  readonly FYNIX_ALLOW_FAKE_BILLING?: string | undefined;
 }
 
 function isSupported(value: string): value is SupportedBillingProvider {
@@ -63,7 +63,7 @@ export function isRealDeployment(env: BillingEnvironment): boolean {
  * the fake provider would hand out dashboards for free.
  *
  * For the same reason the fake provider is refused on a real deployment (see isRealDeployment), however it was
- * chosen, unless FIRSTFOLD_ALLOW_FAKE_BILLING is exactly "1" (for a private preview that must simulate payments).
+ * chosen, unless FYNIX_ALLOW_FAKE_BILLING is exactly "1" (for a private preview that must simulate payments).
  */
 export function resolveBillingProviderName(env: BillingEnvironment): SupportedBillingProvider {
   const raw = env.BILLING_PROVIDER?.trim() ?? "";
@@ -83,7 +83,7 @@ export function resolveBillingProviderName(env: BillingEnvironment): SupportedBi
     );
   }
 
-  if (name === "fake" && isRealDeployment(env) && env.FIRSTFOLD_ALLOW_FAKE_BILLING !== "1") {
+  if (name === "fake" && isRealDeployment(env) && env.FYNIX_ALLOW_FAKE_BILLING !== "1") {
     throw new BillingConfigurationError(
       `The fake billing provider cannot run on a real deployment (VERCEL_ENV=production, or an https APP_ORIGIN that is not localhost): it hands out paid access without taking money. Configure a real provider, or set ${ALLOW_FAKE_BILLING_VARIABLE}=1 for a private test deployment.`,
     );

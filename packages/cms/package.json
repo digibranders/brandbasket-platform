@@ -1,10 +1,10 @@
 {
-  "name": "@firstfold/cms",
+  "name": "@fynix/cms",
   "version": "0.1.0",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/digibranders/firstfold-platform.git",
+    "url": "https://github.com/digibranders/fynix-platform.git",
     "directory": "packages/cms"
   },
   "type": "module",

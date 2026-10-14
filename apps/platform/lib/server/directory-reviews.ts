@@ -22,9 +22,9 @@ import {
   type DirectoryRatingSummary,
   type DirectoryReviewOtpPayload,
   type RateLimitRule,
-} from "@firstfold/db";
-import { phoneHint as toPhoneHint } from "@firstfold/shared/lib/appointments/booking-form";
-import { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@firstfold/shared/lib/appointments/otp";
+} from "@fynix/db";
+import { phoneHint as toPhoneHint } from "@fynix/shared/lib/appointments/booking-form";
+import { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
 import {
   REVIEW_HIGHLIGHTS,
   REVIEWS_PAGE_SIZE,
@@ -39,7 +39,7 @@ import { startVisitorSession, type ResolvedVisitor, type VisitorSession } from "
 import { recordContributionConsent } from "./visitor-consent";
 import type { ReviewInput } from "./directory-fields";
 import { bookingOtpBypassed, bookingOtpSecret, smsAllowedCountryCodes } from "./env";
-import { errorLogInfo, type SafeErrorLog } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo, type SafeErrorLog } from "@fynix/shared/server/error-log-info";
 import { ipRateLimitKey } from "./ip-key";
 import { generateOtpCode, hashOtpCode, otpCodeMatches } from "./otp-crypto";
 import { disallowedPhoneMessage, isPhoneCountryAllowed } from "./sms-country-guard";

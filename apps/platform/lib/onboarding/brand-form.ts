@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { cleanLine } from "@firstfold/shared/lib/validation/text";
-import { textField, type StepParseResult } from "@firstfold/shared/lib/onboarding/form-result";
+import { cleanLine } from "@fynix/shared/lib/validation/text";
+import { textField, type StepParseResult } from "@fynix/shared/lib/onboarding/form-result";
 
 export const MAX_PHOTOS = 20;
 export const MAX_DESCRIPTION_LENGTH = 250;

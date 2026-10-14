@@ -2,7 +2,7 @@
  * The Review tab's "Verify my business" form (lib/server/owner-verification.ts does the work): its state, how its
  * code is read from the form, and what it says when something goes wrong. Browser-safe: no server imports.
  */
-import { isOtpCode } from "@firstfold/shared/lib/appointments/otp";
+import { isOtpCode } from "@fynix/shared/lib/appointments/otp";
 
 export type VerifyBusinessState =
   | { readonly status: "idle" }

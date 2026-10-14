@@ -1,4 +1,4 @@
-import { deploymentBrandShortName } from "@firstfold/shared/lib/deployment-brand";
+import { deploymentBrandShortName } from "@fynix/shared/lib/deployment-brand";
 import "server-only";
 import {
   completeDirectoryVideo,
@@ -21,14 +21,14 @@ import {
   type RateLimitRule,
   type SetFeaturedDirectoryVideoOutcome,
   type StartDirectoryVideoOutcome,
-} from "@firstfold/db";
-import type { TenantContext } from "@firstfold/shared/lib/access";
-import { isVideoLengthAllowed, VIDEO_PREMIUM_MESSAGE, videoTooLongMessage, type VideoSlot } from "@firstfold/shared/lib/directory/videos";
-import { getVimeoClient, VimeoError, type VimeoClient } from "@firstfold/shared/server/vimeo";
+} from "@fynix/db";
+import type { TenantContext } from "@fynix/shared/lib/access";
+import { isVideoLengthAllowed, VIDEO_PREMIUM_MESSAGE, videoTooLongMessage, type VideoSlot } from "@fynix/shared/lib/directory/videos";
+import { getVimeoClient, VimeoError, type VimeoClient } from "@fynix/shared/server/vimeo";
 import { videoAccessOf, type VideoAccess } from "@/lib/videos-view";
 import { getCustomerBusinessEntry, type GrantedCustomer } from "./customer-access";
 import { getAppDb } from "./db";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { retryMinutes, type UploadAllowance } from "./onboarding-media";
 
 /*
@@ -90,7 +90,7 @@ export function listingVideoDeps(staffDb: Database): ListingVideoDeps {
     discard: (input) => discardDirectoryVideo(staffDb, input),
     remove: (input) => removeDirectoryVideo(staffDb, input),
     log: (message, error) => {
-      console.error(`[firstfold:videos] ${message}`, errorLogInfo(error));
+      console.error(`[fynix:videos] ${message}`, errorLogInfo(error));
     },
   };
 }
@@ -166,7 +166,7 @@ export async function requestVideoUpload(
   } catch (error) {
     deps.log("Vimeo would not make an upload.", error);
     if (error instanceof VimeoError && error.reason === "quota") return { ok: false, refusal: "quota", message: QUOTA_MESSAGE };
-    // A refused token, or no Firstfold folder to file the video in: nothing is made, and the owner is told it is not available.
+    // A refused token, or no Fynix folder to file the video in: nothing is made, and the owner is told it is not available.
     if (error instanceof VimeoError && (error.reason === "unauthorized" || error.reason === "configuration")) {
       return { ok: false, refusal: "unavailable", message: VIDEO_UNAVAILABLE_MESSAGE };
     }

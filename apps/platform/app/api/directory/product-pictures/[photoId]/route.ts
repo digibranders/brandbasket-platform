@@ -1,6 +1,6 @@
-import { findLiveProductPhotoFile, findPreviewProductPhotoFile } from "@firstfold/db";
-import { storedPictureResponse } from "@firstfold/shared/server/media-serving";
-import { getMediaStorage } from "@firstfold/shared/server/media-storage";
+import { findLiveProductPhotoFile, findPreviewProductPhotoFile } from "@fynix/db";
+import { storedPictureResponse } from "@fynix/shared/server/media-serving";
+import { getMediaStorage } from "@fynix/shared/server/media-storage";
 import { getStaffDb } from "@/lib/server/db";
 import { handlePictureRequest } from "@/lib/server/directory-intake";
 import { previewCodeOf, privately } from "@/lib/server/preview-picture";

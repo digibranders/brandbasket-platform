@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { TickIcon } from "@firstfold/shared/ui/icons";
-import { cn } from "@firstfold/shared/lib/cn";
-import { formatStepNumber } from "@firstfold/shared/lib/format";
-import { ONBOARDING_STEPS, onboardingStepHref, type OnboardingStepKey } from "@firstfold/shared/lib/onboarding/steps";
+import { TickIcon } from "@fynix/shared/ui/icons";
+import { cn } from "@fynix/shared/lib/cn";
+import { formatStepNumber } from "@fynix/shared/lib/format";
+import { ONBOARDING_STEPS, onboardingStepHref, type OnboardingStepKey } from "@fynix/shared/lib/onboarding/steps";
 
 interface OnboardingStepListProps {
   readonly current: OnboardingStepKey;

@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Database } from "@firstfold/db";
+import type { Database } from "@fynix/db";
 
-vi.mock("@firstfold/db", () => ({ recordEmail: vi.fn(async () => undefined) }));
+vi.mock("@fynix/db", () => ({ recordEmail: vi.fn(async () => undefined) }));
 
-const { recordEmail } = await import("@firstfold/db");
+const { recordEmail } = await import("@fynix/db");
 const { createAppEmailTransport, createEmailDelivery, EmailConfigurationError } = await import("./brevo");
 const { passwordResetEmail } = await import("./templates/password-reset");
 const { signupCodeEmail } = await import("./templates/signup-code");
 
 const db = {} as Database;
-const reset = passwordResetEmail({ to: "asha@example.in", resetUrl: "https://app.firstfold.io/reset-password/TOKEN", expiresInMinutes: 60 });
+const reset = passwordResetEmail({ to: "asha@example.in", resetUrl: "https://app.fynix.digital/reset-password/TOKEN", expiresInMinutes: 60 });
 
 beforeEach(() => vi.mocked(recordEmail).mockClear());
 
@@ -39,13 +39,13 @@ describe("createAppEmailTransport", () => {
 });
 
 describe("a sign-up code on a Fynix server", () => {
-  const code = signupCodeEmail({ to: "owner@example.test", code: "482913", expiresInMinutes: 10, brandName: "Fynix Digital" });
+  const code = signupCodeEmail({ to: "owner@example.test", code: "482913", expiresInMinutes: 10 });
 
   it("goes through Brevo's transactional API as Fynix Digital, and the outbox keeps no code", async () => {
     const fetchFn = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => new Response("{}", { status: 201 }));
     vi.stubGlobal("fetch", fetchFn);
     try {
-      await createAppEmailTransport(db, { env: { BREVO_API_KEY: "test-key", PLATFORM_BRAND: "fynix" }, realDeployment: true }).send(code);
+      await createAppEmailTransport(db, { env: { BREVO_API_KEY: "test-key" }, realDeployment: true }).send(code);
     } finally {
       vi.unstubAllGlobals();
     }

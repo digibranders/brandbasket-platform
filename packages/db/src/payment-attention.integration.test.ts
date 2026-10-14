@@ -122,7 +122,7 @@ beforeEach(async () => {
   await dbs.staff.db.insert(users).values([
     { id: USER_A, name: "Ana Diaz", email: "ana@example.com" },
     { id: USER_B, name: "Ben Ortiz", email: "ben@example.com" },
-    { id: STAFF_USER, name: "Sam Staff", email: "sam@firstfold.example" },
+    { id: STAFF_USER, name: "Sam Staff", email: "sam@fynix.example" },
   ]);
   await dbs.staff.db.insert(staffMembers).values({ userId: STAFF_USER });
   const inserted = await dbs.staff.db
@@ -413,7 +413,7 @@ describe("listReceiptsForBusiness", () => {
     await dbs.owner.db.update(plans).set({ active: false }).where(eq(plans.id, plan.id));
     await dbs.owner.db.insert(plans).values({
       code: "care-usd-quarterly",
-      name: "Firstfold care plan",
+      name: "Fynix care plan",
       currency: "USD",
       initialAmountCents: 22500,
       taxRateBasisPoints: 0,

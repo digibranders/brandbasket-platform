@@ -1,7 +1,7 @@
 import { profileHref, type ProfileNotice } from "@/lib/business-profile-notices";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { googleBusinessCredentials } from "@/lib/server/env";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { exchangeGoogleCode, fetchGoogleLocations, GoogleBusinessError, toImportedLocation } from "@/lib/server/google-business";
 import { googleImportOrigin, rememberGoogleImport, takeGoogleState } from "@/lib/server/google-import-cookie";
 import { GOOGLE_CALLBACK_PATH } from "../paths";
@@ -32,7 +32,7 @@ export async function GET(request: Request): Promise<Response> {
     return back((await rememberGoogleImport(tenant.businessId, locations)) ? "google-imported" : "google-failed");
   } catch (error) {
     if (!(error instanceof GoogleBusinessError)) throw error;
-    console.error("[firstfold:google-business] import failed", errorLogInfo(error));
+    console.error("[fynix:google-business] import failed", errorLogInfo(error));
     return back("google-failed");
   }
 }

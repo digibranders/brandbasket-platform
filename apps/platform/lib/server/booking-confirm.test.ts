@@ -16,7 +16,7 @@ import {
   type BookingOtpRow,
   type PractitionerScheduleRow,
   type SiteFacts,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { getStaffDb } from "./db";
 import { bookingOtpBypassed, bookingOtpSecret } from "./env";
 import { hashOtpCode } from "./otp-crypto";
@@ -25,8 +25,8 @@ import { confirmBookingOtp, PATIENT_OVERLAP_MESSAGE, TAKEN_MESSAGE } from "./boo
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./env", () => ({ bookingOtpSecret: vi.fn(), bookingOtpBypassed: vi.fn(() => false) }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     bookSlot: vi.fn(),
     BookingClosedError: actual.BookingClosedError,
@@ -336,7 +336,7 @@ describe("confirmBookingOtp", () => {
   });
 
   it("returns taken with the friendly message when bookSlot throws SlotTakenError", async () => {
-    const { SlotTakenError } = await import("@firstfold/db");
+    const { SlotTakenError } = await import("@fynix/db");
     mockedBookSlot.mockRejectedValue(new SlotTakenError());
     const outcome = await confirmBookingOtp(BUSINESS_ID, OTP_ID, CODE, "1.2.3.4", NOW);
     expect(outcome).toEqual({ kind: "taken", message: TAKEN_MESSAGE });
@@ -344,7 +344,7 @@ describe("confirmBookingOtp", () => {
   });
 
   it("tells a patient who already has a booking at that time so, in its own words, not as a taken slot", async () => {
-    const { PatientOverlapError } = await import("@firstfold/db");
+    const { PatientOverlapError } = await import("@fynix/db");
     mockedBookSlot.mockRejectedValue(new PatientOverlapError());
     const outcome = await confirmBookingOtp(BUSINESS_ID, OTP_ID, CODE, "1.2.3.4", NOW);
     expect(outcome).toEqual({ kind: "taken", message: PATIENT_OVERLAP_MESSAGE });
@@ -371,7 +371,7 @@ describe("confirmBookingOtp", () => {
   });
 
   it("maps BookingClosedError to unavailable when the module is off", async () => {
-    const { BookingClosedError } = await import("@firstfold/db");
+    const { BookingClosedError } = await import("@fynix/db");
     mockedBookSlot.mockRejectedValue(new BookingClosedError());
     mockedReadBookingContext.mockResolvedValue(context({ enabled: false }));
     const outcome = await confirmBookingOtp(BUSINESS_ID, OTP_ID, CODE, "1.2.3.4", NOW);
@@ -379,7 +379,7 @@ describe("confirmBookingOtp", () => {
   });
 
   it("maps BookingClosedError to paused, with the business's message, when accepting is off", async () => {
-    const { BookingClosedError } = await import("@firstfold/db");
+    const { BookingClosedError } = await import("@fynix/db");
     mockedBookSlot.mockRejectedValue(new BookingClosedError());
     mockedReadBookingContext.mockResolvedValue(
       context({ settings: { accepting: false, pausedMessage: "Back on Monday", slotMinutes: 30, minNoticeMinutes: 60, horizonDays: 28 } }),
@@ -448,7 +448,7 @@ describe("confirmBookingOtp", () => {
   });
 
   it("does not delete any OTP row when bookSlot throws (the OTP stays usable for retry/expiry as before)", async () => {
-    const { SlotTakenError } = await import("@firstfold/db");
+    const { SlotTakenError } = await import("@fynix/db");
     mockedBookSlot.mockRejectedValue(new SlotTakenError());
     await confirmBookingOtp(BUSINESS_ID, OTP_ID, CODE, "1.2.3.4", NOW);
     expect(mockedDeleteBookingOtp).not.toHaveBeenCalled();
@@ -542,7 +542,7 @@ describe("confirmBookingOtp", () => {
   });
 
   it("returns failed, without throwing, when the BookingClosedError follow-up read itself fails", async () => {
-    const { BookingClosedError } = await import("@firstfold/db");
+    const { BookingClosedError } = await import("@fynix/db");
     mockedBookSlot.mockRejectedValue(new BookingClosedError());
     mockedReadBookingContext.mockRejectedValue(new Error("connection lost"));
     const outcome = await confirmBookingOtp(BUSINESS_ID, OTP_ID, CODE, "1.2.3.4", NOW);

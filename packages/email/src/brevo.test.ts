@@ -3,7 +3,7 @@ import { BrevoDeliveryError, createAppEmailTransport, createBrevoTransport, crea
 import type { EmailMessage } from "./message";
 
 const sampleMessage: EmailMessage = {
-  to: "support@firstfold.io",
+  to: "hello@fynix.digital",
   subject: "[New Bug] Broken button (SUP-001)",
   template: "support-ticket-alert",
   bodyText: "A customer reported a broken button.",
@@ -26,7 +26,7 @@ describe("createBrevoTransport", () => {
 
     const transport = createBrevoTransport({
       apiKey: "test-api-key",
-      defaultSender: { email: "alerts@firstfold.io", name: "Firstfold Alerts" },
+      defaultSender: { email: "no-reply@fynix.digital", name: "Fynix Alerts" },
       fetchFn: mockFetch,
     });
 
@@ -37,8 +37,8 @@ describe("createBrevoTransport", () => {
     expect((capturedOptions?.headers as Record<string, string>)["api-key"]).toBe("test-api-key");
 
     const body = JSON.parse(capturedOptions?.body as string);
-    expect(body.sender).toEqual({ email: "alerts@firstfold.io", name: "Firstfold Alerts" });
-    expect(body.to).toEqual([{ email: "support@firstfold.io" }]);
+    expect(body.sender).toEqual({ email: "no-reply@fynix.digital", name: "Fynix Alerts" });
+    expect(body.to).toEqual([{ email: "hello@fynix.digital" }]);
     expect(body.subject).toBe(sampleMessage.subject);
     expect(body.htmlContent).toBe(sampleMessage.bodyHtml);
     expect(body.textContent).toBe(sampleMessage.bodyText);
@@ -68,14 +68,14 @@ describe("createBrevoTransport", () => {
 
     const transport = createBrevoTransport({
       apiKey: "test-key",
-      replyTo: { email: "support@firstfold.io", name: "Support Team" },
+      replyTo: { email: "hello@fynix.digital", name: "Support Team" },
       fetchFn: mockFetch,
     });
 
     await transport.send(sampleMessage);
 
     const body = JSON.parse(capturedOptions?.body as string);
-    expect(body.replyTo).toEqual({ email: "support@firstfold.io", name: "Support Team" });
+    expect(body.replyTo).toEqual({ email: "hello@fynix.digital", name: "Support Team" });
   });
 });
 
@@ -142,7 +142,7 @@ describe("createDualTransport", () => {
     await createDualTransport({ send: brevoSend }, db).send(message);
     expect(brevoSend).toHaveBeenCalledWith(message);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ subject: "Support request SUP-001", bodyText: "Reference SUP-001", transport: "brevo", toAddress: "support@firstfold.io" });
+    expect(rows[0]).toMatchObject({ subject: "Support request SUP-001", bodyText: "Reference SUP-001", transport: "brevo", toAddress: "hello@fynix.digital" });
     expect(JSON.stringify(rows)).not.toContain("4242");
   });
 
@@ -170,7 +170,7 @@ describe("createAppEmailTransport", () => {
     const transport = createAppEmailTransport(mockDb, {
       env: {
         BREVO_API_KEY: "test-key",
-        ALERTS_FROM_EMAIL: "alerts@firstfold.io",
+        ALERTS_FROM_EMAIL: "no-reply@fynix.digital",
       },
     });
     expect(transport).toBeDefined();
@@ -211,7 +211,7 @@ describe("createAppEmailTransport", () => {
   });
 });
 
-describe("who mail comes from, by deployment brand", () => {
+describe("who mail comes from", () => {
   async function sentBody(env: Record<string, string>): Promise<{ sender: unknown; replyTo: unknown }> {
     let body: { sender: unknown; replyTo: unknown } = { sender: null, replyTo: null };
     const fetchFn = vi.fn(async (_url: string | URL | Request, options?: RequestInit) => {
@@ -222,30 +222,23 @@ describe("who mail comes from, by deployment brand", () => {
     return body;
   }
 
-  it("is Firstfold's when no brand is set, as before", async () => {
+  it("is Fynix Digital <no-reply@fynix.digital> with replies to hello@fynix.digital", async () => {
     const body = await sentBody({});
-    expect(body.sender).toEqual({ email: "alerts@firstfold.io", name: "Firstfold Alerts" });
-    expect(body.replyTo).toEqual({ email: "support@firstfold.io", name: "Firstfold Support" });
-  });
-
-  it("is Fynix's on a Fynix server, never firstfold.io", async () => {
-    const body = await sentBody({ PLATFORM_BRAND: "fynix" });
     expect(body.sender).toEqual({ email: "no-reply@fynix.digital", name: "Fynix Digital" });
     expect(body.replyTo).toEqual({ email: "hello@fynix.digital", name: "Fynix Support" });
   });
 
   it("sends Fynix mail from FYNIX_MAIL_FROM, named Fynix Digital", async () => {
-    const body = await sentBody({ PLATFORM_BRAND: "fynix", FYNIX_MAIL_FROM: "hello@mail.fynix.digital" });
+    const body = await sentBody({ FYNIX_MAIL_FROM: "hello@mail.fynix.digital" });
     expect(body.sender).toEqual({ email: "hello@mail.fynix.digital", name: "Fynix Digital" });
   });
 
-  it("ignores a blank FYNIX_MAIL_FROM, and leaves Firstfold's sender alone when it is set", async () => {
-    expect((await sentBody({ PLATFORM_BRAND: "fynix", FYNIX_MAIL_FROM: "  " })).sender).toEqual({ email: "no-reply@fynix.digital", name: "Fynix Digital" });
-    expect((await sentBody({ FYNIX_MAIL_FROM: "hello@mail.fynix.digital" })).sender).toEqual({ email: "alerts@firstfold.io", name: "Firstfold Alerts" });
+  it("ignores a blank FYNIX_MAIL_FROM", async () => {
+    expect((await sentBody({ FYNIX_MAIL_FROM: "  " })).sender).toEqual({ email: "no-reply@fynix.digital", name: "Fynix Digital" });
   });
 
   it("lets the environment's own addresses win on either", async () => {
-    const body = await sentBody({ PLATFORM_BRAND: "fynix", ALERTS_FROM_EMAIL: "no-reply@fynix.digital", ALERTS_FROM_NAME: "Fynix Digital", SUPPORT_ALERT_EMAIL: "care@fynix.digital" });
+    const body = await sentBody({ ALERTS_FROM_EMAIL: "no-reply@fynix.digital", ALERTS_FROM_NAME: "Fynix Digital", SUPPORT_ALERT_EMAIL: "care@fynix.digital" });
     expect(body.sender).toEqual({ email: "no-reply@fynix.digital", name: "Fynix Digital" });
     expect(body.replyTo).toMatchObject({ email: "care@fynix.digital" });
   });

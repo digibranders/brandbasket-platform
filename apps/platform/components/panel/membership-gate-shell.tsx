@@ -1,8 +1,8 @@
 import type { ReactElement, ReactNode } from "react";
-import { siteConfig } from "@firstfold/shared/lib/site-config";
-import { ContourField } from "@firstfold/shared/ui/contour-field";
-import { WordmarkLogo } from "@firstfold/shared/ui/logo";
-import { SignOutButton } from "@firstfold/shared/ui/panel/sign-out-button";
+import { siteConfig } from "@fynix/shared/lib/site-config";
+import { ContourField } from "@fynix/shared/ui/contour-field";
+import { WordmarkLogo } from "@fynix/shared/ui/logo";
+import { SignOutButton } from "@fynix/shared/ui/panel/sign-out-button";
 import { logoOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { signOut } from "@/lib/server/sign-out";

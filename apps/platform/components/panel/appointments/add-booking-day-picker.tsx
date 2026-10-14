@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 
 interface AddBookingDayPickerProps {
   /** The day on screen, YYYY-MM-DD. */

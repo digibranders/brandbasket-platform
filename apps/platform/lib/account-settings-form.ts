@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { DELETE_CONFIRMATION_WORD, EXIT_COMMENT_MAX_LENGTH, isExitReason } from "@firstfold/shared/lib/account-exit";
-import type { AccountExitReason } from "@firstfold/db";
+import { DELETE_CONFIRMATION_WORD, EXIT_COMMENT_MAX_LENGTH, isExitReason } from "@fynix/shared/lib/account-exit";
+import type { AccountExitReason } from "@fynix/db";
 import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
 
 /*

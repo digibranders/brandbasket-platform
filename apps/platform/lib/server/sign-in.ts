@@ -1,15 +1,15 @@
 import "server-only";
-import { isInvalidCredentialsError } from "@firstfold/auth";
-import { findUserByPhone, phoneAccountEmail } from "@firstfold/db";
+import { isInvalidCredentialsError } from "@fynix/auth";
+import { findUserByPhone, phoneAccountEmail } from "@fynix/db";
 import { headers } from "next/headers";
-import { clientIpFrom } from "@firstfold/shared/lib/client-ip";
-import type { SignInFormState } from "@firstfold/shared/lib/sign-in-form";
-import { retryMessage } from "@firstfold/shared/lib/sign-in-limits";
+import { clientIpFrom } from "@fynix/shared/lib/client-ip";
+import type { SignInFormState } from "@fynix/shared/lib/sign-in-form";
+import { retryMessage } from "@fynix/shared/lib/sign-in-limits";
 import { parseCustomerSignInForm } from "./customer-sign-in-form";
 import { requestBrand } from "./request-brand";
 import { getAppDb } from "./db";
-import { signInCustomer } from "./signed-in-hint";
-import { firstBlockedSignInLimit } from "@firstfold/shared/server/rate-limits";
+import { signInCustomer } from "./customer-sign-in";
+import { firstBlockedSignInLimit } from "@fynix/shared/server/rate-limits";
 import { noteSecurityEvent } from "./security-events";
 
 /** `userId` is the account that signed in, for the caller that decides where it lands: its session cookie is not readable yet in the same request. */

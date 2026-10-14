@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactElement } from "react";
-import { VIDEO_MAX_SECONDS, VIDEO_UPLOAD_TYPES, vimeoEmbedUrl } from "@firstfold/shared/lib/directory/videos";
-import { LockIcon, PlusIcon } from "@firstfold/shared/ui/icons";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+import { VIDEO_MAX_SECONDS, VIDEO_UPLOAD_TYPES, vimeoEmbedUrl } from "@fynix/shared/lib/directory/videos";
+import { LockIcon, PlusIcon } from "@fynix/shared/ui/icons";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { StatusLine } from "@/components/panel/status-line";
 import { readVideoSeconds, uploadListingVideo, videoFileProblem, videoLengthProblem, waitForVideo, type VideoUploadProgress } from "@/lib/uploads/video-upload-client";
 import { formatVideoDuration, videoStatusText, type VideosView, type VideoTile } from "@/lib/videos-view";

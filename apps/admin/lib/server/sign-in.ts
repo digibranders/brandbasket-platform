@@ -1,14 +1,14 @@
 import "server-only";
-import { isInvalidCredentialsError } from "@firstfold/auth";
-import { findActiveStaffMember, findActiveStaffUserIdByEmail, isPhoneAccountEmail } from "@firstfold/db";
+import { isInvalidCredentialsError } from "@fynix/auth";
+import { findActiveStaffMember, findActiveStaffUserIdByEmail, isPhoneAccountEmail } from "@fynix/db";
 import { headers } from "next/headers";
-import { clientIpFrom } from "@firstfold/shared/lib/client-ip";
-import { parseSignInForm, type SignInFormState } from "@firstfold/shared/lib/sign-in-form";
-import { retryMessage } from "@firstfold/shared/lib/sign-in-limits";
+import { clientIpFrom } from "@fynix/shared/lib/client-ip";
+import { parseSignInForm, type SignInFormState } from "@fynix/shared/lib/sign-in-form";
+import { retryMessage } from "@fynix/shared/lib/sign-in-limits";
 import { getAuth } from "./auth";
 import { getStaffDb } from "./db";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
-import { firstBlockedSignInLimit } from "@firstfold/shared/server/rate-limits";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { firstBlockedSignInLimit } from "@fynix/shared/server/rate-limits";
 import { logStaffAccess } from "./staff-access-log";
 
 export type SignInOutcome = SignInFormState | { readonly status: "signed-in" };

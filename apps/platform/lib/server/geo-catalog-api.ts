@@ -1,7 +1,7 @@
 import "server-only";
-import type { GeoCatalogSnapshot } from "@firstfold/db";
-import { GEO_CATALOG_CONTRACT_VERSION, type GeoCatalogResponse } from "@firstfold/shared/lib/directory/geo-catalog-contract";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import type { GeoCatalogSnapshot } from "@fynix/db";
+import { GEO_CATALOG_CONTRACT_VERSION, type GeoCatalogResponse } from "@fynix/shared/lib/directory/geo-catalog-contract";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { hasValidWebsiteToken } from "@/lib/server/website-api-auth";
 
 /** `GET /api/directory/catalog`: the geography and category catalog for the marketing website's server (see the contract). */
@@ -24,7 +24,7 @@ export async function handleGeoCatalog(request: Request, deps: GeoCatalogApiDeps
     const body: GeoCatalogResponse = { contract: GEO_CATALOG_CONTRACT_VERSION, ...(await deps.readCatalog()) };
     return reply(200, body);
   } catch (error) {
-    console.error("[firstfold:directory] GET /api/directory/catalog failed", errorLogInfo(error));
+    console.error("[fynix:directory] GET /api/directory/catalog failed", errorLogInfo(error));
     return reply(503, { error: "The catalog is unavailable right now." });
   }
 }

@@ -1,16 +1,16 @@
 import "server-only";
-import { isAuthApiError, isInvalidTokenError } from "@firstfold/auth";
-import { consumeRateLimit, isPhoneAccountEmail, type RateLimitRule } from "@firstfold/db";
-import { clientIpFrom } from "@firstfold/shared/lib/client-ip";
+import { isAuthApiError, isInvalidTokenError } from "@fynix/auth";
+import { consumeRateLimit, isPhoneAccountEmail, type RateLimitRule } from "@fynix/db";
+import { clientIpFrom } from "@fynix/shared/lib/client-ip";
 import { headers } from "next/headers";
 import { generatePasswordResetEmail, getAuth } from "./auth";
 import { getAppDb } from "./db";
 import { realDeployment } from "./email";
-import { createEmailDelivery, createOutboxTransport } from "@firstfold/email";
+import { createEmailDelivery, createOutboxTransport } from "@fynix/email";
 import { after } from "next/server";
 import { getPublicDb } from "./public-db";
 import { currentBrand } from "./request-brand";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 
 /*
  * Getting back into an account (a one-time link to choose a new password) and proving an email address is its

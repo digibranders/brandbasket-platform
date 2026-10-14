@@ -1,9 +1,9 @@
-import type { AddOnSubscriptionForStaff, PressRelease } from "@firstfold/db";
-import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@firstfold/shared/lib/billing/add-ons";
-import { addOnActions, addOnView, type AddOnView } from "@firstfold/shared/lib/billing/add-on-state";
-import { addOnFactsOf, pickAddOnRows } from "@firstfold/shared/lib/billing/add-on-rows";
-import { formatCalendarDate } from "@firstfold/shared/lib/format";
-import { formatMoney } from "@firstfold/shared/lib/money";
+import type { AddOnSubscriptionForStaff, PressRelease } from "@fynix/db";
+import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
+import { addOnActions, addOnView, type AddOnView } from "@fynix/shared/lib/billing/add-on-state";
+import { addOnFactsOf, pickAddOnRows } from "@fynix/shared/lib/billing/add-on-rows";
+import { formatCalendarDate } from "@fynix/shared/lib/format";
+import { formatMoney } from "@fynix/shared/lib/money";
 import type { StatusTone } from "@/components/console/status-dot";
 
 /**

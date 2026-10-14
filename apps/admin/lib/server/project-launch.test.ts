@@ -1,12 +1,12 @@
-import { findClientDetail, markProjectLive, type Database } from "@firstfold/db";
-import { websiteLiveEmail } from "@firstfold/email";
+import { findClientDetail, markProjectLive, type Database } from "@fynix/db";
+import { websiteLiveEmail } from "@fynix/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { customerEmailTransport } from "./email";
 import { ProjectLaunchDomainMissingError, ProjectLaunchRecipientMissingError, launchProject } from "./project-launch";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", () => ({ findClientDetail: vi.fn(), markProjectLive: vi.fn() }));
-vi.mock("@firstfold/email", () => ({ websiteLiveEmail: vi.fn() }));
+vi.mock("@fynix/db", () => ({ findClientDetail: vi.fn(), markProjectLive: vi.fn() }));
+vi.mock("@fynix/email", () => ({ websiteLiveEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 
 const mockedMarkLive = vi.mocked(markProjectLive);
@@ -42,7 +42,7 @@ beforeEach(() => {
   mockedCreateTransport.mockReturnValue({ send });
   mockedWebsiteLiveEmail.mockReturnValue({
     to: "riley@example.com",
-    subject: "Your Firstfold website is live",
+    subject: "Your Fynix website is live",
     template: "website-live",
     bodyText: "text",
     bodyHtml: "html",
@@ -59,7 +59,6 @@ describe("launchProject", () => {
       to: "riley@example.com",
       businessName: "Riverside Plumbing",
       websiteUrl: "https://riverside-plumbing.com",
-      brandName: "Firstfold",
     });
     expect(send).toHaveBeenCalledTimes(1);
     expect(mockedMarkLive.mock.invocationCallOrder[0]).toBeLessThan(mockedFindClient.mock.invocationCallOrder[0] ?? 0);

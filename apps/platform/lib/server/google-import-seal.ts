@@ -12,7 +12,7 @@ import { z } from "zod";
  */
 
 const VERSION = 1;
-const KEY_INFO = "firstfold google-business-import v1";
+const KEY_INFO = "fynix google-business-import v1";
 const IV_BYTES = 12;
 const TAG_BYTES = 16;
 /** Browsers keep cookies up to about 4 KB with their name; the value stays well under that. */

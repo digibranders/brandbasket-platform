@@ -1,5 +1,5 @@
 // Types only: nothing here touches the database.
-import type { DirectoryLookup, LiveDirectoryAd, LiveDirectoryAds, LiveDirectoryPictures } from "@firstfold/db";
+import type { DirectoryLookup, LiveDirectoryAd, LiveDirectoryAds, LiveDirectoryPictures } from "@fynix/db";
 import type { AdsResponse, DirectoryAd } from "@/lib/directory-api";
 
 /*

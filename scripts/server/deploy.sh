@@ -47,7 +47,7 @@ ROLLBACK_TO=""
 ROLLBACK_APP="both"
 SSH_OPTS="${FYNIX_SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=15}"
 APP_HOST="app.fynix.digital"
-ADMIN_HOST="staff.fynix.digital"
+ADMIN_HOST="console.fynix.digital"
 APP_PORT=3001
 ADMIN_PORT=3003
 HEALTH_TRIES="${FYNIX_HEALTH_TRIES:-45}"
@@ -201,8 +201,8 @@ build_here() { # builddir release
     export DATABASE_URL_PAYLOAD="postgresql://build:build@127.0.0.1:5432/build" DATABASE_URL_PUBLIC="postgresql://build:build@127.0.0.1:5432/build"
     export PAYLOAD_SECRET="build-placeholder-not-a-real-secret-0000" BETTER_AUTH_SECRET="build-placeholder-not-a-real-secret-0000"
     pnpm install --frozen-lockfile
-    pnpm --filter @firstfold/platform build
-    pnpm --filter @firstfold/admin build
+    pnpm --filter @fynix/platform build
+    pnpm --filter @fynix/admin build
   )
 }
 

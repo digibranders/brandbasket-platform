@@ -1,8 +1,8 @@
-import { listRecentStaffAccess, type StaffAccessAction } from "@firstfold/db";
+import { listRecentStaffAccess, type StaffAccessAction } from "@fynix/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
 import { getStaffDb } from "@/lib/server/db";

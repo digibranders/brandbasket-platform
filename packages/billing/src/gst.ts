@@ -2,7 +2,7 @@
  * GST on one invoice line. Within our own state the rate splits into CGST and SGST, each rounded on its own so the two
  * are always equal; across states it is one IGST figure. Rounding is half up, as in tax.ts. Pure and browser-safe.
  */
-import type { TaxInvoiceSupplyType } from "@firstfold/db";
+import type { TaxInvoiceSupplyType } from "@fynix/db";
 import { BillingRangeError } from "./billing-range-error";
 import { gstStateCodeOf } from "./gst-states";
 

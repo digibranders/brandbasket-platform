@@ -1,7 +1,7 @@
 import "server-only";
 import { getStaffDb } from "@/lib/server/db";
 import { readDirectoryFeed } from "@/lib/server/directory-feed";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 
 /** Edits show on the directory within about a minute. */
 const CACHE_CONTROL = "public, max-age=60, s-maxage=60, stale-while-revalidate=300";
@@ -16,7 +16,7 @@ export async function GET(): Promise<Response> {
     const feed = await readDirectoryFeed(getStaffDb(), new Date());
     return Response.json(feed, { status: 200, headers: { "Cache-Control": CACHE_CONTROL } });
   } catch (error) {
-    console.error("[firstfold:directory] GET /api/directory/listings failed", errorLogInfo(error));
+    console.error("[fynix:directory] GET /api/directory/listings failed", errorLogInfo(error));
     return Response.json(
       { error: "Listings are unavailable right now." },
       { status: 503, headers: { "Cache-Control": "no-store" } },

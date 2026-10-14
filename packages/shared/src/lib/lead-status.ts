@@ -1,4 +1,4 @@
-import { isSystemLeadStatus, type LeadStatus, type StaffLeadStatus } from "@firstfold/db";
+import { isSystemLeadStatus, type LeadStatus, type StaffLeadStatus } from "@fynix/db";
 
 /** Pipeline order, used for the filter bar. */
 export const LEAD_STATUS_ORDER = [

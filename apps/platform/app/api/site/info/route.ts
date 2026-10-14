@@ -1,10 +1,10 @@
 import "server-only";
-import { readBookingContext, readPractitionerSchedules, readSiteFacts } from "@firstfold/db";
+import { readBookingContext, readPractitionerSchedules, readSiteFacts } from "@fynix/db";
 import { findTenantBySiteToken } from "@/lib/server/site-api";
 import { getStaffDb } from "@/lib/server/db";
 import { buildSiteInfo, offersBooking } from "@/lib/server/site-info";
 import { bearerToken, siteCorsHeaders, unauthorized } from "@/lib/server/site-cors";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 
 /**
  * `GET /api/site/info` — opening hours, closures, the announcement banner and the online-booking state for

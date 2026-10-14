@@ -77,7 +77,7 @@ export const UNAPPLIED_PAYMENT_REASONS = [
 
 /**
  * What a plan includes (docs/superpowers/specs/2026-10-07-care-plan-design.md). `care` is the website only: the
- * website, its management, the chatbot, the server and hosting. `premium` is everything in Care plus the Firstfold
+ * website, its management, the chatbot, the server and hosting. `premium` is everything in Care plus the Fynix
  * listing, videos, appointments, better ranking and the social and Google profile management.
  */
 export const planTier = pgEnum("plan_tier", ["care", "premium"]);
@@ -321,7 +321,7 @@ export const payments = pgTable(
  * What a charge is for. `change_hours` is time past the free hour of changes, `blog_posts` a block of extra blog
  * posts, `extra_publish` a publish past the plan's monthly ones, and `custom` anything else staff agree with the
  * customer. The kind sets the price staff start from; only `custom` lets them set it freely. `listing_promotion` is a
- * week of a paid tag on the client's Firstfold Local listing: the customer opens it from the Listing page, never
+ * week of a paid tag on the client's the local directory listing: the customer opens it from the Listing page, never
  * staff, and paying it starts the week (see directory_promotions). `directory_ad` is a won week of an ad spot: the
  * auction's settlement opens it, and paying it puts the ad up (see directory_ad_wins). `plan_upgrade` is the part of
  * the month a Care client pays to be Premium for the rest of it: the customer opens it from the Upgrade page, and

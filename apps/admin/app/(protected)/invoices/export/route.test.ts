@@ -1,5 +1,5 @@
-import type { TaxInvoice, TaxInvoiceLineRecord } from "@firstfold/db";
-import { listTaxInvoicesIssuedBetween } from "@firstfold/db";
+import type { TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
+import { listTaxInvoicesIssuedBetween } from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess, logStaffAccessOrThrow } from "@/lib/server/staff-access-log";
@@ -9,13 +9,13 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/staff-access", () => ({ getStaffAccess: vi.fn() }));
 vi.mock("@/lib/server/staff-access-log", () => ({ logStaffAccess: vi.fn(), logStaffAccessOrThrow: vi.fn() }));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return { ...actual, listTaxInvoicesIssuedBetween: vi.fn() };
 });
 
 const line: TaxInvoiceLineRecord = {
-  description: "Firstfold Premium plan",
+  description: "Fynix Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: null,
   sac: "998361",
@@ -36,15 +36,15 @@ function invoiceFor(name: string): TaxInvoice {
     id: "01920000-0000-7000-8000-000000000001",
     businessId: "01920000-0000-7000-8000-0000000000b1",
     paymentId: "01920000-0000-7000-8000-0000000000a1",
-    prefix: "FF",
+    prefix: "FY",
     financialYear: "26-27",
     serial: 1,
-    number: "FF/26-27/000001",
+    number: "FY/26-27/000001",
     issuedOn: "2026-10-09",
     paidOn: "2026-10-09",
     supplier: {
       legalName: "Digibranders Private Limited",
-      tradeName: "Firstfold",
+      tradeName: "Fynix",
       gstin: "27AAICD9268J1Z0",
       cin: null,
       addressLines: ["Thane West"],
@@ -111,7 +111,7 @@ describe("GET /invoices/export", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("text/csv; charset=utf-8");
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="firstfold-invoices-2026-10.csv"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-invoices-2026-10.csv"');
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(listTaxInvoicesIssuedBetween).toHaveBeenCalledWith({ name: "staff-db" }, "2026-10-01", "2026-11-01");
@@ -122,7 +122,7 @@ describe("GET /invoices/export", () => {
     const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes).slice(1);
     const rows = text.split("\r\n");
     expect(rows[0]).toBe("Invoice number,Invoice date,Customer,GSTIN,Type,Place of supply,SAC,Taxable value,CGST,SGST,IGST,Round off,Invoice total");
-    expect(rows[1]).toBe("FF/26-27/000001,09-10-2026,QA Premium Business,27AAPFU0939F1ZV,B2B,27-Maharashtra,998361,5599.20,503.93,503.93,0.00,0.00,6607.06");
+    expect(rows[1]).toBe("FY/26-27/000001,09-10-2026,QA Premium Business,27AAPFU0939F1ZV,B2B,27-Maharashtra,998361,5599.20,503.93,503.93,0.00,0.00,6607.06");
     expect(rows).toHaveLength(2);
   });
 
@@ -193,7 +193,7 @@ describe("GET /invoices/export", () => {
 
   it("answers a generic 500 and logs which invoice could not be written, never a customer detail", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const bad = { ...invoiceFor("Priya Sharma"), number: "FF/26-27/000042", placeOfSupplyStateCode: "zz" };
+    const bad = { ...invoiceFor("Priya Sharma"), number: "FY/26-27/000042", placeOfSupplyStateCode: "zz" };
     vi.mocked(listTaxInvoicesIssuedBetween).mockResolvedValue([invoiceFor("QA Premium Business"), bad]);
 
     const response = await GET(request("?month=2026-10"));
@@ -207,7 +207,7 @@ describe("GET /invoices/export", () => {
     expect(JSON.parse(line.slice(line.indexOf("{")))).toMatchObject({
       event: "invoice-register-failed",
       month: "2026-10",
-      invoiceNumber: "FF/26-27/000042",
+      invoiceNumber: "FY/26-27/000042",
       errorName: "UnknownStateError",
     });
     expect(line).not.toMatch(/Priya|Sharma|27AAPFU0939F1ZV|Mumbai/);

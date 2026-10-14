@@ -1,7 +1,7 @@
 # Retention schedule
 
-How long Firstfold keeps each kind of personal data, and what removes it. Approved by the owner on 13 October 2026
-(item M1 in `FirstFold/docs/privacy/PRIVACY-PLAN.md`). DPDP Act s.8(7) asks that personal data is erased once its purpose
+How long Fynix keeps each kind of personal data, and what removes it. Approved by the owner on 13 October 2026
+(item M1 in `Fynix/docs/privacy/PRIVACY-PLAN.md`). DPDP Act s.8(7) asks that personal data is erased once its purpose
 is served; each period below is that purpose, written down. The Privacy Policy states the same periods.
 
 | Data | Kept for | Removed by |
@@ -43,7 +43,7 @@ nothing else on the row can change.
 
 ## Running it
 
-It runs inside the nightly support maintenance (`firstfold-support-maintenance.timer`, 03:00 IST). To preview or run it
+It runs inside the nightly support maintenance (`fynix-maintenance.timer`, 03:00 IST). To preview or run it
 by hand, see `retention-run.md`. Its output is counts only.
 
 After any restore from backup, run the account erase job and `pnpm retention:run` once, so data erased since the backup

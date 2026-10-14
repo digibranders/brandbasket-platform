@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
-import { ChevronRightIcon } from "@firstfold/shared/ui/icons";
+import { ChevronRightIcon } from "@fynix/shared/ui/icons";
 
 interface HairlineListProps {
   /** Names the list for screen readers, e.g. "Leads". */

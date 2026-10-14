@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactElement } from "react";
-import { ADD_ONS_PATH } from "@firstfold/shared/lib/billing/add-ons";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import type { AddOnEndKind } from "@firstfold/shared/lib/billing/add-on-state";
+import { ADD_ONS_PATH } from "@fynix/shared/lib/billing/add-ons";
+import { Button } from "@fynix/shared/ui/panel/button";
+import type { AddOnEndKind } from "@fynix/shared/lib/billing/add-on-state";
 import { PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 import { addOnActionLabel, endConfirmQuestion, endPendingLabel, endSavedText } from "@/lib/billing/add-on-copy";
 

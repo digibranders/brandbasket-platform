@@ -1,7 +1,7 @@
 # Slot booking (Calendly-style week grid + OTP) — Design and Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. Never commit. Work only in the
-> worktrees named below. Branch databases only: `webfold_appt`, `webfold_appt_test`, `webfold_payload_appt`.
+> worktrees named below. Branch databases only: `fynix_appt`, `fynix_appt_test`, `fynix_platform_payload_appt`.
 
 **Supersedes** the request flow (patient asks for a day plus morning, afternoon or evening; clinic confirms) from
 `docs/superpowers/specs/2026-09-25-business-modules-appointments-design.md` and
@@ -221,7 +221,7 @@ data in any response or log, and allow no CORS on POST.
 
 ## Database (rewrite 0041/0042 in place; the branch is unshared)
 
-After the rewrite, rebuild `webfold_appt` and `webfold_appt_test` from the pristine `webfold` and `webfold_test`, then
+After the rewrite, rebuild `fynix_appt` and `fynix_appt_test` from the pristine `fynix_platform` and `fynix_platform_test`, then
 migrate. Aster Physio's test data is recreated by the e2e step.
 
 - **`appointment_settings`:**
@@ -280,14 +280,14 @@ migrate. Aster Physio's test data is recreated by the e2e step.
     `done_at`, `handled_by_user_id`, `seen_at`).
   - The app role on `appointment_settings`: UPDATE on (`accepting`, `paused_message`, `slot_minutes`,
     `min_notice_minutes`, `horizon_days`, `updated_at`). No `last_seen_at` grant -- that column doesn't exist.
-- **Trigger `appointments_guard_customer_transition`** (for `webfold_app`):
+- **Trigger `appointments_guard_customer_transition`** (for `fynix_app`):
   - It allows only these status changes: `booked→cancelled` and `booked→done`.
   - `booked→done` is additionally refused when the slot hasn't started yet (`OLD.starts_at > now()`) -- the same
     rule `transitionAppointment`'s own WHERE clause already holds application-side (`starts_at <= now`, added only
     to the "done" edge), held again here so it can never be bypassed by a direct UPDATE outside that one query path.
   - When the status is unchanged, only `clinic_note`, `handled_by_user_id` and `seen_at` may change.
   - `handled_by_user_id` may only stay the same or become `public.app_current_user_id()`.
-  - `seen_at` may only move forward: once set, `webfold_app` may not clear it back to null or move it to a
+  - `seen_at` may only move forward: once set, `fynix_app` may not clear it back to null or move it to a
     different timestamp, so a booking already marked seen can never look unseen again.
   - Column guards on the transitioning update itself: marking an appointment `done` may not also set
     `cancel_reason` or `cancelled_at` in the same statement; cancelling may not also set `done_at`.
@@ -407,7 +407,7 @@ migrate. Aster Physio's test data is recreated by the e2e step.
 - The Features counts show "N upcoming · M total".
 - The outbox page adds an "SMS" section with the latest 50 `sms_messages`.
 
-## Client site (`firstfold-test-client-site-appt`)
+## Client site (`fynix-test-client-site-appt`)
 
 - Keep a byte-identical copy of `lib/site-bookings.ts` and the updated `lib/site-info.ts`.
 - Server routes. Each forwards to the platform with the token and `no-store`, and relays only contract-shaped bodies.

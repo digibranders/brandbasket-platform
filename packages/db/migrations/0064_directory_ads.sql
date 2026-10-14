@@ -1,4 +1,4 @@
--- Free listing accounts and the weekly ad auction on Firstfold Local (docs/superpowers/specs/2026-09-30-directory-ads-
+-- Free listing accounts and the weekly ad auction on the local directory (docs/superpowers/specs/2026-09-30-directory-ads-
 -- auction-design.md): businesses.kind, directory_claims, directory_ad_prices, directory_ad_bids, directory_ad_wins, and
 -- the charges rules for a `directory_ad` charge (INR only; the auction may cancel it without a staff member when its
 -- win lapses). drizzle-kit's DDL, unchanged; grants and row-level security are in 0065.

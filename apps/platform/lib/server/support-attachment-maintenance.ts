@@ -7,14 +7,14 @@ import {
   markSupportAttachmentPurged,
   purgeErrorIssues,
   type Database,
-} from "@firstfold/db";
-import { purgeSupportAttachments } from "@firstfold/shared/server/support-attachment-maintenance";
+} from "@fynix/db";
+import { purgeSupportAttachments } from "@fynix/shared/server/support-attachment-maintenance";
 import {
   runSupportRetention,
   supportRetentionCutoff,
   supportRetentionMonths,
 } from "./support-retention";
-import type { SupportStorage } from "@firstfold/shared/server/support-storage";
+import type { SupportStorage } from "@fynix/shared/server/support-storage";
 
 /** Screenshot cleanup, and closed-ticket removal only when retention is on (null means off). */
 export async function maintainSupportAttachments(

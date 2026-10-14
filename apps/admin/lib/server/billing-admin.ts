@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { addMonthsUtc, decideCheckout, discountCentsFor, isChargeableDiscount } from "@firstfold/billing";
+import { addMonthsUtc, decideCheckout, discountCentsFor, isChargeableDiscount } from "@fynix/billing";
 import {
   BillingBusinessNotFoundError,
   findActivePlan,
@@ -14,14 +14,14 @@ import {
   type Plan,
   type ReferralCode,
   type Subscription,
-} from "@firstfold/db";
-import type { ManualPaymentDetails } from "@firstfold/shared/lib/billing/manual-payment-form";
+} from "@fynix/db";
+import type { ManualPaymentDetails } from "@fynix/shared/lib/billing/manual-payment-form";
 import { getBillingProvider } from "./billing-provider";
-import { type ManualPaymentOutcome } from "@firstfold/shared/lib/billing/manual-payment-notices";
-import { activateFirstPayment, activateReactivationPayment } from "@firstfold/shared/server/billing-activation";
+import { type ManualPaymentOutcome } from "@fynix/shared/lib/billing/manual-payment-notices";
+import { activateFirstPayment, activateReactivationPayment } from "@fynix/shared/server/billing-activation";
 import { getStaffDb } from "./db";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
-import { cancelAtProvider } from "@firstfold/shared/server/provider-cancellation";
+import { cancelAtProvider } from "@fynix/shared/server/provider-cancellation";
 
 
 export interface ManualFirstPayment extends ManualPaymentDetails {

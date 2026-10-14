@@ -5,28 +5,28 @@ const BASE = {
   keyId: "rzp_test_key",
   email: null,
   contact: null,
-  callbackUrl: "https://app.firstfold.io/billing/pay/callback",
+  callbackUrl: "https://app.fynix.digital/billing/pay/callback",
   onDismiss: () => undefined,
 } as const;
 
 describe("razorpayCheckoutOptions", () => {
-  it("names Firstfold as who is being paid, never the customer's own business", () => {
+  it("names Fynix as who is being paid, never the customer's own business", () => {
     const options = razorpayCheckoutOptions({ ...BASE, target: { kind: "subscription", subscriptionId: "sub_1" } });
-    expect(options.name).toBe("Firstfold");
+    expect(options.name).toBe("Fynix Digital");
   });
 
   it("opens a subscription's checkout on its subscription id", () => {
     const options = razorpayCheckoutOptions({ ...BASE, target: { kind: "subscription", subscriptionId: "sub_1" } });
-    expect(options).toMatchObject({ key: "rzp_test_key", subscription_id: "sub_1", description: "Firstfold monthly plan" });
+    expect(options).toMatchObject({ key: "rzp_test_key", subscription_id: "sub_1", description: "Fynix Digital monthly plan" });
     expect(options).not.toHaveProperty("order_id");
   });
 
   it("describes a subscription with the given description when there is one", () => {
     const options = razorpayCheckoutOptions({
       ...BASE,
-      target: { kind: "subscription", subscriptionId: "sub_1", description: "Firstfold Local SEO monthly" },
+      target: { kind: "subscription", subscriptionId: "sub_1", description: "Local SEO monthly" },
     });
-    expect(options).toMatchObject({ subscription_id: "sub_1", description: "Firstfold Local SEO monthly" });
+    expect(options).toMatchObject({ subscription_id: "sub_1", description: "Local SEO monthly" });
   });
 
   it("opens a charge's checkout on its order id, describing the charge", () => {

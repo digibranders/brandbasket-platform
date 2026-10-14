@@ -1,5 +1,5 @@
 import "server-only";
-import { attachAccountToNewBusiness, type AccountAttachment, type Database } from "@firstfold/db";
+import { attachAccountToNewBusiness, type AccountAttachment, type Database } from "@fynix/db";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 
 /**

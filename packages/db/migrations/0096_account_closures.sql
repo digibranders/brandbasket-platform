@@ -38,10 +38,10 @@ ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_discount_check" CHECK 
 -- Grants and row-level security, in the pattern of 0084: the platform and the staff console write these on the staff
 -- connection after checking the signed-in customer; the customer's own database role gets nothing. Feedback is
 -- written once and never changed, and nothing is ever deleted: a closure is closed by stamping it.
-GRANT SELECT, INSERT, UPDATE ON "account_closures" TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON "account_closures" TO fynix_staff;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT ON "account_exit_feedback" TO webfold_staff;
+GRANT SELECT, INSERT ON "account_exit_feedback" TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE "account_closures" ENABLE ROW LEVEL SECURITY;
@@ -50,7 +50,7 @@ ALTER TABLE "account_closures" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "account_exit_feedback" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY account_closures_staff_all ON "account_closures" FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY account_closures_staff_all ON "account_closures" FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY account_exit_feedback_staff_all ON "account_exit_feedback" FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY account_exit_feedback_staff_all ON "account_exit_feedback" FOR ALL TO fynix_staff USING (true) WITH CHECK (true);

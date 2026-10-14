@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
-import { TickIcon } from "@firstfold/shared/ui/icons";
+import { TickIcon } from "@fynix/shared/ui/icons";
 import { FreeListingButton } from "@/components/panel/membership/free-listing-button";
 import { MembershipCheckout } from "@/components/panel/membership/membership-checkout";
 import { PlanMark } from "@/components/panel/plan-mark";

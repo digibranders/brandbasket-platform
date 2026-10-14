@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { GeoAdminCategory } from "@firstfold/db";
+import type { GeoAdminCategory } from "@fynix/db";
 import { filterCategories, geographyHref, PAGE_SIZE, paginate, parseGeographyView } from "./geography-view";
 
 describe("parseGeographyView", () => {

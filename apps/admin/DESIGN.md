@@ -70,7 +70,7 @@ paper/70 8.1.
 |---|---|
 | Newsreader (`font-serif`) | Page titles (`heading-display`), section titles, big figures, stage counts, names in glass cards, quoted lead messages |
 | Hanken Grotesk (`font-sans`) | Everything else: body, labels, buttons, rows, dock |
-| Outfit (`font-brand`) | The Firstfold wordmark only |
+| Outfit (`font-brand`) | The Fynix wordmark only |
 
 | Step | Size | Where |
 |---|---|---|
@@ -193,7 +193,7 @@ action top right, and header-owned children such as the stage track.
 
 ## Icons
 
-- `@firstfold/shared/ui/icons`, stroke 1.5, `size-4` inline, `size-5` in the dock and icon discs; the Journey icon
+- `@fynix/shared/ui/icons`, stroke 1.5, `size-4` inline, `size-5` in the dock and icon discs; the Journey icon
   is local to the dock. Always `aria-hidden`; the link or button carries the name.
 
 ## Responsive

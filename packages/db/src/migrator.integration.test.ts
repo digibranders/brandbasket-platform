@@ -89,12 +89,12 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-  databaseName = `firstfold_migrator_${randomBytes(6).toString("hex")}`;
+  databaseName = `fynix_migrator_${randomBytes(6).toString("hex")}`;
   await admin(`CREATE DATABASE "${databaseName}"`);
   const url = new URL(adminUrl);
   url.pathname = `/${databaseName}`;
   pool = new Pool({ connectionString: url.toString(), max: 1 });
-  folder = mkdtempSync(path.join(tmpdir(), "firstfold-migrations-"));
+  folder = mkdtempSync(path.join(tmpdir(), "fynix-migrations-"));
 }, 60_000);
 
 afterEach(async () => {

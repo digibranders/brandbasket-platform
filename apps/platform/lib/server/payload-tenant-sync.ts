@@ -1,5 +1,5 @@
 import "server-only";
-import { syncTenantForBusiness as sync, type TenantSyncInput } from "@firstfold/cms";
+import { syncTenantForBusiness as sync, type TenantSyncInput } from "@fynix/cms";
 import config from "@/payload.config";
 
 export type { TenantSyncInput };

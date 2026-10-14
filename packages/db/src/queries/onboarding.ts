@@ -73,7 +73,7 @@ export async function insertBusiness(
 
 /**
  * Creates the tenant for a redeemed invite: business, its onboarding project, owner membership, closed invite and
- * updated lead, all or nothing. The account itself is created first by @firstfold/auth, which owns the invite-only gate.
+ * updated lead, all or nothing. The account itself is created first by @fynix/auth, which owns the invite-only gate.
  *
  * Closing the invite is the gate: the UPDATE only matches an invite that is still redeemable, so a link submitted
  * twice at once creates exactly one business and the loser rolls back.

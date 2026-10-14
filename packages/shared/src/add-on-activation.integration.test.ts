@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { BillingProvider } from "@firstfold/billing";
-import { chargedAmountCents } from "@firstfold/billing";
+import type { BillingProvider } from "@fynix/billing";
+import { chargedAmountCents } from "@fynix/billing";
 import {
   billingProfiles,
   businesses,
@@ -12,8 +12,8 @@ import {
   updateAddOnStatus,
   users,
   type AddOnSubscription,
-} from "@firstfold/db";
-import { openTestDatabases, querySql, resetTestDatabase, type TestDatabases } from "@firstfold/db/testing";
+} from "@fynix/db";
+import { openTestDatabases, querySql, resetTestDatabase, type TestDatabases } from "@fynix/db/testing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { addOnById, addOnPrice } from "./lib/billing/add-ons";
 import { ensureAddOnPlan } from "./server/add-on-plans";

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { ArrowIcon, CardIcon, CheckCircleIcon } from "@firstfold/shared/ui/icons";
-import type { BillingBannerModel } from "@firstfold/shared/lib/billing/payment-step";
-import { cn } from "@firstfold/shared/lib/cn";
+import { ArrowIcon, CardIcon, CheckCircleIcon } from "@fynix/shared/ui/icons";
+import type { BillingBannerModel } from "@fynix/shared/lib/billing/payment-step";
+import { cn } from "@fynix/shared/lib/cn";
 
 interface BillingBannerProps {
   /** What to say and where the button goes. See billingBanner. */

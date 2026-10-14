@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-06
 **Status:** approved; implemented 2026-10-06 (uncommitted). See "Changed during implementation" at the end.
-**Branch / worktree:** `feat/affiliates-coupons` → `first-found/affiliates-coupons` (off `origin/development`)
+**Branch / worktree:** `feat/affiliates-coupons` → `fynix-platform/affiliates-coupons` (off `origin/development`)
 **Surfaces:** customer dashboard `/premium` (`apps/platform`), staff console (`apps/admin`), `packages/db`, `packages/billing`, `packages/shared`
 **Builds on:** `2026-09-22-referral-codes-design.md` (Phase 1 referral codes, on development incl. the percentage option `ae16d38`)
 
@@ -252,7 +252,7 @@ Follows "no boxes, no text": hairline lists, figures, short labels. The dock's "
   exactly the listed earnings and refuses a stale set; `ensureDiscountPlan` race inserts one row.
 - **Platform:** `/premium` apply / remove / invalid / hidden-while-waiting; `startMembershipCheckoutFor` passes the
   discounted plan id.
-- **E2E (fake provider, own DBs `webfold_aff` / `webfold_aff_test`):** Premium sign-up with a coupon; with an
+- **E2E (fake provider, own DBs `fynix_platform_branch` / `fynix_platform_branch`):** Premium sign-up with a coupon; with an
   affiliate code with discount; with an affiliate code without discount; simulated renewal; refund; payout.
 - **Razorpay test mode:** one real discounted subscription, once the test account has Subscriptions enabled (the
   last attempt got a 401 from the Plans API).

@@ -1,5 +1,5 @@
 import "server-only";
-import { findActivePlan, setListingSignupChoice, type Plan } from "@firstfold/db";
+import { findActivePlan, setListingSignupChoice, type Plan } from "@fynix/db";
 import type { MembershipTier } from "@/lib/membership";
 import { cache } from "react";
 import type { GrantedCustomer } from "./customer-access";

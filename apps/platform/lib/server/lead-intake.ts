@@ -1,6 +1,6 @@
 import "server-only";
-import { isHoneypotFilled, parseLeadForm, type LeadInput } from "@firstfold/shared/lib/lead-form";
-import { businessDetails } from "@firstfold/shared/lib/site-config";
+import { isHoneypotFilled, parseLeadForm, type LeadInput } from "@fynix/shared/lib/lead-form";
+import { businessDetails } from "@fynix/shared/lib/site-config";
 import { LEAD_REQUEST_FIELDS, leadApiRequestSchema, type LeadApiResponse } from "@/lib/leads-api";
 import { BodyTooLargeError, readLimitedBody } from "./read-limited-body";
 import { hasValidWebsiteToken } from "./website-api-auth";

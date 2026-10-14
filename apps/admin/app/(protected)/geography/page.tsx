@@ -1,11 +1,11 @@
-import { loadGeoAdminCatalog, type GeoAdminCatalog } from "@firstfold/db";
-import { geoCatalogSource } from "@firstfold/shared/lib/directory/geo-catalog-source";
+import { loadGeoAdminCatalog, type GeoAdminCatalog } from "@fynix/db";
+import { geoCatalogSource } from "@fynix/shared/lib/directory/geo-catalog-source";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { SearchIcon } from "@firstfold/shared/ui/icons";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { SearchIcon } from "@fynix/shared/ui/icons";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import { buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses } from "@/components/console/field-styles";
 import { FilterPills } from "@/components/console/filter-pills";

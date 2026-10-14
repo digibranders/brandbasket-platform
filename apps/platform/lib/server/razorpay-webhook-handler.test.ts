@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     ...actual,
     findSubscriptionByProviderId: vi.fn(),
@@ -19,16 +19,16 @@ vi.mock("@firstfold/db", async () => {
     recordUnappliedAddOnPayment: vi.fn(),
   };
 });
-vi.mock("@firstfold/shared/server/billing-activation", () => ({
+vi.mock("@fynix/shared/server/billing-activation", () => ({
   activateRenewalPayment: vi.fn(async () => ({ alreadyRecorded: false })),
   // A client from a setup link, unless a test says otherwise: nothing to open.
   activateFirstPayment: vi.fn(async () => ({ openedMembership: null })),
   activateReactivationPayment: vi.fn(async () => ({ alreadyRecorded: false })),
 }));
-vi.mock("@firstfold/shared/server/add-on-activation", () => ({
+vi.mock("@fynix/shared/server/add-on-activation", () => ({
   applyAddOnPayment: vi.fn(async () => ({ kind: "applied", cancelAtProvider: [] })),
 }));
-vi.mock("@firstfold/shared/server/provider-cancellation", () => ({ cancelAtProvider: vi.fn(async () => undefined) }));
+vi.mock("@fynix/shared/server/provider-cancellation", () => ({ cancelAtProvider: vi.fn(async () => undefined) }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 vi.mock("./charges", () => ({ recordRazorpayChargePayment: vi.fn() }));
 // A transaction that is also its own savepoint: both run the callback straight away.
@@ -52,10 +52,10 @@ import {
   recordUnappliedPayment,
   updateAddOnStatus,
   updateSubscriptionProviderStatus,
-} from "@firstfold/db";
-import { applyAddOnPayment } from "@firstfold/shared/server/add-on-activation";
-import { cancelAtProvider } from "@firstfold/shared/server/provider-cancellation";
-import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "@firstfold/shared/server/billing-activation";
+} from "@fynix/db";
+import { applyAddOnPayment } from "@fynix/shared/server/add-on-activation";
+import { cancelAtProvider } from "@fynix/shared/server/provider-cancellation";
+import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "@fynix/shared/server/billing-activation";
 import { recordRazorpayChargePayment } from "./charges";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { handleRazorpayWebhookEvent } from "./razorpay-webhook-handler";

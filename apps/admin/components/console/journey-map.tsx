@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties, ReactElement } from "react";
-import { cn } from "@firstfold/shared/lib/cn";
+import { cn } from "@fynix/shared/lib/cn";
 import { pathD, placeBand } from "@/lib/journey-layout";
 import { JOURNEY_STAGE_LABELS, JOURNEY_STAGES, type Journey, type JourneyStage, type JourneySubject } from "@/lib/pipeline";
 import { Avatar, ringFor } from "./avatar";

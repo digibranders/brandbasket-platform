@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { ReactElement } from "react";
-import { cn } from "@firstfold/shared/lib/cn";
+import { cn } from "@fynix/shared/lib/cn";
 
 /** "Asha Rao" → "AR"; one name gives one letter. */
 export function initialsOf(name: string): string {

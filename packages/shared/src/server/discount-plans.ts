@@ -1,6 +1,6 @@
 import "server-only";
-import { discountPlanCode, type BillingProvider } from "@firstfold/billing";
-import { findProviderDiscountPlan, saveProviderDiscountPlan, type Database, type Plan } from "@firstfold/db";
+import { discountPlanCode, type BillingProvider } from "@fynix/billing";
+import { findProviderDiscountPlan, saveProviderDiscountPlan, type Database, type Plan } from "@fynix/db";
 
 /**
  * A discounted provider plan charges one amount every cycle. A base plan whose first payment differs from its monthly

@@ -1,6 +1,6 @@
 "use server";
 
-import { InvalidDirectoryDealError, takeDownDirectoryDeal } from "@firstfold/db";
+import { InvalidDirectoryDealError, takeDownDirectoryDeal } from "@fynix/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";

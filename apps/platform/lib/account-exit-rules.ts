@@ -1,6 +1,6 @@
-import type { AccountExitReason, AddOnSubscription, Plan, Subscription } from "@firstfold/db";
-import { ACCOUNT_CLOSURE_GRACE_DAYS } from "@firstfold/db";
-import { retentionDiscountCentsFor, retentionOfferPercent } from "@firstfold/shared/lib/account-exit";
+import type { AccountExitReason, AddOnSubscription, Plan, Subscription } from "@fynix/db";
+import { ACCOUNT_CLOSURE_GRACE_DAYS } from "@fynix/db";
+import { retentionDiscountCentsFor, retentionOfferPercent } from "@fynix/shared/lib/account-exit";
 
 /*
  * The decisions behind the Delete account page, free of the database and the provider so each can be tested alone:

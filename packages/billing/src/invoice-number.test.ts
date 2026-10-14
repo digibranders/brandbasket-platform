@@ -22,7 +22,7 @@ describe("indianDate", () => {
 describe("formatInvoiceNumber", () => {
   it("is prefix, financial year and a six digit serial, within GST's 16 characters", () => {
     const number = formatInvoiceNumber(INVOICE_PREFIX, "26-27", 147);
-    expect(number).toBe("FF/26-27/000147");
+    expect(number).toBe("FY/26-27/000147");
     expect(number.length).toBeLessThanOrEqual(16);
   });
 
@@ -38,7 +38,7 @@ describe("formatInvoiceNumber", () => {
 
   it("refuses a prefix that is empty, lower case or holds a slash", () => {
     expect(() => formatInvoiceNumber("", "26-27", 1)).toThrow(RangeError);
-    expect(() => formatInvoiceNumber("ff", "26-27", 1)).toThrow(RangeError);
+    expect(() => formatInvoiceNumber("fy", "26-27", 1)).toThrow(RangeError);
     expect(() => formatInvoiceNumber("F/F", "26-27", 1)).toThrow(RangeError);
   });
 
@@ -52,26 +52,17 @@ describe("formatInvoiceNumber", () => {
 });
 
 describe("invoicePrefix", () => {
-  it("is FF on a Firstfold server, as every invoice so far", () => {
-    expect(invoicePrefix({})).toBe("FF");
-    expect(invoicePrefix({ PLATFORM_BRAND: "firstfold" })).toBe("FF");
+  it("is FY, the series every invoice starts under", () => {
+    expect(invoicePrefix({})).toBe("FY");
+    expect(formatInvoiceNumber(invoicePrefix({}), "26-27", 1)).toBe("FY/26-27/000001");
   });
 
-  it("is FY on a Fynix server, so its invoices start a series of their own", () => {
-    expect(invoicePrefix({ PLATFORM_BRAND: "fynix" })).toBe("FY");
-    expect(formatInvoiceNumber(invoicePrefix({ PLATFORM_BRAND: " Fynix " }), "26-27", 1)).toBe("FY/26-27/000001");
-  });
-
-  it("takes INVOICE_PREFIX from the environment when set, over the brand's", () => {
-    expect(invoicePrefix({ PLATFORM_BRAND: "fynix", INVOICE_PREFIX: " fyd " })).toBe("FYD");
+  it("takes INVOICE_PREFIX from the environment when set", () => {
+    expect(invoicePrefix({ INVOICE_PREFIX: " fyd " })).toBe("FYD");
   });
 
   it("refuses a prefix that could not be printed, rather than issuing an invoice that cannot be numbered", () => {
     expect(() => invoicePrefix({ INVOICE_PREFIX: "F/F" })).toThrow(/INVOICE_PREFIX/);
     expect(() => invoicePrefix({ INVOICE_PREFIX: "ABCDEFGHIJKLM" })).toThrow(/INVOICE_PREFIX/);
-  });
-
-  it("refuses a brand it does not know", () => {
-    expect(() => invoicePrefix({ PLATFORM_BRAND: "fynx" })).toThrow(/PLATFORM_BRAND/);
   });
 });

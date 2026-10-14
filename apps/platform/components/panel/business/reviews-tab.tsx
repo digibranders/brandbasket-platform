@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { profileHref } from "@/lib/business-profile-notices";
 import type { ProfileTabId } from "@/lib/business-profile";
 

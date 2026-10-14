@@ -8,22 +8,22 @@ import {
   updateOwnListingContent,
   withTenantScope,
   type ListingContentPatch,
-} from "@firstfold/db";
-import type { FormParseResult } from "@firstfold/shared/lib/form-result";
+} from "@fynix/db";
+import type { FormParseResult } from "@fynix/shared/lib/form-result";
 import {
   parseAboutForm,
   parseButtonsForm,
   parseTaglineForm,
   parseTagsForm,
   parseVisibleForm,
-} from "@firstfold/shared/lib/directory/listing-content";
-import { parsePromotionTag } from "@firstfold/shared/lib/directory/promotion";
+} from "@fynix/shared/lib/directory/listing-content";
+import { parsePromotionTag } from "@fynix/shared/lib/directory/promotion";
 import { promotionNoticeHref } from "@/lib/listing/promotion-notices";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
 import { redirectForChargePayment } from "@/lib/server/charge-redirect";
 import { getAppDb } from "@/lib/server/db";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { startListingPromotionPayment } from "@/lib/server/listing-promotion";
 import { paymentRequiredState, unexpectedErrorState } from "@/lib/server/panel-form-errors";
 import { listingMissingState } from "./errors";
@@ -81,7 +81,7 @@ export async function saveListingButtonsAction(
   return saveListing(formData, parseButtonsForm, (buttons) => ({ buttons }));
 }
 
-/** The Show in directory switch. Off hides the listing from Firstfold Local and keeps everything else. */
+/** The Show in directory switch. Off hides the listing from the local directory and keeps everything else. */
 export async function setListingVisibleAction(_previous: PanelFormState, formData: FormData): Promise<PanelFormState> {
   return saveListing(formData, parseVisibleForm, ({ visible }) => ({ visible }));
 }

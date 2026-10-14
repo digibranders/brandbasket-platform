@@ -1,9 +1,9 @@
-import type { PaymentNeedingAttention } from "@firstfold/db";
+import type { PaymentNeedingAttention } from "@fynix/db";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import { PAYMENT_ATTENTION_LABELS } from "@/lib/billing/attention";
-import { formatMoney } from "@firstfold/shared/lib/money";
+import { formatMoney } from "@fynix/shared/lib/money";
 import { buttonSecondary } from "@/components/console/buttons";
 
 interface PaymentsNeedingAttentionProps {

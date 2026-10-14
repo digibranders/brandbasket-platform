@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Database } from "@firstfold/db";
+import type { Database } from "@fynix/db";
 import type { EmailMessage } from "./message";
 
-vi.mock("@firstfold/db", () => ({ recordEmail: vi.fn(async () => undefined) }));
+vi.mock("@fynix/db", () => ({ recordEmail: vi.fn(async () => undefined) }));
 
-const { recordEmail } = await import("@firstfold/db");
+const { recordEmail } = await import("@fynix/db");
 const { createOutboxTransport } = await import("./outbox");
 
 const db = {} as Database;
@@ -12,12 +12,12 @@ const db = {} as Database;
 function message(linkWithheld: boolean): EmailMessage {
   return {
     to: "asha@example.in",
-    subject: "Reset your Firstfold password",
+    subject: "Reset your Fynix password",
     template: "password-reset",
-    bodyText: "full body with https://app.firstfold.io/reset-password/TOKEN",
+    bodyText: "full body with https://app.fynix.digital/reset-password/TOKEN",
     bodyHtml: "<p>full</p>",
     outboxCopy: {
-      subject: "Reset your Firstfold password",
+      subject: "Reset your Fynix password",
       bodyText: "copy without the link",
       bodyHtml: "<p>copy</p>",
       ...(linkWithheld ? { linkWithheld: true as const } : {}),

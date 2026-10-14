@@ -1,5 +1,5 @@
 import "server-only";
-import { BRANDS, type Brand } from "@/lib/brand";
+import { BRAND, type Brand } from "@/lib/brand";
 import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
 import type { ReceiptDocument } from "@/lib/billing/receipt-document";
 
@@ -156,7 +156,7 @@ function drawReceipt(page: PDFPage, fonts: Fonts, receipt: ReceiptDocument, bran
 }
 
 /** One A4 page per receipt, in the order given. Throws for an empty list: there is nothing to download. */
-export async function renderReceiptsPdf(receipts: readonly ReceiptDocument[], brand: Brand = BRANDS.firstfold): Promise<Uint8Array> {
+export async function renderReceiptsPdf(receipts: readonly ReceiptDocument[], brand: Brand = BRAND): Promise<Uint8Array> {
   const first = receipts[0];
   if (first === undefined) throw new RangeError("At least one receipt is needed to make a PDF.");
 

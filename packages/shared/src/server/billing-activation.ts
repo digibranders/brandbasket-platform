@@ -1,5 +1,5 @@
 import "server-only";
-import { addMonthsUtc, chargedAmountCents } from "@firstfold/billing";
+import { addMonthsUtc, chargedAmountCents } from "@fynix/billing";
 import {
   openMembershipForListingBusiness,
   recordPaymentAndActivate,
@@ -11,7 +11,7 @@ import {
   type Plan,
   type RecordedActivation,
   type ScopedTransaction,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { accrueAffiliateEarning } from "./affiliate-accrual";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 

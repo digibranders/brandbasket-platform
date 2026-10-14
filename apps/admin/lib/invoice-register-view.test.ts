@@ -1,6 +1,6 @@
-import type { Payment } from "@firstfold/db";
+import type { Payment } from "@fynix/db";
 import { describe, expect, it } from "vitest";
-import { registerTotals, type RegisterInvoice } from "@firstfold/shared/lib/billing/invoice-register";
+import { registerTotals, type RegisterInvoice } from "@fynix/shared/lib/billing/invoice-register";
 import {
   missingRegisterRow,
   monthLabel,
@@ -82,7 +82,7 @@ describe("registerMoney", () => {
 });
 
 const row = (overrides: Partial<RegisterInvoice> = {}): RegisterInvoice => ({
-  number: "FF/26-27/000001",
+  number: "FY/26-27/000001",
   issuedOn: "2026-10-09",
   recipientName: "QA Premium Business",
   recipientGstin: "27AAPFU0939F1ZV",
@@ -101,12 +101,12 @@ describe("registerRow", () => {
   it("says who, where and when, with the total and the download", () => {
     expect(registerRow("inv-1", row())).toEqual({
       id: "inv-1",
-      number: "FF/26-27/000001",
+      number: "FY/26-27/000001",
       customer: "QA Premium Business",
       detail: "GSTIN 27AAPFU0939F1ZV · Maharashtra · 9 October 2026",
       total: "₹6,607.06",
       downloadHref: "/invoices/inv-1",
-      downloadLabel: "Download tax invoice FF/26-27/000001",
+      downloadLabel: "Download tax invoice FY/26-27/000001",
     });
   });
 
@@ -120,7 +120,7 @@ describe("registerTotalsView", () => {
     const view = registerTotalsView(
       registerTotals([
         row(),
-        row({ number: "FF/26-27/000002", recipientGstin: null, cgstCents: 0, sgstCents: 0, igstCents: 100_786 }),
+        row({ number: "FY/26-27/000002", recipientGstin: null, cgstCents: 0, sgstCents: 0, igstCents: 100_786 }),
       ]),
     );
     expect(view.count).toBe("2");

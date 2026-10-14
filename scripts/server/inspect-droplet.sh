@@ -58,7 +58,7 @@ if have psql || have pg_lsclusters || [[ -d /etc/postgresql ]]; then
   if [[ $AS_ROOT -eq 1 ]] && id postgres >/dev/null 2>&1; then
     echo "databases:"; (cd / && try runuser -u postgres -- psql -X -At -c "select datname || '  owner=' || pg_catalog.pg_get_userbyid(datdba) from pg_database where not datistemplate order by 1") | sed 's/^/  /'
     echo "roles (name, can login, superuser):"; (cd / && try runuser -u postgres -- psql -X -At -c "select rolname || '  login=' || rolcanlogin || '  super=' || rolsuper from pg_roles where rolname !~ '^pg_' order by 1") | sed 's/^/  /'
-    echo "Fynix names already present: $(cd / && runuser -u postgres -- psql -X -At -c "select string_agg(name, ', ') from (select datname as name from pg_database where datname like 'fynix%' union all select rolname from pg_roles where rolname like 'fynix%' or rolname like 'firstfold%' or rolname like 'webfold%') s" 2>/dev/null || echo unknown)"
+    echo "Fynix names already present: $(cd / && runuser -u postgres -- psql -X -At -c "select string_agg(name, ', ') from (select datname as name from pg_database where datname like 'fynix%' union all select rolname from pg_roles where rolname like 'fynix%' or rolname like 'fynix%' or rolname like 'fynix_platform%') s" 2>/dev/null || echo unknown)"
   else echo "  (run as root to list databases and roles)"; fi
 else echo "PostgreSQL: NOT INSTALLED"; fi
 
@@ -83,7 +83,7 @@ echo "(a DigitalOcean cloud firewall, if any, is configured in the DigitalOcean 
 
 section "9. TLS certificates and DNS as this machine sees them"
 if have certbot && [[ $AS_ROOT -eq 1 ]]; then try certbot certificates; else echo "certbot: not installed or not root"; fi
-for host in app.fynix.digital staff.fynix.digital api.fynix.digital; do
+for host in app.fynix.digital console.fynix.digital api.fynix.digital; do
   if have getent; then echo "$host -> $(getent hosts "$host" 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"; elif have dig; then echo "$host -> $(dig +short "$host" | tr '\n' ' ')"; fi
 done
 

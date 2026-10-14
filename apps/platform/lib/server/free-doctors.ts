@@ -11,7 +11,7 @@ import {
   type AppointmentRow,
   type PractitionerScheduleRow,
   type ScopedTransaction,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { freeDoctorsForBooking } from "@/lib/appointments/free-doctors";
 
 /**

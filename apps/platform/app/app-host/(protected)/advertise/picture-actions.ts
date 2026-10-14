@@ -1,8 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { parsePictureKind } from "@firstfold/shared/lib/directory/pictures";
-import { getMediaStorage } from "@firstfold/shared/server/media-storage";
+import { parsePictureKind } from "@fynix/shared/lib/directory/pictures";
+import { getMediaStorage } from "@fynix/shared/server/media-storage";
 import type { AdvertiseNotice } from "@/lib/advertise-notices";
 import { ADVERTISE_PATH, requireCustomerAccess } from "@/lib/server/customer-access";
 import { getStaffDb } from "@/lib/server/db";

@@ -19,14 +19,14 @@ import {
   type ClientDetail,
   type ClientHours,
   type Plan,
-} from "@firstfold/db";
+} from "@fynix/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { TickIcon } from "@firstfold/shared/ui/icons";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { TickIcon } from "@fynix/shared/ui/icons";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import { clientListingKey, readClientTagNotice } from "@/lib/client-tags";
 import { ClientAddOns } from "@/components/client-add-ons";
 import { ClientCharges } from "@/components/client-charges";
@@ -34,44 +34,44 @@ import { ClientListingTags } from "@/components/client-listing-tags";
 import { ClientBillingDetails, ClientTaxInvoices } from "@/components/client-invoicing";
 import { ClientFeatures } from "@/components/client-features";
 import { ClientListing, type ListingNotice } from "@/components/client-listing";
-import { readStaffChargeNotice } from "@firstfold/shared/lib/billing/charge-notices";
+import { readStaffChargeNotice } from "@fynix/shared/lib/billing/charge-notices";
 import { loadClientAddOns } from "@/lib/server/add-ons-admin";
 import { listClientCharges } from "@/lib/server/charges-admin";
 import { PaymentsNeedingAttention } from "@/components/payments-needing-attention";
 import { ReceivedDateInput } from "@/components/received-date-input";
-import { clientPaymentState, type ClientPaymentState } from "@firstfold/shared/lib/billing/client-payment";
-import { readBusinessModuleNotice } from "@firstfold/shared/lib/business-module-notices";
+import { clientPaymentState, type ClientPaymentState } from "@fynix/shared/lib/billing/client-payment";
+import { readBusinessModuleNotice } from "@fynix/shared/lib/business-module-notices";
 import {
   MANUAL_PAYMENT_CONFIRM_FIELD,
   MANUAL_PAYMENT_RECEIVED_ON_FIELD,
   MANUAL_PAYMENT_REFERENCE_FIELD,
   MAX_MANUAL_REFERENCE_LENGTH,
-} from "@firstfold/shared/lib/billing/manual-payment-form";
-import { MANUAL_PAYMENT_NOTICES, readManualPaymentNotice } from "@firstfold/shared/lib/billing/manual-payment-notices";
-import { firstPaymentAmount, initialTermPhrase, monthlyPaymentAmount } from "@firstfold/shared/lib/billing/terms";
-import { BILLING_CURRENCY_LABELS } from "@firstfold/shared/lib/currency";
-import { isPlacementField } from "@firstfold/shared/lib/directory/placement-form";
-import { formatPromotionDay, promotionStatus, promotionTagDisplay } from "@firstfold/shared/lib/directory/promotion";
-import { formatStoredDate } from "@firstfold/shared/lib/format";
-import { WEEKDAYS } from "@firstfold/shared/lib/onboarding/business-fields";
+} from "@fynix/shared/lib/billing/manual-payment-form";
+import { MANUAL_PAYMENT_NOTICES, readManualPaymentNotice } from "@fynix/shared/lib/billing/manual-payment-notices";
+import { firstPaymentAmount, initialTermPhrase, monthlyPaymentAmount } from "@fynix/shared/lib/billing/terms";
+import { BILLING_CURRENCY_LABELS } from "@fynix/shared/lib/currency";
+import { isPlacementField } from "@fynix/shared/lib/directory/placement-form";
+import { formatPromotionDay, promotionStatus, promotionTagDisplay } from "@fynix/shared/lib/directory/promotion";
+import { formatStoredDate } from "@fynix/shared/lib/format";
+import { WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
 import { adminBrand } from "@/lib/brand";
-import { isTemporarySubdomain } from "@firstfold/shared/lib/onboarding/domain-form";
+import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
 import { getSiteApiToken } from "@/lib/server/site-token";
-import { describeStoredDay } from "@firstfold/shared/lib/onboarding/hours";
-import { PROJECT_LAUNCH_NOTICES, readProjectLaunchNotice } from "@firstfold/shared/lib/project-launch-notices";
-import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@firstfold/shared/lib/project-preview-notices";
-import { safeExternalHref } from "@firstfold/shared/lib/safe-link";
-import { ANSWER_STEPS, stepInfo } from "@firstfold/shared/lib/onboarding/steps";
+import { describeStoredDay } from "@fynix/shared/lib/onboarding/hours";
+import { PROJECT_LAUNCH_NOTICES, readProjectLaunchNotice } from "@fynix/shared/lib/project-launch-notices";
+import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@fynix/shared/lib/project-preview-notices";
+import { safeExternalHref } from "@fynix/shared/lib/safe-link";
+import { ANSWER_STEPS, stepInfo } from "@fynix/shared/lib/onboarding/steps";
 import { getStaffDb } from "@/lib/server/db";
-import { displayPhoneText } from "@firstfold/shared/server/phone-display";
+import { displayPhoneText } from "@fynix/shared/server/phone-display";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
-import { PROJECT_STATUS_LABELS, PROJECT_STATUSES_WAITING_ON_US } from "@firstfold/shared/lib/project-status";
+import { PROJECT_STATUS_LABELS, PROJECT_STATUSES_WAITING_ON_US } from "@fynix/shared/lib/project-status";
 import { Avatar } from "@/components/console/avatar";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
-import { PLAN_TIER_LABELS } from "@firstfold/shared/lib/billing/plan-tier";
+import { PLAN_TIER_LABELS } from "@fynix/shared/lib/billing/plan-tier";
 import { ClientPlan } from "@/components/client-plan";
 import { PageHeader } from "@/components/console/page-header";
 import { FactList, Quiet, Section, type Fact } from "@/components/console/section";

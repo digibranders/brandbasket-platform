@@ -1,5 +1,5 @@
-import { formatMoney, type MoneyCurrency } from "@firstfold/shared/lib/money";
-import { BRANDS, brandedLabel, featureShownTo, type Brand } from "@/lib/brand";
+import { formatMoney, type MoneyCurrency } from "@fynix/shared/lib/money";
+import { BRAND, featureShownTo, type Brand } from "@/lib/brand";
 import { featuresOf, MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
 
 export { MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
@@ -80,10 +80,10 @@ export const MEMBERSHIP_NAMES: Readonly<Record<MembershipTier, string>> = { care
  * What a plan includes, in the order the website's comparison table lists it (lib/plan-features.ts). Short lines: the
  * page shows them as a list, and the dashboard has no room for paragraphs.
  */
-export function membershipBenefits(tier: MembershipTier, brand: Brand = BRANDS.firstfold): readonly string[] {
+export function membershipBenefits(tier: MembershipTier, brand: Brand = BRAND): readonly string[] {
   return featuresOf(tier).filter((feature) => featureShownTo(feature.id, brand)).map((feature) => {
     const value = feature[tier];
-    const label = brandedLabel(feature.label, brand);
+    const label = feature.label;
     return typeof value === "string" ? `${label}: ${value}` : label;
   });
 }
@@ -115,11 +115,11 @@ const GROUP_ORDER: readonly BenefitGroupName[] = ["Listing", "Website", "Social 
  * What a plan includes, sorted into the layers it stacks: the listing, the website, social media. Each group keeps the
  * table's order, and a group a plan has nothing in is left out (Care has no social media, for one).
  */
-export function groupedBenefits(tier: MembershipTier, brand: Brand = BRANDS.firstfold): readonly BenefitGroup[] {
+export function groupedBenefits(tier: MembershipTier, brand: Brand = BRAND): readonly BenefitGroup[] {
   const buckets = new Map<BenefitGroupName, string[]>(GROUP_ORDER.map((name) => [name, []]));
   for (const feature of featuresOf(tier).filter((item) => featureShownTo(item.id, brand))) {
     const value = feature[tier];
-    const label = brandedLabel(feature.label, brand);
+    const label = feature.label;
     const line = typeof value === "string" ? `${label}: ${value}` : label;
     buckets.get(FEATURE_GROUPS[feature.id] ?? "Listing")?.push(line);
   }

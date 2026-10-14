@@ -5,13 +5,11 @@ export interface PasswordResetInput {
   readonly to: string;
   readonly resetUrl: string;
   readonly expiresInMinutes: number;
-  /** What the email calls the product: the deployment's brand (PLATFORM_BRAND; Firstfold when unset) unless the dashboard is sold under another name. */
-  readonly brandName?: string;
 }
 
 /** Sent when someone asks to reset the password of the account at this address: the one-time link that sets a new one. */
 export function passwordResetEmail(input: PasswordResetInput): EmailMessage {
-  const brand = input.brandName ?? emailBrandName();
+  const brand = emailBrandName();
   const resetUrl = assertWebUrl(input.resetUrl, "resetUrl");
   const validity = `This link works once and expires in ${input.expiresInMinutes} minutes.`;
   const ignore = "If you didn't ask for this, you can ignore this email: your password stays as it is.";

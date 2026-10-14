@@ -1,11 +1,11 @@
-import type { PlanUpgrade } from "@firstfold/db";
+import type { PlanUpgrade } from "@fynix/db";
 import type { ReactElement } from "react";
-import { PLAN_TIER_LABELS } from "@firstfold/shared/lib/billing/plan-tier";
-import { formatMoney } from "@firstfold/shared/lib/money";
-import type { UpgradeBlock } from "@firstfold/shared/lib/billing/upgrade";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
+import { PLAN_TIER_LABELS } from "@fynix/shared/lib/billing/plan-tier";
+import { formatMoney } from "@fynix/shared/lib/money";
+import type { UpgradeBlock } from "@fynix/shared/lib/billing/upgrade";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, hintClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";

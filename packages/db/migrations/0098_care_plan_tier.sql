@@ -1,5 +1,4 @@
--- Fynix: plans are seeded as "Care" and "Premium" (they were "Firstfold Care" and "Firstfold Premium" in Firstfold's database). Databases
--- that already ran this migration keep the old names, which brandedPlanName (apps/platform/lib/brand.ts) hides from customers.
+-- Plans are named "Care" and "Premium".
 CREATE TYPE "public"."plan_tier" AS ENUM('care', 'premium');--> statement-breakpoint
 ALTER TYPE "public"."signup_choice" ADD VALUE 'care';--> statement-breakpoint
 DROP INDEX "plans_currency_active_idx";--> statement-breakpoint
@@ -9,8 +8,8 @@ CREATE UNIQUE INDEX "plans_currency_tier_active_idx" ON "plans" USING btree ("cu
 --
 -- The Care plan (docs/superpowers/specs/2026-10-07-care-plan-design.md): the website only, with its management, the
 -- chatbot, and the server and hosting. Every plan that existed before is Premium's, which is what the column defaults
--- to, so they are renamed here rather than left called "Firstfold care plan", which is what customers read on their
--- billing page. Their codes keep the `care-` prefix they were sold under: a code is never rewritten.
+-- to, so they are renamed here rather than left with the name they were seeded under, which is what customers read on
+-- their billing page. Their codes keep the `care-` prefix they were sold under: a code is never rewritten.
 --
 -- Care starts at ₹2,999 a month + 18% GST in India, the price the website plan was sold at before Premium. Staff set
 -- the real price in the console's Pricing page, which also creates the Razorpay plan; until then provider_plan_id is

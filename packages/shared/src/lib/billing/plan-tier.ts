@@ -1,4 +1,4 @@
-import type { PlanTier } from "@firstfold/db";
+import type { PlanTier } from "@fynix/db";
 
 /** What each plan is called wherever staff or customers read it. */
 export const PLAN_TIER_LABELS: Readonly<Record<PlanTier, string>> = { care: "Care", premium: "Premium" };

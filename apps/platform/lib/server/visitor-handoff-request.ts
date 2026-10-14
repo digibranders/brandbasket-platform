@@ -1,5 +1,5 @@
-import type { SessionUser } from "@firstfold/shared/lib/access";
-import { cleanLine } from "@firstfold/shared/lib/validation/text";
+import type { SessionUser } from "@fynix/shared/lib/access";
+import { cleanLine } from "@fynix/shared/lib/validation/text";
 import { REVIEWER_NAME_MAX_LENGTH, type VisitorHandoffResponse, type VisitorSessionPayload } from "@/lib/directory-api";
 import { ownerCorsHeaders, websiteOriginAllowed } from "@/lib/owner-replies";
 

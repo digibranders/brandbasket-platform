@@ -1,5 +1,5 @@
 import "server-only";
-import { isBusinessUrlCode } from "@firstfold/db";
+import { isBusinessUrlCode } from "@fynix/db";
 
 /**
  * The website asks for a picture "for a preview" when it draws the owner's page for a business that is not live yet

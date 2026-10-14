@@ -20,29 +20,28 @@ CREATE INDEX "breach_register_detected_at_idx" ON "breach_register" USING btree 
 --> statement-breakpoint
 
 -- Every personal data breach, with when each report was made. Staff may read, add and update rows and may not delete one:
--- a breach once logged stays in the register. The customer and public form roles get no privilege at all. Both runtime
--- role names are covered while the webfold_* to firstfold_* rollout (0132) is under way.
+-- a breach once logged stays in the register. The customer and public form roles get no privilege at all.
 ALTER TABLE breach_register ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY breach_register_staff_select ON breach_register FOR SELECT TO firstfold_staff USING (true);
+CREATE POLICY breach_register_staff_select ON breach_register FOR SELECT TO fynix_staff USING (true);
 --> statement-breakpoint
 
-CREATE POLICY breach_register_staff_insert ON breach_register FOR INSERT TO firstfold_staff WITH CHECK (true);
+CREATE POLICY breach_register_staff_insert ON breach_register FOR INSERT TO fynix_staff WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY breach_register_staff_update ON breach_register FOR UPDATE TO firstfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY breach_register_staff_update ON breach_register FOR UPDATE TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON breach_register TO firstfold_staff;
+GRANT SELECT, INSERT, UPDATE ON breach_register TO fynix_staff;
 --> statement-breakpoint
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'webfold_staff') THEN
-    CREATE POLICY breach_register_legacy_staff_select ON breach_register FOR SELECT TO webfold_staff USING (true);
-    CREATE POLICY breach_register_legacy_staff_insert ON breach_register FOR INSERT TO webfold_staff WITH CHECK (true);
-    CREATE POLICY breach_register_legacy_staff_update ON breach_register FOR UPDATE TO webfold_staff USING (true) WITH CHECK (true);
-    GRANT SELECT, INSERT, UPDATE ON breach_register TO webfold_staff;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
+    CREATE POLICY breach_register_legacy_staff_select ON breach_register FOR SELECT TO fynix_staff USING (true);
+    CREATE POLICY breach_register_legacy_staff_insert ON breach_register FOR INSERT TO fynix_staff WITH CHECK (true);
+    CREATE POLICY breach_register_legacy_staff_update ON breach_register FOR UPDATE TO fynix_staff USING (true) WITH CHECK (true);
+    GRANT SELECT, INSERT, UPDATE ON breach_register TO fynix_staff;
   END IF;
 END $$;

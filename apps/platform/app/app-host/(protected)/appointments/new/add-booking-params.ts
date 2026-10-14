@@ -4,7 +4,7 @@
  * page (with its own reads) decides whether a well-shaped id actually names this clinic's doctor or patient.
  */
 import { z } from "zod";
-import { isIsoDate } from "@firstfold/shared/lib/calendar/local-date";
+import { isIsoDate } from "@fynix/shared/lib/calendar/local-date";
 
 /** Mirrors parseManualBooking's own start check: the only times the slot grid ever offers. */
 const SLOT_START = /^([01]\d|2[0-3]):[0-5]\d$/;

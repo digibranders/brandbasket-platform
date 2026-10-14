@@ -1,4 +1,4 @@
-import type { AccountExitReason } from "@firstfold/db";
+import type { AccountExitReason } from "@fynix/db";
 
 /*
  * The delete-account flow's words and its one piece of arithmetic. Pure and free of the database, so the page's client

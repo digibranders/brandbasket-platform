@@ -99,7 +99,7 @@ function assertIsoDate(label: string, value: string): void {
   }
 }
 
-/** packages/db cannot import @firstfold/shared, so the zone is checked with the runtime's own Intl, as
+/** packages/db cannot import @fynix/shared, so the zone is checked with the runtime's own Intl, as
  * business-modules.ts does; Postgres would otherwise fail the whole report on an unknown name. */
 function assertTimeZone(value: string): void {
   if (value.trim() === "") throw new InvalidPatientReportInputError("timeZone is empty.");

@@ -1,18 +1,18 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
-import type { BillingCurrency, ReferralValueKind } from "@firstfold/db";
-import { cn } from "@firstfold/shared/lib/cn";
-import { FIELD_PATTERNS } from "@firstfold/shared/lib/forms/input-rules";
+import type { BillingCurrency, ReferralValueKind } from "@fynix/db";
+import { cn } from "@fynix/shared/lib/cn";
+import { FIELD_PATTERNS } from "@fynix/shared/lib/forms/input-rules";
 import {
   BILLING_CURRENCY_LABELS,
   BILLING_CURRENCY_ORDER,
   BILLING_CURRENCY_SYMBOLS,
-} from "@firstfold/shared/lib/currency";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+} from "@fynix/shared/lib/currency";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import type { AffiliateField } from "@/lib/server/affiliate-admin";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";

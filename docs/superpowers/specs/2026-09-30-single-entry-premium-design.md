@@ -9,7 +9,7 @@ lead form on the website (`/get-started`), waited for a call, got a setup link b
 step. The user wants one door for everyone, and three cases behind it:
 
 1. **Has their own website, wants the free listing.** Signs up, lands in the free listing dashboard.
-2. **Has no website, wants Firstfold to build it (Premium membership).** Signs up, pays first, and only then gets the
+2. **Has no website, wants Fynix to build it (Premium membership).** Signs up, pays first, and only then gets the
    dashboard a paying client has today.
 3. **Has no website, only wants the free listing for now.** Same as case 1, and Premium is highlighted in the
    dashboard so they can upgrade later on the same account.
@@ -91,8 +91,8 @@ its actions, the layout and the payment pages).
 
 ### The free listing after an upgrade
 
-The business's claim is left as it is, so its page on Firstfold Local stays up. The member's dashboard is the website
-client's from then on; "Firstfold listing managed for you" is staff creating the Featured listing, as for every client
+The business's claim is left as it is, so its page on the local directory stays up. The member's dashboard is the website
+client's from then on; "Fynix listing managed for you" is staff creating the Featured listing, as for every client
 today. Carrying the owner's own listing, photos and ad bids into the client dashboard is **not** part of this work.
 
 ### Owners without an email address

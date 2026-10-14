@@ -1,7 +1,7 @@
 import "server-only";
-import { findDirectoryVisitor, touchDirectoryVisitor, upsertDirectoryVisitor, type ContributionConsent } from "@firstfold/db";
-import { phoneHint } from "@firstfold/shared/lib/appointments/booking-form";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { findDirectoryVisitor, touchDirectoryVisitor, upsertDirectoryVisitor, type ContributionConsent } from "@fynix/db";
+import { phoneHint } from "@fynix/shared/lib/appointments/booking-form";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import type { VisitorSessionPayload } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
 import { bookingOtpSecret } from "./env";

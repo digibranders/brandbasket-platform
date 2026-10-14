@@ -1,4 +1,4 @@
-import type { AppointmentRow, ReassignResult } from "@firstfold/db";
+import type { AppointmentRow, ReassignResult } from "@fynix/db";
 import { describe, expect, it, vi } from "vitest";
 import { parseReassignCommand, parseTransitionCommand, runReassignCommand, type ReassignPorts } from "./commands";
 

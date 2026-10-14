@@ -28,8 +28,8 @@ work touches it; the fix is that session's to make.
    at the full price** even though Razorpay took less. It now takes `discountAmountCents` and records what was
    actually charged; the term is deliberately unaffected. Covered by four tests in
    `packages/shared/src/server/billing-activation.test.ts`.
-2. Both `referral-code-form.tsx` client components imported from `@firstfold/billing`, whose index re-exports the
-   Razorpay provider and, through it, `@firstfold/db` and the `pg` driver — pulling Postgres into the browser
+2. Both `referral-code-form.tsx` client components imported from `@fynix/billing`, whose index re-exports the
+   Razorpay provider and, through it, `@fynix/db` and the `pg` driver — pulling Postgres into the browser
    bundle. `packages/billing` now has a `./referral` subpath export (that module imports nothing) and both forms
    use it.
 
@@ -110,7 +110,7 @@ describe("dividesExactly", () => {
 
 - [x] **Step 2: Run it and watch it fail**
 
-`pnpm --filter @firstfold/billing test -- referral` → FAIL, module not found.
+`pnpm --filter @fynix/billing test -- referral` → FAIL, module not found.
 
 - [x] **Step 3: Implement `referral.ts`**
 
@@ -145,14 +145,14 @@ describe("dividesExactly", () => {
 
 - [x] **Step 1:** Write `referrals.ts` with the table and the four checks from the spec (code format, percent 1–99, reward ≥ 0, max_redemptions > 0).
 - [x] **Step 2:** Add `referralCodeId` to `businesses`; add `referralCodeId` and `discountAmountCents` (NOT NULL DEFAULT 0) plus `subscriptions_discount_check` to `subscriptions`.
-- [x] **Step 3:** `pnpm --filter @firstfold/db db:generate`, then hand-edit the generated SQL to append the grants block:
+- [x] **Step 3:** `pnpm --filter @fynix/db db:generate`, then hand-edit the generated SQL to append the grants block:
 
 ```sql
-GRANT SELECT, INSERT, UPDATE ON referral_codes TO webfold_staff;
--- webfold_app is deliberately granted nothing: customers never read the codes table.
-GRANT UPDATE (referral_code_id) ON businesses TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON referral_codes TO fynix_staff;
+-- fynix_app is deliberately granted nothing: customers never read the codes table.
+GRANT UPDATE (referral_code_id) ON businesses TO fynix_staff;
 ALTER TABLE referral_codes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY referral_codes_staff_all ON referral_codes FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY referral_codes_staff_all ON referral_codes FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 ```
 
 - [x] **Step 4:** `pnpm db:migrate && pnpm db:migrate:test`, both clean.
@@ -167,7 +167,7 @@ CREATE POLICY referral_codes_staff_all ON referral_codes FOR ALL TO webfold_staf
 - Test: `packages/db/src/referrals.integration.test.ts`
 - Modify: `packages/db/src/queries/billing.ts`, `packages/db/src/index.ts`
 
-- [x] **Step 1: Failing integration test** covering: insert a code and read it back by code and by id; an inactive, expired or capped code is excluded by `findRedeemableReferralCode`; `setBusinessReferralCode` round-trips; and **`webfold_app` cannot select from `referral_codes`** (expect `insufficient_privilege`).
+- [x] **Step 1: Failing integration test** covering: insert a code and read it back by code and by id; an inactive, expired or capped code is excluded by `findRedeemableReferralCode`; `setBusinessReferralCode` round-trips; and **`fynix_app` cannot select from `referral_codes`** (expect `insufficient_privilege`).
 - [x] **Step 2:** Run, watch it fail.
 - [x] **Step 3:** Implement the queries. `findRedeemableReferralCode(db, { code, currency, now })` filters on `active`, `expires_at`, currency, and a `max_redemptions` count of activated subscriptions carrying the code.
 - [x] **Step 4:** Add `referralCodeId` and `discountAmountCents` to `SUBSCRIPTION_COLUMNS`, the `Subscription` interface, `NewSubscription`, and `insertSubscription`'s `values`.

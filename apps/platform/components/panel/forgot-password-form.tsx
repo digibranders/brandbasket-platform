@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, type ReactElement } from "react";
-import { clientBrandName } from "@firstfold/shared/lib/deployment-brand";
-import { OTP_LENGTH } from "@firstfold/shared/lib/appointments/otp";
-import { EyeIcon, EyeOffIcon } from "@firstfold/shared/ui/icons";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
-import { TurnstileWidget } from "@firstfold/shared/ui/turnstile";
+import { clientBrandName } from "@fynix/shared/lib/deployment-brand";
+import { OTP_LENGTH } from "@fynix/shared/lib/appointments/otp";
+import { EyeIcon, EyeOffIcon } from "@fynix/shared/ui/icons";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { TurnstileWidget } from "@fynix/shared/ui/turnstile";
 import { FORGOT_PASSWORD_PATH, initialForgotPasswordState, type ForgotPasswordFormState } from "@/lib/account-recovery-form";
 import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
 import { useOtpRetryCooldown } from "@/lib/use-otp-retry-cooldown";

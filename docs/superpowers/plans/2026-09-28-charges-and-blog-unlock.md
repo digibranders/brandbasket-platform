@@ -37,7 +37,7 @@ Migration 0048 (+ grants in the same file):
   open online payment attempt; unique), `payment_id` (unique, set when paid), `paid_at`, `waived_at`,
   `waived_by_staff_id`, `created_at`.
   Checks: status/payment/waived columns agree; one open `blog_posts` charge per business (partial unique index).
-- RLS: customer (`webfold_app`) SELECT own rows only; staff all. Customers never write: every write goes through a
+- RLS: customer (`fynix_app`) SELECT own rows only; staff all. Customers never write: every write goes through a
   server path using the staff connection after its own access check.
 
 ## Flows

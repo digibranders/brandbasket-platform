@@ -1,4 +1,4 @@
-import type { ListingStage } from "@firstfold/shared/lib/directory/stage";
+import type { ListingStage } from "@fynix/shared/lib/directory/stage";
 
 export interface ListingHeadlineInput {
   readonly stage: ListingStage;
@@ -17,13 +17,13 @@ export interface ListingHeadlineInput {
 export function listingHeadline({ stage, visible, category, area }: ListingHeadlineInput): string {
   switch (stage) {
     case "building":
-      return "Your listing goes live on Firstfold Local the day your website launches.";
+      return "Your listing goes live on the local directory the day your website launches.";
     case "paused":
       return visible
         ? "You're shown as a basic listing until your payment goes through."
-        : "You're hidden from Firstfold Local. Pay to show your listing again.";
+        : "You're hidden from the local directory. Pay to show your listing again.";
     case "hidden":
-      return "You're hidden from Firstfold Local. Everything is kept.";
+      return "You're hidden from the local directory. Everything is kept.";
     case "live":
       return `People looking for ${category.toLowerCase()} in ${area} find you here.`;
   }

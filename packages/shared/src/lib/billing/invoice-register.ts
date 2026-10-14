@@ -1,5 +1,5 @@
-import { gstStateCodeOf } from "@firstfold/billing/gst-states";
-import type { TaxInvoice } from "@firstfold/db";
+import { gstStateCodeOf } from "@fynix/billing/gst-states";
+import type { TaxInvoice } from "@fynix/db";
 import { stateName } from "../directory/india-states";
 
 /**

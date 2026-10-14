@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
 import { EntryScreen } from "@/components/panel/entry-screen";
-import { SignInForm } from "@firstfold/shared/ui/panel/sign-in-form";
-import { TurnstileScope } from "@firstfold/shared/ui/turnstile-scope";
-import { SignOutButton } from "@firstfold/shared/ui/panel/sign-out-button";
-import { siteConfig } from "@firstfold/shared/lib/site-config";
+import { SignInForm } from "@fynix/shared/ui/panel/sign-in-form";
+import { TurnstileScope } from "@fynix/shared/ui/turnstile-scope";
+import { SignOutButton } from "@fynix/shared/ui/panel/sign-out-button";
+import { siteConfig } from "@fynix/shared/lib/site-config";
 import { EntrySwitch } from "@/components/panel/entry-switch";
 import { JoinForm } from "@/components/panel/join-form";
 import { loginNotice } from "@/lib/login-notice";
@@ -15,12 +15,12 @@ import { RESTORE_ACCOUNT_PATH } from "@/lib/account-settings-form";
 import { FORGOT_PASSWORD_PATH } from "@/lib/account-recovery-form";
 import { claimedBusinessName, LISTING_KEY_PATTERN, PLACE_ID_PATTERN } from "@/lib/directory-api";
 import { membershipPathFor, membershipPriceLine, membershipTierForChoice } from "@/lib/membership";
-import { AFFILIATE_PATH } from "@firstfold/shared/lib/affiliate-links";
+import { AFFILIATE_PATH } from "@fynix/shared/lib/affiliate-links";
 import { accountLabel } from "@/lib/server/account-label";
 import { getAffiliateAccess } from "@/lib/server/affiliate-access";
 import { getCustomerAccess } from "@/lib/server/customer-access";
 import { emailCodeBypassed, signupOtpBypassed } from "@/lib/server/env";
-import { brandText } from "@/lib/brand";
+
 import { legalLinksFor } from "@/lib/legal-links";
 import { checkClaimLink, type ClaimLink } from "@/lib/server/listing-account";
 import { getMembershipPlan } from "@/lib/server/membership";
@@ -33,7 +33,7 @@ export const metadata: Metadata = { title: "Sign in or create your account" };
 export const dynamic = "force-dynamic";
 
 const CLAIM_LINK_FAILED_MESSAGE =
-  "That claim link didn\u2019t work. Open your business\u2019s page on Firstfold Local and tap \u201cClaim this business\u201d again, or create your account below and add your business.";
+  "That claim link didn\u2019t work. Open your business\u2019s page on the local directory and tap \u201cClaim this business\u201d again, or create your account below and add your business.";
 
 /**
  * The claim a link asks for, when it is shaped like one: a name and exactly one of a listing key or a place id. Null
@@ -55,7 +55,7 @@ interface AppLoginPageProps {
  * everyone creates their account here, choosing the free listing, the Care plan or the Premium membership. The
  * Create account view shows the three at once (docs/superpowers/specs/2026-10-07-care-plan-design.md).
  *
- * A business's page on Firstfold Local links to it as a claim (`listing`, `name` and the website's signature over
+ * A business's page on the local directory links to it as a claim (`listing`, `name` and the website's signature over
  * both); the website's plan buttons link to it with `plan=care` or `plan=premium`. Someone already signed in goes to
  * their dashboard, or to the plan's page when that is what they came for.
  */
@@ -197,7 +197,7 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
     >
       {claimAsked ? (
         <p role="alert" className="mb-5 rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
-          {brandText(claimMessage ?? CLAIM_LINK_FAILED_MESSAGE, brand)}
+          {claimMessage ?? CLAIM_LINK_FAILED_MESSAGE}
         </p>
       ) : null}
       <TurnstileScope>

@@ -1,9 +1,9 @@
 import type { ReactElement } from "react";
-import type { BusinessProduct } from "@firstfold/db";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+import type { BusinessProduct } from "@fynix/db";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import { INPUT_CLASSES, ItemRow, Labelled, priceText, RemoveButton } from "@/components/panel/business/catalog-parts";
 import { ItemForm } from "@/components/panel/business/item-form";
 import { ProductPhotoControl } from "@/components/panel/business/product-photo-control";

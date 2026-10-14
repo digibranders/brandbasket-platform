@@ -229,7 +229,7 @@ export function ChatIcon({ className }: IconProps): ReactElement {
   );
 }
 
-/** WhatsApp's speech bubble and handset, drawn like the website's (firstfold-website components/icons.tsx). */
+/** WhatsApp's speech bubble and handset, drawn like the website's (fynix-website components/icons.tsx). */
 export function WhatsAppIcon({ className }: IconProps): ReactElement {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" className={className}>

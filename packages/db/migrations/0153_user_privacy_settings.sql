@@ -11,35 +11,34 @@ ALTER TABLE "user_privacy_settings" ADD CONSTRAINT "user_privacy_settings_user_i
 --> statement-breakpoint
 
 -- The nominee an owner names: read and written by that owner alone on the customer connection, and read by staff when a nominee
--- comes forward, and deleted by the account erasure (never otherwise changed by staff). Both runtime role names are covered while the webfold_* to firstfold_* rollout
--- (0132) is under way.
+-- comes forward, and deleted by the account erasure (never otherwise changed by staff).
 ALTER TABLE user_privacy_settings ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY user_privacy_settings_customer ON user_privacy_settings FOR ALL TO firstfold_app USING (user_id = app_current_user_id()) WITH CHECK (user_id = app_current_user_id());
+CREATE POLICY user_privacy_settings_customer ON user_privacy_settings FOR ALL TO fynix_app USING (user_id = app_current_user_id()) WITH CHECK (user_id = app_current_user_id());
 --> statement-breakpoint
 
-CREATE POLICY user_privacy_settings_staff_select ON user_privacy_settings FOR SELECT TO firstfold_staff USING (true);
+CREATE POLICY user_privacy_settings_staff_select ON user_privacy_settings FOR SELECT TO fynix_staff USING (true);
 --> statement-breakpoint
 
-CREATE POLICY user_privacy_settings_staff_delete ON user_privacy_settings FOR DELETE TO firstfold_staff USING (true);
+CREATE POLICY user_privacy_settings_staff_delete ON user_privacy_settings FOR DELETE TO fynix_staff USING (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON user_privacy_settings TO firstfold_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON user_privacy_settings TO fynix_app;
 --> statement-breakpoint
 
-GRANT SELECT, DELETE ON user_privacy_settings TO firstfold_staff;
+GRANT SELECT, DELETE ON user_privacy_settings TO fynix_staff;
 --> statement-breakpoint
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'webfold_app') THEN
-    CREATE POLICY user_privacy_settings_legacy_customer ON user_privacy_settings FOR ALL TO webfold_app USING (user_id = app_current_user_id()) WITH CHECK (user_id = app_current_user_id());
-    GRANT SELECT, INSERT, UPDATE, DELETE ON user_privacy_settings TO webfold_app;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_app') THEN
+    CREATE POLICY user_privacy_settings_legacy_customer ON user_privacy_settings FOR ALL TO fynix_app USING (user_id = app_current_user_id()) WITH CHECK (user_id = app_current_user_id());
+    GRANT SELECT, INSERT, UPDATE, DELETE ON user_privacy_settings TO fynix_app;
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'webfold_staff') THEN
-    CREATE POLICY user_privacy_settings_legacy_staff_select ON user_privacy_settings FOR SELECT TO webfold_staff USING (true);
-    CREATE POLICY user_privacy_settings_legacy_staff_delete ON user_privacy_settings FOR DELETE TO webfold_staff USING (true);
-    GRANT SELECT, DELETE ON user_privacy_settings TO webfold_staff;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
+    CREATE POLICY user_privacy_settings_legacy_staff_select ON user_privacy_settings FOR SELECT TO fynix_staff USING (true);
+    CREATE POLICY user_privacy_settings_legacy_staff_delete ON user_privacy_settings FOR DELETE TO fynix_staff USING (true);
+    GRANT SELECT, DELETE ON user_privacy_settings TO fynix_staff;
   END IF;
 END $$;

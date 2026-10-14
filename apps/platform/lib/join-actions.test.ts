@@ -1,9 +1,10 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { joinForListing } from "@/app/app-host/login/actions";
-import { BRANDS, type Brand } from "@/lib/brand";
+import { BRAND, type Brand } from "@/lib/brand";
+import { LISTING_BRAND } from "@/lib/testing/listing-brand";
 import { requestJoinCode, createListingAccount } from "@/lib/server/listing-account";
 
-const host: { brand: Brand } = { brand: BRANDS.firstfold };
+const host: { brand: Brand } = { brand: LISTING_BRAND };
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/request-brand", () => ({ requestBrand: async () => host.brand }));
@@ -24,7 +25,7 @@ function form(code: boolean): FormData {
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  host.brand = BRANDS.firstfold;
+  host.brand = LISTING_BRAND;
 });
 
 it("retains a signup challenge and server send retry when resend is blocked", async () => {
@@ -53,7 +54,7 @@ function fynixForm(entries: Record<string, string>): FormData {
 const emailOtp = { otpId: "email-challenge", phoneHint: "o•••@example.test", via: "email" as const, texted: true };
 
 it("refuses the free listing on the Fynix host, before any code is texted or any account made", async () => {
-  host.brand = BRANDS.fynix;
+  host.brand = BRAND;
   const result = await joinForListing({ status: "idle" }, fynixForm({ choice: "listing_only" }));
   expect(result).toMatchObject({ status: "error", message: "Choose a plan to continue." });
   expect(requestJoinCode).not.toHaveBeenCalled();
@@ -61,7 +62,7 @@ it("refuses the free listing on the Fynix host, before any code is texted or any
 });
 
 it("refuses a claim on the Fynix host, even for a plan it sells", async () => {
-  host.brand = BRANDS.fynix;
+  host.brand = BRAND;
   const data = fynixForm({});
   data.set("listing", "dentists/thane/naupada/smile-dental");
   data.set("businessName", "Smile Dental");
@@ -71,7 +72,7 @@ it("refuses a claim on the Fynix host, even for a plan it sells", async () => {
 });
 
 it("sends the code for Care on the Fynix host, to the email address, with no mobile number asked for", async () => {
-  host.brand = BRANDS.fynix;
+  host.brand = BRAND;
   vi.mocked(requestJoinCode).mockResolvedValue({ kind: "code", otp: emailOtp });
   expect(await joinForListing({ status: "idle" }, fynixForm({}))).toMatchObject({ status: "code", otp: emailOtp });
   expect(requestJoinCode).toHaveBeenCalledWith(expect.objectContaining({ kind: "new", choice: "care", email: "owner@example.test", code: null }));
@@ -79,7 +80,7 @@ it("sends the code for Care on the Fynix host, to the email address, with no mob
 });
 
 it("asks a Fynix sign-up for an email address, not a number, and sends nothing without one", async () => {
-  host.brand = BRANDS.fynix;
+  host.brand = BRAND;
   const data = fynixForm({ phone: "9820000000" });
   data.delete("email");
   expect(await joinForListing({ status: "idle" }, data)).toMatchObject({ status: "error", message: "Enter your email address." });
@@ -87,7 +88,7 @@ it("asks a Fynix sign-up for an email address, not a number, and sends nothing w
 });
 
 it("opens a Fynix account once the emailed code is confirmed, and goes on to pay for the plan", async () => {
-  host.brand = BRANDS.fynix;
+  host.brand = BRAND;
   vi.mocked(createListingAccount).mockResolvedValue({ kind: "wrong-code", message: "That code isn't right. 4 tries left." });
   expect(await joinForListing({ status: "code", otp: emailOtp }, fynixForm({ otpId: emailOtp.otpId, code: "123456" }))).toMatchObject({
     status: "error", message: "That code isn't right. 4 tries left.", otp: emailOtp,
@@ -95,7 +96,7 @@ it("opens a Fynix account once the emailed code is confirmed, and goes on to pay
   expect(createListingAccount).toHaveBeenCalledWith(expect.objectContaining({ email: "owner@example.test", code: { otpId: emailOtp.otpId, code: "123456" } }));
 });
 
-it("still reads a mobile number on the Firstfold host, and takes no email there", async () => {
+it("still reads a mobile number on the Fynix host, and takes no email there", async () => {
   vi.mocked(requestJoinCode).mockResolvedValue({ kind: "code", otp });
   const data = form(false);
   data.delete("otpId");

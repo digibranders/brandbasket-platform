@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AddOnView } from "@firstfold/shared/lib/billing/add-on-state";
-import { addOnEndMessage } from "@firstfold/shared/server/add-on-ends";
+import type { AddOnView } from "@fynix/shared/lib/billing/add-on-state";
+import { addOnEndMessage } from "@fynix/shared/server/add-on-ends";
 import {
   addOnActionLabel,
   addOnDate,
@@ -137,7 +137,7 @@ describe("checkoutCopy", () => {
 
   it("adds the ad platforms line for Performance marketing", () => {
     const copy = checkoutCopy({ ...base, addOnId: "performance-marketing", title: "Performance marketing" });
-    expect(copy.notes).toEqual([renews, "This is Firstfold's fee. You pay the ad platforms directly.", contact]);
+    expect(copy.notes).toEqual([renews, "This is Fynix Digital's fee. You pay the ad platforms directly.", contact]);
   });
 
   it("says a press release is a one-time payment, with no renewal", () => {

@@ -1,5 +1,5 @@
 /** Parses the staff Listing form on the admin client page. Server-only: the business id check comes from ./place-id. */
-import type { ListingPlacementInput } from "@firstfold/db";
+import type { ListingPlacementInput } from "@fynix/db";
 import { textField, type FormParseResult } from "../form-result";
 import { cleanLine } from "../validation/text";
 import { isPlaceId } from "./place-id";
@@ -39,7 +39,7 @@ export const PLACEMENT_FIELD_MESSAGES: Readonly<Record<PlacementField, string>> 
   whatsappPhone: "Use a full number with country code, like +91 90000 00000, or leave it empty.",
   bookingUrl: "Use an https:// address, or leave it empty.",
   replacesSourcePath: "Paste the unconfirmed listing's /in/... address, or leave it empty.",
-  takeOverPlaceId: "Paste the business's 7-character ID or its firstfold.io address, or leave it empty.",
+  takeOverPlaceId: "Paste the business's 7-character ID or its temporary address, or leave it empty.",
 };
 
 export function isPlacementField(value: string): value is PlacementField {
@@ -75,7 +75,7 @@ function bookingAddress(raw: string): string | null | undefined {
   return url.href;
 }
 
-/** Accepts a bare path or a full firstfold.io URL; keeps only the path. */
+/** Accepts a bare path or a full fynix.digital URL; keeps only the path. */
 function sourcePath(raw: string): string | null | undefined {
   const trimmed = raw.trim();
   if (trimmed === "") return null;

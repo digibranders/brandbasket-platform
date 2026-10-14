@@ -1,4 +1,4 @@
-import type { Charge, Receipt } from "@firstfold/db";
+import type { Charge, Receipt } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { billingMonths } from "./billing-months";
 

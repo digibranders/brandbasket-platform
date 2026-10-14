@@ -5,11 +5,11 @@ import { reportRequestError } from "./lib/request-error";
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     // A server real customers can reach must not start with settings missing or an OTP bypass set.
-    const { assertRuntimeEnvironment } = await import("@firstfold/shared/server/runtime-environment");
-    const { runtimeRequirements } = await import("@firstfold/shared/lib/production-requirements");
-    assertRuntimeEnvironment(process.env, runtimeRequirements("platform", process.env));
+    const { assertRuntimeEnvironment } = await import("@fynix/shared/server/runtime-environment");
+    const { runtimeRequirements } = await import("@fynix/shared/lib/production-requirements");
+    assertRuntimeEnvironment(process.env, runtimeRequirements("platform"));
     // The robot check on the sign-in and sign-up forms stays off, with a note in the log, until its keys are set.
-    const { warnIfTurnstileUnconfigured } = await import("@firstfold/shared/server/turnstile-request");
+    const { warnIfTurnstileUnconfigured } = await import("@fynix/shared/server/turnstile-request");
     warnIfTurnstileUnconfigured();
     await import("./sentry.server.config");
   }

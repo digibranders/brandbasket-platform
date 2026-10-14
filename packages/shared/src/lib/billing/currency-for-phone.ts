@@ -1,6 +1,6 @@
 import "server-only";
 import { parsePhoneNumberFromString } from "libphonenumber-js/max";
-import type { BillingCurrency } from "@firstfold/db";
+import type { BillingCurrency } from "@fynix/db";
 
 /** India's calling code. No other country shares it, so the code alone places a number in India. */
 const INDIA_CALLING_CODE = "91";

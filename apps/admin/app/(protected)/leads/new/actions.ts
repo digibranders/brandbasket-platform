@@ -1,10 +1,10 @@
 "use server";
 
-import { createLead } from "@firstfold/db";
+import { createLead } from "@fynix/db";
 import { redirect } from "next/navigation";
-import { billingCurrencyForPhone } from "@firstfold/shared/lib/billing/currency-for-phone";
-import { leadValuesFrom, parseLeadForm } from "@firstfold/shared/lib/lead-form";
-import type { LeadFormState } from "@firstfold/shared/lib/lead-form-fields";
+import { billingCurrencyForPhone } from "@fynix/shared/lib/billing/currency-for-phone";
+import { leadValuesFrom, parseLeadForm } from "@fynix/shared/lib/lead-form";
+import type { LeadFormState } from "@fynix/shared/lib/lead-form-fields";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 

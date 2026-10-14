@@ -1,6 +1,6 @@
-import type { BillingProviderName, Plan, PlanTier, SubscriptionStatus } from "@firstfold/db";
+import type { BillingProviderName, Plan, PlanTier, SubscriptionStatus } from "@fynix/db";
 // The subpath, not the package index: this module reaches client components, and the index pulls in the database.
-import { chargedAmountCents } from "@firstfold/billing/tax";
+import { chargedAmountCents } from "@fynix/billing/tax";
 import type { PeriodProgress } from "./period";
 
 /*

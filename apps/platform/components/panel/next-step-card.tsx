@@ -1,16 +1,16 @@
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
-import { ArrowIcon, TickIcon } from "@firstfold/shared/ui/icons";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
-import { SiteSketch } from "@firstfold/shared/ui/site-sketch";
-import { WaveLines } from "@firstfold/shared/ui/wave-lines";
-import { cn } from "@firstfold/shared/lib/cn";
-import type { NextStep } from "@firstfold/shared/lib/next-step";
-import { isTemporarySubdomain } from "@firstfold/shared/lib/onboarding/domain-form";
-import { firstIncompleteStep, ONBOARDING_STEPS, onboardingStepHref, type OnboardingStepKey } from "@firstfold/shared/lib/onboarding/steps";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { ArrowIcon, TickIcon } from "@fynix/shared/ui/icons";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import { SiteSketch } from "@fynix/shared/ui/site-sketch";
+import { WaveLines } from "@fynix/shared/ui/wave-lines";
+import { cn } from "@fynix/shared/lib/cn";
+import type { NextStep } from "@fynix/shared/lib/next-step";
+import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
+import { firstIncompleteStep, ONBOARDING_STEPS, onboardingStepHref, type OnboardingStepKey } from "@fynix/shared/lib/onboarding/steps";
 import { PROJECT_STAGES } from "@/lib/project-stages";
-import { safeExternalHref } from "@firstfold/shared/lib/safe-link";
+import { safeExternalHref } from "@fynix/shared/lib/safe-link";
 
 interface NextStepCardProps {
   readonly step: NextStep;

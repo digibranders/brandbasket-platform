@@ -1,6 +1,6 @@
 import "server-only";
-import { approveProjectPreview, requestProjectRevisions, type Database } from "@firstfold/db";
-import { createAppEmailTransport, previewApprovedEmail, previewRevisionsRequestedEmail } from "@firstfold/email";
+import { approveProjectPreview, requestProjectRevisions, type Database } from "@fynix/db";
+import { createAppEmailTransport, previewApprovedEmail, previewRevisionsRequestedEmail } from "@fynix/email";
 import { serverEnv } from "./env";
 
 export type PreviewResponse = { readonly kind: "approve" } | { readonly kind: "revisions" };
@@ -23,9 +23,9 @@ export async function respondToPreview(db: Database, input: RespondToPreviewInpu
     await requestProjectRevisions(db, { businessId: input.businessId, now });
   }
 
-  const teamInbox = process.env.FIRSTFOLD_TEAM_EMAIL;
+  const teamInbox = process.env.FYNIX_TEAM_EMAIL;
   if (teamInbox === undefined || teamInbox.trim() === "") {
-    console.error("FIRSTFOLD_TEAM_EMAIL is not set, so nobody was told about a preview response.", {
+    console.error("FYNIX_TEAM_EMAIL is not set, so nobody was told about a preview response.", {
       businessId: input.businessId,
     });
     return;

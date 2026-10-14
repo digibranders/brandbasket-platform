@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore, type ReactElement } from "react";
-import { calendarDateIn, MAX_RECEIVED_DAYS_AGO, utcCalendarDate } from "@firstfold/shared/lib/billing/manual-payment-form";
+import { calendarDateIn, MAX_RECEIVED_DAYS_AGO, utcCalendarDate } from "@fynix/shared/lib/billing/manual-payment-form";
 import { fieldClasses } from "@/components/console/field-styles";
 
 interface ReceivedDateInputProps {

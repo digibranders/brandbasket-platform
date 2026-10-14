@@ -83,8 +83,8 @@ Constraints:
 - `referral_codes_reward_check`: `reward_amount_cents >= 0`
 - `referral_codes_max_redemptions_check`: `max_redemptions is null or max_redemptions > 0`
 
-Privileges: `GRANT SELECT, INSERT, UPDATE ON referral_codes TO webfold_staff` and **nothing
-to `webfold_app`**. Customers never read the codes table; validation runs on the staff
+Privileges: `GRANT SELECT, INSERT, UPDATE ON referral_codes TO fynix_staff` and **nothing
+to `fynix_app`**. Customers never read the codes table; validation runs on the staff
 connection inside `startCheckoutFor`, exactly as the rest of billing already does. No RLS
 policy is needed on a table the tenant role cannot reach.
 
@@ -137,7 +137,7 @@ A code is refused when it does not exist, is inactive, has expired, has reached
 `removeReferralCode` sets the column back to null. Both actions refuse once the business has
 paid: an activated subscription's discount is frozen and is not changed from the dashboard.
 
-**Connections.** `webfold_app` holds `SELECT` only on `businesses` and no grant at all on
+**Connections.** `fynix_app` holds `SELECT` only on `businesses` and no grant at all on
 `referral_codes`, so both actions — and the page's read of the applied code's percent for
 display — run on the **staff connection** (`getStaffDb()`), exactly as `startCheckoutFor`
 already does. This is the existing rule that customers never write billing rows, not an
@@ -214,7 +214,7 @@ code and make a new one instead; the form says so.
 |---|---|
 | Unit, `packages/billing` | `normaliseReferralCode`, `discountAmountFor(plan, percent)` including exact-division, `decideCheckout` with a differing `referralCodeId` forcing `replace` |
 | Unit, platform | `paymentStep` and `billingBanner` with and without a discount; webhook expected-amount arithmetic |
-| Integration, `packages/db` | Code queries, the `subscriptions_discount_check` constraint, and an RLS test asserting `webfold_app` **cannot** read `referral_codes` |
+| Integration, `packages/db` | Code queries, the `subscriptions_discount_check` constraint, and an RLS test asserting `fynix_app` **cannot** read `referral_codes` |
 | Integration, platform | A full discounted checkout on the fake provider: apply → pay → activated at the discounted amount |
 | Integration, admin | Creating a code, and the refusal to edit a redeemed one |
 

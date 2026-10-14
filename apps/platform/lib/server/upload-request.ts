@@ -1,8 +1,8 @@
 import "server-only";
-import type { TenantContext } from "@firstfold/shared/lib/access";
+import type { TenantContext } from "@fynix/shared/lib/access";
 import { ONBOARDING_LOCKED_MESSAGE } from "@/lib/onboarding/form-state";
-import { BRANDS } from "@/lib/brand";
-import { brandForHost, isAppOrigin, readLocalBusinessOrigin, resolveSurface, type SurfaceOrigins } from "@/lib/surfaces";
+import { BRAND } from "@/lib/brand";
+import { isAppOrigin, resolveSurface, type SurfaceOrigins } from "@/lib/surfaces";
 import { parseUploadFileName } from "@/lib/uploads/file-name";
 import {
   isUploadPurpose,
@@ -109,11 +109,9 @@ export function refuseUploadEnvelope(
   limit: UploadLimit = IMAGE_UPLOAD_LIMIT,
 ): Response | null {
   const rawHost = request.headers.get("host");
-  // The Fynix host (LOCAL_BUSINESS_ORIGIN, when set) is this same dashboard under another brand, so it may upload too.
-  const localBusiness = readLocalBusinessOrigin(process.env);
-  const origins: SurfaceOrigins = { app: appOrigin, ...(localBusiness === undefined ? {} : { localBusiness }), anyLocalHost };
+  const origins: SurfaceOrigins = { app: appOrigin, anyLocalHost };
   if (resolveSurface(rawHost, origins) !== "app") {
-    return refuseUpload(403, `Uploads only work from your ${BRANDS[brandForHost(rawHost, origins)].shortName} dashboard. Open it and try again.`);
+    return refuseUpload(403, `Uploads only work from your ${BRAND.shortName} dashboard. Open it and try again.`);
   }
 
   if (!isAppOrigin(request.headers.get("origin"), rawHost, origins)) {

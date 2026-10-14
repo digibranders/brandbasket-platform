@@ -1,5 +1,5 @@
-import { slugifyBusinessName } from "@firstfold/shared/lib/directory/places";
-import { cleanLine } from "@firstfold/shared/lib/validation/text";
+import { slugifyBusinessName } from "@fynix/shared/lib/directory/places";
+import { cleanLine } from "@fynix/shared/lib/validation/text";
 import { JOIN_BUSINESS_NAME_MAX_LENGTH } from "@/lib/join-form";
 
 /*

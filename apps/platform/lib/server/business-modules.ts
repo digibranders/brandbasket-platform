@@ -1,5 +1,5 @@
 import "server-only";
-import { countUnseenBookings, listEnabledModules, withTenantScope, type BusinessModule } from "@firstfold/db";
+import { countUnseenBookings, listEnabledModules, withTenantScope, type BusinessModule } from "@fynix/db";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { requireCustomerAccess } from "./customer-access";

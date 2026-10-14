@@ -1,4 +1,4 @@
-import type { BillingCurrency } from "@firstfold/db";
+import type { BillingCurrency } from "@fynix/db";
 
 /** The currencies staff can choose between, in the order the picker offers them. */
 export const BILLING_CURRENCY_ORDER = ["USD", "INR"] as const satisfies readonly BillingCurrency[];

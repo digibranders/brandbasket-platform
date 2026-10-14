@@ -1,11 +1,11 @@
-import type { PlaceOfSupplyBasis, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@firstfold/db";
+import type { PlaceOfSupplyBasis, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@fynix/db";
 import { BillingRangeError } from "./billing-range-error";
 import { gstStateCodeOf } from "./gst-states";
 import { splitGst, supplyTypeOf, type SupplyType } from "./gst";
 import { normaliseGstin, stateCodeOfGstin } from "./gstin";
 
 /** SAC for the managed website subscription and its extras. The owner confirmed 998361. */
-export const FIRSTFOLD_SAC = "998361";
+export const FYNIX_SAC = "998361";
 /** One A4 page holds this many lines in the approved layout; every real invoice today has one. */
 export const MAX_INVOICE_LINES = 8;
 

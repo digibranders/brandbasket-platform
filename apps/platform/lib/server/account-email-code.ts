@@ -7,10 +7,10 @@ import {
   createAccountOtp,
   purgeExpiredAccountOtps,
   type RateLimitRule,
-} from "@firstfold/db";
-import { EmailConfigurationError, signupCodeEmail } from "@firstfold/email";
-import { isOtpCode, OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@firstfold/shared/lib/appointments/otp";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+} from "@fynix/db";
+import { EmailConfigurationError, signupCodeEmail } from "@fynix/email";
+import { isOtpCode, OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { emailHint } from "@/lib/email-hint";
 import { getStaffDb } from "./db";
 import { customerEmailTransport } from "./email";
@@ -18,7 +18,6 @@ import { accountCodeSecret, emailCodeBypassed } from "./env";
 import { ipRateLimitKey } from "./ip-key";
 import { generateOtpCode, hashOtpCode, otpCodeMatches } from "./otp-crypto";
 import { getPublicDb } from "./public-db";
-import { currentBrand } from "./request-brand";
 
 /**
  * The code emailed to an address to open an account with it (the Fynix sign-up): the same rules as the code texted to a
@@ -126,7 +125,7 @@ export async function requestAccountEmailCode(
   if (bypassed) console.warn("The email code bypass is on: any 6-digit code will confirm an email sign-up. The code is in the outbox.");
   try {
     await transport.send(
-      signupCodeEmail({ to: request.email, code, expiresInMinutes: OTP_TTL_SECONDS / 60, brandName: (await currentBrand()).name }),
+      signupCodeEmail({ to: request.email, code, expiresInMinutes: OTP_TTL_SECONDS / 60 }),
     );
   } catch (error) {
     // A code nobody received is no use to anyone: use it up so it cannot be guessed at.

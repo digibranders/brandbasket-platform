@@ -1,6 +1,6 @@
-import { BookingClosedError, PatientNotFoundError, PatientOverlapError, SlotTakenError, type AppointmentRow } from "@firstfold/db";
+import { BookingClosedError, PatientNotFoundError, PatientOverlapError, SlotTakenError, type AppointmentRow } from "@fynix/db";
 import { describe, expect, it, vi } from "vitest";
-import type { ManualBookingCommand } from "@firstfold/shared/lib/patients/patient-form";
+import type { ManualBookingCommand } from "@fynix/shared/lib/patients/patient-form";
 import type { ClinicSlotResolution } from "@/lib/server/clinic-booking";
 import { MODULE_OFF_MESSAGE } from "../errors";
 import {

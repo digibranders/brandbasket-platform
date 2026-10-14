@@ -1,5 +1,5 @@
 -- Price change (2026-09-23): the plan is $69 a month outside India and ₹2,999 plus 18% GST in India, matching the
--- website (webfold-website a4d0a7e). Every plan still starts at its monthly price and covers one month.
+-- website (fynix-website a4d0a7e). Every plan still starts at its monthly price and covers one month.
 --
 -- Unlike 0021 and 0023, which edited the plan rows in place, this adds NEW plan rows and retires the old ones.
 -- Those earlier changes were safe in place because nothing had been sold. Now subscriptions point at care-usd and

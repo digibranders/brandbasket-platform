@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type ReactElement } from "react";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { PlusIcon } from "@firstfold/shared/ui/icons";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { PlusIcon } from "@fynix/shared/ui/icons";
 import { MediaThumbnail } from "@/components/panel/media-thumbnail";
 import {
   STEP_FIELD_CLASSES,

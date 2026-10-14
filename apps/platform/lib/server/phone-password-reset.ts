@@ -1,8 +1,8 @@
 import "server-only";
-import { setAccountPassword } from "@firstfold/auth";
-import { findUserByPhone } from "@firstfold/db";
-import { clientIpFrom } from "@firstfold/shared/lib/client-ip";
-import { OTP_LENGTH } from "@firstfold/shared/lib/appointments/otp";
+import { setAccountPassword } from "@fynix/auth";
+import { findUserByPhone } from "@fynix/db";
+import { clientIpFrom } from "@fynix/shared/lib/client-ip";
+import { OTP_LENGTH } from "@fynix/shared/lib/appointments/otp";
 import { headers } from "next/headers";
 import { parseNewPassword, type ResetCodeStep } from "@/lib/account-recovery-form";
 import { confirmAccountOtp, requestAccountOtp, type AccountOtpLimited } from "./account-otp";

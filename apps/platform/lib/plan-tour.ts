@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "@firstfold/db";
+import type { ProjectStatus } from "@fynix/db";
 
 export type TourStageState = "not-started" | "in-progress" | "done" | "paused" | "ongoing";
 

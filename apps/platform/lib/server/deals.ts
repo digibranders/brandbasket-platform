@@ -10,9 +10,9 @@ import {
   type DirectoryClaim,
   type DirectoryDeal,
   type DirectoryDealFields,
-} from "@firstfold/db";
-import { localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import { DIRECTORY_DEALS_TIME_ZONE } from "@firstfold/shared/lib/directory/deals-contract";
+} from "@fynix/db";
+import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { DIRECTORY_DEALS_TIME_ZONE } from "@fynix/shared/lib/directory/deals-contract";
 import { createNotice, type DealsNotice } from "@/lib/deals";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";

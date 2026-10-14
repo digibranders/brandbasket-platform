@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, type ReactElement } from "react";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { PlusIcon } from "@firstfold/shared/ui/icons";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { PlusIcon } from "@fynix/shared/ui/icons";
 import { MAX_SERVICES, type ServiceInput } from "@/lib/onboarding/content-form";
-import type { MoneyCurrency } from "@firstfold/shared/lib/money";
+import type { MoneyCurrency } from "@fynix/shared/lib/money";
 
 interface Row {
   /** React key only; never sent. Rows are numbered by position when the form is submitted. */

@@ -22,7 +22,7 @@ committed first), numbers (Phase 2), Google import (Phase 3).
 **House rules for whoever executes this:**
 - **Do not commit or push.** The user's standing rule: leave everything uncommitted for their review. Wherever a
   step would commit, stop at "tests pass" instead.
-- Work in this worktree: `/Users/siddiqueahmed/Desktop/AI/first-found/listing-tab-spec` (branch
+- Work in this worktree: `/Users/siddiqueahmed/Desktop/AI/fynix-platform/listing-tab-spec` (branch
   `docs/listing-tab-spec`, off `origin/development`). Rename the branch to `feat/listing-tab` before starting.
 - Run `pnpm install` once in the worktree, and `pnpm env:init` only if `apps/platform/.env.local` is missing.
 - Match the surrounding code: comment density, naming, explicit return types, no `any`.
@@ -67,7 +67,7 @@ committed first), numbers (Phase 2), Google import (Phase 3).
 
 - [ ] **Step 1: Rename the branch**
 
-Run: `git -C /Users/siddiqueahmed/Desktop/AI/first-found/listing-tab-spec branch -m docs/listing-tab-spec feat/listing-tab`
+Run: `git -C /Users/siddiqueahmed/Desktop/AI/fynix-platform/listing-tab-spec branch -m docs/listing-tab-spec feat/listing-tab`
 Expected: no output. `git branch --show-current` prints `feat/listing-tab`.
 
 ---
@@ -84,9 +84,9 @@ Expected: no output. `git branch --show-current` prints `feat/listing-tab`.
 
 ```bash
 node -e '
-const src = require("/Users/siddiqueahmed/Desktop/AI/first-found/webfold-website-search/content/local/thane-places.json");
+const src = require("/Users/siddiqueahmed/Desktop/AI/fynix-platform/fynix-website-search/content/local/thane-places.json");
 const out = {
-  source: "webfold-website content/local/thane-places.json, 2026-09-29. Keep in step with the website repo.",
+  source: "fynix-website content/local/thane-places.json, 2026-09-29. Keep in step with the website repo.",
   state: src.state,
   cities: src.cities.map(({ slug, name }) => ({ slug, name })),
   areas: src.areas.map(({ slug, name, city }) => ({ slug, name, city })),
@@ -155,7 +155,7 @@ describe("directory places", () => {
 
 - [ ] **Step 3: Run it to see it fail**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/directory/places.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/places.test.ts`
 Expected: FAIL, `Failed to resolve import "./places"`.
 
 - [ ] **Step 4: Implement**
@@ -200,7 +200,7 @@ export const DIRECTORY_AREAS: readonly DirectoryArea[] = PLACES.areas;
 export const DIRECTORY_CATEGORIES: readonly DirectoryCategory[] = PLACES.services;
 
 /** Where the directory is served. Paths from `listingPath` are appended to this. */
-export const DIRECTORY_ORIGIN = "https://firstfold.io";
+export const DIRECTORY_ORIGIN = "https://fynix.digital";
 
 export function isDirectoryCategory(slug: string): boolean {
   return DIRECTORY_CATEGORIES.some((category) => category.slug === slug);
@@ -247,7 +247,7 @@ export function slugifyBusinessName(name: string): string {
 
 - [ ] **Step 5: Run it to see it pass**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/directory/places.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/places.test.ts`
 Expected: PASS (4 tests).
 
 ---
@@ -359,7 +359,7 @@ describe("parseVisibleForm", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/directory/listing-content.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/listing-content.test.ts`
 Expected: FAIL, cannot resolve `./listing-content`.
 
 - [ ] **Step 3: Implement**
@@ -458,7 +458,7 @@ export function parseVisibleForm(formData: FormData): FormParseResult<{ readonly
 
 - [ ] **Step 4: Run it to see it pass**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/directory/listing-content.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/listing-content.test.ts`
 Expected: PASS. If "24x7 emergency" is flagged, the phone pattern is too loose: it must need 9+ digit-or-separator
 characters between two digits, as written above.
 
@@ -484,7 +484,7 @@ import { createdAt, updatedAt } from "./columns";
 const SLUG = "^[a-z0-9]+(-[a-z0-9]+)*$";
 
 /**
- * Where a client's Featured listing sits on Firstfold Local (firstfold.io/in): its address parts, map pin and the
+ * Where a client's Featured listing sits on the local directory (fynix.digital/in): its address parts, map pin and the
  * links behind its buttons. Staff-owned: the customer role can read its own row and write nothing, because every
  * column here shapes the listing's web address or has been checked by staff (docs/superpowers/specs/
  * 2026-09-29-customer-listing-tab-design.md).
@@ -580,7 +580,7 @@ export * from "./directory";
 
 - [ ] **Step 2: Generate the migration**
 
-Run: `pnpm --filter @firstfold/db exec drizzle-kit generate --name directory_listings`
+Run: `pnpm --filter @fynix/db exec drizzle-kit generate --name directory_listings`
 Expected: `packages/db/migrations/0052_directory_listings.sql` created with two `CREATE TABLE`s, the unique
 constraint, the checks and the two foreign keys. Open it and confirm the regex checks read `'^[a-z0-9]+(-[a-z0-9]+)*$'`
 and `'^\+[0-9]{8,15}$'` (single backslash in SQL).
@@ -588,7 +588,7 @@ and `'^\+[0-9]{8,15}$'` (single backslash in SQL).
 - [ ] **Step 3: Add the header comment** at the top of `0052_directory_listings.sql`:
 
 ```sql
--- Firstfold Local listings (docs/superpowers/specs/2026-09-29-customer-listing-tab-design.md): directory_listings
+-- the local directory listings (docs/superpowers/specs/2026-09-29-customer-listing-tab-design.md): directory_listings
 -- is the staff-owned placement (address parts, pin, button targets), listing_content the client-owned text and
 -- switches. Generated by drizzle-kit; grants and row-level security are in 0053.
 ```
@@ -602,7 +602,7 @@ and `'^\+[0-9]{8,15}$'` (single backslash in SQL).
 
 - [ ] **Step 1: Create the empty custom migration**
 
-Run: `pnpm --filter @firstfold/db exec drizzle-kit generate --custom --name directory_listings_grants`
+Run: `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name directory_listings_grants`
 Expected: an empty `0053_directory_listings_grants.sql`.
 
 - [ ] **Step 2: Fill it**
@@ -612,48 +612,48 @@ Expected: an empty `0053_directory_listings_grants.sql`.
 -- directory_listings (every column shapes the web address or was checked by staff), the client owns the text and
 -- switches in listing_content. The customer role can read its own two rows and update only listing_content's
 -- client columns; it can never insert or delete either, so a listing exists only when staff create it.
--- webfold_public gets nothing: the directory reads listings through the platform's feed route on the staff connection.
+-- fynix_public gets nothing: the directory reads listings through the platform's feed route on the staff connection.
 
-GRANT SELECT ON directory_listings TO webfold_app;
+GRANT SELECT ON directory_listings TO fynix_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON directory_listings TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON directory_listings TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE directory_listings ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY directory_listings_tenant_read ON directory_listings FOR SELECT TO webfold_app
+CREATE POLICY directory_listings_tenant_read ON directory_listings FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
 
-CREATE POLICY directory_listings_staff_all ON directory_listings FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_listings_staff_all ON directory_listings FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT ON listing_content TO webfold_app;
+GRANT SELECT ON listing_content TO fynix_app;
 --> statement-breakpoint
 
 -- business_id is left out, so a row can never be moved to another business.
 GRANT UPDATE (about, tags, show_call, show_whatsapp, show_book, show_directions, show_website, visible, updated_at)
-  ON listing_content TO webfold_app;
+  ON listing_content TO fynix_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON listing_content TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON listing_content TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE listing_content ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY listing_content_tenant_read ON listing_content FOR SELECT TO webfold_app
+CREATE POLICY listing_content_tenant_read ON listing_content FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
 
-CREATE POLICY listing_content_tenant_update ON listing_content FOR UPDATE TO webfold_app
+CREATE POLICY listing_content_tenant_update ON listing_content FOR UPDATE TO fynix_app
   USING (business_id = app_current_business_id())
   WITH CHECK (business_id = app_current_business_id());
 --> statement-breakpoint
 
-CREATE POLICY listing_content_staff_all ON listing_content FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY listing_content_staff_all ON listing_content FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 ```
 
 - [ ] **Step 3: Apply to the dev and test databases**
@@ -873,7 +873,7 @@ column without a default to the `projects` insert above (for example `kind: "ini
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @firstfold/db exec vitest run --config vitest.integration.config.ts src/directory-listings.integration.test.ts`
+Run: `pnpm --filter @fynix/db exec vitest run --config vitest.integration.config.ts src/directory-listings.integration.test.ts`
 Expected: FAIL, cannot resolve `./queries/directory-listings`.
 
 - [ ] **Step 3: Implement**
@@ -889,7 +889,7 @@ import { currentBusinessId, hasPostgresCode, UNIQUE_VIOLATION } from "./tenant";
 type Runner = Database | ScopedTransaction;
 
 /*
- * Firstfold Local listings. Staff write the placement (saveListingPlacement, staff connection); the customer reads
+ * the local directory listings. Staff write the placement (saveListingPlacement, staff connection); the customer reads
  * both rows and updates only the content (findOwnListing / updateOwnListingContent, tenant scope, business id from
  * currentBusinessId(tx)); the feed route reads every live listing (listLiveDirectoryListings, staff connection).
  */
@@ -943,7 +943,7 @@ export class ListingAddressTakenError extends Error {
   }
 }
 
-/** The listing's address on Firstfold Local: /in/<category>/<state>/<city>/<area>/<slug>. */
+/** The listing's address on the local directory: /in/<category>/<state>/<city>/<area>/<slug>. */
 export function listingPath(placement: Pick<ListingPlacementInput, "categorySlug" | "stateCode" | "citySlug" | "areaSlug" | "slug">): string {
   return `/in/${placement.categorySlug}/${placement.stateCode}/${placement.citySlug}/${placement.areaSlug}/${placement.slug}`;
 }
@@ -1183,13 +1183,13 @@ If `hasPostgresCode`/`UNIQUE_VIOLATION` are not exported from `./tenant` under t
 
 - [ ] **Step 4: Run it to see it pass**
 
-Run: `pnpm --filter @firstfold/db exec vitest run --config vitest.integration.config.ts src/directory-listings.integration.test.ts`
+Run: `pnpm --filter @fynix/db exec vitest run --config vitest.integration.config.ts src/directory-listings.integration.test.ts`
 Expected: PASS (10 tests). If "reads its own listing" fails with an empty result, check that
 `businessMembers` gives the app role visibility; the RLS policies in 0053 only check `app_current_business_id()`.
 
 - [ ] **Step 5: Typecheck the package**
 
-Run: `pnpm --filter @firstfold/db typecheck`
+Run: `pnpm --filter @fynix/db typecheck`
 Expected: no errors.
 
 ---
@@ -1255,7 +1255,7 @@ describe("parsePlacementForm", () => {
       form({
         whatsappPhone: "+91 90000 00001",
         bookingUrl: "https://smiledental.in/book",
-        replacesSourcePath: "https://firstfold.io/in/dentists/mh/thane/naupada/smile-dental?x=1",
+        replacesSourcePath: "https://fynix.digital/in/dentists/mh/thane/naupada/smile-dental?x=1",
       }),
     );
     expect(result).toMatchObject({
@@ -1287,7 +1287,7 @@ describe("parsePlacementForm", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/directory/placement-form.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/placement-form.test.ts`
 Expected: FAIL, cannot resolve `./placement-form`.
 
 - [ ] **Step 3: Implement**
@@ -1295,7 +1295,7 @@ Expected: FAIL, cannot resolve `./placement-form`.
 ```ts
 // packages/shared/src/lib/directory/placement-form.ts
 /** Parses the staff Listing form on the admin client page. */
-import type { ListingPlacementInput } from "@firstfold/db";
+import type { ListingPlacementInput } from "@fynix/db";
 import { textField, type FormParseResult } from "../form-result";
 import { cleanLine } from "../validation/text";
 import { DIRECTORY_STATE, isDirectoryArea, isDirectoryCategory, isDirectoryCity } from "./places";
@@ -1347,7 +1347,7 @@ function coordinate(raw: string, min: number, max: number): number | null {
   return raw.trim() !== "" && Number.isFinite(value) && value >= min && value <= max ? value : null;
 }
 
-/** Accepts a bare path or a full firstfold.io URL; keeps only the path. */
+/** Accepts a bare path or a full fynix.digital URL; keeps only the path. */
 function sourcePath(raw: string): string | null | undefined {
   const trimmed = raw.trim();
   if (trimmed === "") return null;
@@ -1420,7 +1420,7 @@ export function parsePlacementForm(formData: FormData): FormParseResult<ListingP
 
 - [ ] **Step 4: Run it to see it pass**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/directory/placement-form.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/placement-form.test.ts`
 Expected: PASS (12 tests).
 
 ---
@@ -1457,7 +1457,7 @@ describe("listingStage", () => {
   it("labels every stage", () => {
     expect(LISTING_STAGE_LABELS).toEqual({
       building: "Goes live with your website",
-      live: "Live on Firstfold Local",
+      live: "Live on the local directory",
       hidden: "Hidden",
       paused: "Paused",
     });
@@ -1467,7 +1467,7 @@ describe("listingStage", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/directory/stage.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/stage.test.ts`
 Expected: FAIL, cannot resolve `./stage`.
 
 - [ ] **Step 3: Implement**
@@ -1480,7 +1480,7 @@ export type ListingStage = "building" | "live" | "hidden" | "paused";
 
 export const LISTING_STAGE_LABELS: Readonly<Record<ListingStage, string>> = {
   building: "Goes live with your website",
-  live: "Live on Firstfold Local",
+  live: "Live on the local directory",
   hidden: "Hidden",
   paused: "Paused",
 };
@@ -1505,7 +1505,7 @@ If `CustomerBillingStatus` is not exported from `../billing/status`, export it t
 
 - [ ] **Step 4: Run it to see it pass**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/directory/stage.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/stage.test.ts`
 Expected: PASS (4 tests).
 
 ---
@@ -1587,7 +1587,7 @@ export interface DirectoryFeed {
 
 ```ts
 // packages/shared/src/lib/directory/feed.test.ts
-import type { DirectoryListingRow, SiteFacts } from "@firstfold/db";
+import type { DirectoryListingRow, SiteFacts } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { buildFeedListing } from "./feed";
 
@@ -1710,14 +1710,14 @@ describe("buildFeedListing", () => {
 
 - [ ] **Step 3: Run it to see it fail**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/directory/feed.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/feed.test.ts`
 Expected: FAIL, cannot resolve `./feed`.
 
 - [ ] **Step 4: Implement**
 
 ```ts
 // packages/shared/src/lib/directory/feed.ts
-import type { DirectoryListingRow, SiteFacts } from "@firstfold/db";
+import type { DirectoryListingRow, SiteFacts } from "@fynix/db";
 import type { DirectoryFeedButtons, DirectoryFeedHours, DirectoryFeedListing } from "./feed-contract";
 
 export interface FeedListingInput {
@@ -1807,8 +1807,8 @@ export function buildFeedListing({ row, facts, paid, bookingEnabled, today }: Fe
 
 - [ ] **Step 5: Run it to see it pass**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/directory/feed.test.ts`
-Expected: PASS (5 tests). `SiteFacts` must be exported from `@firstfold/db` (it is, beside `readSiteFacts`).
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/feed.test.ts`
+Expected: PASS (5 tests). `SiteFacts` must be exported from `@fynix/db` (it is, beside `readSiteFacts`).
 
 ---
 
@@ -1858,7 +1858,7 @@ describe("GET /api/directory/listings", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @firstfold/platform exec vitest run app/api/directory/listings/route.test.ts`
+Run: `pnpm --filter @fynix/platform exec vitest run app/api/directory/listings/route.test.ts`
 Expected: FAIL, cannot resolve `./route`.
 
 - [ ] **Step 3: Implement the reader**
@@ -1866,11 +1866,11 @@ Expected: FAIL, cannot resolve `./route`.
 ```ts
 // apps/platform/lib/server/directory-feed.ts
 import "server-only";
-import { hasBillingAccess } from "@firstfold/billing";
-import { findBillingState, isModuleEnabled, listLiveDirectoryListings, readSiteFacts, type Database } from "@firstfold/db";
-import { localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import { buildFeedListing } from "@firstfold/shared/lib/directory/feed";
-import { DIRECTORY_FEED_VERSION, type DirectoryFeed, type DirectoryFeedListing } from "@firstfold/shared/lib/directory/feed-contract";
+import { hasBillingAccess } from "@fynix/billing";
+import { findBillingState, isModuleEnabled, listLiveDirectoryListings, readSiteFacts, type Database } from "@fynix/db";
+import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { buildFeedListing } from "@fynix/shared/lib/directory/feed";
+import { DIRECTORY_FEED_VERSION, type DirectoryFeed, type DirectoryFeedListing } from "@fynix/shared/lib/directory/feed-contract";
 
 /** Listings without their own time zone are read in India's, the only market the directory serves today. */
 const DEFAULT_TIME_ZONE = "Asia/Kolkata";
@@ -1923,7 +1923,7 @@ export async function GET(): Promise<Response> {
     const feed = await readDirectoryFeed(getStaffDb(), new Date());
     return Response.json(feed, { status: 200, headers: { "Cache-Control": CACHE_CONTROL } });
   } catch (error) {
-    console.error("[firstfold:directory] GET /api/directory/listings failed", errorLogInfo(error));
+    console.error("[fynix:directory] GET /api/directory/listings failed", errorLogInfo(error));
     return Response.json(
       { error: "Listings are unavailable right now." },
       { status: 503, headers: { "Cache-Control": "no-store" } },
@@ -1934,7 +1934,7 @@ export async function GET(): Promise<Response> {
 
 - [ ] **Step 5: Run it to see it pass**
 
-Run: `pnpm --filter @firstfold/platform exec vitest run app/api/directory/listings/route.test.ts`
+Run: `pnpm --filter @fynix/platform exec vitest run app/api/directory/listings/route.test.ts`
 Expected: PASS (2 tests).
 
 - [ ] **Step 6: Check the route is reachable through the app host's proxy**
@@ -1970,8 +1970,8 @@ export function listingMissingState(formData: FormData): PanelFormState {
 
 ```ts
 // apps/platform/app/app-host/(protected)/listing/actions.test.ts
-import type { Database, ScopedTransaction } from "@firstfold/db";
-import { updateOwnListingContent, withTenantScope } from "@firstfold/db";
+import type { Database, ScopedTransaction } from "@fynix/db";
+import { updateOwnListingContent, withTenantScope } from "@fynix/db";
 import { revalidatePath } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { paidCustomerOrNull, PAID_PLAN_REQUIRED_MESSAGE } from "@/lib/server/blog-access";
@@ -1986,8 +1986,8 @@ vi.mock("@/lib/server/blog-access", () => ({
   paidCustomerOrNull: vi.fn(),
   PAID_PLAN_REQUIRED_MESSAGE: "This opens once your plan is paid. You can pay from Billing.",
 }));
-vi.mock("@firstfold/db", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@firstfold/db")>();
+vi.mock("@fynix/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@fynix/db")>();
   return {
     hasPostgresCode: actual.hasPostgresCode,
     CHECK_VIOLATION: actual.CHECK_VIOLATION,
@@ -2068,7 +2068,7 @@ describe("listing actions", () => {
 
 - [ ] **Step 3: Run it to see it fail**
 
-Run: `pnpm --filter @firstfold/platform exec vitest run "app/app-host/(protected)/listing/actions.test.ts"`
+Run: `pnpm --filter @fynix/platform exec vitest run "app/app-host/(protected)/listing/actions.test.ts"`
 Expected: FAIL, cannot resolve `./actions`.
 
 - [ ] **Step 4: Implement**
@@ -2078,14 +2078,14 @@ Expected: FAIL, cannot resolve `./actions`.
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { updateOwnListingContent, withTenantScope, type ListingContentPatch } from "@firstfold/db";
-import type { FormParseResult } from "@firstfold/shared/lib/form-result";
+import { updateOwnListingContent, withTenantScope, type ListingContentPatch } from "@fynix/db";
+import type { FormParseResult } from "@fynix/shared/lib/form-result";
 import {
   parseAboutForm,
   parseButtonsForm,
   parseTagsForm,
   parseVisibleForm,
-} from "@firstfold/shared/lib/directory/listing-content";
+} from "@fynix/shared/lib/directory/listing-content";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
 import { getAppDb } from "@/lib/server/db";
@@ -2141,7 +2141,7 @@ export async function setListingVisibleAction(_previous: PanelFormState, formDat
 
 - [ ] **Step 5: Run it to see it pass**
 
-Run: `pnpm --filter @firstfold/platform exec vitest run "app/app-host/(protected)/listing/actions.test.ts"`
+Run: `pnpm --filter @fynix/platform exec vitest run "app/app-host/(protected)/listing/actions.test.ts"`
 Expected: PASS (5 tests).
 
 ---
@@ -2162,7 +2162,7 @@ No unit test: the logic under this page is tested in Tasks 2, 5, 7 and 10; the p
 "use client";
 
 import { useState, type ReactElement } from "react";
-import { Button } from "@firstfold/shared/ui/panel/button";
+import { Button } from "@fynix/shared/ui/panel/button";
 
 interface ListingLinkProps {
   readonly url: string;
@@ -2189,11 +2189,11 @@ export function ListingLink({ url, live }: ListingLinkProps): ReactElement {
       <div className="flex flex-wrap items-center gap-3">
         {live ? (
           <a href={url} target="_blank" rel="noopener" className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-paper">
-            View on Firstfold Local ↗
+            View on the local directory ↗
           </a>
         ) : (
           <span aria-disabled="true" className="rounded-full bg-accent/40 px-5 py-2.5 text-sm font-semibold text-paper">
-            View on Firstfold Local ↗
+            View on the local directory ↗
           </span>
         )}
         <Button type="button" variant="secondary" disabled={!live} onClick={() => void copy()}>
@@ -2218,15 +2218,15 @@ outlined button.
 "use client";
 
 import { useState, type ReactElement, type ReactNode } from "react";
-import type { ListingContentRow } from "@firstfold/db";
+import type { ListingContentRow } from "@fynix/db";
 import {
   LISTING_ABOUT_MAX_LENGTH,
   LISTING_BUTTONS,
   LISTING_BUTTON_LABELS,
   LISTING_TAG_LIMIT,
   type ListingButton,
-} from "@firstfold/shared/lib/directory/listing-content";
-import { Button } from "@firstfold/shared/ui/panel/button";
+} from "@fynix/shared/lib/directory/listing-content";
+import { Button } from "@fynix/shared/ui/panel/button";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 interface ListingDetailsProps {
@@ -2468,14 +2468,14 @@ export function ListingDetails({ content, editable, unavailable, hoursLines, ann
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { findAnnouncement, findBusinessTimeZone, findBusinessWebsiteUrl, findOwnListing, getBusinessHours, getBusinessProfile, hasLiveProject, listingPath, withTenantScope } from "@firstfold/db";
-import { localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import type { ListingButton } from "@firstfold/shared/lib/directory/listing-content";
-import { DIRECTORY_ORIGIN, areaName, categoryLabel, cityName } from "@firstfold/shared/lib/directory/places";
-import { LISTING_STAGE_LABELS, listingStage } from "@firstfold/shared/lib/directory/stage";
-import { WEEKDAYS } from "@firstfold/shared/lib/onboarding/business-fields";
-import { describeStoredDay } from "@firstfold/shared/lib/onboarding/hours";
-import { siteConfig } from "@firstfold/shared/lib/site-config";
+import { findAnnouncement, findBusinessTimeZone, findBusinessWebsiteUrl, findOwnListing, getBusinessHours, getBusinessProfile, hasLiveProject, listingPath, withTenantScope } from "@fynix/db";
+import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import type { ListingButton } from "@fynix/shared/lib/directory/listing-content";
+import { DIRECTORY_ORIGIN, areaName, categoryLabel, cityName } from "@fynix/shared/lib/directory/places";
+import { LISTING_STAGE_LABELS, listingStage } from "@fynix/shared/lib/directory/stage";
+import { WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
+import { describeStoredDay } from "@fynix/shared/lib/onboarding/hours";
+import { siteConfig } from "@fynix/shared/lib/site-config";
 import { ListingDetails } from "@/components/panel/listing/listing-details";
 import { ListingLink } from "@/components/panel/listing/listing-link";
 import { getEnabledModules } from "@/lib/server/business-modules";
@@ -2535,11 +2535,11 @@ export default async function ListingPage(): Promise<ReactElement> {
 
   const line =
     stage === "building"
-      ? "Your listing goes live on Firstfold Local the day your website launches."
+      ? "Your listing goes live on the local directory the day your website launches."
       : stage === "paused"
         ? "You're shown as a basic listing until your payment goes through."
         : stage === "hidden"
-          ? "You're hidden from Firstfold Local. Everything is kept."
+          ? "You're hidden from the local directory. Everything is kept."
           : `People looking for ${category.toLowerCase()} in ${area} find you here.`;
 
   return (
@@ -2615,15 +2615,15 @@ export default async function ListingPage(): Promise<ReactElement> {
 ```
 
 Notes for this step:
-- `getBusinessHours` is the tenant read `details/page.tsx` already uses; import it from `@firstfold/db` the same way.
+- `getBusinessHours` is the tenant read `details/page.tsx` already uses; import it from `@fynix/db` the same way.
 - If `describeStoredDay` rejects `BusinessHoursRow` (type mismatch), map rows to `StoredHoursRow` with the same fields
   (`dayOfWeek, opensAt, closesAt, closed, openAllDay`).
-- `getBusinessProfile` (onboarding-data.ts) is the tenant read of `business_profiles`; export it from `@firstfold/db` if
+- `getBusinessProfile` (onboarding-data.ts) is the tenant read of `business_profiles`; export it from `@fynix/db` if
   it is not already. Show the phone as stored (E.164); formatting it is a later nicety.
 
 - [ ] **Step 4: Typecheck**
 
-Run: `pnpm --filter @firstfold/platform exec tsc --noEmit`
+Run: `pnpm --filter @fynix/platform exec tsc --noEmit`
 Expected: no errors.
 
 ---
@@ -2639,7 +2639,7 @@ Expected: no errors.
 ```ts
 // apps/platform/lib/server/listing.ts
 import "server-only";
-import { findOwnListing, withTenantScope } from "@firstfold/db";
+import { findOwnListing, withTenantScope } from "@fynix/db";
 import { cache } from "react";
 import { getCustomerAccess } from "./customer-access";
 import { getAppDb } from "./db";
@@ -2656,7 +2656,7 @@ export const hasOwnListing = cache(async (): Promise<boolean> => {
 
 In `customer-shell.tsx`:
 
-1. Import `hasOwnListing` from `@/lib/server/listing` and a pin icon (`MapPinIcon` from `@firstfold/shared/ui/icons` if it
+1. Import `hasOwnListing` from `@/lib/server/listing` and a pin icon (`MapPinIcon` from `@fynix/shared/ui/icons` if it
    exists; otherwise add one there next to `HomeIcon`, a 24×24 stroke icon of a map pin).
 2. Add `listingExists: boolean` to `customerNav`'s parameters and insert, after the appointments block and before
    the setup item:
@@ -2684,7 +2684,7 @@ async function readListingNav(): Promise<boolean> {
 
 - [ ] **Step 3: Typecheck and run the platform unit tests**
 
-Run: `pnpm --filter @firstfold/platform exec tsc --noEmit && pnpm --filter @firstfold/platform test`
+Run: `pnpm --filter @fynix/platform exec tsc --noEmit && pnpm --filter @fynix/platform test`
 Expected: no type errors; all tests pass.
 
 ---
@@ -2699,10 +2699,10 @@ Expected: no type errors; all tests pass.
 - [ ] **Step 1: The action** (append to `actions.ts`; add the imports to its import block)
 
 ```ts
-import { ListingAddressTakenError, saveListingPlacement } from "@firstfold/db";
-import { parsePlacementForm } from "@firstfold/shared/lib/directory/placement-form";
+import { ListingAddressTakenError, saveListingPlacement } from "@fynix/db";
+import { parsePlacementForm } from "@fynix/shared/lib/directory/placement-form";
 
-/** Creates or changes where the client's listing sits on Firstfold Local. */
+/** Creates or changes where the client's listing sits on the local directory. */
 export async function saveListingPlacementAction(formData: FormData): Promise<void> {
   await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "The listing's business");
@@ -2727,15 +2727,15 @@ export async function saveListingPlacementAction(formData: FormData): Promise<vo
 ```tsx
 // apps/admin/components/client-listing.tsx
 import type { ReactElement } from "react";
-import { listingPath, type ListingPlacement } from "@firstfold/db";
+import { listingPath, type ListingPlacement } from "@fynix/db";
 import {
   DIRECTORY_AREAS,
   DIRECTORY_CATEGORIES,
   DIRECTORY_CITIES,
   DIRECTORY_ORIGIN,
   slugifyBusinessName,
-} from "@firstfold/shared/lib/directory/places";
-import { PLACEMENT_FIELD_MESSAGES, type PlacementField } from "@firstfold/shared/lib/directory/placement-form";
+} from "@fynix/shared/lib/directory/places";
+import { PLACEMENT_FIELD_MESSAGES, type PlacementField } from "@fynix/shared/lib/directory/placement-form";
 import { saveListingPlacementAction } from "@/app/(protected)/clients/[businessId]/actions";
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
@@ -2758,7 +2758,7 @@ function noticeText(notice: ListingNotice): string {
   return notice.field === null ? "Check the form." : PLACEMENT_FIELD_MESSAGES[notice.field];
 }
 
-/** Where the client's Featured listing sits on Firstfold Local. Every field here shapes its address or was checked
+/** Where the client's Featured listing sits on the local directory. Every field here shapes its address or was checked
  * by us, which is why the client cannot change any of them (spec 2026-09-29-customer-listing-tab-design.md). */
 export function ClientListing({ businessId, displayName, placement, live, notice }: ClientListingProps): ReactElement {
   const path = placement === null ? null : listingPath(placement);
@@ -2859,7 +2859,7 @@ export function ClientListing({ businessId, displayName, placement, live, notice
         <label className="block sm:col-span-2">
           <span className={labelClasses}>Replaces this unconfirmed listing (optional)</span>
           <input name="replacesSourcePath" defaultValue={placement?.replacesSourcePath ?? ""} placeholder="/in/dentists/mh/thane/naupada/…" className={fieldClasses} />
-          <span className={hintClasses}>Paste its firstfold.io/in address so it disappears and nothing shows twice.</span>
+          <span className={hintClasses}>Paste its fynix.digital/in address so it disappears and nothing shows twice.</span>
         </label>
 
         <div className="sm:col-span-2">
@@ -2888,8 +2888,8 @@ export function ClientListing({ businessId, displayName, placement, live, notice
 
 In `apps/admin/app/(protected)/clients/[businessId]/page.tsx`:
 
-1. Import `findListingPlacement, hasLiveProject` from `@firstfold/db`, `ClientListing, type ListingNotice` from
-   `@/components/client-listing`, and `isPlacementField` from `@firstfold/shared/lib/directory/placement-form`.
+1. Import `findListingPlacement, hasLiveProject` from `@fynix/db`, `ClientListing, type ListingNotice` from
+   `@/components/client-listing`, and `isPlacementField` from `@fynix/shared/lib/directory/placement-form`.
 2. Where the page reads its data in parallel, add `findListingPlacement(getStaffDb(), businessId)` and
    `hasLiveProject(getStaffDb(), businessId)`.
 3. Read the notice from the search params the page already receives:
@@ -2906,7 +2906,7 @@ function readListingNotice(listing: string | undefined, field: string | undefine
 4. Render a section after "Their website" (line ~636), before "Features":
 
 ```tsx
-<Section title="Listing" id="listing" aside="Firstfold Local">
+<Section title="Listing" id="listing" aside="the local directory">
   <ClientListing
     businessId={client.id}
     displayName={client.profile?.displayName ?? client.name}
@@ -2923,7 +2923,7 @@ is named differently from `firstParam`, use that name. Use the page's own names 
 
 - [ ] **Step 4: Typecheck and lint admin**
 
-Run: `pnpm --filter @firstfold/admin exec tsc --noEmit && pnpm --filter @firstfold/admin lint`
+Run: `pnpm --filter @fynix/admin exec tsc --noEmit && pnpm --filter @fynix/admin lint`
 Expected: no errors.
 
 ---
@@ -2949,7 +2949,7 @@ Start the branch's own servers (add `.claude/launch.json` entries `listing-platf
 
 1. Admin → a test client with a live project → Listing → pick Dentists / Thane / an area, paste lat `19.19` lon `72.97`,
    pin label, Create listing. Expect "Saved…" and the address link.
-2. Customer app as that client → **Listing** is in the nav → status "Live on Firstfold Local" → edit About (try a
+2. Customer app as that client → **Listing** is in the nav → status "Live on the local directory" → edit About (try a
    phone number: refused with the contact message), add two services, switch Book off, Save each. Expect "Saved."
 3. `curl -s http://app.localhost:3061/api/directory/listings | jq` shows the listing with the new about, tags and no
    `book` button.

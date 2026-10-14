@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { BookingContext, SiteFacts } from "@firstfold/db";
+import type { BookingContext, SiteFacts } from "@fynix/db";
 import { buildSiteInfo } from "./site-info";
 
 /** 2026-01-01T19:00:00Z is already 2026-01-02 in Asia/Kolkata (UTC+5:30), so this exercises the time-zone shift. */

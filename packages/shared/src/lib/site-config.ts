@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { ambientBrandId, deploymentBrandId, type DeploymentBrandId } from "./deployment-brand";
 import { planPriceInBoth } from "./pricing";
 
 /** Both URLs end up in hrefs, so nothing but http(s) may reach them. */
@@ -60,7 +59,7 @@ export interface SiteConfig {
 export interface BusinessDetails {
   /** The company that supplies the service and holds the GSTIN. */
   readonly legalName: string;
-  /** The name customers know. Printed under the legal name: "Trading as Firstfold". */
+  /** The name customers know. Printed under the legal name: "Trading as Fynix Digital". */
   readonly tradeName: string;
   /** Corporate Identity Number, from the certificate of incorporation. */
   readonly cin: string;
@@ -80,9 +79,13 @@ export interface BusinessDetails {
   readonly website: string;
 }
 
-const REGISTERED: BusinessDetails = {
+/**
+ * Digibranders is the company that supplies the service and holds the GSTIN; customers know it as Fynix Digital, and
+ * the invoices and pages give Fynix's own contact address and site.
+ */
+export const businessDetails: BusinessDetails = {
   legalName: "Digibranders Private Limited",
-  tradeName: "Firstfold",
+  tradeName: "Fynix Digital",
   cin: "U72900MH2021PTC372344",
   address: [
     "Office No. 2617, 26th Floor, Solus Building,",
@@ -93,35 +96,14 @@ const REGISTERED: BusinessDetails = {
   gstNumber: "27AAICD9268J1Z0",
   phone: "+91 789 789 6607",
   phoneHref: "+917897896607",
-  email: "support@firstfold.io",
-  website: "https://firstfold.io",
+  email: "hello@fynix.digital",
+  website: "https://fynix.digital",
 };
-
-/**
- * The registered business with the name it trades under in `brand`: Digibranders is the company that supplies the service
- * and holds the GSTIN whichever brand it is sold under, but Fynix's invoices and pages say "Fynix Digital" and give Fynix's
- * own contact address and site.
- */
-function detailsFor(brand: DeploymentBrandId): BusinessDetails {
-  if (brand !== "fynix") return REGISTERED;
-  return { ...REGISTERED, tradeName: "Fynix Digital", email: "hello@fynix.digital", website: "https://fynix.digital" };
-}
-
-/**
- * The registered business as this deployment trades (PLATFORM_BRAND, see ambientBrandId): Firstfold's own details unless
- * the deployment is Fynix's. Fixed when the module loads, in the server and the browser alike.
- */
-export const businessDetails: BusinessDetails = detailsFor(ambientBrandId());
-
-/** The same for an explicit environment (an invoice issued for a named deployment, a test). */
-export function deploymentBusinessDetails(env: Readonly<Record<string, string | undefined>> = process.env): BusinessDetails {
-  return detailsFor(deploymentBrandId(env));
-}
 
 export const siteConfig: SiteConfig = {
   name: businessDetails.tradeName,
   description: `Rent a professional B2B website without the upfront cost. Design, hosting and ongoing care from ${planPriceInBoth("monthly")} a month.`,
-  url: parsedEnv.data.NEXT_PUBLIC_SITE_URL ?? (ambientBrandId() === "fynix" ? businessDetails.website : "http://localhost:3000"),
+  url: parsedEnv.data.NEXT_PUBLIC_SITE_URL ?? businessDetails.website,
   email: parsedEnv.data.NEXT_PUBLIC_CONTACT_EMAIL ?? businessDetails.email,
   appUrl: parsedEnv.data.NEXT_PUBLIC_APP_URL ?? "http://app.localhost:3001",
   calendlyUrl: parsedEnv.data.NEXT_PUBLIC_CALENDLY_URL ?? null,
@@ -138,7 +120,7 @@ export interface CallHost {
 
 export const callHost: CallHost = {
   name: "Steve Jason",
-  role: "Firstfold",
+  role: "Fynix Digital",
   photo: null,
   minutes: 30,
 };

@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useRef, type ReactElement, type ReactNode } from "react";
-import { practitionerInitials } from "@firstfold/shared/lib/appointments/initials";
-import { PRACTITIONER_NAME_MAX_LENGTH, PRACTITIONER_TITLE_MAX_LENGTH } from "@firstfold/shared/lib/appointments/practitioner-form";
-import { cn } from "@firstfold/shared/lib/cn";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import { practitionerInitials } from "@fynix/shared/lib/appointments/initials";
+import { PRACTITIONER_NAME_MAX_LENGTH, PRACTITIONER_TITLE_MAX_LENGTH } from "@fynix/shared/lib/appointments/practitioner-form";
+import { cn } from "@fynix/shared/lib/cn";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import {
   FIELD_CLASSES,
   PanelFormGroup,

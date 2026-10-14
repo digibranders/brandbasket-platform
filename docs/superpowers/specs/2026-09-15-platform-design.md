@@ -1,4 +1,4 @@
-# Firstfold Platform: Design Spec
+# Fynix Platform: Design Spec
 
 - **Date:** 2026-09-15
 - **Status:** Draft, awaiting review
@@ -9,7 +9,7 @@
 
 
 > **Repository layout (changed 2026-09-17):** the single `apps/web` app was split in two repositories. The marketing
-> site is its own repository, `webfold-website` (port 3000 locally); this repository is the platform: `apps/platform`
+> site is its own repository, `fynix-website` (port 3000 locally); this repository is the platform: `apps/platform`
 > holds the customer app, staff admin and API routes (app./admin. on port 3001), with `packages/shared` for its UI
 > and helpers. The website holds no database credentials: its Get started form posts to the platform's
 > `POST /api/leads` with a shared `LEADS_API_TOKEN`, and the platform validates, rate-limits and stores the lead.
@@ -31,12 +31,12 @@
 | Failed renewals | **No grace period (changed 2026-09-16).** The site goes offline the moment a payment is due and unpaid, even while Razorpay is still retrying (`pending`); it comes back as soon as a payment succeeds. Access ends when `paid_through_at` passes without a new payment. (Earlier: online while Razorpay retried.) |
 | Reactivation | A successful payment brings the site back automatically, with no rebuild. Missed months are not charged. |
 | Data | Lapsing, halting or cancelling never deletes the website, content, images or tenant. |
-| Domains | The customer owns the domain and registrar account. Firstfold only gives DNS instructions. **Onboarding cannot be submitted without a domain the customer owns.** There is no Firstfold fallback address. Staff never take registrar logins. |
+| Domains | The customer owns the domain and registrar account. Fynix only gives DNS instructions. **Onboarding cannot be submitted without a domain the customer owns.** There is no Fynix fallback address. Staff never take registrar logins. |
 | Revisions | **2 revision rounds** before launch. A round is one submission of many change items. Staff can grant extra rounds (logged). Staff can mark individual items out of scope. |
-| Design control | Firstfold controls design, layout, code and all structured business data. After launch, customers can edit **only blog posts, text and images** (see "Content updates after launch"). |
-| Blog | Optional extra, off by default, **not** one of the 6 pages. Posts are written and published **by the customer only**; Firstfold does not write posts. Fixed design. Publishing or updating a post uses the monthly content-update allowance. |
-| Change and blog pricing (changed 2026-09-17) | **Changes:** the customer's first hour of changes is free, once (not each month); every hour after that is **$15** (₹1,425). **Blog posts:** up to **100** are included; after that they are sold in blocks of 100 at **$5** (₹475) a block. Rupee amounts are the dollar prices at ₹95 to US$1. Stored on `plans` (migration 0026: `included_change_hours`, `extra_hour_amount_cents`, `included_blog_posts`, `blog_post_block_size`, `extra_blog_posts_amount_cents`). **This replaces the 3-publishes-a-month / $3-per-publish rule below**; `included_publishes_per_month` and `extra_publish_amount_cents` remain on `plans` only until the publish workflow is redesigned around the new prices. The customer also now provides only their domain (a free temporary domain if they have none); Firstfold creates the design, words and photos. |
-| Content updates after launch | **Customers can edit only three things:** (1) **text** in customer-editable fields of existing page sections, (2) **images**, meaning replacing images in existing image slots and adding, removing or reordering gallery photos, and (3) **blog posts** (write, edit, publish, unpublish). Everything else is changed by Firstfold through a support request: services, testimonials, business details (name, phone, email, address, service areas, hours, special hours, social links), pages, SEO settings and design. Saving drafts is unlimited and free. **Publishing is limited to 3 free publishes per billing month**; each further publish costs **$3**, paid at publish time. One publish can include any number of edits. Unused publishes don't roll over. Free and outside the allowance: unpublishing a blog post, rolling back to an earlier version, and publishes made by Firstfold staff. |
+| Design control | Fynix controls design, layout, code and all structured business data. After launch, customers can edit **only blog posts, text and images** (see "Content updates after launch"). |
+| Blog | Optional extra, off by default, **not** one of the 6 pages. Posts are written and published **by the customer only**; Fynix does not write posts. Fixed design. Publishing or updating a post uses the monthly content-update allowance. |
+| Change and blog pricing (changed 2026-09-17) | **Changes:** the customer's first hour of changes is free, once (not each month); every hour after that is **$15** (₹1,425). **Blog posts:** up to **100** are included; after that they are sold in blocks of 100 at **$5** (₹475) a block. Rupee amounts are the dollar prices at ₹95 to US$1. Stored on `plans` (migration 0026: `included_change_hours`, `extra_hour_amount_cents`, `included_blog_posts`, `blog_post_block_size`, `extra_blog_posts_amount_cents`). **This replaces the 3-publishes-a-month / $3-per-publish rule below**; `included_publishes_per_month` and `extra_publish_amount_cents` remain on `plans` only until the publish workflow is redesigned around the new prices. The customer also now provides only their domain (a free temporary domain if they have none); Fynix creates the design, words and photos. |
+| Content updates after launch | **Customers can edit only three things:** (1) **text** in customer-editable fields of existing page sections, (2) **images**, meaning replacing images in existing image slots and adding, removing or reordering gallery photos, and (3) **blog posts** (write, edit, publish, unpublish). Everything else is changed by Fynix through a support request: services, testimonials, business details (name, phone, email, address, service areas, hours, special hours, social links), pages, SEO settings and design. Saving drafts is unlimited and free. **Publishing is limited to 3 free publishes per billing month**; each further publish costs **$3**, paid at publish time. One publish can include any number of edits. Unused publishes don't roll over. Free and outside the allowance: unpublishing a blog post, rolling back to an earlier version, and publishes made by Fynix staff. |
 
 ## 2. System architecture
 
@@ -44,9 +44,9 @@
 
 | Host (production) | Host (local) | App | Purpose |
 |---|---|---|---|
-| `firstfold.com` | `localhost:3000` | `apps/web` | Marketing site (existing) |
-| `app.firstfold.com` | `app.localhost:3000` | `apps/web` | Setup link, login, payment, onboarding, customer dashboard, CMS, preview |
-| `admin.firstfold.com` | `admin.localhost:3000` | `apps/web` | Staff console |
+| `fynix.digital` | `localhost:3000` | `apps/web` | Marketing site (existing) |
+| `app.fynix.digital` | `app.localhost:3000` | `apps/web` | Setup link, login, payment, onboarding, customer dashboard, CMS, preview |
+| `admin.fynix.digital` | `admin.localhost:3000` | `apps/web` | Staff console |
 | Customer domains | `*.localhost:3001` and `/etc/hosts` test domains | `apps/sites` | Tenant website renderer |
 
 Local subdomains of `localhost` resolve automatically in Chrome and Firefox; use one of those for local testing.
@@ -79,7 +79,7 @@ packages/
 
 | Concern | Local (now) | Production (later) |
 |---|---|---|
-| Database | Local PostgreSQL, database `firstfold` | Managed PostgreSQL (e.g. Neon) |
+| Database | Local PostgreSQL, database `fynix` | Managed PostgreSQL (e.g. Neon) |
 | ORM / migrations | Drizzle | Drizzle |
 | Auth | Better Auth, email + password | + Google sign-in; staff 2FA required |
 | Billing | `BILLING_PROVIDER=fake`, then `razorpay` with test keys and a local tunnel for webhooks | Razorpay live keys |
@@ -109,7 +109,7 @@ Marketing "Get started"
   → Launch → LIVE
   → CMS: customer edits ONLY text, images and blog posts
       drafts free · 3 free publishes per billing month · then $3 per publish
-      anything else (services, testimonials, business details, pages, design) → support request → Firstfold
+      anything else (services, testimonials, business details, pages, design) → support request → Fynix
   → Support; $75 (or ₹3,500) a month, renewing monthly
   → payment due and unpaid → site offline immediately (data kept) → customer pays → site online
 ```
@@ -301,7 +301,7 @@ Each lifecycle is a pure transition function in `packages/domain` with an explic
 
 **Status mapping** (`packages/billing`, pure function):
 
-| Razorpay status | Firstfold status | Notes |
+| Razorpay status | Fynix status | Notes |
 |---|---|---|
 | `created` | `incomplete` | Awaiting first payment |
 | `authenticated` | `active` | First month paid; renews monthly |
@@ -344,7 +344,7 @@ Handled events: `subscription.authenticated`, `.activated`, `.charged`, `.pendin
 - **Nightly reconciliation:** fetch every non-cancelled subscription from Razorpay and correct any drift.
 - **Every 15 minutes:** invalidate the access cache for cancelled subscriptions whose `paid_through_at` has just passed.
 
-**Safety brake:** if one reconciliation run would move more than 10 sites or 5% of live sites to offline, apply none of those changes and alert staff. If Razorpay or the database is unreachable, keep the last known state. **Never take a site offline because Firstfold is failing.**
+**Safety brake:** if one reconciliation run would move more than 10 sites or 5% of live sites to offline, apply none of those changes and alert staff. If Razorpay or the database is unreachable, keep the last known state. **Never take a site offline because Fynix is failing.**
 
 **Local testing:** `FakeBillingProvider` implements the same interface. It has a fake checkout page (Pay / Decline), and an admin "Billing simulator" emits the same normalised events: renewal charged, charge failed (`pending`), retries exhausted (`halted`), card updated (`active`), cancelled, refund processed, one-time payment paid, and one-time payment failed.
 
@@ -376,7 +376,7 @@ isPubliclyVisible(host, now) =
   ∧ hasBillingAccess(subscription, now)
 ```
 
-When not visible, a known host shows the Firstfold offline page:
+When not visible, a known host shows the Fynix offline page:
 - HTTP 503 with `Retry-After`, plus `X-Robots-Tag: noindex`.
 - Copy: "This website is temporarily unavailable" and the business phone number if present.
 - The site's contact form is disabled.
@@ -484,7 +484,7 @@ remaining = plan.included_publishes_per_month
   - edit services, testimonials, business details, navigation or SEO settings;
   - submit HTML, CSS or scripts.
   - These are enforced on the server. The CMS shows those areas read-only, with a "Request a change" link to support.
-- **Rich text** is a restricted JSON document: paragraph, heading levels 2–3, bold, italic, link, bulleted and numbered lists. Links must be `http(s)`, `mailto:` or `tel:`. It is rendered by Firstfold components, never as raw HTML.
+- **Rich text** is a restricted JSON document: paragraph, heading levels 2–3, bold, italic, link, bulleted and numbered lists. Links must be `http(s)`, `mailto:` or `tel:`. It is rendered by Fynix components, never as raw HTML.
 - **Releases:** `buildReleaseSnapshot(websiteId)` resolves pages, sections, business profile, hours, special hours, social links, services, testimonials and gallery into one validated render model.
   - **Blog posts** are not in the snapshot; they are read from published `blog_post` rows with per-tenant cache tags.
 - **After launch, editing is autosave to the working tables** plus one **Publish changes** button, which creates a production release and moves `live_release_id`.
@@ -513,14 +513,14 @@ remaining = plan.included_publishes_per_month
   - A refunded initial payment has status `refunded`, so the wall returns after a refund.
   - Later billing problems (`past_due`, `inactive`, `cancelled`) never trigger the wall. The customer keeps dashboard access and sees the reactivate state instead.
 - **Row-level security:** enabled on every tenant table.
-  - The app runtime connects as `webfold_app` (not a superuser, not the table owner, no BYPASSRLS).
+  - The app runtime connects as `fynix_app` (not a superuser, not the table owner, no BYPASSRLS).
   - Each request transaction runs `SET LOCAL app.business_id`.
   - Migrations run as the owner role.
-  - The renderer uses `webfold_sites`, which has read-only access to published data.
-  - Staff and worker operations use `webfold_staff`, and every staff read or write of tenant data is audit-logged.
+  - The renderer uses `fynix_platform_branch`, which has read-only access to published data.
+  - Staff and worker operations use `fynix_staff`, and every staff read or write of tenant data is audit-logged.
   - Tenant policies must check both `business_id = app_current_business_id()` and membership of the current user. They never rely on the setting alone.
   - **Threat model:**
-    - RLS guards against query mistakes, not against code running as `webfold_app`. That role can call `set_config` itself.
+    - RLS guards against query mistakes, not against code running as `fynix_app`. That role can call `set_config` itself.
     - It also reads and writes the auth tables, including staff sessions and password hashes.
     - Before production, give staff auth its own connection, or move session-token lookups behind SECURITY DEFINER functions.
   - Application roles cannot create objects in `public` (`REVOKE CREATE ON SCHEMA public FROM PUBLIC`). RLS helper functions reference `pg_catalog` explicitly.
@@ -533,7 +533,7 @@ remaining = plan.included_publishes_per_month
     - Revoke a previous session when a different user signs in on the same browser.
     - Before mounting Better Auth's HTTP handler (for Google sign-in), set `disabledPaths` for sign-up, email change, password change and account deletion routes.
   - **From the Phase 1B security review:**
-    - `webfold_public` can read and delete every `rate_limit_buckets` row, so a flaw on the public form could reset its own throttle. Scope that grant, or move stale-window cleanup to an owner-run job.
+    - `fynix_public` can read and delete every `rate_limit_buckets` row, so a flaw on the public form could reset its own throttle. Scope that grant, or move stale-window cleanup to an owner-run job.
     - `email_messages` stores full message bodies, including live setup links, and every staff member can read them. Before real email: redact the token, add retention, and narrow staff access to the bodies.
     - `REVOKE TEMPORARY ON DATABASE … FROM PUBLIC` for consistency with the `public` schema hardening.
 - **Server actions:** every action re-checks the session, validates input with zod, and checks the transition guard.
@@ -605,7 +605,7 @@ Request to apps/sites
   - `allowancePeriod` (including month-end clamping), `classifyPublish` and remaining-allowance calculation with grants;
   - section field-permission enforcement;
   - release snapshot building.
-- **Integration tests** against a separate local database `webfold_test`:
+- **Integration tests** against a separate local database `fynix_platform_test`:
   - RLS isolation: business A cannot read or write business B through any data-access function;
   - webhook idempotency (duplicate event IDs);
   - invite redemption (expired, revoked, reused);
@@ -635,10 +635,10 @@ Request to apps/sites
 
 ## 13. Local development
 
-- **Database:** the local PostgreSQL 14 database `firstfold` is the development DB. It was verified reachable on `localhost:5432` as the local superuser with no password, and was empty on 2026-09-15.
-  - Create `webfold_test` for integration tests.
+- **Database:** the local PostgreSQL 14 database `fynix` is the development DB. It was verified reachable on `localhost:5432` as the local superuser with no password, and was empty on 2026-09-15.
+  - Create `fynix_platform_test` for integration tests.
   - `pnpm env:init` writes `.env.local` with generated passwords.
-  - `pnpm db:roles`, run over the superuser connection, creates `webfold_app` and `webfold_staff`. Locally, migrations run as the superuser, which owns the tables. `webfold_sites` arrives with the renderer in Phase 4.
+  - `pnpm db:roles`, run over the superuser connection, creates `fynix_app` and `fynix_staff`. Locally, migrations run as the superuser, which owns the tables. `fynix_platform_branch` arrives with the renderer in Phase 4.
   - UUIDv7 IDs are generated in the app, because PostgreSQL 14 has no built-in generator.
 - **`.env.local` (`apps/web`):**
   - `DATABASE_URL`, `DATABASE_URL_OWNER`

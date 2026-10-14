@@ -6,8 +6,8 @@ import { BusinessSummary, SummaryCard } from "@/components/panel/onboarding-summ
 import { StepHeading } from "@/components/panel/step-heading";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
-import { phoneCountryOptions } from "@firstfold/shared/server/phone-countries";
-import { savedPhoneStart, visitorPhoneCountry } from "@firstfold/shared/server/phone-defaults";
+import { phoneCountryOptions } from "@fynix/shared/server/phone-countries";
+import { savedPhoneStart, visitorPhoneCountry } from "@fynix/shared/server/phone-defaults";
 import { saveBusinessStep } from "./actions";
 
 export const metadata: Metadata = { title: "Your business" };

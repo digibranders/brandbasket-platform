@@ -5,7 +5,7 @@ listing preview … rest all keep it"). Mockup: https://claude.ai/artifact/QcmiM
 
 ## Goal
 
-A paying client sees and manages their **Featured listing on Firstfold Local** (`firstfold.io/in`) from a new
+A paying client sees and manages their **Featured listing on the local directory** (`fynix.digital/in`) from a new
 **Listing** section of the customer dashboard. They edit the business facts we let them edit; everything that shapes
 the listing's web address stays with staff. The directory reads the listing from the platform, so an edit shows on
 `/in` within about a minute.
@@ -30,7 +30,7 @@ the listing's web address stays with staff. The directory reads the listing from
 - **A lapsed payment keeps the address and drops to a basic listing** (name, category, area, address; no buttons, no
   description, no hours). It never 404s. Paying again restores Featured automatically.
 - **About and Services are listing-only fields**, not the website's description or service pages. The website's copy
-  is Firstfold-owned (change requests), the listing's two short fields are client-owned. Hours and the announcement
+  is Fynix-owned (change requests), the listing's two short fields are client-owned. Hours and the announcement
   are shared with the website, as they already are.
 - **About and Services may not contain web addresses, email addresses or phone numbers.** The phone is
   staff-verified; letting it back in through free text would undo that, and it keeps spam out of the directory.
@@ -39,15 +39,15 @@ the listing's web address stays with staff. The directory reads the listing from
 
 ## What the client sees
 
-Route: `app.firstfold.io/listing`. Nav item **Listing** after Appointments/Patients (or after Home when those are
+Route: `app.fynix.digital/listing`. Nav item **Listing** after Appointments/Patients (or after Home when those are
 off), shown only when the business has a listing row (staff create it; see Staff side).
 
 Top to bottom:
 
-1. **Heading and status.** "Your listing" with a status dot: *Goes live with your website* · *Live on Firstfold
+1. **Heading and status.** "Your listing" with a status dot: *Goes live with your website* · *Live on Fynix
    Local* · *Hidden* · *Paused*.
 2. **One line and the address.** e.g. "People searching for a dentist in Naupada see you first." Under it the full
-   address as text, then **View on Firstfold Local ↗** and **Copy link** (both disabled unless live).
+   address as text, then **View on the local directory ↗** and **Copy link** (both disabled unless live).
 3. **Import from Google** strip. Phase 3; until then the strip is not rendered (no dead buttons).
 4. **Last 30 days**: Seen in search · Opened · Calls · WhatsApp · Directions, big numbers with a small trend line.
    Phase 2. Shown only while live and once the listing has at least 30 days of data or 50 impressions, whichever
@@ -112,9 +112,9 @@ Unique `(category_slug, state_code, city_slug, area_slug, slug)`: two Featured b
 
 ### Grants and RLS (separate migration, as usual)
 
-- `webfold_app` (customer): SELECT on `directory_listings` and SELECT/UPDATE on `listing_content`, both row-level
+- `fynix_app` (customer): SELECT on `directory_listings` and SELECT/UPDATE on `listing_content`, both row-level
   secured to the member's business. No INSERT/DELETE on either; no UPDATE on `directory_listings`.
-- `webfold_staff`: full access to both.
+- `fynix_staff`: full access to both.
 - The public API reads through the staff connection, like `/api/pricing`.
 
 Reused as they are: `business_profiles` (display name, address, phone), `business_hours`, `business_closures`,
@@ -122,7 +122,7 @@ Reused as they are: `business_profiles` (display name, address, phone), `busines
 
 ## Staff side (admin client page)
 
-A **Listing** section on `admin.firstfold.io/clients/<id>`:
+A **Listing** section on `console.fynix.digital/clients/<id>`:
 
 - Create the listing: category (select from the list), city and area (selects, filtered by city), slug (prefilled
   from the display name, editable), map pin (staff paste the coordinates from Google Maps; geocoding the onboarding
@@ -233,7 +233,7 @@ substitute: its terms forbid storing what it returns.
 ## Out of scope
 
 Photos (no public media URL exists yet, same blocker as blog covers), reviews, paid ranking, multiple branches per
-client, free listings for non-clients, the short `firstfold.io/l/<name>` link, and syncing edits to Google (Google
+client, free listings for non-clients, the short `fynix.digital/l/<name>` link, and syncing edits to Google (Google
 Stage 2).
 
 ## Resolved questions (user, 2026-09-29)

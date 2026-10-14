@@ -2,17 +2,17 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, type ReactElement } from "react";
-import type { AccountExitReason } from "@firstfold/db";
+import type { AccountExitReason } from "@fynix/db";
 import {
   DELETE_CONFIRMATION_WORD,
   EXIT_COMMENT_MAX_LENGTH,
   EXIT_REASON_OPTIONS,
-} from "@firstfold/shared/lib/account-exit";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
-import { LocalDate } from "@firstfold/shared/ui/panel/local-date-time";
+} from "@fynix/shared/lib/account-exit";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
 import {
   initialClaimOfferState,
   initialDeleteAccountState,

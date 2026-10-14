@@ -1,8 +1,8 @@
-import { isUnappliedReason, type Receipt } from "@firstfold/db";
-import { planLabel, receiptDescription, receiptNumber } from "@firstfold/shared/lib/billing/receipt-title";
-import type { MoneyCurrency } from "@firstfold/shared/lib/money";
-import { businessDetails, siteConfig } from "@firstfold/shared/lib/site-config";
-import { BRANDS, brandedPlanName, type Brand } from "@/lib/brand";
+import { isUnappliedReason, type Receipt } from "@fynix/db";
+import { planLabel, receiptDescription, receiptNumber } from "@fynix/shared/lib/billing/receipt-title";
+import type { MoneyCurrency } from "@fynix/shared/lib/money";
+import { businessDetails, siteConfig } from "@fynix/shared/lib/site-config";
+import { BRAND, type Brand } from "@/lib/brand";
 
 const BASIS_POINTS = 10_000;
 const MINOR_UNITS_PER_MAJOR = 100;
@@ -93,7 +93,7 @@ function taxRateLabel(taxRateBasisPoints: number): string {
 }
 
 /** The receipt for one payment. Throws for a failed payment, which has nothing to receipt. */
-export function receiptDocument(receipt: Receipt, customer: ReceiptCustomer, brand: Brand = BRANDS.firstfold): ReceiptDocument {
+export function receiptDocument(receipt: Receipt, customer: ReceiptCustomer, brand: Brand = BRAND): ReceiptDocument {
   if (!isDownloadableReceipt(receipt)) {
     throw new Error(`Payment ${receipt.id} failed, so there is no receipt for it.`);
   }
@@ -101,7 +101,7 @@ export function receiptDocument(receipt: Receipt, customer: ReceiptCustomer, bra
   const description = receiptDescription(receipt);
   // A paid extra names itself; a plan payment names the plan it paid for.
   const label =
-    receipt.kind === "charge" || receipt.planName === null ? description : `${planLabel(brandedPlanName(receipt.planName, brand))} · ${description}`;
+    receipt.kind === "charge" || receipt.planName === null ? description : `${planLabel(receipt.planName)} · ${description}`;
   const taxRate = receipt.taxRateBasisPoints ?? 0;
   const { netCents, taxCents } = splitTax(receipt.amountCents, taxRate);
   const total = receiptMoney(receipt.amountCents, receipt.currency);
@@ -115,13 +115,13 @@ export function receiptDocument(receipt: Receipt, customer: ReceiptCustomer, bra
         ];
 
   return {
-    fileName: `${brand.id}-receipt-${number.slice(1)}.pdf`,
+    fileName: `fynix-receipt-${number.slice(1)}.pdf`,
     title: `Receipt ${number}`,
     issuedOn: receiptDate(receipt.paidAt ?? receipt.createdAt),
     status: receiptStatus(receipt),
     reference: receipt.providerPaymentId,
     from: [
-      brand.id === "firstfold" ? siteConfig.name : brand.name,
+      siteConfig.name,
       businessDetails.legalName,
       ...businessDetails.address,
       `GSTIN ${businessDetails.gstNumber}`,

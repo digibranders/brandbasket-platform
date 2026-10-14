@@ -9,7 +9,7 @@ export type ConsentEvent = (typeof CONSENT_EVENTS)[number];
 
 /**
  * What a person agreed to and when (DPDP Act 2023 s.6(1) and r.3: proof that a notice was shown and consent was given
- * for a stated purpose, kept so Firstfold can show it if asked). One row per event, so the history is the record:
+ * for a stated purpose, kept so Fynix can show it if asked). One row per event, so the history is the record:
  * the current state of a consent is its latest row. Append only: the staff connection may read and add rows, the
  * public form connection may add rows, and nothing may edit one. The one exception is `subject_erased_at`, which the
  * nightly retention run sets once the data a row covers is gone; three years after that the row may be deleted

@@ -5,8 +5,6 @@ export interface ConfirmEmailInput {
   readonly to: string;
   readonly confirmUrl: string;
   readonly expiresInDays: number;
-  /** What the email calls the product: the deployment's brand (PLATFORM_BRAND; Firstfold when unset) unless the dashboard is sold under another name. */
-  readonly brandName?: string;
 }
 
 /**
@@ -14,7 +12,7 @@ export interface ConfirmEmailInput {
  * don't confirm the business, so an account opened with someone else's address goes nowhere.
  */
 export function confirmEmailEmail(input: ConfirmEmailInput): EmailMessage {
-  const brand = input.brandName ?? emailBrandName();
+  const brand = emailBrandName();
   const confirmUrl = assertWebUrl(input.confirmUrl, "confirmUrl");
   const validity = `This link expires in ${input.expiresInDays} days.`;
   const ignore = `If you didn't open a ${brand} account, you can ignore this email.`;

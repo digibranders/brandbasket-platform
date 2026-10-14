@@ -4,24 +4,24 @@ import {
   createAccountWithGrant,
   isInvalidCredentialsError,
   PASSWORD_MIN_LENGTH,
-} from "@firstfold/auth";
+} from "@fynix/auth";
 import {
   consumeRateLimit,
   findRedeemableInvite,
   redeemInviteIntoBusiness,
   type Database,
   type SetupInvite,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { headers } from "next/headers";
-import { clientIpFrom } from "@firstfold/shared/lib/client-ip";
+import { clientIpFrom } from "@fynix/shared/lib/client-ip";
 import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
-import { retryMessage } from "@firstfold/shared/lib/sign-in-limits";
+import { retryMessage } from "@fynix/shared/lib/sign-in-limits";
 import { recordAccountTermsConsent } from "./account-consent";
 import { getAuth } from "./auth";
 import { getStaffDb } from "./db";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
-import { signInCustomer } from "./signed-in-hint";
-import { firstBlockedSignInLimit } from "@firstfold/shared/server/rate-limits";
+import { signInCustomer } from "./customer-sign-in";
+import { firstBlockedSignInLimit } from "@fynix/shared/server/rate-limits";
 
 const SETUP_ATTEMPT_LIMIT = 10;
 /** Opening the link is cheap and repeatable (a re-read email, a refresh), so the page gets a wider budget. */
@@ -36,7 +36,7 @@ const ONE_HOUR_SECONDS = 60 * 60;
 function assertPasswordRulesAgree(formMinimum: number, authMinimum: number): void {
   if (formMinimum !== authMinimum) {
     throw new Error(
-      `SETUP_PASSWORD_MIN_LENGTH (${formMinimum}) must match PASSWORD_MIN_LENGTH (${authMinimum}) in @firstfold/auth.`,
+      `SETUP_PASSWORD_MIN_LENGTH (${formMinimum}) must match PASSWORD_MIN_LENGTH (${authMinimum}) in @fynix/auth.`,
     );
   }
 }
@@ -71,7 +71,7 @@ function staffDbForSetup(): Database {
 /** The request headers Next hands to a server component or action; Better Auth reads and writes cookies through them. */
 export type RequestHeaders = Awaited<ReturnType<typeof headers>>;
 
-/** Matches how @firstfold/auth stores addresses and how parseSignInForm keys the sign-in limits. */
+/** Matches how @fynix/auth stores addresses and how parseSignInForm keys the sign-in limits. */
 export function normaliseEmail(email: string): string {
   return email.trim().toLowerCase();
 }

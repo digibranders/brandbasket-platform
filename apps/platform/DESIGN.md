@@ -61,7 +61,7 @@ Three fonts, already loaded:
 - **Newsreader** (serif): `panel-title`, `panel-section`, big numbers (`heading-display`), a patient's name,
   prices, month headings, stage numbers.
 - **Hanken Grotesk** (sans): everything else: lists, forms, buttons, labels, tables.
-- **Outfit**: the Firstfold wordmark only (`font-brand`, `Logo`).
+- **Outfit**: the Fynix wordmark only (`font-brand`, `Logo`).
 
 | Role | Size | Class |
 |---|---|---|
@@ -79,7 +79,7 @@ Three fonts, already loaded:
 Rules:
 - **Nothing below 11px** that a person reads.
 - **No uppercase letter-spaced text** for information: statuses, tags, badges, table headers, eyebrows, field
-  labels, step counters. Sentence case at 13px instead. The one exception is the shell's "YOUR FIRSTFOLD
+  labels, step counters. Sentence case at 13px instead. The one exception is the shell's "YOUR FYNIX
   DASHBOARD" top bar, a brand line. Input values that are codes (referral code) may be uppercase.
 - **`tabular-nums`** on every number that sits in a column or changes: prices, amounts, dates in lists and tables,
   counts, big numbers, phone numbers, times, serials, page ranges, character counters, step numbers. All field
@@ -108,7 +108,7 @@ Rules:
   in the label ("Appointments · 5").
 - The sidebar is `data-surface="dark"`, which turns the focus ring to paper (burgundy is 1.1:1 there). Any new dark
   area must carry the same attribute; the billing banner does.
-- Top bar: the "Your Firstfold dashboard" caption (`text-[0.7rem] uppercase tracking-[0.22em]`), nothing else.
+- Top bar: the "Your Fynix dashboard" caption (`text-[0.7rem] uppercase tracking-[0.22em]`), nothing else.
 
 ## Page header
 

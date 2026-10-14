@@ -12,10 +12,10 @@
  * minimum notice and booking horizon are for patients booking themselves, not for a clinic rearranging its own
  * diary, so notice is zero and the horizon always reaches the booking's date.
  */
-import type { AppointmentRow, PractitionerScheduleRow } from "@firstfold/db";
-import { buildClinicWeek, freePractitionersAt } from "@firstfold/shared/lib/appointments/clinic-availability";
-import { isSlotMinutes, type WeekAvailabilityClosure, type WeekAvailabilityHoursRow } from "@firstfold/shared/lib/appointments/slots";
-import { localDateIn } from "@firstfold/shared/lib/calendar/local-date";
+import type { AppointmentRow, PractitionerScheduleRow } from "@fynix/db";
+import { buildClinicWeek, freePractitionersAt } from "@fynix/shared/lib/appointments/clinic-availability";
+import { isSlotMinutes, type WeekAvailabilityClosure, type WeekAvailabilityHoursRow } from "@fynix/shared/lib/appointments/slots";
+import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
 import { buildPractitionerCalendars } from "@/lib/server/clinic-calendars";
 import { nowMinutesIn } from "@/lib/server/local-time";
 

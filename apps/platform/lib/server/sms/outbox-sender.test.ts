@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { insertSmsMessage } from "@firstfold/db";
+import { insertSmsMessage } from "@fynix/db";
 import { createOutboxSender } from "./outbox-sender";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", () => ({ insertSmsMessage: vi.fn() }));
+vi.mock("@fynix/db", () => ({ insertSmsMessage: vi.fn() }));
 
 const mockedInsertSmsMessage = vi.mocked(insertSmsMessage);
 

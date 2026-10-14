@@ -1,8 +1,8 @@
 "use server";
 
-import { saveBillingProfile } from "@firstfold/db";
-import { firstBillingDetailsProblem, parseBillingDetails } from "@firstfold/shared/lib/billing/billing-details-form";
-import { logBillingEvent } from "@firstfold/shared/server/billing-log";
+import { saveBillingProfile } from "@fynix/db";
+import { firstBillingDetailsProblem, parseBillingDetails } from "@fynix/shared/lib/billing/billing-details-form";
+import { logBillingEvent } from "@fynix/shared/server/billing-log";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";

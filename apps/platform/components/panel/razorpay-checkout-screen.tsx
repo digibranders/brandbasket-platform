@@ -3,8 +3,8 @@
 import { useCallback, useState, type ReactElement } from "react";
 import { useBrand } from "@/components/panel/brand-provider";
 import { supportEmailOf } from "@/lib/brand";
-import type { BrandLogo } from "@firstfold/shared/ui/logo";
-import { AuthScreen } from "@firstfold/shared/ui/panel/auth-screen";
+import type { BrandLogo } from "@fynix/shared/ui/logo";
+import { AuthScreen } from "@fynix/shared/ui/panel/auth-screen";
 import {
   RazorpayCheckoutLauncher,
   type RazorpayCheckoutLauncherProps,
@@ -13,8 +13,8 @@ import {
 interface RazorpayCheckoutScreenProps extends RazorpayCheckoutLauncherProps {
   /** What the page says while the payment window is still opening. */
   readonly openingLede: string;
-  /** The logo of the brand the dashboard is sold under, when it is not Firstfold (lib/brand.ts logoOf). */
-  readonly brand?: BrandLogo;
+  /** The logo to draw (lib/brand.ts logoOf). */
+  readonly brand: BrandLogo;
 }
 
 /**

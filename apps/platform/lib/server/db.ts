@@ -1,17 +1,17 @@
 import "server-only";
-import { createDatabase, type Database } from "@firstfold/db";
+import { createDatabase, type Database } from "@fynix/db";
 import { serverEnv } from "@/lib/server/env";
 
 // Kept on globalThis so hot reloads in development reuse pools instead of opening new ones.
 const holder = globalThis as typeof globalThis & {
-  firstfoldAppDb?: Database;
-  firstfoldStaffDb?: Database;
+  fynixAppDb?: Database;
+  fynixStaffDb?: Database;
 };
 
 /** Customer-facing work. Bound by row-level security: scope queries with withUserScope / withTenantScope. */
 export function getAppDb(): Database {
-  holder.firstfoldAppDb ??= createDatabase(serverEnv().DATABASE_URL).db;
-  return holder.firstfoldAppDb;
+  holder.fynixAppDb ??= createDatabase(serverEnv().DATABASE_URL).db;
+  return holder.fynixAppDb;
 }
 
 /**
@@ -64,6 +64,6 @@ export function getAppDb(): Database {
  *   private file lifecycle changes and records redacted automatic errors; it does not read customer messages.
  */
 export function getStaffDb(): Database {
-  holder.firstfoldStaffDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;
-  return holder.firstfoldStaffDb;
+  holder.fynixStaffDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;
+  return holder.fynixStaffDb;
 }

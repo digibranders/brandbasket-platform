@@ -1,4 +1,4 @@
-import type { ClientBilling, ClientFirstPayment, ClientSubscription } from "@firstfold/db";
+import type { ClientBilling, ClientFirstPayment, ClientSubscription } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { clientPaymentState, countPayingClients } from "./client-payment";
 

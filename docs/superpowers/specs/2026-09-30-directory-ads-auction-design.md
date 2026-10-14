@@ -5,8 +5,8 @@ pricing and all will be set by staff per category").
 
 ## Goal
 
-Local businesses on Firstfold Local (firstfold.io/in) can advertise on the directory's list pages. To advertise, a
-business first signs up for a **free listing account** for its listing and Firstfold confirms it owns it. It then bids
+Local businesses on the local directory (fynix.digital/in) can advertise on the directory's list pages. To advertise, a
+business first signs up for a **free listing account** for its listing and Fynix confirms it owns it. It then bids
 for ad spots **week by week** in a sealed-bid auction. Staff set the **base price per category**, which is also the
 lowest bid.
 
@@ -19,7 +19,7 @@ in the directory yet, SMS or email notices (everything is shown in the dashboard
 - `businesses.kind` (`website` | `listing`, default `website`). Website clients are unchanged. A `listing` business is
   a free account: no subscription, no website project, no Payload tenant.
 - **Sign up**: the website's business page links "Own this business? Claim it and advertise" to
-  `app.firstfold.io/join?listing=<key>&name=<business name>`. The form takes your name, email, password and mobile
+  `app.fynix.digital/join?listing=<key>&name=<business name>`. The form takes your name, email, password and mobile
   number, and creates the user, a `listing` business (currency INR), the owner membership and a pending claim in one
   go, then signs them in and opens `/advertise`. Rate limited per network (5 an hour). An email that already has an
   account gets "Sign in instead".

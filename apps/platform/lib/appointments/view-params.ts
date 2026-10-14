@@ -11,7 +11,7 @@
  * principle every form on this dashboard follows (see lib/panel-form-state.ts).
  */
 import { z } from "zod";
-import { isIsoDate, mondayOf } from "@firstfold/shared/lib/calendar/local-date";
+import { isIsoDate, mondayOf } from "@fynix/shared/lib/calendar/local-date";
 import { isIsoMonth } from "./view-ranges";
 
 export const APPOINTMENTS_VIEWS = ["today", "week", "month", "custom"] as const;
@@ -68,7 +68,7 @@ const RAW_SCHEMA = z.object({
 });
 
 /** Whole days from `from` to `to`, both YYYY-MM-DD (negative when `to` is before `from`) -- the same
- * date-string-only trick @firstfold/shared's slots.ts uses for day maths, so this never needs a time zone. */
+ * date-string-only trick @fynix/shared's slots.ts uses for day maths, so this never needs a time zone. */
 function daysBetween(from: string, to: string): number {
   return Math.round((new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime()) / 86_400_000);
 }

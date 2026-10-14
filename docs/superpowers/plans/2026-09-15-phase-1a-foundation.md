@@ -2,18 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn the marketing-site repo into a pnpm workspace with a local Postgres database, row-level security, invite-only auth, host-based routing, and working sign-in screens for Firstfold staff (`admin.localhost:3000`) and customers (`app.localhost:3000`). The marketing site at `localhost:3000` must keep working unchanged.
+**Goal:** Turn the marketing-site repo into a pnpm workspace with a local Postgres database, row-level security, invite-only auth, host-based routing, and working sign-in screens for Fynix staff (`admin.localhost:3000`) and customers (`app.localhost:3000`). The marketing site at `localhost:3000` must keep working unchanged.
 
 **Architecture:**
 - The existing Next.js 16 app moves to `apps/web`. Two workspace packages hold shared server code:
-  - `@firstfold/db`: Drizzle schema, migrations, role setup, scoped transactions, rate limiting.
-  - `@firstfold/auth`: a Better Auth factory plus an invite-only account-creation gate.
+  - `@fynix/db`: Drizzle schema, migrations, role setup, scoped transactions, rate limiting.
+  - `@fynix/auth`: a Better Auth factory plus an invite-only account-creation gate.
 - `apps/web/proxy.ts` maps each hostname to a route prefix (`/app-host`, `/admin-host`) and 404s direct access to those prefixes on the marketing host.
-- The app connects as `webfold_app`, which is subject to row-level security. Staff and system work connects as `webfold_staff`. Migrations run as the local superuser.
+- The app connects as `fynix_app`, which is subject to row-level security. Staff and system work connects as `fynix_staff`. Migrations run as the local superuser.
 
 **Tech Stack:** Next.js 16.3.5, React 19.2, TypeScript 5, Tailwind 4, zod 4, pnpm 10.30 workspaces, PostgreSQL 14, drizzle-orm 0.45.2, drizzle-kit 0.31.10, pg 8.23, better-auth 1.7.5, uuidv7 1.2.1, Vitest 5, tsx 4.23, dotenv 17.4.
 
-**Spec:** `docs/superpowers/specs/2026-09-15-firstfold-platform-design.md` (§2 architecture, §4.1 identity tables, §7 auth, §13 local development).
+**Spec:** `docs/superpowers/specs/2026-09-15-fynix-platform-design.md` (§2 architecture, §4.1 identity tables, §7 auth, §13 local development).
 
 **Not in this plan:**
 - **1B:** leads, invites, email outbox, marketing copy changes.
@@ -27,7 +27,7 @@
 - **This is Next.js 16.** Before touching Next.js APIs, read the matching guide in `apps/web/node_modules/next/dist/docs/`. Middleware is now `proxy.ts`.
 - **Local only.** Nothing talks to external services. The database is the local Postgres on `localhost:5432`; your macOS user is a superuser with no password.
 - **Browsers:** use Chrome or Firefox for manual checks. They resolve `*.localhost` to 127.0.0.1; Safari may not.
-- **All commands run from the repository root** `/Users/siddiqueahmed/Desktop/AI/first-found/first-found` unless a step says otherwise.
+- **All commands run from the repository root** `/Users/siddiqueahmed/projects/fynix-platform` unless a step says otherwise.
 
 ## File map
 
@@ -39,7 +39,7 @@
   .gitignore                        nested node_modules/.next
   README.md                         updated local-development guide
 apps/web/                           (existing marketing app, moved)
-  package.json                      @firstfold/web
+  package.json                      @fynix/web
   next.config.ts                    + transpilePackages, allowedDevOrigins
   proxy.ts                          host → surface rewrite
   .env.example                      documents every variable
@@ -62,7 +62,7 @@ packages/db/
   migrations/0000_init.sql          generated
   migrations/0001_rls_and_grants.sql
   scripts/init-local-env.ts         writes apps/web/.env.local
-  scripts/setup-roles.ts            creates webfold_app / webfold_staff
+  scripts/setup-roles.ts            creates fynix_app / fynix_staff
   scripts/migrate.ts                applies migrations (dev or test)
   src/local-env.ts (+test)          finds the workspace root, loads .env.local
   src/local-env-template.ts (+test) builds the .env.local contents (pure)
@@ -135,7 +135,7 @@ Expected: the root now contains only `README.md`, `apps`, `docs` and `.gitignore
 Replace `apps/web/package.json` with:
 ```json
 {
-  "name": "@firstfold/web",
+  "name": "@fynix/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -179,16 +179,16 @@ packages:
 Create `package.json`:
 ```json
 {
-  "name": "firstfold",
+  "name": "fynix",
   "private": true,
   "packageManager": "pnpm@10.30.3",
   "engines": {
     "node": ">=24"
   },
   "scripts": {
-    "dev": "pnpm --filter @firstfold/web dev",
-    "build": "pnpm --filter @firstfold/web build",
-    "lint": "pnpm --filter @firstfold/web lint",
+    "dev": "pnpm --filter @fynix/web dev",
+    "build": "pnpm --filter @fynix/web build",
+    "lint": "pnpm --filter @fynix/web lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test"
   }
@@ -351,8 +351,8 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: "Firstfold · Websites for local businesses",
-    template: "%s · Firstfold",
+    default: "Fynix · Websites for local businesses",
+    template: "%s · Fynix",
   },
   description: siteConfig.description,
   applicationName: siteConfig.name,
@@ -423,7 +423,7 @@ Expected: all pass. The build route table still lists `/`, `/about`, `/case-stud
 
 ---
 
-### Task 3: Create `@firstfold/db` with local environment tooling
+### Task 3: Create `@fynix/db` with local environment tooling
 
 **Files:**
 - Create: `tsconfig.base.json`
@@ -461,7 +461,7 @@ Create `tsconfig.base.json`:
 Create `packages/db/package.json`:
 ```json
 {
-  "name": "@firstfold/db",
+  "name": "@fynix/db",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -546,7 +546,7 @@ import { findWorkspaceRoot, requireEnv } from "./local-env";
 
 describe("findWorkspaceRoot", () => {
   it("walks up to the directory that contains pnpm-workspace.yaml", () => {
-    const root = mkdtempSync(join(tmpdir(), "firstfold-root-"));
+    const root = mkdtempSync(join(tmpdir(), "fynix-root-"));
     writeFileSync(join(root, "pnpm-workspace.yaml"), "packages: []\n");
     const nested = join(root, "packages", "db", "src");
     mkdirSync(nested, { recursive: true });
@@ -555,14 +555,14 @@ describe("findWorkspaceRoot", () => {
   });
 
   it("throws a helpful error outside a workspace", () => {
-    const outside = mkdtempSync(join(tmpdir(), "firstfold-outside-"));
+    const outside = mkdtempSync(join(tmpdir(), "fynix-outside-"));
 
     expect(() => findWorkspaceRoot(outside)).toThrow(/Could not find pnpm-workspace\.yaml/);
   });
 });
 
 describe("requireEnv", () => {
-  const NAME = "FIRSTFOLD_TEST_REQUIRE_ENV";
+  const NAME = "FYNIX_TEST_REQUIRE_ENV";
 
   afterEach(() => {
     delete process.env[NAME];
@@ -602,19 +602,19 @@ describe("buildLocalEnvFile", () => {
   const file = buildLocalEnvFile(secrets);
 
   it("connects migrations as the local superuser, URL-encoding the OS user name", () => {
-    expect(valueOf(file, "DATABASE_URL_OWNER")).toBe("postgresql://sid%20ahmed@localhost:5432/webfold");
-    expect(valueOf(file, "DATABASE_URL_OWNER_TEST")).toBe("postgresql://sid%20ahmed@localhost:5432/webfold_test");
+    expect(valueOf(file, "DATABASE_URL_OWNER")).toBe("postgresql://sid%20ahmed@localhost:5432/fynix_platform");
+    expect(valueOf(file, "DATABASE_URL_OWNER_TEST")).toBe("postgresql://sid%20ahmed@localhost:5432/fynix_platform_test");
   });
 
   it("connects the runtime as the application roles with their passwords", () => {
-    expect(valueOf(file, "DATABASE_URL")).toBe("postgresql://webfold_app:app-pass@localhost:5432/webfold");
-    expect(valueOf(file, "DATABASE_URL_STAFF")).toBe("postgresql://webfold_staff:staff-pass@localhost:5432/webfold");
-    expect(valueOf(file, "DATABASE_URL_TEST")).toBe("postgresql://webfold_app:app-pass@localhost:5432/webfold_test");
+    expect(valueOf(file, "DATABASE_URL")).toBe("postgresql://fynix_app:app-pass@localhost:5432/fynix_platform");
+    expect(valueOf(file, "DATABASE_URL_STAFF")).toBe("postgresql://fynix_staff:staff-pass@localhost:5432/fynix_platform");
+    expect(valueOf(file, "DATABASE_URL_TEST")).toBe("postgresql://fynix_app:app-pass@localhost:5432/fynix_platform_test");
     expect(valueOf(file, "DATABASE_URL_STAFF_TEST")).toBe(
-      "postgresql://webfold_staff:staff-pass@localhost:5432/webfold_test",
+      "postgresql://fynix_staff:staff-pass@localhost:5432/fynix_platform_test",
     );
-    expect(valueOf(file, "FIRSTFOLD_APP_PASSWORD")).toBe("app-pass");
-    expect(valueOf(file, "FIRSTFOLD_STAFF_PASSWORD")).toBe("staff-pass");
+    expect(valueOf(file, "FYNIX_APP_PASSWORD")).toBe("app-pass");
+    expect(valueOf(file, "FYNIX_STAFF_PASSWORD")).toBe("staff-pass");
   });
 
   it("includes the auth secret and the three local origins", () => {
@@ -630,7 +630,7 @@ describe("buildLocalEnvFile", () => {
 
 Run:
 ```bash
-pnpm install && pnpm --filter @firstfold/db test
+pnpm install && pnpm --filter @fynix/db test
 ```
 Expected: FAIL. Vitest reports it cannot resolve `./local-env` and `./local-env-template`.
 
@@ -655,7 +655,7 @@ export function findWorkspaceRoot(startDir: string = process.cwd()): string {
     const parent = dirname(current);
     if (parent === current) {
       throw new Error(
-        `Could not find ${WORKSPACE_MARKER} above ${startDir}. Run this command inside the Firstfold repository.`,
+        `Could not find ${WORKSPACE_MARKER} above ${startDir}. Run this command inside the Fynix repository.`,
       );
     }
     current = parent;
@@ -690,8 +690,8 @@ export interface LocalEnvSecrets {
 }
 
 const DATABASE_HOST = "localhost:5432";
-export const DEV_DATABASE = "webfold";
-export const TEST_DATABASE = "webfold_test";
+export const DEV_DATABASE = "fynix_platform";
+export const TEST_DATABASE = "fynix_platform_test";
 
 function ownerUrl(osUser: string, database: string): string {
   return `postgresql://${encodeURIComponent(osUser)}@${DATABASE_HOST}/${database}`;
@@ -711,14 +711,14 @@ export function buildLocalEnvFile(secrets: LocalEnvSecrets): string {
     `DATABASE_URL_OWNER_TEST=${ownerUrl(secrets.osUser, TEST_DATABASE)}`,
     "",
     "# Passwords for the application roles created by `pnpm db:roles`.",
-    `FIRSTFOLD_APP_PASSWORD=${secrets.appPassword}`,
-    `FIRSTFOLD_STAFF_PASSWORD=${secrets.staffPassword}`,
+    `FYNIX_APP_PASSWORD=${secrets.appPassword}`,
+    `FYNIX_STAFF_PASSWORD=${secrets.staffPassword}`,
     "",
-    "# Runtime connections. webfold_app is bound by row-level security; webfold_staff does staff and system work.",
-    `DATABASE_URL=${roleUrl("webfold_app", secrets.appPassword, DEV_DATABASE)}`,
-    `DATABASE_URL_STAFF=${roleUrl("webfold_staff", secrets.staffPassword, DEV_DATABASE)}`,
-    `DATABASE_URL_TEST=${roleUrl("webfold_app", secrets.appPassword, TEST_DATABASE)}`,
-    `DATABASE_URL_STAFF_TEST=${roleUrl("webfold_staff", secrets.staffPassword, TEST_DATABASE)}`,
+    "# Runtime connections. fynix_app is bound by row-level security; fynix_staff does staff and system work.",
+    `DATABASE_URL=${roleUrl("fynix_app", secrets.appPassword, DEV_DATABASE)}`,
+    `DATABASE_URL_STAFF=${roleUrl("fynix_staff", secrets.staffPassword, DEV_DATABASE)}`,
+    `DATABASE_URL_TEST=${roleUrl("fynix_app", secrets.appPassword, TEST_DATABASE)}`,
+    `DATABASE_URL_STAFF_TEST=${roleUrl("fynix_staff", secrets.staffPassword, TEST_DATABASE)}`,
     "",
     "# Auth",
     `BETTER_AUTH_SECRET=${secrets.authSecret}`,
@@ -736,7 +736,7 @@ export function buildLocalEnvFile(secrets: LocalEnvSecrets): string {
 
 Run:
 ```bash
-pnpm --filter @firstfold/db test
+pnpm --filter @fynix/db test
 ```
 Expected: PASS (7 tests).
 
@@ -774,24 +774,24 @@ console.log(`Wrote ${path}`);
 Replace the root `package.json` with:
 ```json
 {
-  "name": "firstfold",
+  "name": "fynix",
   "private": true,
   "packageManager": "pnpm@10.30.3",
   "engines": {
     "node": ">=24"
   },
   "scripts": {
-    "dev": "pnpm --filter @firstfold/web dev",
-    "build": "pnpm --filter @firstfold/web build",
-    "lint": "pnpm --filter @firstfold/web lint",
+    "dev": "pnpm --filter @fynix/web dev",
+    "build": "pnpm --filter @fynix/web build",
+    "lint": "pnpm --filter @fynix/web lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:integration": "pnpm db:migrate:test && pnpm -r --workspace-concurrency=1 test:integration",
-    "env:init": "pnpm --filter @firstfold/db env:init",
-    "db:roles": "pnpm --filter @firstfold/db db:roles",
-    "db:migrate": "pnpm --filter @firstfold/db db:migrate",
-    "db:migrate:test": "pnpm --filter @firstfold/db db:migrate:test",
-    "staff:create": "pnpm --filter @firstfold/auth staff:create"
+    "env:init": "pnpm --filter @fynix/db env:init",
+    "db:roles": "pnpm --filter @fynix/db db:roles",
+    "db:migrate": "pnpm --filter @fynix/db db:migrate",
+    "db:migrate:test": "pnpm --filter @fynix/db db:migrate:test",
+    "staff:create": "pnpm --filter @fynix/auth staff:create"
   }
 }
 ```
@@ -818,11 +818,11 @@ NEXT_PUBLIC_CONTACT_EMAIL=
 DATABASE_URL_OWNER=
 DATABASE_URL_OWNER_TEST=
 
-# Passwords for the webfold_app and webfold_staff roles.
-FIRSTFOLD_APP_PASSWORD=
-FIRSTFOLD_STAFF_PASSWORD=
+# Passwords for the fynix_app and fynix_staff roles.
+FYNIX_APP_PASSWORD=
+FYNIX_STAFF_PASSWORD=
 
-# Runtime connections: webfold_app (row-level security) and webfold_staff (staff and system work).
+# Runtime connections: fynix_app (row-level security) and fynix_staff (staff and system work).
 DATABASE_URL=
 DATABASE_URL_STAFF=
 DATABASE_URL_TEST=
@@ -843,13 +843,13 @@ Run:
 ```bash
 pnpm env:init && grep -c "=" apps/web/.env.local
 ```
-Expected: `Wrote /Users/siddiqueahmed/Desktop/AI/first-found/first-found/apps/web/.env.local`, then a count of `12`.
+Expected: `Wrote /Users/siddiqueahmed/projects/fynix-platform/apps/web/.env.local`, then a count of `12`.
 
 - [ ] **Step 11: Checkpoint**
 
 Run:
 ```bash
-pnpm --filter @firstfold/db typecheck && pnpm --filter @firstfold/db test
+pnpm --filter @fynix/db typecheck && pnpm --filter @fynix/db test
 ```
 Expected: `tsc` exits 0; 7 tests pass.
 
@@ -1120,7 +1120,7 @@ export default defineConfig({
 
 Run:
 ```bash
-pnpm --filter @firstfold/db exec drizzle-kit generate --name init && ls packages/db/migrations
+pnpm --filter @fynix/db exec drizzle-kit generate --name init && ls packages/db/migrations
 ```
 Expected: drizzle-kit reports 8 tables. `migrations` contains `0000_init.sql` and `meta/`. Open `0000_init.sql` and confirm it has `CREATE TYPE` for `business_member_role` and `staff_role`, and `CREATE TABLE` for `users`, `sessions`, `accounts`, `verifications`, `businesses`, `business_members`, `staff_members` and `rate_limit_buckets`.
 
@@ -1128,7 +1128,7 @@ Expected: drizzle-kit reports 8 tables. `migrations` contains `0000_init.sql` an
 
 Run:
 ```bash
-pnpm --filter @firstfold/db typecheck
+pnpm --filter @fynix/db typecheck
 ```
 Expected: exits 0.
 
@@ -1146,8 +1146,8 @@ Create `packages/db/src/roles.ts`:
 ```ts
 /** Login roles the application uses. Created by `pnpm db:roles`; migrations grant their privileges. */
 export const APPLICATION_ROLES = [
-  { name: "webfold_app", passwordEnv: "FIRSTFOLD_APP_PASSWORD" },
-  { name: "webfold_staff", passwordEnv: "FIRSTFOLD_STAFF_PASSWORD" },
+  { name: "fynix_app", passwordEnv: "FYNIX_APP_PASSWORD" },
+  { name: "fynix_staff", passwordEnv: "FYNIX_STAFF_PASSWORD" },
 ] as const;
 ```
 
@@ -1246,7 +1246,7 @@ try {
 
 Run:
 ```bash
-pnpm --filter @firstfold/db exec drizzle-kit generate --custom --name rls_and_grants && ls packages/db/migrations
+pnpm --filter @fynix/db exec drizzle-kit generate --custom --name rls_and_grants && ls packages/db/migrations
 ```
 Expected: `0001_rls_and_grants.sql` now exists and contains only a placeholder comment.
 
@@ -1255,10 +1255,10 @@ Expected: `0001_rls_and_grants.sql` now exists and contains only a placeholder c
 Replace the whole content of `packages/db/migrations/0001_rls_and_grants.sql` with:
 ```sql
 -- Roles are created by `pnpm db:roles` before migrations run.
--- webfold_app: customer-facing runtime, bound by row-level security.
--- webfold_staff: staff console and system work; explicit allow-all policies below.
+-- fynix_app: customer-facing runtime, bound by row-level security.
+-- fynix_staff: staff console and system work; explicit allow-all policies below.
 
-GRANT USAGE ON SCHEMA public TO webfold_app, webfold_staff;
+GRANT USAGE ON SCHEMA public TO fynix_app, fynix_staff;
 --> statement-breakpoint
 
 -- Request-scoped identity, set with set_config(..., true) inside a transaction (SET LOCAL semantics).
@@ -1273,17 +1273,17 @@ CREATE FUNCTION app_current_business_id() RETURNS uuid
 --> statement-breakpoint
 
 -- Auth tables are looked up by email and session token before any identity is known, so they are not tenant-scoped.
-GRANT SELECT, INSERT, UPDATE, DELETE ON users, sessions, accounts, verifications TO webfold_app, webfold_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON users, sessions, accounts, verifications TO fynix_app, fynix_staff;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON rate_limit_buckets TO webfold_app, webfold_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON rate_limit_buckets TO fynix_app, fynix_staff;
 --> statement-breakpoint
 
 -- Tenant tables: customers read their own rows; only staff and system work may write.
-GRANT SELECT ON businesses, business_members TO webfold_app;
+GRANT SELECT ON businesses, business_members TO fynix_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON businesses, business_members, staff_members TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON businesses, business_members, staff_members TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE businesses ENABLE ROW LEVEL SECURITY;
@@ -1296,12 +1296,12 @@ ALTER TABLE staff_members ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
 CREATE POLICY business_members_own_rows ON business_members
-  FOR SELECT TO webfold_app
+  FOR SELECT TO fynix_app
   USING (user_id = app_current_user_id());
 --> statement-breakpoint
 
 CREATE POLICY businesses_members_only ON businesses
-  FOR SELECT TO webfold_app
+  FOR SELECT TO fynix_app
   USING (
     EXISTS (
       SELECT 1 FROM business_members m
@@ -1311,24 +1311,24 @@ CREATE POLICY businesses_members_only ON businesses
 --> statement-breakpoint
 
 CREATE POLICY businesses_staff_all ON businesses
-  FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+  FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
 CREATE POLICY business_members_staff_all ON business_members
-  FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+  FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
 CREATE POLICY staff_members_staff_all ON staff_members
-  FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+  FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 ```
 
 - [ ] **Step 6: Create the test database**
 
 Run:
 ```bash
-psql -h localhost -d postgres -c "CREATE DATABASE webfold_test"
+psql -h localhost -d postgres -c "CREATE DATABASE fynix_platform_test"
 ```
-Expected: `CREATE DATABASE`. If it reports that the database already exists, check with `psql -h localhost -d webfold_test -c "\dt"` that it has no tables, then continue.
+Expected: `CREATE DATABASE`. If it reports that the database already exists, check with `psql -h localhost -d fynix_platform_test -c "\dt"` that it has no tables, then continue.
 
 - [ ] **Step 7: Create roles and migrate both databases**
 
@@ -1336,7 +1336,7 @@ Run:
 ```bash
 pnpm db:roles && pnpm db:migrate && pnpm db:migrate:test
 ```
-Expected: `Created role webfold_app`, `Created role webfold_staff`, `Migrations applied to the dev database.`, `Migrations applied to the test database.`
+Expected: `Created role fynix_app`, `Created role fynix_staff`, `Migrations applied to the dev database.`, `Migrations applied to the test database.`
 
 - [ ] **Step 8: Prove the app role is bound by RLS**
 
@@ -1348,7 +1348,7 @@ Expected: first command prints `0`; second fails with `ERROR:  permission denied
 
 - [ ] **Step 9: Harden the public schema (added after security review)**
 
-PostgreSQL 14 lets every role create objects in `public`, so an application role could plant a function that owner-run code later executes. Run `pnpm --filter @firstfold/db exec drizzle-kit generate --custom --name harden_public_schema`, then replace the whole content of `packages/db/migrations/0002_harden_public_schema.sql` with:
+PostgreSQL 14 lets every role create objects in `public`, so an application role could plant a function that owner-run code later executes. Run `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name harden_public_schema`, then replace the whole content of `packages/db/migrations/0002_harden_public_schema.sql` with:
 ```sql
 -- Security hardening after review of 0001.
 -- PostgreSQL 14 lets every role create objects in the public schema. The application roles must never be able
@@ -1510,7 +1510,7 @@ beforeEach(async () => {
   ]);
 });
 
-describe("row-level security for webfold_app", () => {
+describe("row-level security for fynix_app", () => {
   it("returns no businesses when no user scope is set", async () => {
     const rows = await dbs.app.db.select({ id: businesses.id }).from(businesses);
     expect(rows).toEqual([]);
@@ -1570,15 +1570,15 @@ describe("row-level security for webfold_app", () => {
 });
 
 describe("row-level security coverage", () => {
-  // Any new table webfold_app can read must enable row-level security, or be added to this list on purpose.
-  it("leaves only the auth and rate-limit tables readable by webfold_app without RLS", async () => {
+  // Any new table fynix_app can read must enable row-level security, or be added to this list on purpose.
+  it("leaves only the auth and rate-limit tables readable by fynix_app without RLS", async () => {
     const result = await dbs.owner.db.execute<{ table_name: string }>(sql`
       select c.relname as table_name
       from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public'
         and c.relkind = 'r'
-        and has_table_privilege('webfold_app', c.oid, 'SELECT')
+        and has_table_privilege('fynix_app', c.oid, 'SELECT')
         and not c.relrowsecurity
       order by c.relname
     `);
@@ -1644,7 +1644,7 @@ describe("staff queries", () => {
 
 Run:
 ```bash
-pnpm --filter @firstfold/db test:integration
+pnpm --filter @fynix/db test:integration
 ```
 Expected: FAIL. Vitest cannot resolve `./scope`, `./queries/memberships` and `./queries/staff`.
 
@@ -1789,7 +1789,7 @@ export { withTenantScope, withUserScope, type ScopedTransaction, type TenantScop
 
 Run:
 ```bash
-pnpm --filter @firstfold/db test:integration
+pnpm --filter @fynix/db test:integration
 ```
 Expected: PASS (13 tests).
 
@@ -1807,7 +1807,7 @@ Expected: PASS (13 tests).
 
 Run:
 ```bash
-pnpm --filter @firstfold/db typecheck && pnpm --filter @firstfold/db test
+pnpm --filter @fynix/db typecheck && pnpm --filter @fynix/db test
 ```
 Expected: `tsc` exits 0; unit tests pass.
 
@@ -1927,7 +1927,7 @@ describe("consumeRateLimit", () => {
 
 Run:
 ```bash
-pnpm --filter @firstfold/db test; pnpm --filter @firstfold/db test:integration
+pnpm --filter @fynix/db test; pnpm --filter @fynix/db test:integration
 ```
 Expected: both FAIL, unable to resolve `./rate-limit`.
 
@@ -2008,7 +2008,7 @@ export { assertValidRule, consumeRateLimit, windowStartFor, type RateLimitResult
 
 Run:
 ```bash
-pnpm --filter @firstfold/db test && pnpm --filter @firstfold/db test:integration
+pnpm --filter @fynix/db test && pnpm --filter @fynix/db test:integration
 ```
 Expected: unit PASS (15 tests: review fixes in Tasks 3 and 4 added 4 tests to the original 7, plus these 4); integration PASS (19 tests).
 
@@ -2016,15 +2016,15 @@ Expected: unit PASS (15 tests: review fixes in Tasks 3 and 4 added 4 tests to th
 
 Run:
 ```bash
-pnpm --filter @firstfold/db typecheck
+pnpm --filter @fynix/db typecheck
 ```
 Expected: exits 0.
 
 ---
 
-### Task 8: `@firstfold/auth`: Better Auth with an invite-only gate
+### Task 8: `@fynix/auth`: Better Auth with an invite-only gate
 
-Accounts may only be created by Firstfold's own server code: the staff CLI now, invite redemption in 1B. The gate is an `AsyncLocalStorage` grant that Better Auth's `user.create.before` hook checks. Phase 1 mounts no Better Auth HTTP route, so no public endpoint can create accounts either.
+Accounts may only be created by Fynix Digital's own server code: the staff CLI now, invite redemption in 1B. The gate is an `AsyncLocalStorage` grant that Better Auth's `user.create.before` hook checks. Phase 1 mounts no Better Auth HTTP route, so no public endpoint can create accounts either.
 
 **Files:**
 - Create: `packages/auth/package.json`, `packages/auth/tsconfig.json`, `packages/auth/vitest.config.ts`, `packages/auth/vitest.integration.config.ts`
@@ -2036,7 +2036,7 @@ Accounts may only be created by Firstfold's own server code: the staff CLI now, 
 Create `packages/auth/package.json`:
 ```json
 {
-  "name": "@firstfold/auth",
+  "name": "@fynix/auth",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -2050,7 +2050,7 @@ Create `packages/auth/package.json`:
     "staff:create": "tsx scripts/create-staff.ts"
   },
   "dependencies": {
-    "@firstfold/db": "workspace:*",
+    "@fynix/db": "workspace:*",
     "better-auth": "1.7.5",
     "drizzle-orm": "0.45.2",
     "zod": "^4.6.5"
@@ -2089,7 +2089,7 @@ Create `packages/auth/vitest.integration.config.ts`:
 ```ts
 import { defineConfig } from "vitest/config";
 
-/** Shares the test database with @firstfold/db, so files run one at a time. */
+/** Shares the test database with @fynix/db, so files run one at a time. */
 export default defineConfig({
   test: {
     environment: "node",
@@ -2105,7 +2105,7 @@ Run:
 ```bash
 pnpm install
 ```
-Expected: `better-auth` and the workspace link to `@firstfold/db` install.
+Expected: `better-auth` and the workspace link to `@fynix/db` install.
 
 - [ ] **Step 2: Write the failing unit tests for the grant**
 
@@ -2152,7 +2152,7 @@ describe("account creation grants", () => {
 
 Run:
 ```bash
-pnpm --filter @firstfold/auth test
+pnpm --filter @fynix/auth test
 ```
 Expected: FAIL, unable to resolve `./account-creation-grant`.
 
@@ -2187,7 +2187,7 @@ export function hasAccountCreationGrant(email: string): boolean {
 
 Run:
 ```bash
-pnpm --filter @firstfold/auth test
+pnpm --filter @fynix/auth test
 ```
 Expected: PASS (5 tests).
 
@@ -2195,8 +2195,8 @@ Expected: PASS (5 tests).
 
 Create `packages/auth/src/create-auth.integration.test.ts`:
 ```ts
-import { users } from "@firstfold/db";
-import { captureErrorText, openTestDatabases, resetTestDatabase, type TestDatabases } from "@firstfold/db/testing";
+import { users } from "@fynix/db";
+import { captureErrorText, openTestDatabases, resetTestDatabase, type TestDatabases } from "@fynix/db/testing";
 import { count } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { withAccountCreationGrant } from "./account-creation-grant";
@@ -2280,7 +2280,7 @@ describe("sign in", () => {
 
 Run:
 ```bash
-pnpm --filter @firstfold/auth test:integration
+pnpm --filter @fynix/auth test:integration
 ```
 Expected: FAIL, unable to resolve `./create-auth` and `./errors`.
 
@@ -2298,7 +2298,7 @@ export function isAuthApiError(error: unknown): error is APIError {
 
 Create `packages/auth/src/create-auth.ts`:
 ```ts
-import { accounts, sessions, users, verifications, type Database } from "@firstfold/db";
+import { accounts, sessions, users, verifications, type Database } from "@fynix/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
@@ -2318,7 +2318,7 @@ export interface AuthConfig {
 
 export function createAuth(config: AuthConfig) {
   return betterAuth({
-    appName: "Firstfold",
+    appName: "Fynix",
     baseURL: config.baseURL,
     secret: config.secret,
     trustedOrigins: [...config.trustedOrigins],
@@ -2365,7 +2365,7 @@ export { isAuthApiError } from "./errors";
 
 Run:
 ```bash
-pnpm --filter @firstfold/auth test:integration
+pnpm --filter @fynix/auth test:integration
 ```
 Expected: PASS (5 tests). Better Auth may log the refused creations to stderr; that's expected.
 
@@ -2382,7 +2382,7 @@ Expected: PASS (5 tests). Better Auth may log the refused creations to stderr; t
 
 Run:
 ```bash
-pnpm --filter @firstfold/auth typecheck && pnpm --filter @firstfold/auth test
+pnpm --filter @fynix/auth typecheck && pnpm --filter @fynix/auth test
 ```
 Expected: `tsc` exits 0; 5 unit tests pass.
 
@@ -2447,8 +2447,8 @@ export function promptHidden(question: string): Promise<string> {
 Create `packages/auth/scripts/create-staff.ts`:
 ```ts
 import { parseArgs } from "node:util";
-import { createDatabase, staffMembers, staffRole, users } from "@firstfold/db";
-import { loadLocalEnv, requireEnv } from "@firstfold/db/local-env";
+import { createDatabase, staffMembers, staffRole, users } from "@fynix/db";
+import { loadLocalEnv, requireEnv } from "@fynix/db/local-env";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { createAccountWithGrant, createAuth, PASSWORD_MIN_LENGTH } from "../src";
@@ -2552,7 +2552,7 @@ Expected: `already has an account; granting staff access to it.` with no passwor
 
 Run:
 ```bash
-pnpm --filter @firstfold/auth typecheck
+pnpm --filter @fynix/auth typecheck
 ```
 Expected: exits 0.
 
@@ -2662,7 +2662,7 @@ describe("readOriginsFromEnv", () => {
 
 Run:
 ```bash
-pnpm --filter @firstfold/web test
+pnpm --filter @fynix/web test
 ```
 Expected: FAIL, unable to resolve `./surfaces`.
 
@@ -2755,7 +2755,7 @@ export function readOriginsFromEnv(env: Readonly<Record<string, string | undefin
 
 Run:
 ```bash
-pnpm --filter @firstfold/web test
+pnpm --filter @fynix/web test
 ```
 Expected: PASS, including the existing marketing tests.
 
@@ -2839,7 +2839,7 @@ Expected: `marketing /pricing: 200`, `marketing /app-host: 404`, `unknown host: 
 
 Run:
 ```bash
-pnpm lint && pnpm --filter @firstfold/web typecheck && pnpm --filter @firstfold/web test
+pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test
 ```
 Expected: all pass.
 
@@ -2856,9 +2856,9 @@ Expected: all pass.
 
 Run:
 ```bash
-pnpm --filter @firstfold/web add @firstfold/auth@workspace:* @firstfold/db@workspace:* pg@8.23.0 server-only@0.0.1
+pnpm --filter @fynix/web add @fynix/auth@workspace:* @fynix/db@workspace:* pg@8.23.0 server-only@0.0.1
 ```
-Expected: `apps/web/package.json` `dependencies` now also lists `"@firstfold/auth": "workspace:*"`, `"@firstfold/db": "workspace:*"`, `"pg": "8.23.0"` and `"server-only": "0.0.1"`. `pg` is listed directly because Next.js loads it as an external package at runtime, resolved from `apps/web`.
+Expected: `apps/web/package.json` `dependencies` now also lists `"@fynix/auth": "workspace:*"`, `"@fynix/db": "workspace:*"`, `"pg": "8.23.0"` and `"server-only": "0.0.1"`. `pg` is listed directly because Next.js loads it as an external package at runtime, resolved from `apps/web`.
 
 In `apps/web/next.config.ts`, replace:
 ```ts
@@ -2868,7 +2868,7 @@ with:
 ```ts
   poweredByHeader: false,
   // Workspace packages ship TypeScript source.
-  transpilePackages: ["@firstfold/auth", "@firstfold/db"],
+  transpilePackages: ["@fynix/auth", "@fynix/db"],
 ```
 
 - [ ] **Step 2: Write the failing unit tests**
@@ -2947,7 +2947,7 @@ describe("parseSignInForm", () => {
 
 Create `apps/web/lib/access.test.ts`:
 ```ts
-import type { BusinessMembership } from "@firstfold/db";
+import type { BusinessMembership } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { decideCustomerAccess, decideStaffAccess, type SessionUser } from "./access";
 
@@ -3059,7 +3059,7 @@ describe("retryMessage", () => {
 
 Run:
 ```bash
-pnpm --filter @firstfold/web test
+pnpm --filter @fynix/web test
 ```
 Expected: FAIL, unable to resolve `./client-ip`, `./sign-in-form`, `./access`, `./names` and `./sign-in-limits`.
 
@@ -3130,7 +3130,7 @@ export function parseSignInForm(formData: FormData): SignInParseResult {
 
 Create `apps/web/lib/access.ts`:
 ```ts
-import type { ActiveStaffMember, BusinessMembership } from "@firstfold/db";
+import type { ActiveStaffMember, BusinessMembership } from "@fynix/db";
 
 export interface SessionUser {
   readonly id: string;
@@ -3198,7 +3198,7 @@ export function firstName(fullName: string): string {
 
 Create `apps/web/lib/sign-in-limits.ts`:
 ```ts
-import type { RateLimitRule } from "@firstfold/db";
+import type { RateLimitRule } from "@fynix/db";
 
 export type SignInSurface = "customer" | "staff";
 
@@ -3242,7 +3242,7 @@ export function retryMessage(retryAfterSeconds: number): string {
 
 Run:
 ```bash
-pnpm --filter @firstfold/web test
+pnpm --filter @fynix/web test
 ```
 Expected: PASS.
 
@@ -3283,41 +3283,41 @@ export function serverEnv(): ServerEnv {
 Create `apps/web/lib/server/db.ts`:
 ```ts
 import "server-only";
-import { createDatabase, type Database } from "@firstfold/db";
+import { createDatabase, type Database } from "@fynix/db";
 import { serverEnv } from "./env";
 
 // Kept on globalThis so hot reloads in development reuse pools instead of opening new ones.
 const holder = globalThis as typeof globalThis & {
-  firstfoldAppDb?: Database;
-  firstfoldStaffDb?: Database;
+  fynixAppDb?: Database;
+  fynixStaffDb?: Database;
 };
 
 /** Customer-facing work. Bound by row-level security: scope queries with withUserScope / withTenantScope. */
 export function getAppDb(): Database {
-  holder.firstfoldAppDb ??= createDatabase(serverEnv().DATABASE_URL).db;
-  return holder.firstfoldAppDb;
+  holder.fynixAppDb ??= createDatabase(serverEnv().DATABASE_URL).db;
+  return holder.fynixAppDb;
 }
 
 /** Staff console and system work only. Never call from customer-facing code paths. */
 export function getStaffDb(): Database {
-  holder.firstfoldStaffDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;
-  return holder.firstfoldStaffDb;
+  holder.fynixStaffDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;
+  return holder.fynixStaffDb;
 }
 ```
 
 Create `apps/web/lib/server/auth.ts`:
 ```ts
 import "server-only";
-import { createAuth, type Auth } from "@firstfold/auth";
+import { createAuth, type Auth } from "@fynix/auth";
 import { getAppDb } from "./db";
 import { serverEnv } from "./env";
 
-const holder = globalThis as typeof globalThis & { firstfoldAuth?: Auth };
+const holder = globalThis as typeof globalThis & { fynixAuth?: Auth };
 
 export function getAuth(): Auth {
-  if (holder.firstfoldAuth === undefined) {
+  if (holder.fynixAuth === undefined) {
     const env = serverEnv();
-    holder.firstfoldAuth = createAuth({
+    holder.fynixAuth = createAuth({
       db: getAppDb(),
       secret: env.BETTER_AUTH_SECRET,
       baseURL: env.APP_ORIGIN,
@@ -3325,7 +3325,7 @@ export function getAuth(): Auth {
       nextCookies: true,
     });
   }
-  return holder.firstfoldAuth;
+  return holder.fynixAuth;
 }
 ```
 
@@ -3356,7 +3356,7 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
 Create `apps/web/lib/server/customer-access.ts`:
 ```ts
 import "server-only";
-import { listMembershipsForUser } from "@firstfold/db";
+import { listMembershipsForUser } from "@fynix/db";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { decideCustomerAccess, type CustomerAccess, type SessionUser, type TenantContext } from "@/lib/access";
@@ -3388,7 +3388,7 @@ export async function requireCustomerAccess(): Promise<GrantedCustomer> {
 Create `apps/web/lib/server/staff-access.ts`:
 ```ts
 import "server-only";
-import { findActiveStaffMember, type ActiveStaffMember } from "@firstfold/db";
+import { findActiveStaffMember, type ActiveStaffMember } from "@fynix/db";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { decideStaffAccess, type SessionUser, type StaffAccess } from "@/lib/access";
@@ -3419,8 +3419,8 @@ export async function requireStaffAccess(): Promise<GrantedStaff> {
 Create `apps/web/lib/server/sign-in.ts`:
 ```ts
 import "server-only";
-import { isInvalidCredentialsError } from "@firstfold/auth";
-import { consumeRateLimit, type RateLimitResult } from "@firstfold/db";
+import { isInvalidCredentialsError } from "@fynix/auth";
+import { consumeRateLimit, type RateLimitResult } from "@fynix/db";
 import { headers } from "next/headers";
 import { clientIpFrom } from "@/lib/client-ip";
 import { parseSignInForm, type SignInFormState } from "@/lib/sign-in-form";
@@ -3487,7 +3487,7 @@ export async function signOut(): Promise<void> {
 
 Run:
 ```bash
-pnpm lint && pnpm --filter @firstfold/web typecheck && pnpm --filter @firstfold/web test
+pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test
 ```
 Expected: all pass.
 
@@ -3700,7 +3700,7 @@ export function PanelNotFound(): ReactElement {
 
 Run:
 ```bash
-pnpm lint && pnpm --filter @firstfold/web typecheck
+pnpm lint && pnpm --filter @fynix/web typecheck
 ```
 Expected: both pass.
 
@@ -3743,7 +3743,7 @@ import type { ReactElement, ReactNode } from "react";
 import { requireSurfaceHost } from "@/lib/server/surface-host";
 
 export const metadata: Metadata = {
-  title: { default: "Staff console", template: "%s · Firstfold staff" },
+  title: { default: "Staff console", template: "%s · Fynix staff" },
   robots: { index: false, follow: false },
 };
 
@@ -3819,7 +3819,7 @@ export default async function AdminLoginPage(): Promise<ReactElement> {
             No staff <em>access.</em>
           </>
         }
-        lede={`${access.user.email} is signed in, but it isn’t a Firstfold staff account. Sign out and use your staff account instead.`}
+        lede={`${access.user.email} is signed in, but it isn’t a Fynix staff account. Sign out and use your staff account instead.`}
       >
         <SignOutButton />
       </AuthScreen>
@@ -3833,7 +3833,7 @@ export default async function AdminLoginPage(): Promise<ReactElement> {
           Staff <em>sign in.</em>
         </>
       }
-      lede="For the Firstfold team. Customers sign in to their own dashboard."
+      lede="For the Fynix team. Customers sign in to their own dashboard."
     >
       <SignInForm action={signInStaff} submitLabel="Sign in" />
     </AuthScreen>
@@ -3865,7 +3865,7 @@ export default async function AdminProtectedLayout({ children }: AdminProtectedL
 
 Create `apps/web/app/admin-host/(protected)/page.tsx`:
 ```tsx
-import { countPlatformRecords, type StaffRole } from "@firstfold/db";
+import { countPlatformRecords, type StaffRole } from "@fynix/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { firstName } from "@/lib/names";
@@ -3917,7 +3917,7 @@ export default async function AdminOverviewPage(): Promise<ReactElement> {
 
 Run:
 ```bash
-pnpm lint && pnpm --filter @firstfold/web typecheck
+pnpm lint && pnpm --filter @fynix/web typecheck
 ```
 Expected: both pass.
 
@@ -3939,7 +3939,7 @@ import type { ReactElement, ReactNode } from "react";
 import { requireSurfaceHost } from "@/lib/server/surface-host";
 
 export const metadata: Metadata = {
-  title: { default: "Your dashboard", template: "%s · Firstfold" },
+  title: { default: "Your dashboard", template: "%s · Fynix" },
   robots: { index: false, follow: false },
 };
 
@@ -4015,7 +4015,7 @@ export default async function AppLoginPage(): Promise<ReactElement> {
             Almost <em>there.</em>
           </>
         }
-        lede={`${access.user.email} is signed in, but it isn’t linked to a business yet. Contact Firstfold and we’ll sort it out.`}
+        lede={`${access.user.email} is signed in, but it isn’t linked to a business yet. Contact Fynix and we’ll sort it out.`}
       >
         <SignOutButton />
       </AuthScreen>
@@ -4029,7 +4029,7 @@ export default async function AppLoginPage(): Promise<ReactElement> {
           Welcome <em>back.</em>
         </>
       }
-      lede="Sign in to your Firstfold dashboard. New to Firstfold? Your account is created from the private setup link we send after your call."
+      lede="Sign in to your Fynix dashboard. New to Fynix? Your account is created from the private setup link we send after your call."
     >
       <SignInForm action={signInCustomer} submitLabel="Sign in" />
     </AuthScreen>
@@ -4077,7 +4077,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
         Hello, <em>{firstName(user.name)}.</em>
       </h1>
       <p className="mt-4 max-w-2xl text-lg leading-relaxed text-ink-soft">
-        This is the Firstfold dashboard for {tenant.businessName}. Your next step will appear here as your website
+        This is the Fynix dashboard for {tenant.businessName}. Your next step will appear here as your website
         takes shape.
       </p>
     </>
@@ -4089,7 +4089,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
 
 Run:
 ```bash
-pnpm lint && pnpm --filter @firstfold/web typecheck && pnpm build
+pnpm lint && pnpm --filter @fynix/web typecheck && pnpm build
 ```
 Expected: all pass. The build route table now also lists `/admin-host`, `/admin-host/login`, `/admin-host/[...missing]`, `/app-host`, `/app-host/login` and `/app-host/[...missing]` as dynamic (ƒ) routes.
 
@@ -4104,9 +4104,9 @@ Expected: all pass. The build route table now also lists `/admin-host`, `/admin-
 
 Replace `README.md` with:
 ````markdown
-# Firstfold
+# Fynix
 
-Firstfold builds and looks after websites for local businesses. This repository holds the marketing site, the customer dashboard and the staff console.
+Fynix builds and looks after websites for local businesses. This repository holds the marketing site, the customer dashboard and the staff console.
 
 Built with Next.js 16 (App Router), TypeScript, Tailwind CSS 4, zod, PostgreSQL, Drizzle and Better Auth, in a pnpm workspace.
 
@@ -4117,9 +4117,9 @@ Requires Node 24+, pnpm 10 and a local PostgreSQL where your macOS user can crea
 ```bash
 pnpm install
 pnpm env:init                                              # writes apps/web/.env.local with fresh secrets
-psql -h localhost -d postgres -c "CREATE DATABASE webfold" # skip if it already exists
-psql -h localhost -d postgres -c "CREATE DATABASE webfold_test"
-pnpm db:roles                                              # creates webfold_app and webfold_staff
+psql -h localhost -d postgres -c "CREATE DATABASE fynix_platform" # skip if it already exists
+psql -h localhost -d postgres -c "CREATE DATABASE fynix_platform_test"
+pnpm db:roles                                              # creates fynix_app and fynix_staff
 pnpm db:migrate && pnpm db:migrate:test
 pnpm staff:create --email you@example.com --name "Your Name" --role admin
 pnpm dev
@@ -4154,7 +4154,7 @@ Use Chrome or Firefox, which resolve `*.localhost` to your machine:
 - `apps/web/content/`: page copy and structured content
 - `apps/web/lib/pricing.ts`: every price on the site, in US cents. Change prices here only.
 - `packages/db/`: schema, migrations, row-level security, scoped queries, rate limiting
-- `packages/auth/`: Better Auth setup. Accounts can only be created by Firstfold's own server code.
+- `packages/auth/`: Better Auth setup. Accounts can only be created by Fynix Digital's own server code.
 - `docs/superpowers/`: the platform spec and implementation plans
 
 ## Content rules
@@ -4169,7 +4169,7 @@ Run:
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration && pnpm build
 ```
-Expected: ESLint clean; `tsc` passes in `@firstfold/web`, `@firstfold/db` and `@firstfold/auth`; unit tests pass in all three; integration tests pass (23 in db, 5 in auth; review fixes added tests beyond the counts stated in earlier tasks); the build succeeds.
+Expected: ESLint clean; `tsc` passes in `@fynix/web`, `@fynix/db` and `@fynix/auth`; unit tests pass in all three; integration tests pass (23 in db, 5 in auth; review fixes added tests beyond the counts stated in earlier tasks); the build succeeds.
 
 - [ ] **Step 3: Manual verification in the browser**
 

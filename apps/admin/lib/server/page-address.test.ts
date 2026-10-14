@@ -1,11 +1,11 @@
-import { findPlaceByUrlCode, listLegacyKeysByPlace, type DirectoryPlace } from "@firstfold/db";
+import { findPlaceByUrlCode, listLegacyKeysByPlace, type DirectoryPlace } from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listingKeyForAddress, placeIdForAddress, placeOfBusinessAddress, resolveListingAddress } from "./page-address";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({})) }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return { ...actual, findPlaceByUrlCode: vi.fn(), listLegacyKeysByPlace: vi.fn() };
 });
 
@@ -17,7 +17,7 @@ const PLACE: DirectoryPlace = {
   urlSlug: "smile-dental",
   urlLockedAt: null,
 };
-const ADDRESS = "https://firstfold.io/in/mh/business/smile-dental/9f94ykmdjp?ref=x";
+const ADDRESS = "https://fynix.digital/in/mh/business/smile-dental/9f94ykmdjp?ref=x";
 
 describe("business addresses staff paste", () => {
   beforeEach(() => {
@@ -37,7 +37,7 @@ describe("business addresses staff paste", () => {
   });
 
   it("passes anything else through as typed, without asking the database", async () => {
-    for (const typed of ["dentists/thane/naupada/smile-dental", "https://firstfold.io/in/dentists/mh/thane/naupada/smile-dental", "k7m2q9a", ""]) {
+    for (const typed of ["dentists/thane/naupada/smile-dental", "https://fynix.digital/in/dentists/mh/thane/naupada/smile-dental", "k7m2q9a", ""]) {
       expect(await listingKeyForAddress(typed)).toBe(typed);
       expect(await placeIdForAddress(typed)).toBe(typed);
     }

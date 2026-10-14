@@ -1,4 +1,4 @@
-import type { BillingProvider } from "@firstfold/billing";
+import type { BillingProvider } from "@fynix/billing";
 import {
   changeAddOnEndKind,
   consumeRateLimit,
@@ -14,7 +14,7 @@ import {
   type Database,
   type ScopedTransaction,
   type Subscription,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { closeAccountFor, hasRunningAddOnsFor } from "./account-exit";
 import { checkPasswordFor } from "./account-security";
@@ -30,7 +30,7 @@ vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./account-security", () => ({ checkPasswordFor: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
 vi.mock("./discount-plans", () => ({ ensureDiscountPlan: vi.fn() }));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   ACCOUNT_CLOSURE_GRACE_DAYS: 30,
   applyRetentionDiscount: vi.fn(),
   cancelStaleSubscription: vi.fn(),

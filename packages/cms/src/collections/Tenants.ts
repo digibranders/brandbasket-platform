@@ -1,7 +1,7 @@
 import type { CollectionConfig } from "payload";
 
 /**
- * One document per Firstfold business (packages/db's `businesses` table is the source of truth for identity;
+ * One document per Fynix business (packages/db's `businesses` table is the source of truth for identity;
  * `businessId` here is that table's id, kept in sync automatically when a business is created — see
  * apps/platform/lib/server/payload-tenant-sync.ts, called from every place a business row is created). Never
  * created by hand in the Payload admin panel: staff pick an existing tenant from the switcher, they don't make new

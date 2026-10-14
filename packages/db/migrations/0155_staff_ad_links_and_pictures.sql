@@ -26,11 +26,11 @@ ALTER TABLE "directory_staff_ads" ADD CONSTRAINT "directory_staff_ads_link_url_c
 ALTER TABLE "directory_staff_ads" ADD CONSTRAINT "directory_staff_ads_target_check" CHECK (("directory_staff_ads"."listing_key" is null) <> ("directory_staff_ads"."link_url" is null));--> statement-breakpoint
 ALTER TABLE "directory_staff_ads" ADD CONSTRAINT "directory_staff_ads_listing_key_check" CHECK ("directory_staff_ads"."listing_key" is null or (char_length("directory_staff_ads"."listing_key") <= 200 and "directory_staff_ads"."listing_key" ~ '^[a-z0-9]+(-[a-z0-9]+)*(/[a-z0-9]+(-[a-z0-9]+)*){3}$'));
 --> statement-breakpoint
--- Staff only, like directory_staff_ads (0067): the customer role and webfold_public get nothing. No DELETE: a picture
+-- Staff only, like directory_staff_ads (0067): the customer role and fynix_public get nothing. No DELETE: a picture
 -- whose ads are all taken down is marked removed and its file deleted, so what ran stays on record. link_url needs no
 -- new grant: the table's own (0067) cover the new column.
-GRANT SELECT, INSERT, UPDATE ON directory_staff_ad_pictures TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON directory_staff_ad_pictures TO fynix_staff;
 --> statement-breakpoint
 ALTER TABLE directory_staff_ad_pictures ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
-CREATE POLICY directory_staff_ad_pictures_staff_all ON directory_staff_ad_pictures FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_staff_ad_pictures_staff_all ON directory_staff_ad_pictures FOR ALL TO fynix_staff USING (true) WITH CHECK (true);

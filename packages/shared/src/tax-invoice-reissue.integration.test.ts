@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { chargedAmountCents, discountCentsFor } from "@firstfold/billing";
+import { chargedAmountCents, discountCentsFor } from "@fynix/billing";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyRetentionDiscount,
@@ -20,8 +20,8 @@ import {
   type Payment,
   type Plan,
   type Subscription,
-} from "@firstfold/db";
-import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@firstfold/db/testing";
+} from "@fynix/db";
+import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@fynix/db/testing";
 import { chargeAmountCents } from "./lib/billing/charges";
 import { upgradeChargeDescription } from "./lib/billing/upgrade";
 import {
@@ -141,7 +141,7 @@ async function invoiceCount(): Promise<number> {
 
 /** The next serial the counter would hand out for 26-27, or null when no invoice has taken one. */
 async function nextSerial(): Promise<number | null> {
-  const rows = await querySql<{ next_serial: number }>(dbs.owner, "select next_serial from tax_invoice_series where prefix = 'FF' and financial_year = '26-27'");
+  const rows = await querySql<{ next_serial: number }>(dbs.owner, "select next_serial from tax_invoice_series where prefix = 'FY' and financial_year = '26-27'");
   return rows[0]?.next_serial ?? null;
 }
 
@@ -176,14 +176,14 @@ describe("issueMissingTaxInvoice", () => {
     const invoice = await issue(payment.id);
 
     expect(invoice).toMatchObject({
-      number: "FF/26-27/000001",
+      number: "FY/26-27/000001",
       issuedOn: "2026-11-15",
       paidOn: "2026-10-09",
       paymentId: payment.id,
       totalCents: payment.amountCents,
     });
     expect(invoice.lines[0]).toMatchObject({
-      description: "Firstfold Premium plan",
+      description: "Fynix Premium plan",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       unitAmountCents: premium.initialAmountCents,
       discountAmountCents: 0,
@@ -298,7 +298,7 @@ describe("issueMissingTaxInvoice", () => {
     const invoice = await issue(payment.id);
 
     expect(invoice.lines[0]).toMatchObject({ description: "Upgrade to Premium, 31 days left", quantity: 1, unitAmountCents: netCents });
-    expect(invoice).toMatchObject({ number: "FF/26-27/000001", issuedOn: "2026-11-15", paidOn: "2026-10-09", totalCents: amountCents });
+    expect(invoice).toMatchObject({ number: "FY/26-27/000001", issuedOn: "2026-11-15", paidOn: "2026-10-09", totalCents: amountCents });
     // The charge keeps the wording the app shows.
     const stored = await querySql<{ description: string }>(dbs.owner, "select description from charges where kind = 'plan_upgrade'");
     expect(stored[0]?.description).toBe(description);
@@ -397,7 +397,7 @@ describe("issueMissingTaxInvoice", () => {
     const invoice = await issue(payment.id);
 
     expect(invoice.lines[0]).toMatchObject({
-      description: "Firstfold Premium plan",
+      description: "Fynix Premium plan",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       unitAmountCents: premium.recurringAmountCents,
       discountAmountCents: 0,
@@ -450,7 +450,7 @@ describe("issueMissingTaxInvoice", () => {
     const invoice = await issue(renewal.id);
 
     expect(invoice.lines[0]).toMatchObject({
-      description: "Firstfold Premium plan",
+      description: "Fynix Premium plan",
       unitAmountCents: premium.recurringAmountCents,
       discountAmountCents: 50_000,
       note: "Coupon KEEP applied",
@@ -486,7 +486,7 @@ describe("issueMissingTaxInvoice", () => {
 
     const invoice = await issue(payment.id);
 
-    expect(invoice.lines[0]).toMatchObject({ description: "Firstfold Premium plan", unitAmountCents: premium.initialAmountCents });
+    expect(invoice.lines[0]).toMatchObject({ description: "Fynix Premium plan", unitAmountCents: premium.initialAmountCents });
     expect(await invoiceCount()).toBe(1);
   });
 

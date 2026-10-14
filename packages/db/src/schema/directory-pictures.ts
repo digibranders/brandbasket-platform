@@ -5,7 +5,7 @@ import { businesses } from "./businesses";
 import { createdAt } from "./columns";
 
 /*
- * A listing owner's own pictures on Firstfold Local (docs/superpowers/specs/2026-09-30-listing-pictures-crop-
+ * A listing owner's own pictures on the local directory (docs/superpowers/specs/2026-09-30-listing-pictures-crop-
  * design.md): the square photo beside its name, and its ad picture in the side column's two shapes. Each is cropped
  * in the owner's browser to its slot's shape and stored at exactly that slot's size.
  *

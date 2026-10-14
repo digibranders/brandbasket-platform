@@ -1,5 +1,5 @@
 import "server-only";
-import { staffCan, type StaffCapability } from "@firstfold/shared/lib/access";
+import { staffCan, type StaffCapability } from "@fynix/shared/lib/access";
 import { redirect } from "next/navigation";
 import { requireStaffAccess, type GrantedStaff } from "./staff-access";
 import { logStaffAccess } from "./staff-access-log";

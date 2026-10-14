@@ -1,4 +1,4 @@
-import { findBillingProfile, findPincode, hasPincodeDirectory, saveBillingProfile, withTenantScope } from "@firstfold/db";
+import { findBillingProfile, findPincode, hasPincodeDirectory, saveBillingProfile, withTenantScope } from "@fynix/db";
 import { refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
@@ -12,8 +12,8 @@ vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() 
 vi.mock("@/lib/server/charges", () => ({ startCustomerChargePayment: vi.fn() }));
 vi.mock("@/lib/server/checkout", () => ({ startReactivationFor: vi.fn() }));
 vi.mock("@/lib/server/charge-redirect", () => ({ redirectForChargePayment: vi.fn() }));
-vi.mock("@firstfold/db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@firstfold/db")>()),
+vi.mock("@fynix/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@fynix/db")>()),
   findBillingProfile: vi.fn(),
   findPincode: vi.fn(),
   hasPincodeDirectory: vi.fn(),

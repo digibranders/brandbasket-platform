@@ -21,24 +21,24 @@ CREATE INDEX "staff_access_log_staff_created_at_idx" ON "staff_access_log" USING
 -- Who opened, exported or changed what in the staff console. Staff may read and add rows and nothing else: no UPDATE and
 -- no DELETE for any application role, so a record cannot be edited or erased by the people it describes. The customer
 -- roles get no privilege at all. Rows are removed after 13 months by a purge function added with the retention job.
--- Both runtime role names are covered while the webfold_* to firstfold_* rollout (0132) is under way.
+--
 ALTER TABLE staff_access_log ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY staff_access_log_staff_select ON staff_access_log FOR SELECT TO firstfold_staff USING (true);
+CREATE POLICY staff_access_log_staff_select ON staff_access_log FOR SELECT TO fynix_staff USING (true);
 --> statement-breakpoint
 
-CREATE POLICY staff_access_log_staff_insert ON staff_access_log FOR INSERT TO firstfold_staff WITH CHECK (true);
+CREATE POLICY staff_access_log_staff_insert ON staff_access_log FOR INSERT TO fynix_staff WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT ON staff_access_log TO firstfold_staff;
+GRANT SELECT, INSERT ON staff_access_log TO fynix_staff;
 --> statement-breakpoint
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'webfold_staff') THEN
-    CREATE POLICY staff_access_log_legacy_staff_select ON staff_access_log FOR SELECT TO webfold_staff USING (true);
-    CREATE POLICY staff_access_log_legacy_staff_insert ON staff_access_log FOR INSERT TO webfold_staff WITH CHECK (true);
-    GRANT SELECT, INSERT ON staff_access_log TO webfold_staff;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
+    CREATE POLICY staff_access_log_legacy_staff_select ON staff_access_log FOR SELECT TO fynix_staff USING (true);
+    CREATE POLICY staff_access_log_legacy_staff_insert ON staff_access_log FOR INSERT TO fynix_staff WITH CHECK (true);
+    GRANT SELECT, INSERT ON staff_access_log TO fynix_staff;
   END IF;
 END $$;

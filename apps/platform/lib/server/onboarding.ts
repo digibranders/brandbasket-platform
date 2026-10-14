@@ -18,10 +18,10 @@ import {
   type Project,
   type ProjectStatus,
   type ScopedTransaction,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { cache } from "react";
-import type { TenantContext } from "@firstfold/shared/lib/access";
-import { firstMissing, onboardingChecklist, type ChecklistItem } from "@firstfold/shared/lib/onboarding/checklist";
+import type { TenantContext } from "@fynix/shared/lib/access";
+import { firstMissing, onboardingChecklist, type ChecklistItem } from "@fynix/shared/lib/onboarding/checklist";
 import { ONBOARDING_LOCKED_MESSAGE } from "@/lib/onboarding/form-state";
 import {
   checklistInputFrom,
@@ -30,7 +30,7 @@ import {
   openingHoursFromRows,
   type OnboardingSnapshot,
 } from "@/lib/onboarding/snapshot";
-import { onboardingStepHref, type OnboardingStepKey } from "@firstfold/shared/lib/onboarding/steps";
+import { onboardingStepHref, type OnboardingStepKey } from "@fynix/shared/lib/onboarding/steps";
 import { requireCustomerAccess } from "./customer-access";
 import { getAppDb } from "./db";
 
@@ -101,7 +101,7 @@ export const getProjectOverview = cache(async (): Promise<ProjectOverview> => {
 });
 
 export interface LiveWebsite {
-  /** The address the site is served at, their own domain or the free `*.firstfold.io` one they started on. */
+  /** The address the site is served at, their own domain or the free `*.fynix.digital` one they started on. */
   readonly hostname: string;
   /** When the team put it live. Null for a project that went live before launches were stamped. */
   readonly launchedAt: Date | null;

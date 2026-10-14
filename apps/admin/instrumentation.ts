@@ -3,11 +3,11 @@ import type { Instrumentation } from "next";
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   // A console real staff can reach must not start with settings missing or an OTP bypass set.
-  const { assertRuntimeEnvironment } = await import("@firstfold/shared/server/runtime-environment");
-  const { runtimeRequirements } = await import("@firstfold/shared/lib/production-requirements");
-  assertRuntimeEnvironment(process.env, runtimeRequirements("admin", process.env));
+  const { assertRuntimeEnvironment } = await import("@fynix/shared/server/runtime-environment");
+  const { runtimeRequirements } = await import("@fynix/shared/lib/production-requirements");
+  assertRuntimeEnvironment(process.env, runtimeRequirements("admin"));
   // The robot check on the staff sign-in stays off, with a note in the log, until its keys are set.
-  const { warnIfTurnstileUnconfigured } = await import("@firstfold/shared/server/turnstile-request");
+  const { warnIfTurnstileUnconfigured } = await import("@fynix/shared/server/turnstile-request");
   warnIfTurnstileUnconfigured();
 }
 

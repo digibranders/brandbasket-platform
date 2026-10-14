@@ -1,8 +1,8 @@
 import Image from "next/image";
 import type { ReactElement } from "react";
-import type { DirectoryAdPlacement } from "@firstfold/db";
-import { BRANDS, type Brand } from "@/lib/brand";
-import { cn } from "@firstfold/shared/lib/cn";
+import type { DirectoryAdPlacement } from "@fynix/db";
+import { type Brand } from "@/lib/brand";
+import { cn } from "@fynix/shared/lib/cn";
 
 /*
  * How an ad will look on the website, drawn the way the website draws it: the same picture-led cards, the Ad mark, the
@@ -151,7 +151,7 @@ function ProfileCard({ data }: { readonly data: AdPreviewData }): ReactElement {
 }
 
 const FRAME_TITLES: Readonly<Record<DirectoryAdPlacement, string>> = {
-  home: "firstfold.io",
+  home: "fynix.digital",
   top: "Dentists in your area",
   side: "Dentists in your area",
   profile: "A business page",
@@ -161,11 +161,10 @@ const FRAME_TITLES: Readonly<Record<DirectoryAdPlacement, string>> = {
 export function AdPreview({
   placement,
   data,
-  brand = BRANDS.firstfold,
 }: {
   readonly placement: DirectoryAdPlacement;
   readonly data: AdPreviewData;
-  /** The brand the dashboard is sold under: the home page frame is titled with the directory's address, which is Firstfold's. */
+  /** The brand the dashboard is sold under: the home page frame is titled with the directory's address, which is Fynix Digital's. */
   readonly brand?: Brand;
 }): ReactElement {
   return (
@@ -177,7 +176,7 @@ export function AdPreview({
             <span className="size-1.5 rounded-full bg-ink-soft/65" />
             <span className="size-1.5 rounded-full bg-ink-soft/65" />
           </span>
-          <span className="truncate text-xs font-medium text-ink-soft">{placement === "home" && brand.id !== "firstfold" ? "The directory home page" : FRAME_TITLES[placement]}</span>
+          <span className="truncate text-xs font-medium text-ink-soft">{placement === "home" ? "The directory home page" : FRAME_TITLES[placement]}</span>
         </div>
         <div className="p-4">
           {placement === "top" ? <TopRow data={data} /> : placement === "side" ? <SideColumn data={data} /> : placement === "home" ? <HomeGrid data={data} /> : <ProfileCard data={data} />}

@@ -5,9 +5,9 @@ import {
   listPressReleasesForBusiness,
   markAddOnContacted,
   setPressReleaseStatus,
-} from "@firstfold/db";
-import { logBillingEvent } from "@firstfold/shared/server/billing-log";
-import { scheduleAddOnEndFor, type AddOnEndOutcome, type AddOnEndRequest } from "@firstfold/shared/server/add-on-ends";
+} from "@fynix/db";
+import { logBillingEvent } from "@fynix/shared/server/billing-log";
+import { scheduleAddOnEndFor, type AddOnEndOutcome, type AddOnEndRequest } from "@fynix/shared/server/add-on-ends";
 import {
   clientAddOnRows,
   clientPressReleaseRows,

@@ -1,4 +1,4 @@
-import type { ReferralDiscount, ReferralReward } from "@firstfold/db";
+import type { ReferralDiscount, ReferralReward } from "@fynix/db";
 
 /**
  * The rules a referral code obeys, with no database or provider behind them. A code takes a flat amount or a

@@ -10,7 +10,7 @@ A business's verified owner can answer the reviews on its public page in the dir
 
 ## Who is a verified owner
 
-Exactly whoever the Leads page opens leads to (`leadsSource`, apps/platform/lib/leads.ts): a website client with a directory listing staff placed, or an account whose claim on a directory listing Firstfold approved. A pending or turned-down claim, an account awaiting its membership payment and a closing account are not owners. This inherits the claim-approval gap noted in the 2026-10-08 security audit: replies are only as trustworthy as claim approval.
+Exactly whoever the Leads page opens leads to (`leadsSource`, apps/platform/lib/leads.ts): a website client with a directory listing staff placed, or an account whose claim on a directory listing Fynix approved. A pending or turned-down claim, an account awaiting its membership payment and a closing account are not owners. This inherits the claim-approval gap noted in the 2026-10-08 security audit: replies are only as trustworthy as claim approval.
 
 ## How an answer is marked
 
@@ -27,7 +27,7 @@ Both call the same functions (`apps/platform/lib/server/owner-replies.ts`), whic
 
 - CORS allows exactly one origin, the website's (`NEXT_PUBLIC_SITE_URL`), with credentials; any other origin, or none, gets 403 before the session is looked at.
 - JSON content type only (forces a preflight), 16 KB body cap, strict request shapes.
-- The session cookie is same-site between the website and the dashboard (shared parent domain `firstfold.io`; `localhost` locally).
+- The session cookie is same-site between the website and the dashboard (shared parent domain `fynix.digital`; `localhost` locally).
 - Rate limits: 30 replies and 60 edits/removals per owner per hour.
 - The website's CSP gains the dashboard origin in `connect-src` only.
 - The page's check "am I the owner" is only a hint for what to draw.

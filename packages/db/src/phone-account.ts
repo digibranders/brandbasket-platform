@@ -5,7 +5,7 @@
  * first; anything showing the account shows its number instead.
  */
 
-const PLACEHOLDER_DOMAIN = "phone.firstfold.invalid";
+const PLACEHOLDER_DOMAIN = "phone.fynix.invalid";
 const E164 = /^\+[0-9]{8,15}$/;
 
 /** The placeholder address for the account that signs in with `phone` (E.164). */

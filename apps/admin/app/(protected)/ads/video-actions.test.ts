@@ -1,5 +1,5 @@
-import { takeDownDirectoryVideo } from "@firstfold/db";
-import { getVimeoClient, type VimeoClient } from "@firstfold/shared/server/vimeo";
+import { takeDownDirectoryVideo } from "@fynix/db";
+import { getVimeoClient, type VimeoClient } from "@fynix/shared/server/vimeo";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,8 +9,8 @@ import { takeDownVideoAction } from "./video-actions";
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
-vi.mock("@firstfold/db", () => ({ takeDownDirectoryVideo: vi.fn() }));
-vi.mock("@firstfold/shared/server/vimeo", () => ({ getVimeoClient: vi.fn() }));
+vi.mock("@fynix/db", () => ({ takeDownDirectoryVideo: vi.fn() }));
+vi.mock("@fynix/shared/server/vimeo", () => ({ getVimeoClient: vi.fn() }));
 vi.mock("@/lib/server/staff-access", () => ({ requireStaffAccess: vi.fn() }));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn(() => DB) }));
 

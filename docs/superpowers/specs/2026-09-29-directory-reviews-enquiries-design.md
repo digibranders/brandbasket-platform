@@ -5,13 +5,13 @@ https://claude.ai/artifact/1rkuULKVnEUVZU2cC4qggR, and choosing "our own reviews
 
 ## Goal
 
-The Thane directory on firstfold.io (`/in/...`, website repo, worktree `webfold-website-search`) shows JustDial-style
+The Thane directory on fynix.digital (`/in/...`, website repo, worktree `fynix-website-search`) shows JustDial-style
 business cards. This spec adds the data those cards need that we can collect honestly:
 
-1. **Ratings and reviews** left on Firstfold: 1–5 stars, optional short text, up to two highlights from a fixed list
+1. **Ratings and reviews** left on Fynix: 1–5 stars, optional short text, up to two highlights from a fixed list
    (JustDial's "Suggestions"), one per phone number per business, confirmed by a phone code.
 2. **Enquiries**: "Send enquiry" on a card or business page, and the list-page "Get the list of top …" form. Stored
-   for Firstfold staff, who pass them on.
+   for Fynix staff, who pass them on.
 3. **Staff moderation**: a Directory page in the staff console to hide or restore reviews and work enquiries.
 
 Out of scope here: phone numbers, WhatsApp, photos, prices and hours for confirmed or client businesses (the
@@ -72,8 +72,8 @@ website repo (additive-only, byte-identical, like `lib/leads-api.ts`).
   created_at (same shape as booking_otps, without business_id).
 - `directory_enquiries`: id, listing_key (nullable), business_name, service_label, area_label, kind, name, phone,
   message, status (`new` | `handled`), handled_at, handled_by_user_id, created_at.
-- Grants: webfold_staff only (the website reaches these through the platform API on the staff connection, like the
-  booking routes); no webfold_app or webfold_public access. RLS enabled with a staff-all policy.
+- Grants: fynix_staff only (the website reaches these through the platform API on the staff connection, like the
+  booking routes); no fynix_app or fynix_public access. RLS enabled with a staff-all policy.
 - Purge: OTP rows deleted once used or an hour after expiry (reuse the purge pattern).
 
 ## Staff console (`apps/admin`, "Directory" in the dock)
@@ -82,7 +82,7 @@ website repo (additive-only, byte-identical, like `lib/leads-api.ts`).
   **Reviews** (newest first, stars, business, reviewer, text, highlights, Hide / Restore).
 - Follows apps/admin/DESIGN.md.
 
-## Website (worktree `webfold-website-search`)
+## Website (worktree `fynix-website-search`)
 
 - JustDial-style `ListingList` card per the mockup: big square tile (letter today, photos later), bold name, green
   rating pill + "N Ratings" (1+) or "No ratings yet · Rate this place", Verified/Top rated tags only when true,

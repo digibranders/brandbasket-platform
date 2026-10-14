@@ -1,4 +1,4 @@
-import { cleanLine, cleanMultiline } from "@firstfold/shared/lib/validation/text";
+import { cleanLine, cleanMultiline } from "@fynix/shared/lib/validation/text";
 import {
   FAQ_ANSWER_MAX_LENGTH,
   FAQ_QUESTION_MAX_LENGTH,

@@ -1,5 +1,5 @@
-import { DIRECTORY_AD_SPOTS, type DirectoryAdPlacement } from "@firstfold/db";
-import { AD_PLACEMENT_LABELS, marketLabel } from "@firstfold/shared/lib/directory/ads";
+import { DIRECTORY_AD_SPOTS, type DirectoryAdPlacement } from "@fynix/db";
+import { AD_PLACEMENT_LABELS, marketLabel } from "@fynix/shared/lib/directory/ads";
 
 const DOT = " · ";
 

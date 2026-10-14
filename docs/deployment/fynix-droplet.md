@@ -7,7 +7,7 @@ it would do unless you add `--apply`, and is safe to run again.
 | What | Where |
 | ---- | ----- |
 | Customer dashboard (`apps/platform`) | https://app.fynix.digital |
-| Staff console (`apps/admin`) | https://staff.fynix.digital |
+| Staff console (`apps/admin`) | https://console.fynix.digital |
 | Marketing site | https://fynix.digital, stays on Vercel |
 | Existing API (Pavel) | api.fynix.digital, 168.144.47.32 (the droplet; example address used below) |
 
@@ -21,7 +21,7 @@ Hostnames other than the two above are passed with `--app-host` / `--admin-host`
  browser ──https──► Cloudflare ──(DNS only for app., proxied + Access for staff.)──► droplet <droplet>
                                                                                       │
    app.fynix.digital     ── nginx :443 (Let's Encrypt) ───────────────┐               │
-   staff.fynix.digital   ── nginx :443 (Origin CA, only Cloudflare) ──┤               │
+   console.fynix.digital   ── nginx :443 (Origin CA, only Cloudflare) ──┤               │
    api.fynix.digital     ── nginx :443 (what is there today) ─────────┼─ Pavel API    │
                                                                       ▼
         fynix-app   :3001  apps/platform  (next start)    systemd, user deploy, MemoryMax 1000M
@@ -29,7 +29,7 @@ Hostnames other than the two above are passed with `--app-host` / `--admin-host`
                                    │
                   PostgreSQL on this machine (localhost:5432)
                     fynix_platform          owner fynix_owner (migrations only)   app / staff / public roles
-                    fynix_platform_payload  owner fynix_payload (blog + content)
+                    fynix_platform_payload  owner fynix_cms (blog + content)
                   /srv/fynix/media, /srv/fynix/support-private   uploads
                   /srv/fynix/backups                              nightly dumps
 
@@ -75,7 +75,7 @@ Read the output for:
 | Section 2 | RAM and swap against the sizing table; free disk of at least 15 GB; whether `/srv/fynix` already exists. |
 | Section 3 | Ports 3001 and 3003 must be free. If the Pavel API uses either, change the ports in the two unit files and the two nginx files before going on. 5432 should be Postgres on localhost only. |
 | Section 4 | nginx installed and `nginx -t` passing; `conf.d/*.conf` included from `nginx.conf` (the Cloudflare file needs it); what names it serves today. |
-| Section 5 | Postgres present or not; which databases and roles exist. The setup only ever adds `fynix_*` names (and the legacy `webfold_*` roles, `NOLOGIN`), it never alters anything else. |
+| Section 5 | Postgres present or not; which databases and roles exist. The setup only ever adds `fynix_*` names, it never alters anything else. |
 | Section 7 | Whether the Pavel API runs on this machine under systemd, pm2 or Docker: it keeps running, nothing here touches it. |
 | Section 8 | Whether a firewall is active. See section 1 below before enabling one. |
 
@@ -126,9 +126,9 @@ cd /root/fynix-kit/scripts/server
 ./setup-database.sh --apply
 ```
 
-It creates, only when missing: `fynix_owner` (migrations only; has `CREATEROLE` and `ADMIN OPTION` on the six application roles
-because the migrations alter and grant them), `firstfold_app`, `firstfold_staff`, `firstfold_public` (the names are fixed by the
-code and its migrations), `fynix_payload`, the legacy `webfold_*` roles as `NOLOGIN` (old migrations grant to them), and the
+It creates, only when missing: `fynix_owner` (migrations only; has `CREATEROLE` and `ADMIN OPTION` on the three application roles
+because the migrations alter and grant them), `fynix_app`, `fynix_staff`, `fynix_public` (the names are fixed by the
+code and its migrations), `fynix_cms` (which owns the Payload database and nothing else), and the
 databases `fynix_platform` and `fynix_platform_payload`. Every password is new, generated with `openssl rand`, and written to
 `/root/fynix-secrets.env` (mode 600). Re-running changes nothing except re-setting each login role's password to the one in
 that file. It never alters databases or roles it did not create.
@@ -156,7 +156,7 @@ pnpm env:check --platform /srv/fynix/shared/platform.env.local --admin /srv/fyni
 ```
 
 `env:check` prints problems by setting name, never by value, and exits 1 on any error: a missing required setting, a secret
-under 32 characters, an origin that is not `https://host`, any OTP bypass switch, `FIRSTFOLD_ALLOW_FAKE_BILLING`, a
+under 32 characters, an origin that is not `https://host`, any OTP bypass switch, `FYNIX_ALLOW_FAKE_BILLING`, a
 `BILLING_PROVIDER` other than `razorpay`, the two files disagreeing on `BETTER_AUTH_SECRET`, `PAYLOAD_SECRET`, the origins, the
 Payload database or the media root. It only warns about `rzp_test_` keys. `deploy.sh` runs it before it changes anything. The
 full variable list is in section 15.
@@ -174,7 +174,7 @@ scripts/server/deploy.sh --host deploy@<droplet> --apply     # build here, uploa
 On the very first deploy there is no previous release; the order inside `deploy.sh` is: build (clean export of `HEAD`, with the
 public values from `deploy/build.env`) → rsync to `releases/<stamp>-<commit>.partial`, renamed when complete, env files linked
 → `pnpm install --frozen-lockfile` on the server → `pnpm env:check` → **database migrations** (`fynix-migrate`, as `fynix_owner`,
-through sudo; then `scripts/cms-migrate.sh` for the Payload database as `fynix_payload`) → switch `current-platform` and restart
+through sudo; then `scripts/cms-migrate.sh` for the Payload database as `fynix_cms`) → switch `current-platform` and restart
 `fynix-app`, wait for `/login`, then the same for the console. Migrations always run **before** the switch, so each must work
 with the previous release still serving.
 
@@ -246,7 +246,7 @@ Steps:
    re-run the bootstrap). That installs `fynix-app.conf`. Renewal is automatic: `systemctl list-timers | grep certbot` must show a
    timer; `certbot renew --dry-run` must pass.
 2. **Console certificate (Cloudflare Origin CA).** Cloudflare dashboard → SSL/TLS → Origin Server → Create Certificate for
-   `staff.fynix.digital`. Save the certificate as `/etc/ssl/fynix/staff.pem` and the private key as `/etc/ssl/fynix/staff.key`
+   `console.fynix.digital`. Save the certificate as `/etc/ssl/fynix/staff.pem` and the private key as `/etc/ssl/fynix/staff.key`
    (`mkdir -p /etc/ssl/fynix; chmod 600 staff.key`). Then re-run the bootstrap; it installs `fynix-admin.conf`.
 3. `sudo nginx -t` is the real syntax test. It cannot be run off the server: the files in this repository were checked for shell
    syntax and for what the bootstrap does with them, never by nginx itself. If `nginx -t` fails, the bootstrap removes the links it
@@ -273,8 +273,8 @@ second level such as `admin.app.fynix.digital`.
 
 Zone settings: SSL/TLS mode **Full (strict)**; Always Use HTTPS on; leave the rest.
 
-**Cloudflare Access for `staff.fynix.digital`** (Zero Trust → Access → Applications → Add → Self-hosted, free for up to 50
-users). Application domain `staff.fynix.digital`; policy *Allow* for the exact staff email addresses (identity provider: One-time
+**Cloudflare Access for `console.fynix.digital`** (Zero Trust → Access → Applications → Add → Self-hosted, free for up to 50
+users). Application domain `console.fynix.digital`; policy *Allow* for the exact staff email addresses (identity provider: One-time
 PIN by email is enough); session duration 8 to 12 hours; a second policy is not needed. This is the console's second factor: the
 app has none of its own (state this plainly to anyone relying on it). Keep the nginx rule that refuses anything not from
 Cloudflare, or the Access login can be skipped by calling the droplet directly. Refresh the Cloudflare range files now and then:
@@ -432,10 +432,10 @@ Smoke tests (from your machine, not the droplet):
 ```bash
 curl -sI https://app.fynix.digital/login | head -1                      # HTTP/2 200
 curl -sI http://app.fynix.digital/login | head -3                       # 301 to https
-curl -sI https://staff.fynix.digital/login | head -3                    # 302 or 403 to Cloudflare Access, never the login page
+curl -sI https://console.fynix.digital/login | head -3                    # 302 or 403 to Cloudflare Access, never the login page
 curl -m 5 -sI http://<droplet>:3001/login ; echo "exit $?"              # must time out (exit 28), not answer
 curl -m 5 -sI http://<droplet>:3003/login ; echo "exit $?"              # must time out
-curl -sk --resolve staff.fynix.digital:443:<droplet> https://staff.fynix.digital/login -o /dev/null -w '%{http_code}\n'   # 000 or 444: direct calls are refused
+curl -sk --resolve console.fynix.digital:443:<droplet> https://console.fynix.digital/login -o /dev/null -w '%{http_code}\n'   # 000 or 444: direct calls are refused
 dig +short TXT fynix.digital | grep -c 'v=spf1'                         # exactly 1
 ```
 
@@ -457,29 +457,29 @@ templates with every optional setting: `apps/platform/.env.production.example` a
 | Variable | Dashboard | Console | Value |
 | -------- | :-------: | :-----: | ----- |
 | `APP_ORIGIN` | yes | yes | `https://app.fynix.digital` |
-| `ADMIN_ORIGIN` | yes | yes | `https://staff.fynix.digital` |
-| `DATABASE_URL` | yes | | role `firstfold_app` on `fynix_platform` (row-level security applies) |
-| `DATABASE_URL_STAFF` | yes | yes | role `firstfold_staff` on `fynix_platform` |
-| `DATABASE_URL_PUBLIC` | yes | | role `firstfold_public` (insert-only: sign-up codes, email outbox) |
-| `DATABASE_URL_PAYLOAD` | yes | yes | role `fynix_payload` on `fynix_platform_payload` (same in both) |
+| `ADMIN_ORIGIN` | yes | yes | `https://console.fynix.digital` |
+| `DATABASE_URL` | yes | | role `fynix_app` on `fynix_platform` (row-level security applies) |
+| `DATABASE_URL_STAFF` | yes | yes | role `fynix_staff` on `fynix_platform` |
+| `DATABASE_URL_PUBLIC` | yes | | role `fynix_public` (insert-only: sign-up codes, email outbox) |
+| `DATABASE_URL_PAYLOAD` | yes | yes | role `fynix_cms` on `fynix_platform_payload` (same in both) |
 | `BETTER_AUTH_SECRET` | yes | yes | 32+ characters, **identical in both** (sessions) |
 | `PAYLOAD_SECRET` | yes | yes | 32+ characters, **identical in both** |
 | `ACCOUNT_CODE_SECRET` | yes | | 32+ characters (signs sign-up codes) |
 | `BREVO_API_KEY` | yes | yes | Brevo v3 API key (same in both) |
 
-**Needed for a working product, checked by `env:check`:** `PLATFORM_BRAND=fynix` (both, also compiled at build);
+**Needed for a working product, checked by `env:check`:**
 `NEXT_PUBLIC_APP_URL` (dashboard, equal to `APP_ORIGIN`, compiled at build, in `deploy/build.env`); `BILLING_PROVIDER=razorpay`,
 `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` (both); `RAZORPAY_WEBHOOK_SECRET` (dashboard); `ACCOUNT_ERASE_TOKEN` (dashboard, used by
-the erase timer); `FYNIX_MAIL_FROM` (both, `no-reply@fynix.digital`); `FIRSTFOLD_MEDIA_ROOT=/srv/fynix/media` and
-`FIRSTFOLD_SUPPORT_ROOT=/srv/fynix/support-private` (both, identical, outside the releases so they survive a deploy).
+the erase timer); `FYNIX_MAIL_FROM` (both, `no-reply@fynix.digital`); `FYNIX_MEDIA_ROOT=/srv/fynix/media` and
+`FYNIX_SUPPORT_ROOT=/srv/fynix/support-private` (both, identical, outside the releases so they survive a deploy).
 
-**Optional:** `SUPPORT_ALERT_EMAIL`, `PRIVACY_ALERT_EMAIL`, `SECURITY_ALERT_EMAIL`, `FIRSTFOLD_TEAM_EMAIL` (default `hello@fynix.digital`),
+**Optional:** `SUPPORT_ALERT_EMAIL`, `PRIVACY_ALERT_EMAIL`, `SECURITY_ALERT_EMAIL`, `FYNIX_TEAM_EMAIL` (default `hello@fynix.digital`),
 `INVOICE_PREFIX`, `CLIENT_SITE_BASE_DOMAIN`, `R2_*` and `SUPPORT_R2_*` (object storage instead of local disks), `TURNSTILE_SITE_KEY`,
 `TURNSTILE_SECRET`, `TURNSTILE_HOSTNAMES` (robot check on sign-in forms: recommended), `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`,
-`NEXT_PUBLIC_FIRSTFOLD_RELEASE`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_CONTACT_EMAIL`, `NEXT_PUBLIC_CALENDLY_URL`, `SUPPORT_TICKET_RETENTION_MONTHS`.
+`NEXT_PUBLIC_FYNIX_RELEASE`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_CONTACT_EMAIL`, `NEXT_PUBLIC_CALENDLY_URL`, `SUPPORT_TICKET_RETENTION_MONTHS`.
 
 **Never set in production** (the app and `env:check` refuse): `EMAIL_CODE_BYPASS`, `SIGNUP_OTP_BYPASS`, `BOOKING_OTP_BYPASS`,
-`VERIFY_OTP_BYPASS`, `FIRSTFOLD_ALLOW_FAKE_BILLING`.
+`VERIFY_OTP_BYPASS`, `FYNIX_ALLOW_FAKE_BILLING`.
 
 **How this table was verified (on a development machine, not on the droplet).** `pnpm env:check` was run on files generated by
 `make-env-files.sh` (it listed exactly the six blanks that need Brevo and Razorpay values). The production builds of both apps

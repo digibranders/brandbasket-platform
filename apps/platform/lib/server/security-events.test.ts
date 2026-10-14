@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { consumeRateLimit, type Database } from "@firstfold/db";
-import { createAppEmailTransport, type EmailMessage } from "@firstfold/email";
+import { consumeRateLimit, type Database } from "@fynix/db";
+import { createAppEmailTransport, type EmailMessage } from "@fynix/email";
 import { noteSecurityEvent, SECURITY_EVENTS } from "./security-events";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({}) as Database) }));
-vi.mock("./env", () => ({ serverEnv: vi.fn(() => ({ ADMIN_ORIGIN: "https://admin.firstfold.io" })) }));
-vi.mock("@firstfold/db", () => ({ consumeRateLimit: vi.fn() }));
-vi.mock("@firstfold/email", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/email")>("@firstfold/email");
+vi.mock("./env", () => ({ serverEnv: vi.fn(() => ({ ADMIN_ORIGIN: "https://console.fynix.digital" })) }));
+vi.mock("@fynix/db", () => ({ consumeRateLimit: vi.fn() }));
+vi.mock("@fynix/email", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/email")>("@fynix/email");
   return { ...actual, createAppEmailTransport: vi.fn() };
 });
 
@@ -37,7 +37,7 @@ describe("noteSecurityEvent", () => {
     expect(consumeRateLimit).toHaveBeenLastCalledWith(expect.anything(), "security-alert:webhook_signature_invalid", { limit: 1, windowSeconds: 3600 }, NOW);
     const message = send.mock.calls[0]?.[0];
     expect(message?.subject).toBe(`[Security] ${SECURITY_EVENTS.webhook_signature_invalid.label} (3 or more in 60 minutes)`);
-    expect(message?.bodyText).toContain("https://admin.firstfold.io/access-log");
+    expect(message?.bodyText).toContain("https://console.fynix.digital/access-log");
   });
 
   it("sends no second email in the same window", async () => {

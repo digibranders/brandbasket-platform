@@ -1,6 +1,6 @@
-import type { PincodeRecord } from "@firstfold/db";
-import { stateName } from "@firstfold/shared/lib/directory/india-states";
-import { isOpenedDistrict } from "@firstfold/shared/lib/directory/opened-districts";
+import type { PincodeRecord } from "@fynix/db";
+import { stateName } from "@fynix/shared/lib/directory/india-states";
+import { isOpenedDistrict } from "@fynix/shared/lib/directory/opened-districts";
 import type { PickOption } from "@/lib/listing-address";
 
 /*
@@ -9,11 +9,11 @@ import type { PickOption } from "@/lib/listing-address";
  * page only, under its state (/in/<state>/business/<name>/<code>), and the owner picks the post-office locality its
  * PIN covers. Its listing key is then <category>/<state>-<district>/<locality>/<name>: the four-part shape the database
  * checks, with a city part no Thane town can have, so the two kinds never share an address. Which districts are opened
- * lives in @firstfold/db (opened-districts), where the claim writes check every listing against it. Pure and
+ * lives in @fynix/db (opened-districts), where the claim writes check every listing against it. Pure and
  * browser-safe.
  */
 
-export { elsewhereCitySlug, isOpenedDistrict, OPENED_DISTRICTS } from "@firstfold/shared/lib/directory/opened-districts";
+export { elsewhereCitySlug, isOpenedDistrict, OPENED_DISTRICTS } from "@fynix/shared/lib/directory/opened-districts";
 
 /** An Indian PIN code: six digits, never starting with 0. */
 export const PIN_CODE_PATTERN = /^[1-9][0-9]{5}$/;

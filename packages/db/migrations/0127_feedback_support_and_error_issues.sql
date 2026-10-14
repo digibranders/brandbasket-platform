@@ -169,13 +169,13 @@ CREATE INDEX "error_issues_last_seen_idx" ON "error_issues" USING btree ("last_s
 CREATE INDEX "error_issues_status_idx" ON "error_issues" USING btree ("status");
 --> statement-breakpoint
 -- Append after the generated support table DDL. No public marketing role can access support data.
-REVOKE ALL ON support_tickets, support_messages, support_attachments, support_events, support_read_states FROM PUBLIC, webfold_public;
-GRANT SELECT, INSERT ON support_tickets, support_messages TO webfold_app;
-GRANT SELECT, INSERT ON support_attachments TO webfold_app;
-GRANT UPDATE (ticket_id, message_id, state, updated_at) ON support_attachments TO webfold_app;
-GRANT SELECT, INSERT, UPDATE ON support_read_states TO webfold_app;
-GRANT SELECT, INSERT, UPDATE ON support_tickets, support_attachments, support_read_states TO webfold_staff;
-GRANT SELECT, INSERT ON support_messages, support_events TO webfold_staff;
+REVOKE ALL ON support_tickets, support_messages, support_attachments, support_events, support_read_states FROM PUBLIC, fynix_public;
+GRANT SELECT, INSERT ON support_tickets, support_messages TO fynix_app;
+GRANT SELECT, INSERT ON support_attachments TO fynix_app;
+GRANT UPDATE (ticket_id, message_id, state, updated_at) ON support_attachments TO fynix_app;
+GRANT SELECT, INSERT, UPDATE ON support_read_states TO fynix_app;
+GRANT SELECT, INSERT, UPDATE ON support_tickets, support_attachments, support_read_states TO fynix_staff;
+GRANT SELECT, INSERT ON support_messages, support_events TO fynix_staff;
 
 ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_messages ENABLE ROW LEVEL SECURITY;
@@ -183,28 +183,28 @@ ALTER TABLE support_attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_read_states ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY support_tickets_customer_read ON support_tickets FOR SELECT TO webfold_app USING (requester_user_id = app_current_user_id());
-CREATE POLICY support_tickets_customer_insert ON support_tickets FOR INSERT TO webfold_app WITH CHECK (
+CREATE POLICY support_tickets_customer_read ON support_tickets FOR SELECT TO fynix_app USING (requester_user_id = app_current_user_id());
+CREATE POLICY support_tickets_customer_insert ON support_tickets FOR INSERT TO fynix_app WITH CHECK (
   requester_user_id = app_current_user_id() AND status = 'new' AND priority = 'normal' AND assignee_staff_id IS NULL AND version = 1
   AND (business_id IS NULL OR EXISTS (SELECT 1 FROM business_members m WHERE m.business_id = support_tickets.business_id AND m.user_id = app_current_user_id()))
 );
-CREATE POLICY support_tickets_staff ON support_tickets FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
-CREATE POLICY support_messages_customer_read ON support_messages FOR SELECT TO webfold_app USING (
+CREATE POLICY support_tickets_staff ON support_tickets FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY support_messages_customer_read ON support_messages FOR SELECT TO fynix_app USING (
   visibility = 'public' AND EXISTS (SELECT 1 FROM support_tickets t WHERE t.id = ticket_id AND t.requester_user_id = app_current_user_id())
 );
-CREATE POLICY support_messages_customer_insert ON support_messages FOR INSERT TO webfold_app WITH CHECK (
+CREATE POLICY support_messages_customer_insert ON support_messages FOR INSERT TO fynix_app WITH CHECK (
   visibility = 'public' AND author_role = 'customer' AND author_user_id = app_current_user_id()
   AND EXISTS (SELECT 1 FROM support_tickets t WHERE t.id = ticket_id AND t.requester_user_id = app_current_user_id() AND t.status <> 'closed')
 );
-CREATE POLICY support_messages_staff ON support_messages FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
-CREATE POLICY support_attachments_customer_read ON support_attachments FOR SELECT TO webfold_app USING (
+CREATE POLICY support_messages_staff ON support_messages FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY support_attachments_customer_read ON support_attachments FOR SELECT TO fynix_app USING (
   (message_id IS NULL AND uploaded_by_user_id = app_current_user_id() AND state IN ('staged', 'deleting'))
   OR (state = 'attached' AND EXISTS (SELECT 1 FROM support_messages m JOIN support_tickets t ON t.id = m.ticket_id WHERE m.id = message_id AND m.ticket_id = support_attachments.ticket_id AND m.visibility = 'public' AND t.requester_user_id = app_current_user_id()))
 );
-CREATE POLICY support_attachments_customer_insert ON support_attachments FOR INSERT TO webfold_app WITH CHECK (
+CREATE POLICY support_attachments_customer_insert ON support_attachments FOR INSERT TO fynix_app WITH CHECK (
   uploaded_by_user_id = app_current_user_id() AND state = 'staged' AND ticket_id IS NULL AND message_id IS NULL
 );
-CREATE POLICY support_attachments_customer_update ON support_attachments FOR UPDATE TO webfold_app USING (
+CREATE POLICY support_attachments_customer_update ON support_attachments FOR UPDATE TO fynix_app USING (
   uploaded_by_user_id = app_current_user_id() AND message_id IS NULL AND state IN ('staged', 'deleting')
 ) WITH CHECK (
   uploaded_by_user_id = app_current_user_id() AND (
@@ -212,14 +212,14 @@ CREATE POLICY support_attachments_customer_update ON support_attachments FOR UPD
     OR (state = 'attached' AND EXISTS (SELECT 1 FROM support_messages m JOIN support_tickets t ON t.id = m.ticket_id WHERE m.id = message_id AND m.ticket_id = support_attachments.ticket_id AND m.author_user_id = app_current_user_id() AND m.author_role = 'customer' AND m.visibility = 'public' AND t.requester_user_id = app_current_user_id()))
   )
 );
-CREATE POLICY support_attachments_staff ON support_attachments FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
-CREATE POLICY support_events_staff ON support_events FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
-CREATE POLICY support_read_states_customer ON support_read_states FOR ALL TO webfold_app USING (
+CREATE POLICY support_attachments_staff ON support_attachments FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY support_events_staff ON support_events FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY support_read_states_customer ON support_read_states FOR ALL TO fynix_app USING (
   user_id = app_current_user_id() AND EXISTS (SELECT 1 FROM support_tickets t WHERE t.id = ticket_id AND t.requester_user_id = app_current_user_id())
 ) WITH CHECK (
   user_id = app_current_user_id() AND EXISTS (SELECT 1 FROM support_tickets t WHERE t.id = ticket_id AND t.requester_user_id = app_current_user_id())
 );
-CREATE POLICY support_read_states_staff ON support_read_states FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY support_read_states_staff ON support_read_states FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 
 -- Ticket authorization never relies on nullable tenant scope. Verify an optional business against requester membership.
 CREATE OR REPLACE FUNCTION support_guard_ticket() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
@@ -253,18 +253,18 @@ BEGIN
   RETURN NEW;
 END $$;
 CREATE TRIGGER support_ticket_guard BEFORE INSERT OR UPDATE ON support_tickets FOR EACH ROW EXECUTE FUNCTION support_guard_ticket();
-REVOKE ALL ON FUNCTION support_guard_ticket() FROM PUBLIC, webfold_app, webfold_staff, webfold_public;
+REVOKE ALL ON FUNCTION support_guard_ticket() FROM PUBLIC, fynix_app, fynix_staff, fynix_public;
 
 -- Invoker identity guard: staff cannot publish as another staff member, and customers cannot write internal notes.
 CREATE OR REPLACE FUNCTION support_guard_message_identity() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 BEGIN
   IF NEW.author_user_id IS DISTINCT FROM public.app_current_user_id() THEN RAISE EXCEPTION 'Support message author must match the current user'; END IF;
-  IF current_user = 'webfold_app' AND (NEW.author_role <> 'customer' OR NEW.visibility <> 'public') THEN
+  IF current_user = 'fynix_app' AND (NEW.author_role <> 'customer' OR NEW.visibility <> 'public') THEN
     RAISE EXCEPTION 'Customers may add only public customer replies';
   END IF;
-  IF current_user = 'webfold_staff' AND NEW.author_role <> 'staff' THEN RAISE EXCEPTION 'Staff must write as staff'; END IF;
+  IF current_user = 'fynix_staff' AND NEW.author_role <> 'staff' THEN RAISE EXCEPTION 'Staff must write as staff'; END IF;
   IF NEW.author_role = 'staff' THEN
-    IF current_user <> 'webfold_staff' OR NOT EXISTS (SELECT 1 FROM public.staff_members WHERE user_id = NEW.author_user_id AND active) THEN
+    IF current_user <> 'fynix_staff' OR NOT EXISTS (SELECT 1 FROM public.staff_members WHERE user_id = NEW.author_user_id AND active) THEN
       RAISE EXCEPTION 'Support staff messages require an active staff author';
     END IF;
   END IF;
@@ -301,7 +301,7 @@ BEGIN
   RETURN NEW;
 END $$;
 CREATE TRIGGER support_message_record AFTER INSERT ON support_messages FOR EACH ROW EXECUTE FUNCTION support_record_message();
-REVOKE ALL ON FUNCTION support_record_message() FROM PUBLIC, webfold_app, webfold_staff, webfold_public;
+REVOKE ALL ON FUNCTION support_record_message() FROM PUBLIC, fynix_app, fynix_staff, fynix_public;
 
 CREATE OR REPLACE FUNCTION support_guard_attachment() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE author_id text; attachment_count integer;
@@ -330,7 +330,7 @@ BEGIN
   RETURN NEW;
 END $$;
 CREATE TRIGGER support_attachment_guard BEFORE INSERT OR UPDATE ON support_attachments FOR EACH ROW EXECUTE FUNCTION support_guard_attachment();
-REVOKE ALL ON FUNCTION support_guard_attachment() FROM PUBLIC, webfold_app, webfold_staff, webfold_public;
+REVOKE ALL ON FUNCTION support_guard_attachment() FROM PUBLIC, fynix_app, fynix_staff, fynix_public;
 
 CREATE OR REPLACE FUNCTION support_guard_read_state() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 BEGIN
@@ -353,7 +353,7 @@ CREATE TRIGGER support_event_history_guard BEFORE UPDATE OR DELETE ON support_ev
 -- The transaction-local flag is checked together with the definer's owner role by the history trigger.
 CREATE OR REPLACE FUNCTION support_deny_history_mutation() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 BEGIN
-  IF current_user NOT IN ('webfold_app', 'webfold_staff', 'webfold_public')
+  IF current_user NOT IN ('fynix_app', 'fynix_staff', 'fynix_public')
      AND (EXISTS (SELECT 1 FROM public.support_tickets t WHERE t.id = OLD.ticket_id AND t.requester_user_id = nullif(current_setting('support.erase_user', true), ''))
        OR OLD.ticket_id::text = nullif(current_setting('support.purge_ticket', true), '')) THEN
     RETURN OLD;
@@ -379,8 +379,8 @@ BEGIN
   DELETE FROM public.support_tickets WHERE requester_user_id = target_user_id;
   PERFORM set_config('support.erase_user', '', true);
 END $$;
-REVOKE ALL ON FUNCTION erase_support_data_for_user(text) FROM PUBLIC, webfold_app, webfold_public;
-GRANT EXECUTE ON FUNCTION erase_support_data_for_user(text) TO webfold_staff;
+REVOKE ALL ON FUNCTION erase_support_data_for_user(text) FROM PUBLIC, fynix_app, fynix_public;
+GRANT EXECUTE ON FUNCTION erase_support_data_for_user(text) TO fynix_staff;
 
 CREATE OR REPLACE FUNCTION purge_retained_support_ticket(target_ticket_id uuid) RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
@@ -400,14 +400,14 @@ BEGIN
   PERFORM set_config('support.purge_ticket', '', true);
   RETURN true;
 END $$;
-REVOKE ALL ON FUNCTION purge_retained_support_ticket(uuid) FROM PUBLIC, webfold_app, webfold_public;
-GRANT EXECUTE ON FUNCTION purge_retained_support_ticket(uuid) TO webfold_staff;
+REVOKE ALL ON FUNCTION purge_retained_support_ticket(uuid) FROM PUBLIC, fynix_app, fynix_public;
+GRANT EXECUTE ON FUNCTION purge_retained_support_ticket(uuid) TO fynix_staff;
 --> statement-breakpoint
 ALTER TABLE public.error_issues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.error_event_receipts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.support_ticket_error_links ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.error_issues, public.error_event_receipts, public.support_ticket_error_links FROM PUBLIC, webfold_app, webfold_public;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.error_issues, public.error_event_receipts, public.support_ticket_error_links TO webfold_staff;
-CREATE POLICY error_issues_staff ON public.error_issues FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
-CREATE POLICY error_receipts_staff ON public.error_event_receipts FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
-CREATE POLICY support_error_links_staff ON public.support_ticket_error_links FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+REVOKE ALL ON public.error_issues, public.error_event_receipts, public.support_ticket_error_links FROM PUBLIC, fynix_app, fynix_public;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.error_issues, public.error_event_receipts, public.support_ticket_error_links TO fynix_staff;
+CREATE POLICY error_issues_staff ON public.error_issues FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY error_receipts_staff ON public.error_event_receipts FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY support_error_links_staff ON public.support_ticket_error_links FOR ALL TO fynix_staff USING (true) WITH CHECK (true);

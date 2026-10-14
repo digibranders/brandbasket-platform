@@ -74,7 +74,7 @@ export { gstinCheckCharacter, InvalidGstinError, isValidGstin, normaliseGstin, s
 export { financialYearOf, formatInvoiceNumber, indianDate, INVOICE_PREFIX, invoicePrefix, MAX_INVOICE_SERIAL } from "./invoice-number";
 export {
   buildTaxInvoice,
-  FIRSTFOLD_SAC,
+  FYNIX_SAC,
   InvoiceAmountMismatchError,
   MAX_INVOICE_LINES,
   placeOfSupply,

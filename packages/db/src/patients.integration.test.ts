@@ -113,7 +113,7 @@ beforeEach(async () => {
   await dbs.staff.db.insert(users).values([
     { id: OWNER_A, name: "Ana Diaz", email: "ana@example.com" },
     { id: OWNER_B, name: "Ben Ortiz", email: "ben@example.com" },
-    { id: STAFF_USER, name: "Sam Staff", email: "sam@firstfold.test" },
+    { id: STAFF_USER, name: "Sam Staff", email: "sam@fynix.test" },
   ]);
   const inserted = await dbs.staff.db
     .insert(businesses)
@@ -339,14 +339,14 @@ describe("patients: grants and row-level security", () => {
     expect(await as("ownerA", (tx) => erasePatient(tx, booked.patientId ?? "", NOW))).toBe("not_found");
   });
 
-  it("refuses firstfold_app inserting a patient", async () => {
+  it("refuses fynix_app inserting a patient", async () => {
     const message = await captureErrorText(
       as("ownerA", (tx) => tx.insert(patients).values({ businessId: businessA, name: "Sneaky", phone: PRIYA })),
     );
     expect(message).toMatch(/permission denied for table patients/);
   });
 
-  it("refuses firstfold_app changing a patient's phone or business", async () => {
+  it("refuses fynix_app changing a patient's phone or business", async () => {
     const booked = await book(businessA, booking("2037-10-01"));
     const phoneMessage = await captureErrorText(
       as("ownerA", (tx) => tx.update(patients).set({ phone: RAVI }).where(eq(patients.id, booked.patientId ?? ""))),
@@ -378,7 +378,7 @@ describe("appointments guard: merge and erase shapes", () => {
         tx.update(appointments).set({ patientId: ravi.patientId, patientName: "Ravi Kumar" }).where(eq(appointments.id, priya.id)),
       ),
     );
-    expect(message).toMatch(/(firstfold_app|webfold_app) may only change a booking's patient details by merging or erasing a patient/);
+    expect(message).toMatch(/(fynix_app|fynix_app) may only change a booking's patient details by merging or erasing a patient/);
   });
 
   it("refuses a merge that also cancels the booking", async () => {
@@ -392,7 +392,7 @@ describe("appointments guard: merge and erase shapes", () => {
           .where(eq(appointments.id, priya.id)),
       ),
     );
-    expect(message).toMatch(/(firstfold_app|webfold_app) may only change a booking's patient details by merging or erasing a patient/);
+    expect(message).toMatch(/(fynix_app|fynix_app) may only change a booking's patient details by merging or erasing a patient/);
   });
 
   it("refuses erasing an upcoming booked appointment, even bypassing erasePatient", async () => {
@@ -405,7 +405,7 @@ describe("appointments guard: merge and erase shapes", () => {
           .where(eq(appointments.id, booked.id)),
       ),
     );
-    expect(message).toMatch(/(firstfold_app|webfold_app) may only change a booking's patient details by merging or erasing a patient/);
+    expect(message).toMatch(/(fynix_app|fynix_app) may only change a booking's patient details by merging or erasing a patient/);
   });
 
   it("refuses a partial erase that leaves the phone behind", async () => {
@@ -415,7 +415,7 @@ describe("appointments guard: merge and erase shapes", () => {
         tx.update(appointments).set({ patientId: null, patientName: ERASED_PATIENT_NAME }).where(eq(appointments.id, booked.id)),
       ),
     );
-    expect(message).toMatch(/(firstfold_app|webfold_app) may only change a booking's patient details by merging or erasing a patient/);
+    expect(message).toMatch(/(fynix_app|fynix_app) may only change a booking's patient details by merging or erasing a patient/);
   });
 
   it("refuses an erase under any other name", async () => {
@@ -428,7 +428,7 @@ describe("appointments guard: merge and erase shapes", () => {
           .where(eq(appointments.id, booked.id)),
       ),
     );
-    expect(message).toMatch(/(firstfold_app|webfold_app) may only change a booking's patient details by merging or erasing a patient/);
+    expect(message).toMatch(/(fynix_app|fynix_app) may only change a booking's patient details by merging or erasing a patient/);
   });
 });
 

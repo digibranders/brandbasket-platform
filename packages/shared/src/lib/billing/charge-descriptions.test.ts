@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { adChargeDescription } from "../directory/ads";
 import { PROMOTION_TAG_LABELS, promotionChargeDescription } from "../directory/promotion";
-import type { DirectoryPaidTag } from "@firstfold/db";
+import type { DirectoryPaidTag } from "@fynix/db";
 import { pressReleaseChargeDescription } from "./add-ons";
 import { chargePricing } from "./charges";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "./invoice-text";

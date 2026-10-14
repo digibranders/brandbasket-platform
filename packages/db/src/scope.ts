@@ -15,7 +15,7 @@ export interface TenantScope {
 }
 
 /** The role customer requests run as. A constant, never input: it is interpolated into SET ROLE. */
-const CUSTOMER_ROLE = "firstfold_app";
+const CUSTOMER_ROLE = "fynix_app";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -47,7 +47,7 @@ export async function withUserScope<T>(
 
 /**
  * Runs `work` as the customer, inside a transaction already open on the staff connection. It opens a savepoint,
- * switches to `firstfold_app` with SET LOCAL ROLE and scopes row-level security to `scope`, so `work` is held to
+ * switches to `fynix_app` with SET LOCAL ROLE and scopes row-level security to `scope`, so `work` is held to
  * exactly what a customer request is: its business's rows only, and the one project transition the database
  * allows that role. Afterwards the staff role is restored for the rest of the transaction.
  *
@@ -55,7 +55,7 @@ export async function withUserScope<T>(
  * transition) commit together. If `work` throws, the savepoint is rolled back, which undoes both its writes and the
  * role switch, and the error propagates; the caller decides whether the outer transaction survives it.
  *
- * Requires membership in firstfold_app (migration 0132 grants that to firstfold_staff and legacy webfold_staff).
+ * Requires membership in fynix_app (migration 0132 grants that to fynix_staff and legacy fynix_staff).
  */
 export async function withCustomerRole<T>(
   tx: ScopedTransaction,

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useSupportLauncher } from "@firstfold/shared/ui/panel/support-context";
+import { useSupportLauncher } from "@fynix/shared/ui/panel/support-context";
 
 export function SupportButton(): ReactElement {
   const support = useSupportLauncher();

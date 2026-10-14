@@ -1,4 +1,4 @@
-import type { CurrentPaymentMethod } from "@firstfold/db";
+import type { CurrentPaymentMethod } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { paymentMethodView, renewsAutomatically } from "./payment-method-view";
 

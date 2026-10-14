@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
-import { cn } from "@firstfold/shared/lib/cn";
-import { ChevronDownIcon, TickIcon } from "@firstfold/shared/ui/icons";
-import { BRANDS, sellsFreeListing, type Brand } from "@/lib/brand";
+import { cn } from "@fynix/shared/lib/cn";
+import { ChevronDownIcon, TickIcon } from "@fynix/shared/ui/icons";
+import { BRAND, sellsFreeListing, type Brand } from "@/lib/brand";
 import { cellWords, COMPARISON_COLUMNS, comparisonRowsFor, type ComparisonCell, type ComparisonColumnId } from "@/lib/plan-comparison";
 
 interface PlanComparisonTableProps {
@@ -31,7 +31,7 @@ function Mark({ cell, words }: { readonly cell: ComparisonCell; readonly words: 
  * tinted and the customer's own is tagged "Your plan". Every cell has a word for a screen reader, since a tick and a dash
  * say nothing without sight. On a phone each row stacks: its label, then the three plans under it, each named.
  */
-export function PlanComparisonTable({ yours, brand = BRANDS.firstfold }: PlanComparisonTableProps): ReactElement {
+export function PlanComparisonTable({ yours, brand = BRAND }: PlanComparisonTableProps): ReactElement {
   const showFree = sellsFreeListing(brand);
   const columns = showFree ? COMPARISON_COLUMNS : COMPARISON_COLUMNS.filter((column) => column.id !== "free");
   const rowClasses = showFree ? ROW : ROW_WITHOUT_FREE;

@@ -1,14 +1,14 @@
 "use server";
 
-import { listMediaAssets, updateMediaAltText } from "@firstfold/db";
-import { refresh } from "next/cache";
+import { listMediaAssets, updateMediaAltText } from "@fynix/db";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseBrandForm } from "@/lib/onboarding/brand-form";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
-import { hrefAfter } from "@firstfold/shared/lib/onboarding/steps";
+import { hrefAfter } from "@fynix/shared/lib/onboarding/steps";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
-import { getMediaStorage } from "@firstfold/shared/server/media-storage";
+import { getMediaStorage } from "@fynix/shared/server/media-storage";
 import { saveOnboardingStep } from "@/lib/server/onboarding";
 import { removeOnboardingImage, type MediaActionResult } from "@/lib/server/onboarding-media";
 
@@ -42,5 +42,7 @@ export async function saveBrandStep(_previous: StepFormState, formData: FormData
   });
   if (problem !== null) return refusedStepState(problem, formData);
 
+  // The step list in the layout reads what is done, so it must be read again or this step stays unticked.
+  revalidatePath("/onboarding", "layout");
   redirect(hrefAfter("brand"));
 }

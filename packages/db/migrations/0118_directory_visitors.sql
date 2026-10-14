@@ -15,10 +15,10 @@ CREATE INDEX "directory_visitors_last_seen_at_idx" ON "directory_visitors" USING
 -- (0055, 0109). Staff-only: the marketing website holds no database credentials and reaches visitors only through the
 -- platform's /api/directory/* routes, which run on the staff connection. A visitor is created or renamed when a code is
 -- confirmed and touched when they come back; never deleted by the routes.
-GRANT SELECT, INSERT, UPDATE ON directory_visitors TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON directory_visitors TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE directory_visitors ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY directory_visitors_staff_all ON directory_visitors FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_visitors_staff_all ON directory_visitors FOR ALL TO fynix_staff USING (true) WITH CHECK (true);

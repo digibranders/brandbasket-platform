@@ -9,10 +9,10 @@ import {
   PAYMENT_RECEIVED_HREF,
   PAYMENT_STEP_HREF,
   reactivationReturnHref,
-} from "@firstfold/shared/lib/billing/payment-step";
-import { chargedAmountCents } from "@firstfold/billing";
-import { describeDiscountedPlanTerms } from "@firstfold/shared/lib/billing/terms";
-import { formatMoney } from "@firstfold/shared/lib/money";
+} from "@fynix/shared/lib/billing/payment-step";
+import { chargedAmountCents } from "@fynix/billing";
+import { describeDiscountedPlanTerms } from "@fynix/shared/lib/billing/terms";
+import { formatMoney } from "@fynix/shared/lib/money";
 import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
 import {
   MEMBERSHIP_NAMES,

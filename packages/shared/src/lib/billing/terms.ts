@@ -1,7 +1,7 @@
-import type { Plan, ReferralDiscount } from "@firstfold/db";
+import type { Plan, ReferralDiscount } from "@fynix/db";
 // The subpath, not the package index: this module reaches client components, and the index pulls in the database.
-import { chargedAmountCents } from "@firstfold/billing/tax";
-import { formatMoney, type MoneyCurrency } from "@firstfold/shared/lib/money";
+import { chargedAmountCents } from "@fynix/billing/tax";
+import { formatMoney, type MoneyCurrency } from "@fynix/shared/lib/money";
 import { describeReferralDiscount } from "./referral-value";
 
 /**

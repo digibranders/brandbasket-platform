@@ -1,6 +1,6 @@
 "use server";
 
-import { ProjectNotAwaitingResponseError } from "@firstfold/db";
+import { ProjectNotAwaitingResponseError } from "@fynix/db";
 import { redirect } from "next/navigation";
 import { projectResponseNoticeHref } from "@/lib/project-response-notices";
 import { requireCustomerAccess } from "@/lib/server/customer-access";

@@ -1,12 +1,12 @@
 import { PDFDict, PDFDocument, PDFName, PDFString } from "pdf-lib";
 import { describe, expect, it, vi } from "vitest";
-import type { TaxInvoice, TaxInvoiceLineRecord } from "@firstfold/db";
+import type { TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
 import { recipientPhoneToPrint, renderTaxInvoicesPdf } from "./tax-invoice-pdf";
 
 vi.mock("server-only", () => ({}));
 
 const line: TaxInvoiceLineRecord = {
-  description: "Firstfold Premium plan",
+  description: "Fynix Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: "Coupon GAURAV applied, 20% off",
   sac: "998361",
@@ -26,20 +26,20 @@ const invoice: TaxInvoice = {
   id: "01920000-0000-7000-8000-000000000001",
   businessId: "01920000-0000-7000-8000-0000000000b1",
   paymentId: "01920000-0000-7000-8000-0000000000a1",
-  prefix: "FF",
+  prefix: "FY",
   financialYear: "26-27",
   serial: 1,
-  number: "FF/26-27/000001",
+  number: "FY/26-27/000001",
   issuedOn: "2026-10-09",
   paidOn: "2026-10-09",
   supplier: {
     legalName: "Digibranders Private Limited",
-    tradeName: "Firstfold",
+    tradeName: "Fynix",
     gstin: "27AAICD9268J1Z0",
     cin: "U72900MH2021PTC372344",
     addressLines: ["Office No. 2617, 26th Floor, Solus Building,", "Hiranandani Estate, Ghodbunder Road,", "Thane West, Maharashtra 400607, India"],
     stateCode: "mh",
-    email: "support@firstfold.io",
+    email: "support@fynix.io",
     phone: "+91 789 789 6607",
   },
   recipient: {
@@ -73,29 +73,17 @@ async function pages(invoices: readonly TaxInvoice[]): Promise<PDFDocument> {
 
 describe("renderTaxInvoicesPdf", () => {
   it("draws each invoice on its own A4 page", async () => {
-    const pdf = await pages([invoice, { ...invoice, serial: 2, number: "FF/26-27/000002" }]);
+    const pdf = await pages([invoice, { ...invoice, serial: 2, number: "FY/26-27/000002" }]);
     expect(pdf.getPageCount()).toBe(2);
     const { width, height } = pdf.getPage(0).getSize();
     expect(width).toBeCloseTo(595.28, 1);
     expect(height).toBeCloseTo(841.89, 1);
-    expect(pdf.getTitle()).toBe("Firstfold tax invoices");
-  });
-
-  it("files itself under Fynix Digital with the Fynix letterhead when the deployment is Fynix's", async () => {
-    const before = process.env.PLATFORM_BRAND;
-    process.env.PLATFORM_BRAND = "fynix";
-    try {
-      const pdf = await pages([invoice, { ...invoice, serial: 2, number: "FY/26-27/000002" }]);
-      expect(pdf.getTitle()).toBe("Fynix Digital tax invoices");
-      expect(pdf.getCreator()).toBe("Fynix Digital");
-    } finally {
-      if (before === undefined) delete process.env.PLATFORM_BRAND;
-      else process.env.PLATFORM_BRAND = before;
-    }
+    expect(pdf.getTitle()).toBe("Fynix Digital tax invoices");
+    expect(pdf.getCreator()).toBe("Fynix Digital");
   });
 
   it("names a single invoice in the document title", async () => {
-    expect((await pages([invoice])).getTitle()).toBe("Tax invoice FF/26-27/000001");
+    expect((await pages([invoice])).getTitle()).toBe("Tax invoice FY/26-27/000001");
   });
 
   it("links the supplier's email, the footer's email and the website", async () => {
@@ -192,32 +180,28 @@ describe("renderTaxInvoicesPdf with the customer's mobile", () => {
   });
 });
 
-describe("renderTaxInvoicesPdf under another brand", () => {
+describe("renderTaxInvoicesPdf with a letterhead and contact line of its own", () => {
   const letterhead = { paths: ["M0 0L10 0L10 10L0 10Z"], height: 10, colorHex: "#0C1E2E" } as const;
   const contact = { email: "hello@fynix.digital", website: "https://fynix.digital" } as const;
 
-  it("draws the brand's letterhead and contact line, still on one page", async () => {
+  it("draws the given letterhead and contact line, still on one page", async () => {
     const bytes = await renderTaxInvoicesPdf([invoice], { brandName: "Fynix Digital", letterhead, contact });
     const pdf = await PDFDocument.load(bytes);
     expect(pdf.getPageCount()).toBe(1);
     expect(pdf.getCreator()).toBe("Fynix Digital");
-    expect(pdf.getTitle()).toBe("Tax invoice FF/26-27/000001");
+    expect(pdf.getTitle()).toBe("Tax invoice FY/26-27/000001");
   });
 
-  it("links the brand's own address and site instead of Firstfold's", async () => {
-    // The platform's receipts route words the supplier's address for the brand before drawing (invoiceAsShown), so the test does too.
-    const shown = { ...invoice, supplier: { ...invoice.supplier, email: "hello@fynix.digital" } };
-    const pdf = await PDFDocument.load(await renderTaxInvoicesPdf([shown], { letterhead, contact }));
+  it("links the given address and site in the footer", async () => {
+    const pdf = await PDFDocument.load(await renderTaxInvoicesPdf([invoice], { letterhead, contact: { email: "billing@example.test", website: "https://example.test" } }));
     const uris = (pdf.getPage(0).node.Annots()?.asArray() ?? []).flatMap((ref) => {
       const annotation = pdf.context.lookup(ref, PDFDict);
       const action = annotation.lookup(PDFName.of("A"), PDFDict);
       const uri = action.lookup(PDFName.of("URI"), PDFString);
       return [uri.decodeText()];
     });
-    expect(uris).toContain("mailto:hello@fynix.digital");
-    expect(uris).toContain("https://fynix.digital");
-    expect(uris).not.toContain("mailto:support@firstfold.io");
-    expect(uris).not.toContain("https://firstfold.io");
+    expect(uris).toContain("mailto:billing@example.test");
+    expect(uris).toContain("https://example.test");
   });
 
   it("refuses a letterhead colour that is not #rrggbb", async () => {

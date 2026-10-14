@@ -19,7 +19,7 @@ describe("toSitePost", () => {
       excerpt: null,
       publishedAt: "2026-09-24T00:00:00.000Z",
       html: "<p>Hello there</p>",
-      coverImagePath: "/content-media/4",
+      coverImagePath: "/api/site/media/4",
       categories: [],
     });
   });
@@ -95,7 +95,7 @@ describe("toSitePost", () => {
     }).author;
     expect(author).toMatchObject({
       role: "Head chef",
-      photoPath: "/content-media/9",
+      photoPath: "/api/site/media/9",
       links: { instagram: "https://instagram.com/asha", website: null },
     });
   });

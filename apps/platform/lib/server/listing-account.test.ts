@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AccountAlreadyExistsError, createPhoneAccountWithGrant, createVerifiedEmailAccountWithGrant } from "@firstfold/auth";
+import { AccountAlreadyExistsError, createPhoneAccountWithGrant, createVerifiedEmailAccountWithGrant } from "@fynix/auth";
 import {
   consumeRateLimit,
   createListingAccountBusiness,
@@ -10,8 +10,8 @@ import {
   PlaceNotClaimableError,
   recordConsent,
   type Database,
-} from "@firstfold/db";
-import { LEGAL_TEXT_VERSION } from "@firstfold/shared/lib/privacy/notice-version";
+} from "@fynix/db";
+import { LEGAL_TEXT_VERSION } from "@fynix/shared/lib/privacy/notice-version";
 import type { JoinInput } from "@/lib/join-form";
 import { confirmAccountEmailCode, requestAccountEmailCode } from "./account-email-code";
 import { confirmAccountOtp, requestAccountOtp } from "./account-otp";
@@ -24,9 +24,8 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: vi.fn(async () => new Headers({ "x-forwarded-for": "203.0.113.9" })) }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./auth", () => ({ getAuth: vi.fn() }));
-// Signing in also sets the website's signed-in marker, tested in signed-in-hint.test.ts; here it goes straight through
-// to Better Auth, so these tests check the sign-in itself.
-vi.mock("./signed-in-hint", async () => {
+// Signing in goes straight through to Better Auth here (customer-sign-in.test.ts covers the wrapper), so these tests check the sign-in itself.
+vi.mock("./customer-sign-in", async () => {
   const { getAuth } = await import("./auth");
   return {
     signInCustomer: vi.fn(async (credentials: { email: string; password: string }, headers: Headers) => {
@@ -38,12 +37,12 @@ vi.mock("./signed-in-hint", async () => {
 vi.mock("./claim-link", () => ({ hasValidClaimSignature: vi.fn() }));
 vi.mock("./account-otp", () => ({ requestAccountOtp: vi.fn(), confirmAccountOtp: vi.fn() }));
 vi.mock("./account-email-code", () => ({ requestAccountEmailCode: vi.fn(), confirmAccountEmailCode: vi.fn() }));
-vi.mock("@firstfold/auth", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/auth")>("@firstfold/auth");
+vi.mock("@fynix/auth", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/auth")>("@fynix/auth");
   return { AccountAlreadyExistsError: actual.AccountAlreadyExistsError, createPhoneAccountWithGrant: vi.fn(), createVerifiedEmailAccountWithGrant: vi.fn() };
 });
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     marketOfListing: actual.marketOfListing,
     phoneAccountEmail: actual.phoneAccountEmail,
@@ -115,7 +114,7 @@ beforeEach(() => {
   vi.mocked(createVerifiedEmailAccountWithGrant).mockResolvedValue({ userId: "user-2", email: "meera.shah@example.test" });
   vi.mocked(requestAccountOtp).mockResolvedValue({ kind: "sent", otpId: OTP_ID, expiresInSeconds: 600, phoneHint: "•••• 1223", texted: true });
   vi.mocked(confirmAccountOtp).mockResolvedValue({ kind: "confirmed" });
-  vi.mocked(createPhoneAccountWithGrant).mockResolvedValue({ userId: "user-1", email: "919820011223@phone.firstfold.invalid" });
+  vi.mocked(createPhoneAccountWithGrant).mockResolvedValue({ userId: "user-1", email: "919820011223@phone.fynix.invalid" });
   vi.mocked(createUnlistedAccountBusiness).mockResolvedValue({ businessId: "business-1" });
   vi.mocked(createListingAccountBusiness).mockResolvedValue({ businessId: "business-1", claimId: "claim-1" });
   vi.mocked(recordConsent).mockResolvedValue(undefined);
@@ -133,14 +132,14 @@ describe("requestJoinCode", () => {
   });
 
   it("sends a number that already has an account to sign in, and texts nothing", async () => {
-    vi.mocked(findUserByPhone).mockResolvedValue({ id: "user-0", name: "Meera", email: "919820011223@phone.firstfold.invalid" });
+    vi.mocked(findUserByPhone).mockResolvedValue({ id: "user-0", name: "Meera", email: "919820011223@phone.fynix.invalid" });
     expect(await requestJoinCode(FIRST)).toEqual({ kind: "refused", message: "This number already has an account. Sign in instead." });
     expect(requestAccountOtp).not.toHaveBeenCalled();
   });
 
   it("answers no more than a few numbers an hour from one network, so it cannot be used to look numbers up", async () => {
     vi.mocked(consumeRateLimit).mockResolvedValueOnce({ allowed: false, remaining: 0, retryAfterSeconds: 600 });
-    vi.mocked(findUserByPhone).mockResolvedValue({ id: "user-0", name: "Meera", email: "919820011223@phone.firstfold.invalid" });
+    vi.mocked(findUserByPhone).mockResolvedValue({ id: "user-0", name: "Meera", email: "919820011223@phone.fynix.invalid" });
     expect(await requestJoinCode(FIRST)).toEqual({ kind: "limited", scope: "network", retryAfterSeconds: 600 });
     expect(vi.mocked(consumeRateLimit).mock.calls[0]?.[1]).toBe("join-code:ip:203.0.113.9");
     expect(findUserByPhone).not.toHaveBeenCalled();
@@ -230,7 +229,7 @@ describe("createListingAccount", () => {
     // A business that is not in the directory yet is named after its owner until they add it.
     expect(createUnlistedAccountBusiness).toHaveBeenCalledWith(DB, { userId: "user-1", businessName: "Meera Shah", signupChoice: "listing_only" });
     expect(signInEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ body: { email: "919820011223@phone.firstfold.invalid", password: "correct-horse-battery" } }),
+      expect.objectContaining({ body: { email: "919820011223@phone.fynix.invalid", password: "correct-horse-battery" } }),
     );
   });
 
@@ -364,7 +363,7 @@ describe("an email sign-up (the Fynix account)", () => {
     });
 
     it("refuses an address in the phone accounts' placeholder domain", async () => {
-      expect(await requestJoinCode({ ...BY_EMAIL, email: "919820011223@phone.firstfold.invalid" })).toEqual({ kind: "refused", message: "Enter a valid email address." });
+      expect(await requestJoinCode({ ...BY_EMAIL, email: "919820011223@phone.fynix.invalid" })).toEqual({ kind: "refused", message: "Enter a valid email address." });
       expect(requestAccountEmailCode).not.toHaveBeenCalled();
     });
 

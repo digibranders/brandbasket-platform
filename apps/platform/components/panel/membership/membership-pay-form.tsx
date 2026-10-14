@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, type ReactElement } from "react";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { Button } from "@firstfold/shared/ui/panel/button";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { Button } from "@fynix/shared/ui/panel/button";
 import { initialMembershipFormState, type MembershipFormState, type MembershipTier } from "@/lib/membership";
 
 interface MembershipPayFormProps {

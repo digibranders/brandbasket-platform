@@ -1,7 +1,7 @@
 # Staff access
 
-The staff console is its own app (`apps/admin`) on its own address: **https://staff.fynix.digital** in production, beside the
-customer dashboard at https://app.fynix.digital. Set `ADMIN_ORIGIN=https://staff.fynix.digital` in both apps'
+The staff console is its own app (`apps/admin`) on its own address: **https://console.fynix.digital** in production, beside the
+customer dashboard at https://app.fynix.digital. Set `ADMIN_ORIGIN=https://console.fynix.digital` in both apps'
 environments (`apps/admin/.env.production.example`, `apps/platform/.env.production.example`).
 
 ## Two origins, no shared cookie
@@ -10,8 +10,8 @@ Each app signs people in on its own host and sets a **host-only** session cookie
 sends the dashboard's cookie to the console, or the console's to the dashboard. Nothing is configured to share a cookie
 across `fynix.digital`; do not add a `Domain=.fynix.digital` cookie or Better Auth's `crossSubDomainCookies`. Staff get a
 12-hour session (customers get longer). Both apps list the two origins as trusted (`trustedOrigins`); every other origin is
-refused. Checked locally with the dashboard on `localbusiness.localhost:3098` and the console on
-`admin.localbusiness.localhost:3099`: two cookies, one per host, neither with a domain; a customer's session cookie sent to
+refused. Checked locally with the dashboard on `app.localhost:3098` and the console on
+`staff.localhost:3099`: two cookies, one per host, neither with a domain; a customer's session cookie sent to
 the console opens nothing (redirected to sign-in), because reaching a console page also needs an active staff record.
 
 ## Creating the first staff user (production)
@@ -67,12 +67,12 @@ staff account is protected by its password alone (plus the limits above). Treat 
 ## Recommendations
 
 1. Put the console behind **Cloudflare Access** (or another identity-aware proxy) with the team's own identity provider and a
-   second factor, so `staff.fynix.digital` is not reachable at all without it. This is the quickest real second factor.
-2. Or, at least, an **IP allow-list** (Cloudflare WAF rule or the server's firewall / nginx `allow`) for `staff.fynix.digital`
+   second factor, so `console.fynix.digital` is not reachable at all without it. This is the quickest real second factor.
+2. Or, at least, an **IP allow-list** (Cloudflare WAF rule or the server's firewall / nginx `allow`) for `console.fynix.digital`
    to the office and the team's VPN.
 3. Use `admin` for as few people as possible; day-to-day staff are `support` or `finance`. Review the Access log weekly.
 4. Set `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET` in production, and `SECURITY_ALERT_EMAIL` to a monitored inbox.
-5. Keep `staff.fynix.digital` off search engines and links (the console already sends `noindex`); do not put its address in
+5. Keep `console.fynix.digital` off search engines and links (the console already sends `noindex`); do not put its address in
    customer emails.
 6. Deactivate people the day they leave. Rotate `BETTER_AUTH_SECRET` after a suspected leak (this signs everyone out).
 7. Plan real two-factor sign-in (Better Auth has a two-factor plugin) before the console is reachable without 1 or 2.

@@ -1,9 +1,9 @@
-import { getSupportAttachmentForUser } from "@firstfold/db";
+import { getSupportAttachmentForUser } from "@fynix/db";
 import {
   serveSupportAttachment,
   supportAttachmentUnavailable,
-} from "@firstfold/shared/server/support-attachment-serving";
-import { getSupportStorage } from "@firstfold/shared/server/support-storage";
+} from "@fynix/shared/server/support-attachment-serving";
+import { getSupportStorage } from "@fynix/shared/server/support-storage";
 import { getAppDb } from "@/lib/server/db";
 import { getSupportAccess } from "@/lib/server/support-access";
 

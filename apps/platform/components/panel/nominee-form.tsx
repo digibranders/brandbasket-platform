@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useState, type ReactElement } from "react";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { NOMINEE_NAME_MAX_LENGTH, NOMINEE_PHONE_MAX_LENGTH, initialNomineeState, type NomineeFormState } from "@/lib/privacy-settings-form";
 
 interface NomineeFormProps {

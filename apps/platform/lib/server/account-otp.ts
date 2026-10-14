@@ -8,13 +8,13 @@ import {
   createAccountOtp,
   purgeExpiredAccountOtps,
   type RateLimitRule,
-} from "@firstfold/db";
-import type { AccountOtpPurpose } from "@firstfold/db";
-import { phoneHint as toPhoneHint } from "@firstfold/shared/lib/appointments/booking-form";
-import { isOtpCode, OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@firstfold/shared/lib/appointments/otp";
+} from "@fynix/db";
+import type { AccountOtpPurpose } from "@fynix/db";
+import { phoneHint as toPhoneHint } from "@fynix/shared/lib/appointments/booking-form";
+import { isOtpCode, OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
 import { getStaffDb } from "./db";
 import { bookingOtpSecret, signupOtpBypassed, smsAllowedCountryCodes, verifyOtpBypassed } from "./env";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { ipRateLimitKey } from "./ip-key";
 import { generateOtpCode, hashOtpCode, otpCodeMatches } from "./otp-crypto";
 import { disallowedPhoneMessage, isPhoneCountryAllowed } from "./sms-country-guard";

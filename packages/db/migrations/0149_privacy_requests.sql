@@ -36,29 +36,28 @@ CREATE INDEX "privacy_requests_status_due_idx" ON "privacy_requests" USING btree
 
 -- Every rights request and grievance, with the date each is due. Staff may read, add and update rows and may not delete one:
 -- a request once received stays in the tracker. The customer and public form roles get no privilege yet; the public form
--- and the signed-in settings form add their own insert policies when they are built. Both runtime role names are covered
--- while the webfold_* to firstfold_* rollout (0132) is under way.
+-- and the signed-in settings form add their own insert policies when they are built.
 ALTER TABLE privacy_requests ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY privacy_requests_staff_select ON privacy_requests FOR SELECT TO firstfold_staff USING (true);
+CREATE POLICY privacy_requests_staff_select ON privacy_requests FOR SELECT TO fynix_staff USING (true);
 --> statement-breakpoint
 
-CREATE POLICY privacy_requests_staff_insert ON privacy_requests FOR INSERT TO firstfold_staff WITH CHECK (true);
+CREATE POLICY privacy_requests_staff_insert ON privacy_requests FOR INSERT TO fynix_staff WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY privacy_requests_staff_update ON privacy_requests FOR UPDATE TO firstfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY privacy_requests_staff_update ON privacy_requests FOR UPDATE TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON privacy_requests TO firstfold_staff;
+GRANT SELECT, INSERT, UPDATE ON privacy_requests TO fynix_staff;
 --> statement-breakpoint
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'webfold_staff') THEN
-    CREATE POLICY privacy_requests_legacy_staff_select ON privacy_requests FOR SELECT TO webfold_staff USING (true);
-    CREATE POLICY privacy_requests_legacy_staff_insert ON privacy_requests FOR INSERT TO webfold_staff WITH CHECK (true);
-    CREATE POLICY privacy_requests_legacy_staff_update ON privacy_requests FOR UPDATE TO webfold_staff USING (true) WITH CHECK (true);
-    GRANT SELECT, INSERT, UPDATE ON privacy_requests TO webfold_staff;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
+    CREATE POLICY privacy_requests_legacy_staff_select ON privacy_requests FOR SELECT TO fynix_staff USING (true);
+    CREATE POLICY privacy_requests_legacy_staff_insert ON privacy_requests FOR INSERT TO fynix_staff WITH CHECK (true);
+    CREATE POLICY privacy_requests_legacy_staff_update ON privacy_requests FOR UPDATE TO fynix_staff USING (true) WITH CHECK (true);
+    GRANT SELECT, INSERT, UPDATE ON privacy_requests TO fynix_staff;
   END IF;
 END $$;

@@ -154,7 +154,7 @@ async function snapshotTenantTables(): Promise<unknown> {
 }
 
 async function seedStaffAndLead(): Promise<string> {
-  await dbs.staff.db.insert(users).values({ id: STAFF_USER, name: "Sam Staff", email: "sam@firstfold.test" });
+  await dbs.staff.db.insert(users).values({ id: STAFF_USER, name: "Sam Staff", email: "sam@fynix.test" });
   await dbs.staff.db.insert(staffMembers).values({ userId: STAFF_USER });
   const lead = await createLead(dbs.staff.db, {
     name: "Riley Owner",
@@ -824,20 +824,20 @@ describe("what the database itself enforces on projects", () => {
       const message = await captureErrorText(
         asTenant("A", (tx) => tx.update(projects).set({ status }).where(eq(projects.id, projectA))),
       );
-      expect(message, status).toMatch(/(firstfold_app|webfold_app) may only move a project from onboarding to submitted/);
+      expect(message, status).toMatch(/(fynix_app|fynix_app) may only move a project from onboarding to submitted/);
     }
 
     await asTenant("A", (tx) => submitProject(tx, { projectId: projectA, now: SUBMITTED_AT }));
     const reopen = await captureErrorText(
       asTenant("A", (tx) => tx.update(projects).set({ status: "onboarding" }).where(eq(projects.id, projectA))),
     );
-    expect(reopen).toMatch(/(firstfold_app|webfold_app) may only move a project from onboarding to submitted/);
+    expect(reopen).toMatch(/(fynix_app|fynix_app) may only move a project from onboarding to submitted/);
     const resubmit = await captureErrorText(
       asTenant("A", (tx) =>
         tx.update(projects).set({ status: "submitted", slaDueAt: new Date("2030-01-01T00:00:00Z") }).where(eq(projects.id, projectA)),
       ),
     );
-    expect(resubmit).toMatch(/(firstfold_app|webfold_app) may only move a project from onboarding to submitted/);
+    expect(resubmit).toMatch(/(fynix_app|fynix_app) may only move a project from onboarding to submitted/);
 
     const stored = await dbs.staff.db.select({ status: projects.status, slaDueAt: projects.slaDueAt }).from(projects).where(eq(projects.id, projectA));
     expect(stored).toEqual([{ status: "submitted", slaDueAt: new Date("2026-09-18T09:30:00.000Z") }]);
@@ -945,7 +945,7 @@ describe("what the app role may change on its own rows", () => {
         tx.insert(domains).values({ businessId: businessA, hostname: "second.example", isPrimary: false, status: "active" }),
       ),
     );
-    expect(insertMessage).toMatch(/(firstfold_app|webfold_app) may only add a domain as pending/);
+    expect(insertMessage).toMatch(/(fynix_app|fynix_app) may only add a domain as pending/);
     expect(await snapshotTenantTables()).toEqual(before);
 
     // Staff and system work still set the status.

@@ -6,12 +6,12 @@ import {
   findErasureBlock,
   listClosuresDueForErasure,
   markSupportAttachmentPurged,
-} from "@firstfold/db";
-import { deleteMediaFilesReporting, getMediaStorage } from "@firstfold/shared/server/media-storage";
-import { purgeSupportAttachments } from "@firstfold/shared/server/support-attachment-maintenance";
-import { getSupportStorage } from "@firstfold/shared/server/support-storage";
+} from "@fynix/db";
+import { deleteMediaFilesReporting, getMediaStorage } from "@fynix/shared/server/media-storage";
+import { purgeSupportAttachments } from "@fynix/shared/server/support-attachment-maintenance";
+import { getSupportStorage } from "@fynix/shared/server/support-storage";
 import { eraseAccountWithPrivateSupport } from "./support-account-erasure";
-import { getVimeoClient } from "@firstfold/shared/server/vimeo";
+import { getVimeoClient } from "@fynix/shared/server/vimeo";
 import { getPayload } from "payload";
 import config from "@/payload.config";
 import type { ErasureDeps } from "@/lib/account-erasure-run";

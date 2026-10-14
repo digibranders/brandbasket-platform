@@ -65,15 +65,15 @@ needs 16. Task 18 needs 12A, 13 and 16. Task 18A needs 12A and 18.
   insert-only row); guards migrations 0120 and 0121 come before the grants, which are 0122.
 
 **Goal:** Every captured INR payment that buys something gets a GST tax invoice: an immutable record with a gapless number
-(`FF/26-27/000001`), the customer's billing details, place of supply, CGST + SGST or IGST worked out per line, and a PDF in
+(`FY/26-27/000001`), the customer's billing details, place of supply, CGST + SGST or IGST worked out per line, and a PDF in
 the approved design that customers download from Billing and staff download from the client page.
 
-**Architecture:** Pure GST rules live in `@firstfold/billing` (state codes, GSTIN check, tax split, invoice numbering,
+**Architecture:** Pure GST rules live in `@fynix/billing` (state codes, GSTIN check, tax split, invoice numbering,
 amount in words, the invoice builder). The database has `billing_profiles` (what the customer tells us),
 `tax_invoice_series` (one counter row per prefix and financial year) and `tax_invoices` (a frozen snapshot of everything
 printed). An invoice is issued inside the same transaction that records the payment, in a savepoint and as the last step,
 so a fault in invoicing never loses a payment or blocks access: it is logged and staff issue the missing invoice. The
-PDF is drawn with pdf-lib in `@firstfold/shared`, with Hanken Grotesk embedded from a generated module and the rupee sign
+PDF is drawn with pdf-lib in `@fynix/shared`, with Hanken Grotesk embedded from a generated module and the rupee sign
 drawn as a vector path, because Hanken Grotesk has no rupee glyph.
 
 **Tech Stack:** TypeScript, Next.js 16 route handlers and server actions, Drizzle on PostgreSQL 16 with row-level
@@ -82,7 +82,7 @@ security, Vitest, pdf-lib 1.17.1 with @pdf-lib/fontkit 1.1.1.
 **Design spec:** `docs/superpowers/specs/2026-10-09-gst-tax-invoices-design.md`.
 
 **Approved design:** the invoice artifact https://claude.ai/artifact/7UogCdVqQ7z3UwqPUvsbBa, its template source
-`../invoice-design/invoice-template.html`, and the CA pack `../Firstfold-invoice-samples.pdf` (cover plus four samples).
+`../invoice-design/invoice-template.html`, and the CA pack `../Fynix-invoice-samples.pdf` (cover plus four samples).
 The PDF must match them. The samples and the artifact still print the old placeholder SAC; regenerate them with 998361 before the CA
 review.
 
@@ -101,9 +101,9 @@ These are settled. Do not reopen them in review without new facts.
 
 | # | Decision | Why |
 |---|---|---|
-| D1 | Invoices only for INR payments that were applied: captured, `paid_at` set, and no `attention_reason` or one not in `UNAPPLIED_PAYMENT_REASONS` (a reason raised after the money applied, such as `submission_failed`, still gets an invoice). `isInvoiceablePayment` in `@firstfold/db` is the one definition, with `paymentWasApplied` as its SQL twin. USD keeps today's receipt. | Firstfold sells in India only. GST does not apply to the dollar plans (`NO_TAX`). Unapplied money is refunded or applied by staff first. |
+| D1 | Invoices only for INR payments that were applied: captured, `paid_at` set, and no `attention_reason` or one not in `UNAPPLIED_PAYMENT_REASONS` (a reason raised after the money applied, such as `submission_failed`, still gets an invoice). `isInvoiceablePayment` in `@fynix/db` is the one definition, with `paymentWasApplied` as its SQL twin. USD keeps today's receipt. | Fynix sells in India only. GST does not apply to the dollar plans (`NO_TAX`). Unapplied money is refunded or applied by staff first. |
 | D2 | An invoice is a snapshot. Nothing on it is recomputed after issue. | Rule 46 content must not drift when a plan, coupon, address or our own details change later. |
-| D3 | Numbers are `FF/<yy-yy>/<6 digits>`, one series per financial year (April to March, IST), from a counter row updated in the issuing transaction. Not a Postgres sequence. | GST needs a consecutive series of at most 16 characters per financial year. Sequences skip on rollback; a row counter under a row lock does not. |
+| D3 | Numbers are `FY/yy-yy>/<6 digits>`, one series per financial year (April to March, IST), from a counter row updated in the issuing transaction. Not a Postgres sequence. | GST needs a consecutive series of at most 16 characters per financial year. Sequences skip on rollback; a row counter under a row lock does not. |
 | D4 | Tax is worked out per line on the taxable value. Same state: CGST and SGST are each `round(taxable × rate / 2)`. Other state: IGST is `round(taxable × rate)`. Any difference from what was charged, at most 1 paisa per line, prints as a Round off row. | CGST must equal SGST. Razorpay charges `chargedAmountCents` (one rounding of 18%), which can differ from two roundings of 9% by a paisa. |
 | D5 | Place of supply: the GSTIN's state when the customer gave a GSTIN, else the billing address state, else the onboarding address state, else Maharashtra (our location). The basis is stored. | Section 12(2) IGST Act: registered recipient's location, else the address on record, else the supplier's location. |
 | D6 | Billing details are asked for, not required. Pay pages prompt for them; Billing has the form. Saved details apply to invoices issued after saving. | Blocking payment on paperwork costs conversions, and D5 gives a lawful invoice without them (but see Gate 7). |
@@ -124,11 +124,11 @@ These are settled. Do not reopen them in review without new facts.
 
 The code ships with the defaults in brackets. Change the named constant if the CA says otherwise.
 
-1. **SAC**: decided by the owner, `998361` (`FIRSTFOLD_SAC` in `packages/billing/src/tax-invoice.ts`). Confirm with the
+1. **SAC**: decided by the owner, `998361` (`FYNIX_SAC` in `packages/billing/src/tax-invoice.ts`). Confirm with the
    CA that it matches the services billed (website subscription, extras, promotions and ad spots).
 2. **Rounding** [to the paisa, Round off only for the 1 paisa CGST/SGST case]: no code change if confirmed.
-3. **First number** [`FF/26-27/000001`]: if the CA wants to continue a manual series, a follow-up migration seeds the
-   counter: `INSERT INTO "tax_invoice_series" ("prefix", "financial_year", "next_serial") VALUES ('FF', '26-27', N);`.
+3. **First number** [`FY/26-27/000001`]: if the CA wants to continue a manual series, a follow-up migration seeds the
+   counter: `INSERT INTO "tax_invoice_series" ("prefix", "financial_year", "next_serial") VALUES ('FY', '26-27', N);`.
 4. **Past payments** [keep their receipts, no backfill; D17]: a backfill is a separate plan if the CA asks for one.
 5. **Declaration and signature** [as in the template]: `DECLARATION_LINES` in `packages/shared/src/server/tax-invoice-pdf.ts`.
    Ask whether "computer generated, does not need a signature" meets Rule 46(q) for an invoice that is not an
@@ -184,7 +184,7 @@ The code ships with the defaults in brackets. Change the named constant if the C
 | `apps/admin/app/(protected)/invoices/page.tsx`, `invoices/export/route.ts`, `apps/admin/components/console/dock.tsx` | Register page, CSV, dock entry | 18A |
 
 ---
-## Phase 1: GST rules (pure, `@firstfold/billing`)
+## Phase 1: GST rules (pure, `@fynix/billing`)
 
 ### Task 1: GST state codes
 
@@ -195,7 +195,7 @@ The code ships with the defaults in brackets. Change the named constant if the C
 - [x] **Step 1: Write the test**
 
 ```ts
-import { INDIA_STATES } from "@firstfold/db/india-states";
+import { INDIA_STATES } from "@fynix/db/india-states";
 import { describe, expect, it } from "vitest";
 import { gstStateCodeOf, stateCodeOfGstCode, UnknownStateError } from "./gst-states";
 
@@ -206,7 +206,7 @@ describe("GST state codes", () => {
     expect(new Set(codes).size).toBe(36);
   });
 
-  it("maps the codes Firstfold deals with most", () => {
+  it("maps the codes Fynix deals with most", () => {
     expect(gstStateCodeOf("mh")).toBe("27");
     expect(gstStateCodeOf("ka")).toBe("29");
     expect(gstStateCodeOf("dh")).toBe("26");
@@ -240,7 +240,7 @@ describe("GST state codes", () => {
 });
 ```
 
-- [x] **Step 2: Run** `pnpm --filter @firstfold/billing exec vitest run src/gst-states.test.ts`. Expected: FAIL, module not found.
+- [x] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/gst-states.test.ts`. Expected: FAIL, module not found.
 
 - [x] **Step 3: Implement**
 
@@ -341,7 +341,7 @@ describe("GSTIN", () => {
 });
 ```
 
-- [x] **Step 2: Run** `pnpm --filter @firstfold/billing exec vitest run src/gstin.test.ts`. Expected: FAIL, module not found.
+- [x] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/gstin.test.ts`. Expected: FAIL, module not found.
 
 - [x] **Step 3: Implement**
 
@@ -490,7 +490,7 @@ describe("supplyTypeOf", () => {
 });
 ```
 
-- [x] **Step 2: Run** `pnpm --filter @firstfold/billing exec vitest run src/gst.test.ts`. Expected: FAIL, module not found.
+- [x] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/gst.test.ts`. Expected: FAIL, module not found.
 
 - [x] **Step 3: Implement**
 
@@ -499,7 +499,7 @@ describe("supplyTypeOf", () => {
  * GST on one invoice line. Within our own state the rate splits into CGST and SGST, each rounded on its own so the two
  * are always equal; across states it is one IGST figure. Rounding is half up, as in tax.ts. Pure and browser-safe.
  */
-import type { TaxInvoiceSupplyType } from "@firstfold/db";
+import type { TaxInvoiceSupplyType } from "@fynix/db";
 import { BillingRangeError } from "./billing-range-error";
 import { gstStateCodeOf } from "./gst-states";
 
@@ -587,7 +587,7 @@ describe("indianDate", () => {
 describe("formatInvoiceNumber", () => {
   it("is prefix, financial year and a six digit serial, within GST's 16 characters", () => {
     const number = formatInvoiceNumber(INVOICE_PREFIX, "26-27", 147);
-    expect(number).toBe("FF/26-27/000147");
+    expect(number).toBe("FY/26-27/000147");
     expect(number.length).toBeLessThanOrEqual(16);
   });
 
@@ -603,7 +603,7 @@ describe("formatInvoiceNumber", () => {
 
   it("refuses a prefix that is empty, lower case or holds a slash", () => {
     expect(() => formatInvoiceNumber("", "26-27", 1)).toThrow(RangeError);
-    expect(() => formatInvoiceNumber("ff", "26-27", 1)).toThrow(RangeError);
+    expect(() => formatInvoiceNumber("fy", "26-27", 1)).toThrow(RangeError);
     expect(() => formatInvoiceNumber("F/F", "26-27", 1)).toThrow(RangeError);
   });
 
@@ -617,7 +617,7 @@ describe("formatInvoiceNumber", () => {
 });
 ```
 
-- [x] **Step 2: Run** `pnpm --filter @firstfold/billing exec vitest run src/invoice-number.test.ts`. Expected: FAIL, module not found.
+- [x] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/invoice-number.test.ts`. Expected: FAIL, module not found.
 
 - [x] **Step 3: Implement**
 
@@ -625,12 +625,12 @@ describe("formatInvoiceNumber", () => {
 import { BillingRangeError } from "./billing-range-error";
 
 /**
- * Tax invoice numbers: "FF/26-27/000147". One consecutive series per financial year (1 April to 31 March, in India),
+ * Tax invoice numbers: "FY/26-27/000147". One consecutive series per financial year (1 April to 31 March, in India),
  * at most 16 characters, as GST requires. The serial itself comes from the tax_invoice_series counter.
  */
 
-/** The letters every Firstfold tax invoice number starts with. */
-export const INVOICE_PREFIX = "FF";
+/** The letters every Fynix tax invoice number starts with. */
+export const INVOICE_PREFIX = "FY";
 /** The largest serial that fits the six digits of the number format. */
 export const MAX_INVOICE_SERIAL = 999_999;
 const MAX_INVOICE_NUMBER_LENGTH = 16;
@@ -664,7 +664,7 @@ export function financialYearOf(instant: Date): string {
 }
 
 /**
- * "FF/26-27/000147" from its three parts. Throws BillingRangeError for a prefix that is not upper-case letters and digits, a
+ * "FY/26-27/000147" from its three parts. Throws BillingRangeError for a prefix that is not upper-case letters and digits, a
  * financial year not written "26-27", a serial outside 1 to 999999, or a result longer than GST's 16 characters.
  */
 export function formatInvoiceNumber(prefix: string, financialYear: string, serial: number): string {
@@ -735,7 +735,7 @@ describe("amountInWords", () => {
 });
 ```
 
-- [x] **Step 2: Run** `pnpm --filter @firstfold/billing exec vitest run src/amount-in-words.test.ts`. Expected: FAIL, module not found.
+- [x] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/amount-in-words.test.ts`. Expected: FAIL, module not found.
 
 - [x] **Step 3: Implement**
 
@@ -798,7 +798,7 @@ export function amountInWords(paise: number): string {
 /**
  * A RangeError from the invoice maths: an amount, count, rate or date that cannot be invoiced. Its messages hold
  * numbers and fixed wording only, never text a person typed, so billing logs may print them (see describeError in
- * @firstfold/shared). A subclass, so code that catches RangeError still catches it.
+ * @fynix/shared). A subclass, so code that catches RangeError still catches it.
  */
 export class BillingRangeError extends RangeError {
   constructor(message: string) {
@@ -818,7 +818,7 @@ export class BillingRangeError extends RangeError {
 `packages/billing/package.json`, `packages/billing/src/index.ts`
 
 The record types it returns (`TaxInvoiceLineRecord`, `TaxInvoicePartyRecord`, `PlaceOfSupplyBasis`, `TaxInvoiceSupplyType`)
-are defined with the schema in Task 7 (type-only imports from `@firstfold/db`). `RecipientInput` has no email or phone:
+are defined with the schema in Task 7 (type-only imports from `@fynix/db`). `RecipientInput` has no email or phone:
 an invoice row is insert only, so contact details frozen into it could never be erased.
 
 - [x] **Step 1: Write the test**
@@ -829,13 +829,13 @@ import { BillingRangeError } from "./billing-range-error";
 import { UnknownStateError } from "./gst-states";
 import { InvalidGstinError } from "./gstin";
 import { chargedAmountCents, GST_BASIS_POINTS } from "./tax";
-import { buildTaxInvoice, FIRSTFOLD_SAC, InvoiceAmountMismatchError, placeOfSupply, type InvoiceLineInput } from "./tax-invoice";
+import { buildTaxInvoice, FYNIX_SAC, InvoiceAmountMismatchError, placeOfSupply, type InvoiceLineInput } from "./tax-invoice";
 
 const plan = (overrides: Partial<InvoiceLineInput> = {}): InvoiceLineInput => ({
-  description: "Firstfold Premium plan",
+  description: "Fynix Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: null,
-  sac: FIRSTFOLD_SAC,
+  sac: FYNIX_SAC,
   quantity: 1,
   unitAmountCents: 699_900,
   discountAmountCents: 0,
@@ -1021,19 +1021,19 @@ describe("buildTaxInvoice", () => {
 });
 ```
 
-- [x] **Step 2: Run** `pnpm --filter @firstfold/billing exec vitest run src/tax-invoice.test.ts`. Expected: FAIL.
+- [x] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/tax-invoice.test.ts`. Expected: FAIL.
 
 - [x] **Step 3: Implement**
 
 ```ts
-import type { PlaceOfSupplyBasis, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@firstfold/db";
+import type { PlaceOfSupplyBasis, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@fynix/db";
 import { BillingRangeError } from "./billing-range-error";
 import { gstStateCodeOf } from "./gst-states";
 import { splitGst, supplyTypeOf, type SupplyType } from "./gst";
 import { normaliseGstin, stateCodeOfGstin } from "./gstin";
 
 /** SAC for the managed website subscription and its extras. The owner confirmed 998361. */
-export const FIRSTFOLD_SAC = "998361";
+export const FYNIX_SAC = "998361";
 /** One A4 page holds this many lines in the approved layout; every real invoice today has one. */
 export const MAX_INVOICE_LINES = 8;
 
@@ -1201,7 +1201,7 @@ export { gstinCheckCharacter, InvalidGstinError, isValidGstin, normaliseGstin, s
 export { financialYearOf, formatInvoiceNumber, indianDate, INVOICE_PREFIX, MAX_INVOICE_SERIAL } from "./invoice-number";
 export {
   buildTaxInvoice,
-  FIRSTFOLD_SAC,
+  FYNIX_SAC,
   InvoiceAmountMismatchError,
   MAX_INVOICE_LINES,
   placeOfSupply,
@@ -1211,7 +1211,7 @@ export {
 } from "./tax-invoice";
 ```
 
-- [x] **Step 5: Run** `pnpm --filter @firstfold/billing test && pnpm --filter @firstfold/billing typecheck`. Expected: PASS.
+- [x] **Step 5: Run** `pnpm --filter @fynix/billing test && pnpm --filter @fynix/billing typecheck`. Expected: PASS.
 
 - [x] **Step 6: Commit** "Build a GST tax invoice from what was sold and what was charged"
 
@@ -1339,7 +1339,7 @@ export const taxInvoices = pgTable(
     id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
     businessId: uuid("business_id").notNull().references(() => businesses.id),
     paymentId: uuid("payment_id").notNull().references(() => payments.id),
-    /** The series this invoice belongs to ("FF"). Upper-case letters and digits only. */
+    /** The series this invoice belongs to ("FY"). Upper-case letters and digits only. */
     prefix: text("prefix").notNull(),
     /** The Indian financial year (April to March) of `issuedOn`, as two-digit years: "26-27". */
     financialYear: text("financial_year").notNull(),
@@ -1436,9 +1436,9 @@ export type TaxInvoice = typeof taxInvoices.$inferSelect;
 ```
 
 - [x] **Step 2: Export it.** `export * from "./tax-invoices";` in `packages/db/src/schema/index.ts`, in alphabetical
-  position. `pnpm --filter @firstfold/db typecheck`: PASS.
+  position. `pnpm --filter @fynix/db typecheck`: PASS.
 
-- [x] **Step 3: Generate** `pnpm --filter @firstfold/db exec drizzle-kit generate --name tax_invoices` (journal idx 117),
+- [x] **Step 3: Generate** `pnpm --filter @fynix/db exec drizzle-kit generate --name tax_invoices` (journal idx 117),
   then `--name tax_invoice_guards` (idx 118) and `--name tax_invoice_recipient_guards` (idx 119) as the checks were
   added. Each was read end to end; none touches another table. The guards as generated:
 
@@ -1500,7 +1500,7 @@ ALTER TABLE "tax_invoices" ADD CONSTRAINT "tax_invoices_number_check" CHECK ("ta
 
 **Files:** Generate `packages/db/migrations/0122_tax_invoices_grants.sql` (journal idx 120)
 
-- [x] **Step 1: Generate an empty custom migration** `pnpm --filter @firstfold/db exec drizzle-kit generate --custom --name tax_invoices_grants`
+- [x] **Step 1: Generate an empty custom migration** `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name tax_invoices_grants`
   and replace its body with:
 
 ```sql
@@ -1509,50 +1509,50 @@ ALTER TABLE "tax_invoices" ADD CONSTRAINT "tax_invoices_number_check" CHECK ("ta
 -- needs (0097). Customers read their own invoices and write none: invoices are issued by the payment paths on the
 -- staff connection. Nobody may update or delete an invoice, staff included: an issued invoice is corrected by a credit
 -- note, never edited, and it is a financial record that erasure leaves whole. The series counter is staff only.
--- webfold_public gets nothing.
+-- fynix_public gets nothing.
 
-GRANT SELECT, INSERT, UPDATE ON billing_profiles TO webfold_app;
+GRANT SELECT, INSERT, UPDATE ON billing_profiles TO fynix_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON billing_profiles TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON billing_profiles TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE billing_profiles ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY billing_profiles_tenant_all ON billing_profiles FOR ALL TO webfold_app
+CREATE POLICY billing_profiles_tenant_all ON billing_profiles FOR ALL TO fynix_app
   USING (business_id = app_current_business_id()) WITH CHECK (business_id = app_current_business_id());
 --> statement-breakpoint
 
-CREATE POLICY billing_profiles_staff_all ON billing_profiles FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY billing_profiles_staff_all ON billing_profiles FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT ON tax_invoices TO webfold_app;
+GRANT SELECT ON tax_invoices TO fynix_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT ON tax_invoices TO webfold_staff;
+GRANT SELECT, INSERT ON tax_invoices TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE tax_invoices ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY tax_invoices_tenant_select ON tax_invoices FOR SELECT TO webfold_app
+CREATE POLICY tax_invoices_tenant_select ON tax_invoices FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
 
-CREATE POLICY tax_invoices_staff_select ON tax_invoices FOR SELECT TO webfold_staff USING (true);
+CREATE POLICY tax_invoices_staff_select ON tax_invoices FOR SELECT TO fynix_staff USING (true);
 --> statement-breakpoint
 
-CREATE POLICY tax_invoices_staff_insert ON tax_invoices FOR INSERT TO webfold_staff WITH CHECK (true);
+CREATE POLICY tax_invoices_staff_insert ON tax_invoices FOR INSERT TO fynix_staff WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON tax_invoice_series TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON tax_invoice_series TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE tax_invoice_series ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY tax_invoice_series_staff_all ON tax_invoice_series FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY tax_invoice_series_staff_all ON tax_invoice_series FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 ```
 
 - [x] **Step 2: Run** `pnpm db:migrate && pnpm db:migrate:test`. Expected: applies 0119 to 0122 with no error.
@@ -1614,7 +1614,7 @@ CREATE POLICY tax_invoice_series_staff_all ON tax_invoice_series FOR ALL TO webf
     - locks a payment for its invoice, and refuses one that does not exist
     - reads a referral code's text and discount for the invoice note
 
-- [x] **Step 2: Run** `pnpm --filter @firstfold/db exec vitest run --config vitest.integration.config.ts src/tax-invoices.integration.test.ts`.
+- [x] **Step 2: Run** `pnpm --filter @fynix/db exec vitest run --config vitest.integration.config.ts src/tax-invoices.integration.test.ts`.
   Expected: FAIL, functions not found.
 
 - [x] **Step 3: Implement** `packages/db/src/queries/tax-invoices.ts`:
@@ -1880,7 +1880,7 @@ export {
 } from "./queries/tax-invoices";
 ```
 
-- [x] **Step 4: Run** the integration test again. Expected: PASS. Then `pnpm --filter @firstfold/db typecheck`.
+- [x] **Step 4: Run** the integration test again. Expected: PASS. Then `pnpm --filter @fynix/db typecheck`.
 
 - [x] **Step 5: Erasure.** In `eraseClosedAccount` (`packages/db/src/queries/account-erasure.ts`), after the
   `businessProfiles` delete:
@@ -1918,7 +1918,7 @@ print the legal name and CIN); Test `packages/shared/src/lib/site-config.test.ts
 export interface BusinessDetails {
   /** The company that supplies the service and holds the GSTIN. */
   readonly legalName: string;
-  /** The name customers know. Printed under the legal name: "Trading as Firstfold". */
+  /** The name customers know. Printed under the legal name: "Trading as Fynix". */
   readonly tradeName: string;
   /** Corporate Identity Number, from the certificate of incorporation. */
   readonly cin: string;
@@ -1940,7 +1940,7 @@ export interface BusinessDetails {
 
 export const businessDetails: BusinessDetails = {
   legalName: "Digibranders Private Limited",
-  tradeName: "Firstfold",
+  tradeName: "Fynix",
   cin: "U72900MH2021PTC372344",
   address: [
     "Office No. 2617, 26th Floor, Solus Building,",
@@ -1951,15 +1951,15 @@ export const businessDetails: BusinessDetails = {
   gstNumber: "27AAICD9268J1Z0",
   phone: "+91 789 789 6607",
   phoneHref: "+917897896607",
-  email: "support@firstfold.io",
-  website: "https://firstfold.io",
+  email: "hello@fynix.digital",
+  website: "https://fynix.digital",
 };
 ```
 
 - [x] **Step 2:** `packages/shared/src/lib/site-config.test.ts` holds the GSTIN and the state code together:
 
 ```ts
-import { isValidGstin, stateCodeOfGstin } from "@firstfold/billing/gstin";
+import { isValidGstin, stateCodeOfGstin } from "@fynix/billing/gstin";
 import { describe, expect, it } from "vitest";
 import { businessDetails } from "./site-config";
 
@@ -1977,7 +1977,7 @@ describe("businessDetails", () => {
 });
 ```
 
-- [x] **Step 3: Commit** "Name the company behind Firstfold with its CIN on everything we bill"
+- [x] **Step 3: Commit** "Name the company behind Fynix with its CIN on everything we bill"
 
 ### Task 11: Issue an invoice for a recorded payment
 
@@ -2061,7 +2061,7 @@ describe("paymentLabel", () => {
     - counts days in India, not UTC
     - refuses a period that ends before it starts
   - planLineDescription
-    - names the plan once, with Firstfold in front and plan at the end
+    - names the plan once, with Fynix in front and plan at the end
   - planLineDetail
     - calls a monthly payment a monthly subscription, as the approved template does
     - still says monthly when the provider's cycle is a few seconds off a calendar month
@@ -2077,7 +2077,7 @@ describe("paymentLabel", () => {
     - lets a lost connection through, since the payment's own transaction cannot commit either
     - logs any other failure and returns null
 
-- [x] **Step 3: Run** `pnpm --filter @firstfold/shared exec vitest run src/server/tax-invoicing.test.ts src/lib/billing/payment-method.test.ts`.
+- [x] **Step 3: Run** `pnpm --filter @fynix/shared exec vitest run src/server/tax-invoicing.test.ts src/lib/billing/payment-method.test.ts`.
   Expected: FAIL.
 
 - [x] **Step 4: Implement** `packages/shared/src/lib/billing/payment-method.ts`:
@@ -2132,14 +2132,14 @@ import {
   BillingRangeError,
   buildTaxInvoice,
   discountCentsFor,
-  FIRSTFOLD_SAC,
+  FYNIX_SAC,
   financialYearOf,
   formatInvoiceNumber,
   indianDate,
   INVOICE_PREFIX,
   type InvoiceLineInput,
   type RecipientInput,
-} from "@firstfold/billing";
+} from "@fynix/billing";
 import {
   allocateInvoiceSerial,
   findBillingProfile,
@@ -2158,8 +2158,8 @@ import {
   type ScopedTransaction,
   type TaxInvoice,
   type TaxInvoicePartyRecord,
-} from "@firstfold/db";
-import { stateCodeOfIndiaPostName } from "@firstfold/db/india-states";
+} from "@fynix/db";
+import { stateCodeOfIndiaPostName } from "@fynix/db/india-states";
 import { paymentLabel } from "../lib/billing/payment-method";
 import { planLabel } from "../lib/billing/receipt-title";
 import { businessDetails } from "../lib/site-config";
@@ -2233,10 +2233,10 @@ export function servicePeriod(start: Date, endExclusive: Date): string {
   return `${from} to ${last.dayMonth} ${last.year}`;
 }
 
-/** "Firstfold Premium plan", whether the plan is named "Firstfold Premium" (as sold) or plain "Premium". */
+/** "Fynix Premium plan", whether the plan is named "Fynix Premium" (as sold) or plain "Premium". */
 export function planLineDescription(planName: string): string {
   const label = planLabel(planName);
-  return /^firstfold\b/i.test(label) ? label : `Firstfold ${label}`;
+  return /^fynix\b/i.test(label) ? label : `Fynix ${label}`;
 }
 
 /**
@@ -2338,7 +2338,7 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
         description: charge.description,
         detail: null,
         note: null,
-        sac: FIRSTFOLD_SAC,
+        sac: FYNIX_SAC,
         quantity: charge.quantity,
         unitAmountCents: charge.unitAmountCents,
         discountAmountCents: 0,
@@ -2360,7 +2360,7 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
         discountAmountCents: source.discountAmountCents,
         retentionDiscountCents: source.retentionDiscountCents,
       }),
-      sac: FIRSTFOLD_SAC,
+      sac: FYNIX_SAC,
       quantity: 1,
       unitAmountCents: source.netAmountCents,
       discountAmountCents: source.discountAmountCents,
@@ -2497,8 +2497,8 @@ export async function issueTaxInvoiceSafely(
     - logs a refused invoice and returns null, and the payment recorded beside it still commits
     - gives back a number taken before the insert failed, so the series keeps no gap
 
-- [x] **Step 6: Run** the unit tests, `pnpm --filter @firstfold/shared exec vitest run --config vitest.integration.config.ts src/tax-invoicing.integration.test.ts`
-  and `pnpm --filter @firstfold/shared typecheck`. Expected: PASS.
+- [x] **Step 6: Run** the unit tests, `pnpm --filter @fynix/shared exec vitest run --config vitest.integration.config.ts src/tax-invoicing.integration.test.ts`
+  and `pnpm --filter @fynix/shared typecheck`. Expected: PASS.
 
 - [x] **Step 7: Commit** "Issue a tax invoice for a recorded payment, without ever losing the payment over it"
 
@@ -2555,7 +2555,7 @@ touch only the business's own rows, which no other payment transaction can hold 
   });
 ```
 
-  Run `pnpm --filter @firstfold/billing exec vitest run src/razorpay-webhook.test.ts`. Expected: FAIL (`currentStart` is
+  Run `pnpm --filter @fynix/billing exec vitest run src/razorpay-webhook.test.ts`. Expected: FAIL (`currentStart` is
   missing).
 
 - [ ] **Step 2: Parse it.** In `packages/billing/src/razorpay-webhook.ts`, the subscription entity of `chargedSchema`
@@ -2584,7 +2584,7 @@ touch only the business's own rows, which no other payment transaction can hold 
       currentStart: typeof subscription.entity.current_start === "number" ? new Date(subscription.entity.current_start * 1000) : null,
 ```
 
-  Run the test again. Expected: PASS. `pnpm --filter @firstfold/billing typecheck`: PASS.
+  Run the test again. Expected: PASS. `pnpm --filter @fynix/billing typecheck`: PASS.
 
 - [ ] **Step 3: Activation tests first.** In `packages/shared/src/server/billing-activation.test.ts`:
   - after the `./affiliate-accrual` mock add
@@ -2678,7 +2678,7 @@ describe("the tax invoice", () => {
 });
 ```
 
-  Add `beforeEach` to the file's `vitest` import. Run `pnpm --filter @firstfold/shared exec vitest run src/server/billing-activation.test.ts`. Expected: FAIL
+  Add `beforeEach` to the file's `vitest` import. Run `pnpm --filter @fynix/shared exec vitest run src/server/billing-activation.test.ts`. Expected: FAIL
   (the activation never calls `issueTaxInvoiceSafely`, and the new fields do not compile).
 
 - [ ] **Step 4: Issue the invoices in `packages/shared/src/server/billing-activation.ts`.** Add
@@ -2858,7 +2858,7 @@ export async function activateReactivationPayment(tx: ScopedTransaction, payment
   });
 ```
 
-  Run `pnpm --filter @firstfold/platform exec vitest run lib/server/razorpay-webhook-handler.test.ts`. Expected: FAIL.
+  Run `pnpm --filter @fynix/platform exec vitest run lib/server/razorpay-webhook-handler.test.ts`. Expected: FAIL.
 
 - [ ] **Step 6: The webhook passes the price.** In `apps/platform/lib/server/razorpay-webhook-handler.ts`, in the
   renewal `else` branch, after the `commitmentEndsAt === null` check and before `activateRenewalPayment`:
@@ -2898,10 +2898,10 @@ export async function activateReactivationPayment(tx: ScopedTransaction, payment
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", () => ({ recordChargePayment: vi.fn() }));
+vi.mock("@fynix/db", () => ({ recordChargePayment: vi.fn() }));
 vi.mock("./tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn() }));
 
-import { recordChargePayment } from "@firstfold/db";
+import { recordChargePayment } from "@fynix/db";
 import { recordChargePaymentWithInvoice } from "./charge-payments";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 
@@ -2945,13 +2945,13 @@ describe("recordChargePaymentWithInvoice", () => {
 });
 ```
 
-  Run `pnpm --filter @firstfold/shared exec vitest run src/server/charge-payments.test.ts`. Expected: FAIL, module not found.
+  Run `pnpm --filter @fynix/shared exec vitest run src/server/charge-payments.test.ts`. Expected: FAIL, module not found.
 
 - [ ] **Step 8: Create `packages/shared/src/server/charge-payments.ts`:**
 
 ```ts
 import "server-only";
-import { recordChargePayment, type ChargePayment, type RecordedChargePayment, type ScopedTransaction } from "@firstfold/db";
+import { recordChargePayment, type ChargePayment, type RecordedChargePayment, type ScopedTransaction } from "@fynix/db";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 
 /**
@@ -2971,17 +2971,17 @@ export async function recordChargePaymentWithInvoice(tx: ScopedTransaction, inpu
   Run the Step 7 test. Expected: PASS.
 
 - [ ] **Step 9: Use it in both apps.** In `apps/platform/lib/server/charges.ts` remove `recordChargePayment` from the
-  `@firstfold/db` import, add `import { recordChargePaymentWithInvoice } from "@firstfold/shared/server/charge-payments";`
+  `@fynix/db` import, add `import { recordChargePaymentWithInvoice } from "@fynix/shared/server/charge-payments";`
   and call `recordChargePaymentWithInvoice(tx, { ... })` in `recordVerifiedChargePayment` (same arguments). Do the same in
   `apps/admin/lib/server/charges-admin.ts` (`markClientChargePaid`). In `apps/platform/lib/server/charges.test.ts` and
-  `apps/admin/lib/server/charges-admin.test.ts`: remove `recordChargePayment` from the `@firstfold/db` mock and import, add
-  `vi.mock("@firstfold/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));` with
-  `import { recordChargePaymentWithInvoice } from "@firstfold/shared/server/charge-payments";`, and rename every other
+  `apps/admin/lib/server/charges-admin.test.ts`: remove `recordChargePayment` from the `@fynix/db` mock and import, add
+  `vi.mock("@fynix/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));` with
+  `import { recordChargePaymentWithInvoice } from "@fynix/shared/server/charge-payments";`, and rename every other
   `recordChargePayment` in those two files to `recordChargePaymentWithInvoice` (the arguments are the same).
 
   `apps/admin/lib/server/billing-admin.test.ts` runs the real `activateFirstPayment` against a mocked database, and one of
   its tests reads the first `console.error` line; without a mock the invoice's own failure would be that line. Add, beside
-  its other mocks: `vi.mock("@firstfold/shared/server/tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn(async () => null) }));`.
+  its other mocks: `vi.mock("@fynix/shared/server/tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn(async () => null) }));`.
 
 - [ ] **Step 10: Existing integration callers of `activateRenewalPayment`.** In
   `packages/shared/src/referral-checkout.integration.test.ts` (`payRenewal`) add, after `paidThroughAt`:
@@ -3009,7 +3009,7 @@ export async function recordChargePaymentWithInvoice(tx: ScopedTransaction, inpu
 - [ ] **Step 11: The end-to-end test.** Create `packages/shared/src/payment-invoicing.integration.test.ts`:
 
 ```ts
-import { chargedAmountCents } from "@firstfold/billing";
+import { chargedAmountCents } from "@fynix/billing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   billingProfiles,
@@ -3023,8 +3023,8 @@ import {
   users,
   type Plan,
   type Subscription,
-} from "@firstfold/db";
-import { openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@firstfold/db/testing";
+} from "@fynix/db";
+import { openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@fynix/db/testing";
 import { chargeAmountCents } from "./lib/billing/charges";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "./server/billing-activation";
 import { recordChargePaymentWithInvoice } from "./server/charge-payments";
@@ -3084,7 +3084,7 @@ function payFirst(subscription: Subscription, plan: Plan, providerPaymentId = "f
 
 /** The next serial the counter would hand out for 26-27, or null when no invoice has taken one. */
 async function nextSerial(): Promise<number | null> {
-  const rows = await querySql<{ next_serial: number }>(dbs.owner, "select next_serial from tax_invoice_series where prefix = 'FF' and financial_year = '26-27'");
+  const rows = await querySql<{ next_serial: number }>(dbs.owner, "select next_serial from tax_invoice_series where prefix = 'FY' and financial_year = '26-27'");
   return rows[0]?.next_serial ?? null;
 }
 
@@ -3124,7 +3124,7 @@ describe("invoicing every payment path", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice).toMatchObject({
-      number: "FF/26-27/000001",
+      number: "FY/26-27/000001",
       issuedOn: "2026-10-09",
       supplyType: "intra_state",
       placeOfSupplyBasis: "gstin",
@@ -3167,7 +3167,7 @@ describe("invoicing every payment path", () => {
     );
 
     expect(await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id)).toMatchObject({
-      number: "FF/26-27/000002",
+      number: "FY/26-27/000002",
       lines: [expect.objectContaining({ detail: "Monthly subscription, 09 Nov to 08 Dec 2026" })],
     });
   });
@@ -3251,7 +3251,7 @@ describe("invoicing every payment path", () => {
 });
 ```
 
-- [ ] **Step 12: Run** `pnpm --filter @firstfold/billing test && pnpm --filter @firstfold/shared test && pnpm --filter @firstfold/platform test && pnpm --filter @firstfold/admin test`,
+- [ ] **Step 12: Run** `pnpm --filter @fynix/billing test && pnpm --filter @fynix/shared test && pnpm --filter @fynix/platform test && pnpm --filter @fynix/admin test`,
   then `pnpm test:integration`, then `pnpm typecheck` and `pnpm lint`. Expected: all PASS.
 
 - [ ] **Step 13: Commit** "Issue a tax invoice with every first payment, renewal, reactivation and paid extra"
@@ -3269,7 +3269,7 @@ would list every INR payment since launch as "Invoice missing" (D17, Gate 4). `t
 (0119 to 0122 have not shipped), and the migration fills `paid_on` from the payment for any local rows.
 
 - [ ] **Step 1: Tests first.** In `packages/db/src/tax-invoices.integration.test.ts`: add `paidOn: "2026-10-09",` to
-  `sampleInvoice` after `issuedOn`; import `taxInvoicingStart` from `"./schema"` (or from `"@firstfold/db"`, matching the
+  `sampleInvoice` after `issuedOn`; import `taxInvoicingStart` from `"./schema"` (or from `"@fynix/db"`, matching the
   file's imports); and add:
 
 ```ts
@@ -3330,7 +3330,7 @@ export const taxInvoicingStart = pgTable(
 );
 ```
 
-- [ ] **Step 3: Generate** `pnpm --filter @firstfold/db exec drizzle-kit generate --name tax_invoice_paid_on`, then edit the
+- [ ] **Step 3: Generate** `pnpm --filter @fynix/db exec drizzle-kit generate --name tax_invoice_paid_on`, then edit the
   generated `0123_tax_invoice_paid_on.sql` (before committing; never after) so the column is filled before it is made
   required, and append the start row and its grant. The finished file:
 
@@ -3349,13 +3349,13 @@ UPDATE "tax_invoices" SET "paid_on" = "issued_on" WHERE "paid_on" IS NULL OR "pa
 ALTER TABLE "tax_invoices" ALTER COLUMN "paid_on" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "tax_invoices" ADD CONSTRAINT "tax_invoices_paid_on_check" CHECK ("tax_invoices"."paid_on" <= "tax_invoices"."issued_on");--> statement-breakpoint
 INSERT INTO "tax_invoicing_start" DEFAULT VALUES;--> statement-breakpoint
-GRANT SELECT ON tax_invoicing_start TO webfold_staff;--> statement-breakpoint
+GRANT SELECT ON tax_invoicing_start TO fynix_staff;--> statement-breakpoint
 ALTER TABLE tax_invoicing_start ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
-CREATE POLICY tax_invoicing_start_staff_select ON tax_invoicing_start FOR SELECT TO webfold_staff USING (true);
+CREATE POLICY tax_invoicing_start_staff_select ON tax_invoicing_start FOR SELECT TO fynix_staff USING (true);
 ```
 
   Keep drizzle-kit's own statement order if it differs, as long as the column is filled before `SET NOT NULL`. Run
-  `pnpm db:migrate && pnpm db:migrate:test`. Expected: 0123 applies; `pnpm --filter @firstfold/db exec drizzle-kit check`
+  `pnpm db:migrate && pnpm db:migrate:test`. Expected: 0123 applies; `pnpm --filter @fynix/db exec drizzle-kit check`
   reports no drift.
 
 - [ ] **Step 4: Queries.** In `packages/db/src/queries/tax-invoices.ts` import `taxInvoicingStart` from `"../schema"` and
@@ -3511,12 +3511,12 @@ describe("firstBillingDetailsProblem", () => {
 });
 ```
 
-- [ ] **Step 2: Run** `pnpm --filter @firstfold/shared exec vitest run src/lib/billing/billing-details-form.test.ts`. Expected: FAIL, module not found.
+- [ ] **Step 2: Run** `pnpm --filter @fynix/shared exec vitest run src/lib/billing/billing-details-form.test.ts`. Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement**
 
 ```ts
-import { isValidGstin, normaliseGstin, stateCodeOfGstin } from "@firstfold/billing/gstin";
+import { isValidGstin, normaliseGstin, stateCodeOfGstin } from "@fynix/billing/gstin";
 import { isIndiaStateCode, stateName } from "../directory/india-states";
 import { optionalEmail } from "../validation/contact";
 import { parsePhoneEntry } from "../validation/phone";
@@ -3635,7 +3635,7 @@ export function firstBillingDetailsProblem(errors: BillingDetailsErrors): { read
   `optionalEmail` (validation/contact.ts) trims, lower-cases and turns a blank into null, so `emailResult.data` is
   `string | null`.
 
-- [ ] **Step 4: Run** the test. Expected: PASS. `pnpm --filter @firstfold/shared typecheck`: PASS.
+- [ ] **Step 4: Run** the test. Expected: PASS. `pnpm --filter @fynix/shared typecheck`: PASS.
 
 - [ ] **Step 5: Commit** "Check billing details the way the GST registration states them"
 
@@ -3651,8 +3651,8 @@ Before writing any markup, invoke the `design-taste-frontend` skill, read `apps/
 Accessibility checklist) and read `node_modules/next/dist/docs/01-app/02-guides/server-actions.md` and
 `03-api-reference/04-functions/refresh.md` in `apps/platform`. The project's design system wins: the panel form pattern
 (`usePanelForm`, `FIELD_CLASSES`, `PanelFormStatus` from `components/panel/form/panel-form.tsx`), `Surface` and
-`SectionHeading` from `@firstfold/shared/ui/panel/surface`, `Button` from `@firstfold/shared/ui/panel/button`, `PhoneField`
-from `@firstfold/shared/ui/phone-field`, sentence-case labels, no uppercase kickers.
+`SectionHeading` from `@fynix/shared/ui/panel/surface`, `Button` from `@fynix/shared/ui/panel/button`, `PhoneField`
+from `@fynix/shared/ui/phone-field`, sentence-case labels, no uppercase kickers.
 
 Who can reach what: an account still buying its membership (`isAwaitingMembership`) can open only its plan's page, so
 `/billing` would bounce it back. That page therefore shows the form inline instead of a link, and the save action passes
@@ -3662,7 +3662,7 @@ than a signed-in member of the business: row-level security (`billing_profiles_t
 - [ ] **Step 1: The action, test first.** Create `apps/platform/app/app-host/(protected)/billing/actions.test.ts`:
 
 ```ts
-import { saveBillingProfile, withTenantScope } from "@firstfold/db";
+import { saveBillingProfile, withTenantScope } from "@fynix/db";
 import { refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
@@ -3675,8 +3675,8 @@ vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() 
 vi.mock("@/lib/server/charges", () => ({ startCustomerChargePayment: vi.fn() }));
 vi.mock("@/lib/server/checkout", () => ({ startReactivationFor: vi.fn() }));
 vi.mock("@/lib/server/charge-redirect", () => ({ redirectForChargePayment: vi.fn() }));
-vi.mock("@firstfold/db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@firstfold/db")>()),
+vi.mock("@fynix/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@fynix/db")>()),
   saveBillingProfile: vi.fn(),
   withTenantScope: vi.fn((_db: unknown, _tenant: unknown, work: (tx: unknown) => unknown) => work({ name: "app-tx" })),
 }));
@@ -3716,14 +3716,14 @@ describe("saveBillingDetailsAction", () => {
 });
 ```
 
-  Run `pnpm --filter @firstfold/platform exec vitest run "app/app-host/(protected)/billing/actions.test.ts"`. Expected: FAIL.
+  Run `pnpm --filter @fynix/platform exec vitest run "app/app-host/(protected)/billing/actions.test.ts"`. Expected: FAIL.
 
 - [ ] **Step 2: The action.** Add to `billing/actions.ts` (keep the existing actions; add these imports):
 
 ```ts
-import { saveBillingProfile, withTenantScope } from "@firstfold/db";
-import { firstBillingDetailsProblem, parseBillingDetails } from "@firstfold/shared/lib/billing/billing-details-form";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { saveBillingProfile, withTenantScope } from "@fynix/db";
+import { firstBillingDetailsProblem, parseBillingDetails } from "@fynix/shared/lib/billing/billing-details-form";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { refresh } from "next/cache";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import { getAppDb } from "@/lib/server/db";
@@ -3758,11 +3758,11 @@ export async function saveBillingDetailsAction(_previous: PanelFormState, formDa
 
 ```ts
 import "server-only";
-import { findBillingProfile, getBusinessProfile, withTenantScope } from "@firstfold/db";
-import { stateCodeOfIndiaPostName } from "@firstfold/db/india-states";
-import { FALLBACK_PHONE_COUNTRY, type PhoneCountryOption } from "@firstfold/shared/lib/phone/fields";
-import { phoneCountryOptions } from "@firstfold/shared/server/phone-countries";
-import { savedPhoneStart } from "@firstfold/shared/server/phone-defaults";
+import { findBillingProfile, getBusinessProfile, withTenantScope } from "@fynix/db";
+import { stateCodeOfIndiaPostName } from "@fynix/db/india-states";
+import { FALLBACK_PHONE_COUNTRY, type PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
+import { phoneCountryOptions } from "@fynix/shared/server/phone-countries";
+import { savedPhoneStart } from "@fynix/shared/server/phone-defaults";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb } from "./db";
 
@@ -3859,10 +3859,10 @@ export async function billingDetailsMissing(customer: Pick<GrantedCustomer, "ten
 "use client";
 
 import { useState, type ReactElement } from "react";
-import { INDIA_STATES } from "@firstfold/shared/lib/directory/india-states";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SectionHeading, Surface } from "@firstfold/shared/ui/panel/surface";
-import { PhoneField } from "@firstfold/shared/ui/phone-field";
+import { INDIA_STATES } from "@fynix/shared/lib/directory/india-states";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SectionHeading, Surface } from "@fynix/shared/ui/panel/surface";
+import { PhoneField } from "@fynix/shared/ui/phone-field";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 import type { BillingDetailsView } from "@/lib/server/billing-details";
 
@@ -4085,7 +4085,7 @@ export function BillingDetailsPrompt(): ReactElement {
   facts). Check the prompt on Check and send before details exist and gone after; the inline form on the Premium page for
   a listing account. Repeat at 375 px.
 
-- [ ] **Step 8: Run** `pnpm --filter @firstfold/platform test && pnpm --filter @firstfold/platform lint && pnpm --filter @firstfold/platform typecheck`. Expected: PASS.
+- [ ] **Step 8: Run** `pnpm --filter @fynix/platform test && pnpm --filter @fynix/platform lint && pnpm --filter @fynix/platform typecheck`. Expected: PASS.
 
 - [ ] **Step 9: Commit** "Let customers give their billing details for GST invoices, from Billing and before they pay"
 
@@ -4145,10 +4145,10 @@ export async function findCurrentPaymentMethod(db: Runner, businessId: string): 
   `design-taste-frontend` and follow `apps/platform/DESIGN.md` first):
 
 ```tsx
-import type { CurrentPaymentMethod } from "@firstfold/db";
+import type { CurrentPaymentMethod } from "@fynix/db";
 import type { ReactElement, ReactNode } from "react";
-import { paymentLabel } from "@firstfold/shared/lib/billing/payment-method";
-import { SectionHeading, Surface } from "@firstfold/shared/ui/panel/surface";
+import { paymentLabel } from "@fynix/shared/lib/billing/payment-method";
+import { SectionHeading, Surface } from "@fynix/shared/ui/panel/surface";
 
 interface PaymentMethodProps {
   readonly method: CurrentPaymentMethod;
@@ -4196,7 +4196,7 @@ export function PaymentMethod({ method, renews, emailUs }: PaymentMethodProps): 
   provider recorded (or nothing, if it records no method); after staff record a bank transfer it shows the transfer.
   Check 375 px width: the label wraps, nothing overflows.
 
-- [ ] **Step 6: Run** `pnpm --filter @firstfold/platform lint && pnpm --filter @firstfold/platform typecheck && pnpm --filter @firstfold/db typecheck && pnpm test:integration`.
+- [ ] **Step 6: Run** `pnpm --filter @fynix/platform lint && pnpm --filter @fynix/platform typecheck && pnpm --filter @fynix/db typecheck && pnpm test:integration`.
   Expected: PASS.
 
 - [ ] **Step 7: Commit** "Show customers how they pay on Billing"
@@ -4218,8 +4218,8 @@ staff download route import that, so it lands in those two server chunks alone, 
 26 KB. Reading the TTFs from disk at runtime was rejected (it needs file tracing in two Next apps and behaves differently
 in Vitest); fetching them was rejected (a network dependency for a legal document).
 
-- [ ] **Step 1: Dependencies.** `pnpm --filter @firstfold/shared add pdf-lib@1.17.1 @pdf-lib/fontkit@1.1.1` (pdf-lib at
-  the version the platform app already pins). Both apps already transpile `@firstfold/shared`; pnpm resolves the new
+- [ ] **Step 1: Dependencies.** `pnpm --filter @fynix/shared add pdf-lib@1.17.1 @pdf-lib/fontkit@1.1.1` (pdf-lib at
+  the version the platform app already pins). Both apps already transpile `@fynix/shared`; pnpm resolves the new
   packages from `packages/shared`, so the apps need no change. If `next build` ever complains about `@pdf-lib/fontkit`,
   add it to `serverExternalPackages` in that app's `next.config.ts`.
 
@@ -4288,7 +4288,7 @@ console.log("wrote src/server/tax-invoice-fonts.generated.ts");
   does.
 
 - [ ] **Step 4: The wordmark.** `../invoice-design/wordmark.json` holds `viewbox` ("0 0 811.3 180.2") and `paths`
-  (14 strings: the letters and the rings of the "o"). From `firstfold-platform`, write the module with:
+  (14 strings: the letters and the rings of the "o"). From `fynix-platform`, write the module with:
 
 ```bash
 node -e '
@@ -4296,7 +4296,7 @@ const fs = require("fs");
 const w = JSON.parse(fs.readFileSync("../invoice-design/wordmark.json", "utf8"));
 if (w.paths.length !== 14) throw new Error(`expected 14 paths, found ${w.paths.length}`);
 const body = [
-  "/** The Firstfold wordmark from the approved invoice design (invoice-design/wordmark.json), as SVG paths in its viewBox. */",
+  "/** The Fynix wordmark from the approved invoice design (invoice-design/wordmark.json), as SVG paths in its viewBox. */",
   "export const WORDMARK_WIDTH = 811.3;",
   "export const WORDMARK_HEIGHT = 180.2;",
   "export const WORDMARK_PATHS: readonly string[] = [",
@@ -4308,7 +4308,7 @@ fs.writeFileSync("packages/shared/src/server/tax-invoice-wordmark.ts", body);
 '
 ```
 
-- [ ] **Step 5: Run** `pnpm --filter @firstfold/shared typecheck`. Expected: PASS.
+- [ ] **Step 5: Run** `pnpm --filter @fynix/shared typecheck`. Expected: PASS.
 
 - [ ] **Step 6: Commit** "Embed Hanken Grotesk and the rupee sign for invoice PDFs"
 
@@ -4318,7 +4318,7 @@ fs.writeFileSync("packages/shared/src/server/tax-invoice-wordmark.ts", body);
 
 The code below was compiled under this repo's strict settings (`noUncheckedIndexedAccess` included) and rendered against
 the four approved samples on 2026-10-09; the positions are the template's CSS converted to points and checked against
-`../Firstfold-invoice-samples.pdf` pages 2 to 5 (facts columns at 39.7, 156.3 and 248.6 pt; right column at 74 mm; table
+`../Fynix-invoice-samples.pdf` pages 2 to 5 (facts columns at 39.7, 156.3 and 248.6 pt; right column at 74 mm; table
 columns 16, 9, 20, 20, 23, 11 and 20 mm; declaration and footer rule within a point of the samples). Behaviour beyond the
 samples:
 
@@ -4326,7 +4326,7 @@ samples:
   description or bank reference never runs into the next column.
 - A character the font lacks prints as "?" instead of an empty box. This is only a last defence: the issuer refuses a
   name or address it cannot print (Task 12A Step 6), and billing details never contain one (Task 13).
-- One line, which is every invoice Firstfold issues today, always fits one page. If lines ever do not fit (up to 8 are
+- One line, which is every invoice Fynix issues today, always fits one page. If lines ever do not fit (up to 8 are
   allowed), they carry on to a continuation page with the letterhead marked "Continued" and the invoice number; the totals
   and declaration end the invoice, and every page of it says "Page n of N".
 - Dates print as "09 Oct 2026" and "Sep" (not en-GB's "Sept"), like the line's service period.
@@ -4340,13 +4340,13 @@ samples:
 ```ts
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it, vi } from "vitest";
-import type { TaxInvoice, TaxInvoiceLineRecord } from "@firstfold/db";
+import type { TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
 import { renderTaxInvoicesPdf } from "./tax-invoice-pdf";
 
 vi.mock("server-only", () => ({}));
 
 const line: TaxInvoiceLineRecord = {
-  description: "Firstfold Premium plan",
+  description: "Fynix Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: "Coupon GAURAV applied, 20% off",
   sac: "998361",
@@ -4366,20 +4366,20 @@ const invoice: TaxInvoice = {
   id: "01920000-0000-7000-8000-000000000001",
   businessId: "01920000-0000-7000-8000-0000000000b1",
   paymentId: "01920000-0000-7000-8000-0000000000a1",
-  prefix: "FF",
+  prefix: "FY",
   financialYear: "26-27",
   serial: 1,
-  number: "FF/26-27/000001",
+  number: "FY/26-27/000001",
   issuedOn: "2026-10-09",
   paidOn: "2026-10-09",
   supplier: {
     legalName: "Digibranders Private Limited",
-    tradeName: "Firstfold",
+    tradeName: "Fynix",
     gstin: "27AAICD9268J1Z0",
     cin: "U72900MH2021PTC372344",
     addressLines: ["Office No. 2617, 26th Floor, Solus Building,", "Hiranandani Estate, Ghodbunder Road,", "Thane West, Maharashtra 400607, India"],
     stateCode: "mh",
-    email: "support@firstfold.io",
+    email: "hello@fynix.digital",
     phone: "+91 789 789 6607",
   },
   recipient: {
@@ -4413,16 +4413,16 @@ async function pages(invoices: readonly TaxInvoice[]): Promise<PDFDocument> {
 
 describe("renderTaxInvoicesPdf", () => {
   it("draws each invoice on its own A4 page", async () => {
-    const pdf = await pages([invoice, { ...invoice, serial: 2, number: "FF/26-27/000002" }]);
+    const pdf = await pages([invoice, { ...invoice, serial: 2, number: "FY/26-27/000002" }]);
     expect(pdf.getPageCount()).toBe(2);
     const { width, height } = pdf.getPage(0).getSize();
     expect(width).toBeCloseTo(595.28, 1);
     expect(height).toBeCloseTo(841.89, 1);
-    expect(pdf.getTitle()).toBe("Firstfold tax invoices");
+    expect(pdf.getTitle()).toBe("Fynix tax invoices");
   });
 
   it("names a single invoice in the document title", async () => {
-    expect((await pages([invoice])).getTitle()).toBe("Tax invoice FF/26-27/000001");
+    expect((await pages([invoice])).getTitle()).toBe("Tax invoice FY/26-27/000001");
   });
 
   it("links the supplier's email, the footer's email and the website", async () => {
@@ -4455,17 +4455,17 @@ describe("renderTaxInvoicesPdf", () => {
 });
 ```
 
-- [ ] **Step 2: Run** `pnpm --filter @firstfold/shared exec vitest run src/server/tax-invoice-pdf.test.ts`. Expected: FAIL, module not found.
+- [ ] **Step 2: Run** `pnpm --filter @fynix/shared exec vitest run src/server/tax-invoice-pdf.test.ts`. Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement** `packages/shared/src/server/tax-invoice-pdf.ts`:
 
 ```ts
 import "server-only";
 import fontkit from "@pdf-lib/fontkit";
-import { amountInWords } from "@firstfold/billing/amount-in-words";
-import { gstStateCodeOf } from "@firstfold/billing/gst-states";
-import type { TaxInvoice, TaxInvoiceLineRecord } from "@firstfold/db";
-import { stateName } from "@firstfold/db/india-states";
+import { amountInWords } from "@fynix/billing/amount-in-words";
+import { gstStateCodeOf } from "@fynix/billing/gst-states";
+import type { TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
+import { stateName } from "@fynix/db/india-states";
 import { PDFDocument, PDFString, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
 import { businessDetails } from "../lib/site-config";
 import { HANKEN_BOLD, HANKEN_REGULAR, HANKEN_SEMIBOLD, RUPEE_ADVANCE, RUPEE_PATH, RUPEE_UNITS_PER_EM } from "./tax-invoice-fonts.generated";
@@ -4929,7 +4929,7 @@ function continuationPage(doc: PDFDocument, invoice: TaxInvoice, fonts: Fonts): 
 }
 
 /**
- * Draws one invoice from a fresh page. It is one page in every case Firstfold issues today (one line); lines that
+ * Draws one invoice from a fresh page. It is one page in every case Fynix issues today (one line); lines that
  * do not fit carry on to a continuation page, and the totals and declaration always end the invoice. Every page of
  * an invoice that runs to more than one says "Page n of N".
  */
@@ -4971,9 +4971,9 @@ export async function renderTaxInvoicesPdf(invoices: readonly TaxInvoice[]): Pro
   if (first === undefined) throw new RangeError("No invoices to render");
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
-  doc.setTitle(invoices.length === 1 ? `Tax invoice ${first.number}` : "Firstfold tax invoices");
+  doc.setTitle(invoices.length === 1 ? `Tax invoice ${first.number}` : "Fynix tax invoices");
   doc.setAuthor(first.supplier.legalName);
-  doc.setCreator("Firstfold");
+  doc.setCreator("Fynix");
   const fonts: Fonts = {
     regular: await doc.embedFont(HANKEN_REGULAR, { subset: true }),
     semibold: await doc.embedFont(HANKEN_SEMIBOLD, { subset: true }),
@@ -4989,13 +4989,13 @@ export async function renderTaxInvoicesPdf(invoices: readonly TaxInvoice[]): Pro
   by the embed script) from the text baseline; `context.obj` turns plain strings into PDF names, so only the URI needs
   `PDFString.of`; `page.node.addAnnot` adds the link to the page's `Annots`.
 
-- [ ] **Step 4: Run** the test. Expected: PASS, 6 tests. `pnpm --filter @firstfold/shared typecheck`: PASS.
+- [ ] **Step 4: Run** the test. Expected: PASS, 6 tests. `pnpm --filter @fynix/shared typecheck`: PASS.
 
 - [ ] **Step 5: Compare with the approved design.** Write a temporary test file (do not commit it)
   `packages/shared/src/server/tax-invoice-pdf.samples.test.ts` that renders the four CA samples (MH registered with the
   20% coupon; KA registered, plan plus 2 seats at ₹499; MH unregistered, plan plus 2 seats; KA unregistered with the
   coupon) with `writeFileSync("/tmp/invoice-check.pdf", ...)`, run it with vitest, and open the result beside
-  `../Firstfold-invoice-samples.pdf` pages 2 to 5. Check: column starts, the shared right column, the Amount paid box,
+  `../Fynix-invoice-samples.pdf` pages 2 to 5. Check: column starts, the shared right column, the Amount paid box,
   the totals rule, the footer rule, the rupee sign on the baseline, nothing overlapping, and the totals 6,607.06,
   9,436.46, 9,436.46, 6,607.06. Delete the file.
 
@@ -5023,7 +5023,7 @@ Read `apps/platform/node_modules/next/dist/docs/01-app/01-getting-started/15-rou
     const invoice = await insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA, serial: 1 }));
     const other = await seedPayment(businessA, "pay_fake_no_invoice");
     const receipts = await asOwner(businessA, OWNER_A, (tx) => listReceiptsForBusiness(tx, businessA, 10));
-    expect(receipts.find((row) => row.id === paymentA)).toMatchObject({ taxInvoiceId: invoice.id, taxInvoiceNumber: "FF/26-27/000001" });
+    expect(receipts.find((row) => row.id === paymentA)).toMatchObject({ taxInvoiceId: invoice.id, taxInvoiceNumber: "FY/26-27/000001" });
     expect(receipts.find((row) => row.id === other)).toMatchObject({ taxInvoiceId: null, taxInvoiceNumber: null });
   });
 ```
@@ -5049,8 +5049,8 @@ Read `apps/platform/node_modules/next/dist/docs/01-app/01-getting-started/15-rou
 
 ```ts
   it("titles an invoiced payment by its tax invoice number", () => {
-    const [row] = receiptRows([receipt({ taxInvoiceId: "inv_1", taxInvoiceNumber: "FF/26-27/000001" })]);
-    expect(row?.title).toBe("Tax invoice FF/26-27/000001");
+    const [row] = receiptRows([receipt({ taxInvoiceId: "inv_1", taxInvoiceNumber: "FY/26-27/000001" })]);
+    expect(row?.title).toBe("Tax invoice FY/26-27/000001");
   });
 ```
 
@@ -5060,11 +5060,11 @@ Read `apps/platform/node_modules/next/dist/docs/01-app/01-getting-started/15-rou
     title: receipt.taxInvoiceNumber === null ? receiptTitle(receipt.sequence, receipt.paidAt) : `Tax invoice ${receipt.taxInvoiceNumber}`,
 ```
 
-  Run `pnpm --filter @firstfold/platform exec vitest run lib/billing/receipt-rows.test.ts`. Expected: PASS (the existing
+  Run `pnpm --filter @fynix/platform exec vitest run lib/billing/receipt-rows.test.ts`. Expected: PASS (the existing
   test for an uninvoiced receipt keeps its title).
 
 - [ ] **Step 4: Read invoices for the customer.** In `apps/platform/lib/server/billing.ts`, beside `listCustomerReceipts`
-  (import `listTaxInvoicesForPayments` and `type TaxInvoice` from `@firstfold/db`):
+  (import `listTaxInvoicesForPayments` and `type TaxInvoice` from `@fynix/db`):
 
 ```ts
 /** The tax invoices for some of the customer's payments, oldest first. Works through row-level security. */
@@ -5085,7 +5085,7 @@ export async function listCustomerTaxInvoices(customer: Pick<GrantedCustomer, "t
     vi.mocked(listCustomerTaxInvoices).mockResolvedValue([INVOICE]);
     const response = await get(`?ids=${SECOND}`);
     expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="firstfold-invoice-FF-26-27-000001.pdf"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-invoice-FY-26-27-000001.pdf"');
     expect(await pageCount(response)).toBe(1);
   });
 
@@ -5093,7 +5093,7 @@ export async function listCustomerTaxInvoices(customer: Pick<GrantedCustomer, "t
     mockedReceipts.mockResolvedValue([receipt(SECOND, 2, { currency: "INR", taxInvoiceId: INVOICE.id, taxInvoiceNumber: INVOICE.number }), receipt(FIRST, 1)]);
     vi.mocked(listCustomerTaxInvoices).mockResolvedValue([INVOICE]);
     const response = await get();
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="firstfold-receipts.pdf"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-receipts.pdf"');
     expect(await pageCount(response)).toBe(2);
   });
 
@@ -5104,14 +5104,14 @@ export async function listCustomerTaxInvoices(customer: Pick<GrantedCustomer, "t
   });
 ```
 
-  Run `pnpm --filter @firstfold/platform exec vitest run app/app-host/billing/receipts/route.test.ts`. Expected: FAIL.
+  Run `pnpm --filter @fynix/platform exec vitest run app/app-host/billing/receipts/route.test.ts`. Expected: FAIL.
 
 - [ ] **Step 6: The route.** Replace `apps/platform/app/app-host/billing/receipts/route.ts` with:
 
 ```ts
 import "server-only";
-import type { Receipt, TaxInvoice } from "@firstfold/db";
-import { renderTaxInvoicesPdf } from "@firstfold/shared/server/tax-invoice-pdf";
+import type { Receipt, TaxInvoice } from "@fynix/db";
+import { renderTaxInvoicesPdf } from "@fynix/shared/server/tax-invoice-pdf";
 import { PDFDocument } from "pdf-lib";
 import { isDownloadableReceipt, receiptDocument, type ReceiptCustomer } from "@/lib/billing/receipt-document";
 import { parseReceiptSelection } from "@/lib/billing/receipt-download";
@@ -5176,8 +5176,8 @@ async function joinPdfs(parts: readonly Uint8Array[]): Promise<Uint8Array> {
 
 function fileNameFor(pieces: readonly Piece[], customer: ReceiptCustomer): string {
   const only = pieces[0];
-  if (pieces.length !== 1 || only === undefined) return "firstfold-receipts.pdf";
-  if ("invoice" in only) return `firstfold-invoice-${only.invoice.number.replaceAll("/", "-")}.pdf`;
+  if (pieces.length !== 1 || only === undefined) return "fynix-receipts.pdf";
+  if ("invoice" in only) return `fynix-invoice-${only.invoice.number.replaceAll("/", "-")}.pdf`;
   return receiptDocument(only.receipt, customer).fileName;
 }
 
@@ -5222,7 +5222,7 @@ export async function GET(request: Request): Promise<Response> {
 
   Run the Step 5 tests and the route's existing tests. Expected: PASS.
 
-- [ ] **Step 7: Run** `pnpm --filter @firstfold/platform test && pnpm --filter @firstfold/platform lint && pnpm --filter @firstfold/platform typecheck && pnpm test:integration`.
+- [ ] **Step 7: Run** `pnpm --filter @fynix/platform test && pnpm --filter @fynix/platform lint && pnpm --filter @fynix/platform typecheck && pnpm test:integration`.
   Expected: PASS.
 
 - [ ] **Step 8: Commit** "Download tax invoices from Billing; older payments keep their receipts"
@@ -5272,7 +5272,7 @@ export async function findTaxInvoiceById(db: Runner, invoiceId: string): Promise
   `beforeEach` and `afterEach`). Seed payments directly (owner connection, `payments` table) so no invoice is issued with
   them, then call `issueMissingTaxInvoice` in a staff transaction:
   - an `initial` payment on Premium at `chargedAmountCents(initialAmountCents, 0, rate)`, issued on `2026-11-15`, gets
-    `FF/26-27/000001` with `issuedOn: "2026-11-15"`, `paidOn: "2026-10-09"`, and a period from the payment date;
+    `FY/26-27/000001` with `issuedOn: "2026-11-15"`, `paidOn: "2026-10-09"`, and a period from the payment date;
   - a `renewal` payment at the recurring price on a subscription with a stay offer (`applyRetentionDiscount`) charged
     before the offer existed (amount without the offer) is matched to the price without the offer;
   - a `charge` payment settles via `charges.payment_id` and is invoiced by the charge's description;
@@ -5287,7 +5287,7 @@ export async function findTaxInvoiceById(db: Runner, invoiceId: string): Promise
 
 ```ts
 import "server-only";
-import { addMonthsUtc, chargedAmountCents } from "@firstfold/billing";
+import { addMonthsUtc, chargedAmountCents } from "@fynix/billing";
 import {
   findChargeByPaymentId,
   findPlanById,
@@ -5298,7 +5298,7 @@ import {
   type ScopedTransaction,
   type Subscription,
   type TaxInvoice,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { issueTaxInvoice, type InvoiceSource } from "./tax-invoicing";
 
 /** The payment is not one staff can invoice now: it has its invoice, gets none (D1), or is from before invoicing (D17). */
@@ -5414,7 +5414,7 @@ export function invoiceNoticeHref(businessId: string, notice: InvoiceNotice): st
   `apps/admin/lib/billing-details-form-state.ts`:
 
 ```ts
-import type { BillingDetailsField } from "@firstfold/shared/lib/billing/billing-details-form";
+import type { BillingDetailsField } from "@fynix/shared/lib/billing/billing-details-form";
 
 /** The staff billing details form's state: one refusal at a time, with what was typed, as the console's forms do. */
 export type StaffBillingDetailsState =
@@ -5426,8 +5426,8 @@ export const INITIAL_STAFF_BILLING_DETAILS_STATE: StaffBillingDetailsState = { s
 ```
 
 - [ ] **Step 5: Issuing, test first.** `apps/admin/lib/server/invoices-admin.test.ts` mocks `./db`
-  (`getStaffDb: () => ({ transaction: (fn) => fn({ name: "staff-tx" }) })`), `@firstfold/db` (`lockBusinessForBilling: vi.fn()`
-  over the real module) and `@firstfold/shared/server/tax-invoice-reissue` (the real error classes, a mocked
+  (`getStaffDb: () => ({ transaction: (fn) => fn({ name: "staff-tx" }) })`), `@fynix/db` (`lockBusinessForBilling: vi.fn()`
+  over the real module) and `@fynix/shared/server/tax-invoice-reissue` (the real error classes, a mocked
   `issueMissingTaxInvoice`), and checks: the lock is taken before issuing; success maps to `"issued"`;
   `NoMissingInvoiceError` to `"not-missing"`; `InvoiceSourceMismatchError` and `InvoiceAmountMismatchError` to
   `"mismatch"`; `InvalidGstinError` and `UnknownStateError` to `"refused"` and log `tax-invoice-failed`; any other error
@@ -5435,10 +5435,10 @@ export const INITIAL_STAFF_BILLING_DETAILS_STATE: StaffBillingDetailsState = { s
 
 ```ts
 import "server-only";
-import { InvoiceAmountMismatchError, InvalidGstinError, UnknownStateError } from "@firstfold/billing";
-import { lockBusinessForBilling } from "@firstfold/db";
-import { describeError, logBillingEvent } from "@firstfold/shared/server/billing-log";
-import { InvoiceSourceMismatchError, issueMissingTaxInvoice, NoMissingInvoiceError } from "@firstfold/shared/server/tax-invoice-reissue";
+import { InvoiceAmountMismatchError, InvalidGstinError, UnknownStateError } from "@fynix/billing";
+import { lockBusinessForBilling } from "@fynix/db";
+import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
+import { InvoiceSourceMismatchError, issueMissingTaxInvoice, NoMissingInvoiceError } from "@fynix/shared/server/tax-invoice-reissue";
 import type { InvoiceNotice } from "@/lib/invoice-notices";
 import { getStaffDb } from "./db";
 
@@ -5462,15 +5462,15 @@ export async function issueClientMissingInvoice(businessId: string, paymentId: s
 }
 ```
 
-  Run `pnpm --filter @firstfold/admin exec vitest run lib/server/invoices-admin.test.ts`. Expected: PASS.
+  Run `pnpm --filter @fynix/admin exec vitest run lib/server/invoices-admin.test.ts`. Expected: PASS.
 
 - [ ] **Step 6: The actions** `apps/admin/app/(protected)/clients/[businessId]/invoice-actions.ts`:
 
 ```ts
 "use server";
 
-import { saveBillingProfile } from "@firstfold/db";
-import { firstBillingDetailsProblem, parseBillingDetails } from "@firstfold/shared/lib/billing/billing-details-form";
+import { saveBillingProfile } from "@fynix/db";
+import { firstBillingDetailsProblem, parseBillingDetails } from "@fynix/shared/lib/billing/billing-details-form";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -5544,14 +5544,14 @@ export async function saveClientBillingDetailsAction(_previous: StaffBillingDeta
   At 375 px the table becomes stacked rows, as the page's other tables do.
 
 - [ ] **Step 9: The download route, test first.** `apps/admin/app/(protected)/invoices/[invoiceId]/route.test.ts` mocks
-  `@/lib/server/staff-access` (`getStaffAccess`), `@/lib/server/db`, `@firstfold/db` (`findTaxInvoiceById`) and checks: 401
+  `@/lib/server/staff-access` (`getStaffAccess`), `@/lib/server/db`, `@fynix/db` (`findTaxInvoiceById`) and checks: 401
   without access; 404 for an id that is not a UUID (and `findTaxInvoiceById` not called) and for an unknown one; 200 with
-  `application/pdf`, `attachment; filename="firstfold-invoice-FF-26-27-000001.pdf"`, `private, no-store` and `nosniff` for
+  `application/pdf`, `attachment; filename="fynix-invoice-FY-26-27-000001.pdf"`, `private, no-store` and `nosniff` for
   a known one (use Task 16's fixture). Then the route:
 
 ```ts
-import { findTaxInvoiceById } from "@firstfold/db";
-import { renderTaxInvoicesPdf } from "@firstfold/shared/server/tax-invoice-pdf";
+import { findTaxInvoiceById } from "@fynix/db";
+import { renderTaxInvoicesPdf } from "@fynix/shared/server/tax-invoice-pdf";
 import { z } from "zod";
 import { getStaffDb } from "@/lib/server/db";
 import { getStaffAccess } from "@/lib/server/staff-access";
@@ -5576,7 +5576,7 @@ export async function GET(_request: Request, context: RouteContext<"/invoices/[i
     headers: {
       ...NO_STORE,
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="firstfold-invoice-${invoice.number.replaceAll("/", "-")}.pdf"`,
+      "Content-Disposition": `attachment; filename="fynix-invoice-${invoice.number.replaceAll("/", "-")}.pdf"`,
       "X-Content-Type-Options": "nosniff",
     },
   });
@@ -5590,7 +5590,7 @@ export async function GET(_request: Request, context: RouteContext<"/invoices/[i
   with a bad-check GSTIN as in Task 12) shows "Invoice missing"; fix the GSTIN with the form; "Issue invoice" issues it,
   dated today, with the payment's own date in its Payment block; Download opens it.
 
-- [ ] **Step 11: Run** `pnpm --filter @firstfold/admin test && pnpm --filter @firstfold/admin lint && pnpm --filter @firstfold/admin typecheck && pnpm test:integration`.
+- [ ] **Step 11: Run** `pnpm --filter @fynix/admin test && pnpm --filter @fynix/admin lint && pnpm --filter @fynix/admin typecheck && pnpm test:integration`.
   Expected: PASS.
 
 - [ ] **Step 12: Commit** "Show staff a client's billing details and invoices, let them correct the details and issue a missing invoice"
@@ -5641,7 +5641,7 @@ export async function listMissingTaxInvoices(db: Runner, limit: number): Promise
 }
 ```
 
-  Export both and `type MissingTaxInvoice` from `@firstfold/db`. Run the file. Expected: PASS.
+  Export both and `type MissingTaxInvoice` from `@fynix/db`. Run the file. Expected: PASS.
 
 - [ ] **Step 2: Write the test** for the pure register:
 
@@ -5650,7 +5650,7 @@ import { describe, expect, it } from "vitest";
 import { monthRange, registerCsv, registerTotals, type RegisterInvoice } from "./invoice-register";
 
 const invoice = (overrides: Partial<RegisterInvoice>): RegisterInvoice => ({
-  number: "FF/26-27/000001",
+  number: "FY/26-27/000001",
   issuedOn: "2026-10-09",
   recipientName: "QA Premium Business",
   recipientGstin: "27AAPFU0939F1ZV",
@@ -5669,7 +5669,7 @@ describe("invoice register", () => {
   it("totals a month, splitting B2B (with GSTIN) from B2C", () => {
     const totals = registerTotals([
       invoice({}),
-      invoice({ number: "FF/26-27/000002", recipientGstin: null, placeOfSupplyStateCode: "ka", cgstCents: 0, sgstCents: 0, igstCents: 100_786 }),
+      invoice({ number: "FY/26-27/000002", recipientGstin: null, placeOfSupplyStateCode: "ka", cgstCents: 0, sgstCents: 0, igstCents: 100_786 }),
     ]);
     expect(totals).toEqual({
       count: 2,
@@ -5687,7 +5687,7 @@ describe("invoice register", () => {
   it("writes CSV in rupees with the place of supply's GST code, quoting names with commas", () => {
     const csv = registerCsv([invoice({ recipientName: "Sharma, Rao & Co" })]);
     expect(csv.split("\r\n")[0]).toBe("Invoice number,Invoice date,Customer,GSTIN,Type,Place of supply,SAC,Taxable value,CGST,SGST,IGST,Round off,Invoice total");
-    expect(csv.split("\r\n")[1]).toBe('FF/26-27/000001,09-10-2026,"Sharma, Rao & Co",27AAPFU0939F1ZV,B2B,27-Maharashtra,998361,5599.20,503.93,503.93,0.00,0.00,6607.06');
+    expect(csv.split("\r\n")[1]).toBe('FY/26-27/000001,09-10-2026,"Sharma, Rao & Co",27AAPFU0939F1ZV,B2B,27-Maharashtra,998361,5599.20,503.93,503.93,0.00,0.00,6607.06');
   });
 
   it("keeps a spreadsheet from running a customer name as a formula", () => {
@@ -5702,12 +5702,12 @@ describe("invoice register", () => {
 });
 ```
 
-- [ ] **Step 3: Run** `pnpm --filter @firstfold/shared exec vitest run src/lib/billing/invoice-register.test.ts`. Expected: FAIL.
+- [ ] **Step 3: Run** `pnpm --filter @fynix/shared exec vitest run src/lib/billing/invoice-register.test.ts`. Expected: FAIL.
 
 - [ ] **Step 4: Implement** `packages/shared/src/lib/billing/invoice-register.ts`:
 
 ```ts
-import { gstStateCodeOf } from "@firstfold/billing/gst-states";
+import { gstStateCodeOf } from "@fynix/billing/gst-states";
 import { stateName } from "../directory/india-states";
 
 /** One invoice as the register needs it: what GSTR-1 asks for, per invoice. Pure and browser-safe. */
@@ -5816,7 +5816,7 @@ export function registerCsv(invoices: readonly RegisterInvoice[]): string {
 }
 ```
 
-  And the mapper, in the same file (import `type TaxInvoice` from `@firstfold/db`; type-only, so the module stays
+  And the mapper, in the same file (import `type TaxInvoice` from `@fynix/db`; type-only, so the module stays
   browser-safe):
 
 ```ts
@@ -5843,13 +5843,13 @@ export function registerInvoiceOf(invoice: TaxInvoice): RegisterInvoice {
 
 - [ ] **Step 6: The export, test first.** `apps/admin/app/(protected)/invoices/export/route.test.ts` (mocks as in Task 18
   Step 9, plus `listTaxInvoicesIssuedBetween`): 401 without access; 400 for `?month=2026-13` and for no month; for
-  `?month=2026-10` a 200 with `text/csv; charset=utf-8`, `attachment; filename="firstfold-invoices-2026-10.csv"`,
+  `?month=2026-10` a 200 with `text/csv; charset=utf-8`, `attachment; filename="fynix-invoices-2026-10.csv"`,
   `private, no-store`, a body that starts with the byte order mark, and `listTaxInvoicesIssuedBetween` called with
   `"2026-10-01", "2026-11-01"`. Then the route:
 
 ```ts
-import { listTaxInvoicesIssuedBetween } from "@firstfold/db";
-import { monthRange, registerCsv, registerInvoiceOf } from "@firstfold/shared/lib/billing/invoice-register";
+import { listTaxInvoicesIssuedBetween } from "@fynix/db";
+import { monthRange, registerCsv, registerInvoiceOf } from "@fynix/shared/lib/billing/invoice-register";
 import { getStaffDb } from "@/lib/server/db";
 import { getStaffAccess } from "@/lib/server/staff-access";
 
@@ -5869,7 +5869,7 @@ export async function GET(request: Request): Promise<Response> {
     headers: {
       ...NO_STORE,
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="firstfold-invoices-${month}.csv"`,
+      "Content-Disposition": `attachment; filename="fynix-invoices-${month}.csv"`,
       "X-Content-Type-Options": "nosniff",
     },
   });
@@ -5878,7 +5878,7 @@ export async function GET(request: Request): Promise<Response> {
 
 - [ ] **Step 7: The page** `apps/admin/app/(protected)/invoices/page.tsx`: `await requireStaffAccess()` as the other console
   pages; `?month=` read with `monthRange` (default the current Indian month, `indianDate(new Date()).slice(0, 7)` from
-  `@firstfold/billing/invoice-number`; an invalid month is a `notFound()`); previous and next month links; a facts row from
+  `@fynix/billing/invoice-number`; an invalid month is a `notFound()`); previous and next month links; a facts row from
   `registerTotals` (invoices, taxable value, CGST, SGST, IGST, round off, total, then B2B and B2C count and tax); the
   month's invoices (number, date, customer, GSTIN or "Unregistered", place of supply, total, Download link to
   `/invoices/{id}`); a "Download CSV" link to `/invoices/export?month=...`; and above all of it, when
@@ -5888,9 +5888,9 @@ export async function GET(request: Request): Promise<Response> {
 
 - [ ] **Step 8: The dock.** In `apps/admin/components/console/dock.tsx` add
   `{ href: "/invoices", label: "Invoices", icon: <DocumentIcon className="size-5" /> }` after Pricing (`DocumentIcon` is in
-  `@firstfold/shared/ui/icons`; the platform's monthly billing already uses it).
+  `@fynix/shared/ui/icons`; the platform's monthly billing already uses it).
 
-- [ ] **Step 9: Run** `pnpm --filter @firstfold/shared test && pnpm --filter @firstfold/admin test && pnpm --filter @firstfold/admin lint && pnpm --filter @firstfold/admin typecheck && pnpm test:integration`.
+- [ ] **Step 9: Run** `pnpm --filter @fynix/shared test && pnpm --filter @fynix/admin test && pnpm --filter @fynix/admin lint && pnpm --filter @fynix/admin typecheck && pnpm test:integration`.
   Expected: PASS. Open `/invoices` locally after the Task 19 walk-through and check the CSV opens in Excel or Numbers with
   the right figures.
 
@@ -5906,7 +5906,7 @@ export async function GET(request: Request): Promise<Response> {
 - [ ] `rg -n "\x{2014}|\x{2013}" docs/superpowers/plans/2026-10-09-gst-tax-invoices.md docs/superpowers/specs/2026-10-09-gst-tax-invoices-design.md packages/billing/src packages/shared/src/server/tax-invoic* packages/shared/src/lib/billing apps/platform/components/panel/billing apps/admin/app/\(protected\)/invoices`
   returns nothing (no em or en dashes in copy or docs).
 - [ ] Local walk-through on the fake provider: a new Maharashtra customer with billing details pays; Billing shows "Tax
-  invoice FF/26-27/000001" and the download matches sample 1 (with SAC 998361). A Karnataka customer without details
+  invoice FY/26-27/000001" and the download matches sample 1 (with SAC 998361). A Karnataka customer without details
   pays; the invoice's place of supply is their onboarding state, or Maharashtra (27) with basis `supplier_location` when
   none is known. Pay an extra; it gets the next number. Redeliver a webhook (or confirm the same payment twice); nothing
   new is issued. Seed a bad-check GSTIN, pay, and see the payment succeed, `tax-invoice-failed` in the log, the payment
@@ -5930,9 +5930,9 @@ export async function GET(request: Request): Promise<Response> {
   (idx 122 to 124); feedback and support 0127 `feedback_support_and_error_issues` (idx 125). The runner decides what is
   pending by each entry's `when`, so ours were all moved later than upstream's last one (1791627100000); a database that
   already ran upstream's four applies exactly 0119 to 0127. Do not run an older branch against the same local databases:
-  `webfold` and `webfold_test` that recorded the old numbers must be recreated, or they will refuse the renumbered files. Use a
-  separate database per branch (for example `webfold_gst` and `webfold_gst_test`) for the final walk-through.
-- [ ] After deploy: watch `journalctl -u firstfold-app` for `tax-invoice-failed` (and `tax-invoice-issued`) during the
+  `fynix_platform` and `fynix_platform_test` that recorded the old numbers must be recreated, or they will refuse the renumbered files. Use a
+  separate database per branch (for example `fynix_platform_branch` and `fynix_platform_branch`) for the final walk-through.
+- [ ] After deploy: watch `journalctl -u fynix-app` for `tax-invoice-failed` (and `tax-invoice-issued`) during the
   first real payments, check `/invoices` for missing invoices, then download the first invoice and check it against the
   template.
 

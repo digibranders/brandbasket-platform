@@ -16,14 +16,14 @@ import {
   updatePractitioner,
   withTenantScope,
   type ScopedTransaction,
-} from "@firstfold/db";
-import { localDateIn } from "@firstfold/shared/lib/calendar/local-date";
+} from "@fynix/db";
+import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
 import { leaveAddedState, type LeaveClash } from "@/lib/appointments/leave-added-state";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
 import type { GrantedCustomer } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { paymentRequiredState, unexpectedErrorState } from "@/lib/server/panel-form-errors";
 import { moduleOffState } from "../errors";
 import {

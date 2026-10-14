@@ -7,7 +7,7 @@
 Read the spec first; it is the source of truth for behaviour and wording.
 
 **Architecture:** A `patients` table linked from `appointments.patient_id`. A BEFORE INSERT trigger on appointments
-finds-or-creates the patient by phone, so every booking path links itself. The customer (webfold_app, RLS) reads
+finds-or-creates the patient by phone, so every booking path links itself. The customer (fynix_app, RLS) reads
 and edits patients, merges and erases them; the guard trigger on appointments is extended to allow exactly those
 writes plus a new `no_show` outcome. Reception's "Add booking" runs `bookSlot` on the staff connection with the
 business id from the session.
@@ -15,8 +15,8 @@ business id from the session.
 **Tech Stack:** Next.js 16 (read `node_modules/next/dist/docs/` before touching routing/actions), Drizzle 0.45 +
 drizzle-kit 0.31, Postgres 14 with RLS, zod 4, Vitest.
 
-**Repo:** worktree `/Users/siddiqueahmed/Desktop/AI/first-found/patients` (branch `feat/clinic-patients`, off
-origin/development). Branch databases: `webfold_pat` (dev), `webfold_pat_test` (test), `webfold_payload_pat`,
+**Repo:** worktree `/Users/siddiqueahmed/Desktop/AI/fynix-platform/patients` (branch `feat/clinic-patients`, off
+origin/development). Branch databases: `fynix_platform_branch` (dev), `fynix_platform_branch` (test), `fynix_platform_payload_pat`,
 cloned from the appointments branch DBs and migrated to 0049; env files in `apps/platform/.env.local` and
 `apps/admin/.env.local` already point at them. Local dev hosts: app-pat.localhost:3051, admin-pat.localhost:3053.
 
@@ -26,7 +26,7 @@ cloned from the appointments branch DBs and migrated to 0049; env files in `apps
   tenant-scoped queries through `withTenantScope`, `currentBusinessId(tx)` + `isUuid` guards like
   `packages/db/src/queries/appointments.ts`.
 - Migrations are hand-finished SQL in `packages/db/migrations` with drizzle meta (journal + snapshot) kept in sync:
-  change the drizzle schema, run `pnpm --filter @firstfold/db db:generate` for the table/column DDL, then append the
+  change the drizzle schema, run `pnpm --filter @fynix/db db:generate` for the table/column DDL, then append the
   hand-written parts (backfill, triggers, grants, RLS) in the same pattern as 0041/0042 and 0044/0045. Apply with
   `pnpm db:migrate && pnpm db:migrate:test` from the worktree root.
 - Drizzle's migrator runs pending migrations in one transaction: a new enum value added with `ALTER TYPE ... ADD
@@ -36,7 +36,7 @@ cloned from the appointments branch DBs and migrated to 0049; env files in `apps
   labels. Reuse `panel-title`, `panel-section`, `link-underline`, `FIELD_CLASSES`, `Button`, `usePanelForm`,
   `PanelFormStatus` exactly as `apps/platform/components/panel/appointments/*` do.
 - Checks per task: targeted `vitest run`; the final task runs `pnpm lint`, `pnpm typecheck`, `pnpm test`,
-  `pnpm --filter @firstfold/db test:integration`, `pnpm build`.
+  `pnpm --filter @fynix/db test:integration`, `pnpm build`.
 
 ---
 
@@ -87,7 +87,7 @@ integration tests `packages/db/src/patients.integration.test.ts` and updates to
   by phone, by alt phone, concurrent same phone -> one patient), backfill shape via the migrated test DB,
   RLS isolation between two businesses and with the module off, every guard (no_show before start refused; merge
   keeping fields; erase refused on upcoming booked; arbitrary phone edit refused; patient INSERT refused for
-  webfold_app), and each query's outcomes.
+  fynix_app), and each query's outcomes.
 
 ## Task 2: Shared parsers
 
@@ -159,7 +159,7 @@ sanctioned getStaffDb exception).
 
 ## Task 6: Verify end to end
 
-- [ ] All checks green (see House rules). Integration tests on `webfold_pat_test`.
+- [ ] All checks green (see House rules). Integration tests on `fynix_platform_branch`.
 - [ ] Browser e2e against app-pat.localhost:3051 with a script-minted session: backfilled patients visible; search;
   filters; profile history; edit tags/second phone; Add booking for a walk-in (new patient created); Book again;
   Attended / No-show on a started booking; merge two records; delete refused with an upcoming booking, then allowed;

@@ -4,9 +4,9 @@
  * checks and every refusal message are unit tested without a database. actions.ts supplies the dependencies: the
  * tenant-scoped checks, the staff-connection slot re-check (lib/server/clinic-booking.ts) and bookSlot.
  */
-import { BookingClosedError, PatientNotFoundError, PatientOverlapError, SlotTakenError, type AppointmentRow, type NewAppointment } from "@firstfold/db";
-import { BOOKING_SERVICE_FIELD } from "@firstfold/shared/lib/patients/fields";
-import { CHOOSE_SERVICE_MESSAGE, PATIENT_NOT_FOUND_MESSAGE, type ManualBookingCommand } from "@firstfold/shared/lib/patients/patient-form";
+import { BookingClosedError, PatientNotFoundError, PatientOverlapError, SlotTakenError, type AppointmentRow, type NewAppointment } from "@fynix/db";
+import { BOOKING_SERVICE_FIELD } from "@fynix/shared/lib/patients/fields";
+import { CHOOSE_SERVICE_MESSAGE, PATIENT_NOT_FOUND_MESSAGE, type ManualBookingCommand } from "@fynix/shared/lib/patients/patient-form";
 import { panelFormErrorState, type PanelFormState } from "@/lib/panel-form-state";
 import type { ClinicSlotResolution } from "@/lib/server/clinic-booking";
 import { MODULE_OFF_MESSAGE } from "../errors";

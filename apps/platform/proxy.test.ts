@@ -83,8 +83,8 @@ describe("createProxy", () => {
   });
 
 
-  it("shows Fynix's dashboard no directory-only page: those paths get the dashboard's not-found screen", () => {
-    const proxy = createProxy({ app: "http://localbusiness.localhost:3000", defaultBrand: "fynix" });
+  it("shows the dashboard no directory-only page: those paths get the dashboard's not-found screen", () => {
+    const proxy = createProxy({ app: "http://localbusiness.localhost:3000" });
     for (const path of ["/deals", "/business", "/listing", "/advertise", "/reviews", "/leads", "/deals/new"]) {
       const response = proxy(request(`http://localbusiness.localhost:3000${path}`, "localbusiness.localhost:3000"));
       expect(isRewrite(response), path).toBe(true);
@@ -92,12 +92,6 @@ describe("createProxy", () => {
     }
     const billing = proxy(request("http://localbusiness.localhost:3000/billing", "localbusiness.localhost:3000"));
     expect(getRewrittenUrl(billing)).toBe("http://localbusiness.localhost:3000/app-host/billing");
-  });
-
-  it("leaves those pages alone on Firstfold's dashboard", () => {
-    const proxy = createProxy(origins);
-    const response = proxy(request("http://app.localhost:3000/deals", "app.localhost:3000"));
-    expect(getRewrittenUrl(response)).toBe("http://app.localhost:3000/app-host/deals");
   });
 
   it("rewrites a media URL on the app host to the app-host media route", () => {
@@ -153,18 +147,6 @@ describe("createProxy", () => {
     expect(proxy(request("http://localhost:3081/admin", "localhost:3081")).status).toBe(404);
   });
 
-  it("serves the dashboard on the Fynix host too, and still 404s every other host", () => {
-    const proxy = createProxy({ ...origins, localBusiness: "http://app.fynix.test" });
-    const response = proxy(request("http://app.fynix.test/login?plan=care", "app.fynix.test"));
-    expect(isRewrite(response)).toBe(true);
-    expect(getRewrittenUrl(response)).toBe("http://app.fynix.test/app-host/login?plan=care");
-    expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
-    expect(proxy(request("http://app.fynix.test/admin", "app.fynix.test")).status).toBe(404);
-    expect(proxy(request("http://fynix.test/", "fynix.test")).status).toBe(404);
-    // Without LOCAL_BUSINESS_ORIGIN the Fynix host is nobody's.
-    expect(createProxy(origins)(request("http://app.fynix.test/login", "app.fynix.test")).status).toBe(404);
-  });
-
   it("serves any local localbusiness.* address under the dev server", () => {
     const proxy = createProxy({ ...origins, anyLocalHost: true });
     const response = proxy(request("http://localbusiness.localhost:3097/login", "localbusiness.localhost:3097"));
@@ -174,54 +156,5 @@ describe("createProxy", () => {
   it("404s everything when no origins are configured", () => {
     const proxy = createProxy(null);
     expect(proxy(request("http://app.localhost:3000/login", "app.localhost:3000")).status).toBe(404);
-  });
-});
-
-describe("the signed-in marker for the website", () => {
-  const page = "http://app.localhost:3000/leads";
-  const host = "app.localhost:3000";
-
-  function withCookies(cookie: string, method = "GET"): NextRequest {
-    return new NextRequest(page, { method, headers: { host, cookie } });
-  }
-
-  it("renews the marker, keeping its initials, on a page served to someone signed in", () => {
-    const response = createProxy(origins)(withCookies("better-auth.session_token=abc; ff_signed_in=DT"));
-    expect(response.cookies.get("ff_signed_in")).toMatchObject({ value: "DT", httpOnly: false, sameSite: "lax", path: "/" });
-  });
-
-  it("leaves the marker alone on the Fynix host, where the website does not read it", () => {
-    const fynix = { ...origins, localBusiness: "http://app.fynix.test" };
-    const fynixHost = "app.fynix.test";
-    const signedIn = new NextRequest("http://app.fynix.test/leads", {
-      headers: { host: fynixHost, cookie: "better-auth.session_token=abc" },
-    });
-    expect(createProxy(fynix)(signedIn).cookies.get("ff_signed_in")).toBeUndefined();
-  });
-
-  it("marks a login made before the marker existed", () => {
-    const response = createProxy(origins)(withCookies("better-auth.session_token=abc"));
-    expect(response.cookies.get("ff_signed_in")?.value).toBe("1");
-  });
-
-  it("takes the marker away once the login is gone", () => {
-    const response = createProxy(origins)(withCookies("ff_signed_in=DT"));
-    expect(response.cookies.get("ff_signed_in")).toMatchObject({ value: "", maxAge: 0 });
-  });
-
-  it("sets it for the shared domain when one is configured", () => {
-    const response = createProxy(origins, { domain: "localhost" })(withCookies("better-auth.session_token=abc; ff_signed_in=DT"));
-    expect(response.cookies.get("ff_signed_in")?.domain).toBe("localhost");
-  });
-
-  it("leaves form posts alone: a sign-in or sign-out sets the marker itself on that same response", () => {
-    expect(createProxy(origins)(withCookies("better-auth.session_token=abc", "POST")).cookies.get("ff_signed_in")).toBeUndefined();
-    expect(createProxy(origins)(withCookies("ff_signed_in=DT", "POST")).cookies.get("ff_signed_in")).toBeUndefined();
-  });
-
-  it("sets nothing for a visitor who was never signed in, nor on a host it doesn't serve", () => {
-    expect(createProxy(origins)(withCookies("")).cookies.get("ff_signed_in")).toBeUndefined();
-    const elsewhere = new NextRequest("http://evil.example/", { headers: { host: "evil.example", cookie: "better-auth.session_token=abc" } });
-    expect(createProxy(origins)(elsewhere).cookies.get("ff_signed_in")).toBeUndefined();
   });
 });

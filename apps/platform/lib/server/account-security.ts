@@ -1,6 +1,6 @@
 import "server-only";
-import { isWrongPasswordError } from "@firstfold/auth";
-import { consumeRateLimit, type RateLimitRule } from "@firstfold/db";
+import { isWrongPasswordError } from "@fynix/auth";
+import { consumeRateLimit, type RateLimitRule } from "@fynix/db";
 import { headers } from "next/headers";
 import { getAuth } from "./auth";
 import { getAppDb } from "./db";

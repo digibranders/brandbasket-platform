@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 
 interface PreviewReviewActionsProps {
   readonly approveAction: () => Promise<void>;

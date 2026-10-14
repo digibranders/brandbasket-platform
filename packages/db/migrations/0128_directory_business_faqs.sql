@@ -16,15 +16,15 @@ ALTER TABLE "directory_business_faqs" ADD CONSTRAINT "directory_business_faqs_bu
 CREATE INDEX "directory_business_faqs_business_id_idx" ON "directory_business_faqs" USING btree ("business_id","position");--> statement-breakpoint
 ALTER TABLE "directory_business_profiles" ADD CONSTRAINT "directory_business_profiles_page_tabs_check" CHECK ("directory_business_profiles"."page_tabs" <@ ARRAY['offers','services','products','trust','faq']::text[]);--> statement-breakpoint
 -- The FAQ tab's rows follow the services and products tables (0087): the customer reads its own rows and writes
--- nothing; every write runs on the staff connection after the platform has checked the customer; webfold_public gets
+-- nothing; every write runs on the staff connection after the platform has checked the customer; fynix_public gets
 -- nothing.
-GRANT SELECT ON directory_business_faqs TO webfold_app;
+GRANT SELECT ON directory_business_faqs TO fynix_app;
 --> statement-breakpoint
-GRANT SELECT, INSERT, UPDATE, DELETE ON directory_business_faqs TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON directory_business_faqs TO fynix_staff;
 --> statement-breakpoint
 ALTER TABLE directory_business_faqs ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
-CREATE POLICY directory_business_faqs_tenant_read ON directory_business_faqs FOR SELECT TO webfold_app
+CREATE POLICY directory_business_faqs_tenant_read ON directory_business_faqs FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
-CREATE POLICY directory_business_faqs_staff_all ON directory_business_faqs FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_business_faqs_staff_all ON directory_business_faqs FOR ALL TO fynix_staff USING (true) WITH CHECK (true);

@@ -1,15 +1,15 @@
 import type { NextConfig } from "next";
-import { vercelProductionRequirements } from "@firstfold/shared/lib/production-requirements";
-import { deploymentIdOf } from "@firstfold/shared/lib/deployment-id";
+import { vercelProductionRequirements } from "@fynix/shared/lib/production-requirements";
+import { deploymentIdOf } from "@fynix/shared/lib/deployment-id";
 import { withPayload } from "@payloadcms/next/withPayload";
-import { securityHeaders } from "@firstfold/shared/lib/security-headers";
+import { securityHeaders } from "@fynix/shared/lib/security-headers";
 
 
 /** Fails a production deploy early instead of shipping dashboards that can't route or sign anyone in. */
 function assertProductionEnvironment(): void {
   if (process.env.VERCEL_ENV !== "production") return;
 
-  const missing = vercelProductionRequirements(process.env).filter((name) => !process.env[name]?.trim());
+  const missing = vercelProductionRequirements().filter((name) => !process.env[name]?.trim());
   if (missing.length > 0) {
     throw new Error(
       `Production deployment is missing required environment variables: ${missing.join(", ")}. See .env.example.`,
@@ -28,8 +28,6 @@ const servedOverHttps =
  * enquiries. The marketing website is its own repository.
  */
 const nextConfig: NextConfig = {
-  // The browser's copy of PLATFORM_BRAND (packages/shared clientBrandName): error screens and the account bar name the deployment's brand.
-  env: { NEXT_PUBLIC_PLATFORM_BRAND: process.env.PLATFORM_BRAND?.trim().toLowerCase() ?? "" },
   deploymentId: deploymentIdOf(process.cwd(), process.env.NEXT_DEPLOYMENT_ID),
   poweredByHeader: false,
   async headers() {
@@ -68,7 +66,7 @@ const nextConfig: NextConfig = {
   },
 
   // Workspace packages ship TypeScript source.
-  transpilePackages: ["@firstfold/auth", "@firstfold/billing", "@firstfold/db", "@firstfold/email", "@firstfold/shared"],
+  transpilePackages: ["@fynix/auth", "@fynix/billing", "@fynix/db", "@fynix/email", "@fynix/shared"],
 };
 
 // Wires Payload's own webpack/Turbopack config (its admin UI, CSS, import maps) into Next's build. See

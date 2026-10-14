@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DirectoryVideo } from "@firstfold/db";
+import type { DirectoryVideo } from "@fynix/db";
 import { formatVideoDuration, videoAccessOf, videoStatusText, videoTiles } from "./videos-view";
 
 function video(overrides: Partial<DirectoryVideo> & Pick<DirectoryVideo, "id" | "slot">): DirectoryVideo {

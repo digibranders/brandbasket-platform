@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { DashboardRoot } from "@firstfold/shared/ui/panel/dashboard-root";
-import { PanelNotFound } from "@firstfold/shared/ui/panel/panel-not-found";
+import { DashboardRoot } from "@fynix/shared/ui/panel/dashboard-root";
+import { PanelNotFound } from "@fynix/shared/ui/panel/panel-not-found";
 import { logoOf } from "@/lib/brand";
 import { figtree } from "@/lib/fynix-font";
 import { requestBrand } from "@/lib/server/request-brand";
@@ -31,7 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function GlobalNotFound(): Promise<ReactElement> {
   const brand = await requestBrand();
   return (
-    <DashboardRoot brand={brand.id === "fynix" ? { id: brand.id, className: figtree.variable } : undefined}>
+    <DashboardRoot brand={{ id: "fynix", className: figtree.variable }}>
       <PanelNotFound brand={logoOf(brand)} />
     </DashboardRoot>
   );

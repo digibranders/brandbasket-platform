@@ -1,7 +1,7 @@
 import "server-only";
-import { isPhoneAccountEmail } from "@firstfold/db";
+import { isPhoneAccountEmail } from "@fynix/db";
 import { z } from "zod";
-import { parsePhoneEntry } from "@firstfold/shared/lib/validation/phone";
+import { parsePhoneEntry } from "@fynix/shared/lib/validation/phone";
 
 /*
  * What a customer signs in with: the mobile number a free listing account was opened with, or the email a website
@@ -16,7 +16,7 @@ const MAX_PASSWORD_LENGTH = 128;
 const MISSING_MESSAGE = "Enter your mobile number.";
 const MISSING_EMAIL_MESSAGE = "Enter your email address.";
 
-/** What the sign-in field asks for: a number or an address (Firstfold), or an address (Fynix, whose accounts have one). */
+/** What the sign-in field asks for: a number or an address (Fynix), or an address (Fynix, whose accounts have one). */
 export type SignInIdentifierMode = "phone-or-email" | "email";
 
 const emailSchema = z.string().max(MAX_IDENTIFIER_LENGTH, "That email address is too long.").pipe(z.email("Enter a valid email address."));

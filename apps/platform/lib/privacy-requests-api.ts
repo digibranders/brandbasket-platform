@@ -15,7 +15,7 @@ import { placeIdSchema } from "./directory-api";
 /**
  * What the public form offers. `visitor_erasure` is carried out as soon as the code is confirmed (see `erased` below); the
  * others wait for staff. `content_report` (a review or comment) and `listing_removal` (a business listing) are complaints
- * about what Firstfold Local shows, due in 15 days under the IT Rules; the Report links on the website open the form with
+ * about what the local directory shows, due in 15 days under the IT Rules; the Report links on the website open the form with
  * one of them chosen and `about` filled in.
  */
 export const PUBLIC_REQUEST_KINDS = ["access", "correction", "erasure", "visitor_erasure", "nomination", "grievance", "content_report", "listing_removal"] as const;

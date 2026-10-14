@@ -1,14 +1,14 @@
 import "server-only";
-import type { VisibleOpenListing } from "@firstfold/db";
-import { isPlaceId } from "@firstfold/db/place-id";
+import type { VisibleOpenListing } from "@fynix/db";
+import { isPlaceId } from "@fynix/db/place-id";
 import {
   OPEN_LISTINGS_CONTRACT_VERSION,
   OPEN_LISTINGS_MAX_PAGE,
   type OpenListingTuple,
   type OpenListingsPage,
   type OpenListingsVersion,
-} from "@firstfold/shared/lib/directory/open-listings-contract";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+} from "@fynix/shared/lib/directory/open-listings-contract";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { hasValidWebsiteToken } from "@/lib/server/website-api-auth";
 
 /*
@@ -55,7 +55,7 @@ export async function handleOpenListingsVersion(request: Request, deps: OpenList
     const body: OpenListingsVersion = { contract: OPEN_LISTINGS_CONTRACT_VERSION, version: await deps.readVersion() };
     return reply(200, body);
   } catch (error) {
-    console.error("[firstfold:directory] GET /api/directory/open-listings/version failed", errorLogInfo(error));
+    console.error("[fynix:directory] GET /api/directory/open-listings/version failed", errorLogInfo(error));
     return reply(503, { error: "Listings are unavailable right now." });
   }
 }
@@ -88,7 +88,7 @@ export async function handleOpenListingsPage(request: Request, deps: OpenListing
     };
     return reply(200, body);
   } catch (error) {
-    console.error("[firstfold:directory] GET /api/directory/open-listings failed", errorLogInfo(error));
+    console.error("[fynix:directory] GET /api/directory/open-listings failed", errorLogInfo(error));
     return reply(503, { error: "Listings are unavailable right now." });
   }
 }

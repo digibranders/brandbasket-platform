@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { billingCurrency, type BillingCurrency } from "@firstfold/db";
+import { billingCurrency, type BillingCurrency } from "@fynix/db";
 import {
   CheckoutVerificationError,
   type BillingProvider,
@@ -305,7 +305,7 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
         period: "monthly",
         interval: 1,
         item: { name: input.itemName ?? `Subscription plan (${input.currency})`, amount, currency: input.currency },
-        notes: { firstfoldPlanCode: input.code },
+        notes: { fynixPlanCode: input.code },
       });
       return { providerPlanId: created.id };
     },

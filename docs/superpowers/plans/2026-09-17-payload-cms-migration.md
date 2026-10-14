@@ -2,15 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give every business's individually hand-coded website (built by the admin in VS Code, not generated from a shared template) a small set of content pieces — text and images on its pages, plus a blog — that the *customer* can edit afterward without touching code, using the exact same custom-branded dashboard pages already built (`Content.`, `Monitoring.`). Payload CMS is the backend that holds those pieces. Nobody — not the admin, not the customer — ever opens Payload's own admin screens; both sides only ever use Firstfold's own UI.
+**Goal:** Give every business's individually hand-coded website (built by the admin in VS Code, not generated from a shared template) a small set of content pieces — text and images on its pages, plus a blog — that the *customer* can edit afterward without touching code, using the exact same custom-branded dashboard pages already built (`Content.`, `Monitoring.`). Payload CMS is the backend that holds those pieces. Nobody — not the admin, not the customer — ever opens Payload's own admin screens; both sides only ever use Fynix Digital's own UI.
 
 **Architecture, corrected 2026-09-18 after a long discussion that found the original version wrong in an important way — read this over the "recap" further down in this file, which is now stale in places (kept for history, not as the current source of truth):**
 
 - **There is no staff team — a single admin does everything.** Drop "staff" from how this plan is read; every "staff" reference below and in earlier tasks means the one admin.
-- **The admin does not build sites inside any Firstfold screen.** Each business's website is genuine, separate, hand-written code — the admin builds it in VS Code (or whatever), like any bespoke client site, and deploys/hosts it however that project needs. Firstfold's platform does not generate, template, or scaffold that code, and this plan does not try to.
+- **The admin does not build sites inside any Fynix screen.** Each business's website is genuine, separate, hand-written code — the admin builds it in VS Code (or whatever), like any bespoke client site, and deploys/hosts it however that project needs. Fynix Digital's platform does not generate, template, or scaffold that code, and this plan does not try to.
 - **Payload's real job here is the classic headless-CMS pattern**: the admin's hand-written site code fetches specific, named content values from Payload at render time (a headline, a hero photo, the blog list) instead of hardcoding them. The admin decides, while coding, which pieces are editable "slots" and what each one is called (e.g. `heroHeadline`, `heroImage`).
-- **The admin also fills in each business's actual starting content**, through a new screen in Firstfold's own admin panel (not Payload's UI — see below), entering values for exactly the slot names used in that business's code. There is no separate "publish" or "transfer" step: the live site and the customer's dashboard both always read the *same* Payload record directly, so the moment a value is saved there, it's simultaneously what the live site will next render and what the customer's dashboard shows them to edit.
-- **Neither the admin nor the customer ever opens Payload's own generic admin UI.** Both use Firstfold's own screens — the admin's new page-content screen inside `admin.firstfold.com`, and the customer's existing Content page inside `app.firstfold.com`. Both talk to Payload only through its Local API from our own server code. **This removes the need for `@payloadcms/plugin-multi-tenant` entirely** — that plugin exists to scope Payload's *own* admin UI per logged-in Payload user, which nobody here ever uses. Isolation is enforced the plain way instead: every collection carries a `businessId` field, and every server action — admin-side and customer-side alike — derives that id from the authenticated session, never from client input, and filters every Payload call by it explicitly. (Task 2 installed the plugin expecting to need it and hit a real blocker — see its report — before this correction; removing the dependency is part of the work still to do.)
+- **The admin also fills in each business's actual starting content**, through a new screen in Fynix Digital's own admin panel (not Payload's UI — see below), entering values for exactly the slot names used in that business's code. There is no separate "publish" or "transfer" step: the live site and the customer's dashboard both always read the *same* Payload record directly, so the moment a value is saved there, it's simultaneously what the live site will next render and what the customer's dashboard shows them to edit.
+- **Neither the admin nor the customer ever opens Payload's own generic admin UI.** Both use Fynix Digital's own screens — the admin's new page-content screen inside `admin.fynix.digital`, and the customer's existing Content page inside `app.fynix.digital`. Both talk to Payload only through its Local API from our own server code. **This removes the need for `@payloadcms/plugin-multi-tenant` entirely** — that plugin exists to scope Payload's *own* admin UI per logged-in Payload user, which nobody here ever uses. Isolation is enforced the plain way instead: every collection carries a `businessId` field, and every server action — admin-side and customer-side alike — derives that id from the authenticated session, never from client input, and filters every Payload call by it explicitly. (Task 2 installed the plugin expecting to need it and hit a real blocker — see its report — before this correction; removing the dependency is part of the work still to do.)
 - **Pages are not a fixed set.** The customer names their own pages during onboarding (a new onboarding addition — out of scope for this plan). What a "page" means here is simply a named group of content slots the admin's code happens to read for that page — it does not define the site's structure or layout, which lives entirely in the admin's hand-written code.
 - **Domain connection** ("connect the domain, from inside the admin panel," per the corrected flow) is a real, separate piece of admin-panel work this plan flags but does not build — tracked under "Deliberately deferred."
 - **Scope, unchanged from before:** only the CMS content layer is Payload's concern. Leads, billing, onboarding, and login stay exactly as they are, on the existing Postgres system.
@@ -25,7 +25,7 @@
 
 **Where the customer edits:** the existing dashboard pages, unchanged in look and copy. They call Payload's Local API from server actions — the customer's browser never talks to Payload directly, and never sees a Payload login.
 
-**Where staff edits:** ~~Payload's own admin panel~~ — **wrong, see correction above.** The admin now edits through a new Firstfold-built screen, not Payload's own UI.
+**Where staff edits:** ~~Payload's own admin panel~~ — **wrong, see correction above.** The admin now edits through a new Fynix-built screen, not Payload's own UI.
 
 **Where it runs:** inside the same `apps/platform` Next.js app, deployed with the same Vercel project. No new service to host.
 
@@ -64,7 +64,7 @@
 
 This is an infrastructure step outside the codebase — confirm with the user (do not do this silently) that a new, separate DigitalOcean Postgres database has been created for Payload, on the existing cluster, and get its connection string. If the user wants to do this themselves, stop here and wait; do not proceed on a guessed or local-only connection string for anything beyond local development.
 
-For local development, create a local database the same way `firstfold`/`webfold_test` were created (see the README): `psql -h localhost -c "CREATE DATABASE webfold_payload"`.
+For local development, create a local database the same way `fynix`/`fynix_platform_test` were created (see the README): `psql -h localhost -c "CREATE DATABASE fynix_platform_payload"`.
 
 - [x] **Step 2: Install packages**
 
@@ -81,7 +81,7 @@ Add to `apps/platform/.env.example` and (with real local values) `apps/platform/
 
 ```bash
 # Payload CMS: a separate database from the main one, on purpose (see this plan's Architecture section).
-DATABASE_URL_PAYLOAD=postgresql://localhost:5432/webfold_payload
+DATABASE_URL_PAYLOAD=postgresql://localhost:5432/fynix_platform_payload
 PAYLOAD_SECRET=<generate with: openssl rand -base64 32>
 ```
 
@@ -136,7 +136,7 @@ Then, with a dev server running (`pnpm dev` from the repo root, or the platform'
 **Files:**
 - Create: `apps/platform/collections/Tenants.ts`
 - Modify: `apps/platform/payload.config.ts`
-- Modify: `packages/db/src/queries/onboarding.ts` or wherever a business row is first created (read `docs/superpowers/specs/2026-09-15-firstfold-platform-design.md` §3 and the actual code path — the spec says a business is created "at payment confirmation"; find that real code path, likely in `apps/platform/lib/server/payment-confirmation.ts` or similar)
+- Modify: `packages/db/src/queries/onboarding.ts` or wherever a business row is first created (read `docs/superpowers/specs/2026-09-15-fynix-platform-design.md` §3 and the actual code path — the spec says a business is created "at payment confirmation"; find that real code path, likely in `apps/platform/lib/server/payment-confirmation.ts` or similar)
 - Test: wherever the found code path's existing tests live
 
 > **Correction, 2026-09-18 (read the plan's top "Architecture, corrected" section first):** this task was originally written assuming Payload's multi-tenant plugin, and its Step 2 below wires that plugin in. **That plugin is no longer part of the design** — nobody ever uses Payload's own admin UI, so there is nothing for it to scope. The `Tenants` collection itself is still needed (as a lightweight lookup: which businesses exist, for the admin panel's own business picker), but **skip Step 2 entirely**, and if a prior pass already installed/wired the plugin, remove it (`pnpm remove @payloadcms/plugin-multi-tenant` from `apps/platform`, and delete the `multiTenantPlugin(...)` block from `payload.config.ts`) as part of whichever task next touches that file (Task 3, revised below, does).
@@ -149,7 +149,7 @@ Then, with a dev server running (`pnpm dev` from the repo root, or the platform'
 import type { CollectionConfig } from "payload";
 
 /**
- * One document per Firstfold business (packages/db's `businesses` table is the source of truth for identity;
+ * One document per Fynix business (packages/db's `businesses` table is the source of truth for identity;
  * `businessId` here is that table's id, kept in sync automatically when a business is created — see the payment
  * confirmation code path). Never created by hand: this exists purely as a lookup so the admin panel's own
  * business-picker screen (Task 4) can list businesses, and so every other collection has something to reference.
@@ -396,7 +396,7 @@ There is no live "sign into Payload's admin and click around" check for this tas
 
 ### Task 4: Admin panel — the content-slot editor
 
-> **Rewritten 2026-09-18.** This task originally assumed the admin would sign into Payload's own admin panel to build a business's pages — wrong, per the corrected architecture at the top of this file: nobody uses Payload's own UI. This is now a real, new screen inside `admin.firstfold.com`, next to the existing client detail page, where the admin defines and fills in a business's content slots (matching whatever names they used in that business's hand-written site code) and, separately, enters the real starting values for them. This is also the "how does it get to the client" mechanism discussed at length with the user: there is no separate transfer step — the moment a value is saved here, it's simultaneously what the live site (once built) fetches and what the customer's Content page shows them to edit.
+> **Rewritten 2026-09-18.** This task originally assumed the admin would sign into Payload's own admin panel to build a business's pages — wrong, per the corrected architecture at the top of this file: nobody uses Payload's own UI. This is now a real, new screen inside `admin.fynix.digital`, next to the existing client detail page, where the admin defines and fills in a business's content slots (matching whatever names they used in that business's hand-written site code) and, separately, enters the real starting values for them. This is also the "how does it get to the client" mechanism discussed at length with the user: there is no separate transfer step — the moment a value is saved here, it's simultaneously what the live site (once built) fetches and what the customer's Content page shows them to edit.
 
 **Files:**
 - Create: `apps/platform/lib/server/admin-content.ts`
@@ -485,11 +485,11 @@ Then, live: using a real business, add a page, add a text field and an image fie
 
 This task **replaces** the internals of `docs/superpowers/plans/2026-09-17-customer-cms-ui.md`'s Task 4, which currently reads/writes `packages/db`'s `page_sections`/`gallery_items` tables. The customer-facing behavior (what the page looks like, what it says, what the customer can and can't do) does not change — only what's underneath it.
 
-> **Known gap, flagged 2026-09-18 during Task 3's review — resolve before this task is done, not partway through it:** Payload's file-serving route for uploads (`/api/media/file/<filename>`, Payload's REST catch-all at `app/(payload)/api/[...slug]/route.ts`) is wrapped in `requireAdminHost` (`lib/server/require-admin-host.ts`), so it 404s on any host but the admin one. That's correct for Payload's data API, reached only from our own server code via the Local API — but a raw `<img src>` is a direct browser request for file bytes on the customer's own host (`app.firstfold.com`), which hits that same admin-only gate and 404s. In other words: as currently wired, an uploaded image is not actually viewable from the customer dashboard this task builds. See the note left in `apps/platform/collections/Media.ts` for the full detail. Before marking this task done, confirm images actually render for a real customer session — don't assume the production storage-adapter decision (flagged in Task 3) silently fixes this; check it explicitly, and if it doesn't, build whatever's needed (most likely a dedicated, non-gated file-proxy route) as part of this task.
+> **Known gap, flagged 2026-09-18 during Task 3's review — resolve before this task is done, not partway through it:** Payload's file-serving route for uploads (`/api/media/file/<filename>`, Payload's REST catch-all at `app/(payload)/api/[...slug]/route.ts`) is wrapped in `requireAdminHost` (`lib/server/require-admin-host.ts`), so it 404s on any host but the admin one. That's correct for Payload's data API, reached only from our own server code via the Local API — but a raw `<img src>` is a direct browser request for file bytes on the customer's own host (`app.fynix.digital`), which hits that same admin-only gate and 404s. In other words: as currently wired, an uploaded image is not actually viewable from the customer dashboard this task builds. See the note left in `apps/platform/collections/Media.ts` for the full detail. Before marking this task done, confirm images actually render for a real customer session — don't assume the production storage-adapter decision (flagged in Task 3) silently fixes this; check it explicitly, and if it doesn't, build whatever's needed (most likely a dedicated, non-gated file-proxy route) as part of this task.
 
 - [x] **Step 1: Read what already exists**
 
-Read the current `apps/platform/lib/server/content.ts`, `content/actions.ts`, `section-edit-form.tsx`, `gallery-manager.tsx` in full (these exist already from the foundation UI plan — some of Task 4 there may still be mid-fix; check the plan's checkboxes and this session's history for its actual current state before assuming it's finished). Note where each one currently imports from `@firstfold/db` — every one of those imports needs to become a Payload Local API call instead.
+Read the current `apps/platform/lib/server/content.ts`, `content/actions.ts`, `section-edit-form.tsx`, `gallery-manager.tsx` in full (these exist already from the foundation UI plan — some of Task 4 there may still be mid-fix; check the plan's checkboxes and this session's history for its actual current state before assuming it's finished). Note where each one currently imports from `@fynix/db` — every one of those imports needs to become a Payload Local API call instead.
 
 - [x] **Step 2: Rewrite `getContentSnapshot`**
 
@@ -531,15 +531,15 @@ export async function getContentSnapshot(): Promise<ContentSnapshot> {
 
 - [x] **Step 3: Rewrite the actions**
 
-> Scope clarification (applied during implementation, 2026-09-18): only `saveSectionAction` was rewritten onto Payload in this task. `addToGalleryAction`/`removeFromGalleryAction`/`moveGalleryItemAction` are Task 6's job (gallery isn't in Task 5's file list above) and were deliberately left as-is, still `@firstfold/db`-backed.
+> Scope clarification (applied during implementation, 2026-09-18): only `saveSectionAction` was rewritten onto Payload in this task. `addToGalleryAction`/`removeFromGalleryAction`/`moveGalleryItemAction` are Task 6's job (gallery isn't in Task 5's file list above) and were deliberately left as-is, still `@fynix/db`-backed.
 
-`saveSectionAction`, `addToGalleryAction`, `removeFromGalleryAction`, `moveGalleryItemAction` all currently call `@firstfold/db` functions inside `withTenantScope`. Rewrite each to call Payload's Local API instead (`payload.update`, `payload.create`, `payload.delete`), with the same `requireBillingAccess()` guard at the top of every one (unchanged — this rule doesn't depend on which database backs the write) and the same explicit business-id check: **every one of these calls must include the `businessId` filter derived from `requireBillingAccess()`'s result, never from client-supplied data**, matching `getContentSnapshot`'s pattern.
+`saveSectionAction`, `addToGalleryAction`, `removeFromGalleryAction`, `moveGalleryItemAction` all currently call `@fynix/db` functions inside `withTenantScope`. Rewrite each to call Payload's Local API instead (`payload.update`, `payload.create`, `payload.delete`), with the same `requireBillingAccess()` guard at the top of every one (unchanged — this rule doesn't depend on which database backs the write) and the same explicit business-id check: **every one of these calls must include the `businessId` filter derived from `requireBillingAccess()`'s result, never from client-supplied data**, matching `getContentSnapshot`'s pattern.
 
 For `saveSectionAction` specifically: since a page's slots now live in a `fields` array rather than separate rows, updating one means reading the page, finding the right entry by its `key` (or Payload's own array-row `id`, whichever your reader exposed), **confirming that entry's `customerEditable` is `true` before touching it** (a customer save must be refused — same `SectionNotEditableError`-style behavior as before — if it isn't, exactly like the old `page_sections_customer_update` RLS policy used to enforce at the database level; here your own code is the only thing enforcing it, so this check cannot be skipped or assumed), replacing just that entry's `textValue`/`image`, and writing the whole `fields` array back — not a single-row `UPDATE`. Write this carefully and test it against a page with more than one field to make sure you're not accidentally reordering, dropping, or exposing a write path to a non-editable field.
 
 - [x] **Step 4: Tests**
 
-The old `@firstfold/db` query functions had integration tests proving tenant isolation at the database level (Task 6 of the foundation plan). Those don't apply anymore — the isolation mechanism changed. Add tests at this layer instead: mock or use a real local Payload+Postgres instance (check whether a lighter-weight test setup is realistic here, e.g. Payload's own testing utilities, before assuming you need a full second test database wired into this repo's existing `pnpm test:integration` — this may be a case where a smaller, more contained test setup is the right call; use your judgment and explain your choice) and prove: a customer's `saveSectionAction` call cannot affect another tenant's page, even given that tenant's real block id.
+The old `@fynix/db` query functions had integration tests proving tenant isolation at the database level (Task 6 of the foundation plan). Those don't apply anymore — the isolation mechanism changed. Add tests at this layer instead: mock or use a real local Payload+Postgres instance (check whether a lighter-weight test setup is realistic here, e.g. Payload's own testing utilities, before assuming you need a full second test database wired into this repo's existing `pnpm test:integration` — this may be a case where a smaller, more contained test setup is the right call; use your judgment and explain your choice) and prove: a customer's `saveSectionAction` call cannot affect another tenant's page, even given that tenant's real block id.
 
 - [x] **Step 5: Checkpoint**
 
@@ -566,7 +566,7 @@ Then verify live in the browser: the Content page for a business built in Task 4
 - Create: `apps/platform/app/app-host/(protected)/content/blog/[postId]/page.tsx`
 - Create: `apps/platform/components/panel/blog-post-edit-form.tsx`
 
-Blog was never built in the old plan (its Task 5 wasn't reached before this migration decision). Build it now, directly against Payload, using `docs/superpowers/plans/2026-09-17-customer-cms-ui.md`'s Task 5 as a design reference for page structure and copy (list page, new-post form, edit form with Publish/Unpublish/Delete) — but its actions call Payload's Local API (`payload.find`/`create`/`update`/`delete` on the `blogPosts` collection, tenant-scoped exactly as Task 5 above) instead of `@firstfold/db`'s blog query functions.
+Blog was never built in the old plan (its Task 5 wasn't reached before this migration decision). Build it now, directly against Payload, using `docs/superpowers/plans/2026-09-17-customer-cms-ui.md`'s Task 5 as a design reference for page structure and copy (list page, new-post form, edit form with Publish/Unpublish/Delete) — but its actions call Payload's Local API (`payload.find`/`create`/`update`/`delete` on the `blogPosts` collection, tenant-scoped exactly as Task 5 above) instead of `@fynix/db`'s blog query functions.
 
 **One real upgrade to make here, now that it's basically free:** the old plan's blog body was going to be plain text (`{ text: string }`) specifically because a rich-text editor was out of scope for a hand-built system. Payload's `richText` field (already used on `BlogPosts.body` in Task 3) gives you a real editor for free — use it. The edit form's body field should render Payload's own rich-text input, not a plain `<textarea>`; check Payload's current docs for the recommended way to embed one of its field editors inside a page that is otherwise not part of Payload's own admin UI (this may mean using Payload's admin components directly, or it may mean this one field is edited through Payload's admin panel rather than the custom dashboard — if the latter turns out to be the realistic answer, say so clearly rather than forcing an awkward custom integration; either is a legitimate outcome, decide based on what you find, not on what the plan assumed here).
 
@@ -613,12 +613,12 @@ Delete the files listed above. Remove their exports from `packages/db/src/schema
 - [x] **Step 4: Checkpoint**
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @firstfold/db test:integration
+pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @fynix/db test:integration
 ```
 
 Confirm nothing else in the codebase still imports any of the deleted symbols — a lint/typecheck failure here means something was missed, not a false positive to silence.
 
-**Task 7 complete (2026-09-18).** Migration `0028_drop_old_cms_tables.sql` applied to `firstfold` and `webfold_test`, confirmed to drop exactly the six named tables and five enums; `webfold_payload` confirmed untouched. All dead code, exports, and the admin stopgap button/action removed cleanly — also cleaned up `rls.integration.test.ts`'s now-obsolete `website RLS` block, found beyond this task's stated file list. Full checkpoint (lint/typecheck/test/build/db-integration-test) passing. Spec compliance review: no issues. Code quality review: approved, no issues.
+**Task 7 complete (2026-09-18).** Migration `0028_drop_old_cms_tables.sql` applied to `fynix` and `fynix_platform_test`, confirmed to drop exactly the six named tables and five enums; `fynix_platform_payload` confirmed untouched. All dead code, exports, and the admin stopgap button/action removed cleanly — also cleaned up `rls.integration.test.ts`'s now-obsolete `website RLS` block, found beyond this task's stated file list. Full checkpoint (lint/typecheck/test/build/db-integration-test) passing. Spec compliance review: no issues. Code quality review: approved, no issues.
 
 ---
 
@@ -630,7 +630,7 @@ Confirm nothing else in the codebase still imports any of the deleted symbols �
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
-Run 2026-09-18, all clean: lint (0 issues), typecheck (all 6 workspace projects), unit tests (937 passing across `packages/shared`, `packages/db`, `packages/billing`, `packages/email`, `packages/auth`, `apps/platform`), `next build` (production build succeeds, all routes compile), and `pnpm --filter @firstfold/db test:integration` (162 passing, run separately since it needs a real Postgres connection).
+Run 2026-09-18, all clean: lint (0 issues), typecheck (all 6 workspace projects), unit tests (937 passing across `packages/shared`, `packages/db`, `packages/billing`, `packages/email`, `packages/auth`, `apps/platform`), `next build` (production build succeeds, all routes compile), and `pnpm --filter @fynix/db test:integration` (162 passing, run separately since it needs a real Postgres connection).
 
 - [x] **Step 2: Full manual walkthrough**
 
@@ -653,7 +653,7 @@ See "Production deployment checklist" below, added at the end of this plan.
 
 Everything below is still outstanding — none of it has been done yet. Do not deploy to production without it.
 
-1. **A separate DigitalOcean Postgres database for Payload.** The app already expects its connection string in the `DATABASE_URL_PAYLOAD` environment variable (validated in `apps/platform/lib/server/env.ts`, required for production builds by `apps/platform/next.config.ts`'s `REQUIRED_FOR_PRODUCTION` list). This must be a *new* database on the DigitalOcean account, separate from the existing `firstfold` production database — Payload's tables should not live alongside the hand-rolled schema in `packages/db`. Run Payload's migrations against it before first deploy (Payload manages its own migration state independently of `packages/db`'s Drizzle migrations).
+1. **A separate DigitalOcean Postgres database for Payload.** The app already expects its connection string in the `DATABASE_URL_PAYLOAD` environment variable (validated in `apps/platform/lib/server/env.ts`, required for production builds by `apps/platform/next.config.ts`'s `REQUIRED_FOR_PRODUCTION` list). This must be a *new* database on the DigitalOcean account, separate from the existing `fynix` production database — Payload's tables should not live alongside the hand-rolled schema in `packages/db`. Run Payload's migrations against it before first deploy (Payload manages its own migration state independently of `packages/db`'s Drizzle migrations).
 2. **`PAYLOAD_SECRET` as a Vercel environment variable.** Required, minimum 32 characters (enforced by the same `env.ts` schema). Generate a fresh random value for production — do not reuse the local `.env.local` value.
 3. **A production file-storage adapter — currently unresolved, will break image uploads in production if skipped.** `apps/platform/collections/Media.ts` uses Payload's default `upload: true` local-disk storage, which writes to the Vercel deployment's filesystem — ephemeral, and does not survive between requests or deploys. Before production: install a storage adapter package (`@payloadcms/storage-vercel-blob` or `@payloadcms/storage-s3` pointed at DigitalOcean Spaces, which is S3-compatible), wire it into `payload.config.ts`'s `plugins`, and set `disableLocalStorage: true` on `Media.ts`. This needs its own credentials (a DigitalOcean Spaces access key/secret, or a Vercel Blob token) as additional Vercel environment variables — exact names depend on which adapter is chosen.
 4. **Deploy order.** Because `DATABASE_URL_PAYLOAD` and `PAYLOAD_SECRET` are both in `REQUIRED_FOR_PRODUCTION`, a production build with either missing fails fast at build time (see `next.config.ts`) rather than deploying broken — so there's no risk of silently shipping without them, but they must be set in Vercel *before* the first production deploy that includes this migration's code.

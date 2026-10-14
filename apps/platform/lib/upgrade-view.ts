@@ -1,6 +1,6 @@
-import type { UpgradeBlock, UpgradeRefusal } from "@firstfold/shared/lib/billing/upgrade";
-import type { PlanUpgrade } from "@firstfold/db";
-import type { UpgradeAssessment } from "@firstfold/shared/server/plan-upgrade";
+import type { UpgradeBlock, UpgradeRefusal } from "@fynix/shared/lib/billing/upgrade";
+import type { PlanUpgrade } from "@fynix/db";
+import type { UpgradeAssessment } from "@fynix/shared/server/plan-upgrade";
 
 /*
  * What the Upgrade page says (docs/superpowers/specs/2026-10-08-care-to-premium-upgrade-design.md). Fixed words, picked

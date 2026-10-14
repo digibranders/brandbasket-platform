@@ -9,10 +9,10 @@ import {
   updateGeoArea,
   updateGeoCategory,
   updateGeoDistrict,
-} from "@firstfold/db";
-import { geoSlugify } from "@firstfold/db/geo-catalog-rules";
-import { stateName } from "@firstfold/db/india-states";
-import { refreshGeoCatalog } from "@firstfold/shared/lib/directory/geo-catalog-source";
+} from "@fynix/db";
+import { geoSlugify } from "@fynix/db/geo-catalog-rules";
+import { stateName } from "@fynix/db/india-states";
+import { refreshGeoCatalog } from "@fynix/shared/lib/directory/geo-catalog-source";
 import { revalidatePath } from "next/cache";
 import type { GeoFormState } from "@/lib/geo-form-state";
 import {

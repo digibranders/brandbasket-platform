@@ -5,16 +5,16 @@
 > task below was built, verified live, and then removed. Kept as the record of what existed and why it went.
 >
 > **What was removed:** `app/site-host/`, `components/site/`, `lib/server/site-{content,tenant}.ts`,
-> `packages/db/src/queries/sites.ts`, the `sites` surface in `surfaces.ts`/`proxy.ts`, and the `firstfold_sites`
+> `packages/db/src/queries/sites.ts`, the `sites` surface in `surfaces.ts`/`proxy.ts`, and the `fynix_sites`
 > Postgres role. Migrations 0030 and 0031 were collapsed rather than shipped as a create-then-destroy pair: 0030
 > had never been committed, so the history now ends at 0029 as though the role never existed. The role was dropped
 > from the cluster by hand, because roles are cluster-wide and a per-database migration cannot revoke grants in the
 > other database — which is exactly why `DROP ROLE` failed the first time and why roles live in `setup-roles.ts`,
 > not in migrations.
 >
-> **What survived:** the free `<slug>.firstfold.io` address. The platform still generates and records it during
+> **What survived:** the free `<slug>.fynix.digital` address. The platform still generates and records it during
 > onboarding; it is now served by the client's own static project instead of by this app. So
-> `FIRSTFOLD_SUBDOMAIN_ROOT`, `temporarySubdomainFor` and `isTemporarySubdomain` all stay.
+> `FYNIX_SUBDOMAIN_ROOT`, `temporarySubdomainFor` and `isTemporarySubdomain` all stay.
 >
 > **Still true and worth reading:** the Known debt section at the end. Several items outlived the renderer, in
 > particular Payload's local-disk storage and the customer-facing 404.
@@ -23,9 +23,9 @@
 
 **Goal:** Serve each customer's website from their own hostname, rendered from the Payload content they edit on their dashboard, so a save on `/content` changes a real page.
 
-**Architecture:** A third host surface (`sites`) inside `apps/platform`, alongside `app-host` and `admin-host`. Middleware stays pure routing and never touches the database: any host that is not the app or admin origin is rewritten to `/site-host/...`, and the page resolves the hostname to a business itself. Reads go through a new read-only Postgres role (`firstfold_sites`) for the main database, and through Payload's Local API for content.
+**Architecture:** A third host surface (`sites`) inside `apps/platform`, alongside `app-host` and `admin-host`. Middleware stays pure routing and never touches the database: any host that is not the app or admin origin is rewritten to `/site-host/...`, and the page resolves the hostname to a business itself. Reads go through a new read-only Postgres role (`fynix_sites`) for the main database, and through Payload's Local API for content.
 
-**Why a surface and not `apps/sites` yet:** the design spec puts the renderer in its own app so a bad dashboard deploy cannot take customer sites down, and so the renderer holds no write credentials. That split also requires extracting Payload's config and collections into `@firstfold/cms`, which the admin-repo-split plan already owns. Doing the split first would mean no working loop for days. This plan closes the loop now behind a clean seam — `lib/server/site-*.ts` has no imports from `app-host` or `admin-host` — so extracting it later is a move, not a rewrite. **Task 7 records the hardening debt; do not mark this plan done without reading it.**
+**Why a surface and not `apps/sites` yet:** the design spec puts the renderer in its own app so a bad dashboard deploy cannot take customer sites down, and so the renderer holds no write credentials. That split also requires extracting Payload's config and collections into `@fynix/cms`, which the admin-repo-split plan already owns. Doing the split first would mean no working loop for days. This plan closes the loop now behind a clean seam — `lib/server/site-*.ts` has no imports from `app-host` or `admin-host` — so extracting it later is a move, not a rewrite. **Task 7 records the hardening debt; do not mark this plan done without reading it.**
 
 **Tech Stack:** Next.js 16 App Router, Payload 3 Local API, Drizzle + Postgres, Vitest.
 
@@ -35,7 +35,7 @@
 
 | File | Responsibility |
 | --- | --- |
-| `packages/db/src/roles.ts` | add `firstfold_sites` to the role registry |
+| `packages/db/src/roles.ts` | add `fynix_sites` to the role registry |
 | `packages/db/migrations/0030_sites_role_grants.sql` | read-only SELECT grants for the renderer |
 | `packages/db/src/queries/sites.ts` | hostname → business lookup (the only main-DB read the renderer makes) |
 | `apps/platform/lib/surfaces.ts` | add the `sites` surface and its host resolution |
@@ -64,7 +64,7 @@ In `packages/db/src/local-env-template.test.ts`, add to the existing `describe`:
 ```ts
 it("gives the renderer a read-only connection", () => {
   const env = parseEnvFile(localEnvTemplate(SECRETS));
-  expect(env.DATABASE_URL_SITES).toBe("postgresql://firstfold_sites:sites-pass@localhost:5432/webfold");
+  expect(env.DATABASE_URL_SITES).toBe("postgresql://fynix_sites:sites-pass@localhost:5432/fynix_platform");
 });
 ```
 
@@ -72,8 +72,8 @@ Add `sitesPassword: "sites-pass"` to the `SECRETS` fixture at the top of that fi
 
 - [x] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @firstfold/db vitest run src/local-env-template.test.ts`
-Expected: FAIL — `expected undefined to be 'postgresql://firstfold_sites:...'`
+Run: `pnpm --filter @fynix/db vitest run src/local-env-template.test.ts`
+Expected: FAIL — `expected undefined to be 'postgresql://fynix_sites:...'`
 
 - [x] **Step 3: Register the role**
 
@@ -81,14 +81,14 @@ In `packages/db/src/roles.ts`, add to `APPLICATION_ROLES`:
 
 ```ts
   // The public site renderer. Reads only, and only the three tables migration 0030 grants it.
-  { name: "firstfold_sites", passwordEnv: "FIRSTFOLD_SITES_PASSWORD" },
+  { name: "fynix_sites", passwordEnv: "FYNIX_SITES_PASSWORD" },
 ```
 
 In `packages/db/src/local-env-template.ts`, add `readonly sitesPassword: string;` to the secrets interface, generate it alongside the others, and add these two lines to the generated file next to the other runtime connections:
 
 ```ts
-    `FIRSTFOLD_SITES_PASSWORD=${secrets.sitesPassword}`,
-    `DATABASE_URL_SITES=${roleUrl("firstfold_sites", secrets.sitesPassword, DEV_DATABASE)}`,
+    `FYNIX_SITES_PASSWORD=${secrets.sitesPassword}`,
+    `DATABASE_URL_SITES=${roleUrl("fynix_sites", secrets.sitesPassword, DEV_DATABASE)}`,
 ```
 
 - [x] **Step 4: Write the migration**
@@ -99,15 +99,15 @@ Create `packages/db/migrations/0030_sites_role_grants.sql`:
 -- The public site renderer. It resolves a hostname to a business and reads nothing else from this database:
 -- all page content lives in Payload's separate database. SELECT only, on three tables, with row-level security
 -- still applying because the role never owns tables and is NOBYPASSRLS (see scripts/setup-roles.ts).
-GRANT USAGE ON SCHEMA public TO firstfold_sites;
+GRANT USAGE ON SCHEMA public TO fynix_sites;
 
-GRANT SELECT ("id", "name", "slug", "currency") ON "businesses" TO firstfold_sites;
-GRANT SELECT ("id", "business_id", "hostname", "status", "is_primary", "removed_at") ON "domains" TO firstfold_sites;
-GRANT SELECT ("id", "business_id", "status") ON "projects" TO firstfold_sites;
+GRANT SELECT ("id", "name", "slug", "currency") ON "businesses" TO fynix_sites;
+GRANT SELECT ("id", "business_id", "hostname", "status", "is_primary", "removed_at") ON "domains" TO fynix_sites;
+GRANT SELECT ("id", "business_id", "status") ON "projects" TO fynix_sites;
 
-CREATE POLICY "businesses_sites_read" ON "businesses" FOR SELECT TO firstfold_sites USING (true);
-CREATE POLICY "domains_sites_read" ON "domains" FOR SELECT TO firstfold_sites USING (true);
-CREATE POLICY "projects_sites_read" ON "projects" FOR SELECT TO firstfold_sites USING (true);
+CREATE POLICY "businesses_sites_read" ON "businesses" FOR SELECT TO fynix_sites USING (true);
+CREATE POLICY "domains_sites_read" ON "domains" FOR SELECT TO fynix_sites USING (true);
+CREATE POLICY "projects_sites_read" ON "projects" FOR SELECT TO fynix_sites USING (true);
 ```
 
 - [x] **Step 5: Register the migration in Drizzle's journal**
@@ -127,8 +127,8 @@ Run: `pnpm db:roles && pnpm db:migrate && pnpm db:migrate:test`
 Then add the two new variables to your own `apps/platform/.env.local` by hand (the template only affects freshly generated files):
 
 ```
-FIRSTFOLD_SITES_PASSWORD=<any 48-char hex string>
-DATABASE_URL_SITES=postgresql://firstfold_sites:<that password>@localhost:5432/webfold
+FYNIX_SITES_PASSWORD=<any 48-char hex string>
+DATABASE_URL_SITES=postgresql://fynix_sites:<that password>@localhost:5432/fynix_platform
 ```
 
 Re-run `pnpm db:roles` so the role's password matches what you just wrote.
@@ -149,7 +149,7 @@ The last one proves the grant is column-level, not table-wide.
 
 - [x] **Step 8: Run the db tests**
 
-Run: `pnpm --filter @firstfold/db test`
+Run: `pnpm --filter @fynix/db test`
 Expected: PASS
 
 ---
@@ -226,7 +226,7 @@ Read `packages/db/src/onboarding.integration.test.ts` first and reuse whatever h
 
 - [x] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @firstfold/db vitest run --config vitest.integration.config.ts src/sites.integration.test.ts`
+Run: `pnpm --filter @fynix/db vitest run --config vitest.integration.config.ts src/sites.integration.test.ts`
 Expected: FAIL — `findSiteByHostname is not a function`
 
 - [x] **Step 3: Write the implementation**
@@ -323,7 +323,7 @@ export { findSiteByHostname, isSiteServable, type SiteTenant } from "./queries/s
 
 - [x] **Step 5: Run the tests**
 
-Run: `pnpm --filter @firstfold/db vitest run --config vitest.integration.config.ts src/sites.integration.test.ts`
+Run: `pnpm --filter @fynix/db vitest run --config vitest.integration.config.ts src/sites.integration.test.ts`
 Expected: PASS, 5 tests
 
 - [x] **Step 6: Commit**
@@ -369,7 +369,7 @@ describe("resolveSurface with the sites surface", () => {
 
 - [x] **Step 2: Run it to verify it fails**
 
-Run: `pnpm --filter @firstfold/platform vitest run lib/surfaces.test.ts`
+Run: `pnpm --filter @fynix/platform vitest run lib/surfaces.test.ts`
 Expected: FAIL — `expected null to be 'sites'`
 
 - [x] **Step 3: Add the surface**
@@ -420,7 +420,7 @@ Match `handle` to whatever helper that file already defines for building a reque
 
 - [x] **Step 5: Run it to verify it fails**
 
-Run: `pnpm --filter @firstfold/platform vitest run proxy.test.ts`
+Run: `pnpm --filter @fynix/platform vitest run proxy.test.ts`
 Expected: FAIL — the robots assertion fails, because `rewriteTo` sets the header unconditionally.
 
 - [x] **Step 6: Make robots conditional**
@@ -448,7 +448,7 @@ The Payload-admin branch becomes `return rewriteTo(request, pathname, search, fa
 
 - [x] **Step 7: Run both test files**
 
-Run: `pnpm --filter @firstfold/platform vitest run proxy.test.ts lib/surfaces.test.ts`
+Run: `pnpm --filter @fynix/platform vitest run proxy.test.ts lib/surfaces.test.ts`
 Expected: PASS
 
 - [x] **Step 8: Commit**
@@ -491,7 +491,7 @@ Create `apps/platform/lib/server/site-tenant.ts`:
 
 ```ts
 import "server-only";
-import { findSiteByHostname, isSiteServable, type SiteTenant } from "@firstfold/db";
+import { findSiteByHostname, isSiteServable, type SiteTenant } from "@fynix/db";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { cache } from "react";
@@ -516,7 +516,7 @@ export const requireSiteTenant = cache(async (): Promise<SiteTenant> => {
 
 - [x] **Step 4: Typecheck**
 
-Run: `pnpm --filter @firstfold/platform typecheck`
+Run: `pnpm --filter @fynix/platform typecheck`
 Expected: PASS
 
 - [x] **Step 5: Commit**
@@ -586,7 +586,7 @@ describe("sitePageFrom", () => {
 
 - [x] **Step 2: Run it to verify it fails**
 
-Run: `pnpm --filter @firstfold/platform vitest run lib/server/site-content.test.ts`
+Run: `pnpm --filter @fynix/platform vitest run lib/server/site-content.test.ts`
 Expected: FAIL — cannot find module `./site-content`
 
 - [x] **Step 3: Write the reader**
@@ -690,7 +690,7 @@ export const getSitePages = cache(async (businessId: string): Promise<readonly S
 
 - [x] **Step 4: Run it to verify it passes**
 
-Run: `pnpm --filter @firstfold/platform vitest run lib/server/site-content.test.ts`
+Run: `pnpm --filter @fynix/platform vitest run lib/server/site-content.test.ts`
 Expected: PASS, 2 tests
 
 - [x] **Step 5: Commit**
@@ -854,7 +854,7 @@ export default async function SiteSlugPage({
 
 - [x] **Step 5: Full checkpoint**
 
-Run: `pnpm lint && pnpm --filter @firstfold/platform typecheck && pnpm test && pnpm --filter @firstfold/db test:integration && pnpm --filter @firstfold/platform build`
+Run: `pnpm lint && pnpm --filter @fynix/platform typecheck && pnpm test && pnpm --filter @fynix/db test:integration && pnpm --filter @fynix/platform build`
 Expected: all PASS
 
 - [x] **Step 6: Walk it in the browser**
@@ -901,7 +901,7 @@ content, proving both the preview path and tenant isolation.
 
 These are real and must not be forgotten:
 
-1. **The renderer shares a process with the dashboards.** The design spec wants `apps/sites` so a bad dashboard deploy cannot take customer sites down. Extracting it needs `@firstfold/cms` (Payload config plus collections), which the admin-repo-split plan already owns.
+1. **The renderer shares a process with the dashboards.** The design spec wants `apps/sites` so a bad dashboard deploy cannot take customer sites down. Extracting it needs `@fynix/cms` (Payload config plus collections), which the admin-repo-split plan already owns.
 2. **No design.** Customer sites render unstyled. The open question — one shared template versus per-business code — is still undecided, and the marketing site promises "a design built around your business, not a template."
 3. **A customer's save is instantly public.** No publish step, no cache, no version history, no rollback, no staff review.
 4. **Gallery and blog are not rendered.** Only pages are. Both collections already carry `businessId` and read the same way.
@@ -909,9 +909,9 @@ These are real and must not be forgotten:
 6. **Images are served uncached** through the media route, one database read per image per request.
 7. **The preview address only exists locally.** `isSiteServable` lets any `<slug>.localhost` address through as the
    pre-launch preview, and gates real domains on `status = 'live'`. In production there is no equivalent host yet,
-   so a business that has not launched has no address at all — including one on a free `<slug>.firstfold.io`
+   so a business that has not launched has no address at all — including one on a free `<slug>.fynix.digital`
    address, since that is stored as a real `domains` row and is therefore gated like any other. Production needs a
-   dedicated preview host (`<slug>.preview.firstfold.io`) before the admin's preview link can point at the renderer
+   dedicated preview host (`<slug>.preview.fynix.digital`) before the admin's preview link can point at the renderer
    instead of a hand-pasted URL.
 
 - [ ] **Step 2: Commit**
@@ -937,11 +937,11 @@ production-ready.**
    If a storage adapter lands with `disableLocalStorage: true`, that helper must change to fetch from the adapter.
 2. **The preview address only exists locally.** `isSiteServable` lets any `<slug>.localhost` through as the
    pre-launch preview and gates real domains on `status = 'live'`. Production has no equivalent host, so an
-   unlaunched business has no address at all — including one on a free `<slug>.firstfold.io` address, which is
+   unlaunched business has no address at all — including one on a free `<slug>.fynix.digital` address, which is
    stored as a real `domains` row and therefore gated like any other. Production needs a dedicated preview host
-   (`<slug>.preview.firstfold.io`) before the admin's preview link can point at the renderer instead of a
+   (`<slug>.preview.fynix.digital`) before the admin's preview link can point at the renderer instead of a
    hand-pasted URL.
-3. **Wildcard DNS and certificates.** Nothing serves `*.firstfold.io` or a customer's own domain yet, and there is
+3. **Wildcard DNS and certificates.** Nothing serves `*.fynix.digital` or a customer's own domain yet, and there is
    no certificate provisioning for customer domains.
 
 ### Architecture
@@ -949,14 +949,14 @@ production-ready.**
 4. **The renderer shares a process with the dashboards.** The design spec wants `apps/sites` so a bad dashboard
    deploy cannot take customer sites down, and so the renderer holds no write credentials. It does hold them today
    — `getSitesDb()` is read-only, but `getAppDb()` and `getStaffDb()` live in the same process. Extracting needs
-   `@firstfold/cms` (Payload config plus collections), which the admin-repo-split plan owns. The seam is clean:
+   `@fynix/cms` (Payload config plus collections), which the admin-repo-split plan owns. The seam is clean:
    `lib/server/site-*.ts`, `app/site-host/` and `components/site/` import nothing from the dashboards.
-5. **The renderer's RLS policies are permissive** (`USING (true)`). Unlike `webfold_app`, this role serves
+5. **The renderer's RLS policies are permissive** (`USING (true)`). Unlike `fynix_app`, this role serves
    anonymous traffic and has no session business id to scope to, so the tenant boundary is the hostname lookup in
    `findSiteByHostname`, not the database. The grants are column-level and SELECT-only to keep the blast radius
    small, but that lookup is the whole isolation story — treat changes to it as security changes.
-6. **Role naming is inconsistent.** `firstfold_sites` is new-brand; `webfold_app`, `webfold_staff` and
-   `webfold_public` keep their original names deliberately (renaming needs a migration). Expect the mismatch.
+6. **Role naming is inconsistent.** `fynix_sites` is new-brand; `fynix_app`, `fynix_staff` and
+   `fynix_public` keep their original names deliberately (renaming needs a migration). Expect the mismatch.
 
 ### Product decisions still open
 

@@ -1,5 +1,5 @@
-import { BUSINESS_EXTRA_CATEGORIES_MAX } from "@firstfold/db";
-import { isDirectoryCategory } from "@firstfold/shared/lib/directory/places";
+import { BUSINESS_EXTRA_CATEGORIES_MAX } from "@fynix/db";
+import { isDirectoryCategory } from "@fynix/shared/lib/directory/places";
 import { categoryOptions, type PickOption } from "@/lib/listing-address";
 import { OWNER_FORM_FIELDS_MESSAGE, ownerFormCheck } from "@/lib/owner-form";
 

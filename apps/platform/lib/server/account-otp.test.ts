@@ -7,7 +7,7 @@ import {
   purgeExpiredAccountOtps,
   type AccountOtpAttempt,
   type Database,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { confirmAccountOtp, requestAccountOtp } from "./account-otp";
 import { getStaffDb } from "./db";
 import { bookingOtpSecret, signupOtpBypassed, smsAllowedCountryCodes, verifyOtpBypassed } from "./env";
@@ -21,7 +21,7 @@ vi.mock("./sms", async () => {
   const actual = await vi.importActual<typeof import("./sms")>("./sms");
   return { createSmsSender: vi.fn(), otpMessage: actual.otpMessage, SmsProviderUnavailableError: actual.SmsProviderUnavailableError };
 });
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   claimAccountOtpAttempt: vi.fn(),
   consumeAccountOtp: vi.fn(),
   consumeRateLimit: vi.fn(),
@@ -82,7 +82,7 @@ describe("requestAccountOtp", () => {
     const stored = vi.mocked(createAccountOtp).mock.calls[0]?.[1];
     expect(stored).toMatchObject({ purpose: "signup", phone: PHONE, expiresAt: new Date(NOW.getTime() + 600_000) });
     const message = send.mock.calls[0]?.[0];
-    const code = /^(\d{6}) is your Firstfold code\. It expires in 10 minutes\. Do not share it\.$/.exec(message?.body ?? "")?.[1];
+    const code = /^(\d{6}) is your Fynix code\. It expires in 10 minutes\. Do not share it\.$/.exec(message?.body ?? "")?.[1];
     expect(code).toBeDefined();
     expect(message).toMatchObject({ to: PHONE, businessId: null });
     expect(stored?.codeHash).toBe(hashOtpCode(stored?.id ?? "", code ?? "", SECRET));

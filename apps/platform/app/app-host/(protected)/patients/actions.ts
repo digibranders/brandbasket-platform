@@ -11,12 +11,12 @@ import {
   mergePatients,
   updatePatient,
   withTenantScope,
-} from "@firstfold/db";
-import { parseErasePatient, parseMergeConfirm, parseMergeLookup, parsePatientEdit } from "@firstfold/shared/lib/patients/patient-form";
+} from "@fynix/db";
+import { parseErasePatient, parseMergeConfirm, parseMergeLookup, parsePatientEdit } from "@fynix/shared/lib/patients/patient-form";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
 import { getAppDb } from "@/lib/server/db";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { paymentRequiredState, unexpectedErrorState } from "@/lib/server/panel-form-errors";
 import {
   editOutcomeProblem,

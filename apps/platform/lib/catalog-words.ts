@@ -1,4 +1,4 @@
-import type { RenamablePageTab } from "@firstfold/shared/lib/directory/page-tabs";
+import type { RenamablePageTab } from "@fynix/shared/lib/directory/page-tabs";
 
 /*
  * The words on a Services or Products form in the dashboard. While the owner keeps the usual name the forms talk about a

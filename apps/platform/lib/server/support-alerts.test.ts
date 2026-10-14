@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Database } from "@firstfold/db";
+import type { Database } from "@fynix/db";
 import { sendSupportReplyAlert, sendSupportTicketAlert, sendSystemErrorAlert } from "./support-alerts";
-import { createAppEmailTransport } from "@firstfold/email";
-import { getSupportTicket } from "@firstfold/db";
+import { createAppEmailTransport } from "@fynix/email";
+import { getSupportTicket } from "@fynix/db";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   getSupportTicket: vi.fn(),
 }));
-vi.mock("@firstfold/email", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@firstfold/email")>();
+vi.mock("@fynix/email", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@fynix/email")>();
   return {
     ...actual,
     createAppEmailTransport: vi.fn(),
@@ -18,7 +18,7 @@ vi.mock("@firstfold/email", async (importOriginal) => {
 const staffDb = { role: "staff" } as unknown as Database;
 vi.mock("./db", () => ({ getStaffDb: () => staffDb }));
 vi.mock("@/lib/server/env", () => ({
-  serverEnv: () => ({ ADMIN_ORIGIN: "https://admin.firstfold.io" }),
+  serverEnv: () => ({ ADMIN_ORIGIN: "https://console.fynix.digital" }),
 }));
 
 describe("support-alerts", () => {
@@ -30,8 +30,8 @@ describe("support-alerts", () => {
     mockSend.mockReset();
     mockSend.mockResolvedValue(undefined);
     vi.mocked(createAppEmailTransport).mockReturnValue({ send: mockSend });
-    process.env.SUPPORT_ALERT_EMAIL = "support@firstfold.io";
-    process.env.FIRSTFOLD_TEAM_EMAIL = "team@firstfold.io";
+    process.env.SUPPORT_ALERT_EMAIL = "hello@fynix.digital";
+    process.env.FYNIX_TEAM_EMAIL = "team@fynix.digital";
   });
 
   describe("sendSupportTicketAlert", () => {
@@ -57,14 +57,14 @@ describe("support-alerts", () => {
       expect(createAppEmailTransport).not.toHaveBeenCalledWith(db);
       expect(mockSend).toHaveBeenCalledTimes(1);
       const sent = mockSend.mock.calls[0][0];
-      expect(sent.to).toBe("support@firstfold.io");
+      expect(sent.to).toBe("hello@fynix.digital");
       expect(sent.subject).toContain("SUP-A1B2C3");
       expect(sent.subject).toContain("Cannot reset 2FA");
       expect(sent.bodyText).toContain("Locked out of my device.");
       expect(sent.bodyText).toContain("Alice Smith");
       expect(sent.bodyText).toContain("alice@example.com");
       expect(sent.bodyText).toContain("Business: Smith Clinic");
-      expect(sent.bodyHtml).toContain("https://admin.firstfold.io/support/0192d1a0-0000-7000-8000-000000000001");
+      expect(sent.bodyHtml).toContain("https://console.fynix.digital/support/0192d1a0-0000-7000-8000-000000000001");
     });
 
     it("keeps the request text, name, email and phone out of the outbox copy", async () => {
@@ -75,7 +75,7 @@ describe("support-alerts", () => {
       );
       const copy = JSON.stringify(mockSend.mock.calls[0][0].outboxCopy);
       expect(copy).toContain("SUP-A1B2C3");
-      expect(copy).toContain("https://admin.firstfold.io/support/0192d1a0-0000-7000-8000-000000000001");
+      expect(copy).toContain("https://console.fynix.digital/support/0192d1a0-0000-7000-8000-000000000001");
       for (const secret of ["Cannot reset 2FA", "Locked out", "Alice", "alice@example.com", "9876543210"]) expect(copy).not.toContain(secret);
     });
 
@@ -127,7 +127,7 @@ describe("support-alerts", () => {
 
       expect(mockSend).toHaveBeenCalledTimes(1);
       const sent = mockSend.mock.calls[0][0];
-      expect(sent.to).toBe("support@firstfold.io");
+      expect(sent.to).toBe("hello@fynix.digital");
       expect(sent.subject).toContain("SUP-A1B2C3");
       expect(sent.bodyText).toContain("I have uploaded the document.");
       expect(sent.bodyText).toContain("Alice");
@@ -173,7 +173,7 @@ describe("support-alerts", () => {
 
       expect(mockSend).toHaveBeenCalledTimes(1);
       const sent = mockSend.mock.calls[0][0];
-      expect(sent.to).toBe("support@firstfold.io");
+      expect(sent.to).toBe("hello@fynix.digital");
       expect(sent.subject).toContain("DatabaseConnectionTimeout");
       expect(sent.subject).toContain("/api/checkout");
       expect(sent.bodyText).toContain("err-evt-456");

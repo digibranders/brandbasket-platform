@@ -7,8 +7,8 @@ import {
   markSupportAttachmentPurged,
   stageSupportAttachment,
   withSupportUploadLock,
-} from "@firstfold/db";
-import { getSupportStorage } from "@firstfold/shared/server/support-storage";
+} from "@fynix/db";
+import { getSupportStorage } from "@fynix/shared/server/support-storage";
 import { getAppDb, getStaffDb } from "@/lib/server/db";
 import { serverEnv } from "@/lib/server/env";
 import { getSupportAccess } from "@/lib/server/support-access";
@@ -16,7 +16,7 @@ import {
   deleteStagedSupportUpload,
   handleSupportUploadRequest,
 } from "@/lib/server/support-uploads";
-import { purgeSupportAttachments } from "@firstfold/shared/server/support-attachment-maintenance";
+import { purgeSupportAttachments } from "@fynix/shared/server/support-attachment-maintenance";
 import {
   refuseUpload,
   refuseUploadEnvelope,

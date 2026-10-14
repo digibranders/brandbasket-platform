@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { ListingAddressLine } from "@/components/panel/business/listing-address-line";
 import { OptionList, PILL_CLASSES, Step } from "@/components/panel/business/pick-steps";
 import {

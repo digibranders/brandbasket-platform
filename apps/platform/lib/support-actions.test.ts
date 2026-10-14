@@ -8,7 +8,7 @@ vi.mock("@/lib/server/support-access", () => ({ getSupportAccess: mocks.access }
 vi.mock("@/lib/server/db", () => ({ getAppDb: () => ({}), getStaffDb: () => ({}) }));
 vi.mock("@/lib/server/error-report", () => ({ reportServerError: vi.fn() }));
 vi.mock("@/lib/server/support-alerts", () => ({ sendSupportTicketAlert: mocks.ticketAlert, sendSupportReplyAlert: mocks.replyAlert }));
-vi.mock("@firstfold/db", () => ({ createSupportTicketWithOutcome: mocks.create, appendSupportReplyWithOutcome: mocks.reply, markSupportTicketRead: mocks.read, consumeRateLimit: mocks.limit, getSupportUnreadCount: vi.fn(), listSupportTickets: vi.fn(), SupportQueryError: class extends Error {} }));
+vi.mock("@fynix/db", () => ({ createSupportTicketWithOutcome: mocks.create, appendSupportReplyWithOutcome: mocks.reply, markSupportTicketRead: mocks.read, consumeRateLimit: mocks.limit, getSupportUnreadCount: vi.fn(), listSupportTickets: vi.fn(), SupportQueryError: class extends Error {} }));
 import { acknowledgeSupportReplies, createSupportRequest, replyToSupportRequest } from "@/app/app-host/(support)/support/actions";
 import { INITIAL_SUPPORT_STATE } from "./support-form-state";
 
@@ -23,7 +23,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.access.mockResolvedValue({ user: { id: "signed-in-person" }, businessId: null, businessName: null });
   mocks.limit.mockResolvedValue({ allowed: true });
-  mocks.create.mockResolvedValue({ ticket: { id: "ticket-id", displayRef: "FF-1042" }, created: true });
+  mocks.create.mockResolvedValue({ ticket: { id: "ticket-id", displayRef: "FY-1042" }, created: true });
   mocks.reply.mockResolvedValue({ message: { id: "message-id" }, created: true });
   mocks.ticketAlert.mockResolvedValue(undefined);
   mocks.replyAlert.mockResolvedValue(undefined);
@@ -67,7 +67,7 @@ describe("support submissions", () => {
     expect(mocks.ticketAlert).toHaveBeenCalledTimes(1);
     expect(mocks.ticketAlert.mock.calls[0]?.[0]).toMatchObject({ id: "ticket-id" });
     mocks.ticketAlert.mockClear();
-    mocks.create.mockResolvedValue({ ticket: { id: "ticket-id", displayRef: "FF-1042" }, created: false });
+    mocks.create.mockResolvedValue({ ticket: { id: "ticket-id", displayRef: "FY-1042" }, created: false });
     expect((await createSupportRequest(INITIAL_SUPPORT_STATE, request())).status).toBe("saved");
     expect(mocks.ticketAlert).not.toHaveBeenCalled();
   });

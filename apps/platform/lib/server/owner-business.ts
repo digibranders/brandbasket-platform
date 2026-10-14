@@ -1,6 +1,6 @@
 import "server-only";
-import { findClaimForBusiness, findOwnListing, withTenantScope, type DirectoryRef } from "@firstfold/db";
-import type { SessionUser, TenantContext } from "@firstfold/shared/lib/access";
+import { findClaimForBusiness, findOwnListing, withTenantScope, type DirectoryRef } from "@fynix/db";
+import type { SessionUser, TenantContext } from "@fynix/shared/lib/access";
 import { leadsSource } from "@/lib/leads";
 import { accessRedirect, getCustomerAccess, getCustomerBusinessEntry } from "./customer-access";
 import { getAppDb } from "./db";
@@ -10,7 +10,7 @@ import { getAppDb } from "./db";
  * business (answering its reviews, from the dashboard's Reviews page or from the page itself).
  *
  * A verified owner is exactly whoever the Leads page opens leads to (lib/leads.ts, leadsSource): a website client with
- * a directory listing staff placed, or an account whose claim on a directory listing Firstfold approved. A claim still
+ * a directory listing staff placed, or an account whose claim on a directory listing Fynix approved. A claim still
  * waiting for approval, a turned-down one, or an account with no business is not an owner, and an account that is
  * awaiting its membership payment or closing has no dashboard at all, so it answers nothing either.
  */

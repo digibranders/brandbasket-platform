@@ -1,18 +1,18 @@
 import "server-only";
-import { BillingRangeError, InvalidGstinError, InvoiceAmountMismatchError, UnknownStateError } from "@firstfold/billing";
-import { lockBusinessForBilling } from "@firstfold/db";
-import { describeError, logBillingEvent } from "@firstfold/shared/server/billing-log";
+import { BillingRangeError, InvalidGstinError, InvoiceAmountMismatchError, UnknownStateError } from "@fynix/billing";
+import { lockBusinessForBilling } from "@fynix/db";
+import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
 import {
   InvoiceSourceMismatchError,
   issueMissingTaxInvoice,
   NoMissingInvoiceError,
   UnsupportedPaymentKindError,
-} from "@firstfold/shared/server/tax-invoice-reissue";
+} from "@fynix/shared/server/tax-invoice-reissue";
 import {
   InvalidServicePeriodError,
   InvoiceDatedBeforePaymentError,
   UnprintableInvoiceTextError,
-} from "@firstfold/shared/server/tax-invoicing";
+} from "@fynix/shared/server/tax-invoicing";
 import type { InvoiceNotice } from "@/lib/invoice-notices";
 import { getStaffDb } from "./db";
 

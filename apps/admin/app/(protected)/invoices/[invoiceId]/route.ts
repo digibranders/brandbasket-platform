@@ -1,9 +1,9 @@
 import { adminBrand } from "@/lib/brand";
-import { findBusinessOwnerPhone, findTaxInvoiceById } from "@firstfold/db";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
-import { staffCan } from "@firstfold/shared/lib/access";
-import { displayPhoneText } from "@firstfold/shared/server/phone-display";
-import { renderTaxInvoicesPdf } from "@firstfold/shared/server/tax-invoice-pdf";
+import { findBusinessOwnerPhone, findTaxInvoiceById } from "@fynix/db";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { staffCan } from "@fynix/shared/lib/access";
+import { displayPhoneText } from "@fynix/shared/server/phone-display";
+import { renderTaxInvoicesPdf } from "@fynix/shared/server/tax-invoice-pdf";
 import { z } from "zod";
 import { getStaffDb } from "@/lib/server/db";
 import { getStaffAccess } from "@/lib/server/staff-access";

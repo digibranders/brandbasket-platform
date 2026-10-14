@@ -1,10 +1,10 @@
 "use server";
 
-import { appendSupportReplyWithOutcome, consumeRateLimit, createSupportTicketWithOutcome, getSupportTicket, getSupportUnreadCount, listSupportTickets, markSupportTicketRead, SupportQueryError } from "@firstfold/db";
+import { appendSupportReplyWithOutcome, consumeRateLimit, createSupportTicketWithOutcome, getSupportTicket, getSupportUnreadCount, listSupportTickets, markSupportTicketRead, SupportQueryError } from "@fynix/db";
 import { z } from "zod";
-import type { SupportCategory, SupportStatus } from "@firstfold/shared/lib/support";
-import { parseSupportTicketForm, supportReplySchema } from "@firstfold/shared/lib/support-form";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import type { SupportCategory, SupportStatus } from "@fynix/shared/lib/support";
+import { parseSupportTicketForm, supportReplySchema } from "@fynix/shared/lib/support-form";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { INITIAL_SUPPORT_STATE, supportFormError, type SupportFormState } from "@/lib/support-form-state";

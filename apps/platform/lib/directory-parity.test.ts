@@ -22,15 +22,15 @@ import {
   MAX_DIRECTORY_SIGNAL_KEYS,
   newPlatformPlaceId,
   PLACE_ID_ALPHABET,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { describe, expect, it } from "vitest";
-import { DIRECTORY_HIGHLIGHT_LABELS, directoryHighlightLabel } from "@firstfold/shared/lib/directory-highlights";
+import { DIRECTORY_HIGHLIGHT_LABELS, directoryHighlightLabel } from "@fynix/shared/lib/directory-highlights";
 import {
   PROMOTION_DAYS,
   PROMOTION_MARKER,
   PROMOTION_TAG_LABELS,
   PROMOTION_TAGS,
-} from "@firstfold/shared/lib/directory/promotion";
+} from "@fynix/shared/lib/directory/promotion";
 import {
   COMMENTS_SHOWN_PER_REVIEW,
   DIRECTORY_AD_EVENT_KINDS,

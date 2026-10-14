@@ -1,4 +1,3 @@
-import { deploymentBrandId } from "../deployment-brand";
 import { checkboxField, textField, type StepParseResult } from "./form-result";
 
 const MAX_HOSTNAME_LENGTH = 253;
@@ -39,20 +38,17 @@ export function isValidHostname(hostname: string): boolean {
   return labels.every((label) => LABEL.test(label)) && TOP_LEVEL.test(topLevel);
 }
 
-/** True for one of Firstfold's own hosts or anything under one of them. */
+/** True for one of Fynix Digital's own hosts or anything under one of them. */
 export function isReservedHostname(hostname: string, reserved: readonly string[]): boolean {
   return reserved.some((host) => hostname === host || hostname.endsWith(`.${host}`));
 }
-
-/** Where a Firstfold business goes live if it has no domain of its own yet. Fynix has no such default (see clientSiteBaseDomain). */
-export const FIRSTFOLD_SUBDOMAIN_ROOT = "firstfold.io";
 
 type Env = Readonly<Record<string, string | undefined>>;
 
 /**
  * The domain a business's temporary address is made on (`<slug>.<base>`): CLIENT_SITE_BASE_DOMAIN when set, otherwise
- * firstfold.io on a Firstfold server, otherwise nothing: a Fynix server never invents addresses on Firstfold's domain, so
- * until its own base domain is set the temporary address is simply not offered. A value that is not a domain is refused.
+ * nothing: the server never invents addresses on a domain it was not told to use, so until a base domain is set the
+ * temporary address is simply not offered. A value that is not a domain is refused.
  */
 export function clientSiteBaseDomain(env: Env = process.env): string | null {
   const configured = env.CLIENT_SITE_BASE_DOMAIN?.trim().toLowerCase().replace(/^\.+|\.+$/g, "") ?? "";
@@ -60,7 +56,7 @@ export function clientSiteBaseDomain(env: Env = process.env): string | null {
     if (!isValidHostname(configured)) throw new Error(`CLIENT_SITE_BASE_DOMAIN must be a domain such as sites.example.com, received "${configured}"`);
     return configured;
   }
-  return deploymentBrandId(env) === "firstfold" ? FIRSTFOLD_SUBDOMAIN_ROOT : null;
+  return null;
 }
 
 /** Leaves room for "-" plus a 6-character disambiguator within the 63-character DNS label limit. */
@@ -85,7 +81,7 @@ export function isTemporarySubdomain(hostname: string, env: Env = process.env): 
 }
 
 /**
- * Firstfold's own hostnames from its configured origins, for parseDomainForm: each origin's hostname with any
+ * Fynix Digital's own hostnames from its configured origins, for parseDomainForm: each origin's hostname with any
  * leading `www.` removed, since a customer's entry is compared the same way, plus `localhost`. An origin that is
  * not a URL is a configuration mistake and throws rather than leaving a host unguarded.
  */
@@ -99,7 +95,7 @@ export function reservedHostnamesFrom(origins: readonly string[]): string[] {
 }
 
 /**
- * Step 04. `reservedHostnames` are Firstfold's own hosts, which no customer may claim; the action passes the real
+ * Step 04. `reservedHostnames` are Fynix Digital's own hosts, which no customer may claim; the action passes the real
  * list so this stays a pure function.
  */
 export function parseDomainForm(formData: FormData, reservedHostnames: readonly string[]): StepParseResult<DomainStepInput> {

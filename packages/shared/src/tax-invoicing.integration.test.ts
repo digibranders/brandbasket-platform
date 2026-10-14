@@ -1,4 +1,4 @@
-import { chargedAmountCents } from "@firstfold/billing";
+import { chargedAmountCents } from "@fynix/billing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyRetentionDiscount,
@@ -19,8 +19,8 @@ import {
   type Plan,
   type ReferralDiscount,
   type ScopedTransaction,
-} from "@firstfold/db";
-import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@firstfold/db/testing";
+} from "@fynix/db";
+import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@fynix/db/testing";
 import { issueTaxInvoice, issueTaxInvoiceSafely, type InvoiceSource, type IssuedTaxInvoice } from "./server/tax-invoicing";
 
 // tax-invoicing is server-only in the app; there is no browser here to keep it out of.
@@ -166,7 +166,7 @@ function planSource(discountAmountCents = DISCOUNT_CENTS, retentionDiscountCents
 async function nextSerial(): Promise<number | null> {
   const rows = await querySql<{ next_serial: number }>(
     dbs.owner,
-    "select next_serial from tax_invoice_series where prefix = 'FF' and financial_year = '26-27'",
+    "select next_serial from tax_invoice_series where prefix = 'FY' and financial_year = '26-27'",
   );
   return rows[0]?.next_serial ?? null;
 }
@@ -218,7 +218,7 @@ describe("issueTaxInvoice", () => {
     expect(invoice).toMatchObject({
       businessId,
       paymentId: payment.id,
-      number: "FF/26-27/000001",
+      number: "FY/26-27/000001",
       financialYear: "26-27",
       serial: 1,
       issuedOn: "2026-10-09",
@@ -237,7 +237,7 @@ describe("issueTaxInvoice", () => {
     });
     expect(invoice?.lines).toEqual([
       {
-        description: "Firstfold Premium plan",
+        description: "Fynix Premium plan",
         detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
         note: "Coupon GAURAV applied, 20% off",
         sac: "998361",
@@ -265,29 +265,20 @@ describe("issueTaxInvoice", () => {
     });
     expect(invoice?.supplier).toMatchObject({
       legalName: "Digibranders Private Limited",
-      tradeName: "Firstfold",
+      tradeName: "Fynix Digital",
       gstin: "27AAICD9268J1Z0",
       stateCode: "mh",
     });
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('"invoiceNumber":"FF/26-27/000001"'));
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('"invoiceNumber":"FY/26-27/000001"'));
   });
 
-  it("issues a Fynix deployment's invoice in its own FY series, trading as Fynix Digital, and leaves Firstfold's series alone", async () => {
+  it("issues the invoice in the FY series, trading as Fynix Digital", async () => {
     await saveDetails();
-    const before = process.env.PLATFORM_BRAND;
-    process.env.PLATFORM_BRAND = "fynix";
-    try {
-      const invoice = await issueSafely(await seedCouponRenewal("fake_pay_fynix"), planSource());
+    const invoice = await issueSafely(await seedCouponRenewal("fake_pay_fynix"), planSource());
 
-      expect(invoice).toMatchObject({ number: "FY/26-27/000001", prefix: "FY", serial: 1 });
-      expect(invoice?.supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Fynix Digital", email: "hello@fynix.digital", gstin: "27AAICD9268J1Z0" });
-      expect(invoice?.lines[0]?.description).toBe("Fynix Premium plan");
-      expect(JSON.stringify(invoice)).not.toMatch(/first\s?fold/i);
-      expect(await nextSerial()).toBeNull();
-    } finally {
-      if (before === undefined) delete process.env.PLATFORM_BRAND;
-      else process.env.PLATFORM_BRAND = before;
-    }
+    expect(invoice).toMatchObject({ number: "FY/26-27/000001", prefix: "FY", serial: 1 });
+    expect(invoice?.supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Fynix Digital", email: "hello@fynix.digital", gstin: "27AAICD9268J1Z0" });
+    expect(invoice?.lines[0]?.description).toBe("Fynix Premium plan");
   });
 
   it("returns the invoice already issued when asked again, takes no new number and logs the issue once", async () => {
@@ -345,7 +336,7 @@ describe("issueTaxInvoice", () => {
       issuedOn: "2027-04-02",
       paidOn: "2027-03-31",
       financialYear: "27-28",
-      number: "FF/27-28/000001",
+      number: "FY/27-28/000001",
     });
   });
 
@@ -466,7 +457,7 @@ describe("issueTaxInvoice", () => {
     const invoice = await issueSafely(payment, { kind: "charge", chargeId });
 
     expect(invoice).toMatchObject({
-      number: "FF/26-27/000001",
+      number: "FY/26-27/000001",
       placeOfSupplyStateCode: "ka",
       placeOfSupplyBasis: "billing_address",
       supplyType: "inter_state",
@@ -520,7 +511,7 @@ describe("issueTaxInvoiceSafely", () => {
   it("gives back a number taken before the insert failed, so the series keeps no gap", async () => {
     await saveDetails();
     const first = await seedCouponRenewal();
-    expect((await issueSafely(first, planSource()))?.number).toBe("FF/26-27/000001");
+    expect((await issueSafely(first, planSource()))?.number).toBe("FY/26-27/000001");
 
     // A blank provider reference fails the invoice's own payment check, after the serial was taken.
     const invoice = await dbs.staff.db.transaction(async (tx) => {
@@ -537,7 +528,7 @@ describe("issueTaxInvoiceSafely", () => {
     expect(failure).not.toContain("QA Premium Business LLP");
     expect(failure).not.toContain("27AAPFU0939F1ZV");
     const next = await seedPayment(dbs.staff.db, "fake_pay_next", { subscriptionId: first.subscriptionId });
-    expect((await issueSafely(next, planSource()))?.number).toBe("FF/26-27/000002");
+    expect((await issueSafely(next, planSource()))?.number).toBe("FY/26-27/000002");
   });
 });
 
@@ -616,7 +607,7 @@ describe("an invoice that cannot be printed", () => {
       issueTaxInvoice(tx, payment, planSource(0), { issuedAt: new Date("2026-10-12T09:00:00.000Z") }),
     );
 
-    expect(result?.invoice).toMatchObject({ number: "FF/26-27/000001", issuedOn: "2026-10-12", paidOn: "2026-10-09" });
+    expect(result?.invoice).toMatchObject({ number: "FY/26-27/000001", issuedOn: "2026-10-12", paidOn: "2026-10-09" });
     expect(await listPaymentsWithoutTaxInvoice(dbs.staff.db, businessId)).toEqual([]);
   });
 

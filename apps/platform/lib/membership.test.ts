@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { BRANDS } from "./brand";
+import { BRAND } from "./brand";
+import { LISTING_BRAND } from "./testing/listing-brand";
 import {
   CARE_PATH,
   MEMBERSHIP_PATH,
@@ -83,7 +84,7 @@ describe("the two plans' pages", () => {
   });
 
   it("lists what Care includes, which is the website's four and no listing", () => {
-    expect(membershipBenefits("care")).toEqual([
+    expect(membershipBenefits("care", LISTING_BRAND)).toEqual([
       "Next.js business website",
       "Website management",
       "OyeChats professional chatbot",
@@ -92,10 +93,10 @@ describe("the two plans' pages", () => {
   });
 
   it("lists everything in Care and the listing besides for Premium, with the table's notes", () => {
-    const premium = membershipBenefits("premium");
-    for (const line of membershipBenefits("care").filter((line) => line !== "Next.js business website")) expect(premium).toContain(line);
+    const premium = membershipBenefits("premium", LISTING_BRAND);
+    for (const line of membershipBenefits("care", LISTING_BRAND).filter((line) => line !== "Next.js business website")) expect(premium).toContain(line);
     expect(premium).toContain("Next.js business website: 5 pages (free)");
-    expect(premium).toContain("Firstfold business listing");
+    expect(premium).toContain("Business listing");
     expect(premium).toContain("Appointment management system");
     expect(premium).toContain("Homepage featured placement: Hot & Growing");
   });
@@ -103,7 +104,7 @@ describe("the two plans' pages", () => {
 
 describe("groupedBenefits", () => {
   it("sorts what Premium holds into the listing, the website and social media, keeping the table's order", () => {
-    const groups = groupedBenefits("premium");
+    const groups = groupedBenefits("premium", LISTING_BRAND);
     expect(groups.map((group) => group.name)).toEqual(["Listing", "Website", "Social media"]);
     expect(groups.find((group) => group.name === "Website")?.items).toEqual([
       "Next.js business website: 5 pages (free)",
@@ -116,9 +117,9 @@ describe("groupedBenefits", () => {
   });
 
   it("leaves out a layer a plan has nothing in, and loses no line", () => {
-    expect(groupedBenefits("care").map((group) => group.name)).toEqual(["Website"]);
+    expect(groupedBenefits("care", LISTING_BRAND).map((group) => group.name)).toEqual(["Website"]);
     for (const tier of ["care", "premium"] as const) {
-      expect(groupedBenefits(tier).flatMap((group) => group.items)).toHaveLength(membershipBenefits(tier).length);
+      expect(groupedBenefits(tier, LISTING_BRAND).flatMap((group) => group.items)).toHaveLength(membershipBenefits(tier, LISTING_BRAND).length);
     }
   });
 });
@@ -185,13 +186,13 @@ describe("plansMoveToUpgradePage", () => {
 });
 
 describe("the plan lists under Fynix", () => {
-  it("keeps Firstfold's lines for Firstfold and drops the name for Fynix", () => {
-    expect(membershipBenefits("premium", BRANDS.firstfold)).toContain("Firstfold business listing");
-    const fynix = membershipBenefits("premium", BRANDS.fynix);
+  it("keeps the listing's lines for a brand that sells it and drops them for the product", () => {
+    expect(membershipBenefits("premium", LISTING_BRAND)).toContain("Business listing");
+    const fynix = membershipBenefits("premium", BRAND);
     expect(fynix).not.toContain("Business listing");
     expect(fynix.join(" ").toLowerCase()).not.toContain("listing");
     expect(fynix).toContain("10% off digital marketing services");
-    for (const line of [...fynix, ...groupedBenefits("premium", BRANDS.fynix).flatMap((group) => group.items)]) {
+    for (const line of [...fynix, ...groupedBenefits("premium", BRAND).flatMap((group) => group.items)]) {
       expect(line).not.toMatch(/first\s?fold/i);
     }
   });

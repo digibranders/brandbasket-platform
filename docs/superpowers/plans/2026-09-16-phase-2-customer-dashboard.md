@@ -12,15 +12,15 @@
 
 ## Ground rules for the engineer
 
-- **Source of truth:** `docs/superpowers/specs/2026-09-15-firstfold-platform-design.md` §3 (journey), §3.2 (dashboard home), §4.3–4.5 (data model), §5.3 (project lifecycle), §5.5 (domain), §6 (media). This plan wins where they disagree.
+- **Source of truth:** `docs/superpowers/specs/2026-09-15-fynix-platform-design.md` §3 (journey), §3.2 (dashboard home), §4.3–4.5 (data model), §5.3 (project lifecycle), §5.5 (domain), §6 (media). This plan wins where they disagree.
 - **Billing is on hold** (decided 2026-09-16). The payment wall is being built separately and has been paused. Onboarding must work without it.
 - **Drafts save freely; submitting is the gated action.** Saving an onboarding step is allowed before payment, so a customer can prepare everything. **Submitting** onboarding starts the build and ends refund eligibility, so it will require payment. Build `submitOnboarding` so the billing check is one clearly-named call (see Task 11); if `requireBillingAccess` exists in `apps/web/lib/server/billing.ts` when you get there, call it; if it does not, leave submission open and record that in this plan's "Deliberately deferred" list.
-- **A domain is required to submit.** The customer's decision: domain problems are sorted on the sales call, there is no free Firstfold fallback address, and onboarding cannot be submitted without a domain the customer says they own. The team never asks for registrar logins.
-- **Customers write through the app connection only.** Every new tenant table gets RLS policies that let `webfold_app` read and write its own business's rows. No new exception to the staff-connection rule in `apps/web/lib/server/db.ts`.
+- **A domain is required to submit.** The customer's decision: domain problems are sorted on the sales call, there is no free Fynix fallback address, and onboarding cannot be submitted without a domain the customer says they own. The team never asks for registrar logins.
+- **Customers write through the app connection only.** Every new tenant table gets RLS policies that let `fynix_app` read and write its own business's rows. No new exception to the staff-connection rule in `apps/web/lib/server/db.ts`.
 - **After submission the onboarding data is read-only for the customer.** Enforce it in the server actions, not just the UI.
 - **No invented timelines or claims.** The only promised duration anywhere is the spec's "first preview within 48 hours" after submission.
 - **Do not commit. Do not start a dev server** (the user runs one on port 3000 against the dev database). Migrations only on the dev database — never delete or rewrite existing rows. The test database is yours.
-- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm --filter @firstfold/db test:integration` for database tasks.
+- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm --filter @fynix/db test:integration` for database tasks.
 - Read `packages/db/migrations/meta/_journal.json` for the next free migration number before generating one; the billing work may have added some.
 
 ---
@@ -120,13 +120,13 @@ Generate the tables (`drizzle-kit generate --name onboarding`), then add `CHECK 
 The grants migration follows `0004_funnel_grants.sql`, and the tenant helper is `app_current_business_id()`:
 
 ```sql
-GRANT SELECT, INSERT, UPDATE, DELETE ON business_profiles, business_hours, services, project_briefs, domains, media_assets TO webfold_app;
-GRANT SELECT, INSERT, UPDATE ON onboarding_progress TO webfold_app;
-GRANT SELECT, UPDATE ON projects TO webfold_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON projects, onboarding_progress, business_profiles, business_hours, services, project_briefs, domains, media_assets TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON business_profiles, business_hours, services, project_briefs, domains, media_assets TO fynix_app;
+GRANT SELECT, INSERT, UPDATE ON onboarding_progress TO fynix_app;
+GRANT SELECT, UPDATE ON projects TO fynix_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON projects, onboarding_progress, business_profiles, business_hours, services, project_briefs, domains, media_assets TO fynix_staff;
 ```
 
-Every table: `ENABLE ROW LEVEL SECURITY`, a `*_tenant_all` policy `FOR ALL TO webfold_app USING (business_id = app_current_business_id()) WITH CHECK (business_id = app_current_business_id())`, and a `*_staff_all` policy for `webfold_staff`.
+Every table: `ENABLE ROW LEVEL SECURITY`, a `*_tenant_all` policy `FOR ALL TO fynix_app USING (business_id = app_current_business_id()) WITH CHECK (business_id = app_current_business_id())`, and a `*_staff_all` policy for `fynix_staff`.
 
 `projects` is the exception for customers: they may read their project and **update** it (submission is a customer transition), but never insert or delete one. Customers moving a project to any status other than `submitted` is prevented in the query layer (Task 2) and proven by a test.
 
@@ -342,7 +342,7 @@ Each step page is a form that saves with a server action and then moves to the n
 - One field: the domain, e.g. `yourbusiness.com`. Accept what people paste (`https://www.YourBusiness.com/`) and normalise to the bare hostname.
 - A required checkbox: `I own this domain, or I can get into the account it's registered with.`
 - Plain help: `You'll need to change two settings with the company you bought it from. We'll show you exactly what to change once your website is approved. We'll never ask for your login.`
-- Validation: a real hostname (labels of letters, digits and hyphens, a TLD of at least two letters, 253 characters at most), and not one of Firstfold's own hosts.
+- Validation: a real hostname (labels of letters, digits and hyphens, a TLD of at least two letters, 253 characters at most), and not one of Fynix Digital's own hosts.
 - A hostname already claimed by another business shows `That domain is already connected to another website. Tell us on your project page and we'll sort it out.` — never whose.
 
 ---
@@ -382,7 +382,7 @@ A summary of every step, each with an Edit link, then the checklist with anythin
 
 ### Task 13: End-to-end verification
 
-1. Build, start `firstfold-verify` on port 3100.
+1. Build, start `fynix-verify` on port 3100.
 2. Create a customer through the real funnel (staff → setup link → password).
 3. Home shows "Tell us about your business".
 4. Fill every step, including uploading a JPEG taken on a phone. Download it back from `/media/[id]` and confirm it is WebP with no EXIF (`exiftool` or `sharp().metadata()`).

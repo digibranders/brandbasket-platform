@@ -1,8 +1,8 @@
 import "server-only";
-import { OTP_TTL_SECONDS } from "@firstfold/shared/lib/appointments/otp";
+import { OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
 
 /** The name the registered DLT template carries. Only this text is registered, so only this text can be sent for real. */
-const REGISTERED_BRAND = "Firstfold";
+const REGISTERED_BRAND = "Fynix";
 
 function otpText(brandName: string): string {
   return ` is your ${brandName} code. It expires in ${OTP_TTL_SECONDS / 60} minutes. Do not share it.`;
@@ -11,7 +11,7 @@ function otpText(brandName: string): string {
 const OTP_TEXT = otpText(REGISTERED_BRAND);
 const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const OTP_PATTERN = new RegExp(
-  `^([0-9]{6})${OTP_TEXT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:\\n\\n@([a-z0-9.-]+) #([0-9]{6}) Firstfold)?$`,
+  `^([0-9]{6})${OTP_TEXT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:\\n\\n@([a-z0-9.-]+) #([0-9]{6}) Fynix)?$`,
   "u",
 );
 

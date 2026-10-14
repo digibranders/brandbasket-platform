@@ -1,7 +1,7 @@
-import { parseRazorpayWebhookEvent, verifyRazorpayWebhookSignature } from "@firstfold/billing";
+import { parseRazorpayWebhookEvent, verifyRazorpayWebhookSignature } from "@fynix/billing";
 import { noteSecurityEvent } from "@/lib/server/security-events";
 import { razorpayWebhookSecret } from "@/lib/server/billing";
-import { logBillingEvent } from "@firstfold/shared/server/billing-log";
+import { logBillingEvent } from "@fynix/shared/server/billing-log";
 import { handleRazorpayWebhookEvent } from "@/lib/server/razorpay-webhook-handler";
 
 function json(body: unknown, status: number): Response {

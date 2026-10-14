@@ -94,7 +94,7 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: runner
-          POSTGRES_DB: webfold
+          POSTGRES_DB: fynix_platform
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
@@ -121,12 +121,10 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      # `webfold` comes from POSTGRES_DB. The test database and Payload's database are created here, as on a
-      # new server.
+      # `fynix_platform` comes from POSTGRES_DB. The test database is created here, as on a new server; Payload's
+      # database is created by `pnpm db:roles`, owned by its own role, fynix_cms.
       - name: Create databases
-        run: |
-          createdb webfold_test
-          createdb webfold_payload
+        run: createdb fynix_platform_test
 
       # Throwaway secrets for this run only, written to the git-ignored .env.local files the scripts read.
       - name: Generate the local environment
@@ -144,6 +142,6 @@ jobs:
       - name: Migrate an empty Payload database
         run: ./scripts/cms-migrate.sh
 
-      # Migrates webfold_test the same way, then runs the db, auth and shared integration suites against it.
+      # Migrates fynix_platform_test the same way, then runs the db, auth and shared integration suites against it.
       - name: Integration tests
         run: pnpm test:integration

@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { cn } from "@firstfold/shared/lib/cn";
+import { cn } from "@fynix/shared/lib/cn";
 import { JOURNEY_STAGE_LABELS, JOURNEY_STAGES, type JourneyStage } from "@/lib/pipeline";
 
 type TrackStage = JourneyStage | "paused";

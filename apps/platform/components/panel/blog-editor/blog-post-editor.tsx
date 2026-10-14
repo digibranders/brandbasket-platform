@@ -11,8 +11,8 @@ import {
   useTransition,
   type ReactElement,
 } from "react";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { cn } from "@firstfold/shared/lib/cn";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { cn } from "@fynix/shared/lib/cn";
 import type { BlogFormResult, BlogPostFields, BlogSaveIntent } from "@/app/app-host/(protected)/content/blog/actions";
 import type { TaxonomyOption, TaxonomyResult } from "@/app/app-host/(protected)/content/blog/taxonomy-actions";
 import {

@@ -1,17 +1,14 @@
 import "server-only";
-import { brandedPlanName, supportEmailOf, type Brand } from "@/lib/brand";
-import { brandForHostHeader } from "@/lib/server/request-brand";
-import type { Receipt, TaxInvoice } from "@firstfold/db";
-import { displayPhoneText } from "@firstfold/shared/server/phone-display";
-import { businessDetails } from "@firstfold/shared/lib/site-config";
-import { renderTaxInvoicesPdf, type TaxInvoiceRenderOptions } from "@firstfold/shared/server/tax-invoice-pdf";
+import { BRAND, type Brand } from "@/lib/brand";
+import type { Receipt, TaxInvoice } from "@fynix/db";
+import { displayPhoneText } from "@fynix/shared/server/phone-display";
+import { renderTaxInvoicesPdf } from "@fynix/shared/server/tax-invoice-pdf";
 import { PDFDocument } from "pdf-lib";
 import { isDownloadableReceipt, receiptDocument, type ReceiptCustomer } from "@/lib/billing/receipt-document";
 import { parseReceiptSelection } from "@/lib/billing/receipt-download";
 import { accountLabel } from "@/lib/server/account-label";
 import { listCustomerReceipts, listCustomerTaxInvoices } from "@/lib/server/billing";
 import { getCustomerAccess } from "@/lib/server/customer-tenant";
-import { FYNIX_LETTERHEAD } from "@firstfold/shared/server/fynix-letterhead";
 import { renderReceiptsPdf } from "@/lib/server/receipt-pdf";
 
 const NO_STORE = { "Cache-Control": "private, no-store" } as const;
@@ -59,32 +56,8 @@ function groupRuns(pieces: readonly Piece[]): Run[] {
   return runs;
 }
 
-/**
- * An invoice as the customer's brand words it. The stored line says "Firstfold Care plan", the name the plan was sold
- * under; shown under another brand it reads "Care plan". Only what is drawn changes: the invoice itself is not touched.
- */
-function invoiceAsShown(invoice: TaxInvoice, brand: Brand): TaxInvoice {
-  if (brand.id === "firstfold") return invoice;
-  return {
-    ...invoice,
-    // The company, its GSTIN and address are the stored ones (Fynix Digital is a name Digibranders trades under); the name
-    // it trades under and the address the customer is told to write to are the brand's.
-    supplier: { ...invoice.supplier, tradeName: brand.name, email: supportEmailOf(brand) },
-    lines: invoice.lines.map((line) => ({ ...line, description: brandedPlanName(line.description, brand) })),
-  };
-}
-
-/** What the invoice PDF draws for a brand that has its own logo and address: its letterhead and where questions go. */
-function invoiceBranding(brand: Brand): Pick<TaxInvoiceRenderOptions, "letterhead" | "contact"> {
-  if (brand.id === "firstfold" || brand.logo === null) return {};
-  return {
-    letterhead: { paths: FYNIX_LETTERHEAD.paths, height: FYNIX_LETTERHEAD.height, colorHex: FYNIX_LETTERHEAD.colorHex },
-    contact: { email: supportEmailOf(brand), website: brand.siteUrl ?? businessDetails.website },
-  };
-}
-
 async function renderRun(run: Run, customer: ReceiptCustomer, phone: string | null, brand: Brand): Promise<Uint8Array> {
-  if (run.kind === "invoice") return renderTaxInvoicesPdf(run.invoices.map((invoice) => invoiceAsShown(invoice, brand)), { recipientPhone: phone, brandName: brand.name, ...invoiceBranding(brand) });
+  if (run.kind === "invoice") return renderTaxInvoicesPdf(run.invoices, { recipientPhone: phone, brandName: brand.name });
   return renderReceiptsPdf(run.receipts.map((receipt) => receiptDocument(receipt, customer, brand)), brand);
 }
 
@@ -108,11 +81,11 @@ async function joinPdfs(parts: readonly Uint8Array[], brand: Brand): Promise<Uin
 function fileNameFor(pieces: readonly Piece[], customer: ReceiptCustomer, brand: Brand): string {
   const only = pieces[0];
   if (pieces.length !== 1 || only === undefined) {
-    if (pieces.every((piece) => piece.kind === "invoice")) return `${brand.id}-invoices.pdf`;
-    if (pieces.every((piece) => piece.kind === "receipt")) return `${brand.id}-receipts.pdf`;
-    return `${brand.id}-invoices-and-receipts.pdf`;
+    if (pieces.every((piece) => piece.kind === "invoice")) return `fynix-invoices.pdf`;
+    if (pieces.every((piece) => piece.kind === "receipt")) return `fynix-receipts.pdf`;
+    return `fynix-invoices-and-receipts.pdf`;
   }
-  if (only.kind === "invoice") return `${brand.id}-invoice-${only.invoice.number.replaceAll("/", "-")}.pdf`;
+  if (only.kind === "invoice") return `fynix-invoice-${only.invoice.number.replaceAll("/", "-")}.pdf`;
   return receiptDocument(only.receipt, customer, brand).fileName;
 }
 
@@ -151,7 +124,7 @@ export async function GET(request: Request): Promise<Response> {
   // An invoice with no billing details prints the account's mobile under "Billed to" (it is never stored on the invoice).
   // Only the owner's, as the admin download does: an editor's own number is not the business's.
   const phone = access.tenant.role === "owner" ? displayPhoneText(access.user.phone) : null;
-  const brand = brandForHostHeader(request.headers.get("host"));
+  const brand = BRAND;
   const bytes = await joinPdfs(await Promise.all(groupRuns(pieces).map((run) => renderRun(run, customer, phone, brand))), brand);
 
   return new Response(Buffer.from(bytes), {

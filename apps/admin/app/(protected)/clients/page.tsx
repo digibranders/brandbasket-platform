@@ -1,16 +1,18 @@
-import { listAddOnsToContact, listClients, listPaymentsNeedingAttention, type PlanTier } from "@firstfold/db";
+import { listAddOnsToContact, listClients, listPaymentsNeedingAttention, type PlanTier } from "@fynix/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { clientPaymentState, type ClientPaymentState } from "@firstfold/shared/lib/billing/client-payment";
-import { PLAN_TIER_LABELS, readPlanTier } from "@firstfold/shared/lib/billing/plan-tier";
-import { BILLING_CURRENCY_LABELS } from "@firstfold/shared/lib/currency";
-import { PROJECT_STATUS_LABELS } from "@firstfold/shared/lib/project-status";
+import { clientPaymentState, type ClientPaymentState } from "@fynix/shared/lib/billing/client-payment";
+import { PLAN_TIER_LABELS, readPlanTier } from "@fynix/shared/lib/billing/plan-tier";
+import { BILLING_CURRENCY_LABELS } from "@fynix/shared/lib/currency";
+import { PROJECT_STATUS_LABELS } from "@fynix/shared/lib/project-status";
+import { SearchIcon } from "@fynix/shared/ui/icons";
 import { Avatar, ringFor } from "@/components/console/avatar";
 import { FilterPills } from "@/components/console/filter-pills";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
 import { MiniTrack } from "@/components/console/stage-track";
 import { StatusDot, type StatusTone } from "@/components/console/status-dot";
+import { matchesClientSearch } from "@/lib/client-search";
 import { attentionBySubject, attentionItems, clientStage, JOURNEY_STAGE_LABELS, type JourneyStage } from "@/lib/pipeline";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
@@ -27,11 +29,12 @@ function readStage(value: string | string[] | undefined): ClientStage | null {
   return (CLIENT_STAGES as readonly string[]).includes(raw ?? "") ? (raw as ClientStage) : null;
 }
 
-/** An address that keeps the filters already chosen when it changes one of them. */
-function clientsHref(stage: ClientStage | null, plan: PlanTier | null): string {
+/** An address that keeps the filters and the search already chosen when it changes one of them. */
+function clientsHref(stage: ClientStage | null, plan: PlanTier | null, search: string): string {
   const query = new URLSearchParams();
   if (stage !== null) query.set("stage", stage);
   if (plan !== null) query.set("plan", plan);
+  if (search !== "") query.set("q", search);
   const text = query.toString();
   return text === "" ? "/clients" : `/clients?${text}`;
 }
@@ -62,6 +65,8 @@ export default async function ClientsPage({
   const params = await searchParams;
   const stage = readStage(params.stage);
   const plan = readPlanTier(Array.isArray(params.plan) ? params.plan[0] : params.plan);
+  const rawSearch = (Array.isArray(params.q) ? params.q[0] : params.q)?.trim() ?? "";
+  const search = rawSearch.toLowerCase();
   const db = getStaffDb();
   const now = new Date();
   const [clients, flagged, addOns] = await Promise.all([
@@ -73,22 +78,41 @@ export default async function ClientsPage({
     attentionItems({ flagged, addOns, waiting: clientsWaitingOnUs(clients, now), newLeads: [], now }),
   );
 
-  const onPlan = plan === null ? clients : clients.filter((client) => client.tier === plan);
+  const found = clients.filter((client) => matchesClientSearch(client, search));
+  const onPlan = plan === null ? found : found.filter((client) => client.tier === plan);
   const visible = stage === null ? onPlan : onPlan.filter((client) => clientStage(client) === stage);
   const countOf = (option: ClientStage): number => onPlan.filter((client) => clientStage(client) === option).length;
-  const countOnPlan = (option: PlanTier): number => clients.filter((client) => client.tier === option).length;
+  const countOnPlan = (option: PlanTier): number => found.filter((client) => client.tier === option).length;
 
   return (
     <>
       <PageHeader title="Clients" meta={`${clients.length} with a dashboard`} />
 
       <div className="mt-10 space-y-4">
+        <form action="/clients" role="search" className="w-full sm:w-80">
+          {stage === null ? null : <input type="hidden" name="stage" value={stage} />}
+          {plan === null ? null : <input type="hidden" name="plan" value={plan} />}
+          <label htmlFor="clients-search" className="sr-only">
+            Search clients
+          </label>
+          <div className="relative">
+            <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-ink-soft" />
+            <input
+              id="clients-search"
+              name="q"
+              type="search"
+              defaultValue={rawSearch}
+              placeholder="Business, owner, email or phone"
+              className="block w-full rounded-full border border-ink-soft/65 bg-card py-2.5 pl-11 pr-4 text-sm text-ink transition-[border-color,box-shadow] duration-300 ease-calm placeholder:text-ink-soft/80 focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/10"
+            />
+          </div>
+        </form>
         <FilterPills
           label="Filter by plan"
           options={[
-            { href: clientsHref(stage, null), label: "All plans", count: clients.length, current: plan === null },
+            { href: clientsHref(stage, null, rawSearch), label: "All plans", count: found.length, current: plan === null },
             ...(["care", "premium"] as const).map((option) => ({
-              href: clientsHref(stage, option),
+              href: clientsHref(stage, option, rawSearch),
               label: PLAN_TIER_LABELS[option],
               count: countOnPlan(option),
               current: plan === option,
@@ -98,9 +122,9 @@ export default async function ClientsPage({
         <FilterPills
           label="Filter by stage"
           options={[
-            { href: clientsHref(null, plan), label: "All", count: onPlan.length, current: stage === null },
+            { href: clientsHref(null, plan, rawSearch), label: "All", count: onPlan.length, current: stage === null },
             ...CLIENT_STAGES.map((option) => ({
-              href: clientsHref(option, plan),
+              href: clientsHref(option, plan, rawSearch),
               label: stageLabel(option),
               count: countOf(option),
               current: stage === option,
@@ -113,7 +137,9 @@ export default async function ClientsPage({
         <EmptyLine>
           {clients.length === 0
             ? "No clients yet."
-            : stage === null
+            : rawSearch !== "" && found.length === 0
+              ? `No client matches “${rawSearch}”.`
+              : stage === null
               ? "Nobody is on that plan yet."
               : `Nobody is at ${stageLabel(stage).toLowerCase()} right now.`}
         </EmptyLine>

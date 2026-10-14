@@ -8,11 +8,11 @@ import {
   placeUrlPath,
   UnknownPlaceError,
   type DirectoryPlace,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { z } from "zod";
-import { isElsewhereCitySlug } from "@firstfold/shared/lib/directory/opened-districts";
-import { isPlaceCitySlug, isPlaceId, isPlaceUrlChangeReason, isPlaceUrlSlug } from "@firstfold/shared/lib/directory/place-id";
-import { DIRECTORY_ORIGIN, DIRECTORY_STATE, isDirectoryCity } from "@firstfold/shared/lib/directory/places";
+import { isElsewhereCitySlug } from "@fynix/shared/lib/directory/opened-districts";
+import { isPlaceCitySlug, isPlaceId, isPlaceUrlChangeReason, isPlaceUrlSlug } from "@fynix/shared/lib/directory/place-id";
+import { DIRECTORY_ORIGIN, DIRECTORY_STATE, isDirectoryCity } from "@fynix/shared/lib/directory/places";
 import {
   WEB_ADDRESS_FIELDS,
   WEB_ADDRESS_MESSAGES,

@@ -12,7 +12,7 @@ import {
   readDirectoryReviewHelpful,
   type Database,
   type DirectoryReviewOtpRow,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { getStaffDb } from "./db";
 import { bookingOtpBypassed, bookingOtpSecret, smsAllowedCountryCodes } from "./env";
 import { hashOtpCode } from "./otp-crypto";
@@ -31,8 +31,8 @@ vi.mock("./sms", async () => {
   const actual = await vi.importActual<typeof import("./sms")>("./sms");
   return { createSmsSender: vi.fn(), otpMessage: actual.otpMessage, SmsProviderUnavailableError: actual.SmsProviderUnavailableError };
 });
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     // Used by ./directory-signals (visitorHash's module) at import time.
     ...actual,
@@ -142,7 +142,7 @@ describe("requestCommentOtp", () => {
     expect(created?.codeHash).not.toContain("123456");
     const sent = send.mock.calls[0]?.[0];
     expect(sent?.to).toBe(INPUT.phone);
-    expect(sent?.body).toMatch(/^\d{6} is your Firstfold code\./);
+    expect(sent?.body).toMatch(/^\d{6} is your Fynix code\./);
     expect(sent?.body).toBe(otpMessage(sent?.body.slice(0, 6) ?? ""));
   });
 

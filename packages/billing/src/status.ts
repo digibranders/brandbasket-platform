@@ -1,4 +1,4 @@
-import type { SubscriptionStatus } from "@firstfold/db";
+import type { SubscriptionStatus } from "@fynix/db";
 
 /**
  * Razorpay's vocabulary, mapped to ours. `pending` means Razorpay is still retrying a failed charge inside a period

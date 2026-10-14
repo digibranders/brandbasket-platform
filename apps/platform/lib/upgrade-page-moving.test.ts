@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Plan } from "@firstfold/db";
+import type { Plan } from "@fynix/db";
 import { CareUpgrade } from "@/components/panel/upgrade/care-upgrade";
-import { BRANDS } from "@/lib/brand";
+import { BRAND } from "@/lib/brand";
 import type { GrantedCustomer } from "@/lib/server/customer-access";
 import { readUpgradePage } from "@/lib/server/plan-upgrade";
 
@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 vi.mock("@/lib/server/plan-upgrade", () => ({ readUpgradePage: vi.fn() }));
-vi.mock("@/lib/server/request-brand", () => ({ requestBrand: async () => (await import("@/lib/brand")).BRANDS.fynix }));
+vi.mock("@/lib/server/request-brand", () => ({ requestBrand: async () => (await import("@/lib/brand")).BRAND }));
 vi.mock("@/lib/server/billing-details", () => ({ loadBillingDetailsView: vi.fn(async () => null) }));
 vi.mock("@/app/app-host/(protected)/upgrade/actions", () => ({ startUpgrade: vi.fn() }));
 vi.mock("@/components/panel/email-us", () => ({ EmailUs: () => "hello@fynix.digital" }));
@@ -103,9 +103,9 @@ describe("the Upgrade page for a Care customer whose move to Premium is paid and
     expect(html).not.toMatch(/Care(<[^>]+>|\s|·)*Your plan/);
   });
 
-  it("names Fynix and nothing of Firstfold", async () => {
+  it("names Fynix and nothing of Fynix", async () => {
     const html = await render(MOVED);
-    expect(BRANDS.fynix.name).toBe("Fynix Digital");
+    expect(BRAND.name).toBe("Fynix Digital");
     expect(html).not.toMatch(/first\s?fold/i);
   });
 });

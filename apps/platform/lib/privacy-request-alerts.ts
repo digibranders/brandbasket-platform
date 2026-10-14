@@ -4,10 +4,10 @@ import {
   PRIVACY_REQUEST_KIND_LABELS,
   type Database,
   type PrivacyRequestKind,
-} from "@firstfold/db";
-import { emailBrandId, emailTeamInboxDefault, privacyRequestAlertEmail, privacyRequestsDueEmail, type EmailTransport, type PrivacyRequestDueItem, type PrivacyRequestDueStage } from "@firstfold/email";
-import { daysUntilDue } from "@firstfold/shared/lib/privacy-request-deadlines";
-import { selectReminders } from "@firstfold/shared/lib/privacy-request-reminders";
+} from "@fynix/db";
+import { emailTeamInboxDefault, privacyRequestAlertEmail, privacyRequestsDueEmail, type EmailTransport, type PrivacyRequestDueItem, type PrivacyRequestDueStage } from "@fynix/email";
+import { daysUntilDue } from "@fynix/shared/lib/privacy-request-deadlines";
+import { selectReminders } from "@fynix/shared/lib/privacy-request-reminders";
 
 /*
  * The emails that tell staff a privacy request needs them: one when a request is filed on the website, and one each night
@@ -20,7 +20,7 @@ const CONSOLE_PATH = "/privacy-requests";
 
 /** Where the emails go: PRIVACY_ALERT_EMAIL if set, otherwise the support alert mailbox, otherwise the team address. */
 export function privacyAlertRecipient(env: Readonly<Record<string, string | undefined>>): string {
-  return env.PRIVACY_ALERT_EMAIL?.trim() || env.SUPPORT_ALERT_EMAIL?.trim() || env.FIRSTFOLD_TEAM_EMAIL?.trim() || emailTeamInboxDefault(emailBrandId(env));
+  return env.PRIVACY_ALERT_EMAIL?.trim() || env.SUPPORT_ALERT_EMAIL?.trim() || env.FYNIX_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
 }
 
 /** The staff console's page for these requests. */

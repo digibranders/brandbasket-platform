@@ -1,4 +1,4 @@
-import { accounts, sessions, users, verifications, type Database } from "@firstfold/db";
+import { accounts, sessions, users, verifications, type Database } from "@fynix/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
@@ -71,7 +71,7 @@ export function createAuth(config: AuthConfig) {
   const { mailer } = config;
   return betterAuth({
     // Better Auth names the product in anything it prints itself (this app sends its own emails, so rarely): the deployment's brand.
-    appName: process.env.PLATFORM_BRAND?.trim().toLowerCase() === "fynix" ? "Fynix Digital" : "Firstfold",
+    appName: "Fynix Digital",
     baseURL: config.baseURL,
     secret: config.secret,
     trustedOrigins: [...config.trustedOrigins],

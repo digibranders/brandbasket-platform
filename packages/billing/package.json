@@ -1,10 +1,10 @@
 {
-  "name": "@firstfold/billing",
+  "name": "@fynix/billing",
   "version": "0.1.0",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/digibranders/firstfold-platform.git",
+    "url": "https://github.com/digibranders/fynix-platform.git",
     "directory": "packages/billing"
   },
   "type": "module",
@@ -25,7 +25,7 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@firstfold/db": "workspace:*",
+    "@fynix/db": "workspace:*",
     "razorpay": "^2.9.8",
     "zod": "^4.6.5"
   },

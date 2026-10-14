@@ -1,9 +1,9 @@
 import { adminBrand } from "@/lib/brand";
-import { listTaxInvoicesIssuedBetween } from "@firstfold/db";
-import { monthRange, registerCsv, RegisterInvoiceError, registerInvoiceOf } from "@firstfold/shared/lib/billing/invoice-register";
-import { describeError, logBillingEvent } from "@firstfold/shared/server/billing-log";
-import { staffCan } from "@firstfold/shared/lib/access";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { listTaxInvoicesIssuedBetween } from "@fynix/db";
+import { monthRange, registerCsv, RegisterInvoiceError, registerInvoiceOf } from "@fynix/shared/lib/billing/invoice-register";
+import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
+import { staffCan } from "@fynix/shared/lib/access";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { getStaffDb } from "@/lib/server/db";
 import { getStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess, logStaffAccessOrThrow } from "@/lib/server/staff-access-log";

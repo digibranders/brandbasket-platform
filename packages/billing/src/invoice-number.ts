@@ -1,13 +1,12 @@
 import { BillingRangeError } from "./billing-range-error";
 
 /**
- * Tax invoice numbers: "FF/26-27/000147". One consecutive series per financial year (1 April to 31 March, in India),
+ * Tax invoice numbers: "FY/26-27/000147". One consecutive series per financial year (1 April to 31 March, in India),
  * at most 16 characters, as GST requires. The serial itself comes from the tax_invoice_series counter.
  */
 
-/** The letters every Firstfold tax invoice number starts with. Fynix's start with FY (see invoicePrefix). */
-export const INVOICE_PREFIX = "FF";
-const BRAND_PREFIXES = { firstfold: INVOICE_PREFIX, fynix: "FY" } as const;
+/** The letters every tax invoice number starts with (see invoicePrefix). */
+export const INVOICE_PREFIX = "FY";
 /** The longest prefix that still leaves room for "/26-27/000147" within GST's 16 characters. */
 const MAX_PREFIX_LENGTH = 3;
 /** The largest serial that fits the six digits of the number format. */
@@ -29,22 +28,17 @@ function istParts(instant: Date): { year: number; month: number; day: number } {
 }
 
 /**
- * The series a deployment issues tax invoices under: INVOICE_PREFIX when set, otherwise the brand's (PLATFORM_BRAND: FF
- * for Firstfold, FY for Fynix). A prefix names a series of its own (tax_invoice_series is keyed by prefix and financial
- * year), so changing it starts a new series at 1 and never touches invoices already issued under another one.
+ * The series a deployment issues tax invoices under: INVOICE_PREFIX when set, otherwise FY. A prefix names a series of its own
+ * (tax_invoice_series is keyed by prefix and financial year), so changing it starts a new series at 1 and never touches
+ * invoices already issued under another one.
  */
 export function invoicePrefix(env: Readonly<Record<string, string | undefined>> = process.env): string {
   const configured = env.INVOICE_PREFIX?.trim().toUpperCase() ?? "";
-  if (configured !== "") {
-    if (!PREFIX_PATTERN.test(configured) || configured.length > MAX_PREFIX_LENGTH) {
-      throw new BillingRangeError(`INVOICE_PREFIX must be 1 to ${MAX_PREFIX_LENGTH} upper-case letters or digits, received "${configured}"`);
-    }
-    return configured;
+  if (configured === "") return INVOICE_PREFIX;
+  if (!PREFIX_PATTERN.test(configured) || configured.length > MAX_PREFIX_LENGTH) {
+    throw new BillingRangeError(`INVOICE_PREFIX must be 1 to ${MAX_PREFIX_LENGTH} upper-case letters or digits, received "${configured}"`);
   }
-  const brand = env.PLATFORM_BRAND?.trim().toLowerCase() ?? "";
-  if (brand === "") return BRAND_PREFIXES.firstfold;
-  if (brand === "firstfold" || brand === "fynix") return BRAND_PREFIXES[brand];
-  throw new BillingRangeError(`PLATFORM_BRAND must be "firstfold" or "fynix", received "${brand}"`);
+  return configured;
 }
 
 /** The calendar date in India, "2026-10-09". */
@@ -62,7 +56,7 @@ export function financialYearOf(instant: Date): string {
 }
 
 /**
- * "FF/26-27/000147" from its three parts. Throws BillingRangeError for a prefix that is not upper-case letters and digits, a
+ * "FY/26-27/000147" from its three parts. Throws BillingRangeError for a prefix that is not upper-case letters and digits, a
  * financial year not written "26-27", a serial outside 1 to 999999, or a result longer than GST's 16 characters.
  */
 export function formatInvoiceNumber(prefix: string, financialYear: string, serial: number): string {

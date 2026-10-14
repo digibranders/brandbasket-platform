@@ -13,13 +13,13 @@ CREATE TABLE "directory_business_categories" (
 );
 --> statement-breakpoint
 ALTER TABLE "directory_business_categories" ADD CONSTRAINT "directory_business_categories_business_id_businesses_id_fk" FOREIGN KEY ("business_id") REFERENCES "public"."businesses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-GRANT SELECT ON directory_business_categories TO webfold_app;
+GRANT SELECT ON directory_business_categories TO fynix_app;
 --> statement-breakpoint
-GRANT SELECT, INSERT, UPDATE, DELETE ON directory_business_categories TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON directory_business_categories TO fynix_staff;
 --> statement-breakpoint
 ALTER TABLE directory_business_categories ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
-CREATE POLICY directory_business_categories_tenant_read ON directory_business_categories FOR SELECT TO webfold_app
+CREATE POLICY directory_business_categories_tenant_read ON directory_business_categories FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
-CREATE POLICY directory_business_categories_staff_all ON directory_business_categories FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_business_categories_staff_all ON directory_business_categories FOR ALL TO fynix_staff USING (true) WITH CHECK (true);

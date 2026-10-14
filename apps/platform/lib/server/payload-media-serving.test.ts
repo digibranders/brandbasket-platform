@@ -21,7 +21,7 @@ vi.mock("payload", () => ({ getPayload: vi.fn(async () => ({ findByID, collectio
 const mockedReadFile = vi.mocked(readFile);
 const mockedGetPayload = vi.mocked(getPayload);
 
-const STATIC_DIR = "/tmp/firstfold-test-media";
+const STATIC_DIR = "/tmp/fynix-test-media";
 const collections = { media: { config: { upload: { staticDir: STATIC_DIR } } } };
 
 const BUSINESS_A = "0192f3c4-aaaa-7000-8000-00000000000a";
@@ -89,5 +89,21 @@ describe("servePayloadMediaFile", () => {
 
     expect(response.status).toBe(404);
     expect(mockedReadFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("servePayloadMediaFile for published website content", () => {
+  it("lets any origin embed and cache it, unlike the private default", async () => {
+    findByID.mockResolvedValue({ filename: "photo.png", mimeType: "image/png", businessId: BUSINESS_A });
+    mockedReadFile.mockResolvedValue(Buffer.from("fake-bytes"));
+
+    const publicResponse = await servePayloadMediaFile("5", null, { publicContent: true });
+    const privateResponse = await servePayloadMediaFile("5", null);
+
+    expect(publicResponse.headers.get("Cross-Origin-Resource-Policy")).toBe("cross-origin");
+    expect(publicResponse.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(publicResponse.headers.get("Cache-Control")).toBe("public, max-age=300");
+    expect(privateResponse.headers.get("Cross-Origin-Resource-Policy")).toBe("same-origin");
+    expect(privateResponse.headers.get("Cache-Control")).toBe("private, no-cache");
   });
 });

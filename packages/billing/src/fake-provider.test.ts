@@ -1,4 +1,4 @@
-import type { Plan } from "@firstfold/db";
+import type { Plan } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import {
   createFakeBillingProvider,
@@ -18,7 +18,7 @@ const PAID_AT = new Date("2026-09-16T12:00:00.000Z");
 const USD_PLAN: Plan = {
   id: "0192f3c4-3333-7000-8000-000000000003",
   code: "care-usd",
-  name: "Firstfold care plan",
+  name: "Fynix care plan",
   currency: "USD",
   tier: "premium",
   initialAmountCents: 22500,
@@ -340,7 +340,7 @@ describe("a referral discount", () => {
   const PLAN = {
     id: "plan-row-id",
     code: "care-usd",
-    name: "Firstfold care plan",
+    name: "Fynix care plan",
     currency: "USD",
     tier: "premium",
     initialAmountCents: 7_500,

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@firstfold/shared/ui/panel/button";
+import { Button } from "@fynix/shared/ui/panel/button";
 import { useState, useTransition, type ReactElement } from "react";
 import type { TaxonomyOption, TaxonomyResult } from "@/app/app-host/(protected)/content/blog/taxonomy-actions";
 import { Dropdown } from "./blog-editor/dropdown";

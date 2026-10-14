@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import { BRANDS } from "./brand";
+import { BRAND } from "./brand";
+import { LISTING_BRAND } from "./testing/listing-brand";
 import { legalLinksFor } from "./legal-links";
 import { act, createElement, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -58,7 +59,7 @@ it("keeps the identifier and focuses a neutral delivery failure", async () => {
 
 it("focuses signup details when replacing the plan chooser", async () => {
   await render(createElement(JoinForm, {
-    action: async (): Promise<JoinFormState> => ({ status: "idle" }), initialChoice: null, preselected: null, choices: BRANDS.firstfold.joinChoices, legalLinks: legalLinksFor(BRANDS.firstfold),
+    action: async (): Promise<JoinFormState> => ({ status: "idle" }), initialChoice: null, preselected: null, choices: LISTING_BRAND.joinChoices, legalLinks: legalLinksFor(BRAND),
     listing: null, placeId: null, businessName: "", signature: "", prices: { care: null, premium: null }, signUpWith: "phone", textsCodes: true,
   }));
   await act(async () => container.querySelector<HTMLInputElement>('input[value="listing_only"]')?.click());
@@ -68,7 +69,7 @@ it("focuses signup details when replacing the plan chooser", async () => {
 
 it("asks a Fynix sign-up for an email address, and never for a mobile number", async () => {
   await render(createElement(JoinForm, {
-    action: async (): Promise<JoinFormState> => ({ status: "idle" }), initialChoice: "care", preselected: null, choices: BRANDS.fynix.joinChoices, legalLinks: legalLinksFor(BRANDS.fynix),
+    action: async (): Promise<JoinFormState> => ({ status: "idle" }), initialChoice: "care", preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND),
     listing: null, placeId: null, businessName: "", signature: "", prices: { care: null, premium: null }, signUpWith: "email", textsCodes: true,
   }));
   expect(container.querySelector('input[name="email"][type="email"]')).not.toBeNull();
@@ -80,7 +81,7 @@ it("asks a Fynix sign-up for an email address, and never for a mobile number", a
 it("tells a Fynix owner where the code was emailed, and offers to change the address", async () => {
   const otp = { otpId: "challenge", phoneHint: "o•••@example.test", via: "email" as const, texted: true };
   await render(createElement(JoinForm, {
-    action: async (): Promise<JoinFormState> => ({ status: "code", otp }), initialChoice: "care", preselected: null, choices: BRANDS.fynix.joinChoices, legalLinks: legalLinksFor(BRANDS.fynix),
+    action: async (): Promise<JoinFormState> => ({ status: "code", otp }), initialChoice: "care", preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND),
     listing: null, placeId: null, businessName: "", signature: "", prices: { care: null, premium: null }, signUpWith: "email", textsCodes: true,
   }));
   await type("businessName", "Smile Dental");

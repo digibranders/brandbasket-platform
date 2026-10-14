@@ -1,7 +1,7 @@
-import { isUnappliedReason, type BillingCurrency, type Charge, type Receipt } from "@firstfold/db";
-import { BRANDS, type Brand } from "@/lib/brand";
-import { chargeLabel } from "@firstfold/shared/lib/billing/charges";
-import { formatMoney } from "@firstfold/shared/lib/money";
+import { isUnappliedReason, type BillingCurrency, type Charge, type Receipt } from "@fynix/db";
+import { BRAND, type Brand } from "@/lib/brand";
+import { chargeLabel } from "@fynix/shared/lib/billing/charges";
+import { formatMoney } from "@fynix/shared/lib/money";
 import { receiptRows, type ReceiptRow } from "./receipt-rows";
 
 /** One line of a month's bill: a payment with its receipt, or an extra still to pay. */
@@ -72,7 +72,7 @@ function totalOf(entries: readonly Entry[]): string {
  * belongs to, newest month first and oldest line first within a month. Waived charges are left out: they were never
  * billed. `receipts` are the payments the page lists; `openCharges` are the business's unpaid charges.
  */
-export function billingMonths(receipts: readonly Receipt[], openCharges: readonly Charge[], brand: Brand = BRANDS.firstfold): BillingMonth[] {
+export function billingMonths(receipts: readonly Receipt[], openCharges: readonly Charge[], brand: Brand = BRAND): BillingMonth[] {
   const rows = receiptRows(receipts, brand);
   const entries: Entry[] = receipts.map((receipt, index) => {
     const row = rows[index];

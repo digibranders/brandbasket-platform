@@ -87,7 +87,7 @@ describe("openMembershipForListingBusiness", () => {
     expect(await dbs.staff.db.transaction((tx) => openMembershipForListingBusiness(tx, businessId))).toEqual({ businessName: "Smile Dental" });
     expect(await findBusinessEntry(dbs.staff.db, businessId)).toEqual({ kind: "website", signupChoice: "premium" });
     expect(await projectsOf(businessId)).toEqual([{ kind: "initial_build", status: "onboarding" }]);
-    // Its page on Firstfold Local stays: the claim is left as it was.
+    // Its page on the local directory stays: the claim is left as it was.
     expect(await findClaimForBusiness(dbs.staff.db, businessId)).toMatchObject({ listingKey: LISTING_KEY });
 
     expect(await dbs.staff.db.transaction((tx) => openMembershipForListingBusiness(tx, businessId))).toBeNull();

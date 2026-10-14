@@ -1,5 +1,5 @@
 import "server-only";
-import { consumeRateLimit } from "@firstfold/db";
+import { consumeRateLimit } from "@fynix/db";
 import { accountExportFilename, buildAccountExport } from "@/lib/server/account-export";
 import { getCustomerAccess } from "@/lib/server/customer-tenant";
 import { getAppDb, getStaffDb } from "@/lib/server/db";

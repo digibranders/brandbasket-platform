@@ -7,10 +7,10 @@
 **Architecture:** Today one Next.js app serves two hosts. `proxy.ts` rewrites `app.` requests into `app/app-host/*` and `admin.` requests into `app/admin-host/*`. After this plan:
 - `apps/platform` serves only the customer app (plus `/api/leads` and `/api/uploads`).
 - `apps/admin` serves only the staff console, at its own root.
-- Dashboard UI and sign-in code that both apps use moves into a new workspace package, `@firstfold/dashboard`.
-- Database access stays in `@firstfold/db`, so both apps always run against one schema and one set of migrations.
+- Dashboard UI and sign-in code that both apps use moves into a new workspace package, `@fynix/dashboard`.
+- Database access stays in `@fynix/db`, so both apps always run against one schema and one set of migrations.
 
-**Tech Stack:** pnpm workspaces, Next.js 16.3.5 App Router, React 19, Tailwind 4, better-auth (`@firstfold/auth`), Drizzle (`@firstfold/db`), Vitest, Vercel.
+**Tech Stack:** pnpm workspaces, Next.js 16.3.5 App Router, React 19, Tailwind 4, better-auth (`@fynix/auth`), Drizzle (`@fynix/db`), Vitest, Vercel.
 
 ---
 
@@ -50,11 +50,11 @@ It does this without duplicating anything.
 
 ```
 apps/
-  platform/                      customer app only (app.firstfold…), /api/leads, /api/uploads
+  platform/                      customer app only (app.fynix…), /api/leads, /api/uploads
     app/app-host/...             unchanged
     lib/surfaces.ts              one surface: "app" (ADMIN_ORIGIN removed)
     proxy.ts                     404 for every host but APP_ORIGIN
-  admin/                         NEW: staff console (admin.firstfold…)
+  admin/                         NEW: staff console (admin.fynix…)
     app/layout.tsx               root layout (was app/admin-host/layout.tsx)
     app/(protected)/...          was app/admin-host/(protected)/...
     app/login/...                was app/admin-host/login/...
@@ -64,7 +64,7 @@ apps/
     lib/                         admin-only logic (lead-status, waiting-clients, billing/manual-payment-*, …)
     lib/server/                  env, db, auth, session, staff-access, invites, lead-updates, billing-admin, media-*
 packages/
-  dashboard/                     NEW @firstfold/dashboard: UI and sign-in code used by both apps
+  dashboard/                     NEW @fynix/dashboard: UI and sign-in code used by both apps
     src/ui/                      dashboard-root, dashboard-frame, sidebar-nav, sign-out-button, sign-in-form,
                                  auth-screen, panel-not-found, local-date-time
     src/lib/                     access, sign-in-form, sign-in-limits
@@ -75,9 +75,9 @@ packages/
 
 | Module | Used by | Destination |
 |---|---|---|
-| `components/panel/{dashboard-frame,sidebar-nav,sign-out-button,sign-in-form,auth-screen,panel-not-found,local-date-time}`, `components/dashboard-root` | both | `@firstfold/dashboard/ui/*` |
-| `lib/{access,sign-in-form,sign-in-limits}`, `lib/server/rate-limits` | both | `@firstfold/dashboard/{lib,server}/*` |
-| `lib/server/{sign-in}` | both | `@firstfold/dashboard/server/sign-in`, with `db`/`auth` as parameters |
+| `components/panel/{dashboard-frame,sidebar-nav,sign-out-button,sign-in-form,auth-screen,panel-not-found,local-date-time}`, `components/dashboard-root` | both | `@fynix/dashboard/ui/*` |
+| `lib/{access,sign-in-form,sign-in-limits}`, `lib/server/rate-limits` | both | `@fynix/dashboard/{lib,server}/*` |
+| `lib/server/{sign-in}` | both | `@fynix/dashboard/server/sign-in`, with `db`/`auth` as parameters |
 | `lib/server/{env,db,auth,session,sign-out}` | both | **stay per app** (each app has its own env schema and auth origins) |
 | `lib/server/{media-storage,media-serving}` | both | **copy** to admin (see Task 6); the storage needs to become a shared bucket before production (see "Out of scope") |
 | `lib/{currency,billing/terms,billing/manual-payment-form,billing/client-payment,lead-status,project-status,safe-link,onboarding/{steps,hours,business-fields}}` | both | stay in platform; **copy** into admin (small pure modules; the ones that matter are covered by tests in both places). See the Task 5 note. |
@@ -104,7 +104,7 @@ done < /tmp/admin-deps.txt
 
 ---
 
-### Task 2: Create the `@firstfold/dashboard` package
+### Task 2: Create the `@fynix/dashboard` package
 
 **Files:**
 - Create: `packages/dashboard/package.json`
@@ -122,7 +122,7 @@ cp packages/shared/vitest.config.ts packages/dashboard/vitest.config.ts
 
 ```json
 {
-  "name": "@firstfold/dashboard",
+  "name": "@fynix/dashboard",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -136,9 +136,9 @@ cp packages/shared/vitest.config.ts packages/dashboard/vitest.config.ts
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@firstfold/auth": "workspace:*",
-    "@firstfold/db": "workspace:*",
-    "@firstfold/shared": "workspace:*",
+    "@fynix/auth": "workspace:*",
+    "@fynix/db": "workspace:*",
+    "@fynix/shared": "workspace:*",
     "server-only": "0.0.1",
     "zod": "^4.6.5"
   },
@@ -163,7 +163,7 @@ Check the versions against `packages/shared/package.json` and `apps/platform/pac
 
 ```bash
 pnpm install
-pnpm --filter @firstfold/dashboard typecheck
+pnpm --filter @fynix/dashboard typecheck
 ```
 
 Expected: typecheck passes. `vitest` exits "No test files found", which is fine for now.
@@ -187,18 +187,18 @@ done
 
 - [ ] **Step 2: Run the moved tests in their new home**
 
-Run: `pnpm --filter @firstfold/dashboard test`
-Expected: the moved tests pass. If one fails on an `@/` import inside the moved file, change it to a relative import (`./sign-in-limits`) or a package import (`@firstfold/shared/...`).
+Run: `pnpm --filter @fynix/dashboard test`
+Expected: the moved tests pass. If one fails on an `@/` import inside the moved file, change it to a relative import (`./sign-in-limits`) or a package import (`@fynix/shared/...`).
 
 - [ ] **Step 3: Rewrite importers in the platform**
 
 ```bash
 cd apps/platform
 grep -rlE '@/lib/(access|sign-in-form|sign-in-limits)"' app components lib proxy.ts | xargs sed -i '' -E \
-  's#@/lib/(access|sign-in-form|sign-in-limits)"#@firstfold/dashboard/lib/\1"#g'
+  's#@/lib/(access|sign-in-form|sign-in-limits)"#@fynix/dashboard/lib/\1"#g'
 ```
 
-Add `"@firstfold/dashboard": "workspace:*"` to `apps/platform/package.json` dependencies and `"@firstfold/dashboard"` to `transpilePackages` in `apps/platform/next.config.ts`. Then run `pnpm install`.
+Add `"@fynix/dashboard": "workspace:*"` to `apps/platform/package.json` dependencies and `"@fynix/dashboard"` to `transpilePackages` in `apps/platform/next.config.ts`. Then run `pnpm install`.
 
 - [ ] **Step 4: Checkpoint**
 
@@ -209,7 +209,7 @@ Expected: all pass. The test count is unchanged in total, just spread across dif
 
 ```bash
 git add -A packages/dashboard apps/platform pnpm-lock.yaml
-git commit -m "Move shared access and sign-in rules into @firstfold/dashboard"
+git commit -m "Move shared access and sign-in rules into @fynix/dashboard"
 ```
 
 ---
@@ -243,7 +243,7 @@ const outcome = await signInWithPassword(formData, { auth: fakeAuth, db: fakeDb 
 
 Keep every existing case and assertion; only the way the collaborators are supplied changes.
 
-Run: `pnpm --filter @firstfold/dashboard test -- sign-in`
+Run: `pnpm --filter @fynix/dashboard test -- sign-in`
 Expected: FAIL. `signInWithPassword` still has one parameter and still imports `./auth`.
 
 - [ ] **Step 3: Give `signInWithPassword` its dependencies as parameters**
@@ -252,10 +252,10 @@ Replace the top of `packages/dashboard/src/server/sign-in.ts` so it reads:
 
 ```ts
 import "server-only";
-import { isInvalidCredentialsError, type Auth } from "@firstfold/auth";
-import type { Database } from "@firstfold/db";
+import { isInvalidCredentialsError, type Auth } from "@fynix/auth";
+import type { Database } from "@fynix/db";
 import { headers } from "next/headers";
-import { clientIpFrom } from "@firstfold/shared/lib/client-ip";
+import { clientIpFrom } from "@fynix/shared/lib/client-ip";
 import { parseSignInForm, type SignInFormState } from "../lib/sign-in-form";
 import { retryMessage } from "../lib/sign-in-limits";
 import { firstBlockedSignInLimit } from "./rate-limits";
@@ -278,7 +278,7 @@ In the body, replace `getAppDb()` with `db` and `getAuth()` with `auth`. The res
 
 - [ ] **Step 4: Run the test**
 
-Run: `pnpm --filter @firstfold/dashboard test -- sign-in`
+Run: `pnpm --filter @fynix/dashboard test -- sign-in`
 Expected: PASS.
 
 - [ ] **Step 5: Platform wrapper**
@@ -287,7 +287,7 @@ Create `apps/platform/lib/server/sign-in.ts`:
 
 ```ts
 import "server-only";
-import { signInWithPassword as signIn, type SignInOutcome } from "@firstfold/dashboard/server/sign-in";
+import { signInWithPassword as signIn, type SignInOutcome } from "@fynix/dashboard/server/sign-in";
 import { getAuth } from "./auth";
 import { getAppDb } from "./db";
 
@@ -299,7 +299,7 @@ export function signInWithPassword(formData: FormData): Promise<SignInOutcome> {
 }
 ```
 
-Point the remaining importers of `@/lib/server/rate-limits` (`lib/server/setup.ts`) at `@firstfold/dashboard/server/rate-limits`.
+Point the remaining importers of `@/lib/server/rate-limits` (`lib/server/setup.ts`) at `@fynix/dashboard/server/rate-limits`.
 
 - [ ] **Step 6: Checkpoint**
 
@@ -352,7 +352,7 @@ In `packages/dashboard/src/ui/dashboard-frame.tsx`, add `readonly signOutAction:
 ```bash
 cd apps/platform
 grep -rlE '@/components/(panel/)?(dashboard-frame|sidebar-nav|sign-out-button|sign-in-form|auth-screen|panel-not-found|local-date-time|dashboard-root)"' app components lib \
-  | xargs sed -i '' -E 's#"@/components/(panel/)?(dashboard-frame|sidebar-nav|sign-out-button|sign-in-form|auth-screen|panel-not-found|local-date-time|dashboard-root)"#"@firstfold/dashboard/ui/\2"#g'
+  | xargs sed -i '' -E 's#"@/components/(panel/)?(dashboard-frame|sidebar-nav|sign-out-button|sign-in-form|auth-screen|panel-not-found|local-date-time|dashboard-root)"#"@fynix/dashboard/ui/\2"#g'
 ```
 
 Then add the new prop where TypeScript asks for it:
@@ -374,7 +374,7 @@ Expected: all pass.
 
 Then use the preview tools to open the customer app login and a signed-in dashboard page, and screenshot them. They must look exactly as before; if a style is missing, the `@source` line is wrong.
 
-> **Note on the "copy" rows in the table:** modules such as `lib/billing/terms` and `lib/onboarding/steps` stay in the platform, and Task 6 copies them into the admin. That keeps this plan a move, not a refactor. If a copied module later changes in one app, move it into `@firstfold/shared` rather than editing both copies. Record that follow-up in "After the split".
+> **Note on the "copy" rows in the table:** modules such as `lib/billing/terms` and `lib/onboarding/steps` stay in the platform, and Task 6 copies them into the admin. That keeps this plan a move, not a refactor. If a copied module later changes in one app, move it into `@fynix/shared` rather than editing both copies. Record that follow-up in "After the split".
 
 ---
 
@@ -398,7 +398,7 @@ cp apps/platform/app/icon.tsx apps/platform/app/apple-icon.tsx apps/admin/app/
 
 ```json
 {
-  "name": "@firstfold/admin",
+  "name": "@fynix/admin",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -410,12 +410,12 @@ cp apps/platform/app/icon.tsx apps/platform/app/apple-icon.tsx apps/admin/app/
     "test": "vitest run"
   },
   "dependencies": {
-    "@firstfold/auth": "workspace:*",
-    "@firstfold/billing": "workspace:*",
-    "@firstfold/dashboard": "workspace:*",
-    "@firstfold/db": "workspace:*",
-    "@firstfold/email": "workspace:*",
-    "@firstfold/shared": "workspace:*",
+    "@fynix/auth": "workspace:*",
+    "@fynix/billing": "workspace:*",
+    "@fynix/dashboard": "workspace:*",
+    "@fynix/db": "workspace:*",
+    "@fynix/email": "workspace:*",
+    "@fynix/shared": "workspace:*",
     "libphonenumber-js": "1.13.13",
     "next": "16.3.5",
     "react": "19.2.8",
@@ -509,7 +509,7 @@ export const adminEnvSchema = z.object({
   DATABASE_URL_STAFF: z.url({ protocol: POSTGRES_PROTOCOL, error: "DATABASE_URL_STAFF must be a postgresql:// URL" }),
   /** Signs the admin's own session cookie. Use a different value from the customer app's. */
   BETTER_AUTH_SECRET: z.string().min(32, "BETTER_AUTH_SECRET must be at least 32 characters"),
-  /** This app's own origin, e.g. https://admin.firstfold.example. */
+  /** This app's own origin, e.g. https://admin.fynix.example. */
   ADMIN_ORIGIN: originUrl("ADMIN_ORIGIN must be an absolute http:// or https:// URL"),
   /** The customer app, for setup links in invite emails. */
   APP_ORIGIN: originUrl("APP_ORIGIN must be an absolute http:// or https:// URL"),
@@ -542,8 +542,8 @@ vi.mock("server-only", () => ({}));
 const { adminEnvSchema } = await import("./env");
 
 const valid = {
-  DATABASE_URL: "postgresql://app@localhost/webfold",
-  DATABASE_URL_STAFF: "postgresql://staff@localhost/webfold",
+  DATABASE_URL: "postgresql://app@localhost/fynix_platform",
+  DATABASE_URL_STAFF: "postgresql://staff@localhost/fynix_platform",
   BETTER_AUTH_SECRET: "x".repeat(32),
   ADMIN_ORIGIN: "http://admin.localhost:3002/",
   APP_ORIGIN: "http://app.localhost:3001",
@@ -566,15 +566,15 @@ describe("adminEnvSchema", () => {
 });
 ```
 
-Run `pnpm --filter @firstfold/admin test -- env` before writing `env.ts`. It should fail because the module is missing; write `env.ts` and it passes.
+Run `pnpm --filter @fynix/admin test -- env` before writing `env.ts`. It should fail because the module is missing; write `env.ts` and it passes.
 
-`apps/admin/lib/server/db.ts`: copy `apps/platform/lib/server/db.ts`. Rename the `globalThis` keys to `firstfoldAdminAppDb` / `firstfoldAdminStaffDb`, and replace its doc comments with one line: "Staff console connections. getStaffDb is the default here; getAppDb exists for better-auth, whose tables use the app role."
+`apps/admin/lib/server/db.ts`: copy `apps/platform/lib/server/db.ts`. Rename the `globalThis` keys to `fynixAdminAppDb` / `fynixAdminStaffDb`, and replace its doc comments with one line: "Staff console connections. getStaffDb is the default here; getAppDb exists for better-auth, whose tables use the app role."
 
 `apps/admin/lib/server/auth.ts`:
 
 ```ts
 import "server-only";
-import { createAuth, type Auth } from "@firstfold/auth";
+import { createAuth, type Auth } from "@fynix/auth";
 import { getAppDb } from "./db";
 import { serverEnv } from "./env";
 
@@ -596,7 +596,7 @@ export function getAuth(): Auth {
 }
 ```
 
-`apps/admin/lib/server/session.ts` and `apps/admin/lib/server/sign-out.ts`: copy the platform's files unchanged (they import `./auth`). Change `session.ts`'s `SessionUser` import to `@firstfold/dashboard/lib/access`.
+`apps/admin/lib/server/session.ts` and `apps/admin/lib/server/sign-out.ts`: copy the platform's files unchanged (they import `./auth`). Change `session.ts`'s `SessionUser` import to `@fynix/dashboard/lib/access`.
 
 `apps/admin/lib/server/sign-in.ts`: the same wrapper as the platform's in Task 4 Step 5, with the doc comment "Signs in on the staff console…".
 
@@ -606,8 +606,8 @@ export function getAuth(): Auth {
 cd apps/admin
 grep -rlE '@/lib/(access|sign-in-form|sign-in-limits)"|@/components/(dashboard-root|dashboard-frame|sidebar-nav|sign-out-button|sign-in-form|auth-screen|panel-not-found|local-date-time)"' app components lib \
   | xargs sed -i '' -E \
-    -e 's#"@/lib/(access|sign-in-form|sign-in-limits)"#"@firstfold/dashboard/lib/\1"#g' \
-    -e 's#"@/components/(dashboard-root|dashboard-frame|sidebar-nav|sign-out-button|sign-in-form|auth-screen|panel-not-found|local-date-time)"#"@firstfold/dashboard/ui/\1"#g'
+    -e 's#"@/lib/(access|sign-in-form|sign-in-limits)"#"@fynix/dashboard/lib/\1"#g' \
+    -e 's#"@/components/(dashboard-root|dashboard-frame|sidebar-nav|sign-out-button|sign-in-form|auth-screen|panel-not-found|local-date-time)"#"@fynix/dashboard/ui/\1"#g'
 ```
 
 In `apps/admin/components/admin-shell.tsx`, import `signOut` from `@/lib/server/sign-out` and pass `signOutAction={signOut}` to `<DashboardFrame>`.
@@ -630,7 +630,7 @@ This app only serves the admin, so there's no host to tell apart. Host restricti
 
 ```css
 @import "tailwindcss";
-@import "@firstfold/shared/styles/theme.css";
+@import "@fynix/shared/styles/theme.css";
 
 /* Shared components use Tailwind classes too, so their source is scanned alongside this app. */
 @source "../../../packages/shared/src";
@@ -641,7 +641,7 @@ This app only serves the admin, so there's no host to tell apart. Host restricti
 
 ```ts
 import type { NextConfig } from "next";
-import { securityHeaders } from "@firstfold/shared/lib/security-headers";
+import { securityHeaders } from "@fynix/shared/lib/security-headers";
 
 const REQUIRED_FOR_PRODUCTION = [
   "NEXT_PUBLIC_SITE_URL",
@@ -683,7 +683,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [{ source: "/favicon.ico", destination: "/icon", permanent: true }];
   },
-  transpilePackages: ["@firstfold/auth", "@firstfold/billing", "@firstfold/dashboard", "@firstfold/db", "@firstfold/email", "@firstfold/shared"],
+  transpilePackages: ["@fynix/auth", "@fynix/billing", "@fynix/dashboard", "@fynix/db", "@fynix/email", "@fynix/shared"],
 };
 
 export default nextConfig;
@@ -708,10 +708,10 @@ Also create `apps/admin/.env.local` with local values. Copy the database URLs fr
 
 ```bash
 pnpm install
-pnpm --filter @firstfold/admin typecheck
-pnpm --filter @firstfold/admin lint
-pnpm --filter @firstfold/admin test
-pnpm --filter @firstfold/admin build
+pnpm --filter @fynix/admin typecheck
+pnpm --filter @fynix/admin lint
+pnpm --filter @fynix/admin test
+pnpm --filter @fynix/admin build
 ```
 
 Expected: all pass. The moved admin tests (e.g. `billing-admin.test.ts`, `lead-updates.test.ts`, `waiting-clients.test.ts`, `manual-payment-*.test.ts`) run and pass here. They no longer run in the platform.
@@ -739,7 +739,7 @@ it("404s the old admin host now that the staff console is its own app", () => {
 
 Use the file's existing request-building helper; if it has a different name than `requestFor`, use that name. Remove any test that expects the admin host to be rewritten to `/admin-host`. Remove the admin cases in `lib/surfaces.test.ts` too; keep and adapt the app-host and unknown-host cases.
 
-Run: `pnpm --filter @firstfold/platform test -- proxy surfaces`
+Run: `pnpm --filter @fynix/platform test -- proxy surfaces`
 Expected: FAIL (type error: `admin` missing from `SurfaceOrigins`, or the old rewrite still happens).
 
 - [ ] **Step 2: Remove the admin surface**
@@ -760,7 +760,7 @@ In `apps/platform/lib/server/env.ts`, remove `ADMIN_ORIGIN`. In `apps/platform/l
 
 - [ ] **Step 3: Run the tests**
 
-Run: `pnpm --filter @firstfold/platform test -- proxy surfaces`
+Run: `pnpm --filter @fynix/platform test -- proxy surfaces`
 Expected: PASS.
 
 - [ ] **Step 4: Nothing in the platform still points at the admin**
@@ -791,18 +791,18 @@ Expected: all pass.
 In the root `package.json`:
 
 ```json
-"dev": "pnpm --parallel --filter @firstfold/platform --filter @firstfold/admin dev",
-"dev:platform": "pnpm --filter @firstfold/platform dev",
-"dev:admin": "pnpm --filter @firstfold/admin dev",
-"build": "pnpm --filter @firstfold/platform --filter @firstfold/admin build",
-"lint": "pnpm --filter @firstfold/platform --filter @firstfold/admin lint",
+"dev": "pnpm --parallel --filter @fynix/platform --filter @fynix/admin dev",
+"dev:platform": "pnpm --filter @fynix/platform dev",
+"dev:admin": "pnpm --filter @fynix/admin dev",
+"build": "pnpm --filter @fynix/platform --filter @fynix/admin build",
+"lint": "pnpm --filter @fynix/platform --filter @fynix/admin lint",
 ```
 
 `typecheck` and `test` already use `pnpm -r`, so they pick up the new app and package on their own.
 
 - [ ] **Step 2: Launch config**
 
-Add a `firstfold-admin` entry to `.claude/launch.json`: `runtimeExecutable` `pnpm`, `runtimeArgs` `["--filter", "@firstfold/admin", "dev"]`, `port` `3002`, `url` `http://admin.localhost:3002`. Keep the existing platform entry.
+Add a `fynix-admin` entry to `.claude/launch.json`: `runtimeExecutable` `pnpm`, `runtimeArgs` `["--filter", "@fynix/admin", "dev"]`, `port` `3002`, `url` `http://admin.localhost:3002`. Keep the existing platform entry.
 
 - [ ] **Step 3: README**
 
@@ -813,7 +813,7 @@ Update the local setup section:
 
 - [ ] **Step 4: See it working**
 
-Start `firstfold-admin` with `preview_start`. Sign in with a local staff account, then open:
+Start `fynix-admin` with `preview_start`. Sign in with a local staff account, then open:
 - Overview
 - Leads (list, one lead, new lead)
 - Clients (list, one client)
@@ -828,13 +828,13 @@ On a client with an uploaded image, check that `/media/{id}` loads. Check the co
 Skip this task if `apps/platform/app/(payload)` doesn't exist. Otherwise, read the committed Payload plan and code first. The steps below are the shape of the move; the Payload plan's own rules still apply: don't hand-write Payload's generated files, and regenerate them with Payload's CLI.
 
 **Files:**
-- Create: `packages/cms` (`@firstfold/cms`), holding the Payload config: collections and access rules. Both apps use it.
+- Create: `packages/cms` (`@fynix/cms`), holding the Payload config: collections and access rules. Both apps use it.
 - Move: `apps/platform/app/(payload)/**` → `apps/admin/app/(payload)/**`
 - Move: `apps/platform/lib/server/require-admin-host.ts`: delete it instead, because the admin app serves only the admin host (see Step 3)
-- Modify: `apps/platform/payload.config.ts` → re-export from `@firstfold/cms`, no admin UI
+- Modify: `apps/platform/payload.config.ts` → re-export from `@fynix/cms`, no admin UI
 - Modify: both `next.config.ts` files (`withPayload` where needed)
 
-- [ ] **Step 1: Move the config into a package.** Create `packages/cms` the same way Task 2 created `packages/dashboard`. Move the collections and `buildConfig` call into `packages/cms/src/config.ts` as a function, `buildFirstfoldPayloadConfig({ databaseUrl, secret, withAdmin })`. Each app calls it with its own env. `apps/platform/payload.config.ts` calls it with `withAdmin: false`; if Payload has no option to turn its admin off, it's enough that the platform no longer mounts the admin routes. `apps/admin/payload.config.ts` calls it with `withAdmin: true`. Payload's auto-generated migrations stay with the config in `packages/cms`, so only one place owns them.
+- [ ] **Step 1: Move the config into a package.** Create `packages/cms` the same way Task 2 created `packages/dashboard`. Move the collections and `buildConfig` call into `packages/cms/src/config.ts` as a function, `buildFynixPayloadConfig({ databaseUrl, secret, withAdmin })`. Each app calls it with its own env. `apps/platform/payload.config.ts` calls it with `withAdmin: false`; if Payload has no option to turn its admin off, it's enough that the platform no longer mounts the admin routes. `apps/admin/payload.config.ts` calls it with `withAdmin: true`. Payload's auto-generated migrations stay with the config in `packages/cms`, so only one place owns them.
 - [ ] **Step 2: Move the admin routes.** Use `git mv` on `app/(payload)` into `apps/admin/app/(payload)`. Then run Payload's import-map generator in `apps/admin`, using the command the Payload plan used. Don't edit `importMap.js` by hand.
 - [ ] **Step 3: Remove host checks the admin app no longer needs.** In the moved `(payload)/layout.tsx` and API routes, remove the `requireSurfaceHost("admin")` and `isAdminHostRequest` checks. Delete `apps/platform/lib/server/require-admin-host.ts`, then run `grep -rn require-admin-host apps` and expect no output. Payload's own access functions still guard every collection.
 - [ ] **Step 4: Platform keeps the Local API only.** Customer server actions still call Payload's Local API through `apps/platform/payload.config.ts`. Run the customer content tests from the Payload plan. They must pass unchanged.
@@ -861,7 +861,7 @@ This is done by the user in the Vercel dashboard. Give them these steps; don't c
 ## Out of scope (tell the user; don't build here)
 
 - **Media storage must become a shared bucket before production.** `lib/server/media-storage.ts` writes to local disk. That already doesn't persist on Vercel, and with two apps the admin can't read files the customer app wrote. Locally, both apps work if they point at the same media folder. For production, add a bucket-backed `MediaStorage` (the interface is already there), e.g. DigitalOcean Spaces, in its own plan.
-- **Removing the copied modules.** Task 6 copies a few small modules into the admin. If either copy starts to change, move that module into `@firstfold/shared`.
+- **Removing the copied modules.** Task 6 copies a few small modules into the admin. If either copy starts to change, move that module into `@fynix/shared`.
 - **Flattening `app/app-host` to the platform's root.** The platform could drop its `/app-host` prefix and the proxy rewrite. That's churn with no user-facing gain right now.
 
 ## Self-review

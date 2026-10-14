@@ -1,4 +1,4 @@
-import { phoneAccountEmail, users, type Database } from "@firstfold/db";
+import { phoneAccountEmail, users, type Database } from "@fynix/db";
 import { eq } from "drizzle-orm";
 import { withAccountCreationGrant } from "./account-creation-grant";
 import { AccountAlreadyExistsError, type CreatedAccount } from "./create-account";

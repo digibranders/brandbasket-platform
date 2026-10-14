@@ -1,12 +1,12 @@
 import "server-only";
-import type { TenantContext } from "@firstfold/shared/lib/access";
+import type { TenantContext } from "@fynix/shared/lib/access";
 import {
   parseVideoSlot,
   VIDEO_MAX_UPLOAD_BYTES,
   VIDEO_PREMIUM_MESSAGE,
   VIDEO_TOO_LARGE_MESSAGE,
   type VideoSlot,
-} from "@firstfold/shared/lib/directory/videos";
+} from "@fynix/shared/lib/directory/videos";
 import type { VideoAccess } from "@/lib/videos-view";
 import type { VideoProgress, VideoUploadOutcome, VideoUploadRefusal } from "./listing-videos";
 import type { UploadAllowance } from "./onboarding-media";

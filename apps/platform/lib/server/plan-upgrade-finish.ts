@@ -1,7 +1,7 @@
 import "server-only";
-import { findPlanUpgradeByCharge } from "@firstfold/db";
-import { describeError, logBillingEvent } from "@firstfold/shared/server/billing-log";
-import { finishUpgradeAtProvider } from "@firstfold/shared/server/plan-upgrade";
+import { findPlanUpgradeByCharge } from "@fynix/db";
+import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
+import { finishUpgradeAtProvider } from "@fynix/shared/server/plan-upgrade";
 import { getBillingProvider } from "./billing";
 import { getStaffDb } from "./db";
 import { ensureDiscountPlan } from "./discount-plans";

@@ -1,6 +1,6 @@
 // Types only from the database: this module reaches client components, and the package index pulls in the database.
-import type { DirectoryVideo } from "@firstfold/db";
-import { VIDEO_SLOTS, type VideoSlot } from "@firstfold/shared/lib/directory/videos";
+import type { DirectoryVideo } from "@fynix/db";
+import { VIDEO_SLOTS, type VideoSlot } from "@fynix/shared/lib/directory/videos";
 
 /*
  * What the Photos tab says about a business's videos (docs/superpowers/specs/2026-10-07-business-videos-design.md), worked

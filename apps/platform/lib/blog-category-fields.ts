@@ -1,4 +1,4 @@
-import { cleanLine } from "@firstfold/shared/lib/validation/text";
+import { cleanLine } from "@fynix/shared/lib/validation/text";
 import { META_DESCRIPTION_MAX_LENGTH } from "./blog-seo";
 import { MAX_SLUG_LENGTH, slugify } from "./blog-slug";
 

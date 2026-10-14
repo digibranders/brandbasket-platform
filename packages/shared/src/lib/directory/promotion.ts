@@ -1,9 +1,9 @@
-import type { DirectoryPaidTag, DirectoryPromotion } from "@firstfold/db";
+import type { DirectoryPaidTag, DirectoryPromotion } from "@fynix/db";
 // The subpath, not the package index: this module reaches client components, and the index pulls in the database.
-import { chargedAmountCents, GST_BASIS_POINTS } from "@firstfold/billing/tax";
+import { chargedAmountCents, GST_BASIS_POINTS } from "@fynix/billing/tax";
 
 /*
- * Paid listing tags on Firstfold Local, as the customer's Listing page and the staff console show them. A week of one
+ * Paid listing tags on the local directory, as the customer's Listing page and the staff console show them. A week of one
  * tag is ₹299 plus 18% GST, paid once with no auto-renew; the directory always shows the tag with an "Ad" marker. The
  * ids come from the database enum (directory_paid_tag); the labels and marker match the website contract's PAID_TAGS
  * and PAID_TAG_MARKER (apps/platform/lib/directory-api.ts), which a parity test checks.

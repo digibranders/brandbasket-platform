@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactElement, ReactNode } from "react";
-import { DashboardRoot, dashboardMetadataBase, dashboardViewport } from "@firstfold/shared/ui/panel/dashboard-root";
+import { DashboardRoot, dashboardMetadataBase, dashboardViewport } from "@fynix/shared/ui/panel/dashboard-root";
 import { BrandProvider } from "@/components/panel/brand-provider";
 import { figtree } from "@/lib/fynix-font";
 import { requestBrand } from "@/lib/server/request-brand";
@@ -17,7 +17,6 @@ export async function generateMetadata(): Promise<Metadata> {
   const brand = await requestBrand();
   return {
     ...dashboardMetadataBase,
-    ...(brand.id === "firstfold" ? {} : { applicationName: brand.name }),
     title: { default: "Your dashboard", template: `%s · ${brand.name}` },
     robots: { index: false, follow: false },
   };
@@ -32,6 +31,6 @@ interface AppHostLayoutProps {
 export default async function AppHostLayout({ children }: AppHostLayoutProps): Promise<ReactElement> {
   await requireSurfaceHost("app");
   const brand = await requestBrand();
-  const userId = process.env.FIRSTFOLD_SUPPORT_MODE === "internal" ? (await getSessionUser())?.id ?? null : null;
-  return <DashboardRoot brand={brand.id === "fynix" ? { id: brand.id, className: figtree.variable } : undefined}><BrandProvider brand={brand}><SupportProvider canCreate={canCreateSupportRequest(userId)}>{children}</SupportProvider></BrandProvider></DashboardRoot>;
+  const userId = process.env.FYNIX_SUPPORT_MODE === "internal" ? (await getSessionUser())?.id ?? null : null;
+  return <DashboardRoot brand={{ id: "fynix", className: figtree.variable }}><BrandProvider brand={brand}><SupportProvider canCreate={canCreateSupportRequest(userId)}>{children}</SupportProvider></BrandProvider></DashboardRoot>;
 }

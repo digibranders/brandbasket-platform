@@ -1,17 +1,17 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { Logo, WordmarkLogo, type BrandLogo } from "@firstfold/shared/ui/logo";
+import { WordmarkLogo, type BrandLogo } from "@fynix/shared/ui/logo";
 
 interface PanelNotFoundProps {
-  /** The logo of the brand this dashboard is sold under, when it is not Firstfold. */
-  readonly brand?: BrandLogo;
+  /** The logo to draw. */
+  readonly brand: BrandLogo;
 }
 
 export function PanelNotFound({ brand }: PanelNotFoundProps): ReactElement {
   return (
     <div className="flex min-h-dvh flex-col px-5 py-5 sm:px-8 sm:py-6">
       <header>
-        {brand === undefined ? <Logo /> : <WordmarkLogo href="/" brand={brand} />}
+        <WordmarkLogo href="/" brand={brand} />
       </header>
       <main id="main" className="grid flex-1 place-items-center py-12 text-center">
         <div className="max-w-md">

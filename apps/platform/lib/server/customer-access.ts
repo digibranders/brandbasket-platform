@@ -1,10 +1,10 @@
 import "server-only";
-import { findBillingState, findBusinessEntry, withTenantScope, type BusinessEntry, type BusinessKind } from "@firstfold/db";
+import { findBillingState, findBusinessEntry, withTenantScope, type BusinessEntry, type BusinessKind } from "@fynix/db";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import type { PlanTier } from "@firstfold/db";
-import type { SessionUser, TenantContext } from "@firstfold/shared/lib/access";
-import { summariseBilling, type CustomerBilling } from "@firstfold/shared/lib/billing/status";
+import type { PlanTier } from "@fynix/db";
+import type { SessionUser, TenantContext } from "@fynix/shared/lib/access";
+import { summariseBilling, type CustomerBilling } from "@fynix/shared/lib/billing/status";
 import { RESTORE_ACCOUNT_PATH } from "@/lib/account-settings-form";
 import { MEMBER_HOME, membershipPathFor, membershipTierForChoice, type MembershipTier } from "@/lib/membership";
 import { getCustomerAccess } from "./customer-tenant";

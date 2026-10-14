@@ -1,5 +1,5 @@
-import type { TaxInvoice, TaxInvoiceLineRecord } from "@firstfold/db";
-import { findBusinessOwnerPhone, findTaxInvoiceById } from "@firstfold/db";
+import type { TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
+import { findBusinessOwnerPhone, findTaxInvoiceById } from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess, logStaffAccessOrThrow } from "@/lib/server/staff-access-log";
@@ -9,8 +9,8 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/staff-access", () => ({ getStaffAccess: vi.fn() }));
 vi.mock("@/lib/server/staff-access-log", () => ({ logStaffAccess: vi.fn(), logStaffAccessOrThrow: vi.fn() }));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return { ...actual, findBusinessOwnerPhone: vi.fn(), findTaxInvoiceById: vi.fn() };
 });
 
@@ -18,7 +18,7 @@ const INVOICE_ID = "01920000-0000-7000-8000-000000000001";
 const UNKNOWN_ID = "01920000-0000-7000-8000-0000000000ff";
 
 const line: TaxInvoiceLineRecord = {
-  description: "Firstfold Premium plan",
+  description: "Fynix Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: null,
   sac: "998361",
@@ -38,20 +38,20 @@ const invoice: TaxInvoice = {
   id: INVOICE_ID,
   businessId: "01920000-0000-7000-8000-0000000000b1",
   paymentId: "01920000-0000-7000-8000-0000000000a1",
-  prefix: "FF",
+  prefix: "FY",
   financialYear: "26-27",
   serial: 1,
-  number: "FF/26-27/000001",
+  number: "FY/26-27/000001",
   issuedOn: "2026-11-15",
   paidOn: "2026-10-09",
   supplier: {
     legalName: "Digibranders Private Limited",
-    tradeName: "Firstfold",
+    tradeName: "Fynix",
     gstin: "27AAICD9268J1Z0",
     cin: "U72900MH2021PTC372344",
     addressLines: ["Thane West, Maharashtra 400607, India"],
     stateCode: "mh",
-    email: "support@firstfold.io",
+    email: "hello@fynix.digital",
     phone: "+91 789 789 6607",
   },
   recipient: {
@@ -129,7 +129,7 @@ describe("GET /invoices/[invoiceId]", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/pdf");
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="firstfold-invoice-FF-26-27-000001.pdf"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-invoice-FY-26-27-000001.pdf"');
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
     const bytes = new Uint8Array(await response.arrayBuffer());

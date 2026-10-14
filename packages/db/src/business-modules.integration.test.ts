@@ -56,7 +56,7 @@ beforeEach(async () => {
   await dbs.staff.db.insert(users).values([
     { id: OWNER_A, name: "Ana Diaz", email: "ana@example.com" },
     { id: OWNER_B, name: "Ben Ortiz", email: "ben@example.com" },
-    { id: STAFF_USER, name: "Sam Staff", email: "sam@firstfold.test" },
+    { id: STAFF_USER, name: "Sam Staff", email: "sam@fynix.test" },
   ]);
   const inserted = await dbs.staff.db
     .insert(businesses)
@@ -302,14 +302,14 @@ describe("row-level security for business_modules", () => {
     await setBusinessModule(dbs.staff.db, moduleChange(businessB, true));
   });
 
-  it("lets firstfold_app read its own business's modules, not another's", async () => {
+  it("lets fynix_app read its own business's modules, not another's", async () => {
     const own = await withTenantScope(dbs.app.db, { userId: OWNER_A, businessId: businessA }, (tx) => listEnabledModules(tx, businessA));
     const other = await withTenantScope(dbs.app.db, { userId: OWNER_A, businessId: businessA }, (tx) => listEnabledModules(tx, businessB));
     expect(own).toEqual(["appointments"]);
     expect(other).toEqual([]);
   });
 
-  it("denies firstfold_app any INSERT into business_modules", async () => {
+  it("denies fynix_app any INSERT into business_modules", async () => {
     const message = await captureErrorText(
       withTenantScope(dbs.app.db, { userId: OWNER_A, businessId: businessA }, (tx) =>
         tx.insert(businessModules).values({

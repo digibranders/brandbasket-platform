@@ -1,4 +1,4 @@
-import type { LiveDirectoryAds, LiveDirectoryPictures } from "@firstfold/db";
+import type { LiveDirectoryAds, LiveDirectoryPictures } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { adsResponseSchema } from "@/lib/directory-api";
 import { adPictureLookup, adsWithPictures } from "./directory-pictures-feed";

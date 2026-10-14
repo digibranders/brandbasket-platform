@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import type { ReactElement } from "react";
-import { phoneCountryOptions } from "@firstfold/shared/server/phone-countries";
-import { visitorPhoneCountry } from "@firstfold/shared/server/phone-defaults";
+import { phoneCountryOptions } from "@fynix/shared/server/phone-countries";
+import { visitorPhoneCountry } from "@fynix/shared/server/phone-defaults";
 import { NewLeadForm } from "@/components/new-lead-form";
 import { PageHeader } from "@/components/console/page-header";
 import { requireStaffAccess } from "@/lib/server/staff-access";

@@ -32,7 +32,7 @@ export interface NewLead {
   readonly businessType: string | null;
   /**
    * Required, so no path can create a lead without deciding: every lead used to default to USD, which asked Indian
-   * customers for $75. Callers derive it from the phone number (billingCurrencyForPhone in @firstfold/shared).
+   * customers for $75. Callers derive it from the phone number (billingCurrencyForPhone in @fynix/shared).
    */
   readonly currency: BillingCurrency;
   readonly message: string | null;
@@ -75,7 +75,7 @@ const LEAD_COLUMNS = {
 
 /**
  * Called from the public marketing form. The id is generated here rather than read back with RETURNING, because
- * RETURNING needs SELECT privilege and the firstfold_public role deliberately has none on this table.
+ * RETURNING needs SELECT privilege and the fynix_public role deliberately has none on this table.
  */
 export async function createLead(db: Database, lead: NewLead): Promise<{ readonly id: string }> {
   const id = uuidv7();

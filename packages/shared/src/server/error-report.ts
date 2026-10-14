@@ -1,5 +1,5 @@
 import "server-only";
-import { consumeRateLimit, recordErrorReport, type Database, type RateLimitRule } from "@firstfold/db";
+import { consumeRateLimit, recordErrorReport, type Database, type RateLimitRule } from "@fynix/db";
 import { browserFamily, createErrorReport, errorReportSchema, type ErrorApp, type ErrorReport, type ErrorReportContext } from "../lib/error-report";
 
 export interface ServerErrorContext extends ErrorReportContext { readonly userId?: string }

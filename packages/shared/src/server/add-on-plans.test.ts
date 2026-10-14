@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { addOnById, addOnPrice } from "../lib/billing/add-ons";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", () => ({ findAddOnProviderPlan: vi.fn(), saveAddOnProviderPlan: vi.fn() }));
+vi.mock("@fynix/db", () => ({ findAddOnProviderPlan: vi.fn(), saveAddOnProviderPlan: vi.fn() }));
 
-import type { BillingProvider } from "@firstfold/billing";
-import { findAddOnProviderPlan, saveAddOnProviderPlan } from "@firstfold/db";
+import type { BillingProvider } from "@fynix/billing";
+import { findAddOnProviderPlan, saveAddOnProviderPlan } from "@fynix/db";
 import { ensureAddOnPlan } from "./add-on-plans";
 
 const staffDb = { name: "staff-db" } as never;
@@ -45,7 +45,7 @@ describe("ensureAddOnPlan", () => {
       netMonthlyCents: 900_000,
       taxRateBasisPoints: 1_800,
       code: "addon-local-seo-900000",
-      itemName: "Firstfold Local SEO",
+      itemName: "Fynix Local SEO",
     });
     expect(saveAddOnProviderPlan).toHaveBeenCalledWith(staffDb, { ...KEY, providerPlanId: "plan_mine" });
   });

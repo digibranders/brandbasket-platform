@@ -1,11 +1,10 @@
 "use server";
 
-import { brandText } from "@/lib/brand";
-import { currentBrand } from "@/lib/server/request-brand";
-import { AccountAlreadyExistsError } from "@firstfold/auth";
+
+import { AccountAlreadyExistsError } from "@fynix/auth";
 import { redirect } from "next/navigation";
-import { AFFILIATE_PATH } from "@firstfold/shared/lib/affiliate-links";
-import { checkHuman } from "@firstfold/shared/server/turnstile-request";
+import { AFFILIATE_PATH } from "@fynix/shared/lib/affiliate-links";
+import { checkHuman } from "@fynix/shared/server/turnstile-request";
 import { parseSetupForm, SETUP_AGREE_MESSAGE, type SetupFormState } from "@/lib/setup-form";
 import { AffiliateAccountTakenError, redeemAffiliateLogin } from "@/lib/server/affiliate-setup";
 import { InviteNotUsableError, TermsNotAgreedError, TooManySetupAttemptsError } from "@/lib/server/setup";
@@ -39,7 +38,7 @@ export async function completeAffiliateSetup(_previous: SetupFormState, formData
         status: "error",
         mode: "verify-existing",
         field: "password",
-        message: brandText("This email already has a Firstfold account. Enter that account’s password to link it, or ask us to use another email.", await currentBrand()),
+        message: "This email already has a Fynix account. Enter that account’s password to link it, or ask us to use another email.",
       };
     }
     if (error instanceof AffiliateAccountTakenError) {

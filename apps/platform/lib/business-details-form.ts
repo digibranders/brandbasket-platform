@@ -1,10 +1,10 @@
-import { isValidGstin, normaliseGstin } from "@firstfold/billing";
+import { isValidGstin, normaliseGstin } from "@fynix/billing";
 import "server-only";
-import { WEEKDAYS } from "@firstfold/shared/lib/onboarding/business-fields";
-import type { OpeningHours } from "@firstfold/shared/lib/onboarding/hours";
-import { optionalEmail } from "@firstfold/shared/lib/validation/contact";
-import { cleanLine, cleanMultiline } from "@firstfold/shared/lib/validation/text";
-import { parsePhoneEntry } from "@firstfold/shared/lib/validation/phone";
+import { WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
+import type { OpeningHours } from "@fynix/shared/lib/onboarding/hours";
+import { optionalEmail } from "@fynix/shared/lib/validation/contact";
+import { cleanLine, cleanMultiline } from "@fynix/shared/lib/validation/text";
+import { parsePhoneEntry } from "@fynix/shared/lib/validation/phone";
 import { BUSINESS_ADDRESS_MAX_LENGTH, readBusinessName } from "@/lib/business-name";
 import {
   BUSINESS_ABOUT_MAX_LENGTH,

@@ -1,4 +1,4 @@
-import type { BillingState, Plan, Subscription, SubscriptionStatus } from "@firstfold/db";
+import type { BillingState, Plan, Subscription, SubscriptionStatus } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { summariseBilling } from "./status";
 

@@ -8,12 +8,12 @@ import {
   CHARGE_QUANTITY_FIELD,
   MAX_CHARGE_DESCRIPTION_LENGTH,
   MAX_CHARGE_QUANTITY,
-} from "@firstfold/shared/lib/billing/charge-form";
-import { FIELD_PATTERNS } from "@firstfold/shared/lib/forms/input-rules";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+} from "@fynix/shared/lib/billing/charge-form";
+import { FIELD_PATTERNS } from "@fynix/shared/lib/forms/input-rules";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import { buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 

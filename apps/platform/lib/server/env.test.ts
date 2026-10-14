@@ -122,7 +122,7 @@ describe("OTP bypass switches", () => {
   });
 
   it.each(switches)("%s is refused where real customers can reach the app", (name, read) => {
-    process.env.APP_ORIGIN = "https://app.firstfold.io";
+    process.env.APP_ORIGIN = "https://app.fynix.digital";
     delete process.env.VERCEL_ENV;
     process.env[name] = "true";
     expect(read()).toBe(false);

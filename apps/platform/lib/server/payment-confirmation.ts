@@ -1,5 +1,5 @@
 import "server-only";
-import { addMonthsUtc, chargedAmountCents, CheckoutVerificationError, hasBillingAccess, type ConfirmedPayment } from "@firstfold/billing";
+import { addMonthsUtc, chargedAmountCents, CheckoutVerificationError, hasBillingAccess, type ConfirmedPayment } from "@fynix/billing";
 import {
   findBillingState,
   findOpenProject,
@@ -18,12 +18,12 @@ import {
   type ScopedTransaction,
   type Subscription,
   type UnappliedPaymentReason,
-} from "@firstfold/db";
-import type { TenantContext } from "@firstfold/shared/lib/access";
+} from "@fynix/db";
+import type { TenantContext } from "@fynix/shared/lib/access";
 import { isOnboardingLocked } from "@/lib/onboarding/snapshot";
 import { getBillingProvider } from "./billing";
-import { activateFirstPayment, activateReactivationPayment } from "@firstfold/shared/server/billing-activation";
-import { describeError, logBillingEvent } from "@firstfold/shared/server/billing-log";
+import { activateFirstPayment, activateReactivationPayment } from "@fynix/shared/server/billing-activation";
+import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
 import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
 import { syncTenantForBusiness } from "./payload-tenant-sync";

@@ -3,14 +3,14 @@ import {
   BillingRangeError,
   buildTaxInvoice,
   discountCentsFor,
-  FIRSTFOLD_SAC,
+  FYNIX_SAC,
   financialYearOf,
   formatInvoiceNumber,
   indianDate,
   invoicePrefix,
   type InvoiceLineInput,
   type RecipientInput,
-} from "@firstfold/billing";
+} from "@fynix/billing";
 import {
   allocateInvoiceSerial,
   findAddOnSubscriptionForPayment,
@@ -30,14 +30,14 @@ import {
   type ScopedTransaction,
   type TaxInvoice,
   type TaxInvoicePartyRecord,
-} from "@firstfold/db";
-import { stateCodeOfIndiaPostName } from "@firstfold/db/india-states";
+} from "@fynix/db";
+import { stateCodeOfIndiaPostName } from "@fynix/db/india-states";
 import { addOnById, isMonthlyAddOnId, PREMIUM_ADD_ON_DISCOUNT_PERCENT } from "../lib/billing/add-ons";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "../lib/billing/invoice-text";
 import { paymentLabel } from "../lib/billing/payment-method";
 import { planLabel } from "../lib/billing/receipt-title";
-import { deploymentBrandId } from "../lib/deployment-brand";
-import { businessDetails, deploymentBusinessDetails } from "../lib/site-config";
+import { PRODUCT_SHORT_NAME } from "../lib/deployment-brand";
+import { businessDetails } from "../lib/site-config";
 import { describeError, logBillingEvent } from "./billing-log";
 import { isConnectionFailure } from "./error-log-info";
 
@@ -83,8 +83,8 @@ export type InvoiceSource =
  * Us, as printed on every invoice: the registered company, trading under this deployment's brand. The database refuses an
  * invoice whose supplier has no lower-case state code.
  */
-export function supplierFor(env: Readonly<Record<string, string | undefined>> = process.env): TaxInvoicePartyRecord {
-  const details = deploymentBusinessDetails(env);
+export function supplierFor(): TaxInvoicePartyRecord {
+  const details = businessDetails;
   return {
     legalName: details.legalName,
     tradeName: details.tradeName,
@@ -148,12 +148,11 @@ export function servicePeriod(start: Date, endExclusive: Date): string {
 }
 
 /**
- * "Firstfold Premium plan", whether the plan is named "Firstfold Premium" (as sold) or plain "Premium"; "Fynix Premium plan"
- * on a Fynix server, whichever way the plan row is named.
+ * "Fynix Premium plan", whether the plan row is named "Fynix Premium" or plain "Premium".
  */
-export function planLineDescription(planName: string, env: Readonly<Record<string, string | undefined>> = process.env): string {
-  const label = planLabel(planName).replace(/^firstfold\s+/i, "");
-  return `${deploymentBrandId(env) === "fynix" ? "Fynix" : "Firstfold"} ${label}`;
+export function planLineDescription(planName: string): string {
+  const label = planLabel(planName).replace(/^fynix\s+/i, "");
+  return `${PRODUCT_SHORT_NAME} ${label}`;
 }
 
 /**
@@ -282,7 +281,7 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
         description: charge.description,
         detail: null,
         note: null,
-        sac: FIRSTFOLD_SAC,
+        sac: FYNIX_SAC,
         quantity: charge.quantity,
         unitAmountCents: charge.unitAmountCents,
         discountAmountCents: 0,
@@ -304,7 +303,7 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
         description: addOnById(row.addOn).title,
         detail: planLineDetail(true, source.periodStart, source.periodEnd),
         note: row.discountAmountCents > 0 ? `Premium member, ${PREMIUM_ADD_ON_DISCOUNT_PERCENT}% off` : null,
-        sac: FIRSTFOLD_SAC,
+        sac: FYNIX_SAC,
         quantity: 1,
         unitAmountCents: row.listAmountCents,
         discountAmountCents: row.discountAmountCents,
@@ -326,7 +325,7 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
         discountAmountCents: source.discountAmountCents,
         retentionDiscountCents: source.retentionDiscountCents,
       }),
-      sac: FIRSTFOLD_SAC,
+      sac: FYNIX_SAC,
       quantity: 1,
       unitAmountCents: source.netAmountCents,
       discountAmountCents: source.discountAmountCents,

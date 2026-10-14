@@ -21,12 +21,12 @@ const PHONE_REGEX = "^\\+91[1-9][0-9]{9}$";
 /** Postgres's full-text document type; read-only here (a generated column). */
 const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
 
-/** Which dataset a listing came from: OSM rows need the OpenStreetMap credit; "survey" is the Firstfold team's own. */
+/** Which dataset a listing came from: OSM rows need the OpenStreetMap credit; "survey" is the Fynix team's own. */
 export const openListingSource = pgEnum("directory_open_listing_source", ["osm", "overture", "survey"]);
 export type OpenListingSource = (typeof openListingSource.enumValues)[number];
 
 /**
- * One business the /in directory shows from the dataset build: the open data and the Firstfold survey
+ * One business the /in directory shows from the dataset build: the open data and the Fynix survey
  * (local-directory-data/thane, loaded by `pnpm directory:import-listings`). Platform businesses (clients, owner-added)
  * are not here; they come from their own tables through the feed. Keyed by the permanent place id, whose URL label
  * lives in directory_places.

@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
-import { DashboardFrame } from "@firstfold/shared/ui/panel/dashboard-frame";
-import { HomeIcon, LifebuoyIcon } from "@firstfold/shared/ui/icons";
+import { DashboardFrame } from "@fynix/shared/ui/panel/dashboard-frame";
+import { HomeIcon, LifebuoyIcon } from "@fynix/shared/ui/icons";
 import { logoOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { accountLabel } from "@/lib/server/account-label";

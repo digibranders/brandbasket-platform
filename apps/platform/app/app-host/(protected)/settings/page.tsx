@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
-import { brandText } from "@/lib/brand";
-import { requestBrand } from "@/lib/server/request-brand";
+
 import { EmailUs } from "@/components/panel/email-us";
 import type { ReactElement, ReactNode } from "react";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
-import { SignOutButton } from "@firstfold/shared/ui/panel/sign-out-button";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { SignOutButton } from "@fynix/shared/ui/panel/sign-out-button";
 import { ChangePasswordForm } from "@/components/panel/change-password-form";
 import { DELETE_ACCOUNT_PATH } from "@/lib/account-settings-form";
 import { PRIVACY_SETTINGS_PATH } from "@/lib/privacy-settings-form";
 import { changePasswordAction, revokeOtherSessionsAction } from "./actions";
-import { SectionHeading, Surface, type SurfaceTone } from "@firstfold/shared/ui/panel/surface";
+import { SectionHeading, Surface, type SurfaceTone } from "@fynix/shared/ui/panel/surface";
 import { signOut } from "@/lib/server/sign-out";
-import { describePlanTerms } from "@firstfold/shared/lib/billing/terms";
-import { BILLING_CURRENCY_LABELS } from "@firstfold/shared/lib/currency";
+import { describePlanTerms } from "@fynix/shared/lib/billing/terms";
+import { BILLING_CURRENCY_LABELS } from "@fynix/shared/lib/currency";
 import { accountLabel } from "@/lib/server/account-label";
 import { getCustomerBusinessKind, requireCustomerAccess } from "@/lib/server/customer-access";
 
@@ -56,7 +55,6 @@ function Facts({ items }: { readonly items: readonly { readonly label: string; r
 /** The customer's account at a glance, with the password, signing out and deleting the account. */
 export default async function SettingsPage(): Promise<ReactElement> {
   const { user, tenant, billing } = await requireCustomerAccess({ listingAccount: "allow" });
-  const brand = await requestBrand();
   const listingAccount = (await getCustomerBusinessKind(tenant.userId, tenant.businessId)) === "listing";
 
   return (
@@ -81,7 +79,7 @@ export default async function SettingsPage(): Promise<ReactElement> {
               items={[
                 // Until its owner adds it on the Listing page, a business carries its owner's name as a stand-in.
                 { label: "Business", value: tenant.businessName === user.name ? "Not added yet" : tenant.businessName },
-                { label: "Account", value: brandText("Free listing on Firstfold Local", brand) },
+                { label: "Account", value: "Free listing on the local directory" },
               ]}
             />
           </Section>

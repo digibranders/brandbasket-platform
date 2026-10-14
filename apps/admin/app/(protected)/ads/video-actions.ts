@@ -1,10 +1,10 @@
 "use server";
 
-import { takeDownDirectoryVideo } from "@firstfold/db";
+import { takeDownDirectoryVideo } from "@fynix/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { getVimeoClient, type VimeoClient } from "@firstfold/shared/server/vimeo";
+import { getVimeoClient, type VimeoClient } from "@fynix/shared/server/vimeo";
 import { adsHref, parseAdsView, type AdsNotice, type AdsView } from "@/lib/ads-view";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";

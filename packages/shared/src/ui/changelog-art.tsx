@@ -232,7 +232,7 @@ function StackScene(): ReactElement {
         <line x1="132" y1="200" x2="132" y2="207" {...INK} />
       </g>
 
-      {/* Layer 4 (Top tier: The First Fold & Visual Interface) */}
+      {/* Layer 4 (Top tier: The Fynix & Visual Interface) */}
       <g>
         <path d="M 68 150 L 128 166 L 188 150 L 128 134 Z" fill={CARD_FILL} {...INK} />
         <path d="M 68 150 L 68 157 L 128 173 L 188 157 L 188 150" fill={CARD_FILL} {...INK} />
@@ -245,9 +245,9 @@ function StackScene(): ReactElement {
 }
 
 /* =========================================================================
-   SCENE 3: NAME ("We're Firstfold now")
+   SCENE 3: NAME ("We're Fynix now")
    The builder proudly holds an origami paper-fold banner
-   marking the new name and address: Firstfold / firstfold.io.
+   marking the new name and address: Fynix / fynix.digital.
    ========================================================================= */
 function NameScene(): ReactElement {
   return (
@@ -256,7 +256,7 @@ function NameScene(): ReactElement {
       <BuilderBody />
       <BuilderHead eyeGaze="forward" smile={true} />
 
-      {/* Geometric Firstfold Paper Plaque & Name Banner */}
+      {/* Geometric Fynix Paper Plaque & Name Banner */}
       <g>
         {/* Main Banner body */}
         <path
@@ -265,7 +265,7 @@ function NameScene(): ReactElement {
           {...INK}
         />
 
-        {/* The "First Fold" diagonal crease line across the plaque corner */}
+        {/* The "Fynix" diagonal crease line across the plaque corner */}
         <path d="M 44 165 L 78 130" stroke="currentColor" strokeWidth={1.8} strokeDasharray="3 3" fill="none" />
         <path d="M 44 165 L 78 165 L 78 130 Z" fill={CARD_FILL} {...INK} />
 
@@ -493,7 +493,7 @@ const DRAWINGS: Readonly<Record<string, () => ReactElement>> = {
 /**
  * Hand-drawn minimalist vector illustration for changelog entries, reused by the dashboard's empty screens.
  *
- * Copied from the marketing website (firstfold-website/components/changelog-art.tsx) so the dashboard shows the same
+ * Copied from the marketing website (fynix-website/components/changelog-art.tsx) so the dashboard shows the same
  * builder, drawn by the same code, rather than a lookalike. Keep the two in step by hand: the repositories share no
  * build, so a change to one will not reach the other (builder-illustration.tsx is kept the same way).
  *

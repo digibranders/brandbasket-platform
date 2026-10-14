@@ -63,13 +63,13 @@ CREATE UNIQUE INDEX "plans_currency_active_idx" ON "plans" USING btree ("currenc
 CREATE UNIQUE INDEX "subscriptions_provider_id_idx" ON "subscriptions" USING btree ("provider","provider_subscription_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "subscriptions_one_live_per_business_idx" ON "subscriptions" USING btree ("business_id") WHERE "subscriptions"."status" <> 'cancelled';--> statement-breakpoint
 CREATE INDEX "subscriptions_business_id_idx" ON "subscriptions" USING btree ("business_id");--> statement-breakpoint
--- The live plans. Prices are decided in docs/superpowers/specs/2026-09-15-firstfold-platform-design.md §1.
+-- The live plans. Prices are decided in docs/superpowers/specs/2026-09-15-platform-design.md §1.
 -- Amounts are integer minor units: US cents for USD, paise for INR. $225 = 22500, $75 = 7500,
 -- ₹7,500 = 750000 and ₹2,500 = 250000. The initial amount is the first three months of the
 -- subscription paid up front, not a build fee.
 INSERT INTO plans (id, code, name, currency, initial_amount_cents, initial_term_months,
                    recurring_amount_cents, included_publishes_per_month, extra_publish_amount_cents)
 VALUES
-  (gen_random_uuid(), 'care-usd', 'Firstfold care plan', 'USD', 22500, 3, 7500, 3, 300),
-  (gen_random_uuid(), 'care-inr', 'Firstfold care plan', 'INR', 750000, 3, 250000, 3, 30000)
+  (gen_random_uuid(), 'care-usd', 'Premium', 'USD', 22500, 3, 7500, 3, 300),
+  (gen_random_uuid(), 'care-inr', 'Premium', 'INR', 750000, 3, 250000, 3, 30000)
 ON CONFLICT (code) DO NOTHING;

@@ -1,7 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
-import { BRANDS, type Brand } from "@/lib/brand";
-import { allowsAnyLocalHost, appOriginForHost, brandForHost, readOriginsFromEnv } from "@/lib/surfaces";
+import { BRAND, type Brand } from "@/lib/brand";
+import { allowsAnyLocalHost, appOriginForHost, readOriginsFromEnv } from "@/lib/surfaces";
 import { serverEnv } from "./env";
 
 const origins = readOriginsFromEnv(process.env);
@@ -16,19 +16,14 @@ async function currentHost(): Promise<string | null> {
   return (allowsAnyLocalHost(process.env) ? requestHeaders.get("x-forwarded-host") : null) ?? requestHeaders.get("host");
 }
 
-/** The brand the current request's host is sold under (lib/surfaces.ts brandForHost): Firstfold unless it is the Fynix host. */
+/** The brand of the current request: this product's only one. Async to keep callers' shape; it reads nothing. */
 export async function requestBrand(): Promise<Brand> {
-  return BRANDS[brandForHost(await currentHost(), origins)];
-}
-
-/** The brand for a host header already in hand: a route handler's `request.headers.get("host")`. */
-export function brandForHostHeader(rawHost: string | null): Brand {
-  return BRANDS[brandForHost(rawHost, origins)];
+  return BRAND;
 }
 
 /**
  * The dashboard origin to build a link on for a request with this Host header: the host the user is on, so a return
- * address or an emailed link lands where their session is. The app origin when the host is not a Fynix one.
+ * address or an emailed link lands where their session is.
  */
 export function appOriginForHostHeader(rawHost: string | null): string {
   return origins === null ? serverEnv().APP_ORIGIN : appOriginForHost(rawHost, origins);
@@ -40,8 +35,8 @@ export async function requestAppOrigin(): Promise<string> {
 }
 
 /**
- * requestAppOrigin for code that may also run with no request in scope (a script, a job): the app origin then, as before
- * the Fynix host existed. Only "there is no request" falls back; anything else is the caller's to see.
+ * requestAppOrigin for code that may also run with no request in scope (a script, a job): the app origin then. Only
+ * "there is no request" falls back; anything else is the caller's to see.
  */
 export async function currentAppOrigin(): Promise<string> {
   try {
@@ -52,15 +47,7 @@ export async function currentAppOrigin(): Promise<string> {
   }
 }
 
-/**
- * requestBrand for code that may also run with no request in scope (a job, a script): the deployment's own brand then
- * (Firstfold unless PLATFORM_BRAND says otherwise). Only "there is no request" falls back; anything else is the caller's to see.
- */
+/** requestBrand for code that may also run with no request in scope (a job, a script). */
 export async function currentBrand(): Promise<Brand> {
-  try {
-    return await requestBrand();
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("outside a request scope")) return BRANDS[origins?.defaultBrand ?? "firstfold"];
-    throw error;
-  }
+  return BRAND;
 }

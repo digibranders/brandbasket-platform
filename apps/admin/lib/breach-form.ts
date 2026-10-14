@@ -1,4 +1,4 @@
-import type { BreachProgress, NewBreach } from "@firstfold/db";
+import type { BreachProgress, NewBreach } from "@fynix/db";
 
 /** The kinds of data a breach can involve, a fixed list so the register can be counted and a report filled in the same words. */
 export const BREACH_DATA_CATEGORIES = [

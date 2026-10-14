@@ -1,7 +1,6 @@
 import "server-only";
-import { brandText } from "@/lib/brand";
-import { currentBrand } from "./request-brand";
-import { decideCheckout, type BillingProvider, type CheckoutDecision, type StartedCheckout } from "@firstfold/billing";
+
+import { decideCheckout, type BillingProvider, type CheckoutDecision, type StartedCheckout } from "@fynix/billing";
 import {
   BillingBusinessNotFoundError,
   consumeRateLimit,
@@ -18,19 +17,19 @@ import {
   type PlanTier,
   type RateLimitRule,
   type Subscription,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
-import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF, REACTIVATE_HREF } from "@firstfold/shared/lib/billing/payment-step";
-import { firstMissing, onboardingChecklist } from "@firstfold/shared/lib/onboarding/checklist";
+import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF, REACTIVATE_HREF } from "@fynix/shared/lib/billing/payment-step";
+import { firstMissing, onboardingChecklist } from "@fynix/shared/lib/onboarding/checklist";
 import { MEMBER_HOME } from "@/lib/membership";
 import { checklistInputFrom } from "@/lib/onboarding/snapshot";
-import { businessDetails } from "@firstfold/shared/lib/site-config";
+import { businessDetails } from "@fynix/shared/lib/site-config";
 import { getBillingProvider } from "./billing";
-import { describeError, logBillingEvent } from "@firstfold/shared/server/billing-log";
+import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { missingProblem, readOnboardingSnapshot, type StepProblem } from "./onboarding";
-import { cancelAtProvider } from "@firstfold/shared/server/provider-cancellation";
+import { cancelAtProvider } from "@fynix/shared/server/provider-cancellation";
 import { discountFrom, type AppliedDiscount } from "./referrals";
 import { ensureDiscountPlan } from "./discount-plans";
 
@@ -203,7 +202,7 @@ export async function startCheckoutFor(customer: GrantedCustomer, now: Date): Pr
   if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
 
   const snapshot = await withTenantScope(appDb, tenant, readOnboardingSnapshot);
-  if (snapshot.project === null) return refused(brandText(NOTHING_TO_PAY_FOR, await currentBrand()));
+  if (snapshot.project === null) return refused(NOTHING_TO_PAY_FOR);
   if (!snapshot.locked) {
     const missing = firstMissing(onboardingChecklist(checklistInputFrom(snapshot)));
     if (missing !== null) return { kind: "refused", problem: missingProblem(missing) };
@@ -250,7 +249,7 @@ export async function startReactivationFor(customer: GrantedCustomer, now: Date)
   const limit = await consumeRateLimit(getAppDb(), `checkout:business:${tenant.businessId}`, CHECKOUT_RATE_LIMIT);
   if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
   if (billing.status === "paid") return { kind: "redirect", url: REACTIVATE_HREF };
-  if (billing.status !== "lapsed") return refused(brandText(NOTHING_TO_PAY_FOR, await currentBrand()));
+  if (billing.status !== "lapsed") return refused(NOTHING_TO_PAY_FOR);
   return openPlanCheckout(customer, now, REACTIVATE_HREF, null);
 }
 
@@ -294,7 +293,7 @@ async function openPlanCheckout(customer: GrantedCustomer, now: Date, paidHref: 
     );
     return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount } };
   });
-  if (first.kind === "no-plan") return refused(brandText(NO_PLAN, await currentBrand()));
+  if (first.kind === "no-plan") return refused(NO_PLAN);
 
   const { planned } = first;
   const { decision } = planned;

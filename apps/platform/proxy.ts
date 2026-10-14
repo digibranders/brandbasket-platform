@@ -1,8 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { BRANDS, isDirectoryOnlyPath } from "@/lib/brand";
-import { hasSessionCookie, hintCookieDomain, hintCookieOptions, hintUpdate, SIGNED_IN_HINT_COOKIE } from "@/lib/signed-in-hint";
+import { BRAND, isDirectoryOnlyPath } from "@/lib/brand";
 import {
-  brandForHost,
   isPayloadAdminPath,
   readOriginsFromEnv,
   resolveSurface,
@@ -19,31 +17,11 @@ function rewriteTo(request: NextRequest, targetPath: string, search: string): Ne
   return response;
 }
 
-/** Where the website's signed-in marker is set (lib/signed-in-hint.ts): the shared parent domain, or the host itself. */
-export interface SignedInHintConfig {
-  readonly domain?: string;
-}
-
-/**
- * Keeps the website's signed-in marker in step with the dashboard login on every page it serves (lib/signed-in-hint.ts).
- * Page loads only: a form post is where sign-in and sign-out set the marker themselves, on this same response.
- */
-function syncSignedInHint(request: NextRequest, response: NextResponse, appOrigin: string, hint: SignedInHintConfig): void {
-  if (request.method !== "GET") return;
-  const update = hintUpdate({
-    hasSession: hasSessionCookie((name) => request.cookies.has(name)),
-    hint: request.cookies.get(SIGNED_IN_HINT_COOKIE)?.value ?? null,
-  });
-  if (update.kind === "none") return;
-  const options = hintCookieOptions({ appOrigin, domain: hint.domain });
-  response.cookies.set(SIGNED_IN_HINT_COOKIE, update.kind === "set" ? update.value : "", update.kind === "set" ? options : { ...options, maxAge: 0 });
-}
-
 /**
  * Builds the routing handler for a fixed set of origins. Kept pure and separate from `proxy` below
  * so tests can supply origins directly instead of going through `process.env`.
  */
-export function createProxy(origins: SurfaceOrigins | null, hint: SignedInHintConfig = {}): ProxyHandler {
+export function createProxy(origins: SurfaceOrigins | null): ProxyHandler {
   return function handleProxyRequest(request: NextRequest): NextResponse {
     const surface = origins === null ? null : resolveSurface(request.headers.get("host"), origins);
     if (surface === null) return new NextResponse(null, { status: 404 });
@@ -59,32 +37,21 @@ export function createProxy(origins: SurfaceOrigins | null, hint: SignedInHintCo
     // let it appear on the customer host, which is the assumption collections/Media.ts's access block rests on.
     if (isPayloadAdminPath(pathname)) return new NextResponse(null, { status: 404 });
 
-    // A brand that does not sell the directory listing has no use for the pages that exist only for it: they get the
+    // The product does not sell the directory listing, so it has no use for the pages that exist only for it: they get the
     // dashboard's own not-found screen (app/app-host/[...missing]) however the address was reached.
-    const brand = brandForHost(request.headers.get("host"), origins);
-    if (!BRANDS[brand].showsListing && isDirectoryOnlyPath(pathname)) {
+    if (!BRAND.showsListing && isDirectoryOnlyPath(pathname)) {
       return rewriteTo(request, rewritePathForSurface(surface, "/not-here"), "");
     }
 
-    const response = rewriteTo(request, rewritePathForSurface(surface, pathname), search);
-    // The website's signed-in marker is Firstfold's (a cookie on its parent domain, read by firstfold.io): the Fynix host
-    // has no website reading it, and a browser would refuse the parent domain on it anyway.
-    if (origins !== null && brand === "firstfold") {
-      syncSignedInHint(request, response, origins.app, hint);
-    }
-    return response;
+    return rewriteTo(request, rewritePathForSurface(surface, pathname), search);
   };
 }
 
 /**
- * Routes each hostname to its dashboard: the customer app or the staff admin. Any other host, and every host when
- * APP_ORIGIN and ADMIN_ORIGIN are unset, gets a 404. This is routing, not authorization: every dashboard page and
+ * Routes the dashboard's hostname to the customer app. Any other host, and every host when APP_ORIGIN is unset, gets a 404. This is routing, not authorization: every dashboard page and
  * server action checks access itself.
  */
-const envOrigins = readOriginsFromEnv(process.env);
-export const proxy: ProxyHandler = createProxy(envOrigins, {
-  domain: envOrigins === null ? undefined : hintCookieDomain(process.env.SIGNED_IN_HINT_DOMAIN, envOrigins.app),
-});
+export const proxy: ProxyHandler = createProxy(readOriginsFromEnv(process.env));
 
 export const config = {
   // Skip Next.js internals, API routes, generated icons and static files by extension. Every other path,

@@ -46,7 +46,7 @@ Tests: `parseVideoSlot("2")` is 2; `"0"`, `"4"`, `"x"`, `null`, `2.5` are null; 
 
 **Files:** Create `src/schema/directory-videos.ts` (export from `src/schema/index.ts`), `src/queries/directory-videos.ts` (export from the package index the way `directory-pictures` is), migrations `0092_directory_videos.sql` (drizzle-kit) and `0093_directory_videos_grants.sql` (custom), `src/directory-videos.integration.test.ts`.
 
-Table `directory_videos`: `id uuid pk`, `business_id uuid fk`, `slot smallint check 1..3`, `video_key text`, `poster_key text` (both checked equal to `t/{business_id}/{id}/video` and `/poster`), `video_mime text`, `poster_mime text`, `bytes int`, `poster_bytes int`, `width int`, `height int`, `duration_ms int`, `sha256 text`, `poster_sha256 text`, `status directory_picture_status` (reused enum), `decided_at`, `decided_by_user_id`, `uploaded_by_user_id`, `created_at`, `removed_at`. Same three partial unique/index rules as pictures (one live per business+slot, one waiting per business+slot, staff queue index). Grants like 0070: `webfold_app` SELECT with the tenant policy, `webfold_staff` SELECT/INSERT/UPDATE with an all policy, no DELETE.
+Table `directory_videos`: `id uuid pk`, `business_id uuid fk`, `slot smallint check 1..3`, `video_key text`, `poster_key text` (both checked equal to `t/{business_id}/{id}/video` and `/poster`), `video_mime text`, `poster_mime text`, `bytes int`, `poster_bytes int`, `width int`, `height int`, `duration_ms int`, `sha256 text`, `poster_sha256 text`, `status directory_picture_status` (reused enum), `decided_at`, `decided_by_user_id`, `uploaded_by_user_id`, `created_at`, `removed_at`. Same three partial unique/index rules as pictures (one live per business+slot, one waiting per business+slot, staff queue index). Grants like 0070: `fynix_app` SELECT with the tenant policy, `fynix_staff` SELECT/INSERT/UPDATE with an all policy, no DELETE.
 
 Queries (all mirror `directory-pictures.ts`; the staff-connection ones take `Database`):
 ```ts
@@ -81,7 +81,7 @@ Integration tests (each is its own `it`): record stores a pending video; a free 
 
 Tests: a key with variant `video` builds; `parse range`: `bytes=0-99`, `bytes=100-`, `bytes=-50`, invalid and out-of-range cases; 206 body is the slice and `Content-Length` is its length; R2 `put` sends `PutObjectCommand` with bucket, key, content type (tested against an injected fake client); `publicUrl` joins base and key.
 
-- [ ] Add `@aws-sdk/client-s3` (`pnpm --filter @firstfold/shared add @aws-sdk/client-s3`), tests first, then code.
+- [ ] Add `@aws-sdk/client-s3` (`pnpm --filter @fynix/shared add @aws-sdk/client-s3`), tests first, then code.
 
 ### Task 4: Video processing (`apps/platform/lib/server/video-process.ts`)
 
@@ -141,7 +141,7 @@ Files in `apps/admin` only. The Ads page already reviews pictures (`app/(protect
 
 ### Task 9: Public page (`website-ads`) — delegated
 
-Files in `/Users/siddiqueahmed/Desktop/AI/first-found/website-ads` only. Add `DIRECTORY_GALLERY_PATH` and the schema to the website's copy of `lib/directory-api.ts`, a cached fetch of the gallery for the business page, and in `components/local/business-page.tsx` / `pages.tsx` extend the gallery: the owner's gallery photos join the mosaic, and video tiles (poster, play icon, duration) open a viewer (`<dialog>`, `<video controls playsInline preload="none" poster>`, Escape closes, focus returns). Nothing for a business with no gallery. Tests for the mapping and rendering helpers.
+Files in `/Users/siddiqueahmed/Desktop/AI/fynix-platform/website-ads` only. Add `DIRECTORY_GALLERY_PATH` and the schema to the website's copy of `lib/directory-api.ts`, a cached fetch of the gallery for the business page, and in `components/local/business-page.tsx` / `pages.tsx` extend the gallery: the owner's gallery photos join the mosaic, and video tiles (poster, play icon, duration) open a viewer (`<dialog>`, `<video controls playsInline preload="none" poster>`, Escape closes, focus returns). Nothing for a business with no gallery. Tests for the mapping and rendering helpers.
 
 ### Task 10: Deploy notes and examples
 

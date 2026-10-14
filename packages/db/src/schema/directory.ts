@@ -7,7 +7,7 @@ import { directoryPlaces } from "./directory-places";
 const SLUG = "^[a-z0-9]+(-[a-z0-9]+)*$";
 
 /**
- * Where a client's Featured listing sits on Firstfold Local (firstfold.io/in): its address parts, map pin and the
+ * Where a client's Featured listing sits on the local directory (fynix.digital/in): its address parts, map pin and the
  * links behind its buttons. Staff-owned: the customer role can read its own row and write nothing, because every
  * column here shapes the listing's web address or has been checked by staff (docs/superpowers/specs/
  * 2026-09-29-customer-listing-tab-design.md).

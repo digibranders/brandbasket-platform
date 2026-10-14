@@ -1,5 +1,5 @@
-import { createDatabase, listDirectoryPictureKeys } from "@firstfold/db";
-import { getMediaStorage } from "@firstfold/shared/server/media-storage";
+import { createDatabase, listDirectoryPictureKeys } from "@fynix/db";
+import { getMediaStorage } from "@fynix/shared/server/media-storage";
 import { backfillPictureCopies, formatBackfillReport } from "../lib/server/picture-copy-backfill";
 
 /*

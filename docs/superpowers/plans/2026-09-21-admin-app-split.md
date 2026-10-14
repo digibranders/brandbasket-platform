@@ -4,7 +4,7 @@
 
 **Goal:** Make the staff console its own deployable Next.js app, `apps/admin`, so a customer-app deploy can never take it down and the two can be hosted, scaled and restarted separately.
 
-**Architecture:** A second app in the same pnpm workspace, importing `@firstfold/db`, `@firstfold/auth`, `@firstfold/shared`, `@firstfold/email` and a new `@firstfold/cms` directly from the workspace. No publishing, no registry, no `GITHUB_PACKAGES_TOKEN` — that requirement only ever existed because the superseded plan put the admin in a *separate repository*, where workspace imports are impossible.
+**Architecture:** A second app in the same pnpm workspace, importing `@fynix/db`, `@fynix/auth`, `@fynix/shared`, `@fynix/email` and a new `@fynix/cms` directly from the workspace. No publishing, no registry, no `GITHUB_PACKAGES_TOKEN` — that requirement only ever existed because the superseded plan put the admin in a *separate repository*, where workspace imports are impossible.
 
 **Why not a separate repo:** every practical benefit you want — independent deploys, separate process, its own env and blast radius — comes from a separate *app*. A separate *repo* adds only independent git history and access control, and costs the entire package-publishing pipeline. Splitting the app first also makes a later repo split easier: moving an already-standalone `apps/admin` is mostly `git mv` plus publishing setup. This plan supersedes `2026-09-18-admin-separate-repo-split.md`, whose Tasks 3–4 target the CMS screens retired on 2026-09-21.
 
@@ -29,8 +29,8 @@
 
 | | local | production |
 | --- | --- | --- |
-| platform (customer + API) | 3001 | `app.firstfold.io` |
-| admin | 3003 | `admin.firstfold.io` |
+| platform (customer + API) | 3001 | `app.fynix.digital` |
+| admin | 3003 | `console.fynix.digital` |
 
 Admin stops being a host-routed surface of the platform and becomes a plain app serving `/clients`, `/leads` at its own root. `ADMIN_ORIGIN` stays in the platform's env only for building links to the admin.
 
@@ -47,7 +47,7 @@ Both apps need Payload, so its config and collections must leave `apps/platform`
 
 - [ ] **Step 1: Scaffold the package**
 
-Copy `packages/email/package.json` as the shape to match (same `exports`, `files`, `publishConfig`, `repository` fields), renaming to `@firstfold/cms`. Its dependencies are `payload`, `@payloadcms/db-postgres`, `@payloadcms/richtext-lexical`, and `@firstfold/shared` if any collection needs it.
+Copy `packages/email/package.json` as the shape to match (same `exports`, `files`, `publishConfig`, `repository` fields), renaming to `@fynix/cms`. Its dependencies are `payload`, `@payloadcms/db-postgres`, `@payloadcms/richtext-lexical`, and `@fynix/shared` if any collection needs it.
 
 - [ ] **Step 2: Move the collections unchanged**
 
@@ -104,26 +104,26 @@ Export it from `packages/cms/src/index.ts`, along with the three collections.
 `apps/platform/payload.config.ts` becomes a thin adapter that supplies the app's own env:
 
 ```ts
-import { buildCmsConfig } from "@firstfold/cms";
+import { buildCmsConfig } from "@fynix/cms";
 import { serverEnv } from "@/lib/server/env";
 
-/** Payload's config for this app. The collections and their rules live in @firstfold/cms, shared with apps/admin. */
+/** Payload's config for this app. The collections and their rules live in @fynix/cms, shared with apps/admin. */
 export default buildCmsConfig({
   secret: serverEnv().PAYLOAD_SECRET,
   databaseUrl: serverEnv().DATABASE_URL_PAYLOAD,
 });
 ```
 
-Add `"@firstfold/cms": "workspace:*"` to `apps/platform/package.json`, then `pnpm install`.
+Add `"@fynix/cms": "workspace:*"` to `apps/platform/package.json`, then `pnpm install`.
 
 - [ ] **Step 5: Fix the importers**
 
-Run `grep -rn "@/collections/" apps/platform` and repoint each to `@firstfold/cms`. There should be none left outside the package.
+Run `grep -rn "@/collections/" apps/platform` and repoint each to `@fynix/cms`. There should be none left outside the package.
 
 - [ ] **Step 6: Checkpoint**
 
 ```bash
-pnpm lint && pnpm -r typecheck && pnpm test && pnpm --filter @firstfold/platform build
+pnpm lint && pnpm -r typecheck && pnpm test && pnpm --filter @fynix/platform build
 ```
 
 Expected: all pass. Then confirm Payload still works at runtime, which a build does not prove:
@@ -136,7 +136,7 @@ Expected: 200 with the posts array.
 
 ---
 
-### Task 2: Move the pure helpers into `@firstfold/shared`
+### Task 2: Move the pure helpers into `@fynix/shared`
 
 All 14 are pure TypeScript with no React, so this is a move plus an import rewrite.
 
@@ -148,7 +148,7 @@ All 14 are pure TypeScript with no React, so this is a move plus an import rewri
 
 - [ ] **Step 2: Export them from `packages/shared`** following that package's existing export style — check whether it uses a barrel `index.ts` or per-path `exports` before choosing.
 
-- [ ] **Step 3: Rewrite imports in `apps/platform`** from `@/lib/x` to `@firstfold/shared/lib/x`.
+- [ ] **Step 3: Rewrite imports in `apps/platform`** from `@/lib/x` to `@fynix/shared/lib/x`.
 
 - [ ] **Step 4: Checkpoint** — `pnpm lint && pnpm -r typecheck && pnpm test`. The moved tests must still run; if `packages/shared`'s vitest config globs only `src/**`, they already will.
 
@@ -160,17 +160,17 @@ All 14 are pure TypeScript with no React, so this is a move plus an import rewri
 
 These are React, which `packages/shared` already hosts (`ui/icons`, `ui/site-sketch`, `ui/wave-lines`).
 
-- [ ] **Step 1: Move them with `git mv`**, then rewrite `apps/platform`'s imports to `@firstfold/shared/ui/panel/<name>`.
+- [ ] **Step 1: Move them with `git mv`**, then rewrite `apps/platform`'s imports to `@fynix/shared/ui/panel/<name>`.
 
 - [ ] **Step 2:** `sign-in-form` and `sign-out-button` call server actions. Check whether they import an action directly — if so, that import must become a prop the app passes in, since the two apps have different actions. Fix by lifting the action to a prop, the same pattern `PreviewReviewActions` already uses.
 
-- [ ] **Step 3: Checkpoint** — `pnpm lint && pnpm -r typecheck && pnpm test && pnpm --filter @firstfold/platform build`.
+- [ ] **Step 3: Checkpoint** — `pnpm lint && pnpm -r typecheck && pnpm test && pnpm --filter @fynix/platform build`.
 
 ---
 
 ### Task 4: Scaffold `apps/admin`
 
-- [ ] **Step 1:** Create `apps/admin` with `package.json` (name `@firstfold/admin`, `dev` on port 3003), `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `vitest.config.mts` — copy each from `apps/platform` and strip what the admin does not need.
+- [ ] **Step 1:** Create `apps/admin` with `package.json` (name `@fynix/admin`, `dev` on port 3003), `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `vitest.config.mts` — copy each from `apps/platform` and strip what the admin does not need.
 
 - [ ] **Step 2:** `apps/admin/.env.example` with only what the admin needs: `DATABASE_URL_STAFF`, `DATABASE_URL_PAYLOAD`, `PAYLOAD_SECRET`, `BETTER_AUTH_SECRET`, `ADMIN_ORIGIN`. **Not** `DATABASE_URL` (the customer's RLS-bound connection) and **not** `DATABASE_URL_PUBLIC` — the admin must not hold connections it has no reason to use.
 
@@ -178,7 +178,7 @@ These are React, which `packages/shared` already hosts (`ui/icons`, `ui/site-ske
 
 - [ ] **Step 4:** `apps/admin/payload.config.ts`, the same thin adapter as Task 1 Step 4 but reading the admin's env.
 
-- [ ] **Step 5:** `pnpm install`, then `pnpm --filter @firstfold/admin build`. Expected: builds with no routes yet.
+- [ ] **Step 5:** `pnpm install`, then `pnpm --filter @fynix/admin build`. Expected: builds with no routes yet.
 
 ---
 
@@ -201,9 +201,9 @@ git mv "apps/platform/app/admin-host/[...missing]" "apps/admin/app/[...missing]"
 
 - [ ] **Step 4: Delete the layout's host assertion.** `requireSurfaceHost("admin")` is meaningless in a standalone app; the app *is* the admin. Remove the call and the import.
 
-- [ ] **Step 5: Fix every import** until `pnpm --filter @firstfold/admin typecheck` passes.
+- [ ] **Step 5: Fix every import** until `pnpm --filter @fynix/admin typecheck` passes.
 
-- [ ] **Step 6: Run it** — `pnpm --filter @firstfold/admin dev`, open `http://localhost:3003/clients`, sign in as staff, and confirm the clients list, a client page, leads and the outbox all render.
+- [ ] **Step 6: Run it** — `pnpm --filter @fynix/admin dev`, open `http://localhost:3003/clients`, sign in as staff, and confirm the clients list, a client page, leads and the outbox all render.
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Every business in the Firstfold Local directory gets a permanent 7-character ID and a locked public URL, `/in/mh/{city}/business/{name}/{id}`. Reviews, Verified, Trending counts, enquiries, claims, pictures and ads hang off the ID, so nothing is lost when a business changes. Every old URL 301s to the current one.
+**Goal:** Every business in the the local directory directory gets a permanent 7-character ID and a locked public URL, `/in/mh/{city}/business/{name}/{id}`. Reviews, Verified, Trending counts, enquiries, claims, pictures and ads hang off the ID, so nothing is lost when a business changes. Every old URL 301s to the current one.
 
 **Architecture:**
 - **Pages are found by ID.** The `{city}` and `{name}` parts are a label frozen when the page goes live. A request with a stale or wrong label 301s to the current URL, so no redirect history table is needed.
@@ -15,9 +15,9 @@
 **Tech Stack:** Postgres + Drizzle (`packages/db`), Vitest unit and integration tests, Next.js 16 (platform, admin, website), Python 3 (dataset build).
 
 **Repos and worktrees:**
-- Platform: `/Users/siddiqueahmed/Desktop/AI/first-found/directory-ads` (branch `feat/directory-ads`, 801e11f). Create a fresh worktree off it.
-- Website: `/Users/siddiqueahmed/Desktop/AI/first-found/website-listing` (branch `feat/listing-redesign`, f6cfca3). This is the only copy with `lib/directory-feed.ts`.
-- Dataset: `/Users/siddiqueahmed/Desktop/AI/first-found/local-directory-data/thane`.
+- Platform: `/Users/siddiqueahmed/Desktop/AI/fynix-platform/directory-ads` (branch `feat/directory-ads`, 801e11f). Create a fresh worktree off it.
+- Website: `/Users/siddiqueahmed/Desktop/AI/fynix-platform/website-listing` (branch `feat/listing-redesign`, f6cfca3). This is the only copy with `lib/directory-feed.ts`.
+- Dataset: `/Users/siddiqueahmed/Desktop/AI/fynix-platform/local-directory-data/thane`.
 - **Never commit or push unless the user asks in that message.** The "Commit" steps are checkpoints for when they do.
 
 ---
@@ -161,7 +161,7 @@ describe("place ids", () => {
 
 - [ ] **Step 2: Run it and watch it fail**
 
-Run: `pnpm --filter @firstfold/shared exec vitest run src/lib/directory/place-id.test.ts`
+Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/place-id.test.ts`
 Expected: FAIL, "Cannot find module './place-id'".
 
 - [ ] **Step 3: Implement**
@@ -219,7 +219,7 @@ export function newPlatformPlaceId(): string {
 
 Export it from the package entry the same way `feed-contract` is exported. Check `packages/shared/package.json` `exports` and `src/index.ts`.
 
-- [ ] **Step 4: Run** the test: PASS (5 tests). Run `pnpm --filter @firstfold/shared typecheck`.
+- [ ] **Step 4: Run** the test: PASS (5 tests). Run `pnpm --filter @fynix/shared typecheck`.
 - [ ] **Step 5: Commit** (only if the user asked): `git commit -m "Add the directory place id format"`
 
 ### Task 2: The dataset build issues open-data IDs and keeps a ledger
@@ -318,7 +318,7 @@ def open_data_place_id(source_ref: str, taken: set[str]) -> str:
     """The id for an open-data row: deterministic from its source ref, letter first, with a digit, not in `taken`."""
     salt = 0
     while True:
-        digest = hashlib.sha256(f"firstfold-place:{source_ref}:{salt}".encode()).digest()
+        digest = hashlib.sha256(f"fynix-place:{source_ref}:{salt}".encode()).digest()
         n = int.from_bytes(digest, "big")
         chars = [LETTERS[n % len(LETTERS)]]
         n //= len(LETTERS)
@@ -437,9 +437,9 @@ def place_source_ref(row: dict) -> str:
 ```bash
 python3 - <<'EOF'
 import json
-rows = json.load(open("/Users/siddiqueahmed/Desktop/AI/first-found/website-listing/content/local/thane-listings.json"))
+rows = json.load(open("/Users/siddiqueahmed/Desktop/AI/fynix-platform/website-listing/content/local/thane-listings.json"))
 ledger = json.load(open("thane-place-ledger.json"))
-legacy = json.load(open("/Users/siddiqueahmed/Desktop/AI/first-found/website-listing/content/local/thane-legacy-urls.json"))
+legacy = json.load(open("/Users/siddiqueahmed/Desktop/AI/fynix-platform/website-listing/content/local/thane-legacy-urls.json"))
 print(len(rows), len(ledger), len(legacy), len({r[9] for r in rows}))
 assert all(len(r) == 12 for r in rows)
 EOF
@@ -569,7 +569,7 @@ The `origin_id` CHECK encodes the rule: an `open_data` row has a letter-first ID
 
 Add `export * from "./directory-places";` to `schema/index.ts`.
 
-- [ ] **Step 2: Generate** with `pnpm --filter @firstfold/db db:generate`. Rename the output to `0075_directory_places.sql`, fix the tag in `migrations/meta/_journal.json`, and add a header comment like 0056's.
+- [ ] **Step 2: Generate** with `pnpm --filter @fynix/db db:generate`. Rename the output to `0075_directory_places.sql`, fix the tag in `migrations/meta/_journal.json`, and add a header comment like 0056's.
 
 - [ ] **Step 3: Grants**
 
@@ -577,13 +577,13 @@ Add `export * from "./directory-places";` to `schema/index.ts`.
 -- packages/db/migrations/0076_directory_places_grants.sql
 -- Grants and row-level security for directory places (0075), in the pattern of 0057. Every directory reader and
 -- writer runs on the staff connection (the /api/directory/* routes, the feed, the staff console, listing-account
--- server code), so only webfold_staff gets access. The customer role (webfold_app) gets nothing: a business URL is
+-- server code), so only fynix_staff gets access. The customer role (fynix_app) gets nothing: a business URL is
 -- never the customer's to change.
-GRANT SELECT, INSERT, UPDATE ON directory_places TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON directory_places TO fynix_staff;
 --> statement-breakpoint
-GRANT SELECT, INSERT ON directory_place_legacy_keys TO webfold_staff;
+GRANT SELECT, INSERT ON directory_place_legacy_keys TO fynix_staff;
 --> statement-breakpoint
-GRANT SELECT, INSERT ON directory_place_url_changes TO webfold_staff;
+GRANT SELECT, INSERT ON directory_place_url_changes TO fynix_staff;
 --> statement-breakpoint
 ALTER TABLE directory_places ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
@@ -591,16 +591,16 @@ ALTER TABLE directory_place_legacy_keys ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 ALTER TABLE directory_place_url_changes ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
-CREATE POLICY directory_places_staff_all ON directory_places FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_places_staff_all ON directory_places FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
-CREATE POLICY directory_place_legacy_keys_staff_all ON directory_place_legacy_keys FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_place_legacy_keys_staff_all ON directory_place_legacy_keys FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
-CREATE POLICY directory_place_url_changes_staff_all ON directory_place_url_changes FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_place_url_changes_staff_all ON directory_place_url_changes FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 ```
 
-Before writing it, run `grep -n "getStaffDb\|getAppDb\|withTenantScope" apps/platform/lib/server/listing-account.ts` and confirm the owner-side code runs on the staff connection. If it uses `webfold_app`, **stop and ask**: owner code must not get UPDATE on `directory_places`.
+Before writing it, run `grep -n "getStaffDb\|getAppDb\|withTenantScope" apps/platform/lib/server/listing-account.ts` and confirm the owner-side code runs on the staff connection. If it uses `fynix_app`, **stop and ask**: owner code must not get UPDATE on `directory_places`.
 
-- [ ] **Step 4: Run** `pnpm db:migrate:test && pnpm --filter @firstfold/db typecheck`: clean.
+- [ ] **Step 4: Run** `pnpm db:migrate:test && pnpm --filter @fynix/db typecheck`: clean.
 - [ ] **Step 5: Commit** (only if the user asked).
 
 ### Task 4: Place queries
@@ -641,7 +641,7 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   await resetTestDatabase(dbs);
-  await dbs.staff.db.insert(users).values({ id: STAFF, email: "staff@firstfold.io", name: "Staff" });
+  await dbs.staff.db.insert(users).values({ id: STAFF, email: "staff@fynix.digital", name: "Staff" });
 });
 
 describe("importOpenDataPlaces", () => {
@@ -697,13 +697,13 @@ describe("changePlaceUrl", () => {
 
 Copy the test-DB handle names (`dbs.staff.db`, `dbs.close()`) and the minimal `users` row from `src/directory-listings.integration.test.ts`.
 
-- [ ] **Step 2: Run them and watch them fail**: `pnpm --filter @firstfold/db test:integration -- directory-places`.
+- [ ] **Step 2: Run them and watch them fail**: `pnpm --filter @fynix/db test:integration -- directory-places`.
 
 - [ ] **Step 3: Implement**
 
 ```ts
 // packages/db/src/queries/directory-places.ts
-import { newPlatformPlaceId } from "@firstfold/shared/directory/place-id";
+import { newPlatformPlaceId } from "@fynix/shared/directory/place-id";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { Database } from "../client";
 import { directoryPlaceLegacyKeys, directoryPlaces, directoryPlaceUrlChanges } from "../schema";
@@ -886,7 +886,7 @@ export async function changePlaceUrl(
 }
 ```
 
-Match the shared import path to how `@firstfold/db` already imports from `@firstfold/shared`. Run `grep -rn "@firstfold/shared" packages/db/src | head -3`. If `@firstfold/db` must not depend on `@firstfold/shared` (check `packages/db/package.json`), move `place-id.ts` to `packages/db/src/place-id.ts` and have `shared` re-export it instead.
+Match the shared import path to how `@fynix/db` already imports from `@fynix/shared`. Run `grep -rn "@fynix/shared" packages/db/src | head -3`. If `@fynix/db` must not depend on `@fynix/shared` (check `packages/db/package.json`), move `place-id.ts` to `packages/db/src/place-id.ts` and have `shared` re-export it instead.
 
 Export the functions and errors from `packages/db/src/index.ts`.
 
@@ -895,7 +895,7 @@ Export the functions and errors from `packages/db/src/index.ts`.
 
 ### Task 5: Import script
 
-**Files:** create `packages/db/scripts/import-directory-places.ts`; add `"directory:import-places": "tsx scripts/import-directory-places.ts"` to `packages/db/package.json` and `"directory:import-places": "pnpm --filter @firstfold/db directory:import-places"` to the root `package.json`.
+**Files:** create `packages/db/scripts/import-directory-places.ts`; add `"directory:import-places": "tsx scripts/import-directory-places.ts"` to `packages/db/package.json` and `"directory:import-places": "pnpm --filter @fynix/db directory:import-places"` to the root `package.json`.
 
 - [ ] **Step 1: Implement**
 
@@ -1028,7 +1028,7 @@ UPDATE directory_reviews t SET place_id = k.place_id FROM directory_place_legacy
      - the older same-phone review is hidden;
      - B is untouched;
      - running the backfill again changes nothing.
-- [ ] **Step 5: Run** `pnpm db:migrate:test && pnpm --filter @firstfold/db test:integration`: all green.
+- [ ] **Step 5: Run** `pnpm db:migrate:test && pnpm --filter @fynix/db test:integration`: all green.
 - [ ] **Step 6: Commit** (only if the user asked).
 
 ### Task 7: The directory API accepts IDs (and keys, during the switch)
@@ -1107,7 +1107,7 @@ UPDATE directory_reviews t SET place_id = k.place_id FROM directory_place_legacy
 - [ ] **Step 2: Implement** the server action. Validate with zod: `urlSlug` must be a slug of at most 70 characters, `citySlug` must be one of the known cities, and `reason` must be 3–300 characters. Call `changePlaceUrl` on the staff DB and revalidate the page.
 
   UI: a "Web address" row shows the current full URL and a "Change web address" button. It opens a small form with the name part, the city and a required reason, plus this warning: "Old links keep working — they redirect here."
-- [ ] **Step 3: Run** `pnpm --filter @firstfold/admin test && pnpm --filter @firstfold/admin typecheck && pnpm --filter @firstfold/admin lint`: green.
+- [ ] **Step 3: Run** `pnpm --filter @fynix/admin test && pnpm --filter @fynix/admin typecheck && pnpm --filter @fynix/admin lint`: green.
 - [ ] **Step 4: Verify in the browser** on the local admin. Change a test business's address, then `curl -sI` the old public URL and expect a `301` to the new one.
 - [ ] **Step 5: Commit** (only if the user asked).
 
@@ -1130,7 +1130,7 @@ UPDATE directory_reviews t SET place_id = k.place_id FROM directory_place_legacy
 ```
 
   Keep `address`, `previousAddresses` and `replacesSourcePath` until Phase 6, so a website not yet updated keeps working. Keep `version: 1`; the new fields are additive.
-- [ ] **Step 3: Run** `pnpm --filter @firstfold/shared test && pnpm typecheck`: green.
+- [ ] **Step 3: Run** `pnpm --filter @fynix/shared test && pnpm typecheck`: green.
 - [ ] **Step 4: Commit** (only if the user asked).
 
 ### Task 11: Website URL helpers

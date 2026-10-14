@@ -3,7 +3,7 @@
 import { otpLimitMessage } from "@/lib/auth-retry";
 import { redirect } from "next/navigation";
 import type { ForgotPasswordFormState, ResetCodeStep } from "@/lib/account-recovery-form";
-import { checkHuman } from "@firstfold/shared/server/turnstile-request";
+import { checkHuman } from "@fynix/shared/server/turnstile-request";
 import { requestPasswordReset } from "@/lib/server/account-recovery";
 import { requestBrand } from "@/lib/server/request-brand";
 import { parseForgotPasswordRequest, requestPhonePasswordReset, resetPasswordWithCode } from "@/lib/server/phone-password-reset";

@@ -136,11 +136,11 @@ describe("an account's phone number", () => {
     await dbs.staff.db.insert(users).values({
       id: "phone-owner",
       name: "Asha",
-      email: "919820011223@phone.firstfold.invalid",
+      email: "919820011223@phone.fynix.invalid",
       phoneNumber: PHONE,
       phoneNumberVerified: true,
     });
-    expect(await findUserByPhone(dbs.app.db, PHONE)).toEqual({ id: "phone-owner", name: "Asha", email: "919820011223@phone.firstfold.invalid" });
+    expect(await findUserByPhone(dbs.app.db, PHONE)).toEqual({ id: "phone-owner", name: "Asha", email: "919820011223@phone.fynix.invalid" });
     expect(await findUserByPhone(dbs.app.db, "+919820099999")).toBeNull();
   });
 

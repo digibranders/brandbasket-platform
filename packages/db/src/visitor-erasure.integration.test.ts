@@ -74,7 +74,7 @@ async function seed(): Promise<Seeded> {
   // A comment code someone else is waiting on, for Priya's review: it must go with the review.
   await db.insert(directoryReviewOtps).values({ listingKey: DENTIST, reviewId: priyaReview!.id, phone: RAHUL, codeHash: "hash", payload: {}, expiresAt: new Date(NOW.getTime() + 600000) });
   await db.insert(directoryReviewOtps).values({ listingKey: DENTIST, phone: PRIYA, codeHash: "hash", payload: {}, expiresAt: new Date(NOW.getTime() + 600000) });
-  await db.insert(smsMessages).values([{ businessId: null, toPhone: PRIYA, body: "123456 is your Firstfold code." }, { businessId: null, toPhone: RAHUL, body: "654321 is your Firstfold code." }]);
+  await db.insert(smsMessages).values([{ businessId: null, toPhone: PRIYA, body: "123456 is your Fynix code." }, { businessId: null, toPhone: RAHUL, body: "654321 is your Fynix code." }]);
   await recordConsent(db, { subject: { type: "visitor", ref: priya!.id }, purpose: "directory_contribution", noticeVersion: "2026-10-13", channel: "web" });
   return { priyaVisitorId: priya!.id, priyaReviewId: priyaReview!.id, rahulReviewId: rahulReview!.id, priyaCommentId: priyaComment!.id, rahulCommentId: rahulComment!.id };
 }

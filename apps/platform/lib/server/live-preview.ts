@@ -12,13 +12,13 @@ import {
   readSiteFacts,
   type DirectoryClaim,
   type DirectoryProfile,
-} from "@firstfold/db";
-import { DEFAULT_BUSINESS_TIME_ZONE, localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import { DIRECTORY_DEALS_TIME_ZONE } from "@firstfold/shared/lib/directory/deals-contract";
-import { buildAddedFeedListing, buildAddedProfile } from "@firstfold/shared/lib/directory/feed";
-import type { DirectoryFeedAddedListing } from "@firstfold/shared/lib/directory/feed-contract";
-import { GALLERY_SLOTS } from "@firstfold/shared/lib/directory/pictures";
-import { siteConfig } from "@firstfold/shared/lib/site-config";
+} from "@fynix/db";
+import { DEFAULT_BUSINESS_TIME_ZONE, localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { DIRECTORY_DEALS_TIME_ZONE } from "@fynix/shared/lib/directory/deals-contract";
+import { buildAddedFeedListing, buildAddedProfile } from "@fynix/shared/lib/directory/feed";
+import type { DirectoryFeedAddedListing } from "@fynix/shared/lib/directory/feed-contract";
+import { GALLERY_SLOTS } from "@fynix/shared/lib/directory/pictures";
+import { siteConfig } from "@fynix/shared/lib/site-config";
 import { LEADS_API_TOKEN_MIN_LENGTH } from "@/lib/leads-api";
 import { previewOrigins } from "@/lib/preview-origins";
 import { previewLink } from "@/lib/preview-link";

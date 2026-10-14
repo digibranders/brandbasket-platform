@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
-import type { BusinessService } from "@firstfold/db";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+import type { BusinessService } from "@fynix/db";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { INPUT_CLASSES, ItemRow, Labelled, priceText, RemoveButton } from "@/components/panel/business/catalog-parts";
 import { ItemForm } from "@/components/panel/business/item-form";
 import {

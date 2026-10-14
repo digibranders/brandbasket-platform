@@ -12,7 +12,7 @@
 
 ## Ground rules for the engineer
 
-- **Source of truth:** `docs/superpowers/specs/2026-09-15-firstfold-platform-design.md` §4.4 (website/page/content data model) and §3 ("Content updates after launch"). This plan narrows that spec on purpose — see "Deliberately deferred" below — and wins where the two disagree about scope.
+- **Source of truth:** `docs/superpowers/specs/2026-09-15-fynix-platform-design.md` §4.4 (website/page/content data model) and §3 ("Content updates after launch"). This plan narrows that spec on purpose — see "Deliberately deferred" below — and wins where the two disagree about scope.
 - **Deliberately deferred (do not build in this plan):**
   - A full per-page-type section registry with a zod schema per field, `editableBy`, image aspect ratios, etc. Start with two section types, `rich_text` and `image`, and a `customer_editable` boolean per row. Extend the registry when the editing UI needs more section shapes.
   - `content_publish` and `publish_allowance_grant` — the $3-per-publish billing workflow. That is its own careful piece of billing work, next after this plan is built and verified.
@@ -22,7 +22,7 @@
   - Staff project management (build queue, assignment) — a separate, already-agreed next plan. This plan's release snapshot builder is a plain function any staff/system caller can invoke; wiring a "Build" button to it is that plan's job.
 - **Customers write through the app connection only**, per the onboarding tables' rule (`apps/platform/lib/server/db.ts`'s comment on `getStaffDb`). No new exception.
 - **Do not commit. Do not start a dev server.** Migrations only on the dev database — never delete or rewrite existing rows. The test database is yours.
-- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm --filter @firstfold/db test:integration` for database tasks.
+- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm --filter @fynix/db test:integration` for database tasks.
 - Read `packages/db/migrations/meta/_journal.json` for the next free migration number before generating one.
 
 ---
@@ -306,26 +306,26 @@ Write a second, hand-written migration `00NN_cms_foundation_grants.sql` (`NN` = 
 
 ```sql
 -- Customers may read their whole site...
-GRANT SELECT ON websites, pages, page_sections, gallery_items, blog_posts, site_releases TO webfold_app;
+GRANT SELECT ON websites, pages, page_sections, gallery_items, blog_posts, site_releases TO fynix_app;
 --> statement-breakpoint
 
 -- ...but only edit an editable section's content, their gallery, and their blog. Pages, sections-as-such and
 -- releases stay staff/system-only, whatever the UI shows.
-GRANT UPDATE (content, visible, updated_at) ON page_sections TO webfold_app;
+GRANT UPDATE (content, visible, updated_at) ON page_sections TO fynix_app;
 --> statement-breakpoint
 
-GRANT INSERT, UPDATE, DELETE ON gallery_items TO webfold_app;
+GRANT INSERT, UPDATE, DELETE ON gallery_items TO fynix_app;
 --> statement-breakpoint
 
-GRANT INSERT, UPDATE, DELETE ON blog_posts TO webfold_app;
+GRANT INSERT, UPDATE, DELETE ON blog_posts TO fynix_app;
 --> statement-breakpoint
 
 -- Staff and system work do everything, including building pages and sections and cutting releases.
-GRANT SELECT, INSERT, UPDATE, DELETE ON websites, pages, page_sections, gallery_items, blog_posts TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON websites, pages, page_sections, gallery_items, blog_posts TO fynix_staff;
 --> statement-breakpoint
 
 -- Releases are immutable: even staff only ever INSERT.
-GRANT SELECT, INSERT ON site_releases TO webfold_staff;
+GRANT SELECT, INSERT ON site_releases TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE websites ENABLE ROW LEVEL SECURITY;
@@ -341,54 +341,54 @@ ALTER TABLE blog_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE site_releases ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY websites_tenant_select ON websites FOR SELECT TO webfold_app
+CREATE POLICY websites_tenant_select ON websites FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
-CREATE POLICY websites_staff_all ON websites FOR ALL TO webfold_staff
+CREATE POLICY websites_staff_all ON websites FOR ALL TO fynix_staff
   USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY pages_tenant_select ON pages FOR SELECT TO webfold_app
+CREATE POLICY pages_tenant_select ON pages FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
-CREATE POLICY pages_staff_all ON pages FOR ALL TO webfold_staff
+CREATE POLICY pages_staff_all ON pages FOR ALL TO fynix_staff
   USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY page_sections_tenant_select ON page_sections FOR SELECT TO webfold_app
+CREATE POLICY page_sections_tenant_select ON page_sections FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
--- The column grant above already limits *which* columns webfold_app can touch; this limits *which rows*: only ones
+-- The column grant above already limits *which* columns fynix_app can touch; this limits *which rows*: only ones
 -- staff marked customer_editable, and only within the caller's own business.
-CREATE POLICY page_sections_customer_update ON page_sections FOR UPDATE TO webfold_app
+CREATE POLICY page_sections_customer_update ON page_sections FOR UPDATE TO fynix_app
   USING (business_id = app_current_business_id() AND customer_editable)
   WITH CHECK (business_id = app_current_business_id() AND customer_editable);
 --> statement-breakpoint
-CREATE POLICY page_sections_staff_all ON page_sections FOR ALL TO webfold_staff
+CREATE POLICY page_sections_staff_all ON page_sections FOR ALL TO fynix_staff
   USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY gallery_items_tenant_all ON gallery_items FOR ALL TO webfold_app
+CREATE POLICY gallery_items_tenant_all ON gallery_items FOR ALL TO fynix_app
   USING (business_id = app_current_business_id()) WITH CHECK (business_id = app_current_business_id());
 --> statement-breakpoint
-CREATE POLICY gallery_items_staff_all ON gallery_items FOR ALL TO webfold_staff
+CREATE POLICY gallery_items_staff_all ON gallery_items FOR ALL TO fynix_staff
   USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY blog_posts_tenant_all ON blog_posts FOR ALL TO webfold_app
+CREATE POLICY blog_posts_tenant_all ON blog_posts FOR ALL TO fynix_app
   USING (business_id = app_current_business_id()) WITH CHECK (business_id = app_current_business_id());
 --> statement-breakpoint
-CREATE POLICY blog_posts_staff_all ON blog_posts FOR ALL TO webfold_staff
+CREATE POLICY blog_posts_staff_all ON blog_posts FOR ALL TO fynix_staff
   USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY site_releases_tenant_select ON site_releases FOR SELECT TO webfold_app
+CREATE POLICY site_releases_tenant_select ON site_releases FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
-CREATE POLICY site_releases_staff_select_insert ON site_releases FOR SELECT TO webfold_staff
+CREATE POLICY site_releases_staff_select_insert ON site_releases FOR SELECT TO fynix_staff
   USING (true);
 --> statement-breakpoint
-CREATE POLICY site_releases_staff_insert ON site_releases FOR INSERT TO webfold_staff
+CREATE POLICY site_releases_staff_insert ON site_releases FOR INSERT TO fynix_staff
   WITH CHECK (true);
 ```
 
@@ -561,7 +561,7 @@ This follows `packages/db/src/rls.integration.test.ts`'s exact setup/teardown pa
 - [x] **Step 2: Run it and confirm it fails**
 
 ```bash
-pnpm --filter @firstfold/db test:integration -- website.integration
+pnpm --filter @fynix/db test:integration -- website.integration
 ```
 
 Expected: fails to resolve `./queries/website` (module does not exist yet).
@@ -739,7 +739,7 @@ export async function removeGalleryItem(tx: ScopedTransaction, itemId: string): 
 - [x] **Step 4: Run the tests and confirm they pass**
 
 ```bash
-pnpm --filter @firstfold/db test:integration -- website.integration
+pnpm --filter @fynix/db test:integration -- website.integration
 ```
 
 Expected: all pass.
@@ -751,7 +751,7 @@ In `packages/db/src/index.ts`, add the new query module's exports next to the ot
 - [x] **Step 6: Checkpoint**
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @firstfold/db test:integration
+pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @fynix/db test:integration
 ```
 
 ---
@@ -853,7 +853,7 @@ describe("blog queries", () => {
 - [x] **Step 2: Run it and confirm it fails**
 
 ```bash
-pnpm --filter @firstfold/db test:integration -- blog.integration
+pnpm --filter @fynix/db test:integration -- blog.integration
 ```
 
 Expected: fails to resolve `./queries/blog`.
@@ -979,7 +979,7 @@ export async function softDeleteBlogPost(tx: ScopedTransaction, postId: string):
 - [x] **Step 4: Run the tests and confirm they pass**
 
 ```bash
-pnpm --filter @firstfold/db test:integration -- blog.integration
+pnpm --filter @fynix/db test:integration -- blog.integration
 ```
 
 - [x] **Step 5: Export from the package and checkpoint**
@@ -987,7 +987,7 @@ pnpm --filter @firstfold/db test:integration -- blog.integration
 Add `blog.ts`'s exports to `packages/db/src/index.ts` next to `website.ts`'s. Then:
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @firstfold/db test:integration
+pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @fynix/db test:integration
 ```
 
 ---
@@ -1068,7 +1068,7 @@ describe("createSiteRelease", () => {
 - [x] **Step 2: Run it and confirm it fails**
 
 ```bash
-pnpm --filter @firstfold/db test:integration -- site-releases.integration
+pnpm --filter @fynix/db test:integration -- site-releases.integration
 ```
 
 - [x] **Step 3: Implement it**
@@ -1194,7 +1194,7 @@ export async function createSiteRelease(db: Database, input: CreateSiteReleaseIn
 - [x] **Step 4: Run the tests and confirm they pass**
 
 ```bash
-pnpm --filter @firstfold/db test:integration -- site-releases.integration
+pnpm --filter @fynix/db test:integration -- site-releases.integration
 ```
 
 - [x] **Step 5: Export from the package and checkpoint**
@@ -1202,7 +1202,7 @@ pnpm --filter @firstfold/db test:integration -- site-releases.integration
 Add `site-releases.ts`'s exports to `packages/db/src/index.ts`, then:
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @firstfold/db test:integration
+pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @fynix/db test:integration
 ```
 
 ---
@@ -1220,7 +1220,7 @@ A pure function, unit-tested — no database, no worker. `hasBillingAccess` alre
 
 ```ts
 import { describe, expect, it } from "vitest";
-import type { ProjectStatus } from "@firstfold/db";
+import type { ProjectStatus } from "@fynix/db";
 import { deriveSiteStatus } from "./site-status";
 
 const NOW = new Date("2026-09-17T12:00:00Z");
@@ -1273,13 +1273,13 @@ describe("deriveSiteStatus", () => {
 - [x] **Step 2: Run it and confirm it fails**
 
 ```bash
-pnpm --filter @firstfold/billing test -- site-status
+pnpm --filter @fynix/billing test -- site-status
 ```
 
 - [x] **Step 3: Implement it**
 
 ```ts
-import type { ProjectStatus } from "@firstfold/db";
+import type { ProjectStatus } from "@fynix/db";
 import { hasBillingAccess, type BillingAccessInput } from "./access";
 
 export interface SiteStatusInput {
@@ -1311,7 +1311,7 @@ export function deriveSiteStatus(input: SiteStatusInput, now: Date): SiteStatus 
 - [x] **Step 4: Run the tests and confirm they pass**
 
 ```bash
-pnpm --filter @firstfold/billing test -- site-status
+pnpm --filter @fynix/billing test -- site-status
 ```
 
 - [x] **Step 5: Export and checkpoint**
@@ -1398,7 +1398,7 @@ Add the needed imports (`websites`, `pages`, `pageSections`, `siteReleases`) to 
 - [x] **Step 2: Run it**
 
 ```bash
-pnpm --filter @firstfold/db test:integration -- rls.integration
+pnpm --filter @fynix/db test:integration -- rls.integration
 ```
 
 Expected: all pass.
@@ -1423,7 +1423,7 @@ No page under `apps/platform/app` was touched by this plan — the customer dash
 
 ## What comes next
 
-Two follow-up plans, each written once this one is built and verified (this project's own rule — see `docs/superpowers/specs/2026-09-15-firstfold-platform-design.md` §12: "each plan built and verified before the next is written"):
+Two follow-up plans, each written once this one is built and verified (this project's own rule — see `docs/superpowers/specs/2026-09-15-fynix-platform-design.md` §12: "each plan built and verified before the next is written"):
 
 1. **Customer Content & Monitoring UI** — adds "Content" and "Monitoring" to `CUSTOMER_NAV` in `apps/platform/components/panel/customer-shell.tsx`, a page listing editor built on `getWebsiteForBusiness`/`updateSectionContent`, a gallery manager, a blog editor built on `packages/db/src/queries/blog.ts`, and a Monitoring page built on `deriveSiteStatus`. Also needs one staff-side action — "start the build" — that calls `createSiteRelease` for the first time, since a business has no pages or sections to show until something creates them; that action's scope stays small on purpose, not the full project-management queue.
 2. **Publish workflow** — `content_publish`, `publish_allowance_grant`, and the $3-per-publish charge. Billing-adjacent, deserves the same care as the Phase 1C payment wall.

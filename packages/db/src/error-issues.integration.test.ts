@@ -82,7 +82,7 @@ describe("native automatic error storage and staff isolation", () => {
   it("links incidents privately and requires an active staff actor", async () => {
     await databases.staff.db.insert(users).values([{ id: staffUserId, name: "Incident staff", email: `${staffUserId}@example.test` }, { id: requesterUserId, name: "Requester", email: `${requesterUserId}@example.test` }]);
     await databases.staff.db.insert(staffMembers).values({ userId: staffUserId });
-    const [ticket] = await databases.staff.db.insert(supportTickets).values({ requesterUserId, category: "bug", subject: "Synthetic incident", displayRef: `FF-${randomUUID()}`, submissionKey: randomUUID(), submissionHash: "a".repeat(64) }).returning({ id: supportTickets.id });
+    const [ticket] = await databases.staff.db.insert(supportTickets).values({ requesterUserId, category: "bug", subject: "Synthetic incident", displayRef: `FY-${randomUUID()}`, submissionKey: randomUUID(), submissionHash: "a".repeat(64) }).returning({ id: supportTickets.id });
     linkedTicketId = ticket?.id ?? null;
     const input = { staffUserId, ticketId: linkedTicketId ?? "", issueId: issueId ?? "" };
     expect(await linkSupportTicketError(databases.staff.db, input)).toBe(true);

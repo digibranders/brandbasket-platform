@@ -7,22 +7,22 @@ import {
   MAX_DISCOUNT_BASIS_POINTS,
   MAX_REFERRAL_CODE_LENGTH,
   MIN_REFERRAL_CODE_LENGTH,
-} from "@firstfold/billing/referral";
-import { chargedAmountCents } from "@firstfold/billing/tax";
-import type { BillingCurrency, ReferralDiscount, ReferralValueKind } from "@firstfold/db";
-import { parsePercent } from "@firstfold/shared/lib/billing/referral-value";
-import { cn } from "@firstfold/shared/lib/cn";
-import { formatMoney, parseMoney } from "@firstfold/shared/lib/money";
+} from "@fynix/billing/referral";
+import { chargedAmountCents } from "@fynix/billing/tax";
+import type { BillingCurrency, ReferralDiscount, ReferralValueKind } from "@fynix/db";
+import { parsePercent } from "@fynix/shared/lib/billing/referral-value";
+import { cn } from "@fynix/shared/lib/cn";
+import { formatMoney, parseMoney } from "@fynix/shared/lib/money";
 import {
   BILLING_CURRENCY_LABELS,
   BILLING_CURRENCY_ORDER,
   BILLING_CURRENCY_SYMBOLS,
-} from "@firstfold/shared/lib/currency";
-import { FIELD_PATTERNS } from "@firstfold/shared/lib/forms/input-rules";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+} from "@fynix/shared/lib/currency";
+import { FIELD_PATTERNS } from "@fynix/shared/lib/forms/input-rules";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import type { ReferralField } from "@/lib/server/referral-admin";
 import { buttonDanger, buttonPrimary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";

@@ -10,4 +10,4 @@ export {
   addOnPrice,
   type AddOn,
   type AddOnId,
-} from "@firstfold/shared/lib/billing/add-ons";
+} from "@fynix/shared/lib/billing/add-ons";

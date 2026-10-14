@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { BUSINESS_EXTRA_CATEGORIES_MAX, findBusinessTimeZone, findPlaces, listClosures, loadGeoCatalog, withTenantScope, marketOfListing, placeUrlPath, type DirectoryClaim, type DirectoryPlace, type DirectoryProfile } from "@firstfold/db";
-import { areaName, categoryLabel, cityName, directoryCategoryPath } from "@firstfold/shared/lib/directory/places";
-import { siteConfig } from "@firstfold/shared/lib/site-config";
-import { displayPhone } from "@firstfold/shared/server/phone-display";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+import { BUSINESS_EXTRA_CATEGORIES_MAX, findBusinessTimeZone, findPlaces, listClosures, loadGeoCatalog, withTenantScope, marketOfListing, placeUrlPath, type DirectoryClaim, type DirectoryPlace, type DirectoryProfile } from "@fynix/db";
+import { areaName, categoryLabel, cityName, directoryCategoryPath } from "@fynix/shared/lib/directory/places";
+import { siteConfig } from "@fynix/shared/lib/site-config";
+import { displayPhone } from "@fynix/shared/server/phone-display";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { BusinessIdLine } from "@/components/panel/business/business-id-line";
 import { DetailsForm, type DetailsValues } from "@/components/panel/business/details-form";
 import { ClosuresPanel } from "@/components/panel/details/closures-panel";
@@ -28,7 +28,7 @@ import { LivePreviewLayout } from "@/components/panel/live-preview/live-preview-
 import { StatusLine, type StatusTone } from "@/components/panel/status-line";
 import { extraCategoryOptions } from "@/lib/extra-categories-form";
 import { districtName, DIRECTORY_DISTRICTS, listingFormOptions } from "@/lib/business-listing-form";
-import { brandText, supportEmailOf, type Brand } from "@/lib/brand";
+import { supportEmailOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { profileHref, readProfileNotice } from "@/lib/business-profile-notices";
 import { isPublished, isTakenDown, nextTab, openingTab, profileTabs, type ProfileState, type ProfileTabId } from "@/lib/business-profile";
@@ -37,8 +37,8 @@ import { pinPlaceName, type PinLookup } from "@/lib/listing-location";
 import { shownPicture } from "@/lib/photos-view";
 import { getOwnVideos } from "@/lib/server/listing-videos";
 import { videoAccessOf, videoTiles } from "@/lib/videos-view";
-import type { OptionalPageTab } from "@firstfold/shared/lib/directory/page-tabs";
-import { GALLERY_SLOTS } from "@firstfold/shared/lib/directory/pictures";
+import type { OptionalPageTab } from "@fynix/shared/lib/directory/page-tabs";
+import { GALLERY_SLOTS } from "@fynix/shared/lib/directory/pictures";
 import { getBusinessProfilePage, getOwnExtraCategories, lookupPincode, type BusinessProfilePage } from "@/lib/server/business-profile";
 import { ownerVerificationState } from "@/lib/server/owner-verification";
 import { verificationRefusalMessage } from "@/lib/owner-verification";
@@ -52,8 +52,8 @@ import { ensureGeoCatalog } from "@/lib/server/geo-catalog";
 import { livePreviewBase, livePreviewSource } from "@/lib/server/live-preview";
 import type { PreviewSection } from "@/lib/preview-draft";
 import { addClosureAction, deleteClosureAction } from "@/app/app-host/(protected)/details/actions";
-import { upcomingClosures } from "@firstfold/shared/lib/business-facts/closures";
-import { DEFAULT_BUSINESS_TIME_ZONE, localDateIn } from "@firstfold/shared/lib/calendar/local-date";
+import { upcomingClosures } from "@fynix/shared/lib/business-facts/closures";
+import { DEFAULT_BUSINESS_TIME_ZONE, localDateIn } from "@fynix/shared/lib/calendar/local-date";
 import {
   publishAction,
   verifyBusinessAction,
@@ -101,8 +101,8 @@ interface BusinessProfileScreenProps {
 }
 
 /** Where the business stands, in one line under its name. */
-function standing(state: ProfileState, brand: Brand): { readonly tone: StatusTone; readonly text: string } {
-  if (isTakenDown(state)) return { tone: "stopped", text: brandText("Taken off Firstfold Local", brand) };
+function standing(state: ProfileState): { readonly tone: StatusTone; readonly text: string } {
+  if (isTakenDown(state)) return { tone: "stopped", text: "Taken off the local directory" };
   if (isPublished(state)) return { tone: "done", text: "Live · Claimed" };
   if (state.listing === "claimed") return state.status === "approved" ? { tone: "done", text: "Confirmed" } : { tone: "waiting", text: "Waiting for our call" };
   return { tone: "quiet", text: "Not published yet" };
@@ -398,8 +398,8 @@ export default async function BusinessProfileScreen({ searchParams }: BusinessPr
   const brand = await requestBrand();
   const supportEmail = supportEmailOf(brand);
   const found = readProfileNotice(params.notice, state.pageTabLabels);
-  const notice = found === null ? null : { ...found, text: brandText(found.text, brand) };
-  const status = standing(state, brand);
+  const notice = found === null ? null : { ...found, text: found.text };
+  const status = standing(state);
   const after = nextTab(state, tab);
   const nextView = after === null ? null : (tabs.find((view) => view.id === after) ?? null);
   const nextLink = nextView === null ? null : { id: nextView.id, label: nextView.label };

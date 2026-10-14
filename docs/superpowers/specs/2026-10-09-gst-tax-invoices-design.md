@@ -4,12 +4,12 @@ Date: 2026-10-09. Status: approved design; Tasks 1 to 18A built and the automate
 release are still open. Plan:
 `docs/superpowers/plans/2026-10-09-gst-tax-invoices.md`. Approved look: the invoice artifact
 (https://claude.ai/artifact/7UogCdVqQ7z3UwqPUvsbBa), its template `../invoice-design/invoice-template.html`, and the CA pack
-`../Firstfold-invoice-samples.pdf`. The artifact prints SAC 998361. The sample PDF still shows the old placeholder 998315; the owner
+`../Fynix-invoice-samples.pdf`. The artifact prints SAC 998361. The sample PDF still shows the old placeholder 998315; the owner
 chose not to regenerate it. The code prints 998361.
 
 ## Why
 
-Firstfold is sold by Digibranders Private Limited (GSTIN 27AAICD9268J1Z0, Maharashtra) to businesses in India. Today a
+Fynix is sold by Digibranders Private Limited (GSTIN 27AAICD9268J1Z0, Maharashtra) to businesses in India. Today a
 customer who pays gets a "receipt" PDF. A GST-registered customer cannot claim input tax credit on a receipt, and the
 supplier must issue a tax invoice for every taxable supply (Section 31 CGST Act, Rule 46 CGST Rules). The CA also needs
 the month's invoices to file GSTR-1 and GSTR-3B, and today someone would have to reconstruct them from payments.
@@ -29,7 +29,7 @@ the month's invoices to file GSTR-1 and GSTR-3B, and today someone would have to
 - Credit notes and refunds (no refund flow exists in code yet). An issued invoice is never edited; a mistake needs a
   credit note, which is a separate plan.
 - E-invoicing (IRN and QR code): Digibranders' turnover is well below the threshold.
-- Export invoices and invoices in dollars: Firstfold sells in India only; USD payments keep today's receipt.
+- Export invoices and invoices in dollars: Fynix sells in India only; USD payments keep today's receipt.
 - Emailing invoices: there is no email provider yet.
 - A GSTIN lookup against the GST portal (needs a paid GSP API). Customers declare their own details.
 - Invoices for payments made before invoicing went live (they keep their receipts unless the CA asks for a backfill).
@@ -76,17 +76,17 @@ A "Payment method" card above Billing details, once the business has paid:
 
 - Card or UPI on a renewing plan: "Visa credit card ending 4366" (never more than the last four digits, and no issuing
   bank, because Razorpay sends a code for it and not a name), "Your plan renews on this automatically through
-  Razorpay.", and "To pay with a different card or UPI, email us at support@firstfold.io and
+  Razorpay.", and "To pay with a different card or UPI, email us at hello@fynix.digital and
   we'll send you a secure Razorpay link to switch."
 - Not renewing (listing account, lapsed): "You last paid with ... You choose how to pay each time."
 - Bank transfer: "You pay us by bank transfer. We record each payment when it reaches us." and the last reference.
 
 ### Customer: invoices on Billing
 
-Monthly billing lists each payment as today. A payment with an invoice is titled "Tax invoice FF/26-27/000001" and its
-download is the invoice (`firstfold-invoice-FF-26-27-000001.pdf`). Older payments and USD payments still download as
-receipts (`firstfold-receipt-<number>.pdf`). Downloading several gives one PDF, oldest first, invoices and receipts mixed
-in order, named `firstfold-invoices.pdf`, `firstfold-receipts.pdf` or `firstfold-invoices-and-receipts.pdf` by what it
+Monthly billing lists each payment as today. A payment with an invoice is titled "Tax invoice FY/26-27/000001" and its
+download is the invoice (`fynix-invoice-FY-26-27-000001.pdf`). Older payments and USD payments still download as
+receipts (`fynix-receipt-<number>.pdf`). Downloading several gives one PDF, oldest first, invoices and receipts mixed
+in order, named `fynix-invoices.pdf`, `fynix-receipts.pdf` or `fynix-invoices-and-receipts.pdf` by what it
 holds.
 
 ### Staff: client page
@@ -106,7 +106,7 @@ holds.
 - Missing invoices across every client first, each linking to its client page.
 - A month picker with previous and next links (default the current month in India, by the day each invoice was issued), the month's totals (invoices, taxable value, CGST, SGST, IGST,
   round off, total, then B2B and B2C counts and tax) and the month's invoices with downloads.
-- "Download CSV" (`firstfold-invoices-YYYY-MM.csv`): one row per invoice (number, DD-MM-YYYY date, customer, GSTIN, B2B or B2C, place of supply as "27-Maharashtra",
+- "Download CSV" (`fynix-invoices-YYYY-MM.csv`): one row per invoice (number, DD-MM-YYYY date, customer, GSTIN, B2B or B2C, place of supply as "27-Maharashtra",
   SAC, taxable value, CGST, SGST, IGST, round off, total), UTF-8 with a byte order mark so Excel reads it, and a customer
   name starting with = + - or @ defused so a spreadsheet cannot run it.
 
@@ -119,12 +119,12 @@ checked; check character checked in code), address line 1 and 2, city, pincode (
 state code such as `mh`), billing email and E.164 phone (both optional; null means "use the account's"). A save replaces
 the whole row, so nothing from an earlier save survives. Erased with the account.
 
-**`tax_invoice_series`**: one counter row per prefix and financial year (`FF`, `26-27`), `next_serial` from 1 to 1,000,000.
+**`tax_invoice_series`**: one counter row per prefix and financial year (`FY`, `26-27`), `next_serial` from 1 to 1,000,000.
 Staff connection only.
 
 **`tax_invoices`**: one row per invoice, insert only (no role may update or delete one). It holds:
 
-- the number in parts (prefix, financial year, serial) and whole (`FF/26-27/000147`), unique, at most 16 characters, the
+- the number in parts (prefix, financial year, serial) and whole (`FY/26-27/000147`), unique, at most 16 characters, the
   database checking that the parts and the whole agree and that the financial year matches the issue date;
 - `issued_on` (the Indian date of issue) and, from 0123, `paid_on` (the Indian date of the payment, never after
   `issued_on`);
@@ -147,7 +147,7 @@ holds invoices).
 
 ## Numbering and the financial year
 
-- Format `FF/<yy-yy>/<6 digits>`: `FF/26-27/000001`. One consecutive series per financial year (1 April to 31 March, in
+- Format `FY/yy-yy>/<6 digits>`: `FY/26-27/000001`. One consecutive series per financial year (1 April to 31 March, in
   Indian time). The first invoice issued at or after midnight IST on 1 April starts the new year's series at 1.
 - The serial comes from the counter row, updated inside the transaction that issues the invoice. A rolled-back
   transaction gives its number back, so the series never has a gap (a database sequence would skip).
@@ -157,7 +157,7 @@ holds invoices).
 - The year is decided by the issue date. A missing invoice issued by staff on 2 April for a payment on 31 March belongs to
   the new year and is dated 2 April; its Payment block says the payment was made on 31 March. An invoice is never
   backdated.
-- The first number is `FF/26-27/000001` unless the CA asks to continue a manual series (Gate 3).
+- The first number is `FY/26-27/000001` unless the CA asks to continue a manual series (Gate 3).
 
 ## Tax rules
 
@@ -175,7 +175,7 @@ holds invoices).
   taxable value. A note names the coupon ("Coupon GAURAV applied, 20% off") only for the part of the discount that is
   the coupon's own, and its percentage only when it is exactly what that percentage of this price comes to; a stay offer
   reads "Stay offer applied".
-- **Line wording**: "Firstfold Premium plan", detail "Monthly subscription, 09 Oct to 08 Nov 2026" (or "Subscription,
+- **Line wording**: "Fynix Premium plan", detail "Monthly subscription, 09 Oct to 08 Nov 2026" (or "Subscription,
   ..." for a first payment covering more than a month). Charges print their own description, quantity and rate.
 
 ## Which payments get an invoice, and failures
@@ -208,12 +208,12 @@ and states the real payment date.
 
 ## The PDF
 
-- A4, one page per invoice in every case Firstfold issues today (one line). Margins 13 mm top, 14 mm sides, 11 mm
+- A4, one page per invoice in every case Fynix issues today (one line). Margins 13 mm top, 14 mm sides, 11 mm
   bottom; a 74 mm right-hand column shared by Amount paid, Billed to and the totals. Positions are the template's CSS
   converted to points and checked against the samples.
 - Top to bottom: letterhead (wordmark, "TAX INVOICE", "ORIGINAL FOR RECIPIENT"); facts (invoice number, invoice date,
   place of supply as "Maharashtra (27)"; Amount paid with a PAID mark, the total, and how and when it was paid); Supplier
-  (legal name, "Trading as Firstfold", registered office, GSTIN, CIN, email and phone) and Billed to (legal name, address,
+  (legal name, "Trading as Fynix", registered office, GSTIN, CIN, email and phone) and Billed to (legal name, address,
   state, GSTIN); the lines (Description, SAC, Qty, Rate, Discount only when a line has one, Taxable value, GST, Tax);
   amount in words ("Indian Rupees Six Thousand Six Hundred Seven and Six Paise Only") and the Payment block (method, date
   paid, payment id); totals (Taxable value, CGST and SGST or IGST, Round off when not zero, Invoice total); the
@@ -236,7 +236,7 @@ and states the real payment date.
   comma. The billing details form does the same before it validates, so a name typed on a phone keyboard with a curly
   apostrophe is accepted and saved with a straight one. Letters of other scripts (Devanagari, accented letters) are
   not touched, so they still hold the invoice.
-- **Links**: the supplier's email, the footer's email (mailto) and firstfold.io are clickable.
+- **Links**: the supplier's email, the footer's email (mailto) and fynix.digital are clickable.
 - **Declaration** (Gate 5): "Tax is not payable on reverse charge." "The subscription renews monthly until cancelled. A
   refund is issued against a credit note that quotes this invoice number." "This is a computer generated invoice and
   does not need a signature."
@@ -284,7 +284,7 @@ and states the real payment date.
 1. **SAC**: 998361, given by the owner's CA. Settled.
 2. **Rounding**: tax to the paisa, a Round off row only for the one-paisa CGST/SGST case, total not rounded to the rupee.
    Acceptable?
-3. **First number**: start at `FF/26-27/000001`, or continue an existing manual series?
+3. **First number**: start at `FY/26-27/000001`, or continue an existing manual series?
 4. **Past payments**: keep receipts for payments before launch, or backfill invoices?
 5. **Declaration and signature**: is "computer generated, does not need a signature" enough for Rule 46(q) on an
    invoice that is not an e-invoice, or is a digital signature or the authorised signatory's name needed? Is the reverse
@@ -300,7 +300,7 @@ Against what the PDF prints. "Confirm with CA" marks a point we believe is met b
 | Rule 46 | Requirement | Where it is met | Status |
 |---|---|---|---|
 | (a) | Supplier's name, address and GSTIN | Supplier block: legal name, trade name, registered office, GSTIN | Met |
-| (b) | Consecutive serial number, unique per financial year, at most 16 characters | `FF/26-27/000001`, counter under lock, checked in the database | Met |
+| (b) | Consecutive serial number, unique per financial year, at most 16 characters | `FY/26-27/000001`, counter under lock, checked in the database | Met |
 | (c) | Date of issue | Invoice date (the day issued, never backdated) | Met |
 | (d) | Recipient's name, address and GSTIN, if registered | Billed to block | Met |
 | (e) | Unregistered recipient, taxable value ₹50,000 or more: name, address, state name and code | Name and address when known; the state's code prints in Place of supply | Gap when no address is on record (Gate 7) |
@@ -323,7 +323,7 @@ details, and UTGST.
 
 ## Testing
 
-- **Pure rules** (`@firstfold/billing`, Vitest): state codes, GSTIN check characters (published vectors and our own
+- **Pure rules** (`@fynix/billing`, Vitest): state codes, GSTIN check characters (published vectors and our own
   GSTIN), the tax split (equal halves, the one-paisa case), numbering across the April turn in IST and the 16 character
   limit, amount in words in lakh and crore, the invoice builder (all three bases, round off, refusals).
 - **Database** (integration, real Postgres): numbering without gaps and under concurrency, every check constraint,

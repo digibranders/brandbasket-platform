@@ -9,16 +9,6 @@ export type Surface = "app";
 export interface SurfaceOrigins {
   readonly app: string;
   /**
-   * An optional second host for the same dashboard, sold under another brand (LOCAL_BUSINESS_ORIGIN, Fynix Digital's
-   * localbusiness host). It answers exactly what `app` answers; only the brand differs (see brandForHost).
-   */
-  readonly localBusiness?: string;
-  /**
-   * The brand every host is sold under unless it is the `localBusiness` one: Firstfold when unset. A deployment that
-   * serves one brand only (Fynix's own server, PLATFORM_BRAND=fynix) sets it, so its app host needs no second name.
-   */
-  readonly defaultBrand?: BrandId;
-  /**
    * Local development only: the dashboard also answers on any local address (`localhost`, `<anything>.localhost`,
    * `127.x.x.x`), whatever its port, so a link to /join or /login works from whichever one a developer has open.
    * Never on in production (see allowsAnyLocalHost), where only the app's own host is answered.
@@ -72,7 +62,6 @@ export function resolveSurface(rawHost: string | null, origins: SurfaceOrigins):
   const host = normaliseHost(rawHost);
   if (host === null) return null;
   if (host === hostOfOrigin(origins.app)) return "app";
-  if (origins.localBusiness !== undefined && host === hostOfOrigin(origins.localBusiness)) return "app";
   if (origins.anyLocalHost === true && isLocalHost(host)) return "app";
   // Customer websites are not served by this app (they are separate static projects), so any other host,
   // including the marketing website's, is not ours to answer.
@@ -86,7 +75,7 @@ export function resolveSurface(rawHost: string | null, origins: SurfaceOrigins):
  */
 export function isAppOrigin(origin: string | null, rawHost: string | null, origins: SurfaceOrigins): boolean {
   if (origin === null) return false;
-  if (origin === origins.app || origin === origins.localBusiness) return true;
+  if (origin === origins.app) return true;
   if (origins.anyLocalHost !== true || rawHost === null) return false;
   let originHost: string | null;
   try {
@@ -97,38 +86,17 @@ export function isAppOrigin(origin: string | null, rawHost: string | null, origi
   return originHost !== null && originHost === normaliseHost(rawHost) && isLocalHost(originHost);
 }
 
-/** Which brand a dashboard host is sold under. */
-export type BrandId = "firstfold" | "fynix";
-
-/** Under `next dev`, any `localbusiness.<anything>.localhost` address is the Fynix one, so no extra setting is needed. */
-const LOCAL_BUSINESS_DEV_PREFIX = "localbusiness.";
-
 /**
- * The brand a request's host is sold under: Fynix on the configured LOCAL_BUSINESS_ORIGIN host (and, under `next dev`,
- * on any local `localbusiness.*` address), and everywhere else the deployment's default brand (PLATFORM_BRAND), which is
- * Firstfold unless set, so a host this does not know changes nothing.
- */
-export function brandForHost(rawHost: string | null, origins: SurfaceOrigins | null): BrandId {
-  if (origins === null) return "firstfold";
-  if (rawHost === null) return origins.defaultBrand ?? "firstfold";
-  const host = normaliseHost(rawHost);
-  if (host === null) return origins.defaultBrand ?? "firstfold";
-  if (origins.localBusiness !== undefined && host === hostOfOrigin(origins.localBusiness)) return "fynix";
-  if (origins.anyLocalHost === true && isLocalHost(host) && host.startsWith(LOCAL_BUSINESS_DEV_PREFIX)) return "fynix";
-  return origins.defaultBrand ?? "firstfold";
-}
-
-/**
- * The dashboard origin a request should send its user back to: the one they are on, so a link made for a Fynix visitor
- * lands on the Fynix host (where their session cookie is) and never on the Firstfold one. Anything not known is the
- * app origin, as before. Under `next dev` a `localbusiness.*` address that is not the configured one is used as it is.
+ * The dashboard origin a request should send its user back to: the one they are on, so a link made for a visitor lands
+ * where their session cookie is. Under `next dev` any local address is answered, and is used as it is; anything else
+ * is the app origin.
  */
 export function appOriginForHost(rawHost: string | null, origins: SurfaceOrigins): string {
   if (rawHost === null) return origins.app;
   const host = normaliseHost(rawHost);
   if (host === null) return origins.app;
-  if (origins.localBusiness !== undefined && host === hostOfOrigin(origins.localBusiness)) return origins.localBusiness;
-  if (brandForHost(host, origins) === "fynix") return `http://${host}`;
+  if (host === hostOfOrigin(origins.app)) return origins.app;
+  if (origins.anyLocalHost === true && isLocalHost(host)) return `http://${host}`;
   return origins.app;
 }
 
@@ -157,9 +125,6 @@ const ORIGIN_VARIABLES = {
   app: "APP_ORIGIN",
 } as const;
 
-/** Optional: unset means the Fynix host is off and nothing about routing changes. */
-export const LOCAL_BUSINESS_ORIGIN_VARIABLE = "LOCAL_BUSINESS_ORIGIN";
-
 function parseOrigin(name: string, value: string): string {
   try {
     return new URL(value).origin;
@@ -169,33 +134,7 @@ function parseOrigin(name: string, value: string): string {
 }
 
 /**
- * The Fynix dashboard's origin, or undefined when LOCAL_BUSINESS_ORIGIN is unset or blank. Throws when it is set but is
- * not an absolute URL, or is the app's own host (a host cannot be both brands).
- */
-export function readLocalBusinessOrigin(env: Readonly<Record<string, string | undefined>>): string | undefined {
-  const value = env[LOCAL_BUSINESS_ORIGIN_VARIABLE]?.trim() ?? "";
-  if (value === "") return undefined;
-  const origin = parseOrigin(LOCAL_BUSINESS_ORIGIN_VARIABLE, value);
-  const app = env[ORIGIN_VARIABLES.app]?.trim() ?? "";
-  if (app !== "" && hostOfOrigin(origin) === hostOfOrigin(parseOrigin(ORIGIN_VARIABLES.app, app))) {
-    throw new Error(`${LOCAL_BUSINESS_ORIGIN_VARIABLE} must be a different host from ${ORIGIN_VARIABLES.app}, received "${value}"`);
-  }
-  return origin;
-}
-
-/** Optional: the brand a deployment that serves one brand only sells under. Unset is Firstfold, as before. */
-export const PLATFORM_BRAND_VARIABLE = "PLATFORM_BRAND";
-
-/** The brand PLATFORM_BRAND names, or undefined when it is unset or blank. Throws on any other value, so a typo cannot quietly leave a Fynix server wearing Firstfold's name. */
-export function readDefaultBrand(env: Readonly<Record<string, string | undefined>>): BrandId | undefined {
-  const value = env[PLATFORM_BRAND_VARIABLE]?.trim().toLowerCase() ?? "";
-  if (value === "") return undefined;
-  if (value === "firstfold" || value === "fynix") return value;
-  throw new Error(`${PLATFORM_BRAND_VARIABLE} must be "firstfold" or "fynix", received "${value}"`);
-}
-
-/**
- * Null when routing is not configured (both variables absent), in which case every request 404s. Throws when only
+ * Null when routing is not configured (APP_ORIGIN absent), in which case every request 404s. Throws when only
  * one is set, when a value is not an absolute URL, or when both resolve to the same host. Under `next dev` the
  * dashboard also answers on any local address (see SurfaceOrigins.anyLocalHost).
  */
@@ -208,12 +147,8 @@ export function readOriginsFromEnv(env: Readonly<Record<string, string | undefin
   const missing = surfaces.filter((surface) => raw[surface] === "");
   if (missing.length === surfaces.length) return null;
 
-  const localBusiness = readLocalBusinessOrigin(env);
-  const defaultBrand = readDefaultBrand(env);
   const origins: SurfaceOrigins = {
     app: parseOrigin(ORIGIN_VARIABLES.app, raw.app),
-    ...(localBusiness === undefined ? {} : { localBusiness }),
-    ...(defaultBrand === undefined ? {} : { defaultBrand }),
     ...(allowsAnyLocalHost(env) ? { anyLocalHost: true } : {}),
   };
 

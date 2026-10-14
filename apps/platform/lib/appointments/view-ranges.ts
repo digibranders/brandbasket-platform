@@ -2,13 +2,13 @@
  * Pure date maths for the appointments page's Month view (and Custom, which shares its grouped-list rendering):
  * a month's own first/last day, stepping a month back or forward, and grouping a date-ordered list of rows by the
  * calendar date they fall on. Day maths (previous/next/today) needs nothing of its own -- `addDays` from
- * @firstfold/shared's calendar/local-date.ts already covers it.
+ * @fynix/shared's calendar/local-date.ts already covers it.
  */
 const MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 const MIN_YEAR = 2000;
 const MAX_YEAR = 2100;
 
-/** True for a real "YYYY-MM" month, year limited to 2000-2100 the same way @firstfold/shared's isIsoDate limits a
+/** True for a real "YYYY-MM" month, year limited to 2000-2100 the same way @fynix/shared's isIsoDate limits a
  * calendar date -- outside that range is a typo to fall back from, not a valid (if unlikely) month. */
 export function isIsoMonth(value: string): boolean {
   const match = MONTH_PATTERN.exec(value);

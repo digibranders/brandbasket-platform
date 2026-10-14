@@ -1,9 +1,9 @@
-import { listAddOnsToContact, listClients, listLeads, listPaymentsNeedingAttention } from "@firstfold/db";
+import { listAddOnsToContact, listClients, listLeads, listPaymentsNeedingAttention } from "@fynix/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { countPayingClients } from "@firstfold/shared/lib/billing/client-payment";
-import { firstName } from "@firstfold/shared/lib/names";
+import { countPayingClients } from "@fynix/shared/lib/billing/client-payment";
+import { firstName } from "@fynix/shared/lib/names";
 import { FocusMode, type FocusItem } from "@/components/console/focus-mode";
 import { JourneyMap, stageHref } from "@/components/console/journey-map";
 import { JourneyRows } from "@/components/console/journey-rows";

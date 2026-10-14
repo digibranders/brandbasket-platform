@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import type { AffiliateCodeUsage, AffiliateEarningStatus, ListedReferralCode } from "@firstfold/db";
-import { describeAffiliateReward, describeRewardCycles, describeReferralDiscount } from "@firstfold/shared/lib/billing/referral-value";
-import { cn } from "@firstfold/shared/lib/cn";
-import { formatMoney } from "@firstfold/shared/lib/money";
-import { LocalDate } from "@firstfold/shared/ui/panel/local-date-time";
+import type { AffiliateCodeUsage, AffiliateEarningStatus, ListedReferralCode } from "@fynix/db";
+import { describeAffiliateReward, describeRewardCycles, describeReferralDiscount } from "@fynix/shared/lib/billing/referral-value";
+import { cn } from "@fynix/shared/lib/cn";
+import { formatMoney } from "@fynix/shared/lib/money";
+import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
 import { CopyCodeButton } from "@/components/panel/affiliate/copy-code-button";
 import { StatusDot, type StatusTone } from "@/components/panel/affiliate/status-dot";
 import {

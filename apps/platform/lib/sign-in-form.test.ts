@@ -1,8 +1,8 @@
 import { createElement, useActionState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { initialSignInState, type SignInFormState } from "@firstfold/shared/lib/sign-in-form";
-import { SignInForm } from "@firstfold/shared/ui/panel/sign-in-form";
+import { initialSignInState, type SignInFormState } from "@fynix/shared/lib/sign-in-form";
+import { SignInForm } from "@fynix/shared/ui/panel/sign-in-form";
 
 vi.mock("react", async (importOriginal) => ({
   ...await importOriginal<typeof import("react")>(),

@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import type { SessionUser } from "@firstfold/shared/lib/access";
+import type { SessionUser } from "@fynix/shared/lib/access";
 import { visitorHandoffResponseSchema } from "@/lib/directory-api";
 import { handleVisitorHandoffRequest, type VisitorHandoffDeps } from "./visitor-handoff-request";
 
-const WEBSITE = "https://firstfold.io";
+const WEBSITE = "https://fynix.digital";
 const NOW = new Date("2026-10-13T10:00:00.000Z");
 const SESSION = { token: "visitor-token", name: "Anita Rao", phoneHint: "•••• 3210" };
 
-const PHONE_USER: SessionUser = { id: "u1", email: "919820011223@phone.firstfold.invalid", name: "Anita Rao", emailConfirmed: false, phone: "+919820013210" };
+const PHONE_USER: SessionUser = { id: "u1", email: "919820011223@phone.fynix.invalid", name: "Anita Rao", emailConfirmed: false, phone: "+919820013210" };
 const EMAIL_USER: SessionUser = { id: "u2", email: "anita@example.test", name: "Anita Rao", emailConfirmed: true, phone: null };
 
 function deps(overrides: Partial<VisitorHandoffDeps> = {}): VisitorHandoffDeps {
@@ -21,7 +21,7 @@ function deps(overrides: Partial<VisitorHandoffDeps> = {}): VisitorHandoffDeps {
 }
 
 function request(method = "GET", headers: Record<string, string> = { origin: WEBSITE }): Request {
-  return new Request("https://app.firstfold.io/api/directory-account/visitor", { method, headers });
+  return new Request("https://app.fynix.digital/api/directory-account/visitor", { method, headers });
 }
 
 describe("handleVisitorHandoffRequest", () => {

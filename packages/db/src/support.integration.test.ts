@@ -66,7 +66,7 @@ describe("support ownership and lifecycle under real database roles", () => {
     await expect(createSupportTicket(dbs.app.db, { ...input, businessId })).rejects.toThrow(/business/i);
     expect(await captureErrorText(withUserScope(dbs.app.db, USER, (tx) => tx.insert(supportTickets).values({
       requesterUserId: USER, businessId, category: "bug", subject: input.subject, submissionKey: input.submissionKey,
-      submissionHash: "a".repeat(64), displayRef: "FF-TEST-1",
+      submissionHash: "a".repeat(64), displayRef: "FY-TEST-1",
     })))).toMatch(/business|row-level security/i);
   });
   it("hides internal messages and their attachments, while counting only public staff replies", async () => {

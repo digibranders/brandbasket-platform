@@ -7,13 +7,13 @@ import {
   type Plan,
   type PlanUpgrade,
   type RateLimitRule,
-} from "@firstfold/db";
+} from "@fynix/db";
 import {
   assessUpgrade,
   readAssessmentInput,
   startUpgrade,
   type UpgradeAssessment,
-} from "@firstfold/shared/server/plan-upgrade";
+} from "@fynix/shared/server/plan-upgrade";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
@@ -22,7 +22,7 @@ import { finishUpgrade } from "./plan-upgrade-finish";
 
 /*
  * Moving up from Care to Premium, for the signed-in customer (docs/superpowers/specs/2026-10-08-care-to-premium-upgrade-
- * design.md). The rules and the money are in @firstfold/shared/server/plan-upgrade; this reads and acts for one customer,
+ * design.md). The rules and the money are in @fynix/shared/server/plan-upgrade; this reads and acts for one customer,
  * and finishes the move after their payment.
  */
 

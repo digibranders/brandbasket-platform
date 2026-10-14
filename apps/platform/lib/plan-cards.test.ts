@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { Plan } from "@firstfold/db";
-import { BRANDS } from "./brand";
+import type { Plan } from "@fynix/db";
+import { BRAND } from "./brand";
+import { LISTING_BRAND } from "./testing/listing-brand";
 import { planCardBase, planCardPrice, PLAN_NAMES } from "./plan-cards";
 
 const plan = { recurringAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as Plan;
@@ -31,12 +32,12 @@ describe("planCardBase", () => {
 
 describe("Premium's pitch under Fynix", () => {
   it("does not mention a listing, which Fynix does not sell", () => {
-    const fynix = planCardBase("premium", null, BRANDS.fynix);
+    const fynix = planCardBase("premium", null, BRAND);
     expect(fynix.pitch).not.toMatch(/listing/i);
     expect(fynix.list.join(" ")).not.toMatch(/listing/i);
   });
 
-  it("keeps Firstfold's pitch for Firstfold", () => {
-    expect(planCardBase("premium", null, BRANDS.firstfold).pitch).toMatch(/listing/i);
+  it("keeps the listing in the pitch for a brand that sells it", () => {
+    expect(planCardBase("premium", null, LISTING_BRAND).pitch).toMatch(/listing/i);
   });
 });

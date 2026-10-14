@@ -1,4 +1,4 @@
-import type { Plan } from "@firstfold/db";
+import type { Plan } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { publicPrices } from "./public-prices";
 

@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { cn } from "@firstfold/shared/lib/cn";
+import { cn } from "@fynix/shared/lib/cn";
 
 /**
  * A dot and a short word. The dot is only a reinforcement: every state is also written, so nothing depends on colour.

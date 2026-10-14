@@ -18,6 +18,8 @@ beforeEach(() => {
   vi.stubEnv("NODE_ENV", "production");
   vi.stubEnv("TURNSTILE_SITE_KEY", "site-key");
   vi.stubEnv("TURNSTILE_SECRET", "secret");
+  vi.stubEnv("APP_ORIGIN", "https://app.fynix.digital");
+  vi.stubEnv("ADMIN_ORIGIN", "https://console.fynix.digital");
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -32,7 +34,7 @@ describe("checkHuman", () => {
   });
 
   it("passes a form whose token Cloudflare confirms for that form", async () => {
-    const fetchFn = siteverify({ success: true, action: "sign_in", hostname: "app.firstfold.io" });
+    const fetchFn = siteverify({ success: true, action: "sign_in", hostname: "app.fynix.digital" });
     expect(await checkHuman(form("tok"), "sign_in", fetchFn)).toEqual({ ok: true });
     const sent = new URLSearchParams(String((vi.mocked(fetchFn).mock.calls[0]?.[1] as RequestInit).body));
     expect(sent.get("remoteip")).toBe("203.0.113.9");
@@ -44,7 +46,7 @@ describe("checkHuman", () => {
   });
 
   it("refuses a token solved for another form, with a message that points the person at a reload", async () => {
-    const fetchFn = siteverify({ success: true, action: "join", hostname: "app.firstfold.io" });
+    const fetchFn = siteverify({ success: true, action: "join", hostname: "app.fynix.digital" });
     expect(await checkHuman(form("tok"), "sign_in", fetchFn)).toEqual({ ok: false, message: expect.stringContaining("Reload the page") });
   });
 

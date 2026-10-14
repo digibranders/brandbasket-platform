@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { cn } from "@firstfold/shared/lib/cn";
-import { CrownIcon, TickIcon } from "@firstfold/shared/ui/icons";
-import { Button } from "@firstfold/shared/ui/panel/button";
+import { cn } from "@fynix/shared/lib/cn";
+import { CrownIcon, TickIcon } from "@fynix/shared/ui/icons";
+import { Button } from "@fynix/shared/ui/panel/button";
 import type { MembershipTier } from "@/lib/membership";
 import type { PaymentSummary } from "@/lib/upgrade-summary";
 

@@ -8,7 +8,7 @@ export {
   type EmailMessage,
   type EmailOutboxCopy,
 } from "./message";
-export { emailBrandId, emailBrandName, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress, type EmailBrandId } from "./brand";
+export { emailBrandName, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress } from "./brand";
 export { createOutboxTransport, OUTBOX_TRANSPORT_NAME, type EmailTransport, type OutboxOptions } from "./outbox";
 export { confirmEmailEmail, type ConfirmEmailInput } from "./templates/confirm-email";
 export { leadReceivedEmail, type LeadReceivedInput } from "./templates/lead-received";

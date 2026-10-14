@@ -6,7 +6,7 @@
  * Every date string in and out is the business's own local calendar date (YYYY-MM-DD), the same convention as
  * lib/appointments/date-format.ts: the page reads "today" and the current year from `localDateIn(timeZone, now)`.
  */
-import type { AppointmentRow, PatientFilter } from "@firstfold/db";
+import type { AppointmentRow, PatientFilter } from "@fynix/db";
 
 export const PATIENT_FILTERS: readonly PatientFilter[] = ["all", "upcoming", "new", "lapsed"];
 

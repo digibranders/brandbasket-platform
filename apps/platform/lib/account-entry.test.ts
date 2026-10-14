@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { BRANDS } from "./brand";
+import { BRAND } from "./brand";
+import { LISTING_BRAND } from "./testing/listing-brand";
 import { CREATE_ACCOUNT_HREF, entryHrefForJoin, entryHrefForPlan, readEntryRequest as readFor } from "./account-entry";
 
 type Params = Parameters<typeof readFor>[0];
 
-/** Firstfold's reading, which is the one every test below this line was written against. */
-const readEntryRequest = (params: Params): ReturnType<typeof readFor> => readFor(params, BRANDS.firstfold);
+/** The reading under a brand that sells the free listing, which is the one the tests until the Fynix block were written against. */
+const readEntryRequest = (params: Params): ReturnType<typeof readFor> => readFor(params, LISTING_BRAND);
 
 const NO_CLAIM = { listing: "", id: "", name: "", signature: "" };
 
@@ -99,7 +100,7 @@ describe("entryHrefForJoin", () => {
 });
 
 describe("readEntryRequest under Fynix, which sells Care and Premium only", () => {
-  const fynix = (params: Params): ReturnType<typeof readFor> => readFor(params, BRANDS.fynix);
+  const fynix = (params: Params): ReturnType<typeof readFor> => readFor(params, BRAND);
 
   it("opens Sign in by default, and Create account with the plan the link names", () => {
     expect(fynix({})).toEqual({ view: "sign-in", choice: null, preselected: "care", claim: NO_CLAIM });

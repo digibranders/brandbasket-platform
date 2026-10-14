@@ -1,16 +1,15 @@
 import "server-only";
-import type { BusinessProfile, MediaAsset, PrimaryDomain, ProjectBrief, Service } from "@firstfold/db";
-import { brandText } from "@/lib/brand";
-import { requestBrand } from "@/lib/server/request-brand";
+import type { BusinessProfile, MediaAsset, PrimaryDomain, ProjectBrief, Service } from "@fynix/db";
+
 import Link from "next/link";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import type { ReactElement, ReactNode } from "react";
 import { MediaThumbnail } from "@/components/panel/media-thumbnail";
-import { WEEKDAYS } from "@firstfold/shared/lib/onboarding/business-fields";
-import { isTemporarySubdomain } from "@firstfold/shared/lib/onboarding/domain-form";
-import { describeHours, type OpeningHours } from "@firstfold/shared/lib/onboarding/hours";
-import { safeExternalHref } from "@firstfold/shared/lib/safe-link";
-import { displayPhoneText } from "@firstfold/shared/server/phone-display";
+import { WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
+import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
+import { describeHours, type OpeningHours } from "@fynix/shared/lib/onboarding/hours";
+import { safeExternalHref } from "@fynix/shared/lib/safe-link";
+import { displayPhoneText } from "@fynix/shared/server/phone-display";
 
 const NOT_GIVEN = <span className="text-ink-soft">Not given</span>;
 
@@ -212,7 +211,6 @@ export function BrandSummary({
 }
 
 export async function DomainSummary({ domain }: { readonly domain: PrimaryDomain | null }): Promise<ReactElement> {
-  const brand = await requestBrand();
   const temporary = domain !== null && isTemporarySubdomain(domain.hostname);
   return (
     <dl className="divide-y divide-line/70">
@@ -230,7 +228,7 @@ export async function DomainSummary({ domain }: { readonly domain: PrimaryDomain
         {domain === null
           ? NOT_GIVEN
           : temporary
-            ? brandText("A Firstfold address, not yours to change", brand)
+            ? "A temporary address, not yours to change"
             : domain.ownerConfirmedAt === null
               ? "Not confirmed yet"
               : "Confirmed"}

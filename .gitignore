@@ -53,3 +53,7 @@ TEST-LOGINS.local.md
 
 # Local build settings for scripts/server/deploy.sh (public values only, but local to the operator)
 deploy/build.env
+
+# E2E run artefacts (local only)
+e2e-screens/
+E2E-REPORT.local.md

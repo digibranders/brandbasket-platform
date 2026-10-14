@@ -1,5 +1,5 @@
 import "server-only";
-import { discountCentsFor, isChargeableDiscount, normaliseReferralCode } from "@firstfold/billing";
+import { discountCentsFor, isChargeableDiscount, normaliseReferralCode } from "@fynix/billing";
 import {
   consumeRateLimit,
   findAffiliateById,
@@ -13,8 +13,8 @@ import {
   type RateLimitRule,
   type ReferralCode,
   type ReferralDiscount,
-} from "@firstfold/db";
-import type { SessionUser } from "@firstfold/shared/lib/access";
+} from "@fynix/db";
+import type { SessionUser } from "@fynix/shared/lib/access";
 import type { StepProblem } from "./onboarding";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";

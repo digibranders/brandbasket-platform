@@ -5,7 +5,7 @@ import {
   type Database,
   type MediaAsset,
   type ScopedTransaction,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TenantContext } from "../lib/access";
 import {
@@ -20,7 +20,7 @@ import type { MediaStorage } from "./media-storage";
 // The database is a test double: row-level security itself is proven in packages/db's integration tests. What is
 // checked here is that the lookup goes through the tenant scope, and what the response does with each outcome.
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", () => ({ findMediaAsset: vi.fn(), findMediaForStaff: vi.fn(), withTenantScope: vi.fn() }));
+vi.mock("@fynix/db", () => ({ findMediaAsset: vi.fn(), findMediaForStaff: vi.fn(), withTenantScope: vi.fn() }));
 
 const mockedFind = vi.mocked(findMediaAsset);
 const mockedStaffFind = vi.mocked(findMediaForStaff);

@@ -1,7 +1,7 @@
-import type { BookingContext, PractitionerScheduleRow, SiteFacts } from "@firstfold/db";
-import { localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import { activeAnnouncement } from "@firstfold/shared/lib/business-facts/announcement";
-import { upcomingClosures } from "@firstfold/shared/lib/business-facts/closures";
+import type { BookingContext, PractitionerScheduleRow, SiteFacts } from "@fynix/db";
+import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { activeAnnouncement } from "@fynix/shared/lib/business-facts/announcement";
+import { upcomingClosures } from "@fynix/shared/lib/business-facts/closures";
 import type { SiteInfo, SiteInfoBooking, SiteInfoClosure, SiteInfoHours, SiteInfoPractitioner } from "@/lib/site-info";
 
 export interface BuildSiteInfoInput {

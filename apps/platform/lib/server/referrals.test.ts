@@ -10,7 +10,7 @@ import {
   type Database,
   type Plan,
   type ReferralCode,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
@@ -26,9 +26,9 @@ import {
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
-vi.mock("@firstfold/db", async () => ({
+vi.mock("@fynix/db", async () => ({
   // The real placeholder rule, so the self-referral check is tested against it.
-  isPhoneAccountEmail: (await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db")).isPhoneAccountEmail,
+  isPhoneAccountEmail: (await vi.importActual<typeof import("@fynix/db")>("@fynix/db")).isPhoneAccountEmail,
   consumeRateLimit: vi.fn(),
   findAffiliateById: vi.fn(),
   findBillingState: vi.fn(),
@@ -43,7 +43,7 @@ const NOW = new Date("2026-09-22T12:00:00.000Z");
 const PLAN = {
   id: "plan-inr",
   code: "care-inr",
-  name: "Firstfold care plan",
+  name: "Fynix care plan",
   tier: "premium",
   currency: "INR",
   initialAmountCents: 350_000,
@@ -80,7 +80,7 @@ function state(overrides: Partial<BillingState> = {}): BillingState {
 }
 
 const customer = {
-  user: { phone: "+919820099101", email: "919820099101@phone.firstfold.invalid" },
+  user: { phone: "+919820099101", email: "919820099101@phone.fynix.invalid" },
   tenant: { businessId: BUSINESS_ID },
 } as unknown as GrantedCustomer;
 
@@ -251,7 +251,7 @@ describe("isOwnAffiliateCode", () => {
   const AFFILIATE = { phone: "+919820011223", email: "priya@example.com" };
 
   it("matches the affiliate's own proven phone number", () => {
-    expect(isOwnAffiliateCode(AFFILIATE, { phone: "+919820011223", email: "919820011223@phone.firstfold.invalid" })).toBe(true);
+    expect(isOwnAffiliateCode(AFFILIATE, { phone: "+919820011223", email: "919820011223@phone.fynix.invalid" })).toBe(true);
   });
 
   it("matches the affiliate's email whatever its case", () => {
@@ -264,9 +264,9 @@ describe("isOwnAffiliateCode", () => {
 
   it("never matches on a phone account's placeholder email", () => {
     expect(
-      isOwnAffiliateCode({ phone: null, email: "919820099101@phone.firstfold.invalid" }, {
+      isOwnAffiliateCode({ phone: null, email: "919820099101@phone.fynix.invalid" }, {
         phone: "+919820099101",
-        email: "919820099101@phone.firstfold.invalid",
+        email: "919820099101@phone.fynix.invalid",
       }),
     ).toBe(false);
   });

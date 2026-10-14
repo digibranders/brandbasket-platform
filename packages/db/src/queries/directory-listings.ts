@@ -21,7 +21,7 @@ import { currentBusinessId, hasPostgresCode, postgresConstraintOf, UNIQUE_VIOLAT
 type Runner = Database | ScopedTransaction;
 
 /*
- * Firstfold Local listings. Staff write the placement (saveListingPlacement, staff connection); the customer reads
+ * the local directory listings. Staff write the placement (saveListingPlacement, staff connection); the customer reads
  * both rows and updates only the content (findOwnListing / updateOwnListingContent, tenant scope, business id from
  * currentBusinessId(tx)); the feed route reads every live listing (listLiveDirectoryListings, staff connection).
  *
@@ -131,7 +131,7 @@ const LISTING_PLACE_INDEX = "directory_listings_place_id_idx";
 
 type ListingAddressParts = Pick<ListingPlacementFields, "categorySlug" | "stateCode" | "citySlug" | "areaSlug" | "slug">;
 
-/** The listing's address on Firstfold Local: /in/<category>/<state>/<city>/<area>/<slug>. */
+/** The listing's address on the local directory: /in/<category>/<state>/<city>/<area>/<slug>. */
 export function listingPath(placement: ListingAddressParts): string {
   const { categorySlug, stateCode, citySlug, areaSlug, slug } = placement;
   return `/in/${categorySlug}/${stateCode}/${citySlug}/${areaSlug}/${slug}`;

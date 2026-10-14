@@ -14,11 +14,11 @@ code on `/premium`.
 `packages/shared/src/server/billing-activation.ts`, the one place every first payment and renewal is recorded, in the
 same transaction. Checkout asks `ensureDiscountPlan` for a discounted Razorpay plan id.
 
-**Tech stack:** Next.js 16, Drizzle + Postgres 14 (RLS roles `webfold_app` / `webfold_staff`), Vitest (unit +
+**Tech stack:** Next.js 16, Drizzle + Postgres 14 (RLS roles `fynix_app` / `fynix_staff`), Vitest (unit +
 integration), pnpm workspace.
 
-**Local environment:** worktree `affiliates-coupons`, DBs `webfold_aff` (copy of `webfold_devlatest`, migrated),
-`webfold_aff_test`, `webfold_payload_aff`. Nothing is committed ([[no-commits-without-ask]]): every "commit" step in
+**Local environment:** worktree `affiliates-coupons`, DBs `fynix_platform_branch` (copy of `fynix_platform_branch`, migrated),
+`fynix_platform_branch`, `fynix_platform_payload_aff`. Nothing is committed ([[no-commits-without-ask]]): every "commit" step in
 this plan is a checkpoint (`pnpm typecheck` + the task's tests), not a git commit.
 
 ## Deviations from the spec, decided while planning

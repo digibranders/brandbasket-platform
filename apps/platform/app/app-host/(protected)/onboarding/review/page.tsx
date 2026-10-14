@@ -4,7 +4,7 @@ import { requestBrand } from "@/lib/server/request-brand";
 import { EmailUs } from "@/components/panel/email-us";
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
-import { TickIcon } from "@firstfold/shared/ui/icons";
+import { TickIcon } from "@fynix/shared/ui/icons";
 import {
   BrandSummary,
   BusinessSummary,
@@ -22,20 +22,20 @@ import {
   REACTIVATE_HREF,
   paymentStep,
   type PaymentStep,
-} from "@firstfold/shared/lib/billing/payment-step";
-import { paymentReturnView, readPaymentReturn } from "@firstfold/shared/lib/billing/payment-return";
-import { cn } from "@firstfold/shared/lib/cn";
-import { firstMissing, onboardingChecklist, type ChecklistItem } from "@firstfold/shared/lib/onboarding/checklist";
+} from "@fynix/shared/lib/billing/payment-step";
+import { paymentReturnView, readPaymentReturn } from "@fynix/shared/lib/billing/payment-return";
+import { cn } from "@fynix/shared/lib/cn";
+import { firstMissing, onboardingChecklist, type ChecklistItem } from "@fynix/shared/lib/onboarding/checklist";
 import { checklistInputFrom } from "@/lib/onboarding/snapshot";
-import { onboardingStepHref, type OnboardingStepKey } from "@firstfold/shared/lib/onboarding/steps";
+import { onboardingStepHref, type OnboardingStepKey } from "@fynix/shared/lib/onboarding/steps";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import { loadBillingDetailsView } from "@/lib/server/billing-details";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
 import { ReferralCodeForm } from "@/components/panel/referral-code-form";
 import { findLapsedAppliedCode, resolveAppliedDiscount } from "@/lib/server/referrals";
-import type { PlanDiscount } from "@firstfold/shared/lib/billing/terms";
-import type { MoneyCurrency } from "@firstfold/shared/lib/money";
+import type { PlanDiscount } from "@fynix/shared/lib/billing/terms";
+import type { MoneyCurrency } from "@fynix/shared/lib/money";
 import { applyReferralCode, removeReferralCode, startCheckout, submitOnboarding } from "./actions";
 
 export const metadata: Metadata = { title: "Check and send" };

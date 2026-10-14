@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@firstfold/shared/styles/theme.css";
+@import "@fynix/shared/styles/theme.css";
 
 /* Shared components use Tailwind classes too, so their source is scanned alongside this app. Tailwind resolves
    this relative to the stylesheet, not to the app importing it, and scans nothing at all if it does not exist. */

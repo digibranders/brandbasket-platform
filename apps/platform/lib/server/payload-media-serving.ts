@@ -37,7 +37,11 @@ interface RawMediaDoc {
  * lands with `disableLocalStorage: true`, this function needs to change to fetch bytes from that adapter's store
  * instead of the filesystem; don't assume this keeps working unmodified once that decision lands.
  */
-export async function servePayloadMediaFile(mediaId: string, allowedBusinessId: string | null): Promise<Response> {
+export async function servePayloadMediaFile(
+  mediaId: string,
+  allowedBusinessId: string | null,
+  options: { readonly publicContent?: boolean } = {},
+): Promise<Response> {
   const payload = await getPayload({ config });
 
   let doc: RawMediaDoc;
@@ -72,17 +76,25 @@ export async function servePayloadMediaFile(mediaId: string, allowedBusinessId: 
 
   const mimeType = typeof doc.mimeType === "string" && doc.mimeType.length > 0 ? doc.mimeType : "application/octet-stream";
 
+  // `publicContent` is for an image already published on a client's website (the site API's media route), which any
+  // origin must be able to embed and which a shared cache may keep for a short while. Everything else stays private.
+  const sharing: Record<string, string> = options.publicContent === true
+    ? { "Cache-Control": "public, max-age=300", "Cross-Origin-Resource-Policy": "cross-origin", "Access-Control-Allow-Origin": "*" }
+    : {
+        // Revalidates every time (no-cache, not no-store): the file itself never changes under a given id, but
+        // access can be withdrawn (a business could stop being able to see media that was never theirs), so a shared
+        // or browser cache must not serve this to a different viewer without asking again.
+        "Cache-Control": "private, no-cache",
+        "Cross-Origin-Resource-Policy": "same-origin",
+      };
+
   return new Response(new Uint8Array(bytes), {
     status: 200,
     headers: {
+      ...sharing,
       "Content-Type": mimeType,
       "Content-Length": String(bytes.byteLength),
-      // Revalidates every time (no-cache, not no-store): the file itself never changes under a given id, but
-      // access can be withdrawn (a business could stop being able to see media that was never theirs), so a shared
-      // or browser cache must not serve this to a different viewer without asking again.
-      "Cache-Control": "private, no-cache",
       "Content-Disposition": "inline",
-      "Cross-Origin-Resource-Policy": "same-origin",
       "X-Content-Type-Options": "nosniff",
       // Opened directly, the file can run nothing and load nothing — matches lib/server/media-serving.ts's
       // equivalent header for the old system's media route.

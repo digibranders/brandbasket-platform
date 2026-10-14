@@ -21,7 +21,7 @@ Ads bought by bidding, which run on the website, are a separate, larger piece of
 | Premium discount | 10% off for a Premium member, fixed at purchase. A later change of membership does not change the price. |
 | How many | Local SEO and Performance marketing can each be active once per business. Press releases can be bought any number of times. |
 | Billing date | Each subscription renews on its own purchase date (bought 12 Oct, renews 12 Nov). Not aligned with the main plan. |
-| Ad platform costs | Performance marketing's price is Firstfold's fee only. The customer pays Facebook, Google and the others directly. |
+| Ad platform costs | Performance marketing's price is Fynix Digital's fee only. The customer pays Facebook, Google and the others directly. |
 | Before paying | The customer gives no extra information. The popup says the team will contact them after payment; what follows is manual. |
 | Cancel | Takes effect at the next billing date. The paid month runs to its end. No refund. |
 | Pause | Also takes effect at the next billing date. Nothing is charged while paused. No maximum length. |
@@ -72,7 +72,7 @@ A panel (a dialog on desktop, a full-width sheet on a phone) with:
 - the price: list price, the Premium 10% off when it applies, GST at 18%, and the total charged today;
 - for a subscription: "Renews every month on the 12th. Pause or cancel any time; it stops at the end of the month you've
   paid for.";
-- for Performance marketing: "This is Firstfold's fee. You pay the ad platforms directly.";
+- for Performance marketing: "This is Fynix Digital's fee. You pay the ad platforms directly.";
 - for a press release: "One-time payment.";
 - "After you pay, our team will contact you to get started.";
 - the billing details the invoice will carry (or the prompt to add them, from the GST work);

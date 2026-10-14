@@ -1,5 +1,5 @@
-import { tallyStaffAccessSince, type Database, type StaffAccessTally } from "@firstfold/db";
-import { emailBrandId, emailTeamInboxDefault, staffAccessReviewEmail, type EmailTransport, type StaffAccessFinding } from "@firstfold/email";
+import { tallyStaffAccessSince, type Database, type StaffAccessTally } from "@fynix/db";
+import { emailTeamInboxDefault, staffAccessReviewEmail, type EmailTransport, type StaffAccessFinding } from "@fynix/email";
 
 /*
  * The nightly look at the staff access log (CERT-In Directions 2022, and the breach runbook's "watch for signs"): a staff
@@ -55,5 +55,5 @@ export async function sendStaffAccessReview(
 
 /** Where security alerts go: SECURITY_ALERT_EMAIL if set, else the support alert mailbox, else the team address. */
 export function securityAlertRecipient(env: Readonly<Record<string, string | undefined>>): string {
-  return env.SECURITY_ALERT_EMAIL?.trim() || env.SUPPORT_ALERT_EMAIL?.trim() || env.FIRSTFOLD_TEAM_EMAIL?.trim() || emailTeamInboxDefault(emailBrandId(env));
+  return env.SECURITY_ALERT_EMAIL?.trim() || env.SUPPORT_ALERT_EMAIL?.trim() || env.FYNIX_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
 }

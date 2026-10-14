@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AddOnEndOutcome } from "@firstfold/shared/server/add-on-ends";
+import type { AddOnEndOutcome } from "@fynix/shared/server/add-on-ends";
 import { ADD_ON_NOTICES, addOnNoticeHref, noticeForEndOutcome, readAddOnNotice } from "./add-on-notices";
 
 const ENDS_ON = new Date("2026-11-12T09:00:00Z");

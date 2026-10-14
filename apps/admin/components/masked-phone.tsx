@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { maskPhone } from "@firstfold/shared/server/phone-display";
+import { maskPhone } from "@fynix/shared/server/phone-display";
 
 /**
  * A number hidden but for its country code and last three digits, with no call link: for a list where staff have no reason

@@ -1,11 +1,11 @@
 import "server-only";
-import { consumeRateLimit, createLead, recordConsent, type RateLimitRule } from "@firstfold/db";
-import { billingCurrencyForPhone } from "@firstfold/shared/lib/billing/currency-for-phone";
-import { createAppEmailTransport, leadReceivedEmail } from "@firstfold/email";
-import { businessTypeLabel } from "@firstfold/shared/lib/business-types";
-import type { LeadInput } from "@firstfold/shared/lib/lead-form";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
-import { displayPhone } from "@firstfold/shared/server/phone-display";
+import { consumeRateLimit, createLead, recordConsent, type RateLimitRule } from "@fynix/db";
+import { billingCurrencyForPhone } from "@fynix/shared/lib/billing/currency-for-phone";
+import { createAppEmailTransport, leadReceivedEmail } from "@fynix/email";
+import { businessTypeLabel } from "@fynix/shared/lib/business-types";
+import type { LeadInput } from "@fynix/shared/lib/lead-form";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { displayPhone } from "@fynix/shared/server/phone-display";
 import { serverEnv } from "./env";
 import type { LeadRecordOutcome } from "./lead-intake";
 import { getPublicDb } from "./public-db";
@@ -57,9 +57,9 @@ async function keepNoticeProof(leadId: string, noticeVersion: string): Promise<v
 
 /** The lead is already saved by this point, so a failure here is logged and never shown to the visitor. */
 async function notifyTeam(leadId: string, lead: LeadInput): Promise<void> {
-  const teamInbox = process.env.FIRSTFOLD_TEAM_EMAIL;
+  const teamInbox = process.env.FYNIX_TEAM_EMAIL;
   if (teamInbox === undefined || teamInbox.trim() === "") {
-    console.error("FIRSTFOLD_TEAM_EMAIL is not set, so nobody was told about a new lead.", { leadId });
+    console.error("FYNIX_TEAM_EMAIL is not set, so nobody was told about a new lead.", { leadId });
     return;
   }
 

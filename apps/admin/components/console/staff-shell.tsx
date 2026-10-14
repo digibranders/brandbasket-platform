@@ -1,7 +1,7 @@
-import { listAddOnsToContact, listClients, listPaymentsNeedingAttention, type StaffRole } from "@firstfold/db";
+import { listAddOnsToContact, listClients, listPaymentsNeedingAttention, type StaffRole } from "@fynix/db";
 import type { ReactElement, ReactNode } from "react";
 import Link from "next/link";
-import { WordmarkLogo } from "@firstfold/shared/ui/logo";
+import { WordmarkLogo } from "@fynix/shared/ui/logo";
 import { adminBrand } from "@/lib/brand";
 import { getStaffDb } from "@/lib/server/db";
 import { signOut } from "@/lib/server/sign-out";

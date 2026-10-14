@@ -1,9 +1,9 @@
 import type { ReactElement } from "react";
-import type { ListingLead } from "@firstfold/db";
-import { cn } from "@firstfold/shared/lib/cn";
-import { displayPhone } from "@firstfold/shared/server/phone-display";
-import { PhoneIcon, TickIcon, WhatsAppIcon } from "@firstfold/shared/ui/icons";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
+import type { ListingLead } from "@fynix/db";
+import { cn } from "@fynix/shared/lib/cn";
+import { displayPhone } from "@fynix/shared/server/phone-display";
+import { PhoneIcon, TickIcon, WhatsAppIcon } from "@fynix/shared/ui/icons";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import { setLeadRepliedAction } from "@/app/app-host/(protected)/leads/actions";
 import { leadSerialNumber, leadWhatsAppUrl } from "@/lib/leads";
 

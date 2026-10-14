@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { PatientReport } from "@firstfold/db";
+import type { PatientReport } from "@fynix/db";
 import { ReportColumnChart, type ReportColumn, type ReportSeries } from "./report-column-chart";
 
 /*

@@ -1,5 +1,5 @@
 import "server-only";
-import { MAX_REWARD_BASIS_POINTS } from "@firstfold/billing";
+import { MAX_REWARD_BASIS_POINTS } from "@fynix/billing";
 import {
   billingCurrency,
   cancelAffiliateEarning,
@@ -13,15 +13,15 @@ import {
   type AffiliateDetails,
   type BillingCurrency,
   type ReferralReward,
-} from "@firstfold/db";
-import { formatPercent, parsePercent } from "@firstfold/shared/lib/billing/referral-value";
-import { AFFILIATE_LOGIN_LINK_DAYS, affiliateSetupPath } from "@firstfold/shared/lib/affiliate-links";
-import { parseMoney } from "@firstfold/shared/lib/money";
+} from "@fynix/db";
+import { formatPercent, parsePercent } from "@fynix/shared/lib/billing/referral-value";
+import { AFFILIATE_LOGIN_LINK_DAYS, affiliateSetupPath } from "@fynix/shared/lib/affiliate-links";
+import { parseMoney } from "@fynix/shared/lib/money";
 import { parsePhoneNumberFromString } from "libphonenumber-js/max";
 import { getStaffDb } from "./db";
 
 // The same words in the staff console and on the affiliate's own dashboard, so they live in shared.
-export { describeAffiliateReward, describeRewardCycles } from "@firstfold/shared/lib/billing/referral-value";
+export { describeAffiliateReward, describeRewardCycles } from "@fynix/shared/lib/billing/referral-value";
 
 /**
  * The staff console's side of affiliates: creating and editing them, recording the transfers that pay them, and

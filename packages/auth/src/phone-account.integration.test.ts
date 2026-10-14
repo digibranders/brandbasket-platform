@@ -1,5 +1,5 @@
-import { findUserByPhone, sessions, users } from "@firstfold/db";
-import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@firstfold/db/testing";
+import { findUserByPhone, sessions, users } from "@fynix/db";
+import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@fynix/db/testing";
 import { count, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AccountAlreadyExistsError } from "./create-account";
@@ -9,7 +9,7 @@ import { createPhoneAccountWithGrant, setAccountPassword } from "./phone-account
 
 const ORIGIN = "http://app.localhost:3000";
 const OWNER = { phone: "+919820011223", name: "Asha Owner", password: "correct-horse-battery" };
-const PLACEHOLDER = "919820011223@phone.firstfold.invalid";
+const PLACEHOLDER = "919820011223@phone.fynix.invalid";
 
 let dbs: TestDatabases;
 let auth: Auth;

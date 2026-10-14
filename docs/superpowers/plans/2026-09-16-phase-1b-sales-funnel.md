@@ -2,17 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn a visitor who clicks **Get started** into a Firstfold customer account: they leave their details, book a call through Calendly, the team works the lead in the staff console, sends a one-time setup link, and the customer sets a password, which creates their account and business.
+**Goal:** Turn a visitor who clicks **Get started** into a Fynix customer account: they leave their details, book a call through Calendly, the team works the lead in the staff console, sends a one-time setup link, and the customer sets a password, which creates their account and business.
 
 **Architecture:**
-- A new `webfold_public` database role can only insert leads, so the public marketing form never uses a broad connection.
+- A new `fynix_public` database role can only insert leads, so the public marketing form never uses a broad connection.
 - Leads, setup invites and outgoing emails are three new tables, readable only by staff.
 - Emails are not sent anywhere in Phase 1B: an outbox transport records them, and staff read them in a Dev Outbox page.
 - Setup links carry a random token; only its SHA-256 hash is stored. Redeeming one creates the account (through the existing invite-only gate), the business and the owner membership in a single transaction.
 
 **Tech Stack:** Next.js 16.3.5, React 19.2, TypeScript, Tailwind 4, zod 4, PostgreSQL 14, drizzle-orm 0.45.2, Better Auth 1.7.5, Vitest 5.
 
-**Spec:** `docs/superpowers/specs/2026-09-15-firstfold-platform-design.md` (§3 customer journey, §4.1 identity tables, §7 auth, §12 admin).
+**Spec:** `docs/superpowers/specs/2026-09-15-fynix-platform-design.md` (§3 customer journey, §4.1 identity tables, §7 auth, §12 admin).
 
 **Builds on Phase 1A** (`docs/superpowers/plans/2026-09-15-phase-1a-foundation.md`), which is complete: workspace, database with row-level security, invite-only Better Auth, host routing, sign-in for both panels.
 
@@ -27,8 +27,8 @@
 - **Never print `apps/web/.env.local`.** Commands may `source` it; never `cat` or `echo` it.
 - **No `any`.** Explicit return types, `readonly` props, doc comments in the existing style.
 - **Another session owns these marketing files:** `apps/web/app/(marketing)/privacy`, `apps/web/app/(marketing)/terms`, `apps/web/components/site-footer.tsx`, `apps/web/content/legal.ts`. Do not edit them.
-- **Integration tests** run against `webfold_test` only, serially.
-- All commands run from the repo root `/Users/siddiqueahmed/Desktop/AI/first-found/first-found`.
+- **Integration tests** run against `fynix_platform_test` only, serially.
+- All commands run from the repo root `/Users/siddiqueahmed/projects/fynix-platform`.
 
 ## File map
 
@@ -37,7 +37,7 @@ packages/db/
   src/schema/leads.ts             leads table + status enums
   src/schema/setup-invites.ts     setup_invites table
   src/schema/emails.ts            email_messages table (the outbox)
-  src/roles.ts                    + webfold_public
+  src/roles.ts                    + fynix_public
   src/queries/leads.ts            create/list/find/update
   src/queries/invites.ts          create, look up by token, redeem
   src/queries/emails.ts           record, list, find
@@ -218,10 +218,10 @@ Replace `packages/db/src/roles.ts` with:
 ```ts
 /** Login roles the application uses. Created by `pnpm db:roles`; migrations grant their privileges. */
 export const APPLICATION_ROLES = [
-  { name: "webfold_app", passwordEnv: "FIRSTFOLD_APP_PASSWORD" },
-  { name: "webfold_staff", passwordEnv: "FIRSTFOLD_STAFF_PASSWORD" },
+  { name: "fynix_app", passwordEnv: "FYNIX_APP_PASSWORD" },
+  { name: "fynix_staff", passwordEnv: "FYNIX_STAFF_PASSWORD" },
   // The public marketing form writes leads and rate-limit rows and can do nothing else.
-  { name: "webfold_public", passwordEnv: "FIRSTFOLD_PUBLIC_PASSWORD" },
+  { name: "fynix_public", passwordEnv: "FYNIX_PUBLIC_PASSWORD" },
 ] as const;
 ```
 
@@ -229,17 +229,17 @@ export const APPLICATION_ROLES = [
 
 In `packages/db/src/local-env-template.ts`, add a `publicPassword` field to `LocalEnvSecrets` (documented like the others), and add these lines to `buildLocalEnvFile`, after the staff password and staff URLs respectively:
 ```ts
-    `FIRSTFOLD_PUBLIC_PASSWORD=${secrets.publicPassword}`,
+    `FYNIX_PUBLIC_PASSWORD=${secrets.publicPassword}`,
 ```
 ```ts
-    `DATABASE_URL_PUBLIC=${roleUrl("webfold_public", secrets.publicPassword, DEV_DATABASE)}`,
-    `DATABASE_URL_PUBLIC_TEST=${roleUrl("webfold_public", secrets.publicPassword, TEST_DATABASE)}`,
+    `DATABASE_URL_PUBLIC=${roleUrl("fynix_public", secrets.publicPassword, DEV_DATABASE)}`,
+    `DATABASE_URL_PUBLIC_TEST=${roleUrl("fynix_public", secrets.publicPassword, TEST_DATABASE)}`,
 ```
 And in the "Auth" block, after `BETTER_AUTH_SECRET`:
 ```ts
     "",
     "# Where lead notifications go while email is local-only.",
-    "FIRSTFOLD_TEAM_EMAIL=team@example.com",
+    "FYNIX_TEAM_EMAIL=team@example.com",
     "",
     "# Public site values (inlined into the browser bundle).",
     "NEXT_PUBLIC_APP_URL=http://app.localhost:3000",
@@ -248,19 +248,19 @@ And in the "Auth" block, after `BETTER_AUTH_SECRET`:
 
 In `packages/db/src/local-env-template.test.ts`, add `publicPassword: "public-pass"` to the `secrets` fixture and extend the second test with:
 ```ts
-    expect(env.DATABASE_URL_PUBLIC).toBe("postgresql://webfold_public:public-pass@localhost:5432/webfold");
-    expect(env.DATABASE_URL_PUBLIC_TEST).toBe("postgresql://webfold_public:public-pass@localhost:5432/webfold_test");
-    expect(env.FIRSTFOLD_PUBLIC_PASSWORD).toBe("public-pass");
+    expect(env.DATABASE_URL_PUBLIC).toBe("postgresql://fynix_public:public-pass@localhost:5432/fynix_platform");
+    expect(env.DATABASE_URL_PUBLIC_TEST).toBe("postgresql://fynix_public:public-pass@localhost:5432/fynix_platform_test");
+    expect(env.FYNIX_PUBLIC_PASSWORD).toBe("public-pass");
 ```
 And add a third-test assertion:
 ```ts
-    expect(env.FIRSTFOLD_TEAM_EMAIL).toBe("team@example.com");
+    expect(env.FYNIX_TEAM_EMAIL).toBe("team@example.com");
     expect(env.NEXT_PUBLIC_APP_URL).toBe("http://app.localhost:3000");
     expect(env.NEXT_PUBLIC_CALENDLY_URL).toBe("https://calendly.com/stevjson1/30min");
 ```
 In `packages/db/scripts/init-local-env.ts`, add `publicPassword: randomBytes(24).toString("hex"),` to the secrets object.
 
-Run `pnpm --filter @firstfold/db test`.
+Run `pnpm --filter @fynix/db test`.
 Expected: the template tests fail first (they assert values the template does not produce yet), then pass once the template is updated. Run them before and after the template edit to see both.
 
 - [ ] **Step 6: Document the variables**
@@ -270,10 +270,10 @@ In `apps/web/.env.example`, add after the existing database lines:
 # Lead form connection (insert-only).
 DATABASE_URL_PUBLIC=
 DATABASE_URL_PUBLIC_TEST=
-FIRSTFOLD_PUBLIC_PASSWORD=
+FYNIX_PUBLIC_PASSWORD=
 
 # Inbox that receives lead notifications.
-FIRSTFOLD_TEAM_EMAIL=
+FYNIX_TEAM_EMAIL=
 
 # Public site values.
 NEXT_PUBLIC_APP_URL=
@@ -284,31 +284,31 @@ NEXT_PUBLIC_CALENDLY_URL=
 
 Run:
 ```bash
-pnpm --filter @firstfold/db exec drizzle-kit generate --name funnel && ls packages/db/migrations
+pnpm --filter @fynix/db exec drizzle-kit generate --name funnel && ls packages/db/migrations
 ```
 Expected: `0003_funnel.sql` exists and creates `leads`, `setup_invites` and `email_messages` plus the two new enums and the three indexes. Read it and confirm it contains no `DROP`.
 
 - [ ] **Step 8: Grants and row-level security for the new tables**
 
-Run `pnpm --filter @firstfold/db exec drizzle-kit generate --custom --name funnel_grants`, then replace the whole content of the generated `packages/db/migrations/0004_funnel_grants.sql` with:
+Run `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name funnel_grants`, then replace the whole content of the generated `packages/db/migrations/0004_funnel_grants.sql` with:
 ```sql
--- webfold_public is the marketing site's connection: it may only create leads.
-GRANT USAGE ON SCHEMA public TO webfold_public;
+-- fynix_public is the marketing site's connection: it may only create leads.
+GRANT USAGE ON SCHEMA public TO fynix_public;
 --> statement-breakpoint
 
-GRANT INSERT ON leads TO webfold_public;
+GRANT INSERT ON leads TO fynix_public;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON rate_limit_buckets TO webfold_public;
+GRANT SELECT, INSERT, UPDATE, DELETE ON rate_limit_buckets TO fynix_public;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON leads, setup_invites TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON leads, setup_invites TO fynix_staff;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT ON email_messages TO webfold_staff;
+GRANT SELECT, INSERT ON email_messages TO fynix_staff;
 --> statement-breakpoint
 
-GRANT INSERT ON email_messages TO webfold_public;
+GRANT INSERT ON email_messages TO fynix_public;
 --> statement-breakpoint
 
 ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
@@ -322,23 +322,23 @@ ALTER TABLE email_messages ENABLE ROW LEVEL SECURITY;
 
 -- The public role writes but never reads: no SELECT policy exists for it.
 CREATE POLICY leads_public_insert ON leads
-  FOR INSERT TO webfold_public WITH CHECK (true);
+  FOR INSERT TO fynix_public WITH CHECK (true);
 --> statement-breakpoint
 
 CREATE POLICY email_messages_public_insert ON email_messages
-  FOR INSERT TO webfold_public WITH CHECK (true);
+  FOR INSERT TO fynix_public WITH CHECK (true);
 --> statement-breakpoint
 
 CREATE POLICY leads_staff_all ON leads
-  FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+  FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
 CREATE POLICY setup_invites_staff_all ON setup_invites
-  FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+  FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
 CREATE POLICY email_messages_staff_all ON email_messages
-  FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+  FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 ```
 
 - [ ] **Step 9: Create the role and migrate both databases**
@@ -348,7 +348,7 @@ Run:
 pnpm env:init 2>/dev/null || true
 pnpm db:roles && pnpm db:migrate && pnpm db:migrate:test
 ```
-Expected: `pnpm env:init` refuses because `.env.local` exists (that is fine, and the `|| true` keeps the chain going). Because the file already exists, **add the six new variables by hand**: generate a password with `openssl rand -hex 24`, then append `FIRSTFOLD_PUBLIC_PASSWORD`, `DATABASE_URL_PUBLIC`, `DATABASE_URL_PUBLIC_TEST` (same shape as the staff URLs), `FIRSTFOLD_TEAM_EMAIL=team@example.com`, `NEXT_PUBLIC_APP_URL=http://app.localhost:3000` and `NEXT_PUBLIC_CALENDLY_URL=https://calendly.com/stevjson1/30min`. Do not print the file afterwards. Then `pnpm db:roles` prints "Created role webfold_public" and both migrate commands report success.
+Expected: `pnpm env:init` refuses because `.env.local` exists (that is fine, and the `|| true` keeps the chain going). Because the file already exists, **add the six new variables by hand**: generate a password with `openssl rand -hex 24`, then append `FYNIX_PUBLIC_PASSWORD`, `DATABASE_URL_PUBLIC`, `DATABASE_URL_PUBLIC_TEST` (same shape as the staff URLs), `FYNIX_TEAM_EMAIL=team@example.com`, `NEXT_PUBLIC_APP_URL=http://app.localhost:3000` and `NEXT_PUBLIC_CALENDLY_URL=https://calendly.com/stevjson1/30min`. Do not print the file afterwards. Then `pnpm db:roles` prints "Created role fynix_public" and both migrate commands report success.
 
 - [ ] **Step 10: Prove the public role is limited**
 
@@ -363,7 +363,7 @@ Expected: the first fails with `permission denied for table leads` (it has INSER
 
 - [ ] **Step 11: Checkpoint**
 
-Run `pnpm --filter @firstfold/db typecheck && pnpm --filter @firstfold/db test`.
+Run `pnpm --filter @fynix/db typecheck && pnpm --filter @fynix/db test`.
 Expected: typecheck clean; unit tests pass.
 
 ---
@@ -391,7 +391,7 @@ const STAFF_USER = "staff-1";
 let dbs: TestDatabases;
 
 async function seedStaff(): Promise<void> {
-  await dbs.staff.db.insert(users).values({ id: STAFF_USER, name: "Sam Staff", email: "sam@firstfold.test" });
+  await dbs.staff.db.insert(users).values({ id: STAFF_USER, name: "Sam Staff", email: "sam@fynix.test" });
   await dbs.staff.db.insert(staffMembers).values({ userId: STAFF_USER, role: "admin" });
 }
 
@@ -546,7 +546,7 @@ describe("email outbox", () => {
     });
     await recordEmail(dbs.staff.db, {
       toAddress: "owner@example.com",
-      subject: "Your Firstfold setup link",
+      subject: "Your Fynix setup link",
       template: "setup-link",
       bodyText: "Set your password.",
       bodyHtml: "<p>Set your password.</p>",
@@ -562,7 +562,7 @@ describe("email outbox", () => {
 
 - [ ] **Step 2: Run to see it fail**
 
-Run `pnpm --filter @firstfold/db test:integration`.
+Run `pnpm --filter @fynix/db test:integration`.
 Expected: FAIL, unable to resolve `./queries/leads`, `./queries/invites` and `./queries/emails`.
 
 - [ ] **Step 3: Implement the lead queries**
@@ -800,18 +800,18 @@ export { createLead, findLead, listLeads, updateLead, type Lead, type LeadUpdate
 
 - [ ] **Step 6: Run to see it pass**
 
-Run `pnpm --filter @firstfold/db test:integration`.
+Run `pnpm --filter @fynix/db test:integration`.
 Expected: PASS.
 
 > **Review fix applied after implementation:** `createLead` generates the id with `uuidv7()` and does not use
-> `RETURNING`, because `RETURNING` needs SELECT privilege and `webfold_public` deliberately has none on `leads`.
+> `RETURNING`, because `RETURNING` needs SELECT privilege and `fynix_public` deliberately has none on `leads`.
 > Without this the public form fails with "permission denied for table leads". `testing/index.ts` also exposes a
 > `publicRole` handle, and `funnel.integration.test.ts` inserts through it, so the public path is actually covered:
 > 28 unit and 34 integration tests.
 
 - [ ] **Step 7: Checkpoint**
 
-Run `pnpm --filter @firstfold/db typecheck && pnpm --filter @firstfold/db test`.
+Run `pnpm --filter @fynix/db typecheck && pnpm --filter @fynix/db test`.
 
 ---
 
@@ -854,7 +854,7 @@ describe("slugify", () => {
 
 - [ ] **Step 2: Run to see it fail**
 
-Run `pnpm --filter @firstfold/db test`.
+Run `pnpm --filter @fynix/db test`.
 Expected: FAIL, unable to resolve `./slug`.
 
 - [ ] **Step 3: Implement the slug helper**
@@ -880,7 +880,7 @@ export function slugify(value: string): string {
 
 - [ ] **Step 4: Run to see it pass**
 
-Run `pnpm --filter @firstfold/db test`.
+Run `pnpm --filter @fynix/db test`.
 Expected: PASS (5 new tests).
 
 - [ ] **Step 5: Write the failing redemption test**
@@ -964,7 +964,7 @@ describe("redeemInviteIntoBusiness", () => {
 
 - [ ] **Step 6: Run to see it fail**
 
-Run `pnpm --filter @firstfold/db test:integration`.
+Run `pnpm --filter @fynix/db test:integration`.
 Expected: FAIL, unable to resolve `./queries/onboarding`.
 
 - [ ] **Step 7: Implement the redemption**
@@ -986,7 +986,7 @@ export interface InviteRedemption {
 
 /**
  * Creates the tenant for a redeemed invite: business, owner membership, closed invite and updated lead, all or
- * nothing. The account itself is created first by @firstfold/auth, which owns the invite-only gate.
+ * nothing. The account itself is created first by @fynix/auth, which owns the invite-only gate.
  */
 export async function redeemInviteIntoBusiness(
   db: Database,
@@ -1028,12 +1028,12 @@ export { slugify } from "./slug";
 
 - [ ] **Step 8: Run to see it pass**
 
-Run `pnpm --filter @firstfold/db test:integration && pnpm --filter @firstfold/db test`.
+Run `pnpm --filter @fynix/db test:integration && pnpm --filter @fynix/db test`.
 Expected: both pass.
 
 ---
 
-### Task 4: `@firstfold/email` templates and the outbox transport
+### Task 4: `@fynix/email` templates and the outbox transport
 
 **Files:**
 - Create: `packages/email/package.json`, `tsconfig.json`, `vitest.config.ts`
@@ -1045,7 +1045,7 @@ Expected: both pass.
 Create `packages/email/package.json`:
 ```json
 {
-  "name": "@firstfold/email",
+  "name": "@fynix/email",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -1057,7 +1057,7 @@ Create `packages/email/package.json`:
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@firstfold/db": "workspace:*"
+    "@fynix/db": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.4",
@@ -1147,7 +1147,7 @@ describe("setupLinkEmail", () => {
   });
 
   it("addresses the business and states how long the link lasts", () => {
-    expect(email.subject).toBe("Set up your Firstfold account");
+    expect(email.subject).toBe("Set up your Fynix account");
     expect(email.bodyText).toContain("Riverside Plumbing");
     expect(email.bodyText).toContain("7 days");
     expect(email.bodyHtml).toContain("7 days");
@@ -1162,7 +1162,7 @@ describe("setupLinkEmail", () => {
 
 - [ ] **Step 3: Run to see it fail**
 
-Run `pnpm --filter @firstfold/email test`.
+Run `pnpm --filter @fynix/email test`.
 Expected: FAIL, unable to resolve `./lead-received` and `./setup-link`.
 
 - [ ] **Step 4: Implement the message helper**
@@ -1268,7 +1268,7 @@ export function setupLinkEmail(input: SetupLinkInput): EmailMessage {
   const validity = `This link works once and expires in ${input.expiresInDays} days.`;
   const lines = [
     `Thanks for talking to us about ${input.businessName}.`,
-    "Set your password to open your Firstfold dashboard:",
+    "Set your password to open your Fynix dashboard:",
     input.setupUrl,
     validity,
     "If you didn't expect this email, you can ignore it.",
@@ -1276,10 +1276,10 @@ export function setupLinkEmail(input: SetupLinkInput): EmailMessage {
 
   return {
     to: input.to,
-    subject: "Set up your Firstfold account",
+    subject: "Set up your Fynix account",
     template: "setup-link",
     bodyText: lines.join("\n\n"),
-    bodyHtml: htmlDocument("Set up your Firstfold account", [
+    bodyHtml: htmlDocument("Set up your Fynix account", [
       escapeHtml(`Thanks for talking to us about ${input.businessName}.`),
       `<a href="${escapeHtml(input.setupUrl)}">Set your password</a>`,
       escapeHtml(validity),
@@ -1293,7 +1293,7 @@ export function setupLinkEmail(input: SetupLinkInput): EmailMessage {
 
 Create `packages/email/src/outbox.ts`:
 ```ts
-import { recordEmail, type Database } from "@firstfold/db";
+import { recordEmail, type Database } from "@fynix/db";
 import type { EmailMessage } from "./message";
 
 export interface EmailTransport {
@@ -1332,7 +1332,7 @@ export { setupLinkEmail, type SetupLinkInput } from "./templates/setup-link";
 
 - [ ] **Step 7: Run to see it pass**
 
-Run `pnpm --filter @firstfold/email test && pnpm --filter @firstfold/email typecheck`.
+Run `pnpm --filter @fynix/email test && pnpm --filter @fynix/email typecheck`.
 Expected: PASS (7 tests) and a clean typecheck.
 
 ---
@@ -1407,7 +1407,7 @@ describe("parseLeadForm", () => {
 
 - [ ] **Step 2: Run to see it fail**
 
-Run `pnpm --filter @firstfold/web test`.
+Run `pnpm --filter @fynix/web test`.
 Expected: FAIL, unable to resolve `./lead-form`.
 
 - [ ] **Step 3: Implement**
@@ -1481,7 +1481,7 @@ export function parseLeadForm(formData: FormData): LeadParseResult {
 
 - [ ] **Step 4: Run to see it pass**
 
-Run `pnpm --filter @firstfold/web test`.
+Run `pnpm --filter @fynix/web test`.
 Expected: PASS.
 
 > **Review fix applied after implementation:** `lib/lead-form.ts` also strips control characters. `cleanLine` (name,
@@ -1494,7 +1494,7 @@ Expected: PASS.
 ### Task 6: The Get started page
 
 **Files:**
-- Modify: `apps/web/package.json` (add `@firstfold/email`), `apps/web/next.config.ts` (transpile it), `apps/web/lib/site-config.ts`
+- Modify: `apps/web/package.json` (add `@fynix/email`), `apps/web/next.config.ts` (transpile it), `apps/web/lib/site-config.ts`
 - Create: `apps/web/lib/server/public-db.ts`, `apps/web/lib/server/leads.ts`
 - Create: `apps/web/components/calendly-embed.tsx`, `apps/web/components/lead-form.tsx`
 - Create: `apps/web/app/(marketing)/get-started/page.tsx`
@@ -1503,11 +1503,11 @@ Expected: PASS.
 
 Run:
 ```bash
-pnpm --filter @firstfold/web add @firstfold/email@workspace:*
+pnpm --filter @fynix/web add @fynix/email@workspace:*
 ```
 In `apps/web/next.config.ts`, change the transpile list to:
 ```ts
-  transpilePackages: ["@firstfold/auth", "@firstfold/db", "@firstfold/email"],
+  transpilePackages: ["@fynix/auth", "@fynix/db", "@fynix/email"],
 ```
 
 In `apps/web/lib/site-config.ts`, add two variables to `publicEnvSchema`:
@@ -1538,29 +1538,29 @@ and to `siteConfig`:
 Create `apps/web/lib/server/public-db.ts`:
 ```ts
 import "server-only";
-import { createDatabase, type Database } from "@firstfold/db";
+import { createDatabase, type Database } from "@fynix/db";
 import { z } from "zod";
 
 // Kept on globalThis so hot reloads reuse the pool instead of opening new ones.
-const holder = globalThis as typeof globalThis & { firstfoldPublicDb?: Database };
+const holder = globalThis as typeof globalThis & { fynixPublicDb?: Database };
 
 const publicEnvSchema = z.object({
   DATABASE_URL_PUBLIC: z.url({ protocol: /^postgres(ql)?$/ }),
 });
 
 /**
- * The marketing site's connection. The webfold_public role may only insert leads, rate-limit rows and outbox
+ * The marketing site's connection. The fynix_public role may only insert leads, rate-limit rows and outbox
  * messages, so a mistake on a public page cannot read customer data.
  */
 export function getPublicDb(): Database {
-  if (holder.firstfoldPublicDb === undefined) {
+  if (holder.fynixPublicDb === undefined) {
     const parsed = publicEnvSchema.safeParse(process.env);
     if (!parsed.success) {
       throw new Error('DATABASE_URL_PUBLIC is missing or not a postgres URL. Add it to apps/web/.env.local.');
     }
-    holder.firstfoldPublicDb = createDatabase(parsed.data.DATABASE_URL_PUBLIC, { max: 5 }).db;
+    holder.fynixPublicDb = createDatabase(parsed.data.DATABASE_URL_PUBLIC, { max: 5 }).db;
   }
-  return holder.firstfoldPublicDb;
+  return holder.fynixPublicDb;
 }
 ```
 
@@ -1570,8 +1570,8 @@ Create `apps/web/lib/server/leads.ts`:
 ```ts
 "use server";
 
-import { createLead, consumeRateLimit, type RateLimitRule } from "@firstfold/db";
-import { createOutboxTransport, leadReceivedEmail } from "@firstfold/email";
+import { createLead, consumeRateLimit, type RateLimitRule } from "@fynix/db";
+import { createOutboxTransport, leadReceivedEmail } from "@fynix/email";
 import { headers } from "next/headers";
 import { clientIpFrom } from "@/lib/client-ip";
 import { parseLeadForm, type LeadFormState } from "@/lib/lead-form";
@@ -1602,7 +1602,7 @@ export async function submitLead(_previous: LeadFormState, formData: FormData): 
 
   const created = await createLead(db, lead);
 
-  const teamInbox = process.env.FIRSTFOLD_TEAM_EMAIL;
+  const teamInbox = process.env.FYNIX_TEAM_EMAIL;
   if (teamInbox !== undefined && teamInbox.trim() !== "") {
     const adminOrigin = process.env.ADMIN_ORIGIN ?? "http://admin.localhost:3000";
     await createOutboxTransport(db).send(
@@ -1697,7 +1697,7 @@ export function LeadForm({ action, calendlyUrl }: LeadFormProps): ReactElement {
       <div>
         <h2 className="font-serif text-3xl">Thanks, {state.name}. Now pick a time.</h2>
         <p className="mt-3 max-w-xl leading-relaxed text-ink-soft">
-          We have your details. Choose a slot that suits you and we’ll walk you through how Firstfold works, what your
+          We have your details. Choose a slot that suits you and we’ll walk you through how Fynix works, what your
           website will include and what it costs.
         </p>
         <div className="mt-8">
@@ -1818,7 +1818,7 @@ import { siteConfig } from "@/lib/site-config";
 export const metadata: Metadata = {
   title: "Get started",
   description:
-    "Tell us about your business and book a call. We'll explain how Firstfold works, what your website includes and what it costs.",
+    "Tell us about your business and book a call. We'll explain how Fynix works, what your website includes and what it costs.",
   alternates: { canonical: "/get-started" },
 };
 
@@ -1889,7 +1889,7 @@ export default function GetStartedPage(): ReactElement {
 
 - [ ] **Step 7: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @firstfold/web typecheck && pnpm --filter @firstfold/web test && pnpm build`.
+Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test && pnpm build`.
 Expected: all pass, and the build lists `/get-started`.
 
 ---
@@ -1942,7 +1942,7 @@ Replace the form column in `apps/web/app/(marketing)/contact/page.tsx`. Remove t
             Get started
           </ButtonLink>
 ```
-importing `ButtonLink` from `@/components/button-link`. Update the page metadata title to `Contact` and the description to `Questions about Firstfold? Message us, or book a call and we'll walk you through it.`
+importing `ButtonLink` from `@/components/button-link`. Update the page metadata title to `Contact` and the description to `Questions about Fynix? Message us, or book a call and we'll walk you through it.`
 
 - [ ] **Step 4: Delete the preview request flow**
 
@@ -1960,7 +1960,7 @@ and delete the now-unused import.
 
 - [ ] **Step 5: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @firstfold/web typecheck && pnpm --filter @firstfold/web test && pnpm build`.
+Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test && pnpm build`.
 Expected: all pass. The web unit test count drops by the preview-request tests and gains the lead-form tests.
 
 ---
@@ -2002,14 +2002,14 @@ describe("lead status", () => {
 
 - [ ] **Step 2: Run to see it fail**
 
-Run `pnpm --filter @firstfold/web test`.
+Run `pnpm --filter @fynix/web test`.
 Expected: FAIL, unable to resolve `./lead-status`.
 
 - [ ] **Step 3: Implement**
 
 Create `apps/web/lib/lead-status.ts`:
 ```ts
-import type { LeadStatus } from "@firstfold/db";
+import type { LeadStatus } from "@fynix/db";
 
 /** Pipeline order, used for the filter bar and the status picker. */
 export const LEAD_STATUS_ORDER = [
@@ -2041,7 +2041,7 @@ export function nextStatusOptions(current: LeadStatus): readonly LeadStatus[] {
 
 - [ ] **Step 4: Run to see it pass**
 
-Run `pnpm --filter @firstfold/web test`.
+Run `pnpm --filter @fynix/web test`.
 
 - [ ] **Step 5: Panel navigation**
 
@@ -2087,7 +2087,7 @@ and `<PanelShell surfaceName="Staff console" userEmail={user.email} nav={STAFF_N
 
 Create `apps/web/app/admin-host/(protected)/leads/page.tsx`:
 ```tsx
-import { listLeads, type LeadStatus } from "@firstfold/db";
+import { listLeads, type LeadStatus } from "@fynix/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
@@ -2180,7 +2180,7 @@ and import `Link` from `next/link`.
 
 - [ ] **Step 8: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @firstfold/web typecheck && pnpm --filter @firstfold/web test && pnpm build`.
+Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test && pnpm build`.
 Expected: all pass; the build lists `/admin-host/leads`.
 
 ---
@@ -2196,8 +2196,8 @@ Expected: all pass; the build lists `/admin-host/leads`.
 Create `apps/web/lib/server/invites.ts`:
 ```ts
 import "server-only";
-import { createSetupInvite, findLead, revokeOpenInvites, updateLead } from "@firstfold/db";
-import { createOutboxTransport, setupLinkEmail } from "@firstfold/email";
+import { createSetupInvite, findLead, revokeOpenInvites, updateLead } from "@fynix/db";
+import { createOutboxTransport, setupLinkEmail } from "@fynix/email";
 import { getStaffDb } from "./db";
 import { serverEnv } from "./env";
 
@@ -2247,7 +2247,7 @@ Create `apps/web/app/admin-host/(protected)/leads/[leadId]/actions.ts`:
 ```ts
 "use server";
 
-import { updateLead, type LeadStatus } from "@firstfold/db";
+import { updateLead, type LeadStatus } from "@fynix/db";
 import { revalidatePath } from "next/cache";
 import { LEAD_STATUS_ORDER } from "@/lib/lead-status";
 import { getStaffDb } from "@/lib/server/db";
@@ -2289,7 +2289,7 @@ export async function sendSetupLinkAction(formData: FormData): Promise<void> {
 
 Create `apps/web/app/admin-host/(protected)/leads/[leadId]/page.tsx`:
 ```tsx
-import { findLead } from "@firstfold/db";
+import { findLead } from "@fynix/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -2409,7 +2409,7 @@ export default async function LeadDetailPage({
 
 - [ ] **Step 4: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @firstfold/web typecheck && pnpm build`.
+Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm build`.
 Expected: all pass; the build lists `/admin-host/leads/[leadId]`.
 
 ---
@@ -2423,7 +2423,7 @@ Expected: all pass; the build lists `/admin-host/leads/[leadId]`.
 
 Create `apps/web/app/admin-host/(protected)/outbox/page.tsx`:
 ```tsx
-import { listRecentEmails } from "@firstfold/db";
+import { listRecentEmails } from "@fynix/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
@@ -2479,7 +2479,7 @@ export default async function OutboxPage(): Promise<ReactElement> {
 
 Create `apps/web/app/admin-host/(protected)/outbox/[emailId]/page.tsx`:
 ```tsx
-import { findEmail } from "@firstfold/db";
+import { findEmail } from "@fynix/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -2529,7 +2529,7 @@ export default async function OutboxMessagePage({
 
 - [ ] **Step 3: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @firstfold/web typecheck && pnpm build`.
+Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm build`.
 
 ---
 
@@ -2589,7 +2589,7 @@ describe("parseSetupForm", () => {
 
 - [ ] **Step 2: Run to see it fail**
 
-Run `pnpm --filter @firstfold/web test`.
+Run `pnpm --filter @fynix/web test`.
 Expected: FAIL, unable to resolve `./setup-form`.
 
 - [ ] **Step 3: Implement**
@@ -2598,7 +2598,7 @@ Create `apps/web/lib/setup-form.ts`:
 ```ts
 import { z } from "zod";
 
-/** Matches PASSWORD_MIN_LENGTH in @firstfold/auth; kept here so this module stays browser-safe. */
+/** Matches PASSWORD_MIN_LENGTH in @fynix/auth; kept here so this module stays browser-safe. */
 export const SETUP_PASSWORD_MIN_LENGTH = 10;
 const MAX_PASSWORD_LENGTH = 128;
 
@@ -2651,15 +2651,15 @@ export function parseSetupForm(formData: FormData): SetupParseResult {
 
 - [ ] **Step 4: Run to see it pass**
 
-Run `pnpm --filter @firstfold/web test`.
+Run `pnpm --filter @fynix/web test`.
 
 - [ ] **Step 5: The redemption service**
 
 Create `apps/web/lib/server/setup.ts`:
 ```ts
 import "server-only";
-import { createAccountWithGrant } from "@firstfold/auth";
-import { findRedeemableInvite, redeemInviteIntoBusiness, type SetupInvite } from "@firstfold/db";
+import { createAccountWithGrant } from "@fynix/auth";
+import { findRedeemableInvite, redeemInviteIntoBusiness, type SetupInvite } from "@fynix/db";
 import { headers } from "next/headers";
 import { getAuth } from "./auth";
 import { getStaffDb } from "./db";
@@ -2715,7 +2715,7 @@ Create `apps/web/app/app-host/setup/[token]/actions.ts`:
 ```ts
 "use server";
 
-import { AccountAlreadyExistsError } from "@firstfold/auth";
+import { AccountAlreadyExistsError } from "@fynix/auth";
 import { redirect } from "next/navigation";
 import { parseSetupForm, type SetupFormState } from "@/lib/setup-form";
 import { InviteNotUsableError, redeemSetupInvite } from "@/lib/server/setup";
@@ -2861,7 +2861,7 @@ export default async function SetupPage({
     <AuthScreen
       title={
         <>
-          Welcome to <em>Firstfold.</em>
+          Welcome to <em>Fynix.</em>
         </>
       }
       lede={`Set a password for ${invite.email} and we'll open the dashboard for ${invite.businessName}.`}
@@ -2874,7 +2874,7 @@ export default async function SetupPage({
 
 - [ ] **Step 8: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @firstfold/web typecheck && pnpm --filter @firstfold/web test && pnpm build`.
+Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test && pnpm build`.
 Expected: all pass; the build lists `/app-host/setup/[token]`.
 
 ---
@@ -3040,7 +3040,7 @@ Expected: no matches outside `content/legal.ts` (owned by another session; leave
 
 - [ ] **Step 7: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @firstfold/web typecheck && pnpm --filter @firstfold/web test && pnpm build`.
+Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test && pnpm build`.
 
 ---
 

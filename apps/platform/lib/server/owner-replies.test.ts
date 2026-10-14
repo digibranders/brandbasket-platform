@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DirectoryRef } from "@firstfold/db";
+import type { DirectoryRef } from "@fynix/db";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: () => DB }));
 vi.mock("./website-refresh", () => ({ scheduleWebsiteRefresh: vi.fn() }));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   consumeRateLimit: vi.fn(),
   editOwnerReply: vi.fn(),
   postOwnerReply: vi.fn(),
   removeOwnerReply: vi.fn(),
 }));
 
-import { consumeRateLimit, editOwnerReply, postOwnerReply, removeOwnerReply } from "@firstfold/db";
+import { consumeRateLimit, editOwnerReply, postOwnerReply, removeOwnerReply } from "@fynix/db";
 import type { OwnedBusiness } from "./owner-business";
 import { changeReply, postReply, takeDownReply } from "./owner-replies";
 import { scheduleWebsiteRefresh } from "./website-refresh";

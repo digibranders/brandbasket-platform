@@ -1,10 +1,10 @@
-import { listPrivacyRequests, type StoredPrivacyRequest } from "@firstfold/db";
-import { daysUntilDue, requestUrgency, type RequestUrgency } from "@firstfold/shared/lib/privacy-request-deadlines";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+import { listPrivacyRequests, type StoredPrivacyRequest } from "@fynix/db";
+import { daysUntilDue, requestUrgency, type RequestUrgency } from "@fynix/shared/lib/privacy-request-deadlines";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { EmptyLine } from "@/components/console/hairline-list";

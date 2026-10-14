@@ -1,8 +1,8 @@
-import { listRecentEmails, listSmsMessages } from "@firstfold/db";
+import { listRecentEmails, listSmsMessages } from "@fynix/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
-import { MailIcon } from "@firstfold/shared/ui/icons";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import { MailIcon } from "@fynix/shared/ui/icons";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
 import { getStaffDb } from "@/lib/server/db";

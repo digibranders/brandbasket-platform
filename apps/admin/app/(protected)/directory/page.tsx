@@ -15,20 +15,20 @@ import {
   type StaffDirectoryReview,
   type StaffDirectoryVerification,
   type StaffDirectoryVisitor,
-} from "@firstfold/db";
+} from "@fynix/db";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { directoryHighlightLabel } from "@firstfold/shared/lib/directory-highlights";
-import { phoneCountryOptions } from "@firstfold/shared/server/phone-countries";
-import { visitorPhoneCountry } from "@firstfold/shared/server/phone-defaults";
-import { displayPhone, maskPhone } from "@firstfold/shared/server/phone-display";
+import { directoryHighlightLabel } from "@fynix/shared/lib/directory-highlights";
+import { phoneCountryOptions } from "@fynix/shared/server/phone-countries";
+import { visitorPhoneCountry } from "@fynix/shared/server/phone-defaults";
+import { displayPhone, maskPhone } from "@fynix/shared/server/phone-display";
 import { MaskedPhone } from "@/components/masked-phone";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { SearchIcon } from "@firstfold/shared/ui/icons";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { SearchIcon } from "@fynix/shared/ui/icons";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import { buttonDanger, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses } from "@/components/console/field-styles";
 import { FilterPills } from "@/components/console/filter-pills";

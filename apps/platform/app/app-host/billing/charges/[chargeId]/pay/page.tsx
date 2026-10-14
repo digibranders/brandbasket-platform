@@ -1,10 +1,10 @@
-import { findChargeForBusiness, withTenantScope } from "@firstfold/db";
+import { findChargeForBusiness, withTenantScope } from "@fynix/db";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import type { ReactElement } from "react";
 import { z } from "zod";
-import { chargeLabel } from "@firstfold/shared/lib/billing/charges";
-import { formatMoney } from "@firstfold/shared/lib/money";
+import { chargeLabel } from "@fynix/shared/lib/billing/charges";
+import { formatMoney } from "@fynix/shared/lib/money";
 import { RazorpayCheckoutScreen } from "@/components/panel/razorpay-checkout-screen";
 import {
   AD_RETURN_PARAM,

@@ -1,33 +1,33 @@
 -- Grants, row-level security and the no-overlap rule for directory_promotions (0061), in the same pattern as 0053.
 -- The customer reads its own weeks (the Listing page's Promotion section) and may change one thing: `visible`, its
 -- on/off switch for the tag. It can never insert, move or delete a week: a row is written only by the payment
--- confirmation, on the staff connection, in the transaction that marks the charge paid. webfold_public gets nothing:
+-- confirmation, on the staff connection, in the transaction that marks the charge paid. fynix_public gets nothing:
 -- the website reads paid tags through the platform's GET /api/directory/signals on the staff connection.
 --
 -- No DELETE for anyone: a paid week stays on record with the charge that bought it.
-GRANT SELECT ON directory_promotions TO webfold_app;
+GRANT SELECT ON directory_promotions TO fynix_app;
 --> statement-breakpoint
 
 -- business_id, tag, the dates and charge_id are left out, so the customer can only show or hide its own tag.
-GRANT UPDATE (visible, updated_at) ON directory_promotions TO webfold_app;
+GRANT UPDATE (visible, updated_at) ON directory_promotions TO fynix_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON directory_promotions TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON directory_promotions TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE directory_promotions ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY directory_promotions_tenant_read ON directory_promotions FOR SELECT TO webfold_app
+CREATE POLICY directory_promotions_tenant_read ON directory_promotions FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
 
-CREATE POLICY directory_promotions_tenant_update ON directory_promotions FOR UPDATE TO webfold_app
+CREATE POLICY directory_promotions_tenant_update ON directory_promotions FOR UPDATE TO fynix_app
   USING (business_id = app_current_business_id())
   WITH CHECK (business_id = app_current_business_id());
 --> statement-breakpoint
 
-CREATE POLICY directory_promotions_staff_all ON directory_promotions FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_promotions_staff_all ON directory_promotions FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
 -- At most one tag per business at a time: a business's weeks never overlap. The payment confirmation already works

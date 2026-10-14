@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import type { ReactElement, ReactNode } from "react";
-import { BriefcaseIcon, CardIcon, DocumentIcon, LinkIcon, MailIcon, MouseIcon, PercentIcon, PinIcon, PlusIcon, ShieldIcon, SignOutIcon, TagIcon, UsersIcon } from "@firstfold/shared/ui/icons";
-import { staffCan, type StaffCapability } from "@firstfold/shared/lib/access";
-import { cn } from "@firstfold/shared/lib/cn";
-import type { StaffRole } from "@firstfold/db";
+import { BriefcaseIcon, CardIcon, DocumentIcon, LinkIcon, MailIcon, MouseIcon, PercentIcon, PinIcon, PlusIcon, ShieldIcon, SignOutIcon, TagIcon, UsersIcon } from "@fynix/shared/ui/icons";
+import { staffCan, type StaffCapability } from "@fynix/shared/lib/access";
+import { cn } from "@fynix/shared/lib/cn";
+import type { StaffRole } from "@fynix/db";
 import { adminBrand } from "@/lib/brand";
 
 /** The Journey map's own mark: the path from lead to live. */
@@ -37,7 +37,7 @@ interface DockItem {
   readonly icon: ReactNode;
   /** Shown only to roles that can do this. Left out, every role sees it. */
   readonly needs?: StaffCapability;
-  /** Part of the Firstfold product (the public directory and what is sold on it): a brand without a directory does not show it. */
+  /** Part of the Fynix product (the public directory and what is sold on it): a brand without a directory does not show it. */
   readonly directory?: true;
 }
 

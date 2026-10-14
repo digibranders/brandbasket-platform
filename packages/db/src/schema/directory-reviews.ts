@@ -242,7 +242,7 @@ export const directoryReviewComments = pgTable(
 
 /**
  * "Send enquiry" from a directory card or business page (`business`, about one listing), or the list page's "Get the
- * list of top …" form (`top_list`, about a service in an area, so no listing). No code confirms them; Firstfold staff
+ * list of top …" form (`top_list`, about a service in an area, so no listing). No code confirms them; Fynix staff
  * read them in the console and pass them on, then mark them handled.
  */
 export const directoryEnquiries = pgTable(
@@ -268,7 +268,7 @@ export const directoryEnquiries = pgTable(
     erasedAt: timestamp("erased_at", { withTimezone: true }),
     /**
      * When the business's owner marked this enquiry as replied on their Leads page; null while it is still new to them.
-     * Not `status`/`handledAt`: those are Firstfold staff passing a top-list request on, and say nothing about the owner.
+     * Not `status`/`handledAt`: those are Fynix staff passing a top-list request on, and say nothing about the owner.
      */
     ownerRepliedAt: timestamp("owner_replied_at", { withTimezone: true }),
     createdAt: createdAt(),
@@ -310,7 +310,7 @@ export const directoryEnquiries = pgTable(
 );
 
 /**
- * A directory business Firstfold has verified: staff confirmed its name, address and phone number (by calling it, or
+ * A directory business Fynix has verified: staff confirmed its name, address and phone number (by calling it, or
  * because it is a client). The website shows a Verified tag for these, and a verified business is the only kind whose
  * phone number reaches the site; `phone` is null when the business asked for its number not to be shown. One row per
  * business: per place, or per listing key for a key no place has. Staff always verify at a listing key (the console's

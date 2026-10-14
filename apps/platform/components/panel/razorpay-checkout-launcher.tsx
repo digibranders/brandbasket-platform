@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { useBrand } from "@/components/panel/brand-provider";
-import { brandText, supportEmailOf } from "@/lib/brand";
+import { supportEmailOf } from "@/lib/brand";
 import { razorpayCheckoutOptions, type RazorpayCheckoutTarget } from "@/lib/billing/razorpay-checkout-options";
 
 declare global {
@@ -59,8 +59,8 @@ export function RazorpayCheckoutLauncher({
       if (cancelled || window.Razorpay === undefined) return;
       const checkoutTarget: RazorpayCheckoutTarget =
         targetKind === "subscription"
-          ? { kind: "subscription", subscriptionId: targetId, ...(description === "" ? {} : { description: brandText(description, brand) }) }
-          : { kind: "order", orderId: targetId, description: brandText(description, brand) };
+          ? { kind: "subscription", subscriptionId: targetId, ...(description === "" ? {} : { description: description }) }
+          : { kind: "order", orderId: targetId, description: description };
       new window.Razorpay(
         razorpayCheckoutOptions({
           keyId,

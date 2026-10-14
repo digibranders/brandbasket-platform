@@ -1,7 +1,7 @@
-import type { Plan } from "@firstfold/db";
-import { monthlyPaymentAmount } from "@firstfold/shared/lib/billing/terms";
+import type { Plan } from "@fynix/db";
+import { monthlyPaymentAmount } from "@fynix/shared/lib/billing/terms";
 import { membershipPriceParts, type MembershipTier } from "@/lib/membership";
-import { BRANDS, type Brand } from "@/lib/brand";
+import { BRAND, type Brand } from "@/lib/brand";
 import { planListFor } from "@/lib/plan-comparison";
 
 /*
@@ -30,7 +30,7 @@ export function planCardPrice(plan: Plan | null): { readonly amount: string; rea
 export function planCardBase(
   tier: MembershipTier,
   plan: Plan | null,
-  brand: Brand = BRANDS.firstfold,
+  brand: Brand = BRAND,
 ): { readonly tier: MembershipTier; readonly name: string; readonly price: ReturnType<typeof planCardPrice>; readonly pitch: string; readonly list: readonly string[] } {
   return { tier, name: PLAN_NAMES[tier], price: planCardPrice(plan), pitch: tier === "premium" && !brand.showsListing ? PREMIUM_PITCH_WITHOUT_LISTING : PITCHES[tier], list: planListFor(tier, brand) };
 }

@@ -6,7 +6,7 @@ import {
   withTenantScope,
   type Database,
   type DirectoryClaim,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { confirmAccountOtp, requestAccountOtp } from "./account-otp";
 import { getAppDb, getStaffDb } from "./db";
 import { confirmOwnerVerification, ownerVerificationState, requestOwnerVerification } from "./owner-verification";
@@ -14,7 +14,7 @@ import { confirmOwnerVerification, ownerVerificationState, requestOwnerVerificat
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
 vi.mock("./account-otp", () => ({ requestAccountOtp: vi.fn(), confirmAccountOtp: vi.fn() }));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   findClaimForBusiness: vi.fn(),
   readDirectoryStatuses: vi.fn(),
   upsertDirectoryVerification: vi.fn(),

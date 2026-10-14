@@ -23,34 +23,34 @@ CREATE INDEX "consent_records_subject_idx" ON "consent_records" USING btree ("su
 
 -- What people agreed to, one row per event. Staff may read and add rows; the public form connection may add rows and
 -- read none; nothing may edit or delete one, so a record cannot be changed after the fact. The customer role gets no
--- privilege at all. Both runtime role names are covered while the webfold_* to firstfold_* rollout (0132) is under way.
+-- privilege at all.
 ALTER TABLE consent_records ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY consent_records_staff_select ON consent_records FOR SELECT TO firstfold_staff USING (true);
+CREATE POLICY consent_records_staff_select ON consent_records FOR SELECT TO fynix_staff USING (true);
 --> statement-breakpoint
 
-CREATE POLICY consent_records_staff_insert ON consent_records FOR INSERT TO firstfold_staff WITH CHECK (true);
+CREATE POLICY consent_records_staff_insert ON consent_records FOR INSERT TO fynix_staff WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY consent_records_public_insert ON consent_records FOR INSERT TO firstfold_public WITH CHECK (true);
+CREATE POLICY consent_records_public_insert ON consent_records FOR INSERT TO fynix_public WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT ON consent_records TO firstfold_staff;
+GRANT SELECT, INSERT ON consent_records TO fynix_staff;
 --> statement-breakpoint
 
-GRANT INSERT ON consent_records TO firstfold_public;
+GRANT INSERT ON consent_records TO fynix_public;
 --> statement-breakpoint
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'webfold_staff') THEN
-    CREATE POLICY consent_records_legacy_staff_select ON consent_records FOR SELECT TO webfold_staff USING (true);
-    CREATE POLICY consent_records_legacy_staff_insert ON consent_records FOR INSERT TO webfold_staff WITH CHECK (true);
-    GRANT SELECT, INSERT ON consent_records TO webfold_staff;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
+    CREATE POLICY consent_records_legacy_staff_select ON consent_records FOR SELECT TO fynix_staff USING (true);
+    CREATE POLICY consent_records_legacy_staff_insert ON consent_records FOR INSERT TO fynix_staff WITH CHECK (true);
+    GRANT SELECT, INSERT ON consent_records TO fynix_staff;
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'webfold_public') THEN
-    CREATE POLICY consent_records_legacy_public_insert ON consent_records FOR INSERT TO webfold_public WITH CHECK (true);
-    GRANT INSERT ON consent_records TO webfold_public;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_public') THEN
+    CREATE POLICY consent_records_legacy_public_insert ON consent_records FOR INSERT TO fynix_public WITH CHECK (true);
+    GRANT INSERT ON consent_records TO fynix_public;
   END IF;
 END $$;

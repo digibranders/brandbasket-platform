@@ -16,7 +16,6 @@ import { claimRetentionOfferFor, closeAccountFor, findRetentionOfferView } from 
 import { changePasswordFor, revokeOtherSessionsFor } from "@/lib/server/account-security";
 import { getAuth } from "@/lib/server/auth";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
-import { forgetSignedIn } from "@/lib/server/signed-in-hint";
 import { headers } from "next/headers";
 
 /** The settings actions are open to every kind of account: a website client's, a free listing's, a member's. */
@@ -76,6 +75,5 @@ export async function deleteAccountAction(_previous: DeleteAccountState, formDat
   if (outcome.kind === "refused") return { status: "error", message: outcome.message, field: outcome.field };
   // The closure now locks the account on its own; ending every session as well means no device is left looking at it.
   await getAuth().api.revokeSessions({ headers: await headers() });
-  await forgetSignedIn();
   redirect(`/login?notice=${ACCOUNT_CLOSED_NOTICE}`);
 }

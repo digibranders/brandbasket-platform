@@ -1,12 +1,12 @@
-import { findClientDetail, recordProjectPreviewSent, type Database } from "@firstfold/db";
-import { previewReadyEmail } from "@firstfold/email";
+import { findClientDetail, recordProjectPreviewSent, type Database } from "@fynix/db";
+import { previewReadyEmail } from "@fynix/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { customerEmailTransport } from "./email";
 import { ProjectPreviewRecipientMissingError, sendProjectPreview } from "./project-preview";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", () => ({ findClientDetail: vi.fn(), recordProjectPreviewSent: vi.fn() }));
-vi.mock("@firstfold/email", () => ({ previewReadyEmail: vi.fn() }));
+vi.mock("@fynix/db", () => ({ findClientDetail: vi.fn(), recordProjectPreviewSent: vi.fn() }));
+vi.mock("@fynix/email", () => ({ previewReadyEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 
 const mockedRecordSent = vi.mocked(recordProjectPreviewSent);
@@ -32,7 +32,7 @@ beforeEach(() => {
   mockedCreateTransport.mockReturnValue({ send });
   mockedPreviewReadyEmail.mockReturnValue({
     to: "riley@example.com",
-    subject: "Your Firstfold preview is ready",
+    subject: "Your Fynix preview is ready",
     template: "preview-ready",
     bodyText: "text",
     bodyHtml: "html",
@@ -53,7 +53,6 @@ describe("sendProjectPreview", () => {
       to: "riley@example.com",
       businessName: "Riverside Plumbing",
       previewUrl: "https://preview.example",
-      brandName: "Firstfold",
     });
     expect(send).toHaveBeenCalledTimes(1);
     expect(mockedRecordSent.mock.invocationCallOrder[0]).toBeLessThan(mockedFindClient.mock.invocationCallOrder[0] ?? 0);

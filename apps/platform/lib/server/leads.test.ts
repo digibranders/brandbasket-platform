@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { consumeRateLimit, createLead, recordConsent, type Database } from "@firstfold/db";
-import type { LeadInput } from "@firstfold/shared/lib/lead-form";
+import { consumeRateLimit, createLead, recordConsent, type Database } from "@fynix/db";
+import type { LeadInput } from "@fynix/shared/lib/lead-form";
 import { recordLead } from "./leads";
 import { getPublicDb } from "./public-db";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./public-db", () => ({ getPublicDb: vi.fn() }));
 vi.mock("./env", () => ({ serverEnv: () => ({ ADMIN_ORIGIN: "http://admin.localhost:3003" }) }));
-vi.mock("@firstfold/email", () => ({
+vi.mock("@fynix/email", () => ({
   createAppEmailTransport: () => ({ send: vi.fn(async () => undefined) }),
   leadReceivedEmail: vi.fn(() => ({})),
 }));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   consumeRateLimit: vi.fn(),
   createLead: vi.fn(),
   recordConsent: vi.fn(),

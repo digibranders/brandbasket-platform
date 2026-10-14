@@ -1,8 +1,8 @@
-import { listBreaches, type StoredBreach } from "@firstfold/db";
-import { breachDeadlines, breachDutyState, type BreachDutyState } from "@firstfold/shared/lib/breach-deadlines";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
+import { listBreaches, type StoredBreach } from "@fynix/db";
+import { breachDeadlines, breachDutyState, type BreachDutyState } from "@fynix/shared/lib/breach-deadlines";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { EmptyLine } from "@/components/console/hairline-list";

@@ -1,7 +1,7 @@
 import "server-only";
-import { recordStaffAccess, type StaffAccessEntry } from "@firstfold/db";
-import { clientIpFrom } from "@firstfold/shared/lib/client-ip";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { recordStaffAccess, type StaffAccessEntry } from "@fynix/db";
+import { clientIpFrom } from "@fynix/shared/lib/client-ip";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { headers } from "next/headers";
 import { getStaffDb } from "./db";
 

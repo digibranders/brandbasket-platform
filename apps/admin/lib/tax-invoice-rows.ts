@@ -1,8 +1,8 @@
-import { indianDate } from "@firstfold/billing";
-import type { Payment, TaxInvoice } from "@firstfold/db";
-import { stateName } from "@firstfold/shared/lib/directory/india-states";
-import { formatStoredDate } from "@firstfold/shared/lib/format";
-import { formatMoney } from "@firstfold/shared/lib/money";
+import { indianDate } from "@fynix/billing";
+import type { Payment, TaxInvoice } from "@fynix/db";
+import { stateName } from "@fynix/shared/lib/directory/india-states";
+import { formatStoredDate } from "@fynix/shared/lib/format";
+import { formatMoney } from "@fynix/shared/lib/money";
 
 /**
  * What the client page's Tax invoices section says about each invoice and each payment still missing one. Plain data

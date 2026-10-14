@@ -1,4 +1,4 @@
-import type { SubscriptionStatus } from "@firstfold/db";
+import type { SubscriptionStatus } from "@fynix/db";
 
 export interface BillingAccessInput {
   readonly status: SubscriptionStatus;

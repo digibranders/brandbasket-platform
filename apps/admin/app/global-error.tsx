@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, type ReactElement } from "react";
-import { isStaleDeployError } from "@firstfold/shared/lib/stale-deploy";
-import { DeploymentUpdate } from "@firstfold/shared/ui/panel/deployment-update";
-import { reportBrowserError } from "@firstfold/shared/lib/error-report";
+import { isStaleDeployError } from "@fynix/shared/lib/stale-deploy";
+import { DeploymentUpdate } from "@fynix/shared/ui/panel/deployment-update";
+import { reportBrowserError } from "@fynix/shared/lib/error-report";
 
 export default function GlobalError({ error, reset }: { readonly error: Error & { readonly digest?: string }; readonly reset: () => void }): ReactElement {
   useEffect(() => {
     if (isStaleDeployError(error)) return;
-    reportBrowserError(error, { app: "admin", operation: "error_boundary", route: window.location.pathname, severity: "fatal", release: process.env.NEXT_PUBLIC_FIRSTFOLD_RELEASE });
+    reportBrowserError(error, { app: "admin", operation: "error_boundary", route: window.location.pathname, severity: "fatal", release: process.env.NEXT_PUBLIC_FYNIX_RELEASE });
   }, [error]);
   return (
     <html lang="en">

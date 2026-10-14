@@ -1,16 +1,16 @@
 "use client";
 
 import { useActionState, useEffect, useRef, type ComponentProps, type ReactElement, type ReactNode } from "react";
-import type { BillingDetailsField } from "@firstfold/shared/lib/billing/billing-details-form";
-import type { BillingDetailsStart } from "@firstfold/shared/lib/billing/billing-details-start";
-import { INDIA_STATES } from "@firstfold/shared/lib/directory/india-states";
-import type { PhoneCountryOption } from "@firstfold/shared/lib/phone/fields";
-import { FIELD_PATTERNS, type InputRule } from "@firstfold/shared/lib/forms/input-rules";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { PhoneField } from "@firstfold/shared/ui/phone-field";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+import type { BillingDetailsField } from "@fynix/shared/lib/billing/billing-details-form";
+import type { BillingDetailsStart } from "@fynix/shared/lib/billing/billing-details-start";
+import { INDIA_STATES } from "@fynix/shared/lib/directory/india-states";
+import type { PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
+import { FIELD_PATTERNS, type InputRule } from "@fynix/shared/lib/forms/input-rules";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { PhoneField } from "@fynix/shared/ui/phone-field";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { INITIAL_STAFF_BILLING_DETAILS_STATE, type StaffBillingDetailsState } from "@/lib/billing-details-form-state";

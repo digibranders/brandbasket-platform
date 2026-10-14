@@ -1,4 +1,4 @@
-import { findBillingState, findOpenClosureForUser, listMembershipsForUser, withTenantScope, type Database } from "@firstfold/db";
+import { findBillingState, findOpenClosureForUser, listMembershipsForUser, withTenantScope, type Database } from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getCustomerTenant } from "./customer-tenant";
 import { getAppDb, getStaffDb } from "./db";
@@ -7,7 +7,7 @@ import { getSessionUser } from "./session";
 vi.mock("server-only", () => ({}));
 vi.mock("./session", () => ({ getSessionUser: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   findBillingState: vi.fn(),
   findOpenClosureForUser: vi.fn(),
   listMembershipsForUser: vi.fn(),

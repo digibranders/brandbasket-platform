@@ -1,4 +1,4 @@
-import { isRealDeployment } from "@firstfold/billing";
+import { isRealDeployment } from "@fynix/billing";
 
 export class RuntimeEnvironmentError extends Error {
   constructor(message: string) {
@@ -18,7 +18,7 @@ export function assertRuntimeEnvironment(
   env: Readonly<Record<string, string | undefined>>,
   required: readonly string[],
 ): void {
-  // A build is not a running server; vps-setup/platform/firstfold-platform-build.env holds placeholders only.
+  // A build is not a running server; vps-setup/platform/fynix-platform-build.env holds placeholders only.
   if (env.NEXT_PHASE === "phase-production-build") return;
   if (!isRealDeployment({ VERCEL_ENV: env.VERCEL_ENV, APP_ORIGIN: env.APP_ORIGIN })) return;
 

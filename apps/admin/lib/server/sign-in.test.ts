@@ -1,27 +1,27 @@
 import { headers } from "next/headers";
-import type { Auth } from "@firstfold/auth";
-import { isInvalidCredentialsError } from "@firstfold/auth";
-import { consumeRateLimit, findActiveStaffMember, findActiveStaffUserIdByEmail, type Database, type RateLimitResult } from "@firstfold/db";
+import type { Auth } from "@fynix/auth";
+import { isInvalidCredentialsError } from "@fynix/auth";
+import { consumeRateLimit, findActiveStaffMember, findActiveStaffUserIdByEmail, type Database, type RateLimitResult } from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getAuth } from "./auth";
 import { getStaffDb } from "./db";
 import { signInWithPassword } from "./sign-in";
 import { logStaffAccess } from "./staff-access-log";
 
-// This module reaches a live database (via ./db and @firstfold/db) and Better Auth (via ./auth), and
+// This module reaches a live database (via ./db and @fynix/db) and Better Auth (via ./auth), and
 // reads the incoming request (via next/headers). All of that is replaced with test doubles so
 // signInWithPassword's own decisions — parsing, rate-limit ordering, and error mapping — run in
 // isolation. `server-only` is mocked because ./auth and ./db import it; without a mock it throws
 // outside a genuine Next.js server context.
 //
-// `@firstfold/auth` (rather than constructing a real `better-auth/api` APIError) is mocked here: it
+// `@fynix/auth` (rather than constructing a real `better-auth/api` APIError) is mocked here: it
 // is not a direct dependency of apps/platform, so pnpm's strict linking makes `better-auth/api`
-// unresolvable from this package, even though @firstfold/auth re-exports from it transitively.
+// unresolvable from this package, even though @fynix/auth re-exports from it transitively.
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
-vi.mock("@firstfold/auth", () => ({ isInvalidCredentialsError: vi.fn() }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/auth", () => ({ isInvalidCredentialsError: vi.fn() }));
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     consumeRateLimit: vi.fn(),
     findActiveStaffMember: vi.fn(),
@@ -79,12 +79,12 @@ describe("signInWithPassword", () => {
   });
 
   it("refuses a phone account's placeholder address like any unknown account, without checking a password", async () => {
-    const outcome = await signInWithPassword(form({ email: "919820011223@phone.firstfold.invalid", password: "correct-horse" }));
+    const outcome = await signInWithPassword(form({ email: "919820011223@phone.fynix.invalid", password: "correct-horse" }));
 
     expect(outcome).toEqual({
       status: "error",
       message: "That email and password don’t match an account.",
-      email: "919820011223@phone.firstfold.invalid",
+      email: "919820011223@phone.fynix.invalid",
     });
     expect(mockedConsumeRateLimit).not.toHaveBeenCalled();
     expect(signInEmail).not.toHaveBeenCalled();

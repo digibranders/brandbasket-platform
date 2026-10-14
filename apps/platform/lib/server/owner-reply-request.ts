@@ -1,4 +1,4 @@
-import type { DirectoryNamed, DirectoryRef } from "@firstfold/db";
+import type { DirectoryNamed, DirectoryRef } from "@fynix/db";
 import { z } from "zod";
 import {
   listingKeySchema,

@@ -1,5 +1,5 @@
 import "server-only";
-import { AccountAlreadyExistsError, createPhoneAccountWithGrant, createVerifiedEmailAccountWithGrant } from "@firstfold/auth";
+import { AccountAlreadyExistsError, createPhoneAccountWithGrant, createVerifiedEmailAccountWithGrant } from "@fynix/auth";
 import {
   consumeRateLimit,
   createListingAccountBusiness,
@@ -12,12 +12,12 @@ import {
   PlaceNotClaimableError,
   type PlaceClaimRefusal,
   UserAlreadyHasBusinessError,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { headers } from "next/headers";
-import { clientIpFrom } from "@firstfold/shared/lib/client-ip";
-import { isDirectoryArea, isDirectoryCategory } from "@firstfold/shared/lib/directory/places";
-import { retryMessage } from "@firstfold/shared/lib/sign-in-limits";
-import { parsePhoneEntry } from "@firstfold/shared/lib/validation/phone";
+import { clientIpFrom } from "@fynix/shared/lib/client-ip";
+import { isDirectoryArea, isDirectoryCategory } from "@fynix/shared/lib/directory/places";
+import { retryMessage } from "@fynix/shared/lib/sign-in-limits";
+import { parsePhoneEntry } from "@fynix/shared/lib/validation/phone";
 import type { JoinClaimBusiness, JoinCodeStep, JoinInput } from "@/lib/join-form";
 import { recordAccountTermsConsent } from "./account-consent";
 import { confirmAccountEmailCode, requestAccountEmailCode, type AccountEmailCodeLimited } from "./account-email-code";
@@ -26,15 +26,15 @@ import { getAuth } from "./auth";
 import { hasValidClaimSignature } from "./claim-link";
 import { ipRateLimitKey } from "./ip-key";
 import { getStaffDb } from "./db";
-import { signInCustomer } from "./signed-in-hint";
+import { signInCustomer } from "./customer-sign-in";
 
 /*
  * The free listing sign-up (docs/superpowers/specs/2026-09-30-directory-ads-auction-design.md): a business owner who
- * found their business on Firstfold Local opens an account to claim it and advertise. It creates the account, a
+ * found their business on the local directory opens an account to claim it and advertise. It creates the account, a
  * `listing` business with its pending claim, and signs them in. Staff then call the number to confirm the claim.
  *
  * A claim link names the business by its listing key or by its permanent place id (lib/directory-api.ts, "A claim
- * link"); either way the website signed it, and an id's place must be claimable (findClaimablePlace in @firstfold/db).
+ * link"); either way the website signed it, and an id's place must be claimable (findClaimablePlace in @fynix/db).
  *
  * An owner whose business is not in the directory signs up with no listing (docs/superpowers/specs/2026-09-30-add-my-
  * business-design.md): the account and its business are created with no claim, and the owner adds the business on the

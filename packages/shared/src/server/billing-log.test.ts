@@ -1,7 +1,7 @@
-import { BillingRangeError } from "@firstfold/billing/billing-range-error";
-import { UnknownStateError } from "@firstfold/billing/gst-states";
-import { InvalidGstinError } from "@firstfold/billing/gstin";
-import { InvoiceAmountMismatchError } from "@firstfold/billing/tax-invoice";
+import { BillingRangeError } from "@fynix/billing/billing-range-error";
+import { UnknownStateError } from "@fynix/billing/gst-states";
+import { InvalidGstinError } from "@fynix/billing/gstin";
+import { InvoiceAmountMismatchError } from "@fynix/billing/tax-invoice";
 import { describe, expect, it, vi } from "vitest";
 import { describeError } from "./billing-log";
 

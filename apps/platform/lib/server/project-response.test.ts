@@ -1,11 +1,11 @@
-import { approveProjectPreview, requestProjectRevisions, type Database } from "@firstfold/db";
-import { createAppEmailTransport, previewApprovedEmail, previewRevisionsRequestedEmail } from "@firstfold/email";
+import { approveProjectPreview, requestProjectRevisions, type Database } from "@fynix/db";
+import { createAppEmailTransport, previewApprovedEmail, previewRevisionsRequestedEmail } from "@fynix/email";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { respondToPreview } from "./project-response";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", () => ({ approveProjectPreview: vi.fn(), requestProjectRevisions: vi.fn() }));
-vi.mock("@firstfold/email", () => ({
+vi.mock("@fynix/db", () => ({ approveProjectPreview: vi.fn(), requestProjectRevisions: vi.fn() }));
+vi.mock("@fynix/email", () => ({
   createAppEmailTransport: vi.fn(),
   previewApprovedEmail: vi.fn(),
   previewRevisionsRequestedEmail: vi.fn(),
@@ -25,7 +25,7 @@ const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefin
 beforeEach(() => {
   vi.resetAllMocks();
   consoleError.mockImplementation(() => undefined);
-  process.env.FIRSTFOLD_TEAM_EMAIL = "team@example.com";
+  process.env.FYNIX_TEAM_EMAIL = "team@example.com";
   mockedApprove.mockResolvedValue({} as Awaited<ReturnType<typeof approveProjectPreview>>);
   mockedRequestRevisions.mockResolvedValue({} as Awaited<ReturnType<typeof requestProjectRevisions>>);
   mockedCreateTransport.mockReturnValue({ send });
@@ -47,7 +47,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env.FIRSTFOLD_TEAM_EMAIL;
+  delete process.env.FYNIX_TEAM_EMAIL;
 });
 
 describe("respondToPreview", () => {
@@ -100,7 +100,7 @@ describe("respondToPreview", () => {
   });
 
   it("logs and skips the email rather than throwing when no team inbox is configured", async () => {
-    delete process.env.FIRSTFOLD_TEAM_EMAIL;
+    delete process.env.FYNIX_TEAM_EMAIL;
 
     await expect(
       respondToPreview(db, { businessId: "business-1", businessName: "Riverside Plumbing", response: { kind: "approve" } }, NOW),

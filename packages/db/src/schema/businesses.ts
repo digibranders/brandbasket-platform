@@ -10,7 +10,7 @@ export const businessMemberRole = pgEnum("business_member_role", ["owner", "edit
 export type BusinessMemberRole = (typeof businessMemberRole.enumValues)[number];
 
 /**
- * `website` is a Firstfold client (a subscription, a website project). `listing` is a free Firstfold Local account a
+ * `website` is a Fynix client (a subscription, a website project). `listing` is a free the local directory account a
  * business opens to claim or add its directory listing and bid for ad spots: no website and no paid subscription, and
  * the customer dashboard shows it Listing, Photos, Advertise, Billing, Premium and Settings (docs/superpowers/specs/
  * 2026-09-30-directory-ads-auction-design.md). It may hold an unpaid checkout for the Premium membership; the payment

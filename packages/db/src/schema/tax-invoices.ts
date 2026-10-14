@@ -107,7 +107,7 @@ export const taxInvoices = pgTable(
     id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
     businessId: uuid("business_id").notNull().references(() => businesses.id),
     paymentId: uuid("payment_id").notNull().references(() => payments.id),
-    /** The series this invoice belongs to ("FF"). Upper-case letters and digits only. */
+    /** The series this invoice belongs to ("FY"). Upper-case letters and digits only. */
     prefix: text("prefix").notNull(),
     /** The Indian financial year (April to March) of `issuedOn`, as two-digit years: "26-27". */
     financialYear: text("financial_year").notNull(),

@@ -1,4 +1,4 @@
-import type { CustomerAccess, SessionUser } from "@firstfold/shared/lib/access";
+import type { CustomerAccess, SessionUser } from "@fynix/shared/lib/access";
 
 export interface SupportAccess {
   readonly user: SessionUser;

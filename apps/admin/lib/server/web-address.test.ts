@@ -9,7 +9,7 @@ import {
   type Database,
   type DirectoryPlace,
   type ScopedTransaction,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WEB_ADDRESS_MESSAGES } from "../web-address-form";
 import { getStaffDb } from "./db";
@@ -17,8 +17,8 @@ import { changeWebAddress } from "./web-address";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return { ...actual, changePlaceUrl: vi.fn(), findPlaces: vi.fn() };
 });
 
@@ -68,7 +68,7 @@ describe("changeWebAddress", () => {
   it("changes the URL in one transaction and answers with the full new address", async () => {
     expect(await change()).toEqual({
       status: "changed",
-      url: `https://firstfold.io/in/mh/business/smile-dental-care/${businessUrlCode("k7m2q9a")}`,
+      url: `https://fynix.digital/in/mh/business/smile-dental-care/${businessUrlCode("k7m2q9a")}`,
     });
     expect(changePlaceUrl).toHaveBeenCalledWith(
       TX,
@@ -103,7 +103,7 @@ describe("changeWebAddress", () => {
     vi.mocked(findPlaces).mockResolvedValue(new Map([[SMILE.id, { ...SMILE, citySlug: "new-town" }]]));
     expect(await change({ citySlug: "new-town" })).toEqual({
       status: "changed",
-      url: `https://firstfold.io/in/mh/business/smile-dental-care/${businessUrlCode("k7m2q9a")}`,
+      url: `https://fynix.digital/in/mh/business/smile-dental-care/${businessUrlCode("k7m2q9a")}`,
     });
     expect(await change({ citySlug: "old-town" })).toMatchObject({ status: "error", field: "citySlug", message: WEB_ADDRESS_MESSAGES.citySlug });
   });

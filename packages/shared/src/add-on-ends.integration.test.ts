@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createFakeBillingProvider, chargedAmountCents, type BillingProvider } from "@firstfold/billing";
+import { createFakeBillingProvider, chargedAmountCents, type BillingProvider } from "@fynix/billing";
 import {
   billingProfiles,
   businesses,
@@ -9,8 +9,8 @@ import {
   updateAddOnStatus,
   users,
   type AddOnSubscription,
-} from "@firstfold/db";
-import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@firstfold/db/testing";
+} from "@fynix/db";
+import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@fynix/db/testing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { addOnView } from "./lib/billing/add-on-state";
 import { addOnFactsOf, pickAddOnRows } from "./lib/billing/add-on-rows";

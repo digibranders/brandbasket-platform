@@ -1,5 +1,5 @@
-import type { ProjectStatus } from "@firstfold/db";
-import { ONBOARDING_STEPS, type OnboardingStepKey } from "@firstfold/shared/lib/onboarding/steps";
+import type { ProjectStatus } from "@fynix/db";
+import { ONBOARDING_STEPS, type OnboardingStepKey } from "@fynix/shared/lib/onboarding/steps";
 
 export interface NextStepProject {
   readonly status: ProjectStatus;

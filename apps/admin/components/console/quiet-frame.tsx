@@ -1,13 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
-import { WordmarkLogo, type BrandLogo } from "@firstfold/shared/ui/logo";
+import { WordmarkLogo } from "@fynix/shared/ui/logo";
 import { adminBrand } from "@/lib/brand";
 import { pathD } from "@/lib/journey-layout";
-
-/** The brand's own logo when it has one: Firstfold's wordmark is the component's default. */
-function logoProps(): { readonly brand?: BrandLogo } {
-  const { logo } = adminBrand();
-  return logo === undefined ? {} : { brand: logo };
-}
 
 const CURVE = pathD(1000, 400);
 
@@ -41,7 +35,7 @@ export function QuietFrame({ title, lede, children }: QuietFrameProps): ReactEle
         />
       </svg>
       <header>
-        <WordmarkLogo href="/" {...logoProps()} />
+        <WordmarkLogo href="/" brand={adminBrand().logo} />
       </header>
       <main id="main" className="grid flex-1 place-items-center py-12">
         <div className="w-full max-w-sm">

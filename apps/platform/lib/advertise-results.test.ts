@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AdDayCount } from "@firstfold/db";
+import type { AdDayCount } from "@fynix/db";
 import { buildAdResults, formatClickRate, weekDays } from "./advertise-results";
 
 const DAYS = ["2026-10-05", "2026-10-06", "2026-10-07"] as const;

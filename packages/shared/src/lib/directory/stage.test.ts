@@ -20,7 +20,7 @@ describe("listingStage", () => {
   it("labels every stage", () => {
     expect(LISTING_STAGE_LABELS).toEqual({
       building: "Goes live with your website",
-      live: "Live on Firstfold Local",
+      live: "Live on the local directory",
       hidden: "Hidden",
       paused: "Paused",
     });

@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { SkeletonHeading, SkeletonLine } from "@firstfold/shared/ui/panel/skeleton";
+import { SkeletonHeading, SkeletonLine } from "@fynix/shared/ui/panel/skeleton";
 
 /** One doctor's row: the round avatar, then a name and a shorter line under it. */
 function SkeletonDoctor(): ReactElement {

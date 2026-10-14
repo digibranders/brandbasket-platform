@@ -1,5 +1,6 @@
 import { isValidElement, type ReactElement, type ReactNode } from "react";
-import { BRANDS } from "./brand";
+import { BRAND } from "./brand";
+import { LISTING_BRAND } from "./testing/listing-brand";
 import { legalLinksFor } from "./legal-links";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { JoinForm } from "@/components/panel/join-form";
@@ -103,7 +104,7 @@ function receiveCode(otpId: string, code: string): void {
 const otp = { otpId: "challenge-1", phoneHint: "••••1234", via: "phone" as const, texted: true };
 
 function join(action: (state: JoinFormState, data: FormData) => Promise<JoinFormState>, textsCodes = true): ReactElement {
-  return JoinForm({ action, listing: null, placeId: null, businessName: "", signature: "", initialChoice: "care", preselected: null, choices: BRANDS.firstfold.joinChoices, legalLinks: legalLinksFor(BRANDS.firstfold), prices: { care: null, premium: null }, signUpWith: "phone", textsCodes });
+  return JoinForm({ action, listing: null, placeId: null, businessName: "", signature: "", initialChoice: "care", preselected: null, choices: LISTING_BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { care: null, premium: null }, signUpWith: "phone", textsCodes });
 }
 
 beforeEach(() => {

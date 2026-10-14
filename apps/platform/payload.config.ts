@@ -1,8 +1,8 @@
-import { buildCmsConfig } from "@firstfold/cms";
+import { buildCmsConfig } from "@fynix/cms";
 import { serverEnv } from "@/lib/server/env";
 
 /**
- * Payload's config for this app. The collections and their access rules live in `@firstfold/cms`, shared with
+ * Payload's config for this app. The collections and their access rules live in `@fynix/cms`, shared with
  * apps/admin; this file only supplies this app's own secrets.
  *
  * `serverEnv()` is safe to call here even though this file is loaded directly by Node — both real entry points

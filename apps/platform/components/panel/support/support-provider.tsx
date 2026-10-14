@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { SupportContext } from "@firstfold/shared/ui/panel/support-context";
+import { SupportContext } from "@fynix/shared/ui/panel/support-context";
 import { readSupportUnreadCount } from "@/app/app-host/(support)/support/actions";
 
 const SupportDialog = dynamic(() => import("./support-dialog"), { ssr: false });
@@ -15,8 +15,8 @@ export function SupportProvider({ children, canCreate }: { readonly children: Re
   const pathname = usePathname();
   const refresh = useCallback(() => { void readSupportUnreadCount().then(setUnread).catch(() => undefined); }, []);
   useEffect(() => {
-    refresh(); window.addEventListener("focus", refresh); window.addEventListener("firstfold:support-read", refresh);
-    return () => { window.removeEventListener("focus", refresh); window.removeEventListener("firstfold:support-read", refresh); };
+    refresh(); window.addEventListener("focus", refresh); window.addEventListener("fynix:support-read", refresh);
+    return () => { window.removeEventListener("focus", refresh); window.removeEventListener("fynix:support-read", refresh); };
   }, [refresh]);
   useEffect(() => { refresh(); }, [pathname, refresh]);
   const open = useCallback((category: "support" | null, trigger: HTMLElement | null): void => {

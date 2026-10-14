@@ -5,13 +5,13 @@ import {
   withTenantScope,
   type DirectoryPaidTag,
   type PromotionPurchaseRefusal,
-} from "@firstfold/db";
+} from "@fynix/db";
 import {
   PROMOTION_TAX_BASIS_POINTS,
   PROMOTION_WEEK_CHARGED_PAISE,
   PROMOTION_WEEK_NET_PAISE,
   promotionChargeDescription,
-} from "@firstfold/shared/lib/directory/promotion";
+} from "@fynix/shared/lib/directory/promotion";
 import { startCustomerChargePayment, type ChargePaymentStart } from "./charges";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";

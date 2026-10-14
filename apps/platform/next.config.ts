@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
-import { vercelProductionRequirements } from "@firstfold/shared/lib/production-requirements";
+import { vercelProductionRequirements } from "@fynix/shared/lib/production-requirements";
 import { withPayload } from "@payloadcms/next/withPayload";
 import { withSentryConfig } from "@sentry/nextjs/config";
-import { securityHeaders, sentryIngestOrigin } from "@firstfold/shared/lib/security-headers";
+import { securityHeaders, sentryIngestOrigin } from "@fynix/shared/lib/security-headers";
 import { deploymentIdOf } from "./lib/deployment-id";
 import { previewOrigins } from "./lib/preview-origins";
 
@@ -11,7 +11,7 @@ import { previewOrigins } from "./lib/preview-origins";
 function assertProductionEnvironment(): void {
   if (process.env.VERCEL_ENV !== "production") return;
 
-  const missing = vercelProductionRequirements(process.env).filter((name) => !process.env[name]?.trim());
+  const missing = vercelProductionRequirements().filter((name) => !process.env[name]?.trim());
   if (missing.length > 0) {
     throw new Error(
       `Production deployment is missing required environment variables: ${missing.join(", ")}. See .env.example.`,
@@ -30,8 +30,6 @@ const servedOverHttps =
  * enquiries. The marketing website is its own repository.
  */
 const nextConfig: NextConfig = {
-  // The browser's copy of PLATFORM_BRAND (packages/shared clientBrandName): error screens and the account bar name the deployment's brand.
-  env: { NEXT_PUBLIC_PLATFORM_BRAND: process.env.PLATFORM_BRAND?.trim().toLowerCase() ?? "" },
   poweredByHeader: false,
   // Version skew protection: a page from an older release reloads itself instead of sending its Save to a build that
   // does not know the action (lib/deployment-id.ts).
@@ -74,7 +72,7 @@ const nextConfig: NextConfig = {
   },
 
   // Workspace packages ship TypeScript source.
-  transpilePackages: ["@firstfold/auth", "@firstfold/billing", "@firstfold/db", "@firstfold/email", "@firstfold/shared"],
+  transpilePackages: ["@fynix/auth", "@fynix/billing", "@fynix/db", "@fynix/email", "@fynix/shared"],
 };
 
 // Wires Payload's own webpack/Turbopack config (its admin UI, CSS, import maps) into Next's build. See
@@ -82,7 +80,7 @@ const nextConfig: NextConfig = {
 // Uploads source maps on production builds when SENTRY_AUTH_TOKEN is set, so stack traces show original code.
 export default withSentryConfig(withPayload(nextConfig), {
   org: "fynix-digital",
-  project: "firstfold-platform",
+  project: "fynix-platform",
   authToken: process.env.SENTRY_AUTH_TOKEN,
   widenClientFileUpload: true,
   silent: !process.env.CI,

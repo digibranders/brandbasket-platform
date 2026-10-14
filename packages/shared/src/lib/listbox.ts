@@ -1,4 +1,4 @@
-/** Keyboard behaviour for a single-choice list (the custom dropdowns), kept apart from the UI so it can be tested. Mirrors firstfold-website/lib/listbox.ts. */
+/** Keyboard behaviour for a single-choice list (the custom dropdowns), kept apart from the UI so it can be tested. Mirrors fynix-website/lib/listbox.ts. */
 
 export type ListboxMove = "next" | "previous" | "first" | "last";
 

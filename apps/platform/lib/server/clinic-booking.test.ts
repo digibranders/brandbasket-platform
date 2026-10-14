@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { BookingContext, SiteFacts } from "@firstfold/db";
-import type { PractitionerCalendar } from "@firstfold/shared/lib/appointments/clinic-availability";
+import type { BookingContext, SiteFacts } from "@fynix/db";
+import type { PractitionerCalendar } from "@fynix/shared/lib/appointments/clinic-availability";
 import { buildClinicDay, checkReceptionDate, lastReceptionDate, resolveClinicSlot, type ClinicDay, type ClinicDayInput, type ClinicDaySlot } from "./clinic-booking";
 
 // Only the pure half is under test; the loaders' staff connection is never opened.

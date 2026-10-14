@@ -1,5 +1,5 @@
 import "server-only";
-import type { DeletingSupportAttachment } from "@firstfold/shared/server/support-attachment-maintenance";
+import type { DeletingSupportAttachment } from "@fynix/shared/server/support-attachment-maintenance";
 export interface RetainedSupportAttachment extends DeletingSupportAttachment {
   readonly ticketId: string | null;
 }

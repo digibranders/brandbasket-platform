@@ -1,4 +1,4 @@
-import { createDatabase } from "@firstfold/db";
+import { createDatabase } from "@fynix/db";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createAuth } from "./create-auth";
 

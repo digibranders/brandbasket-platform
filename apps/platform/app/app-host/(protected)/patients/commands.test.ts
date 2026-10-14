@@ -1,4 +1,4 @@
-import type { PatientRow, UpdatePatientResult } from "@firstfold/db";
+import type { PatientRow, UpdatePatientResult } from "@fynix/db";
 import { describe, expect, it, vi } from "vitest";
 import {
   editOutcomeProblem,

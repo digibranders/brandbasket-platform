@@ -7,10 +7,9 @@ import {
   reservedHostnamesFrom,
   temporarySubdomainFor,
   clientSiteBaseDomain,
-  FIRSTFOLD_SUBDOMAIN_ROOT,
 } from "./domain-form";
 
-const RESERVED = ["firstfold.com", "localhost"];
+const RESERVED = ["fynix.digital", "localhost"];
 
 function form(entries: Record<string, string>): FormData {
   const data = new FormData();
@@ -75,8 +74,8 @@ describe("parseDomainForm", () => {
     });
   });
 
-  it("refuses Firstfold's own hosts and anything under them", () => {
-    for (const domain of ["firstfold.com", "app.firstfold.com", "www.firstfold.com", "localhost", "app.localhost"]) {
+  it("refuses Fynix Digital's own hosts and anything under them", () => {
+    for (const domain of ["fynix.digital", "app.fynix.digital", "www.fynix.digital", "localhost", "app.localhost"]) {
       expect(parseDomainForm(form({ domain, ownerConfirmed: "on" }), RESERVED), domain).toMatchObject({
         success: false,
         field: "domain",
@@ -85,27 +84,22 @@ describe("parseDomainForm", () => {
   });
 
   it("does not mistake a lookalike for a reserved host", () => {
-    expect(parseDomainForm(form({ domain: "notfirstfold.com", ownerConfirmed: "on" }), RESERVED)).toMatchObject({
+    expect(parseDomainForm(form({ domain: "notfynix.digital", ownerConfirmed: "on" }), RESERVED)).toMatchObject({
       success: true,
     });
   });
 });
 
-const FIRSTFOLD_ENV = {};
-const FYNIX_ENV = { PLATFORM_BRAND: "fynix", CLIENT_SITE_BASE_DOMAIN: "sites.fynix.digital" };
+const SITES_ENV = { CLIENT_SITE_BASE_DOMAIN: "sites.fynix.digital" };
 
 describe("clientSiteBaseDomain", () => {
-  it("is firstfold.io on a Firstfold server with nothing set, as before", () => {
-    expect(clientSiteBaseDomain(FIRSTFOLD_ENV)).toBe(FIRSTFOLD_SUBDOMAIN_ROOT);
+  it("is nothing until CLIENT_SITE_BASE_DOMAIN is set: there is no default", () => {
+    expect(clientSiteBaseDomain({})).toBeNull();
+    expect(clientSiteBaseDomain({ CLIENT_SITE_BASE_DOMAIN: "  " })).toBeNull();
   });
 
-  it("is nothing on a Fynix server until CLIENT_SITE_BASE_DOMAIN is set: no Firstfold default", () => {
-    expect(clientSiteBaseDomain({ PLATFORM_BRAND: "fynix" })).toBeNull();
-    expect(clientSiteBaseDomain({ PLATFORM_BRAND: "fynix", CLIENT_SITE_BASE_DOMAIN: "  " })).toBeNull();
-  });
-
-  it("is the configured domain, lowercased and without dots at the ends, on either", () => {
-    expect(clientSiteBaseDomain({ PLATFORM_BRAND: "fynix", CLIENT_SITE_BASE_DOMAIN: " .Sites.Fynix.Digital. " })).toBe("sites.fynix.digital");
+  it("is the configured domain, lowercased and without dots at the ends, ", () => {
+    expect(clientSiteBaseDomain({ CLIENT_SITE_BASE_DOMAIN: " .Sites.Fynix.Digital. " })).toBe("sites.fynix.digital");
     expect(clientSiteBaseDomain({ CLIENT_SITE_BASE_DOMAIN: "example.in" })).toBe("example.in");
   });
 
@@ -116,55 +110,53 @@ describe("clientSiteBaseDomain", () => {
 
 describe("temporarySubdomainFor", () => {
   it("builds an address on the configured base domain from the business slug", () => {
-    expect(temporarySubdomainFor("harbour-bakery", undefined, FYNIX_ENV)).toBe("harbour-bakery.sites.fynix.digital");
-    expect(temporarySubdomainFor("harbour-bakery", undefined, FIRSTFOLD_ENV)).toBe(`harbour-bakery.${FIRSTFOLD_SUBDOMAIN_ROOT}`);
+    expect(temporarySubdomainFor("harbour-bakery", undefined, SITES_ENV)).toBe("harbour-bakery.sites.fynix.digital");
   });
 
   it("appends a disambiguator when the plain slug is already taken", () => {
-    expect(temporarySubdomainFor("harbour-bakery", "a1b2c3", FYNIX_ENV)).toBe("harbour-bakery-a1b2c3.sites.fynix.digital");
+    expect(temporarySubdomainFor("harbour-bakery", "a1b2c3", SITES_ENV)).toBe("harbour-bakery-a1b2c3.sites.fynix.digital");
   });
 
   it("keeps every label within the 63-character DNS limit even with a long slug and a disambiguator", () => {
-    const hostname = temporarySubdomainFor("a".repeat(60), "a1b2c3", FYNIX_ENV);
+    const hostname = temporarySubdomainFor("a".repeat(60), "a1b2c3", SITES_ENV);
     const label = hostname.split(".")[0] ?? "";
     expect(label.length).toBeLessThanOrEqual(63);
     expect(isValidHostname(hostname)).toBe(true);
   });
 
   it("never leaves a trailing hyphen when the slug is truncated", () => {
-    const hostname = temporarySubdomainFor(`${"a".repeat(54)}-bcdefgh`, "a1b2c3", FYNIX_ENV);
+    const hostname = temporarySubdomainFor(`${"a".repeat(54)}-bcdefgh`, "a1b2c3", SITES_ENV);
     expect(isValidHostname(hostname)).toBe(true);
   });
 
-  it("refuses to make an address when no base domain is configured, and never falls back to Firstfold's", () => {
-    expect(() => temporarySubdomainFor("harbour-bakery", undefined, { PLATFORM_BRAND: "fynix" })).toThrow(/CLIENT_SITE_BASE_DOMAIN/);
+  it("refuses to make an address when no base domain is configured, and never falls back to Fynix Digital's", () => {
+    expect(() => temporarySubdomainFor("harbour-bakery", undefined, {})).toThrow(/CLIENT_SITE_BASE_DOMAIN/);
   });
 });
 
 describe("isTemporarySubdomain", () => {
   it("recognises an address on the base domain", () => {
-    expect(isTemporarySubdomain("harbour-bakery.sites.fynix.digital", FYNIX_ENV)).toBe(true);
-    expect(isTemporarySubdomain("sites.fynix.digital", FYNIX_ENV)).toBe(true);
-    expect(isTemporarySubdomain(`harbour-bakery.${FIRSTFOLD_SUBDOMAIN_ROOT}`, FIRSTFOLD_ENV)).toBe(true);
+    expect(isTemporarySubdomain("harbour-bakery.sites.fynix.digital", SITES_ENV)).toBe(true);
+    expect(isTemporarySubdomain("sites.fynix.digital", SITES_ENV)).toBe(true);
   });
 
   it("does not mistake a lookalike domain, or any domain when none is configured", () => {
-    expect(isTemporarySubdomain("notfirstfold.in", FIRSTFOLD_ENV)).toBe(false);
-    expect(isTemporarySubdomain("yourbusiness.com", FYNIX_ENV)).toBe(false);
-    expect(isTemporarySubdomain("harbour-bakery.firstfold.io", { PLATFORM_BRAND: "fynix" })).toBe(false);
+    expect(isTemporarySubdomain("notfynix.digital", SITES_ENV)).toBe(false);
+    expect(isTemporarySubdomain("yourbusiness.com", SITES_ENV)).toBe(false);
+    expect(isTemporarySubdomain("harbour-bakery.fynix.digital", {})).toBe(false);
   });
 });
 
 describe("reservedHostnamesFrom", () => {
   it("takes the bare hostname of each origin, without www, and always includes localhost", () => {
     expect(
-      reservedHostnamesFrom(["https://www.firstfold.com", "https://app.firstfold.com/", "http://admin.localhost:3000"]),
-    ).toEqual(["localhost", "firstfold.com", "app.firstfold.com", "admin.localhost"]);
+      reservedHostnamesFrom(["https://www.fynix.digital", "https://app.fynix.digital/", "http://admin.localhost:3000"]),
+    ).toEqual(["localhost", "fynix.digital", "app.fynix.digital", "admin.localhost"]);
   });
 
   it("guards the marketing apex when the site lives on www", () => {
-    const reserved = reservedHostnamesFrom(["https://www.firstfold.com"]);
-    expect(parseDomainForm(form({ domain: "firstfold.com", ownerConfirmed: "on" }), reserved)).toMatchObject({
+    const reserved = reservedHostnamesFrom(["https://www.fynix.digital"]);
+    expect(parseDomainForm(form({ domain: "fynix.digital", ownerConfirmed: "on" }), reserved)).toMatchObject({
       success: false,
       field: "domain",
     });

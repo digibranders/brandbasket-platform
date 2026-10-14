@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
-import type { BusinessFaq } from "@firstfold/db";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+import type { BusinessFaq } from "@fynix/db";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { INPUT_CLASSES, ItemRow, Labelled, RemoveButton } from "@/components/panel/business/catalog-parts";
 import { ItemForm } from "@/components/panel/business/item-form";
 import { FAQ_ANSWER_MAX_LENGTH, FAQ_MAX_ITEMS, FAQ_QUESTION_MAX_LENGTH } from "@/lib/business-profile-fields";

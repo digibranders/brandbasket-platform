@@ -13,7 +13,7 @@ Set both values in a surface's pair only after its exact fixed-host template is 
 
 Either surface can be enabled while the other pair remains blank. Blank/unset pairs use the legacy message. Each pair must be complete; partial pairs are configuration errors. The sender validates all configured pairs before dispatching a MSG91 message, so an invalid pair must be corrected even if another surface is being used. Both pairs must use distinct hosts to avoid ambiguous provider template selection. The legacy, app and website IDs must also be distinct: one fixed-host template cannot render both hosts or the legacy message.
 
-Origins must be exact canonical HTTPS origins with lowercase ASCII DNS hosts, for example `https://app.firstfold.io` and `https://www.firstfold.io`. One trailing `/` is allowed. Schemes other than HTTPS, IP addresses, localhost, credentials, ports (including explicit `:443`), non-root paths, queries, fragments, whitespace, and noncanonical hosts are refused. Use ASCII punycode for approved internationalized names. Confirm the actual deployed browser hostname after canonical redirects before choosing the values. Do not copy these examples into production without that check.
+Origins must be exact canonical HTTPS origins with lowercase ASCII DNS hosts, for example `https://app.fynix.digital` and `https://www.fynix.digital`. One trailing `/` is allowed. Schemes other than HTTPS, IP addresses, localhost, credentials, ports (including explicit `:443`), non-root paths, queries, fragments, whitespace, and noncanonical hosts are refused. Use ASCII punycode for approved internationalized names. Confirm the actual deployed browser hostname after canonical redirects before choosing the values. Do not copy these examples into production without that check.
 
 These values are server deployment configuration. Neither request headers nor client-supplied hosts can choose the SMS binding. The template stores a literal host; no domain variable is sent to MSG91. `APP_ORIGIN` and API request hosts do not implicitly enable binding.
 
@@ -24,23 +24,23 @@ Client-site appointment booking retains the existing legacy template regardless 
 The existing legacy MSG91 Flow template remains:
 
 ```text
-##code## is your Firstfold code. It expires in 10 minutes. Do not share it.
+##code## is your Fynix code. It expires in 10 minutes. Do not share it.
 ```
 
 Register an independent app template, using the confirmed app host literally:
 
 ```text
-##code## is your Firstfold code. It expires in 10 minutes. Do not share it.
+##code## is your Fynix code. It expires in 10 minutes. Do not share it.
 
-@app.firstfold.io ###binding_code## Firstfold
+@app.fynix.digital ###binding_code## Fynix
 ```
 
 Register an independent website template, using the confirmed website host literally:
 
 ```text
-##code## is your Firstfold code. It expires in 10 minutes. Do not share it.
+##code## is your Fynix code. It expires in 10 minutes. Do not share it.
 
-@www.firstfold.io ###binding_code## Firstfold
+@www.fynix.digital ###binding_code## Fynix
 ```
 
 `###binding_code##` is the literal `#` marker followed immediately by MSG91's `##binding_code##` variable. The Flow API recipient carries **both** `code` and `binding_code`, each containing the same six ASCII digits. Keep leading zeros. Use MSG91 variable names exactly as shown; the configured IDs are the MSG91 Flow template IDs, with the approved DLT content templates associated in MSG91.
@@ -48,16 +48,16 @@ Register an independent website template, using the confirmed website host liter
 For DLT registration, represent each code occurrence with the operator's `{#var#}` placeholder; keep the literal `#` preceding the second placeholder. For example, the app content is:
 
 ```text
-{#var#} is your Firstfold code. It expires in 10 minutes. Do not share it.
+{#var#} is your Fynix code. It expires in 10 minutes. Do not share it.
 
-@app.firstfold.io #{#var#} Firstfold
+@app.fynix.digital #{#var#} Fynix
 ```
 
 Ask MSG91/operator support to confirm both placeholder mappings, the literal marker, and the exact line breaks. Do not reuse the legacy template ID for a new binding template. The parser refuses changed wording, unknown hosts, extra lines, extra suffixes, or different codes in the two positions before making a provider request.
 
-The fixed `Firstfold` suffix keeps the final word static, addressing MSG91's published restriction on templates ending with a variable. Approval is still required. [MSG91 DLT template FAQ](https://msg91.com/help/dlt-registration-in-india/dlt-content-template-faqs/).
+The fixed `Fynix` suffix keeps the final word static, addressing MSG91's published restriction on templates ending with a variable. Approval is still required. [MSG91 DLT template FAQ](https://msg91.com/help/dlt-registration-in-india/dlt-content-template-faqs/).
 
-The browser format permits trailing text on the same binding line. Keep `@host #code Firstfold` as the **last** line; do not append a separate brand/footer line or a trailing newline. This suffix choice still needs real-device verification. [Origin-bound SMS specification](https://wicg.github.io/sms-one-time-codes/#authoring).
+The browser format permits trailing text on the same binding line. Keep `@host #code Fynix` as the **last** line; do not append a separate brand/footer line or a trailing newline. This suffix choice still needs real-device verification. [Origin-bound SMS specification](https://wicg.github.io/sms-one-time-codes/#authoring).
 
 ## Rollout and rollback
 
@@ -69,7 +69,7 @@ The browser format permits trailing text on the same binding line. Keep `@host #
 6. Enable the app pair first if desired, then the website pair independently after acceptance. A pair activates all listed flows on that surface. Continue existing attempt limits, expiry, phone/purpose checks, and single-use server verification; domain binding does not identify a challenge or phone number.
 7. Roll back a surface by clearing **both** values in its pair together and redeploying/restarting the server as required. It resumes the unchanged legacy message/template. Keep the other surface's approved pair if it passed acceptance.
 
-This rollout covers top-level FirstFold pages. Embedded cross-origin OTP forms need separate permission and browser-format design. Unsupported browsers and in-app webviews must retain manual entry. Browser-native hints, WebOTP capability and SMS template approval are separate prerequisites; successful automated tests alone do not establish mobile autofill.
+This rollout covers top-level Fynix pages. Embedded cross-origin OTP forms need separate permission and browser-format design. Unsupported browsers and in-app webviews must retain manual entry. Browser-native hints, WebOTP capability and SMS template approval are separate prerequisites; successful automated tests alone do not establish mobile autofill.
 
 ## Local verification
 

@@ -11,8 +11,8 @@
 
 ## Goal
 
-A clinic, dentist, salon or physio that runs on Firstfold can take appointment requests from its own website and
-manage them in the Firstfold dashboard. Every client can also keep the everyday facts on their site current without a
+A clinic, dentist, salon or physio that runs on Fynix can take appointment requests from its own website and
+manage them in the Fynix dashboard. Every client can also keep the everyday facts on their site current without a
 change request: opening hours, holiday closures and a one-line announcement.
 
 ## Decisions already made
@@ -89,14 +89,14 @@ New migrations start at `0041`. The change-requests plan also claims `0040`/`004
 lands second renumbers.
 
 All tables below follow the existing pattern: uuidv7 ids, `business_id` foreign key, RLS enabled, a
-`*_tenant_*` policy for `webfold_app` on `business_id = app_current_business_id()`, an allow-all `*_staff_all`
-policy for `webfold_staff`, and grants narrowed to what the query layer uses. As in `0014`/`0016`, tables go in one
+`*_tenant_*` policy for `fynix_app` on `business_id = app_current_business_id()`, an allow-all `*_staff_all`
+policy for `fynix_staff`, and grants narrowed to what the query layer uses. As in `0014`/`0016`, tables go in one
 generated migration and grants/RLS in a hand-written `_grants` migration.
 
 **`business_modules`**: which modules a business has.
 - `business_id`, `module` (pgEnum `business_module`: `appointments` for now), `enabled` (bool),
   `changed_at`, `changed_by_user_id` (the staff user). Primary key `(business_id, module)`.
-- `webfold_app`: SELECT on its own rows only. Only staff write.
+- `fynix_app`: SELECT on its own rows only. Only staff write.
 - A row with `enabled = false` keeps the history of the last change. No row means the module was never on.
 
 **`businesses.time_zone`**: IANA name such as `Asia/Kolkata`, nullable text column. Staff set it on the client page.
@@ -139,7 +139,7 @@ the onboarding hours editor and `replaceBusinessHours`.
 - timestamps: `created_at`, `confirmed_at`, `suggested_at`, `declined_at`, `done_at`
 - `handled_by_user_id`
 - Index `(business_id, status, preferred_date)`.
-- `webfold_app`: SELECT on own rows, UPDATE only on the status/schedule/note columns (column grants). There is no
+- `fynix_app`: SELECT on own rows, UPDATE only on the status/schedule/note columns (column grants). There is no
   customer INSERT or DELETE. Requests only arrive through the intake endpoint.
 
 **Status transitions** (each one a single conditional `UPDATE … WHERE status IN (…)`, the pattern from the
@@ -258,7 +258,7 @@ None. Removed by the user's decision on 2026-09-25 (see the update at the top).
   - The date picker disables closed days and closures.
   - Field copy says "Please don't include medical details."
   - When paused or off, it shows the paused message or "Call us to book" with the phone number.
-- Tested first on `firstfold-test-client-site`.
+- Tested first on `fynix-test-client-site`.
 
 ## Privacy
 
@@ -290,7 +290,7 @@ None. Removed by the user's decision on 2026-09-25 (see the update at the top).
   - status transition table
 - **Integration tests** (`packages/db`, `*.integration.test.ts`):
   - RLS: business A can't read or update B's requests, closures, announcement or settings
-  - `webfold_app` can't insert requests or write `business_modules`
+  - `fynix_app` can't insert requests or write `business_modules`
   - each transition only from its allowed states
   - seeding happens once
 - **Handler unit tests** (platform): every refusal code on the intake endpoint, the honeypot, rate limits, and that a

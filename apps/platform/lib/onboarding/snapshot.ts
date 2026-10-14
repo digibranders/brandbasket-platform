@@ -7,10 +7,10 @@ import type {
   ProjectBrief,
   Service,
   StepProgress,
-} from "@firstfold/db";
-import { fromStoredHours, type OpeningHours } from "@firstfold/shared/lib/onboarding/hours";
-import type { ChecklistInput } from "@firstfold/shared/lib/onboarding/checklist";
-import { ONBOARDING_STEPS, type OnboardingStepKey } from "@firstfold/shared/lib/onboarding/steps";
+} from "@fynix/db";
+import { fromStoredHours, type OpeningHours } from "@fynix/shared/lib/onboarding/hours";
+import type { ChecklistInput } from "@fynix/shared/lib/onboarding/checklist";
+import { ONBOARDING_STEPS, type OnboardingStepKey } from "@fynix/shared/lib/onboarding/steps";
 
 /** Everything the customer has told us, read in one tenant-scoped transaction. */
 export interface OnboardingSnapshot {

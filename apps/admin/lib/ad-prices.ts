@@ -2,9 +2,9 @@
  * The Ads page's Prices tab, as data: each category's three weekly prices side by side (top and side of its list pages,
  * its business pages) and the home page's one price. A placement with no price row is closed to bids, and reads null.
  */
-import type { DirectoryAdPrice, DirectoryAdSpotPrice } from "@firstfold/db";
+import type { DirectoryAdPrice, DirectoryAdSpotPrice } from "@fynix/db";
 
-/** What the home page's price is kept under in place of a category (HOME_AD_SCOPE_SLUG in @firstfold/db). */
+/** What the home page's price is kept under in place of a category (HOME_AD_SCOPE_SLUG in @fynix/db). */
 export const HOME_PRICE_SCOPE = "all";
 
 export interface CategoryPriceRow {

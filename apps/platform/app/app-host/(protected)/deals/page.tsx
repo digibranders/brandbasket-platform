@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import type { DirectoryDeal } from "@firstfold/db";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import type { DirectoryDeal } from "@fynix/db";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { LivePreviewLayout } from "@/components/panel/live-preview/live-preview-layout";
 import { StatusLine, type StatusTone } from "@/components/panel/status-line";
 import { WhereItShows } from "@/components/panel/where-it-shows";

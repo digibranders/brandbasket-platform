@@ -1,5 +1,5 @@
-import type { Receipt } from "@firstfold/db";
-import { BRANDS } from "@/lib/brand";
+import type { Receipt } from "@fynix/db";
+import { BRAND } from "@/lib/brand";
 import { describe, expect, it } from "vitest";
 import { isDownloadableReceipt, receiptDocument, splitTax } from "./receipt-document";
 
@@ -60,7 +60,7 @@ describe("receiptDocument", () => {
     const doc = receiptDocument(receipt(), CUSTOMER);
 
     expect(doc).toMatchObject({
-      fileName: "firstfold-receipt-007.pdf",
+      fileName: "fynix-receipt-007.pdf",
       title: "Receipt #007",
       issuedOn: "12 Sep 2026",
       status: "Paid",
@@ -73,14 +73,14 @@ describe("receiptDocument", () => {
       total: { label: "Total paid", amount: "INR 3,538.82" },
     });
     expect(doc.from).toEqual([
-      "Firstfold",
+      "Fynix Digital",
       "Digibranders Private Limited",
       "Office No. 2617, 26th Floor, Solus Building,",
       "Hiranandani Estate, Ghodbunder Road,",
       "Thane West, Maharashtra 400607, India",
       "GSTIN 27AAICD9268J1Z0",
       "CIN U72900MH2021PTC372344",
-      "support@firstfold.io",
+      "hello@fynix.digital",
     ]);
   });
 
@@ -92,7 +92,7 @@ describe("receiptDocument", () => {
 
     expect(doc.lines).toEqual([{ label: "Care plan · First payment, covering your first month", amount: "USD 69.00" }]);
     expect(doc.total).toEqual({ label: "Total paid", amount: "USD 69.00" });
-    expect(doc.fileName).toBe("firstfold-receipt-001.pdf");
+    expect(doc.fileName).toBe("fynix-receipt-001.pdf");
   });
 
   it("groups large rupee amounts the Indian way", () => {
@@ -179,7 +179,7 @@ describe("receiptDocument for an add-on payment", () => {
 
 describe("receiptDocument under Fynix", () => {
   it("is headed with Fynix, files itself as Fynix and points questions at Fynix's address", () => {
-    const doc = receiptDocument(receipt(), { businessName: "Chennai Cafe", email: "owner@chennaicafe.in" }, BRANDS.fynix);
+    const doc = receiptDocument(receipt(), { businessName: "Chennai Cafe", email: "owner@chennaicafe.in" }, BRAND);
     expect(doc.fileName).toBe("fynix-receipt-007.pdf");
     expect(doc.from[0]).toBe("Fynix Digital");
     expect(doc.note).toContain("hello@fynix.digital");

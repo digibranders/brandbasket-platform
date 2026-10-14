@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TenantContext } from "@firstfold/shared/lib/access";
+import type { TenantContext } from "@fynix/shared/lib/access";
 import { MAX_UPLOAD_BYTES } from "@/lib/uploads/limits";
 import { handleListingPictureRequest, type ListingPictureRequestDeps } from "./listing-picture-request";
 import type { ListingPictureOutcome } from "./listing-pictures";
@@ -103,7 +103,7 @@ describe("handleListingPictureRequest", () => {
   });
 
   it("refuses another host or origin before looking anything up", async () => {
-    await expectRefused(await handleListingPictureRequest(pictureRequest({ host: "firstfold.io" }), deps), 403);
+    await expectRefused(await handleListingPictureRequest(pictureRequest({ host: "fynix.digital" }), deps), 403);
     await expectRefused(await handleListingPictureRequest(pictureRequest({ origin: "https://evil.example" }), deps), 403);
     expect(deps.getTenant).not.toHaveBeenCalled();
     expectNothingDone();

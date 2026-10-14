@@ -1,11 +1,11 @@
-import { readBookingContext, readSiteFacts } from "@firstfold/db";
-import { addDays, zonedTimeToUtc } from "@firstfold/shared/lib/calendar/local-date";
+import { readBookingContext, readSiteFacts } from "@fynix/db";
+import { addDays, zonedTimeToUtc } from "@fynix/shared/lib/calendar/local-date";
 import { getStaffDb } from "@/lib/server/db";
 import { buildAvailabilityResponse, parsePractitionerParam, resolveAvailabilityWindow } from "@/lib/server/availability";
 import { loadClinicCalendars } from "@/lib/server/clinic-calendars";
 import { bearerToken, siteCorsHeaders, unauthorized } from "@/lib/server/site-cors";
 import { findTenantBySiteToken } from "@/lib/server/site-api";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 
 /**
  * `GET /api/site/availability?week=YYYY-MM-DD&practitioner=<uuid>` — a week of the Calendly-style slot grid for

@@ -155,7 +155,7 @@ beforeEach(async () => {
   await dbs.staff.db.insert(users).values([
     { id: USER_A, name: "Ana Diaz", email: "ana@example.com" },
     { id: USER_B, name: "Ben Ortiz", email: "ben@example.com" },
-    { id: STAFF_USER, name: "Sam Staff", email: "sam@firstfold.example" },
+    { id: STAFF_USER, name: "Sam Staff", email: "sam@fynix.example" },
   ]);
   await dbs.staff.db.insert(staffMembers).values({ userId: STAFF_USER });
   const inserted = await dbs.staff.db
@@ -188,9 +188,9 @@ describe("withCustomerRole", () => {
       return { before, inside, after };
     });
 
-    expect(seen.before).toEqual({ role: "firstfold_staff", business: null });
-    expect(seen.inside).toEqual({ role: "firstfold_app", business: businessA });
-    expect(seen.after).toEqual({ role: "firstfold_staff", business: null });
+    expect(seen.before).toEqual({ role: "fynix_staff", business: null });
+    expect(seen.inside).toEqual({ role: "fynix_app", business: businessA });
+    expect(seen.after).toEqual({ role: "fynix_staff", business: null });
   });
 
   it("restores the staff role when the work fails, and the outer transaction carries on", async () => {
@@ -200,7 +200,7 @@ describe("withCustomerRole", () => {
       ).rejects.toThrow("refused inside");
       return whoAmI(tx);
     });
-    expect(after).toEqual({ role: "firstfold_staff", business: null });
+    expect(after).toEqual({ role: "fynix_staff", business: null });
   });
 
   it("commits a payment and a customer submission together", async () => {
@@ -365,14 +365,14 @@ describe("withCustomerRole", () => {
 
   it("gives the customer connection no way to become staff", async () => {
     const message = await captureErrorText(
-      dbs.app.db.transaction((tx) => tx.execute(sql`set local role firstfold_staff`)),
+      dbs.app.db.transaction((tx) => tx.execute(sql`set local role fynix_staff`)),
     );
     expect(message).toMatch(/permission denied/);
   });
 
   it("lends the staff role none of the customer role's policies without the explicit switch", async () => {
     const rows = await dbs.owner.db.execute<{ inherit: boolean }>(
-      sql`select rolinherit as inherit from pg_roles where rolname = 'firstfold_staff'`,
+      sql`select rolinherit as inherit from pg_roles where rolname = 'fynix_staff'`,
     );
     expect(rows.rows[0]?.inherit).toBe(false);
   });
@@ -682,7 +682,7 @@ describe("findBillingState", () => {
     await dbs.owner.db.update(plans).set({ active: false }).where(eq(plans.id, plan.id));
     await dbs.owner.db.insert(plans).values({
       code: "care-usd-2027",
-      name: "Firstfold care plan",
+      name: "Fynix care plan",
       currency: "USD",
       initialAmountCents: 30000,
       taxRateBasisPoints: 0,

@@ -103,7 +103,7 @@ function matchesFilter(option: SelectOption, needle: string): boolean {
 }
 
 /**
- * A single-choice dropdown drawn in Firstfold's style instead of the operating system's menu, used for every choice
+ * A single-choice dropdown drawn in Fynix Digital's style instead of the operating system's menu, used for every choice
  * list in the dashboard and console. It follows the WAI-ARIA select-only combobox pattern: a button that opens a
  * listbox, with the highlighted option announced through aria-activedescendant. Arrows, Home and End move; Enter or
  * Space choose; Escape closes; typing jumps to an option, or filters it when the list has a search box.

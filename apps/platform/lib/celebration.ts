@@ -25,7 +25,7 @@ export function withoutWelcome(search: string): string {
   return rest === "" ? "" : `?${rest}`;
 }
 
-/** Firstfold's own colours, bright enough to read on the dimmed page. */
+/** Fynix Digital's own colours, bright enough to read on the dimmed page. */
 export const CONFETTI_COLOURS = ["#63001e", "#f4b46f", "#f2c572", "#b27716", "#3d7a4a", "#f4dfe2", "#ffffff"] as const;
 
 export interface Piece {

@@ -1,5 +1,5 @@
-import { users } from "@firstfold/db";
-import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@firstfold/db/testing";
+import { users } from "@fynix/db";
+import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@fynix/db/testing";
 import { count, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AccountAlreadyExistsError, createAccountWithGrant } from "./create-account";
@@ -55,7 +55,7 @@ describe("createAccountWithGrant", () => {
   });
 
   it("refuses an address in the placeholder domain, which only a phone account may hold", async () => {
-    await expect(createAccountWithGrant(auth, dbs.app.db, { ...OWNER, email: "919820011223@phone.firstfold.invalid" })).rejects.toThrow(
+    await expect(createAccountWithGrant(auth, dbs.app.db, { ...OWNER, email: "919820011223@phone.fynix.invalid" })).rejects.toThrow(
       RangeError,
     );
     expect(await userCount()).toBe(0);

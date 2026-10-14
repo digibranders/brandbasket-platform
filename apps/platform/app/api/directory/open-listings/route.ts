@@ -1,4 +1,4 @@
-import { openListingsVersion, listVisibleOpenListings } from "@firstfold/db";
+import { openListingsVersion, listVisibleOpenListings } from "@fynix/db";
 import { getStaffDb } from "@/lib/server/db";
 import { handleOpenListingsPage } from "@/lib/server/open-listings-api";
 import { leadsApiToken } from "@/lib/server/website-api-auth";

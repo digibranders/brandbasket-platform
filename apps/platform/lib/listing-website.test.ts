@@ -22,7 +22,7 @@ describe("parseListingWebsite", () => {
     "sunrise bakery.in",
     "localhost",
     "sunrisebakery",
-    "https://firstfold.io@evil.example",
+    "https://fynix.digital@evil.example",
     "https://",
   ])("refuses %j", (typed) => {
     expect(parseListingWebsite(typed).ok).toBe(false);

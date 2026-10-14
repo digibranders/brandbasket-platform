@@ -13,8 +13,6 @@
  * localhost; TURNSTILE_ENABLE_IN_DEVELOPMENT=true turns it on there, with Cloudflare's test keys, to try the widget.
  */
 
-import { deploymentBrandId } from "../lib/deployment-brand";
-
 /** The field the widget adds to the form, and the server reads. Cloudflare fixes this name. */
 export const TURNSTILE_RESPONSE_FIELD = "cf-turnstile-response";
 
@@ -22,9 +20,6 @@ const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverif
 /** Cloudflare's own limit on a token. A longer one is not a token. */
 const MAX_TOKEN_LENGTH = 2048;
 const SITEVERIFY_TIMEOUT_MS = 10_000;
-
-/** Where a token may have been solved on a Firstfold server: the marketing site and both dashboards. */
-const DEFAULT_HOSTNAMES = ["firstfold.io", "www.firstfold.io", "app.firstfold.io", "admin.firstfold.io"] as const;
 
 export interface TurnstileConfig {
   readonly siteKey: string;
@@ -38,11 +33,10 @@ export interface TurnstileConfig {
 }
 
 /**
- * Where a token may have been solved when TURNSTILE_HOSTNAMES names none: Firstfold's own hosts, or on a Fynix server
- * (which has none of them) the hosts of its own dashboard and console, from APP_ORIGIN and ADMIN_ORIGIN.
+ * Where a token may have been solved when TURNSTILE_HOSTNAMES names none: the hosts of the dashboard and the console,
+ * from APP_ORIGIN and ADMIN_ORIGIN.
  */
 function defaultHostnames(env: Readonly<Record<string, string | undefined>>): string[] {
-  if (deploymentBrandId(env) !== "fynix") return [...DEFAULT_HOSTNAMES];
   const hosts = new Set<string>();
   for (const origin of [env.APP_ORIGIN, env.ADMIN_ORIGIN]) {
     try {

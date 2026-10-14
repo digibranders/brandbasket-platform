@@ -1,4 +1,4 @@
-import type { RateLimitRule } from "@firstfold/db";
+import type { RateLimitRule } from "@fynix/db";
 
 export interface RateLimitCheck {
   readonly key: string;

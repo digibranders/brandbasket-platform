@@ -1,4 +1,4 @@
-import { createFakeBillingProvider, type BillingProvider } from "@firstfold/billing";
+import { createFakeBillingProvider, type BillingProvider } from "@fynix/billing";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   businesses,
@@ -17,8 +17,8 @@ import {
   type Plan,
   type ReferralDiscount,
   type Subscription,
-} from "@firstfold/db";
-import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@firstfold/db/testing";
+} from "@fynix/db";
+import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@fynix/db/testing";
 import { activateRenewalPayment } from "./server/billing-activation";
 import { assessUpgrade, finishUpgradeAtProvider, readAssessmentInput, startUpgrade, type UpgradeAssessment } from "./server/plan-upgrade";
 
@@ -457,7 +457,7 @@ describe("edge cases around prices and providers", () => {
     await execSql(
       dbs.owner,
       `insert into plans (id, code, name, currency, tier, initial_amount_cents, initial_term_months, recurring_amount_cents, included_publishes_per_month, extra_publish_amount_cents, tax_rate_basis_points, active)
-       values (gen_random_uuid(), 'care-inr-repriced', 'Firstfold Care', 'INR', 'care', 499900, 1, 499900, 3, 300, 1800, true)`,
+       values (gen_random_uuid(), 'care-inr-repriced', 'Fynix Care', 'INR', 'care', 499900, 1, 499900, 3, 300, 1800, true)`,
     );
 
     const offer = await assess();
@@ -475,7 +475,7 @@ describe("edge cases around prices and providers", () => {
     await execSql(
       dbs.owner,
       `insert into plans (id, code, name, currency, tier, initial_amount_cents, initial_term_months, recurring_amount_cents, included_publishes_per_month, extra_publish_amount_cents, tax_rate_basis_points, active, provider_plan_id)
-       values (gen_random_uuid(), 'premium-inr-repriced', 'Firstfold Premium', 'INR', 'premium', 1299900, 1, 1299900, 3, 300, 1800, true, 'plan_new_premium')`,
+       values (gen_random_uuid(), 'premium-inr-repriced', 'Fynix Premium', 'INR', 'premium', 1299900, 1, 1299900, 3, 300, 1800, true, 'plan_new_premium')`,
     );
 
     expect(await finish(upgradeId)).toEqual({ kind: "scheduled" });

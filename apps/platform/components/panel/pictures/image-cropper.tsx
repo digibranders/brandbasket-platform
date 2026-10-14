@@ -11,9 +11,9 @@ import {
   type PointerEvent,
   type ReactElement,
 } from "react";
-import type { DirectoryPictureSlot } from "@firstfold/db";
-import { minimumPictureSize, PICTURE_SHAPES } from "@firstfold/shared/lib/directory/pictures";
-import { Button } from "@firstfold/shared/ui/panel/button";
+import type { DirectoryPictureSlot } from "@fynix/db";
+import { minimumPictureSize, PICTURE_SHAPES } from "@fynix/shared/lib/directory/pictures";
+import { Button } from "@fynix/shared/ui/panel/button";
 import { cropBounds, cropRect, panView, startView, zoomView, type CropBounds, type CropView } from "@/lib/uploads/crop-geometry";
 import { cropToBlob, drawCrop, openPhoto } from "@/lib/uploads/crop-image";
 import { ENLARGED_NOTE, enlargedNote, largestOf, minimumSizeText, reviewLine, tooSmallText } from "@/lib/uploads/review-text";

@@ -60,7 +60,7 @@ describe("createRazorpayProvider", () => {
         plan: {
           id: "plan-row-id",
           code: "care-usd",
-          name: "Firstfold care plan",
+          name: "Fynix care plan",
           currency: "USD",
           tier: "premium",
           initialAmountCents: 7_500,
@@ -496,7 +496,7 @@ describe("createPlan", () => {
       period: "monthly",
       interval: 1,
       item: { name: "Subscription plan (INR)", amount: 412_882, currency: "INR" },
-      notes: { firstfoldPlanCode: "care-inr-20261002-093000" },
+      notes: { fynixPlanCode: "care-inr-20261002-093000" },
     });
   });
 
@@ -514,10 +514,10 @@ describe("createPlan", () => {
       netMonthlyCents: 500_000,
       taxRateBasisPoints: 1800,
       code: "add-on-local-seo-590000",
-      itemName: "Firstfold Local SEO",
+      itemName: "Local SEO",
     });
     expect(createPlan).toHaveBeenCalledWith(
-      expect.objectContaining({ item: { name: "Firstfold Local SEO", amount: 590_000, currency: "INR" } }),
+      expect.objectContaining({ item: { name: "Local SEO", amount: 590_000, currency: "INR" } }),
     );
   });
 });

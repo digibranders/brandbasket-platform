@@ -1,4 +1,4 @@
-import type { BillingCurrency, BillingProviderName, PaymentMethodDetails, Plan } from "@firstfold/db";
+import type { BillingCurrency, BillingProviderName, PaymentMethodDetails, Plan } from "@fynix/db";
 
 export interface StartCheckoutInput {
   readonly businessId: string;
@@ -87,7 +87,7 @@ export interface CreatePlanInput {
   readonly taxRateBasisPoints: number;
   /** Our plan code for the new version, recorded on the provider's plan for tracing. */
   readonly code: string;
-  /** The provider plan's item name. Absent for the main plan, which keeps "Firstfold care plan (CUR)". */
+  /** The provider plan's item name. Absent for the main plan, which keeps "Fynix care plan (CUR)". */
   readonly itemName?: string;
 }
 

@@ -1,4 +1,4 @@
-import type { BusinessKind } from "@firstfold/db";
+import type { BusinessKind } from "@fynix/db";
 
 /**
  * Which of the directory sections a business's dashboard has. A free listing account has them all in its own menu

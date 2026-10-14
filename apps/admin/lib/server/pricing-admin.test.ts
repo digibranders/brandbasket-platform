@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     ...actual,
     attachProviderPlan: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock("@firstfold/db", async () => {
 vi.mock("./db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 vi.mock("./billing-provider", () => ({ getBillingProvider: vi.fn() }));
 
-import { attachProviderPlan, findActivePlan, largestLiveReferralDiscount, replaceMonthlyPrice, updateExtraPrices } from "@firstfold/db";
+import { attachProviderPlan, findActivePlan, largestLiveReferralDiscount, replaceMonthlyPrice, updateExtraPrices } from "@fynix/db";
 import { getBillingProvider } from "./billing-provider";
 import { providerPlanItemName, savePriceSheet } from "./pricing-admin";
 
@@ -67,7 +67,7 @@ describe("savePriceSheet", () => {
       netMonthlyCents: 349_900,
       taxRateBasisPoints: 1800,
       code: "premium-inr-20261002-093000",
-      itemName: "Firstfold Premium plan (INR)",
+      itemName: "Fynix Premium plan (INR)",
     });
     expect(replaceMonthlyPrice).toHaveBeenCalledWith(expect.anything(), {
       currency: "INR",
@@ -132,7 +132,7 @@ describe("savePriceSheet on a price a migration put on sale", () => {
   it("creates the provider plan for the plan as it stands and attaches it, without putting a new version on sale", async () => {
     const outcome = await savePriceSheet({ sheet: SHEET, staffUserId: "staff-1" }, NOW);
 
-    expect(createPlan).toHaveBeenCalledWith({ currency: "INR", netMonthlyCents: 299_900, taxRateBasisPoints: 1800, code: "premium-inr-2026-10", itemName: "Firstfold Premium plan (INR)" });
+    expect(createPlan).toHaveBeenCalledWith({ currency: "INR", netMonthlyCents: 299_900, taxRateBasisPoints: 1800, code: "premium-inr-2026-10", itemName: "Fynix Premium plan (INR)" });
     expect(attachProviderPlan).toHaveBeenCalledWith({ name: "staff-db" }, { planId: "plan-1", providerPlanId: "plan_new" });
     expect(replaceMonthlyPrice).not.toHaveBeenCalled();
     expect(outcome).toEqual({ kind: "updated", monthlyChanged: true, extrasChanged: 0 });
@@ -164,9 +164,9 @@ describe("savePriceSheet on a price a migration put on sale", () => {
 });
 
 describe("providerPlanItemName", () => {
-  it("names the plan the way the payment provider's checkout shows it, in the deployment's brand", () => {
-    expect(providerPlanItemName("care", "INR", {})).toBe("Firstfold Care plan (INR)");
-    expect(providerPlanItemName("premium", "INR", { PLATFORM_BRAND: "fynix" })).toBe("Fynix Premium plan (INR)");
-    expect(providerPlanItemName("care", "INR", { PLATFORM_BRAND: "fynix" })).not.toMatch(/first\s?fold/i);
+  it("names the plan the way the payment provider's checkout shows it", () => {
+    expect(providerPlanItemName("care", "INR")).toBe("Fynix Care plan (INR)");
+    expect(providerPlanItemName("premium", "INR")).toBe("Fynix Premium plan (INR)");
+    expect(providerPlanItemName("care", "INR")).not.toMatch(/first\s?fold/i);
   });
 });

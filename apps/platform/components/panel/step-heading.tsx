@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
-import { formatStepNumber } from "@firstfold/shared/lib/format";
-import { ONBOARDING_STEPS, stepInfo, type OnboardingStepKey } from "@firstfold/shared/lib/onboarding/steps";
+import { formatStepNumber } from "@fynix/shared/lib/format";
+import { ONBOARDING_STEPS, stepInfo, type OnboardingStepKey } from "@fynix/shared/lib/onboarding/steps";
 
 interface StepHeadingProps {
   readonly step: OnboardingStepKey;

@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, type ReactElement } from "react";
-import { isStaleDeployError } from "@firstfold/shared/lib/stale-deploy";
-import { DeploymentUpdate } from "@firstfold/shared/ui/panel/deployment-update";
-import { reportBrowserError } from "@firstfold/shared/lib/error-report";
+import { isStaleDeployError } from "@fynix/shared/lib/stale-deploy";
+import { DeploymentUpdate } from "@fynix/shared/ui/panel/deployment-update";
+import { reportBrowserError } from "@fynix/shared/lib/error-report";
 import { buttonPrimary } from "@/components/console/buttons";
 import { QuietFrame } from "@/components/console/quiet-frame";
 
@@ -16,7 +16,7 @@ interface DashboardErrorProps {
 export default function DashboardError({ error, reset }: DashboardErrorProps): ReactElement {
   useEffect(() => {
     if (isStaleDeployError(error)) return;
-    reportBrowserError(error, { app: "admin", operation: "error_boundary", route: window.location.pathname, release: process.env.NEXT_PUBLIC_FIRSTFOLD_RELEASE });
+    reportBrowserError(error, { app: "admin", operation: "error_boundary", route: window.location.pathname, release: process.env.NEXT_PUBLIC_FYNIX_RELEASE });
   }, [error]);
   if (isStaleDeployError(error)) {
     return <main className="grid min-h-dvh place-items-center p-8"><DeploymentUpdate /></main>;

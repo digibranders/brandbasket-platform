@@ -1,4 +1,4 @@
-import type { ErrorOperation } from "@firstfold/shared/lib/error-report";
+import type { ErrorOperation } from "@fynix/shared/lib/error-report";
 
 /** The part of Next's error context this hook reads. */
 export interface RequestErrorContext {

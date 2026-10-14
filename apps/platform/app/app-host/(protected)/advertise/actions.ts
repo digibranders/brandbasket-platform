@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { parseAdPlacement, parseAdRupees, parseAdTagline } from "@firstfold/shared/lib/directory/ads";
+import { parseAdPlacement, parseAdRupees, parseAdTagline } from "@fynix/shared/lib/directory/ads";
 import { bidNotice, type AdvertiseNotice } from "@/lib/advertise-notices";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { saveCustomerBid, saveCustomerTagline } from "@/lib/server/directory-ads";

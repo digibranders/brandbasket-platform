@@ -20,9 +20,9 @@ describe("previewSignature", () => {
 describe("previewLink", () => {
   it("is the website's preview address, good for a few hours and signed", () => {
     const now = new Date("2027-01-15T08:00:00Z");
-    const url = new URL(previewLink({ websiteOrigin: "https://firstfold.io", code: "abc234", secret: SECRET, now }));
+    const url = new URL(previewLink({ websiteOrigin: "https://fynix.digital", code: "abc234", secret: SECRET, now }));
     const expires = Math.floor(now.getTime() / 1000) + PREVIEW_LINK_SECONDS;
-    expect(url.origin + url.pathname).toBe("https://firstfold.io/preview/business/abc234");
+    expect(url.origin + url.pathname).toBe("https://fynix.digital/preview/business/abc234");
     expect(url.searchParams.get("e")).toBe(String(expires));
     expect(url.searchParams.get("s")).toBe(previewSignature(SECRET, "abc234", expires));
   });

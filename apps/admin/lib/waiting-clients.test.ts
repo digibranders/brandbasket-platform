@@ -1,4 +1,4 @@
-import type { ClientSummary, ProjectStatus } from "@firstfold/db";
+import type { ClientSummary, ProjectStatus } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { clientsWaitingOnUs } from "./waiting-clients";
 

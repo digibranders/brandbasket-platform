@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DirectoryRef } from "@firstfold/db";
+import type { DirectoryRef } from "@fynix/db";
 import { handleOwnerAccessRequest, handleOwnerReplyRequest, type OwnerAccessDeps, type OwnerReplyDeps } from "./owner-reply-request";
 import type { OwnedBusiness } from "./owner-business";
 
-const WEBSITE = "https://firstfold.io";
+const WEBSITE = "https://fynix.digital";
 const REVIEW = "0197d9a0-0000-7000-8000-000000000001";
 const COMMENT = "0197d9a0-0000-7000-8000-000000000002";
 const BUSINESS: DirectoryRef = { placeId: "k7m2q9a", listingKey: "dentists/thane/naupada/smile-dental" };
@@ -29,7 +29,7 @@ function replyDeps(overrides: Partial<OwnerReplyDeps> = {}): OwnerReplyDeps {
 }
 
 function request(method: string, body: unknown, headers: Record<string, string> = {}): Request {
-  return new Request("https://app.firstfold.io/api/directory-owner/replies", {
+  return new Request("https://app.fynix.digital/api/directory-owner/replies", {
     method,
     headers: { origin: WEBSITE, "content-type": "application/json", ...headers },
     body: body === undefined ? null : typeof body === "string" ? body : JSON.stringify(body),
@@ -74,12 +74,12 @@ describe("handleOwnerReplyRequest", () => {
 
   it("refuses a request from any other origin, or none, before it looks at who is signed in", async () => {
     const deps = replyDeps();
-    for (const origin of ["https://evil.example", "https://app.firstfold.io", "null"]) {
+    for (const origin of ["https://evil.example", "https://app.fynix.digital", "null"]) {
       const response = await handleOwnerReplyRequest(request("POST", { reviewId: REVIEW, text: "Hi" }, { origin }), deps);
       expect(response.status).toBe(403);
       expect(response.headers.get("access-control-allow-origin")).toBeNull();
     }
-    const noOrigin = new Request("https://app.firstfold.io/api/directory-owner/replies", {
+    const noOrigin = new Request("https://app.fynix.digital/api/directory-owner/replies", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ reviewId: REVIEW, text: "Hi" }),
@@ -140,7 +140,7 @@ function accessDeps(overrides: Partial<OwnerAccessDeps> = {}): OwnerAccessDeps {
 }
 
 function accessRequest(query: string, headers: Record<string, string> = {}): Request {
-  return new Request(`https://app.firstfold.io/api/directory-owner/access${query}`, { headers: { origin: WEBSITE, ...headers } });
+  return new Request(`https://app.fynix.digital/api/directory-owner/access${query}`, { headers: { origin: WEBSITE, ...headers } });
 }
 
 describe("handleOwnerAccessRequest", () => {
@@ -153,8 +153,8 @@ describe("handleOwnerAccessRequest", () => {
     expect(await no.json()).toEqual({ status: "ok", owner: false });
   });
 
-  it("answers the page on the website's www address, which is where firstfold.io sends every visitor", async () => {
-    const www = "https://www.firstfold.io";
+  it("answers the page on the website's www address, which is where fynix.digital sends every visitor", async () => {
+    const www = "https://www.fynix.digital";
     const response = await handleOwnerAccessRequest(accessRequest("?id=k7m2q9a", { origin: www }), accessDeps());
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "ok", owner: true });
@@ -183,7 +183,7 @@ describe("handleOwnerAccessRequest", () => {
   it("is for the website's origin and the GET method alone", async () => {
     const deps = accessDeps();
     expect((await handleOwnerAccessRequest(accessRequest("?id=k7m2q9a", { origin: "https://evil.example" }), deps)).status).toBe(403);
-    expect((await handleOwnerAccessRequest(new Request("https://app.firstfold.io/api/directory-owner/access?id=k7m2q9a", { method: "POST", headers: { origin: WEBSITE } }), deps)).status).toBe(405);
+    expect((await handleOwnerAccessRequest(new Request("https://app.fynix.digital/api/directory-owner/access?id=k7m2q9a", { method: "POST", headers: { origin: WEBSITE } }), deps)).status).toBe(405);
     expect(deps.getOwner).not.toHaveBeenCalled();
   });
 });

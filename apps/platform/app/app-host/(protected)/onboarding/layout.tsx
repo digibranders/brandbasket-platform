@@ -36,7 +36,7 @@ export default async function OnboardingLayout({ children }: OnboardingLayoutPro
         </div>
       ) : null}
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-12">
+      <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-12">
         <aside className="lg:sticky lg:top-6 lg:self-start">
           <OnboardingSteps completed={snapshot.completed} />
         </aside>

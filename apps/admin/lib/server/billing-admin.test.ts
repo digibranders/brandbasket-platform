@@ -1,4 +1,4 @@
-import { createFakeBillingProvider, type BillingProvider } from "@firstfold/billing";
+import { createFakeBillingProvider, type BillingProvider } from "@fynix/billing";
 import {
   findActivePlan,
   findBillingState,
@@ -17,10 +17,10 @@ import {
   type Plan,
   type ScopedTransaction,
   type Subscription,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { getBillingProvider } from "./billing-provider";
-import { activateFirstPayment } from "@firstfold/shared/server/billing-activation";
+import { activateFirstPayment } from "@fynix/shared/server/billing-activation";
 import { recordManualFirstPayment, resolveFlaggedPayment, type ManualFirstPayment } from "./billing-admin";
 import { getStaffDb } from "./db";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
@@ -33,8 +33,8 @@ vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./billing-provider", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 // Invoicing is covered by the payment invoicing integration test; here an invoice failure must not be the logged error.
-vi.mock("@firstfold/shared/server/tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn(async () => null) }));
-vi.mock("@firstfold/db", () => {
+vi.mock("@fynix/shared/server/tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn(async () => null) }));
+vi.mock("@fynix/db", () => {
   class MockBillingBusinessNotFoundError extends Error {}
   return {
     BillingBusinessNotFoundError: MockBillingBusinessNotFoundError,
@@ -254,7 +254,7 @@ describe("recordManualFirstPayment", () => {
 
     await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
     expect(outcome).toBe("committed");
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] provider-cancel-failed .*sub-open/);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] provider-cancel-failed .*sub-open/);
   });
 
   it("logs rather than calls a provider that is not the one the replaced checkout was opened at", async () => {

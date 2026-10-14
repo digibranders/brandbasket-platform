@@ -1,11 +1,11 @@
 import { headers } from "next/headers";
-import { AccountAlreadyExistsError, createAccountWithGrant } from "@firstfold/auth";
-import { claimAffiliateLoginLink, findAffiliateLoginInvite, resetAffiliateCredentialPassword, type AffiliateLoginInvite, type Database } from "@firstfold/db";
+import { AccountAlreadyExistsError, createAccountWithGrant } from "@fynix/auth";
+import { claimAffiliateLoginLink, findAffiliateLoginInvite, resetAffiliateCredentialPassword, type AffiliateLoginInvite, type Database } from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AffiliateAccountTakenError, findAffiliateInviteForToken, redeemAffiliateLogin } from "./affiliate-setup";
 import { recordAccountTermsConsent } from "./account-consent";
 import { getStaffDb } from "./db";
-import { signInCustomer } from "./signed-in-hint";
+import { signInCustomer } from "./customer-sign-in";
 import { assertWithinSetupRateLimit, TermsNotAgreedError, verifyExistingAccount, withinSetupViewBudget } from "./setup";
 
 // The database, Better Auth, the incoming request and the client setup's shared guards are test doubles, so the module's
@@ -13,7 +13,7 @@ import { assertWithinSetupRateLimit, TermsNotAgreedError, verifyExistingAccount,
 // real AccountAlreadyExistsError class because the recovery path turns on `instanceof`.
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
-vi.mock("@firstfold/auth", async () => {
+vi.mock("@fynix/auth", async () => {
   const { SETUP_PASSWORD_MIN_LENGTH } = await import("@/lib/setup-form");
   return {
     AccountAlreadyExistsError: class AccountAlreadyExistsError extends Error {
@@ -26,10 +26,10 @@ vi.mock("@firstfold/auth", async () => {
     PASSWORD_MIN_LENGTH: SETUP_PASSWORD_MIN_LENGTH,
   };
 });
-vi.mock("@firstfold/db", () => ({ claimAffiliateLoginLink: vi.fn(), findAffiliateLoginInvite: vi.fn(), resetAffiliateCredentialPassword: vi.fn() }));
+vi.mock("@fynix/db", () => ({ claimAffiliateLoginLink: vi.fn(), findAffiliateLoginInvite: vi.fn(), resetAffiliateCredentialPassword: vi.fn() }));
 vi.mock("./auth", () => ({ getAuth: vi.fn(() => ({ $context: Promise.resolve({ password: { hash: vi.fn(async (password: string) => `hashed:${password}`) } }) })) }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("./signed-in-hint", () => ({ signInCustomer: vi.fn() }));
+vi.mock("./customer-sign-in", () => ({ signInCustomer: vi.fn() }));
 vi.mock("./account-consent", () => ({ recordAccountTermsConsent: vi.fn() }));
 vi.mock("./setup", () => ({
   InviteNotUsableError: class InviteNotUsableError extends Error {},

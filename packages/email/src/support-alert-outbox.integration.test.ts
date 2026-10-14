@@ -1,5 +1,5 @@
-import { listRecentEmails } from "@firstfold/db";
-import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@firstfold/db/testing";
+import { listRecentEmails } from "@fynix/db";
+import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@fynix/db/testing";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { BrevoDeliveryError, createAppEmailTransport, createDualTransport } from "./brevo";
 import { supportReplyAlertEmail } from "./templates/support-reply-alert";
@@ -10,8 +10,8 @@ import { supportTicketAlertEmail } from "./templates/support-ticket-alert";
 let dbs: TestDatabases;
 
 const ticketAlert = supportTicketAlertEmail({
-  to: "support@firstfold.io",
-  reference: "FF-0192ABCD",
+  to: "hello@fynix.digital",
+  reference: "FY-0192ABCD",
   ticketId: "0192f3c4-1234-7000-8000-000000000001",
   category: "bug",
   categoryLabel: "Report a bug",
@@ -26,8 +26,8 @@ const ticketAlert = supportTicketAlertEmail({
 });
 
 const replyAlert = supportReplyAlertEmail({
-  to: "support@firstfold.io",
-  reference: "FF-0192ABCD",
+  to: "hello@fynix.digital",
+  reference: "FY-0192ABCD",
   ticketId: "0192f3c4-1234-7000-8000-000000000001",
   subject: "Cannot upload photos",
   body: "Still failing on my phone, Asha here.",
@@ -61,10 +61,10 @@ describe("support alerts in the email outbox", () => {
     const rows = await listRecentEmails(dbs.staff.db, 10);
     expect(rows).toHaveLength(2);
     for (const row of rows) {
-      expect(row.toAddress).toBe("support@firstfold.io");
+      expect(row.toAddress).toBe("hello@fynix.digital");
       expect(row.transport).toBe("outbox");
       const stored = JSON.stringify(row);
-      expect(stored).toContain("FF-0192ABCD");
+      expect(stored).toContain("FY-0192ABCD");
       expect(stored).toContain("http://admin.localhost:3003/support/0192f3c4-1234-7000-8000-000000000001");
       for (const secret of ["Cannot upload photos", "spins forever", "Still failing", "Asha", "asha@example.com", "98200 11111", "Rao Clinic"]) {
         expect(stored).not.toContain(secret);

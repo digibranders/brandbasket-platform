@@ -10,9 +10,9 @@ import {
   type LiveDirectoryPictures,
   type LiveDirectoryVideo,
   type ResolvedDirectoryAsk,
-} from "@firstfold/db";
-import { vimeoEmbedUrl } from "@firstfold/shared/lib/directory/videos";
-import { GALLERY_SLOTS } from "@firstfold/shared/lib/directory/pictures";
+} from "@fynix/db";
+import { vimeoEmbedUrl } from "@fynix/shared/lib/directory/videos";
+import { GALLERY_SLOTS } from "@fynix/shared/lib/directory/pictures";
 import type { GalleryEntry, GalleryResponse } from "@/lib/directory-api";
 
 /*

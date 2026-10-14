@@ -25,7 +25,7 @@ import { directoryPlaces } from "./directory-places";
 import { indiaPincodes } from "./india-pincodes";
 
 /*
- * Free listing accounts and the weekly ad auction on Firstfold Local (docs/superpowers/specs/2026-09-30-directory-ads-
+ * Free listing accounts and the weekly ad auction on the local directory (docs/superpowers/specs/2026-09-30-directory-ads-
  * auction-design.md). A `listing` business claims its directory listing (directory_claims); once staff approve the
  * claim it may bid for its market's ad spots, one week at a time (directory_ad_bids). When a week's bidding closes the
  * auction settles into wins (directory_ad_wins), each with a `directory_ad` charge; paying the charge puts the ad up.

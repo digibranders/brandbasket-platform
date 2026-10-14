@@ -10,7 +10,7 @@ import {
   restoreDirectoryReview,
   setDirectoryTrusted,
   upsertDirectoryVerification,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";

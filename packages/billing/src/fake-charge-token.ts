@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { BillingCurrency } from "@firstfold/db";
+import type { BillingCurrency } from "@fynix/db";
 import { CheckoutVerificationError } from "./provider";
 
 /**

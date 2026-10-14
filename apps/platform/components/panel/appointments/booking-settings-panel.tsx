@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactElement, type RefObject } from "react";
-import type { AppointmentSettingsRow } from "@firstfold/db";
-import { PAUSED_MESSAGE_MAX_LENGTH } from "@firstfold/shared/lib/appointments/settings-form";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import type { AppointmentSettingsRow } from "@fynix/db";
+import { PAUSED_MESSAGE_MAX_LENGTH } from "@fynix/shared/lib/appointments/settings-form";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 interface BookingSettingsPanelProps {

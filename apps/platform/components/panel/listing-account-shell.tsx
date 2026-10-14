@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
-import { ArrowIcon, StarIcon } from "@firstfold/shared/ui/icons";
+import { ArrowIcon, StarIcon } from "@fynix/shared/ui/icons";
 import {
   NavCircleArrowUpIcon,
   NavCirclePlusIcon,
@@ -10,9 +10,9 @@ import {
   NavReceiptIcon,
   NavStarIcon,
   NavStorefrontIcon,
-} from "@firstfold/shared/ui/nav-icons";
-import { DashboardFrame } from "@firstfold/shared/ui/panel/dashboard-frame";
-import type { SidebarNavItem } from "@firstfold/shared/ui/panel/sidebar-nav";
+} from "@fynix/shared/ui/nav-icons";
+import { DashboardFrame } from "@fynix/shared/ui/panel/dashboard-frame";
+import type { SidebarNavItem } from "@fynix/shared/ui/panel/sidebar-nav";
 import { joinSections } from "@/lib/sidebar-sections";
 import { HiddenOnPaths } from "@/components/panel/hidden-on-paths";
 import { ADD_ONS_PATH } from "@/lib/add-ons";

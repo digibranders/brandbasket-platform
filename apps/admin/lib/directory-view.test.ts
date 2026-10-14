@@ -109,9 +109,9 @@ describe("parseDirectoryNotice and pageCount", () => {
 
 describe("listingKeyFromPageAddress", () => {
   it.each([
-    ["the full address", `https://firstfold.io${PAGE_PATH}`],
+    ["the full address", `https://fynix.digital${PAGE_PATH}`],
     ["a local address with a query, fragment and trailing slash", `http://localhost:3000${PAGE_PATH}/?sort=rating#reviews`],
-    ["an upper-case scheme and host", `HTTPS://FIRSTFOLD.IO${PAGE_PATH}`],
+    ["an upper-case scheme and host", `HTTPS://FYNIX.IO${PAGE_PATH}`],
     ["the bare path", PAGE_PATH],
     ["the path without its leading slash, with spaces around it", `  ${PAGE_PATH.slice(1)}  `],
     ["the path with a query", `${PAGE_PATH}?sort=rating`],
@@ -122,16 +122,16 @@ describe("listingKeyFromPageAddress", () => {
 
   it.each([
     ["nothing", "   "],
-    ["a list page", "https://firstfold.io/in/restaurants/mh/ambarnath/sarvodaya-nagar"],
-    ["a city list page's address", "https://firstfold.io/in/restaurants/mh/ambarnath"],
+    ["a list page", "https://fynix.digital/in/restaurants/mh/ambarnath/sarvodaya-nagar"],
+    ["a city list page's address", "https://fynix.digital/in/restaurants/mh/ambarnath"],
     ["a city list page's path", "/in/restaurants/mh/ambarnath"],
     ["a city list page's path without its slash", "in/restaurants/mh/ambarnath"],
-    ["a page outside the directory", "https://firstfold.io/blog/restaurants/mh/ambarnath/sarvodaya-nagar/golden-punjab-hotel"],
-    ["another state", "https://firstfold.io/in/restaurants/ka/bengaluru/indiranagar/golden-punjab-hotel"],
+    ["a page outside the directory", "https://fynix.digital/blog/restaurants/mh/ambarnath/sarvodaya-nagar/golden-punjab-hotel"],
+    ["another state", "https://fynix.digital/in/restaurants/ka/bengaluru/indiranagar/golden-punjab-hotel"],
     ["capital letters in the path", "/in/Restaurants/mh/ambarnath/sarvodaya-nagar/golden-punjab-hotel"],
     ["an encoded character", "/in/restaurants/mh/ambarnath/sarvodaya-nagar/golden%20punjab"],
     ["a doubled hyphen", "restaurants/ambarnath/sarvodaya--nagar/golden-punjab-hotel"],
-    ["another scheme", `ftp://firstfold.io${PAGE_PATH}`],
+    ["another scheme", `ftp://fynix.digital${PAGE_PATH}`],
     ["a broken address", "https://"],
     ["a key over 200 characters", `restaurants/ambarnath/sarvodaya-nagar/${"a".repeat(170)}`],
     ["something huge", `/in/${"a/".repeat(1500)}`],
@@ -142,7 +142,7 @@ describe("listingKeyFromPageAddress", () => {
 
 describe("parseVerificationForm", () => {
   const VALID: VerificationValues = {
-    listing: `https://firstfold.io${PAGE_PATH}`,
+    listing: `https://fynix.digital${PAGE_PATH}`,
     businessName: "  Golden   Punjab Hotel ",
     phone: "98200 11223",
     phoneCountry: "IN",
@@ -176,7 +176,7 @@ describe("parseVerificationForm", () => {
 
   it.each<[Partial<VerificationValues>, string, string | null]>([
     [{ listing: "" }, "listing", LISTING_MISSING_MESSAGE],
-    [{ listing: "https://firstfold.io/in/restaurants/mh/ambarnath" }, "listing", LISTING_INVALID_MESSAGE],
+    [{ listing: "https://fynix.digital/in/restaurants/mh/ambarnath" }, "listing", LISTING_INVALID_MESSAGE],
     [{ businessName: " \n " }, "businessName", BUSINESS_NAME_MISSING_MESSAGE],
     [{ businessName: "é".repeat(201) }, "businessName", BUSINESS_NAME_TOO_LONG_MESSAGE],
     [{ phone: "12" }, "phone", null],

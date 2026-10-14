@@ -11,8 +11,8 @@ import {
   type BookingContext,
   type PractitionerScheduleRow,
   type SiteFacts,
-} from "@firstfold/db";
-import type { BookingInput } from "@firstfold/shared/lib/appointments/booking-form";
+} from "@fynix/db";
+import type { BookingInput } from "@fynix/shared/lib/appointments/booking-form";
 import { getStaffDb } from "./db";
 import { bookingOtpBypassed, bookingOtpSecret, smsAllowedCountryCodes } from "./env";
 import { hashOtpCode } from "./otp-crypto";
@@ -27,7 +27,7 @@ vi.mock("./sms", async () => {
   const actual = await vi.importActual<typeof import("./sms")>("./sms");
   return { createSmsSender: vi.fn(), otpMessage: vi.fn(), SmsProviderUnavailableError: actual.SmsProviderUnavailableError };
 });
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   consumeRateLimit: vi.fn(),
   createBookingOtp: vi.fn(),
   deleteBookingOtp: vi.fn(),
@@ -392,7 +392,7 @@ describe("requestBookingOtp", () => {
     if (outcome.kind !== "otp_sent") throw new Error("expected otp_sent");
 
     const sentBody = sendMock.mock.calls[0]?.[0]?.body ?? "";
-    const match = /^(\d{6}) is your Firstfold code/.exec(sentBody);
+    const match = /^(\d{6}) is your Fynix code/.exec(sentBody);
     expect(match).not.toBeNull();
     const sentCode = match?.[1] ?? "";
     expect(sentCode).not.toBe(""); // never a blank/placeholder code in the message that was actually sent

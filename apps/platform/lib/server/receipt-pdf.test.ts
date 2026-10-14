@@ -1,19 +1,19 @@
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it, vi } from "vitest";
 import type { ReceiptDocument } from "@/lib/billing/receipt-document";
-import { BRANDS } from "@/lib/brand";
+import { BRAND } from "@/lib/brand";
 import { renderReceiptsPdf } from "./receipt-pdf";
 
 vi.mock("server-only", () => ({}));
 
 function doc(overrides: Partial<ReceiptDocument> = {}): ReceiptDocument {
   return {
-    fileName: "firstfold-receipt-007.pdf",
+    fileName: "fynix-receipt-007.pdf",
     title: "Receipt #007",
     issuedOn: "12 Sep 2026",
     status: "Paid",
     reference: "pay_abc123",
-    from: ["Firstfold", "Office No. 2617, 26th Floor, Solus Building,", "GSTIN 27AAICD9268J1Z0"],
+    from: ["Fynix", "Office No. 2617, 26th Floor, Solus Building,", "GSTIN 27AAICD9268J1Z0"],
     billedTo: ["Chennai Cafe", "owner@chennaicafe.in"],
     lines: [
       { label: "Care plan · Monthly payment", amount: "INR 2,999.00" },
@@ -36,12 +36,12 @@ describe("renderReceiptsPdf", () => {
     expect(header(bytes)).toBe("%PDF-");
     const loaded = await PDFDocument.load(bytes);
     expect(loaded.getPageCount()).toBe(2);
-    expect(loaded.getTitle()).toBe("Firstfold receipts");
+    expect(loaded.getTitle()).toBe("Fynix Digital receipts");
   });
 
   it("titles a single receipt after itself", async () => {
     const loaded = await PDFDocument.load(await renderReceiptsPdf([doc()]));
-    expect(loaded.getTitle()).toBe("Firstfold Receipt #007");
+    expect(loaded.getTitle()).toBe("Fynix Digital Receipt #007");
   });
 
   it("still renders text the built-in font cannot draw", async () => {
@@ -62,12 +62,12 @@ describe("renderReceiptsPdf", () => {
 });
 
 describe("renderReceiptsPdf under Fynix", () => {
-  it("files itself under Fynix's name, not Firstfold's", async () => {
-    const loaded = await PDFDocument.load(await renderReceiptsPdf([doc(), doc({ title: "Receipt #008" })], BRANDS.fynix));
+  it("files itself under Fynix's name, not Fynix Digital's", async () => {
+    const loaded = await PDFDocument.load(await renderReceiptsPdf([doc(), doc({ title: "Receipt #008" })], BRAND));
     expect(loaded.getTitle()).toBe("Fynix Digital receipts");
     expect(loaded.getAuthor()).toBe("Fynix Digital");
     expect(loaded.getCreator()).toBe("Fynix Digital");
-    const single = await PDFDocument.load(await renderReceiptsPdf([doc()], BRANDS.fynix));
+    const single = await PDFDocument.load(await renderReceiptsPdf([doc()], BRAND));
     expect(single.getTitle()).toBe("Fynix Digital Receipt #007");
   });
 });

@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
-import type { Auth } from "@firstfold/auth";
-import { AccountAlreadyExistsError, createAccountWithGrant, isInvalidCredentialsError } from "@firstfold/auth";
+import type { Auth } from "@fynix/auth";
+import { AccountAlreadyExistsError, createAccountWithGrant, isInvalidCredentialsError } from "@fynix/auth";
 import {
   consumeRateLimit,
   findRedeemableInvite,
@@ -8,7 +8,7 @@ import {
   type Database,
   type RateLimitResult,
   type SetupInvite,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { recordAccountTermsConsent } from "./account-consent";
 import { getAuth } from "./auth";
@@ -17,13 +17,13 @@ import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { findInviteForToken, redeemSetupInvite, TermsNotAgreedError, TooManySetupAttemptsError } from "./setup";
 
 // Same approach as sign-in.test.ts: the database, Better Auth and the incoming request are all test doubles, so
-// the module's own decisions run in isolation. `@firstfold/auth` is mocked rather than used for real because
+// the module's own decisions run in isolation. `@fynix/auth` is mocked rather than used for real because
 // better-auth is not a direct dependency of this package; the mocked AccountAlreadyExistsError is a real class,
 // because the recovery path turns on `instanceof`. Its PASSWORD_MIN_LENGTH comes from the browser-safe copy the
 // module asserts against, so the assertion under test still fails if the two ever drift apart for real.
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
-vi.mock("@firstfold/auth", async () => {
+vi.mock("@fynix/auth", async () => {
   const { SETUP_PASSWORD_MIN_LENGTH } = await import("@/lib/setup-form");
   return {
     AccountAlreadyExistsError: class AccountAlreadyExistsError extends Error {
@@ -37,16 +37,15 @@ vi.mock("@firstfold/auth", async () => {
     PASSWORD_MIN_LENGTH: SETUP_PASSWORD_MIN_LENGTH,
   };
 });
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   consumeRateLimit: vi.fn(),
   findRedeemableInvite: vi.fn(),
   redeemInviteIntoBusiness: vi.fn(),
 }));
 vi.mock("./account-consent", () => ({ recordAccountTermsConsent: vi.fn() }));
 vi.mock("./auth", () => ({ getAuth: vi.fn() }));
-// Signing in also sets the website's signed-in marker, tested in signed-in-hint.test.ts; here it goes straight through
-// to Better Auth, so these tests check the sign-in itself.
-vi.mock("./signed-in-hint", async () => {
+// Signing in goes straight through to Better Auth here (customer-sign-in.test.ts covers the wrapper), so these tests check the sign-in itself.
+vi.mock("./customer-sign-in", async () => {
   const { getAuth } = await import("./auth");
   return {
     signInCustomer: vi.fn(async (credentials: { email: string; password: string }, headers: Headers) => {

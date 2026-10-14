@@ -3,15 +3,15 @@ import {
   AccountAlreadyExistsError,
   createAccountWithGrant,
   PASSWORD_MIN_LENGTH,
-} from "@firstfold/auth";
-import { claimAffiliateLoginLink, findAffiliateLoginInvite, resetAffiliateCredentialPassword, type AffiliateLoginInvite } from "@firstfold/db";
+} from "@fynix/auth";
+import { claimAffiliateLoginLink, findAffiliateLoginInvite, resetAffiliateCredentialPassword, type AffiliateLoginInvite } from "@fynix/db";
 import { headers } from "next/headers";
-import { clientIpFrom } from "@firstfold/shared/lib/client-ip";
+import { clientIpFrom } from "@fynix/shared/lib/client-ip";
 import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
 import { recordAccountTermsConsent } from "./account-consent";
 import { getAuth } from "./auth";
 import { getStaffDb } from "./db";
-import { signInCustomer } from "./signed-in-hint";
+import { signInCustomer } from "./customer-sign-in";
 import {
   assertWithinSetupRateLimit,
   InviteNotUsableError,
@@ -25,7 +25,7 @@ import {
 /** Same as the client setup: the form's copy of the minimum must agree with Better Auth's, or the form accepts what auth rejects. */
 if (SETUP_PASSWORD_MIN_LENGTH !== PASSWORD_MIN_LENGTH) {
   throw new Error(
-    `SETUP_PASSWORD_MIN_LENGTH (${SETUP_PASSWORD_MIN_LENGTH}) must match PASSWORD_MIN_LENGTH (${PASSWORD_MIN_LENGTH}) in @firstfold/auth.`,
+    `SETUP_PASSWORD_MIN_LENGTH (${SETUP_PASSWORD_MIN_LENGTH}) must match PASSWORD_MIN_LENGTH (${PASSWORD_MIN_LENGTH}) in @fynix/auth.`,
   );
 }
 

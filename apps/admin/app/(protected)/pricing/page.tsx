@@ -1,11 +1,11 @@
-import type { Plan, PlanPriceField, PriceChange } from "@firstfold/db";
+import type { Plan, PlanPriceField, PriceChange } from "@fynix/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
-import { chargedAmountCents } from "@firstfold/billing/tax";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import { chargedAmountCents } from "@fynix/billing/tax";
 import {
   formPriceValue,
   PRICING_CURRENCY_FIELD,
@@ -14,9 +14,9 @@ import {
   PRICING_EXTRA_PUBLISH_FIELD,
   PRICING_MONTHLY_FIELD,
   PRICING_TIER_FIELD,
-} from "@firstfold/shared/lib/billing/pricing-form";
-import { BILLING_CURRENCY_LABELS } from "@firstfold/shared/lib/currency";
-import { formatMoney } from "@firstfold/shared/lib/money";
+} from "@fynix/shared/lib/billing/pricing-form";
+import { BILLING_CURRENCY_LABELS } from "@fynix/shared/lib/currency";
+import { formatMoney } from "@fynix/shared/lib/money";
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";

@@ -1,12 +1,12 @@
 import "server-only";
-import { BillingRangeError } from "@firstfold/billing/billing-range-error";
-import { UnknownStateError } from "@firstfold/billing/gst-states";
-import { InvalidGstinError } from "@firstfold/billing/gstin";
-import { InvoiceAmountMismatchError } from "@firstfold/billing/tax-invoice";
+import { BillingRangeError } from "@fynix/billing/billing-range-error";
+import { UnknownStateError } from "@fynix/billing/gst-states";
+import { InvalidGstinError } from "@fynix/billing/gstin";
+import { InvoiceAmountMismatchError } from "@fynix/billing/tax-invoice";
 import { constraintOf, errorLogInfo, providerErrorInfo } from "./error-log-info";
 
-/** Every billing log line starts with this, so `grep '\[firstfold:billing\]'` finds them all. */
-export const BILLING_LOG_PREFIX = "[firstfold:billing]";
+/** Every billing log line starts with this, so `grep '\[fynix:billing\]'` finds them all. */
+export const BILLING_LOG_PREFIX = "[fynix:billing]";
 
 /**
  * The billing events worth a log line. Each is a fixed, greppable name; the details travel as fields.

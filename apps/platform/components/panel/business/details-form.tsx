@@ -1,12 +1,12 @@
 "use client";
 
 import { startTransition, useActionState, useState, type FormEvent, type ReactElement, type ReactNode } from "react";
-import type { OpeningHours } from "@firstfold/shared/lib/onboarding/hours";
-import { FIELD_PATTERNS } from "@firstfold/shared/lib/forms/input-rules";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+import type { OpeningHours } from "@fynix/shared/lib/onboarding/hours";
+import { FIELD_PATTERNS } from "@fynix/shared/lib/forms/input-rules";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import { HoursEditor } from "@/components/panel/hours-editor";
 import { BUSINESS_ADDRESS_MAX_LENGTH } from "@/lib/business-name";
 import {

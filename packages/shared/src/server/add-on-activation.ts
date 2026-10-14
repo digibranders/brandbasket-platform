@@ -10,7 +10,7 @@ import {
   type AddOnPaymentRecord,
   type RecordedAddOnPayment,
   type ScopedTransaction,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 
 /**

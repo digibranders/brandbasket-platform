@@ -1,13 +1,13 @@
 "use server";
 
-import { findBillingProfile, findPincode, hasPincodeDirectory, saveBillingProfile, withTenantScope } from "@firstfold/db";
+import { findBillingProfile, findPincode, hasPincodeDirectory, saveBillingProfile, withTenantScope } from "@fynix/db";
 import {
   firstCustomerBillingProblem,
   parseCustomerBillingDetails,
   pincodeStateProblem,
-} from "@firstfold/shared/lib/billing/billing-details-form";
-import { stateName } from "@firstfold/shared/lib/directory/india-states";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+} from "@fynix/shared/lib/billing/billing-details-form";
+import { stateName } from "@fynix/shared/lib/directory/india-states";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { refresh } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";

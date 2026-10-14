@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, type ReactElement } from "react";
-import { PATIENT_ID_FIELD } from "@firstfold/shared/lib/patients/fields";
-import { Button } from "@firstfold/shared/ui/panel/button";
+import { PATIENT_ID_FIELD } from "@fynix/shared/lib/patients/fields";
+import { Button } from "@fynix/shared/ui/panel/button";
 import { PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 interface PatientDeleteFormProps {

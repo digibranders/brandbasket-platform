@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { findAnnouncement, findBusinessTimeZone, findOwnListing, getBusinessHours, listClosures, withTenantScope } from "@firstfold/db";
-import { addDays, localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import { upcomingClosures } from "@firstfold/shared/lib/business-facts/closures";
-import { fromStoredHours, type OpeningHours } from "@firstfold/shared/lib/onboarding/hours";
+import { findAnnouncement, findBusinessTimeZone, findOwnListing, getBusinessHours, listClosures, withTenantScope } from "@fynix/db";
+import { addDays, localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { upcomingClosures } from "@fynix/shared/lib/business-facts/closures";
+import { fromStoredHours, type OpeningHours } from "@fynix/shared/lib/onboarding/hours";
 import { AnnouncementPanel } from "@/components/panel/details/announcement-panel";
 import { ClosuresPanel } from "@/components/panel/details/closures-panel";
 import { HoursPanel } from "@/components/panel/details/hours-panel";

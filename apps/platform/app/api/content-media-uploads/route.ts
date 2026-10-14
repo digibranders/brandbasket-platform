@@ -5,7 +5,7 @@ import { getCustomerBilling } from "@/lib/server/customer-access";
 import { getCustomerTenant } from "@/lib/server/customer-tenant";
 import { serverEnv } from "@/lib/server/env";
 import { BodyTooLargeError, readLimitedBody } from "@/lib/server/read-limited-body";
-import { allowsAnyLocalHost, isAppOrigin, readLocalBusinessOrigin, resolveSurface, type SurfaceOrigins } from "@/lib/surfaces";
+import { allowsAnyLocalHost, isAppOrigin, resolveSurface, type SurfaceOrigins } from "@/lib/surfaces";
 import { parseUploadFileName } from "@/lib/uploads/file-name";
 import {
   isAcceptedUploadType,
@@ -19,7 +19,7 @@ import {
  * stamped with `businessId` taken only from their session, never from client input. Built for this plan's Task 6
  * (docs/superpowers/plans/2026-09-17-payload-cms-migration.md), which explicitly leaves the gallery-upload-scope
  * decision to the implementer: the old gallery only let customers add photos already uploaded during onboarding
- * (`@firstfold/db`'s onboarding media_assets table), a different store from Payload's own `media` collection the
+ * (`@fynix/db`'s onboarding media_assets table), a different store from Payload's own `media` collection the
  * new, Payload-backed gallery references. Rather than bridge two unrelated stores, this route lets customers
  * upload straight into Payload's `media` collection — the same collection every other image in this app now goes
  * through — which is simpler and, now that `Media` has working upload handling "for free" (see collections/Media.ts),
@@ -46,10 +46,8 @@ import {
 export async function POST(request: Request): Promise<Response> {
   const rawHost = request.headers.get("host");
   // The same hosts the proxy answers the dashboard on: its own, and under `next dev` any local address.
-  const localBusiness = readLocalBusinessOrigin(process.env);
   const origins: SurfaceOrigins = {
     app: serverEnv().APP_ORIGIN,
-    ...(localBusiness === undefined ? {} : { localBusiness }),
     anyLocalHost: allowsAnyLocalHost(process.env),
   };
   if (resolveSurface(rawHost, origins) !== "app") {

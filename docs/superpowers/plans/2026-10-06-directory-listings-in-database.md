@@ -111,7 +111,7 @@ describe("isLedgerSourceRef", () => {
     expect(isLedgerSourceRef("osm:node/8261403277")).toBe(true);
   });
 
-  it("accepts a Firstfold survey ref", () => {
+  it("accepts a Fynix survey ref", () => {
     expect(isLedgerSourceRef("survey:0x3be7b92181d5c545:0x2bdfd32ad6f69f08")).toBe(true);
   });
 
@@ -125,7 +125,7 @@ describe("isLedgerSourceRef", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @firstfold/db test -- directory-place-ledger`
+Run: `pnpm --filter @fynix/db test -- directory-place-ledger`
 Expected: FAIL, "Failed to resolve import ./directory-place-ledger".
 
 - [ ] **Step 3: Write the module**
@@ -134,7 +134,7 @@ Expected: FAIL, "Failed to resolve import ./directory-place-ledger".
 // packages/db/src/directory-place-ledger.ts
 /**
  * The source refs the dataset's place ledger (local-directory-data/thane/thane-place-ledger.json) is keyed by:
- * "overture:<id>" and "osm:<type>/<id>" for open-data rows, and "survey:0x<hex>:0x<hex>" for a business the Firstfold
+ * "overture:<id>" and "osm:<type>/<id>" for open-data rows, and "survey:0x<hex>:0x<hex>" for a business the Fynix
  * team surveyed that the open data lacks (local-directory-data/thane/import_survey.py, 2026-10-06).
  */
 const OPEN_DATA_REF = /^(overture|osm):[A-Za-z0-9/_.-]{1,120}$/;
@@ -166,7 +166,7 @@ In `packages/db/src/schema/directory-places.ts`, change the `sourceRef` comment 
 
 ```ts
       /**
-       * "overture:<id>" / "osm:<type>/<id>" for an open-data business, "survey:0x…:0x…" for one the Firstfold team
+       * "overture:<id>" / "osm:<type>/<id>" for an open-data business, "survey:0x…:0x…" for one the Fynix team
        * surveyed, from the dataset ledger (directory-place-ledger.ts); null otherwise.
        */
 ```
@@ -175,10 +175,10 @@ Survey businesses are registered as `open_data`. Their ids are letter-first like
 
 - [ ] **Step 5: Run the tests**
 
-Run: `pnpm --filter @firstfold/db test -- directory-place-ledger`
+Run: `pnpm --filter @fynix/db test -- directory-place-ledger`
 Expected: PASS (3 tests).
 
-Run: `pnpm --filter @firstfold/db typecheck`
+Run: `pnpm --filter @fynix/db typecheck`
 Expected: no errors.
 
 - [ ] **Step 6: Prove it loads the real ledger**
@@ -191,7 +191,7 @@ pnpm directory:import-places ../local-directory-data/thane/thane-place-ledger.js
 
 Expected: `Directory places: N created, M unchanged, from 39027 ledger rows.` and no `LedgerFormatError`.
 
-- [ ] **Step 7: Checkpoint.** Run `pnpm --filter @firstfold/db test` and `pnpm --filter @firstfold/db typecheck`. Both must pass. No commit.
+- [ ] **Step 7: Checkpoint.** Run `pnpm --filter @fynix/db test` and `pnpm --filter @fynix/db typecheck`. Both must pass. No commit.
 
 ---
 
@@ -207,7 +207,7 @@ Expected: `Directory places: N created, M unchanged, from 39027 ledger rows.` an
 
 - [ ] **Step 1: Empty custom migration for the extensions**
 
-Run: `pnpm --filter @firstfold/db exec drizzle-kit generate --custom --name=directory_search_extensions`
+Run: `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name=directory_search_extensions`
 
 drizzle-kit numbers it after the last journal entry. Rename the file to `0088_directory_search_extensions.sql`, rename its snapshot to `0088_snapshot.json`, and set its journal `tag` to `0088_directory_search_extensions`. Fill it with:
 
@@ -253,12 +253,12 @@ const PHONE_REGEX = "^\\+91[1-9][0-9]{9}$";
 /** Postgres's full-text document type; read-only here (a generated column). */
 const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
 
-/** Which dataset a listing came from: OSM rows need the OpenStreetMap credit; "survey" is the Firstfold team's own. */
+/** Which dataset a listing came from: OSM rows need the OpenStreetMap credit; "survey" is the Fynix team's own. */
 export const openListingSource = pgEnum("directory_open_listing_source", ["osm", "overture", "survey"]);
 export type OpenListingSource = (typeof openListingSource.enumValues)[number];
 
 /**
- * One business the /in directory shows from the dataset build: the open data and the Firstfold survey
+ * One business the /in directory shows from the dataset build: the open data and the Fynix survey
  * (local-directory-data/thane, loaded by `pnpm directory:import-listings`). Platform businesses (clients, owner-added)
  * are not here; they come from their own tables through the feed. Keyed by the permanent place id, whose URL label
  * lives in directory_places.
@@ -323,7 +323,7 @@ export * from "./directory-open-listings";
 
 - [ ] **Step 3: Generate the table migration**
 
-Run: `pnpm --filter @firstfold/db db:generate`
+Run: `pnpm --filter @fynix/db db:generate`
 
 Rename the output to `0089_directory_open_listings.sql` and its snapshot to `0089_snapshot.json`, and set the journal tag to `0089_directory_open_listings`. Add this header above the generated DDL:
 
@@ -342,20 +342,20 @@ If drizzle-kit wrote the trigram index without the operator class, fix that line
 
 - [ ] **Step 4: Grants migration**
 
-Run: `pnpm --filter @firstfold/db exec drizzle-kit generate --custom --name=directory_open_listings_grants`
+Run: `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name=directory_open_listings_grants`
 
 Rename it to `0090_directory_open_listings_grants.sql` (snapshot `0090_snapshot.json`, tag `0090_directory_open_listings_grants`) and fill it with:
 
 ```sql
 -- Grants and row-level security for directory_open_listings (0089), the same pattern as 0076. Staff-only: the import
 -- (`pnpm directory:import-listings`) and the website's /api/directory/open-listings routes run on the staff connection,
--- so webfold_app and webfold_public get nothing. No DELETE: a business that leaves the dataset is hidden, and its id
+-- so fynix_app and fynix_public get nothing. No DELETE: a business that leaves the dataset is hidden, and its id
 -- stays valid for reviews and old links.
-GRANT SELECT, INSERT, UPDATE ON directory_open_listings TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON directory_open_listings TO fynix_staff;
 --> statement-breakpoint
 ALTER TABLE directory_open_listings ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
-CREATE POLICY directory_open_listings_staff_all ON directory_open_listings FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_open_listings_staff_all ON directory_open_listings FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 ```
 
 - [ ] **Step 5: Migrate dev and test databases**
@@ -377,7 +377,7 @@ psql "$DATABASE_URL_OWNER" -c '\d directory_open_listings'
 
 Expected: the `search` column shows `generated always as (...) stored`, plus the three indexes.
 
-- [ ] **Step 6: Checkpoint.** Run `pnpm --filter @firstfold/db typecheck` and `pnpm --filter @firstfold/db test`. No commit.
+- [ ] **Step 6: Checkpoint.** Run `pnpm --filter @fynix/db typecheck` and `pnpm --filter @fynix/db test`. No commit.
 
 ---
 
@@ -470,7 +470,7 @@ describe("toListingInputs", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @firstfold/db test -- directory-listing-file`
+Run: `pnpm --filter @fynix/db test -- directory-listing-file`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Write the module**
@@ -612,7 +612,7 @@ export function toListingInputs(
 
 - [ ] **Step 4: Run the tests**
 
-Run: `pnpm --filter @firstfold/db test -- directory-listing-file`
+Run: `pnpm --filter @fynix/db test -- directory-listing-file`
 Expected: PASS (7 tests).
 
 - [ ] **Step 5: Check it against the real files**
@@ -620,12 +620,12 @@ Expected: PASS (7 tests).
 Today the website's `thane-site-phones.json` has numbers only for listed businesses (`build_site_phones.py` skips the rest), so `toListingInputs` must not throw. Run:
 
 ```bash
-pnpm --filter @firstfold/db exec tsx -e 'import {readFileSync as r} from "node:fs";import {parseListingsFile as l,parsePhonesFile as p,toListingInputs as t} from "./src/directory-listing-file";const d="../../../website-listing/content/local/";const x=t(l(r(d+"thane-listings.json","utf8")),p(r(d+"thane-site-phones.json","utf8")));console.log(x.length, x.filter(i=>i.phone).length)'
+pnpm --filter @fynix/db exec tsx -e 'import {readFileSync as r} from "node:fs";import {parseListingsFile as l,parsePhonesFile as p,toListingInputs as t} from "./src/directory-listing-file";const d="../../../website-listing/content/local/";const x=t(l(r(d+"thane-listings.json","utf8")),p(r(d+"thane-site-phones.json","utf8")));console.log(x.length, x.filter(i=>i.phone).length)'
 ```
 
 Expected: `37324 3229` (or the current counts), and no error.
 
-- [ ] **Step 6: Checkpoint.** Run `pnpm --filter @firstfold/db test` and `typecheck`. No commit.
+- [ ] **Step 6: Checkpoint.** Run `pnpm --filter @fynix/db test` and `typecheck`. No commit.
 
 ---
 
@@ -770,7 +770,7 @@ describe("row-level security", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @firstfold/db test:integration -- directory-open-listings`
+Run: `pnpm --filter @fynix/db test:integration -- directory-open-listings`
 Expected: FAIL, `./queries/directory-listings` not found.
 
 - [ ] **Step 3: Write the queries**
@@ -1007,12 +1007,12 @@ export {
 
 - [ ] **Step 4: Run the tests**
 
-Run: `pnpm --filter @firstfold/db test:integration -- directory-open-listings`
+Run: `pnpm --filter @fynix/db test:integration -- directory-open-listings`
 Expected: PASS (8 tests).
 
 If `${ids}::text[]` binds as a record rather than an array in this drizzle version, replace it with `sql\`not (${t.placeId} = any(${sql.param(ids)}::text[]))\`` and re-run.
 
-- [ ] **Step 5: Checkpoint.** Run `pnpm --filter @firstfold/db test`, `pnpm --filter @firstfold/db test:integration` and `pnpm --filter @firstfold/db typecheck`. All must pass. No commit.
+- [ ] **Step 5: Checkpoint.** Run `pnpm --filter @fynix/db test`, `pnpm --filter @fynix/db test:integration` and `pnpm --filter @fynix/db typecheck`. All must pass. No commit.
 
 ---
 
@@ -1085,7 +1085,7 @@ In `packages/db/package.json` `"scripts"`, after `directory:backfill-places`:
 In the root `package.json` `"scripts"`, after `directory:backfill-places`:
 
 ```json
-    "directory:import-listings": "pnpm --filter @firstfold/db directory:import-listings",
+    "directory:import-listings": "pnpm --filter @fynix/db directory:import-listings",
 ```
 
 - [ ] **Step 3: Run it locally twice**
@@ -1103,7 +1103,7 @@ Run the second command again. Expected: `0 created, 0 updated, 37324 unchanged, 
 
 Time it. Expected: under 30 s on the Mac.
 
-- [ ] **Step 4: Checkpoint.** Run `pnpm --filter @firstfold/db typecheck`. No commit.
+- [ ] **Step 4: Checkpoint.** Run `pnpm --filter @fynix/db typecheck`. No commit.
 
 ---
 
@@ -1169,7 +1169,7 @@ export interface OpenListingsPage {
 }
 ```
 
-- [ ] **Step 2: Checkpoint.** Run `pnpm --filter @firstfold/shared typecheck`. No commit.
+- [ ] **Step 2: Checkpoint.** Run `pnpm --filter @fynix/shared typecheck`. No commit.
 
 ---
 
@@ -1189,7 +1189,7 @@ Before writing route code, read `apps/platform/node_modules/next/dist/docs/` on 
 ```ts
 // apps/platform/lib/server/open-listings-api.test.ts
 import { describe, expect, it, vi } from "vitest";
-import type { VisibleOpenListing } from "@firstfold/db";
+import type { VisibleOpenListing } from "@fynix/db";
 import { handleOpenListingsPage, handleOpenListingsVersion, toTuple } from "./open-listings-api";
 
 vi.mock("server-only", () => ({}));
@@ -1203,7 +1203,7 @@ const LISTING: VisibleOpenListing = {
 };
 
 function get(path: string, token: string | null = TOKEN): Request {
-  return new Request(`https://app.firstfold.io${path}`, { headers: token === null ? {} : { authorization: `Bearer ${token}` } });
+  return new Request(`https://app.fynix.digital${path}`, { headers: token === null ? {} : { authorization: `Bearer ${token}` } });
 }
 
 describe("toTuple", () => {
@@ -1267,7 +1267,7 @@ describe("handleOpenListingsPage", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @firstfold/platform test -- open-listings-api`
+Run: `pnpm --filter @fynix/platform test -- open-listings-api`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Write the handlers**
@@ -1275,15 +1275,15 @@ Expected: FAIL, module not found.
 ```ts
 // apps/platform/lib/server/open-listings-api.ts
 import "server-only";
-import type { VisibleOpenListing } from "@firstfold/db";
-import { isPlaceId } from "@firstfold/db/place-id";
+import type { VisibleOpenListing } from "@fynix/db";
+import { isPlaceId } from "@fynix/db/place-id";
 import {
   OPEN_LISTINGS_CONTRACT_VERSION,
   OPEN_LISTINGS_MAX_PAGE,
   type OpenListingTuple,
   type OpenListingsPage,
   type OpenListingsVersion,
-} from "@firstfold/shared/lib/directory/open-listings-contract";
+} from "@fynix/shared/lib/directory/open-listings-contract";
 import { errorLogInfo } from "@/lib/server/error-log";
 import { hasValidWebsiteToken } from "@/lib/server/website-api-auth";
 
@@ -1328,7 +1328,7 @@ export async function handleOpenListingsVersion(request: Request, deps: OpenList
     const body: OpenListingsVersion = { contract: OPEN_LISTINGS_CONTRACT_VERSION, version: await deps.readVersion() };
     return reply(200, body);
   } catch (error) {
-    console.error("[firstfold:directory] GET /api/directory/open-listings/version failed", errorLogInfo(error));
+    console.error("[fynix:directory] GET /api/directory/open-listings/version failed", errorLogInfo(error));
     return reply(503, { error: "Listings are unavailable right now." });
   }
 }
@@ -1358,19 +1358,19 @@ export async function handleOpenListingsPage(request: Request, deps: OpenListing
     };
     return reply(200, body);
   } catch (error) {
-    console.error("[firstfold:directory] GET /api/directory/open-listings failed", errorLogInfo(error));
+    console.error("[fynix:directory] GET /api/directory/open-listings failed", errorLogInfo(error));
     return reply(503, { error: "Listings are unavailable right now." });
   }
 }
 ```
 
-Check the import path of the shared module against how other platform files import from `@firstfold/shared` (for example `grep -rn "@firstfold/shared/lib/directory" apps/platform/lib | head -3`), and use the same form.
+Check the import path of the shared module against how other platform files import from `@fynix/shared` (for example `grep -rn "@fynix/shared/lib/directory" apps/platform/lib | head -3`), and use the same form.
 
 - [ ] **Step 4: The routes**
 
 ```ts
 // apps/platform/app/api/directory/open-listings/version/route.ts
-import { openListingsVersion } from "@firstfold/db";
+import { openListingsVersion } from "@fynix/db";
 import { getStaffDb } from "@/lib/server/db";
 import { handleOpenListingsVersion } from "@/lib/server/open-listings-api";
 import { leadsApiToken } from "@/lib/server/website-api-auth";
@@ -1386,7 +1386,7 @@ export function GET(request: Request): Promise<Response> {
 
 ```ts
 // apps/platform/app/api/directory/open-listings/route.ts
-import { openListingsVersion, listVisibleOpenListings } from "@firstfold/db";
+import { openListingsVersion, listVisibleOpenListings } from "@fynix/db";
 import { getStaffDb } from "@/lib/server/db";
 import { handleOpenListingsPage } from "@/lib/server/open-listings-api";
 import { leadsApiToken } from "@/lib/server/website-api-auth";
@@ -1405,7 +1405,7 @@ In `apps/platform/lib/server/db.ts`, extend the `getStaffDb` doc comment's list 
 
 - [ ] **Step 5: Run the tests**
 
-Run: `pnpm --filter @firstfold/platform test -- open-listings-api`
+Run: `pnpm --filter @fynix/platform test -- open-listings-api`
 Expected: PASS (8 tests).
 
 - [ ] **Step 6: Try it end to end locally**
@@ -1607,7 +1607,7 @@ import { parseDirectoryListingsSource } from "@/lib/server/env";
 vi.mock("server-only", () => ({}));
 
 describe("parseDirectoryListingsSource", () => {
-  const platform = { PLATFORM_API_ORIGIN: "https://app.firstfold.io", LEADS_API_TOKEN: "t".repeat(40) };
+  const platform = { PLATFORM_API_ORIGIN: "https://app.fynix.digital", LEADS_API_TOKEN: "t".repeat(40) };
 
   it("reads the files unless told otherwise", () => {
     expect(parseDirectoryListingsSource({})).toBe("file");
@@ -1700,7 +1700,7 @@ vi.mock("server-only", () => ({}));
 const env = vi.hoisted(() => ({ source: "platform" as "file" | "platform" }));
 vi.mock("@/lib/server/env", () => ({
   directoryOpenListingsSource: () => env.source,
-  platformEnv: () => ({ PLATFORM_API_ORIGIN: "https://app.firstfold.io", LEADS_API_TOKEN: "t".repeat(40) }),
+  platformEnv: () => ({ PLATFORM_API_ORIGIN: "https://app.fynix.digital", LEADS_API_TOKEN: "t".repeat(40) }),
 }));
 
 const ROW = ["Smile", "dentists", "thane", "naupada", "Naupada", 19.19, 72.97, "", "osm", "k7m2q9a", "thane", "smile", null, null, null, false];
@@ -2195,7 +2195,7 @@ Production order matters: the database must hold every listing before the websit
    Expected counts match the files: 37,324 listings and 3,229 phones at the time of writing.
 3. **Check the API from outside:**
    ```bash
-   curl -s -H "authorization: Bearer $LEADS_API_TOKEN" https://app.firstfold.io/api/directory/open-listings/version
+   curl -s -H "authorization: Bearer $LEADS_API_TOKEN" https://app.fynix.digital/api/directory/open-listings/version
    ```
    Expected: the visible count matches.
 4. **Website, still on files.** The user merges the website changes (Tasks 8–12) to main with `DIRECTORY_LISTINGS_SOURCE` unset, so nothing changes for visitors.

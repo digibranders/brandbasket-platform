@@ -27,7 +27,7 @@ const STAFF_USER = "staff-1";
 let dbs: TestDatabases;
 
 async function seedStaff(): Promise<void> {
-  await dbs.staff.db.insert(users).values({ id: STAFF_USER, name: "Sam Staff", email: "sam@firstfold.test" });
+  await dbs.staff.db.insert(users).values({ id: STAFF_USER, name: "Sam Staff", email: "sam@fynix.test" });
   await dbs.staff.db.insert(staffMembers).values({ userId: STAFF_USER });
 }
 
@@ -117,7 +117,7 @@ describe("leads", () => {
   });
 
   it("stores a lead through the insert-only public connection", async () => {
-    // The marketing form runs as firstfold_public, which may INSERT but not SELECT: RETURNING would fail here.
+    // The marketing form runs as fynix_public, which may INSERT but not SELECT: RETURNING would fail here.
     const created = await createLead(dbs.publicRole.db, {
       name: "Pat Public",
       businessName: "Public Co",
@@ -228,7 +228,7 @@ describe("email outbox", () => {
     });
     await recordEmail(dbs.staff.db, {
       toAddress: "owner@example.com",
-      subject: "Your Firstfold setup link",
+      subject: "Your Fynix setup link",
       template: "setup-link",
       bodyText: "Set your password.",
       bodyHtml: "<p>Set your password.</p>",
@@ -406,7 +406,7 @@ describe("redeeming the same invite twice", () => {
   it("finds a recorded email by id", async () => {
     await recordEmail(dbs.staff.db, {
       toAddress: "owner@example.com",
-      subject: "Your Firstfold setup link",
+      subject: "Your Fynix setup link",
       template: "setup-link",
       bodyText: "Set your password.",
       bodyHtml: "<p>Set your password.</p>",
@@ -415,7 +415,7 @@ describe("redeeming the same invite twice", () => {
 
     const [stored] = await listRecentEmails(dbs.staff.db, 1);
     if (stored === undefined) throw new Error("Expected a recorded email");
-    expect(await findEmail(dbs.staff.db, stored.id)).toMatchObject({ subject: "Your Firstfold setup link" });
+    expect(await findEmail(dbs.staff.db, stored.id)).toMatchObject({ subject: "Your Fynix setup link" });
     expect(await findEmail(dbs.staff.db, "0192f3c4-0000-7000-8000-00000000dead")).toBeNull();
   });
 });

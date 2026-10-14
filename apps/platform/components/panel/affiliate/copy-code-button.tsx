@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactElement } from "react";
-import { CopyIcon, TickIcon } from "@firstfold/shared/ui/icons";
+import { CopyIcon, TickIcon } from "@fynix/shared/ui/icons";
 
 interface CopyCodeButtonProps {
   readonly code: string;

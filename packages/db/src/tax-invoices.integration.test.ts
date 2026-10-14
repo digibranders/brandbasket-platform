@@ -60,7 +60,7 @@ const sampleBillingDetails = {
 
 const SUPPLIER: TaxInvoicePartyRecord = {
   legalName: "Digibranders Private Limited",
-  tradeName: "Firstfold",
+  tradeName: "Fynix",
   gstin: "27AAPFU0939F1ZV",
   cin: "U72900MH2020PTC123456",
   addressLines: ["Mumbai 400080"],
@@ -81,7 +81,7 @@ const RECIPIENT: TaxInvoicePartyRecord = {
 };
 
 const INTRA_LINE: TaxInvoiceLineRecord = {
-  description: "Firstfold Premium plan",
+  description: "Fynix Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: "Coupon GAURAV applied",
   sac: "998361",
@@ -97,7 +97,7 @@ const INTRA_LINE: TaxInvoiceLineRecord = {
   taxCents: 100_786,
 };
 
-/** The number a serial gets. Written out here because @firstfold/billing depends on this package, not the reverse. */
+/** The number a serial gets. Written out here because @fynix/billing depends on this package, not the reverse. */
 function numberFor(prefix: string, financialYear: string, serial: number): string {
   return `${prefix}/${financialYear}/${String(serial).padStart(6, "0")}`;
 }
@@ -111,10 +111,10 @@ function sampleInvoice(overrides: Partial<NewTaxInvoice> & { readonly paymentId:
   const serial = overrides.serial ?? 1;
   return {
     businessId: businessA,
-    prefix: "FF",
+    prefix: "FY",
     financialYear: "26-27",
     serial,
-    number: numberFor("FF", "26-27", serial),
+    number: numberFor("FY", "26-27", serial),
     issuedOn: "2026-10-09",
     paidOn: "2026-10-09",
     supplier: SUPPLIER,
@@ -211,28 +211,28 @@ function allocate(prefix: string, financialYear: string): Promise<number> {
 
 describe("invoice numbers", () => {
   it("numbers invoices 1, 2, 3 within a financial year and starts again at 1 in the next", async () => {
-    expect(await allocate("FF", "26-27")).toBe(1);
-    expect(await allocate("FF", "26-27")).toBe(2);
-    expect(await allocate("FF", "27-28")).toBe(1);
-    expect(await allocate("FF", "26-27")).toBe(3);
+    expect(await allocate("FY", "26-27")).toBe(1);
+    expect(await allocate("FY", "26-27")).toBe(2);
+    expect(await allocate("FY", "27-28")).toBe(1);
+    expect(await allocate("FY", "26-27")).toBe(3);
   });
 
   it("gives a number back when the transaction that took it rolls back", async () => {
     await expect(
       dbs.staff.db.transaction(async (tx) => {
-        await allocateInvoiceSerial(tx, "FF", "26-27");
+        await allocateInvoiceSerial(tx, "FY", "26-27");
         throw new Error("roll back");
       }),
     ).rejects.toThrow("roll back");
-    expect(await allocate("FF", "26-27")).toBe(1);
+    expect(await allocate("FY", "26-27")).toBe(1);
   });
 
   it("makes a second issuer wait for the first one's transaction, so numbers never repeat", async () => {
     let secondSerial: number | undefined;
     let second: Promise<void> = Promise.resolve();
     const first = await dbs.staff.db.transaction(async (tx) => {
-      const serial = await allocateInvoiceSerial(tx, "FF", "26-27");
-      second = allocate("FF", "26-27").then((value) => {
+      const serial = await allocateInvoiceSerial(tx, "FY", "26-27");
+      second = allocate("FY", "26-27").then((value) => {
         secondSerial = value;
       });
       // The second call is waiting on the series row's lock; give it time to show it has not slipped past.
@@ -245,20 +245,20 @@ describe("invoice numbers", () => {
   });
 
   it("refuses to run past the last serial a number can hold", async () => {
-    await dbs.owner.db.execute(sql`insert into tax_invoice_series (prefix, financial_year, next_serial) values ('FF', '26-27', 999999)`);
-    expect(await allocate("FF", "26-27")).toBe(999_999);
-    expect(await captureErrorText(allocate("FF", "26-27"))).toMatch(/tax_invoice_series_next_serial_check/);
+    await dbs.owner.db.execute(sql`insert into tax_invoice_series (prefix, financial_year, next_serial) values ('FY', '26-27', 999999)`);
+    expect(await allocate("FY", "26-27")).toBe(999_999);
+    expect(await captureErrorText(allocate("FY", "26-27"))).toMatch(/tax_invoice_series_next_serial_check/);
   });
 
   it("keeps the counter away from customers", async () => {
-    expect(await captureErrorText(asOwner(businessA, OWNER_A, (tx) => allocateInvoiceSerial(tx, "FF", "26-27")))).toMatch(/permission denied/i);
+    expect(await captureErrorText(asOwner(businessA, OWNER_A, (tx) => allocateInvoiceSerial(tx, "FY", "26-27")))).toMatch(/permission denied/i);
   });
 });
 
 describe("storing an invoice", () => {
   it("stores an invoice and reads it back by payment", async () => {
     const stored = await insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA }));
-    expect(stored).toMatchObject({ number: "FF/26-27/000001", businessId: businessA, paymentId: paymentA, totalCents: 660_706 });
+    expect(stored).toMatchObject({ number: "FY/26-27/000001", businessId: businessA, paymentId: paymentA, totalCents: 660_706 });
     expect(await findTaxInvoiceByPaymentId(dbs.staff.db, paymentA)).toMatchObject({ id: stored.id });
     expect(await findTaxInvoiceByPaymentId(dbs.staff.db, businessB)).toBeNull();
   });
@@ -296,13 +296,13 @@ describe("storing an invoice", () => {
   });
 
   it("refuses a number that does not match its series and serial", async () => {
-    expect(await captureErrorText(insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA, serial: 1, number: numberFor("FF", "26-27", 2) })))).toMatch(/tax_invoices_number_check/);
-    expect(await captureErrorText(insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA, serial: 1, number: "FF/26-27/1" })))).toMatch(/tax_invoices_number_check/);
+    expect(await captureErrorText(insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA, serial: 1, number: numberFor("FY", "26-27", 2) })))).toMatch(/tax_invoices_number_check/);
+    expect(await captureErrorText(insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA, serial: 1, number: "FY/26-27/1" })))).toMatch(/tax_invoices_number_check/);
   });
 
   it("refuses a number longer than the 16 characters GST allows, even when it matches its series", async () => {
     const error = await captureErrorText(
-      insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA, prefix: "FIRSTFOLD", serial: 1, number: numberFor("FIRSTFOLD", "26-27", 1) })),
+      insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA, prefix: "FYNIX", serial: 1, number: numberFor("FYNIX", "26-27", 1) })),
     );
     expect(error).toMatch(/tax_invoices_number_check/);
   });
@@ -392,7 +392,7 @@ describe("who can see and change invoices", () => {
 
   it("reads one invoice by its id on the staff connection, and nothing for an id that is not one", async () => {
     const invoice = await insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA, serial: 1 }));
-    expect(await findTaxInvoiceById(dbs.staff.db, invoice.id)).toMatchObject({ id: invoice.id, number: "FF/26-27/000001", businessId: businessA });
+    expect(await findTaxInvoiceById(dbs.staff.db, invoice.id)).toMatchObject({ id: invoice.id, number: "FY/26-27/000001", businessId: businessA });
     expect(await findTaxInvoiceById(dbs.staff.db, "0192f3c4-0000-7000-8000-00000000dead")).toBeNull();
   });
 
@@ -402,7 +402,7 @@ describe("who can see and change invoices", () => {
     await insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: second, serial: 2 }));
     await insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA, serial: 1 }));
     const rows = await asOwner(businessA, OWNER_A, (tx) => listTaxInvoicesForPayments(tx, businessA, [second, paymentA, foreign]));
-    expect(rows.map((row) => row.number)).toEqual(["FF/26-27/000001", "FF/26-27/000002"]);
+    expect(rows.map((row) => row.number)).toEqual(["FY/26-27/000001", "FY/26-27/000002"]);
     expect(await listTaxInvoicesForPayments(dbs.staff.db, businessA, [])).toEqual([]);
   });
 
@@ -411,7 +411,7 @@ describe("who can see and change invoices", () => {
     const other = await seedPayment(businessA, "pay_fake_no_invoice");
     const receipts = await asOwner(businessA, OWNER_A, (tx) => listReceiptsForBusiness(tx, businessA, 10));
     expect(receipts).toHaveLength(2);
-    expect(receipts.find((row) => row.id === paymentA)).toMatchObject({ taxInvoiceId: invoice.id, taxInvoiceNumber: "FF/26-27/000001" });
+    expect(receipts.find((row) => row.id === paymentA)).toMatchObject({ taxInvoiceId: invoice.id, taxInvoiceNumber: "FY/26-27/000001" });
     expect(receipts.find((row) => row.id === other)).toMatchObject({ taxInvoiceId: null, taxInvoiceNumber: null });
   });
 });
@@ -447,19 +447,19 @@ describe("the monthly register", () => {
     await insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: monthBefore, serial: 5, issuedOn: "2026-09-30", paidOn: "2026-09-30" }));
 
     const october = await listTaxInvoicesIssuedBetween(dbs.staff.db, "2026-10-01", "2026-11-01");
-    expect(october.map((row) => row.number)).toEqual(["FF/26-27/000001", "FF/26-27/000002", "FF/26-27/000003"]);
-    expect((await listTaxInvoicesIssuedBetween(dbs.staff.db, "2026-11-01", "2026-12-01")).map((row) => row.number)).toEqual(["FF/26-27/000004"]);
+    expect(october.map((row) => row.number)).toEqual(["FY/26-27/000001", "FY/26-27/000002", "FY/26-27/000003"]);
+    expect((await listTaxInvoicesIssuedBetween(dbs.staff.db, "2026-11-01", "2026-12-01")).map((row) => row.number)).toEqual(["FY/26-27/000004"]);
     expect(await listTaxInvoicesIssuedBetween(dbs.staff.db, "2026-12-01", "2027-01-01")).toEqual([]);
   });
 
   it("orders a month that crosses a financial year by year, then serial", async () => {
     const march = await seedPayment(businessA, "pay_fake_march");
     const april = await seedPayment(businessA, "pay_fake_april");
-    await insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: april, financialYear: "27-28", serial: 1, number: "FF/27-28/000001", issuedOn: "2027-04-01", paidOn: "2027-04-01" }));
-    await insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: march, financialYear: "26-27", serial: 9, number: "FF/26-27/000009", issuedOn: "2027-03-31", paidOn: "2027-03-31" }));
+    await insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: april, financialYear: "27-28", serial: 1, number: "FY/27-28/000001", issuedOn: "2027-04-01", paidOn: "2027-04-01" }));
+    await insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: march, financialYear: "26-27", serial: 9, number: "FY/26-27/000009", issuedOn: "2027-03-31", paidOn: "2027-03-31" }));
 
     const spanning = await listTaxInvoicesIssuedBetween(dbs.staff.db, "2027-03-01", "2027-05-01");
-    expect(spanning.map((row) => row.number)).toEqual(["FF/26-27/000009", "FF/27-28/000001"]);
+    expect(spanning.map((row) => row.number)).toEqual(["FY/26-27/000009", "FY/27-28/000001"]);
   });
 });
 

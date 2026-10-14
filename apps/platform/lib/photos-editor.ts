@@ -1,4 +1,4 @@
-import { GALLERY_SLOTS, type PictureSize } from "@firstfold/shared/lib/directory/pictures";
+import { GALLERY_SLOTS, type PictureSize } from "@fynix/shared/lib/directory/pictures";
 
 /*
  * The arithmetic and wording behind the Photos tab's editor (components/panel/business/photos-editor.tsx), kept free of

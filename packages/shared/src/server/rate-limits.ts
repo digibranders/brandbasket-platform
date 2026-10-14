@@ -1,5 +1,5 @@
 import "server-only";
-import { consumeRateLimit, type Database, type RateLimitResult } from "@firstfold/db";
+import { consumeRateLimit, type Database, type RateLimitResult } from "@fynix/db";
 import { signInRateLimitChecks } from "../lib/sign-in-limits";
 
 /**

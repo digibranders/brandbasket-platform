@@ -5,7 +5,7 @@ import {
   isChargeableDiscount,
   MAX_DISCOUNT_BASIS_POINTS,
   normaliseReferralCode,
-} from "@firstfold/billing";
+} from "@fynix/billing";
 import {
   billingCurrency,
   createReferralCode,
@@ -19,9 +19,9 @@ import {
   type Plan,
   type ReferralCode,
   type ReferralDiscount,
-} from "@firstfold/db";
-import { formatPercent, parsePercent } from "@firstfold/shared/lib/billing/referral-value";
-import { formatMoney, parseMoney } from "@firstfold/shared/lib/money";
+} from "@fynix/db";
+import { formatPercent, parsePercent } from "@fynix/shared/lib/billing/referral-value";
+import { formatMoney, parseMoney } from "@fynix/shared/lib/money";
 import { getStaffDb } from "./db";
 
 /**

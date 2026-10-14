@@ -1,9 +1,9 @@
 import type { ReactElement } from "react";
-import type { Plan, ProjectStatus, Subscription } from "@firstfold/db";
-import { LocalDate } from "@firstfold/shared/ui/panel/local-date-time";
-import { StatRow, StatTile, type StatTone } from "@firstfold/shared/ui/panel/stat-tile";
-import { ONBOARDING_STEPS } from "@firstfold/shared/lib/onboarding/steps";
-import { renewalCharge } from "@firstfold/shared/lib/billing/terms";
+import type { Plan, ProjectStatus, Subscription } from "@fynix/db";
+import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
+import { StatRow, StatTile, type StatTone } from "@fynix/shared/ui/panel/stat-tile";
+import { ONBOARDING_STEPS } from "@fynix/shared/lib/onboarding/steps";
+import { renewalCharge } from "@fynix/shared/lib/billing/terms";
 
 /**
  * What a customer would otherwise have to read four screens to find out.

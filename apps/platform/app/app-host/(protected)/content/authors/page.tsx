@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { AuthorsTable } from "@/components/panel/blog-editor/authors-table";
 import { BlogEmptyState } from "@/components/panel/blog-editor/blog-empty-state";
 import { getBlogAuthorsWithStats } from "@/lib/server/blog-taxonomy";

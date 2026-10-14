@@ -8,12 +8,12 @@ import {
   type AppointmentRow,
   type ArchivePractitionerResult,
   type PractitionerScheduleInput,
-} from "@firstfold/db";
-import { parsePractitionerFields, type PractitionerFields } from "@firstfold/shared/lib/appointments/practitioner-form";
-import { parseClosureForm, type ClosureInput } from "@firstfold/shared/lib/business-facts/forms";
-import { textField, type FormParseResult } from "@firstfold/shared/lib/form-result";
-import { dayModeField } from "@firstfold/shared/lib/onboarding/business-fields";
-import { toStoredHours } from "@firstfold/shared/lib/onboarding/hours";
+} from "@fynix/db";
+import { parsePractitionerFields, type PractitionerFields } from "@fynix/shared/lib/appointments/practitioner-form";
+import { parseClosureForm, type ClosureInput } from "@fynix/shared/lib/business-facts/forms";
+import { textField, type FormParseResult } from "@fynix/shared/lib/form-result";
+import { dayModeField } from "@fynix/shared/lib/onboarding/business-fields";
+import { toStoredHours } from "@fynix/shared/lib/onboarding/hours";
 import type { LeaveClash } from "@/lib/appointments/leave-added-state";
 import { parseHoursForm } from "@/lib/onboarding/business-form";
 

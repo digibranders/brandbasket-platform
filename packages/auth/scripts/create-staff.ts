@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
-import { accounts, createDatabase, STAFF_ROLES, staffMembers, users, type StaffRole } from "@firstfold/db";
-import { loadLocalEnv, requireEnv } from "@firstfold/db/local-env";
+import { accounts, createDatabase, STAFF_ROLES, staffMembers, users, type StaffRole } from "@fynix/db";
+import { loadLocalEnv, requireEnv } from "@fynix/db/local-env";
 import { and, eq } from "drizzle-orm";
 import { DrizzleQueryError } from "drizzle-orm/errors";
 import { z } from "zod";

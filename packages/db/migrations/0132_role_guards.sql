@@ -1,110 +1,5 @@
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'firstfold_app') THEN
-    CREATE ROLE firstfold_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'firstfold_staff') THEN
-    CREATE ROLE firstfold_staff LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'firstfold_public') THEN
-    CREATE ROLE firstfold_public LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
-  END IF;
-END $$;
---> statement-breakpoint
-ALTER ROLE firstfold_staff NOINHERIT;
---> statement-breakpoint
--- Existing runtime connections may still log in as webfold_staff during the rollout.
-GRANT firstfold_app TO firstfold_staff, webfold_staff;
---> statement-breakpoint
-
-DO $$
-DECLARE
-  r record;
-BEGIN
-  -- Replicate table grants from webfold_* to firstfold_*
-  FOR r IN
-    SELECT table_schema, table_name, privilege_type
-    FROM information_schema.role_table_grants
-    WHERE grantee = 'webfold_app' AND table_schema = 'public'
-  LOOP
-    EXECUTE format('GRANT %s ON TABLE %I.%I TO firstfold_app', r.privilege_type, r.table_schema, r.table_name);
-  END LOOP;
-
-  FOR r IN
-    SELECT table_schema, table_name, privilege_type
-    FROM information_schema.role_table_grants
-    WHERE grantee = 'webfold_staff' AND table_schema = 'public'
-  LOOP
-    EXECUTE format('GRANT %s ON TABLE %I.%I TO firstfold_staff', r.privilege_type, r.table_schema, r.table_name);
-  END LOOP;
-
-  FOR r IN
-    SELECT table_schema, table_name, privilege_type
-    FROM information_schema.role_table_grants
-    WHERE grantee = 'webfold_public' AND table_schema = 'public'
-  LOOP
-    EXECUTE format('GRANT %s ON TABLE %I.%I TO firstfold_public', r.privilege_type, r.table_schema, r.table_name);
-  END LOOP;
-
-  -- Replicate column-level grants
-  FOR r IN
-    SELECT table_schema, table_name, column_name, privilege_type, grantee
-    FROM information_schema.column_privileges
-    WHERE grantee IN ('webfold_app', 'webfold_staff', 'webfold_public')
-      AND table_schema = 'public'
-  LOOP
-    IF r.grantee = 'webfold_app' THEN
-      EXECUTE format('GRANT %s (%I) ON TABLE %I.%I TO firstfold_app', r.privilege_type, r.column_name, r.table_schema, r.table_name);
-    ELSIF r.grantee = 'webfold_staff' THEN
-      EXECUTE format('GRANT %s (%I) ON TABLE %I.%I TO firstfold_staff', r.privilege_type, r.column_name, r.table_schema, r.table_name);
-    ELSIF r.grantee = 'webfold_public' THEN
-      EXECUTE format('GRANT %s (%I) ON TABLE %I.%I TO firstfold_public', r.privilege_type, r.column_name, r.table_schema, r.table_name);
-    END IF;
-  END LOOP;
-
-  -- Replicate sequence grants
-  FOR r IN
-    SELECT sequence_schema, sequence_name
-    FROM information_schema.sequences
-    WHERE sequence_schema = 'public'
-  LOOP
-    EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %I.%I TO firstfold_app, firstfold_staff', r.sequence_schema, r.sequence_name);
-  END LOOP;
-
-  -- Replicate routine execution grants
-  GRANT EXECUTE ON FUNCTION app_module_enabled(uuid, business_module) TO firstfold_app, firstfold_staff;
-  GRANT EXECUTE ON FUNCTION erase_support_data_for_user(text) TO firstfold_staff;
-  GRANT EXECUTE ON FUNCTION purge_retained_support_ticket(uuid) TO firstfold_staff;
-END $$;
---> statement-breakpoint
-
-DO $$
-DECLARE
-  p record;
-  roles_list text[];
-  new_roles text;
-BEGIN
-  -- Add firstfold_* roles to all RLS policies matching webfold_*
-  FOR p IN 
-    SELECT schemaname, tablename, policyname, roles
-    FROM pg_policies 
-    WHERE schemaname = 'public'
-      AND ('webfold_app' = ANY(roles) OR 'webfold_staff' = ANY(roles) OR 'webfold_public' = ANY(roles))
-  LOOP
-    roles_list := p.roles;
-    IF 'webfold_app' = ANY(p.roles) AND NOT ('firstfold_app' = ANY(roles_list)) THEN
-      roles_list := array_append(roles_list, 'firstfold_app');
-    END IF;
-    IF 'webfold_staff' = ANY(p.roles) AND NOT ('firstfold_staff' = ANY(roles_list)) THEN
-      roles_list := array_append(roles_list, 'firstfold_staff');
-    END IF;
-    IF 'webfold_public' = ANY(p.roles) AND NOT ('firstfold_public' = ANY(roles_list)) THEN
-      roles_list := array_append(roles_list, 'firstfold_public');
-    END IF;
-    new_roles := array_to_string(roles_list, ', ');
-    EXECUTE format('ALTER POLICY %I ON %I.%I TO %s', p.policyname, p.schemaname, p.tablename, new_roles);
-  END LOOP;
-END $$;
+-- The customer, staff and public connections log in as fynix_app, fynix_staff and fynix_public. These trigger functions check
+-- current_user against those names so a customer connection can only make the moves a customer may make.
 --> statement-breakpoint
 
 -- 1. projects_guard_customer_transition
@@ -114,7 +9,7 @@ CREATE OR REPLACE FUNCTION public.projects_guard_customer_transition()
   SET search_path TO 'pg_catalog'
 AS $$
 BEGIN
-  IF current_user IN ('firstfold_app', 'webfold_app') AND NOT (OLD.status = 'onboarding' AND NEW.status = 'submitted') THEN
+  IF current_user = 'fynix_app' AND NOT (OLD.status = 'onboarding' AND NEW.status = 'submitted') THEN
     RAISE EXCEPTION '% may only move a project from onboarding to submitted', current_user
       USING ERRCODE = 'insufficient_privilege';
   END IF;
@@ -130,7 +25,7 @@ CREATE OR REPLACE FUNCTION public.domains_guard_customer_insert()
   SET search_path TO 'pg_catalog'
 AS $$
 BEGIN
-  IF current_user IN ('firstfold_app', 'webfold_app') AND NEW.status <> 'pending' THEN
+  IF current_user = 'fynix_app' AND NEW.status <> 'pending' THEN
     RAISE EXCEPTION '% may only add a domain as pending', current_user
       USING ERRCODE = 'insufficient_privilege';
   END IF;
@@ -148,7 +43,7 @@ AS $$
 DECLARE
   person_changed boolean;
 BEGIN
-  IF current_user NOT IN ('firstfold_app', 'webfold_app') THEN
+  IF current_user <> 'fynix_app' THEN
     RETURN NEW;
   END IF;
 
@@ -278,14 +173,14 @@ BEGIN
   IF NEW.author_user_id IS DISTINCT FROM public.app_current_user_id() THEN
     RAISE EXCEPTION 'Support message author must match the current user';
   END IF;
-  IF current_user IN ('firstfold_app', 'webfold_app') AND (NEW.author_role <> 'customer' OR NEW.visibility <> 'public') THEN
+  IF current_user = 'fynix_app' AND (NEW.author_role <> 'customer' OR NEW.visibility <> 'public') THEN
     RAISE EXCEPTION 'Customers may add only public customer replies';
   END IF;
-  IF current_user IN ('firstfold_staff', 'webfold_staff') AND NEW.author_role <> 'staff' THEN
+  IF current_user = 'fynix_staff' AND NEW.author_role <> 'staff' THEN
     RAISE EXCEPTION 'Staff must write as staff';
   END IF;
   IF NEW.author_role = 'staff' THEN
-    IF (current_user NOT IN ('firstfold_staff', 'webfold_staff')) OR NOT EXISTS (SELECT 1 FROM public.staff_members WHERE user_id = NEW.author_user_id AND active) THEN
+    IF (current_user <> 'fynix_staff') OR NOT EXISTS (SELECT 1 FROM public.staff_members WHERE user_id = NEW.author_user_id AND active) THEN
       RAISE EXCEPTION 'Support staff messages require an active staff author';
     END IF;
   END IF;
@@ -310,7 +205,7 @@ CREATE OR REPLACE FUNCTION public.support_deny_history_mutation()
   SET search_path TO 'pg_catalog', 'public'
 AS $$
 BEGIN
-  IF current_user NOT IN ('firstfold_app', 'firstfold_staff', 'firstfold_public', 'webfold_app', 'webfold_staff', 'webfold_public')
+  IF current_user NOT IN ('fynix_app', 'fynix_staff', 'fynix_public')
      AND (EXISTS (SELECT 1 FROM public.support_tickets t WHERE t.id = OLD.ticket_id AND t.requester_user_id = nullif(current_setting('support.erase_user', true), ''))
        OR OLD.ticket_id::text = nullif(current_setting('support.purge_ticket', true), '')) THEN
     RETURN OLD;

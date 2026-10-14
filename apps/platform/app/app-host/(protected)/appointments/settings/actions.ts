@@ -10,13 +10,13 @@ import {
   setAppointmentServiceArchived,
   updateAppointmentSettings,
   withTenantScope,
-} from "@firstfold/db";
-import { parsePausedMessage, parseServiceName, parseSlotSettings } from "@firstfold/shared/lib/appointments/settings-form";
-import { textField } from "@firstfold/shared/lib/form-result";
+} from "@fynix/db";
+import { parsePausedMessage, parseServiceName, parseSlotSettings } from "@fynix/shared/lib/appointments/settings-form";
+import { textField } from "@fynix/shared/lib/form-result";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
 import { getAppDb } from "@/lib/server/db";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { paymentRequiredState, unexpectedErrorState } from "@/lib/server/panel-form-errors";
 import { moduleOffState, notFoundState } from "../errors";
 

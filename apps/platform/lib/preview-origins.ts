@@ -1,5 +1,5 @@
 /**
- * The website's address is often served twice: firstfold.io sends visitors on to www.firstfold.io. The dashboard frames
+ * The website's address is often served twice: fynix.digital sends visitors on to www.fynix.digital. The dashboard frames
  * the preview at the address it is configured with, so the frame ends up on the other one, and both must be allowed
  * (the dashboard's frame-src, and the windows its preview messages are exchanged with). Only a bare domain and its
  * `www.` form pair up; `localhost`, addresses and deeper subdomains stand alone.

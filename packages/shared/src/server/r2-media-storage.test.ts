@@ -13,7 +13,7 @@ const CONFIG: R2Config = {
   accountId: "acct",
   accessKeyId: "key-id",
   secretAccessKey: "secret",
-  bucket: "firstfold-media",
+  bucket: "fynix-media",
 };
 
 function clientReturning(...answers: unknown[]): R2Client & { send: ReturnType<typeof vi.fn> } {
@@ -34,7 +34,7 @@ describe("createR2MediaStorage", () => {
     const command = client.send.mock.calls[0]?.[0] as PutObjectCommand;
     expect(command).toBeInstanceOf(PutObjectCommand);
     expect(command.input).toMatchObject({
-      Bucket: "firstfold-media",
+      Bucket: "fynix-media",
       Key: KEY,
       Body: new Uint8Array([1, 2, 3]),
       ContentType: "image/webp",
@@ -51,7 +51,7 @@ describe("createR2MediaStorage", () => {
     expect(await storage.get(KEY)).toEqual({ bytes: new Uint8Array([9, 8]), contentType: "image/webp" });
     const command = client.send.mock.calls[0]?.[0] as GetObjectCommand;
     expect(command).toBeInstanceOf(GetObjectCommand);
-    expect(command.input).toMatchObject({ Bucket: "firstfold-media", Key: KEY });
+    expect(command.input).toMatchObject({ Bucket: "fynix-media", Key: KEY });
   });
 
   it("answers null for an object that is not there, whichever way the library says so", async () => {
@@ -72,7 +72,7 @@ describe("createR2MediaStorage", () => {
     await createR2MediaStorage(CONFIG, client).delete(KEY);
     const command = client.send.mock.calls[0]?.[0] as DeleteObjectCommand;
     expect(command).toBeInstanceOf(DeleteObjectCommand);
-    expect(command.input).toMatchObject({ Bucket: "firstfold-media", Key: KEY });
+    expect(command.input).toMatchObject({ Bucket: "fynix-media", Key: KEY });
   });
 
   it("refuses a malformed key or content type before it asks the bucket anything", async () => {
@@ -91,7 +91,7 @@ describe("r2ConfigFromEnv", () => {
     R2_ACCOUNT_ID: "acct",
     R2_ACCESS_KEY_ID: "key-id",
     R2_SECRET_ACCESS_KEY: "secret",
-    R2_BUCKET: "firstfold-media",
+    R2_BUCKET: "fynix-media",
   };
 
   it("is null when none of the settings are present, so local disk is used", () => {
@@ -104,7 +104,7 @@ describe("r2ConfigFromEnv", () => {
   });
 
   it("names every missing setting when only some are present, instead of quietly using local disk", () => {
-    expect(() => r2ConfigFromEnv({ R2_BUCKET: "firstfold-media", R2_ACCOUNT_ID: "acct" })).toThrow(
+    expect(() => r2ConfigFromEnv({ R2_BUCKET: "fynix-media", R2_ACCOUNT_ID: "acct" })).toThrow(
       "R2 storage is half set up. Missing: R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.",
     );
   });

@@ -1,7 +1,7 @@
 /**
  * Refusals particular to the patient register. The generic pieces -- paymentRequiredState, unexpectedErrorState --
  * live in lib/server/panel-form-errors.ts; the parser refusals (a blank name, too many tags, a malformed id) come
- * from @firstfold/shared's patients/patient-form.ts. This file keeps only what the register's own outcomes need:
+ * from @fynix/shared's patients/patient-form.ts. This file keeps only what the register's own outcomes need:
  * each message here answers one outcome of a packages/db patients query, mapped in ./commands.ts.
  *
  * The module-off message repeats appointments/errors.ts's wording rather than importing it, so neither page depends

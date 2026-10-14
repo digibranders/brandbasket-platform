@@ -1,6 +1,6 @@
 import "server-only";
-import { settleDirectoryAds, type AdChargePricing } from "@firstfold/db";
-import { AD_TAX_BASIS_POINTS, adChargeDescription, adChargedPaise } from "@firstfold/shared/lib/directory/ads";
+import { settleDirectoryAds, type AdChargePricing } from "@fynix/db";
+import { AD_TAX_BASIS_POINTS, adChargeDescription, adChargedPaise } from "@fynix/shared/lib/directory/ads";
 import { getStaffDb } from "./db";
 
 /** The same wording and tax the platform uses for a won spot's charge (apps/platform/lib/server/directory-ads.ts). */

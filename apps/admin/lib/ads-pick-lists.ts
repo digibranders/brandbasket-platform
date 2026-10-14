@@ -1,4 +1,4 @@
-import { AD_CATEGORIES, DIRECTORY_AREAS, DIRECTORY_CITIES } from "@firstfold/shared/lib/directory/places";
+import { AD_CATEGORIES, DIRECTORY_AREAS, DIRECTORY_CITIES } from "@fynix/shared/lib/directory/places";
 
 /** One entry of a staff pick list: the slug that is stored, and the name staff read. */
 export interface AdsPickOption {

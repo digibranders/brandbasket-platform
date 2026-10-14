@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { NO_PICTURE, StaffAdPictureField, useHiddenPictureInput, type StaffAdPictureState } from "@/components/staff-ad-picture-field";
@@ -34,7 +34,7 @@ interface PlaceAdFormProps {
 }
 
 const ERROR_ID = "place-ad-error";
-/** What a category or area is when the ad is for all of them: the same word the home market uses (AD_ALL_SLUG in @firstfold/db). */
+/** What a category or area is when the ad is for all of them: the same word the home market uses (AD_ALL_SLUG in @fynix/db). */
 const ALL_VALUE = "all";
 /** Whole weeks, because the customers' auctions run Monday to Sunday: a month is four of them. */
 const DURATION_CHOICES = [
@@ -219,7 +219,7 @@ export function PlaceAdForm({ action, categories, areasByCity, cities, spots, we
             autoComplete="off"
             maxLength={2000}
             defaultValue={values.listing ?? ""}
-            placeholder="firstfold.io/in/mh/business/smile-dental/9f94ykmdjp"
+            placeholder="fynix.digital/in/mh/business/smile-dental/9f94ykmdjp"
             className={fieldClasses}
             {...fieldStatus("listing", "place-listing-hint")}
           />

@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { DirectoryProfile } from "@firstfold/db";
+import type { DirectoryProfile } from "@fynix/db";
 import {
   FIXED_PAGE_TABS,
   OPTIONAL_PAGE_TABS,
@@ -8,9 +8,9 @@ import {
   pageTabLabel,
   type OptionalPageTab,
   type RenamablePageTab,
-} from "@firstfold/shared/lib/directory/page-tabs";
-import { ArrowIcon, TickIcon } from "@firstfold/shared/ui/icons";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+} from "@fynix/shared/lib/directory/page-tabs";
+import { ArrowIcon, TickIcon } from "@fynix/shared/ui/icons";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { ItemForm } from "@/components/panel/business/item-form";
 import { TabNameField } from "@/components/panel/business/tab-name-field";
 import { profileHref } from "@/lib/business-profile-notices";

@@ -24,7 +24,7 @@ import { patients } from "./patients";
 import { practitioners } from "./practitioners";
 
 /** Must match APPOINTMENT_STATUSES in packages/shared/src/lib/appointments/status.ts; packages/db does not
- * depend on @firstfold/shared, so the values are written literally here and
+ * depend on @fynix/shared, so the values are written literally here and
  * packages/shared/src/lib/appointments/status-db-parity.test.ts asserts they agree. */
 export const appointmentStatus = pgEnum("appointment_status", ["booked", "cancelled", "done", "no_show"]);
 export type AppointmentStatus = (typeof appointmentStatus.enumValues)[number];

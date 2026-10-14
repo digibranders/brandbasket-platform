@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { cn } from "@firstfold/shared/lib/cn";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
+import { cn } from "@fynix/shared/lib/cn";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { initialGeoFormState, type GeoFormState } from "@/lib/geo-form-state";
 

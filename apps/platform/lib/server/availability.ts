@@ -1,8 +1,8 @@
 import { z } from "zod";
-import type { BookingContext, SiteFacts } from "@firstfold/db";
-import { isIsoDate, localDateIn, mondayOf } from "@firstfold/shared/lib/calendar/local-date";
-import { buildClinicWeek, type PractitionerCalendar } from "@firstfold/shared/lib/appointments/clinic-availability";
-import type { SiteAvailability } from "@firstfold/shared/lib/appointments/slots";
+import type { BookingContext, SiteFacts } from "@fynix/db";
+import { isIsoDate, localDateIn, mondayOf } from "@fynix/shared/lib/calendar/local-date";
+import { buildClinicWeek, type PractitionerCalendar } from "@fynix/shared/lib/appointments/clinic-availability";
+import type { SiteAvailability } from "@fynix/shared/lib/appointments/slots";
 import { nowMinutesIn } from "./local-time";
 
 /**

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DirectoryVideo } from "@firstfold/db";
-import { VimeoError, type VimeoVideo } from "@firstfold/shared/server/vimeo";
+import type { DirectoryVideo } from "@fynix/db";
+import { VimeoError, type VimeoVideo } from "@fynix/shared/server/vimeo";
 import { checkVideoProgress, removeListingVideo, requestVideoUpload, type ListingVideoDeps } from "./listing-videos";
 
 vi.mock("server-only", () => ({}));
@@ -83,7 +83,7 @@ describe("requestVideoUpload", () => {
   it("asks Vimeo for an upload of the size the owner said, records it as waiting for its file, and hands back where to send it", async () => {
     const outcome = await requestVideoUpload(deps, tenant, 2, 20_000_000, NOW);
     expect(outcome).toEqual({ ok: true, video: { id: VIDEO_ID, slot: 2, status: "pending" }, uploadLink: "https://global.upload.vimeo.com/files/abc" });
-    expect(vimeo.createUpload).toHaveBeenCalledWith({ size: 20_000_000, name: "Firstfold · Smile Dental · video 2" });
+    expect(vimeo.createUpload).toHaveBeenCalledWith({ size: 20_000_000, name: "Fynix · Smile Dental · video 2" });
     expect(deps.start).toHaveBeenCalledWith({
       id: VIDEO_ID,
       businessId: tenant.businessId,
@@ -140,8 +140,8 @@ describe("requestVideoUpload", () => {
     expect(deps.start).not.toHaveBeenCalled();
   });
 
-  it("says uploads are not available when the Firstfold folder is missing on Vimeo, so no video is filed loose, and logs why", async () => {
-    vimeo.createUpload.mockRejectedValue(new VimeoError('The Vimeo account has no "Firstfold" folder.', 404, "configuration"));
+  it("says uploads are not available when the Fynix folder is missing on Vimeo, so no video is filed loose, and logs why", async () => {
+    vimeo.createUpload.mockRejectedValue(new VimeoError('The Vimeo account has no "Fynix" folder.', 404, "configuration"));
     expect(await requestVideoUpload(deps, tenant, 1, 1000, NOW)).toMatchObject({ ok: false, refusal: "unavailable" });
     expect(deps.log).toHaveBeenCalled();
     expect(deps.start).not.toHaveBeenCalled();

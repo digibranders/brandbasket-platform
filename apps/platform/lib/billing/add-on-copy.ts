@@ -1,8 +1,8 @@
-import { BRANDS, brandText, type Brand } from "@/lib/brand";
-import type { AddOnId } from "@firstfold/shared/lib/billing/add-ons";
-import type { AddOnAction, AddOnCheckoutIntent, AddOnEndKind, AddOnView } from "@firstfold/shared/lib/billing/add-on-state";
-import { formatCalendarDate } from "@firstfold/shared/lib/format";
-import { formatRupees } from "@firstfold/shared/lib/directory/ads";
+import { type Brand } from "@/lib/brand";
+import type { AddOnId } from "@fynix/shared/lib/billing/add-ons";
+import type { AddOnAction, AddOnCheckoutIntent, AddOnEndKind, AddOnView } from "@fynix/shared/lib/billing/add-on-state";
+import { formatCalendarDate } from "@fynix/shared/lib/format";
+import { formatRupees } from "@fynix/shared/lib/directory/ads";
 
 /**
  * The words on the Add-ons page: what each state says, what each button is called, and what the purchase dialog tells
@@ -157,7 +157,7 @@ export interface CheckoutCopyInput {
   readonly chargeDate: string | null;
   /** For a monthly add-on, the day of the month it renews on: "12th". Null for the press release. */
   readonly renewDay: string | null;
-  /** The brand the dashboard is sold under; Firstfold when left out. */
+  /** The brand the dashboard is sold under; Fynix when left out. */
   readonly brand?: Brand;
 }
 
@@ -185,7 +185,7 @@ const HEADING_VERB: Readonly<Record<AddOnCheckoutIntent, string>> = {
  * the contacted mark of the row it continues.
  */
 export function checkoutCopy(input: CheckoutCopyInput): CheckoutCopy {
-  const { intent, addOnId, title, monthly, chargeDate, renewDay, brand = BRANDS.firstfold } = input;
+  const { intent, addOnId, title, monthly, chargeDate, renewDay } = input;
   const keeping = intent === "keep";
   // Keep it and Pay now continue a row staff already know about (it carries the contacted mark), so no call is promised.
   // Buy and Resume are purchases staff see as new.
@@ -197,7 +197,7 @@ export function checkoutCopy(input: CheckoutCopyInput): CheckoutCopy {
   if (monthly && renewDay !== null) {
     notes.push(renewalNote(renewDay));
   }
-  if (addOnId === "performance-marketing") notes.push(brandText("This is Firstfold's fee. You pay the ad platforms directly.", brand));
+  if (addOnId === "performance-marketing") notes.push("This is Fynix Digital's fee. You pay the ad platforms directly.");
   if (!monthly) notes.push("One-time payment.");
   if (teamContacts) notes.push("After you pay, our team will contact you to get started.");
 

@@ -1,15 +1,15 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { createAuth, type AuthConfig } from "@firstfold/auth";
+import { createAuth, type AuthConfig } from "@fynix/auth";
 import { generatePasswordResetEmail } from "./auth";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: () => ({}) }));
 vi.mock("./public-db", () => ({ getPublicDb: vi.fn() }));
 vi.mock("./env", () => ({ serverEnv: () => ({
-  BETTER_AUTH_SECRET: "s".repeat(32), APP_ORIGIN: "https://app.firstfold.in", ADMIN_ORIGIN: "https://staff.firstfold.in",
+  BETTER_AUTH_SECRET: "s".repeat(32), APP_ORIGIN: "https://app.fynix.digital", ADMIN_ORIGIN: "https://console.fynix.digital",
 }) }));
-vi.mock("@firstfold/auth", async () => ({
-  ...await vi.importActual<typeof import("@firstfold/auth")>("@firstfold/auth"), createAuth: vi.fn(),
+vi.mock("@fynix/auth", async () => ({
+  ...await vi.importActual<typeof import("@fynix/auth")>("@fynix/auth"), createAuth: vi.fn(),
 }));
 
 beforeEach(() => vi.clearAllMocks());

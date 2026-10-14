@@ -1,7 +1,6 @@
 import "server-only";
-import { isRealDeployment } from "@firstfold/billing";
+import { isRealDeployment } from "@fynix/billing";
 import { z } from "zod";
-import { hintCookieDomain } from "@/lib/signed-in-hint";
 
 const POSTGRES_PROTOCOL = /^postgres(ql)?$/;
 const HTTP_PROTOCOL = /^https?$/;
@@ -74,7 +73,7 @@ const accountCodeSecretSchema = z.string().min(32, "ACCOUNT_CODE_SECRET must be 
 
 /**
  * The HMAC-SHA256 key the emailed sign-up code is hashed with (lib/server/account-email-code.ts): ACCOUNT_CODE_SECRET,
- * which a Fynix deployment sets, else BOOKING_OTP_SECRET, the key Firstfold's texted codes already use. Read when a code
+ * which a Fynix deployment sets, else BOOKING_OTP_SECRET, the key Fynix Digital's texted codes already use. Read when a code
  * is asked for or checked, not at start, so a deployment that never sends one needs neither.
  */
 export function accountCodeSecret(env: Readonly<Record<string, string | undefined>> = process.env): string {
@@ -216,13 +215,4 @@ export function googleBusinessCredentials(): GoogleBusinessCredentials | null {
     throw new Error("Invalid Google import configuration: set both GOOGLE_BUSINESS_CLIENT_ID and GOOGLE_BUSINESS_CLIENT_SECRET, or neither.");
   }
   return { clientId, clientSecret };
-}
-
-/**
- * The parent domain the website shares with the dashboard (firstfold.io in production), for the signed-in marker the
- * website reads (lib/signed-in-hint.ts). Unset leaves the marker on the dashboard's own host, which is what local
- * development wants: there both run on localhost. A domain the dashboard isn't on is refused when it is first read.
- */
-export function signedInHintDomain(): string | undefined {
-  return hintCookieDomain(process.env.SIGNED_IN_HINT_DOMAIN, serverEnv().APP_ORIGIN);
 }

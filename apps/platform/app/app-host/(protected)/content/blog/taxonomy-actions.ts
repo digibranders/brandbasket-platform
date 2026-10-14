@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import { getPayload, type Payload } from "payload";
-import { cleanLine } from "@firstfold/shared/lib/validation/text";
+import { cleanLine } from "@fynix/shared/lib/validation/text";
 import config from "@/payload.config";
 import { firstUnusedSlug, slugify } from "@/lib/blog-slug";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";

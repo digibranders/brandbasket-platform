@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "@firstfold/db";
+import type { ProjectStatus } from "@fynix/db";
 
 /** How the team refers to each stage of a build. */
 export const PROJECT_STATUS_LABELS: Readonly<Record<ProjectStatus, string>> = {

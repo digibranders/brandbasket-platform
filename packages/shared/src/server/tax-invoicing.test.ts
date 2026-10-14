@@ -1,8 +1,8 @@
-import { FIRSTFOLD_SAC } from "@firstfold/billing";
-import { BillingRangeError } from "@firstfold/billing/billing-range-error";
-import { InvoiceAmountMismatchError } from "@firstfold/billing/tax-invoice";
-import type { AddOnSubscription, NewTaxInvoice, Payment, ScopedTransaction, TaxInvoice } from "@firstfold/db";
-import * as db from "@firstfold/db";
+import { FYNIX_SAC } from "@fynix/billing";
+import { BillingRangeError } from "@fynix/billing/billing-range-error";
+import { InvoiceAmountMismatchError } from "@fynix/billing/tax-invoice";
+import type { AddOnSubscription, NewTaxInvoice, Payment, ScopedTransaction, TaxInvoice } from "@fynix/db";
+import * as db from "@fynix/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   InvalidServicePeriodError,
@@ -21,8 +21,8 @@ vi.mock("server-only", () => ({}));
 
 // Only the reads and writes an add-on invoice makes are faked; the rest of the package (isInvoiceablePayment, the types'
 // runtime) stays real. The invoice builder, the text rules and the GST sums all run for real.
-vi.mock("@firstfold/db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@firstfold/db")>()),
+vi.mock("@fynix/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@fynix/db")>()),
   findAddOnSubscriptionForPayment: vi.fn(),
   findBillingProfile: vi.fn(),
   findInvoiceFallbackRecipient: vi.fn(),
@@ -75,33 +75,26 @@ describe("the invoice refusals staff see a notice for", () => {
   });
 });
 
-describe("on a Fynix server", () => {
-  const fynix = { PLATFORM_BRAND: "fynix" };
-
+describe("what the invoice calls us", () => {
   it("names the plan under Fynix, whichever way the plan row is named", () => {
-    expect(planLineDescription("Firstfold Premium", fynix)).toBe("Fynix Premium plan");
-    expect(planLineDescription("Care", fynix)).toBe("Fynix Care plan");
-    expect(planLineDescription(" Firstfold Care plan ", fynix)).toBe("Fynix Care plan");
+    expect(planLineDescription("Fynix Premium")).toBe("Fynix Premium plan");
+    expect(planLineDescription("Care")).toBe("Fynix Care plan");
+    expect(planLineDescription(" Fynix Care plan ")).toBe("Fynix Care plan");
   });
 
-  it("prints the registered company trading as Fynix Digital, with nothing of Firstfold", () => {
-    const supplier = supplierFor(fynix);
+  it("prints the registered company trading as Fynix Digital, with Fynix's own contact", () => {
+    const supplier = supplierFor();
     expect(supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Fynix Digital", email: "hello@fynix.digital", stateCode: "mh" });
-    expect(supplier.gstin).toBe(supplierFor({}).gstin);
     expect(JSON.stringify(supplier)).not.toMatch(/first\s?fold/i);
-  });
-
-  it("is Firstfold's, as before, with no brand set", () => {
-    expect(supplierFor({}).tradeName).toBe("Firstfold");
   });
 });
 
 describe("planLineDescription", () => {
-  it("names the plan once, with Firstfold in front and plan at the end", () => {
-    expect(planLineDescription("Firstfold Premium")).toBe("Firstfold Premium plan");
-    expect(planLineDescription("Premium")).toBe("Firstfold Premium plan");
-    expect(planLineDescription("Care")).toBe("Firstfold Care plan");
-    expect(planLineDescription(" Firstfold Care plan ")).toBe("Firstfold Care plan");
+  it("names the plan once, with Fynix in front and plan at the end", () => {
+    expect(planLineDescription("Fynix Premium")).toBe("Fynix Premium plan");
+    expect(planLineDescription("Premium")).toBe("Fynix Premium plan");
+    expect(planLineDescription("Care")).toBe("Fynix Care plan");
+    expect(planLineDescription(" Fynix Care plan ")).toBe("Fynix Care plan");
   });
 });
 
@@ -317,7 +310,7 @@ describe("issueTaxInvoice for an add-on payment", () => {
       description: "Local SEO",
       detail: "Monthly subscription, 12 Oct to 11 Nov 2026",
       note: "Premium member, 10% off",
-      sac: FIRSTFOLD_SAC,
+      sac: FYNIX_SAC,
       quantity: 1,
       unitAmountCents: 1_000_000,
       discountAmountCents: 100_000,

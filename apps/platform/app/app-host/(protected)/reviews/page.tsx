@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { brandText } from "@/lib/brand";
-import { requestBrand } from "@/lib/server/request-brand";
+
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { listReviewsForOwner } from "@firstfold/db";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+import { listReviewsForOwner } from "@fynix/db";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { ReviewsList } from "@/components/panel/reviews/reviews-list";
 import { leadsPaging, requestedLeadsPage, type LeadsPaging } from "@/lib/leads";
 import { REVIEWS_PATH, REVIEWS_PER_PAGE, requestedReviewFilter } from "@/lib/owner-replies";
@@ -23,7 +22,7 @@ interface ReviewsPageProps {
 /** What the page says while the free account's business can't have reviews to answer yet. */
 const WAITING = {
   "no-business": { text: "Add your business, and the reviews people leave for it show up here.", action: "Add your business" },
-  pending: { text: "Your reviews show up here once your business is live on Firstfold Local.", action: "Go to Business profile" },
+  pending: { text: "Your reviews show up here once your business is live on the local directory.", action: "Go to Business profile" },
   rejected: { text: "We couldn't confirm your business, so it has no page for reviews to come from.", action: "Go to Business profile" },
 } as const;
 
@@ -74,12 +73,11 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps): P
   if (owner.kind === "signed_out") notFound();
   if (owner.kind === "not_owner") {
     if (owner.waiting === null) notFound();
-    const brand = await requestBrand();
     const waiting = WAITING[owner.waiting];
     return (
       <>
         <h1 className="panel-title">Reviews</h1>
-        <p className="mt-6 max-w-prose text-sm text-ink-soft">{brandText(waiting.text, brand)}</p>
+        <p className="mt-6 max-w-prose text-sm text-ink-soft">{waiting.text}</p>
         <div className="mt-6">
           <ButtonLink href={LISTING_PAGE_PATH} size="sm" variant="secondary">
             {waiting.action}

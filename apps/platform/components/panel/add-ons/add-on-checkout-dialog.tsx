@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useActionState, useId, useRef, type ReactElement } from "react";
-import type { AddOnId, AddOnPrice } from "@firstfold/shared/lib/billing/add-ons";
-import type { AddOnCheckoutIntent } from "@firstfold/shared/lib/billing/add-on-state";
-import { formatRupees } from "@firstfold/shared/lib/directory/ads";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import type { AddOnId, AddOnPrice } from "@fynix/shared/lib/billing/add-ons";
+import type { AddOnCheckoutIntent } from "@fynix/shared/lib/billing/add-on-state";
+import { formatRupees } from "@fynix/shared/lib/directory/ads";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { BillingDetailsPrompt } from "@/components/panel/billing/billing-details-prompt";
 import { initialAddOnStartState, type AddOnInvoiceNote, type AddOnStartState } from "@/lib/billing/add-on-form";
 import { checkoutPendingLabel, type CheckoutCopy } from "@/lib/billing/add-on-copy";

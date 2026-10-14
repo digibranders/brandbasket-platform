@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type ReactElement } from "react";
-import { TickIcon } from "@firstfold/shared/ui/icons";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SupportCategoryBadge, SupportStatusBadge } from "@firstfold/shared/ui/panel/support-status-badge";
+import { TickIcon } from "@fynix/shared/ui/icons";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SupportCategoryBadge, SupportStatusBadge } from "@fynix/shared/ui/panel/support-status-badge";
 import { readMySupportTicketDetail, replyToSupportRequest, type MySupportTicketDetail } from "@/app/app-host/(support)/support/actions";
 import { INITIAL_SUPPORT_STATE } from "@/lib/support-form-state";
 import { handleImagePaste } from "@/lib/support-paste";

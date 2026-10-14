@@ -1,4 +1,4 @@
-import { addWeeks, type StaffAd } from "@firstfold/db";
+import { addWeeks, type StaffAd } from "@fynix/db";
 
 /*
  * Staff book an ad for weeks in a row and the database keeps one row a week; the Ads page lists the booking as one

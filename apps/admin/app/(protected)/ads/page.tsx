@@ -24,7 +24,7 @@ import {
   type StaffDirectoryClaim,
   type StaffDirectoryPicture,
   type StaffDirectoryVideo,
-} from "@firstfold/db";
+} from "@fynix/db";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -36,15 +36,15 @@ import {
   formatAdWeek,
   formatRupees,
   marketLabel,
-} from "@firstfold/shared/lib/directory/ads";
-import { PICTURE_SHAPES, PICTURE_SLOT_LABELS } from "@firstfold/shared/lib/directory/pictures";
-import { vimeoEmbedUrl } from "@firstfold/shared/lib/directory/videos";
-import { displayPhone } from "@firstfold/shared/server/phone-display";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+} from "@fynix/shared/lib/directory/ads";
+import { PICTURE_SHAPES, PICTURE_SLOT_LABELS } from "@fynix/shared/lib/directory/pictures";
+import { vimeoEmbedUrl } from "@fynix/shared/lib/directory/videos";
+import { displayPhone } from "@fynix/shared/server/phone-display";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import { buttonDanger, buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
 import { Figures } from "@/components/console/figures";
@@ -102,7 +102,7 @@ const DOT = " · ";
 /** Whole rupees from 100 to 100,000, which is all parseAdRupees accepts; the typing rule already drops commas. */
 const RUPEES_PATTERN = "[0-9]{3,6}";
 const RUPEES_TITLE = "Whole rupees, from 100 to 100000";
-const WEBSITE = "https://firstfold.io";
+const WEBSITE = "https://fynix.digital";
 /** How many weeks ahead an ad placed by staff may start. */
 const STAFF_AD_START_WEEKS = 9;
 

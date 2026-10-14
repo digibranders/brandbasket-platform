@@ -1,5 +1,5 @@
-import { receiptDescription } from "@firstfold/shared/lib/billing/receipt-title";
-import type { MonthlyAddOnId } from "@firstfold/shared/lib/billing/add-ons";
+import { receiptDescription } from "@fynix/shared/lib/billing/receipt-title";
+import type { MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
 
 /**
  * What a monthly add-on payment is called wherever it is paid: "Local SEO, monthly". It is the wording the add-on's

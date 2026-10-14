@@ -7,7 +7,7 @@ import { handleListingPictureRequest } from "@/lib/server/listing-picture-reques
 import { canAddListingPictures, storeListingPicture } from "@/lib/server/listing-pictures";
 import { BUSY_MESSAGE, BUSY_RETRY_AFTER_SECONDS, hasDecodeCapacity } from "@/lib/server/media-upload";
 import { consumeUploadAllowance } from "@/lib/server/onboarding-media";
-import { getMediaStorage } from "@firstfold/shared/server/media-storage";
+import { getMediaStorage } from "@fynix/shared/server/media-storage";
 
 /**
  * A free listing account's pictures: `POST /api/listing-pictures?slot=listing|ad_tall|ad_wide`, the raw bytes the

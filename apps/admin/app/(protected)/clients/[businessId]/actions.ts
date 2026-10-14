@@ -21,20 +21,20 @@ import {
   trustDirectoryBusiness,
   UnknownPlaceError,
   upsertDirectoryVerification,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { parseChargeForm } from "@firstfold/shared/lib/billing/charge-form";
-import { staffChargeNoticeHref } from "@firstfold/shared/lib/billing/charge-notices";
-import { parseManualPaymentForm } from "@firstfold/shared/lib/billing/manual-payment-form";
-import { manualPaymentNoticeHref } from "@firstfold/shared/lib/billing/manual-payment-notices";
-import { businessModuleNoticeHref } from "@firstfold/shared/lib/business-module-notices";
-import { isBusinessModule } from "@firstfold/shared/lib/business-modules";
-import { canonicalTimeZone } from "@firstfold/shared/lib/calendar/local-date";
-import { parsePlacementForm } from "@firstfold/shared/lib/directory/placement-form";
-import { projectLaunchNoticeHref } from "@firstfold/shared/lib/project-launch-notices";
-import { projectPreviewNoticeHref } from "@firstfold/shared/lib/project-preview-notices";
+import { parseChargeForm } from "@fynix/shared/lib/billing/charge-form";
+import { staffChargeNoticeHref } from "@fynix/shared/lib/billing/charge-notices";
+import { parseManualPaymentForm } from "@fynix/shared/lib/billing/manual-payment-form";
+import { manualPaymentNoticeHref } from "@fynix/shared/lib/billing/manual-payment-notices";
+import { businessModuleNoticeHref } from "@fynix/shared/lib/business-module-notices";
+import { isBusinessModule } from "@fynix/shared/lib/business-modules";
+import { canonicalTimeZone } from "@fynix/shared/lib/calendar/local-date";
+import { parsePlacementForm } from "@fynix/shared/lib/directory/placement-form";
+import { projectLaunchNoticeHref } from "@fynix/shared/lib/project-launch-notices";
+import { projectPreviewNoticeHref } from "@fynix/shared/lib/project-preview-notices";
 import { addOnNoticeHref, noticeForEndOutcome, type AddOnNotice } from "@/lib/add-on-notices";
 import { clientListingKey, clientTagsHref } from "@/lib/client-tags";
 import { endClientAddOn, markClientAddOnContacted, setClientPressReleaseStatus } from "@/lib/server/add-ons-admin";
@@ -296,7 +296,7 @@ export async function setModuleAction(formData: FormData): Promise<void> {
 }
 
 /**
- * Creates or changes where the client's listing sits on Firstfold Local. The first save also creates the client's
+ * Creates or changes where the client's listing sits on the local directory. The first save also creates the client's
  * empty content row, which is what shows them the Listing tab, and makes the listing a directory business: the one
  * staff named for it to take over, or a new one. Its web address is fixed from then on; moving the listing keeps it,
  * and keeps the old listing address as a redirect.

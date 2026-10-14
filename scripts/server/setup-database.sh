@@ -9,14 +9,13 @@
 #
 # Roles (names fixed by the code: migrations and packages/db/src/roles.ts grant to them; passwords are Fynix's own, new):
 #   fynix_owner       owns fynix_platform; used ONLY to run migrations, through /usr/local/sbin/fynix-migrate; never in an env file.
-#                     Has CREATEROLE + ADMIN OPTION on the six application roles below, because migrations alter and grant them.
-#   firstfold_app     the dashboard's connection: row-level security applies           -> DATABASE_URL
-#   firstfold_staff   staff and background work                                       -> DATABASE_URL_STAFF (both apps)
-#   firstfold_public  insert-only: sign-up codes and account email outbox writes       -> DATABASE_URL_PUBLIC
-#   fynix_payload     owns fynix_platform_payload (blog and content); runs its migrations -> DATABASE_URL_PAYLOAD (both apps)
-#   webfold_app/_staff/_public  legacy names old migrations grant to; created NOLOGIN (nobody can connect as them)
+#                     Has CREATEROLE + ADMIN OPTION on the three application roles below, because migrations alter and grant them.
+#   fynix_app     the dashboard's connection: row-level security applies           -> DATABASE_URL
+#   fynix_staff   staff and background work                                       -> DATABASE_URL_STAFF (both apps)
+#   fynix_public  insert-only: sign-up codes and account email outbox writes       -> DATABASE_URL_PUBLIC
+#   fynix_cms     owns fynix_platform_payload (blog and content); runs its migrations -> DATABASE_URL_PAYLOAD (both apps)
 #
-# Secrets: /root/fynix-secrets.env (mode 600): OWNER_PW, APP_PW, STAFF_PW, PUBLIC_PW, PAYLOAD_PW. Missing ones are generated.
+# Secrets: /root/fynix-secrets.env (mode 600): OWNER_PW, APP_PW, STAFF_PW, PUBLIC_PW, CMS_PW. Missing ones are generated.
 #
 # Test hooks (never needed on the droplet): FYNIX_PSQL (the psql command line), FYNIX_SECRETS_FILE, FYNIX_DB, FYNIX_PAYLOAD_DB.
 set -euo pipefail
@@ -41,15 +40,15 @@ psql_q() { "${PSQL[@]}" -X -v ON_ERROR_STOP=1 -Atq "$@"; }
 
 say "== Inspecting (read-only)"
 psql_q -c "select 'postgres ' || current_setting('server_version')" || { say "Cannot reach Postgres with: ${PSQL[*]}" >&2; exit 1; }
-say "existing roles named fynix_/firstfold_/webfold_:"
-psql_q -c "select '  ' || rolname || case when rolcanlogin then ' (login)' else ' (nologin)' end from pg_roles where rolname ~ '^(fynix_|firstfold_|webfold_)' order by 1" || true
+say "existing roles named fynix_:"
+psql_q -c "select '  ' || rolname || case when rolcanlogin then ' (login)' else ' (nologin)' end from pg_roles where rolname ~ '^fynix_' order by 1" || true
 say "existing databases named fynix_:"
 psql_q -c "select '  ' || datname from pg_database where datname ~ '^fynix_' order by 1" || true
 
 # --- secrets --------------------------------------------------------------------------------------------------------
 get_secret() { [[ -f "$SECRETS_FILE" ]] && grep -E "^$1=" "$SECRETS_FILE" | head -n 1 | cut -d= -f2- || true; }
 # One shell variable per secret (bash 3.2, which a Mac still has, has no associative arrays).
-for name in OWNER_PW APP_PW STAFF_PW PUBLIC_PW PAYLOAD_PW; do
+for name in OWNER_PW APP_PW STAFF_PW PUBLIC_PW CMS_PW; do
   value="$(get_secret "$name")"
   if [[ -z "$value" ]]; then
     if [[ $APPLY -eq 1 ]]; then
@@ -76,48 +75,44 @@ sql() {
 \\set app_pw '${PW_APP_PW}'
 \\set staff_pw '${PW_STAFF_PW}'
 \\set public_pw '${PW_PUBLIC_PW}'
-\\set payload_pw '${PW_PAYLOAD_PW}'
+\\set cms_pw '${PW_CMS_PW}'
 \\set db '${DB}'
 \\set pdb '${PAYLOAD_DB}'
 
 CREATE TEMP TABLE wanted_roles (name text, pw text);
 INSERT INTO wanted_roles VALUES
-  ('fynix_owner', :'owner_pw'), ('firstfold_app', :'app_pw'), ('firstfold_staff', :'staff_pw'),
-  ('firstfold_public', :'public_pw'), ('fynix_payload', :'payload_pw');
+  ('fynix_owner', :'owner_pw'), ('fynix_app', :'app_pw'), ('fynix_staff', :'staff_pw'),
+  ('fynix_public', :'public_pw'), ('fynix_cms', :'cms_pw');
 
 SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD %L', name, pw)
 FROM wanted_roles WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = name) \\gexec
 SELECT format('ALTER ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD %L', name, pw)
 FROM wanted_roles WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = name) \\gexec
 
-SELECT format('CREATE ROLE %I NOLOGIN', name)
-FROM (VALUES ('webfold_app'), ('webfold_staff'), ('webfold_public')) AS legacy(name)
-WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = name) \\gexec
-
 SELECT format('CREATE DATABASE %I OWNER %I ENCODING ''UTF8''', db, owner)
-FROM (VALUES (:'db', 'fynix_owner'), (:'pdb', 'fynix_payload')) AS wanted(db, owner)
+FROM (VALUES (:'db', 'fynix_owner'), (:'pdb', 'fynix_cms')) AS wanted(db, owner)
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = db) \\gexec
 SELECT format('ALTER DATABASE %I OWNER TO %I', db, owner)
-FROM (VALUES (:'db', 'fynix_owner'), (:'pdb', 'fynix_payload')) AS wanted(db, owner) \\gexec
+FROM (VALUES (:'db', 'fynix_owner'), (:'pdb', 'fynix_cms')) AS wanted(db, owner) \\gexec
 
 -- Migrations alter and grant the application roles (0018, 0132: NOINHERIT, GRANT role TO role), which a plain database owner
 -- may not do. fynix_owner therefore holds CREATEROLE and ADMIN OPTION on exactly those roles; it still cannot create
 -- databases, bypass row-level security or read anything outside fynix_platform, and its password is on the server only.
 ALTER ROLE fynix_owner CREATEROLE;
 SELECT format('GRANT %I TO fynix_owner WITH ADMIN OPTION', name)
-FROM (VALUES ('firstfold_app'), ('firstfold_staff'), ('firstfold_public'), ('webfold_app'), ('webfold_staff'), ('webfold_public')) AS r(name) \\gexec
+FROM (VALUES ('fynix_app'), ('fynix_staff'), ('fynix_public')) AS r(name) \\gexec
 
 -- Only the roles that need a database may connect to it.
 SELECT format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', db) FROM (VALUES (:'db'), (:'pdb')) AS d(db) \\gexec
 SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'db', role)
-FROM (VALUES ('fynix_owner'), ('firstfold_app'), ('firstfold_staff'), ('firstfold_public')) AS r(role) \\gexec
-SELECT format('GRANT CONNECT ON DATABASE %I TO fynix_payload', :'pdb') \\gexec
+FROM (VALUES ('fynix_owner'), ('fynix_app'), ('fynix_staff'), ('fynix_public')) AS r(role) \\gexec
+SELECT format('GRANT CONNECT ON DATABASE %I TO fynix_cms', :'pdb') \\gexec
 SQL
 }
 
 say "== Plan"
-say "  roles: fynix_owner firstfold_app firstfold_staff firstfold_public fynix_payload (login), webfold_app webfold_staff webfold_public (nologin)"
-say "  databases: ${DB} (owner fynix_owner), ${PAYLOAD_DB} (owner fynix_payload)"
+say "  roles: fynix_owner fynix_app fynix_staff fynix_public fynix_cms (all login, none superuser)"
+say "  databases: ${DB} (owner fynix_owner), ${PAYLOAD_DB} (owner fynix_cms)"
 if [[ $APPLY -eq 0 ]]; then
   say "[dry-run] nothing changed. Run again with --apply."
   exit 0
@@ -125,6 +120,6 @@ fi
 
 sql | "${PSQL[@]}" -X -q >/dev/null
 say "== Done. Roles and databases now:"
-psql_q -c "select '  ' || rolname || case when rolcanlogin then ' (login)' else ' (nologin)' end from pg_roles where rolname ~ '^(fynix_|firstfold_|webfold_)' order by 1"
+psql_q -c "select '  ' || rolname || case when rolcanlogin then ' (login)' else ' (nologin)' end from pg_roles where rolname ~ '^fynix_' order by 1"
 psql_q -c "select '  ' || d.datname || ' owned by ' || r.rolname from pg_database d join pg_roles r on r.oid = d.datdba where d.datname ~ '^fynix_' order by 1"
 say "Next: make the env files (scripts/server/make-env-files.sh), then the first release (docs/deployment/fynix-droplet.md)."

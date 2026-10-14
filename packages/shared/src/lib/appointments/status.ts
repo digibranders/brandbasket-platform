@@ -23,7 +23,7 @@ export interface AppointmentTransition {
 }
 
 /**
- * Every outcome each action can produce. packages/db cannot import @firstfold/shared (the dependency points the
+ * Every outcome each action can produce. packages/db cannot import @fynix/shared (the dependency points the
  * other way), so its own copy (queries/appointments.ts's `APPOINTMENT_TRANSITIONS`, which the conditional `UPDATE`
  * builds its guarded statement from) writes this table out literally rather than importing it from here;
  * status-db-parity.test.ts is the tripwire that keeps the two copies from drifting apart.

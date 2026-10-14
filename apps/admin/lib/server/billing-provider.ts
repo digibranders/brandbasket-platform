@@ -6,8 +6,8 @@ import {
   resolveBillingProviderName,
   wrapRazorpaySdkClient,
   type BillingProvider,
-} from "@firstfold/billing";
-import { findChargeByProviderOrder, findSubscriptionByProviderId } from "@firstfold/db";
+} from "@fynix/billing";
+import { findChargeByProviderOrder, findSubscriptionByProviderId } from "@fynix/db";
 import { getStaffDb } from "./db";
 import { serverEnv } from "@/lib/server/env";
 
@@ -19,7 +19,7 @@ import { serverEnv } from "@/lib/server/env";
  * and should never acquire them, so it takes the provider factory alone.
  */
 
-const holder = globalThis as typeof globalThis & { firstfoldBillingProvider?: BillingProvider };
+const holder = globalThis as typeof globalThis & { fynixBillingProvider?: BillingProvider };
 
 /** Reads a Razorpay env var required only when BILLING_PROVIDER=razorpay, so a deployment still on the fake
  * provider never needs it set. */
@@ -34,7 +34,7 @@ function requiredRazorpayEnv(name: "RAZORPAY_KEY_ID" | "RAZORPAY_KEY_SECRET" | "
 /**
  * The provider BILLING_PROVIDER names. Outside production an unset value means the fake provider; in production it
  * must be set, and resolving it throws otherwise rather than handing out dashboards for free. The fake provider is
- * also refused on a real deployment unless FIRSTFOLD_ALLOW_FAKE_BILLING=1 (see resolveBillingProviderName).
+ * also refused on a real deployment unless FYNIX_ALLOW_FAKE_BILLING=1 (see resolveBillingProviderName).
  *
  * Razorpay is constructed here directly rather than through `createBillingProvider`/`factory.ts`: that factory only
  * builds providers that need no injected dependencies (today, just the fake one), and Razorpay needs a real SDK
@@ -42,20 +42,20 @@ function requiredRazorpayEnv(name: "RAZORPAY_KEY_ID" | "RAZORPAY_KEY_SECRET" | "
  * by design; this function bypasses it for that provider.
  */
 export function getBillingProvider(): BillingProvider {
-  if (holder.firstfoldBillingProvider !== undefined) return holder.firstfoldBillingProvider;
+  if (holder.fynixBillingProvider !== undefined) return holder.fynixBillingProvider;
 
   const name = resolveBillingProviderName({
     BILLING_PROVIDER: process.env.BILLING_PROVIDER,
     NODE_ENV: process.env.NODE_ENV,
     VERCEL_ENV: process.env.VERCEL_ENV,
     APP_ORIGIN: process.env.APP_ORIGIN,
-    FIRSTFOLD_ALLOW_FAKE_BILLING: process.env.FIRSTFOLD_ALLOW_FAKE_BILLING,
+    FYNIX_ALLOW_FAKE_BILLING: process.env.FYNIX_ALLOW_FAKE_BILLING,
   });
 
   if (name === "razorpay") {
     const keyId = requiredRazorpayEnv("RAZORPAY_KEY_ID");
     const keySecret = requiredRazorpayEnv("RAZORPAY_KEY_SECRET");
-    holder.firstfoldBillingProvider = createRazorpayProvider({
+    holder.fynixBillingProvider = createRazorpayProvider({
       keySecret,
       client: wrapRazorpaySdkClient(new Razorpay({ key_id: keyId, key_secret: keySecret })),
       resolveBusinessId: async (providerSubscriptionId) => {
@@ -68,7 +68,7 @@ export function getBillingProvider(): BillingProvider {
       },
     });
   } else {
-    holder.firstfoldBillingProvider = createBillingProvider(name, { authSecret: serverEnv().BETTER_AUTH_SECRET });
+    holder.fynixBillingProvider = createBillingProvider(name, { authSecret: serverEnv().BETTER_AUTH_SECRET });
   }
-  return holder.firstfoldBillingProvider;
+  return holder.fynixBillingProvider;
 }

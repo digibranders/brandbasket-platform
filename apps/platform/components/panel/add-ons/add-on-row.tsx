@@ -1,8 +1,8 @@
 import type { ReactElement, ReactNode } from "react";
 import { requestBrand } from "@/lib/server/request-brand";
-import { PREMIUM_ADD_ON_DISCOUNT_PERCENT, type AddOn, type AddOnPrice } from "@firstfold/shared/lib/billing/add-ons";
-import type { AddOnAction, AddOnCheckoutIntent } from "@firstfold/shared/lib/billing/add-on-state";
-import { formatRupees } from "@firstfold/shared/lib/directory/ads";
+import { PREMIUM_ADD_ON_DISCOUNT_PERCENT, type AddOn, type AddOnPrice } from "@fynix/shared/lib/billing/add-ons";
+import type { AddOnAction, AddOnCheckoutIntent } from "@fynix/shared/lib/billing/add-on-state";
+import { formatRupees } from "@fynix/shared/lib/directory/ads";
 import { buyPressReleaseAction, endAddOnAction, startAddOnAction } from "@/app/app-host/(protected)/add-ons/actions";
 import { AddOnCheckoutDialog } from "@/components/panel/add-ons/add-on-checkout-dialog";
 import { AddOnEndConfirm } from "@/components/panel/add-ons/add-on-end-confirm";

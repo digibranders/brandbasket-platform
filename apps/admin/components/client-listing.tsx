@@ -4,7 +4,7 @@ import {
   PLACE_URL_SLUG_MAX,
   type DirectoryPlace,
   type ListingPlacement,
-} from "@firstfold/db";
+} from "@fynix/db";
 import {
   DIRECTORY_AREAS,
   DIRECTORY_CATEGORIES,
@@ -12,12 +12,12 @@ import {
   DIRECTORY_ORIGIN,
   directoryCategoryPath,
   slugifyBusinessName,
-} from "@firstfold/shared/lib/directory/places";
-import { PLACEMENT_FIELD_MESSAGES, type PlacementField } from "@firstfold/shared/lib/directory/placement-form";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+} from "@fynix/shared/lib/directory/places";
+import { PLACEMENT_FIELD_MESSAGES, type PlacementField } from "@fynix/shared/lib/directory/placement-form";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import { saveListingPlacementAction } from "@/app/(protected)/clients/[businessId]/actions";
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
@@ -113,7 +113,7 @@ function ListingAddress({ path, live }: { readonly path: string; readonly live: 
 }
 
 /**
- * Where the client's Featured listing sits on Firstfold Local. Every field here shapes its address or was checked by
+ * Where the client's Featured listing sits on the local directory. Every field here shapes its address or was checked by
  * us, which is why the client cannot change any of them (spec 2026-09-29-customer-listing-tab-design.md).
  */
 export function ClientListing({
@@ -390,7 +390,7 @@ export function ClientListing({
             className={fieldClasses}
           />
           <p id="listing-replaces-hint" className={hintClasses}>
-            Optional. Paste its firstfold.io/in address so it disappears and nothing shows twice.
+            Optional. Paste its fynix.digital/in address so it disappears and nothing shows twice.
           </p>
         </div>
 

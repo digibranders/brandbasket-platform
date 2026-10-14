@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getStaffDb } from "@/lib/server/db";
-import { serveStaffMedia } from "@firstfold/shared/server/media-serving";
-import { getMediaStorage } from "@firstfold/shared/server/media-storage";
+import { serveStaffMedia } from "@fynix/shared/server/media-serving";
+import { getMediaStorage } from "@fynix/shared/server/media-storage";
 import { getStaffAccess } from "@/lib/server/staff-access";
 
 /**

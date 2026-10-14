@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Applies Payload's migrations to the Payload database (webfold_payload), then fails unless every one has run.
+# Applies Payload's migrations to the Payload database (fynix_platform_payload), then fails unless every one has run.
 #
-# Run from the repository root, by the production deploy (firstfold-platform-release on the VPS, from the release
-# being deployed; see docs/deployment/vps.md) and by CI's database job. It reads
+# Run from the repository root, by the production deploy (fynix-platform-release on the VPS, from the release
+# being deployed; see docs/deployment/fynix-droplet.md) and by CI's database job. It reads
 # DATABASE_URL_PAYLOAD and PAYLOAD_SECRET from apps/platform/.env.local, as `pnpm cms:migrate` always does; the
 # connection there belongs to the role that owns the Payload database, so no sudo or owner password is involved.
 #
@@ -17,14 +17,19 @@ set -euo pipefail
 # The Payload database is small; a real run takes seconds. Anything this long is the prompt above.
 readonly MIGRATE_TIME_LIMIT=300s
 
-# GNU coreutils, present on the VPS and on GitHub's Ubuntu runners. Without --foreground it signals the whole
+# GNU coreutils, present on the server and on GitHub's Ubuntu runners. Without --foreground it signals the whole
 # process group, so the node process pnpm started is stopped too, not left holding a database connection.
-if ! command -v timeout >/dev/null; then
-  echo "This script needs the GNU 'timeout' command (coreutils). Run 'pnpm cms:migrate' directly instead." >&2
+# Without it (a Mac has none) perl's alarm does the same job for the one process it starts.
+if command -v timeout >/dev/null; then
+  run_limited() { timeout "$MIGRATE_TIME_LIMIT" "$@"; }
+elif command -v perl >/dev/null; then
+  run_limited() { perl -e 'my $seconds = shift; $seconds =~ s/s$//; alarm $seconds; exec @ARGV or die "cannot run @ARGV: $!"' "$MIGRATE_TIME_LIMIT" "$@"; }
+else
+  echo "This script needs GNU 'timeout' (coreutils) or perl. Run 'pnpm cms:migrate' directly instead." >&2
   exit 1
 fi
 
-if ! timeout "$MIGRATE_TIME_LIMIT" pnpm cms:migrate </dev/null; then
+if ! run_limited pnpm cms:migrate </dev/null; then
   echo "payload migrate failed or waited on a prompt for $MIGRATE_TIME_LIMIT. If it reported a database pushed in" >&2
   echo "dev mode, that database needs a person to look at it: nothing has been applied." >&2
   exit 1

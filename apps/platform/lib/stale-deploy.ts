@@ -1,1 +1,1 @@
-export { isStaleDeployError } from "@firstfold/shared/lib/stale-deploy";
+export { isStaleDeployError } from "@fynix/shared/lib/stale-deploy";

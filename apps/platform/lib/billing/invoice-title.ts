@@ -1,5 +1,5 @@
-/** An invoice number as issued: prefix, financial year and a six digit serial, such as FF/26-27/000001. */
-const INVOICE_NUMBER = /FF\/\d{2}-\d{2}\/\d{6}/;
+/** An invoice number as issued: prefix, financial year and a six digit serial, such as FY/26-27/000001. */
+const INVOICE_NUMBER = /FY\/\d{2}-\d{2}\/\d{6}/;
 
 export interface TitlePart {
   readonly text: string;

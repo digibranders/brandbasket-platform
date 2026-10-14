@@ -6,10 +6,8 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAuth } from "./auth";
-import { forgetSignedIn } from "./signed-in-hint";
 
 export async function signOut(): Promise<void> {
   await getAuth().api.signOut({ headers: await headers() });
-  await forgetSignedIn();
   redirect("/login");
 }

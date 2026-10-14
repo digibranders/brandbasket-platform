@@ -1,21 +1,22 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import { DomainTakenError, savePrimaryDomain, slugify } from "@firstfold/db";
+import { DomainTakenError, savePrimaryDomain, slugify } from "@fynix/db";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   parseDomainForm,
   reservedHostnamesFrom,
   temporarySubdomainFor,
   clientSiteBaseDomain,
-} from "@firstfold/shared/lib/onboarding/domain-form";
+} from "@fynix/shared/lib/onboarding/domain-form";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
-import { hrefAfter } from "@firstfold/shared/lib/onboarding/steps";
+import { hrefAfter } from "@fynix/shared/lib/onboarding/steps";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
 import { serverEnv } from "@/lib/server/env";
 import { saveOnboardingStep, type StepProblem } from "@/lib/server/onboarding";
-import { siteConfig } from "@firstfold/shared/lib/site-config";
+import { siteConfig } from "@fynix/shared/lib/site-config";
 
 const SUBDOMAIN_ATTEMPTS = 5;
 const SUBDOMAIN_SUFFIX_BYTES = 3;
@@ -58,6 +59,8 @@ export async function saveDomainStep(_previous: StepFormState, formData: FormDat
   );
   if (problem !== null) return refusedStepState(problem, formData);
 
+  // The step list in the layout reads what is done, so it must be read again or this step stays unticked.
+  revalidatePath("/onboarding", "layout");
   redirect(hrefAfter("domain"));
 }
 
@@ -91,5 +94,7 @@ export async function useTemporarySubdomainAction(_previous: StepFormState, form
   });
   if (problem !== null) return refusedStepState(problem, formData);
 
+  // The step list in the layout reads what is done, so it must be read again or this step stays unticked.
+  revalidatePath("/onboarding", "layout");
   redirect(hrefAfter("domain"));
 }

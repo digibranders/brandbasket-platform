@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DirectoryClaim } from "@firstfold/db";
+import type { DirectoryClaim } from "@fynix/db";
 import { verificationEligibility, verificationRefusalMessage } from "./owner-verification";
 
 function claim(overrides: Partial<DirectoryClaim> = {}): DirectoryClaim {

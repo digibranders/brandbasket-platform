@@ -1,5 +1,5 @@
-import type { PublishRefusal } from "@firstfold/db";
-import type { PageTabLabels } from "@firstfold/shared/lib/directory/page-tabs";
+import type { PublishRefusal } from "@fynix/db";
+import type { PageTabLabels } from "@fynix/shared/lib/directory/page-tabs";
 
 /*
  * What the Business profile says after an action (docs/superpowers/specs/2026-10-01-business-profile-design.md). Each
@@ -86,7 +86,7 @@ export const PROFILE_NOTICES: Readonly<Record<ProfileNotice, NoticeText>> = {
   "clip-feature-failed": { ok: false, text: "We couldn't change that. The video may have been removed, so reload the page and try again." },
   "video-invalid": { ok: false, text: "Paste the link to one YouTube video, like youtube.com/watch?v=… or youtu.be/…." },
   "needs-details": { ok: false, text: "Save your Identity first, then add the video." },
-  published: { ok: true, text: "Your business is live on Firstfold Local." },
+  published: { ok: true, text: "Your business is live on the local directory." },
   verified: { ok: true, text: "Your business is verified." },
   "google-imported": { ok: true, text: "We found your Google Business Profile. Check the details below, then save." },
   "google-failed": { ok: false, text: "We couldn't read your Google Business Profile. Try again, or fill in the details yourself." },
@@ -96,7 +96,7 @@ export const PROFILE_NOTICES: Readonly<Record<ProfileNotice, NoticeText>> = {
   "publish-no-claim": { ok: false, text: "Choose where you're listed on the Listing tab first." },
   "publish-not-added": { ok: false, text: "We confirm this listing with a call, so it has no Publish." },
   "publish-already-published": { ok: true, text: "Your business is already live." },
-  "publish-taken-down": { ok: false, text: "This business was taken off Firstfold Local. Email us and we'll sort it out." },
+  "publish-taken-down": { ok: false, text: "This business was taken off the local directory. Email us and we'll sort it out." },
   "publish-owner-unconfirmed": { ok: false, text: "Confirm your email address first: open the link we sent you, then publish." },
   "publish-listing-taken": { ok: false, text: "Another business already has this listing. Email us and we'll sort it out." },
 };

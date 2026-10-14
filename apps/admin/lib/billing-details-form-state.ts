@@ -1,4 +1,4 @@
-import type { BillingDetailsField } from "@firstfold/shared/lib/billing/billing-details-form";
+import type { BillingDetailsField } from "@fynix/shared/lib/billing/billing-details-form";
 
 /**
  * What the staff billing details form's action hands back: nothing yet, a save, or one refusal with what was typed, as

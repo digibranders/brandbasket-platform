@@ -3,8 +3,8 @@ import type {
   DueClosure,
   ErasureOutcome,
   ErasureSkipReason,
-} from "@firstfold/db";
-import type { DeletingSupportAttachment } from "@firstfold/shared/server/support-attachment-maintenance";
+} from "@fynix/db";
+import type { DeletingSupportAttachment } from "@fynix/shared/server/support-attachment-maintenance";
 export class PrivateSupportErasureError extends Error {
   constructor(readonly failedObjects: number) {
     super(

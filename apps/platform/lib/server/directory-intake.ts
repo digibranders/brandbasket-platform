@@ -1,9 +1,9 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import type { z } from "zod";
-import type { DirectoryAsk, DirectoryNamed } from "@firstfold/db";
-import { OTP_TTL_SECONDS } from "@firstfold/shared/lib/appointments/otp";
-import { isPictureCopyWidth, type PictureCopyWidth } from "@firstfold/shared/server/media-keys";
+import type { DirectoryAsk, DirectoryNamed } from "@fynix/db";
+import { OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
+import { isPictureCopyWidth, type PictureCopyWidth } from "@fynix/shared/server/media-keys";
 import {
   adMarketSchema,
   commentOtpRequestSchema,
@@ -44,7 +44,7 @@ import type { CommentOtpOutcome, ReviewHelpfulOutcome } from "./directory-review
 import type { ReviewConfirmOutcome, ReviewOtpOutcome } from "./directory-reviews";
 import type { DirectoryAdEvent, DirectoryAdEventOutcome } from "./directory-ad-events";
 import type { DirectoryEvent, DirectoryEventOutcome } from "./directory-signals";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { BodyTooLargeError, readLimitedBody } from "./read-limited-body";
 import { hasValidWebsiteToken } from "./website-api-auth";
 
@@ -205,7 +205,7 @@ export interface StatusIntakeDeps {
   readonly readStatuses: (ask: DirectoryAsk) => Promise<StatusResponse>;
 }
 
-/** `GET /api/directory/status?keys=k1,k2,…` / `?ids=i1,i2,…`: each business Firstfold has verified, with the number to
+/** `GET /api/directory/status?keys=k1,k2,…` / `?ids=i1,i2,…`: each business Fynix has verified, with the number to
  * show, keyed by what was asked, cached by shared caches for 60 seconds like the ratings. */
 export async function handleStatusRequest(request: Request, deps: StatusIntakeDeps): Promise<Response> {
   const refused = refuseUnauthorised(request, "GET", deps.token);

@@ -1,8 +1,8 @@
 // The type only: this module reaches client components, and the package index pulls in the database.
-import type { DirectoryPictureSlot } from "@firstfold/db";
+import type { DirectoryPictureSlot } from "@fynix/db";
 
 /*
- * A listing owner's pictures on Firstfold Local, as the Photos page, the crop window, the upload route and the staff
+ * A listing owner's pictures on the local directory, as the Photos page, the crop window, the upload route and the staff
  * console all see them (docs/superpowers/specs/2026-09-30-listing-pictures-crop-design.md). Each slot has one fixed
  * shape, taken from where the website shows it; a picture is cropped to that shape in the owner's browser and stored
  * at exactly that size.

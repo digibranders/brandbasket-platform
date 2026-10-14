@@ -1,6 +1,6 @@
 # Page tabs: the owner chooses the tabs on their business page
 
-Date: 2026-10-09. Asked by the owner of Firstfold in chat.
+Date: 2026-10-09. Asked by the owner of Fynix in chat.
 
 ## What was asked
 

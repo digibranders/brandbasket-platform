@@ -2,13 +2,13 @@
 
 > **For agentic workers:** Implement the agreed design task by task using `executing-plans`. Steps use checkbox syntax for tracking. This is an architecture and delivery proposal, not implemented application code.
 
-**Goal:** Replace the platform account menu's email links with an accessible feedback popup, persistent requests, customer conversations, and a Firstfold admin inbox with separate user-request and automatic-error views.
+**Goal:** Replace the platform account menu's email links with an accessible feedback popup, persistent requests, customer conversations, and a Fynix admin inbox with separate user-request and automatic-error views.
 
 **Architecture:** Keep the shared account menu presentational. A platform-owned client provider controls one popup and connects it to authenticated server actions. Store requests and conversations in PostgreSQL through the existing Drizzle and row-level-security patterns; staff manage them through the admin app. Screenshots use separate private storage. Add browser/server error capture and a staff-only issue mirror, using a dedicated monitoring provider for collection and grouping.
 
-**Tech stack:** Existing Next.js App Router, React, TypeScript, Zod, Drizzle/PostgreSQL, native dialog, shared Firstfold UI tokens, Vitest, and a private local/R2 storage adapter.
+**Tech stack:** Existing Next.js App Router, React, TypeScript, Zod, Drizzle/PostgreSQL, native dialog, shared Fynix UI tokens, Vitest, and a private local/R2 storage adapter.
 
-**Status:** Proposed design. The user selected the Firstfold admin inbox. This review changed only this planning document.
+**Status:** Proposed design. The user selected the Fynix admin inbox. This review changed only this planning document.
 
 ## 1. Findings from the repository
 
@@ -137,7 +137,7 @@ In-app communication is required for launch. Live email/SMS notifications are a 
 
 ## 8. File boundaries
 
-Paths below are relative to `firstfold-platform/`.
+Paths below are relative to `fynix-platform/`.
 
 | Files | Change and responsibility |
 | --- | --- |
@@ -187,7 +187,7 @@ For each behavior below, write and run the failing test first, implement the sma
 - [x] Implement customer history/detail/replies, read cursors, and unread-support notices across customer/listing/affiliate shells.
 - [x] Verify end-to-end customer submission → staff triage → public reply → customer unread notice → read/reply → resolve. Separately verify internal notes and their attachments never appear to the requester.
 
-**Acceptance:** The team can complete a support conversation entirely in Firstfold, including a phone-only account and an affiliate.
+**Acceptance:** The team can complete a support conversation entirely in Fynix, including a phone-only account and an affiliate.
 
 ### Milestone 4: Private screenshots and lifecycle
 
@@ -234,16 +234,16 @@ npm run build
 npm run test
 ```
 
-Also run the repository's Next-aware type generation (`pnpm --filter @firstfold/platform typecheck` and `pnpm --filter @firstfold/admin typecheck`) so new route types exist. App builds consume the changed workspace packages, which do not have standalone lint/build scripts. Run their existing scoped checks from the monorepo root:
+Also run the repository's Next-aware type generation (`pnpm --filter @fynix/platform typecheck` and `pnpm --filter @fynix/admin typecheck`) so new route types exist. App builds consume the changed workspace packages, which do not have standalone lint/build scripts. Run their existing scoped checks from the monorepo root:
 
 ```bash
-pnpm --filter @firstfold/shared typecheck
-pnpm --filter @firstfold/shared test
-pnpm --filter @firstfold/db typecheck
-pnpm --filter @firstfold/db test
+pnpm --filter @fynix/shared typecheck
+pnpm --filter @fynix/shared test
+pnpm --filter @fynix/db typecheck
+pnpm --filter @fynix/db test
 pnpm db:migrate:test
-pnpm --filter @firstfold/db test:integration
-pnpm --filter @firstfold/shared test:integration
+pnpm --filter @fynix/db test:integration
+pnpm --filter @fynix/shared test:integration
 ```
 
 Read the installed Next.js guides under the app's resolved `node_modules/next/dist/docs/` before implementation, as required by the app AGENTS.md. Run DB integration only against the repository's explicitly validated `*_test` connections. Add support tables to the integration fixtures through the existing test infrastructure. Do not claim a mocked authorization test proves RLS.
@@ -256,7 +256,7 @@ Potential later extensions: verified email/SMS notifications, help-article sugge
 
 ## 12. Proposal review
 
-- [x] Covers the popup, broad category selection, persistence, Firstfold admin management, and customer follow-up.
+- [x] Covers the popup, broad category selection, persistence, Fynix admin management, and customer follow-up.
 - [x] Separates generic feedback from anonymous exit feedback and paid website-change execution.
 - [x] Accounts for phone identities, affiliates without businesses, free plans, checkout, and account closing.
 - [x] Specifies requester ownership, private staff notes, retry behavior, concurrent staff edits, unread state, and private screenshots.
@@ -285,19 +285,19 @@ The admin inbox has **User requests** and **Automatic errors** views. A staff me
 
 Apply the same hooks to `apps/admin` in a separate monitoring project or surface filter so staff-console errors do not inflate platform impact. Keep development/staging/production separate.
 
-Ordinary field validation, incorrect credentials, user cancellation, expected business-rule refusals, and transient offline errors do not automatically become engineering bugs. Filter browser-extension noise and classify third-party script errors separately, retaining errors that indicate a broken Firstfold operation.
+Ordinary field validation, incorrect credentials, user cancellation, expected business-rule refusals, and transient offline errors do not automatically become engineering bugs. Filter browser-extension noise and classify third-party script errors separately, retaining errors that indicate a broken Fynix operation.
 
 Capture cannot guarantee every user-side occurrence: blockers, an offline browser, and process termination can prevent delivery; cross-origin scripts may obscure stack details. Incorrect output that throws no exception needs explicit business assertions, workflow checks, or a user report. Do not advertise complete coverage.
 
 ### Recommended implementation
 
-Use a dedicated error-monitoring SDK/provider such as **Sentry**, while keeping the operational inbox in Firstfold. It supplies collection, grouping, release/source-map support, and engineering diagnosis. The provider is a recommendation, not an installed or authorized external project. During implementation, select an SDK version compatible with the installed Next/React versions and verify its supported instrumentation and integration APIs.
+Use a dedicated error-monitoring SDK/provider such as **Sentry**, while keeping the operational inbox in Fynix. It supplies collection, grouping, release/source-map support, and engineering diagnosis. The provider is a recommendation, not an installed or authorized external project. During implementation, select an SDK version compatible with the installed Next/React versions and verify its supported instrumentation and integration APIs.
 
 Build a small adapter so provider IDs and URLs do not enter shared UI contracts. A first-party collector is possible, but would also require ingestion protection, durable buffering, grouping, symbolication, storage quotas, regression detection, and cleanup. Avoid maintaining that infrastructure in the initial support implementation.
 
 The recommended flow is:
 
-`Browser/server failure → local filtering and safe context → monitoring provider → verified webhook/reconciliation → Firstfold Automatic errors view`
+`Browser/server failure → local filtering and safe context → monitoring provider → verified webhook/reconciliation → Fynix Automatic errors view`
 
 Provider notifications may describe only new/regressed issues or alerts, rather than every occurrence. Treat them as refresh triggers and reconcile counts/status from the provider API; do not increment a count once per webhook and call it the occurrence total. Record when the summary last synchronized. Use bounded retries and periodic reconciliation to recover missed updates.
 
@@ -316,7 +316,7 @@ Use New, Investigating, Resolved, and Ignored for engineering issues, plus a reg
 - Resolve any internal user/business association on the server. Provider identity is an opaque pseudonymous ID; do not send names, email, phone, or business names. Anonymous/signed-out occurrences have no confirmed user association. Distinct counts are approximate and must be labeled accordingly.
 - Link browser/server occurrences using a server-generated correlation ID. Never treat a client-supplied user ID or error reference as proof of ownership. Request linking must check a server-verifiable association, or be performed by authorized staff.
 - Verify provider webhook authentication according to its current official integration docs before accepting payloads. Enforce body bounds, allowed project/environment, event-id deduplication, and rate limits. Keep provider API/auth tokens server-side and least-privileged.
-- Decide whether workflow resolution is Firstfold-owned or provider-owned before wiring synchronization. Recommended: Firstfold owns staff assignment/notes, provider supplies occurrence data; an explicit resolve action updates provider status and marks local resolution only after confirmation. A failed provider update remains visibly pending/retryable.
+- Decide whether workflow resolution is Fynix-owned or provider-owned before wiring synchronization. Recommended: Fynix owns staff assignment/notes, provider supplies occurrence data; an explicit resolve action updates provider status and marks local resolution only after confirmation. A failed provider update remains visibly pending/retryable.
 
 ### Preserve the current privacy boundary
 
@@ -327,7 +327,7 @@ Automatic diagnostics are separate from the optional technical-context checkbox 
 - Strip names, contacts, cookies, authorization headers, request/response bodies, form values, URL queries/fragments, dynamic record IDs, and stack-frame source snippets. Do not mirror raw telemetry to the support inbox.
 - Keep automatic console/network breadcrumbs, session replay, screenshots, profiling, performance payloads, and local-variable capture disabled unless separately designed and reviewed. Use allowlisted operation breadcrumbs when needed; no blanket console interception.
 - Use private source-map uploads and server-only build credentials. Source maps assist diagnosis but are not publicly downloadable application artifacts.
-- Initial retention proposal: provider event retention of 30 days where the chosen plan supports it; Firstfold summaries without customer-identifying payloads for 90 days after resolution. Pseudonymous identity mappings and any local event associations follow account-erasure handling. Verify provider deletion capabilities/configuration before claiming erasure coverage.
+- Initial retention proposal: provider event retention of 30 days where the chosen plan supports it; Fynix summaries without customer-identifying payloads for 90 days after resolution. Pseudonymous identity mappings and any local event associations follow account-erasure handling. Verify provider deletion capabilities/configuration before claiming erasure coverage.
 - Reporting is bounded and fails independently: timeouts, small in-memory buffers, rate limits, and no unbounded retries. Never replace a customer's original failure with a reporting failure or recursively report the reporter's own errors.
 
 ### Additional file boundaries and tests

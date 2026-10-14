@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import { SectionHeading, Surface } from "@firstfold/shared/ui/panel/surface";
+import { SectionHeading, Surface } from "@fynix/shared/ui/panel/surface";
 import type { PaymentMethodView } from "@/lib/billing/payment-method-view";
 
 interface PaymentMethodProps {

@@ -1,5 +1,5 @@
-import type { ClientSummary } from "@firstfold/db";
-import { PROJECT_STATUSES_WAITING_ON_US } from "@firstfold/shared/lib/project-status";
+import type { ClientSummary } from "@fynix/db";
+import { PROJECT_STATUSES_WAITING_ON_US } from "@fynix/shared/lib/project-status";
 
 export interface WaitingClient {
   readonly client: ClientSummary;

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactElement } from "react";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { cn } from "@firstfold/shared/lib/cn";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { cn } from "@fynix/shared/lib/cn";
 import type { AuthorFormResult } from "@/app/app-host/(protected)/content/authors/actions";
 import {
   AUTHOR_LINK_KINDS,

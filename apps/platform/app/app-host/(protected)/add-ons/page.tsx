@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { ArrowIcon, StarIcon } from "@firstfold/shared/ui/icons";
+import { ArrowIcon, StarIcon } from "@fynix/shared/ui/icons";
 import { AddOnRow } from "@/components/panel/add-ons/add-on-row";
 import { AddOnReturnRefresh } from "@/components/panel/add-ons/add-on-return-refresh";
 import { PressReleaseList, type PressReleaseItem } from "@/components/panel/add-ons/press-release-list";
@@ -15,7 +15,7 @@ import {
   type AddOnPaymentNotice,
 } from "@/lib/billing/add-on-notices";
 import { addOnById, addOnPrice, ADD_ONS, PREMIUM_ADD_ON_DISCOUNT_PERCENT } from "@/lib/add-ons";
-import { isMonthlyAddOnId } from "@firstfold/shared/lib/billing/add-ons";
+import { isMonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
 import { UPGRADE_PATH } from "@/lib/membership";
 import { loadAddOnsPage, type AddOnPageEntry, type AddOnsPage } from "@/lib/server/add-ons";
 import { loadBillingDetailsView } from "@/lib/server/billing-details";
@@ -62,7 +62,7 @@ function pressReleaseItems(page: AddOnsPage): readonly PressReleaseItem[] {
 }
 
 /**
- * The digital-marketing services Firstfold runs for a business (lib/add-ons.ts), open to every account: a free listing,
+ * The digital-marketing services Fynix runs for a business (lib/add-ons.ts), open to every account: a free listing,
  * a Care client and a Premium member. Local SEO and Performance marketing are monthly subscriptions the customer buys,
  * pauses, cancels, resumes and keeps here; a press release is a one-time payment, listed below its row once bought.
  * Premium members see 10% off each price; for everyone else a line says where that comes from. Buying opens a dialog

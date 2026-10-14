@@ -1,7 +1,7 @@
-import { findDirectoryPictureFileForStaff } from "@firstfold/db";
+import { findDirectoryPictureFileForStaff } from "@fynix/db";
 import type { NextRequest } from "next/server";
-import { storedMediaResponse } from "@firstfold/shared/server/media-serving";
-import { getMediaStorage } from "@firstfold/shared/server/media-storage";
+import { storedMediaResponse } from "@fynix/shared/server/media-serving";
+import { getMediaStorage } from "@fynix/shared/server/media-storage";
 import { getStaffDb } from "@/lib/server/db";
 import { getStaffAccess } from "@/lib/server/staff-access";
 

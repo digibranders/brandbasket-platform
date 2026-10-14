@@ -1,4 +1,4 @@
-import { initialsOf } from "@firstfold/shared/lib/names";
+import { initialsOf } from "@fynix/shared/lib/names";
 
 export interface AvatarTone {
   readonly background: string;

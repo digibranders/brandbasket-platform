@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", () => {
+vi.mock("@fynix/db", () => {
   class MockAddOnAlreadyBillingError extends Error {}
   class MockAddOnSubscriptionNotPayableError extends Error {}
   class MockAddOnSubscriptionNotFoundError extends Error {}
@@ -24,7 +24,7 @@ import {
   markAddOnCancelled,
   recordAddOnPayment,
   recordUnappliedAddOnPayment,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { activateAddOnPayment, applyAddOnPayment } from "./add-on-activation";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 

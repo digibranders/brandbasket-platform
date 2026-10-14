@@ -3,11 +3,11 @@
  * (docs/superpowers/specs/2026-09-30-directory-ads-auction-design.md, "Staff-placed ads"). Staff choose the business,
  * and where and when its ad shows; nothing here limits the ad to the business's own category or area.
  */
-import { AD_ALL_SLUG, DIRECTORY_AD_SPOTS, homeMarket, MAX_STAFF_AD_WEEKS, marketOfListing, type DirectoryAdPlacement, type NewStaffAds } from "@firstfold/db";
-import { AD_MAX_RUPEES, AD_PLACEMENT_LABELS, AD_PLACEMENTS, parseAdLink, parseAdTagline } from "@firstfold/shared/lib/directory/ads";
-import { isAdCategory, isDirectoryArea, isDirectoryCity } from "@firstfold/shared/lib/directory/places";
-import { parseMoney } from "@firstfold/shared/lib/money";
-import { cleanLine } from "@firstfold/shared/lib/validation/text";
+import { AD_ALL_SLUG, DIRECTORY_AD_SPOTS, homeMarket, MAX_STAFF_AD_WEEKS, marketOfListing, type DirectoryAdPlacement, type NewStaffAds } from "@fynix/db";
+import { AD_MAX_RUPEES, AD_PLACEMENT_LABELS, AD_PLACEMENTS, parseAdLink, parseAdTagline } from "@fynix/shared/lib/directory/ads";
+import { isAdCategory, isDirectoryArea, isDirectoryCity } from "@fynix/shared/lib/directory/places";
+import { parseMoney } from "@fynix/shared/lib/money";
+import { cleanLine } from "@fynix/shared/lib/validation/text";
 import { spotLabel } from "./ad-spot-label";
 import { listingKeyFromPageAddress } from "./directory-view";
 
@@ -161,7 +161,7 @@ export function parseStaffAdForm(values: StaffAdValues): StaffAdParseResult {
     if (values.listing.trim() === "") return refuse("listing", "Paste the address of the business's page on the website.");
     listingKey = listingKeyFromPageAddress(values.listing);
     if (listingKey === null) {
-      return refuse("listing", "That isn't a business page. It looks like firstfold.io/in/mh/business/smile-dental/9f94ykmdjp.");
+      return refuse("listing", "That isn't a business page. It looks like fynix.digital/in/mh/business/smile-dental/9f94ykmdjp.");
     }
     own = marketOfListing(listingKey);
   }

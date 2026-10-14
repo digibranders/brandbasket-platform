@@ -19,7 +19,7 @@ The existing `BillingProvider` interface (`packages/billing/src/provider.ts`) is
 
 - **Read first:** `packages/billing/src/provider.ts`, `fake-provider.ts`, `status.ts`, `select.ts`, `factory.ts` (the interface you are implementing against and the pattern to match); `apps/platform/lib/server/billing.ts`, `checkout.ts`, `payment-confirmation.ts`, `billing-activation.ts`, `provider-cancellation.ts`, `billing-log.ts` (how the platform calls the provider today); `packages/db/src/queries/billing.ts` (every query you will call or extend).
 - **Do not commit.** This repo stays uncommitted for now (per user instruction).
-- **Do not start a dev server.** The user runs their own. Use the `firstfold-platform-verify` preview config if you need to build and check something.
+- **Do not start a dev server.** The user runs their own. Use the `fynix-platform-verify` preview config if you need to build and check something.
 - **Money is integer minor units always** — cents for USD, paise for INR. Razorpay's API is also minor units, so no conversion is needed, but never let a float near any of this.
 - **Checkpoint after every task:** `pnpm lint && pnpm typecheck && pnpm test && pnpm build`. Task 2 and Task 6 also touch the database: run `pnpm db:migrate && pnpm db:migrate:test` after their migration steps.
 - **Never log a signature, a token, a webhook body, or a key secret.** Follow `billing-log.ts`'s existing rule: log the event name and safe identifiers (business id, subscription id, provider payment id), never the credential that proved them.
@@ -37,7 +37,7 @@ The existing `BillingProvider` interface (`packages/billing/src/provider.ts`) is
 - [ ] **Step 1: Add the SDK**
 
 ```bash
-pnpm --filter @firstfold/billing add razorpay
+pnpm --filter @fynix/billing add razorpay
 ```
 
 - [ ] **Step 2: Turn Razorpay on in `select.ts`**
@@ -86,7 +86,7 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=
 - [ ] **Step 4: Verify**
 
 ```bash
-pnpm --filter @firstfold/billing typecheck
+pnpm --filter @fynix/billing typecheck
 ```
 Expected: passes (the SDK has its own types; nothing references it yet).
 
@@ -111,7 +111,7 @@ Razorpay's own "Plan" object (period + amount + currency) is a separate thing fr
 // duplicate plans at Razorpay rather than reusing existing ones, because the Plans API has no "find by name": check
 // the dashboard first if you are not sure whether this has already been run.
 //
-// Usage: RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=... pnpm --filter @firstfold/billing exec tsx scripts/create-razorpay-plans.ts
+// Usage: RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=... pnpm --filter @fynix/billing exec tsx scripts/create-razorpay-plans.ts
 
 import Razorpay from "razorpay";
 
@@ -143,11 +143,11 @@ async function main(): Promise<void> {
       period: "monthly",
       interval: 1,
       item: {
-        name: `Firstfold care plan (${plan.currency})`,
+        name: `Fynix care plan (${plan.currency})`,
         amount: plan.recurringAmountCents,
         currency: plan.currency,
       },
-      notes: { firstfoldPlanCode: plan.code },
+      notes: { fynixPlanCode: plan.code },
     });
     console.log(`${plan.code}: ${created.id}`);
   }
@@ -163,7 +163,7 @@ main().catch((error: unknown) => {
 
 ```bash
 RAZORPAY_KEY_ID=<your test key id> RAZORPAY_KEY_SECRET=<your test key secret> \
-  pnpm --filter @firstfold/billing exec tsx scripts/create-razorpay-plans.ts
+  pnpm --filter @fynix/billing exec tsx scripts/create-razorpay-plans.ts
 ```
 Expected output: two lines, `care-usd: plan_XXXXXXXXXXXXXX` and `care-inr: plan_YYYYYYYYYYYYYY`. Keep these ids.
 
@@ -318,7 +318,7 @@ describe("parseRazorpayWebhookEvent", () => {
 - [ ] **Step 2: Run it to see it fail**
 
 ```bash
-pnpm --filter @firstfold/billing test -- razorpay-webhook
+pnpm --filter @fynix/billing test -- razorpay-webhook
 ```
 Expected: FAIL — `razorpay-webhook.ts` does not exist yet.
 
@@ -328,7 +328,7 @@ Expected: FAIL — `razorpay-webhook.ts` does not exist yet.
 // packages/billing/src/razorpay-webhook.ts
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import type { BillingCurrency } from "@firstfold/db";
+import type { BillingCurrency } from "@fynix/db";
 
 /**
  * True when `signature` is the HMAC-SHA256 of the exact raw `body` string, keyed with `webhookSecret`. The caller
@@ -477,12 +477,12 @@ export function parseRazorpayWebhookEvent(body: string): RazorpayWebhookEvent {
 }
 ```
 
-Add `billingCurrency` to the file's `@firstfold/db` import (`import { billingCurrency, type BillingCurrency } from "@firstfold/db";`) — check `packages/db/src/schema/currency.ts` for its exact export name before assuming.
+Add `billingCurrency` to the file's `@fynix/db` import (`import { billingCurrency, type BillingCurrency } from "@fynix/db";`) — check `packages/db/src/schema/currency.ts` for its exact export name before assuming.
 
 - [ ] **Step 4: Run the tests**
 
 ```bash
-pnpm --filter @firstfold/billing test -- razorpay-webhook
+pnpm --filter @fynix/billing test -- razorpay-webhook
 ```
 Expected: PASS.
 
@@ -560,7 +560,7 @@ describe("createRazorpayProvider", () => {
         plan: {
           id: "plan-row-id",
           code: "care-usd",
-          name: "Firstfold care plan",
+          name: "Fynix care plan",
           currency: "USD",
           initialAmountCents: 7_500,
           initialTermMonths: 1,
@@ -701,7 +701,7 @@ describe("createRazorpayProvider", () => {
 - [ ] **Step 2: Run it to see it fail**
 
 ```bash
-pnpm --filter @firstfold/billing test -- razorpay-provider
+pnpm --filter @fynix/billing test -- razorpay-provider
 ```
 Expected: FAIL — `razorpay-provider.ts` does not exist yet.
 
@@ -710,7 +710,7 @@ Expected: FAIL — `razorpay-provider.ts` does not exist yet.
 ```ts
 // packages/billing/src/razorpay-provider.ts
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { BillingCurrency } from "@firstfold/db";
+import type { BillingCurrency } from "@fynix/db";
 import {
   CheckoutVerificationError,
   type BillingProvider,
@@ -869,7 +869,7 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Billin
 - [ ] **Step 4: Run the tests**
 
 ```bash
-pnpm --filter @firstfold/billing test -- razorpay-provider
+pnpm --filter @fynix/billing test -- razorpay-provider
 ```
 Expected: PASS.
 
@@ -1025,7 +1025,7 @@ Add `findSubscriptionByProviderId` and `updateSubscriptionProviderStatus` to thi
 - [ ] **Step 4: Run it**
 
 ```bash
-pnpm --filter @firstfold/db test:integration
+pnpm --filter @fynix/db test:integration
 ```
 Expected: all pass, including the new ones.
 
@@ -1043,12 +1043,12 @@ Expected: all pass, including the new ones.
 import { describe, expect, it, vi } from "vitest";
 import { activateRenewalPayment } from "./billing-activation";
 
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return { ...actual, recordPaymentAndActivate: vi.fn() };
 });
 
-import { recordPaymentAndActivate } from "@firstfold/db";
+import { recordPaymentAndActivate } from "@fynix/db";
 
 describe("activateRenewalPayment", () => {
   it("records a renewal payment, carrying the existing commitmentEndsAt through unchanged", async () => {
@@ -1091,7 +1091,7 @@ describe("activateRenewalPayment", () => {
 - [ ] **Step 2: Run it to see it fail**
 
 ```bash
-pnpm --filter @firstfold/platform test -- billing-activation
+pnpm --filter @fynix/platform test -- billing-activation
 ```
 Expected: FAIL — `activateRenewalPayment` is not exported.
 
@@ -1140,12 +1140,12 @@ export async function activateRenewalPayment(tx: ScopedTransaction, payment: Ren
 }
 ```
 
-Add `BillingCurrency` to that file's existing `@firstfold/db` import line.
+Add `BillingCurrency` to that file's existing `@fynix/db` import line.
 
 - [ ] **Step 4: Run it**
 
 ```bash
-pnpm --filter @firstfold/platform test -- billing-activation
+pnpm --filter @fynix/platform test -- billing-activation
 ```
 Expected: PASS.
 
@@ -1210,7 +1210,7 @@ export function RazorpayCheckoutLauncher({
         key: keyId,
         subscription_id: subscriptionId,
         name: businessName,
-        description: "Firstfold monthly plan",
+        description: "Fynix monthly plan",
         prefill: { email },
         callback_url: callbackUrl,
       }).open();
@@ -1237,7 +1237,7 @@ import { RazorpayCheckoutLauncher } from "@/components/panel/razorpay-checkout-l
 import { PAYMENT_STEP_HREF } from "@/lib/billing/payment-step";
 import { getBillingProvider } from "@/lib/server/billing";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
-import { businessDetails } from "@firstfold/shared/lib/site-config";
+import { businessDetails } from "@fynix/shared/lib/site-config";
 
 export const metadata: Metadata = { title: "Redirecting to payment" };
 
@@ -1305,7 +1305,7 @@ export async function POST(): Promise<Response> {
 - [ ] **Step 5: Verify**
 
 ```bash
-pnpm --filter @firstfold/platform typecheck && pnpm --filter @firstfold/platform build
+pnpm --filter @fynix/platform typecheck && pnpm --filter @fynix/platform build
 ```
 Expected: passes.
 
@@ -1330,8 +1330,8 @@ import {
   createRazorpayProvider,
   resolveBillingProviderName,
   type BillingProvider,
-} from "@firstfold/billing";
-import { findSubscriptionByProviderId, listReceiptsForBusiness, withTenantScope, type Receipt } from "@firstfold/db";
+} from "@fynix/billing";
+import { findSubscriptionByProviderId, listReceiptsForBusiness, withTenantScope, type Receipt } from "@fynix/db";
 import { requireCustomerAccess, type GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { serverEnv } from "@/lib/server/env";
@@ -1352,23 +1352,23 @@ function requiredRazorpayEnv(name: "RAZORPAY_KEY_ID" | "RAZORPAY_KEY_SECRET" | "
 /**
  * The provider BILLING_PROVIDER names. Outside production an unset value means the fake provider; in production it
  * must be set, and resolving it throws otherwise rather than handing out dashboards for free. The fake provider is
- * also refused on a real deployment unless FIRSTFOLD_ALLOW_FAKE_BILLING=1 (see resolveBillingProviderName).
+ * also refused on a real deployment unless FYNIX_ALLOW_FAKE_BILLING=1 (see resolveBillingProviderName).
  */
 export function getBillingProvider(): BillingProvider {
-  if (holder.firstfoldBillingProvider !== undefined) return holder.firstfoldBillingProvider;
+  if (holder.fynixBillingProvider !== undefined) return holder.fynixBillingProvider;
 
   const name = resolveBillingProviderName({
     BILLING_PROVIDER: process.env.BILLING_PROVIDER,
     NODE_ENV: process.env.NODE_ENV,
     VERCEL_ENV: process.env.VERCEL_ENV,
     APP_ORIGIN: process.env.APP_ORIGIN,
-    FIRSTFOLD_ALLOW_FAKE_BILLING: process.env.FIRSTFOLD_ALLOW_FAKE_BILLING,
+    FYNIX_ALLOW_FAKE_BILLING: process.env.FYNIX_ALLOW_FAKE_BILLING,
   });
 
   if (name === "razorpay") {
     const keyId = requiredRazorpayEnv("RAZORPAY_KEY_ID");
     const keySecret = requiredRazorpayEnv("RAZORPAY_KEY_SECRET");
-    holder.firstfoldBillingProvider = createRazorpayProvider({
+    holder.fynixBillingProvider = createRazorpayProvider({
       keyId,
       keySecret,
       client: new Razorpay({ key_id: keyId, key_secret: keySecret }),
@@ -1378,9 +1378,9 @@ export function getBillingProvider(): BillingProvider {
       },
     });
   } else {
-    holder.firstfoldBillingProvider = createBillingProvider(name, { authSecret: serverEnv().BETTER_AUTH_SECRET });
+    holder.fynixBillingProvider = createBillingProvider(name, { authSecret: serverEnv().BETTER_AUTH_SECRET });
   }
-  return holder.firstfoldBillingProvider;
+  return holder.fynixBillingProvider;
 }
 
 /** Read directly (not through getBillingProvider, which requires the key secrets too): the webhook route only
@@ -1397,8 +1397,8 @@ export function razorpayWebhookSecret(): string {
 // apps/platform/lib/server/razorpay-webhook-handler.test.ts
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     ...actual,
     findSubscriptionByProviderId: vi.fn(),
@@ -1409,7 +1409,7 @@ vi.mock("@firstfold/db", async () => {
 vi.mock("./billing-activation", () => ({ activateRenewalPayment: vi.fn(), activateFirstPayment: vi.fn() }));
 vi.mock("./db", () => ({ getStaffDb: () => ({ transaction: (fn: (tx: unknown) => unknown) => fn({}) }) }));
 
-import { findPlanById, findSubscriptionByProviderId, updateSubscriptionProviderStatus } from "@firstfold/db";
+import { findPlanById, findSubscriptionByProviderId, updateSubscriptionProviderStatus } from "@fynix/db";
 import { activateFirstPayment, activateRenewalPayment } from "./billing-activation";
 import { handleRazorpayWebhookEvent } from "./razorpay-webhook-handler";
 
@@ -1491,7 +1491,7 @@ describe("handleRazorpayWebhookEvent", () => {
 - [ ] **Step 3: Run it to see it fail**
 
 ```bash
-pnpm --filter @firstfold/platform test -- razorpay-webhook-handler
+pnpm --filter @fynix/platform test -- razorpay-webhook-handler
 ```
 Expected: FAIL — the module does not exist yet.
 
@@ -1500,14 +1500,14 @@ Expected: FAIL — the module does not exist yet.
 ```ts
 // apps/platform/lib/server/razorpay-webhook-handler.ts
 import "server-only";
-import { mapRazorpayStatus, type RazorpayWebhookEvent } from "@firstfold/billing";
+import { mapRazorpayStatus, type RazorpayWebhookEvent } from "@fynix/billing";
 import {
   findPlanById,
   findSubscriptionByProviderId,
   lockBusinessForBilling,
   recordUnappliedPayment,
   updateSubscriptionProviderStatus,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { activateRenewalPayment, activateFirstPayment } from "./billing-activation";
 import { describeError, logBillingEvent } from "./billing-log";
 import { getStaffDb } from "./db";
@@ -1635,7 +1635,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
 - [ ] **Step 5: Run it**
 
 ```bash
-pnpm --filter @firstfold/platform test -- razorpay-webhook-handler
+pnpm --filter @fynix/platform test -- razorpay-webhook-handler
 ```
 Expected: PASS.
 
@@ -1643,7 +1643,7 @@ Expected: PASS.
 
 ```ts
 // apps/platform/app/api/webhooks/razorpay/route.ts
-import { parseRazorpayWebhookEvent, verifyRazorpayWebhookSignature } from "@firstfold/billing";
+import { parseRazorpayWebhookEvent, verifyRazorpayWebhookSignature } from "@fynix/billing";
 import { razorpayWebhookSecret } from "@/lib/server/billing";
 import { logBillingEvent } from "@/lib/server/billing-log";
 import { handleRazorpayWebhookEvent } from "@/lib/server/razorpay-webhook-handler";
@@ -1692,7 +1692,7 @@ Expected: all pass.
 
 - [ ] **Step 1: Start the tunnel and register the webhook**
 
-Start your ngrok-style tunnel pointing at the verify server's port (`firstfold-platform-verify`, 3101). In the Razorpay dashboard (test mode), Settings > Webhooks: add `https://<your-tunnel>/api/webhooks/razorpay`, subscribe to every `subscription.*` event, and copy the webhook secret it gives you into `RAZORPAY_WEBHOOK_SECRET`.
+Start your ngrok-style tunnel pointing at the verify server's port (`fynix-platform-verify`, 3101). In the Razorpay dashboard (test mode), Settings > Webhooks: add `https://<your-tunnel>/api/webhooks/razorpay`, subscribe to every `subscription.*` event, and copy the webhook secret it gives you into `RAZORPAY_WEBHOOK_SECRET`.
 
 - [ ] **Step 2: Set the remaining env vars and build**
 
@@ -1701,7 +1701,7 @@ Set `BILLING_PROVIDER=razorpay`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `NEXT
 ```bash
 pnpm build
 ```
-Then restart `firstfold-platform-verify`.
+Then restart `fynix-platform-verify`.
 
 - [ ] **Step 3: Walk the funnel**
 

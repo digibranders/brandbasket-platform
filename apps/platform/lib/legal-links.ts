@@ -1,4 +1,4 @@
-import { siteConfig } from "@firstfold/shared/lib/site-config";
+import { siteConfig } from "@fynix/shared/lib/site-config";
 import type { Brand } from "@/lib/brand";
 
 /** The Terms and the Privacy Notice live on the website. Browser-safe, so client forms can link to them. */
@@ -14,7 +14,7 @@ export interface LegalLinks {
 }
 
 /**
- * The legal pages for a brand. Firstfold's are on its website; Fynix's are on its own site, which has no privacy-request
+ * The legal pages for a brand. Fynix Digital's are on its website; Fynix's are on its own site, which has no privacy-request
  * form, so a request goes to its privacy mailbox.
  */
 export function legalLinksFor(brand: Brand): LegalLinks {

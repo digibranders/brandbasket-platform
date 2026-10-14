@@ -1,10 +1,10 @@
-import { listReferralCodes } from "@firstfold/db";
+import { listReferralCodes } from "@fynix/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { LocalDate } from "@firstfold/shared/ui/panel/local-date-time";
-import { TagIcon } from "@firstfold/shared/ui/icons";
-import { describeReferralDiscount } from "@firstfold/shared/lib/billing/referral-value";
+import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
+import { TagIcon } from "@fynix/shared/ui/icons";
+import { describeReferralDiscount } from "@fynix/shared/lib/billing/referral-value";
 import { buttonPrimary } from "@/components/console/buttons";
 import { Figures } from "@/components/console/figures";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";

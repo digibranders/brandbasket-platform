@@ -1,10 +1,10 @@
 import type { ReactElement } from "react";
-import type { DirectoryPictureSlot } from "@firstfold/db";
-import { GALLERY_SLOTS } from "@firstfold/shared/lib/directory/pictures";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import type { DirectoryPictureSlot } from "@fynix/db";
+import { GALLERY_SLOTS } from "@fynix/shared/lib/directory/pictures";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { VideosSection } from "@/components/panel/business/videos-section";
 import { PhotosEditor } from "@/components/panel/business/photos-editor";
 import { profileHref } from "@/lib/business-profile-notices";

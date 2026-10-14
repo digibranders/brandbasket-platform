@@ -11,11 +11,11 @@ import {
   type MediaAsset,
   type Project,
   type ScopedTransaction,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TenantContext } from "@firstfold/shared/lib/access";
+import type { TenantContext } from "@fynix/shared/lib/access";
 import { ONBOARDING_LOCKED_MESSAGE } from "@/lib/onboarding/form-state";
-import type { MediaStorage } from "@firstfold/shared/server/media-storage";
+import type { MediaStorage } from "@fynix/shared/server/media-storage";
 import { processUpload, UploadRejectedError, type ProcessedUpload } from "./media-upload";
 import {
   consumeUploadAllowance,
@@ -35,7 +35,7 @@ vi.mock("server-only", () => ({}));
 function deletesOf(key: string): string[] {
   return [`delete ${key}`, `delete ${key.replace(/display$/, "w320")}`, `delete ${key.replace(/display$/, "w640")}`];
 }
-vi.mock("@firstfold/db", () => {
+vi.mock("@fynix/db", () => {
   class MockOnboardingLockedError extends Error {}
   class MockPhotoLimitReachedError extends Error {}
   return {

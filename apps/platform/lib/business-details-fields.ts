@@ -9,7 +9,7 @@ export const BUSINESS_ABOUT_MAX_WORDS = 250;
 
 /**
  * The longest "About the business" text in characters, a ceiling above any 250 words; the database holds the same
- * (BUSINESS_ABOUT_MAX_LENGTH in @firstfold/db). The word limit is the real one.
+ * (BUSINESS_ABOUT_MAX_LENGTH in @fynix/db). The word limit is the real one.
  */
 export const BUSINESS_ABOUT_MAX_LENGTH = 4000;
 

@@ -1,4 +1,4 @@
-import type { PaymentKind, Receipt } from "@firstfold/db";
+import type { PaymentKind, Receipt } from "@fynix/db";
 import { addOnById, isMonthlyAddOnId } from "./add-ons";
 import { chargeLabel } from "./charges";
 import { initialTermPhrase } from "./terms";

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { listOpenPrivacyRequests, markPrivacyRequestsReminded, type Database, type StoredPrivacyRequest } from "@firstfold/db";
-import type { EmailMessage, EmailTransport } from "@firstfold/email";
+import { listOpenPrivacyRequests, markPrivacyRequestsReminded, type Database, type StoredPrivacyRequest } from "@fynix/db";
+import type { EmailMessage, EmailTransport } from "@fynix/email";
 import { dueDayWords, privacyAlertRecipient, privacyRequestsConsoleUrl, sendNewPrivacyRequestAlert, sendPrivacyRequestReminders } from "./privacy-request-alerts";
 
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return { PRIVACY_REQUEST_KIND_LABELS: actual.PRIVACY_REQUEST_KIND_LABELS, listOpenPrivacyRequests: vi.fn(), markPrivacyRequestsReminded: vi.fn(async () => 1) };
 });
 
@@ -12,7 +12,7 @@ const DAY = 24 * 60 * 60 * 1000;
 const RECEIVED = new Date("2026-11-01T06:00:00.000Z");
 const at = (days: number): Date => new Date(RECEIVED.getTime() + days * DAY);
 const db = {} as Database;
-const ADMIN = "https://admin.firstfold.io";
+const ADMIN = "https://console.fynix.digital";
 
 function stored(overrides: Partial<StoredPrivacyRequest> = {}): StoredPrivacyRequest {
   return {
@@ -43,18 +43,18 @@ function transport(): { readonly send: ReturnType<typeof vi.fn<(message: EmailMe
 }
 
 describe("privacyAlertRecipient", () => {
-  it("prefers the privacy mailbox, then the support alert mailbox, then the team address, then support@firstfold.io", () => {
-    expect(privacyAlertRecipient({ PRIVACY_ALERT_EMAIL: " grievance@firstfold.io ", SUPPORT_ALERT_EMAIL: "s@firstfold.io" })).toBe("grievance@firstfold.io");
-    expect(privacyAlertRecipient({ SUPPORT_ALERT_EMAIL: "s@firstfold.io", FIRSTFOLD_TEAM_EMAIL: "t@firstfold.io" })).toBe("s@firstfold.io");
-    expect(privacyAlertRecipient({ FIRSTFOLD_TEAM_EMAIL: "t@firstfold.io" })).toBe("t@firstfold.io");
-    expect(privacyAlertRecipient({ PRIVACY_ALERT_EMAIL: "  " })).toBe("support@firstfold.io");
-    expect(privacyAlertRecipient({ PLATFORM_BRAND: "fynix" })).toBe("hello@fynix.digital");
+  it("prefers the privacy mailbox, then the support alert mailbox, then the team address, then hello@fynix.digital", () => {
+    expect(privacyAlertRecipient({ PRIVACY_ALERT_EMAIL: " grievance@fynix.digital ", SUPPORT_ALERT_EMAIL: "s@fynix.digital" })).toBe("grievance@fynix.digital");
+    expect(privacyAlertRecipient({ SUPPORT_ALERT_EMAIL: "s@fynix.digital", FYNIX_TEAM_EMAIL: "t@fynix.digital" })).toBe("s@fynix.digital");
+    expect(privacyAlertRecipient({ FYNIX_TEAM_EMAIL: "t@fynix.digital" })).toBe("t@fynix.digital");
+    expect(privacyAlertRecipient({ PRIVACY_ALERT_EMAIL: "  " })).toBe("hello@fynix.digital");
+    expect(privacyAlertRecipient({})).toBe("hello@fynix.digital");
   });
 });
 
 describe("links and dates", () => {
   it("points at the console page and writes a date in India's calendar day", () => {
-    expect(privacyRequestsConsoleUrl(ADMIN)).toBe("https://admin.firstfold.io/privacy-requests");
+    expect(privacyRequestsConsoleUrl(ADMIN)).toBe("https://console.fynix.digital/privacy-requests");
     expect(dueDayWords(new Date("2026-11-30T20:00:00.000Z"))).toBe("1 December 2026");
   });
 });
@@ -62,11 +62,11 @@ describe("links and dates", () => {
 describe("sendNewPrivacyRequestAlert", () => {
   it("sends the reference, kind and due day to the mailbox, and none of what the person wrote", async () => {
     const { send, asTransport } = transport();
-    await sendNewPrivacyRequestAlert(asTransport, { reference: "PR-7K2M9QXD", kind: "erasure", dueAt: at(30) }, { to: "support@firstfold.io", adminOrigin: ADMIN });
+    await sendNewPrivacyRequestAlert(asTransport, { reference: "PR-7K2M9QXD", kind: "erasure", dueAt: at(30) }, { to: "hello@fynix.digital", adminOrigin: ADMIN });
     const message = send.mock.calls[0]?.[0];
-    expect(message?.to).toBe("support@firstfold.io");
+    expect(message?.to).toBe("hello@fynix.digital");
     expect(message?.subject).toBe("New privacy request PR-7K2M9QXD (Erasure)");
-    expect(message?.bodyText).toContain("https://admin.firstfold.io/privacy-requests");
+    expect(message?.bodyText).toContain("https://console.fynix.digital/privacy-requests");
   });
 
   it("never throws when the email cannot be sent", async () => {

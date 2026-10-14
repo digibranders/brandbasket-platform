@@ -2,7 +2,7 @@
 
 Follows `2026-09-30-directory-ads-auction-design.md`, which left "Add my business" out. Until now a free listing
 account could only be opened from an existing business page (`/join?listing=<key>&name=…`). A business that is not
-on Firstfold Local had no way in.
+on the local directory had no way in.
 
 ## What the owner does
 
@@ -15,14 +15,14 @@ on Firstfold Local had no way in.
    3. **Area**: a searchable list of that city's areas, A to Z.
    4. Business name (filled in from sign-up), address, the business's mobile number.
 4. The whole time the page shows the address being built:
-   `firstfold.io/in/<category>/mh/<city>/<area>/<business-name>`. A part not chosen yet shows as a faded
+   `fynix.digital/in/<category>/mh/<city>/<area>/<business-name>`. A part not chosen yet shows as a faded
    placeholder; a chosen part shows its real slug.
 5. "Add my business" stores it and the page turns into a summary: name, category, area, the address, and
    "Waiting for our call".
 
 ## Rules
 
-- Category, city and area must come from the directory's fixed lists (`@firstfold/shared/lib/directory/places`);
+- Category, city and area must come from the directory's fixed lists (`@fynix/shared/lib/directory/places`);
   the area must belong to the chosen city.
 - The last part of the address is the business name as a slug (`slugifyBusinessName`). If another claim or a
   client's listing already holds that address, `-2`, `-3`… is added.
@@ -36,7 +36,7 @@ on Firstfold Local had no way in.
   from the claim row to check. For the same reason an added business is shown no visit counts and takes no ad line.
 - Two accounts adding the same name in the same category and area at the same moment are serialised by an advisory
   lock on that category and area, so the second gets `-2`.
-- An added business has no page on firstfold.io yet (publishing added businesses on the website is a separate piece
+- An added business has no page on fynix.digital yet (publishing added businesses on the website is a separate piece
   of work). Until it does, it cannot bid for ads: a bid is refused as `no-page`, and Advertise says so.
 
 ## Changing it afterwards

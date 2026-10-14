@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useRef, type ReactElement, type ReactNode } from "react";
-import type { PhoneCountryOption } from "@firstfold/shared/lib/phone/fields";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { PhoneField } from "@firstfold/shared/ui/phone-field";
+import type { PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { PhoneField } from "@fynix/shared/ui/phone-field";
 import { buttonPrimary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { TrustedMark, VerifiedMark } from "@/components/directory-tag-marks";
@@ -53,7 +53,7 @@ function Field({
 }
 
 /**
- * Verifying a directory business: the address of its page on the website, the name to show and the number Firstfold
+ * Verifying a directory business: the address of its page on the website, the name to show and the number Fynix
  * confirmed, and whether to give it the Trusted tag as well. Parsed on the server (lib/directory-view.ts); a refusal points at its field and keeps what was typed.
  */
 export function VerifyBusinessForm({ action, phoneCountries, defaultPhoneCountry }: VerifyBusinessFormProps): ReactElement {
@@ -96,7 +96,7 @@ export function VerifyBusinessForm({ action, phoneCountries, defaultPhoneCountry
           autoComplete="off"
           maxLength={2000}
           defaultValue={values.listing}
-          placeholder="firstfold.io/in/mh/business/smile-dental/9f94ykmdjp"
+          placeholder="fynix.digital/in/mh/business/smile-dental/9f94ykmdjp"
           className={fieldClasses}
           {...fieldStatus("listing", "verify-listing-hint")}
         />

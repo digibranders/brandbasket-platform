@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { VIDEO_MAX_UPLOAD_BYTES, VIDEO_TOO_LARGE_MESSAGE } from "@firstfold/shared/lib/directory/videos";
+import { VIDEO_MAX_UPLOAD_BYTES, VIDEO_TOO_LARGE_MESSAGE } from "@fynix/shared/lib/directory/videos";
 import {
   messageForVideoResponse,
   requestVideoUpload,

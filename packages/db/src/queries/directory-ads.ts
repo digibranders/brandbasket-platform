@@ -201,7 +201,7 @@ export class UserAlreadyHasBusinessError extends Error {
 }
 
 interface NewListingAccountBase {
-  /** The account just created by @firstfold/auth. */
+  /** The account just created by @fynix/auth. */
   readonly userId: string;
   /** The listing's name, from the website: the business's name too. */
   readonly businessName: string;
@@ -764,7 +764,7 @@ export interface OpenedMembership {
  * Opens the Premium membership for a free listing business whose first payment has just been recorded: it becomes a
  * website client and gets the onboarding project every client starts from. Null for a business that is already a
  * client (a setup-link client paying, or a second delivery of the same payment), which is left as it is. Its claim is
- * not touched, so its page on Firstfold Local stays up. Staff connection, inside the payment's own transaction: the
+ * not touched, so its page on the local directory stays up. Staff connection, inside the payment's own transaction: the
  * kind only changes if the payment commits.
  */
 export async function openMembershipForListingBusiness(tx: ScopedTransaction, businessId: string): Promise<OpenedMembership | null> {
@@ -882,7 +882,7 @@ export async function readClaimedWebsites(db: Database, lookup: DirectoryLookup)
   return out;
 }
 
-/** Who a listing's visitors' enquiries go to: the account that owns it on Firstfold. */
+/** Who a listing's visitors' enquiries go to: the account that owns it on Fynix. */
 export interface ListingOwner {
   readonly businessId: string;
   /**
@@ -904,7 +904,7 @@ export interface ListingOwner {
 }
 
 /**
- * The owner of a directory business, or null when nobody on Firstfold owns it: the paying client whose listing staff
+ * The owner of a directory business, or null when nobody on Fynix owns it: the paying client whose listing staff
  * placed on its place, else the free listing account whose claim to it (or whose added business) staff approved. Each
  * is unique per place (directory_listings_place_id_idx, directory_claims_place_id_approved_idx); a claim made by one of
  * the place's legacy keys before the backfill counts too, after one that has the place. A key no place has is owned by
@@ -1048,7 +1048,7 @@ export interface ConfirmedAddedBusiness {
   readonly websiteUrl: string | null;
   readonly confirmedAt: Date;
   /**
-   * Whether Firstfold has verified it: staff approved it (a confirmation call), or it has a verification row (the
+   * Whether Fynix has verified it: staff approved it (a confirmation call), or it has a verification row (the
    * owner's code check). An owner who only published it (Claimed) has neither, so the website must not call it Verified.
    */
   readonly verified: boolean;
@@ -1709,7 +1709,7 @@ export async function listWinsForBusiness(db: Runner, businessId: string, fromWe
 /** What a won spot's charge looks like: supplied by the caller, which owns tax and wording. */
 export interface AdChargePricing {
   readonly taxRateBasisPoints: number;
-  /** The amount charged for `netPaise`, tax included (chargedAmountCents in @firstfold/billing). */
+  /** The amount charged for `netPaise`, tax included (chargedAmountCents in @fynix/billing). */
   readonly chargedPaise: (netPaise: number) => number;
   /** The charge's description on Billing and the receipt. */
   readonly describe: (win: { readonly placement: DirectoryAdPlacement; readonly spot: number; readonly weekStart: string } & DirectoryAdMarket) => string;

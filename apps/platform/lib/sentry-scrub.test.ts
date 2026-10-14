@@ -4,7 +4,7 @@ import { scrubBreadcrumb, scrubEvent, stripQuery } from "./sentry-scrub";
 
 describe("stripQuery", () => {
   it("cuts the query and fragment and leaves the path", () => {
-    expect(stripQuery("https://app.firstfold.io/billing?invoice=INV-1&email=a@b.com#top")).toBe("https://app.firstfold.io/billing");
+    expect(stripQuery("https://app.fynix.digital/billing?invoice=INV-1&email=a@b.com#top")).toBe("https://app.fynix.digital/billing");
     expect(stripQuery("/support/abc")).toBe("/support/abc");
   });
 });
@@ -18,7 +18,7 @@ describe("scrubEvent", () => {
     logentry: { message: "Phone %s is not valid", params: ["9876543210"] },
     request: {
       method: "POST",
-      url: "https://app.firstfold.io/app-host/billing?email=a%40b.com",
+      url: "https://app.fynix.digital/app-host/billing?email=a%40b.com",
       query_string: "email=a%40b.com",
       data: { description: "My card ends 4242" },
       cookies: { session: "secret" },
@@ -32,7 +32,7 @@ describe("scrubEvent", () => {
         {
           type: "TypeError",
           value: "Cannot read properties of undefined (reading 'asha@example.com')",
-          stacktrace: { frames: [{ filename: "https://app.firstfold.io/_next/static/chunk.js?v=1", lineno: 4, colno: 9, vars: { name: "Asha" } }] },
+          stacktrace: { frames: [{ filename: "https://app.fynix.digital/_next/static/chunk.js?v=1", lineno: 4, colno: 9, vars: { name: "Asha" } }] },
         },
       ],
     },
@@ -52,7 +52,7 @@ describe("scrubEvent", () => {
 
   it("removes request bodies, query strings, cookies and headers but keeps the method and URL path", () => {
     const clean = scrubEvent(event);
-    expect(clean.request).toEqual({ method: "POST", url: "https://app.firstfold.io/app-host/billing" });
+    expect(clean.request).toEqual({ method: "POST", url: "https://app.fynix.digital/app-host/billing" });
     expect(JSON.stringify(clean)).not.toMatch(/secret|4242|Bearer|asha|Asha|9876543210|a%40b|token=abc|1\.2\.3\.4/);
   });
 
@@ -61,7 +61,7 @@ describe("scrubEvent", () => {
     expect(clean.exception?.values?.[0]?.type).toBe("TypeError");
     expect(clean.exception?.values?.[0]?.value).toBeUndefined();
     const frame = clean.exception?.values?.[0]?.stacktrace?.frames?.[0];
-    expect(frame).toMatchObject({ filename: "https://app.firstfold.io/_next/static/chunk.js", lineno: 4, colno: 9 });
+    expect(frame).toMatchObject({ filename: "https://app.fynix.digital/_next/static/chunk.js", lineno: 4, colno: 9 });
     expect(frame?.vars).toBeUndefined();
     expect(clean.release).toBe("abcdef1");
     expect(clean.level).toBe("error");

@@ -1,13 +1,13 @@
 -- Grants, row-level security and the spot rules for staff-placed ads (0066). Staff only: the customer role and
--- webfold_public get nothing (the website reads live ads through the platform's GET /api/directory/ads on the staff
+-- fynix_public get nothing (the website reads live ads through the platform's GET /api/directory/ads on the staff
 -- connection). No DELETE: taking an ad down sets removed_at, so what ran and who placed it stay on record.
-GRANT SELECT, INSERT, UPDATE ON directory_staff_ads TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON directory_staff_ads TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE directory_staff_ads ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY directory_staff_ads_staff_all ON directory_staff_ads FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_staff_ads_staff_all ON directory_staff_ads FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
 -- One ad per spot per week, whoever put it there. A staff ad may not take a spot an auction win holds (a win still

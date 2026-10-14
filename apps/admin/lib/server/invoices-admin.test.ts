@@ -1,31 +1,31 @@
-import { InvalidGstinError, InvoiceAmountMismatchError, UnknownStateError, BillingRangeError } from "@firstfold/billing";
+import { InvalidGstinError, InvoiceAmountMismatchError, UnknownStateError, BillingRangeError } from "@fynix/billing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return { ...actual, lockBusinessForBilling: vi.fn() };
 });
-vi.mock("@firstfold/shared/server/tax-invoice-reissue", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/shared/server/tax-invoice-reissue")>("@firstfold/shared/server/tax-invoice-reissue");
+vi.mock("@fynix/shared/server/tax-invoice-reissue", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/shared/server/tax-invoice-reissue")>("@fynix/shared/server/tax-invoice-reissue");
   return { ...actual, issueMissingTaxInvoice: vi.fn() };
 });
 vi.mock("./db", () => ({
   getStaffDb: () => ({ transaction: (fn: (tx: unknown) => unknown) => fn({ name: "staff-tx" }) }),
 }));
 
-import { lockBusinessForBilling } from "@firstfold/db";
+import { lockBusinessForBilling } from "@fynix/db";
 import {
   InvoiceSourceMismatchError,
   issueMissingTaxInvoice,
   NoMissingInvoiceError,
   UnsupportedPaymentKindError,
-} from "@firstfold/shared/server/tax-invoice-reissue";
+} from "@fynix/shared/server/tax-invoice-reissue";
 import {
   InvalidServicePeriodError,
   InvoiceDatedBeforePaymentError,
   UnprintableInvoiceTextError,
-} from "@firstfold/shared/server/tax-invoicing";
+} from "@fynix/shared/server/tax-invoicing";
 import { issueClientMissingInvoice } from "./invoices-admin";
 
 const BUSINESS = "0192f3c4-1111-7000-8000-000000000001";
@@ -59,7 +59,7 @@ describe("issueClientMissingInvoice", () => {
 
   it("logs tax-invoice-issued after it commits, with who issued it and no customer detail", async () => {
     vi.mocked(issueMissingTaxInvoice).mockResolvedValue({
-      number: "FF/26-27/000007",
+      number: "FY/26-27/000007",
       recipient: { legalName: "Priya Sharma", gstin: "27AAPFU0939F1ZV", addressLines: ["12 Lake Road, Thane"] },
     } as never);
 
@@ -73,7 +73,7 @@ describe("issueClientMissingInvoice", () => {
       businessId: BUSINESS,
       paymentId: PAYMENT,
       provider: null,
-      invoiceNumber: "FF/26-27/000007",
+      invoiceNumber: "FY/26-27/000007",
       issuedBy: STAFF,
     });
     expect(lines[0]).not.toMatch(/Priya|Sharma|27AAPFU0939F1ZV|Lake Road/);

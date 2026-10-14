@@ -1,12 +1,12 @@
 "use client";
 
-import type { ClosureRow } from "@firstfold/db";
+import type { ClosureRow } from "@fynix/db";
 import { useEffect, useRef, useState, type ReactElement } from "react";
-import { CLOSURE_NOTE_MAX_LENGTH } from "@firstfold/shared/lib/business-facts/closures";
-import { formatStoredDate } from "@firstfold/shared/lib/format";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import { CLOSURE_NOTE_MAX_LENGTH } from "@fynix/shared/lib/business-facts/closures";
+import { formatStoredDate } from "@fynix/shared/lib/format";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { BookingClashList } from "@/components/panel/appointments/booking-clash-list";
 import {
   FIELD_CLASSES,

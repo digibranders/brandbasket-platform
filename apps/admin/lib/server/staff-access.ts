@@ -1,6 +1,6 @@
 import "server-only";
-import { refreshGeoCatalog } from "@firstfold/shared/lib/directory/geo-catalog-source";
-import { createStaffAccess, type GrantedStaff } from "@firstfold/shared/server/staff-access";
+import { refreshGeoCatalog } from "@fynix/shared/lib/directory/geo-catalog-source";
+import { createStaffAccess, type GrantedStaff } from "@fynix/shared/server/staff-access";
 import { getStaffDb } from "./db";
 import { getSessionUser } from "./session";
 

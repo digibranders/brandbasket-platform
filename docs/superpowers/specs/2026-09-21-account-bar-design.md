@@ -43,7 +43,7 @@ In order:
 | Item | Destination |
 |---|---|
 | Settings | A gear in the menu's header, to `/settings`. Omitted when `account.href` is undefined, which is how the staff console opts out |
-| Feedback | `mailto:` to `siteConfig.email`, subject "Feedback on Firstfold" |
+| Feedback | `mailto:` to `siteConfig.email`, subject "Feedback on Fynix" |
 | Home page | The business's own live website. Hidden until it launches |
 | Changelog | `/changelog`, a hand-kept list of what changed for the customer. Customer surface only |
 | Help | `mailto:` to `siteConfig.email`, subject "Help with my website" |
@@ -61,11 +61,11 @@ proper answer and is out of scope here. This `mailto:` is explicitly a placehold
 ### Contact email defect — fixed
 
 `packages/shared/src/lib/site-config.ts` fell back to `hello@fynix.digital` when
-`NEXT_PUBLIC_CONTACT_EMAIL` was unset. Firstfold is a separate brand from Fynix, and the
+`NEXT_PUBLIC_CONTACT_EMAIL` was unset. Fynix is a separate brand from Fynix, and the
 address was already reaching customers on Settings, Project, Billing and Onboarding, not just
 in this menu.
 
-Changed to `support@firstfold.io`, which is what the marketing site's own copy of this file
+Changed to `hello@fynix.digital`, which is what the marketing site's own copy of this file
 has always used — the platform had simply drifted. One line fixes every page that reads
 `businessDetails.email`.
 

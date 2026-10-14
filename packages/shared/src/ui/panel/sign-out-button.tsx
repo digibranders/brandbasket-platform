@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { SignOutIcon } from "@firstfold/shared/ui/icons";
+import { SignOutIcon } from "@fynix/shared/ui/icons";
 import { cn } from "../../lib/cn";
 
 interface SignOutButtonProps {

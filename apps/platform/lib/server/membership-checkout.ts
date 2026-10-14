@@ -1,5 +1,5 @@
 import "server-only";
-import type { Plan } from "@firstfold/db";
+import type { Plan } from "@fynix/db";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import type { MembershipTier } from "@/lib/membership";
 import { loadBillingDetailsView } from "./billing-details";

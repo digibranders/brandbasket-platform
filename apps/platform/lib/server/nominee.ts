@@ -1,9 +1,9 @@
 import "server-only";
-import { cleanLine } from "@firstfold/shared/lib/validation/text";
-import { parsePhoneEntry } from "@firstfold/shared/lib/validation/phone";
+import { cleanLine } from "@fynix/shared/lib/validation/text";
+import { parsePhoneEntry } from "@fynix/shared/lib/validation/phone";
 import { NOMINEE_NAME_MAX_LENGTH, type NomineeFormField } from "@/lib/privacy-settings-form";
 
-/** Numbers typed without a country code are Indian: Firstfold's people are. A number with +CC keeps its own country. */
+/** Numbers typed without a country code are Indian: Fynix Digital's people are. A number with +CC keeps its own country. */
 const DEFAULT_PHONE_COUNTRY = "IN";
 
 const NAME_MISSING_MESSAGE = "Enter the name of the person you are naming.";
@@ -21,7 +21,7 @@ function text(formData: FormData, key: string): string {
 }
 
 /**
- * The nominee a form names, cleaned and checked: a name, and a mobile number as E.164 (Firstfold holds no email addresses,
+ * The nominee a form names, cleaned and checked: a name, and a mobile number as E.164 (Fynix holds no email addresses,
  * so a number is the only way to reach them). `ownPhone` is the account's own number, which cannot also be the nominee's.
  */
 export function parseNomineeForm(formData: FormData, ownPhone: string | null): NomineeParse {

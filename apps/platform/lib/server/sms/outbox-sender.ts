@@ -1,5 +1,5 @@
 import "server-only";
-import { insertSmsMessage, type Database } from "@firstfold/db";
+import { insertSmsMessage, type Database } from "@fynix/db";
 import type { SmsMessage, SmsSender } from "./types";
 
 /** The default SMS "provider": writes to the `sms_messages` table instead of sending anything, so booking can be

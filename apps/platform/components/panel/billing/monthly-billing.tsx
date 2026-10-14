@@ -1,11 +1,11 @@
 "use client";
 
 import { Fragment, useState, type ReactElement } from "react";
-import { ArrowIcon, CardIcon, ChevronDownIcon, ClockIcon, DocumentIcon, DownloadIcon, TickIcon } from "@firstfold/shared/ui/icons";
-import { EmptyState } from "@firstfold/shared/ui/panel/empty-state";
-import { LocalDate } from "@firstfold/shared/ui/panel/local-date-time";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
-import { cn } from "@firstfold/shared/lib/cn";
+import { ArrowIcon, CardIcon, ChevronDownIcon, ClockIcon, DocumentIcon, DownloadIcon, TickIcon } from "@fynix/shared/ui/icons";
+import { EmptyState } from "@fynix/shared/ui/panel/empty-state";
+import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { cn } from "@fynix/shared/lib/cn";
 import { payChargeAction } from "@/app/app-host/(protected)/billing/actions";
 import type { BillingMonth, BillLine } from "@/lib/billing/billing-months";
 import { splitInvoiceNumber } from "@/lib/billing/invoice-title";
@@ -51,7 +51,7 @@ function LineBadge({ due }: { readonly due: boolean }): ReactElement {
 }
 
 /**
- * A row's title with its invoice number kept on one line. A narrow screen would otherwise break "FF/26-27/000001" at
+ * A row's title with its invoice number kept on one line. A narrow screen would otherwise break "FY/26-27/000001" at
  * its hyphen. Screen readers read the same words; the Download link keeps the plain string title for its name.
  */
 function RowTitle({ title }: { readonly title: string }): ReactElement {

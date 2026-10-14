@@ -1,9 +1,9 @@
-import { listDealsOnShowForStaff } from "@firstfold/db";
+import { listDealsOnShowForStaff } from "@fynix/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import { DIRECTORY_DEALS_TIME_ZONE } from "@firstfold/shared/lib/directory/deals-contract";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
+import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { DIRECTORY_DEALS_TIME_ZONE } from "@fynix/shared/lib/directory/deals-contract";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
 import { buttonDanger } from "@/components/console/buttons";
 import { Figures } from "@/components/console/figures";
 import { EmptyLine } from "@/components/console/hairline-list";

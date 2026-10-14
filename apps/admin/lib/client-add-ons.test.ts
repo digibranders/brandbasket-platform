@@ -1,4 +1,4 @@
-import type { AddOnSubscriptionForStaff, PressRelease } from "@firstfold/db";
+import type { AddOnSubscriptionForStaff, PressRelease } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { clientAddOnRows, clientPressReleaseRows } from "./client-add-ons";
 

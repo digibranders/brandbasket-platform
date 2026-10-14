@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@firstfold/shared/ui/panel/button";
+import { Button } from "@fynix/shared/ui/panel/button";
 import { readSupportUnreadCount } from "@/app/app-host/(support)/support/actions";
 import { SupportRequestForm } from "./support-form";
 import { SupportRequestList } from "./support-request-list";

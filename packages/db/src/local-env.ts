@@ -20,7 +20,7 @@ export function findWorkspaceRoot(startDir: string = process.cwd()): string {
     const parent = dirname(current);
     if (parent === current) {
       throw new Error(
-        `Could not find ${WORKSPACE_MARKER} above ${startDir}. Run this command inside the Firstfold repository.`,
+        `Could not find ${WORKSPACE_MARKER} above ${startDir}. Run this command inside the Fynix repository.`,
       );
     }
     current = parent;

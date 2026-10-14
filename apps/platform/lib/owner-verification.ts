@@ -2,7 +2,7 @@
  * Whether an owner may verify their own business with a code to its number, and what to say when they may not. No
  * server imports, so the dashboard's pages can use it (the work itself is lib/server/owner-verification.ts).
  */
-import type { DirectoryClaim } from "@firstfold/db";
+import type { DirectoryClaim } from "@fynix/db";
 
 /** A full international number: the code goes to the number the owner gave for the listing. */
 const E164 = /^\+[0-9]{8,15}$/;

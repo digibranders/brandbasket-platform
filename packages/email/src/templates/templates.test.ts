@@ -69,7 +69,7 @@ describe("setupLinkEmail", () => {
   });
 
   it("addresses the business and states how long the link lasts", () => {
-    expect(email.subject).toBe("Set up your Firstfold account");
+    expect(email.subject).toBe("Set up your Fynix Digital account");
     expect(email.bodyText).toContain("Riverside Plumbing");
     expect(email.bodyText).toContain("7 days");
     expect(email.bodyHtml).toContain("7 days");
@@ -89,7 +89,7 @@ describe("previewReadyEmail", () => {
   });
 
   it("names the business in the subject", () => {
-    expect(email.subject).toBe("Your Firstfold preview is ready");
+    expect(email.subject).toBe("Your Fynix Digital preview is ready");
     expect(email.bodyText).toContain("Riverside Plumbing");
   });
 
@@ -174,7 +174,7 @@ describe("websiteLiveEmail", () => {
   });
 
   it("names the business in the subject", () => {
-    expect(email.subject).toBe("Your Firstfold website is live");
+    expect(email.subject).toBe("Your Fynix Digital website is live");
     expect(email.bodyText).toContain("Riverside Plumbing");
   });
 
@@ -202,10 +202,10 @@ describe("websiteLiveEmail", () => {
 });
 
 describe("privacy request alerts", () => {
-  const CONSOLE = "https://admin.firstfold.io/privacy-requests";
+  const CONSOLE = "https://console.fynix.digital/privacy-requests";
 
   it("announces a new request with its reference, kind, due day and a console link, and nothing about the person", () => {
-    const message = privacyRequestAlertEmail({ to: "support@firstfold.io", reference: "PR-7K2M9QXD", kindLabel: "Erasure", dueDay: "12 November 2026", consoleUrl: CONSOLE });
+    const message = privacyRequestAlertEmail({ to: "hello@fynix.digital", reference: "PR-7K2M9QXD", kindLabel: "Erasure", dueDay: "12 November 2026", consoleUrl: CONSOLE });
     expect(message.subject).toBe("New privacy request PR-7K2M9QXD (Erasure)");
     expect(message.template).toBe("privacy-request-alert");
     for (const body of [message.bodyText, message.bodyHtml]) {
@@ -225,7 +225,7 @@ describe("privacy request alerts", () => {
 
   it("lists each open request with its stage and how many days are left or overdue", () => {
     const message = privacyRequestsDueEmail({
-      to: "support@firstfold.io",
+      to: "hello@fynix.digital",
       consoleUrl: CONSOLE,
       items: [
         { reference: "PR-LATE0001", kindLabel: "Grievance", dueDay: "5 November 2026", stage: "overdue", daysLeft: -3 },
@@ -251,13 +251,13 @@ describe("privacy request alerts", () => {
 describe("security alerts", () => {
   it("says what happened, how many and over what time, with the runbook and the CERT-In clock", () => {
     const message = securityEventAlertEmail({
-      to: "support@firstfold.io",
+      to: "hello@fynix.digital",
       eventLabel: "Sign-ins blocked for too many tries",
       advice: "Many accounts or addresses are being tried.",
       count: 20,
       windowMinutes: 60,
       app: "platform",
-      consoleUrl: "https://admin.firstfold.io/access-log",
+      consoleUrl: "https://console.fynix.digital/access-log",
     });
     expect(message.subject).toBe("[Security] Sign-ins blocked for too many tries (20 or more in 60 minutes)");
     expect(message.template).toBe("security-event-alert");
@@ -270,14 +270,14 @@ describe("security alerts", () => {
 
   it("lists each staff finding in the nightly review, and refuses an empty review", () => {
     const message = staffAccessReviewEmail({
-      to: "support@firstfold.io",
+      to: "hello@fynix.digital",
       hours: 24,
-      consoleUrl: "https://admin.firstfold.io/access-log",
-      findings: [{ staff: "asha@firstfold.io", what: "Exported the invoice register", count: 5 }],
+      consoleUrl: "https://console.fynix.digital/access-log",
+      findings: [{ staff: "asha@fynix.digital", what: "Exported the invoice register", count: 5 }],
     });
     expect(message.subject).toBe("[Security] Staff access review: 1 item to check");
-    expect(message.bodyText).toContain("asha@firstfold.io: Exported the invoice register, 5 times");
-    expect(() => staffAccessReviewEmail({ to: "a@b.in", hours: 24, consoleUrl: "https://admin.firstfold.io/access-log", findings: [] })).toThrow("at least one");
+    expect(message.bodyText).toContain("asha@fynix.digital: Exported the invoice register, 5 times");
+    expect(() => staffAccessReviewEmail({ to: "a@b.in", hours: 24, consoleUrl: "https://console.fynix.digital/access-log", findings: [] })).toThrow("at least one");
   });
 });
 
@@ -353,19 +353,13 @@ describe("passwordResetEmail", () => {
   const email = passwordResetEmail({ to: "owner@example.com", resetUrl: "http://app.localhost:3000/reset-password/abc123", expiresInMinutes: 60 });
 
   it("carries the link, how long it lasts, and that ignoring it changes nothing", () => {
-    expect(email.subject).toBe("Reset your Firstfold password");
+    expect(email.subject).toBe("Reset your Fynix Digital password");
     expect(email.template).toBe("password-reset");
     for (const body of [email.bodyText, email.bodyHtml]) {
       expect(body).toContain("http://app.localhost:3000/reset-password/abc123");
       expect(body).toContain("expires in 60 minutes");
       expect(body).toContain("your password stays as it is");
     }
-  });
-
-  it("names the brand it is sent for, and says nothing of Firstfold under another", () => {
-    const branded = passwordResetEmail({ to: "owner@example.com", resetUrl: "https://app.fynix.digital/reset-password/abc123", expiresInMinutes: 60, brandName: "Fynix Digital" });
-    expect(branded.subject).toBe("Reset your Fynix Digital password");
-    for (const text of [branded.subject, branded.bodyText, branded.bodyHtml, branded.outboxCopy?.bodyText ?? ""]) expect(text).not.toMatch(/first\s?fold/i);
   });
 
   it("refuses a link that is not a web address", () => {
@@ -376,14 +370,8 @@ describe("passwordResetEmail", () => {
 describe("confirmEmailEmail", () => {
   const email = confirmEmailEmail({ to: "owner@example.com", confirmUrl: "http://app.localhost:3000/confirm-email/tok.en", expiresInDays: 3 });
 
-  it("names the brand it is sent for, and says nothing of Firstfold under another", () => {
-    const branded = confirmEmailEmail({ to: "owner@example.com", confirmUrl: "https://app.fynix.digital/confirm-email/tok.en", expiresInDays: 3, brandName: "Fynix Digital" });
-    expect(branded.subject).toBe("Confirm your email for Fynix Digital");
-    for (const text of [branded.subject, branded.bodyText, branded.bodyHtml, branded.outboxCopy?.bodyText ?? ""]) expect(text).not.toMatch(/first\s?fold/i);
-  });
-
   it("carries the link and how long it lasts", () => {
-    expect(email.subject).toBe("Confirm your email for Firstfold");
+    expect(email.subject).toBe("Confirm your email for Fynix Digital");
     expect(email.template).toBe("confirm-email");
     for (const body of [email.bodyText, email.bodyHtml]) {
       expect(body).toContain("http://app.localhost:3000/confirm-email/tok.en");
@@ -431,7 +419,7 @@ describe("listingEnquiryEmail", () => {
 
 describe("supportTicketAlertEmail", () => {
   const input = {
-    to: "support@firstfold.io",
+    to: "hello@fynix.digital",
     reference: "SUP-2026-A1B2",
     ticketId: "0192f3c4-1234-7000-8000-000000000001",
     category: "bug",
@@ -452,7 +440,7 @@ describe("supportTicketAlertEmail", () => {
   it("formats subject with category, subject, and reference", () => {
     const email = supportTicketAlertEmail(input);
     expect(email.subject).toBe("[Report a bug] Cannot upload photos (SUP-2026-A1B2)");
-    expect(email.to).toBe("support@firstfold.io");
+    expect(email.to).toBe("hello@fynix.digital");
     expect(email.template).toBe("support-ticket-alert");
   });
 
@@ -500,7 +488,7 @@ describe("supportTicketAlertEmail", () => {
 
 describe("supportReplyAlertEmail", () => {
   const input = {
-    to: "support@firstfold.io",
+    to: "hello@fynix.digital",
     reference: "SUP-2026-A1B2",
     ticketId: "0192f3c4-1234-7000-8000-000000000001",
     subject: "Cannot upload photos",
@@ -514,7 +502,7 @@ describe("supportReplyAlertEmail", () => {
   it("formats subject and contains customer reply details", () => {
     const email = supportReplyAlertEmail(input);
     expect(email.subject).toBe("[Customer Reply] Cannot upload photos (SUP-2026-A1B2)");
-    expect(email.to).toBe("support@firstfold.io");
+    expect(email.to).toBe("hello@fynix.digital");
     expect(email.template).toBe("support-reply-alert");
     for (const body of [email.bodyText, email.bodyHtml]) {
       expect(body).toContain("Still happening today on Chrome.");
@@ -541,7 +529,7 @@ describe("supportReplyAlertEmail", () => {
 
 describe("systemErrorAlertEmail", () => {
   const input = {
-    to: "support@firstfold.io",
+    to: "hello@fynix.digital",
     app: "platform",
     operation: "server_action",
     errorClass: "DatabaseConnectionTimeout",
@@ -569,9 +557,9 @@ describe("systemErrorAlertEmail", () => {
 describe("emails that sign someone in keep their link out of the outbox", () => {
   const TOKEN = "Kq8vR2mN4tY7wZ1x";
   const cases = [
-    ["password-reset", passwordResetEmail({ to: "asha@example.in", resetUrl: `https://app.firstfold.io/reset-password/${TOKEN}`, expiresInMinutes: 60 })],
-    ["confirm-email", confirmEmailEmail({ to: "asha@example.in", confirmUrl: `https://app.firstfold.io/confirm-email/${TOKEN}`, expiresInDays: 7 })],
-    ["setup-link", setupLinkEmail({ to: "asha@example.in", businessName: "Bloom Dental", setupUrl: `https://app.firstfold.io/setup/${TOKEN}`, expiresInDays: 7 })],
+    ["password-reset", passwordResetEmail({ to: "asha@example.in", resetUrl: `https://app.fynix.digital/reset-password/${TOKEN}`, expiresInMinutes: 60 })],
+    ["confirm-email", confirmEmailEmail({ to: "asha@example.in", confirmUrl: `https://app.fynix.digital/confirm-email/${TOKEN}`, expiresInDays: 7 })],
+    ["setup-link", setupLinkEmail({ to: "asha@example.in", businessName: "Bloom Dental", setupUrl: `https://app.fynix.digital/setup/${TOKEN}`, expiresInDays: 7 })],
   ] as const;
 
   it.each(cases)("%s sends the link to the recipient", (_name, message) => {
@@ -588,38 +576,19 @@ describe("emails that sign someone in keep their link out of the outbox", () => 
   });
 });
 
-describe("the staff-sent customer emails under another brand", () => {
-  const texts = (email: { subject: string; bodyText: string; bodyHtml: string; outboxCopy?: { bodyText: string } }): string[] => [
-    email.subject,
-    email.bodyText,
-    email.bodyHtml,
-    email.outboxCopy?.bodyText ?? "",
-  ];
-
-  it("keeps Firstfold's words for Firstfold", () => {
-    expect(setupLinkEmail({ to: "o@example.com", businessName: "Acme", setupUrl: "https://app.firstfold.io/setup/t", expiresInDays: 7 }).subject).toBe("Set up your Firstfold account");
-    expect(websiteLiveEmail({ to: "o@example.com", businessName: "Acme", websiteUrl: "https://acme.example" }).subject).toBe("Your Firstfold website is live");
-    expect(previewReadyEmail({ to: "o@example.com", businessName: "Acme", previewUrl: "https://preview.example/acme" }).subject).toBe("Your Firstfold preview is ready");
-  });
-
-  it("names the brand in the setup link, the website-live notice and the preview notice, and never says Firstfold", () => {
-    const brandName = "Fynix Digital";
-    const setup = setupLinkEmail({ to: "o@example.com", businessName: "Acme", setupUrl: "https://app.fynix.digital/setup/t", expiresInDays: 7, brandName });
-    const live = websiteLiveEmail({ to: "o@example.com", businessName: "Acme", websiteUrl: "https://acme.example", brandName });
-    const preview = previewReadyEmail({ to: "o@example.com", businessName: "Acme", previewUrl: "https://preview.example/acme", brandName });
-    expect(setup.subject).toBe("Set up your Fynix Digital account");
-    expect(setup.bodyText).toContain("open your Fynix Digital dashboard");
-    expect(live.subject).toBe("Your Fynix Digital website is live");
-    expect(preview.subject).toBe("Your Fynix Digital preview is ready");
-    for (const text of [...texts(setup), ...texts(live), ...texts(preview)]) expect(text).not.toMatch(/first\s?fold/i);
+describe("the staff-sent customer emails", () => {
+  it("speak as Fynix Digital", () => {
+    expect(setupLinkEmail({ to: "o@example.com", businessName: "Acme", setupUrl: "https://app.fynix.digital/setup/t", expiresInDays: 7 }).subject).toBe("Set up your Fynix Digital account");
+    expect(websiteLiveEmail({ to: "o@example.com", businessName: "Acme", websiteUrl: "https://acme.example" }).subject).toBe("Your Fynix Digital website is live");
+    expect(previewReadyEmail({ to: "o@example.com", businessName: "Acme", previewUrl: "https://preview.example/acme" }).subject).toBe("Your Fynix Digital preview is ready");
   });
 });
 
 describe("signupCodeEmail", () => {
-  const input = { to: "owner@example.com", code: "482913", expiresInMinutes: 10, brandName: "Fynix Digital" };
+  const input = { to: "owner@example.com", code: "482913", expiresInMinutes: 10 };
   const email = signupCodeEmail(input);
 
-  it("carries the code and how long it lasts, under the brand it is sent for", () => {
+  it("carries the code and how long it lasts, ", () => {
     expect(email.template).toBe("signup-code");
     expect(email.subject).toBe("Your Fynix Digital verification code");
     for (const body of [email.bodyText, email.bodyHtml]) {
@@ -642,10 +611,6 @@ describe("signupCodeEmail", () => {
     expect(email.outboxCopy?.linkWithheld).toBe(true);
   });
 
-  it("says Firstfold when no other brand is named, like the other account emails", () => {
-    expect(signupCodeEmail({ to: "owner@example.com", code: "123456", expiresInMinutes: 10 }).subject).toBe("Your Firstfold verification code");
-  });
-
   it("refuses anything but a six-digit code, so nothing else can be written into the message", () => {
     for (const code of ["12345", "1234567", "12345a", "<b>1</b>", ""]) {
       expect(() => signupCodeEmail({ ...input, code })).toThrow("code");
@@ -654,41 +619,5 @@ describe("signupCodeEmail", () => {
 
   it("is addressed without header-breaking characters", () => {
     expect(signupCodeEmail({ ...input, to: "owner@example.com\r\nBcc: x@y.z" }).to).not.toMatch(/[\r\n]/);
-  });
-});
-
-describe("emails sent with no brand named (staff-sent and background mail)", () => {
-  function onFynixServer<T>(work: () => T): T {
-    const before = process.env.PLATFORM_BRAND;
-    process.env.PLATFORM_BRAND = "fynix";
-    try {
-      return work();
-    } finally {
-      if (before === undefined) delete process.env.PLATFORM_BRAND;
-      else process.env.PLATFORM_BRAND = before;
-    }
-  }
-
-  it("speak as Fynix Digital on a Fynix server, and never say Firstfold", () => {
-    const messages = onFynixServer(() => [
-      setupLinkEmail({ to: "o@example.com", businessName: "Acme", setupUrl: "https://app.fynix.digital/setup/t", expiresInDays: 7 }),
-      previewReadyEmail({ to: "o@example.com", businessName: "Acme", previewUrl: "https://app.fynix.digital/preview/t" }),
-      websiteLiveEmail({ to: "o@example.com", businessName: "Acme", websiteUrl: "https://acme.example.com" }),
-      confirmEmailEmail({ to: "o@example.com", confirmUrl: "https://app.fynix.digital/confirm-email/t", expiresInDays: 3 }),
-      passwordResetEmail({ to: "o@example.com", resetUrl: "https://app.fynix.digital/reset-password/t", expiresInMinutes: 60 }),
-      signupCodeEmail({ to: "o@example.com", code: "123456", expiresInMinutes: 10 }),
-      listingEnquiryEmail({ to: "o@example.com", businessName: "Acme", visitorName: "Asha", visitorPhone: "+919820011223", message: null, dashboardUrl: "https://app.fynix.digital/leads" }),
-    ]);
-    for (const message of messages) {
-      for (const text of [message.subject, message.bodyText, message.bodyHtml, message.outboxCopy?.bodyText ?? ""]) {
-        expect(text).not.toMatch(/first\s?fold/i);
-      }
-    }
-    expect(messages[0]?.subject).toBe("Set up your Fynix Digital account");
-  });
-
-  it("still name the brand they are told to, over the deployment's", () => {
-    const message = onFynixServer(() => setupLinkEmail({ to: "o@example.com", businessName: "Acme", setupUrl: "https://app.firstfold.io/setup/t", expiresInDays: 7, brandName: "Firstfold" }));
-    expect(message.subject).toBe("Set up your Firstfold account");
   });
 });

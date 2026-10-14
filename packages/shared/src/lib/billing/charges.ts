@@ -1,6 +1,6 @@
-import type { ChargeKind, Plan } from "@firstfold/db";
+import type { ChargeKind, Plan } from "@fynix/db";
 // The subpath, not the package index: this module reaches client components, and the index pulls in the database.
-import { chargedAmountCents } from "@firstfold/billing/tax";
+import { chargedAmountCents } from "@fynix/billing/tax";
 
 /**
  * The kinds staff can add from the staff console. A `listing_promotion` is not one of them: only the customer opens

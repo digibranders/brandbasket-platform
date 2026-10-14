@@ -1,5 +1,5 @@
-import type { Database, ScopedTransaction } from "@firstfold/db";
-import { findOwnListing, openListingPromotionCharge, withTenantScope } from "@firstfold/db";
+import type { Database, ScopedTransaction } from "@fynix/db";
+import { findOwnListing, openListingPromotionCharge, withTenantScope } from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { startCustomerChargePayment } from "./charges";
 import type { GrantedCustomer } from "./customer-access";
@@ -9,7 +9,7 @@ import { startListingPromotionPayment } from "./listing-promotion";
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
 vi.mock("./charges", () => ({ startCustomerChargePayment: vi.fn() }));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   findOwnListing: vi.fn(),
   openListingPromotionCharge: vi.fn(),
   withTenantScope: vi.fn(),

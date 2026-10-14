@@ -1,7 +1,6 @@
 import "server-only";
-import { findClientDetail, recordProjectPreviewSent, type Database } from "@firstfold/db";
-import { previewReadyEmail } from "@firstfold/email";
-import { deploymentBrandName } from "@firstfold/shared/lib/deployment-brand";
+import { findClientDetail, recordProjectPreviewSent, type Database } from "@fynix/db";
+import { previewReadyEmail } from "@fynix/email";
 import { customerEmailTransport } from "./email";
 
 export class ProjectPreviewRecipientMissingError extends Error {
@@ -39,7 +38,7 @@ export async function sendProjectPreview(db: Database, input: SendProjectPreview
   if (client.owner.email === null) return "no-email";
 
   await customerEmailTransport(db).send(
-    previewReadyEmail({ to: client.owner.email, businessName: client.businessName, previewUrl: input.previewUrl, brandName: deploymentBrandName(process.env) }),
+    previewReadyEmail({ to: client.owner.email, businessName: client.businessName, previewUrl: input.previewUrl }),
   );
   return "emailed";
 }

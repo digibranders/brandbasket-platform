@@ -1,9 +1,8 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { useBrand } from "@/components/panel/brand-provider";
-import { brandText } from "@/lib/brand";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
+
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
 import {
   StepFormError,
   StepSubmit,
@@ -17,7 +16,7 @@ interface DomainStepFormProps {
   readonly useSubdomainAction: StepAction;
   readonly hostname: string | null;
   readonly ownerConfirmed: boolean;
-  /** Whether the deployment makes temporary addresses at all (CLIENT_SITE_BASE_DOMAIN, or Firstfold's own default). */
+  /** Whether the deployment makes temporary addresses at all (CLIENT_SITE_BASE_DOMAIN, or Fynix Digital's own default). */
   readonly temporaryAddressOffered: boolean;
   /** Whether `hostname` is one of those temporary addresses: read on the server, which knows the base domain. */
   readonly onTemporarySubdomain: boolean;
@@ -32,7 +31,6 @@ export function DomainStepForm({
   temporaryAddressOffered,
   onTemporarySubdomain,
 }: DomainStepFormProps): ReactElement {
-  const brand = useBrand();
   const { formRef, errorRef, formAction, controls } = useStepForm(action);
   const {
     formRef: subdomainFormRef,
@@ -40,7 +38,7 @@ export function DomainStepForm({
     formAction: subdomainFormAction,
     controls: subdomainControls,
   } = useStepForm(useSubdomainAction);
-  // A temporary firstfold.io address was never "confirmed" in the sense this checkbox means, whatever the stored
+  // A temporary temporary address was never "confirmed" in the sense this checkbox means, whatever the stored
   // ownerConfirmedAt says: the checkbox is asking about the real domain they're about to type in, not that one.
   const confirmed =
     controls.state.status === "error" ? "ownerConfirmed" in controls.state.values : ownerConfirmed && !onTemporarySubdomain;
@@ -98,11 +96,11 @@ export function DomainStepForm({
       {onTemporarySubdomain || !temporaryAddressOffered ? null : (
         <form ref={subdomainFormRef} action={subdomainFormAction} noValidate className="border-t border-line pt-6">
           <p className="text-sm leading-relaxed text-ink-soft">
-            {brandText("Don’t have a domain yet? We’ll put your website live on a free firstfold.io address so there’s nothing stopping you, and you can move to your own domain whenever you’ve registered one.", brand)}
+            {"Don’t have a domain yet? We’ll put your website live on a free temporary address so there’s nothing stopping you, and you can move to your own domain whenever you’ve registered one."}
           </p>
           <StepFormError controls={subdomainControls} errorRef={subdomainErrorRef} />
           <div className="mt-4">
-            <StepSubmit controls={subdomainControls} label={brandText("Use a free firstfold.io address for now", brand)} pendingLabel="Setting it up…" />
+            <StepSubmit controls={subdomainControls} label={"Use a free temporary address for now"} pendingLabel="Setting it up…" />
           </div>
         </form>
       )}

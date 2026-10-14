@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { addMonthsUtc, CHECKOUT_REUSE_WINDOW_MS, CheckoutVerificationError, type BillingProvider, type ConfirmedAddOnPayment } from "@firstfold/billing";
+import { addMonthsUtc, CHECKOUT_REUSE_WINDOW_MS, CheckoutVerificationError, type BillingProvider, type ConfirmedAddOnPayment } from "@fynix/billing";
 import {
   cancelStaleAddOnCheckout,
   consumeRateLimit,
@@ -18,7 +18,7 @@ import {
   type Charge,
   type RateLimitRule,
   type ScopedTransaction,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { BROKEN_ADD_ON_LINE, keepDateOf } from "@/lib/billing/add-on-copy";
 import { chargePayPath } from "@/lib/billing/charge-notices";
 import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
@@ -30,8 +30,8 @@ import {
   pressReleaseChargeDescription,
   type AddOnPrice,
   type MonthlyAddOnId,
-} from "@firstfold/shared/lib/billing/add-ons";
-import { addOnFactsOf, pickAddOnRows, type PickedAddOnRows } from "@firstfold/shared/lib/billing/add-on-rows";
+} from "@fynix/shared/lib/billing/add-ons";
+import { addOnFactsOf, pickAddOnRows, type PickedAddOnRows } from "@fynix/shared/lib/billing/add-on-rows";
 import {
   addOnActions,
   addOnView,
@@ -40,13 +40,13 @@ import {
   type AddOnCheckoutIntent,
   type AddOnEndKind,
   type AddOnView,
-} from "@firstfold/shared/lib/billing/add-on-state";
-import { applyAddOnPayment, type ProviderSubscriptionRef } from "@firstfold/shared/server/add-on-activation";
-import { addOnEndMessage, scheduleAddOnEndFor as scheduleEndWithProvider } from "@firstfold/shared/server/add-on-ends";
-import { ensureAddOnPlan } from "@firstfold/shared/server/add-on-plans";
-import { describeError, logBillingEvent } from "@firstfold/shared/server/billing-log";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
-import { cancelAtProvider } from "@firstfold/shared/server/provider-cancellation";
+} from "@fynix/shared/lib/billing/add-on-state";
+import { applyAddOnPayment, type ProviderSubscriptionRef } from "@fynix/shared/server/add-on-activation";
+import { addOnEndMessage, scheduleAddOnEndFor as scheduleEndWithProvider } from "@fynix/shared/server/add-on-ends";
+import { ensureAddOnPlan } from "@fynix/shared/server/add-on-plans";
+import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { cancelAtProvider } from "@fynix/shared/server/provider-cancellation";
 import { getBillingProvider } from "./billing";
 import { startCustomerChargePayment } from "./charges";
 import { getCustomerBusinessKind, type GrantedCustomer } from "./customer-access";

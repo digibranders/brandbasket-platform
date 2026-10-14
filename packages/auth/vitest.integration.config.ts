@@ -1,6 +1,6 @@
 import { defineConfig } from "vitest/config";
 
-/** Shares the test database with @firstfold/db, so files run one at a time. */
+/** Shares the test database with @fynix/db, so files run one at a time. */
 export default defineConfig({
   test: {
     environment: "node",

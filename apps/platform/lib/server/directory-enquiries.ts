@@ -9,22 +9,22 @@ import {
   type DirectoryRef,
   type NewDirectoryEnquiry,
   type RateLimitRule,
-} from "@firstfold/db";
-import { listingEnquiryEmail } from "@firstfold/email";
-import { displayPhone } from "@firstfold/shared/server/phone-display";
+} from "@fynix/db";
+import { listingEnquiryEmail } from "@fynix/email";
+import { displayPhone } from "@fynix/shared/server/phone-display";
 import { LEADS_PATH } from "@/lib/leads";
 import { getStaffDb } from "./db";
 import { customerEmailTransport } from "./email";
 import type { EnquiryInput } from "./directory-fields";
 import { serverEnv } from "./env";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { ipRateLimitKey } from "./ip-key";
 
 /**
  * The work behind `POST /api/directory/enquiries`: "Send enquiry" on a directory card or business page, and the list
  * page's "Get the list of top …" form. No code confirms an enquiry (like the website's Get started form), so the rate
  * limits are what hold back a flood. Stored on the staff connection (see `getStaffDb`'s sanctioned exceptions), for
- * Firstfold staff to read in the console and pass on. An enquiry to a business whose owner has an account is also
+ * Fynix staff to read in the console and pass on. An enquiry to a business whose owner has an account is also
  * emailed to that owner, and listed on their dashboard.
  */
 
@@ -43,7 +43,7 @@ export type EnquiryOutcome = "received" | "unknown_business" | "limited" | "fail
 
 
 /**
- * Emails the enquiry to the business's owner, when the listing has one on Firstfold whose address is confirmed. An
+ * Emails the enquiry to the business's owner, when the listing has one on Fynix whose address is confirmed. An
  * unowned listing's enquiries stay with staff, who pass them on. The enquiry is already saved by this point, so a
  * failure here is logged and never shown to the visitor.
  */

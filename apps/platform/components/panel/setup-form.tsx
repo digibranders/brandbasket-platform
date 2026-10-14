@@ -1,11 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, type ReactElement } from "react";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
-import { TurnstileWidget } from "@firstfold/shared/ui/turnstile";
-import { EyeIcon, EyeOffIcon } from "@firstfold/shared/ui/icons";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { TurnstileWidget } from "@fynix/shared/ui/turnstile";
+import { EyeIcon, EyeOffIcon } from "@fynix/shared/ui/icons";
 import { useBrand } from "@/components/panel/brand-provider";
 import { legalLinksFor } from "@/lib/legal-links";
 import { initialSetupFormState, SETUP_AGREE_FIELD, SETUP_AGREE_VALUE, SETUP_PASSWORD_MIN_LENGTH, type SetupFormState } from "@/lib/setup-form";

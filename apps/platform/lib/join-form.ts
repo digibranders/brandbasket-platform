@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { OtpRetry } from "@/lib/auth-retry";
-import { OTP_LENGTH } from "@firstfold/shared/lib/appointments/otp";
-import { cleanLine } from "@firstfold/shared/lib/validation/text";
+import { OTP_LENGTH } from "@fynix/shared/lib/appointments/otp";
+import { cleanLine } from "@fynix/shared/lib/validation/text";
 import { DIRECTORY_CLAIM_ID_PARAM, DIRECTORY_CLAIM_SIGNATURE_PARAM, LISTING_KEY_PATTERN, PLACE_ID_PATTERN } from "@/lib/directory-api";
 import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
 
@@ -16,7 +16,7 @@ import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
  * the Care plan or the Premium membership, all shown at once. The answer travels with the form as `choice`. (The first
  * version of the page asked "Do you have your own website?" first; that question is gone.)
  *
- * It is reached two ways: from a business's page on Firstfold Local, which names the listing being claimed, or with
+ * It is reached two ways: from a business's page on the local directory, which names the listing being claimed, or with
  * no listing at all by a business that is not in the directory yet, which adds itself on the Listing page after
  * signing up. The server (lib/server/listing-account.ts) parses the phone number and checks the claim link.
  */
@@ -112,7 +112,7 @@ interface JoinAccountBase {
   readonly code: JoinCode | null;
 }
 
-/** How the owner is reached, and how they sign in: by mobile number (Firstfold) or by email address (Fynix), never both. */
+/** How the owner is reached, and how they sign in: by mobile number (Fynix) or by email address (Fynix), never both. */
 export type JoinContact =
   | {
       /** As typed: the server reads it as an Indian number unless it starts with a country code. */

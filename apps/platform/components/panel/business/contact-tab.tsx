@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
-import type { DirectoryProfile } from "@firstfold/db";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+import type { DirectoryProfile } from "@fynix/db";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { ItemForm } from "@/components/panel/business/item-form";
 import { CONTACT_OPTION_LABELS, CONTACT_OPTION_NEEDS, CONTACT_OPTIONS, type ContactOption } from "@/lib/business-profile-fields";
 import { profileHref } from "@/lib/business-profile-notices";

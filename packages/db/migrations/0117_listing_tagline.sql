@@ -11,4 +11,4 @@ ALTER TABLE listing_content ADD CONSTRAINT listing_content_tagline_check
 ALTER TABLE listing_content ADD CONSTRAINT listing_content_tagline_colour_check
   CHECK (tagline_colour IN ('rose', 'burgundy', 'sand', 'sage', 'sky', 'ink'));
 --> statement-breakpoint
-GRANT UPDATE (tagline, tagline_colour) ON listing_content TO webfold_app;
+GRANT UPDATE (tagline, tagline_colour) ON listing_content TO fynix_app;

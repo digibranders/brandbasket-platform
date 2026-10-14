@@ -2,7 +2,7 @@
 
 import { otpLimitMessage } from "@/lib/auth-retry";
 import { redirect } from "next/navigation";
-import { typedSignInIdentifier, type SignInFormState } from "@firstfold/shared/lib/sign-in-form";
+import { typedSignInIdentifier, type SignInFormState } from "@fynix/shared/lib/sign-in-form";
 import { offersChoice } from "@/lib/brand";
 import { parseJoinForm, type JoinCodeStep, type JoinFormState } from "@/lib/join-form";
 import { membershipPathFor, membershipTierForChoice } from "@/lib/membership";
@@ -11,7 +11,7 @@ import { createListingAccount, requestJoinCode } from "@/lib/server/listing-acco
 import { landingForSignedInUser } from "@/lib/server/affiliate-access";
 import { requestBrand } from "@/lib/server/request-brand";
 import { signInWithPassword } from "@/lib/server/sign-in";
-import { checkHuman } from "@firstfold/shared/server/turnstile-request";
+import { checkHuman } from "@fynix/shared/server/turnstile-request";
 
 export async function signInCustomer(_previous: SignInFormState, formData: FormData): Promise<SignInFormState> {
   const human = await checkHuman(formData, "sign_in");
@@ -42,7 +42,7 @@ export async function joinForListing(previous: JoinFormState, formData: FormData
     formData.delete("code");
   }
 
-  // What the form asks for depends on the brand the host is sold under: a mobile number (Firstfold) or an email address (Fynix).
+  // What the form asks for depends on the brand the host is sold under: a mobile number (Fynix) or an email address (Fynix).
   const brand = await requestBrand();
   const parsed = parseJoinForm(formData, brand.signUpWith);
   if (!parsed.success) {
@@ -51,7 +51,7 @@ export async function joinForListing(previous: JoinFormState, formData: FormData
   }
   // The form only offers what the host sells, but a form is whatever it is sent: Fynix sells Care and Premium, for a new
   // business (no claim), and a post for the free listing is refused here as it would be on the plans page.
-  if (!offersChoice(brand, parsed.data.choice) || (brand.id !== "firstfold" && parsed.data.kind === "claim")) {
+  if (!offersChoice(brand, parsed.data.choice) || (!brand.showsListing && parsed.data.kind === "claim")) {
     const onCodeStep = formData.get("otpId") !== null && formData.get("otpId") !== "";
     return { status: "error", message: "Choose a plan to continue.", otp: onCodeStep ? current : null };
   }

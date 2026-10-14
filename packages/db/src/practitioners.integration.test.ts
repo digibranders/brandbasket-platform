@@ -54,7 +54,7 @@ async function setAppointmentsModule(businessId: string, enabled: boolean): Prom
   await setBusinessModule(dbs.staff.db, { businessId, module: "appointments", enabled, staffUserId: STAFF_USER, now: NOW });
 }
 
-/** Staff-side insert, so a test can set up a practitioner without depending on firstfold_app's own grants. */
+/** Staff-side insert, so a test can set up a practitioner without depending on fynix_app's own grants. */
 async function insertPractitionerAsStaff(businessId: string, name: string, position: number): Promise<string> {
   const [row] = await dbs.staff.db
     .insert(practitioners)
@@ -108,7 +108,7 @@ beforeEach(async () => {
   await dbs.staff.db.insert(users).values([
     { id: OWNER_A, name: "Ana Diaz", email: "ana@example.com" },
     { id: OWNER_B, name: "Ben Ortiz", email: "ben@example.com" },
-    { id: STAFF_USER, name: "Sam Staff", email: "sam@firstfold.test" },
+    { id: STAFF_USER, name: "Sam Staff", email: "sam@fynix.test" },
   ]);
   const inserted = await dbs.staff.db
     .insert(businesses)
@@ -258,7 +258,7 @@ describe("practitioners for a tenant with appointments on", () => {
     expect(await as("ownerA", (tx) => tx.select().from(practitionerLeave))).toEqual([]);
   });
 
-  it("is denied to firstfold_public", async () => {
+  it("is denied to fynix_public", async () => {
     const message = await captureErrorText(dbs.publicRole.db.select().from(practitioners));
     expect(message).toMatch(/permission denied for table practitioners/);
   });
@@ -325,7 +325,7 @@ describe("reassigning an appointment to another practitioner", () => {
           .where(eq(appointments.id, id)),
       ),
     );
-    expect(message).toMatch(/(firstfold_app|webfold_app) may only change practitioner_id on a booked appointment that stays booked/);
+    expect(message).toMatch(/(fynix_app|fynix_app) may only change practitioner_id on a booked appointment that stays booked/);
   });
 
   it.each(["cancelled", "done"] as const)("refuses changing the practitioner of a %s appointment", async (status) => {
@@ -333,7 +333,7 @@ describe("reassigning an appointment to another practitioner", () => {
     const message = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ practitionerId: second }).where(eq(appointments.id, id))),
     );
-    expect(message).toMatch(/(firstfold_app|webfold_app) may only change practitioner_id on a booked appointment that stays booked/);
+    expect(message).toMatch(/(fynix_app|fynix_app) may only change practitioner_id on a booked appointment that stays booked/);
   });
 });
 

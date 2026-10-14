@@ -1,13 +1,13 @@
 import "server-only";
-import { createAppEmailTransport, emailBrandId, emailTeamInboxDefault, supportReplyAlertEmail, supportTicketAlertEmail, systemErrorAlertEmail, type EmailTransport } from "@firstfold/email";
-import { SUPPORT_CATEGORY_LABELS, SUPPORT_STATUS_LABELS, type SupportCategory } from "@firstfold/shared/lib/support";
-import type { Database } from "@firstfold/db";
-import { getSupportTicket } from "@firstfold/db";
+import { createAppEmailTransport, emailTeamInboxDefault, supportReplyAlertEmail, supportTicketAlertEmail, systemErrorAlertEmail, type EmailTransport } from "@fynix/email";
+import { SUPPORT_CATEGORY_LABELS, SUPPORT_STATUS_LABELS, type SupportCategory } from "@fynix/shared/lib/support";
+import type { Database } from "@fynix/db";
+import { getSupportTicket } from "@fynix/db";
 import { serverEnv } from "@/lib/server/env";
 import { getStaffDb } from "./db";
 
 function getAlertRecipient(): string {
-  return process.env.SUPPORT_ALERT_EMAIL?.trim() || process.env.FIRSTFOLD_TEAM_EMAIL?.trim() || emailTeamInboxDefault(emailBrandId());
+  return process.env.SUPPORT_ALERT_EMAIL?.trim() || process.env.FYNIX_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
 }
 
 /**

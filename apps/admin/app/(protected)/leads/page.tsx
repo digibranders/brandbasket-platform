@@ -1,11 +1,11 @@
-import { listLeads, type Lead, type LeadStatus } from "@firstfold/db";
+import { listLeads, type Lead, type LeadStatus } from "@fynix/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
-import { SearchIcon } from "@firstfold/shared/ui/icons";
-import { LEAD_STATUS_LABELS, LEAD_STATUS_ORDER } from "@firstfold/shared/lib/lead-status";
-import { displayPhone } from "@firstfold/shared/server/phone-display";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import { SearchIcon } from "@fynix/shared/ui/icons";
+import { LEAD_STATUS_LABELS, LEAD_STATUS_ORDER } from "@fynix/shared/lib/lead-status";
+import { displayPhone } from "@fynix/shared/server/phone-display";
 import { leadContactLine } from "@/lib/mask";
 import { Avatar } from "@/components/console/avatar";
 import { buttonPrimary } from "@/components/console/buttons";

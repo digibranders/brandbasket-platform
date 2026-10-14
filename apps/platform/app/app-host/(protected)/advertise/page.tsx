@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { brandText } from "@/lib/brand";
-import { requestBrand } from "@/lib/server/request-brand";
+
 import { EmailUs } from "@/components/panel/email-us";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import type { DirectoryAdMarket, DirectoryAdWin } from "@firstfold/db";
+import type { DirectoryAdMarket, DirectoryAdWin } from "@fynix/db";
 import {
   AD_MARKER,
   AD_PLACEMENTS,
@@ -16,11 +15,11 @@ import {
   formatRupees,
   marketLabel,
   parseAdPlacement,
-} from "@firstfold/shared/lib/directory/ads";
-import { siteConfig } from "@firstfold/shared/lib/site-config";
-import { displayPhone } from "@firstfold/shared/server/phone-display";
-import { Button, ButtonLink } from "@firstfold/shared/ui/panel/button";
-import { areaName } from "@firstfold/shared/lib/directory/places";
+} from "@fynix/shared/lib/directory/ads";
+import { siteConfig } from "@fynix/shared/lib/site-config";
+import { displayPhone } from "@fynix/shared/server/phone-display";
+import { Button, ButtonLink } from "@fynix/shared/ui/panel/button";
+import { areaName } from "@fynix/shared/lib/directory/places";
 import { AdResultsView } from "@/components/panel/advertise/ad-results";
 import type { AdPreviewData } from "@/components/panel/advertise/ad-preview";
 import { BidPanel } from "@/components/panel/advertise/bid-panel";
@@ -369,7 +368,6 @@ function Visits({ page }: { readonly page: AdvertisePage }): ReactElement | null
 /** Before the claim is approved there is nothing to bid on: say where it stands and what happens next. */
 async function ClaimWaiting({ page }: { readonly page: AdvertisePage }): Promise<ReactElement | null> {
   const claim = page.claim;
-  const brand = await requestBrand();
   if (claim === null) return null;
   if (claim.status === "pending" && claim.origin === "added") {
     return (
@@ -407,7 +405,7 @@ async function ClaimWaiting({ page }: { readonly page: AdvertisePage }): Promise
     return (
       <div className="mt-8 max-w-2xl space-y-2">
         <StatusLine tone="quiet">Your page isn&rsquo;t ready for ads yet</StatusLine>
-        <p className="text-sm text-ink-soft">{brandText("We’re still setting up your page on Firstfold Local. Ads open here as soon as it’s ready.", brand)}</p>
+        <p className="text-sm text-ink-soft">{"We’re still setting up your page on the local directory. Ads open here as soon as it’s ready."}</p>
       </div>
     );
   }

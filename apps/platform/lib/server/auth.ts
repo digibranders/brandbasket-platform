@@ -6,15 +6,14 @@ import {
   type Auth,
   type AuthConfig,
   type AuthMailer,
-} from "@firstfold/auth";
-import { confirmEmailEmail, passwordResetEmail, type EmailMessage } from "@firstfold/email";
+} from "@fynix/auth";
+import { confirmEmailEmail, passwordResetEmail, type EmailMessage } from "@fynix/email";
 import { confirmEmailPath, resetPasswordPath } from "@/lib/account-recovery-form";
 import { getAppDb } from "./db";
 import { customerEmailTransport } from "./email";
 import { serverEnv } from "@/lib/server/env";
 import { getPublicDb } from "./public-db";
-import { currentAppOrigin, currentBrand } from "./request-brand";
-import { readLocalBusinessOrigin } from "@/lib/surfaces";
+import { currentAppOrigin } from "./request-brand";
 
 // Module-scoped rather than on globalThis (unlike the DB pools in ./db): a hot reload re-evaluates
 // this module and picks up config changes, whereas globalThis would keep serving the stale instance.
@@ -33,7 +32,6 @@ function accountMailer(): AuthMailer {
           to: email,
           resetUrl: new URL(resetPasswordPath(token), await currentAppOrigin()).toString(),
           expiresInMinutes: PASSWORD_RESET_LIFETIME_SECONDS / 60,
-          brandName: (await currentBrand()).name,
         }),
       );
     },
@@ -43,7 +41,6 @@ function accountMailer(): AuthMailer {
           to: email,
           confirmUrl: new URL(confirmEmailPath(token), await currentAppOrigin()).toString(),
           expiresInDays: EMAIL_CONFIRMATION_LIFETIME_SECONDS / (60 * 60 * 24),
-          brandName: (await currentBrand()).name,
         }),
       );
     },
@@ -53,11 +50,9 @@ function accountMailer(): AuthMailer {
 /** One source of configuration for the session auth and request-local reset generation. */
 function configuredAuth(mailer: AuthMailer, nextCookies: boolean): Auth {
   const env = serverEnv();
-  // The Fynix host (when there is one) is this dashboard under another name, so a request from it is a trusted one.
-  const localBusiness = readLocalBusinessOrigin(process.env);
   const config: AuthConfig = {
     db: getAppDb(), secret: env.BETTER_AUTH_SECRET, baseURL: env.APP_ORIGIN,
-    trustedOrigins: [env.APP_ORIGIN, env.ADMIN_ORIGIN, ...(localBusiness === undefined ? [] : [localBusiness])], nextCookies, mailer,
+    trustedOrigins: [env.APP_ORIGIN, env.ADMIN_ORIGIN], nextCookies, mailer,
   };
   return createAuth(config);
 }
@@ -68,14 +63,12 @@ function configuredAuth(mailer: AuthMailer, nextCookies: boolean): Auth {
  */
 export async function generatePasswordResetEmail(email: string): Promise<EmailMessage | null> {
   const appOrigin = await currentAppOrigin();
-  const brandName = (await currentBrand()).name;
   const captured: { message: EmailMessage | null } = { message: null };
   const resetAuth = configuredAuth({
     sendPasswordReset: async ({ email: recipient, token }) => {
       captured.message = passwordResetEmail({
         to: recipient, resetUrl: new URL(resetPasswordPath(token), appOrigin).toString(),
         expiresInMinutes: PASSWORD_RESET_LIFETIME_SECONDS / 60,
-        brandName: brandName,
       });
     },
     sendEmailConfirmation: async () => {

@@ -10,22 +10,22 @@ importers:
 
   apps/admin:
     dependencies:
-      '@firstfold/auth':
+      '@fynix/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@firstfold/billing':
+      '@fynix/billing':
         specifier: workspace:*
         version: link:../../packages/billing
-      '@firstfold/cms':
+      '@fynix/cms':
         specifier: workspace:*
         version: link:../../packages/cms
-      '@firstfold/db':
+      '@fynix/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@firstfold/email':
+      '@fynix/email':
         specifier: workspace:*
         version: link:../../packages/email
-      '@firstfold/shared':
+      '@fynix/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@lexical/link':
@@ -116,22 +116,22 @@ importers:
 
   apps/platform:
     dependencies:
-      '@firstfold/auth':
+      '@fynix/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@firstfold/billing':
+      '@fynix/billing':
         specifier: workspace:*
         version: link:../../packages/billing
-      '@firstfold/cms':
+      '@fynix/cms':
         specifier: workspace:*
         version: link:../../packages/cms
-      '@firstfold/db':
+      '@fynix/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@firstfold/email':
+      '@fynix/email':
         specifier: workspace:*
         version: link:../../packages/email
-      '@firstfold/shared':
+      '@fynix/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@lexical/link':
@@ -231,7 +231,7 @@ importers:
 
   packages/auth:
     dependencies:
-      '@firstfold/db':
+      '@fynix/db':
         specifier: workspace:*
         version: link:../db
       better-auth:
@@ -259,7 +259,7 @@ importers:
 
   packages/billing:
     dependencies:
-      '@firstfold/db':
+      '@fynix/db':
         specifier: workspace:*
         version: link:../db
       razorpay:
@@ -340,7 +340,7 @@ importers:
 
   packages/email:
     dependencies:
-      '@firstfold/db':
+      '@fynix/db':
         specifier: workspace:*
         version: link:../db
     devDependencies:
@@ -359,10 +359,10 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1147.0
         version: 3.1147.0
-      '@firstfold/billing':
+      '@fynix/billing':
         specifier: workspace:*
         version: link:../billing
-      '@firstfold/db':
+      '@fynix/db':
         specifier: workspace:*
         version: link:../db
       '@pdf-lib/fontkit':

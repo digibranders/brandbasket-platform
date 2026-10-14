@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useState, type ReactElement } from "react";
-import { EyeIcon, EyeOffIcon } from "@firstfold/shared/ui/icons";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import { EyeIcon, EyeOffIcon } from "@fynix/shared/ui/icons";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { initialChangePasswordState, initialRevokeOtherSessionsState, type ChangePasswordFormState, type RevokeOtherSessionsState } from "@/lib/account-settings-form";
 import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
 

@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
-import type { PatientFilter } from "@firstfold/db";
-import { PATIENT_SEARCH_MAX_LENGTH } from "@firstfold/shared/lib/patients/limits";
-import { Button } from "@firstfold/shared/ui/panel/button";
+import type { PatientFilter } from "@fynix/db";
+import { PATIENT_SEARCH_MAX_LENGTH } from "@fynix/shared/lib/patients/limits";
+import { Button } from "@fynix/shared/ui/panel/button";
 
 interface PatientSearchFormProps {
   /** The search in force, shown back in the box. */

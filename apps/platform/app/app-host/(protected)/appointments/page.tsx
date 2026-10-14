@@ -13,11 +13,11 @@ import {
   markAppointmentSeen,
   withTenantScope,
   type AppointmentRow,
-} from "@firstfold/db";
-import { slotLabel } from "@firstfold/shared/lib/appointments/slots";
-import { addDays, localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import { displayPhoneText } from "@firstfold/shared/server/phone-display";
-import { cn } from "@firstfold/shared/lib/cn";
+} from "@fynix/db";
+import { slotLabel } from "@fynix/shared/lib/appointments/slots";
+import { addDays, localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { displayPhoneText } from "@fynix/shared/server/phone-display";
+import { cn } from "@fynix/shared/lib/cn";
 import { AppointmentsDayColumns } from "@/components/panel/appointments/appointments-day-columns";
 import { AppointmentsGrid } from "@/components/panel/appointments/appointments-grid";
 import { AppointmentsList } from "@/components/panel/appointments/appointments-list";

@@ -1,4 +1,4 @@
-import { INDIA_STATES } from "@firstfold/db/india-states";
+import { INDIA_STATES } from "@fynix/db/india-states";
 import { describe, expect, it } from "vitest";
 import { gstStateCodeOf, stateCodeOfGstCode, UnknownStateError } from "./gst-states";
 
@@ -9,7 +9,7 @@ describe("GST state codes", () => {
     expect(new Set(codes).size).toBe(36);
   });
 
-  it("maps the codes Firstfold deals with most", () => {
+  it("maps the codes Fynix deals with most", () => {
     expect(gstStateCodeOf("mh")).toBe("27");
     expect(gstStateCodeOf("ka")).toBe("29");
     expect(gstStateCodeOf("dh")).toBe("26");

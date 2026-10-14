@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     ...actual,
     consumeRateLimit: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock("@firstfold/db", async () => {
     findPlanById: vi.fn(),
   };
 });
-vi.mock("@firstfold/shared/server/plan-upgrade", () => ({
+vi.mock("@fynix/shared/server/plan-upgrade", () => ({
   assessUpgrade: vi.fn(),
   readAssessmentInput: vi.fn(),
   startUpgrade: vi.fn(),
@@ -23,8 +23,8 @@ vi.mock("./db", () => ({ getAppDb: () => ({ name: "app-db" }), getStaffDb: () =>
 vi.mock("./discount-plans", () => ({ ensureDiscountPlan: vi.fn() }));
 vi.mock("./charges", () => ({ startCustomerChargePayment: vi.fn() }));
 
-import { consumeRateLimit, findLatestSubscriptionForBusiness, findPlanById, findPlanUpgradeByCharge, findPlanUpgradeInFlight } from "@firstfold/db";
-import { assessUpgrade, finishUpgradeAtProvider, readAssessmentInput, startUpgrade } from "@firstfold/shared/server/plan-upgrade";
+import { consumeRateLimit, findLatestSubscriptionForBusiness, findPlanById, findPlanUpgradeByCharge, findPlanUpgradeInFlight } from "@fynix/db";
+import { assessUpgrade, finishUpgradeAtProvider, readAssessmentInput, startUpgrade } from "@fynix/shared/server/plan-upgrade";
 import { startCustomerChargePayment } from "./charges";
 import { startUpgradeFor, readUpgradePage } from "./plan-upgrade";
 import { finishUpgrade, finishUpgradeForCharge } from "./plan-upgrade-finish";

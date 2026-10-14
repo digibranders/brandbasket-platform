@@ -1,8 +1,8 @@
-import { indianDate } from "@firstfold/billing";
-import type { MissingTaxInvoice } from "@firstfold/db";
-import { adjacentMonth, monthRange, type RegisterInvoice, type RegisterTotals } from "@firstfold/shared/lib/billing/invoice-register";
-import { stateName } from "@firstfold/shared/lib/directory/india-states";
-import { formatStoredDate } from "@firstfold/shared/lib/format";
+import { indianDate } from "@fynix/billing";
+import type { MissingTaxInvoice } from "@fynix/db";
+import { adjacentMonth, monthRange, type RegisterInvoice, type RegisterTotals } from "@fynix/shared/lib/billing/invoice-register";
+import { stateName } from "@fynix/shared/lib/directory/india-states";
+import { formatStoredDate } from "@fynix/shared/lib/format";
 import { missingInvoiceRow } from "@/lib/tax-invoice-rows";
 
 /**

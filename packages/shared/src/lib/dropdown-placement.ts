@@ -2,7 +2,7 @@
  * Where a dropdown's list goes, kept apart from the component so it can be tested. The list is fixed to the window,
  * so it is placed from the trigger's on-screen box: below it by default, above it when the list would otherwise run
  * past the bottom and there is more room above, and always inside the window with a small margin. Mirrors
- * firstfold-website/lib/dropdown-placement.ts.
+ * fynix-website/lib/dropdown-placement.ts.
  */
 
 export const DROPDOWN_LIMITS = {

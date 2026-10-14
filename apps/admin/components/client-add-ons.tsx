@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
 import { buttonDanger, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, hintClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";

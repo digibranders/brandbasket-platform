@@ -1,7 +1,7 @@
 /*
  * India's states and union territories by their ISO 3166-2:IN code, lower-cased: the second segment of every
  * directory URL (/in/mh/..., /in/wb/...). Codes follow the 2023 ISO update (od, tg, cg, uk, dh). The implementation
- * lives in @firstfold/db (shared depends on db, so db cannot import it from here); @firstfold/shared re-exports it. The
+ * lives in @fynix/db (shared depends on db, so db cannot import it from here); @fynix/shared re-exports it. The
  * website keeps a copy (website-listing lib/india-states.ts); the two test files hold the same vectors so the copies
  * stay in step. Pure and browser-safe.
  */

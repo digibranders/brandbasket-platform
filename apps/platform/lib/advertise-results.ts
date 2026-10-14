@@ -1,4 +1,4 @@
-import type { AdDayCount, DirectoryAdPlacement } from "@firstfold/db";
+import type { AdDayCount, DirectoryAdPlacement } from "@fynix/db";
 
 /*
  * Who saw and clicked an advertiser's ads, worked out from the platform's daily counts (directory_ad_daily_counts).

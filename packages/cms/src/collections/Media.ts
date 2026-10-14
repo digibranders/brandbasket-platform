@@ -31,7 +31,7 @@ import type { CollectionConfig } from "payload";
  * `GET /api/media/file/<filename>` returned the raw image bytes — all with zero authentication.
  *
  * The fix: nobody is ever supposed to reach Payload's REST/GraphQL HTTP API at all (see this plan's Architecture
- * note — the admin and the customer both only ever use Firstfold's own screens, which talk to Payload's *Local API*
+ * note — the admin and the customer both only ever use Fynix Digital's own screens, which talk to Payload's *Local API*
  * from trusted server code, after that code's own `requireCustomerAccess`/`requireStaffAccess`/`requireBillingAccess`
  * check). The Local API's `overrideAccess: true` parameter bypasses a collection's `access` functions entirely —
  * and critically, `overrideAccess` is a **Local-API-only** parameter; no REST or GraphQL request can ever set it.

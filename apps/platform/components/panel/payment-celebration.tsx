@@ -3,8 +3,8 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useSyncExternalStore, type ReactElement } from "react";
 import { createPortal } from "react-dom";
-import { CrownIcon, HeartIcon, TickIcon } from "@firstfold/shared/ui/icons";
-import { Button } from "@firstfold/shared/ui/panel/button";
+import { CrownIcon, HeartIcon, TickIcon } from "@fynix/shared/ui/icons";
+import { Button } from "@fynix/shared/ui/panel/button";
 import { useBrand } from "@/components/panel/brand-provider";
 import { firePoppers } from "@/components/panel/fire-poppers";
 import { wantsWelcome, withoutWelcome } from "@/lib/celebration";
@@ -18,8 +18,8 @@ const WORDS: Readonly<Record<MembershipTier, string>> = { care: "Care", premium:
 
 /** What each plan holds, in the order the sign-up page lists it: the list the pop-up ticks off. */
 const HOLDS: Readonly<Record<MembershipTier, readonly string[]>> = {
-  care: ["Free listing", "Website"],
-  premium: ["Free listing", "Website", "Social media"],
+  care: ["Free listing", "Website", "Hosting and upkeep", "OyeChats chatbot"],
+  premium: ["Free listing", "Website", "Hosting and upkeep", "OyeChats chatbot", "Appointments", "Social media and ads"],
 };
 
 /** What a plan holds under a brand: without "Free listing" where the brand does not sell the listing. */
@@ -32,9 +32,9 @@ function holdsFor(tier: MembershipTier, showsListing: boolean): readonly string[
  * turn. Switched off for anyone who asked their device for less motion: everything is simply there.
  */
 const KEYFRAMES = `
-@keyframes ff-unfold { from { transform: rotateX(-92deg); opacity: 0; } to { transform: rotateX(0); opacity: 1; } }
-@keyframes ff-pop { from { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } to { transform: scale(1); opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .ff-anim { animation: none !important; opacity: 1 !important; transform: none !important; } }
+@keyframes fy-unfold { from { transform: rotateX(-92deg); opacity: 0; } to { transform: rotateX(0); opacity: 1; } }
+@keyframes fy-pop { from { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .fy-anim { animation: none !important; opacity: 1 !important; transform: none !important; } }
 `;
 
 const EASE = "cubic-bezier(0.22,1,0.36,1)";
@@ -110,22 +110,22 @@ export function PaymentCelebration({ tier }: PaymentCelebrationProps): ReactElem
           className="pointer-events-auto relative my-auto w-full max-w-md overflow-hidden rounded-shell bg-paper shadow-[0_30px_80px_-30px_rgba(42,13,16,0.55)] outline-none [perspective:900px]"
         >
           <div
-            className="ff-anim bg-dark-surface px-8 py-8 text-center text-paper"
-            style={{ animation: `ff-unfold 0.7s ${EASE} both`, transformOrigin: "top" }}
+            className="fy-anim bg-dark-surface px-8 py-8 text-center text-paper"
+            style={{ animation: `fy-unfold 0.7s ${EASE} both`, transformOrigin: "top" }}
           >
             {tier === "premium" ? <CrownIcon className="mx-auto size-8 fill-gold/40 text-gold" /> : <HeartIcon className="mx-auto size-8 text-paper" />}
             <h2 id="payment-celebration-title" className="heading-display mt-3 text-4xl [&_em]:text-amber">
               Welcome to <em>{WORDS[tier]}.</em>
             </h2>
           </div>
-          <div className="ff-anim px-8 py-6" style={{ animation: `ff-unfold 0.7s ${EASE} both`, animationDelay: "0.35s", transformOrigin: "top" }}>
+          <div className="fy-anim px-8 py-6" style={{ animation: `fy-unfold 0.7s ${EASE} both`, animationDelay: "0.35s", transformOrigin: "top" }}>
             <p className="text-sm text-ink-soft">Now yours</p>
             <ul className="mt-3 divide-y divide-line border-y border-line">
               {holds.map((item, index) => (
                 <li key={item} className="flex items-center gap-4 py-3">
                   <span
-                    className="ff-anim grid size-7 shrink-0 place-items-center rounded-full bg-success text-paper"
-                    style={{ animation: `ff-pop 0.5s ${EASE} both`, animationDelay: `${String(0.8 + index * 0.25)}s` }}
+                    className="fy-anim grid size-7 shrink-0 place-items-center rounded-full bg-success text-paper"
+                    style={{ animation: `fy-pop 0.5s ${EASE} both`, animationDelay: `${String(0.8 + index * 0.25)}s` }}
                   >
                     <TickIcon className="size-4" />
                   </span>

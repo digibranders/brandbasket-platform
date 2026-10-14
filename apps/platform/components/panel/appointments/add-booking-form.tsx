@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactElement } from "react";
-import { PHONE_COUNTRY_FIELD, type PhoneCountryOption } from "@firstfold/shared/lib/phone/fields";
+import { PHONE_COUNTRY_FIELD, type PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
 import {
   BOOKING_DATE_FIELD,
   BOOKING_DOCTOR_FIELD,
@@ -10,13 +10,13 @@ import {
   PATIENT_ID_FIELD,
   PATIENT_NAME_FIELD,
   PATIENT_PHONE_FIELD,
-} from "@firstfold/shared/lib/patients/fields";
-import { PATIENT_NAME_MAX_LENGTH } from "@firstfold/shared/lib/patients/limits";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
-import { PhoneField } from "@firstfold/shared/ui/phone-field";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+} from "@fynix/shared/lib/patients/fields";
+import { PATIENT_NAME_MAX_LENGTH } from "@fynix/shared/lib/patients/limits";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { PhoneField } from "@fynix/shared/ui/phone-field";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 export interface AddBookingService {

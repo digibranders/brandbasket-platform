@@ -1,19 +1,19 @@
-import type { CurrentPaymentMethod } from "@firstfold/db";
-import { brandedPlanName, supportEmailOf } from "@/lib/brand";
+import type { CurrentPaymentMethod } from "@fynix/db";
+import { supportEmailOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { EmailUs } from "@/components/panel/email-us";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
-import { SectionHeading, Surface } from "@firstfold/shared/ui/panel/surface";
-import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF } from "@firstfold/shared/lib/billing/payment-step";
-import { paymentReturnView, readPaymentReturn } from "@firstfold/shared/lib/billing/payment-return";
-import { planLabel } from "@firstfold/shared/lib/billing/receipt-title";
-import { describePlanTerms, monthlyPaymentAmount } from "@firstfold/shared/lib/billing/terms";
-import { firstIncompleteStep, onboardingStepHref } from "@firstfold/shared/lib/onboarding/steps";
-import { LocalDate } from "@firstfold/shared/ui/panel/local-date-time";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { SectionHeading, Surface } from "@fynix/shared/ui/panel/surface";
+import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF } from "@fynix/shared/lib/billing/payment-step";
+import { paymentReturnView, readPaymentReturn } from "@fynix/shared/lib/billing/payment-return";
+import { planLabel } from "@fynix/shared/lib/billing/receipt-title";
+import { describePlanTerms, monthlyPaymentAmount } from "@fynix/shared/lib/billing/terms";
+import { firstIncompleteStep, onboardingStepHref } from "@fynix/shared/lib/onboarding/steps";
+import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
 import { BillingDetails } from "@/components/panel/billing/billing-details";
 import { MonthlyBilling } from "@/components/panel/billing/monthly-billing";
 import { PaymentWaiting } from "@/components/panel/payment-waiting";
@@ -257,7 +257,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
           />
         ) : lapsed && reactivationPlan !== null ? (
           <ReactivatePlan
-            planName={planLabel(brandedPlanName(reactivationPlan.name, brand))}
+            planName={planLabel(reactivationPlan.name)}
             monthlyAmount={monthlyPaymentAmount(reactivationPlan)}
             priceNote={priceNote(reactivationPlan, 0)}
             action={reactivateAction}

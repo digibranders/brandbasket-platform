@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactElement, ReactNode } from "react";
-import { findNominee } from "@firstfold/db";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
-import { SectionHeading, Surface } from "@firstfold/shared/ui/panel/surface";
-import { displayPhone } from "@firstfold/shared/server/phone-display";
+import { findNominee } from "@fynix/db";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { SectionHeading, Surface } from "@fynix/shared/ui/panel/surface";
+import { displayPhone } from "@fynix/shared/server/phone-display";
 import { NomineeForm } from "@/components/panel/nominee-form";
 import { legalLinksFor } from "@/lib/legal-links";
 import { supportEmailOf } from "@/lib/brand";

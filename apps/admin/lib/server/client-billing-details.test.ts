@@ -1,9 +1,9 @@
-import type { BillingProfile } from "@firstfold/db";
+import type { BillingProfile } from "@fynix/db";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/shared/server/phone-countries", () => ({ phoneCountryOptions: () => [{ code: "IN" }] }));
-vi.mock("@firstfold/shared/server/phone-defaults", () => ({
+vi.mock("@fynix/shared/server/phone-countries", () => ({ phoneCountryOptions: () => [{ code: "IN" }] }));
+vi.mock("@fynix/shared/server/phone-defaults", () => ({
   savedPhoneStart: (saved: string | null) => (saved === null ? { country: null, number: "" } : { country: "IN", number: "98765 43210" }),
 }));
 

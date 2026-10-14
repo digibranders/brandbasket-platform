@@ -8,13 +8,13 @@ import {
   listPractitioners,
   withTenantScope,
   type AppointmentRow,
-} from "@firstfold/db";
-import { localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import { FALLBACK_PHONE_COUNTRY } from "@firstfold/shared/lib/phone/fields";
-import { phoneCountryOptions } from "@firstfold/shared/server/phone-countries";
-import { savedPhoneStart } from "@firstfold/shared/server/phone-defaults";
-import { displayPhoneText } from "@firstfold/shared/server/phone-display";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+} from "@fynix/db";
+import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { FALLBACK_PHONE_COUNTRY } from "@fynix/shared/lib/phone/fields";
+import { phoneCountryOptions } from "@fynix/shared/server/phone-countries";
+import { savedPhoneStart } from "@fynix/shared/server/phone-defaults";
+import { displayPhoneText } from "@fynix/shared/server/phone-display";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { PatientDeleteForm } from "@/components/panel/patients/patient-delete-form";
 import { PatientEditForm } from "@/components/panel/patients/patient-edit-form";
 import { PatientBookingLink, PatientHistory } from "@/components/panel/patients/patient-history";

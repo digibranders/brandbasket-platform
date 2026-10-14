@@ -1,4 +1,4 @@
-import { PAYMENT_RECEIVED_HREF, PAYMENT_STEP_HREF, reactivationReturnHref } from "@firstfold/shared/lib/billing/payment-step";
+import { PAYMENT_RECEIVED_HREF, PAYMENT_STEP_HREF, reactivationReturnHref } from "@fynix/shared/lib/billing/payment-step";
 import { membershipFailedHref, membershipReceivedHref, type MembershipTier } from "@/lib/membership";
 
 /** The pay page marks its Razorpay callback address with this when the payment is a reactivation. */

@@ -1,10 +1,10 @@
-import type { GeoAdminArea, GeoAdminCategory, GeoAdminDistrict } from "@firstfold/db";
-import { INDIA_STATES } from "@firstfold/db/india-states";
-import { LockIcon } from "@firstfold/shared/ui/icons";
+import type { GeoAdminArea, GeoAdminCategory, GeoAdminDistrict } from "@fynix/db";
+import { INDIA_STATES } from "@fynix/db/india-states";
+import { LockIcon } from "@fynix/shared/ui/icons";
 import type { ReactElement, ReactNode } from "react";
-import { cn } from "@firstfold/shared/lib/cn";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+import { cn } from "@fynix/shared/lib/cn";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import { checkboxClasses, fieldClasses } from "@/components/console/field-styles";
 import { StatusDot } from "@/components/console/status-dot";
 import { GeoForm, GeoPointFields } from "@/components/geo-form";

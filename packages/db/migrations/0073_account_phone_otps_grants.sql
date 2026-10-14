@@ -2,10 +2,10 @@
 -- attempted, used up and purged by the sign-up and password-reset pages on the staff connection, because whoever asks
 -- for a code has no session yet. The customer and public roles get nothing.
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON account_otps TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON account_otps TO fynix_staff;
 --> statement-breakpoint
 
 ALTER TABLE account_otps ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY account_otps_staff_all ON account_otps FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY account_otps_staff_all ON account_otps FOR ALL TO fynix_staff USING (true) WITH CHECK (true);

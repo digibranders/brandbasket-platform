@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { brandedLabel, featureShownTo } from "@/lib/brand";
+import { featureShownTo } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { UPGRADE_PATH } from "@/lib/membership";
 import { CARE_INCLUDES, premiumOnlyFeatures } from "@/lib/plan-features";
@@ -15,7 +15,7 @@ export async function CareIncludes(): Promise<ReactElement> {
   const premiumAdds = premiumOnlyFeatures()
     .filter((feature) => featureShownTo(feature.id, brand))
     .slice(0, 4)
-    .map((feature) => brandedLabel(feature.label, brand).toLowerCase());
+    .map((feature) => feature.label.toLowerCase());
   return (
     <section aria-labelledby="care-includes-heading" className="mt-10">
       <h2 id="care-includes-heading" className="panel-section">

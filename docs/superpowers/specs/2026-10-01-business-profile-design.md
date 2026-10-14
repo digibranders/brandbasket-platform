@@ -81,7 +81,7 @@ The owner picks:
 2. **Area**: one searchable list across the district, each shown with its town ("Naupada · Thane").
 3. **Category**: searchable.
 
-As they pick, the line "Where you'll be listed: `firstfold.io/in/mh/thane/{area}/{category}`" fills in.
+As they pick, the line "Where you'll be listed: `fynix.digital/in/mh/thane/{area}/{category}`" fills in.
 
 - Details must be saved first, because a listing needs the name, address and phone. Otherwise the tab says "Fill in Details first".
 - The first save creates the added claim and generates the **Business ID** (`newPlatformPlaceId()`: 7 characters, starts with a digit), stored in `directory_claims.place_id`.
@@ -128,7 +128,7 @@ Migration 0075 adds the following (it collides with `directory-ads` 0075–0078 
   | `created_at`, `updated_at` | | |
 
 - **Grants** (0076), following the pattern of 0070:
-  - the customer (`webfold_app`) reads its own row through RLS
+  - the customer (`fynix_app`) reads its own row through RLS
   - every write goes through the staff connection after the platform has checked the customer
 
 The profile is the single home of the Details fields. When a claim exists, saving Details also updates the claim's copies (`business_name`, `street_address`, `phone`, `website_url`) and `businesses.name`, in the same transaction. The directory feed reads the claim.

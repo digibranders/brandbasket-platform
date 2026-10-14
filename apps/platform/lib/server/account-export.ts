@@ -1,4 +1,3 @@
-import { deploymentBrandId } from "@firstfold/shared/lib/deployment-brand";
 import "server-only";
 import {
   getSupportTicket,
@@ -8,8 +7,8 @@ import {
   readExportedAccount,
   readExportedBusiness,
   type Database,
-} from "@firstfold/db";
-import { DATA_RECIPIENTS } from "@firstfold/shared/lib/privacy/recipients";
+} from "@fynix/db";
+import { DATA_RECIPIENTS } from "@fynix/shared/lib/privacy/recipients";
 
 /**
  * The file an owner downloads from Settings, Privacy (DPDP Act s.11: a summary of the personal data held, and who it has
@@ -17,16 +16,11 @@ import { DATA_RECIPIENTS } from "@firstfold/shared/lib/privacy/recipients";
  * session's own ids, never from the request; support requests are read under the owner's own scope.
  */
 
-export const ACCOUNT_EXPORT_FORMAT = "firstfold-account-export/1";
-
-/** The format name the file carries: Firstfold's above, or "fynix-account-export/1" on a Fynix server. */
-export function accountExportFormat(env: Readonly<Record<string, string | undefined>> = process.env): string {
-  return `${deploymentBrandId(env)}-account-export/1`;
-}
+export const ACCOUNT_EXPORT_FORMAT = "fynix-account-export/1";
 
 /** What the download is saved as: "fynix-my-data-2026-11-01.json". */
-export function accountExportFilename(day: string, env: Readonly<Record<string, string | undefined>> = process.env): string {
-  return `${deploymentBrandId(env)}-my-data-${day}.json`;
+export function accountExportFilename(day: string): string {
+  return `fynix-my-data-${day}.json`;
 }
 /** The support list's own page size limit is 25; the export pages through it up to this many requests. */
 const SUPPORT_PAGE_SIZE = 25;
@@ -80,7 +74,7 @@ export async function buildAccountExport(dbs: AccountExportDatabases, input: Acc
   );
 
   return {
-    format: accountExportFormat(),
+    format: ACCOUNT_EXPORT_FORMAT,
     generatedAt: now.toISOString(),
     account:
       account === null

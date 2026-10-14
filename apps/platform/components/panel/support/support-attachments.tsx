@@ -2,8 +2,8 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactElement } from "react";
 import { z } from "zod";
-import { SUPPORT_ATTACHMENT_LIMIT, SUPPORT_ATTACHMENT_MAX_BYTES } from "@firstfold/shared/lib/support";
-import { PhotoIcon } from "@firstfold/shared/ui/icons";
+import { SUPPORT_ATTACHMENT_LIMIT, SUPPORT_ATTACHMENT_MAX_BYTES } from "@fynix/shared/lib/support";
+import { PhotoIcon } from "@fynix/shared/ui/icons";
 
 export interface SupportAttachmentsHandle {
   readonly addFiles: (files: readonly File[] | FileList) => void;

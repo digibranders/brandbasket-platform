@@ -1,5 +1,5 @@
 import "server-only";
-import { errorLogInfo, type SafeErrorLog } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo, type SafeErrorLog } from "@fynix/shared/server/error-log-info";
 
 /** What is safe to log about a failure in the booking OTP flow -- never the error's own message, since Drizzle's
  * DrizzleQueryError puts the failed query's params (the patient's name, phone, note...) straight into its message.

@@ -19,7 +19,7 @@ export const userPrivacySettings = pgTable(
       .primaryKey()
       .references(() => users.id, { onDelete: "cascade" }),
     nomineeName: text("nominee_name").notNull(),
-    /** The nominee's mobile number, E.164: how to reach them. Firstfold holds no email addresses, so a number is the only contact. */
+    /** The nominee's mobile number, E.164: how to reach them. Fynix holds no email addresses, so a number is the only contact. */
     nomineePhone: text("nominee_phone").notNull(),
     updatedAt: updatedAt(),
   },

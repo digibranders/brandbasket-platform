@@ -6,7 +6,7 @@ import {
   setDirectoryTrusted,
   trustDirectoryBusiness,
   upsertDirectoryVerification,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,8 +37,8 @@ import {
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     ...actual,
     saveListingPlacement: vi.fn(),
@@ -129,7 +129,7 @@ describe("changeWebAddressAction", () => {
   });
 
   it("changes the address as the signed-in staff member and refreshes the pages that show it", async () => {
-    const changed = { status: "changed", url: "https://firstfold.io/in/mh/thane/business/smile-dental-care/k7m2q9a" } as const;
+    const changed = { status: "changed", url: "https://fynix.digital/in/mh/thane/business/smile-dental-care/k7m2q9a" } as const;
     vi.mocked(changeWebAddress).mockResolvedValue(changed);
     const data = form(POSTED);
     expect(await changeWebAddressAction(IDLE, data)).toEqual(changed);

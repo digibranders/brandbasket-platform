@@ -50,7 +50,7 @@ async function main(): Promise<void> {
   }
 
   loadLocalEnv();
-  // The import runs as firstfold_staff, the only role that may write the table (0085).
+  // The import runs as fynix_staff, the only role that may write the table (0085).
   const { db, close } = createDatabase(requireEnv("DATABASE_URL_STAFF"), { max: 1 });
   try {
     const written = await upsertPincodes(db, records, new Date());

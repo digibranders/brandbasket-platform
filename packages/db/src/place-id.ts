@@ -6,9 +6,9 @@ import { createHmac, randomBytes } from "node:crypto";
  * always with a digit, so it never spells a word. Open-data ids (issued by the dataset build from the row's
  * Overture/OSM id) start with a letter; ids made here start with a digit, so the two sources can never collide.
  *
- * Lives in @firstfold/db rather than @firstfold/shared because shared depends on db (not the other way round) and
+ * Lives in @fynix/db rather than @fynix/shared because shared depends on db (not the other way round) and
  * the registry queries in db need it. Apps and the website import it through
- * @firstfold/shared/lib/directory/place-id, which re-exports this module via the @firstfold/db/place-id subpath.
+ * @fynix/shared/lib/directory/place-id, which re-exports this module via the @fynix/db/place-id subpath.
  */
 export const PLACE_ID_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz";
 export const PLACE_ID_LENGTH = 7;
@@ -75,7 +75,7 @@ export const DIRECTORY_URL_KEY_MIN_LENGTH = 32;
  * (website-listing lib/server/env.ts INTERIM_DIRECTORY_URL_KEY, user, 2026-10-05), so both build the same URLs until
  * the real key is set in both, together.
  */
-export const INTERIM_DIRECTORY_URL_KEY = "firstfold-interim-business-url-key-2026-10-05";
+export const INTERIM_DIRECTORY_URL_KEY = "fynix-interim-business-url-key-2026-10-05";
 const BUSINESS_URL_CODE_PATTERN = new RegExp(`^[${PLACE_ID_ALPHABET}]{${BUSINESS_URL_CODE_LENGTH}}$`);
 
 /**

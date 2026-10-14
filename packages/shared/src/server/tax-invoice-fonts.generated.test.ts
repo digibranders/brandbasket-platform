@@ -8,7 +8,6 @@ import {
   RUPEE_PATH,
   RUPEE_UNITS_PER_EM,
 } from "./tax-invoice-fonts.generated";
-import { WORDMARK_HEIGHT, WORDMARK_PATHS, WORDMARK_WIDTH } from "./tax-invoice-wordmark";
 
 const WEIGHTS = [
   ["regular", HANKEN_REGULAR],
@@ -51,14 +50,5 @@ describe("rupee sign", () => {
     expect(RUPEE_PATH.length).toBeGreaterThan(100);
     expect(RUPEE_ADVANCE).toBeGreaterThan(0);
     expect(RUPEE_UNITS_PER_EM).toBe(1000);
-  });
-});
-
-describe("wordmark", () => {
-  it("has the 14 paths of the approved design in its 811.3 by 180.2 view box", () => {
-    expect(WORDMARK_PATHS).toHaveLength(14);
-    expect(WORDMARK_WIDTH).toBe(811.3);
-    expect(WORDMARK_HEIGHT).toBe(180.2);
-    for (const path of WORDMARK_PATHS) expect(path).toMatch(/^M[-\d. ]/);
   });
 });

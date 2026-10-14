@@ -5,13 +5,11 @@ export interface WebsiteLiveInput {
   readonly to: string;
   readonly businessName: string;
   readonly websiteUrl: string;
-  /** What the email calls the product: the deployment's brand (PLATFORM_BRAND; Firstfold when unset) unless the dashboard is sold under another name. */
-  readonly brandName?: string;
 }
 
 /** Sent when staff mark a customer's project live: their website is now up at its real address. */
 export function websiteLiveEmail(input: WebsiteLiveInput): EmailMessage {
-  const brand = input.brandName ?? emailBrandName();
+  const brand = emailBrandName();
   const websiteUrl = assertWebUrl(input.websiteUrl, "websiteUrl");
   const intro = `${input.businessName} is live:`;
   const outro = "Ask for any change from your dashboard, any time.";

@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useMemo, useState, type ReactElement } from "react";
-import type { SupportTicket } from "@firstfold/db";
-import { canTransitionSupportStatus, SUPPORT_CATEGORIES, SUPPORT_PRIORITIES, SUPPORT_STATUSES, SUPPORT_STATUS_LABELS } from "@firstfold/shared/lib/support";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
+import type { SupportTicket } from "@fynix/db";
+import { canTransitionSupportStatus, SUPPORT_CATEGORIES, SUPPORT_PRIORITIES, SUPPORT_STATUSES, SUPPORT_STATUS_LABELS } from "@fynix/shared/lib/support";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
 import { STAFF_SUPPORT_CATEGORY_LABELS, STAFF_SUPPORT_INITIAL_STATE, type StaffSupportActionState } from "@/lib/support-admin-state";

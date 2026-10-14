@@ -1,16 +1,16 @@
 import Image from "next/image";
 import type { ReactElement, ReactNode } from "react";
-import type { BusinessFaq, BusinessProduct, BusinessService, DirectoryClaim, DirectoryProfile } from "@firstfold/db";
-import { WEEKDAYS } from "@firstfold/shared/lib/onboarding/business-fields";
-import type { OpeningHours } from "@firstfold/shared/lib/onboarding/hours";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { Button, ButtonLink, ExternalButtonLink } from "@firstfold/shared/ui/panel/button";
+import type { BusinessFaq, BusinessProduct, BusinessService, DirectoryClaim, DirectoryProfile } from "@fynix/db";
+import { WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
+import type { OpeningHours } from "@fynix/shared/lib/onboarding/hours";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { Button, ButtonLink, ExternalButtonLink } from "@fynix/shared/ui/panel/button";
 import { BusinessIdLine } from "@/components/panel/business/business-id-line";
 import { StatusLine } from "@/components/panel/status-line";
-import { brandText, type Brand } from "@/lib/brand";
+import { type Brand } from "@/lib/brand";
 import { profileHref } from "@/lib/business-profile-notices";
 import { CONTACT_OPTION_LABELS, PAYMENT_METHOD_LABELS } from "@/lib/business-profile-fields";
-import { pageTabLabel } from "@firstfold/shared/lib/directory/page-tabs";
+import { pageTabLabel } from "@fynix/shared/lib/directory/page-tabs";
 import { canPublish, isPublished, isTakenDown, missingForPublish, type ProfileState, type ProfileTabId } from "@/lib/business-profile";
 import { ownPictureHref } from "@/lib/photos-view";
 import { youtubeWatchUrl } from "@/lib/youtube-video";
@@ -34,7 +34,7 @@ interface ReviewTabProps {
   /** Numbers as the owner reads them. */
   readonly phoneText: string | null;
   readonly whatsappText: string | null;
-  /** The business's page on Firstfold Local, once it is live. */
+  /** The business's page on the local directory, once it is live. */
   readonly pageUrl: string | null;
   readonly supportEmail: string;
   /** The brand the dashboard is sold under: it names the directory the page goes live on. */
@@ -115,11 +115,11 @@ function Empty({ children }: { readonly children: ReactNode }): ReactElement {
 
 /** Where the business stands, and what Publish does or did. */
 function Standing({ props }: { readonly props: ReviewTabProps }): ReactElement {
-  const { state, claim, pageUrl, publishAction, supportEmail, brand } = props;
+  const { state, claim, pageUrl, publishAction, supportEmail } = props;
   if (isTakenDown(state)) {
     return (
       <div className="space-y-2">
-        <StatusLine tone="stopped">{brandText("Taken off Firstfold Local", brand)}</StatusLine>
+        <StatusLine tone="stopped">{"Taken off the local directory"}</StatusLine>
         <p className="text-sm text-ink-soft">
           Email us at{" "}
           <a href={`mailto:${supportEmail}`} className="link-underline text-ink">
@@ -152,7 +152,7 @@ function Standing({ props }: { readonly props: ReviewTabProps }): ReactElement {
   return (
     <div className="space-y-4">
       {missing.length === 0 ? (
-        <p className="text-sm text-ink-soft">{brandText("Your page goes live on Firstfold Local straight away, marked Claimed. You can keep changing your details after.", brand)}</p>
+        <p className="text-sm text-ink-soft">{"Your page goes live on the local directory straight away, marked Claimed. You can keep changing your details after."}</p>
       ) : (
         <p className="text-sm text-ink-soft">
           Before you publish, fill in{" "}

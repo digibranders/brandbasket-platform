@@ -1,9 +1,9 @@
 import "server-only";
-import { createDatabase, type Database } from "@firstfold/db";
+import { createDatabase, type Database } from "@fynix/db";
 import { serverEnv } from "@/lib/server/env";
 
 // Kept on globalThis so hot reloads in development reuse the pool instead of opening new ones.
-const holder = globalThis as typeof globalThis & { firstfoldAdminDb?: Database };
+const holder = globalThis as typeof globalThis & { fynixAdminDb?: Database };
 
 /**
  * The staff connection, and the only one this app has.
@@ -12,6 +12,6 @@ const holder = globalThis as typeof globalThis & { firstfoldAdminDb?: Database }
  * work, authorised by `requireStaffAccess`, and scoped by an explicit business id rather than row-level security.
  */
 export function getStaffDb(): Database {
-  holder.firstfoldAdminDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;
-  return holder.firstfoldAdminDb;
+  holder.fynixAdminDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;
+  return holder.fynixAdminDb;
 }

@@ -50,7 +50,7 @@ CREATE INDEX "appointments_business_id_patient_id_idx" ON "appointments" USING b
 -- here: the booking keeps what was typed as its own patient_name snapshot, and the register keeps the clinic's.
 --
 -- NOT SECURITY DEFINER, for the reason 0042 gives for app_module_enabled: it runs as the inserting role, which is
--- webfold_staff for every booking (webfold_app has no INSERT on appointments), and 0051 grants that role what this
+-- fynix_staff for every booking (fynix_app has no INSERT on appointments), and 0051 grants that role what this
 -- needs on patients. search_path is pinned so an unqualified name inside cannot be shadowed from pg_temp;
 -- gen_random_uuid() (v4, like 0044's backfill) because the database has no uuidv7 function and nothing orders
 -- patients by id.

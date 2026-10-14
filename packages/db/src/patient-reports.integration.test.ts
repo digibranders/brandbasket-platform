@@ -72,7 +72,7 @@ interface Seed {
 }
 
 /** Inserts a 30-minute booking straight on the staff connection, already in its final status: the guard trigger
- * only polices firstfold_app, and the report reads status, not how it got there. The link trigger still creates or
+ * only polices fynix_app, and the report reads status, not how it got there. The link trigger still creates or
  * finds the patient by phone. */
 async function seed(fields: Seed): Promise<void> {
   const [hour, minute] = fields.localStart.split(":").map(Number) as [number, number];
@@ -182,7 +182,7 @@ beforeEach(async () => {
   await dbs.staff.db.insert(users).values([
     { id: OWNER_A, name: "Ana Diaz", email: "ana@example.com" },
     { id: OWNER_B, name: "Ben Ortiz", email: "ben@example.com" },
-    { id: STAFF_USER, name: "Sam Staff", email: "sam@firstfold.test" },
+    { id: STAFF_USER, name: "Sam Staff", email: "sam@fynix.test" },
   ]);
   const inserted = await dbs.staff.db
     .insert(businesses)

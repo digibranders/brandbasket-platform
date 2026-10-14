@@ -1,8 +1,8 @@
-import { findEmail } from "@firstfold/db";
+import { findEmail } from "@fynix/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import { PageHeader } from "@/components/console/page-header";
 import { Section } from "@/components/console/section";
 import { getStaffDb } from "@/lib/server/db";

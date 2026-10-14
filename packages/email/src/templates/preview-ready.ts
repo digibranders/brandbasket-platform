@@ -5,13 +5,11 @@ export interface PreviewReadyInput {
   readonly to: string;
   readonly businessName: string;
   readonly previewUrl: string;
-  /** What the email calls the product: the deployment's brand (PLATFORM_BRAND; Firstfold when unset) unless the dashboard is sold under another name. */
-  readonly brandName?: string;
 }
 
 /** Sent when staff have a preview of the customer's website ready for them to look at. */
 export function previewReadyEmail(input: PreviewReadyInput): EmailMessage {
-  const brand = input.brandName ?? emailBrandName();
+  const brand = emailBrandName();
   const previewUrl = assertWebUrl(input.previewUrl, "previewUrl");
   const intro = `Your preview for ${input.businessName} is ready to look at:`;
   const outro = "Reply and tell us what to change, or let us know if it's ready to go live.";

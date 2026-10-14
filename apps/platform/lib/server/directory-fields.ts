@@ -1,7 +1,7 @@
 import "server-only";
-import type { ContributionConsent, DirectoryNamed } from "@firstfold/db";
-import { parsePhoneEntry, type PhoneEntry } from "@firstfold/shared/lib/validation/phone";
-import { cleanLine, cleanMultiline } from "@firstfold/shared/lib/validation/text";
+import type { ContributionConsent, DirectoryNamed } from "@fynix/db";
+import { parsePhoneEntry, type PhoneEntry } from "@fynix/shared/lib/validation/phone";
+import { cleanLine, cleanMultiline } from "@fynix/shared/lib/validation/text";
 import {
   COMMENT_TEXT_MAX_LENGTH,
   ENQUIRY_MESSAGE_MAX_LENGTH,
@@ -32,7 +32,7 @@ export const TOO_MANY_HIGHLIGHTS_MESSAGE = `Pick up to ${MAX_HIGHLIGHTS_PER_REVI
 export const MESSAGE_TOO_LONG_MESSAGE = `Keep your message to ${ENQUIRY_MESSAGE_MAX_LENGTH} characters.`;
 export const COMMENT_MISSING_MESSAGE = "Write your comment.";
 export const COMMENT_TOO_LONG_MESSAGE = `Keep your comment to ${COMMENT_TEXT_MAX_LENGTH} characters.`;
-/** Posting is for adults only (DPDP Act s.9: a child's data needs a parent's verifiable consent, which Firstfold does not collect). */
+/** Posting is for adults only (DPDP Act s.9: a child's data needs a parent's verifiable consent, which Fynix does not collect). */
 export const ADULT_REVIEW_MESSAGE = "Confirm you’re 18 or over to post a review.";
 export const ADULT_COMMENT_MESSAGE = "Confirm you’re 18 or over to post a comment.";
 /** For a value the website itself supplies (business name, labels, the kind of enquiry): the visitor cannot fix it,

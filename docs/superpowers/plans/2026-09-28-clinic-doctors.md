@@ -15,9 +15,9 @@ also reports which practitioners are free per slot. `bookSlot` picks the doctor 
 drizzle-kit 0.31, Postgres 14 with RLS, zod 4, Vitest.
 
 **Repos:**
-- Platform: worktree `/Users/siddiqueahmed/Desktop/AI/first-found/appointments-spec` (branch
-  `docs/appointments-module-spec`). Branch databases: `webfold_appt`, `webfold_appt_test`.
-- Client site: `/Users/siddiqueahmed/Desktop/AI/first-found/firstfold-test-client-site-appt` (branch `feat/appointments`).
+- Platform: worktree `/Users/siddiqueahmed/Desktop/AI/fynix-platform/appointments-spec` (branch
+  `docs/appointments-module-spec`). Branch databases: `fynix_appt`, `fynix_appt_test`.
+- Client site: `/Users/siddiqueahmed/Desktop/AI/fynix-platform/fynix-test-client-site-appt` (branch `feat/appointments`).
 
 **House rules:**
 - **Never commit or push.** The user commits only when they ask. Replace every "Commit" step with "leave uncommitted".
@@ -25,7 +25,7 @@ drizzle-kit 0.31, Postgres 14 with RLS, zod 4, Vitest.
 - Contract files (`apps/platform/lib/site-info.ts`, `apps/platform/lib/site-bookings.ts` and their copies in the client
   site `lib/`) are ADDITIVE ONLY and must stay byte-identical between the two repos.
 - Checks per task (platform): `pnpm --filter <pkg> exec vitest run <file>`; at the end `pnpm lint`, `pnpm typecheck`,
-  `pnpm test`, `pnpm --filter @firstfold/db test:integration`, `pnpm build`. Client site: `npm run lint`,
+  `pnpm test`, `pnpm --filter @fynix/db test:integration`, `pnpm build`. Client site: `npm run lint`,
   `npx tsc --noEmit`, `npx vitest run`, `npm run build`.
 
 ---
@@ -112,7 +112,7 @@ export const practitioners = pgTable(
   plus `index("appointments_business_id_starts_at_idx").on(table.businessId, table.startsAt)` (non-unique, keeps the
   busy-interval scans on an index). Update the doc comment above the index.
 
-- [ ] **Step 2: Generate.** `pnpm --filter @firstfold/db db:generate --name clinic_practitioners`. Expected: a new
+- [ ] **Step 2: Generate.** `pnpm --filter @fynix/db db:generate --name clinic_practitioners`. Expected: a new
   `0044_clinic_practitioners.sql` and `meta/0044_snapshot.json`.
 
 - [ ] **Step 3: Hand-edit the backfill into 0044.** drizzle-kit will emit `ADD COLUMN "practitioner_id" uuid NOT NULL`,
@@ -134,14 +134,14 @@ ALTER TABLE "appointments" ALTER COLUMN "practitioner_id" SET NOT NULL;
   but guard anyway: the NOT NULL step fails loudly, which is what we want.
 
 - [ ] **Step 4: Apply to the branch DBs.** `pnpm db:migrate` and `pnpm db:migrate:test` (both read `.env.local`;
-  confirm the URLs point at `webfold_appt` / `webfold_appt_test` before running). Expected: "migrations applied".
-  Then `psql -d webfold_appt -c "select count(*) from practitioners"` equals the number of rows in
+  confirm the URLs point at `fynix_appt` / `fynix_appt_test` before running). Expected: "migrations applied".
+  Then `psql -d fynix_appt -c "select count(*) from practitioners"` equals the number of rows in
   `appointment_settings`.
 
 ### Task 2: Grants and RLS (0045)
 
 **Files:** `packages/db/migrations/0045_clinic_practitioners_grants.sql` via
-`pnpm --filter @firstfold/db db:generate --custom --name clinic_practitioners_grants`.
+`pnpm --filter @fynix/db db:generate --custom --name clinic_practitioners_grants`.
 
 - [ ] **Step 1: Write the integration test first** in `packages/db/src/appointments.integration.test.ts` (or a new
   `practitioners.integration.test.ts` using the same setup helpers): as tenant A with the module on, can insert/list/
@@ -149,15 +149,15 @@ ALTER TABLE "appointments" ALTER COLUMN "practitioner_id" SET NOT NULL;
   `appointments.practitioner_id` to its own practitioner but the composite FK refuses tenant B's practitioner.
 - [ ] **Step 2: Run it**: fails (no grants).
 - [ ] **Step 3: Write 0045** in the exact style of 0042:
-  - `practitioners`: `GRANT SELECT, INSERT ON practitioners TO webfold_app`; `GRANT UPDATE (name, title,
-    photo_media_id, uses_clinic_hours, position, archived_at) ON practitioners TO webfold_app` (no delete: past
-    bookings point at it); `GRANT SELECT, INSERT, UPDATE ON practitioners TO webfold_staff`; enable RLS; tenant policy
+  - `practitioners`: `GRANT SELECT, INSERT ON practitioners TO fynix_app`; `GRANT UPDATE (name, title,
+    photo_media_id, uses_clinic_hours, position, archived_at) ON practitioners TO fynix_app` (no delete: past
+    bookings point at it); `GRANT SELECT, INSERT, UPDATE ON practitioners TO fynix_staff`; enable RLS; tenant policy
     `business_id = app_current_business_id() AND app_module_enabled(business_id, 'appointments')` for USING and
     WITH CHECK; staff policy `USING (true) WITH CHECK (true)`.
-  - `practitioner_hours` and `practitioner_leave`: `SELECT, INSERT, DELETE` for webfold_app (replace-all like
+  - `practitioner_hours` and `practitioner_leave`: `SELECT, INSERT, DELETE` for fynix_app (replace-all like
     business hours), `SELECT, INSERT, UPDATE, DELETE` for staff, same two policies.
-  - `appointments`: `GRANT UPDATE (practitioner_id) ON appointments TO webfold_app` (reassign). Extend
-    `appointments_guard_customer_transition` with `CREATE OR REPLACE FUNCTION` so that for webfold_app a change of
+  - `appointments`: `GRANT UPDATE (practitioner_id) ON appointments TO fynix_app` (reassign). Extend
+    `appointments_guard_customer_transition` with `CREATE OR REPLACE FUNCTION` so that for fynix_app a change of
     `practitioner_id` is only allowed while `OLD.status = 'booked' AND NEW.status = 'booked'`, and add
     `practitioner_id` to the list of columns a status-changing update must leave untouched. Keep every existing
     guard verbatim.
@@ -202,7 +202,7 @@ function slotsInRange(range: OpenRange, slotMinutes: number): Array<{ startMinut
 ```
 
   Update the `buildWeekAvailability` doc comment's rules list with the alignment rule.
-- [ ] **Step 4: Run** `pnpm --filter @firstfold/shared exec vitest run src/lib/appointments`: all PASS (fix any
+- [ ] **Step 4: Run** `pnpm --filter @fynix/shared exec vitest run src/lib/appointments`: all PASS (fix any
   existing test that asserted range-start alignment at an off-grid time, and say so in the summary).
 
 ### Task 5: Merge practitioner calendars (pure)
@@ -379,7 +379,7 @@ export interface SiteInfoPractitioner {
   - `booking-confirm.ts`: re-resolve, then `bookSlot(..., { ...newAppointmentFrom(payload), practitionerIds })`
     where `practitionerIds` is `freePractitionerIds` (already restricted when a doctor was chosen); empty → taken.
     Look up the booked practitioner's name for the response.
-- [ ] **Step 4: Run** `pnpm --filter @firstfold/platform exec vitest run lib` and the shared tests: PASS. Update
+- [ ] **Step 4: Run** `pnpm --filter @fynix/platform exec vitest run lib` and the shared tests: PASS. Update
   `site-bookings.contract-check.test.ts` if it enumerates keys.
 
 ### Task 9: Clinic dashboard: Doctors page

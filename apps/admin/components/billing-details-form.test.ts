@@ -1,5 +1,5 @@
-import type { BillingDetailsStart } from "@firstfold/shared/lib/billing/billing-details-start";
-import type { PhoneCountryOption } from "@firstfold/shared/lib/phone/fields";
+import type { BillingDetailsStart } from "@fynix/shared/lib/billing/billing-details-start";
+import type { PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";

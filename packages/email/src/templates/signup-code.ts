@@ -6,8 +6,6 @@ export interface SignupCodeInput {
   /** The six digits the person types back into the sign-up form. */
   readonly code: string;
   readonly expiresInMinutes: number;
-  /** What the email calls the product: the deployment's brand (PLATFORM_BRAND; Firstfold when unset) unless the dashboard is sold under another name. */
-  readonly brandName?: string;
 }
 
 const SIX_DIGITS = /^[0-9]{6}$/;
@@ -19,7 +17,7 @@ const SIX_DIGITS = /^[0-9]{6}$/;
  */
 export function signupCodeEmail(input: SignupCodeInput): EmailMessage {
   if (!SIX_DIGITS.test(input.code)) throw new Error("code must be exactly six digits");
-  const brand = input.brandName ?? emailBrandName();
+  const brand = emailBrandName();
   const subject = `Your ${brand} verification code`;
   const intro = `Your ${brand} verification code is:`;
   const validity = `It works once and expires in ${input.expiresInMinutes} minutes. Don't share it with anyone.`;

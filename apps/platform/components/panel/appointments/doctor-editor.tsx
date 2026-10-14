@@ -1,12 +1,12 @@
 "use client";
 
-import type { ClosureRow } from "@firstfold/db";
+import type { ClosureRow } from "@fynix/db";
 import { useState, type ReactElement } from "react";
-import { PRACTITIONER_NAME_MAX_LENGTH, PRACTITIONER_TITLE_MAX_LENGTH } from "@firstfold/shared/lib/appointments/practitioner-form";
-import type { OpeningHours } from "@firstfold/shared/lib/onboarding/hours";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import { PRACTITIONER_NAME_MAX_LENGTH, PRACTITIONER_TITLE_MAX_LENGTH } from "@fynix/shared/lib/appointments/practitioner-form";
+import type { OpeningHours } from "@fynix/shared/lib/onboarding/hours";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { ClosuresPanel } from "@/components/panel/details/closures-panel";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 import { HoursEditor } from "@/components/panel/hours-editor";

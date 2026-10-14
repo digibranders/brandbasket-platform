@@ -1,11 +1,11 @@
 import "server-only";
-import { rewardCentsFor } from "@firstfold/billing";
+import { rewardCentsFor } from "@fynix/billing";
 import {
   findAffiliateAccrualContext,
   insertAffiliateEarning,
   type PaymentKind,
   type ScopedTransaction,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { logBillingEvent } from "./billing-log";
 
 export interface AccruedPayment {

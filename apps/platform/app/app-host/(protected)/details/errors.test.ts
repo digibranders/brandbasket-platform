@@ -4,7 +4,7 @@ import { CLOSURE_NOT_FOUND_MESSAGE, CLOSURE_PAST_MESSAGE, closureInPastState, cl
 /*
  * Only this page's own states live here now -- isCheckViolation, paymentRequiredState and unexpectedErrorState
  * moved to lib/server/panel-form-errors.ts (see its own test) once Appointments needed them too, and errorLogInfo
- * lives in @firstfold/shared/server/error-log-info (see its own test).
+ * lives in @fynix/shared/server/error-log-info (see its own test).
  */
 
 function form(entries: Record<string, string> = {}): FormData {

@@ -13,8 +13,8 @@ import { IMPORT_LIFETIME_MS, openGoogleImport, sealGoogleImport, type ImportedLo
  * SameSite=Lax: Google sends the owner back with a top-level GET, which Lax cookies go with.
  */
 
-const STATE_COOKIE = "ff_google_state";
-const IMPORT_COOKIE = "ff_google_import";
+const STATE_COOKIE = "fy_google_state";
+const IMPORT_COOKIE = "fy_google_import";
 const STATE_BYTES = 32;
 
 function cookieOptions(): { readonly httpOnly: true; readonly sameSite: "lax"; readonly secure: boolean; readonly path: "/"; readonly maxAge: number } {

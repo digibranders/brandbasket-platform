@@ -1,5 +1,5 @@
-import { PRIVACY_REQUEST_KIND_LABELS, type NewPrivacyRequest, type PrivacyRequestKind, type PrivacyRequestOutcome, type PrivacyRequestProgress } from "@firstfold/db";
-import { requestDeadlines } from "@firstfold/shared/lib/privacy-request-deadlines";
+import { PRIVACY_REQUEST_KIND_LABELS, type NewPrivacyRequest, type PrivacyRequestKind, type PrivacyRequestOutcome, type PrivacyRequestProgress } from "@fynix/db";
+import { requestDeadlines } from "@fynix/shared/lib/privacy-request-deadlines";
 
 /** What each kind of request is called on the page, in the same words as the alert emails. */
 export const REQUEST_KIND_LABELS: Readonly<Record<PrivacyRequestKind, string>> = PRIVACY_REQUEST_KIND_LABELS;

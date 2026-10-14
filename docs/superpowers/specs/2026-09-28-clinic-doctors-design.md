@@ -26,7 +26,7 @@ and see only that doctor's free times. A clinic with one doctor looks and works 
 ## Data model
 
 Migration `0044` adds three tables and one column. Migration `0045` adds grants and row-level security in the same
-pattern as `0042` (customers see only their own business's rows; `firstfold_staff` reads all).
+pattern as `0042` (customers see only their own business's rows; `fynix_staff` reads all).
 
 **`practitioners`**: one row per doctor.
 

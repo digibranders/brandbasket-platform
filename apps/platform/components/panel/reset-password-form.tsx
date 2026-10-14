@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, type ReactElement } from "react";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
-import { TurnstileWidget } from "@firstfold/shared/ui/turnstile";
-import { EyeIcon, EyeOffIcon } from "@firstfold/shared/ui/icons";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { TurnstileWidget } from "@fynix/shared/ui/turnstile";
+import { EyeIcon, EyeOffIcon } from "@fynix/shared/ui/icons";
 import { FORGOT_PASSWORD_PATH, initialResetPasswordState, type ResetPasswordFormState } from "@/lib/account-recovery-form";
 import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
 

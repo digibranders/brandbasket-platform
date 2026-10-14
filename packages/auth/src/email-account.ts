@@ -1,4 +1,4 @@
-import type { Database } from "@firstfold/db";
+import type { Database } from "@fynix/db";
 import { createAccountWithGrant, type CreatedAccount, type NewAccount } from "./create-account";
 import type { Auth } from "./create-auth";
 

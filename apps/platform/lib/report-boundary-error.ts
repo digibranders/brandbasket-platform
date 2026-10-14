@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import { reportBrowserError } from "@firstfold/shared/lib/error-report";
+import { reportBrowserError } from "@fynix/shared/lib/error-report";
 
 const reported = new WeakSet<object>();
 
@@ -18,6 +18,6 @@ export function reportBoundaryError(error: Error & { readonly digest?: string },
     operation: "error_boundary",
     route: window.location.pathname,
     severity,
-    release: process.env.NEXT_PUBLIC_FIRSTFOLD_RELEASE,
+    release: process.env.NEXT_PUBLIC_FYNIX_RELEASE,
   });
 }

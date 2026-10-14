@@ -3,7 +3,7 @@
  * (lib/site-bookings.ts's contract, read by a client site) drifting from what actually produces or validates them:
  * `SiteOtpRequest`/`SiteOtpConfirm` against the zod schemas that validate them on the way in
  * (lib/site-bookings-schema.ts), and `SiteAvailability` against what `buildWeekAvailability`
- * (@firstfold/shared/lib/appointments/slots.ts) actually returns -- that file's own doc comment says its shapes
+ * (@fynix/shared/lib/appointments/slots.ts) actually returns -- that file's own doc comment says its shapes
  * "must be kept in sync with it by hand", which is exactly the kind of drift only a compile check like this one
  * catches before a client site does. Every field must be assignable both ways.
  *
@@ -13,8 +13,8 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
-import { bookingFieldsSchema } from "@firstfold/shared/lib/appointments/booking-form";
-import { buildWeekAvailability } from "@firstfold/shared/lib/appointments/slots";
+import { bookingFieldsSchema } from "@fynix/shared/lib/appointments/booking-form";
+import { buildWeekAvailability } from "@fynix/shared/lib/appointments/slots";
 import { siteOtpConfirmSchema, siteOtpRequestSchema } from "./site-bookings-schema";
 import type { SiteAvailability, SiteOtpConfirm, SiteOtpRequest } from "./site-bookings";
 

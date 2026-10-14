@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 
 interface TestCheckoutFormProps {
   /** Confirms the payment on the server; it redirects when done. */

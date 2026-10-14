@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { billingCurrency, type BillingCurrency, type PaymentMethodDetails } from "@firstfold/db";
+import { billingCurrency, type BillingCurrency, type PaymentMethodDetails } from "@fynix/db";
 
 /**
  * True when `signature` is the HMAC-SHA256 of the exact raw `body` string, keyed with `webhookSecret`. The caller

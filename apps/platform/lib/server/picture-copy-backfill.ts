@@ -1,6 +1,6 @@
 import "server-only";
-import { pictureCopyKey } from "@firstfold/shared/server/media-keys";
-import type { MediaStorage } from "@firstfold/shared/server/media-storage";
+import { pictureCopyKey } from "@fynix/shared/server/media-keys";
+import type { MediaStorage } from "@fynix/shared/server/media-storage";
 import { makePictureCopies } from "./media-upload";
 
 /*

@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import type { BillingCurrency, PaymentMethodDetails } from "@firstfold/db";
+import type { BillingCurrency, PaymentMethodDetails } from "@fynix/db";
 import { mintAddOnToken, verifyAddOnToken } from "./fake-add-on-token";
 import { mintChargeToken, verifyChargeToken } from "./fake-charge-token";
 import {

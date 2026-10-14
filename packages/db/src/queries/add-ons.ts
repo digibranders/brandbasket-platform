@@ -204,7 +204,7 @@ export async function changeAddOnEndKind(
 }
 
 /**
- * Applies a status change that carries no payment (see nextAddOnStatus in @firstfold/shared). `cancelled` is final: only
+ * Applies a status change that carries no payment (see nextAddOnStatus in @fynix/shared). `cancelled` is final: only
  * another `cancelled` event matches a cancelled row, so a late event cannot reopen it beside a newer live row of the
  * same add-on. With `expectedFrom`, the row changes only if it is still in that status, so an event decided from a
  * stale read cannot overwrite a newer state. Returns whether the row changed. Staff connection only.

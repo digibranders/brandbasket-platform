@@ -10,16 +10,16 @@ import {
   restoreAccountClosure,
   withTenantScope,
   type RateLimitRule,
-} from "@firstfold/db";
-import { renewalCharge } from "@firstfold/shared/lib/billing/terms";
+} from "@fynix/db";
+import { renewalCharge } from "@fynix/shared/lib/billing/terms";
 import {
   AddOnClosureChangedError,
   planAddOnClosure,
   recordAddOnClosure,
   stopAddOnsAtProvider,
-} from "@firstfold/shared/server/add-on-ends";
-import { cancelAtProvider } from "@firstfold/shared/server/provider-cancellation";
-import { describeError, logBillingEvent } from "@firstfold/shared/server/billing-log";
+} from "@fynix/shared/server/add-on-ends";
+import { cancelAtProvider } from "@fynix/shared/server/provider-cancellation";
+import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
 import type { ExitDetails, RetentionOfferView } from "@/lib/account-settings-form";
 import { eraseAfterFor, hasRunningAddOns, planClosureFor, retentionOfferTerms, type RetentionOfferTerms } from "@/lib/account-exit-rules";
 import { getBillingProvider } from "./billing";

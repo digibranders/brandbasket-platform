@@ -345,14 +345,14 @@ export const directoryRefreshRequestSchema = z.object({ id: z.string().min(1).ma
 export type DirectoryRefreshRequest = z.infer<typeof directoryRefreshRequestSchema>;
 
 // ---------------------------------------------------------------------------------------------------------------
-// Verified businesses (added 2026-09-29). A business is verified once Firstfold has confirmed its name, address and
+// Verified businesses (added 2026-09-29). A business is verified once Fynix has confirmed its name, address and
 // phone number (a call, or because it is a client). Verified is also the only way a phone number reaches the site.
 // ---------------------------------------------------------------------------------------------------------------
 
 export const DIRECTORY_STATUS_PATH = "/api/directory/status";
 
 export const listingStatusSchema = z.object({
-  /** ISO 8601: when Firstfold confirmed the details. */
+  /** ISO 8601: when Fynix confirmed the details. */
   verifiedAt: z.string(),
   /** The confirmed number, E.164, or null when the business asked for its number not to be shown. */
   phone: z.string().regex(/^\+[0-9]{8,15}$/).nullable(),
@@ -361,7 +361,7 @@ export const listingStatusSchema = z.object({
   /** The business's own website, as the owner who claimed the listing gave it (an http(s) URL); null or absent for none. */
   website: z.string().max(300).nullable().optional(),
   /**
-   * True when Firstfold staff granted the Trusted tag directly (added 2026-10-12). The website also earns Trusted from a
+   * True when Fynix staff granted the Trusted tag directly (added 2026-10-12). The website also earns Trusted from a
    * licence on the profile, so false or absent here does not mean untrusted.
    */
   trusted: z.boolean().optional(),
@@ -379,7 +379,7 @@ export type StatusResponse = z.infer<typeof statusResponseSchema>;
 // and contact taps). Three are paid weekly by the business (built later, with the customer Listing menu).
 // ---------------------------------------------------------------------------------------------------------------
 
-/** Popular: earned from reviews on Firstfold. Worked out by the website from the rating summary. */
+/** Popular: earned from reviews on Fynix. Worked out by the website from the rating summary. */
 export const POPULAR_MIN_AVERAGE = 4.0;
 export const POPULAR_MIN_REVIEWS = 5;
 
@@ -522,7 +522,7 @@ export const directoryAdSchema = z.object({
   /** The advertiser's permanent id; null for a business that has none yet, absent from an older platform. */
   id: placeIdSchema.nullable().optional(),
   name: z.string().min(1).max(200),
-  /** The advertiser's one line, once Firstfold has approved it; null shows the category's own line. */
+  /** The advertiser's one line, once Fynix has approved it; null shows the category's own line. */
   tagline: z.string().min(1).max(AD_TAGLINE_MAX_LENGTH).nullable(),
   /** The advertiser's own pictures, as picture ids (see "Pictures" below); absent from an older platform. */
   pictures: z
@@ -554,11 +554,11 @@ export type AdsResponse = z.infer<typeof adsResponseSchema>;
 /** The market that holds a city's home page ads: `<HOME_AD_MARKET_SLUG>/<city>/<HOME_AD_MARKET_SLUG>`. */
 export const HOME_AD_MARKET_SLUG = "all";
 
-/** Where an ad shows. Must match DIRECTORY_AD_PLACEMENTS in @firstfold/db (directory-parity.test.ts checks). */
+/** Where an ad shows. Must match DIRECTORY_AD_PLACEMENTS in @fynix/db (directory-parity.test.ts checks). */
 export const DIRECTORY_AD_PLACEMENTS = ["top", "side", "profile", "home"] as const;
 export type DirectoryAdPlacement = (typeof DIRECTORY_AD_PLACEMENTS)[number];
 
-/** What a visitor did with an ad: saw it on the page, or followed it. Must match DIRECTORY_AD_EVENT_KINDS in @firstfold/db. */
+/** What a visitor did with an ad: saw it on the page, or followed it. Must match DIRECTORY_AD_EVENT_KINDS in @fynix/db. */
 export const DIRECTORY_AD_EVENT_KINDS = ["impression", "click"] as const;
 export type DirectoryAdEventKind = (typeof DIRECTORY_AD_EVENT_KINDS)[number];
 
@@ -581,7 +581,7 @@ export type DirectoryAdEventRequest = z.infer<typeof directoryAdEventRequestSche
 
 // ---------------------------------------------------------------------------------------------------------------
 // Pictures (added 2026-09-30). A listing's owner uploads a square listing photo and an ad picture, each cropped to the
-// layout's shape and approved by Firstfold before it shows (docs/superpowers/specs/2026-09-30-listing-pictures-crop-
+// layout's shape and approved by Fynix before it shows (docs/superpowers/specs/2026-09-30-listing-pictures-crop-
 // design.md). The status and ads answers above name a picture by its id; the file is read here.
 // ---------------------------------------------------------------------------------------------------------------
 
@@ -599,7 +599,7 @@ export const DIRECTORY_PICTURE_SIZES = {
 // ---------------------------------------------------------------------------------------------------------------
 // Gallery (added 2026-10-07). A business's page shows the owner's gallery photos (at most twenty, every owner) and short
 // videos (at most three of at most 16 seconds, Premium members only), see docs/superpowers/specs/2026-10-07-business-
-// videos-design.md. A video is live as soon as its owner has uploaded it (Firstfold can take one down) and is hosted
+// videos-design.md. A video is live as soon as its owner has uploaded it (Fynix can take one down) and is hosted
 // (unlisted) on Vimeo, played in Vimeo's embedded player.
 // ---------------------------------------------------------------------------------------------------------------
 

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useState, type ReactElement } from "react";
-import { SearchIcon } from "@firstfold/shared/ui/icons";
+import { SearchIcon } from "@fynix/shared/ui/icons";
 import type { BlogCategoryWithStats } from "@/lib/server/blog-taxonomy";
 import { BlogEmptyState } from "./blog-empty-state";
-import { cn } from "@firstfold/shared/lib/cn";
+import { cn } from "@fynix/shared/lib/cn";
 import { PostDate } from "./parts";
 import {
   COL_DATE,

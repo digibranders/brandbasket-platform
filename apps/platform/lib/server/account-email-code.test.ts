@@ -7,9 +7,9 @@ import {
   purgeExpiredAccountOtps,
   type AccountOtpAttempt,
   type Database,
-} from "@firstfold/db";
-import { EmailConfigurationError, type EmailMessage } from "@firstfold/email";
-import { BRANDS } from "@/lib/brand";
+} from "@fynix/db";
+import { EmailConfigurationError, type EmailMessage } from "@fynix/email";
+import { BRAND } from "@/lib/brand";
 import { confirmAccountEmailCode, requestAccountEmailCode } from "./account-email-code";
 import { getStaffDb } from "./db";
 import { customerEmailTransport } from "./email";
@@ -23,7 +23,7 @@ vi.mock("./public-db", () => ({ getPublicDb: vi.fn(() => ({})) }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 vi.mock("./request-brand", () => ({ currentBrand: vi.fn() }));
 vi.mock("./env", () => ({ accountCodeSecret: vi.fn(), emailCodeBypassed: vi.fn() }));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   claimAccountOtpAttempt: vi.fn(),
   consumeAccountOtp: vi.fn(),
   consumeRateLimit: vi.fn(),
@@ -56,7 +56,7 @@ beforeEach(() => {
   vi.mocked(emailCodeBypassed).mockReturnValue(false);
   vi.mocked(getStaffDb).mockReturnValue(DB);
   vi.mocked(accountCodeSecret).mockReturnValue(SECRET);
-  vi.mocked(currentBrand).mockResolvedValue(BRANDS.fynix);
+  vi.mocked(currentBrand).mockResolvedValue(BRAND);
   vi.mocked(customerEmailTransport).mockReturnValue({ send });
   send.mockResolvedValue(undefined);
   vi.mocked(consumeRateLimit).mockResolvedValue({ allowed: true, remaining: 1, retryAfterSeconds: 0 });
@@ -131,9 +131,9 @@ describe("requestAccountEmailCode", () => {
   });
 
   it("names the brand the request came in on", async () => {
-    vi.mocked(currentBrand).mockResolvedValue(BRANDS.firstfold);
+    vi.mocked(currentBrand).mockResolvedValue(BRAND);
     await requestAccountEmailCode({ email: EMAIL }, IP, NOW);
-    expect(send.mock.calls[0]?.[0].subject).toBe("Your Firstfold verification code");
+    expect(send.mock.calls[0]?.[0].subject).toBe("Your Fynix Digital verification code");
   });
 });
 

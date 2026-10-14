@@ -1,4 +1,4 @@
-import type { ActiveStaffMember, BusinessMembership, StaffRole } from "@firstfold/db";
+import type { ActiveStaffMember, BusinessMembership, StaffRole } from "@fynix/db";
 
 export interface SessionUser {
   readonly id: string;

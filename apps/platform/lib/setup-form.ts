@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * Matches PASSWORD_MIN_LENGTH in @firstfold/auth (also 10). Kept here, rather than imported, so this module stays
- * browser-safe: it is used by the client SetupForm component, and @firstfold/auth pulls in server-only dependencies.
+ * Matches PASSWORD_MIN_LENGTH in @fynix/auth (also 10). Kept here, rather than imported, so this module stays
+ * browser-safe: it is used by the client SetupForm component, and @fynix/auth pulls in server-only dependencies.
  * lib/server/setup.ts sees both constants and fails at module load if they ever drift apart.
  */
 export const SETUP_PASSWORD_MIN_LENGTH = 10;

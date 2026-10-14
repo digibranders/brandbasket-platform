@@ -1,5 +1,5 @@
-import { DIRECTORY_AD_SPOTS, weekEndsAt, type DirectoryAdPlacement, type LiveSpotRow, type StaffHeldSpot } from "@firstfold/db";
-import { AD_PLACEMENTS } from "@firstfold/shared/lib/directory/ads";
+import { DIRECTORY_AD_SPOTS, weekEndsAt, type DirectoryAdPlacement, type LiveSpotRow, type StaffHeldSpot } from "@fynix/db";
+import { AD_PLACEMENTS } from "@fynix/shared/lib/directory/ads";
 import { spotHeldThrough } from "./advertise-booking";
 
 /*

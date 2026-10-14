@@ -1,5 +1,5 @@
-import { users } from "@firstfold/db";
-import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@firstfold/db/testing";
+import { users } from "@fynix/db";
+import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@fynix/db/testing";
 import { count, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { withAccountCreationGrant } from "./account-creation-grant";

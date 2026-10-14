@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChangeEvent, ReactElement } from "react";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 import { OWNER_REPLY_MAX_LENGTH, OWNER_REPLY_MISSING_MESSAGE } from "@/lib/owner-replies";
 

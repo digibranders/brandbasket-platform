@@ -16,21 +16,20 @@ CREATE INDEX "privacy_request_otps_expires_at_idx" ON "privacy_request_otps" USI
 --> statement-breakpoint
 
 -- Codes for requests made on the public form: created, attempted, verified and deleted by the privacy request routes on the
--- staff connection, and purged an hour after they expire. The customer and public form roles get no privilege. Both runtime
--- role names are covered while the webfold_* to firstfold_* rollout (0132) is under way.
+-- staff connection, and purged an hour after they expire. The customer and public form roles get no privilege.
 ALTER TABLE privacy_request_otps ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY privacy_request_otps_staff_all ON privacy_request_otps FOR ALL TO firstfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY privacy_request_otps_staff_all ON privacy_request_otps FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON privacy_request_otps TO firstfold_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON privacy_request_otps TO fynix_staff;
 --> statement-breakpoint
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'webfold_staff') THEN
-    CREATE POLICY privacy_request_otps_legacy_staff_all ON privacy_request_otps FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
-    GRANT SELECT, INSERT, UPDATE, DELETE ON privacy_request_otps TO webfold_staff;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
+    CREATE POLICY privacy_request_otps_legacy_staff_all ON privacy_request_otps FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+    GRANT SELECT, INSERT, UPDATE, DELETE ON privacy_request_otps TO fynix_staff;
   END IF;
 END $$;

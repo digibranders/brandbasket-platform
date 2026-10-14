@@ -16,7 +16,7 @@ The Razorpay webhook also stops activating a `cancelled` subscription: that char
 **Spec:** `docs/superpowers/specs/2026-10-09-reactivation-design.md`
 
 **Commands:** unit tests `pnpm --filter <pkg> exec vitest run <file>`; integration `pnpm test:integration` (migrates
-`webfold_test`); all checks `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+`fynix_platform_test`); all checks `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
 
 ---
 
@@ -85,7 +85,7 @@ The Razorpay webhook also stops activating a `cancelled` subscription: that char
   });
 ```
 
-- [ ] **Step 2: Run** `pnpm --filter @firstfold/billing exec vitest run src/checkout.test.ts`. Expected: the new cases FAIL
+- [ ] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/checkout.test.ts`. Expected: the new cases FAIL
   with `needs-reactivation` received.
 
 - [ ] **Step 3: Implement.** In `checkout.ts` remove the `needs-reactivation` variant and its doc comment from
@@ -105,7 +105,7 @@ The Razorpay webhook also stops activating a `cancelled` subscription: that char
   today's price: its lapsed subscription is replaced (reactivation)." Remove `hasEverPaid` from the decision; keep it on
   `CheckoutHistory` (callers use it for the coupon rule).
 
-- [ ] **Step 4: Run** the same command. Expected: PASS. Then `pnpm --filter @firstfold/billing typecheck`.
+- [ ] **Step 4: Run** the same command. Expected: PASS. Then `pnpm --filter @fynix/billing typecheck`.
 
 ### Task 2: cancelStaleSubscription ends a lapsed live row
 
@@ -229,7 +229,7 @@ describe("activateReactivationPayment", () => {
 });
 ```
 
-- [ ] **Step 2: Run** `pnpm --filter @firstfold/shared exec vitest run src/server/billing-activation.test.ts`. Expected:
+- [ ] **Step 2: Run** `pnpm --filter @fynix/shared exec vitest run src/server/billing-activation.test.ts`. Expected:
   FAIL, `activateReactivationPayment` is not a function.
 
 - [ ] **Step 3: Implement:**
@@ -281,7 +281,7 @@ export async function activateReactivationPayment(tx: ScopedTransaction, payment
 **Files:** Modify `apps/platform/lib/server/razorpay-webhook-handler.ts`; Test
 `apps/platform/lib/server/razorpay-webhook-handler.test.ts`
 
-- [ ] **Step 1: Write tests.** Add `hasEverPaid: vi.fn(async () => false)` to the `@firstfold/db` mock and
+- [ ] **Step 1: Write tests.** Add `hasEverPaid: vi.fn(async () => false)` to the `@fynix/db` mock and
   `activateReactivationPayment: vi.fn(async () => ({ alreadyRecorded: false }))` to the activation mock, then:
 
 ```ts
@@ -311,7 +311,7 @@ export async function activateReactivationPayment(tx: ScopedTransaction, payment
 
   where `CHARGED_EVENT` is a `kind: "charged"` event for `PLAN` (USD 7,500, `currentEnd` a fixed date).
 
-- [ ] **Step 2: Run** `pnpm --filter @firstfold/platform exec vitest run lib/server/razorpay-webhook-handler.test.ts`.
+- [ ] **Step 2: Run** `pnpm --filter @fynix/platform exec vitest run lib/server/razorpay-webhook-handler.test.ts`.
   Expected: both FAIL.
 
 - [ ] **Step 3: Implement.** After the post-lock re-read and before the plan lookup:
@@ -355,7 +355,7 @@ Test `apps/platform/lib/server/payment-confirmation.test.ts`
 - [ ] **Step 1: Write a test**: with `findBillingState` returning `hasEverPaid: true`, no access, and an `incomplete`
   subscription, `confirmFirstPayment` returns `{ kind: "reactivated" }`, calls `activateReactivationPayment` with
   `paidThroughAt` one calendar month after `paidAt`, and never calls `activateFirstPayment` or `submitProject`.
-- [ ] **Step 2: Run** `pnpm --filter @firstfold/platform exec vitest run lib/server/payment-confirmation.test.ts`. Expected: FAIL.
+- [ ] **Step 2: Run** `pnpm --filter @fynix/platform exec vitest run lib/server/payment-confirmation.test.ts`. Expected: FAIL.
 - [ ] **Step 3: Implement.** Add `| { readonly kind: "reactivated" }` to `PaymentConfirmation`. `applicability` returns
   `reactivating: state?.hasEverPaid === true` with the plan and judges the amount against
   `chargedAmountCents(plan.recurringAmountCents, subscription.discountAmountCents, plan.taxRateBasisPoints)` when
@@ -372,7 +372,7 @@ Test `apps/platform/lib/server/payment-confirmation.test.ts`
   `NOTHING_TO_PAY_FOR` message, (b) sends a paid-up business to `/billing`, (c) for a lapsed business opens a checkout
   with `referralCodeId: null` and `discountAmountCents: 0` even when a code is applied, replacing the lapsed row and
   cancelling it at the provider after the commit.
-- [ ] **Step 2: Run** `pnpm --filter @firstfold/platform exec vitest run lib/server/checkout.test.ts`. Expected: FAIL.
+- [ ] **Step 2: Run** `pnpm --filter @fynix/platform exec vitest run lib/server/checkout.test.ts`. Expected: FAIL.
 - [ ] **Step 3: Implement.** In `openPlanCheckout`, skip the coupon when `state.hasEverPaid`:
 
 ```ts
@@ -413,12 +413,12 @@ Test `apps/admin/lib/server/billing-admin.test.ts`
   `recordManualFirstPayment` replaces the lapsed row, opens a `manual` subscription with no referral code and no
   discount, calls `activateReactivationPayment` with `paidThroughAt` one month after `now` and the manual audit trail,
   and returns `{ kind: "recorded" }`.
-- [ ] **Step 2: Run** `pnpm --filter @firstfold/admin exec vitest run lib/server/billing-admin.test.ts`. Expected: FAIL.
+- [ ] **Step 2: Run** `pnpm --filter @fynix/admin exec vitest run lib/server/billing-admin.test.ts`. Expected: FAIL.
 - [ ] **Step 3: Implement.** Skip the coupon when `state.hasEverPaid`; drop the `needs-reactivation` case; after opening
   the subscription call `activateReactivationPayment` (with `paidThroughAt: addMonthsUtc(now, 1)`) instead of
   `activateFirstPayment` when `state.hasEverPaid`. Remove `needs-reactivation` from `ManualPaymentOutcome` and
   `MANUAL_PAYMENT_NOTICES`. Change the `recorded` notice to "Payment recorded." (it no longer always concerns setup).
-- [ ] **Step 4: Run** the test command and `pnpm --filter @firstfold/admin typecheck`. Expected: PASS.
+- [ ] **Step 4: Run** the test command and `pnpm --filter @fynix/admin typecheck`. Expected: PASS.
 
 ### Task 8: Banner and messages
 
@@ -441,7 +441,7 @@ Test `packages/shared/src/lib/billing/payment-step.test.ts`
   });
 ```
 
-- [ ] **Step 2: Run** `pnpm --filter @firstfold/shared exec vitest run src/lib/billing/payment-step.test.ts`. Expected: FAIL.
+- [ ] **Step 2: Run** `pnpm --filter @fynix/shared exec vitest run src/lib/billing/payment-step.test.ts`. Expected: FAIL.
 - [ ] **Step 3: Implement.** Return that model for `lapsed`; delete the `contact` variant from `BillingBannerModel` and its
   branch and eyebrow in `billing-banner.tsx`. Set `PLAN_ENDED_MESSAGE` to "Your plan has ended. Your website and content
   are safe, and you can restart it from Billing." Update the `reactivate` doc on `PaymentStep` and `CustomerBillingStatus`
@@ -471,7 +471,7 @@ Test `packages/shared/src/lib/billing/payment-step.test.ts`
   link to Billing instead of the email address.
 - [ ] **Step 6:** Pay page: when `billing.status === "lapsed"`, `backHref` is `/billing` and the callback URL carries
   `return=billing`; the callback route sends `return=billing` to `/billing?payment=received|failed`.
-- [ ] **Step 7: Run** `pnpm --filter @firstfold/platform exec vitest run` and typecheck. Expected: PASS.
+- [ ] **Step 7: Run** `pnpm --filter @fynix/platform exec vitest run` and typecheck. Expected: PASS.
 
 ### Task 10: Verify and ship
 

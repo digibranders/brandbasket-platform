@@ -10,8 +10,6 @@ export interface ListingEnquiryInput {
   readonly message: string | null;
   /** Where the owner reads every enquiry, on their dashboard. */
   readonly dashboardUrl: string;
-  /** What the email calls the product: the deployment's brand (PLATFORM_BRAND) unless the reader is on another. */
-  readonly brandName?: string;
 }
 
 /** Tells a business's owner that a visitor sent an enquiry from its page on the directory, with how to reach them. */
@@ -19,7 +17,7 @@ export function listingEnquiryEmail(input: ListingEnquiryInput): EmailMessage {
   const dashboardUrl = assertWebUrl(input.dashboardUrl, "dashboardUrl");
   const title = `New enquiry for ${input.businessName}`;
   const lines = [
-    `${input.visitorName} sent an enquiry to ${input.businessName} on ${input.brandName ?? emailBrandName()}.`,
+    `${input.visitorName} sent an enquiry to ${input.businessName} on ${emailBrandName()}.`,
     `Phone: ${input.visitorPhone}`,
     input.message === null ? "They left no message." : `Message: ${input.message}`,
   ];

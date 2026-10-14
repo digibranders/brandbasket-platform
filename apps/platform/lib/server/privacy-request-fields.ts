@@ -1,6 +1,6 @@
 import "server-only";
-import { cleanLine, cleanMultiline } from "@firstfold/shared/lib/validation/text";
-import { parsePhoneEntry } from "@firstfold/shared/lib/validation/phone";
+import { cleanLine, cleanMultiline } from "@fynix/shared/lib/validation/text";
+import { parsePhoneEntry } from "@fynix/shared/lib/validation/phone";
 import { websiteOriginAllowed } from "@/lib/owner-replies";
 import {
   REQUEST_DETAILS_MAX_LENGTH,
@@ -21,7 +21,7 @@ const KINDS_NEEDING_DETAILS: ReadonlySet<string> = new Set(["correction", "griev
 
 /**
  * The page a request is about, if the request names one: only an address on the website's own origin, so staff never open
- * a link someone else chose. firstfold.io sends visitors on to www.firstfold.io, so both count (websiteOriginAllowed).
+ * a link someone else chose. fynix.digital sends visitors on to www.fynix.digital, so both count (websiteOriginAllowed).
  * Undefined for none, null for one that is not the website's.
  */
 export function requestAbout(raw: string | undefined, websiteOrigin: string): string | null | undefined {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { VisibleOpenListing } from "@firstfold/db";
+import type { VisibleOpenListing } from "@fynix/db";
 import { handleOpenListingsPage, handleOpenListingsVersion, toTuple } from "./open-listings-api";
 
 vi.mock("server-only", () => ({}));
@@ -13,7 +13,7 @@ const LISTING: VisibleOpenListing = {
 };
 
 function get(path: string, token: string | null = TOKEN): Request {
-  return new Request(`https://app.firstfold.io${path}`, { headers: token === null ? {} : { authorization: `Bearer ${token}` } });
+  return new Request(`https://app.fynix.digital${path}`, { headers: token === null ? {} : { authorization: `Bearer ${token}` } });
 }
 
 describe("toTuple", () => {

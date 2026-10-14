@@ -1,4 +1,4 @@
-import type { AppointmentRow } from "@firstfold/db";
+import type { AppointmentRow } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import {
   appointmentHref,

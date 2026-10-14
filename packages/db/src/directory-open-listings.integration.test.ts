@@ -72,7 +72,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await importOpenDataPlaces(dbs.staff.db, PLACES, NOW);
-  await dbs.staff.db.insert(users).values({ id: STAFF, name: "Sam Staff", email: "staff@firstfold.io" });
+  await dbs.staff.db.insert(users).values({ id: STAFF, name: "Sam Staff", email: "staff@fynix.digital" });
 });
 
 describe("syncOpenListings", () => {

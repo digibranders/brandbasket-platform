@@ -1,4 +1,4 @@
-import { addMonthsUtc, createFakeBillingProvider, FAKE_PAYMENT_METHOD, type BillingProvider } from "@firstfold/billing";
+import { addMonthsUtc, createFakeBillingProvider, FAKE_PAYMENT_METHOD, type BillingProvider } from "@fynix/billing";
 import {
   findBillingState,
   findOpenProject,
@@ -17,11 +17,11 @@ import {
   type Project,
   type ScopedTransaction,
   type Subscription,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
-import type { TenantContext } from "@firstfold/shared/lib/access";
+import type { TenantContext } from "@fynix/shared/lib/access";
 import { getBillingProvider } from "./billing";
-import { activateFirstPayment, activateReactivationPayment } from "@firstfold/shared/server/billing-activation";
+import { activateFirstPayment, activateReactivationPayment } from "@fynix/shared/server/billing-activation";
 import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
@@ -32,15 +32,15 @@ import { confirmFirstPayment, verifyCheckoutFor } from "./payment-confirmation";
 // one, so every token check here is the real check.
 vi.mock("server-only", () => ({}));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
-vi.mock("@firstfold/shared/server/billing-activation", () => ({ activateFirstPayment: vi.fn(), activateReactivationPayment: vi.fn() }));
+vi.mock("@fynix/shared/server/billing-activation", () => ({ activateFirstPayment: vi.fn(), activateReactivationPayment: vi.fn() }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 vi.mock("./onboarding", () => {
   class MockStepRefusedError extends Error {}
   return { sendOnboardingWithin: vi.fn(), StepRefusedError: MockStepRefusedError };
 });
-vi.mock("@firstfold/db", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@firstfold/db")>();
+vi.mock("@fynix/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@fynix/db")>();
   class MockOnboardingLockedError extends Error {}
   class MockProjectNotInOnboardingError extends Error {}
   return {
@@ -68,7 +68,7 @@ const tenant: TenantContext = { userId: "user-a", businessId: BUSINESS_ID, busin
 const PLAN = {
   id: "0192f3c4-3333-7000-8000-000000000003",
   code: "care-usd",
-  name: "Firstfold care plan",
+  name: "Fynix care plan",
   tier: "premium",
   currency: "USD",
   initialAmountCents: 22500,
@@ -208,7 +208,7 @@ describe("verifyCheckoutFor", () => {
     await expect(verifyCheckoutFor(tenant, { token })).resolves.toBeNull();
     expect(warned).toHaveBeenCalledTimes(1);
     const line = String(warned.mock.calls[0]?.[0]);
-    expect(line).toMatch(/^\[firstfold:billing\] confirmation-refused /);
+    expect(line).toMatch(/^\[fynix:billing\] confirmation-refused /);
     expect(line).toContain(`"businessId":"${BUSINESS_ID}"`);
     expect(line).toContain(`"tokenBusinessId":"${OTHER_BUSINESS_ID}"`);
     expect(line).toContain(`"providerSubscriptionId":"${providerSubscriptionId}"`);
@@ -228,7 +228,7 @@ describe("verifyCheckoutFor", () => {
     // An expired one passed the signature check, so it is logged, without the token.
     expect(warned).toHaveBeenCalledTimes(1);
     const line = String(warned.mock.calls[0]?.[0]);
-    expect(line).toMatch(/^\[firstfold:billing\] confirmation-refused .*"reason":"verification-failed-after-signature"/);
+    expect(line).toMatch(/^\[fynix:billing\] confirmation-refused .*"reason":"verification-failed-after-signature"/);
     expect(line).toContain("expired");
     expect(line).toContain(`"businessId":"${BUSINESS_ID}"`);
     expect(logText()).not.toContain(token);
@@ -419,7 +419,7 @@ describe("confirmFirstPayment", () => {
       expect(sendOnboardingWithin).not.toHaveBeenCalled();
       expect(outcome).toBe("committed");
       const line = String(warned.mock.calls[0]?.[0]);
-      expect(line).toMatch(/^\[firstfold:billing\] confirmation-refused /);
+      expect(line).toMatch(/^\[fynix:billing\] confirmation-refused /);
       expect(line).toContain('"subscriptionId":"sub-1"');
       expect(line).toContain(`"reason":"${reason}"`);
       expect(logText()).not.toContain(token);
@@ -592,7 +592,7 @@ describe("confirmFirstPayment", () => {
     });
     expect(logged).toHaveBeenCalledTimes(1);
     const line = String(logged.mock.calls[0]?.[0]);
-    expect(line).toMatch(/^\[firstfold:billing\] submission-failed-after-payment \{/);
+    expect(line).toMatch(/^\[fynix:billing\] submission-failed-after-payment \{/);
     expect(JSON.parse(line.slice(line.indexOf("{")))).toEqual({
       event: "submission-failed-after-payment",
       businessId: BUSINESS_ID,

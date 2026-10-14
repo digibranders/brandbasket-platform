@@ -7,12 +7,12 @@ import {
   readExportedAccount,
   readExportedBusiness,
   type Database,
-} from "@firstfold/db";
-import { DATA_RECIPIENTS } from "@firstfold/shared/lib/privacy/recipients";
-import { ACCOUNT_EXPORT_FORMAT, ACCOUNT_EXPORT_NOT_INCLUDED, accountExportFilename, accountExportFormat, buildAccountExport } from "./account-export";
+} from "@fynix/db";
+import { DATA_RECIPIENTS } from "@fynix/shared/lib/privacy/recipients";
+import { ACCOUNT_EXPORT_FORMAT, ACCOUNT_EXPORT_NOT_INCLUDED, accountExportFilename, buildAccountExport } from "./account-export";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   getSupportTicket: vi.fn(),
   listConsents: vi.fn(),
   listExportedSessions: vi.fn(),
@@ -45,7 +45,7 @@ function arrange(accountRow: ReturnType<typeof account> | null = account()): voi
   vi.mocked(listConsents).mockResolvedValue([{ id: "c1", purpose: "account_terms", event: "given", noticeVersion: "2026-10-13", language: "en", channel: "web", ipHash: "secrethash", createdAt: NOW }]);
   vi.mocked(listSupportTickets).mockResolvedValue({ items: [{ id: "t1" }], nextCursor: null } as never);
   vi.mocked(getSupportTicket).mockResolvedValue({
-    ticket: { id: "t1", displayRef: "FF-1001", category: "billing", subject: "Invoice", status: "closed", createdAt: NOW },
+    ticket: { id: "t1", displayRef: "FY-1001", category: "billing", subject: "Invoice", status: "closed", createdAt: NOW },
     messages: [{ createdAt: NOW, body: "Hello" }],
     attachments: [{ id: "a1" }],
   } as never);
@@ -61,7 +61,7 @@ describe("buildAccountExport", () => {
     expect(file.signIns).toHaveLength(1);
     expect(file.business.business).toMatchObject({ name: "Asha Dental" });
     expect(file.supportRequests).toEqual([
-      { reference: "FF-1001", category: "billing", subject: "Invoice", status: "closed", createdAt: NOW, messages: [{ sentAt: NOW, body: "Hello" }], screenshots: 1 },
+      { reference: "FY-1001", category: "billing", subject: "Invoice", status: "closed", createdAt: NOW, messages: [{ sentAt: NOW, body: "Hello" }], screenshots: 1 },
     ]);
     expect(file.consents).toEqual([{ purpose: "account_terms", event: "given", noticeVersion: "2026-10-13", channel: "web", recordedAt: NOW }]);
     expect(file.sharedWith).toBe(DATA_RECIPIENTS);
@@ -108,10 +108,8 @@ describe("buildAccountExport", () => {
 });
 
 describe("the export's names", () => {
-  it("are Firstfold's with no brand set, and Fynix's on a Fynix server, with nothing of Firstfold", () => {
-    expect(accountExportFormat({})).toBe(ACCOUNT_EXPORT_FORMAT);
-    expect(accountExportFilename("2026-11-01", {})).toBe("firstfold-my-data-2026-11-01.json");
-    expect(accountExportFormat({ PLATFORM_BRAND: "fynix" })).toBe("fynix-account-export/1");
-    expect(accountExportFilename("2026-11-01", { PLATFORM_BRAND: "fynix" })).toBe("fynix-my-data-2026-11-01.json");
+  it("are Fynix's", () => {
+    expect(ACCOUNT_EXPORT_FORMAT).toBe("fynix-account-export/1");
+    expect(accountExportFilename("2026-11-01")).toBe("fynix-my-data-2026-11-01.json");
   });
 });

@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { SkeletonHeading, SkeletonLine } from "@firstfold/shared/ui/panel/skeleton";
+import { SkeletonHeading, SkeletonLine } from "@fynix/shared/ui/panel/skeleton";
 
 /** One section's worth of stand-in content: a label, then a couple of field-sized rows. */
 function SkeletonSection(): ReactElement {

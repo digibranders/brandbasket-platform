@@ -2,7 +2,7 @@
 
 import type { ReactElement } from "react";
 import { HoursEditor } from "@/components/panel/hours-editor";
-import { PhoneField } from "@firstfold/shared/ui/phone-field";
+import { PhoneField } from "@fynix/shared/ui/phone-field";
 import {
   HTTPS_LINK_PATTERN,
   HTTPS_LINK_TITLE,
@@ -13,8 +13,8 @@ import {
   useStepForm,
   type StepAction,
 } from "@/components/panel/step-form";
-import type { BusinessStepInput, OpeningHours } from "@firstfold/shared/lib/onboarding/business-fields";
-import { PHONE_COUNTRY_FIELD, type PhoneCountryOption } from "@firstfold/shared/lib/phone/fields";
+import type { BusinessStepInput, OpeningHours } from "@fynix/shared/lib/onboarding/business-fields";
+import { PHONE_COUNTRY_FIELD, type PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
 
 export type SavedBusinessProfile = { readonly [Key in keyof BusinessStepInput["profile"]]: string | null };
 

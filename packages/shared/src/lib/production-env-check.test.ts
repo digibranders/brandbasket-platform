@@ -3,14 +3,13 @@ import { checkProductionEnv, parseEnvFile } from "./production-env-check";
 
 const SECRET = "a".repeat(40);
 const PLATFORM = {
-  PLATFORM_BRAND: "fynix",
   APP_ORIGIN: "https://app.fynix.digital",
-  ADMIN_ORIGIN: "https://staff.fynix.digital",
+  ADMIN_ORIGIN: "https://console.fynix.digital",
   NEXT_PUBLIC_APP_URL: "https://app.fynix.digital",
-  DATABASE_URL: "postgresql://firstfold_app:pw@localhost:5432/fynix_platform",
-  DATABASE_URL_STAFF: "postgresql://firstfold_staff:pw@localhost:5432/fynix_platform",
-  DATABASE_URL_PUBLIC: "postgresql://firstfold_public:pw@localhost:5432/fynix_platform",
-  DATABASE_URL_PAYLOAD: "postgresql://fynix_payload:pw@localhost:5432/fynix_platform_payload",
+  DATABASE_URL: "postgresql://fynix_app:pw@localhost:5432/fynix_platform",
+  DATABASE_URL_STAFF: "postgresql://fynix_staff:pw@localhost:5432/fynix_platform",
+  DATABASE_URL_PUBLIC: "postgresql://fynix_public:pw@localhost:5432/fynix_platform",
+  DATABASE_URL_PAYLOAD: "postgresql://fynix_cms:pw@localhost:5432/fynix_platform_payload",
   BETTER_AUTH_SECRET: SECRET,
   PAYLOAD_SECRET: "b".repeat(40),
   ACCOUNT_CODE_SECRET: "c".repeat(40),
@@ -19,10 +18,9 @@ const PLATFORM = {
   RAZORPAY_KEY_ID: "rzp_live_abc",
   RAZORPAY_KEY_SECRET: "secret",
   RAZORPAY_WEBHOOK_SECRET: "d".repeat(40),
-  FIRSTFOLD_MEDIA_ROOT: "/srv/fynix/media",
+  FYNIX_MEDIA_ROOT: "/srv/fynix/media",
 } as const;
 const ADMIN = {
-  PLATFORM_BRAND: "fynix",
   APP_ORIGIN: PLATFORM.APP_ORIGIN,
   ADMIN_ORIGIN: PLATFORM.ADMIN_ORIGIN,
   DATABASE_URL_STAFF: PLATFORM.DATABASE_URL_STAFF,
@@ -33,7 +31,7 @@ const ADMIN = {
   BILLING_PROVIDER: "razorpay",
   RAZORPAY_KEY_ID: PLATFORM.RAZORPAY_KEY_ID,
   RAZORPAY_KEY_SECRET: PLATFORM.RAZORPAY_KEY_SECRET,
-  FIRSTFOLD_MEDIA_ROOT: PLATFORM.FIRSTFOLD_MEDIA_ROOT,
+  FYNIX_MEDIA_ROOT: PLATFORM.FYNIX_MEDIA_ROOT,
 } as const;
 
 const problems = (platform: Record<string, string>, admin: Record<string, string>): readonly string[] => checkProductionEnv({ platform, admin }).errors;
@@ -75,13 +73,13 @@ describe("checkProductionEnv", () => {
 
   it("requires https origins with no path, the same in both files, and a public app URL that matches APP_ORIGIN", () => {
     expect(problems({ ...PLATFORM, APP_ORIGIN: "http://app.fynix.digital" }, { ...ADMIN, APP_ORIGIN: "http://app.fynix.digital" }).join("\n")).toMatch(/APP_ORIGIN.*https/);
-    expect(problems({ ...PLATFORM, ADMIN_ORIGIN: "https://staff.fynix.digital/admin" }, ADMIN).join("\n")).toMatch(/ADMIN_ORIGIN.*path/);
+    expect(problems({ ...PLATFORM, ADMIN_ORIGIN: "https://console.fynix.digital/admin" }, ADMIN).join("\n")).toMatch(/ADMIN_ORIGIN.*path/);
     expect(problems(PLATFORM, { ...ADMIN, ADMIN_ORIGIN: "https://other.fynix.digital" }).join("\n")).toMatch(/ADMIN_ORIGIN.*differ/);
     expect(problems({ ...PLATFORM, NEXT_PUBLIC_APP_URL: "https://elsewhere.example" }, ADMIN).join("\n")).toMatch(/NEXT_PUBLIC_APP_URL/);
   });
 
   it("refuses every bypass switch and the fake billing allowance, in either file", () => {
-    for (const name of ["EMAIL_CODE_BYPASS", "SIGNUP_OTP_BYPASS", "BOOKING_OTP_BYPASS", "VERIFY_OTP_BYPASS", "FIRSTFOLD_ALLOW_FAKE_BILLING"]) {
+    for (const name of ["EMAIL_CODE_BYPASS", "SIGNUP_OTP_BYPASS", "BOOKING_OTP_BYPASS", "VERIFY_OTP_BYPASS", "FYNIX_ALLOW_FAKE_BILLING"]) {
       expect(problems({ ...PLATFORM, [name]: "true" }, ADMIN).join("\n")).toContain(name);
       expect(problems(PLATFORM, { ...ADMIN, [name]: "1" }).join("\n")).toContain(name);
     }
@@ -94,23 +92,19 @@ describe("checkProductionEnv", () => {
     expect(problems(PLATFORM, { ...ADMIN, RAZORPAY_KEY_SECRET: "" }).join("\n")).toMatch(/admin: RAZORPAY_KEY_SECRET/);
   });
 
-  it("is for a Fynix deployment, and says so when the brand is not", () => {
-    expect(problems({ ...PLATFORM, PLATFORM_BRAND: "firstfold" }, ADMIN).join("\n")).toMatch(/PLATFORM_BRAND/);
-  });
-
   it("warns, rather than refuses, about things worth a second look", () => {
     const result = checkProductionEnv({
-      platform: { ...PLATFORM, RAZORPAY_KEY_ID: "rzp_test_abc", DATABASE_URL: "postgresql://someone_else:pw@localhost:5432/fynix_platform", FIRSTFOLD_MEDIA_ROOT: "" },
-      admin: { ...ADMIN, RAZORPAY_KEY_ID: "rzp_test_abc", FIRSTFOLD_MEDIA_ROOT: "" },
+      platform: { ...PLATFORM, RAZORPAY_KEY_ID: "rzp_test_abc", DATABASE_URL: "postgresql://someone_else:pw@localhost:5432/fynix_platform", FYNIX_MEDIA_ROOT: "" },
+      admin: { ...ADMIN, RAZORPAY_KEY_ID: "rzp_test_abc", FYNIX_MEDIA_ROOT: "" },
     });
     expect(result.errors).toEqual([]);
     expect(result.warnings.join("\n")).toMatch(/rzp_test_/);
-    expect(result.warnings.join("\n")).toMatch(/DATABASE_URL.*firstfold_app/);
-    expect(result.warnings.join("\n")).toMatch(/FIRSTFOLD_MEDIA_ROOT/);
+    expect(result.warnings.join("\n")).toMatch(/DATABASE_URL.*fynix_app/);
+    expect(result.warnings.join("\n")).toMatch(/FYNIX_MEDIA_ROOT/);
   });
 
   it("warns when a database is not on this machine, since the plan is Postgres on the droplet", () => {
-    const result = checkProductionEnv({ platform: { ...PLATFORM, DATABASE_URL: "postgresql://firstfold_app:pw@db.example.com:5432/fynix_platform" }, admin: ADMIN });
+    const result = checkProductionEnv({ platform: { ...PLATFORM, DATABASE_URL: "postgresql://fynix_app:pw@db.example.com:5432/fynix_platform" }, admin: ADMIN });
     expect(result.warnings.join("\n")).toMatch(/not on this machine/);
   });
 });

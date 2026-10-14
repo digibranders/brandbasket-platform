@@ -6,7 +6,7 @@ import type {
   DirectoryListingRow,
   DirectoryProfile,
   SiteFacts,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { safeExternalHref, safeWebsiteHref } from "../safe-link";
 import type {
   DirectoryFeedAddedListing,

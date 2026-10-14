@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, useSyncExternalStore, type ReactElement } from "react";
 import { createPortal } from "react-dom";
-import { OTP_LENGTH } from "@firstfold/shared/lib/appointments/otp";
-import { cn } from "@firstfold/shared/lib/cn";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { TurnstileWidget } from "@firstfold/shared/ui/turnstile";
-import { ArrowIcon, CrownIcon, EyeIcon, EyeOffIcon, HeartIcon, PinIcon } from "@firstfold/shared/ui/icons";
+import { OTP_LENGTH } from "@fynix/shared/lib/appointments/otp";
+import { cn } from "@fynix/shared/lib/cn";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { TurnstileWidget } from "@fynix/shared/ui/turnstile";
+import { ArrowIcon, CrownIcon, EyeIcon, EyeOffIcon, HeartIcon, PinIcon } from "@fynix/shared/ui/icons";
 import { ENTRY_LEDE_SLOT_ID, ENTRY_PATH, entryHrefForPlan } from "@/lib/account-entry";
 import { DIRECTORY_CLAIM_ID_PARAM } from "@/lib/directory-api";
 import {
@@ -48,7 +48,7 @@ const PLAN_OPTIONS: readonly {
   {
     choice: "listing_only",
     name: "Free listing",
-    line: "Your business on Firstfold Local.",
+    line: "Your business on the local directory.",
     lineWithoutFree: "",
     icon: (selected) => <PinIcon className={cn("size-6 shrink-0 transition-colors duration-300 ease-calm", selected ? "text-accent" : "text-ink-soft")} />,
   },
@@ -71,7 +71,7 @@ const PLAN_OPTIONS: readonly {
 
 interface JoinFormProps {
   readonly action: (state: JoinFormState, formData: FormData) => Promise<JoinFormState>;
-  /** The listing being claimed by its listing key, or null (for a claim by `placeId`, or a business not on Firstfold Local yet). */
+  /** The listing being claimed by its listing key, or null (for a claim by `placeId`, or a business not on the local directory yet). */
   readonly listing: string | null;
   /** The listing being claimed by its permanent id, or null; at most one of `listing` and `placeId` is set. */
   readonly placeId: string | null;
@@ -83,7 +83,7 @@ interface JoinFormProps {
   readonly initialChoice: JoinChoice | null;
   /** The plan the plans open with already ticked, when the link chose none (Fynix: Care); null ticks none. */
   readonly preselected: JoinChoice | null;
-  /** The plans this brand sells, in the order shown: the free listing is among them only on Firstfold. */
+  /** The plans this brand sells, in the order shown: the free listing is among them only on Fynix. */
   readonly choices: readonly JoinChoice[];
   /** Where the Terms and the Privacy Notice are, for the brand this is sold under (lib/legal-links.ts legalLinksFor). */
   readonly legalLinks: LegalLinks;
@@ -466,6 +466,13 @@ export function JoinForm({
     <form ref={detailsRef} action={formAction} noValidate className="space-y-4 sm:space-y-5">
       {sentFields}
       <GoBack onBack={() => settleChoice(false)} disabled={isPending} />
+      {choice !== "listing_only" ? (
+        <p className="text-sm text-ink-soft">
+          Signing up for the <span className="font-medium text-ink">{PLAN_OPTIONS.find((option) => option.choice === choice)?.name}</span> plan
+          {" · "}
+          <span className="tabular-nums">{prices[choice]}</span>
+        </p>
+      ) : null}
       {asksBusinessName ? (
         <div>
           <label htmlFor="join-business-name" className="block text-xs font-medium sm:text-sm">

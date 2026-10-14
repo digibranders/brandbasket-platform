@@ -1,5 +1,5 @@
-import type { AffiliateCashOut, AffiliateMonthlyActivity, BillingCurrency, ListedReferralCode } from "@firstfold/db";
-import { formatMoney } from "@firstfold/shared/lib/money";
+import type { AffiliateCashOut, AffiliateMonthlyActivity, BillingCurrency, ListedReferralCode } from "@fynix/db";
+import { formatMoney } from "@fynix/shared/lib/money";
 
 /** What an affiliate's code is doing, in one word and one tone. Colour never stands alone: the word says the same. */
 export interface CodeStatus {

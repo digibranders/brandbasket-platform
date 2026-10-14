@@ -1,4 +1,4 @@
-import { loadGeoCatalog } from "@firstfold/db";
+import { loadGeoCatalog } from "@fynix/db";
 import { getStaffDb } from "@/lib/server/db";
 import { handleGeoCatalog } from "@/lib/server/geo-catalog-api";
 import { leadsApiToken } from "@/lib/server/website-api-auth";

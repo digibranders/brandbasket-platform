@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", () => ({ recordChargePayment: vi.fn() }));
+vi.mock("@fynix/db", () => ({ recordChargePayment: vi.fn() }));
 vi.mock("./tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn() }));
 
-import { recordChargePayment } from "@firstfold/db";
+import { recordChargePayment } from "@fynix/db";
 import { recordChargePaymentWithInvoice } from "./charge-payments";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 

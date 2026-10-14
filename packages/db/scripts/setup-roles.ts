@@ -1,6 +1,6 @@
 import { Client } from "pg";
 import { loadLocalEnv, requireEnv } from "../src/local-env";
-import { APPLICATION_ROLES } from "../src/roles";
+import { APPLICATION_ROLES, CMS_DATABASE, CMS_ROLE } from "../src/roles";
 
 /** Least privilege: login only. Row-level security applies because these roles never own tables or bypass RLS. */
 const ROLE_ATTRIBUTES = "LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS";
@@ -27,6 +27,18 @@ try {
       await client.query(`ALTER ROLE ${identifier} ${ROLE_ATTRIBUTES} PASSWORD ${password}`);
       console.log(`Updated role ${role.name}; its password now matches this checkout's .env.local`);
     }
+  }
+
+  // The CMS's database belongs to the CMS role alone: nothing the application runs as can open it.
+  const database = client.escapeIdentifier(CMS_DATABASE);
+  const owner = client.escapeIdentifier(CMS_ROLE);
+  const existingDatabase = await client.query("SELECT 1 FROM pg_database WHERE datname = $1", [CMS_DATABASE]);
+  if (existingDatabase.rowCount === 0) {
+    await client.query(`CREATE DATABASE ${database} OWNER ${owner}`);
+    console.log(`Created database ${CMS_DATABASE}, owned by ${CMS_ROLE}`);
+  } else {
+    await client.query(`ALTER DATABASE ${database} OWNER TO ${owner}`);
+    console.log(`Database ${CMS_DATABASE} is owned by ${CMS_ROLE}`);
   }
 } finally {
   await client.end();

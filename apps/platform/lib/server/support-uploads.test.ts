@@ -7,7 +7,7 @@ import {
   type SupportUploadDeps,
 } from "./support-uploads";
 vi.mock("server-only", () => ({}));
-const origin = "https://app.firstfold.io";
+const origin = "https://app.fynix.digital";
 function deps(): {
   -readonly [K in keyof SupportUploadDeps]: SupportUploadDeps[K];
 } {
@@ -43,7 +43,7 @@ async function request(file: Uint8Array, type = "image/png"): Promise<Request> {
     method: "POST",
     body: bytes,
     headers: {
-      host: "app.firstfold.io",
+      host: "app.fynix.digital",
       origin,
       "content-type": temp.headers.get("content-type") ?? "",
       "content-length": String(bytes.byteLength),
@@ -111,7 +111,7 @@ describe("support screenshot uploads", () => {
       body: stream,
       duplex: "half",
       headers: {
-        host: "app.firstfold.io",
+        host: "app.fynix.digital",
         origin,
         "content-type": "multipart/form-data; boundary=test",
         "content-length": "10",

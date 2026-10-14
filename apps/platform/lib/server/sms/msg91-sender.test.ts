@@ -8,13 +8,13 @@ const config = { authKey: "key", templateId: "tpl-otp" } as const;
 const boundConfig = {
   ...config,
   bindings: {
-    app: { host: "app.firstfold.io", templateId: "tpl-app" },
-    website: { host: "www.firstfold.io", templateId: "tpl-website" },
+    app: { host: "app.fynix.digital", templateId: "tpl-app" },
+    website: { host: "www.fynix.digital", templateId: "tpl-website" },
   },
 } as const;
 
 function boundBody(host: string, bindingCode = "004821"): string {
-  return `004821 is your Firstfold code. It expires in 10 minutes. Do not share it.\n\n@${host} #${bindingCode} Firstfold`;
+  return `004821 is your Fynix code. It expires in 10 minutes. Do not share it.\n\n@${host} #${bindingCode} Fynix`;
 }
 
 function reply(body: unknown, status = 200): typeof fetch {
@@ -23,8 +23,8 @@ function reply(body: unknown, status = 200): typeof fetch {
 
 describe("createMsg91Sender", () => {
   it.each([
-    ["app.firstfold.io", "tpl-app"],
-    ["www.firstfold.io", "tpl-website"],
+    ["app.fynix.digital", "tpl-app"],
+    ["www.fynix.digital", "tpl-website"],
   ])("selects the approved template for %s with both code substitutions", async (host, templateId) => {
     const fetchImpl = reply({ type: "success" });
     await createMsg91Sender(boundConfig, fetchImpl).send({ to: "+919876543210", body: boundBody(host), businessId: null });
@@ -47,8 +47,8 @@ describe("createMsg91Sender", () => {
 
   it.each([
     boundBody("evil.test"),
-    boundBody("app.firstfold.io", "123456"),
-    boundBody("app.firstfold.io/path"),
+    boundBody("app.fynix.digital", "123456"),
+    boundBody("app.fynix.digital/path"),
   ])("refuses an unknown or malformed binding before dispatch", async (body) => {
     const fetchImpl = reply({ type: "success" });
     await expect(createMsg91Sender(boundConfig, fetchImpl).send({ to: "+919876543210", body, businessId: null })).rejects.toThrow();
@@ -56,19 +56,19 @@ describe("createMsg91Sender", () => {
   });
 
   it("refuses ambiguous template mappings for the same host", () => {
-    expect(() => createMsg91Sender({ ...boundConfig, bindings: { ...boundConfig.bindings, website: { host: "app.firstfold.io", templateId: "tpl-other" } } }, reply({ type: "success" }))).toThrow(/same host/);
+    expect(() => createMsg91Sender({ ...boundConfig, bindings: { ...boundConfig.bindings, website: { host: "app.fynix.digital", templateId: "tpl-other" } } }, reply({ type: "success" }))).toThrow(/same host/);
   });
 
   it("refuses an invalid configured binding host", () => {
-    expect(() => createMsg91Sender({ ...config, bindings: { app: { host: "https://app.firstfold.io", templateId: "tpl-app" } } }, reply({ type: "success" }))).toThrow(/DNS host/);
+    expect(() => createMsg91Sender({ ...config, bindings: { app: { host: "https://app.fynix.digital", templateId: "tpl-app" } } }, reply({ type: "success" }))).toThrow(/DNS host/);
   });
 
   it("refuses reuse of the legacy template ID for a bound message", () => {
-    expect(() => createMsg91Sender({ ...config, bindings: { app: { host: "app.firstfold.io", templateId: config.templateId } } }, reply({ type: "success" }))).toThrow(/distinct template/);
+    expect(() => createMsg91Sender({ ...config, bindings: { app: { host: "app.fynix.digital", templateId: config.templateId } } }, reply({ type: "success" }))).toThrow(/distinct template/);
   });
 
   it("refuses one fixed-host template ID mapped to two different hosts", () => {
-    expect(() => createMsg91Sender({ ...boundConfig, bindings: { ...boundConfig.bindings, website: { host: "www.firstfold.io", templateId: boundConfig.bindings.app.templateId } } }, reply({ type: "success" }))).toThrow(/distinct template/);
+    expect(() => createMsg91Sender({ ...boundConfig, bindings: { ...boundConfig.bindings, website: { host: "www.fynix.digital", templateId: boundConfig.bindings.app.templateId } } }, reply({ type: "success" }))).toThrow(/distinct template/);
   });
 
   it.each(["919876543210", "+01", "+91 9876543210", "+919876543210\n"])("refuses malformed destination %j before dispatch", async (to) => {
@@ -82,7 +82,7 @@ describe("createMsg91Sender", () => {
   });
 
   it("refuses trailing whitespace on a configured template identifier", () => {
-    expect(() => createMsg91Sender({ ...config, bindings: { app: { host: "app.firstfold.io", templateId: "tpl-app\n" } } }, reply({ type: "success" }))).toThrow(/identifier/);
+    expect(() => createMsg91Sender({ ...config, bindings: { app: { host: "app.fynix.digital", templateId: "tpl-app\n" } } }, reply({ type: "success" }))).toThrow(/identifier/);
   });
 
   it.each([null, [], "success", { type: false }])("rejects malformed provider response %j with a safe error", async (body) => {

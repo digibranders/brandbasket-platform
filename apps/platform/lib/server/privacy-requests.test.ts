@@ -10,7 +10,7 @@ import {
   receiveVerifiedPrivacyRequest,
   type Database,
   type PrivacyRequestOtpRow,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { getStaffDb } from "./db";
 import { bookingOtpBypassed, bookingOtpSecret, smsAllowedCountryCodes } from "./env";
 import { hashOtpCode } from "./otp-crypto";
@@ -28,7 +28,7 @@ vi.mock("./sms", async () => {
   const actual = await vi.importActual<typeof import("./sms")>("./sms");
   return { createSmsSender: vi.fn(), otpMessage: actual.otpMessage, SmsProviderUnavailableError: actual.SmsProviderUnavailableError };
 });
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   claimPrivacyRequestOtpAttempt: vi.fn(),
   consumeRateLimit: vi.fn(),
   createPrivacyRequestOtp: vi.fn(),

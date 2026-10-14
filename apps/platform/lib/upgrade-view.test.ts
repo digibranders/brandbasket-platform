@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { UpgradeAssessment } from "@firstfold/shared/server/plan-upgrade";
+import type { UpgradeAssessment } from "@fynix/shared/server/plan-upgrade";
 import { BLOCK_MESSAGES, daysLeftPhrase, PAYMENT_NOTICES, readPaymentNotice, UNAVAILABLE_MESSAGES, upgradeScreen, upgradeStanding } from "./upgrade-view";
 
 describe("the Upgrade page's words", () => {

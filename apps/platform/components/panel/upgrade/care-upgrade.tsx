@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { EmailUs } from "@/components/panel/email-us";
 import type { ReactElement } from "react";
-import { formatMoney } from "@firstfold/shared/lib/money";
-import { LocalDate } from "@firstfold/shared/ui/panel/local-date-time";
-import { renewalCharge } from "@firstfold/shared/lib/billing/terms";
+import { formatMoney } from "@fynix/shared/lib/money";
+import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
+import { renewalCharge } from "@fynix/shared/lib/billing/terms";
 import { BillingDetails } from "@/components/panel/billing/billing-details";
 import { PlanComparisonTable } from "@/components/panel/upgrade/plan-comparison-table";
 import { UpgradePayForm } from "@/components/panel/upgrade/upgrade-pay-form";

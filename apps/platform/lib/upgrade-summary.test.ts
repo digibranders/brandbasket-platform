@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { UpgradeQuote } from "@firstfold/shared/lib/billing/upgrade";
+import type { UpgradeQuote } from "@fynix/shared/lib/billing/upgrade";
 import { planPaymentSummary, upgradePaymentSummary } from "./upgrade-summary";
 
 const INR_PLAN = { initialAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as const;

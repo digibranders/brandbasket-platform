@@ -1,6 +1,6 @@
-import type { Payment, TaxInvoice, TaxInvoiceLineRecord } from "@firstfold/db";
-import type { BillingDetailsStart, SavedBillingDetails } from "@firstfold/shared/lib/billing/billing-details-start";
-import type { PhoneCountryOption } from "@firstfold/shared/lib/phone/fields";
+import type { Payment, TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
+import type { BillingDetailsStart, SavedBillingDetails } from "@fynix/shared/lib/billing/billing-details-start";
+import type { PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -15,7 +15,7 @@ vi.mock("@/app/(protected)/clients/[businessId]/invoice-actions", () => ({
 const BUSINESS = "01920000-0000-7000-8000-0000000000b1";
 
 const line: TaxInvoiceLineRecord = {
-  description: "Firstfold Premium plan",
+  description: "Fynix Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: null,
   sac: "998361",
@@ -35,7 +35,7 @@ const invoice = {
   id: "inv-1",
   businessId: BUSINESS,
   paymentId: "pay-1",
-  number: "FF/26-27/000001",
+  number: "FY/26-27/000001",
   issuedOn: "2026-10-09",
   paidOn: "2026-10-09",
   placeOfSupplyStateCode: "mh",
@@ -78,12 +78,12 @@ describe("ClientTaxInvoices", () => {
     expect(html).toContain('<ul aria-label="Payments missing an invoice"');
     expect(html).toContain('<ul aria-label="Tax invoices issued"');
     expect(html).toContain('aria-label="Issue invoice for the ₹3,539 payment of 9 October 2026"');
-    expect(html).toContain('aria-label="Download tax invoice FF/26-27/000001"');
+    expect(html).toContain('aria-label="Download tax invoice FY/26-27/000001"');
     expect(html).toContain('href="/invoices/inv-1"');
   });
 
   it("keeps an invoice number on one line, so a narrow column never splits it at its hyphen", () => {
-    expect(taxInvoices({}).match(/<p class="[^"]*whitespace-nowrap[^"]*">FF\/26-27\/000001<\/p>/)).not.toBeNull();
+    expect(taxInvoices({}).match(/<p class="[^"]*whitespace-nowrap[^"]*">FY\/26-27\/000001<\/p>/)).not.toBeNull();
   });
 
   it("posts the issue form with the business and the payment, so it works without JavaScript", () => {

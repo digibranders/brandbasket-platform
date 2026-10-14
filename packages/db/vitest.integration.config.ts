@@ -4,9 +4,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
-    // The suites pin Firstfold's wording (FF numbers, "Firstfold Premium plan"); apps/platform/.env.local, which the setup
-    // loads, says PLATFORM_BRAND=fynix. Fynix's own output has its own tests (tax-invoicing.integration.test.ts, the unit tests).
-    env: { PLATFORM_BRAND: "firstfold", INVOICE_PREFIX: "" },
+    // The suites pin Fynix Digital's wording (FY numbers, "Fynix Premium plan"), so an INVOICE_PREFIX set in
+    // apps/platform/.env.local, which the setup loads, must not change it.
+    env: { INVOICE_PREFIX: "" },
     include: ["src/**/*.integration.test.ts"],
     fileParallelism: false,
     testTimeout: 30_000,

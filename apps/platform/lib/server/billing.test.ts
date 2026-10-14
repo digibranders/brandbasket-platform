@@ -12,10 +12,10 @@ import {
   type Plan,
   type ScopedTransaction,
   type Subscription,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { redirect } from "next/navigation";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BillingConfigurationError, CheckoutVerificationError } from "@firstfold/billing";
+import { BillingConfigurationError, CheckoutVerificationError } from "@fynix/billing";
 import {
   BillingRequiredError,
   findCustomerPaymentMethod,
@@ -37,7 +37,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("./session", () => ({ getSessionUser: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
 vi.mock("@/lib/server/env", () => ({ serverEnv: () => ({ BETTER_AUTH_SECRET: "x".repeat(32) }) }));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   findBillingState: vi.fn(),
   findBusinessEntry: vi.fn(),
   findCurrentPaymentMethod: vi.fn(),
@@ -288,21 +288,21 @@ describe("requireBillingAccess", () => {
 });
 
 describe("getBillingProvider", () => {
-  const holder = globalThis as typeof globalThis & { firstfoldBillingProvider?: unknown };
+  const holder = globalThis as typeof globalThis & { fynixBillingProvider?: unknown };
 
   beforeEach(() => {
-    delete holder.firstfoldBillingProvider;
+    delete holder.fynixBillingProvider;
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    delete holder.firstfoldBillingProvider;
+    delete holder.fynixBillingProvider;
   });
 
   it("refuses the fake provider on a real deployment", () => {
     vi.stubEnv("BILLING_PROVIDER", "fake");
-    vi.stubEnv("APP_ORIGIN", "https://app.firstfold.co");
-    vi.stubEnv("FIRSTFOLD_ALLOW_FAKE_BILLING", "");
+    vi.stubEnv("APP_ORIGIN", "https://app.fynix.digital");
+    vi.stubEnv("FYNIX_ALLOW_FAKE_BILLING", "");
     expect(() => getBillingProvider()).toThrow(BillingConfigurationError);
   });
 
@@ -311,9 +311,9 @@ describe("getBillingProvider", () => {
     vi.stubEnv("APP_ORIGIN", "http://app.localhost:3100");
     expect(getBillingProvider().name).toBe("fake");
 
-    delete holder.firstfoldBillingProvider;
-    vi.stubEnv("APP_ORIGIN", "https://preview.firstfold.co");
-    vi.stubEnv("FIRSTFOLD_ALLOW_FAKE_BILLING", "1");
+    delete holder.fynixBillingProvider;
+    vi.stubEnv("APP_ORIGIN", "https://preview.fynix.digital");
+    vi.stubEnv("FYNIX_ALLOW_FAKE_BILLING", "1");
     expect(getBillingProvider().name).toBe("fake");
   });
 
@@ -359,17 +359,17 @@ describe("getBillingProvider", () => {
 });
 
 describe("getRazorpayProvider", () => {
-  const holder = globalThis as typeof globalThis & { firstfoldBillingProvider?: unknown; firstfoldRazorpayProvider?: unknown };
+  const holder = globalThis as typeof globalThis & { fynixBillingProvider?: unknown; fynixRazorpayProvider?: unknown };
 
   beforeEach(() => {
-    delete holder.firstfoldBillingProvider;
-    delete holder.firstfoldRazorpayProvider;
+    delete holder.fynixBillingProvider;
+    delete holder.fynixRazorpayProvider;
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    delete holder.firstfoldBillingProvider;
-    delete holder.firstfoldRazorpayProvider;
+    delete holder.fynixBillingProvider;
+    delete holder.fynixRazorpayProvider;
   });
 
   it("is the same provider getBillingProvider gives, when that is Razorpay", () => {

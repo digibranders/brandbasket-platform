@@ -1,6 +1,6 @@
-import { chargedAmountCents } from "@firstfold/billing/tax";
-import type { UpgradeQuote } from "@firstfold/shared/lib/billing/upgrade";
-import { formatMoney, type MoneyCurrency } from "@firstfold/shared/lib/money";
+import { chargedAmountCents } from "@fynix/billing/tax";
+import type { UpgradeQuote } from "@fynix/shared/lib/billing/upgrade";
+import { formatMoney, type MoneyCurrency } from "@fynix/shared/lib/money";
 
 /*
  * The "You pay today" lines on the Upgrade page: the price, the GST on it and the total taken. Formatted here, on the

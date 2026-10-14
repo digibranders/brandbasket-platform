@@ -43,10 +43,10 @@ Vitest, Tailwind 4.
 
 | Repo | Location | Branch |
 | --- | --- | --- |
-| Platform | `/Users/siddiqueahmed/Desktop/AI/first-found/blog-seo` (git worktree) | `feat/blog-seo-categories` from `origin/development` |
-| Client-site template | `/Users/siddiqueahmed/Desktop/AI/first-found/firstfold-test-client-site` | new branch `feat/blog-categories-seo` from `main` |
+| Platform | `/Users/siddiqueahmed/Desktop/AI/fynix-platform/blog-seo` (git worktree) | `feat/blog-seo-categories` from `origin/development` |
+| Client-site template | `/Users/siddiqueahmed/Desktop/AI/fynix-platform/fynix-test-client-site` | new branch `feat/blog-categories-seo` from `main` |
 
-The main checkout (`first-found/first-found`, branch `ci/add-github-actions`) holds the user's unrelated uncommitted
+The main checkout (`fynix-platform/fynix-platform`, branch `ci/add-github-actions`) holds the user's unrelated uncommitted
 pricing/GST work. **Do not touch it.**
 
 ## File map
@@ -78,13 +78,13 @@ pricing/GST work. **Do not touch it.**
 | `apps/platform/components/panel/blog-taxonomy-manager.tsx` (new) | rename/delete rows on the settings page |
 | `apps/platform/components/panel/blog-post-edit-form.tsx` | wires the three components in |
 
-### Client site (`firstfold-test-client-site/`)
+### Client site (`fynix-test-client-site/`)
 
 | File | Responsibility |
 | --- | --- |
 | `package.json`, `vitest.config.mts` (new) | add Vitest + `test` script |
-| `lib/blog-model.ts` (new) | pure: `BlogPost` types + tolerant `parsePost` (moved from firstfold-blog.ts) |
-| `lib/firstfold-blog.ts` | fetching only; imports the model |
+| `lib/blog-model.ts` (new) | pure: `BlogPost` types + tolerant `parsePost` (moved from fynix-blog.ts) |
+| `lib/fynix-blog.ts` | fetching only; imports the model |
 | `lib/site-url.ts` (new) | this site's own absolute origin |
 | `lib/blog-categories.ts` (new) | pure: `categoriesOf`, `postsInCategory`, `relatedPosts` |
 | `lib/blog-schema.ts` (new) | pure: `blogPostingJsonLd`, `breadcrumbJsonLd`, `serializeJsonLd` |
@@ -177,7 +177,7 @@ Expected: a new `packages/cms/src/migrations/2026…_blog_categories_authors_seo
 `no_index` to `blog_posts`; `migrations/index.ts` updated. Open the file and confirm it contains those statements
 and nothing unrelated.
 
-- [ ] **Step 6:** `pnpm --filter @firstfold/cms typecheck` → exit 0.
+- [ ] **Step 6:** `pnpm --filter @fynix/cms typecheck` → exit 0.
 
 ### Task 2: Pure slug helpers (moved, then reused)
 
@@ -208,7 +208,7 @@ describe("firstUnusedSlug", () => {
 });
 ```
 
-- [ ] **Step 2:** `pnpm --filter @firstfold/platform exec vitest run lib/blog-slug.test.ts` → FAIL (module missing).
+- [ ] **Step 2:** `pnpm --filter @fynix/platform exec vitest run lib/blog-slug.test.ts` → FAIL (module missing).
 
 - [ ] **Step 3: Implement**
 
@@ -553,7 +553,7 @@ export function toSitePost(post: RawSitePost): SitePost {
 - [ ] **Step 5: Fix the preview test fixture** — `lib/server/blog-preview-request.test.ts`'s `POST: SitePost`
   constant gains `updatedAt: null, category: null, author: null, seo: { title: <same title>, description: null, noIndex: false }`.
 
-- [ ] **Step 6:** `pnpm --filter @firstfold/platform exec vitest run lib/` → PASS.
+- [ ] **Step 6:** `pnpm --filter @fynix/platform exec vitest run lib/` → PASS.
 
 ### Task 5: Shared paid-access helper and taxonomy reads
 
@@ -676,7 +676,7 @@ export const getBlogAuthors = cache(async (): Promise<readonly BlogAuthor[]> => 
     `categoryName: typeof (doc.category as { name?: unknown } | null)?.name === "string" ? (doc.category as { name: string }).name : null`.
     Write this as a small `categoryNameOf(value: unknown): string | null` helper rather than inline casts.
 
-- [ ] **Step 4:** `pnpm --filter @firstfold/platform typecheck` → only errors are in `actions.ts`/edit form
+- [ ] **Step 4:** `pnpm --filter @fynix/platform typecheck` → only errors are in `actions.ts`/edit form
   (fixed in Tasks 6–8).
 
 ### Task 6: Post save accepts category, author and SEO
@@ -868,7 +868,7 @@ export const getBlogAuthors = cache(async (): Promise<readonly BlogAuthor[]> => 
 
 import { refresh } from "next/cache";
 import { getPayload, NotFound, type Payload } from "payload";
-import { cleanLine } from "@firstfold/shared/lib/validation/text";
+import { cleanLine } from "@fynix/shared/lib/validation/text";
 import config from "@/payload.config";
 import { firstUnusedSlug, slugify } from "@/lib/blog-slug";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
@@ -1035,7 +1035,7 @@ export async function deleteBlogAuthorAction(id: string): Promise<TaxonomyDelete
   (Two authors may share a name — two people called "Priya" is real — so authors are not de-duplicated.)
   Note: `sameName` alone doesn't cover the "same slug, different name" test; `freeCategorySlug` does.
 
-- [ ] **Step 4:** run → PASS. Then the whole platform suite: `pnpm --filter @firstfold/platform test` → PASS.
+- [ ] **Step 4:** run → PASS. Then the whole platform suite: `pnpm --filter @fynix/platform test` → PASS.
 
 ### Task 8: Editor UI
 
@@ -1047,7 +1047,7 @@ export async function deleteBlogAuthorAction(id: string): Promise<TaxonomyDelete
 ```tsx
 "use client";
 
-import { Button } from "@firstfold/shared/ui/panel/button";
+import { Button } from "@fynix/shared/ui/panel/button";
 import { useState, useTransition, type ReactElement } from "react";
 import type { TaxonomyOption, TaxonomyResult } from "@/app/app-host/(protected)/content/blog/taxonomy-actions";
 
@@ -1228,7 +1228,7 @@ export function BlogSeoFields({ metaTitle, metaDescription, noIndex, titleFallba
   }
   ```
   and pass `createAuthor={createBlogAuthorByNameAction}`.
-- [ ] **Step 5:** `pnpm --filter @firstfold/platform typecheck` → exit 0.
+- [ ] **Step 5:** `pnpm --filter @fynix/platform typecheck` → exit 0.
 
 ### Task 9: "Categories & authors" page and list page
 
@@ -1290,7 +1290,7 @@ export default async function BlogSettingsPage(): Promise<ReactElement> {
   `<ButtonLink href="/content/blog/settings" size="sm" variant="secondary">Categories & authors</ButtonLink>`
   (wrap both in `flex gap-3`). In each row, show `post.categoryName` before the status when non-null:
   `<span className="text-sm text-ink-soft">{post.categoryName === null ? "" : `${post.categoryName} · `}{status}</span>`.
-- [ ] **Step 4:** `pnpm --filter @firstfold/platform typecheck` → exit 0.
+- [ ] **Step 4:** `pnpm --filter @fynix/platform typecheck` → exit 0.
 
 ### Task 10: Platform verification
 
@@ -1308,13 +1308,13 @@ export default async function BlogSettingsPage(): Promise<ReactElement> {
 
 ## Part B — Client-site template
 
-Run everything from `/Users/siddiqueahmed/Desktop/AI/first-found/firstfold-test-client-site`, after
+Run everything from `/Users/siddiqueahmed/Desktop/AI/fynix-platform/fynix-test-client-site`, after
 `git switch -c feat/blog-categories-seo`.
 
 ### Task 11: Vitest and the tolerant post model
 
 **Files:** Modify `package.json`; create `vitest.config.mts`, `lib/blog-model.ts`, `lib/blog-model.test.ts`;
-modify `lib/firstfold-blog.ts`.
+modify `lib/fynix-blog.ts`.
 
 - [ ] **Step 1:** `pnpm add -D vitest@^5` and add `"test": "vitest run"` to scripts. `vitest.config.mts`:
   ```ts
@@ -1332,7 +1332,7 @@ modify `lib/firstfold-blog.ts`.
   import { describe, expect, it } from "vitest";
   import { parsePost } from "./blog-model";
 
-  const ORIGIN = "https://app.firstfold.io";
+  const ORIGIN = "https://app.fynix.digital";
   const OLD_SHAPE = { slug: "a", title: "A", excerpt: "E", publishedAt: null, html: "<p>x</p>", coverImagePath: null, categories: [] };
 
   describe("parsePost", () => {
@@ -1350,7 +1350,7 @@ modify `lib/firstfold-blog.ts`.
     });
     it("makes the cover path absolute", () => {
       expect(parsePost({ ...OLD_SHAPE, coverImagePath: "/content-media/4" }, ORIGIN).coverImageUrl).toBe(
-        "https://app.firstfold.io/content-media/4",
+        "https://app.fynix.digital/content-media/4",
       );
     });
     it("rejects a malformed category rather than guessing", () => {
@@ -1359,7 +1359,7 @@ modify `lib/firstfold-blog.ts`.
   });
   ```
 - [ ] **Step 3: Implement `lib/blog-model.ts`** — move `BlogPost`, `BlogResponseShapeError`, `isRecord`,
-  `requireString`, `optionalString`, `parsePost` here from `firstfold-blog.ts` (no `server-only`; pure), exporting
+  `requireString`, `optionalString`, `parsePost` here from `fynix-blog.ts` (no `server-only`; pure), exporting
   `BlogResponseShapeError`, `isRecord`, `parsePost`. Extend:
   ```ts
   export interface BlogCategory { readonly slug: string; readonly name: string }
@@ -1390,7 +1390,7 @@ modify `lib/firstfold-blog.ts`.
   }
   ```
   (`title`/`excerpt` are the already-read locals; restructure `parsePost` to read them into consts first.)
-  `firstfold-blog.ts` imports these from `./blog-model` and re-exports `type BlogPost`.
+  `fynix-blog.ts` imports these from `./blog-model` and re-exports `type BlogPost`.
 - [ ] **Step 4:** `pnpm test` → PASS; `pnpm typecheck` → exit 0.
 
 ### Task 12: Site URL and category helpers
@@ -1516,7 +1516,7 @@ modify `lib/firstfold-blog.ts`.
 
   const POST: BlogPost = {
     slug: "monsoon-menu", title: "Monsoon menu", excerpt: null, publishedAt: "2026-09-20T00:00:00.000Z",
-    updatedAt: "2026-09-21T00:00:00.000Z", html: "", coverImageUrl: "https://app.firstfold.io/content-media/4",
+    updatedAt: "2026-09-21T00:00:00.000Z", html: "", coverImageUrl: "https://app.fynix.digital/content-media/4",
     categories: ["Recipes"], category: { slug: "recipes", name: "Recipes" }, author: { name: "Asha", bio: null },
     seo: { title: "Monsoon menu", description: "New dishes", noIndex: false },
   };
@@ -1531,7 +1531,7 @@ modify `lib/firstfold-blog.ts`.
         datePublished: "2026-09-20T00:00:00.000Z", dateModified: "2026-09-21T00:00:00.000Z",
         author: { "@type": "Person", name: "Asha" },
         publisher: { "@type": "Organization", name: "Cafe", url: "https://cafe.example" },
-        image: ["https://app.firstfold.io/content-media/4"], articleSection: "Recipes",
+        image: ["https://app.fynix.digital/content-media/4"], articleSection: "Recipes",
       });
     });
     it("credits the business when there is no author and omits absent fields", () => {
@@ -1570,7 +1570,7 @@ modify `lib/firstfold-blog.ts`.
       title: "Monsoon menu", description: "New dishes",
       alternates: { canonical: "https://cafe.example/blog/monsoon-menu" },
       openGraph: { type: "article", publishedTime: "2026-09-20T00:00:00.000Z", authors: ["Asha"], section: "Recipes",
-        images: ["https://app.firstfold.io/content-media/4"] },
+        images: ["https://app.fynix.digital/content-media/4"] },
     });
     expect(meta.robots).toBeUndefined();
   });
@@ -1717,7 +1717,7 @@ modify `lib/firstfold-blog.ts`.
   import { PostCard } from "@/components/post-card";
   import { categoriesOf, postsInCategory } from "@/lib/blog-categories";
   import { breadcrumbJsonLd, categoryUrl } from "@/lib/blog-schema";
-  import { getBlog } from "@/lib/firstfold-blog";
+  import { getBlog } from "@/lib/fynix-blog";
   import { siteUrl } from "@/lib/site-url";
 
   export const revalidate = 60;
@@ -1804,7 +1804,7 @@ modify `lib/firstfold-blog.ts`.
   import type { MetadataRoute } from "next";
   import { categoriesOf } from "@/lib/blog-categories";
   import { categoryUrl, postUrl } from "@/lib/blog-schema";
-  import { getBlog } from "@/lib/firstfold-blog";
+  import { getBlog } from "@/lib/fynix-blog";
   import { siteUrl } from "@/lib/site-url";
 
   export const revalidate = 3600;
@@ -1851,7 +1851,7 @@ modify `lib/firstfold-blog.ts`.
 - [ ] `pnpm typecheck` → exit 0
 - [ ] `pnpm test` → all pass
 - [ ] `pnpm build` → succeeds
-- [ ] Local run against the local platform (`FIRSTFOLD_API_ORIGIN=http://localhost:3001`, a local site token):
+- [ ] Local run against the local platform (`FYNIX_API_ORIGIN=http://localhost:3001`, a local site token):
   `/blog` shows chips; a chip opens `/blog/category/<slug>`; a post shows category + author + related posts; page
   source has one `application/ld+json` script with `BlogPosting` and `BreadcrumbList`; `/sitemap.xml` lists posts
   and categories and omits a hidden post; a hidden post's `<meta name="robots">` is `noindex, follow`.

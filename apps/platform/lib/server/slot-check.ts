@@ -1,7 +1,7 @@
-import type { BookingContext, SiteFacts } from "@firstfold/db";
-import { buildClinicWeek, freePractitionersAt, type PractitionerCalendar } from "@firstfold/shared/lib/appointments/clinic-availability";
-import { findSlot, type SiteSlot } from "@firstfold/shared/lib/appointments/slots";
-import { localDateIn, mondayOf } from "@firstfold/shared/lib/calendar/local-date";
+import type { BookingContext, SiteFacts } from "@fynix/db";
+import { buildClinicWeek, freePractitionersAt, type PractitionerCalendar } from "@fynix/shared/lib/appointments/clinic-availability";
+import { findSlot, type SiteSlot } from "@fynix/shared/lib/appointments/slots";
+import { localDateIn, mondayOf } from "@fynix/shared/lib/calendar/local-date";
 import { nowMinutesIn } from "./local-time";
 
 export interface ResolvedSlot {

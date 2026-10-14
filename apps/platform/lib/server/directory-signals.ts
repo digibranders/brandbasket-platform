@@ -15,11 +15,11 @@ import {
   type DirectoryAsk,
   type DirectoryNamed,
   type RateLimitRule,
-} from "@firstfold/db";
+} from "@fynix/db";
 import type { DirectoryEventKind, ListingSignals, SignalsResponse } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
 import { bookingOtpSecret } from "./env";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { ipRateLimitKey } from "./ip-key";
 
 /**
@@ -45,7 +45,7 @@ export const ONCE_A_DAY_RULE: RateLimitRule = { limit: 1, windowSeconds: ONE_DAY
 export const IP_HOURLY_RULE: RateLimitRule = { limit: 300, windowSeconds: ONE_HOUR_SECONDS };
 
 /** Separates these hashes from any other use of the same secret. */
-const HASH_CONTEXT = "firstfold:directory-events:v1";
+const HASH_CONTEXT = "fynix:directory-events:v1";
 
 /** `unknown_business`: the event names an id no business on the platform has. */
 export type DirectoryEventOutcome = "counted" | "repeat" | "limited" | "unknown_business" | "failed";

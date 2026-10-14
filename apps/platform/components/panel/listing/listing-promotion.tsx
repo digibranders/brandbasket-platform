@@ -1,15 +1,15 @@
 "use client";
 
 import type { ReactElement } from "react";
-import type { DirectoryPaidTag } from "@firstfold/db";
+import type { DirectoryPaidTag } from "@fynix/db";
 import {
   PROMOTION_DAYS,
   PROMOTION_TAGS,
   PROMOTION_TAG_LABELS,
-} from "@firstfold/shared/lib/directory/promotion";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+} from "@fynix/shared/lib/directory/promotion";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 /** Written as escapes to keep the source plain text. */

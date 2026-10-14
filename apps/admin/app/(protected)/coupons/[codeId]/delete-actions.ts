@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { findReferralCodeById } from "@firstfold/db";
+import { findReferralCodeById } from "@fynix/db";
 import type { ReferralFormState } from "@/components/referral-code-form";
 import { getStaffDb } from "@/lib/server/db";
 import { deleteReferralCodeFor } from "@/lib/server/referral-admin";

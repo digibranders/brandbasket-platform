@@ -1,6 +1,6 @@
-import type { Charge, Plan } from "@firstfold/db";
+import type { Charge, Plan } from "@fynix/db";
 import type { ReactElement } from "react";
-import { LocalDateTime } from "@firstfold/shared/ui/panel/local-date-time";
+import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import {
   CHARGE_KIND_LABELS,
   STAFF_CHARGE_KINDS,
@@ -8,18 +8,18 @@ import {
   chargeLabel,
   chargePricing,
   type StaffChargeKind,
-} from "@firstfold/shared/lib/billing/charges";
+} from "@fynix/shared/lib/billing/charges";
 import {
   MANUAL_PAYMENT_CONFIRM_FIELD,
   MANUAL_PAYMENT_RECEIVED_ON_FIELD,
   MANUAL_PAYMENT_REFERENCE_FIELD,
   MAX_MANUAL_REFERENCE_LENGTH,
-} from "@firstfold/shared/lib/billing/manual-payment-form";
-import { STAFF_CHARGE_NOTICES, type StaffChargeNotice } from "@firstfold/shared/lib/billing/charge-notices";
-import { formatMoney } from "@firstfold/shared/lib/money";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@firstfold/shared/ui/forms/submit-gate";
-import type { SelectOption } from "@firstfold/shared/ui/select-field";
+} from "@fynix/shared/lib/billing/manual-payment-form";
+import { STAFF_CHARGE_NOTICES, type StaffChargeNotice } from "@fynix/shared/lib/billing/charge-notices";
+import { formatMoney } from "@fynix/shared/lib/money";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import type { SelectOption } from "@fynix/shared/ui/select-field";
 import { AddChargeForm } from "@/components/add-charge-form";
 import { buttonPrimary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, labelClasses } from "@/components/console/field-styles";

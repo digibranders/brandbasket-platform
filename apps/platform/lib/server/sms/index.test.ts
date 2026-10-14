@@ -35,20 +35,20 @@ describe("per-surface OTP configuration", () => {
   });
 
   it.each([
-    ["app", "SMS_OTP_APP_ORIGIN", "MSG91_OTP_APP_TEMPLATE_ID", "app.firstfold.io", "website"],
-    ["website", "SMS_OTP_WEBSITE_ORIGIN", "MSG91_OTP_WEBSITE_TEMPLATE_ID", "www.firstfold.io", "app"],
+    ["app", "SMS_OTP_APP_ORIGIN", "MSG91_OTP_APP_TEMPLATE_ID", "app.fynix.digital", "website"],
+    ["website", "SMS_OTP_WEBSITE_ORIGIN", "MSG91_OTP_WEBSITE_TEMPLATE_ID", "www.fynix.digital", "app"],
   ] as const)("enables %s independently", (surface, originName, templateName, host, otherSurface) => {
     vi.stubEnv(originName, `https://${host}`);
     vi.stubEnv(templateName, "approved-template");
-    expect(otpMessage("004821", surface)).toBe(`${otpMessage("004821")}\n\n@${host} #004821 Firstfold`);
+    expect(otpMessage("004821", surface)).toBe(`${otpMessage("004821")}\n\n@${host} #004821 Fynix`);
     expect(otpMessage("004821", otherSurface)).toBe(otpMessage("004821"));
-    expect(otpMessage("004821")).toBe("004821 is your Firstfold code. It expires in 10 minutes. Do not share it.");
+    expect(otpMessage("004821")).toBe("004821 is your Fynix code. It expires in 10 minutes. Do not share it.");
   });
 
   it.each([
-    ["app", "SMS_OTP_APP_ORIGIN", "https://app.firstfold.io", "website"],
+    ["app", "SMS_OTP_APP_ORIGIN", "https://app.fynix.digital", "website"],
     ["app", "MSG91_OTP_APP_TEMPLATE_ID", "approved-template", "website"],
-    ["website", "SMS_OTP_WEBSITE_ORIGIN", "https://www.firstfold.io", "app"],
+    ["website", "SMS_OTP_WEBSITE_ORIGIN", "https://www.fynix.digital", "app"],
     ["website", "MSG91_OTP_WEBSITE_TEMPLATE_ID", "approved-template", "app"],
   ] as const)("refuses an incomplete %s pair with only %s", (surface, name, value, otherSurface) => {
     vi.stubEnv(name, value);
@@ -57,8 +57,8 @@ describe("per-surface OTP configuration", () => {
   });
 
   it.each([
-    ["app", "SMS_OTP_APP_ORIGIN", "MSG91_OTP_APP_TEMPLATE_ID", "app.firstfold.io"],
-    ["website", "SMS_OTP_WEBSITE_ORIGIN", "MSG91_OTP_WEBSITE_TEMPLATE_ID", "www.firstfold.io"],
+    ["app", "SMS_OTP_APP_ORIGIN", "MSG91_OTP_APP_TEMPLATE_ID", "app.fynix.digital"],
+    ["website", "SMS_OTP_WEBSITE_ORIGIN", "MSG91_OTP_WEBSITE_TEMPLATE_ID", "www.fynix.digital"],
   ] as const)("wires the independent %s pair into MSG91", async (surface, originName, templateName, host) => {
     vi.stubEnv("SMS_PROVIDER", "msg91");
     vi.stubEnv("MSG91_AUTH_KEY", "test-key");
@@ -75,7 +75,7 @@ describe("per-surface OTP configuration", () => {
     });
   });
 
-  it.each(["http://app.firstfold.io", "https://localhost", "https://127.0.0.1", "https://app.firstfold.io:8443", "https://app.firstfold.io:443", "https://app.firstfold.io/path", "https://user@app.firstfold.io", "https://app.firstfold.io?x=1", "https://app.firstfold.io#x", "https://APP.firstfold.io", "https://app.firstfold.io.", "https://app.firstfold.io\\evil", "https://app.firstfold.io\n"])("rejects noncanonical secure origin %j", (origin) => {
+  it.each(["http://app.fynix.digital", "https://localhost", "https://127.0.0.1", "https://app.fynix.digital:8443", "https://app.fynix.digital:443", "https://app.fynix.digital/path", "https://user@app.fynix.digital", "https://app.fynix.digital?x=1", "https://app.fynix.digital#x", "https://APP.fynix.digital", "https://app.fynix.digital.", "https://app.fynix.digital\\evil", "https://app.fynix.digital\n"])("rejects noncanonical secure origin %j", (origin) => {
     vi.stubEnv("SMS_OTP_APP_ORIGIN", origin);
     vi.stubEnv("MSG91_OTP_APP_TEMPLATE_ID", "approved-template");
     expect(() => otpMessage("004821", "app")).toThrow(/HTTPS DNS origin/);

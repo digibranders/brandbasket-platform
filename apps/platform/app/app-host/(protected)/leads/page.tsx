@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { brandText } from "@/lib/brand";
-import { requestBrand } from "@/lib/server/request-brand";
+
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { readListingLeads, type CategoryLeadCount, type ListingLeads } from "@firstfold/db";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+import { readListingLeads, type CategoryLeadCount, type ListingLeads } from "@fynix/db";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { LeadsList } from "@/components/panel/leads/leads-list";
 import {
   LEADS_PATH,
@@ -32,7 +31,7 @@ interface LeadsPageProps {
 const WAITING = {
   "no-business": { text: "Add your business, and the people who enquire show up here.", action: "Add your business" },
   // An added business is published by its owner; a listing the directory already had waits for our check.
-  pending: { text: "Your leads show up here once your business is live on Firstfold Local.", action: "Go to Business profile" },
+  pending: { text: "Your leads show up here once your business is live on the local directory.", action: "Go to Business profile" },
   rejected: { text: "We couldn't confirm your business, so it has no page for leads to come from.", action: "Go to Business profile" },
 } as const;
 
@@ -162,14 +161,13 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps): Promi
   if (source.state === "none") notFound();
 
   if (source.state !== "open") {
-    const brand = await requestBrand();
     const waiting = WAITING[source.state];
     return (
       <>
         <header className="border-b border-line pb-6">
           <h1 className="panel-title">Leads</h1>
         </header>
-        <p className="mt-6 max-w-prose text-sm text-ink-soft">{brandText(waiting.text, brand)}</p>
+        <p className="mt-6 max-w-prose text-sm text-ink-soft">{waiting.text}</p>
         <div className="mt-6">
           <ButtonLink href={LISTING_PAGE_PATH} size="sm" variant="secondary" className="rounded-[0.625rem]!">
             {waiting.action}

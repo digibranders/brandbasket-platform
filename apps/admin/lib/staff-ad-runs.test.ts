@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { StaffAd } from "@firstfold/db";
+import type { StaffAd } from "@fynix/db";
 import { formatRunRange, groupStaffAdRuns } from "./staff-ad-runs";
 
 function ad(id: string, weekStart: string, overrides: Partial<StaffAd> = {}): StaffAd {

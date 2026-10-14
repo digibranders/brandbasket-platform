@@ -1,7 +1,7 @@
-import { isUnappliedReason, type Receipt } from "@firstfold/db";
-import { BRANDS, brandedPlanName, type Brand } from "@/lib/brand";
-import { addOnPaymentTitle, planLabel, receiptDescription, receiptTitle } from "@firstfold/shared/lib/billing/receipt-title";
-import { formatMoney } from "@firstfold/shared/lib/money";
+import { isUnappliedReason, type Receipt } from "@fynix/db";
+import { BRAND, type Brand } from "@/lib/brand";
+import { addOnPaymentTitle, planLabel, receiptDescription, receiptTitle } from "@fynix/shared/lib/billing/receipt-title";
+import { formatMoney } from "@fynix/shared/lib/money";
 import { isDownloadableReceipt } from "./receipt-document";
 
 /** How a status pill is coloured: money in, money waiting on us, money given back, or nothing taken. */
@@ -42,11 +42,11 @@ function statusOf(receipt: Receipt): Pick<ReceiptRow, "status" | "statusDetail" 
 function planColumn(receipt: Receipt, brand: Brand): string {
   if (receipt.kind === "charge") return "Extra";
   if (receipt.kind === "add_on") return addOnPaymentTitle(receipt) ?? "Add-on";
-  return receipt.planName === null ? brand.shortName : planLabel(brandedPlanName(receipt.planName, brand));
+  return receipt.planName === null ? brand.shortName : planLabel(receipt.planName);
 }
 
 /** The receipts table's rows, in the order given (the billing page passes newest first). */
-export function receiptRows(receipts: readonly Receipt[], brand: Brand = BRANDS.firstfold): ReceiptRow[] {
+export function receiptRows(receipts: readonly Receipt[], brand: Brand = BRAND): ReceiptRow[] {
   return receipts.map((receipt) => ({
     id: receipt.id,
     title: receipt.taxInvoiceNumber === null ? receiptTitle(receipt.sequence, receipt.paidAt) : `Tax invoice ${receipt.taxInvoiceNumber}`,

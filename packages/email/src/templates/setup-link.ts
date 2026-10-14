@@ -6,13 +6,11 @@ export interface SetupLinkInput {
   readonly businessName: string;
   readonly setupUrl: string;
   readonly expiresInDays: number;
-  /** What the email calls the product: the deployment's brand (PLATFORM_BRAND; Firstfold when unset) unless the dashboard is sold under another name. */
-  readonly brandName?: string;
 }
 
 /** Sent after the call: the one-time link that creates the customer's account. */
 export function setupLinkEmail(input: SetupLinkInput): EmailMessage {
-  const brand = input.brandName ?? emailBrandName();
+  const brand = emailBrandName();
   const setupUrl = assertWebUrl(input.setupUrl, "setupUrl");
   const validity = `This link works once and expires in ${input.expiresInDays} days.`;
   const lines = [

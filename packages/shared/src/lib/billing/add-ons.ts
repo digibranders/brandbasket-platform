@@ -1,9 +1,9 @@
-import { chargedAmountCents, GST_BASIS_POINTS } from "@firstfold/billing/tax";
+import { chargedAmountCents, GST_BASIS_POINTS } from "@fynix/billing/tax";
 
 /**
  * The digital-marketing services a business buys from the Add-ons page (docs/superpowers/specs/2026-10-09-add-ons-
  * design.md), and what each costs. Prices are net of GST, in paise, and match the website's Digital marketing page
- * (firstfold-website content/for-business.ts): change both together. A price here only affects new purchases; what a
+ * (fynix-website content/for-business.ts): change both together. A price here only affects new purchases; what a
  * business pays for an existing subscription is stored on it. Pure and browser-safe.
  */
 

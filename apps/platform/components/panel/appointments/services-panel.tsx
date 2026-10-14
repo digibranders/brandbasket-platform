@@ -1,12 +1,12 @@
 "use client";
 
 import type { ReactElement } from "react";
-import type { AppointmentServiceRow } from "@firstfold/db";
-import { SERVICE_NAME_MAX_LENGTH } from "@firstfold/shared/lib/appointments/settings-form";
-import { cn } from "@firstfold/shared/lib/cn";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import type { AppointmentServiceRow } from "@fynix/db";
+import { SERVICE_NAME_MAX_LENGTH } from "@fynix/shared/lib/appointments/settings-form";
+import { cn } from "@fynix/shared/lib/cn";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 interface ServicesPanelProps {

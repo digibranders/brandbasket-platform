@@ -1,8 +1,8 @@
 import "server-only";
-import { readBookingContext, readSiteFacts, type AppointmentSettingsRow, type BookingContext, type Database, type SiteFacts } from "@firstfold/db";
-import { buildClinicWeek, freePractitionersAt, type ClinicWeek, type PractitionerCalendar } from "@firstfold/shared/lib/appointments/clinic-availability";
-import { findSlot, type SiteSlotState } from "@firstfold/shared/lib/appointments/slots";
-import { addDays, localDateIn, mondayOf, zonedTimeToUtc } from "@firstfold/shared/lib/calendar/local-date";
+import { readBookingContext, readSiteFacts, type AppointmentSettingsRow, type BookingContext, type Database, type SiteFacts } from "@fynix/db";
+import { buildClinicWeek, freePractitionersAt, type ClinicWeek, type PractitionerCalendar } from "@fynix/shared/lib/appointments/clinic-availability";
+import { findSlot, type SiteSlotState } from "@fynix/shared/lib/appointments/slots";
+import { addDays, localDateIn, mondayOf, zonedTimeToUtc } from "@fynix/shared/lib/calendar/local-date";
 import { loadClinicCalendars } from "./clinic-calendars";
 import { getStaffDb } from "./db";
 import { nowMinutesIn } from "./local-time";

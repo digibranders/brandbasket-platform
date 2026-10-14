@@ -6,8 +6,8 @@ import {
   listPlanUpgradesForBusiness,
   resolvePaymentAttention,
   type PlanUpgrade,
-} from "@firstfold/db";
-import { ensureDiscountPlanFor } from "@firstfold/shared/server/discount-plans";
+} from "@fynix/db";
+import { ensureDiscountPlanFor } from "@fynix/shared/server/discount-plans";
 import {
   assessUpgrade,
   finishUpgradeAtProvider,
@@ -15,7 +15,7 @@ import {
   startUpgrade,
   type UpgradeAssessment,
   type UpgradeFinish,
-} from "@firstfold/shared/server/plan-upgrade";
+} from "@fynix/shared/server/plan-upgrade";
 import { getBillingProvider } from "./billing-provider";
 import { getStaffDb } from "./db";
 

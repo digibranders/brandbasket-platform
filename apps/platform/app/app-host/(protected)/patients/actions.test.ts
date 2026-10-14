@@ -1,4 +1,4 @@
-import type { Database, PatientRow, ScopedTransaction } from "@firstfold/db";
+import type { Database, PatientRow, ScopedTransaction } from "@fynix/db";
 import {
   erasePatient,
   findPatient,
@@ -7,7 +7,7 @@ import {
   mergePatients,
   updatePatient,
   withTenantScope,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -48,8 +48,8 @@ vi.mock("@/lib/server/blog-access", () => ({
   paidCustomerOrNull: vi.fn(),
   PAID_PLAN_REQUIRED_MESSAGE: "This opens once your plan is paid. You can pay from Billing.",
 }));
-vi.mock("@firstfold/db", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@firstfold/db")>();
+vi.mock("@fynix/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@fynix/db")>();
   return {
     hasPostgresCode: actual.hasPostgresCode,
     CHECK_VIOLATION: actual.CHECK_VIOLATION,

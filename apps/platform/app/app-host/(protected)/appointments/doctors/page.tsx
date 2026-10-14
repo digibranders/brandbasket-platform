@@ -8,10 +8,10 @@ import {
   listPractitionerLeave,
   listPractitioners,
   withTenantScope,
-} from "@firstfold/db";
-import { upcomingClosures } from "@firstfold/shared/lib/business-facts/closures";
-import { localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import { fromStoredHours, type OpeningHours } from "@firstfold/shared/lib/onboarding/hours";
+} from "@fynix/db";
+import { upcomingClosures } from "@fynix/shared/lib/business-facts/closures";
+import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { fromStoredHours, type OpeningHours } from "@fynix/shared/lib/onboarding/hours";
 import { DoctorEditor } from "@/components/panel/appointments/doctor-editor";
 import { DoctorsList, type DoctorSummary } from "@/components/panel/appointments/doctors-list";
 import { requireAppointmentsModule } from "@/lib/server/business-modules";

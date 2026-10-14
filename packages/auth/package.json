@@ -1,10 +1,10 @@
 {
-  "name": "@firstfold/auth",
+  "name": "@fynix/auth",
   "version": "0.1.0",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/digibranders/firstfold-platform.git",
+    "url": "https://github.com/digibranders/fynix-platform.git",
     "directory": "packages/auth"
   },
   "type": "module",
@@ -18,7 +18,7 @@
     "staff:create": "tsx scripts/create-staff.ts"
   },
   "dependencies": {
-    "@firstfold/db": "workspace:*",
+    "@fynix/db": "workspace:*",
     "better-auth": "1.7.5",
     "drizzle-orm": "0.45.2",
     "zod": "^4.6.5"

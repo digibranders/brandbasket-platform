@@ -5,7 +5,7 @@ const KEYS = { TURNSTILE_SITE_KEY: "0x4AAAAA-site", TURNSTILE_SECRET: "0x4AAAAA-
 const CONFIG: TurnstileConfig = {
   siteKey: "0x4AAAAA-site",
   secret: "0x4AAAAA-secret",
-  hostnames: ["app.firstfold.io"],
+  hostnames: ["app.fynix.digital"],
   testing: false,
 };
 
@@ -14,24 +14,17 @@ function siteverify(body: Record<string, unknown>, status = 200): typeof fetch {
 }
 
 describe("resolveTurnstile", () => {
-  it("is on in production when both keys are set, with the Firstfold hostnames by default", () => {
-    const config = resolveTurnstile({ NODE_ENV: "production", ...KEYS });
-    expect(config).toMatchObject({ siteKey: "0x4AAAAA-site", secret: "0x4AAAAA-secret" });
-    expect(config?.hostnames).toEqual(["firstfold.io", "www.firstfold.io", "app.firstfold.io", "admin.firstfold.io"]);
-  });
-
-  it("accepts a Fynix server's own dashboard and console hosts by default, and none of Firstfold's", () => {
+  it("is on in production when both keys are set, accepting the dashboard's and console's own hosts by default", () => {
     const config = resolveTurnstile({
-      NODE_ENV: "production", ...KEYS, PLATFORM_BRAND: "fynix",
-      APP_ORIGIN: "https://app.fynix.digital", ADMIN_ORIGIN: "https://staff.fynix.digital:8443",
+      NODE_ENV: "production", ...KEYS, APP_ORIGIN: "https://app.fynix.digital", ADMIN_ORIGIN: "https://console.fynix.digital:8443",
     });
-    expect(config?.hostnames).toEqual(["app.fynix.digital", "staff.fynix.digital"]);
-    expect(JSON.stringify(config?.hostnames)).not.toMatch(/firstfold/);
+    expect(config).toMatchObject({ siteKey: "0x4AAAAA-site", secret: "0x4AAAAA-secret" });
+    expect(config?.hostnames).toEqual(["app.fynix.digital", "console.fynix.digital"]);
   });
 
   it("takes the hostnames to accept from TURNSTILE_HOSTNAMES", () => {
-    const config = resolveTurnstile({ NODE_ENV: "production", ...KEYS, TURNSTILE_HOSTNAMES: " app.firstfold.io , admin.firstfold.io ,," });
-    expect(config?.hostnames).toEqual(["app.firstfold.io", "admin.firstfold.io"]);
+    const config = resolveTurnstile({ NODE_ENV: "production", ...KEYS, TURNSTILE_HOSTNAMES: " app.fynix.digital , console.fynix.digital ,," });
+    expect(config?.hostnames).toEqual(["app.fynix.digital", "console.fynix.digital"]);
   });
 
   it("is off when either key is missing or blank, so a deploy without them keeps working", () => {
@@ -60,7 +53,7 @@ describe("verifyTurnstile", () => {
   const base = { config: CONFIG, action: "sign_in", remoteIp: "203.0.113.9" } as const;
 
   it("accepts a token Cloudflare confirms for this action and one of our hostnames", async () => {
-    const fetchFn = siteverify({ success: true, action: "sign_in", hostname: "app.firstfold.io" });
+    const fetchFn = siteverify({ success: true, action: "sign_in", hostname: "app.fynix.digital" });
     expect(await verifyTurnstile({ ...base, token: "tok", fetchFn })).toEqual({ ok: true });
     const [url, init] = vi.mocked(fetchFn).mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://challenges.cloudflare.com/turnstile/v0/siteverify");
@@ -85,7 +78,7 @@ describe("verifyTurnstile", () => {
   });
 
   it("refuses a token solved for another form, so one solve cannot be used everywhere", async () => {
-    const fetchFn = siteverify({ success: true, action: "join", hostname: "app.firstfold.io" });
+    const fetchFn = siteverify({ success: true, action: "join", hostname: "app.fynix.digital" });
     expect(await verifyTurnstile({ ...base, token: "tok", fetchFn })).toEqual({ ok: false, reason: "wrong-action" });
   });
 

@@ -1,10 +1,11 @@
 "use server";
 
-import { DuplicateServiceIdError, replaceServices, saveProjectBrief, ServiceNotFoundError } from "@firstfold/db";
+import { DuplicateServiceIdError, replaceServices, saveProjectBrief, ServiceNotFoundError } from "@fynix/db";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseContentForm } from "@/lib/onboarding/content-form";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
-import { hrefAfter } from "@firstfold/shared/lib/onboarding/steps";
+import { hrefAfter } from "@fynix/shared/lib/onboarding/steps";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
 import { saveOnboardingStep, type StepProblem } from "@/lib/server/onboarding";
@@ -44,5 +45,7 @@ export async function saveContentStep(_previous: StepFormState, formData: FormDa
   );
   if (problem !== null) return refusedStepState(problem, formData);
 
+  // The step list in the layout reads what is done, so it must be read again or this step stays unticked.
+  revalidatePath("/onboarding", "layout");
   redirect(hrefAfter("content"));
 }

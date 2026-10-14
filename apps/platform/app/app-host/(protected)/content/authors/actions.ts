@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPayload, NotFound, type Payload } from "payload";
-import { toRelationId } from "@firstfold/cms";
+import { toRelationId } from "@fynix/cms";
 import config from "@/payload.config";
 import { cleanBlogAuthorFields, type BlogAuthorFields } from "@/lib/blog-author-fields";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";

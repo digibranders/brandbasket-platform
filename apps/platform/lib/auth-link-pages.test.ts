@@ -9,10 +9,10 @@ import { findAffiliateInviteForToken } from "@/lib/server/affiliate-setup";
 import { confirmEmail } from "@/lib/server/account-recovery";
 
 vi.mock("@/lib/server/request-brand", async () => {
-  const { BRANDS } = await import("@/lib/brand");
-  return { requestBrand: async () => BRANDS.firstfold, currentBrand: async () => BRANDS.firstfold };
+  const { LISTING_BRAND } = await import("@/lib/testing/listing-brand");
+  return { requestBrand: async () => LISTING_BRAND, currentBrand: async () => LISTING_BRAND };
 });
-vi.mock("@firstfold/shared/ui/turnstile-scope", () => ({ TurnstileScope: ({ children }: { children: ReactNode }) => children }));
+vi.mock("@fynix/shared/ui/turnstile-scope", () => ({ TurnstileScope: ({ children }: { children: ReactNode }) => children }));
 vi.mock("@/lib/server/setup", () => ({ findInviteForToken: vi.fn() }));
 vi.mock("@/lib/server/affiliate-setup", () => ({ findAffiliateInviteForToken: vi.fn() }));
 vi.mock("@/lib/server/account-recovery", () => ({ confirmEmail: vi.fn() }));

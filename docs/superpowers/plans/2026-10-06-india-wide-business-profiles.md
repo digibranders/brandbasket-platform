@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Any business anywhere in India can make its free Business profile page. The owner gives a 6-digit PIN code instead of picking a Thane area, and the page goes live at `firstfold.io/in/{state}/business/{name}/{code}`.
+**Goal:** Any business anywhere in India can make its free Business profile page. The owner gives a 6-digit PIN code instead of picking a Thane area, and the page goes live at `fynix.digital/in/{state}/business/{name}/{code}`.
 
 **Architecture:**
 - A new `india_pincodes` table holds India Post's PIN code directory: state, district and post-office localities per code. It is imported once from the public CSV.
@@ -129,7 +129,7 @@ describe("india states", () => {
 
 - [ ] **Step 2: Run it and see it fail**
 
-Run: `pnpm --filter @firstfold/shared test -- india-states`
+Run: `pnpm --filter @fynix/shared test -- india-states`
 Expected: FAIL, "Cannot find module './india-states'".
 
 - [ ] **Step 3: Implement**
@@ -220,12 +220,12 @@ export function stateName(code: string): string | null {
 
 - [ ] **Step 4: Run it and see it pass**
 
-Run: `pnpm --filter @firstfold/shared test -- india-states`
+Run: `pnpm --filter @fynix/shared test -- india-states`
 Expected: PASS (13 tests).
 
 - [ ] **Step 5: Checkpoint**
 
-Run: `pnpm --filter @firstfold/shared typecheck`. Expected: 0 errors. Don't commit.
+Run: `pnpm --filter @fynix/shared typecheck`. Expected: 0 errors. Don't commit.
 
 ---
 
@@ -321,13 +321,13 @@ describe("parseIndiaPostCsv", () => {
 
 - [ ] **Step 2: Run it and see it fail**
 
-Run: `pnpm --filter @firstfold/db test -- india-post`
+Run: `pnpm --filter @fynix/db test -- india-post`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement**
 
 ```ts
-import { stateCodeOfIndiaPostName } from "@firstfold/shared/lib/directory/india-states";
+import { stateCodeOfIndiaPostName } from "@fynix/shared/lib/directory/india-states";
 
 /*
  * India Post's "All India Pincode Directory" (data.gov.in, GODL-India) turned into one record per PIN code: its state,
@@ -467,16 +467,16 @@ export function parseIndiaPostCsv(text: string): IndiaPostParse {
 }
 ```
 
-`@firstfold/db` must be able to import `@firstfold/shared/lib/directory/india-states`. Check `packages/db/package.json` dependencies. If `@firstfold/shared` is not a dependency there (adding it could create a cycle, since shared depends on db), move `india-states.ts` into `packages/db/src/india-states.ts`, export it as `@firstfold/db/india-states`, and re-export it from `packages/shared/src/lib/directory/india-states.ts` the way `place-id.ts` is re-exported. Then update Task 1's import paths to match.
+`@fynix/db` must be able to import `@fynix/shared/lib/directory/india-states`. Check `packages/db/package.json` dependencies. If `@fynix/shared` is not a dependency there (adding it could create a cycle, since shared depends on db), move `india-states.ts` into `packages/db/src/india-states.ts`, export it as `@fynix/db/india-states`, and re-export it from `packages/shared/src/lib/directory/india-states.ts` the way `place-id.ts` is re-exported. Then update Task 1's import paths to match.
 
 - [ ] **Step 4: Run it and see it pass**
 
-Run: `pnpm --filter @firstfold/db test -- india-post`
+Run: `pnpm --filter @fynix/db test -- india-post`
 Expected: PASS.
 
 - [ ] **Step 5: Checkpoint**
 
-Run: `pnpm --filter @firstfold/db typecheck`. Expected: 0 errors.
+Run: `pnpm --filter @fynix/db typecheck`. Expected: 0 errors.
 
 ---
 
@@ -525,7 +525,7 @@ export const indiaPincodes = pgTable(
 
 - [ ] **Step 2: Generate the migration**
 
-Run: `pnpm --filter @firstfold/db db:generate`
+Run: `pnpm --filter @fynix/db db:generate`
 Expected: a new `migrations/0084_*.sql` with `CREATE TABLE "india_pincodes"` and the four checks. Rename it to `0084_india_pincodes.sql`, and update the tag in `meta/_journal.json` to match, as earlier migrations do.
 
 - [ ] **Step 3: Grants (hand-written, same pattern as `0081`)**
@@ -537,10 +537,10 @@ Expected: a new `migrations/0084_*.sql` with `CREATE TABLE "india_pincodes"` and
 -- no row-level security: the customer's connection reads it (the Listing tab's PIN lookup), the staff connection
 -- reads it and the import writes it. Nobody deletes: a re-import upserts.
 
-GRANT SELECT ON india_pincodes TO webfold_app;
+GRANT SELECT ON india_pincodes TO fynix_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON india_pincodes TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE ON india_pincodes TO fynix_staff;
 ```
 
 Then add its journal entry the way `0081` was added. Copy the shape of the `0081` entry and bump `idx` and `when`.
@@ -593,7 +593,7 @@ describe("india_pincodes", () => {
 
 - [ ] **Step 5: Run it and see it fail**
 
-Run: `pnpm db:migrate:test && pnpm --filter @firstfold/db test:integration -- india-pincodes`
+Run: `pnpm db:migrate:test && pnpm --filter @fynix/db test:integration -- india-pincodes`
 Expected: FAIL, `upsertPincodes` not found.
 
 - [ ] **Step 6: Implement the queries**
@@ -651,12 +651,12 @@ export async function upsertPincodes(db: Runner, records: readonly PincodeRecord
 
 - [ ] **Step 7: Run it and see it pass**
 
-Run: `pnpm --filter @firstfold/db test:integration -- india-pincodes`
+Run: `pnpm --filter @fynix/db test:integration -- india-pincodes`
 Expected: PASS (3 tests).
 
 - [ ] **Step 8: Checkpoint**
 
-Run: `pnpm --filter @firstfold/db typecheck`. Expected: 0 errors.
+Run: `pnpm --filter @fynix/db typecheck`. Expected: 0 errors.
 
 ---
 
@@ -712,13 +712,13 @@ Match the env variable name and the `createDatabase` return shape to `import-dir
 
 - [ ] **Step 2: Run against the local DB**
 
-Run: `pnpm db:migrate && pnpm --filter @firstfold/db directory:import-pincodes ../../../local-directory-data/india/pincode-directory.csv`
+Run: `pnpm db:migrate && pnpm --filter @fynix/db directory:import-pincodes ../../../local-directory-data/india/pincode-directory.csv`
 Expected: `Wrote 19xxx PIN codes`, plus a few hundred "offices in 2 districts" lines.
 Spot check: `psql "$DATABASE_URL" -c "select district_slug, jsonb_array_length(localities) from india_pincodes where pincode in ('400601','700091','560001')"`. Expect thane, north-24-parganas and bengaluru (or bangalore).
 
 - [ ] **Step 3: Checkpoint**
 
-Run: `pnpm --filter @firstfold/db typecheck && pnpm --filter @firstfold/db test`. Expected: green.
+Run: `pnpm --filter @fynix/db typecheck && pnpm --filter @fynix/db test`. Expected: green.
 
 ---
 
@@ -781,8 +781,8 @@ Expected: FAIL, module not found.
 - [ ] **Step 3: Implement**
 
 ```ts
-import type { PincodeRecord } from "@firstfold/db";
-import { stateName } from "@firstfold/shared/lib/directory/india-states";
+import type { PincodeRecord } from "@fynix/db";
+import { stateName } from "@fynix/shared/lib/directory/india-states";
 import type { PickOption } from "@/lib/listing-address";
 
 /*
@@ -879,7 +879,7 @@ Add these to the table's checks:
     ),
 ```
 
-Run `pnpm --filter @firstfold/db db:generate`, rename the output to `0086_claims_postal.sql` and fix the journal tag. No new grants are needed: the columns sit on an existing table.
+Run `pnpm --filter @fynix/db db:generate`, rename the output to `0086_claims_postal.sql` and fix the journal tag. No new grants are needed: the columns sit on an existing table.
 
 - [ ] **Step 2: Write the failing integration test.** Add it next to the existing `addBusinessListing` tests, reusing their fixture for a listing-kind business:
 
@@ -985,7 +985,7 @@ Left-join `directoryPlaces` on `directoryClaims.placeId`, and `indiaPincodes` on
 
 - [ ] **Step 4: Run the tests**
 
-Run: `pnpm db:migrate:test && pnpm --filter @firstfold/db test:integration -- directory-ads && pnpm --filter @firstfold/db typecheck`
+Run: `pnpm db:migrate:test && pnpm --filter @fynix/db test:integration -- directory-ads && pnpm --filter @fynix/db typecheck`
 Expected: PASS. Typecheck errors in callers (`business-profile.ts`) are fixed in Task 8. Only this package must be clean here.
 
 ---
@@ -1070,7 +1070,7 @@ it("a Thane business has no postal block and state mh", () => {
   };
 ```
 
-- [ ] **Step 4: Run** `pnpm --filter @firstfold/shared test -- feed && pnpm --filter platform test -- directory-feed`. Expected: PASS. Fix `directory-feed.test.ts` fixtures by adding `stateCode`/`postal`.
+- [ ] **Step 4: Run** `pnpm --filter @fynix/shared test -- feed && pnpm --filter platform test -- directory-feed`. Expected: PASS. Fix `directory-feed.test.ts` fixtures by adding `stateCode`/`postal`.
 
 ---
 
@@ -1318,7 +1318,7 @@ export function listedAtAddress(picks: ListedAtPicks): readonly ListedAtSegment[
 - `websiteAddressOf(claim)` already uses `placeUrlPath(place)` once the claim has a place. That gives `/in/wb/business/...` as soon as `directory_places.state_code` is `wb` (Task 6). For an elsewhere claim, never fall back to `directoryCategoryPath`.
 
 - [ ] **Step 5: Check it in the browser.** Start the platform preview (`.claude/launch.json` in directory-ads; see [[local-dev-servers]] for ports) and sign in as a free listing test account from the project's seed.
-1. PIN `700091` should show "North 24 Parganas, West Bengal", the localities, then the categories. Save it. The preview reads `firstfold.io/in/wb/business/<name>/…`, and after saving, the real code.
+1. PIN `700091` should show "North 24 Parganas, West Bengal", the localities, then the categories. Save it. The preview reads `fynix.digital/in/wb/business/<name>/…`, and after saving, the real code.
 2. PIN `400602` should show the Thane areas, as before.
 3. PIN `999999` should show "We couldn't find that PIN code."
 Take a screenshot of each for the report.

@@ -3,13 +3,13 @@ import { BillingRangeError } from "./billing-range-error";
 import { UnknownStateError } from "./gst-states";
 import { InvalidGstinError } from "./gstin";
 import { chargedAmountCents, GST_BASIS_POINTS } from "./tax";
-import { buildTaxInvoice, FIRSTFOLD_SAC, InvoiceAmountMismatchError, placeOfSupply, type InvoiceLineInput } from "./tax-invoice";
+import { buildTaxInvoice, FYNIX_SAC, InvoiceAmountMismatchError, placeOfSupply, type InvoiceLineInput } from "./tax-invoice";
 
 const plan = (overrides: Partial<InvoiceLineInput> = {}): InvoiceLineInput => ({
-  description: "Firstfold Premium plan",
+  description: "Fynix Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: null,
-  sac: FIRSTFOLD_SAC,
+  sac: FYNIX_SAC,
   quantity: 1,
   unitAmountCents: 699_900,
   discountAmountCents: 0,

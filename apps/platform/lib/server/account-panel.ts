@@ -1,8 +1,8 @@
 import "server-only";
-import { deriveSiteStatus } from "@firstfold/billing";
+import { deriveSiteStatus } from "@fynix/billing";
 import { cache } from "react";
-import { noticesFrom, type AccountPanel } from "@firstfold/shared/lib/account-panel";
-import { nextStep } from "@firstfold/shared/lib/next-step";
+import { noticesFrom, type AccountPanel } from "@fynix/shared/lib/account-panel";
+import { nextStep } from "@fynix/shared/lib/next-step";
 import { getBillingBanner } from "./billing-banner";
 import { requireCustomerAccess } from "./customer-access";
 import { getLatestProjectStatus, getLiveWebsite, getProjectOverview } from "./onboarding";

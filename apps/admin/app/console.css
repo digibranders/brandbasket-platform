@@ -8,7 +8,7 @@
 /*
  * The console's own colours, one step above the shared theme's tokens so a brand can restyle the console without touching
  * a component: what the primary button is filled with, what a destructive button turns, and what the dock's glass is made
- * of. They default to Firstfold's look (ink, accent). Under Fynix (html[data-brand="fynix"], the palette in the shared
+ * of. They default to Fynix Digital's look (ink, accent). Under Fynix (html[data-brand="fynix"], the palette in the shared
  * theme.css) the console uses the same colours as the dashboard: navy for the primary button, dock and links, peach for
  * highlights, and the aged gold for small accent text. Measured on the page ground #fcfcfb: text #1d2125 16.1:1, muted
  * #565d64 6.5:1, navy #0c1e2e 16.9:1, deep gold #8b6a2e 4.9:1, destructive #9a3b2e 6.6:1; white on navy 17.4:1, on its hover

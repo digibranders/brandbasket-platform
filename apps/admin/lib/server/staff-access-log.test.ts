@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { recordStaffAccess, type Database } from "@firstfold/db";
+import { recordStaffAccess, type Database } from "@fynix/db";
 import { logStaffAccess, logStaffAccessOrThrow } from "./staff-access-log";
 
 vi.mock("server-only", () => ({}));
@@ -7,7 +7,7 @@ vi.mock("next/headers", () => ({
   headers: vi.fn(async () => new Headers({ "x-forwarded-for": "203.0.113.9, 10.0.0.1" })),
 }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({}) as Database) }));
-vi.mock("@firstfold/db", () => ({ recordStaffAccess: vi.fn(async () => undefined) }));
+vi.mock("@fynix/db", () => ({ recordStaffAccess: vi.fn(async () => undefined) }));
 
 const BUSINESS = "0197c2a0-0000-7000-8000-000000000001";
 
@@ -35,10 +35,10 @@ describe("logStaffAccess", () => {
   });
 
   it("never blocks the page when the log cannot be written, and logs no personal data", async () => {
-    vi.mocked(recordStaffAccess).mockRejectedValueOnce(new Error("connection refused for asha@firstfold.io"));
+    vi.mocked(recordStaffAccess).mockRejectedValueOnce(new Error("connection refused for asha@fynix.digital"));
     await expect(logStaffAccess({ staffUserId: "staff-1", action: "lead.view", targetId: "lead-1" })).resolves.toBeUndefined();
     expect(console.error).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("asha@firstfold.io");
+    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("asha@fynix.digital");
   });
 });
 

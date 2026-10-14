@@ -15,7 +15,7 @@ type Runner = Database | ScopedTransaction;
 
 /*
  * A Care client moving up to Premium on the subscription it has (docs/superpowers/specs/2026-10-08-care-to-premium-
- * upgrade-design.md). The quote is worked out by the platform (lib/billing/upgrade.ts in @firstfold/shared, which this
+ * upgrade-design.md). The quote is worked out by the platform (lib/billing/upgrade.ts in @fynix/shared, which this
  * package cannot import); what lives here is the record of it, and the transitions the money drives: the charge is
  * opened with the upgrade, paying it applies the upgrade, and the first renewal at the new price completes it.
  *

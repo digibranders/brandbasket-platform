@@ -10,7 +10,7 @@ vi.mock("@/lib/server/phone-password-reset", async () => ({
   requestPhonePasswordReset: vi.fn(), resetPasswordWithCode: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/server/request-brand", () => ({ requestBrand: async () => (await import("@/lib/brand")).BRANDS.firstfold }));
+vi.mock("@/lib/server/request-brand", () => ({ requestBrand: async () => (await import("@/lib/testing/listing-brand")).LISTING_BRAND }));
 const otp = { otpId: "old-code", phoneHint: "••••1234" };
 function form(entries: Record<string, string>): FormData {
   const data = new FormData();

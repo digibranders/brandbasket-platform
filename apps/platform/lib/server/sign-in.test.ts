@@ -1,29 +1,30 @@
 import { headers } from "next/headers";
-import type { Auth } from "@firstfold/auth";
-import { isInvalidCredentialsError } from "@firstfold/auth";
-import { consumeRateLimit, findUserByPhone, type Database, type RateLimitResult } from "@firstfold/db";
+import type { Auth } from "@fynix/auth";
+import { isInvalidCredentialsError } from "@fynix/auth";
+import { consumeRateLimit, findUserByPhone, type Database, type RateLimitResult } from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BRANDS } from "@/lib/brand";
+import { BRAND } from "@/lib/brand";
+import { LISTING_BRAND } from "@/lib/testing/listing-brand";
 import { getAuth } from "./auth";
 import { getAppDb } from "./db";
 import { requestBrand } from "./request-brand";
 import { signInWithPassword } from "./sign-in";
 import { noteSecurityEvent } from "./security-events";
 
-// This module reaches a live database (via ./db and @firstfold/db) and Better Auth (via ./auth), and
+// This module reaches a live database (via ./db and @fynix/db) and Better Auth (via ./auth), and
 // reads the incoming request (via next/headers). All of that is replaced with test doubles so
 // signInWithPassword's own decisions — parsing, rate-limit ordering, and error mapping — run in
 // isolation. `server-only` is mocked because ./auth and ./db import it; without a mock it throws
 // outside a genuine Next.js server context.
 //
-// `@firstfold/auth` (rather than constructing a real `better-auth/api` APIError) is mocked here: it
+// `@fynix/auth` (rather than constructing a real `better-auth/api` APIError) is mocked here: it
 // is not a direct dependency of apps/platform, so pnpm's strict linking makes `better-auth/api`
-// unresolvable from this package, even though @firstfold/auth re-exports from it transitively.
+// unresolvable from this package, even though @fynix/auth re-exports from it transitively.
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
-vi.mock("@firstfold/auth", () => ({ isInvalidCredentialsError: vi.fn() }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/auth", () => ({ isInvalidCredentialsError: vi.fn() }));
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     consumeRateLimit: vi.fn(),
     findUserByPhone: vi.fn(),
@@ -32,9 +33,8 @@ vi.mock("@firstfold/db", async () => {
   };
 });
 vi.mock("./auth", () => ({ getAuth: vi.fn() }));
-// Signing in also sets the website's signed-in marker, tested in signed-in-hint.test.ts; here it goes straight through
-// to Better Auth, so these tests check the sign-in itself.
-vi.mock("./signed-in-hint", async () => {
+// Signing in goes straight through to Better Auth here (customer-sign-in.test.ts covers the wrapper), so these tests check the sign-in itself.
+vi.mock("./customer-sign-in", async () => {
   const { getAuth } = await import("./auth");
   return {
     signInCustomer: vi.fn(async (credentials: { email: string; password: string }, headers: Headers) => {
@@ -57,7 +57,7 @@ const VALID_FORM = { identifier: "  Owner@Example.com ", password: "correct-hors
 const NORMALISED_EMAIL = "owner@example.com";
 const PHONE_FORM = { identifier: " 98200 11223 ", password: "correct-horse" };
 const E164 = "+919820011223";
-const PLACEHOLDER = "919820011223@phone.firstfold.invalid";
+const PLACEHOLDER = "919820011223@phone.fynix.invalid";
 
 const ALLOWED: RateLimitResult = { allowed: true, remaining: 10, retryAfterSeconds: 0 };
 
@@ -78,7 +78,7 @@ describe("signInWithPassword", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mockedHeaders.mockResolvedValue(requestHeaders);
-    vi.mocked(requestBrand).mockResolvedValue(BRANDS.firstfold);
+    vi.mocked(requestBrand).mockResolvedValue(LISTING_BRAND);
     mockedGetAppDb.mockReturnValue({} as unknown as Database);
     mockedGetAuth.mockReturnValue({ api: { signInEmail } } as unknown as Auth);
     mockedConsumeRateLimit.mockResolvedValue(ALLOWED);
@@ -95,7 +95,7 @@ describe("signInWithPassword", () => {
   });
 
   it("asks a Fynix sign-in for an email address, and signs in with one", async () => {
-    vi.mocked(requestBrand).mockResolvedValue(BRANDS.fynix);
+    vi.mocked(requestBrand).mockResolvedValue(BRAND);
     expect(await signInWithPassword(form({ identifier: " ", password: "secret-pass" }))).toEqual({ status: "error", message: "Enter your email address.", email: "" });
     expect(await signInWithPassword(form(VALID_FORM))).toEqual({ status: "signed-in", userId: "user-1" });
     expect(signInEmail).toHaveBeenCalledWith({ body: { email: NORMALISED_EMAIL, password: VALID_FORM.password }, headers: requestHeaders });

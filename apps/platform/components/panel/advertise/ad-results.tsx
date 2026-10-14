@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, type ReactElement } from "react";
-import { cn } from "@firstfold/shared/lib/cn";
-import { SelectField, type SelectOption } from "@firstfold/shared/ui/select-field";
-import { AD_PLACEMENT_LABELS, formatAdWeek } from "@firstfold/shared/lib/directory/ads";
+import { cn } from "@fynix/shared/lib/cn";
+import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
+import { AD_PLACEMENT_LABELS, formatAdWeek } from "@fynix/shared/lib/directory/ads";
 import { formatClickRate, type AdResults, type Tally } from "@/lib/advertise-results";
 
 /*

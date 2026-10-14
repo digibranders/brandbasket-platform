@@ -49,7 +49,7 @@ photo too small for even the unzoomed crop is refused with its minimum size.
   connection after the platform has checked who is asking. The customer reads its own rows through row-level security.
 - Files go through the same checks as onboarding uploads: real image signature, 4 MB, pixel ceiling, decode queue,
   hourly budget, metadata stripped by re-encoding to WebP.
-- An `added` business has no page on firstfold.io yet, so its pictures have nowhere to show; the Photos page says so.
+- An `added` business has no page on fynix.digital yet, so its pictures have nowhere to show; the Photos page says so.
 
 ## How the website gets them
 

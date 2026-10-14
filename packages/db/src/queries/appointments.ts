@@ -336,7 +336,7 @@ interface TransitionEdge {
 
 /**
  * Must match ACTION_TRANSITIONS in packages/shared/src/lib/appointments/status.ts; packages/db does not depend on
- * @firstfold/shared (the dependency points the other way), so the data is written literally here and
+ * @fynix/shared (the dependency points the other way), so the data is written literally here and
  * status-db-parity.test.ts in packages/shared asserts the two agree.
  */
 export const APPOINTMENT_TRANSITIONS: Readonly<Record<AppointmentAction, readonly TransitionEdge[]>> = {
@@ -487,7 +487,7 @@ export async function listBusyIntervals(db: Database, businessId: string, fromUt
 
 /** The parsed booking the OTP will turn into an appointment once verified -- SiteBookingFields
  * (packages/shared/src/lib/appointments/booking-form.ts) plus the fields resolved server-side. packages/db does
- * not depend on @firstfold/shared, so this shape is written literally here rather than imported; it is opaque
+ * not depend on @fynix/shared, so this shape is written literally here rather than imported; it is opaque
  * jsonb to Postgres and only ever read back by the platform route that wrote it. */
 export interface BookingOtpPayload {
   readonly name: string;
@@ -935,7 +935,7 @@ export type ReassignResult = "reassigned" | "taken" | "not_found";
  *
  * Whether the target actually *works* at that time (their hours, their leave) is the caller's check, made with the
  * pure slot engine before calling this, same division of labour as bookSlot's `practitionerIds`. The database
- * independently holds the rest: appointments_guard_customer_transition only lets firstfold_app change practitioner_id
+ * independently holds the rest: appointments_guard_customer_transition only lets fynix_app change practitioner_id
  * on a row that is booked before and after, and the composite foreign key refuses another business's practitioner.
  */
 export async function reassignAppointment(

@@ -6,7 +6,6 @@ vi.mock("@/lib/server/account-security", () => ({ changePasswordFor: mocks.chang
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: mocks.access }));
 vi.mock("@/lib/server/account-exit", () => ({ claimRetentionOfferFor: vi.fn(), closeAccountFor: vi.fn(), findRetentionOfferView: vi.fn() }));
 vi.mock("@/lib/server/auth", () => ({ getAuth: vi.fn() }));
-vi.mock("@/lib/server/signed-in-hint", () => ({ forgetSignedIn: vi.fn() }));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
 beforeEach(() => { vi.resetAllMocks(); mocks.access.mockResolvedValue({ user: { id: "session-user" } }); });
 function passwords(): FormData {

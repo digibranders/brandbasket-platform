@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TenantContext } from "@firstfold/shared/lib/access";
+import type { TenantContext } from "@fynix/shared/lib/access";
 import { handleProductPhotoRequest, type ProductPhotoRequestDeps } from "./product-photo-request";
 
 vi.mock("server-only", () => ({}));

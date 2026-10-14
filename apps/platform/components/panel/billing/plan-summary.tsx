@@ -1,19 +1,19 @@
-import type { Plan, Subscription } from "@firstfold/db";
-import { BRANDS, brandedPlanName, type Brand } from "@/lib/brand";
+import type { Plan, Subscription } from "@fynix/db";
+import { type Brand } from "@/lib/brand";
 import type { ReactElement, ReactNode } from "react";
-import { ChevronDownIcon, TickIcon } from "@firstfold/shared/ui/icons";
-import { LocalDate } from "@firstfold/shared/ui/panel/local-date-time";
-import { billingPeriodProgress, type PeriodProgress } from "@firstfold/shared/lib/billing/period";
-import { changesNote, renewalCharge } from "@firstfold/shared/lib/billing/terms";
-import { planLabel } from "@firstfold/shared/lib/billing/receipt-title";
-import { formatMoney } from "@firstfold/shared/lib/money";
-import { carePlan } from "@firstfold/shared/lib/pricing";
+import { ChevronDownIcon, TickIcon } from "@fynix/shared/ui/icons";
+import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
+import { billingPeriodProgress, type PeriodProgress } from "@fynix/shared/lib/billing/period";
+import { changesNote, renewalCharge } from "@fynix/shared/lib/billing/terms";
+import { planLabel } from "@fynix/shared/lib/billing/receipt-title";
+import { formatMoney } from "@fynix/shared/lib/money";
+import { carePlan } from "@fynix/shared/lib/pricing";
 
 interface PlanSummaryProps {
   readonly plan: Plan;
   readonly subscription: Subscription;
   readonly now: Date;
-  /** The brand the dashboard is sold under: it words the plan's name. Firstfold when left out. */
+  /** The brand the dashboard is sold under: it words the plan's name. Fynix when left out. */
   readonly brand?: Brand;
 }
 
@@ -74,7 +74,7 @@ function PeriodBar({ progress, children }: { readonly progress: PeriodProgress; 
 }
 
 /** The plan card: name, price per month, how far through the paid period the customer is, and what it includes. */
-export function PlanSummary({ plan, subscription, now, brand = BRANDS.firstfold }: PlanSummaryProps): ReactElement {
+export function PlanSummary({ plan, subscription, now }: PlanSummaryProps): ReactElement {
   const price = renewalCharge(plan, subscription.discountAmountCents);
   const progress = billingPeriodProgress(subscription, now);
 
@@ -85,7 +85,7 @@ export function PlanSummary({ plan, subscription, now, brand = BRANDS.firstfold 
           <div className="min-w-0">
             <div className="flex items-center gap-2.5">
               <h2 id="plan-heading" className="panel-section text-base">
-                {planLabel(brandedPlanName(plan.name, brand))}
+                {planLabel(plan.name)}
               </h2>
               <span className="rounded-full bg-accent-pale px-2 py-0.5 text-[0.6875rem] font-semibold text-accent-deep">
                 Monthly

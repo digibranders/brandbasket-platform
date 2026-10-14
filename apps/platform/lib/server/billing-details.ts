@@ -1,7 +1,7 @@
 import "server-only";
-import { findBillingProfile, findBusinessCurrency, getBusinessProfile, withTenantScope } from "@firstfold/db";
-import { billingDetailsStart, savedBillingDetails } from "@firstfold/shared/lib/billing/billing-details-start";
-import { savedPhoneStart } from "@firstfold/shared/server/phone-defaults";
+import { findBillingProfile, findBusinessCurrency, getBusinessProfile, withTenantScope } from "@fynix/db";
+import { billingDetailsStart, savedBillingDetails } from "@fynix/shared/lib/billing/billing-details-start";
+import { savedPhoneStart } from "@fynix/shared/server/phone-defaults";
 import { billsInRupees, type BillingDetailsView } from "@/lib/billing/billing-details-view";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb } from "./db";

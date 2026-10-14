@@ -10,16 +10,16 @@ import {
   updateExtraPrices,
   type Plan,
   type PriceChange,
-} from "@firstfold/db";
-import type { PriceSheet } from "@firstfold/shared/lib/billing/pricing-form";
-import { deploymentBrandShortName } from "@firstfold/shared/lib/deployment-brand";
-import { describeError } from "@firstfold/shared/server/billing-log";
+} from "@fynix/db";
+import type { PriceSheet } from "@fynix/shared/lib/billing/pricing-form";
+import { deploymentBrandShortName } from "@fynix/shared/lib/deployment-brand";
+import { describeError } from "@fynix/shared/server/billing-log";
 import { getBillingProvider } from "./billing-provider";
 import { getStaffDb } from "./db";
 
 /** What the payment provider's checkout calls a plan, in this deployment's brand: "Fynix Care plan (INR)". */
-export function providerPlanItemName(tier: "care" | "premium", currency: string, env: Readonly<Record<string, string | undefined>> = process.env): string {
-  return `${deploymentBrandShortName(env)} ${tier === "care" ? "Care" : "Premium"} plan (${currency})`;
+export function providerPlanItemName(tier: "care" | "premium", currency: string): string {
+  return `${deploymentBrandShortName()} ${tier === "care" ? "Care" : "Premium"} plan (${currency})`;
 }
 
 /** How many past price changes the pricing page lists. */
@@ -74,7 +74,7 @@ export async function savePriceSheet(
         itemName: providerPlanItemName(sheet.tier, sheet.currency),
       }));
     } catch (error) {
-      console.error(`[firstfold:pricing] could not create the provider plan for ${code}`, describeError(error));
+      console.error(`[fynix:pricing] could not create the provider plan for ${code}`, describeError(error));
       return { kind: "provider-failed" };
     }
     await replaceMonthlyPrice(db, {
@@ -102,7 +102,7 @@ export async function savePriceSheet(
       });
       if (providerPlanId !== null) providerPlanFilled = await attachProviderPlan(db, { planId: current.id, providerPlanId });
     } catch (error) {
-      console.error(`[firstfold:pricing] could not create the provider plan for ${current.code}`, describeError(error));
+      console.error(`[fynix:pricing] could not create the provider plan for ${current.code}`, describeError(error));
       return { kind: "provider-failed" };
     }
   }

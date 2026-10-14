@@ -7,9 +7,9 @@
 # If you later turn the orange cloud on for this name, also include fynix-cloudflare-realip.conf here, as fynix-admin.conf does,
 # or every visitor will look like one of Cloudflare's addresses and share one rate limit.
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
+    # nginx 1.24 (Ubuntu 24.04) has no `http2 on;` (added in 1.25.1): http2 goes on the listen lines.
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name app.fynix.digital;
 
     ssl_certificate     /etc/letsencrypt/live/app.fynix.digital/fullchain.pem;

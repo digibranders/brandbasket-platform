@@ -27,14 +27,14 @@ Payload 3 (tokens only), pnpm workspace.
 
 ## Ground rules for every task
 
-- **Work only in the worktree** `/Users/siddiqueahmed/Desktop/AI/first-found/appointments-spec` (branch
+- **Work only in the worktree** `/Users/siddiqueahmed/Desktop/AI/fynix-platform/appointments-spec` (branch
   `docs/appointments-module-spec`). The client-site kit is the exception: it goes in the
-  `firstfold-test-client-site` worktree created in Task 9.
+  `fynix-test-client-site` worktree created in Task 9.
 - **Never commit or push.** The user commits. Leave changes in the working tree. Where a step would normally commit,
   run the task's checks instead.
-- **Databases are this branch's own copies:** dev `webfold_appt`, tests `webfold_appt_test`, Payload
-  `webfold_payload_appt`. The `.env.local` files in `apps/platform` and `apps/admin` already point at them. Never
-  touch `webfold`, `webfold_test` or `webfold_payload`.
+- **Databases are this branch's own copies:** dev `fynix_appt`, tests `fynix_appt_test`, Payload
+  `fynix_platform_payload_appt`. The `.env.local` files in `apps/platform` and `apps/admin` already point at them. Never
+  touch `fynix_platform`, `fynix_platform_test` or `fynix_platform_payload`.
 - **Match the surrounding code:** file header comments that explain *why*, `readonly` props, explicit return
   types, no `any`, specific error classes. Read the neighbouring file before writing a new one.
 - **Dashboard UI rule (user, 2026-09-24):** no boxed card grids and no helper paragraphs on the main screens.
@@ -55,7 +55,7 @@ Payload 3 (tokens only), pnpm workspace.
 | Site API | `apps/platform/lib/site-info.ts`, `apps/platform/lib/site-appointments.ts`, `apps/platform/lib/server/site-info.ts`, `apps/platform/lib/server/appointment-intake.ts` (+test), `apps/platform/lib/server/appointments.ts`, `apps/platform/app/api/site/info/route.ts`, `apps/platform/app/api/site/appointments/route.ts`, `apps/platform/lib/server/site-cors.ts` |
 | Admin | `apps/admin/components/client-features.tsx`, `apps/admin/app/(protected)/clients/[businessId]/{page,actions}.ts(x)`, the lead detail page |
 | Customer | `apps/platform/app/app-host/(protected)/details/*`, `apps/platform/app/app-host/(protected)/appointments/*`, `apps/platform/components/panel/customer-shell.tsx`, `apps/platform/lib/server/business-modules.ts` |
-| Client-site kit | `firstfold-test-client-site` worktree: `lib/site-info.ts`, `lib/firstfold-info.ts`, `lib/site-appointments.ts`, `components/{announcement-bar,opening-hours,booking-form}.tsx`, `app/api/book/route.ts`, `app/book/page.tsx` |
+| Client-site kit | `fynix-test-client-site` worktree: `lib/site-info.ts`, `lib/fynix-info.ts`, `lib/site-appointments.ts`, `components/{announcement-bar,opening-hours,booking-form}.tsx`, `app/api/book/route.ts`, `app/book/page.tsx` |
 
 ---
 
@@ -63,7 +63,7 @@ Payload 3 (tokens only), pnpm workspace.
 
 **Files:** create everything under "Shared rules" in the file map, and add exports to `packages/shared/package.json`
 if that package uses an explicit `exports` map (check first; follow how `lib/business-types.ts` is imported as
-`@firstfold/shared/lib/business-types`).
+`@fynix/shared/lib/business-types`).
 
 - [ ] **Step 1: `business-modules.ts`**
 
@@ -253,7 +253,7 @@ Messages must be ones a patient can act on, e.g. "Enter your phone number."
   - `parsePausedMessage(raw)`: trimmed, ≤160, empty → null.
   - `parseServiceName(raw)`: trimmed, 1–80.
 
-- [ ] **Step 9: Run** `pnpm --filter @firstfold/shared test` and `pnpm --filter @firstfold/shared typecheck`. All
+- [ ] **Step 9: Run** `pnpm --filter @fynix/shared test` and `pnpm --filter @fynix/shared typecheck`. All
   green.
 
 ---
@@ -340,26 +340,26 @@ fill `0042_business_modules_appointments_grants.sql`. Statements are separated b
 `0014_onboarding_grants.sql`.
 
 ```sql
-GRANT SELECT ON business_modules TO webfold_app;
-GRANT SELECT, INSERT, UPDATE ON business_modules TO webfold_staff;
+GRANT SELECT ON business_modules TO fynix_app;
+GRANT SELECT, INSERT, UPDATE ON business_modules TO fynix_staff;
 ALTER TABLE business_modules ENABLE ROW LEVEL SECURITY;
-CREATE POLICY business_modules_tenant_select ON business_modules FOR SELECT TO webfold_app
+CREATE POLICY business_modules_tenant_select ON business_modules FOR SELECT TO fynix_app
   USING (business_id = app_current_business_id());
-CREATE POLICY business_modules_staff_all ON business_modules FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY business_modules_staff_all ON business_modules FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 
-GRANT SELECT, INSERT, DELETE ON business_closures TO webfold_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON business_closures TO webfold_staff;
+GRANT SELECT, INSERT, DELETE ON business_closures TO fynix_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON business_closures TO fynix_staff;
 ALTER TABLE business_closures ENABLE ROW LEVEL SECURITY;
-CREATE POLICY business_closures_tenant_all ON business_closures FOR ALL TO webfold_app
+CREATE POLICY business_closures_tenant_all ON business_closures FOR ALL TO fynix_app
   USING (business_id = app_current_business_id()) WITH CHECK (business_id = app_current_business_id());
-CREATE POLICY business_closures_staff_all ON business_closures FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY business_closures_staff_all ON business_closures FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON business_announcements TO webfold_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON business_announcements TO webfold_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON business_announcements TO fynix_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON business_announcements TO fynix_staff;
 ALTER TABLE business_announcements ENABLE ROW LEVEL SECURITY;
-CREATE POLICY business_announcements_tenant_all ON business_announcements FOR ALL TO webfold_app
+CREATE POLICY business_announcements_tenant_all ON business_announcements FOR ALL TO fynix_app
   USING (business_id = app_current_business_id()) WITH CHECK (business_id = app_current_business_id());
-CREATE POLICY business_announcements_staff_all ON business_announcements FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY business_announcements_staff_all ON business_announcements FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 
 -- Appointment tables: the customer reaches them only while the module is on, enforced here as well as in the app.
 CREATE FUNCTION app_module_enabled(target_business uuid, target_module business_module) RETURNS boolean
@@ -368,35 +368,35 @@ CREATE FUNCTION app_module_enabled(target_business uuid, target_module business_
       WHERE business_id = target_business AND module = target_module AND enabled)
   $$;
 REVOKE ALL ON FUNCTION app_module_enabled(uuid, business_module) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION app_module_enabled(uuid, business_module) TO webfold_app, webfold_staff;
+GRANT EXECUTE ON FUNCTION app_module_enabled(uuid, business_module) TO fynix_app, fynix_staff;
 
-GRANT SELECT ON appointment_settings TO webfold_app;
-GRANT UPDATE (accepting, paused_message, notify_emails, updated_at) ON appointment_settings TO webfold_app;
-GRANT SELECT, INSERT, UPDATE ON appointment_settings TO webfold_staff;
+GRANT SELECT ON appointment_settings TO fynix_app;
+GRANT UPDATE (accepting, paused_message, notify_emails, updated_at) ON appointment_settings TO fynix_app;
+GRANT SELECT, INSERT, UPDATE ON appointment_settings TO fynix_staff;
 ALTER TABLE appointment_settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY appointment_settings_tenant_all ON appointment_settings FOR ALL TO webfold_app
+CREATE POLICY appointment_settings_tenant_all ON appointment_settings FOR ALL TO fynix_app
   USING (business_id = app_current_business_id() AND app_module_enabled(business_id, 'appointments'))
   WITH CHECK (business_id = app_current_business_id() AND app_module_enabled(business_id, 'appointments'));
-CREATE POLICY appointment_settings_staff_all ON appointment_settings FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY appointment_settings_staff_all ON appointment_settings FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 
-GRANT SELECT, INSERT ON appointment_services TO webfold_app;
-GRANT UPDATE (name, position, archived_at) ON appointment_services TO webfold_app;
-GRANT SELECT, INSERT, UPDATE ON appointment_services TO webfold_staff;
+GRANT SELECT, INSERT ON appointment_services TO fynix_app;
+GRANT UPDATE (name, position, archived_at) ON appointment_services TO fynix_app;
+GRANT SELECT, INSERT, UPDATE ON appointment_services TO fynix_staff;
 ALTER TABLE appointment_services ENABLE ROW LEVEL SECURITY;
-CREATE POLICY appointment_services_tenant_all ON appointment_services FOR ALL TO webfold_app
+CREATE POLICY appointment_services_tenant_all ON appointment_services FOR ALL TO fynix_app
   USING (business_id = app_current_business_id() AND app_module_enabled(business_id, 'appointments'))
   WITH CHECK (business_id = app_current_business_id() AND app_module_enabled(business_id, 'appointments'));
-CREATE POLICY appointment_services_staff_all ON appointment_services FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY appointment_services_staff_all ON appointment_services FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 
-GRANT SELECT ON appointment_requests TO webfold_app;
+GRANT SELECT ON appointment_requests TO fynix_app;
 GRANT UPDATE (status, scheduled_for_date, scheduled_for_time, clinic_note, decline_reason, confirmed_at,
-  suggested_at, declined_at, cancelled_at, done_at, handled_by_user_id) ON appointment_requests TO webfold_app;
-GRANT SELECT, INSERT, UPDATE ON appointment_requests TO webfold_staff;
+  suggested_at, declined_at, cancelled_at, done_at, handled_by_user_id) ON appointment_requests TO fynix_app;
+GRANT SELECT, INSERT, UPDATE ON appointment_requests TO fynix_staff;
 ALTER TABLE appointment_requests ENABLE ROW LEVEL SECURITY;
-CREATE POLICY appointment_requests_tenant_all ON appointment_requests FOR ALL TO webfold_app
+CREATE POLICY appointment_requests_tenant_all ON appointment_requests FOR ALL TO fynix_app
   USING (business_id = app_current_business_id() AND app_module_enabled(business_id, 'appointments'))
   WITH CHECK (business_id = app_current_business_id() AND app_module_enabled(business_id, 'appointments'));
-CREATE POLICY appointment_requests_staff_all ON appointment_requests FOR ALL TO webfold_staff USING (true) WITH CHECK (true);
+CREATE POLICY appointment_requests_staff_all ON appointment_requests FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
 ```
 
 Also check whether `businesses` has column-level grants that need `time_zone` added: `grep -n "businesses" packages/db/migrations/*grants*.sql`. If the app role's SELECT on `businesses` is column-listed, add `time_zone` to it.
@@ -407,9 +407,9 @@ migrations do with `app_current_business_id`.
 
 Run: `pnpm db:migrate && pnpm db:migrate:test`
 Expected: "Migrations applied to the dev database." and the same for test. Then
-`psql webfold_appt -c "\d appointment_requests"` shows the table and its policies.
+`psql fynix_appt -c "\d appointment_requests"` shows the table and its policies.
 
-- [ ] **Step 8: Run** `pnpm --filter @firstfold/db typecheck`.
+- [ ] **Step 8: Run** `pnpm --filter @fynix/db typecheck`.
 
 ---
 
@@ -521,8 +521,8 @@ It always sets `handled_by_user_id`. The WHERE always includes `business_id = cu
        ones.
      - Enabling again doesn't duplicate services.
      - Disabling keeps the settings and services.
-  2. **Module switch permissions:** `webfold_app` under A's scope can read A's `business_modules` and not B's. An
-     INSERT into `business_modules` as `webfold_app` fails with a permission error.
+  2. **Module switch permissions:** `fynix_app` under A's scope can read A's `business_modules` and not B's. An
+     INSERT into `business_modules` as `fynix_app` fails with a permission error.
   3. **Closures and announcements RLS:**
      - A can add, list and delete its own closures and can't see or delete B's.
      - `saveAnnouncement` upserts, and the message check rejects 101 characters and newlines.
@@ -530,7 +530,7 @@ It always sets `handled_by_user_id`. The WHERE always includes `business_id = cu
      - With the module off, A's scoped `listAppointmentRequests` returns nothing even though rows exist (inserted by
        staff).
      - With it on, A sees only A's rows.
-     - `webfold_app` can't INSERT into `appointment_requests`.
+     - `fynix_app` can't INSERT into `appointment_requests`.
   5. **Transitions:**
      - confirm from `new` works and sets the schedule.
      - done from `new` returns null.
@@ -566,7 +566,7 @@ value, `sanitizeHeaderValue` on the subject, `assertWebUrl` on links, `htmlDocum
   - `businessPhone` may be null. Leave that line out when it is.
 - [ ] **Step 2: Tests:** each template escapes `<script>` in patient-supplied text, has a non-empty `bodyText`, and
   keeps the note out of the subject.
-- [ ] **Step 3: Run** `pnpm --filter @firstfold/email test` and typecheck.
+- [ ] **Step 3: Run** `pnpm --filter @fynix/email test` and typecheck.
 
 ---
 
@@ -649,7 +649,7 @@ value, `sanitizeHeaderValue` on the subject, `assertWebUrl` on links, `htmlDocum
   - each outcome's status and body
   - that `record` receives the tenant's businessId, never anything from the body
 
-- [ ] **Step 9: Run** `pnpm --filter @firstfold/platform test`, `pnpm --filter @firstfold/platform lint`,
+- [ ] **Step 9: Run** `pnpm --filter @fynix/platform test`, `pnpm --filter @fynix/platform lint`,
   `pnpm typecheck`.
 
 ---
@@ -678,7 +678,7 @@ value, `sanitizeHeaderValue` on the subject, `assertWebUrl` on links, `htmlDocum
   the existing `Promise.all`. Render `<Section title="Features">` right after "Their website".
 - [ ] **Step 4: Lead page:** under the business type, render `Suggested: Appointments` (using
   `suggestedModules(lead.businessType)` and the labels) when non-empty.
-- [ ] **Step 5: Run** `pnpm --filter @firstfold/admin test`, `pnpm --filter @firstfold/admin lint`, `pnpm typecheck`.
+- [ ] **Step 5: Run** `pnpm --filter @fynix/admin test`, `pnpm --filter @fynix/admin lint`, `pnpm typecheck`.
 
 ---
 
@@ -702,7 +702,7 @@ value, `sanitizeHeaderValue` on the subject, `assertWebUrl` on links, `htmlDocum
 
   Client components for the forms use `useActionState`. Labels stay short and there are no explanatory paragraphs.
 - [ ] **Step 3: Nav:** add `{ href: "/details", label: "Your details", icon: <ClockIcon/> }` after "Your project".
-  Use an existing icon from `@firstfold/shared/ui/icons`. If none fits, add one there in the same style.
+  Use an existing icon from `@fynix/shared/ui/icons`. If none fits, add one there in the same style.
 - [ ] **Step 4: Run** platform test, lint and typecheck.
 
 ---
@@ -754,16 +754,16 @@ components under `apps/platform/components/panel/appointments/`, and `apps/platf
 
 ### Task 9: Client-site kit on the test client site
 
-**Setup:** in `/Users/siddiqueahmed/Desktop/AI/first-found/firstfold-test-client-site`, another session has
+**Setup:** in `/Users/siddiqueahmed/Desktop/AI/fynix-platform/fynix-test-client-site`, another session has
 uncommitted blog work on `feat/blog-categories-seo`. Don't touch that checkout. Create a worktree:
-`git -C ../firstfold-test-client-site worktree add ../firstfold-test-client-site-appt -b feat/appointments HEAD`,
+`git -C ../fynix-test-client-site worktree add ../fynix-test-client-site-appt -b feat/appointments HEAD`,
 then `pnpm install` and copy `.env.local`.
 
-- [ ] **Step 1: Read** `lib/firstfold-blog.ts` to match how it calls the platform (base URL env, token env,
+- [ ] **Step 1: Read** `lib/fynix-blog.ts` to match how it calls the platform (base URL env, token env,
   `revalidate`).
 - [ ] **Step 2: `lib/site-info.ts`** (a verbatim copy of the platform contract) and
   `lib/site-appointments.ts` (the request and response types copied).
-- [ ] **Step 3: `lib/firstfold-info.ts`**: `getSiteInfo(): Promise<SiteInfo | null>`, fetched with
+- [ ] **Step 3: `lib/fynix-info.ts`**: `getSiteInfo(): Promise<SiteInfo | null>`, fetched with
   `{ next: { revalidate: 60 } }` and the bearer token. On any failure it logs and returns null.
 - [ ] **Step 4: `components/announcement-bar.tsx`** renders `info.announcement.message` as text at the top of the
   layout. Render it in `app/layout.tsx`.
@@ -777,7 +777,7 @@ then `pnpm install` and copy `.env.local`.
 - [ ] **Step 7: `app/api/book/route.ts`:**
   - Read the JSON body.
   - The client IP comes from `x-forwarded-for`'s first entry, or `127.0.0.1` locally.
-  - POST to `${FIRSTFOLD_API_ORIGIN}/api/site/appointments` with the token, and relay the status and JSON.
+  - POST to `${FYNIX_API_ORIGIN}/api/site/appointments` with the token, and relay the status and JSON.
   - Never forward the token to the browser.
 - [ ] **Step 8: Run** its `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`.
 
@@ -786,9 +786,9 @@ then `pnpm install` and copy `.env.local`.
 ### Task 10: Local end-to-end
 
 Servers go in `.claude/launch.json` in the worktree:
-- **platform:** `pnpm --filter @firstfold/platform exec next dev -p 3011`
-- **admin:** `pnpm --filter @firstfold/admin exec next dev -p 3013`
-- **client site:** `pnpm exec next dev -p 3015` in the client-site worktree, with `FIRSTFOLD_API_ORIGIN=http://localhost:3011`
+- **platform:** `pnpm --filter @fynix/platform exec next dev -p 3011`
+- **admin:** `pnpm --filter @fynix/admin exec next dev -p 3013`
+- **client site:** `pnpm exec next dev -p 3015` in the client-site worktree, with `FYNIX_API_ORIGIN=http://localhost:3011`
 
 - [ ] **Step 1:** Create a test business the real way.
   1. Submit a lead with type "Clinic" (POST `/api/leads` with `LEADS_API_TOKEN`) and see "Suggested: Appointments"

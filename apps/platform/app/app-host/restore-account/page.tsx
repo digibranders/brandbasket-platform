@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
-import { Button } from "@firstfold/shared/ui/panel/button";
-import { LocalDate } from "@firstfold/shared/ui/panel/local-date-time";
-import { SignOutButton } from "@firstfold/shared/ui/panel/sign-out-button";
+import { Button } from "@fynix/shared/ui/panel/button";
+import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
+import { SignOutButton } from "@fynix/shared/ui/panel/sign-out-button";
 import { EntryScreen } from "@/components/panel/entry-screen";
 import { getCustomerAccess } from "@/lib/server/customer-access";
 import { signOut } from "@/lib/server/sign-out";

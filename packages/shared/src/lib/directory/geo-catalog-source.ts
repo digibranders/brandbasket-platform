@@ -1,4 +1,4 @@
-import { loadGeoCatalog, setOpenedDistricts, type Database, type GeoCatalogSnapshot } from "@firstfold/db";
+import { loadGeoCatalog, setOpenedDistricts, type Database, type GeoCatalogSnapshot } from "@fynix/db";
 import { applyPlacesCatalog, DIRECTORY_DISTRICT, DIRECTORY_STATE } from "./places";
 
 /*
@@ -16,7 +16,7 @@ export function geoCatalogSource(env: Readonly<Record<string, string | undefined
 }
 
 const REFRESH_MS = 15_000;
-const STATE_KEY = Symbol.for("firstfold.directory.geoCatalogRefresh");
+const STATE_KEY = Symbol.for("fynix.directory.geoCatalogRefresh");
 interface RefreshState {
   loadedAt: number;
   applied: boolean;

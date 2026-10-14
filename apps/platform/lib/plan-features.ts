@@ -23,11 +23,11 @@ export interface PlanFeature {
 
 /** The table's rows, in its order. */
 export const PLAN_FEATURES: readonly PlanFeature[] = [
-  { id: "listing", label: "Firstfold business listing", free: true, care: false, premium: true },
+  { id: "listing", label: "Business listing", free: true, care: false, premium: true },
   { id: "images", label: "Images", free: true, care: false, premium: true },
   { id: "videos", label: "Videos", free: false, care: false, premium: true },
   { id: "competitor-ads", label: "No competitor ads on your listing", free: false, care: false, premium: true },
-  { id: "listing-management", label: "Firstfold business listing management", free: false, care: false, premium: true },
+  { id: "listing-management", label: "Business listing management", free: false, care: false, premium: true },
   { id: "website", label: "Next.js business website", free: false, care: true, premium: "5 pages (free)" },
   { id: "website-management", label: "Website management", free: false, care: true, premium: true },
   { id: "chatbot", label: "OyeChats professional chatbot", free: false, care: true, premium: true },
@@ -38,7 +38,7 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
   { id: "google-business", label: "Google Business Profile management", free: false, care: false, premium: true },
   { id: "facebook", label: "Facebook account management", free: false, care: false, premium: true },
   { id: "instagram", label: "Instagram account management", free: false, care: false, premium: true },
-  { id: "marketing-discount", label: "10% off Firstfold digital marketing services", free: false, care: false, premium: true },
+  { id: "marketing-discount", label: "10% off digital marketing services", free: false, care: false, premium: true },
 ];
 
 /** Whether a plan includes a row: a note counts as yes. */

@@ -1,4 +1,4 @@
-import type { BillingProvider } from "@firstfold/billing";
+import type { BillingProvider } from "@fynix/billing";
 import {
   changeAddOnEndKind,
   findAddOnSubscription,
@@ -9,7 +9,7 @@ import {
   type AddOnSubscription,
   type Database,
   type ScopedTransaction,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import {
   AddOnClosureChangedError,
@@ -22,7 +22,7 @@ import {
 } from "./add-on-ends";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", () => ({
+vi.mock("@fynix/db", () => ({
   changeAddOnEndKind: vi.fn(),
   findAddOnSubscription: vi.fn(),
   listAddOnSubscriptionsForBusiness: vi.fn(),
@@ -145,7 +145,7 @@ describe("scheduleAddOnEndFor", () => {
     expect(scheduleAddOnEnd).not.toHaveBeenCalled();
     expect(events).toEqual(["tx1:begin", "tx1:commit"]);
     // The error is named, never quoted.
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] add-on-end-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-end-failed /);
     expect(String(logged.mock.calls[0]?.[0])).not.toContain("provider unreachable");
   });
 
@@ -197,7 +197,7 @@ describe("scheduleAddOnEndFor", () => {
     const outcome = await scheduleAddOnEndFor(staffDb, provider, REQUEST, NOW);
 
     expect(outcome).toMatchObject({ kind: "refused", reason: "changed-meanwhile" });
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] add-on-end-not-recorded /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-end-not-recorded /);
   });
 
   it("reports an end set by someone else in the meantime as already ending", async () => {
@@ -299,7 +299,7 @@ describe("scheduleAddOnEndFor", () => {
 
       expect(outcome).toMatchObject({ kind: "refused", reason: "changed-meanwhile" });
       expect(markAddOnCancelled).not.toHaveBeenCalled();
-      expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] add-on-end-not-recorded /);
+      expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-end-not-recorded /);
     });
   });
 });
@@ -398,7 +398,7 @@ describe("stopAddOnsAtProvider", () => {
     await expect(stopAddOnsAtProvider(provider, steps)).resolves.toBe(false);
 
     expect(atPeriodEnd).not.toHaveBeenCalled();
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[firstfold:billing\] add-on-end-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-end-failed /);
     expect(String(logged.mock.calls[0]?.[0])).not.toContain("provider unreachable");
   });
 

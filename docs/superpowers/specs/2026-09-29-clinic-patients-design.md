@@ -52,7 +52,7 @@ overwritten by a later booking; the booking keeps what was typed as its own snap
 Backfill in the same migration: one patient per (business_id, phone) of existing appointments, named from the most
 recent booking; every existing appointment linked.
 
-## Rules held by the database (webfold_app)
+## Rules held by the database (fynix_app)
 
 - patients: SELECT, UPDATE (name, alt_phone, tags, updated_at), DELETE. No INSERT: patients are only ever created
   by a booking. RLS: own business and the appointments module on, like every appointments table.

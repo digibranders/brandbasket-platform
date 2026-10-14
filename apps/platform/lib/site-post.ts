@@ -85,10 +85,8 @@ function nonBlank(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value : null;
 }
 
-function coverImagePath(cover: unknown): string | null {
-  const resolved = asRecord(cover);
-  return resolved === null ? null : `/content-media/${String(resolved.id)}`;
-}
+/** Where a client website fetches a published post's image; public, unlike the dashboard's `/content-media/<id>`. */
+export const SITE_MEDIA_PATH_PREFIX = "/api/site/media/";
 
 /** Null unless the relation was resolved (depth ≥ 1) to a document carrying both fields. */
 function categoryOf(value: unknown): SitePostCategory | null {
@@ -105,11 +103,11 @@ function categoryOf(value: unknown): SitePostCategory | null {
   };
 }
 
-/** A media relation as a `/content-media/<id>` path, whether it arrived as a bare id or resolved. */
+/** A media relation as a `/api/site/media/<id>` path, whether it arrived as a bare id or resolved. */
 function mediaPath(value: unknown): string | null {
-  if (typeof value === "string" || typeof value === "number") return `/content-media/${String(value)}`;
+  if (typeof value === "string" || typeof value === "number") return `${SITE_MEDIA_PATH_PREFIX}${String(value)}`;
   const resolved = asRecord(value);
-  return resolved === null || resolved.id === undefined ? null : `/content-media/${String(resolved.id)}`;
+  return resolved === null || resolved.id === undefined ? null : `${SITE_MEDIA_PATH_PREFIX}${String(resolved.id)}`;
 }
 
 function authorOf(value: unknown): SitePostAuthor | null {
@@ -133,7 +131,7 @@ export function toSitePost(post: RawSitePost): SitePost {
     publishedAt: nonBlank(post.publishedAt),
     updatedAt: nonBlank(post.updatedAt),
     html: lexicalToHtml(post.body),
-    coverImagePath: coverImagePath(post.coverImage),
+    coverImagePath: mediaPath(post.coverImage),
     categories: category === null ? [] : [category.name],
     category,
     author: authorOf(post.author),

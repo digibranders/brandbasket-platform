@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     ...actual,
     findAddOnSubscription: vi.fn(),
@@ -12,9 +12,9 @@ vi.mock("@firstfold/db", async () => {
     setPressReleaseStatus: vi.fn(),
   };
 });
-vi.mock("@firstfold/shared/server/add-on-ends", () => ({ scheduleAddOnEndFor: vi.fn() }));
-vi.mock("@firstfold/shared/server/billing-log", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/shared/server/billing-log")>("@firstfold/shared/server/billing-log");
+vi.mock("@fynix/shared/server/add-on-ends", () => ({ scheduleAddOnEndFor: vi.fn() }));
+vi.mock("@fynix/shared/server/billing-log", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/shared/server/billing-log")>("@fynix/shared/server/billing-log");
   return { ...actual, logBillingEvent: vi.fn() };
 });
 vi.mock("./billing-provider", () => ({ getBillingProvider: () => ({ name: "razorpay" }) }));
@@ -26,9 +26,9 @@ import {
   listPressReleasesForBusiness,
   markAddOnContacted,
   setPressReleaseStatus,
-} from "@firstfold/db";
-import { scheduleAddOnEndFor } from "@firstfold/shared/server/add-on-ends";
-import { logBillingEvent } from "@firstfold/shared/server/billing-log";
+} from "@fynix/db";
+import { scheduleAddOnEndFor } from "@fynix/shared/server/add-on-ends";
+import { logBillingEvent } from "@fynix/shared/server/billing-log";
 import { endClientAddOn, loadClientAddOns, markClientAddOnContacted, setClientPressReleaseStatus } from "./add-ons-admin";
 
 const BUSINESS = "0192f3c4-1111-7000-8000-000000000001";

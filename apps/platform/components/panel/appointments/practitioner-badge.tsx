@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
-import { practitionerInitials } from "@firstfold/shared/lib/appointments/initials";
-import { cn } from "@firstfold/shared/lib/cn";
+import { practitionerInitials } from "@fynix/shared/lib/appointments/initials";
+import { cn } from "@fynix/shared/lib/cn";
 
 type BadgeTone = "accent" | "onAccent" | "muted";
 

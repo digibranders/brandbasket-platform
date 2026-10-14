@@ -7,10 +7,10 @@ import {
   updateLead,
   type BillingCurrency,
   type Database,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { z } from "zod";
-import { BILLING_CURRENCY_ORDER } from "@firstfold/shared/lib/currency";
-import { readStaffLeadStatus } from "@firstfold/shared/lib/lead-status";
+import { BILLING_CURRENCY_ORDER } from "@fynix/shared/lib/currency";
+import { readStaffLeadStatus } from "@fynix/shared/lib/lead-status";
 
 /** A lead status in the form that staff may not choose (`paid`, `account_created`) or that does not exist. */
 export class LeadStatusNotAllowedError extends Error {

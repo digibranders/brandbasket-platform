@@ -8,9 +8,9 @@ import {
   RocketIcon,
   TickIcon,
   UsersIcon,
-} from "@firstfold/shared/ui/icons";
-import { cn } from "@firstfold/shared/lib/cn";
-import { formatStepNumber } from "@firstfold/shared/lib/format";
+} from "@fynix/shared/ui/icons";
+import { cn } from "@fynix/shared/lib/cn";
+import { formatStepNumber } from "@fynix/shared/lib/format";
 import { TOUR_STAGE_LABELS, type TourStageState } from "@/lib/plan-tour";
 
 interface FeaturePreviewProps {

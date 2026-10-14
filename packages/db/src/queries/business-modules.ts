@@ -47,7 +47,7 @@ export class TimeZoneInUseError extends Error {
 /**
  * True when `Intl` recognises `value` as a time zone name. Defensive only: the caller is expected to pass the
  * result of shared's `canonicalTimeZone()`, which already validated and canonicalised it. packages/db cannot
- * import @firstfold/shared (the dependency points the other way: shared depends on db), so it re-validates here
+ * import @fynix/shared (the dependency points the other way: shared depends on db), so it re-validates here
  * with the same runtime `Intl` support rather than trusting the caller blindly.
  */
 function isValidTimeZone(value: string): boolean {

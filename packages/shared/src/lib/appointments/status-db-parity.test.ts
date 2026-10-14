@@ -1,10 +1,10 @@
 /**
- * packages/db cannot import @firstfold/shared (the dependency points the other way: shared depends on db), so its
+ * packages/db cannot import @fynix/shared (the dependency points the other way: shared depends on db), so its
  * schema/appointments.ts and queries/appointments.ts write out the enum values and the transition table literally
  * rather than importing them from here. This test is the tripwire: it asserts the two copies still agree, so a
  * later edit to one side that forgets the other fails loudly instead of silently drifting.
  */
-import { appointmentStatus, businessModule, APPOINTMENT_TRANSITIONS as DB_APPOINTMENT_TRANSITIONS } from "@firstfold/db";
+import { appointmentStatus, businessModule, APPOINTMENT_TRANSITIONS as DB_APPOINTMENT_TRANSITIONS } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { BUSINESS_MODULES } from "../business-modules";
 import { ACTION_TRANSITIONS, APPOINTMENT_STATUSES } from "./status";

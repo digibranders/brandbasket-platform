@@ -4,10 +4,9 @@ The customer dashboard and staff console behind Fynix Digital's Local Business p
 account with their **email address**, chooses **Care** or **Premium**, pays, and manages their website, chatbot,
 billing and support from the dashboard. Fynix staff run the same data from a separate staff console.
 
-It will live at `app.fynix.digital`, on Fynix's own server. This repository is fully separate from Firstfold:
-its own database, its own staff console, its own secrets. It was started from Firstfold's platform and still carries
-Firstfold-only code (directory and listing features, the free plan, SMS sign-up) that a later clean-up removes;
-`PLATFORM_BRAND=fynix` makes every host wear the Fynix brand, sell Care and Premium only, and register with email.
+It lives at `app.fynix.digital`, on Fynix's own server, with its own database, its own staff console and its own secrets.
+It still carries dormant code (directory and listing features, the free plan, SMS sign-up) that a later clean-up removes:
+the dashboard sells Care and Premium only, and registers owners by email.
 
 Built with Next.js 16 (App Router), TypeScript, Tailwind CSS 4, zod, PostgreSQL, Drizzle and Better Auth, in a pnpm
 workspace. The Fynix marketing site (`fynix.digital`) is a separate repository.
@@ -19,19 +18,18 @@ Requires Node 24+, pnpm 10 and a local PostgreSQL where your macOS user can crea
 ```bash
 pnpm install
 pnpm env:init                                   # writes both apps' .env.local with fresh secrets
-createdb fynix_platform && createdb fynix_platform_test && createdb fynix_platform_payload
-pnpm db:roles                                   # application roles (cluster-wide: shared by every database on this Postgres)
-pnpm db:migrate && pnpm db:migrate:test
+createdb fynix_platform && createdb fynix_platform_test
+pnpm db:roles                                   # fynix_* roles (cluster-wide) and the Payload database, owned by fynix_cms
+pnpm db:migrate && pnpm db:migrate:test && pnpm cms:migrate
 pnpm staff:create --email you@example.com --name "Your Name"
 ```
 
 Then edit `apps/platform/.env.local` (and `apps/admin/.env.local`) so the database URLs name the databases above, and set:
 
 ```
-PLATFORM_BRAND=fynix
-APP_ORIGIN=http://localbusiness.localhost:3098
-NEXT_PUBLIC_APP_URL=http://localbusiness.localhost:3098
-ADMIN_ORIGIN=http://admin.localbusiness.localhost:3099
+APP_ORIGIN=http://app.localhost:3098
+NEXT_PUBLIC_APP_URL=http://app.localhost:3098
+ADMIN_ORIGIN=http://staff.localhost:3099
 EMAIL_CODE_BYPASS=true        # local only: any 6 digits confirm an email sign-up
 ```
 
@@ -40,8 +38,8 @@ Start the dashboard with `cd apps/platform && npx next dev -p 3098`, and the sta
 
 | Surface          | URL                                         |
 | ---------------- | ------------------------------------------- |
-| Customer sign-in | http://localbusiness.localhost:3098         |
-| Staff console    | http://admin.localbusiness.localhost:3099   |
+| Customer sign-in | http://app.localhost:3098                   |
+| Staff console    | http://staff.localhost:3099                 |
 
 Payload keeps its own schema in `fynix_platform_payload` with its own migrations (`pnpm cms:migrate`); in development
 Payload pushes schema changes itself.
@@ -58,7 +56,7 @@ Payload pushes schema changes itself.
   only recorded in the outbox (`email_messages`, which staff read in the console); locally the sign-up code and reset
   links stay readable there. A server that real customers can reach (an https `APP_ORIGIN`) refuses to start without
   `BREVO_API_KEY`, and refuses `EMAIL_CODE_BYPASS`.
-- Accounts opened with a mobile number (Firstfold's path) still sign in with it.
+- Accounts opened with a mobile number (Fynix Digital's path) still sign in with it.
 
 ## Scripts
 
@@ -95,10 +93,10 @@ packages/
   billing/    payment providers and billing rules
   email/      email templates, the Brevo transport and the local outbox
   cms/        Payload collections, config and migrations: its own database, shared by both apps
-docs/         operations notes, and the platform specs and plans written while this was Firstfold's
+docs/         operations notes, and the platform specs and plans written while this was Fynix Digital's
 ```
 
-The package scope is still `@firstfold/*`; renaming it is a later step.
+The package scope is still `@fynix/*`; renaming it is a later step.
 
 ## How access works
 

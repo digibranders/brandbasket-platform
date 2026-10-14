@@ -1,12 +1,12 @@
 # Blog CMS editor (customer dashboard)
 
 Goal: turn the customer dashboard's blog into a real CMS screen, modelled on the CleanStart CMS the user shared
-(2026-09-30): a posts table and a two-column post editor with a publishing sidebar. Firstfold's own cream/burgundy
+(2026-09-30): a posts table and a two-column post editor with a publishing sidebar. Fynix Digital's own cream/burgundy
 panel look is kept; the structure follows the reference.
 
-Branch `feat/blog-cms-editor` (worktree `first-found/blog-cms`), local only until the user asks to push. Local
-server: launch entry `blogcms-platform`, http://app.localhost:3091, on private DB copies `webfold_blogcms` and
-`webfold_payload_blogcms`.
+Branch `feat/blog-cms-editor` (worktree `fynix-platform/blog-cms`), local only until the user asks to push. Local
+server: launch entry `blogcms-platform`, http://app.localhost:3091, on private DB copies `fynix_platform_branch` and
+`fynix_platform_payload_blogcms`.
 
 ## What we give customers (and what we leave out)
 
@@ -47,7 +47,7 @@ in the future (scheduled).
 
 ## Checks
 
-`pnpm --filter @firstfold/platform test`, lint, typecheck, build; browser check on :3091 (list, editor, save,
+`pnpm --filter @fynix/platform test`, lint, typecheck, build; browser check on :3091 (list, editor, save,
 publish, schedule, duplicate, bulk actions, mobile width).
 
 Follow-up (not in this branch): the test client site template reading the new fields (alt text, canonical,

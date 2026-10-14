@@ -1,4 +1,4 @@
-import type { Receipt } from "@firstfold/db";
+import type { Receipt } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { receiptRows } from "./receipt-rows";
 
@@ -52,8 +52,8 @@ describe("receiptRows", () => {
   });
 
   it("titles an invoiced payment by its tax invoice number", () => {
-    const [row] = receiptRows([receipt({ taxInvoiceId: "0192f3c4-3333-7000-8000-000000000001", taxInvoiceNumber: "FF/26-27/000001" })]);
-    expect(row?.title).toBe("Tax invoice FF/26-27/000001");
+    const [row] = receiptRows([receipt({ taxInvoiceId: "0192f3c4-3333-7000-8000-000000000001", taxInvoiceNumber: "FY/26-27/000001" })]);
+    expect(row?.title).toBe("Tax invoice FY/26-27/000001");
   });
 
   it("marks money we could not apply as received, and says what happens next", () => {
@@ -73,7 +73,7 @@ describe("receiptRows", () => {
 
   it("copes with a payment that has no date or plan", () => {
     const [row] = receiptRows([receipt({ paidAt: null, planName: null, currency: "USD", amountCents: 6_900 })]);
-    expect(row).toMatchObject({ title: "Receipt #007", paidAtIso: null, plan: "Firstfold", amount: "$69" });
+    expect(row).toMatchObject({ title: "Receipt #007", paidAtIso: null, plan: "Fynix", amount: "$69" });
   });
 
   it("names a paid extra by what it was, not by a plan", () => {

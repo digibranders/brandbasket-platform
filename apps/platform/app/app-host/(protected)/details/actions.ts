@@ -13,10 +13,10 @@ import {
   replaceOpeningHours,
   saveAnnouncement,
   withTenantScope,
-} from "@firstfold/db";
-import { parseAnnouncementForm, parseClosureForm } from "@firstfold/shared/lib/business-facts/forms";
-import { localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import { toStoredHours } from "@firstfold/shared/lib/onboarding/hours";
+} from "@fynix/db";
+import { parseAnnouncementForm, parseClosureForm } from "@fynix/shared/lib/business-facts/forms";
+import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { toStoredHours } from "@fynix/shared/lib/onboarding/hours";
 import { closureClashes } from "@/lib/appointments/closure-clashes";
 import { leaveAddedState, type LeaveClash } from "@/lib/appointments/leave-added-state";
 import { parseHoursForm } from "@/lib/onboarding/business-form";
@@ -24,7 +24,7 @@ import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
 import { holidayAccessOrNull } from "@/lib/server/holiday-access";
 import { getAppDb } from "@/lib/server/db";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { paymentRequiredState, unexpectedErrorState } from "@/lib/server/panel-form-errors";
 import { closureInPastState, closureNotFoundState } from "./errors";
 

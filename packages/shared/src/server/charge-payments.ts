@@ -1,5 +1,5 @@
 import "server-only";
-import { recordChargePayment, type ChargePayment, type RecordedChargePayment, type ScopedTransaction } from "@firstfold/db";
+import { recordChargePayment, type ChargePayment, type RecordedChargePayment, type ScopedTransaction } from "@fynix/db";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 
 /**

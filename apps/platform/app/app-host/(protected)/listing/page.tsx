@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { brandText } from "@/lib/brand";
+
 import { requestBrand } from "@/lib/server/request-brand";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
@@ -17,17 +17,17 @@ import {
   placeUrlPath,
   resolveListingKey,
   withTenantScope,
-} from "@firstfold/db";
-import { DEFAULT_BUSINESS_TIME_ZONE, addDays, localDateIn } from "@firstfold/shared/lib/calendar/local-date";
-import type { ListingButton } from "@firstfold/shared/lib/directory/listing-content";
-import { DIRECTORY_ORIGIN, areaName, categoryLabel, cityName, directoryCategoryPath } from "@firstfold/shared/lib/directory/places";
-import { LISTING_STAGE_LABELS, listingStage, type ListingStage } from "@firstfold/shared/lib/directory/stage";
-import { WEEKDAYS } from "@firstfold/shared/lib/onboarding/business-fields";
-import { formatStoredDate } from "@firstfold/shared/lib/format";
-import { describeHours, describeOpenStatus, describeStoredDay } from "@firstfold/shared/lib/onboarding/hours";
-import { siteConfig } from "@firstfold/shared/lib/site-config";
-import { displayPhoneText } from "@firstfold/shared/server/phone-display";
-import { ArrowIcon } from "@firstfold/shared/ui/icons";
+} from "@fynix/db";
+import { DEFAULT_BUSINESS_TIME_ZONE, addDays, localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import type { ListingButton } from "@fynix/shared/lib/directory/listing-content";
+import { DIRECTORY_ORIGIN, areaName, categoryLabel, cityName, directoryCategoryPath } from "@fynix/shared/lib/directory/places";
+import { LISTING_STAGE_LABELS, listingStage, type ListingStage } from "@fynix/shared/lib/directory/stage";
+import { WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
+import { formatStoredDate } from "@fynix/shared/lib/format";
+import { describeHours, describeOpenStatus, describeStoredDay } from "@fynix/shared/lib/onboarding/hours";
+import { siteConfig } from "@fynix/shared/lib/site-config";
+import { displayPhoneText } from "@fynix/shared/server/phone-display";
+import { ArrowIcon } from "@fynix/shared/ui/icons";
 import {
   ListingDetails,
   type ListingAnnouncement,
@@ -67,7 +67,7 @@ function hasText(value: string | null | undefined): value is string {
 }
 
 /**
- * The client's Featured listing on Firstfold Local: where it stands, its address, the fields they edit, and the
+ * The client's Featured listing on the local directory: where it stands, its address, the fields they edit, and the
  * ones staff set. Everything is read on one tenant-scoped transaction, like Your details. 404s until staff create
  * the listing, which is also when Listing appears in the nav.
  */
@@ -107,7 +107,7 @@ export default async function ListingPage(): Promise<ReactElement> {
   const area = areaName(placement.citySlug, placement.areaSlug) ?? placement.areaSlug;
   const city = cityName(placement.citySlug) ?? placement.citySlug;
   const brand = await requestBrand();
-  const headline = brandText(listingHeadline({ stage, visible: content.visible, category, area }), brand);
+  const headline = listingHeadline({ stage, visible: content.visible, category, area });
 
   // Same "today" as Your details and the directory feed, so all three agree on whether the announcement is showing.
   const today = localDateIn(data.timeZone ?? DEFAULT_BUSINESS_TIME_ZONE, now);

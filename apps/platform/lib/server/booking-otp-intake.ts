@@ -1,8 +1,8 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { isBookingHoneypotFilled, parseBookingFields } from "@firstfold/shared/lib/appointments/booking-form";
-import type { BookingInput } from "@firstfold/shared/lib/appointments/booking-form";
-import { OTP_TTL_SECONDS } from "@firstfold/shared/lib/appointments/otp";
+import { isBookingHoneypotFilled, parseBookingFields } from "@fynix/shared/lib/appointments/booking-form";
+import type { BookingInput } from "@fynix/shared/lib/appointments/booking-form";
+import { OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
 import type { SiteBookingFields, SiteOtpResponse } from "@/lib/site-bookings";
 import { siteOtpRequestSchema } from "@/lib/site-bookings-schema";
 import { TAKEN_MESSAGE } from "./booking-confirm";
@@ -10,7 +10,7 @@ import type { BookingOtpOutcome } from "./booking-otp";
 import { BodyTooLargeError, readLimitedBody } from "./read-limited-body";
 import type { SiteApiTenant } from "./site-api";
 import { bearerToken, SITE_UNAUTHORIZED_MESSAGE } from "./site-cors";
-import { errorLogInfo } from "@firstfold/shared/server/error-log-info";
+import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 
 /** Eight-ish fields of at most 2,000 characters each fit well inside this, even as multi-byte UTF-8. */
 const MAX_BODY_BYTES = 16 * 1024;

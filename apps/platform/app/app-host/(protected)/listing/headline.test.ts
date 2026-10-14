@@ -12,13 +12,13 @@ describe("listingHeadline", () => {
 
   it("says when the listing will go live while the website is being built", () => {
     expect(listingHeadline({ stage: "building", visible: true, ...PLACE })).toBe(
-      "Your listing goes live on Firstfold Local the day your website launches.",
+      "Your listing goes live on the local directory the day your website launches.",
     );
   });
 
   it("says a hidden listing is hidden", () => {
     expect(listingHeadline({ stage: "hidden", visible: false, ...PLACE })).toBe(
-      "You're hidden from Firstfold Local. Everything is kept.",
+      "You're hidden from the local directory. Everything is kept.",
     );
   });
 
@@ -30,7 +30,7 @@ describe("listingHeadline", () => {
 
   it("does not claim a paused listing shows when the client has hidden it", () => {
     expect(listingHeadline({ stage: "paused", visible: false, ...PLACE })).toBe(
-      "You're hidden from Firstfold Local. Pay to show your listing again.",
+      "You're hidden from the local directory. Pay to show your listing again.",
     );
   });
 });

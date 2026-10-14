@@ -1,5 +1,5 @@
-import { consumeRateLimit, recordErrorReport } from "@firstfold/db";
-import { createErrorReportCollector } from "@firstfold/shared/server/error-report";
+import { consumeRateLimit, recordErrorReport } from "@fynix/db";
+import { createErrorReportCollector } from "@fynix/shared/server/error-report";
 import { getStaffDb } from "@/lib/server/db";
 import { appOriginForHostHeader } from "@/lib/server/request-brand";
 import { getSessionUser } from "@/lib/server/session";
@@ -14,6 +14,6 @@ export const POST = createErrorReportCollector({
   getSessionUser,
   writeReport: (report, userId) => recordErrorReport(getStaffDb(), report, userId),
   consumeLimit: async (key, rule) => (await consumeRateLimit(getStaffDb(), key, rule)).allowed,
-  release: process.env.NEXT_PUBLIC_FIRSTFOLD_RELEASE,
+  release: process.env.NEXT_PUBLIC_FYNIX_RELEASE,
 });
 

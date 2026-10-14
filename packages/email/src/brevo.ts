@@ -1,6 +1,6 @@
-import type { Database } from "@firstfold/db";
+import type { Database } from "@fynix/db";
 import type { EmailMessage } from "./message";
-import { emailBrandId, emailSenderDefaults } from "./brand";
+import { emailSenderDefaults } from "./brand";
 import { createOutboxTransport, OUTBOX_TRANSPORT_NAME, recordOutboxCopy, type EmailTransport } from "./outbox";
 
 export interface BrevoSender {
@@ -50,8 +50,7 @@ type EmailEnvironment = Readonly<Record<string, string | undefined>>;
  */
 export function createBrevoTransport(config: BrevoConfig): EmailTransport {
   const fetcher = config.fetchFn ?? fetch;
-  // Never a hard-coded brand: a transport built with no sender is the deployment's own brand's.
-  const fallback = emailSenderDefaults(emailBrandId()).from;
+  const fallback = emailSenderDefaults().from;
   const senderEmail = config.defaultSender?.email ?? fallback.email;
   const senderName = config.defaultSender?.name ?? fallback.name;
 
@@ -129,24 +128,19 @@ export function createDualTransport(brevoTransport: EmailTransport, db: Database
 }
 
 /**
- * Who mail comes from, and where replies go, when the environment names no one: the deployment's own brand. A server that
- * serves Fynix only (PLATFORM_BRAND=fynix) must never send from firstfold.io, so it falls back to Fynix's addresses
- * (the domain has to be authenticated in Brevo first, as for any sender). A Fynix server sends as "Fynix Digital" from
- * FYNIX_MAIL_FROM (no-reply@fynix.digital when it is unset). ALERTS_FROM_EMAIL, ALERTS_FROM_NAME and SUPPORT_ALERT_EMAIL,
- * when set, win over the defaults; FYNIX_MAIL_FROM wins over ALERTS_FROM_EMAIL on a Fynix server and is ignored elsewhere.
+ * Who mail comes from, and where replies go, when the environment names no one: Fynix's own addresses (the domain has to be
+ * authenticated in Brevo first, as for any sender). It sends as "Fynix Digital" from FYNIX_MAIL_FROM (no-reply@fynix.digital
+ * when it is unset). ALERTS_FROM_EMAIL, ALERTS_FROM_NAME and SUPPORT_ALERT_EMAIL, when set, win over the defaults;
+ * FYNIX_MAIL_FROM wins over ALERTS_FROM_EMAIL.
  */
-
-
 function brevoFromEnv(env: EmailEnvironment, replyTo?: BrevoSender, fetchFn?: typeof fetch): EmailTransport | null {
   const apiKey = env.BREVO_API_KEY?.trim();
   if (!apiKey) return null;
-  const brand = emailBrandId(env);
-  const fynix = brand === "fynix";
-  const defaults = emailSenderDefaults(brand);
+  const defaults = emailSenderDefaults();
   return createBrevoTransport({
     apiKey,
     defaultSender: {
-      email: (fynix ? env.FYNIX_MAIL_FROM?.trim() : undefined) || env.ALERTS_FROM_EMAIL?.trim() || defaults.from.email,
+      email: env.FYNIX_MAIL_FROM?.trim() || env.ALERTS_FROM_EMAIL?.trim() || defaults.from.email,
       name: env.ALERTS_FROM_NAME?.trim() || defaults.from.name,
     },
     replyTo: replyTo ?? { email: env.SUPPORT_ALERT_EMAIL?.trim() || defaults.replyTo.email, name: defaults.replyTo.name },

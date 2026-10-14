@@ -1,7 +1,6 @@
 import "server-only";
-import { brandText } from "@/lib/brand";
-import { currentBrand } from "./request-brand";
-import { getMediaStorage } from "@firstfold/shared/server/media-storage";
+
+import { getMediaStorage } from "@fynix/shared/server/media-storage";
 import { deleteProductPhotoFiles, removeProductPhoto } from "./product-photos";
 import {
   addBusinessFaq,
@@ -45,15 +44,15 @@ import {
   type DirectoryProfile,
   type NewBusinessListing,
   type PublishRefusal,
-} from "@firstfold/db";
-import { elsewhereCitySlug, isOpenedDistrict } from "@firstfold/shared/lib/directory/opened-districts";
-import { DIRECTORY_STATE, slugifyBusinessName } from "@firstfold/shared/lib/directory/places";
-import { fromStoredHours, toStoredHours, type OpeningHours } from "@firstfold/shared/lib/onboarding/hours";
+} from "@fynix/db";
+import { elsewhereCitySlug, isOpenedDistrict } from "@fynix/shared/lib/directory/opened-districts";
+import { DIRECTORY_STATE, slugifyBusinessName } from "@fynix/shared/lib/directory/places";
+import { fromStoredHours, toStoredHours, type OpeningHours } from "@fynix/shared/lib/onboarding/hours";
 import type { BusinessDetailsInput } from "@/lib/business-details-form";
 import type { BusinessListingInput, ListingRefusalReason } from "@/lib/business-listing-form";
 import type { FaqInput, ProductInput, ServiceInput } from "@/lib/catalog-form";
 import type { PageTabsInput, TrustInput } from "@/lib/contact-trust-form";
-import { chosenPageTabLabels, type OptionalPageTab } from "@firstfold/shared/lib/directory/page-tabs";
+import { chosenPageTabLabels, type OptionalPageTab } from "@fynix/shared/lib/directory/page-tabs";
 import type { ContactOption } from "@/lib/business-profile-fields";
 import type { ProfileState } from "@/lib/business-profile";
 import { normalisePincode, publicPinLookup, type PinLookup } from "@/lib/listing-location";
@@ -141,7 +140,7 @@ export async function getOwnPlaceId(customer: Customer): Promise<string | null> 
 
 export type SaveDetailsOutcome = { readonly kind: "saved" } | { readonly kind: "refused"; readonly message: string };
 
-const TAKEN_DOWN_MESSAGE = "This business was taken off Firstfold Local, so it can't be changed here. Email us and we'll sort it out.";
+const TAKEN_DOWN_MESSAGE = "This business was taken off the local directory, so it can't be changed here. Email us and we'll sort it out.";
 const NO_PROFILE_MESSAGE = "This account has no business profile to change. Email us and we'll sort it out.";
 const LOCKED_MESSAGE = "This business's name can't be changed here any more. Email us and we'll sort it out.";
 
@@ -177,7 +176,7 @@ export async function saveOwnDetails(customer: Customer, input: BusinessDetailsI
     now: new Date(),
   });
   if (saved.kind === "refused") {
-    const messages = { locked: LOCKED_MESSAGE, "taken-down": brandText(TAKEN_DOWN_MESSAGE, await currentBrand()), "not-listing-account": NO_PROFILE_MESSAGE } as const;
+    const messages = { locked: LOCKED_MESSAGE, "taken-down": TAKEN_DOWN_MESSAGE, "not-listing-account": NO_PROFILE_MESSAGE } as const;
     return { kind: "refused", message: messages[saved.reason] };
   }
   await withTenantScope(getAppDb(), tenant, (tx) => replaceOpeningHours(tx, input.hours.map(toStoredHours)));
@@ -382,7 +381,7 @@ function catalogOutcome(written: CatalogWriteOutcome): CatalogOutcome {
 
 /** Adds a service, or changes the one `id` names. */
 export async function saveOwnService(customer: Customer, id: string | null, service: ServiceInput): Promise<CatalogOutcome> {
-  if (await isTakenDownBusiness(customer)) return { kind: "refused", message: brandText(TAKEN_DOWN_MESSAGE, await currentBrand()) };
+  if (await isTakenDownBusiness(customer)) return { kind: "refused", message: TAKEN_DOWN_MESSAGE };
   const businessId = customer.tenant.businessId;
   const outcome = catalogOutcome(
     id === null ? await addBusinessService(getStaffDb(), { businessId, service }) : await updateBusinessService(getStaffDb(), { businessId, id, service }),
@@ -399,7 +398,7 @@ export async function removeOwnService(customer: Customer, id: string): Promise<
 
 /** Adds a product, or changes the one `id` names. */
 export async function saveOwnProduct(customer: Customer, id: string | null, product: ProductInput): Promise<CatalogOutcome> {
-  if (await isTakenDownBusiness(customer)) return { kind: "refused", message: brandText(TAKEN_DOWN_MESSAGE, await currentBrand()) };
+  if (await isTakenDownBusiness(customer)) return { kind: "refused", message: TAKEN_DOWN_MESSAGE };
   const businessId = customer.tenant.businessId;
   const outcome = catalogOutcome(
     id === null ? await addBusinessProduct(getStaffDb(), { businessId, product }) : await updateBusinessProduct(getStaffDb(), { businessId, id, product }),
@@ -424,7 +423,7 @@ export async function removeOwnProductPhoto(customer: Customer, productId: strin
 
 /** Adds a question and its answer, or changes the one `id` names. */
 export async function saveOwnFaq(customer: Customer, id: string | null, faq: FaqInput): Promise<CatalogOutcome> {
-  if (await isTakenDownBusiness(customer)) return { kind: "refused", message: brandText(TAKEN_DOWN_MESSAGE, await currentBrand()) };
+  if (await isTakenDownBusiness(customer)) return { kind: "refused", message: TAKEN_DOWN_MESSAGE };
   const businessId = customer.tenant.businessId;
   const outcome = catalogOutcome(
     id === null ? await addBusinessFaq(getStaffDb(), { businessId, faq }) : await updateBusinessFaq(getStaffDb(), { businessId, id, faq }),
@@ -443,14 +442,14 @@ const NEEDS_IDENTITY_MESSAGE = "Fill in your Identity first, then come back here
 
 /** Saves which buttons visitors get; refused until the Identity is saved (the options live on its row). */
 export async function saveOwnContactOptions(customer: Customer, options: readonly ContactOption[]): Promise<CatalogOutcome> {
-  if (await isTakenDownBusiness(customer)) return { kind: "refused", message: brandText(TAKEN_DOWN_MESSAGE, await currentBrand()) };
+  if (await isTakenDownBusiness(customer)) return { kind: "refused", message: TAKEN_DOWN_MESSAGE };
   const saved = await setContactOptions(getStaffDb(), { businessId: customer.tenant.businessId, options, now: new Date() });
   return saved ? { kind: "saved" } : { kind: "refused", message: NEEDS_IDENTITY_MESSAGE };
 }
 
 /** Saves which optional tabs the business's page shows and what it calls Services and Products; refused until the Identity is saved (the choice lives on its row). */
 export async function saveOwnPageTabs(customer: Customer, input: PageTabsInput): Promise<CatalogOutcome> {
-  if (await isTakenDownBusiness(customer)) return { kind: "refused", message: brandText(TAKEN_DOWN_MESSAGE, await currentBrand()) };
+  if (await isTakenDownBusiness(customer)) return { kind: "refused", message: TAKEN_DOWN_MESSAGE };
   const saved = await setPageTabs(getStaffDb(), {
     businessId: customer.tenant.businessId,
     tabs: input.tabs,
@@ -463,7 +462,7 @@ export async function saveOwnPageTabs(customer: Customer, input: PageTabsInput):
 
 /** Saves how the business takes payment and its licences; refused until the Identity is saved. */
 export async function saveOwnTrust(customer: Customer, trust: TrustInput): Promise<CatalogOutcome> {
-  if (await isTakenDownBusiness(customer)) return { kind: "refused", message: brandText(TAKEN_DOWN_MESSAGE, await currentBrand()) };
+  if (await isTakenDownBusiness(customer)) return { kind: "refused", message: TAKEN_DOWN_MESSAGE };
   // The first time the owner gives any trust detail, Good to know goes on their page.
   const before = await findDirectoryProfile(getStaffDb(), customer.tenant.businessId);
   const hadTrust = before !== null && (before.paymentMethods.length > 0 || before.licences.length > 0);

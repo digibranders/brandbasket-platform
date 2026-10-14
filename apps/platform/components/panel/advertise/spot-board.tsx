@@ -1,12 +1,12 @@
 import type { ReactElement } from "react";
-import { formatAdLastDay, formatAdDeadline, formatAdWeek, formatRupees } from "@firstfold/shared/lib/directory/ads";
-import { ButtonLink } from "@firstfold/shared/ui/panel/button";
+import { formatAdLastDay, formatAdDeadline, formatAdWeek, formatRupees } from "@fynix/shared/lib/directory/ads";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import type { AdSpotNow } from "@/lib/advertise-spots-now";
 import { biddersLabel, SPOT_HINTS, SPOT_NAMES } from "@/lib/advertise-spots";
 import type { AdWeek } from "@/lib/server/directory-ads";
 
 /*
- * Every place an ad can show on Firstfold Local, one row each: what is showing there now and until when, and what the
+ * Every place an ad can show on the local directory, one row each: what is showing there now and until when, and what the
  * next auction for it looks like. No boxes: a hairline between rows and the facts in two short columns. A place
  * staff have not opened is listed too, as "Opening soon", so the owner sees the whole map.
  */

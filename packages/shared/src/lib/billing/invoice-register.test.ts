@@ -1,9 +1,9 @@
-import type { TaxInvoice, TaxInvoiceLineRecord } from "@firstfold/db";
+import type { TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { adjacentMonth, monthRange, registerCsv, RegisterInvoiceError, registerInvoiceOf, registerTotals, type RegisterInvoice } from "./invoice-register";
 
 const invoice = (overrides: Partial<RegisterInvoice>): RegisterInvoice => ({
-  number: "FF/26-27/000001",
+  number: "FY/26-27/000001",
   issuedOn: "2026-10-09",
   recipientName: "QA Premium Business",
   recipientGstin: "27AAPFU0939F1ZV",
@@ -20,7 +20,7 @@ const invoice = (overrides: Partial<RegisterInvoice>): RegisterInvoice => ({
 
 const interState = (overrides: Partial<RegisterInvoice> = {}): RegisterInvoice =>
   invoice({
-    number: "FF/26-27/000002",
+    number: "FY/26-27/000002",
     recipientGstin: null,
     placeOfSupplyStateCode: "ka",
     cgstCents: 0,
@@ -30,7 +30,7 @@ const interState = (overrides: Partial<RegisterInvoice> = {}): RegisterInvoice =
   });
 
 const lineOf = (overrides: Partial<TaxInvoiceLineRecord> = {}): TaxInvoiceLineRecord => ({
-  description: "Firstfold Premium plan",
+  description: "Fynix Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: null,
   sac: "998361",
@@ -52,15 +52,15 @@ function stored(overrides: Partial<TaxInvoice> = {}): TaxInvoice {
     id: "01920000-0000-7000-8000-000000000001",
     businessId: "01920000-0000-7000-8000-0000000000b1",
     paymentId: "01920000-0000-7000-8000-0000000000a1",
-    prefix: "FF",
+    prefix: "FY",
     financialYear: "26-27",
     serial: 1,
-    number: "FF/26-27/000001",
+    number: "FY/26-27/000001",
     issuedOn: "2026-10-09",
     paidOn: "2026-10-09",
     supplier: {
       legalName: "Digibranders Private Limited",
-      tradeName: "Firstfold",
+      tradeName: "Fynix",
       gstin: "27AAICD9268J1Z0",
       cin: null,
       addressLines: ["Thane West"],
@@ -132,8 +132,8 @@ describe("registerTotals", () => {
     const rows = [
       invoice({}),
       interState(),
-      invoice({ number: "FF/26-27/000003", taxableCents: 100_001, cgstCents: 9_000, sgstCents: 9_000, roundOffCents: -1, totalCents: 118_000 }),
-      invoice({ number: "FF/26-27/000004", taxableCents: 100_005, cgstCents: 9_000, sgstCents: 9_000, roundOffCents: 5, totalCents: 118_010 }),
+      invoice({ number: "FY/26-27/000003", taxableCents: 100_001, cgstCents: 9_000, sgstCents: 9_000, roundOffCents: -1, totalCents: 118_000 }),
+      invoice({ number: "FY/26-27/000004", taxableCents: 100_005, cgstCents: 9_000, sgstCents: 9_000, roundOffCents: 5, totalCents: 118_010 }),
     ];
     const partsOf = (row: RegisterInvoice): number => row.taxableCents + row.cgstCents + row.sgstCents + row.igstCents + row.roundOffCents;
     for (const row of rows) expect(partsOf(row)).toBe(row.totalCents);
@@ -147,7 +147,7 @@ describe("registerTotals", () => {
   });
 
   it("sums the figures the CSV prints, so the page and the file agree", () => {
-    const rows = [invoice({}), interState(), invoice({ number: "FF/26-27/000003", recipientGstin: null, roundOffCents: -1, totalCents: 660_705 })];
+    const rows = [invoice({}), interState(), invoice({ number: "FY/26-27/000003", recipientGstin: null, roundOffCents: -1, totalCents: 660_705 })];
     const printed = rowsOf(registerCsv(rows)).slice(1).map((line) => line.split(","));
     const sumOfColumn = (index: number): number => printed.reduce((sum, cells) => sum + Math.round(Number(cells[index]) * 100), 0);
     const totals = registerTotals(rows);
@@ -221,7 +221,7 @@ describe("registerCsv", () => {
   it("writes the header and one row per invoice, in rupees with the place of supply's GST code", () => {
     const rows = rowsOf(registerCsv([invoice({ recipientName: "Sharma, Rao & Co" })]));
     expect(rows[0]).toBe(HEAD);
-    expect(rows[1]).toBe('FF/26-27/000001,09-10-2026,"Sharma, Rao & Co",27AAPFU0939F1ZV,B2B,27-Maharashtra,998361,5599.20,503.93,503.93,0.00,0.00,6607.06');
+    expect(rows[1]).toBe('FY/26-27/000001,09-10-2026,"Sharma, Rao & Co",27AAPFU0939F1ZV,B2B,27-Maharashtra,998361,5599.20,503.93,503.93,0.00,0.00,6607.06');
     expect(rows).toHaveLength(2);
   });
 
@@ -230,7 +230,7 @@ describe("registerCsv", () => {
   });
 
   it("marks an invoice with no GSTIN B2C and names an inter-state place of supply", () => {
-    expect(rowsOf(registerCsv([interState()]))[1]).toBe("FF/26-27/000002,09-10-2026,QA Premium Business,,B2C,29-Karnataka,998361,5599.20,0.00,0.00,1007.86,0.00,6607.06");
+    expect(rowsOf(registerCsv([interState()]))[1]).toBe("FY/26-27/000002,09-10-2026,QA Premium Business,,B2C,29-Karnataka,998361,5599.20,0.00,0.00,1007.86,0.00,6607.06");
   });
 
   it("prints amounts from whole paise, never floats, including a negative round off and amounts over a crore", () => {
@@ -264,7 +264,7 @@ describe("registerCsv", () => {
   });
 
   it("fails loudly on a state it does not know, naming the invoice and nothing about the customer", () => {
-    const bad = invoice({ number: "FF/26-27/000042", recipientName: "Priya Sharma", recipientGstin: "27AAPFU0939F1ZV", placeOfSupplyStateCode: "zz" });
+    const bad = invoice({ number: "FY/26-27/000042", recipientName: "Priya Sharma", recipientGstin: "27AAPFU0939F1ZV", placeOfSupplyStateCode: "zz" });
     let thrown: unknown;
     try {
       registerCsv([invoice({}), bad]);
@@ -273,9 +273,9 @@ describe("registerCsv", () => {
     }
     expect(thrown).toBeInstanceOf(RegisterInvoiceError);
     const error = thrown as RegisterInvoiceError;
-    expect(error.invoiceNumber).toBe("FF/26-27/000042");
+    expect(error.invoiceNumber).toBe("FY/26-27/000042");
     expect(error.cause).toMatchObject({ name: "UnknownStateError" });
-    expect(error.message).toContain("FF/26-27/000042");
+    expect(error.message).toContain("FY/26-27/000042");
     expect(error.message).not.toMatch(/Priya|Sharma|27AAPFU0939F1ZV/);
   });
 

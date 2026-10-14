@@ -8,11 +8,11 @@ import {
   readBookingContext,
   readSiteFacts,
   type BookingOtpPayload,
-} from "@firstfold/db";
-import { addDays, zonedTimeToUtc } from "@firstfold/shared/lib/calendar/local-date";
-import type { BookingInput } from "@firstfold/shared/lib/appointments/booking-form";
-import { phoneHint as toPhoneHint } from "@firstfold/shared/lib/appointments/booking-form";
-import { OTP_TTL_SECONDS } from "@firstfold/shared/lib/appointments/otp";
+} from "@fynix/db";
+import { addDays, zonedTimeToUtc } from "@fynix/shared/lib/calendar/local-date";
+import type { BookingInput } from "@fynix/shared/lib/appointments/booking-form";
+import { phoneHint as toPhoneHint } from "@fynix/shared/lib/appointments/booking-form";
+import { OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
 import { DEFAULT_PAUSED_MESSAGE } from "./availability";
 import { loggableBookingError } from "./booking-log";
 import { getStaffDb } from "./db";

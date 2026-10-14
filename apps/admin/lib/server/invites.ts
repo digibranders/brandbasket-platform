@@ -5,9 +5,8 @@ import {
   LeadNotFoundError,
   revokeOpenInvites,
   setLeadStatusUnlessSystemSet,
-} from "@firstfold/db";
-import { setupLinkEmail } from "@firstfold/email";
-import { deploymentBrandName } from "@firstfold/shared/lib/deployment-brand";
+} from "@fynix/db";
+import { setupLinkEmail } from "@fynix/email";
 import { getStaffDb } from "./db";
 import { customerEmailTransport } from "./email";
 import { serverEnv } from "@/lib/server/env";
@@ -43,7 +42,6 @@ export async function sendSetupLink(leadId: string, staffUserId: string): Promis
       businessName: lead.businessName,
       setupUrl: new URL(`/setup/${created.token}`, serverEnv().APP_ORIGIN).toString(),
       expiresInDays: INVITE_EXPIRY_DAYS,
-      brandName: deploymentBrandName(process.env),
     }),
   );
 

@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { cn } from "@firstfold/shared/lib/cn";
+import { cn } from "@fynix/shared/lib/cn";
 
 /**
  * A coloured dot and a short label. Five meanings, no traffic lights: done is a calm green, moving is burgundy,

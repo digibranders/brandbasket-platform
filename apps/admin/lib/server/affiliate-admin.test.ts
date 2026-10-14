@@ -6,7 +6,7 @@ import {
   updateAffiliate,
   type Affiliate,
   type Database,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cancelEarningFor,
@@ -22,8 +22,8 @@ import { getStaffDb } from "./db";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     ...actual,
     cancelAffiliateEarning: vi.fn(),

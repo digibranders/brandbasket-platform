@@ -1,5 +1,5 @@
 import "server-only";
-import { CheckoutVerificationError, type ConfirmedChargePayment } from "@firstfold/billing";
+import { CheckoutVerificationError, type ConfirmedChargePayment } from "@fynix/billing";
 import {
   countPaidBlogBlocks,
   findChargeByProviderOrder,
@@ -13,11 +13,11 @@ import {
   type ChargePaymentOutcome,
   type PaymentMethodDetails,
   type Plan,
-} from "@firstfold/db";
-import { blogAllowance, chargeAmountCents, chargeLabel, chargePricing } from "@firstfold/shared/lib/billing/charges";
-import type { TenantContext } from "@firstfold/shared/lib/access";
-import { describeError, logBillingEvent } from "@firstfold/shared/server/billing-log";
-import { recordChargePaymentWithInvoice } from "@firstfold/shared/server/charge-payments";
+} from "@fynix/db";
+import { blogAllowance, chargeAmountCents, chargeLabel, chargePricing } from "@fynix/shared/lib/billing/charges";
+import type { TenantContext } from "@fynix/shared/lib/access";
+import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
+import { recordChargePaymentWithInvoice } from "@fynix/shared/server/charge-payments";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";

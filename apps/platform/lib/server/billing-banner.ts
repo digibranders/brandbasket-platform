@@ -1,8 +1,8 @@
 import "server-only";
 import { cache } from "react";
-import { billingBanner, PAYMENT_STEP_HREF, type BillingBannerModel } from "@firstfold/shared/lib/billing/payment-step";
+import { billingBanner, PAYMENT_STEP_HREF, type BillingBannerModel } from "@fynix/shared/lib/billing/payment-step";
 import { isOnboardingLocked } from "@/lib/onboarding/snapshot";
-import { firstIncompleteStep, onboardingStepHref } from "@firstfold/shared/lib/onboarding/steps";
+import { firstIncompleteStep, onboardingStepHref } from "@fynix/shared/lib/onboarding/steps";
 import { requireCustomerAccess } from "./customer-access";
 import { getProjectOverview } from "./onboarding";
 import { resolveAppliedDiscount } from "./referrals";

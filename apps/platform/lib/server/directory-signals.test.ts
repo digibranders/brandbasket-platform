@@ -14,7 +14,7 @@ import {
   type DirectoryRef,
   type DirectorySignal,
   type ResolvedDirectoryAsk,
-} from "@firstfold/db";
+} from "@fynix/db";
 import { signalsResponseSchema } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
 import { bookingOtpSecret } from "./env";
@@ -23,8 +23,8 @@ import { directoryDay, readSignals, recordDirectoryEvent, type DirectoryEvent } 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./env", () => ({ bookingOtpSecret: vi.fn() }));
-vi.mock("@firstfold/db", async () => {
-  const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
+vi.mock("@fynix/db", async () => {
+  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
   return {
     answerByAsked: actual.answerByAsked,
     directoryRefId: actual.directoryRefId,

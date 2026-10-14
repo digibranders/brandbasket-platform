@@ -17,9 +17,9 @@
  * day: AppointmentsGrid (components/panel/appointments/appointments-grid.tsx) renders row cells on a closed day
  * regardless, so a stray booking made before the hours or slot length changed underneath it still shows.
  */
-import { buildWeekAvailability, type WeekAvailabilityClosure, type WeekAvailabilityHoursRow } from "@firstfold/shared/lib/appointments/slots";
-import { minutesOfDay } from "@firstfold/shared/lib/calendar/local-date";
-import type { AppointmentRow } from "@firstfold/db";
+import { buildWeekAvailability, type WeekAvailabilityClosure, type WeekAvailabilityHoursRow } from "@fynix/shared/lib/appointments/slots";
+import { minutesOfDay } from "@fynix/shared/lib/calendar/local-date";
+import type { AppointmentRow } from "@fynix/db";
 
 /** Effectively unlimited: see the module doc comment on why this isn't the clinic's real horizonDays setting. */
 const GRID_HORIZON_DAYS = 36_500;

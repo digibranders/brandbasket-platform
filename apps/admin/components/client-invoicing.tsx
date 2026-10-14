@@ -1,6 +1,6 @@
-import type { Payment, TaxInvoice } from "@firstfold/db";
-import { stateName } from "@firstfold/shared/lib/directory/india-states";
-import { displayPhoneText } from "@firstfold/shared/server/phone-display";
+import type { Payment, TaxInvoice } from "@fynix/db";
+import { stateName } from "@fynix/shared/lib/directory/india-states";
+import { displayPhoneText } from "@fynix/shared/server/phone-display";
 import type { ReactElement } from "react";
 import { saveClientBillingDetailsAction, issueMissingInvoiceAction } from "@/app/(protected)/clients/[businessId]/invoice-actions";
 import { BillingDetailsForm } from "@/components/billing-details-form";

@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { parseResetPasswordForm, type ResetPasswordFormState } from "@/lib/account-recovery-form";
-import { checkHuman } from "@firstfold/shared/server/turnstile-request";
+import { checkHuman } from "@fynix/shared/server/turnstile-request";
 import { resetPassword } from "@/lib/server/account-recovery";
 
 export async function resetPasswordAction(_previous: ResetPasswordFormState, formData: FormData): Promise<ResetPasswordFormState> {

@@ -6,7 +6,7 @@
 // duplicate plans at Razorpay rather than reusing existing ones, because the Plans API has no "find by name": check
 // the dashboard first if you are not sure whether this has already been run.
 //
-// Usage: RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=... pnpm --filter @firstfold/billing exec tsx scripts/create-razorpay-plans.ts
+// Usage: RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=... pnpm --filter @fynix/billing exec tsx scripts/create-razorpay-plans.ts
 
 import Razorpay from "razorpay";
 import { chargedAmountCents, GST_BASIS_POINTS, NO_TAX } from "../src/tax";
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
         amount,
         currency: plan.currency,
       },
-      notes: { firstfoldPlanCode: plan.code },
+      notes: { fynixPlanCode: plan.code },
     });
     console.log(`${plan.code}: ${created.id} (${amount} minor units)`);
   }

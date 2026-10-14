@@ -1,7 +1,6 @@
 import "server-only";
-import { findClientDetail, markProjectLive, type Database } from "@firstfold/db";
-import { websiteLiveEmail } from "@firstfold/email";
-import { deploymentBrandName } from "@firstfold/shared/lib/deployment-brand";
+import { findClientDetail, markProjectLive, type Database } from "@fynix/db";
+import { websiteLiveEmail } from "@fynix/email";
 import { customerEmailTransport } from "./email";
 import type { OwnerNotification } from "./project-preview";
 
@@ -46,7 +45,6 @@ export async function launchProject(db: Database, input: LaunchProjectInput, now
       to: client.owner.email,
       businessName: client.businessName,
       websiteUrl: `https://${client.domain.hostname}`,
-      brandName: deploymentBrandName(process.env),
     }),
   );
   return "emailed";

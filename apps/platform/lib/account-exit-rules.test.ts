@@ -1,4 +1,4 @@
-import type { Plan, Subscription } from "@firstfold/db";
+import type { Plan, Subscription } from "@fynix/db";
 import { describe, expect, it } from "vitest";
 import { eraseAfterFor, hasRunningAddOns, planClosureFor, retentionOfferTerms } from "./account-exit-rules";
 

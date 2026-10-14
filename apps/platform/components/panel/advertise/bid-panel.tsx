@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactElement } from "react";
-import type { DirectoryAdPlacement } from "@firstfold/db";
+import type { DirectoryAdPlacement } from "@fynix/db";
 // The subpath, not the package index: the index pulls in the database.
-import { chargedAmountCents } from "@firstfold/billing/tax";
-import { cn } from "@firstfold/shared/lib/cn";
-import { formatMoney } from "@firstfold/shared/lib/money";
-import { RequiredMark } from "@firstfold/shared/ui/forms/required-mark";
-import { RuleInput } from "@firstfold/shared/ui/forms/rule-input";
-import { SubmitButton } from "@firstfold/shared/ui/panel/submit-button";
+import { chargedAmountCents } from "@fynix/billing/tax";
+import { cn } from "@fynix/shared/lib/cn";
+import { formatMoney } from "@fynix/shared/lib/money";
+import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
+import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { useBrand } from "@/components/panel/brand-provider";
-import { brandText } from "@/lib/brand";
+
 import { biddersLabel, SPOT_HINTS, SPOT_NAMES } from "@/lib/advertise-spots";
 import { AdPreview, type AdPreviewData } from "@/components/panel/advertise/ad-preview";
 import type { BidPanelOffer, BidPanelWeek } from "@/lib/advertise-view";
@@ -356,7 +356,7 @@ export function BidPanel({
               </p>
               {offer.bookedUntil === null ? null : (
                 <p className="mt-2 max-w-sm text-sm text-ink-soft">
-                  {brandText("Firstfold has this spot booked for that whole time, so it takes no bids until then. It opens to bidding again after that.", brand)}
+                  {"Fynix has this spot booked for that whole time, so it takes no bids until then. It opens to bidding again after that."}
                 </p>
               )}
             </div>

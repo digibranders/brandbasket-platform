@@ -10,7 +10,7 @@ import { directoryPaidTag } from "./directory-paid-tags";
 export const DIRECTORY_PROMOTION_DAYS = 7;
 
 /**
- * A paid week of a tag on a client's Firstfold Local listing ("Hot & New · Ad"). A row exists only once its charge
+ * A paid week of a tag on a client's the local directory listing ("Hot & New · Ad"). A row exists only once its charge
  * (kind `listing_promotion`) is paid: the payment confirmation writes it, in the same transaction that marks the
  * charge paid, so there is never a week without money or money without a week. There is no auto-renew: every week is
  * its own payment and its own row.

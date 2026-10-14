@@ -5,8 +5,8 @@ import {
   upsertDirectoryVerification,
   withTenantScope,
   type DirectoryClaim,
-} from "@firstfold/db";
-import { phoneHint } from "@firstfold/shared/lib/appointments/booking-form";
+} from "@fynix/db";
+import { phoneHint } from "@fynix/shared/lib/appointments/booking-form";
 import { verificationEligibility, type VerificationEligibility } from "@/lib/owner-verification";
 import { confirmAccountOtp, requestAccountOtp, type AccountOtpConfirmOutcome } from "./account-otp";
 import type { GrantedCustomer } from "./customer-access";

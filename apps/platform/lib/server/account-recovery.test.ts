@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { consumeRateLimit, type Database, type RecordedEmail } from "@firstfold/db";
-import { passwordResetEmail } from "@firstfold/email";
+import { consumeRateLimit, type Database, type RecordedEmail } from "@fynix/db";
+import { passwordResetEmail } from "@fynix/email";
 import { after } from "next/server";
 import { confirmEmail, requestPasswordReset } from "./account-recovery";
 import { generatePasswordResetEmail, getAuth } from "./auth";
@@ -14,12 +14,12 @@ vi.mock("./public-db", () => ({ getPublicDb: vi.fn() }));
 vi.mock("./auth", () => ({ getAuth: vi.fn(), generatePasswordResetEmail: vi.fn() }));
 vi.mock("next/server", () => ({ after: vi.fn() }));
 vi.mock("./email", () => ({ realDeployment: vi.fn(() => true) }));
-vi.mock("@firstfold/email", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@firstfold/email")>()),
+vi.mock("@fynix/email", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@fynix/email")>()),
   createEmailDelivery: vi.fn(() => ({ send })),
 }));
-vi.mock("@firstfold/db", async () => ({
-  ...await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db"), consumeRateLimit: vi.fn(),
+vi.mock("@fynix/db", async () => ({
+  ...await vi.importActual<typeof import("@fynix/db")>("@fynix/db"), consumeRateLimit: vi.fn(),
 }));
 
 function apiError(code: string): Error & { body: { code: string } } {
@@ -30,7 +30,7 @@ const verifyEmail = vi.fn();
 const committed: RecordedEmail[] = [];
 const insert = vi.fn();
 const send = vi.fn(async () => undefined);
-const message = passwordResetEmail({ to: "owner@example.com", resetUrl: "https://app.firstfold.in/reset-password/real-token", expiresInMinutes: 60 });
+const message = passwordResetEmail({ to: "owner@example.com", resetUrl: "https://app.fynix.digital/reset-password/real-token", expiresInMinutes: 60 });
 
 beforeEach(() => {
   vi.clearAllMocks();
