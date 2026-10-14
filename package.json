@@ -31,5 +31,12 @@
     "staff:create": "pnpm --filter @fynix/auth staff:create",
     "retention:run": "pnpm --filter @fynix/db exec tsx ../../apps/platform/scripts/retention-run.ts",
     "support:attachments:maintain": "pnpm --filter @fynix/db exec tsx --conditions=react-server ../../apps/platform/scripts/maintain-support-attachments.ts"
+  },
+  "pnpm": {
+    "overrides": {
+      "undici": "^7.29.1",
+      "dompurify": "^3.4.17",
+      "source-map-js": "^1.2.2"
+    }
   }
 }

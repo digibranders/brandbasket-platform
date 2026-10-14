@@ -16,9 +16,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@payloadcms/db-postgres": "^3.89.0",
-    "@payloadcms/richtext-lexical": "^3.89.0",
-    "payload": "^3.89.0"
+    "@payloadcms/db-postgres": "^3.90.2",
+    "@payloadcms/richtext-lexical": "^3.90.2",
+    "payload": "^3.90.2"
   },
   "devDependencies": {
     "@types/node": "^24.13.4",
