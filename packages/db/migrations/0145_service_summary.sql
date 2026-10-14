@@ -1,0 +1,4 @@
+ALTER TABLE "directory_business_services" DROP CONSTRAINT "directory_business_services_description_check";--> statement-breakpoint
+ALTER TABLE "directory_business_services" ADD COLUMN "summary" text;--> statement-breakpoint
+ALTER TABLE "directory_business_services" ADD CONSTRAINT "directory_business_services_summary_check" CHECK ("directory_business_services"."summary" is null or (char_length("directory_business_services"."summary") between 1 and 120 and "directory_business_services"."summary" = btrim("directory_business_services"."summary") and "directory_business_services"."summary" !~ '[\r\n]'));--> statement-breakpoint
+ALTER TABLE "directory_business_services" ADD CONSTRAINT "directory_business_services_description_check" CHECK ("directory_business_services"."description" is null or (char_length("directory_business_services"."description") between 1 and 2000 and "directory_business_services"."description" = btrim("directory_business_services"."description")));

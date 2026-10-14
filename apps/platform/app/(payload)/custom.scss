@@ -1,0 +1,3 @@
+// Hook for customizing Payload's admin panel styles. Empty on purpose — this is the same empty file Payload's
+// own installer generates (dist/template/src/app/(payload)/custom.scss in create-payload-app@3.89.0); it exists
+// so app/(payload)/layout.tsx has something to import without us inventing admin-panel styling in Task 1.

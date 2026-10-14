@@ -1,0 +1,1 @@
+ALTER TABLE "directory_enquiries" ADD COLUMN "owner_replied_at" timestamp with time zone;

@@ -1,0 +1,38 @@
+{
+  "name": "@firstfold/billing",
+  "version": "0.1.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/digibranders/firstfold-platform.git",
+    "directory": "packages/billing"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./referral": "./src/referral.ts",
+    "./tax": "./src/tax.ts",
+    "./gst": "./src/gst.ts",
+    "./gst-states": "./src/gst-states.ts",
+    "./gstin": "./src/gstin.ts",
+    "./invoice-number": "./src/invoice-number.ts",
+    "./amount-in-words": "./src/amount-in-words.ts",
+    "./billing-range-error": "./src/billing-range-error.ts",
+    "./tax-invoice": "./src/tax-invoice.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@firstfold/db": "workspace:*",
+    "razorpay": "^2.9.8",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "tsx": "4.23.13",
+    "typescript": "^5",
+    "vitest": "^5.0.0"
+  }
+}

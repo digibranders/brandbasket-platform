@@ -1,0 +1,2 @@
+ALTER TABLE "directory_business_profiles" DROP CONSTRAINT "directory_business_profiles_about_check";--> statement-breakpoint
+ALTER TABLE "directory_business_profiles" ADD CONSTRAINT "directory_business_profiles_about_check" CHECK ("directory_business_profiles"."about" is null or (char_length("directory_business_profiles"."about") between 1 and 4000 and "directory_business_profiles"."about" = btrim("directory_business_profiles"."about")));

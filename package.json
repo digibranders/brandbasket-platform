@@ -1,0 +1,34 @@
+{
+  "name": "firstfold",
+  "private": true,
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @firstfold/platform --filter @firstfold/admin dev",
+    "dev:platform": "pnpm --filter @firstfold/platform dev",
+    "dev:admin": "pnpm --filter @firstfold/admin dev",
+    "dev:tunnel": "bash scripts/dev-webhook-tunnel.sh",
+    "build": "pnpm --filter @firstfold/platform --filter @firstfold/admin build",
+    "lint": "pnpm --filter @firstfold/platform --filter @firstfold/admin lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:integration": "pnpm db:migrate:test && pnpm -r --workspace-concurrency=1 test:integration",
+    "env:init": "pnpm --filter @firstfold/db env:init",
+    "db:roles": "pnpm --filter @firstfold/db db:roles",
+    "db:migrate": "pnpm --filter @firstfold/db db:migrate",
+    "db:migrate:test": "pnpm --filter @firstfold/db db:migrate:test",
+    "directory:import-places": "pnpm --filter @firstfold/db directory:import-places",
+    "directory:import-pincodes": "pnpm --filter @firstfold/db directory:import-pincodes",
+    "directory:backfill-places": "pnpm --filter @firstfold/db directory:backfill-places",
+    "pictures:backfill-copies": "pnpm --filter @firstfold/db exec tsx --tsconfig ../../apps/platform/tsconfig.json ../../apps/platform/scripts/backfill-picture-copies.ts",
+    "directory:import-listings": "pnpm --filter @firstfold/db directory:import-listings",
+    "cms:migrate": "pnpm --filter @firstfold/platform cms:migrate",
+    "cms:migrate:create": "node scripts/cms-create-migration.mjs",
+    "cms:migrate:status": "pnpm --filter @firstfold/platform cms:migrate:status",
+    "staff:create": "pnpm --filter @firstfold/auth staff:create",
+    "retention:run": "pnpm --filter @firstfold/db exec tsx ../../apps/platform/scripts/retention-run.ts",
+    "support:attachments:maintain": "pnpm --filter @firstfold/db exec tsx --conditions=react-server ../../apps/platform/scripts/maintain-support-attachments.ts"
+  }
+}

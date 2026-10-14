@@ -1,0 +1,149 @@
+# The checks that must pass before code reaches main or development.
+#
+# One job rather than a job per check: the packages are tightly shared (40 of the admin console's 50 workspace
+# imports are also used by the platform app), so a change almost always needs all four checks anyway, and splitting
+# them would pay the install cost four times for a run that finishes in about two minutes.
+#
+# There is deliberately no path filter for the same reason — with that much shared code, "only packages/ changed"
+# still means both apps need rebuilding.
+#
+# Migrations and integration tests run in a second job, `database`, against a real Postgres. It applies every
+# migration to an empty database, exactly as a new server does, so a migration that only works on top of an existing
+# database fails here instead of in production.
+name: CI
+
+on:
+  # Every pull request, whatever it targets. Filtering this by base branch would mean a PR stacked on another
+  # branch — the usual shape of a change that depends on an unmerged one — silently ran no checks at all.
+  pull_request:
+  # Pushes only to the shared branches. A feature branch is already covered by its pull request, and running both
+  # would double every run.
+  push:
+    branches: [main, development]
+
+# A new push to the same branch makes the previous run irrelevant, so stop it rather than pay for it twice.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # Before setup-node, which needs pnpm on PATH to resolve the store it caches.
+      # The version comes from packageManager in package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm -r test
+
+      # Placeholders, not secrets, and deliberately unusable.
+      #
+      # apps/admin/payload.config.ts calls serverEnv() at module scope, and Next evaluates that while collecting
+      # page data, so the schema in apps/admin/lib/server/env.ts has to be satisfiable before a single page is
+      # built. (The matching comment in apps/platform/lib/server/env.ts — "a build does not need these secrets" —
+      # holds for the platform app alone; Payload breaks that assumption for the admin.)
+      #
+      # Nothing connects to these: the checks are shape-only, and no page here is statically rendered against a
+      # database. Real values belong in the deploy environment, never in this file.
+      - name: Build
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+          DATABASE_URL_STAFF: postgresql://ci:ci@127.0.0.1:5432/ci
+          DATABASE_URL_PAYLOAD: postgresql://ci:ci@127.0.0.1:5432/ci
+          PAYLOAD_SECRET: ci-build-placeholder-not-a-real-secret
+          BETTER_AUTH_SECRET: ci-build-placeholder-not-a-real-secret
+          APP_ORIGIN: http://app.localhost:3001
+          ADMIN_ORIGIN: http://admin.localhost:3003
+        run: pnpm build
+
+  database:
+    name: Migrations and integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Production runs Ubuntu 24.04's Postgres 16, so this matches it.
+    #
+    # The superuser is named after the runner's OS user and local connections need no password, because that is
+    # what `pnpm env:init` writes for the owner connections (`postgresql://<os user>@localhost:5432/...`). The
+    # application roles still log in with the generated passwords, so row-level security is exercised for real.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: runner
+          POSTGRES_DB: webfold
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U runner"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: localhost
+      PGUSER: runner
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # `webfold` comes from POSTGRES_DB. The test database and Payload's database are created here, as on a
+      # new server.
+      - name: Create databases
+        run: |
+          createdb webfold_test
+          createdb webfold_payload
+
+      # Throwaway secrets for this run only, written to the git-ignored .env.local files the scripts read.
+      - name: Generate the local environment
+        run: pnpm env:init
+
+      - name: Create the application roles
+        run: pnpm db:roles
+
+      # Every migration, in order, on an empty database: the check this job exists for.
+      - name: Migrate an empty database
+        run: pnpm db:migrate
+
+      # The same for Payload's database, through the script the deploy uses, so both the migrations and the script's
+      # own check are exercised before anything reaches production.
+      - name: Migrate an empty Payload database
+        run: ./scripts/cms-migrate.sh
+
+      # Migrates webfold_test the same way, then runs the db, auth and shared integration suites against it.
+      - name: Integration tests
+        run: pnpm test:integration

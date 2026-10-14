@@ -1,0 +1,2 @@
+ALTER TABLE "directory_business_profiles" DROP CONSTRAINT "directory_business_profiles_page_tabs_check";--> statement-breakpoint
+ALTER TABLE "directory_business_profiles" ADD CONSTRAINT "directory_business_profiles_page_tabs_check" CHECK ("directory_business_profiles"."page_tabs" <@ ARRAY['offers','services','products','trust','faq','appointment']::text[]);

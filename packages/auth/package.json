@@ -1,0 +1,32 @@
+{
+  "name": "@firstfold/auth",
+  "version": "0.1.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/digibranders/firstfold-platform.git",
+    "directory": "packages/auth"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "staff:create": "tsx scripts/create-staff.ts"
+  },
+  "dependencies": {
+    "@firstfold/db": "workspace:*",
+    "better-auth": "1.7.5",
+    "drizzle-orm": "0.45.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "tsx": "4.23.13",
+    "typescript": "^5",
+    "vitest": "^5.0.0"
+  }
+}

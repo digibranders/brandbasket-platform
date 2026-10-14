@@ -1,0 +1,27 @@
+{
+  "name": "@firstfold/email",
+  "version": "0.1.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/digibranders/firstfold-platform.git",
+    "directory": "packages/email"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@firstfold/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "typescript": "^5",
+    "vitest": "^5.0.0"
+  }
+}

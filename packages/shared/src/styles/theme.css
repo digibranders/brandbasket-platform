@@ -1,0 +1,391 @@
+/*
+ * Firstfold's shared look: palette, fonts, base styles and the motion both apps use. Imported by
+ * apps/website/app/globals.css and apps/platform/app/globals.css, each after `@import "tailwindcss"`.
+ */
+
+/* Palette: warm cream ground, deep burgundy surfaces and headings, white for buttons and highlights on dark. */
+@theme {
+  --color-paper: #f6efe6;
+  --color-paper-deep: #efe4d6;
+  --color-card: #fbf6ef;
+  --color-line: #e2d2c1;
+  --color-ink: #2a0d10;
+  --color-ink-soft: #5e3a40;
+  /* Background of dark sections, hero frames and the footer. */
+  --color-dark-surface: #500018;
+  /* Menus and popovers that open over dark-surface. Lifted and matter than the ground so the panel reads as a
+     panel — on dark-surface itself a border is the only separation, and it disappears at a glance. */
+  --color-dark-raised: #5f1c2e;
+
+  /* Burgundy for emphasis on cream. accent-deep is the small-text and hover shade. */
+  --color-accent: #63001e;
+  --color-accent-deep: #63001e;
+  /* Cream lines and glows on dark surfaces. */
+  --color-accent-light: #f6efe6;
+  --color-accent-pale: #f4dfe2;
+
+  /* highlight: burgundy marks on cream (pin, step markers, underlines).
+     highlight-soft: white pills, badges and emphasis on dark. highlight-deep: text on those. */
+  --color-highlight: #63001e;
+  --color-highlight-deep: #63001e;
+  --color-highlight-soft: #ffffff;
+  /* The scrim over the sign-in photo, and the ground behind it while it loads: the photo's own dusk, a plum-black.
+     The website has the same token; keep the two in step. */
+  --color-dusk: #1d0a1a;
+  /* Warm highlight on the dark photo: the emphasised words of its line. Too pale for text on cream. */
+  --color-amber: #f4b46f;
+
+  /* Butter gold, for the staff console's primary actions in glass. gold-deep marks money and waiting states on
+     cream and is dark enough (about 4:1) to read as a shape there; gold-ink is the gold-family shade for small
+     text on cream. The customer app does not use these. */
+  --color-gold: #f2c572;
+  --color-gold-deep: #b27716;
+  --color-gold-ink: #6e4300;
+
+  /* WhatsApp's own teal green, for its logo on a WhatsApp button: dark enough (about 4:1 on paper) to read as a shape,
+     where its brighter #25d366 would wash out on cream. */
+  --color-whatsapp: #128c7e;
+
+  /* A calm sage green for good news on cream: a code applied, money saved. success matches the console's "done"
+     dot; success-pale is its ground and success-deep the text on it (about 7:1). */
+  --color-success: #3d7a4a;
+  --color-success-pale: #e3eedf;
+  --color-success-deep: #24502f;
+
+  /*
+   * Three radii and a pill, so a glance tells you what kind of thing you are looking at: `control` for anything
+   * inside a card, `card` for a card, `shell` for the frame that holds the screen. Pills stay for buttons and
+   * avatars. Anything outside this set was a one-off someone typed.
+   */
+  --radius-control: 1rem;
+  --radius-card: 1.5rem;
+  --radius-shell: 1.75rem;
+
+  --ease-calm: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Overshoots slightly, for playful hover lifts. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-tile-bounce: tile-bounce 0.7s var(--ease-calm);
+
+  @keyframes tile-bounce {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+    30% {
+      transform: translateY(-0.45rem) scale(1.08);
+    }
+    55% {
+      transform: translateY(0.1rem) scale(0.97);
+    }
+    75% {
+      transform: translateY(-0.12rem) scale(1.02);
+    }
+  }
+}
+
+@theme inline {
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-brand: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-script: var(--font-caveat), "Segoe Print", "Bradley Hand", cursive;
+}
+
+@layer base {
+  /* No CSS smooth scrolling: Lenis (components/smooth-scroll.tsx) owns scroll animation. */
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  summary,
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  [role="tab"]:not([aria-disabled="true"]),
+  [role="option"]:not([aria-disabled="true"]),
+  [role="combobox"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  /* Paper grain: a static, low-alpha noise tile. No blend modes, so it stays cheap on phones. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.25 0 0 0 0 0.03 0 0 0 0 0.08 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    background-size: 240px 240px;
+  }
+
+  ::selection {
+    background-color: var(--color-accent-pale);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-highlight-deep);
+    outline-offset: 3px;
+  }
+
+  /* The burgundy ring is 1.1:1 on dark-surface and vanishes there; paper is 13.6:1. Dark areas opt in with
+     data-surface="dark" rather than by background class, because the dark frame also wraps the cream panel. */
+  [data-surface="dark"] :focus-visible {
+    outline-color: var(--color-paper);
+  }
+
+  /* Sections and <main> receive focus programmatically after in-page links; no ring needed there. */
+  [tabindex="-1"]:focus {
+    outline: none;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p,
+  li,
+  dd {
+    text-wrap: pretty;
+  }
+
+  /* Display headings pair upright Newsreader with an italic phrase, e.g. "Before anyone walks in, they look you up."
+     panel-title is the dashboard's smaller counterpart and carries the same pairing. */
+  :where(.heading-display, .panel-title) em {
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: -0.02em;
+    color: var(--color-accent);
+  }
+}
+
+@utility heading-display {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/*
+ * The dashboard type scale. The marketing site opens at hero sizes because a visitor is being introduced to
+ * something; a customer already inside their dashboard is working, so the same voice is kept at a working size.
+ * Both tiers stay serif, which is what keeps the panel recognisably Firstfold rather than a stock admin theme.
+ */
+
+/* Page title, one per screen. */
+@utility panel-title {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  overflow-wrap: break-word;
+}
+
+/*
+ * Inside the customer dashboard (components/panel/dashboard-frame.tsx) everything is set in Inter, titles included:
+ * both font variables point at it there, so the sans and serif utilities and the headings below all follow.
+ */
+@utility dashboard-type {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Section and card headings under a panel-title. */
+@utility panel-section {
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+@utility link-underline {
+  cursor: pointer;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.3em;
+  text-decoration-color: var(--color-highlight);
+  transition:
+    color 300ms var(--ease-calm),
+    text-decoration-color 300ms var(--ease-calm);
+
+  &:hover {
+    color: var(--color-accent);
+    text-decoration-color: var(--color-accent);
+  }
+}
+
+@layer components {
+  /* Page-load entrance, staggered with riseStep() from lib/motion.ts. */
+  .rise {
+    animation: rise 1.1s var(--ease-calm) both;
+    animation-delay: calc(var(--rise-step, 0) * 110ms);
+  }
+
+  .ripple {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ripple 4.8s var(--ease-calm) infinite;
+  }
+
+  .drift {
+    animation: drift 28s ease-in-out infinite alternate;
+  }
+
+  .caret {
+    animation: caret 1.1s linear infinite;
+  }
+
+  /* Scroll reveal where supported; everything stays visible elsewhere. */
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.9rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ripple {
+  from {
+    transform: scale(0.4);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate3d(-14px, 10px, 0) rotate(1.5deg);
+  }
+}
+
+@keyframes caret {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .reveal,
+  .ripple,
+  .drift,
+  .caret {
+    animation: none !important;
+  }
+}
+
+/*
+ * The dashboard's page titles in Inter: a little larger than the serif size and bold, with the emphasised phrase in
+ * the accent colour at the same weight (the italic pairing belongs to the serif). Two classes, so it wins over the
+ * panel-title utility in the same layer.
+ */
+@layer utilities {
+  .dashboard-type .panel-title {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+
+  .dashboard-type :where(.panel-title, .heading-display) em {
+    font-style: normal;
+    font-weight: inherit;
+    letter-spacing: inherit;
+  }
+}
+
+/*
+ * The dashboard sold under Fynix Digital's name (a data-brand="fynix" on <html>, set from the request's host: see
+ * components/panel/dashboard-root.tsx). Only the palette and the typeface change; every layout, size and behaviour is the
+ * Firstfold dashboard's. The palette is the Fynix site's own: warm near-white ground, navy primary, peach accent. Peach is
+ * 1.9:1 on the ground, so it is used on dark surfaces and for fills only; the emphasised words of a headline on the
+ * light ground take the deeper aged-gold shade instead (4.9:1). Contrast, measured: ink on paper 16.5:1, ink-soft on paper
+ * 6.5:1, paper on dark-surface 16.5:1, accent-deep on accent-pale 12.1:1.
+ */
+html[data-brand="fynix"] {
+  --color-paper: #fcfcfb;
+  --color-paper-deep: #f6f5f2;
+  --color-card: #fcfcfb;
+  --color-line: #e8e7e3;
+  --color-ink: #0c1e2e;
+  --color-ink-soft: #565d64;
+  --color-dark-surface: #0c1e2e;
+  --color-dark-raised: #172d40;
+  --color-accent: #0c1e2e;
+  --color-accent-deep: #172d40;
+  --color-accent-light: #fcfcfb;
+  --color-accent-pale: #fbebdd;
+  --color-highlight: #d89870;
+  --color-highlight-deep: #8b6a2e;
+  --color-dusk: #08141f;
+  --color-amber: #e9af88;
+  /* One family, Figtree, for headlines, body and the dashboard alike. */
+  --font-newsreader: var(--font-figtree);
+  --font-hanken: var(--font-figtree);
+  --font-inter: var(--font-figtree);
+  --font-outfit: var(--font-figtree);
+}
+
+html[data-brand="fynix"] :where(.heading-display, .panel-title) em {
+  color: #8b6a2e;
+}
+
+/* The paper grain is Firstfold's; the Fynix site has none. */
+html[data-brand="fynix"] body::after {
+  display: none;
+}
+
+/* Native dropdowns draw their own chevron, inset from the right edge: the browser's sits almost flush against it.
+   Unlayered on purpose: a px-* utility sets padding-inline in the utilities layer and would otherwise win, leaving
+   the text to run under the arrow. The phone field's invisible country picker is appearance-none and opacity-0, so
+   this changes nothing there. */
+select:not([multiple], [size]) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%235e3a40' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3.5 6 4.5 4.5L12.5 6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 0.875rem;
+  padding-right: 2.75rem;
+}

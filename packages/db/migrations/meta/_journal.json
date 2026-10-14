@@ -1,0 +1,1140 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789475159833,
+      "tag": "0000_init",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789475898667,
+      "tag": "0001_rls_and_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789476548202,
+      "tag": "0002_harden_public_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789536737358,
+      "tag": "0003_funnel",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789536747445,
+      "tag": "0004_funnel_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789538404636,
+      "tag": "0005_drop_lead_domain",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789539524443,
+      "tag": "0006_lead_business_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789540789014,
+      "tag": "0007_lead_account_attachment",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789544874125,
+      "tag": "0008_billing_currency",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789545000461,
+      "tag": "0009_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789545018840,
+      "tag": "0010_billing_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789545420859,
+      "tag": "0011_plans_active_boolean",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789545512553,
+      "tag": "0012_inr_one_month_plan",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789545998248,
+      "tag": "0013_onboarding",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789546005061,
+      "tag": "0014_onboarding_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1789548945189,
+      "tag": "0015_overnight_and_all_day_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789548950143,
+      "tag": "0016_narrow_onboarding_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789550291219,
+      "tag": "0017_manual_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789550297025,
+      "tag": "0018_staff_submits_as_customer",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789551582931,
+      "tag": "0019_media_storage_key_matches_row",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789552486197,
+      "tag": "0020_payment_audit_and_attention",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789564518577,
+      "tag": "0021_usd_monthly_plan",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1789622928709,
+      "tag": "0022_drop_staff_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1789632009272,
+      "tag": "0023_inr_3500_plan",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1789638340812,
+      "tag": "0024_cms_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789638341000,
+      "tag": "0025_cms_foundation_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1789652415637,
+      "tag": "0026_hourly_changes_and_blog_blocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1789700000000,
+      "tag": "0027_razorpay_plan_ids",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1789727449595,
+      "tag": "0028_drop_old_cms_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1789737451333,
+      "tag": "0029_project_preview_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790072618517,
+      "tag": "0030_referral_codes",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790076196673,
+      "tag": "0031_drop_fixed_referral_reward",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790076207901,
+      "tag": "0032_referral_reward_percent",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790076208901,
+      "tag": "0033_referral_code_delete_grant",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790079627836,
+      "tag": "0034_referral_discount_amount",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790079654170,
+      "tag": "0035_drop_referral_discount_percent",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790079906028,
+      "tag": "0036_referral_reward_amount",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790079924004,
+      "tag": "0037_drop_referral_reward_percent",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790159675434,
+      "tag": "0038_plan_tax_rate",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790159676434,
+      "tag": "0039_plans_69_and_2999",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790170458007,
+      "tag": "0040_business_website_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1790338557716,
+      "tag": "0041_business_modules_appointments",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1790338604890,
+      "tag": "0042_business_modules_appointments_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1790345432951,
+      "tag": "0043_sms_messages_purge_grant",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1790577898219,
+      "tag": "0044_clinic_practitioners",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1790577991297,
+      "tag": "0045_clinic_practitioners_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1790603454527,
+      "tag": "0046_referral_percentage",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1790604295489,
+      "tag": "0047_payment_method_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1790604302816,
+      "tag": "0048_charges",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1790604303403,
+      "tag": "0049_plan_price_changes",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1790661377530,
+      "tag": "0050_clinic_patients",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1790661416028,
+      "tag": "0051_clinic_patients_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1790688924344,
+      "tag": "0052_directory_listings",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1790688934011,
+      "tag": "0053_directory_listings_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1790693127783,
+      "tag": "0054_directory_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1790693128783,
+      "tag": "0055_directory_reviews_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1790693129783,
+      "tag": "0056_directory_verifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1790693130783,
+      "tag": "0057_directory_verifications_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1790693131783,
+      "tag": "0058_directory_daily_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1790693132783,
+      "tag": "0059_directory_daily_counts_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1790694005247,
+      "tag": "0060_charge_kind_listing_promotion",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1790694033636,
+      "tag": "0061_directory_promotions",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1790694040440,
+      "tag": "0062_directory_promotions_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1790747766159,
+      "tag": "0063_charge_kind_directory_ad",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1790747825008,
+      "tag": "0064_directory_ads",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1790747837533,
+      "tag": "0065_directory_ads_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1790750625809,
+      "tag": "0066_directory_staff_ads",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1790750626551,
+      "tag": "0067_directory_staff_ads_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1790757899713,
+      "tag": "0068_directory_claim_origin",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1790758136529,
+      "tag": "0069_directory_pictures",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1790758148981,
+      "tag": "0070_directory_pictures_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1790770500463,
+      "tag": "0071_directory_claim_website",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1790772737234,
+      "tag": "0072_account_phone_otps",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1790772748398,
+      "tag": "0073_account_phone_otps_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1790776424181,
+      "tag": "0074_business_signup_choice",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1790844209477,
+      "tag": "0075_directory_places",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1790844218425,
+      "tag": "0076_directory_places_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1790845863295,
+      "tag": "0077_directory_place_ids",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1790848491079,
+      "tag": "0078_directory_place_id_writes",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1790866516545,
+      "tag": "0080_business_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1790866531550,
+      "tag": "0081_business_profiles_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1791209961765,
+      "tag": "0082_directory_share_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1791210727667,
+      "tag": "0083_account_otp_verify_business",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1791269840041,
+      "tag": "0084_india_pincodes",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1791269855000,
+      "tag": "0085_india_pincodes_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1791271936984,
+      "tag": "0086_claims_postal",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1791278886121,
+      "tag": "0087_business_profile_sections",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1791291561764,
+      "tag": "0088_directory_search_extensions",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1791291569856,
+      "tag": "0089_directory_open_listings",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1791291586972,
+      "tag": "0090_directory_open_listings_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1791291587972,
+      "tag": "0091_affiliates_coupons",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1791291588972,
+      "tag": "0092_drop_referrer_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1791291589972,
+      "tag": "0093_affiliate_reward_cycles",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1791350326019,
+      "tag": "0094_business_extra_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1791355130767,
+      "tag": "0095_directory_deals",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1791370514224,
+      "tag": "0096_account_closures",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1791371150942,
+      "tag": "0097_account_erasure_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1791439579132,
+      "tag": "0098_care_plan_tier",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1791439580132,
+      "tag": "0099_directory_ad_placements",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1791439581132,
+      "tag": "0100_directory_ad_spots",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1791439582132,
+      "tag": "0101_directory_ad_spots_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1791441956679,
+      "tag": "0102_plan_upgrade_enum_values",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1791441957679,
+      "tag": "0103_plan_upgrades",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1791441958679,
+      "tag": "0104_plan_upgrades_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1791446310657,
+      "tag": "0105_directory_videos",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1791446311657,
+      "tag": "0106_directory_videos_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1791447545300,
+      "tag": "0107_affiliate_login",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1791453518634,
+      "tag": "0108_directory_review_actions",
+      "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1791453536040,
+      "tag": "0109_directory_review_comments_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1791458852087,
+      "tag": "0110_premium_price_6999",
+      "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1791523420000,
+      "tag": "0112_geo_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1791523421000,
+      "tag": "0113_geo_catalog_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1791523422000,
+      "tag": "0114_geo_catalog_seed",
+      "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1791523423614,
+      "tag": "0115_affiliate_payout_withheld",
+      "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1791540695503,
+      "tag": "0116_directory_page_tabs",
+      "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1791627095503,
+      "tag": "0117_listing_tagline",
+      "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1791627100000,
+      "tag": "0118_directory_visitors",
+      "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1791627200000,
+      "tag": "0119_tax_invoices",
+      "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1791627708142,
+      "tag": "0120_tax_invoice_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1791627986853,
+      "tag": "0121_tax_invoice_recipient_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1791628025257,
+      "tag": "0122_tax_invoices_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1791635782067,
+      "tag": "0123_tax_invoice_paid_on",
+      "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1791653449005,
+      "tag": "0124_add_on_enum_values",
+      "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1791653552698,
+      "tag": "0125_add_ons",
+      "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1791653563893,
+      "tag": "0126_add_ons_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1791654000000,
+      "tag": "0127_feedback_support_and_error_issues",
+      "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1791654100000,
+      "tag": "0128_directory_business_faqs",
+      "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1791654200000,
+      "tag": "0129_business_about_word_limit",
+      "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1791740400000,
+      "tag": "0130_closure_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1791826800000,
+      "tag": "0131_reopen_rejected_claims",
+      "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1791826900000,
+      "tag": "0132_firstfold_brand_roles_and_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1791827100000,
+      "tag": "0134_gallery_slots_20",
+      "breakpoints": true
+    },
+    {
+      "idx": 132,
+      "version": "7",
+      "when": 1791827200000,
+      "tag": "0135_product_photos",
+      "breakpoints": true
+    },
+    {
+      "idx": 133,
+      "version": "7",
+      "when": 1791827300000,
+      "tag": "0136_directory_visitors_delete",
+      "breakpoints": true
+    },
+    {
+      "idx": 134,
+      "version": "7",
+      "when": 1791827400000,
+      "tag": "0137_appointment_guard_restore_status_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "7",
+      "when": 1791827500000,
+      "tag": "0138_gst_number",
+      "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1791913900000,
+      "tag": "0139_directory_videos_vimeo",
+      "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1791914000000,
+      "tag": "0140_staff_access_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1791914100000,
+      "tag": "0141_staff_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1791914200000,
+      "tag": "0142_page_tab_appointment",
+      "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1791914300000,
+      "tag": "0143_consent_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1791914400000,
+      "tag": "0144_directory_owner_replies",
+      "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1791914500000,
+      "tag": "0145_service_summary",
+      "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1791914600000,
+      "tag": "0146_directory_video_featured",
+      "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1791914700000,
+      "tag": "0147_directory_verification_trusted",
+      "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1791914800000,
+      "tag": "0148_breach_register",
+      "breakpoints": true
+    },
+    {
+      "idx": 146,
+      "version": "7",
+      "when": 1791914900000,
+      "tag": "0149_privacy_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "7",
+      "when": 1791915000000,
+      "tag": "0150_privacy_request_otps",
+      "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1791915100000,
+      "tag": "0151_privacy_request_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1791915200000,
+      "tag": "0152_visitor_erasure",
+      "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1791915300000,
+      "tag": "0153_user_privacy_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 151,
+      "version": "7",
+      "when": 1791915400000,
+      "tag": "0154_page_tab_labels",
+      "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1791915500000,
+      "tag": "0155_staff_ad_links_and_pictures",
+      "breakpoints": true
+    },
+    {
+      "idx": 153,
+      "version": "7",
+      "when": 1791915600000,
+      "tag": "0156_contribution_deletion",
+      "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1791915700000,
+      "tag": "0157_staff_ad_pictures_firstfold_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 155,
+      "version": "7",
+      "when": 1791915800000,
+      "tag": "0158_drop_review_erased_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1791915900000,
+      "tag": "0159_staff_ads_all_markets",
+      "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1791916000000,
+      "tag": "0160_review_owner_contact",
+      "breakpoints": true
+    },
+    {
+      "idx": 158,
+      "version": "7",
+      "when": 1791916100000,
+      "tag": "0161_enquiry_owner_replied",
+      "breakpoints": true
+    },
+    {
+      "idx": 159,
+      "version": "7",
+      "when": 1791916100001,
+      "tag": "0162_retention_schedule",
+      "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1791961952887,
+      "tag": "0163_account_otp_email",
+      "breakpoints": true
+    },
+    {
+      "idx": 161,
+      "version": "7",
+      "when": 1791962952887,
+      "tag": "0164_premium_price_9999",
+      "breakpoints": true
+    }
+  ]
+}

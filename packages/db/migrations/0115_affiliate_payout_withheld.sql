@@ -1,0 +1,3 @@
+ALTER TABLE "affiliate_payouts" ADD COLUMN "withheld_cents" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "affiliate_payouts" ADD COLUMN "withheld_reason" text;--> statement-breakpoint
+ALTER TABLE "affiliate_payouts" ADD CONSTRAINT "affiliate_payouts_withheld_check" CHECK ("affiliate_payouts"."withheld_cents" >= 0 and "affiliate_payouts"."withheld_cents" < "affiliate_payouts"."amount_cents" and ("affiliate_payouts"."withheld_cents" = 0) = ("affiliate_payouts"."withheld_reason" is null) and ("affiliate_payouts"."withheld_reason" is null or char_length(btrim("affiliate_payouts"."withheld_reason")) between 1 and 200));

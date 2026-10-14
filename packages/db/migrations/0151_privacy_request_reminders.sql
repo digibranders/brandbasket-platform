@@ -1,0 +1,2 @@
+ALTER TABLE "privacy_requests" ADD COLUMN "reminder_stage" smallint DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "privacy_requests" ADD CONSTRAINT "privacy_requests_reminder_stage_check" CHECK ("privacy_requests"."reminder_stage" between 0 and 3);

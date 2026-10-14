@@ -1,0 +1,8 @@
+ALTER TABLE "directory_business_products" ADD COLUMN "photo_id" uuid;--> statement-breakpoint
+ALTER TABLE "directory_business_products" ADD COLUMN "photo_mime" text;--> statement-breakpoint
+ALTER TABLE "directory_business_products" ADD COLUMN "photo_bytes" integer;--> statement-breakpoint
+ALTER TABLE "directory_business_products" ADD COLUMN "photo_width" integer;--> statement-breakpoint
+ALTER TABLE "directory_business_products" ADD COLUMN "photo_height" integer;--> statement-breakpoint
+ALTER TABLE "directory_business_products" ADD COLUMN "photo_sha256" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "directory_business_products_photo_id_idx" ON "directory_business_products" USING btree ("photo_id") WHERE "directory_business_products"."photo_id" is not null;--> statement-breakpoint
+ALTER TABLE "directory_business_products" ADD CONSTRAINT "directory_business_products_photo_check" CHECK (("directory_business_products"."photo_id" is null and "directory_business_products"."photo_mime" is null and "directory_business_products"."photo_bytes" is null and "directory_business_products"."photo_width" is null and "directory_business_products"."photo_height" is null and "directory_business_products"."photo_sha256" is null) or ("directory_business_products"."photo_id" is not null and "directory_business_products"."photo_mime" is not null and "directory_business_products"."photo_bytes" > 0 and "directory_business_products"."photo_width" > 0 and "directory_business_products"."photo_height" > 0 and "directory_business_products"."photo_sha256" is not null));

@@ -1,0 +1,2 @@
+ALTER TABLE "directory_business_profiles" ADD COLUMN "gst_number" text;--> statement-breakpoint
+ALTER TABLE "directory_business_profiles" ADD CONSTRAINT "directory_business_profiles_gst_number_check" CHECK ("directory_business_profiles"."gst_number" is null or "directory_business_profiles"."gst_number" ~ '^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$');

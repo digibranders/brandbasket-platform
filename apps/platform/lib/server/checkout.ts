@@ -1,0 +1,336 @@
+import "server-only";
+import { brandText } from "@/lib/brand";
+import { currentBrand } from "./request-brand";
+import { decideCheckout, type BillingProvider, type CheckoutDecision, type StartedCheckout } from "@firstfold/billing";
+import {
+  BillingBusinessNotFoundError,
+  consumeRateLimit,
+  findActivePlan,
+  findBillingState,
+  findBusinessEntry,
+  findBusinessReferralCode,
+  findLatestSubscriptionForBusiness,
+  findRedeemableReferralCode,
+  lockBusinessForBilling,
+  openCheckoutSubscription,
+  withTenantScope,
+  type Plan,
+  type PlanTier,
+  type RateLimitRule,
+  type Subscription,
+} from "@firstfold/db";
+import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
+import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF, REACTIVATE_HREF } from "@firstfold/shared/lib/billing/payment-step";
+import { firstMissing, onboardingChecklist } from "@firstfold/shared/lib/onboarding/checklist";
+import { MEMBER_HOME } from "@/lib/membership";
+import { checklistInputFrom } from "@/lib/onboarding/snapshot";
+import { businessDetails } from "@firstfold/shared/lib/site-config";
+import { getBillingProvider } from "./billing";
+import { describeError, logBillingEvent } from "@firstfold/shared/server/billing-log";
+import type { GrantedCustomer } from "./customer-access";
+import { getAppDb, getStaffDb } from "./db";
+import { missingProblem, readOnboardingSnapshot, type StepProblem } from "./onboarding";
+import { cancelAtProvider } from "@firstfold/shared/server/provider-cancellation";
+import { discountFrom, type AppliedDiscount } from "./referrals";
+import { ensureDiscountPlan } from "./discount-plans";
+
+/** A stuck button or a script must not be able to open subscriptions at the provider without limit. */
+export const CHECKOUT_RATE_LIMIT: RateLimitRule = { limit: 10, windowSeconds: 60 * 60 };
+
+export type CheckoutOutcome =
+  | { readonly kind: "redirect"; readonly url: string }
+  | { readonly kind: "refused"; readonly problem: StepProblem };
+
+/** The provider handed back a checkout this site will not send a customer to. */
+export class UnsafeCheckoutUrlError extends Error {
+  constructor() {
+    super("The billing provider returned a checkout URL that is neither a local path nor https.");
+    this.name = "UnsafeCheckoutUrlError";
+  }
+}
+
+/** The provider was asked to reopen one subscription and answered with another. */
+export class CheckoutMismatchError extends Error {
+  constructor() {
+    super("The billing provider reopened a different subscription from the one it was asked for.");
+    this.name = "CheckoutMismatchError";
+  }
+}
+
+function refused(message: string, fixHref?: string): CheckoutOutcome {
+  return { kind: "refused", problem: { message, field: null, ...(fixHref === undefined ? {} : { fixHref }) } };
+}
+
+const TOO_MANY_ATTEMPTS = "That’s a lot of attempts in a short time. Please wait a little and try again.";
+const NOTHING_TO_PAY_FOR = `There’s nothing to pay for right now. If you think that’s wrong, email us at ${businessDetails.email}.`;
+const NO_PLAN = `We can’t take payment in your currency just yet. Email us at ${businessDetails.email} and we’ll sort it out.`;
+const CHANGED_MEANWHILE = "Something changed while we were setting up your payment. Please try again.";
+const ALREADY_A_MEMBER = "You’re already a Premium member. Open your dashboard to carry on.";
+const PAYMENT_UNAVAILABLE = "We couldn’t open your payment just now. Please try again in a minute.";
+
+/** What was decided under the lock, carried past its commit. */
+interface PlannedCheckout {
+  readonly plan: Plan;
+  readonly decision: CheckoutDecision;
+  /** The newest subscription as the decision saw it; the second transaction checks it has not moved. */
+  readonly latest: Subscription | null;
+  /**
+   * The referral discount in force, re-validated under the lock, or null. Its `amountCents` is frozen onto the new
+   * subscription and is what every later amount check subtracts, never recomputed from the code's percentage.
+   */
+  readonly discount: AppliedDiscount | null;
+}
+
+type DecisionStep = { readonly kind: "planned"; readonly planned: PlannedCheckout } | { readonly kind: "no-plan" };
+
+function sameSubscriptionState(seen: Subscription | null, now: Subscription | null): boolean {
+  if (seen === null || now === null) return seen === now;
+  return seen.id === now.id && seen.status === now.status;
+}
+
+function checkedUrl(started: StartedCheckout): string {
+  if (!isSafeCheckoutUrl(started.checkoutUrl)) throw new UnsafeCheckoutUrlError();
+  return started.checkoutUrl;
+}
+
+/**
+ * Opens a new subscription at the provider and records it. The provider is called with no transaction open, so a
+ * slow provider holds no lock; a second short transaction then checks that the business's newest subscription is
+ * still the one the decision saw and records the new one (cancelling the stale checkout it replaces in the same
+ * transaction). If that check fails, or recording fails, the subscription just opened at the provider is an orphan:
+ * it is cancelled there and logged. A replaced checkout is cancelled at the provider only after the commit.
+ */
+async function openNewCheckout(
+  customer: GrantedCustomer,
+  provider: BillingProvider,
+  planned: PlannedCheckout,
+  replacing: Subscription | null,
+  now: Date,
+): Promise<CheckoutOutcome> {
+  const { user, tenant } = customer;
+  const { discount } = planned;
+  const discountAmountCents = discount?.amountCents ?? 0;
+  // Razorpay charges a subscription its plan's amount, so a discount is a cheaper plan of its own. Made (or found)
+  // before anything is opened at the provider: if it cannot be made, nothing exists to clean up.
+  let providerPlanId: string | undefined;
+  try {
+    providerPlanId = await ensureDiscountPlan(provider, planned.plan, discountAmountCents);
+  } catch (error) {
+    logBillingEvent("error", "discount-plan-failed", {
+      businessId: tenant.businessId,
+      planId: planned.plan.id,
+      discountAmountCents,
+      ...describeError(error),
+    });
+    return refused(PAYMENT_UNAVAILABLE);
+  }
+  const started = await provider.startCheckout({
+    businessId: tenant.businessId,
+    businessName: tenant.businessName,
+    email: user.email,
+    plan: planned.plan,
+    discountAmountCents,
+    ...(providerPlanId === undefined ? {} : { providerPlanId }),
+  });
+  const orphan = {
+    businessId: tenant.businessId,
+    subscriptionId: null,
+    provider: provider.name,
+    providerSubscriptionId: started.providerSubscriptionId,
+  } as const;
+  const orphanFields = { businessId: tenant.businessId, providerSubscriptionId: started.providerSubscriptionId };
+
+  let url: string;
+  let recorded: boolean;
+  try {
+    url = checkedUrl(started);
+    recorded = await getStaffDb().transaction(async (tx): Promise<boolean> => {
+      await lockBusinessForBilling(tx, tenant.businessId);
+      const latest = await findLatestSubscriptionForBusiness(tx, tenant.businessId);
+      if (!sameSubscriptionState(planned.latest, latest)) return false;
+      await openCheckoutSubscription(tx, {
+        businessId: tenant.businessId,
+        planId: planned.plan.id,
+        provider: provider.name,
+        providerSubscriptionId: started.providerSubscriptionId,
+        referralCodeId: discount?.codeId ?? null,
+        discountAmountCents: discount?.amountCents ?? 0,
+        replacing: replacing?.id ?? null,
+        now,
+      });
+      return true;
+    });
+  } catch (error) {
+    logBillingEvent("error", "checkout-orphaned", { ...orphanFields, reason: "record-failed", ...describeError(error) });
+    await cancelAtProvider(provider, orphan);
+    throw error;
+  }
+
+  if (!recorded) {
+    logBillingEvent("warn", "checkout-orphaned", { ...orphanFields, reason: "changed-meanwhile" });
+    await cancelAtProvider(provider, orphan);
+    return refused(CHANGED_MEANWHILE);
+  }
+
+  if (replacing !== null) {
+    await cancelAtProvider(provider, {
+      businessId: tenant.businessId,
+      subscriptionId: replacing.id,
+      provider: replacing.provider,
+      providerSubscriptionId: replacing.providerSubscriptionId,
+    });
+  }
+  return { kind: "redirect", url };
+}
+
+/**
+ * Starts the first payment from Check and send. The caller has already checked the customer is signed in; this
+ * checks everything else on the server, whatever the page showed:
+ *
+ * 1. at most CHECKOUT_RATE_LIMIT attempts per business;
+ * 2. while the answers are still open, the onboarding checklist passes on stored data, because a customer must not
+ *    pay for a build we cannot start (answers already sent, before payment was required, are not re-checked: those
+ *    customers must always be able to pay);
+ * 3. the plan's checkout is opened (openPlanCheckout).
+ *
+ * Returns where to send the customer, or why not.
+ */
+export async function startCheckoutFor(customer: GrantedCustomer, now: Date): Promise<CheckoutOutcome> {
+  const { tenant } = customer;
+  const appDb = getAppDb();
+
+  const limit = await consumeRateLimit(appDb, `checkout:business:${tenant.businessId}`, CHECKOUT_RATE_LIMIT);
+  if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
+
+  const snapshot = await withTenantScope(appDb, tenant, readOnboardingSnapshot);
+  if (snapshot.project === null) return refused(brandText(NOTHING_TO_PAY_FOR, await currentBrand()));
+  if (!snapshot.locked) {
+    const missing = firstMissing(onboardingChecklist(checklistInputFrom(snapshot)));
+    if (missing !== null) return { kind: "refused", problem: missingProblem(missing) };
+  }
+
+  return openPlanCheckout(customer, now, PAYMENT_STEP_HREF, null);
+}
+
+/**
+ * Starts the first payment for the plan a free listing account is buying, Care or Premium, from that account (docs/superpowers/specs/2026-09-30-
+ * single-entry-premium-design.md). These members pay before there is a project or a single answer, so neither is
+ * asked for: the payment itself opens the project (activateFirstPayment). Checked on the server, whatever the page
+ * showed: the same rate limit as any checkout, and that the business really is a free listing account, since a
+ * website client pays on Check and send, where its answers are checked first.
+ *
+ * `tier` is the plan whose page the owner pressed Pay on: a free account may buy either, whichever it chose at sign-up.
+ * A later checkout of the same account replaces an unpaid one of the other plan, as it replaces any stale one.
+ *
+ * The kind is read before the lock rather than under it. A payment landing in between has made the business a client
+ * with a paid subscription, which the decision under the lock then sees and answers by sending it to its dashboard.
+ */
+export async function startMembershipCheckoutFor(customer: GrantedCustomer, now: Date, tier: PlanTier): Promise<CheckoutOutcome> {
+  const { tenant } = customer;
+  const appDb = getAppDb();
+
+  const limit = await consumeRateLimit(appDb, `checkout:business:${tenant.businessId}`, CHECKOUT_RATE_LIMIT);
+  if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
+
+  const entry = await withTenantScope(appDb, tenant, (tx) => findBusinessEntry(tx, tenant.businessId));
+  if (entry?.kind !== "listing") return refused(ALREADY_A_MEMBER);
+
+  return openPlanCheckout(customer, now, MEMBER_HOME, tier);
+}
+
+/**
+ * Reactivate on Billing (docs/superpowers/specs/2026-10-09-reactivation-design.md): a business that paid before and has
+ * lapsed opens a checkout for its own tier at today's price, with no coupon, and its lapsed subscription is replaced.
+ * Checked on the server, whatever the page showed: the same rate limit as any checkout, then that the business really
+ * has lapsed. A paid-up one is sent to Billing, and one that never paid has nothing to restart. Its project is live,
+ * so there is no onboarding to check.
+ */
+export async function startReactivationFor(customer: GrantedCustomer, now: Date): Promise<CheckoutOutcome> {
+  const { tenant, billing } = customer;
+  const limit = await consumeRateLimit(getAppDb(), `checkout:business:${tenant.businessId}`, CHECKOUT_RATE_LIMIT);
+  if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
+  if (billing.status === "paid") return { kind: "redirect", url: REACTIVATE_HREF };
+  if (billing.status !== "lapsed") return refused(brandText(NOTHING_TO_PAY_FOR, await currentBrand()));
+  return openPlanCheckout(customer, now, REACTIVATE_HREF, null);
+}
+
+/**
+ * Opens the plan's checkout for a business its caller has already cleared to pay:
+ *
+ * 1. under a per-business lock on the staff connection (customers never write billing rows), the billing package
+ *    decides whether to send them back to a recent unpaid checkout, replace a stale or lapsed one, or open a new one;
+ *    an already-paid business is sent to `paidHref`, and one whose earlier payment is waiting for staff is told so
+ *    rather than charged again;
+ * 2. with the lock released, the provider is called, and a new subscription is recorded (see openNewCheckout).
+ *
+ * `tier` is the plan being bought, or null for a business that is already on one (a website client paying on Check and
+ * send), which pays for the plan its billing state names.
+ */
+async function openPlanCheckout(customer: GrantedCustomer, now: Date, paidHref: string, tier: PlanTier | null): Promise<CheckoutOutcome> {
+  const { tenant } = customer;
+  const provider = getBillingProvider();
+  const first = await getStaffDb().transaction(async (tx): Promise<DecisionStep> => {
+    await lockBusinessForBilling(tx, tenant.businessId);
+    const state = await findBillingState(tx, tenant.businessId);
+    if (state === null) throw new BillingBusinessNotFoundError(tenant.businessId);
+    // The plan the business is on or chose: a Care client is never quoted Premium's price, or the other way round.
+    const plan = await findActivePlan(tx, state.currency, tier ?? state.tier);
+    if (plan === null) return { kind: "no-plan" };
+    // Re-validated here, under the lock, rather than trusted from when the customer pressed Apply: a code can be
+    // deactivated, expire or hit its cap in between, and the amount frozen on the subscription must be the one
+    // that was true at the moment the checkout opened. A business that has paid before is reactivating, which takes
+    // no code (docs/superpowers/specs/2026-10-09-reactivation-design.md): it pays today's full price.
+    const applied = state.hasEverPaid ? null : await findBusinessReferralCode(tx, tenant.businessId);
+    const redeemable =
+      applied === null
+        ? null
+        : await findRedeemableReferralCode(tx, { code: applied.code, currency: state.currency, now });
+    const discount = redeemable === null ? null : discountFrom(redeemable, plan);
+    const decision = decideCheckout(
+      state.subscription,
+      { planId: plan.id, provider: provider.name, referralCodeId: discount?.codeId ?? null },
+      now,
+      state,
+    );
+    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount } };
+  });
+  if (first.kind === "no-plan") return refused(brandText(NO_PLAN, await currentBrand()));
+
+  const { planned } = first;
+  const { decision } = planned;
+  switch (decision.kind) {
+    case "already-paid":
+      return { kind: "redirect", url: paidHref };
+    case "payment-under-review":
+      return refused(PAYMENT_RECEIVED_MESSAGE);
+    case "reuse": {
+      const started = await provider.startCheckout({
+        businessId: tenant.businessId,
+        businessName: tenant.businessName,
+        email: customer.user.email,
+        plan: planned.plan,
+        existingProviderSubscriptionId: decision.providerSubscriptionId,
+        // The reused checkout's own frozen discount. Razorpay ignores it (the subscription is already on its
+        // discounted plan), but a provider that works the amount out again, as the fake one does, would otherwise
+        // ask for full price.
+        discountAmountCents: planned.latest?.discountAmountCents ?? 0,
+      });
+      if (started.providerSubscriptionId !== decision.providerSubscriptionId) throw new CheckoutMismatchError();
+      return { kind: "redirect", url: checkedUrl(started) };
+    }
+    case "create":
+      return openNewCheckout(customer, provider, planned, null, now);
+    case "replace": {
+      // decideCheckout only replaces the newest subscription, so it is the one the decision saw.
+      const stale = planned.latest;
+      if (stale === null || stale.id !== decision.staleSubscriptionId) {
+        throw new Error(`Checkout decided to replace ${decision.staleSubscriptionId}, which is not the newest subscription`);
+      }
+      return openNewCheckout(customer, provider, planned, stale, now);
+    }
+    default: {
+      const unhandled: never = decision;
+      throw new Error(`Unhandled checkout decision: ${JSON.stringify(unhandled)}`);
+    }
+  }
+}

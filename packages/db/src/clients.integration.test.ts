@@ -1,0 +1,292 @@
+import { eq } from "drizzle-orm";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { findClientDetail, findMediaForStaff, listClients } from "./queries/clients";
+import { insertMediaAsset, newMediaAssetId, softDeleteMediaAsset } from "./queries/media";
+import {
+  markStepComplete,
+  replaceBusinessHours,
+  replaceServices,
+  saveBusinessProfile,
+  savePrimaryDomain,
+  saveProjectBrief,
+} from "./queries/onboarding-data";
+import { submitProject } from "./queries/projects";
+import { businesses, businessMembers, plans, projects, users } from "./schema";
+import { insertSubscription } from "./queries/billing";
+import { phoneAccountEmail } from "./phone-account";
+import { withTenantScope, type ScopedTransaction } from "./scope";
+import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
+
+const OWNER = "owner-1";
+const SUBMITTED_AT = new Date("2026-09-16T09:30:00.000Z");
+
+let dbs: TestDatabases;
+let businessId = "";
+let projectId = "";
+
+function asOwner<T>(work: (tx: ScopedTransaction) => Promise<T>): Promise<T> {
+  return withTenantScope(dbs.app.db, { userId: OWNER, businessId }, work);
+}
+
+beforeAll(() => {
+  dbs = openTestDatabases();
+});
+
+afterAll(async () => {
+  await dbs?.closeAll();
+});
+
+beforeEach(async () => {
+  await resetTestDatabase(dbs.owner);
+  await dbs.staff.db.insert(users).values({ id: OWNER, name: "Riley Owner", email: "riley@example.com" });
+  const [business] = await dbs.staff.db
+    .insert(businesses)
+    .values({ slug: "harbour-bakery", name: "Harbour Bakery", currency: "INR" })
+    .returning({ id: businesses.id });
+  if (business === undefined) throw new Error("Seed business was not inserted");
+  businessId = business.id;
+  await dbs.staff.db.insert(businessMembers).values({ businessId, userId: OWNER, role: "owner" });
+  const [project] = await dbs.staff.db.insert(projects).values({ businessId }).returning({ id: projects.id });
+  if (project === undefined) throw new Error("Seed project was not inserted");
+  projectId = project.id;
+});
+
+describe("a client's plan", () => {
+  async function planId(code: string): Promise<string> {
+    const [row] = await dbs.owner.db.select({ id: plans.id }).from(plans).where(eq(plans.code, code));
+    if (row === undefined) throw new Error(`No plan ${code}`);
+    return row.id;
+  }
+
+  async function seedPlans(): Promise<void> {
+    const base = {
+      name: "Plan",
+      currency: "INR" as const,
+      initialAmountCents: 299_900,
+      initialTermMonths: 1,
+      recurringAmountCents: 299_900,
+      includedPublishesPerMonth: 3,
+      extraPublishAmountCents: 300,
+      taxRateBasisPoints: 1800,
+    };
+    await dbs.owner.db.insert(plans).values([
+      { ...base, code: "t-care", tier: "care" },
+      { ...base, code: "t-premium", tier: "premium" },
+    ]);
+  }
+
+  it("is Premium for a business that has not subscribed and chose nothing, and Care when it chose Care", async () => {
+    expect((await listClients(dbs.staff.db))[0]?.tier).toBe("premium");
+    await dbs.owner.db.update(businesses).set({ signupChoice: "care" }).where(eq(businesses.id, businessId));
+    expect((await listClients(dbs.staff.db))[0]?.tier).toBe("care");
+    expect((await findClientDetail(dbs.staff.db, businessId))?.tier).toBe("care");
+  });
+
+  it("follows the newest subscription's plan over what the business chose", async () => {
+    await seedPlans();
+    await dbs.owner.db.update(businesses).set({ signupChoice: "care" }).where(eq(businesses.id, businessId));
+    await insertSubscription(dbs.staff.db, {
+      businessId,
+      planId: await planId("t-premium"),
+      provider: "manual",
+      providerSubscriptionId: "sub_tier_list",
+    });
+    expect((await listClients(dbs.staff.db))[0]?.tier).toBe("premium");
+    expect((await findClientDetail(dbs.staff.db, businessId))?.tier).toBe("premium");
+  });
+});
+
+describe("listClients", () => {
+  it("returns each business with its owner, currency and current project", async () => {
+    const clients = await listClients(dbs.staff.db);
+    expect(clients).toHaveLength(1);
+    expect(clients[0]).toMatchObject({
+      businessId,
+      businessName: "Harbour Bakery",
+      currency: "INR",
+      owner: { name: "Riley Owner", email: "riley@example.com", phone: null },
+      project: { id: projectId, status: "onboarding", onboardingSubmittedAt: null },
+    });
+  });
+
+  it("gives an owner who signs in with a mobile number their number, and no address to write to", async () => {
+    await dbs.staff.db.insert(users).values({
+      id: "phone-owner",
+      name: "Meera Shah",
+      email: phoneAccountEmail("+919820011223"),
+      phoneNumber: "+919820011223",
+      phoneNumberVerified: true,
+    });
+    const [member] = await dbs.staff.db
+      .insert(businesses)
+      .values({ slug: "smile-dental", name: "Smile Dental", currency: "INR", signupChoice: "premium" })
+      .returning({ id: businesses.id });
+    if (member === undefined) throw new Error("Seed business was not inserted");
+    await dbs.staff.db.insert(businessMembers).values({ businessId: member.id, userId: "phone-owner", role: "owner" });
+
+    const clients = await listClients(dbs.staff.db);
+    expect(clients.find((client) => client.businessId === member.id)?.owner).toEqual({
+      name: "Meera Shah",
+      email: null,
+      phone: "+919820011223",
+    });
+  });
+
+  it("lists a business with no owner or project rather than dropping it", async () => {
+    await dbs.staff.db.insert(businesses).values({ slug: "empty-shop", name: "Empty Shop" });
+    const clients = await listClients(dbs.staff.db);
+    expect(clients.find((client) => client.businessName === "Empty Shop")).toMatchObject({ owner: null, project: null });
+  });
+
+  it("shows the newest project once an older one has finished", async () => {
+    await dbs.staff.db.update(projects).set({ status: "cancelled" }).where(eq(projects.id, projectId));
+    const [redesign] = await dbs.staff.db
+      .insert(projects)
+      .values({ businessId, kind: "redesign" })
+      .returning({ id: projects.id });
+    const clients = await listClients(dbs.staff.db);
+    expect(clients[0]?.project?.id).toBe(redesign?.id);
+  });
+});
+
+describe("findClientDetail", () => {
+  it("returns everything the customer sent, in the order they gave it", async () => {
+    const mediaId = newMediaAssetId();
+    await asOwner(async (tx) => {
+      await saveBusinessProfile(tx, {
+        displayName: "Harbour Bakery",
+        tagline: "Bread before sunrise",
+        description: null,
+        phone: "+91 98765 43210",
+        email: null,
+        addressLine1: null,
+        addressLine2: null,
+        city: "Kochi",
+        region: null,
+        postalCode: null,
+        country: "India",
+        serviceAreas: null,
+        googleBusinessUrl: null,
+      });
+      await replaceBusinessHours(tx, [
+        { dayOfWeek: 6, opensAt: null, closesAt: null, closed: true, openAllDay: false },
+        { dayOfWeek: 0, opensAt: "07:00", closesAt: "19:00", closed: false, openAllDay: false },
+      ]);
+      await replaceServices(tx, [
+        { name: "Sourdough", summary: "Baked daily.", priceText: "₹180" },
+        { name: "Birthday cakes", summary: null, priceText: null },
+      ]);
+      await saveProjectBrief(tx, projectId, {
+        notesForBuilder: "Show the ovens.",
+        styleLikes: null,
+        referenceUrls: ["https://example.com/bakery"],
+      });
+      await savePrimaryDomain(tx, { hostname: "harbourbakery.in", ownerConfirmedAt: SUBMITTED_AT });
+      await insertMediaAsset(tx, {
+        id: mediaId,
+        purpose: "photo",
+        storageKey: `t/${businessId}/${mediaId}/display`,
+        originalFilename: "IMG_0001.jpg",
+        mimeType: "image/webp",
+        bytes: 1234,
+        width: 800,
+        height: 600,
+        sha256: "a".repeat(64),
+        altText: "Loaves cooling on a rack",
+        uploadedByUserId: OWNER,
+      });
+      await markStepComplete(tx, projectId, "business");
+      await markStepComplete(tx, projectId, "content");
+      await submitProject(tx, { projectId, now: SUBMITTED_AT });
+    });
+
+    const detail = await findClientDetail(dbs.staff.db, businessId);
+    expect(detail).toMatchObject({
+      businessName: "Harbour Bakery",
+      owner: { email: "riley@example.com" },
+      project: { status: "submitted", onboardingSubmittedAt: SUBMITTED_AT },
+      profile: { tagline: "Bread before sunrise", phone: "+91 98765 43210", city: "Kochi" },
+      services: [{ name: "Sourdough", priceText: "₹180" }, { name: "Birthday cakes" }],
+      brief: { notesForBuilder: "Show the ovens.", referenceUrls: ["https://example.com/bakery"] },
+      domain: { hostname: "harbourbakery.in", ownerConfirmedAt: SUBMITTED_AT },
+      media: [{ id: mediaId, purpose: "photo", altText: "Loaves cooling on a rack" }],
+    });
+    expect(detail?.hours.map((day) => day.dayOfWeek)).toEqual([0, 6]);
+    expect([...(detail?.completedSteps ?? [])].sort()).toEqual(["business", "content"]);
+  });
+
+  it("leaves out removed services and deleted photos", async () => {
+    const mediaId = newMediaAssetId();
+    await asOwner(async (tx) => {
+      await replaceServices(tx, [{ name: "Old service", summary: null, priceText: null }]);
+      await replaceServices(tx, [{ name: "New service", summary: null, priceText: null }]);
+      await insertMediaAsset(tx, {
+        id: mediaId,
+        purpose: "logo",
+        storageKey: `t/${businessId}/${mediaId}/display`,
+        originalFilename: "logo.png",
+        mimeType: "image/webp",
+        bytes: 10,
+        width: 10,
+        height: 10,
+        sha256: "b".repeat(64),
+        altText: null,
+        uploadedByUserId: OWNER,
+      });
+      await softDeleteMediaAsset(tx, mediaId);
+    });
+
+    const detail = await findClientDetail(dbs.staff.db, businessId);
+    expect(detail?.services.map((service) => service.name)).toEqual(["New service"]);
+    expect(detail?.media).toEqual([]);
+  });
+
+  it("returns empty sections for a customer who hasn't started", async () => {
+    expect(await findClientDetail(dbs.staff.db, businessId)).toMatchObject({
+      profile: null,
+      hours: [],
+      services: [],
+      brief: null,
+      domain: null,
+      media: [],
+      completedSteps: [],
+    });
+  });
+
+  it("returns null for an unknown or malformed id instead of throwing", async () => {
+    expect(await findClientDetail(dbs.staff.db, "0192f3c4-0000-7000-8000-00000000dead")).toBeNull();
+    expect(await findClientDetail(dbs.staff.db, "not-a-uuid")).toBeNull();
+    expect(await findClientDetail(dbs.staff.db, "'; drop table businesses; --")).toBeNull();
+  });
+});
+
+describe("findMediaForStaff", () => {
+  it("finds a ready photo and nothing else", async () => {
+    const mediaId = newMediaAssetId();
+    await asOwner((tx) =>
+      insertMediaAsset(tx, {
+        id: mediaId,
+        purpose: "photo",
+        storageKey: `t/${businessId}/${mediaId}/display`,
+        originalFilename: "IMG_0002.jpg",
+        mimeType: "image/webp",
+        bytes: 99,
+        width: 1,
+        height: 1,
+        sha256: "c".repeat(64),
+        altText: "A loaf",
+        uploadedByUserId: OWNER,
+      }),
+    );
+
+    expect(await findMediaForStaff(dbs.staff.db, mediaId)).toEqual({
+      storageKey: `t/${businessId}/${mediaId}/display`,
+      mimeType: "image/webp",
+      sha256: "c".repeat(64),
+    });
+    expect(await findMediaForStaff(dbs.staff.db, "not-a-uuid")).toBeNull();
+
+    await asOwner((tx) => softDeleteMediaAsset(tx, mediaId));
+    expect(await findMediaForStaff(dbs.staff.db, mediaId)).toBeNull();
+  });
+});

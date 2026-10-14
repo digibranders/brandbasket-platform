@@ -1,0 +1,3 @@
+ALTER TABLE "business_closures" ADD COLUMN "opens_at" time;--> statement-breakpoint
+ALTER TABLE "business_closures" ADD COLUMN "closes_at" time;--> statement-breakpoint
+ALTER TABLE "business_closures" ADD CONSTRAINT "business_closures_hours_check" CHECK (("business_closures"."opens_at" is null) = ("business_closures"."closes_at" is null) and ("business_closures"."opens_at" is null or "business_closures"."opens_at" <> "business_closures"."closes_at"));

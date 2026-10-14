@@ -1,0 +1,48 @@
+{
+  "name": "@firstfold/db",
+  "version": "0.1.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/digibranders/firstfold-platform.git",
+    "directory": "packages/db"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./geo-catalog-rules": "./src/geo-catalog-rules.ts",
+    "./india-states": "./src/india-states.ts",
+    "./local-env": "./src/local-env.ts",
+    "./opened-districts": "./src/opened-districts.ts",
+    "./place-id": "./src/place-id.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "env:init": "tsx scripts/init-local-env.ts",
+    "db:roles": "tsx scripts/setup-roles.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts --target=dev",
+    "db:migrate:test": "tsx scripts/migrate.ts --target=test",
+    "directory:import-places": "tsx scripts/import-directory-places.ts",
+    "directory:import-pincodes": "tsx scripts/import-india-pincodes.ts",
+    "directory:backfill-places": "tsx scripts/backfill-directory-places.ts",
+    "directory:import-listings": "tsx scripts/import-directory-listings.ts"
+  },
+  "dependencies": {
+    "dotenv": "17.4.2",
+    "drizzle-orm": "0.45.2",
+    "pg": "8.23.0",
+    "uuidv7": "1.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.4",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.10",
+    "tsx": "4.23.13",
+    "typescript": "^5",
+    "vitest": "^5.0.0"
+  }
+}

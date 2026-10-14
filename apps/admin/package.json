@@ -1,0 +1,52 @@
+{
+  "name": "@firstfold/admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3003",
+    "build": "next build",
+    "start": "next start -p 3003",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@firstfold/auth": "workspace:*",
+    "@firstfold/billing": "workspace:*",
+    "@firstfold/cms": "workspace:*",
+    "@firstfold/db": "workspace:*",
+    "@firstfold/email": "workspace:*",
+    "@firstfold/shared": "workspace:*",
+    "@lexical/link": "0.41.0",
+    "@lexical/list": "0.41.0",
+    "@lexical/react": "0.41.0",
+    "@lexical/rich-text": "0.41.0",
+    "@lexical/selection": "0.41.0",
+    "@payloadcms/db-postgres": "^3.89.0",
+    "@payloadcms/next": "^3.89.0",
+    "@payloadcms/richtext-lexical": "^3.89.0",
+    "lexical": "0.41.0",
+    "libphonenumber-js": "1.13.13",
+    "next": "16.3.5",
+    "payload": "^3.89.0",
+    "pg": "8.23.0",
+    "razorpay": "^2.9.8",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "0.0.1",
+    "sharp": "0.35.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^24.13.4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.5",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^5.0.0"
+  }
+}

@@ -1,0 +1,2 @@
+ALTER TABLE "businesses" ADD COLUMN "website_url" text;--> statement-breakpoint
+ALTER TABLE "businesses" ADD CONSTRAINT "businesses_website_url_https" CHECK ("businesses"."website_url" is null or "businesses"."website_url" ~ '^https://[^/?#]+$');

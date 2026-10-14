@@ -1,0 +1,3 @@
+ALTER TABLE "directory_videos" ADD COLUMN "featured" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "directory_videos_one_featured_idx" ON "directory_videos" USING btree ("business_id") WHERE "directory_videos"."featured" and "directory_videos"."removed_at" is null;--> statement-breakpoint
+ALTER TABLE "directory_videos" ADD CONSTRAINT "directory_videos_featured_check" CHECK (not "directory_videos"."featured" or "directory_videos"."status" = 'approved');

@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Applies pending migrations to the production database. Installed on the VPS as
+# /usr/local/sbin/firstfold-migrate (root:root 0755), and besides restarting the apps the only thing the `deploy` user
+# may run through sudo. firstfold-platform-release calls it for every deploy (see docs/deployment/vps.md).
+#
+# Root is needed for one reason: the database owner's password lives in /root/firstfold-secrets.env, which only
+# root can read. Nothing else runs as root. The migration itself runs as `deploy`, because the release directories
+# are writable by `deploy` (it unpacks and builds them): executing that code as root would hand root to anyone who
+# can act as deploy.
+#
+# Takes no arguments, and the sudoers rule allows none.
+set -euo pipefail
+
+readonly SECRETS_FILE=/root/firstfold-secrets.env
+# The release being deployed: firstfold-platform-release points this symlink at it before calling us.
+readonly DEPLOYING=/srv/firstfold/deploying
+readonly DEPLOY_USER=deploy
+
+if [[ $# -ne 0 ]]; then
+  echo "firstfold-migrate takes no arguments." >&2
+  exit 64
+fi
+
+# Read the one value needed rather than sourcing the whole file into this shell.
+owner_pw="$(grep -E '^OWNER_PW=' "$SECRETS_FILE" | head -n 1 | cut -d= -f2-)"
+# Tolerate a value written with surrounding quotes.
+owner_pw="${owner_pw#\"}"; owner_pw="${owner_pw%\"}"
+owner_pw="${owner_pw#\'}"; owner_pw="${owner_pw%\'}"
+if [[ -z "$owner_pw" ]]; then
+  echo "OWNER_PW is not set in $SECRETS_FILE." >&2
+  exit 1
+fi
+
+# Percent-encode the password so any character is safe inside the URL.
+owner_url="$(OWNER_PW="$owner_pw" node -e \
+  'process.stdout.write("postgresql://firstfold_owner:" + encodeURIComponent(process.env.OWNER_PW) + "@localhost:5432/webfold")')"
+
+# Only ever a release directory: the symlink is deploy's to set, but the code it points at runs as deploy below, never
+# as root, so following it hands deploy nothing it does not already have.
+app_root="$(readlink -f "$DEPLOYING")"
+if [[ "$app_root" != /srv/firstfold/releases/* || ! -f "$app_root/package.json" ]]; then
+  echo "$DEPLOYING does not point at a release under /srv/firstfold/releases." >&2
+  exit 1
+fi
+cd "$app_root"
+# packages/db/scripts/migrate.ts lets an already-set variable win over apps/platform/.env.local, so the owner
+# connection exists only for this one process and is never written to disk.
+exec runuser -u "$DEPLOY_USER" -- env HOME="/home/$DEPLOY_USER" DATABASE_URL_OWNER="$owner_url" pnpm db:migrate

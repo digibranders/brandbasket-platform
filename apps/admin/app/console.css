@@ -1,0 +1,114 @@
+/*
+ * Staff console surfaces that Tailwind utilities would spell out badly: the dark glass used by the dock, menus and
+ * hover cards, the Journey map's entrance and focus dimming, and the reduced-motion switch for all of it.
+ * Colours come from the shared theme tokens, so this file holds no palette of its own. apps/admin/DESIGN.md has the
+ * contrast each surface is held to.
+ */
+
+/*
+ * The console's own colours, one step above the shared theme's tokens so a brand can restyle the console without touching
+ * a component: what the primary button is filled with, what a destructive button turns, and what the dock's glass is made
+ * of. They default to Firstfold's look (ink, accent). Under Fynix (html[data-brand="fynix"], the palette in the shared
+ * theme.css) the console uses the same colours as the dashboard: navy for the primary button, dock and links, peach for
+ * highlights, and the aged gold for small accent text. Measured on the page ground #fcfcfb: text #1d2125 16.1:1, muted
+ * #565d64 6.5:1, navy #0c1e2e 16.9:1, deep gold #8b6a2e 4.9:1, destructive #9a3b2e 6.6:1; white on navy 17.4:1, on its hover
+ * #172d40 14.2:1; navy on peach #e9af88 8.9:1 (the dock's highlight and the gold button).
+ */
+:root {
+  --console-primary: var(--color-ink);
+  --console-primary-hover: var(--color-accent);
+  --console-danger: var(--color-accent);
+  --console-glass: var(--color-ink);
+  --console-gold-hover: #f5d08a;
+}
+
+html[data-brand="fynix"] {
+  --color-ink: #1d2125;
+  --color-gold: #e9af88;
+  --color-gold-deep: #8b6a2e;
+  --color-gold-ink: #5a4217;
+  --console-primary: #0c1e2e;
+  --console-primary-hover: #172d40;
+  --console-danger: #9a3b2e;
+  --console-glass: #0c1e2e;
+  --console-gold-hover: #f0bf9f;
+}
+
+/* 80% ink keeps paper text above 6:1 and gold above 4.5:1 even where the glass floats over pure white (the outbox's
+   email preview), including under a row's white/10 hover wash. At 72% the dock's labels fell to about 4:1. */
+.glass {
+  background-color: color-mix(in srgb, var(--console-glass) 80%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  color: var(--color-paper);
+}
+
+/* Small glass that sits over other marks (hover cards, menus) needs more body, or what's behind shows through
+   the words. */
+.glass-dense {
+  background-color: var(--console-glass);
+}
+
+/* The shared focus ring is burgundy, which vanishes on dark glass (under 2:1). Gold reads at 6:1 there. */
+.glass :focus-visible {
+  outline-color: var(--color-gold);
+}
+
+/* Without blur, translucent ink over busy content is unreadable, so the glass turns nearly solid. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background-color: color-mix(in srgb, var(--console-glass) 92%, transparent);
+  }
+}
+
+/* Avatars arrive one after another, left to right, in the order the map lists them. */
+.journey-rise {
+  animation: journey-rise 0.6s var(--ease-calm) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes journey-rise {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+
+/* Focus mode: everyone who doesn't need us steps back. */
+.journey-spot {
+  transition: opacity 400ms var(--ease-calm);
+}
+
+[data-focus="true"] .journey-spot[data-attention="false"] {
+  opacity: 0.22;
+}
+
+/* A stepped-back client still comes forward when pointed at or tabbed to, so its name and hover card stay readable. */
+[data-focus="true"] .journey-spot[data-attention="false"]:is(:hover, :focus-within) {
+  opacity: 1;
+}
+
+.focus-strip {
+  animation: focus-strip 0.45s var(--ease-calm) both;
+}
+
+@keyframes focus-strip {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-rise,
+  .focus-strip {
+    animation: none;
+  }
+
+  .journey-spot,
+  .console-motion,
+  .console-motion * {
+    transition: none !important;
+  }
+}

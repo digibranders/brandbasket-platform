@@ -1,0 +1,2868 @@
+{
+  "source": "website-listing content/local/thane-places.json and thane-taxonomy.json, 2026-10-05 (FirstFold Core Shortlist). 'categories' is every category a business may be listed in; 'services' is those with their own website page, the only ones open for ads. Keep in step with the website repo.",
+  "state": {
+    "code": "mh",
+    "name": "Maharashtra"
+  },
+  "district": {
+    "slug": "thane",
+    "name": "Thane"
+  },
+  "cities": [
+    {
+      "slug": "thane",
+      "name": "Thane"
+    },
+    {
+      "slug": "navi-mumbai",
+      "name": "Navi Mumbai"
+    },
+    {
+      "slug": "kalyan-dombivli",
+      "name": "Kalyan-Dombivli"
+    },
+    {
+      "slug": "mira-bhayander",
+      "name": "Mira Bhayander"
+    },
+    {
+      "slug": "bhiwandi",
+      "name": "Bhiwandi"
+    },
+    {
+      "slug": "ulhasnagar",
+      "name": "Ulhasnagar"
+    },
+    {
+      "slug": "badlapur",
+      "name": "Badlapur"
+    },
+    {
+      "slug": "ambarnath",
+      "name": "Ambarnath"
+    },
+    {
+      "slug": "shahapur",
+      "name": "Shahapur"
+    },
+    {
+      "slug": "murbad",
+      "name": "Murbad"
+    },
+    {
+      "slug": "vashind",
+      "name": "Vashind"
+    },
+    {
+      "slug": "kasara",
+      "name": "Kasara"
+    }
+  ],
+  "areas": [
+    {
+      "slug": "additional-industrial-area",
+      "name": "Additional Industrial Area",
+      "city": "ambarnath"
+    },
+    {
+      "slug": "boryaachapada",
+      "name": "Boryaachapada",
+      "city": "ambarnath"
+    },
+    {
+      "slug": "dhawalepada",
+      "name": "Dhawalepada",
+      "city": "ambarnath"
+    },
+    {
+      "slug": "sarvodaya-nagar",
+      "name": "Sarvodaya Nagar",
+      "city": "ambarnath"
+    },
+    {
+      "slug": "vangani",
+      "name": "Vangani",
+      "city": "ambarnath"
+    },
+    {
+      "slug": "badlapur-area",
+      "name": "Badlapur",
+      "city": "badlapur"
+    },
+    {
+      "slug": "belavali",
+      "name": "Belavali",
+      "city": "badlapur"
+    },
+    {
+      "slug": "juveli",
+      "name": "Juveli",
+      "city": "badlapur"
+    },
+    {
+      "slug": "kharvai-naka",
+      "name": "KHARVAI NAKA",
+      "city": "badlapur"
+    },
+    {
+      "slug": "katrap",
+      "name": "Katrap",
+      "city": "badlapur"
+    },
+    {
+      "slug": "manjarli",
+      "name": "Manjarli",
+      "city": "badlapur"
+    },
+    {
+      "slug": "anjur",
+      "name": "Anjur",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "bhadvad",
+      "name": "Bhadvad",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "dapode",
+      "name": "Dapode",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "dive-anjur",
+      "name": "Dive Anjur",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "fene",
+      "name": "Fene",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "gundavli",
+      "name": "Gundavli",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "kalher",
+      "name": "Kalher",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "kamatghar",
+      "name": "Kamatghar",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "kaneri",
+      "name": "Kaneri",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "khadavli",
+      "name": "Khadavli",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "kharbao",
+      "name": "Kharbao",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "khoni",
+      "name": "Khoni",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "kon",
+      "name": "Kon",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "mankoli",
+      "name": "Mankoli",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "narpoli",
+      "name": "Narpoli",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "padagha",
+      "name": "Padagha",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "purna",
+      "name": "Purna",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "temghar",
+      "name": "Temghar",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "val",
+      "name": "Val",
+      "city": "bhiwandi"
+    },
+    {
+      "slug": "aadharwadi",
+      "name": "Aadharwadi",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "aayre-gaon",
+      "name": "Aayre Gaon",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "ankharpada",
+      "name": "Ankharpada",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "bapsai",
+      "name": "Bapsai",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "dombivli-east",
+      "name": "Dombivli East",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "dombivli-west",
+      "name": "Dombivli West",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "gharivali",
+      "name": "Gharivali",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "goveli",
+      "name": "Goveli",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "kalyan-east",
+      "name": "Kalyan East",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "kalyan-west",
+      "name": "Kalyan West",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "katai",
+      "name": "Katai",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "khadakpada",
+      "name": "Khadakpada",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "kole",
+      "name": "Kole",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "kopar",
+      "name": "Kopar",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "kopar-gaon",
+      "name": "Kopar Gaon",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "maskal",
+      "name": "Maskal",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "milap-nagar",
+      "name": "Milap Nagar",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "nilaje",
+      "name": "Nilaje",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "palava-phase-1",
+      "name": "Palava Phase 1",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "palava-phase-2",
+      "name": "Palava Phase 2",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "phalegaon",
+      "name": "Phalegaon",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "railway-colony",
+      "name": "Railway Colony",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "sagaon",
+      "name": "Sagaon",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "thakurli",
+      "name": "Thakurli",
+      "city": "kalyan-dombivli"
+    },
+    {
+      "slug": "colony",
+      "name": "Colony",
+      "city": "kasara"
+    },
+    {
+      "slug": "dongricha-padha",
+      "name": "Dongricha Padha",
+      "city": "kasara"
+    },
+    {
+      "slug": "golbhan",
+      "name": "Golbhan",
+      "city": "kasara"
+    },
+    {
+      "slug": "khardi",
+      "name": "Khardi",
+      "city": "kasara"
+    },
+    {
+      "slug": "umbermali",
+      "name": "Umbermali",
+      "city": "kasara"
+    },
+    {
+      "slug": "bhayander",
+      "name": "Bhayander",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "bhayander-east",
+      "name": "Bhayander East",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "bhayander-west",
+      "name": "Bhayander West",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "chena",
+      "name": "Chena",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "dongri",
+      "name": "Dongri",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "ghodbunder",
+      "name": "Ghodbunder",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "jesal-park",
+      "name": "Jesal Park",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "kashigaon",
+      "name": "Kashigaon",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "kashimira",
+      "name": "Kashimira",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "mira",
+      "name": "Mira",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "mira-road",
+      "name": "Mira Road",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "murdha",
+      "name": "Murdha",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "rai",
+      "name": "Rai",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "shanti-nagar",
+      "name": "Shanti Nagar",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "uttan",
+      "name": "Uttan",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "versova",
+      "name": "Versova",
+      "city": "mira-bhayander"
+    },
+    {
+      "slug": "ambele-khurd",
+      "name": "Ambele Khurd",
+      "city": "murbad"
+    },
+    {
+      "slug": "kinhavali",
+      "name": "Kinhavali",
+      "city": "murbad"
+    },
+    {
+      "slug": "mhasa",
+      "name": "Mhasa",
+      "city": "murbad"
+    },
+    {
+      "slug": "saralgaon",
+      "name": "Saralgaon",
+      "city": "murbad"
+    },
+    {
+      "slug": "shiwale",
+      "name": "Shiwale",
+      "city": "murbad"
+    },
+    {
+      "slug": "thitbi",
+      "name": "Thitbi",
+      "city": "murbad"
+    },
+    {
+      "slug": "vaishakhare",
+      "name": "Vaishakhare",
+      "city": "murbad"
+    },
+    {
+      "slug": "adavali-bhutawali-gaothan",
+      "name": "Adavali Bhutawali Gaothan",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "agroli-village",
+      "name": "Agroli Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "airoli",
+      "name": "Airoli",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "airoli-sector-10",
+      "name": "Airoli Sector 10",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "airoli-sector-2",
+      "name": "Airoli Sector 2",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "airoli-sector-5",
+      "name": "Airoli Sector 5",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "airoli-village",
+      "name": "Airoli Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "belapur",
+      "name": "Belapur",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "belapur-east",
+      "name": "Belapur East",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "belapur-village",
+      "name": "Belapur Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "belapur-west",
+      "name": "Belapur West",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "chinchpada",
+      "name": "Chinchpada",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "digha",
+      "name": "Digha",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "digha-village",
+      "name": "Digha Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "diva-village",
+      "name": "Diva Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "diwale-village",
+      "name": "Diwale Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "ghansoli",
+      "name": "Ghansoli",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "ghansoli-village",
+      "name": "Ghansoli Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "gothivali-village",
+      "name": "Gothivali Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "hanuman-nagar",
+      "name": "Hanuman Nagar",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "juinagar",
+      "name": "Juinagar",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "kharghar",
+      "name": "Kharghar",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "kopar-khairne",
+      "name": "Kopar Khairne",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "koparkhairane",
+      "name": "Koparkhairane",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "midc-rabale",
+      "name": "MIDC - Rabale",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "mahape",
+      "name": "Mahape",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "mahape-gaothan",
+      "name": "Mahape Gaothan",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "nerul",
+      "name": "Nerul",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "nerul-east",
+      "name": "Nerul East",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "nerul-village",
+      "name": "Nerul Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "nerul-west",
+      "name": "Nerul West",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "rabale-village",
+      "name": "Rabale Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "samta-nagar",
+      "name": "Samta Nagar",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "sanpada",
+      "name": "Sanpada",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "sarsole-village",
+      "name": "Sarsole Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "seawoods",
+      "name": "Seawoods",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "seawoods-east",
+      "name": "Seawoods East",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "seawoods-west",
+      "name": "Seawoods West",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "sector-11",
+      "name": "Sector 11",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "sector-24",
+      "name": "Sector 24",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "sector-26",
+      "name": "Sector 26",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "sector-6",
+      "name": "Sector 6",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "shahbaz-village",
+      "name": "Shahbaz Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "talavali-village",
+      "name": "Talavali Village",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "turbhe",
+      "name": "Turbhe",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "vashi",
+      "name": "Vashi",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "yadav-nagar",
+      "name": "Yadav Nagar",
+      "city": "navi-mumbai"
+    },
+    {
+      "slug": "asangaon",
+      "name": "Asangaon",
+      "city": "shahapur"
+    },
+    {
+      "slug": "atgaon",
+      "name": "Atgaon",
+      "city": "shahapur"
+    },
+    {
+      "slug": "lahe",
+      "name": "Lahe",
+      "city": "shahapur"
+    },
+    {
+      "slug": "latifwadi",
+      "name": "Latifwadi",
+      "city": "shahapur"
+    },
+    {
+      "slug": "shenwa",
+      "name": "Shenwa",
+      "city": "shahapur"
+    },
+    {
+      "slug": "shirol-village",
+      "name": "Shirol Village",
+      "city": "shahapur"
+    },
+    {
+      "slug": "amrut-nagar",
+      "name": "Amrut Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "anand-nagar",
+      "name": "Anand Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "balkum",
+      "name": "Balkum",
+      "city": "thane"
+    },
+    {
+      "slug": "balkum-pada",
+      "name": "Balkum Pada",
+      "city": "thane"
+    },
+    {
+      "slug": "bhayander-pada",
+      "name": "Bhayander Pada",
+      "city": "thane"
+    },
+    {
+      "slug": "brahmand-nagar",
+      "name": "Brahmand Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "budhaji-nagar",
+      "name": "Budhaji Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "charai",
+      "name": "Charai",
+      "city": "thane"
+    },
+    {
+      "slug": "chendani-koliwada",
+      "name": "Chendani Koliwada",
+      "city": "thane"
+    },
+    {
+      "slug": "desai-naka",
+      "name": "Desai Naka",
+      "city": "thane"
+    },
+    {
+      "slug": "dhokali",
+      "name": "Dhokali",
+      "city": "thane"
+    },
+    {
+      "slug": "diva",
+      "name": "Diva",
+      "city": "thane"
+    },
+    {
+      "slug": "dnyaneshwar-nagar",
+      "name": "Dnyaneshwar Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "dongaripada",
+      "name": "Dongaripada",
+      "city": "thane"
+    },
+    {
+      "slug": "gaumukh",
+      "name": "Gaumukh",
+      "city": "thane"
+    },
+    {
+      "slug": "hari-dada-chawl",
+      "name": "Hari Dada Chawl",
+      "city": "thane"
+    },
+    {
+      "slug": "hariom-nagar",
+      "name": "Hariom Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "hiranandani-estate",
+      "name": "Hiranandani Estate",
+      "city": "thane"
+    },
+    {
+      "slug": "jambli-naka",
+      "name": "Jambli Naka",
+      "city": "thane"
+    },
+    {
+      "slug": "k-l-colony",
+      "name": "K.L. Colony",
+      "city": "thane"
+    },
+    {
+      "slug": "kaju-pada",
+      "name": "Kaju Pada",
+      "city": "thane"
+    },
+    {
+      "slug": "kalwa",
+      "name": "Kalwa",
+      "city": "thane"
+    },
+    {
+      "slug": "kamgar-nagar",
+      "name": "Kamgar Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "kapur-bawadi",
+      "name": "Kapur Bawadi",
+      "city": "thane"
+    },
+    {
+      "slug": "kasarvadavali",
+      "name": "Kasarvadavali",
+      "city": "thane"
+    },
+    {
+      "slug": "kausa",
+      "name": "Kausa",
+      "city": "thane"
+    },
+    {
+      "slug": "kharegaon",
+      "name": "Kharegaon",
+      "city": "thane"
+    },
+    {
+      "slug": "kisan-nagar",
+      "name": "Kisan Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "kokanipada",
+      "name": "Kokanipada",
+      "city": "thane"
+    },
+    {
+      "slug": "kolse-wadi",
+      "name": "Kolse Wadi",
+      "city": "thane"
+    },
+    {
+      "slug": "kolshet",
+      "name": "Kolshet",
+      "city": "thane"
+    },
+    {
+      "slug": "kopri",
+      "name": "Kopri",
+      "city": "thane"
+    },
+    {
+      "slug": "kopri-colony",
+      "name": "Kopri Colony",
+      "city": "thane"
+    },
+    {
+      "slug": "kranti-nagar",
+      "name": "Kranti Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "lokmanya-nagar",
+      "name": "Lokmanya Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "majiwada",
+      "name": "Majiwada",
+      "city": "thane"
+    },
+    {
+      "slug": "majiwada-gaon",
+      "name": "Majiwada Gaon",
+      "city": "thane"
+    },
+    {
+      "slug": "manorpada",
+      "name": "Manorpada",
+      "city": "thane"
+    },
+    {
+      "slug": "manpada",
+      "name": "Manpada",
+      "city": "thane"
+    },
+    {
+      "slug": "mothi-desai-gaon",
+      "name": "Mothi Desai Gaon",
+      "city": "thane"
+    },
+    {
+      "slug": "mumbra",
+      "name": "Mumbra",
+      "city": "thane"
+    },
+    {
+      "slug": "nalpada",
+      "name": "Nalpada",
+      "city": "thane"
+    },
+    {
+      "slug": "naupada",
+      "name": "Naupada",
+      "city": "thane"
+    },
+    {
+      "slug": "owale",
+      "name": "Owale",
+      "city": "thane"
+    },
+    {
+      "slug": "pachwad",
+      "name": "Pachwad",
+      "city": "thane"
+    },
+    {
+      "slug": "padle-gaon",
+      "name": "Padle Gaon",
+      "city": "thane"
+    },
+    {
+      "slug": "panch-pakadi",
+      "name": "Panch Pakadi",
+      "city": "thane"
+    },
+    {
+      "slug": "panch-pakhadi",
+      "name": "Panch Pakhadi",
+      "city": "thane"
+    },
+    {
+      "slug": "parshi-wadi",
+      "name": "Parshi Wadi",
+      "city": "thane"
+    },
+    {
+      "slug": "patlipada",
+      "name": "Patlipada",
+      "city": "thane"
+    },
+    {
+      "slug": "pawar-nagar",
+      "name": "Pawar Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "pokhran",
+      "name": "Pokhran",
+      "city": "thane"
+    },
+    {
+      "slug": "reti-bandar",
+      "name": "Reti Bandar",
+      "city": "thane"
+    },
+    {
+      "slug": "shill-gaon",
+      "name": "Shill Gaon",
+      "city": "thane"
+    },
+    {
+      "slug": "shill-phata",
+      "name": "Shill Phata",
+      "city": "thane"
+    },
+    {
+      "slug": "shivai-nagar",
+      "name": "Shivai Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "shree-nagar",
+      "name": "Shree Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "uthalsar",
+      "name": "Uthalsar",
+      "city": "thane"
+    },
+    {
+      "slug": "varkhande-chawl",
+      "name": "Varkhande Chawl",
+      "city": "thane"
+    },
+    {
+      "slug": "vartak-nagar",
+      "name": "Vartak Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "vasant-vihar",
+      "name": "Vasant Vihar",
+      "city": "thane"
+    },
+    {
+      "slug": "vitawa-koliwada",
+      "name": "Vitawa Koliwada",
+      "city": "thane"
+    },
+    {
+      "slug": "waghbil",
+      "name": "Waghbil",
+      "city": "thane"
+    },
+    {
+      "slug": "wagle-estate",
+      "name": "Wagle Estate",
+      "city": "thane"
+    },
+    {
+      "slug": "wagle-industrial-estate",
+      "name": "Wagle Industrial Estate",
+      "city": "thane"
+    },
+    {
+      "slug": "yashodhan-nagar",
+      "name": "Yashodhan Nagar",
+      "city": "thane"
+    },
+    {
+      "slug": "yeoor",
+      "name": "Yeoor",
+      "city": "thane"
+    },
+    {
+      "slug": "shahad",
+      "name": "Shahad",
+      "city": "ulhasnagar"
+    },
+    {
+      "slug": "vitthalwadi",
+      "name": "Vitthalwadi",
+      "city": "ulhasnagar"
+    },
+    {
+      "slug": "vasind",
+      "name": "Vasind",
+      "city": "vashind"
+    }
+  ],
+  "categories": [
+    {
+      "slug": "abacus-and-vedic-maths-classes",
+      "label": "Abacus & Vedic Maths Classes"
+    },
+    {
+      "slug": "acupressure-therapists",
+      "label": "Acupressure Therapists"
+    },
+    {
+      "slug": "acupuncture-clinics",
+      "label": "Acupuncture Clinics"
+    },
+    {
+      "slug": "air-conditioner-repair-services",
+      "label": "Air Conditioner Repair Services"
+    },
+    {
+      "slug": "allergists",
+      "label": "Allergists"
+    },
+    {
+      "slug": "ambulance-services",
+      "label": "Ambulance Services"
+    },
+    {
+      "slug": "amusement-parks",
+      "label": "Amusement Parks"
+    },
+    {
+      "slug": "andhra-restaurants",
+      "label": "Andhra Restaurants"
+    },
+    {
+      "slug": "appliance-repair-services",
+      "label": "Appliance Repair Services"
+    },
+    {
+      "slug": "architects",
+      "label": "Architects"
+    },
+    {
+      "slug": "aromatherapy-services",
+      "label": "Aromatherapy Services"
+    },
+    {
+      "slug": "art-schools",
+      "label": "Art Schools"
+    },
+    {
+      "slug": "astrologers",
+      "label": "Astrologers"
+    },
+    {
+      "slug": "auto-parts-stores",
+      "label": "Auto Parts Stores"
+    },
+    {
+      "slug": "auto-repair-shops",
+      "label": "Auto Repair Shops"
+    },
+    {
+      "slug": "ayurvedic-clinics",
+      "label": "Ayurvedic Clinics"
+    },
+    {
+      "slug": "ayurvedic-spas",
+      "label": "Ayurvedic Spas"
+    },
+    {
+      "slug": "baby-sitters",
+      "label": "Baby Sitters"
+    },
+    {
+      "slug": "baby-stores",
+      "label": "Baby Stores"
+    },
+    {
+      "slug": "bakeries",
+      "label": "Bakeries"
+    },
+    {
+      "slug": "banks",
+      "label": "Banks"
+    },
+    {
+      "slug": "barber-shops",
+      "label": "Barber Shops"
+    },
+    {
+      "slug": "bars",
+      "label": "Bars"
+    },
+    {
+      "slug": "bathroom-remodelers",
+      "label": "Bathroom Remodelers"
+    },
+    {
+      "slug": "beauty-salons",
+      "label": "Beauty Salons"
+    },
+    {
+      "slug": "bengali-restaurants",
+      "label": "Bengali Restaurants"
+    },
+    {
+      "slug": "bicycle-stores",
+      "label": "Bicycle Stores"
+    },
+    {
+      "slug": "bike-rental-services",
+      "label": "Bike Rental Services"
+    },
+    {
+      "slug": "bike-tour-agencies",
+      "label": "Bike Tour Agencies"
+    },
+    {
+      "slug": "biryani-restaurants",
+      "label": "Biryani Restaurants"
+    },
+    {
+      "slug": "blood-banks",
+      "label": "Blood Banks"
+    },
+    {
+      "slug": "boutiques",
+      "label": "Boutiques"
+    },
+    {
+      "slug": "bridal-shops",
+      "label": "Bridal Shops"
+    },
+    {
+      "slug": "buffet-restaurants",
+      "label": "Buffet Restaurants"
+    },
+    {
+      "slug": "building-materials-suppliers",
+      "label": "Building Materials Suppliers"
+    },
+    {
+      "slug": "bus-tour-agencies",
+      "label": "Bus Tour Agencies"
+    },
+    {
+      "slug": "business-insurance-agencies",
+      "label": "Business Insurance Agencies"
+    },
+    {
+      "slug": "ca-coaching-centers",
+      "label": "CA Coaching Centers"
+    },
+    {
+      "slug": "cat-coaching-centers",
+      "label": "CAT Coaching Centers"
+    },
+    {
+      "slug": "cctv-installation-services",
+      "label": "CCTV Installation Services"
+    },
+    {
+      "slug": "cma-coaching-centers",
+      "label": "CMA Coaching Centers"
+    },
+    {
+      "slug": "cs-coaching-centers",
+      "label": "CS Coaching Centers"
+    },
+    {
+      "slug": "cable-tv-service-providers",
+      "label": "Cable TV Service Providers"
+    },
+    {
+      "slug": "cafes",
+      "label": "Cafes"
+    },
+    {
+      "slug": "car-accessories-stores",
+      "label": "Car Accessories Stores"
+    },
+    {
+      "slug": "car-dealers",
+      "label": "Car Dealers"
+    },
+    {
+      "slug": "car-rental-agencies",
+      "label": "Car Rental Agencies"
+    },
+    {
+      "slug": "car-washes",
+      "label": "Car Washes"
+    },
+    {
+      "slug": "cardiologists",
+      "label": "Cardiologists"
+    },
+    {
+      "slug": "carpenters",
+      "label": "Carpenters"
+    },
+    {
+      "slug": "caterers",
+      "label": "Caterers"
+    },
+    {
+      "slug": "cemeteries",
+      "label": "Cemeteries"
+    },
+    {
+      "slug": "chartered-accountants",
+      "label": "Chartered Accountants"
+    },
+    {
+      "slug": "child-development-centers",
+      "label": "Child Development Centers"
+    },
+    {
+      "slug": "chinese-restaurants",
+      "label": "Chinese Restaurants"
+    },
+    {
+      "slug": "cinemas",
+      "label": "Cinemas"
+    },
+    {
+      "slug": "clinics",
+      "label": "Clinics"
+    },
+    {
+      "slug": "clothing-stores",
+      "label": "Clothing Stores"
+    },
+    {
+      "slug": "cloud-kitchens",
+      "label": "Cloud Kitchens"
+    },
+    {
+      "slug": "coaching-centers",
+      "label": "Coaching Centers"
+    },
+    {
+      "slug": "colleges",
+      "label": "Colleges"
+    },
+    {
+      "slug": "commercial-real-estate-agencies",
+      "label": "Commercial Real Estate Agencies"
+    },
+    {
+      "slug": "community-centers",
+      "label": "Community Centers"
+    },
+    {
+      "slug": "company-secretaries",
+      "label": "Company Secretaries"
+    },
+    {
+      "slug": "competitive-exam-centers",
+      "label": "Competitive Exam Centers"
+    },
+    {
+      "slug": "computer-repair-services",
+      "label": "Computer Repair Services"
+    },
+    {
+      "slug": "computer-training-schools",
+      "label": "Computer Training Schools"
+    },
+    {
+      "slug": "construction-companies",
+      "label": "Construction Companies"
+    },
+    {
+      "slug": "consumer-lawyers",
+      "label": "Consumer Lawyers"
+    },
+    {
+      "slug": "cooking-classes",
+      "label": "Cooking Classes"
+    },
+    {
+      "slug": "corporate-travel-agencies",
+      "label": "Corporate Travel Agencies"
+    },
+    {
+      "slug": "cosmetic-dentists",
+      "label": "Cosmetic Dentists"
+    },
+    {
+      "slug": "counseling-centers",
+      "label": "Counseling Centers"
+    },
+    {
+      "slug": "coworking-spaces",
+      "label": "Coworking Spaces"
+    },
+    {
+      "slug": "cricket-turfs",
+      "label": "Cricket Turfs"
+    },
+    {
+      "slug": "criminal-lawyers",
+      "label": "Criminal Lawyers"
+    },
+    {
+      "slug": "curtain-stores",
+      "label": "Curtain Stores"
+    },
+    {
+      "slug": "cyber-law-lawyers",
+      "label": "Cyber Law Lawyers"
+    },
+    {
+      "slug": "dj-services",
+      "label": "DJ Services"
+    },
+    {
+      "slug": "dance-schools",
+      "label": "Dance Schools"
+    },
+    {
+      "slug": "day-care-centers",
+      "label": "Day Care Centers"
+    },
+    {
+      "slug": "denting-and-painting-services",
+      "label": "Denting and Painting Services"
+    },
+    {
+      "slug": "dentists",
+      "label": "Dentists"
+    },
+    {
+      "slug": "dermatologists",
+      "label": "Dermatologists"
+    },
+    {
+      "slug": "dhabas",
+      "label": "Dhabas"
+    },
+    {
+      "slug": "diagnostic-centers",
+      "label": "Diagnostic Centers"
+    },
+    {
+      "slug": "dialysis-centers",
+      "label": "Dialysis Centers"
+    },
+    {
+      "slug": "dog-trainers",
+      "label": "Dog Trainers"
+    },
+    {
+      "slug": "drinking-water-can-suppliers",
+      "label": "Drinking Water Can Suppliers"
+    },
+    {
+      "slug": "driving-schools",
+      "label": "Driving Schools"
+    },
+    {
+      "slug": "dry-fruit-stores",
+      "label": "Dry Fruit Stores"
+    },
+    {
+      "slug": "ent-specialists",
+      "label": "ENT Specialists"
+    },
+    {
+      "slug": "electric-utility-companies",
+      "label": "Electric Utility Companies"
+    },
+    {
+      "slug": "electric-vehicle-dealers",
+      "label": "Electric Vehicle Dealers"
+    },
+    {
+      "slug": "electricians",
+      "label": "Electricians"
+    },
+    {
+      "slug": "electronics-stores",
+      "label": "Electronics Stores"
+    },
+    {
+      "slug": "emergency-clinics",
+      "label": "Emergency Clinics"
+    },
+    {
+      "slug": "emergency-dentists",
+      "label": "Emergency Dentists"
+    },
+    {
+      "slug": "endocrinologists",
+      "label": "Endocrinologists"
+    },
+    {
+      "slug": "endodontists",
+      "label": "Endodontists"
+    },
+    {
+      "slug": "ethnic-wear-stores",
+      "label": "Ethnic Wear Stores"
+    },
+    {
+      "slug": "event-management-companies",
+      "label": "Event Management Companies"
+    },
+    {
+      "slug": "eye-hospitals",
+      "label": "Eye Hospitals"
+    },
+    {
+      "slug": "false-ceiling-contractors",
+      "label": "False Ceiling Contractors"
+    },
+    {
+      "slug": "family-lawyers",
+      "label": "Family Lawyers"
+    },
+    {
+      "slug": "fast-food-restaurants",
+      "label": "Fast Food Restaurants"
+    },
+    {
+      "slug": "fertility-clinics",
+      "label": "Fertility Clinics"
+    },
+    {
+      "slug": "financial-planners",
+      "label": "Financial Planners"
+    },
+    {
+      "slug": "fire-stations",
+      "label": "Fire Stations"
+    },
+    {
+      "slug": "fish-stores",
+      "label": "Fish Stores"
+    },
+    {
+      "slug": "flower-shops",
+      "label": "Flower Shops"
+    },
+    {
+      "slug": "fruit-and-vegetable-stores",
+      "label": "Fruit & Vegetable Stores"
+    },
+    {
+      "slug": "funeral-services",
+      "label": "Funeral Services"
+    },
+    {
+      "slug": "furniture-repair-services",
+      "label": "Furniture Repair Services"
+    },
+    {
+      "slug": "furniture-stores",
+      "label": "Furniture Stores"
+    },
+    {
+      "slug": "gardening-services",
+      "label": "Gardening Services"
+    },
+    {
+      "slug": "gas-companies",
+      "label": "Gas Companies"
+    },
+    {
+      "slug": "gastroenterologists",
+      "label": "Gastroenterologists"
+    },
+    {
+      "slug": "general-physicians",
+      "label": "General Physicians"
+    },
+    {
+      "slug": "general-surgeons",
+      "label": "General Surgeons"
+    },
+    {
+      "slug": "generator-repair-services",
+      "label": "Generator Repair Services"
+    },
+    {
+      "slug": "geriatricians",
+      "label": "Geriatricians"
+    },
+    {
+      "slug": "glass-contractors",
+      "label": "Glass Contractors"
+    },
+    {
+      "slug": "grocery-stores",
+      "label": "Grocery Stores"
+    },
+    {
+      "slug": "guest-houses",
+      "label": "Guest Houses"
+    },
+    {
+      "slug": "gujarati-restaurants",
+      "label": "Gujarati Restaurants"
+    },
+    {
+      "slug": "gyms",
+      "label": "Gyms"
+    },
+    {
+      "slug": "gynecologists",
+      "label": "Gynecologists"
+    },
+    {
+      "slug": "hair-transplant-clinics",
+      "label": "Hair Transplant Clinics"
+    },
+    {
+      "slug": "hardware-stores",
+      "label": "Hardware Stores"
+    },
+    {
+      "slug": "health-insurance-agencies",
+      "label": "Health Insurance Agencies"
+    },
+    {
+      "slug": "hematologists",
+      "label": "Hematologists"
+    },
+    {
+      "slug": "hindu-priest-services",
+      "label": "Hindu Priest Services"
+    },
+    {
+      "slug": "home-appliance-stores",
+      "label": "Home Appliance Stores"
+    },
+    {
+      "slug": "home-chef-services",
+      "label": "Home Chef Services"
+    },
+    {
+      "slug": "home-cleaning-services",
+      "label": "Home Cleaning Services"
+    },
+    {
+      "slug": "home-decor-stores",
+      "label": "Home Decor Stores"
+    },
+    {
+      "slug": "home-healthcare-services",
+      "label": "Home Healthcare Services"
+    },
+    {
+      "slug": "home-insurance-agencies",
+      "label": "Home Insurance Agencies"
+    },
+    {
+      "slug": "home-maintenance-services",
+      "label": "Home Maintenance Services"
+    },
+    {
+      "slug": "homeopathic-doctors",
+      "label": "Homeopathic Doctors"
+    },
+    {
+      "slug": "hospitals",
+      "label": "Hospitals"
+    },
+    {
+      "slug": "hostels",
+      "label": "Hostels"
+    },
+    {
+      "slug": "hotels",
+      "label": "Hotels"
+    },
+    {
+      "slug": "housing-society-management-services",
+      "label": "Housing Society Management Services"
+    },
+    {
+      "slug": "ielts-training-centers",
+      "label": "IELTS Training Centers"
+    },
+    {
+      "slug": "it-services",
+      "label": "IT Services"
+    },
+    {
+      "slug": "ice-cream-shops",
+      "label": "Ice Cream Shops"
+    },
+    {
+      "slug": "imaging-centers",
+      "label": "Imaging Centers"
+    },
+    {
+      "slug": "immigration-consultants",
+      "label": "Immigration Consultants"
+    },
+    {
+      "slug": "immunologists",
+      "label": "Immunologists"
+    },
+    {
+      "slug": "insurance-agencies",
+      "label": "Insurance Agencies"
+    },
+    {
+      "slug": "intellectual-property-lawyers",
+      "label": "Intellectual Property Lawyers"
+    },
+    {
+      "slug": "interior-designers",
+      "label": "Interior Designers"
+    },
+    {
+      "slug": "internet-service-providers",
+      "label": "Internet Service Providers"
+    },
+    {
+      "slug": "jee-coaching-centers",
+      "label": "JEE Coaching Centers"
+    },
+    {
+      "slug": "jewellery-stores",
+      "label": "Jewellery Stores"
+    },
+    {
+      "slug": "juice-shops",
+      "label": "Juice Shops"
+    },
+    {
+      "slug": "kerala-restaurants",
+      "label": "Kerala Restaurants"
+    },
+    {
+      "slug": "kids-activity-centers",
+      "label": "Kids Activity Centers"
+    },
+    {
+      "slug": "lpg-suppliers",
+      "label": "LPG Suppliers"
+    },
+    {
+      "slug": "labour-lawyers",
+      "label": "Labour Lawyers"
+    },
+    {
+      "slug": "language-schools",
+      "label": "Language Schools"
+    },
+    {
+      "slug": "laser-dentistry-clinics",
+      "label": "Laser Dentistry Clinics"
+    },
+    {
+      "slug": "laser-hair-removal-clinics",
+      "label": "Laser Hair Removal Clinics"
+    },
+    {
+      "slug": "laundry-services",
+      "label": "Laundry Services"
+    },
+    {
+      "slug": "lawyers",
+      "label": "Lawyers"
+    },
+    {
+      "slug": "life-insurance-agencies",
+      "label": "Life Insurance Agencies"
+    },
+    {
+      "slug": "lift-maintenance-services",
+      "label": "Lift Maintenance Services"
+    },
+    {
+      "slug": "lighting-stores",
+      "label": "Lighting Stores"
+    },
+    {
+      "slug": "loan-agencies",
+      "label": "Loan Agencies"
+    },
+    {
+      "slug": "locksmiths",
+      "label": "Locksmiths"
+    },
+    {
+      "slug": "maharashtrian-restaurants",
+      "label": "Maharashtrian Restaurants"
+    },
+    {
+      "slug": "maid-services",
+      "label": "Maid Services"
+    },
+    {
+      "slug": "makeup-artists",
+      "label": "Makeup Artists"
+    },
+    {
+      "slug": "manpower-supply-agencies",
+      "label": "Manpower Supply Agencies"
+    },
+    {
+      "slug": "martial-arts-schools",
+      "label": "Martial Arts Schools"
+    },
+    {
+      "slug": "maternity-hospitals",
+      "label": "Maternity Hospitals"
+    },
+    {
+      "slug": "mattress-stores",
+      "label": "Mattress Stores"
+    },
+    {
+      "slug": "maxillofacial-surgeons",
+      "label": "Maxillofacial Surgeons"
+    },
+    {
+      "slug": "meat-products-stores",
+      "label": "Meat Products Stores"
+    },
+    {
+      "slug": "medical-equipment-suppliers",
+      "label": "Medical Equipment Suppliers"
+    },
+    {
+      "slug": "meeting-rooms",
+      "label": "Meeting Rooms"
+    },
+    {
+      "slug": "mehndi-artists",
+      "label": "Mehndi Artists"
+    },
+    {
+      "slug": "mens-health-clinics",
+      "label": "Men's Health Clinics"
+    },
+    {
+      "slug": "milk-delivery-services",
+      "label": "Milk Delivery Services"
+    },
+    {
+      "slug": "mobile-phone-repair-shops",
+      "label": "Mobile Phone Repair Shops"
+    },
+    {
+      "slug": "mobile-phone-stores",
+      "label": "Mobile Phone Stores"
+    },
+    {
+      "slug": "modular-kitchen-contractors",
+      "label": "Modular Kitchen Contractors"
+    },
+    {
+      "slug": "modular-kitchen-showrooms",
+      "label": "Modular Kitchen Showrooms"
+    },
+    {
+      "slug": "motor-insurance-agencies",
+      "label": "Motor Insurance Agencies"
+    },
+    {
+      "slug": "motorcycle-dealers",
+      "label": "Motorcycle Dealers"
+    },
+    {
+      "slug": "motorcycle-repair-shops",
+      "label": "Motorcycle Repair Shops"
+    },
+    {
+      "slug": "music-production-studios",
+      "label": "Music Production Studios"
+    },
+    {
+      "slug": "music-schools",
+      "label": "Music Schools"
+    },
+    {
+      "slug": "neet-coaching-centers",
+      "label": "NEET Coaching Centers"
+    },
+    {
+      "slug": "ngos",
+      "label": "NGOs"
+    },
+    {
+      "slug": "nail-salons",
+      "label": "Nail Salons"
+    },
+    {
+      "slug": "naturopathic-practitioners",
+      "label": "Naturopathic Practitioners"
+    },
+    {
+      "slug": "naturopathy-centers",
+      "label": "Naturopathy Centers"
+    },
+    {
+      "slug": "neonatologists",
+      "label": "Neonatologists"
+    },
+    {
+      "slug": "nephrologists",
+      "label": "Nephrologists"
+    },
+    {
+      "slug": "neurologists",
+      "label": "Neurologists"
+    },
+    {
+      "slug": "neurosurgeons",
+      "label": "Neurosurgeons"
+    },
+    {
+      "slug": "night-clubs",
+      "label": "Night Clubs"
+    },
+    {
+      "slug": "north-indian-restaurants",
+      "label": "North Indian Restaurants"
+    },
+    {
+      "slug": "nurseries",
+      "label": "Nurseries"
+    },
+    {
+      "slug": "nursing-homes",
+      "label": "Nursing Homes"
+    },
+    {
+      "slug": "nutritionists",
+      "label": "Nutritionists"
+    },
+    {
+      "slug": "occupational-therapy-clinics",
+      "label": "Occupational Therapy Clinics"
+    },
+    {
+      "slug": "office-cleaning-services",
+      "label": "Office Cleaning Services"
+    },
+    {
+      "slug": "oncologists",
+      "label": "Oncologists"
+    },
+    {
+      "slug": "ophthalmologists",
+      "label": "Ophthalmologists"
+    },
+    {
+      "slug": "optical-stores",
+      "label": "Optical Stores"
+    },
+    {
+      "slug": "oral-surgeons",
+      "label": "Oral Surgeons"
+    },
+    {
+      "slug": "organic-food-stores",
+      "label": "Organic Food Stores"
+    },
+    {
+      "slug": "orthodontists",
+      "label": "Orthodontists"
+    },
+    {
+      "slug": "orthopedic-surgeons",
+      "label": "Orthopedic Surgeons"
+    },
+    {
+      "slug": "packers-and-movers",
+      "label": "Packers and Movers"
+    },
+    {
+      "slug": "pain-management-clinics",
+      "label": "Pain Management Clinics"
+    },
+    {
+      "slug": "painters",
+      "label": "Painters"
+    },
+    {
+      "slug": "patent-attorneys",
+      "label": "Patent Attorneys"
+    },
+    {
+      "slug": "paying-guest-accommodation",
+      "label": "Paying Guest Accommodation"
+    },
+    {
+      "slug": "pediatric-dentists",
+      "label": "Pediatric Dentists"
+    },
+    {
+      "slug": "pediatricians",
+      "label": "Pediatricians"
+    },
+    {
+      "slug": "periodontists",
+      "label": "Periodontists"
+    },
+    {
+      "slug": "personal-trainers",
+      "label": "Personal Trainers"
+    },
+    {
+      "slug": "pest-control-services",
+      "label": "Pest Control Services"
+    },
+    {
+      "slug": "pet-boarding-services",
+      "label": "Pet Boarding Services"
+    },
+    {
+      "slug": "pet-groomers",
+      "label": "Pet Groomers"
+    },
+    {
+      "slug": "pet-stores",
+      "label": "Pet Stores"
+    },
+    {
+      "slug": "petrol-pumps",
+      "label": "Petrol Pumps"
+    },
+    {
+      "slug": "pharmacies",
+      "label": "Pharmacies"
+    },
+    {
+      "slug": "photo-studios",
+      "label": "Photo Studios"
+    },
+    {
+      "slug": "physiotherapy-clinics",
+      "label": "Physiotherapy Clinics"
+    },
+    {
+      "slug": "pilgrimage-tour-agencies",
+      "label": "Pilgrimage Tour Agencies"
+    },
+    {
+      "slug": "pizza-restaurants",
+      "label": "Pizza Restaurants"
+    },
+    {
+      "slug": "plastic-surgeons",
+      "label": "Plastic Surgeons"
+    },
+    {
+      "slug": "plumbers",
+      "label": "Plumbers"
+    },
+    {
+      "slug": "police-stations",
+      "label": "Police Stations"
+    },
+    {
+      "slug": "preschools",
+      "label": "Preschools"
+    },
+    {
+      "slug": "printer-repair-services",
+      "label": "Printer Repair Services"
+    },
+    {
+      "slug": "printing-services",
+      "label": "Printing Services"
+    },
+    {
+      "slug": "private-tutors",
+      "label": "Private Tutors"
+    },
+    {
+      "slug": "property-lawyers",
+      "label": "Property Lawyers"
+    },
+    {
+      "slug": "property-rental-agencies",
+      "label": "Property Rental Agencies"
+    },
+    {
+      "slug": "prosthodontic-clinics",
+      "label": "Prosthodontic Clinics"
+    },
+    {
+      "slug": "prosthodontists",
+      "label": "Prosthodontists"
+    },
+    {
+      "slug": "psychiatrists",
+      "label": "Psychiatrists"
+    },
+    {
+      "slug": "psychologists",
+      "label": "Psychologists"
+    },
+    {
+      "slug": "puja-stores",
+      "label": "Puja Stores"
+    },
+    {
+      "slug": "pulmonologists",
+      "label": "Pulmonologists"
+    },
+    {
+      "slug": "rajasthani-restaurants",
+      "label": "Rajasthani Restaurants"
+    },
+    {
+      "slug": "real-estate-agencies",
+      "label": "Real Estate Agencies"
+    },
+    {
+      "slug": "recording-studios",
+      "label": "Recording Studios"
+    },
+    {
+      "slug": "refrigerator-repair-services",
+      "label": "Refrigerator Repair Services"
+    },
+    {
+      "slug": "rehabilitation-centers",
+      "label": "Rehabilitation Centers"
+    },
+    {
+      "slug": "restaurants",
+      "label": "Restaurants"
+    },
+    {
+      "slug": "rheumatologists",
+      "label": "Rheumatologists"
+    },
+    {
+      "slug": "roadside-assistance-services",
+      "label": "Roadside Assistance Services"
+    },
+    {
+      "slug": "saree-shops",
+      "label": "Saree Shops"
+    },
+    {
+      "slug": "schools",
+      "label": "Schools"
+    },
+    {
+      "slug": "seafood-restaurants",
+      "label": "Seafood Restaurants"
+    },
+    {
+      "slug": "security-guard-services",
+      "label": "Security Guard Services"
+    },
+    {
+      "slug": "serviced-apartments",
+      "label": "Serviced Apartments"
+    },
+    {
+      "slug": "sewing-machine-repair-services",
+      "label": "Sewing Machine Repair Services"
+    },
+    {
+      "slug": "sexual-health-clinics",
+      "label": "Sexual Health Clinics"
+    },
+    {
+      "slug": "shoe-stores",
+      "label": "Shoe Stores"
+    },
+    {
+      "slug": "sightseeing-tour-agencies",
+      "label": "Sightseeing Tour Agencies"
+    },
+    {
+      "slug": "sign-shops",
+      "label": "Sign Shops"
+    },
+    {
+      "slug": "skin-care-clinics",
+      "label": "Skin Care Clinics"
+    },
+    {
+      "slug": "sofa-cleaning-services",
+      "label": "Sofa Cleaning Services"
+    },
+    {
+      "slug": "solar-energy-companies",
+      "label": "Solar Energy Companies"
+    },
+    {
+      "slug": "south-indian-restaurants",
+      "label": "South Indian Restaurants"
+    },
+    {
+      "slug": "spas",
+      "label": "Spas"
+    },
+    {
+      "slug": "speech-therapy-clinics",
+      "label": "Speech Therapy Clinics"
+    },
+    {
+      "slug": "sports-complexes",
+      "label": "Sports Complexes"
+    },
+    {
+      "slug": "sports-stores",
+      "label": "Sports Stores"
+    },
+    {
+      "slug": "stationery-stores",
+      "label": "Stationery Stores"
+    },
+    {
+      "slug": "stock-brokers",
+      "label": "Stock Brokers"
+    },
+    {
+      "slug": "study-abroad-consultants",
+      "label": "Study Abroad Consultants"
+    },
+    {
+      "slug": "supermarkets",
+      "label": "Supermarkets"
+    },
+    {
+      "slug": "sweet-shops",
+      "label": "Sweet Shops"
+    },
+    {
+      "slug": "swimming-pools",
+      "label": "Swimming Pools"
+    },
+    {
+      "slug": "tv-repair-services",
+      "label": "TV Repair Services"
+    },
+    {
+      "slug": "tattoo-removal-services",
+      "label": "Tattoo Removal Services"
+    },
+    {
+      "slug": "tattoo-shops",
+      "label": "Tattoo Shops"
+    },
+    {
+      "slug": "tax-consultants",
+      "label": "Tax Consultants"
+    },
+    {
+      "slug": "tax-lawyers",
+      "label": "Tax Lawyers"
+    },
+    {
+      "slug": "taxi-services",
+      "label": "Taxi Services"
+    },
+    {
+      "slug": "tiffin-services",
+      "label": "Tiffin Services"
+    },
+    {
+      "slug": "tiles-showrooms",
+      "label": "Tiles Showrooms"
+    },
+    {
+      "slug": "trademark-attorneys",
+      "label": "Trademark Attorneys"
+    },
+    {
+      "slug": "travel-agencies",
+      "label": "Travel Agencies"
+    },
+    {
+      "slug": "travel-insurance-agencies",
+      "label": "Travel Insurance Agencies"
+    },
+    {
+      "slug": "tyre-shops",
+      "label": "Tyre Shops"
+    },
+    {
+      "slug": "upsc-coaching-centers",
+      "label": "UPSC Coaching Centers"
+    },
+    {
+      "slug": "unani-clinics",
+      "label": "Unani Clinics"
+    },
+    {
+      "slug": "unani-practitioners",
+      "label": "Unani Practitioners"
+    },
+    {
+      "slug": "urologists",
+      "label": "Urologists"
+    },
+    {
+      "slug": "used-car-dealers",
+      "label": "Used Car Dealers"
+    },
+    {
+      "slug": "vaccination-centers",
+      "label": "Vaccination Centers"
+    },
+    {
+      "slug": "vascular-surgeons",
+      "label": "Vascular Surgeons"
+    },
+    {
+      "slug": "vegan-restaurants",
+      "label": "Vegan Restaurants"
+    },
+    {
+      "slug": "vegetarian-restaurants",
+      "label": "Vegetarian Restaurants"
+    },
+    {
+      "slug": "veterinarians",
+      "label": "Veterinarians"
+    },
+    {
+      "slug": "visa-consultants",
+      "label": "Visa Consultants"
+    },
+    {
+      "slug": "washing-machine-repair-services",
+      "label": "Washing Machine Repair Services"
+    },
+    {
+      "slug": "waste-collection-services",
+      "label": "Waste Collection Services"
+    },
+    {
+      "slug": "watch-stores",
+      "label": "Watch Stores"
+    },
+    {
+      "slug": "water-purifier-repair-services",
+      "label": "Water Purifier Repair Services"
+    },
+    {
+      "slug": "water-tanker-suppliers",
+      "label": "Water Tanker Suppliers"
+    },
+    {
+      "slug": "water-utility-companies",
+      "label": "Water Utility Companies"
+    },
+    {
+      "slug": "waterproofing-contractors",
+      "label": "Waterproofing Contractors"
+    },
+    {
+      "slug": "wedding-decorators",
+      "label": "Wedding Decorators"
+    },
+    {
+      "slug": "wedding-photographers",
+      "label": "Wedding Photographers"
+    },
+    {
+      "slug": "wedding-planners",
+      "label": "Wedding Planners"
+    },
+    {
+      "slug": "wedding-venues",
+      "label": "Wedding Venues"
+    },
+    {
+      "slug": "wedding-videographers",
+      "label": "Wedding Videographers"
+    },
+    {
+      "slug": "weight-loss-services",
+      "label": "Weight Loss Services"
+    },
+    {
+      "slug": "wellness-ayurveda-centers",
+      "label": "Wellness Ayurveda Centers"
+    },
+    {
+      "slug": "wheel-alignment-services",
+      "label": "Wheel Alignment Services"
+    },
+    {
+      "slug": "window-installation-services",
+      "label": "Window Installation Services"
+    },
+    {
+      "slug": "wine-and-liquor-shops",
+      "label": "Wine and Liquor Shops"
+    },
+    {
+      "slug": "womens-health-clinics",
+      "label": "Women's Health Clinics"
+    },
+    {
+      "slug": "yoga-studios",
+      "label": "Yoga Studios"
+    },
+    {
+      "slug": "yoga-therapists",
+      "label": "Yoga Therapists"
+    }
+  ],
+  "services": [
+    {
+      "slug": "restaurants",
+      "label": "Restaurants"
+    },
+    {
+      "slug": "real-estate-agencies",
+      "label": "Real Estate Agencies"
+    },
+    {
+      "slug": "coaching-centers",
+      "label": "Coaching Centers"
+    },
+    {
+      "slug": "schools",
+      "label": "Schools"
+    },
+    {
+      "slug": "clothing-stores",
+      "label": "Clothing Stores"
+    },
+    {
+      "slug": "banks",
+      "label": "Banks"
+    },
+    {
+      "slug": "hotels",
+      "label": "Hotels"
+    },
+    {
+      "slug": "hospitals",
+      "label": "Hospitals"
+    },
+    {
+      "slug": "clinics",
+      "label": "Clinics"
+    },
+    {
+      "slug": "beauty-salons",
+      "label": "Beauty Salons"
+    },
+    {
+      "slug": "electronics-stores",
+      "label": "Electronics Stores"
+    },
+    {
+      "slug": "diagnostic-centers",
+      "label": "Diagnostic Centers"
+    },
+    {
+      "slug": "stock-brokers",
+      "label": "Stock Brokers"
+    },
+    {
+      "slug": "home-maintenance-services",
+      "label": "Home Maintenance Services"
+    },
+    {
+      "slug": "dentists",
+      "label": "Dentists"
+    },
+    {
+      "slug": "it-services",
+      "label": "IT Services"
+    },
+    {
+      "slug": "gyms",
+      "label": "Gyms"
+    },
+    {
+      "slug": "grocery-stores",
+      "label": "Grocery Stores"
+    },
+    {
+      "slug": "preschools",
+      "label": "Preschools"
+    },
+    {
+      "slug": "auto-repair-shops",
+      "label": "Auto Repair Shops"
+    },
+    {
+      "slug": "home-decor-stores",
+      "label": "Home Decor Stores"
+    },
+    {
+      "slug": "fast-food-restaurants",
+      "label": "Fast Food Restaurants"
+    },
+    {
+      "slug": "colleges",
+      "label": "Colleges"
+    },
+    {
+      "slug": "construction-companies",
+      "label": "Construction Companies"
+    },
+    {
+      "slug": "cafes",
+      "label": "Cafes"
+    },
+    {
+      "slug": "pharmacies",
+      "label": "Pharmacies"
+    },
+    {
+      "slug": "sports-complexes",
+      "label": "Sports Complexes"
+    },
+    {
+      "slug": "travel-agencies",
+      "label": "Travel Agencies"
+    },
+    {
+      "slug": "car-dealers",
+      "label": "Car Dealers"
+    },
+    {
+      "slug": "sweet-shops",
+      "label": "Sweet Shops"
+    },
+    {
+      "slug": "financial-planners",
+      "label": "Financial Planners"
+    },
+    {
+      "slug": "wedding-venues",
+      "label": "Wedding Venues"
+    },
+    {
+      "slug": "loan-agencies",
+      "label": "Loan Agencies"
+    },
+    {
+      "slug": "jewellery-stores",
+      "label": "Jewellery Stores"
+    },
+    {
+      "slug": "bars",
+      "label": "Bars"
+    },
+    {
+      "slug": "spas",
+      "label": "Spas"
+    },
+    {
+      "slug": "bakeries",
+      "label": "Bakeries"
+    },
+    {
+      "slug": "stationery-stores",
+      "label": "Stationery Stores"
+    },
+    {
+      "slug": "ayurvedic-clinics",
+      "label": "Ayurvedic Clinics"
+    },
+    {
+      "slug": "motorcycle-dealers",
+      "label": "Motorcycle Dealers"
+    },
+    {
+      "slug": "mobile-phone-stores",
+      "label": "Mobile Phone Stores"
+    },
+    {
+      "slug": "auto-parts-stores",
+      "label": "Auto Parts Stores"
+    },
+    {
+      "slug": "printing-services",
+      "label": "Printing Services"
+    },
+    {
+      "slug": "petrol-pumps",
+      "label": "Petrol Pumps"
+    },
+    {
+      "slug": "hardware-stores",
+      "label": "Hardware Stores"
+    },
+    {
+      "slug": "ice-cream-shops",
+      "label": "Ice Cream Shops"
+    },
+    {
+      "slug": "optical-stores",
+      "label": "Optical Stores"
+    },
+    {
+      "slug": "insurance-agencies",
+      "label": "Insurance Agencies"
+    },
+    {
+      "slug": "physiotherapy-clinics",
+      "label": "Physiotherapy Clinics"
+    },
+    {
+      "slug": "shoe-stores",
+      "label": "Shoe Stores"
+    },
+    {
+      "slug": "ophthalmologists",
+      "label": "Ophthalmologists"
+    },
+    {
+      "slug": "sports-stores",
+      "label": "Sports Stores"
+    },
+    {
+      "slug": "supermarkets",
+      "label": "Supermarkets"
+    },
+    {
+      "slug": "police-stations",
+      "label": "Police Stations"
+    },
+    {
+      "slug": "lawyers",
+      "label": "Lawyers"
+    },
+    {
+      "slug": "general-surgeons",
+      "label": "General Surgeons"
+    },
+    {
+      "slug": "veterinarians",
+      "label": "Veterinarians"
+    },
+    {
+      "slug": "gynecologists",
+      "label": "Gynecologists"
+    },
+    {
+      "slug": "cinemas",
+      "label": "Cinemas"
+    },
+    {
+      "slug": "tattoo-shops",
+      "label": "Tattoo Shops"
+    },
+    {
+      "slug": "pet-stores",
+      "label": "Pet Stores"
+    },
+    {
+      "slug": "internet-service-providers",
+      "label": "Internet Service Providers"
+    },
+    {
+      "slug": "furniture-stores",
+      "label": "Furniture Stores"
+    },
+    {
+      "slug": "packers-and-movers",
+      "label": "Packers and Movers"
+    },
+    {
+      "slug": "nursing-homes",
+      "label": "Nursing Homes"
+    },
+    {
+      "slug": "motorcycle-repair-shops",
+      "label": "Motorcycle Repair Shops"
+    },
+    {
+      "slug": "homeopathic-doctors",
+      "label": "Homeopathic Doctors"
+    },
+    {
+      "slug": "laundry-services",
+      "label": "Laundry Services"
+    },
+    {
+      "slug": "fruit-and-vegetable-stores",
+      "label": "Fruit & Vegetable Stores"
+    },
+    {
+      "slug": "mattress-stores",
+      "label": "Mattress Stores"
+    },
+    {
+      "slug": "event-management-companies",
+      "label": "Event Management Companies"
+    },
+    {
+      "slug": "solar-energy-companies",
+      "label": "Solar Energy Companies"
+    },
+    {
+      "slug": "watch-stores",
+      "label": "Watch Stores"
+    },
+    {
+      "slug": "caterers",
+      "label": "Caterers"
+    },
+    {
+      "slug": "driving-schools",
+      "label": "Driving Schools"
+    },
+    {
+      "slug": "maternity-hospitals",
+      "label": "Maternity Hospitals"
+    },
+    {
+      "slug": "taxi-services",
+      "label": "Taxi Services"
+    },
+    {
+      "slug": "guest-houses",
+      "label": "Guest Houses"
+    },
+    {
+      "slug": "cloud-kitchens",
+      "label": "Cloud Kitchens"
+    },
+    {
+      "slug": "pediatricians",
+      "label": "Pediatricians"
+    },
+    {
+      "slug": "psychiatrists",
+      "label": "Psychiatrists"
+    },
+    {
+      "slug": "serviced-apartments",
+      "label": "Serviced Apartments"
+    },
+    {
+      "slug": "amusement-parks",
+      "label": "Amusement Parks"
+    },
+    {
+      "slug": "baby-stores",
+      "label": "Baby Stores"
+    },
+    {
+      "slug": "juice-shops",
+      "label": "Juice Shops"
+    },
+    {
+      "slug": "home-cleaning-services",
+      "label": "Home Cleaning Services"
+    },
+    {
+      "slug": "painters",
+      "label": "Painters"
+    },
+    {
+      "slug": "security-guard-services",
+      "label": "Security Guard Services"
+    },
+    {
+      "slug": "interior-designers",
+      "label": "Interior Designers"
+    },
+    {
+      "slug": "general-physicians",
+      "label": "General Physicians"
+    },
+    {
+      "slug": "photo-studios",
+      "label": "Photo Studios"
+    },
+    {
+      "slug": "music-schools",
+      "label": "Music Schools"
+    },
+    {
+      "slug": "art-schools",
+      "label": "Art Schools"
+    },
+    {
+      "slug": "wedding-photographers",
+      "label": "Wedding Photographers"
+    },
+    {
+      "slug": "night-clubs",
+      "label": "Night Clubs"
+    },
+    {
+      "slug": "architects",
+      "label": "Architects"
+    },
+    {
+      "slug": "dance-schools",
+      "label": "Dance Schools"
+    },
+    {
+      "slug": "hostels",
+      "label": "Hostels"
+    },
+    {
+      "slug": "wine-and-liquor-shops",
+      "label": "Wine and Liquor Shops"
+    },
+    {
+      "slug": "tiles-showrooms",
+      "label": "Tiles Showrooms"
+    },
+    {
+      "slug": "swimming-pools",
+      "label": "Swimming Pools"
+    },
+    {
+      "slug": "astrologers",
+      "label": "Astrologers"
+    },
+    {
+      "slug": "paying-guest-accommodation",
+      "label": "Paying Guest Accommodation"
+    },
+    {
+      "slug": "bicycle-stores",
+      "label": "Bicycle Stores"
+    },
+    {
+      "slug": "boutiques",
+      "label": "Boutiques"
+    },
+    {
+      "slug": "building-materials-suppliers",
+      "label": "Building Materials Suppliers"
+    },
+    {
+      "slug": "meat-products-stores",
+      "label": "Meat Products Stores"
+    },
+    {
+      "slug": "child-development-centers",
+      "label": "Child Development Centers"
+    },
+    {
+      "slug": "medical-equipment-suppliers",
+      "label": "Medical Equipment Suppliers"
+    },
+    {
+      "slug": "lpg-suppliers",
+      "label": "LPG Suppliers"
+    },
+    {
+      "slug": "mobile-phone-repair-shops",
+      "label": "Mobile Phone Repair Shops"
+    },
+    {
+      "slug": "fish-stores",
+      "label": "Fish Stores"
+    },
+    {
+      "slug": "bike-rental-services",
+      "label": "Bike Rental Services"
+    },
+    {
+      "slug": "saree-shops",
+      "label": "Saree Shops"
+    },
+    {
+      "slug": "home-appliance-stores",
+      "label": "Home Appliance Stores"
+    },
+    {
+      "slug": "tax-consultants",
+      "label": "Tax Consultants"
+    },
+    {
+      "slug": "coworking-spaces",
+      "label": "Coworking Spaces"
+    }
+  ]
+}
