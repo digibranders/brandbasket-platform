@@ -25,8 +25,8 @@ describe("the console dock", () => {
 
   it("leaves out the directory's sections where the deployment has no directory (Fynix), and keeps the rest", () => {
     const html = render("/clients", false, "admin", false);
-    for (const href of ["/directory", "/geography", "/ads", "/deals", "/affiliates"]) expect(html).not.toContain(`href="${href}"`);
-    for (const href of ["/", "/leads", "/clients", "/coupons", "/pricing", "/invoices", "/leaving", "/outbox", "/access-log", "/leads/new"]) {
+    for (const href of ["/directory", "/geography", "/ads", "/deals"]) expect(html).not.toContain(`href="${href}"`);
+    for (const href of ["/", "/leads", "/clients", "/coupons", "/affiliates", "/pricing", "/invoices", "/leaving", "/outbox", "/access-log", "/leads/new"]) {
       expect(html).toContain(`href="${href}"`);
     }
   });
