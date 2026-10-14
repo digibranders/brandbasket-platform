@@ -1,0 +1,40 @@
+# What this does: runs the Fynix staff console (apps/admin) on port 3003, behind nginx (closed to the outside by the firewall) (and, recommended, Cloudflare Access).
+# Installed to /etc/systemd/system/ by scripts/server/bootstrap-droplet.sh. Assumes: user "deploy", the release layout of
+# docs/deployment/fynix-droplet.md (/srv/fynix/current-admin symlink; apps/admin/.env.local linked to
+# /srv/fynix/shared/admin.env.local), Node 24 in /usr/bin. deploy.sh restarts this unit after switching the symlink.
+[Unit]
+Description=Fynix staff console (apps/admin)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/srv/fynix/current-admin/apps/admin
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=NODE_OPTIONS=--max-old-space-size=384
+# No -H flag, on purpose: `next start -H 127.0.0.1` makes Next build its internal rewrite address as http://localhost:3003, which resolves to
+# IPv6 first, and every page then answers 404 (checked). Next therefore listens on all interfaces, so port 3003
+# MUST be closed to the outside by the firewall (runbook section 1); nginx reaches it on 127.0.0.1.
+ExecStart=/srv/fynix/current-admin/apps/admin/node_modules/.bin/next start -p 3003
+Restart=on-failure
+RestartSec=3
+StartLimitIntervalSec=60
+StartLimitBurst=3
+MemoryHigh=500M
+MemoryMax=650M
+TasksMax=256
+TimeoutStopSec=20
+SyslogIdentifier=fynix-admin
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

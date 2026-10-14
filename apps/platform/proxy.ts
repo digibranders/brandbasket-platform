@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { BRANDS, isDirectoryOnlyPath } from "@/lib/brand";
 import { hasSessionCookie, hintCookieDomain, hintCookieOptions, hintUpdate, SIGNED_IN_HINT_COOKIE } from "@/lib/signed-in-hint";
 import {
   brandForHost,
@@ -58,10 +59,17 @@ export function createProxy(origins: SurfaceOrigins | null, hint: SignedInHintCo
     // let it appear on the customer host, which is the assumption collections/Media.ts's access block rests on.
     if (isPayloadAdminPath(pathname)) return new NextResponse(null, { status: 404 });
 
+    // A brand that does not sell the directory listing has no use for the pages that exist only for it: they get the
+    // dashboard's own not-found screen (app/app-host/[...missing]) however the address was reached.
+    const brand = brandForHost(request.headers.get("host"), origins);
+    if (!BRANDS[brand].showsListing && isDirectoryOnlyPath(pathname)) {
+      return rewriteTo(request, rewritePathForSurface(surface, "/not-here"), "");
+    }
+
     const response = rewriteTo(request, rewritePathForSurface(surface, pathname), search);
     // The website's signed-in marker is Firstfold's (a cookie on its parent domain, read by firstfold.io): the Fynix host
     // has no website reading it, and a browser would refuse the parent domain on it anyway.
-    if (origins !== null && brandForHost(request.headers.get("host"), origins) === "firstfold") {
+    if (origins !== null && brand === "firstfold") {
       syncSignedInHint(request, response, origins.app, hint);
     }
     return response;

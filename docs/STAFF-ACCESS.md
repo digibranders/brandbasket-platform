@@ -1,7 +1,7 @@
 # Staff access
 
 The staff console is its own app (`apps/admin`) on its own address: **https://staff.fynix.digital** in production, beside the
-customer dashboard at https://localbusiness.fynix.digital. Set `ADMIN_ORIGIN=https://staff.fynix.digital` in both apps'
+customer dashboard at https://app.fynix.digital. Set `ADMIN_ORIGIN=https://staff.fynix.digital` in both apps'
 environments (`apps/admin/.env.production.example`, `apps/platform/.env.production.example`).
 
 ## Two origins, no shared cookie

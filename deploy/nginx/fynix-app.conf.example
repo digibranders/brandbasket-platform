@@ -1,0 +1,38 @@
+# What this does: serves the Fynix customer dashboard over https and hands it to fynix-app on 127.0.0.1:3001.
+# Installed to /etc/nginx/sites-available/fynix-app.conf (and linked into sites-enabled) by bootstrap-droplet.sh, AFTER the
+# certificate exists. `app.fynix.digital` is replaced with the real hostname (--app-host).
+# Assumes: the Let's Encrypt certificate for that name at /etc/letsencrypt/live/app.fynix.digital/ (certbot certonly --webroot,
+# see fynix-acme.conf.example); /etc/nginx/snippets/fynix-proxy.conf; the DNS record for this name is DNS-only (grey cloud) in
+# Cloudflare, so visitors reach this machine directly and $remote_addr is the real visitor.
+# If you later turn the orange cloud on for this name, also include fynix-cloudflare-realip.conf here, as fynix-admin.conf does,
+# or every visitor will look like one of Cloudflare's addresses and share one rate limit.
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name app.fynix.digital;
+
+    ssl_certificate     /etc/letsencrypt/live/app.fynix.digital/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.fynix.digital/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:fynix_ssl:10m;
+    ssl_session_timeout 1d;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    # Uploads (support screenshots, product photos). The app enforces its own, smaller limits per route.
+    client_max_body_size 25m;
+    server_tokens off;
+
+    # Next's content-hashed assets never change for a given URL: let browsers keep them. (The app sets these headers itself;
+    # this only stops nginx buffering large responses to disk for them.)
+    location /_next/static/ {
+        include /etc/nginx/snippets/fynix-proxy.conf;
+        proxy_pass http://127.0.0.1:3001;
+    }
+
+    location / {
+        include /etc/nginx/snippets/fynix-proxy.conf;
+        proxy_pass http://127.0.0.1:3001;
+    }
+}

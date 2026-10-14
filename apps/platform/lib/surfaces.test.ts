@@ -175,29 +175,29 @@ describe("readOriginsFromEnv", () => {
 });
 
 describe("the Fynix host (LOCAL_BUSINESS_ORIGIN)", () => {
-  const both: SurfaceOrigins = { app: "https://app.firstfold.io", localBusiness: "https://localbusiness.fynix.digital" };
+  const both: SurfaceOrigins = { app: "https://app.firstfold.io", localBusiness: "https://app.fynix.digital" };
   const local: SurfaceOrigins = { app: "http://app-ads.localhost:3097", anyLocalHost: true };
 
   it("answers the same dashboard on its own host, and still on the app's", () => {
-    expect(resolveSurface("localbusiness.fynix.digital", both)).toBe("app");
-    expect(resolveSurface("LocalBusiness.Fynix.Digital", both)).toBe("app");
+    expect(resolveSurface("app.fynix.digital", both)).toBe("app");
+    expect(resolveSurface("App.Fynix.Digital", both)).toBe("app");
     expect(resolveSurface("app.firstfold.io", both)).toBe("app");
     expect(resolveSurface("fynix.digital", both)).toBeNull();
-    expect(resolveSurface("localbusiness.fynix.digital:8443", both)).toBeNull();
+    expect(resolveSurface("app.fynix.digital:8443", both)).toBeNull();
   });
 
   it("is off, answering nothing new, when the variable is not set", () => {
-    expect(resolveSurface("localbusiness.fynix.digital", { app: both.app })).toBeNull();
+    expect(resolveSurface("app.fynix.digital", { app: both.app })).toBeNull();
   });
 
   it("is a Fynix brand on its host, Firstfold on every other", () => {
-    expect(brandForHost("localbusiness.fynix.digital", both)).toBe("fynix");
+    expect(brandForHost("app.fynix.digital", both)).toBe("fynix");
     expect(brandForHost("app.firstfold.io", both)).toBe("firstfold");
     expect(brandForHost("evil.example", both)).toBe("firstfold");
     expect(brandForHost(null, both)).toBe("firstfold");
     expect(brandForHost("not a host/", both)).toBe("firstfold");
-    expect(brandForHost("localbusiness.fynix.digital", null)).toBe("firstfold");
-    expect(brandForHost("localbusiness.fynix.digital", { app: both.app })).toBe("firstfold");
+    expect(brandForHost("app.fynix.digital", null)).toBe("firstfold");
+    expect(brandForHost("app.fynix.digital", { app: both.app })).toBe("firstfold");
   });
 
   it("takes any local localbusiness.* address as Fynix under next dev, with no setting", () => {
@@ -211,14 +211,14 @@ describe("the Fynix host (LOCAL_BUSINESS_ORIGIN)", () => {
   });
 
   it("accepts its own origin on uploads and the like, as the app's", () => {
-    expect(isAppOrigin("https://localbusiness.fynix.digital", "localbusiness.fynix.digital", both)).toBe(true);
+    expect(isAppOrigin("https://app.fynix.digital", "app.fynix.digital", both)).toBe(true);
     expect(isAppOrigin("https://app.firstfold.io", "app.firstfold.io", both)).toBe(true);
-    expect(isAppOrigin("https://localbusiness.fynix.digital", "app.firstfold.io", { app: both.app })).toBe(false);
-    expect(isAppOrigin("https://evil.example", "localbusiness.fynix.digital", both)).toBe(false);
+    expect(isAppOrigin("https://app.fynix.digital", "app.firstfold.io", { app: both.app })).toBe(false);
+    expect(isAppOrigin("https://evil.example", "app.fynix.digital", both)).toBe(false);
   });
 
   it("sends a user back to the host they are on", () => {
-    expect(appOriginForHost("localbusiness.fynix.digital", both)).toBe("https://localbusiness.fynix.digital");
+    expect(appOriginForHost("app.fynix.digital", both)).toBe("https://app.fynix.digital");
     expect(appOriginForHost("app.firstfold.io", both)).toBe("https://app.firstfold.io");
     expect(appOriginForHost(null, both)).toBe("https://app.firstfold.io");
     expect(appOriginForHost("evil.example", both)).toBe("https://app.firstfold.io");
@@ -230,8 +230,8 @@ describe("the Fynix host (LOCAL_BUSINESS_ORIGIN)", () => {
     const app = "https://app.firstfold.io";
     expect(readLocalBusinessOrigin({ APP_ORIGIN: app })).toBeUndefined();
     expect(readLocalBusinessOrigin({ APP_ORIGIN: app, LOCAL_BUSINESS_ORIGIN: "  " })).toBeUndefined();
-    expect(readLocalBusinessOrigin({ APP_ORIGIN: app, LOCAL_BUSINESS_ORIGIN: "https://localbusiness.fynix.digital/x?y=1" })).toBe(
-      "https://localbusiness.fynix.digital",
+    expect(readLocalBusinessOrigin({ APP_ORIGIN: app, LOCAL_BUSINESS_ORIGIN: "https://app.fynix.digital/x?y=1" })).toBe(
+      "https://app.fynix.digital",
     );
     expect(() => readLocalBusinessOrigin({ APP_ORIGIN: app, LOCAL_BUSINESS_ORIGIN: "localbusiness" })).toThrow("LOCAL_BUSINESS_ORIGIN");
     expect(() => readLocalBusinessOrigin({ APP_ORIGIN: app, LOCAL_BUSINESS_ORIGIN: "https://app.firstfold.io/other" })).toThrow("different host");
@@ -246,18 +246,18 @@ describe("the Fynix host (LOCAL_BUSINESS_ORIGIN)", () => {
 });
 
 describe("a deployment that serves one brand (PLATFORM_BRAND)", () => {
-  const env = { APP_ORIGIN: "https://localbusiness.fynix.digital", NODE_ENV: "production" } as const;
+  const env = { APP_ORIGIN: "https://app.fynix.digital", NODE_ENV: "production" } as const;
 
   it("is Firstfold's when unset, as before", () => {
     expect(readDefaultBrand(env)).toBeUndefined();
     expect(readDefaultBrand({ ...env, PLATFORM_BRAND: "  " })).toBeUndefined();
-    expect(brandForHost("localbusiness.fynix.digital", readOriginsFromEnv(env))).toBe("firstfold");
+    expect(brandForHost("app.fynix.digital", readOriginsFromEnv(env))).toBe("firstfold");
   });
 
   it("makes every host Fynix when set to fynix, with no second host", () => {
     const origins = readOriginsFromEnv({ ...env, PLATFORM_BRAND: "fynix" });
     expect(origins?.defaultBrand).toBe("fynix");
-    expect(brandForHost("localbusiness.fynix.digital", origins)).toBe("fynix");
+    expect(brandForHost("app.fynix.digital", origins)).toBe("fynix");
     expect(brandForHost("anything.example.com", origins)).toBe("fynix");
     expect(brandForHost(null, origins)).toBe("fynix");
   });
@@ -269,8 +269,8 @@ describe("a deployment that serves one brand (PLATFORM_BRAND)", () => {
   });
 
   it("keeps the configured second host Fynix whatever the default is", () => {
-    const origins = readOriginsFromEnv({ APP_ORIGIN: "https://app.firstfold.io", LOCAL_BUSINESS_ORIGIN: "https://localbusiness.fynix.digital", NODE_ENV: "production" });
-    expect(brandForHost("localbusiness.fynix.digital", origins)).toBe("fynix");
+    const origins = readOriginsFromEnv({ APP_ORIGIN: "https://app.firstfold.io", LOCAL_BUSINESS_ORIGIN: "https://app.fynix.digital", NODE_ENV: "production" });
+    expect(brandForHost("app.fynix.digital", origins)).toBe("fynix");
     expect(brandForHost("app.firstfold.io", origins)).toBe("firstfold");
   });
 });

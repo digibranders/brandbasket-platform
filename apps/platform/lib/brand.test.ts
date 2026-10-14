@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BRANDS, brandedLabel, brandedPlanName, brandText, FYNIX_DEFAULT_CHOICE, offersChoice, sellsFreeListing } from "./brand";
+import { BRANDS, brandedLabel, brandedPlanName, brandText, FYNIX_DEFAULT_CHOICE, offersChoice, sellsFreeListing, isDirectoryOnlyPath } from "./brand";
 
 describe("brands", () => {
   it("sells all three plans under Firstfold, as before", () => {
@@ -79,5 +79,19 @@ describe("brandedPlanName", () => {
     expect(brandedPlanName("Firstfold Premium", BRANDS.fynix)).toBe("Premium");
     expect(brandedPlanName("Firstfold Care", BRANDS.fynix)).toBe("Care");
     expect(brandedPlanName("Care plan", BRANDS.fynix)).toBe("Care plan");
+  });
+});
+
+describe("isDirectoryOnlyPath", () => {
+  it("is true for the pages that exist only for the directory listing, and anything under them", () => {
+    for (const path of ["/business", "/deals", "/listing", "/advertise", "/reviews", "/leads", "/business/preview", "/deals/new"]) {
+      expect(isDirectoryOnlyPath(path), path).toBe(true);
+    }
+  });
+
+  it("is false for every other dashboard page, including ones whose name starts the same way", () => {
+    for (const path of ["/", "/billing", "/upgrade", "/onboarding/business", "/listing-pictures/abc", "/leadsheet", "/support", "/content"]) {
+      expect(isDirectoryOnlyPath(path), path).toBe(false);
+    }
   });
 });

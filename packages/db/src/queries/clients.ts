@@ -250,11 +250,15 @@ async function tiersByBusiness(db: Database, businessIds: readonly string[]): Pr
 const NO_BILLING: ClientBilling = { subscription: null, firstPayment: null };
 
 /**
- * Every website client with its owner and current project, newest first. Free listing accounts (kind `listing`) are
- * not clients: the staff console shows them on the Ads page.
+ * Every website client with its owner and current project, newest first. A client is a customer who has paid: a business
+ * that has registered but whose first plan payment has not been captured is not one yet, so it does not appear here (and
+ * so not on the Journey or Clients screens). A failed payment, an add-on and a one-off charge do not make a client either:
+ * only a captured payment for the plan does (see billingByBusiness). Free listing accounts (kind `listing`) are not
+ * clients: the staff console shows them on the Ads page. A business is still opened by its address (findClientDetail), so
+ * a link from the Leads screen to one that has not paid yet keeps working.
  */
 export async function listClients(db: Database): Promise<ClientSummary[]> {
-  const rows = await db
+  const registered = await db
     .select({
       businessId: businesses.id,
       businessName: businesses.name,
@@ -265,11 +269,16 @@ export async function listClients(db: Database): Promise<ClientSummary[]> {
     .where(eq(businesses.kind, "website"))
     .orderBy(desc(businesses.createdAt), desc(businesses.id));
 
+  const allBilling = await billingByBusiness(
+    db,
+    registered.map((row) => row.businessId),
+  );
+  const rows = registered.filter((row) => allBilling.get(row.businessId)?.firstPayment != null);
+
   const ids = rows.map((row) => row.businessId);
-  const [owners, projectsByBusiness, billing, tiers] = await Promise.all([
+  const [owners, projectsByBusiness, tiers] = await Promise.all([
     ownersByBusiness(db, ids),
     latestProjectByBusiness(db, ids),
-    billingByBusiness(db, ids),
     tiersByBusiness(db, ids),
   ]);
 
@@ -278,7 +287,7 @@ export async function listClients(db: Database): Promise<ClientSummary[]> {
     tier: tiers.get(row.businessId) ?? "premium",
     owner: owners.get(row.businessId) ?? null,
     project: projectsByBusiness.get(row.businessId) ?? null,
-    billing: billing.get(row.businessId) ?? NO_BILLING,
+    billing: allBilling.get(row.businessId) ?? NO_BILLING,
   }));
 }
 

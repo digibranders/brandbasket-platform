@@ -1,0 +1,15 @@
+# What this does: the nightly backup: both databases, uploaded media and private support files, and the environment files,
+# into /srv/fynix/backups, then (when configured in /etc/fynix/backup.conf) a copy off this machine. See docs/deployment/fynix-droplet.md, section 10.
+# Installed by bootstrap-droplet.sh. Runs as root because the database dump goes through the postgres user and the secrets file
+# is root-only; the script it runs is the root-owned copy in /usr/local/sbin, never anything from a release directory.
+[Unit]
+Description=Fynix nightly backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/fynix-backup --apply
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=idle
+SyslogIdentifier=fynix-backup

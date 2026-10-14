@@ -27,6 +27,7 @@
     "cms:migrate": "pnpm --filter @firstfold/platform cms:migrate",
     "cms:migrate:create": "node scripts/cms-create-migration.mjs",
     "cms:migrate:status": "pnpm --filter @firstfold/platform cms:migrate:status",
+    "env:check": "pnpm --filter @firstfold/db exec tsx ../../scripts/server/check-env.ts",
     "staff:create": "pnpm --filter @firstfold/auth staff:create",
     "retention:run": "pnpm --filter @firstfold/db exec tsx ../../apps/platform/scripts/retention-run.ts",
     "support:attachments:maintain": "pnpm --filter @firstfold/db exec tsx --conditions=react-server ../../apps/platform/scripts/maintain-support-attachments.ts"

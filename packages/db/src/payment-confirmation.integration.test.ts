@@ -697,7 +697,7 @@ describe("findBillingState", () => {
 });
 
 describe("listClients billing", () => {
-  it("shows who has paid, what and when, and the live subscription", async () => {
+  it("shows who has paid, what and when, and the live subscription, and leaves out a checkout that was opened but not paid", async () => {
     const subscriptionId = await openCheckout(businessA, "fake_sub_a");
     await recordPaymentAndActivate(dbs.staff.db, await activation(subscriptionId, "fake_pay_a"));
     await openCheckout(businessB, "fake_sub_b");
@@ -716,15 +716,7 @@ describe("listClients billing", () => {
       },
       firstPayment: { amountCents: 6900, currency: "USD", provider: "fake", paidAt: PAID_AT, manual: null },
     });
-    expect(unpaid?.billing).toEqual({
-      subscription: {
-        status: "incomplete",
-        provider: "fake",
-        activatedAt: null,
-        paidThroughAt: null,
-        commitmentEndsAt: null,
-      },
-      firstPayment: null,
-    });
+    // Opening a checkout does not make a client; paying does.
+    expect(unpaid).toBeUndefined();
   });
 });

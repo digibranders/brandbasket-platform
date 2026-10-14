@@ -23,9 +23,9 @@ describe("resolveTurnstile", () => {
   it("accepts a Fynix server's own dashboard and console hosts by default, and none of Firstfold's", () => {
     const config = resolveTurnstile({
       NODE_ENV: "production", ...KEYS, PLATFORM_BRAND: "fynix",
-      APP_ORIGIN: "https://localbusiness.fynix.digital", ADMIN_ORIGIN: "https://admin.localbusiness.fynix.digital:8443",
+      APP_ORIGIN: "https://app.fynix.digital", ADMIN_ORIGIN: "https://staff.fynix.digital:8443",
     });
-    expect(config?.hostnames).toEqual(["localbusiness.fynix.digital", "admin.localbusiness.fynix.digital"]);
+    expect(config?.hostnames).toEqual(["app.fynix.digital", "staff.fynix.digital"]);
     expect(JSON.stringify(config?.hostnames)).not.toMatch(/firstfold/);
   });
 

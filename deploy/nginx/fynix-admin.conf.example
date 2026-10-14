@@ -1,0 +1,40 @@
+# What this does: serves the Fynix staff console over https and hands it to fynix-admin on 127.0.0.1:3003, ONLY to connections
+# that arrive from Cloudflare (the name is proxied behind Cloudflare Access, which is the console's second factor).
+# Installed to /etc/nginx/sites-available/fynix-admin.conf (and linked into sites-enabled) by bootstrap-droplet.sh.
+# `staff.fynix.digital` is replaced with the real hostname (--admin-host).
+# Assumes:
+#   - the Cloudflare Origin CA certificate for that name at /etc/ssl/fynix/staff.pem and /etc/ssl/fynix/staff.key (key mode 600),
+#     with Cloudflare's SSL/TLS mode set to "Full (strict)". If you decide NOT to proxy this name, replace the two ssl_ lines with a
+#     Let's Encrypt certificate as fynix-app.conf does, delete the three Cloudflare lines, and add an `allow <office ip>; deny all;`.
+#   - /etc/nginx/snippets/fynix-cloudflare-realip.conf and /etc/nginx/conf.d/fynix-cloudflare-geo.conf, written by
+#     scripts/server/cloudflare-ips.sh. The first restores the real visitor address from Cloudflare's CF-Connecting-IP header for
+#     connections from Cloudflare's own ranges only; the second sets $fynix_from_cloudflare, and the check below refuses (444, no
+#     answer) everyone who did not come through Cloudflare, so the Access login cannot be walked around by calling this server's
+#     address directly.
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name staff.fynix.digital;
+
+    ssl_certificate     /etc/ssl/fynix/staff.pem;
+    ssl_certificate_key /etc/ssl/fynix/staff.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:fynix_ssl_admin:10m;
+    ssl_session_timeout 1d;
+
+    include /etc/nginx/snippets/fynix-cloudflare-realip.conf;
+    if ($fynix_from_cloudflare = 0) {
+        return 444;
+    }
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+    client_max_body_size 10m;
+    server_tokens off;
+
+    location / {
+        include /etc/nginx/snippets/fynix-proxy.conf;
+        proxy_pass http://127.0.0.1:3003;
+    }
+}

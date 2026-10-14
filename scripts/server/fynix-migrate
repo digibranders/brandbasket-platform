@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# What this does: applies pending migrations to Fynix's main production database (fynix_platform) as its migration owner
+# (fynix_owner). Installed on the droplet as /usr/local/sbin/fynix-migrate (root:root 0755) by bootstrap-droplet.sh, and
+# called by scripts/server/deploy.sh through sudo. Besides restarting the two apps it is the only thing the deploy user
+# may run through sudo (see deploy/sudoers.fynix.example).
+#
+# Assumes: /root/fynix-secrets.env (mode 600, written by setup-database.sh) holds OWNER_PW; PostgreSQL listens on
+# localhost:5432; /srv/fynix/deploying is a symlink to the release being deployed; node and pnpm are on the deploy user's PATH.
+#
+# Root is needed for one reason: the owner's password lives in a root-only file. Nothing else runs as root. The migration
+# itself runs as the deploy user, because the release directory is theirs: executing that code as root would hand root to
+# anyone who can act as deploy. Takes no arguments, and the sudoers rule allows none.
+#
+# Safe to re-run: pending migrations are applied once, already-applied ones are skipped by the migration runner.
+set -euo pipefail
+
+readonly SECRETS_FILE="${FYNIX_SECRETS_FILE:-/root/fynix-secrets.env}"
+readonly DEPLOY_ROOT="${FYNIX_ROOT:-/srv/fynix}"
+readonly DEPLOYING="$DEPLOY_ROOT/deploying"
+readonly DEPLOY_USER="${FYNIX_DEPLOY_USER:-deploy}"
+readonly DB_NAME=fynix_platform
+readonly DB_OWNER=fynix_owner
+
+if [[ $# -ne 0 ]]; then
+  echo "fynix-migrate takes no arguments." >&2
+  exit 64
+fi
+if [[ ! -r "$SECRETS_FILE" ]]; then
+  echo "Cannot read $SECRETS_FILE (run it with sudo, after scripts/server/setup-database.sh --apply)." >&2
+  exit 1
+fi
+
+# Read the one value needed rather than sourcing the whole file into this shell.
+owner_pw="$(grep -E '^OWNER_PW=' "$SECRETS_FILE" | head -n 1 | cut -d= -f2-)"
+owner_pw="${owner_pw#\"}"; owner_pw="${owner_pw%\"}"
+owner_pw="${owner_pw#\'}"; owner_pw="${owner_pw%\'}"
+if [[ -z "$owner_pw" ]]; then
+  echo "OWNER_PW is not set in $SECRETS_FILE." >&2
+  exit 1
+fi
+
+# Percent-encode the password so any character is safe inside the URL.
+owner_url="$(OWNER_PW="$owner_pw" DB_OWNER="$DB_OWNER" DB_NAME="$DB_NAME" node -e \
+  'process.stdout.write("postgresql://" + process.env.DB_OWNER + ":" + encodeURIComponent(process.env.OWNER_PW) + "@localhost:5432/" + process.env.DB_NAME)')"
+
+# Only ever a release directory: the symlink is deploy's to set, but the code it points at runs as deploy below, never as
+# root, so following it hands deploy nothing it does not already have.
+app_root="$(readlink -f "$DEPLOYING")"
+if [[ "$app_root" != "$DEPLOY_ROOT"/releases/* || ! -f "$app_root/package.json" ]]; then
+  echo "$DEPLOYING does not point at a release under $DEPLOY_ROOT/releases." >&2
+  exit 1
+fi
+cd "$app_root"
+# packages/db/scripts/migrate.ts lets an already-set variable win over the env file, so the owner connection exists only
+# for this one process and is never written to disk.
+if [[ "${FYNIX_MIGRATE_DRY_RUN:-0}" == 1 ]]; then
+  echo "[dry-run] would run as $DEPLOY_USER in $app_root: pnpm db:migrate (database $DB_NAME as $DB_OWNER)"
+  exit 0
+fi
+exec runuser -u "$DEPLOY_USER" -- env HOME="/home/$DEPLOY_USER" DATABASE_URL_OWNER="$owner_url" pnpm db:migrate

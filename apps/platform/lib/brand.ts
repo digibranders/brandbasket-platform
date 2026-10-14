@@ -144,3 +144,15 @@ const LISTING_FEATURE_IDS: ReadonlySet<string> = new Set(["listing", "images", "
 export function featureShownTo(id: string, brand: Brand): boolean {
   return brand.showsListing || !LISTING_FEATURE_IDS.has(id);
 }
+
+/**
+ * Dashboard pages that exist only for the directory listing and what it brings. A brand that does not sell the listing
+ * (showsListing false) has nothing to put on them, so the proxy answers them with the dashboard's not-found screen: a
+ * customer who types one of the addresses meets "Nothing here" rather than a page about a directory they are not on.
+ */
+const DIRECTORY_ONLY_PATHS: readonly string[] = ["/business", "/deals", "/listing", "/advertise", "/reviews", "/leads"];
+
+/** Whether a dashboard path is one of the directory-only pages, or anything under one. */
+export function isDirectoryOnlyPath(pathname: string): boolean {
+  return DIRECTORY_ONLY_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}

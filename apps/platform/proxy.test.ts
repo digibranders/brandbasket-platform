@@ -83,6 +83,23 @@ describe("createProxy", () => {
   });
 
 
+  it("shows Fynix's dashboard no directory-only page: those paths get the dashboard's not-found screen", () => {
+    const proxy = createProxy({ app: "http://localbusiness.localhost:3000", defaultBrand: "fynix" });
+    for (const path of ["/deals", "/business", "/listing", "/advertise", "/reviews", "/leads", "/deals/new"]) {
+      const response = proxy(request(`http://localbusiness.localhost:3000${path}`, "localbusiness.localhost:3000"));
+      expect(isRewrite(response), path).toBe(true);
+      expect(getRewrittenUrl(response), path).toBe("http://localbusiness.localhost:3000/app-host/not-here");
+    }
+    const billing = proxy(request("http://localbusiness.localhost:3000/billing", "localbusiness.localhost:3000"));
+    expect(getRewrittenUrl(billing)).toBe("http://localbusiness.localhost:3000/app-host/billing");
+  });
+
+  it("leaves those pages alone on Firstfold's dashboard", () => {
+    const proxy = createProxy(origins);
+    const response = proxy(request("http://app.localhost:3000/deals", "app.localhost:3000"));
+    expect(getRewrittenUrl(response)).toBe("http://app.localhost:3000/app-host/deals");
+  });
+
   it("rewrites a media URL on the app host to the app-host media route", () => {
     const proxy = createProxy(origins);
     const response = proxy(
@@ -137,15 +154,15 @@ describe("createProxy", () => {
   });
 
   it("serves the dashboard on the Fynix host too, and still 404s every other host", () => {
-    const proxy = createProxy({ ...origins, localBusiness: "http://localbusiness.fynix.test" });
-    const response = proxy(request("http://localbusiness.fynix.test/login?plan=care", "localbusiness.fynix.test"));
+    const proxy = createProxy({ ...origins, localBusiness: "http://app.fynix.test" });
+    const response = proxy(request("http://app.fynix.test/login?plan=care", "app.fynix.test"));
     expect(isRewrite(response)).toBe(true);
-    expect(getRewrittenUrl(response)).toBe("http://localbusiness.fynix.test/app-host/login?plan=care");
+    expect(getRewrittenUrl(response)).toBe("http://app.fynix.test/app-host/login?plan=care");
     expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
-    expect(proxy(request("http://localbusiness.fynix.test/admin", "localbusiness.fynix.test")).status).toBe(404);
+    expect(proxy(request("http://app.fynix.test/admin", "app.fynix.test")).status).toBe(404);
     expect(proxy(request("http://fynix.test/", "fynix.test")).status).toBe(404);
     // Without LOCAL_BUSINESS_ORIGIN the Fynix host is nobody's.
-    expect(createProxy(origins)(request("http://localbusiness.fynix.test/login", "localbusiness.fynix.test")).status).toBe(404);
+    expect(createProxy(origins)(request("http://app.fynix.test/login", "app.fynix.test")).status).toBe(404);
   });
 
   it("serves any local localbusiness.* address under the dev server", () => {
@@ -174,9 +191,9 @@ describe("the signed-in marker for the website", () => {
   });
 
   it("leaves the marker alone on the Fynix host, where the website does not read it", () => {
-    const fynix = { ...origins, localBusiness: "http://localbusiness.fynix.test" };
-    const fynixHost = "localbusiness.fynix.test";
-    const signedIn = new NextRequest("http://localbusiness.fynix.test/leads", {
+    const fynix = { ...origins, localBusiness: "http://app.fynix.test" };
+    const fynixHost = "app.fynix.test";
+    const signedIn = new NextRequest("http://app.fynix.test/leads", {
       headers: { host: fynixHost, cookie: "better-auth.session_token=abc" },
     });
     expect(createProxy(fynix)(signedIn).cookies.get("ff_signed_in")).toBeUndefined();

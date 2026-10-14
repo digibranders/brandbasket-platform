@@ -4,7 +4,7 @@ The customer dashboard and staff console behind Fynix Digital's Local Business p
 account with their **email address**, chooses **Care** or **Premium**, pays, and manages their website, chatbot,
 billing and support from the dashboard. Fynix staff run the same data from a separate staff console.
 
-It will live at `localbusiness.fynix.digital`, on Fynix's own server. This repository is fully separate from Firstfold:
+It will live at `app.fynix.digital`, on Fynix's own server. This repository is fully separate from Firstfold:
 its own database, its own staff console, its own secrets. It was started from Firstfold's platform and still carries
 Firstfold-only code (directory and listing features, the free plan, SMS sign-up) that a later clean-up removes;
 `PLATFORM_BRAND=fynix` makes every host wear the Fynix brand, sell Care and Premium only, and register with email.

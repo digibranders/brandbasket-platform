@@ -50,3 +50,6 @@ packages/cms/payload-types.ts
 
 # Local test logins (never commit)
 TEST-LOGINS.local.md
+
+# Local build settings for scripts/server/deploy.sh (public values only, but local to the operator)
+deploy/build.env

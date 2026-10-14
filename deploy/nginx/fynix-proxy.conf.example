@@ -1,0 +1,18 @@
+# What this does: the proxy headers both Fynix hosts share, kept in one snippet so the two server blocks cannot drift apart.
+# Installed to /etc/nginx/snippets/fynix-proxy.conf by bootstrap-droplet.sh and included inside each `location /`.
+#
+# Why each line matters:
+#   Host                keep the browser's host name: the apps pick the dashboard or the console by it (proxy.ts).
+#   X-Forwarded-For     REPLACED with the address nginx saw ($remote_addr). The apps rate-limit and log by the FIRST entry of this header,
+#                       so passing the browser's own value on ($proxy_add_x_forwarded_for) would let anyone choose the address
+#                       they are recorded under. On the console host $remote_addr is the real visitor, because fynix-cloudflare-realip.conf
+#                       restores it from Cloudflare's header (only for connections that come from Cloudflare's ranges).
+#   X-Forwarded-Proto   so the apps know the visit was https (secure cookies, redirects).
+proxy_http_version 1.1;
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $remote_addr;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header Connection "";
+proxy_read_timeout 60s;
+proxy_send_timeout 60s;

@@ -11,7 +11,7 @@ import {
   saveProjectBrief,
 } from "./queries/onboarding-data";
 import { submitProject } from "./queries/projects";
-import { businesses, businessMembers, plans, projects, users } from "./schema";
+import { businesses, businessMembers, payments, plans, projects, users, type PaymentKind, type PaymentStatus } from "./schema";
 import { insertSubscription } from "./queries/billing";
 import { phoneAccountEmail } from "./phone-account";
 import { withTenantScope, type ScopedTransaction } from "./scope";
@@ -26,6 +26,23 @@ let projectId = "";
 
 function asOwner<T>(work: (tx: ScopedTransaction) => Promise<T>): Promise<T> {
   return withTenantScope(dbs.app.db, { userId: OWNER, businessId }, work);
+}
+
+let paymentSequence = 0;
+
+/** One payment for a business. By default the captured first plan payment, which is what makes a business a client. */
+async function recordPayment(id: string, kind: PaymentKind = "initial", status: PaymentStatus = "captured"): Promise<void> {
+  paymentSequence += 1;
+  await dbs.staff.db.insert(payments).values({
+    businessId: id,
+    provider: "fake",
+    providerPaymentId: `pay_clients_test_${String(paymentSequence)}`,
+    kind,
+    amountCents: 299_900,
+    currency: "INR",
+    status,
+    paidAt: status === "captured" ? new Date("2026-09-16T10:00:00.000Z") : null,
+  });
 }
 
 beforeAll(() => {
@@ -46,6 +63,7 @@ beforeEach(async () => {
   if (business === undefined) throw new Error("Seed business was not inserted");
   businessId = business.id;
   await dbs.staff.db.insert(businessMembers).values({ businessId, userId: OWNER, role: "owner" });
+  await recordPayment(businessId);
   const [project] = await dbs.staff.db.insert(projects).values({ businessId }).returning({ id: projects.id });
   if (project === undefined) throw new Error("Seed project was not inserted");
   projectId = project.id;
@@ -123,6 +141,7 @@ describe("listClients", () => {
       .returning({ id: businesses.id });
     if (member === undefined) throw new Error("Seed business was not inserted");
     await dbs.staff.db.insert(businessMembers).values({ businessId: member.id, userId: "phone-owner", role: "owner" });
+    await recordPayment(member.id);
 
     const clients = await listClients(dbs.staff.db);
     expect(clients.find((client) => client.businessId === member.id)?.owner).toEqual({
@@ -133,9 +152,45 @@ describe("listClients", () => {
   });
 
   it("lists a business with no owner or project rather than dropping it", async () => {
-    await dbs.staff.db.insert(businesses).values({ slug: "empty-shop", name: "Empty Shop" });
+    const [shop] = await dbs.staff.db.insert(businesses).values({ slug: "empty-shop", name: "Empty Shop" }).returning({ id: businesses.id });
+    if (shop === undefined) throw new Error("Seed business was not inserted");
+    await recordPayment(shop.id);
     const clients = await listClients(dbs.staff.db);
     expect(clients.find((client) => client.businessName === "Empty Shop")).toMatchObject({ owner: null, project: null });
+  });
+
+  describe("who counts as a client", () => {
+    async function website(slug: string, name: string): Promise<string> {
+      const [row] = await dbs.staff.db.insert(businesses).values({ slug, name, kind: "website" }).returning({ id: businesses.id });
+      if (row === undefined) throw new Error("Seed business was not inserted");
+      return row.id;
+    }
+
+    it("leaves out a business that has registered but not paid", async () => {
+      await website("unpaid-cafe", "Unpaid Cafe");
+      const names = (await listClients(dbs.staff.db)).map((client) => client.businessName);
+      expect(names).toEqual(["Harbour Bakery"]);
+    });
+
+    it("lists it from the moment its first plan payment is captured", async () => {
+      const id = await website("new-cafe", "New Cafe");
+      expect((await listClients(dbs.staff.db)).map((client) => client.businessName)).not.toContain("New Cafe");
+      await recordPayment(id);
+      expect((await listClients(dbs.staff.db)).map((client) => client.businessName)).toContain("New Cafe");
+    });
+
+    it("does not count a failed payment, an add-on or a one-off charge as paying for the plan", async () => {
+      await recordPayment(await website("failed-cafe", "Failed Cafe"), "initial", "failed");
+      await recordPayment(await website("addon-cafe", "Addon Cafe"), "add_on");
+      await recordPayment(await website("charge-cafe", "Charge Cafe"), "charge");
+      const names = (await listClients(dbs.staff.db)).map((client) => client.businessName);
+      expect(names).toEqual(["Harbour Bakery"]);
+    });
+
+    it("still opens an unpaid business's page by its address, so a link from the Leads screen keeps working", async () => {
+      const id = await website("linked-cafe", "Linked Cafe");
+      expect((await findClientDetail(dbs.staff.db, id))?.businessName).toBe("Linked Cafe");
+    });
   });
 
   it("shows the newest project once an older one has finished", async () => {

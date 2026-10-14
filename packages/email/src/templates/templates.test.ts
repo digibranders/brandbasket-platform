@@ -363,7 +363,7 @@ describe("passwordResetEmail", () => {
   });
 
   it("names the brand it is sent for, and says nothing of Firstfold under another", () => {
-    const branded = passwordResetEmail({ to: "owner@example.com", resetUrl: "https://localbusiness.fynix.digital/reset-password/abc123", expiresInMinutes: 60, brandName: "Fynix Digital" });
+    const branded = passwordResetEmail({ to: "owner@example.com", resetUrl: "https://app.fynix.digital/reset-password/abc123", expiresInMinutes: 60, brandName: "Fynix Digital" });
     expect(branded.subject).toBe("Reset your Fynix Digital password");
     for (const text of [branded.subject, branded.bodyText, branded.bodyHtml, branded.outboxCopy?.bodyText ?? ""]) expect(text).not.toMatch(/first\s?fold/i);
   });
@@ -377,7 +377,7 @@ describe("confirmEmailEmail", () => {
   const email = confirmEmailEmail({ to: "owner@example.com", confirmUrl: "http://app.localhost:3000/confirm-email/tok.en", expiresInDays: 3 });
 
   it("names the brand it is sent for, and says nothing of Firstfold under another", () => {
-    const branded = confirmEmailEmail({ to: "owner@example.com", confirmUrl: "https://localbusiness.fynix.digital/confirm-email/tok.en", expiresInDays: 3, brandName: "Fynix Digital" });
+    const branded = confirmEmailEmail({ to: "owner@example.com", confirmUrl: "https://app.fynix.digital/confirm-email/tok.en", expiresInDays: 3, brandName: "Fynix Digital" });
     expect(branded.subject).toBe("Confirm your email for Fynix Digital");
     for (const text of [branded.subject, branded.bodyText, branded.bodyHtml, branded.outboxCopy?.bodyText ?? ""]) expect(text).not.toMatch(/first\s?fold/i);
   });
@@ -604,7 +604,7 @@ describe("the staff-sent customer emails under another brand", () => {
 
   it("names the brand in the setup link, the website-live notice and the preview notice, and never says Firstfold", () => {
     const brandName = "Fynix Digital";
-    const setup = setupLinkEmail({ to: "o@example.com", businessName: "Acme", setupUrl: "https://localbusiness.fynix.digital/setup/t", expiresInDays: 7, brandName });
+    const setup = setupLinkEmail({ to: "o@example.com", businessName: "Acme", setupUrl: "https://app.fynix.digital/setup/t", expiresInDays: 7, brandName });
     const live = websiteLiveEmail({ to: "o@example.com", businessName: "Acme", websiteUrl: "https://acme.example", brandName });
     const preview = previewReadyEmail({ to: "o@example.com", businessName: "Acme", previewUrl: "https://preview.example/acme", brandName });
     expect(setup.subject).toBe("Set up your Fynix Digital account");
@@ -671,13 +671,13 @@ describe("emails sent with no brand named (staff-sent and background mail)", () 
 
   it("speak as Fynix Digital on a Fynix server, and never say Firstfold", () => {
     const messages = onFynixServer(() => [
-      setupLinkEmail({ to: "o@example.com", businessName: "Acme", setupUrl: "https://localbusiness.fynix.digital/setup/t", expiresInDays: 7 }),
-      previewReadyEmail({ to: "o@example.com", businessName: "Acme", previewUrl: "https://localbusiness.fynix.digital/preview/t" }),
+      setupLinkEmail({ to: "o@example.com", businessName: "Acme", setupUrl: "https://app.fynix.digital/setup/t", expiresInDays: 7 }),
+      previewReadyEmail({ to: "o@example.com", businessName: "Acme", previewUrl: "https://app.fynix.digital/preview/t" }),
       websiteLiveEmail({ to: "o@example.com", businessName: "Acme", websiteUrl: "https://acme.example.com" }),
-      confirmEmailEmail({ to: "o@example.com", confirmUrl: "https://localbusiness.fynix.digital/confirm-email/t", expiresInDays: 3 }),
-      passwordResetEmail({ to: "o@example.com", resetUrl: "https://localbusiness.fynix.digital/reset-password/t", expiresInMinutes: 60 }),
+      confirmEmailEmail({ to: "o@example.com", confirmUrl: "https://app.fynix.digital/confirm-email/t", expiresInDays: 3 }),
+      passwordResetEmail({ to: "o@example.com", resetUrl: "https://app.fynix.digital/reset-password/t", expiresInMinutes: 60 }),
       signupCodeEmail({ to: "o@example.com", code: "123456", expiresInMinutes: 10 }),
-      listingEnquiryEmail({ to: "o@example.com", businessName: "Acme", visitorName: "Asha", visitorPhone: "+919820011223", message: null, dashboardUrl: "https://localbusiness.fynix.digital/leads" }),
+      listingEnquiryEmail({ to: "o@example.com", businessName: "Acme", visitorName: "Asha", visitorPhone: "+919820011223", message: null, dashboardUrl: "https://app.fynix.digital/leads" }),
     ]);
     for (const message of messages) {
       for (const text of [message.subject, message.bodyText, message.bodyHtml, message.outboxCopy?.bodyText ?? ""]) {

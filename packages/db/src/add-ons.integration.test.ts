@@ -779,7 +779,8 @@ describe("the plan's own checks ignore add-on payments", () => {
     await record(paymentFor(row.id, "fake_pay_addon", { paidAt: new Date("2026-09-01T09:00:00.000Z") }));
 
     expect(await findFirstPayment(dbs.staff.db, businessA)).toBeNull();
-    expect((await listClients(dbs.staff.db)).find((client) => client.businessId === businessA)?.billing.firstPayment).toBeNull();
+    // An add-on alone does not make the business a client.
+    expect((await listClients(dbs.staff.db)).find((client) => client.businessId === businessA)).toBeUndefined();
 
     // The plan's payment comes later in time, and is still the first one that bought the plan.
     const planPaymentId = await payForPlan(businessA, "fake_sub_plan", NOW);

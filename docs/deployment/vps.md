@@ -1,5 +1,7 @@
 # Production: the Hostinger VPS
 
+> Fynix's own droplet is a different server with its own runbook: see `docs/deployment/fynix-droplet.md`. This page is Firstfold's server only.
+
 The platform runs on one Hostinger KVM 4 (Ubuntu 24.04, 4 vCPU, 16 GB) at 187.126.121.25, since 2026-10-07. The
 marketing website (its own repository) runs on the same box. All web names go through Cloudflare, which reaches the
 server over IPv6 (`2a02:4780:63:2102::1`): the server's IPv4 block cannot be reached from Reliance Jio or from

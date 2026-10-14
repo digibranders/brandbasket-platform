@@ -1,0 +1,21 @@
+# What this does: the daily upkeep job: removes expired support screenshots and closed support requests, then runs the
+# retention schedule (docs/operations/retention-run.md), sends the staff access review and privacy-request reminders.
+# Installed by bootstrap-droplet.sh; started by fynix-maintenance.timer. Assumes the layout of docs/deployment/fynix-droplet.md.
+# It reads the dashboard's environment through the release's apps/platform/.env.local link, as the app does.
+# Look at it with: journalctl -u fynix-maintenance -n 50 (a good run prints a line starting "Support maintenance:").
+[Unit]
+Description=Fynix daily maintenance (support attachments, retention, alerts)
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/srv/fynix/current-platform
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/env pnpm support:attachments:maintain
+TimeoutStartSec=15min
+MemoryMax=700M
+SyslogIdentifier=fynix-maintenance
+NoNewPrivileges=true
+PrivateTmp=true

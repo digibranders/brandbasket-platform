@@ -225,8 +225,9 @@ describe("recordUnappliedPayment", () => {
     const leadRows = await dbs.staff.db.select({ status: leads.status }).from(leads).where(eq(leads.id, lead?.id ?? ""));
     expect(leadRows[0]?.status).toBe("account_created");
     expect(await findFirstPayment(dbs.staff.db, businessA)).toBeNull();
+    // Money that did not apply to a plan does not make the business a client.
     const clients = await listClients(dbs.staff.db);
-    expect(clients.find((client) => client.businessId === businessA)?.billing.firstPayment).toBeNull();
+    expect(clients.find((client) => client.businessId === businessA)).toBeUndefined();
 
     const state = await withTenantScope(dbs.app.db, scopeA(), (tx) => findBillingState(tx, businessA));
     expect(state).toMatchObject({ hasEverPaid: false, paymentUnderReview: true });
