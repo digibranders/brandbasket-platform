@@ -27,6 +27,15 @@ export async function findPincode(db: Runner, pincode: string): Promise<PincodeR
   return rows[0] ?? null;
 }
 
+/**
+ * Whether any PIN has been loaded at all. A deployment that never imported India Post's directory (Fynix's has none) can
+ * say nothing about a PIN, so a PIN it does not know is no sign the customer mistyped it.
+ */
+export async function hasPincodeDirectory(db: Runner): Promise<boolean> {
+  const rows = await db.select({ pincode: indiaPincodes.pincode }).from(indiaPincodes).limit(1);
+  return rows.length > 0;
+}
+
 /** Writes the directory's records, replacing a PIN's row when it is already there. Returns how many were written. */
 export async function upsertPincodes(db: Runner, records: readonly PincodeRecord[], now: Date): Promise<number> {
   let written = 0;

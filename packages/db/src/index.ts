@@ -1092,7 +1092,7 @@ export {
   type PhoneAccount,
 } from "./queries/account-otps";
 export { isPhoneAccountEmail, phoneAccountEmail } from "./phone-account";
-export { findPincode, upsertPincodes } from "./queries/india-pincodes";
+export { findPincode, hasPincodeDirectory, upsertPincodes } from "./queries/india-pincodes";
 export type { IndiaPostParse, PincodeLocality, PincodeRecord } from "./india-post";
 export {
   OPENED_DISTRICTS,

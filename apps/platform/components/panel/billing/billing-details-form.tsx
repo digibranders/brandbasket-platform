@@ -72,6 +72,11 @@ export function BillingDetailsForm({ view, action, layout }: BillingDetailsFormP
     void lookupBillingPincodeAction(pin)
       .then((found) => {
         if (id !== lookupId.current) return;
+        if (found.kind === "no-directory") {
+          // Nothing to look it up in: say nothing, and leave the state and city to the customer.
+          setPincodeNote(null);
+          return;
+        }
         if (found.kind === "not-found") {
           setPincodeNote({ kind: "not-found" });
           return;

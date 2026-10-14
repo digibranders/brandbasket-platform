@@ -1,3 +1,4 @@
+import { adminBrand } from "@/lib/brand";
 import {
   addWeeks,
   countDirectoryClaims,
@@ -989,7 +990,7 @@ export default async function AdsPage({
 
   return (
     <>
-      <PageHeader title="Ads" meta="Free listing claims, pictures and videos, weekly auctions, ads you place by hand, and each category's price on Firstfold Local." />
+      <PageHeader title="Ads" meta={`Free listing claims, pictures and videos, weekly auctions, ads you place by hand, and each category's price on ${adminBrand().directoryName}.`} />
 
       <Figures
         items={[

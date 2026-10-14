@@ -1,4 +1,4 @@
-import { findBillingProfile, findPincode, saveBillingProfile, withTenantScope } from "@firstfold/db";
+import { findBillingProfile, findPincode, hasPincodeDirectory, saveBillingProfile, withTenantScope } from "@firstfold/db";
 import { refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
@@ -16,6 +16,7 @@ vi.mock("@firstfold/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@firstfold/db")>()),
   findBillingProfile: vi.fn(),
   findPincode: vi.fn(),
+  hasPincodeDirectory: vi.fn(),
   saveBillingProfile: vi.fn(),
   withTenantScope: vi.fn((_db: unknown, _tenant: unknown, work: (tx: unknown) => unknown) => work({ name: "app-tx" })),
 }));
@@ -187,9 +188,16 @@ describe("lookupBillingPincodeAction", () => {
     expect(findPincode).toHaveBeenCalledWith({ name: "app-db" }, "400080");
   });
 
-  it("finds nothing for a pincode the directory does not list", async () => {
+  it("finds nothing for a pincode a loaded directory does not list", async () => {
     vi.mocked(findPincode).mockResolvedValue(null);
+    vi.mocked(hasPincodeDirectory).mockResolvedValue(true);
     expect(await lookupBillingPincodeAction("999999")).toEqual({ kind: "not-found" });
+  });
+
+  it("says there is no directory, and not that the pincode is wrong, where none is loaded (Fynix)", async () => {
+    vi.mocked(findPincode).mockResolvedValue(null);
+    vi.mocked(hasPincodeDirectory).mockResolvedValue(false);
+    expect(await lookupBillingPincodeAction("400080")).toEqual({ kind: "no-directory" });
   });
 
   it("does not ask the database about something that cannot be a pincode", async () => {

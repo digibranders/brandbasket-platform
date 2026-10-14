@@ -53,12 +53,12 @@ describe("retentionOfferTerms", () => {
   const open = { reason: "too_expensive" as const, subscription: subscription(), plan: PLAN, hasAccess: true };
 
   it("offers a paying member the reason's percentage off the net monthly price", () => {
-    expect(retentionOfferTerms(open)).toEqual({ percent: 30, discountCents: 209_970, totalDiscountCents: 209_970 });
+    expect(retentionOfferTerms(open)).toEqual({ percent: 30, discountCents: 299_970, totalDiscountCents: 299_970 });
   });
 
   it("adds to a discount a code already gives", () => {
     const terms = retentionOfferTerms({ ...open, subscription: subscription({ referralCodeId: "code-1", discountAmountCents: 100_000 }) });
-    expect(terms).toEqual({ percent: 30, discountCents: 209_970, totalDiscountCents: 309_970 });
+    expect(terms).toEqual({ percent: 30, discountCents: 299_970, totalDiscountCents: 399_970 });
   });
 
   it("offers nothing to someone closing the business", () => {
@@ -88,7 +88,7 @@ describe("retentionOfferTerms", () => {
   });
 
   it("offers nothing when a code already takes the most", () => {
-    const sub = subscription({ referralCodeId: "code-1", discountAmountCents: 600_000 });
+    const sub = subscription({ referralCodeId: "code-1", discountAmountCents: 900_000 });
     expect(retentionOfferTerms({ ...open, subscription: sub })).toBeNull();
   });
 });

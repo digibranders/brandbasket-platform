@@ -3,7 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("@firstfold/db", async () => {
   const actual = await vi.importActual<typeof import("@firstfold/db")>("@firstfold/db");
-  return { ...actual, consumeRateLimit: vi.fn(), findPlanUpgradeInFlight: vi.fn(), findPlanUpgradeByCharge: vi.fn() };
+  return {
+    ...actual,
+    consumeRateLimit: vi.fn(),
+    findPlanUpgradeInFlight: vi.fn(),
+    findPlanUpgradeByCharge: vi.fn(),
+    findLatestSubscriptionForBusiness: vi.fn(),
+    findPlanById: vi.fn(),
+  };
 });
 vi.mock("@firstfold/shared/server/plan-upgrade", () => ({
   assessUpgrade: vi.fn(),
@@ -16,7 +23,7 @@ vi.mock("./db", () => ({ getAppDb: () => ({ name: "app-db" }), getStaffDb: () =>
 vi.mock("./discount-plans", () => ({ ensureDiscountPlan: vi.fn() }));
 vi.mock("./charges", () => ({ startCustomerChargePayment: vi.fn() }));
 
-import { consumeRateLimit, findPlanUpgradeByCharge, findPlanUpgradeInFlight } from "@firstfold/db";
+import { consumeRateLimit, findLatestSubscriptionForBusiness, findPlanById, findPlanUpgradeByCharge, findPlanUpgradeInFlight } from "@firstfold/db";
 import { assessUpgrade, finishUpgradeAtProvider, readAssessmentInput, startUpgrade } from "@firstfold/shared/server/plan-upgrade";
 import { startCustomerChargePayment } from "./charges";
 import { startUpgradeFor, readUpgradePage } from "./plan-upgrade";
@@ -79,9 +86,35 @@ describe("readUpgradePage", () => {
     vi.mocked(readAssessmentInput).mockResolvedValue(input);
     vi.mocked(assessUpgrade).mockReturnValue({ kind: "blocked", reason: "ending" });
     vi.mocked(findPlanUpgradeInFlight).mockResolvedValue(null);
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ planId: "plan-care" } as never);
+    vi.mocked(findPlanById).mockResolvedValue({ id: "plan-care", tier: "care" } as never);
 
-    await expect(readUpgradePage(CUSTOMER, NOW)).resolves.toEqual({ assessment: { kind: "blocked", reason: "ending" }, inFlight: null });
+    await expect(readUpgradePage(CUSTOMER, NOW)).resolves.toEqual({
+      assessment: { kind: "blocked", reason: "ending" },
+      inFlight: null,
+      billedPlan: { id: "plan-care", tier: "care" },
+    });
     expect(readAssessmentInput).toHaveBeenCalledWith({ name: "staff-db" }, BUSINESS, "fake", NOW);
+  });
+
+  it("reads the plan the subscription is billed on, not the one a paid move has put in the billing state", async () => {
+    vi.mocked(readAssessmentInput).mockResolvedValue({ state: {} } as never);
+    vi.mocked(assessUpgrade).mockReturnValue({ kind: "blocked", reason: "already-moving" });
+    vi.mocked(findPlanUpgradeInFlight).mockResolvedValue(null);
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ planId: "plan-care", pendingPlanId: "plan-premium" } as never);
+    vi.mocked(findPlanById).mockResolvedValue({ id: "plan-care", tier: "care" } as never);
+
+    const page = await readUpgradePage(CUSTOMER, NOW);
+    expect(findPlanById).toHaveBeenCalledWith({ name: "staff-db" }, "plan-care");
+    expect(page?.billedPlan).toMatchObject({ id: "plan-care", tier: "care" });
+  });
+
+  it("has no billed plan for a business with no subscription", async () => {
+    vi.mocked(readAssessmentInput).mockResolvedValue({ state: {} } as never);
+    vi.mocked(assessUpgrade).mockReturnValue({ kind: "blocked", reason: "unpaid" });
+    vi.mocked(findPlanUpgradeInFlight).mockResolvedValue(null);
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue(null);
+    expect((await readUpgradePage(CUSTOMER, NOW))?.billedPlan).toBeNull();
   });
 
   it("is nothing for a business that cannot be read", async () => {

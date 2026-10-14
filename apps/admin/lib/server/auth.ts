@@ -13,7 +13,9 @@ export function getAuth(): Auth {
     auth = createAuth({
       db: getStaffDb(),
       secret: env.BETTER_AUTH_SECRET,
-      baseURL: env.APP_ORIGIN,
+      // The console's own origin (https://staff.fynix.digital in production), a different host from the dashboard's: the session
+      // cookie is host-only, so neither app ever receives the other's.
+      baseURL: env.ADMIN_ORIGIN,
       trustedOrigins: [env.APP_ORIGIN, env.ADMIN_ORIGIN],
       nextCookies: true,
       sessionLifetimeSeconds: STAFF_SESSION_LIFETIME_SECONDS,

@@ -1,6 +1,6 @@
 "use server";
 
-import { findBillingProfile, findPincode, saveBillingProfile, withTenantScope } from "@firstfold/db";
+import { findBillingProfile, findPincode, hasPincodeDirectory, saveBillingProfile, withTenantScope } from "@firstfold/db";
 import {
   firstCustomerBillingProblem,
   parseCustomerBillingDetails,
@@ -86,10 +86,13 @@ export async function saveBillingDetailsAction(_previous: PanelFormState, formDa
 /** What a pincode tells the billing form: the state to select, and the district as a start for the city. */
 export type BillingPincodeLookup =
   | { readonly kind: "found"; readonly stateCode: string; readonly stateName: string; readonly district: string }
-  | { readonly kind: "not-found" };
+  /** The directory has this pincode's neighbours but not it: a new one, or a typo. */
+  | { readonly kind: "not-found" }
+  /** No pincode directory is loaded on this deployment (Fynix's has none): the lookup has nothing to say, so the form says nothing. */
+  | { readonly kind: "no-directory" };
 
 /**
- * Looks a pincode up in India Post's directory so the billing form can fill the state and suggest the city. Its argument
+ * Looks a pincode up in India Post's directory (when this deployment has loaded it) so the billing form can fill the state and suggest the city. Its argument
  * comes straight from the browser, so anything that is not a six digit pincode is simply not found. Needs a signed-in
  * customer like the form it serves; reads no business data.
  */
@@ -97,6 +100,6 @@ export async function lookupBillingPincodeAction(pincode: string): Promise<Billi
   await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
   if (typeof pincode !== "string" || pincode.length > 12) return { kind: "not-found" };
   const place = await findPincode(getAppDb(), pincode.replace(/\s+/g, ""));
-  if (place === null) return { kind: "not-found" };
+  if (place === null) return (await hasPincodeDirectory(getAppDb())) ? { kind: "not-found" } : { kind: "no-directory" };
   return { kind: "found", stateCode: place.stateCode, stateName: stateName(place.stateCode) ?? place.stateCode, district: place.districtName };
 }
