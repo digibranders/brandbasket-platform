@@ -29,6 +29,7 @@ import { TickIcon } from "@fynix/shared/ui/icons";
 import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import { clientListingKey, readClientTagNotice } from "@/lib/client-tags";
 import { ClientAddOns } from "@/components/client-add-ons";
+import { CopyTokenButton } from "@/components/copy-token-button";
 import { ClientCharges } from "@/components/client-charges";
 import { ClientListingTags } from "@/components/client-listing-tags";
 import { ClientBillingDetails, ClientTaxInvoices } from "@/components/client-invoicing";
@@ -120,7 +121,10 @@ function SiteApiTokenBlock({ businessId, token }: { readonly businessId: string;
           send booking requests — generate one when their website is ready.
         </Quiet>
       ) : (
-        <p className="break-all rounded-2xl bg-paper-deep px-4 py-3 font-mono text-sm">{token}</p>
+        <div className="flex items-start gap-2 rounded-2xl bg-paper-deep py-2 pl-4 pr-2">
+          <p className="min-w-0 flex-1 break-all py-1 font-mono text-sm">{token}</p>
+          <CopyTokenButton value={token} what="site token" />
+        </div>
       )}
       <form action={rotateSiteApiTokenAction} className="mt-4">
         <input type="hidden" name="businessId" value={businessId} />
