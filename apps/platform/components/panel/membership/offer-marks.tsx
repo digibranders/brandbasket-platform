@@ -46,12 +46,11 @@ function LinkedInTile(): ReactElement {
   );
 }
 
-function YouTubeTile(): ReactElement {
+function FacebookTile(): ReactElement {
   return (
     <svg viewBox="0 0 32 32" className="size-full">
-      <rect width="32" height="32" rx="8" fill="#fff" />
-      <rect x="5" y="8.5" width="22" height="15" rx="5" fill="#e0342b" />
-      <path d="M13.6 12.6v6.8l6-3.4z" fill="#fff" />
+      <rect width="32" height="32" rx="8" fill="#1877f2" />
+      <path d="M21.6 32V19.6h4.1l.7-4.8h-4.8v-3c0-1.4.6-2.4 2.5-2.4h2.4V5.2c-.4-.1-1.9-.2-3.5-.2-3.6 0-6 2.2-6 6.1v3.7h-4v4.8h4V32z" fill="#fff" />
     </svg>
   );
 }
@@ -68,7 +67,7 @@ export function PlatformBadges({ className }: { readonly className?: string }): 
           <LinkedInTile />
         </div>
         <div className="absolute right-[4.6rem] top-[3.9rem] size-14 -rotate-3 rounded-[1rem] shadow-[0_10px_22px_-8px_rgb(60_40_10/0.35)]">
-          <YouTubeTile />
+          <FacebookTile />
         </div>
       </div>
     </div>
