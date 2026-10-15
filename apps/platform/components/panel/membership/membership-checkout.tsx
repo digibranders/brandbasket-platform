@@ -60,24 +60,33 @@ export async function MembershipCheckout({ tier, view, notice, billing }: Member
     );
   }
   return (
-    <div className="space-y-6">
-      {notice === "failed" ? (
-        <p role="alert" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
-          We couldn&rsquo;t confirm that payment, so nothing has been recorded. You can try again below.
-        </p>
-      ) : null}
-      <ReferralCodeForm
-        applyAction={applyMembershipCode}
-        removeAction={removeMembershipCode}
-        discount={discount}
-        currency={plan.currency}
-        label="Have a code?"
-        lapsedCode={lapsedCode}
-        compact
-      />
-      {billingDetails === null ? null : <BillingDetails view={billingDetails} variant="checkout" />}
-      <MembershipPayForm action={startMembership} amount={discountedFirstPaymentAmount(plan, discount)} tier={tier} />
-      <p className="text-sm leading-relaxed text-ink-soft">{describeDiscountedPlanTerms(plan, discount)}</p>
-    </div>
+    <>
+      <div className="max-w-xl space-y-6">
+        {notice === "failed" ? (
+          <p role="alert" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
+            We couldn&rsquo;t confirm that payment, so nothing has been recorded. You can try again below.
+          </p>
+        ) : null}
+        <ReferralCodeForm
+          applyAction={applyMembershipCode}
+          removeAction={removeMembershipCode}
+          discount={discount}
+          currency={plan.currency}
+          label="Have a code?"
+          lapsedCode={lapsedCode}
+          compact
+        />
+        {billingDetails === null ? null : <BillingDetails view={billingDetails} variant="checkout" />}
+        <p className="text-sm leading-relaxed text-ink-soft">{describeDiscountedPlanTerms(plan, discount)}</p>
+      </div>
+      {/*
+        The Pay bar stays on screen while the page is scrolled, so it is never lost below the offer and the forms. It is a
+        sibling of the blocks above and of the offer card, because a sticky element only holds within its parent: the page
+        puts both in one container that runs from the offer to the end.
+      */}
+      <div className="sticky bottom-0 z-10 -mx-5 border-t border-line bg-paper/95 px-5 pb-4 pt-3 backdrop-blur sm:mx-0 sm:rounded-card sm:border sm:px-4 sm:shadow-[0_-12px_30px_-18px_rgb(42_13_16/0.35)]">
+        <MembershipPayForm action={startMembership} amount={discountedFirstPaymentAmount(plan, discount)} tier={tier} />
+      </div>
+    </>
   );
 }

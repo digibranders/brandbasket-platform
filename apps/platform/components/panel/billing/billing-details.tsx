@@ -22,7 +22,8 @@ interface BillingDetailsProps {
  */
 export function BillingDetails({ view, variant }: BillingDetailsProps): ReactElement {
   const { saved } = view;
-  const [editing, setEditing] = useState(saved === null);
+  // On a checkout page the optional form starts folded away, so the way to pay is not buried under it.
+  const [editing, setEditing] = useState(saved === null && variant === "card");
   const [justSaved, setJustSaved] = useState(false);
   const statusRef = useRef<HTMLParagraphElement>(null);
   // Saving closes the form, which removes the Save button that had focus. Focus goes to the line that says it saved,
@@ -54,8 +55,10 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
       </p>
     );
 
+  const foldedAway = saved === null && variant === "checkout" && !editing;
+
   const intro =
-    saved === null ? (
+    saved === null && !foldedAway ? (
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
         {variant === "card"
           ? "Add your billing address, and your GSTIN if you have one, to get GST invoices in the right name. They apply to invoices issued after you save them."
@@ -75,6 +78,17 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
           </p>
         ) : null}
       </div>
+      {foldedAway ? (
+        <button
+          type="button"
+          aria-expanded={false}
+          aria-controls="billing-details-form"
+          onClick={() => setEditing(true)}
+          className="mt-1 text-sm text-ink-soft underline decoration-line underline-offset-4 transition-colors duration-300 ease-calm hover:text-ink"
+        >
+          Add your GST billing details (optional)
+        </button>
+      ) : null}
       {saved === null ? null : (
         <Button
           type="button"

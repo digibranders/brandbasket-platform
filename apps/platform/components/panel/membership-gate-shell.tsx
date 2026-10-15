@@ -19,7 +19,7 @@ interface MembershipGateShellProps {
 export async function MembershipGateShell({ children }: MembershipGateShellProps): Promise<ReactElement> {
   const brand = await requestBrand();
   return (
-    <div className="relative isolate flex min-h-dvh flex-col overflow-hidden px-5 py-5 sm:px-8 sm:py-6">
+    <div className="relative isolate flex min-h-dvh flex-col overflow-clip px-5 py-5 sm:px-8 sm:py-6">
       <ContourField seed={11} rings={6} className="absolute -left-80 -top-80 -z-10 size-[48rem] text-accent/10" />
       <ContourField seed={29} rings={6} className="absolute -bottom-80 -right-80 -z-10 size-[48rem] text-accent/10" />
 

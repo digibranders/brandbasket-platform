@@ -134,17 +134,13 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
         )}
       </div>
 
-      {/* The first-checkout offer, across the page under the plan and before the way to pay: shown until the first payment. */}
-      {view.offer.kind === "available" && !waiting && !billing.paymentUnderReview ? (
-        <div className="lg:col-span-2">
+      {/* The first-checkout offer, then the way to pay (a code, the invoice details and the Pay bar), in one container so the Pay bar can stay on screen. */}
+      <div aria-label="Payment" role="group" className="space-y-10 lg:col-span-2">
+        {view.offer.kind === "available" && !waiting && !billing.paymentUnderReview ? (
           <OfferCard action={addOfferAddOn} claimed={view.offer.claimed} />
-        </div>
-      ) : null}
-
-      {/* The way to pay: a code, the invoice details and the Pay button. */}
-      <section aria-label="Payment" className="max-w-xl lg:col-span-2">
+        ) : null}
         <MembershipCheckout tier={tier} view={view} notice={notice} billing={billing} />
-      </section>
+      </div>
 
       {/* Not while we wait to hear about a payment just made: the plan is about to open. */}
       {held && sellsFreeListing(brand) && (!waiting || billing.paymentUnderReview) ? (
