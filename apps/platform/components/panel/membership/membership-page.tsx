@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
 import { formatMoney } from "@fynix/shared/lib/money";
-import { TickIcon } from "@fynix/shared/ui/icons";
 import { FreeListingButton } from "@/components/panel/membership/free-listing-button";
 import { OrderSummary } from "@/components/panel/membership/order-summary";
 import { OfferCard } from "@/components/panel/membership/offer-card";
@@ -107,41 +106,27 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
           )}
         </div>
 
-        {/* What the plan holds, sorted into the layers it stacks. */}
-        <div className="max-w-xl space-y-7">
-          {groups.map((group) => (
-            <section key={group.name} aria-label={group.name}>
-              <h2 className="panel-section">{group.name}</h2>
-              <ul className="mt-1 divide-y divide-line border-y border-line">
-                {group.items.map((benefit) => (
-                  <li key={benefit} className="flex items-baseline gap-3 py-2.5 text-[0.9375rem]">
-                    <TickIcon className="size-4 shrink-0 translate-y-[0.2rem] text-success" />
-                    <span>{benefit}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-          {offersChoice(brand, other.tier) ? (
-            <p className="text-sm text-ink-soft">
-              <Link href={membershipPathFor(other.tier)} className="link-underline">
-                {other.line}
-              </Link>
-            </p>
-          ) : null}
-        </div>
+        {offersChoice(brand, other.tier) ? (
+          <p className="max-w-xl text-sm text-ink-soft">
+            <Link href={membershipPathFor(other.tier)} className="link-underline">
+              {other.line}
+            </Link>
+          </p>
+        ) : null}
 
         {/* The first-checkout offer: shown until the first payment, before the way to pay. */}
         {view.offer.kind === "available" && payable ? <OfferCard action={addOfferAddOn} claimed={view.offer.claimed} /> : null}
 
-        {/* A code and the optional GST details; or why there is nothing to pay. */}
-        <MembershipCheckout tier={tier} view={view} notice={notice} billing={billing} includePay={false} />
+        {/* Why there is nothing to pay, when there is not: the code and the GST details are under Pay in the summary. */}
+        {payable ? null : <MembershipCheckout tier={tier} view={view} notice={notice} billing={billing} includePay={false} />}
       </div>
 
       {/* Today's payment, following the page down beside it on a wide screen and last on a phone. */}
       {plan !== null && payable ? (
-        <aside aria-label="Payment" className="lg:sticky lg:top-6">
-          <OrderSummary tier={tier} view={{ ...view, plan }} />
+        <aside aria-label="Payment" className="lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overscroll-contain">
+          <OrderSummary tier={tier} view={{ ...view, plan }} groups={groups}>
+            <MembershipCheckout tier={tier} view={view} notice={notice} billing={billing} includePay={false} />
+          </OrderSummary>
         </aside>
       ) : null}
 
