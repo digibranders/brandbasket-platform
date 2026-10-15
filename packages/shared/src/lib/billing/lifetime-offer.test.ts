@@ -8,9 +8,9 @@ import {
 } from "./lifetime-offer";
 
 describe("lifetime offer", () => {
-  it("keeps the owner's wording verbatim", () => {
+  it("keeps the owner's wording", () => {
     expect(LIFETIME_OFFER_TEXT).toBe(
-      "Add the Social Media Package and get an additional 5% lifetime discount! This is a one-time offer available only during this checkout.",
+      "Add any package and get an additional 5% lifetime discount! This is a one-time offer available only during this checkout.",
     );
     expect(LIFETIME_OFFER_PERCENT).toBe(5);
   });

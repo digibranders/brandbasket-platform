@@ -5,8 +5,8 @@
  * (packages/db findLifetimeOfferStanding), so there is no flag to drift from the money.
  */
 
-/** The owner's wording, verbatim, in the two parts the card sets in different sizes. */
-export const LIFETIME_OFFER_HEADLINE = "Add the Social Media Package and get an additional 5% lifetime discount!";
+/** The owner's wording, in the two parts the card sets in different sizes. It names no one add-on: all three carry the offer. */
+export const LIFETIME_OFFER_HEADLINE = "Add any package and get an additional 5% lifetime discount!";
 export const LIFETIME_OFFER_NOTE = "This is a one-time offer available only during this checkout.";
 export const LIFETIME_OFFER_TEXT = `${LIFETIME_OFFER_HEADLINE} ${LIFETIME_OFFER_NOTE}`;
 
