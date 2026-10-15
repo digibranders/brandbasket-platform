@@ -41,7 +41,7 @@ export const ADD_ONS: readonly AddOn[] = [
   {
     id: "social-media",
     title: "Social media",
-    line: "Your Facebook and Instagram accounts managed for you.",
+    line: "Content creation, posting and growth across major platforms.",
     billing: "monthly",
     paise: 1_999 * PAISE_PER_RUPEE,
     unit: "a month",
@@ -49,7 +49,7 @@ export const ADD_ONS: readonly AddOn[] = [
   {
     id: "lead-generation",
     title: "Outreach and lead generation",
-    line: "We reach out to the right people and bring you new leads.",
+    line: "Find and engage the right audience to get more business.",
     billing: "monthly",
     paise: 3_999 * PAISE_PER_RUPEE,
     unit: "a month",
@@ -57,7 +57,7 @@ export const ADD_ONS: readonly AddOn[] = [
   {
     id: "advertising",
     title: "Paid advertising",
-    line: "Google Ads and Meta Ads managed to bring in leads and enquiries.",
+    line: "Run and manage high-performing ads for better results.",
     billing: "monthly",
     paise: 5_999 * PAISE_PER_RUPEE,
     unit: "a month",

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
 import { TickIcon } from "@fynix/shared/ui/icons";
 import { FreeListingButton } from "@/components/panel/membership/free-listing-button";
+import { OfferCard } from "@/components/panel/membership/offer-card";
 import { MembershipCheckout } from "@/components/panel/membership/membership-checkout";
 import { PlanMark } from "@/components/panel/plan-mark";
 import { offersChoice, sellsFreeListing } from "@/lib/brand";
@@ -21,7 +22,7 @@ import {
 import { getCustomerBusinessEntry, isAwaitingMembership, requireCustomerAccess } from "@/lib/server/customer-access";
 import { loadMembershipCheckout } from "@/lib/server/membership-checkout";
 import { requestBrand } from "@/lib/server/request-brand";
-import { chooseFreeListing } from "@/app/app-host/(protected)/premium/actions";
+import { addOfferAddOn, chooseFreeListing } from "@/app/app-host/(protected)/premium/actions";
 
 interface MembershipPageProps {
   readonly tier: MembershipTier;
@@ -85,12 +86,19 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   const price = plan === null ? null : membershipPriceParts(plan, view.discount?.amountCents ?? 0);
 
   return (
-    <div className="grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_25rem]">
-      <div>
-        <h1 className="panel-title">{HEADINGS[tier](brand.shortName)}</h1>
+    <div className="grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <h1 className="panel-title lg:col-span-2">{HEADINGS[tier](brand.shortName)}</h1>
 
+      {/* The first-checkout offer, across the page like the plan it sits beside: shown until the first payment. */}
+      {view.offer.kind === "available" && !waiting && !billing.paymentUnderReview ? (
+        <div className="lg:col-span-2">
+          <OfferCard action={addOfferAddOn} claimed={view.offer.claimed} />
+        </div>
+      ) : null}
+
+      <div>
         {/* What the plan holds, sorted into the three layers it stacks. */}
-        <div className="mt-8 max-w-xl space-y-7">
+        <div className="max-w-xl space-y-7">
           {groups.map((group) => (
             <section key={group.name} aria-label={group.name}>
               <h2 className="panel-section">{group.name}</h2>
