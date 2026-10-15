@@ -1191,6 +1191,13 @@
       "when": 1792057030236,
       "tag": "0172_bundled_add_on_removal",
       "breakpoints": true
+    },
+    {
+      "idx": 170,
+      "version": "7",
+      "when": 1792069235790,
+      "tag": "0173_site_settings",
+      "breakpoints": true
     }
   ]
 }

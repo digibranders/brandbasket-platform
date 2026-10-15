@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type ReactElement } from "react";
-import { SearchIcon, SignOutIcon } from "@fynix/shared/ui/icons";
+import { SearchIcon, SettingsIcon, SignOutIcon } from "@fynix/shared/ui/icons";
 import { avatarInitials } from "@/lib/avatar";
 
 interface TopPillProps {
@@ -89,6 +89,14 @@ export function TopPill({ userName, userEmail, signOut }: TopPillProps): ReactEl
             <p className="font-serif text-lg leading-tight">{userName}</p>
             <p className="mt-0.5 truncate text-sm text-paper/65">{userEmail}</p>
           </div>
+          <Link
+            href="/settings"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-paper/85 transition-colors duration-300 ease-calm hover:bg-white/10 hover:text-paper"
+          >
+            <SettingsIcon className="size-4" />
+            Settings
+          </Link>
           <form action={signOut} className="border-t border-white/10 pt-2">
             <button
               type="submit"
