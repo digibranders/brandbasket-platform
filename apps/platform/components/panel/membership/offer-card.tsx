@@ -1,66 +1,64 @@
-"use client";
-
-import { useActionState, type ReactElement } from "react";
+import type { ReactElement } from "react";
 import { TagIcon, TickIcon } from "@fynix/shared/ui/icons";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { addOnPrice, ADD_ONS, type AddOn } from "@fynix/shared/lib/billing/add-ons";
+import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { addOnPrice, ADD_ONS, type AddOn, type MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
 import { LIFETIME_OFFER_HEADLINE, LIFETIME_OFFER_NOTE, LIFETIME_OFFER_PERCENT } from "@fynix/shared/lib/billing/lifetime-offer";
 import { formatMoney } from "@fynix/shared/lib/money";
 import { AddOnMark, PlatformBadges } from "@/components/panel/membership/offer-marks";
-import { initialMembershipFormState, type MembershipFormState } from "@/lib/membership";
 
 interface OfferCardProps {
-  readonly action: (state: MembershipFormState, formData: FormData) => Promise<MembershipFormState>;
-  /** The add-ons already bought at the offer price, by catalogue id. */
-  readonly claimed: readonly string[];
+  /** The add-ons ticked so far: they are paid in the same payment as the plan. */
+  readonly selected: readonly MonthlyAddOnId[];
+  /** The address of this page with exactly these add-ons ticked: what each button goes to. */
+  readonly hrefFor: (selection: readonly MonthlyAddOnId[]) => string;
 }
 
-/** One add-on: its mark, what it is, its lifetime price and the button that buys it now, or the tick that says it is bought. */
-function OfferRow({ addOn, claimed, action }: { readonly addOn: AddOn; readonly claimed: boolean; readonly action: OfferCardProps["action"] }): ReactElement {
-  const [state, formAction, isPending] = useActionState(action, initialMembershipFormState);
-  const message = state.status === "error" && !isPending ? state.message : null;
+/** One add-on: its mark, what it is, its lifetime price and the button that ticks it, or the tick that says it is in. */
+function OfferRow({
+  addOn,
+  added,
+  toggleHref,
+}: {
+  readonly addOn: AddOn;
+  readonly added: boolean;
+  /** Where the button goes: the page with this add-on ticked, or, when it already is, with it taken out again. */
+  readonly toggleHref: string;
+}): ReactElement {
   const offered = addOnPrice(addOn, false, true);
   return (
-    <li className="py-3.5 sm:py-4">
-      <form action={formAction} className="flex flex-wrap items-center gap-x-3 gap-y-3 sm:gap-x-4">
-        <input type="hidden" name="addOn" value={addOn.id} />
-        <AddOnMark addOn={addOn.id} />
-        <div className="min-w-[10rem] flex-1">
-          <p className="text-[0.9375rem] font-semibold leading-snug text-ink sm:text-base">{addOn.title}</p>
-          <p className="mt-0.5 text-sm leading-snug text-ink-soft">{addOn.line}</p>
-        </div>
-        <div className="flex basis-full items-center justify-between gap-4 pl-[3.25rem] sm:basis-auto sm:justify-end sm:pl-0">
-          <p className="text-left tabular-nums sm:text-right">
-            <s className="block text-xs text-ink-soft">{formatMoney(offered.listCents, "INR")}</s>
-            <span className="block text-lg font-semibold leading-tight text-ink">{formatMoney(offered.netCents, "INR")}</span>
-            <span className="block text-xs text-ink-soft">a month + GST</span>
-          </p>
-          {claimed ? (
-            <span className="inline-flex min-w-[5.5rem] items-center justify-center gap-1.5 text-sm font-semibold text-success">
-              <TickIcon className="size-4" />
-              Added
-            </span>
-          ) : (
-            <Button type="submit" size="sm" disabled={isPending} aria-busy={isPending} aria-label={`Add ${addOn.title}`} className="min-w-[5.5rem]">
-              {isPending ? "Opening…" : "Add"}
-            </Button>
-          )}
-        </div>
-      </form>
-      {message === null ? null : (
-        <p role="alert" className="mt-2 text-sm text-accent-deep">
-          {message}
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-3 py-3.5 sm:gap-x-4 sm:py-4">
+      <AddOnMark addOn={addOn.id} />
+      <div className="min-w-[10rem] flex-1">
+        <p className="text-[0.9375rem] font-semibold leading-snug text-ink sm:text-base">{addOn.title}</p>
+        <p className="mt-0.5 text-sm leading-snug text-ink-soft">{addOn.line}</p>
+      </div>
+      <div className="flex basis-full items-center justify-between gap-4 pl-[3.25rem] sm:basis-auto sm:justify-end sm:pl-0">
+        <p className="text-left tabular-nums sm:text-right">
+          <s className="block text-xs text-ink-soft">{formatMoney(offered.listCents, "INR")}</s>
+          <span className="block text-lg font-semibold leading-tight text-ink">{formatMoney(offered.netCents, "INR")}</span>
+          <span className="block text-xs text-ink-soft">a month + GST</span>
         </p>
-      )}
+        {added ? (
+          <ButtonLink href={toggleHref} replace scroll={false} prefetch={false} size="sm" variant="secondary" aria-label={`Remove ${addOn.title}`} className="min-w-[5.5rem] text-success">
+            <TickIcon className="size-4" />
+            Added
+          </ButtonLink>
+        ) : (
+          <ButtonLink href={toggleHref} replace scroll={false} prefetch={false} size="sm" aria-label={`Add ${addOn.title}`} className="min-w-[5.5rem]">
+            Add
+          </ButtonLink>
+        )}
+      </div>
     </li>
   );
 }
 
 /**
  * The first-checkout offer, shown until the first plan payment. The words are the owner's, verbatim (lifetime-offer.ts).
- * Each add-on is its own button and is discounted only if it is bought here: one left out stays at its full price.
+ * Each add-on ticks on or off with its own button and joins the plan in one payment; it is discounted only if it is taken
+ * here: one left out stays at its full price.
  */
-export function OfferCard({ action, claimed }: OfferCardProps): ReactElement {
+export function OfferCard({ selected, hrefFor }: OfferCardProps): ReactElement {
   return (
     <section aria-label="Checkout offer" className="rounded-card border border-ink-soft/40 bg-accent-pale/55 p-4 sm:p-7">
       <div className="flex items-start justify-between gap-6">
@@ -75,7 +73,12 @@ export function OfferCard({ action, claimed }: OfferCardProps): ReactElement {
       </div>
       <ul aria-label="Add-ons at your lifetime price" className="mt-5 divide-y divide-ink-soft/25 border-y border-ink-soft/25">
         {ADD_ONS.map((addOn) => (
-          <OfferRow key={addOn.id} addOn={addOn} claimed={claimed.includes(addOn.id)} action={action} />
+          <OfferRow
+            key={addOn.id}
+            addOn={addOn}
+            added={selected.includes(addOn.id)}
+            toggleHref={hrefFor(selected.includes(addOn.id) ? selected.filter((id) => id !== addOn.id) : [...selected, addOn.id])}
+          />
         ))}
       </ul>
       <p className="mt-4 flex items-start gap-3 rounded-control bg-accent-pale px-3.5 py-3 text-sm sm:mt-5 sm:px-4 sm:py-3.5 leading-snug text-accent-deep">

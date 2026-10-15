@@ -7,8 +7,10 @@ vi.mock("@fynix/db", async () => {
     ...actual,
     findAddOnSubscription: vi.fn(),
     listAddOnSubscriptionsForStaff: vi.fn(),
+    listBundledAddOnsForBusiness: vi.fn(async () => []),
     listPressReleasesForBusiness: vi.fn(),
     markAddOnContacted: vi.fn(),
+    markBundledAddOnContacted: vi.fn(),
     setPressReleaseStatus: vi.fn(),
   };
 });
@@ -23,13 +25,15 @@ vi.mock("./db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 import {
   findAddOnSubscription,
   listAddOnSubscriptionsForStaff,
+  listBundledAddOnsForBusiness,
   listPressReleasesForBusiness,
   markAddOnContacted,
+  markBundledAddOnContacted,
   setPressReleaseStatus,
 } from "@fynix/db";
 import { scheduleAddOnEndFor } from "@fynix/shared/server/add-on-ends";
 import { logBillingEvent } from "@fynix/shared/server/billing-log";
-import { endClientAddOn, loadClientAddOns, markClientAddOnContacted, setClientPressReleaseStatus } from "./add-ons-admin";
+import { endClientAddOn, loadClientAddOns, markClientAddOnContacted, markClientBundledAddOnContacted, setClientPressReleaseStatus } from "./add-ons-admin";
 
 const BUSINESS = "0192f3c4-1111-7000-8000-000000000001";
 const OTHER_BUSINESS = "0192f3c4-1111-7000-8000-000000000002";
@@ -189,5 +193,71 @@ describe("loadClientAddOns", () => {
 
     expect(loaded.addOns[0]).toMatchObject({ broken: true });
     expect(logBillingEvent).toHaveBeenCalledWith("error", "add-on-view-failed", { businessId: BUSINESS, addOnSubscriptionId: ROW });
+  });
+});
+
+describe("add-ons taken with the plan", () => {
+  const BUNDLED = "0192f3c4-4444-7000-8000-000000000001";
+  const bundledRow = (overrides: Record<string, unknown> = {}) => ({
+    id: BUNDLED,
+    businessId: BUSINESS,
+    addOn: "social-media",
+    status: "active",
+    listAmountCents: 199_900,
+    offerDiscountAmountCents: 9_995,
+    netAmountCents: 189_905,
+    activatedAt: new Date("2026-10-09T09:00:00.000Z"),
+    endRequestedAt: null,
+    removedAt: null,
+    contactedAt: null,
+    ...overrides,
+  });
+
+  it("shows a paid one as active with its price, to follow up, and counts it", async () => {
+    vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
+    vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
+    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([bundledRow(), bundledRow({ id: "x", status: "pending", activatedAt: null })] as never);
+
+    const loaded = await loadClientAddOns(BUSINESS, NOW);
+
+    expect(loaded.bundledAddOns).toEqual([
+      expect.objectContaining({
+        id: BUNDLED,
+        title: "Social media",
+        state: { tone: "done", label: "Active" },
+        price: "₹1,899.05 + GST a month, 5% lifetime offer, billed with the plan",
+        needsContact: true,
+      }),
+    ]);
+  });
+
+  it("shows one the customer asked to remove as ending, and a removed one as removed", async () => {
+    vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
+    vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
+    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([
+      bundledRow({ endRequestedAt: new Date("2026-10-20T09:00:00.000Z") }),
+      bundledRow({ id: "y", addOn: "advertising", status: "removed", removedAt: new Date("2026-11-09T09:00:00.000Z") }),
+    ] as never);
+
+    const loaded = await loadClientAddOns(BUSINESS, NOW);
+
+    expect(loaded.bundledAddOns.map((row) => row.state.label)).toEqual(["Ending", "Removed"]);
+    expect(loaded.bundledAddOns[0]?.dateLine).toContain("stops at the next billing date");
+  });
+
+  it("marks one contacted for its own business only", async () => {
+    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([bundledRow()] as never);
+    vi.mocked(markBundledAddOnContacted).mockResolvedValue(true);
+
+    expect(await markClientBundledAddOnContacted({ businessId: BUSINESS, bundledAddOnId: BUNDLED, staffUserId: STAFF }, NOW)).toBe("marked");
+    expect(markBundledAddOnContacted).toHaveBeenCalledWith({ name: "staff-db" }, { id: BUNDLED, businessId: BUSINESS, staffUserId: STAFF, now: NOW });
+    expect(await markClientBundledAddOnContacted({ businessId: OTHER_BUSINESS, bundledAddOnId: "nope", staffUserId: STAFF }, NOW)).toBe("not-found");
+  });
+
+  it("says it was already marked when it was", async () => {
+    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([bundledRow()] as never);
+    vi.mocked(markBundledAddOnContacted).mockResolvedValue(false);
+
+    expect(await markClientBundledAddOnContacted({ businessId: BUSINESS, bundledAddOnId: BUNDLED, staffUserId: STAFF }, NOW)).toBe("already");
   });
 });

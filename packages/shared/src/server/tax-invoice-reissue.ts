@@ -2,10 +2,12 @@ import "server-only";
 import { addMonthsUtc, chargedAmountCents } from "@fynix/billing";
 import {
   findAddOnSubscriptionForPayment,
+  findBundledAddOnsForSubscription,
   findChargeByPaymentId,
   findPlanById,
   findSubscriptionById,
   listPaymentsWithoutTaxInvoice,
+  type BundledAddOn,
   type Payment,
   type Plan,
   type ScopedTransaction,
@@ -40,6 +42,8 @@ export class UnsupportedPaymentKindError extends Error {
 
 /** One price a payment may have been charged at: what an InvoiceSource needs besides the plan and the period. */
 interface Price {
+  /** The add-ons billed inside the plan's charge, each a line of its own; empty for a plan alone. */
+  readonly bundledAddOns: readonly BundledAddOn[];
   readonly netAmountCents: number;
   readonly discountAmountCents: number;
   readonly retentionDiscountCents: number;
@@ -50,16 +54,21 @@ interface Price {
  * price it was charged at, and a subscription's discount can change after a payment (a stay offer is added), so a
  * payment is tried against what the subscription holds now and then against what it held before.
  */
-function candidatePrices(kind: Payment["kind"], plan: Plan, subscription: Subscription): readonly Price[] {
+function candidatePrices(kind: Payment["kind"], plan: Plan, subscription: Subscription, bundled: readonly BundledAddOn[]): readonly Price[] {
   const couponCents = subscription.discountAmountCents - subscription.retentionDiscountCents;
+  // A charge that took the add-ons too is tried first, then the plan alone (a payment from before they were bundled).
+  const withAddOns = (prices: readonly Omit<Price, "bundledAddOns">[]): readonly Price[] => [
+    ...(bundled.length === 0 ? [] : prices.map((price) => ({ ...price, bundledAddOns: bundled }))),
+    ...prices.map((price) => ({ ...price, bundledAddOns: [] })),
+  ];
   switch (kind) {
     case "initial":
-      return [
+      return withAddOns([
         { netAmountCents: plan.initialAmountCents, discountAmountCents: couponCents, retentionDiscountCents: 0 },
         { netAmountCents: plan.initialAmountCents, discountAmountCents: 0, retentionDiscountCents: 0 },
-      ];
+      ]);
     case "renewal":
-      return [
+      return withAddOns([
         {
           netAmountCents: plan.recurringAmountCents,
           discountAmountCents: subscription.discountAmountCents,
@@ -67,9 +76,9 @@ function candidatePrices(kind: Payment["kind"], plan: Plan, subscription: Subscr
         },
         { netAmountCents: plan.recurringAmountCents, discountAmountCents: couponCents, retentionDiscountCents: 0 },
         { netAmountCents: plan.recurringAmountCents, discountAmountCents: 0, retentionDiscountCents: 0 },
-      ];
+      ]);
     case "reactivation":
-      return [{ netAmountCents: plan.recurringAmountCents, discountAmountCents: 0, retentionDiscountCents: 0 }];
+      return [{ bundledAddOns: [], netAmountCents: plan.recurringAmountCents, discountAmountCents: 0, retentionDiscountCents: 0 }];
     default:
       return [];
   }
@@ -79,7 +88,8 @@ function candidatePrices(kind: Payment["kind"], plan: Plan, subscription: Subscr
 function matching(payment: Payment, plan: Plan, prices: readonly Price[]): Price | null {
   for (const price of prices) {
     if (price.discountAmountCents >= price.netAmountCents) continue;
-    if (chargedAmountCents(price.netAmountCents, price.discountAmountCents, plan.taxRateBasisPoints) === payment.amountCents) return price;
+    const net = price.netAmountCents + price.bundledAddOns.reduce((total, row) => total + row.netAmountCents, 0);
+    if (chargedAmountCents(net, price.discountAmountCents, plan.taxRateBasisPoints) === payment.amountCents) return price;
   }
   return null;
 }
@@ -109,7 +119,8 @@ async function sourceFor(tx: ScopedTransaction, payment: Payment): Promise<Invoi
   const subscription = payment.subscriptionId === null ? null : await findSubscriptionById(tx, payment.subscriptionId);
   const plan = subscription === null ? null : await findPlanById(tx, subscription.planId);
   if (subscription === null || plan === null || payment.paidAt === null) throw new InvoiceSourceMismatchError(payment.kind);
-  const price = matching(payment, plan, candidatePrices(payment.kind, plan, subscription));
+  const bundled = (await findBundledAddOnsForSubscription(tx, subscription.id)).filter((row) => row.activatedAt !== null);
+  const price = matching(payment, plan, candidatePrices(payment.kind, plan, subscription, bundled));
   if (price === null) throw new InvoiceSourceMismatchError(payment.kind);
   const initial = payment.kind === "initial";
   return {

@@ -1,4 +1,5 @@
 import { chargedAmountCents } from "@fynix/billing/tax";
+import { bundleNetCents, type BundleLine } from "@fynix/shared/lib/billing/bundle";
 import { formatMoney, type MoneyCurrency } from "@fynix/shared/lib/money";
 import { BRAND, featureShownTo, type Brand } from "@/lib/brand";
 import { featuresOf, MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
@@ -167,23 +168,40 @@ export function membershipPriceParts(
 export interface OrderSummary {
   /** The plan's price before any code. */
   readonly listCents: number;
-  /** What the applied code takes off, or 0. */
+  /** What the applied code takes off the plan, or 0. */
   readonly discountCents: number;
-  /** The taxable amount: the price less the code. */
+  /** The plan's price less the code: the plan's own taxable line. */
+  readonly planNetCents: number;
+  /** The add-ons taken at this checkout, each with its lifetime offer, billed in this same payment. */
+  readonly addOns: readonly BundleLine[];
+  /** The taxable amount of the whole payment: the plan less the code, plus the add-ons. */
   readonly netCents: number;
   readonly gstCents: number;
   /** What the provider takes today: the same figure the Pay button shows and the checkout freezes. */
   readonly totalCents: number;
 }
 
-/** The first payment broken into its parts. The total comes from chargedAmountCents, the one place the charge is worked out. */
+/**
+ * The first payment broken into its parts: the plan, a code, the add-ons taken with it, the GST and the total. The total
+ * comes from chargedAmountCents, the one place the charge is worked out, over the plan's price plus the add-ons' nets.
+ */
 export function orderSummary(
   plan: { readonly initialAmountCents: number; readonly taxRateBasisPoints: number },
   discountCents: number,
+  addOns: readonly BundleLine[] = [],
 ): OrderSummary {
-  const netCents = plan.initialAmountCents - discountCents;
-  const totalCents = chargedAmountCents(plan.initialAmountCents, discountCents, plan.taxRateBasisPoints);
-  return { listCents: plan.initialAmountCents, discountCents, netCents, gstCents: totalCents - netCents, totalCents };
+  const bundledCents = bundleNetCents(addOns);
+  const netCents = plan.initialAmountCents + bundledCents - discountCents;
+  const totalCents = chargedAmountCents(plan.initialAmountCents + bundledCents, discountCents, plan.taxRateBasisPoints);
+  return {
+    listCents: plan.initialAmountCents,
+    discountCents,
+    planNetCents: plan.initialAmountCents - discountCents,
+    addOns,
+    netCents,
+    gstCents: totalCents - netCents,
+    totalCents,
+  };
 }
 
 /** The Pay form's state: idle, or the reason the payment could not be started. */

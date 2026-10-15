@@ -1,0 +1,3 @@
+ALTER TABLE "bundled_add_ons" ADD COLUMN "contacted_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "bundled_add_ons" ADD COLUMN "contacted_by_staff_id" text;--> statement-breakpoint
+ALTER TABLE "bundled_add_ons" ADD CONSTRAINT "bundled_add_ons_contacted_by_staff_id_users_id_fk" FOREIGN KEY ("contacted_by_staff_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;

@@ -26,6 +26,8 @@ export interface Brand {
   readonly joinChoices: readonly JoinChoice[];
   /** Whether the plans are sold with the directory listing and what comes with it: they are websites, so no. */
   readonly showsListing: boolean;
+  /** What the product is, in a sentence or two: said by the logo on the checkout page when it is pressed. */
+  readonly about: string;
 }
 
 export const BRAND: Brand = {
@@ -38,6 +40,7 @@ export const BRAND: Brand = {
   logo: { white: "/brand/fynix-logo-white.svg", dark: "/brand/fynix-logo-dark.svg", width: 89, height: 37 },
   joinChoices: ["care"],
   showsListing: false,
+  about: "We build your business website and look after it every month: design, hosting and care, with marketing services you can add as you grow.",
 };
 
 /** The plan a sign-up opens with when its address names none, or names one it does not sell (`free`, a typo). */

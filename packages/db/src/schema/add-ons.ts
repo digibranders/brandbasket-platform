@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { check, foreignKey, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 import { users } from "./auth";
-import { billingProvider, charges, payments } from "./billing";
+import { billingProvider, charges, payments, subscriptions } from "./billing";
 import { businesses } from "./businesses";
 import { createdAt, updatedAt } from "./columns";
 import { billingCurrency } from "./currency";
@@ -121,6 +121,50 @@ export const addOnPayments = pgTable(
   (table) => [index("add_on_payments_subscription_idx").on(table.addOnSubscriptionId)],
 );
 
+export const bundledAddOnStatus = pgEnum("bundled_add_on_status", ["pending", "active", "removed"]);
+
+/**
+ * An add-on taken at the first checkout, billed inside the plan's own subscription: the one monthly charge is the plan
+ * plus these. `pending` until the first payment is recorded, `active` after it, `removed` once it has stopped being
+ * billed. The price is frozen here at the checkout (list, the 5% lifetime offer, net) and summed onto
+ * `subscriptions.bundled_add_on_net_cents`. Rows are kept on erasure, like every record of what was sold.
+ */
+export const bundledAddOns = pgTable(
+  "bundled_add_ons",
+  {
+    id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
+    businessId: uuid("business_id").notNull().references(() => businesses.id),
+    subscriptionId: uuid("subscription_id").notNull().references(() => subscriptions.id),
+    addOn: text("add_on").notNull(),
+    listAmountCents: integer("list_amount_cents").notNull(),
+    /** The first-checkout lifetime offer (5%) taken off the list price. */
+    offerDiscountAmountCents: integer("offer_discount_amount_cents").notNull().default(0),
+    netAmountCents: integer("net_amount_cents").notNull(),
+    taxRateBasisPoints: integer("tax_rate_basis_points").notNull(),
+    status: bundledAddOnStatus("status").notNull().default("pending"),
+    activatedAt: timestamp("activated_at", { withTimezone: true }),
+    /** The customer asked to remove it: it stays billed, and active, until the next billing date, then it is `removed`. */
+    endRequestedAt: timestamp("end_requested_at", { withTimezone: true }),
+    removedAt: timestamp("removed_at", { withTimezone: true }),
+    /** When staff got in touch about this purchase, as for add_on_subscriptions; null until then. */
+    contactedAt: timestamp("contacted_at", { withTimezone: true }),
+    contactedByStaffId: text("contacted_by_staff_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("bundled_add_ons_subscription_add_on_idx").on(table.subscriptionId, table.addOn),
+    index("bundled_add_ons_business_idx").on(table.businessId, table.createdAt),
+    check("bundled_add_ons_add_on_check", sql`${table.addOn} in ('social-media', 'lead-generation', 'advertising')`),
+    check(
+      "bundled_add_ons_amounts_check",
+      sql`${table.listAmountCents} > 0 and ${table.offerDiscountAmountCents} >= 0
+        and ${table.netAmountCents} = ${table.listAmountCents} - ${table.offerDiscountAmountCents} and ${table.netAmountCents} > 0
+        and ${table.taxRateBasisPoints} between 0 and 10000`,
+    ),
+  ],
+);
+
 export const pressReleaseStatus = pgEnum("press_release_status", ["waiting", "in_progress", "published"]);
 
 /** A paid press release and how far the team has got with it. Created when its charge is paid. */
@@ -143,4 +187,6 @@ export const pressReleases = pgTable(
 
 export type AddOnSubscriptionStatus = (typeof addOnSubscriptionStatus.enumValues)[number];
 export type AddOnSubscription = typeof addOnSubscriptions.$inferSelect;
+export type BundledAddOn = typeof bundledAddOns.$inferSelect;
+export type BundledAddOnStatus = (typeof bundledAddOnStatus.enumValues)[number];
 export type PressRelease = typeof pressReleases.$inferSelect;

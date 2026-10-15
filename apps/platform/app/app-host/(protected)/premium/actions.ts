@@ -5,8 +5,7 @@ import { redirect } from "next/navigation";
 import { CARE_PATH, MEMBER_HOME, MEMBERSHIP_PATH, UPGRADE_PATH, readMembershipCallbackTier, type MembershipFormState } from "@/lib/membership";
 import { offersChoice, sellsFreeListing } from "@/lib/brand";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
-import { MONTHLY_ADD_ON_IDS } from "@fynix/shared/lib/billing/add-ons";
-import { startAddOnCheckoutFor } from "@/lib/server/add-ons";
+import { readBundleSelection } from "@fynix/shared/lib/billing/bundle";
 import { startMembershipCheckoutFor } from "@/lib/server/checkout";
 import { LISTING_PAGE_PATH, requireCustomerAccess, type CustomerAccessOptions } from "@/lib/server/customer-access";
 import { continueWithFreeListing } from "@/lib/server/membership";
@@ -23,12 +22,11 @@ function revalidatePlanPages(): void {
   revalidatePath(UPGRADE_PATH);
 }
 
-const UNKNOWN_ADD_ON_MESSAGE = "We couldn't tell which add-on that was. Reload the page and try again.";
 const UNKNOWN_PLAN_MESSAGE = "We couldn't tell which plan that was. Reload the page and try again.";
 
 /**
- * Buy a plan, Care or Premium: starts its first payment. The only thing read from the posted form is which plan's page
- * the button was on, and that is checked here; whether this business may pay, and what for, is decided on the server
+ * Buy a plan, Care or Premium: starts its first payment. What is read from the posted form is which plan's page the
+ * button was on, and which add-ons were ticked to go in the same payment; both are checked here; whether this business may pay, and what for, is decided on the server
  * in startMembershipCheckoutFor. On success the owner is sent to the provider's checkout, and the payment's
  * confirmation opens the membership.
  */
@@ -37,24 +35,11 @@ export async function startMembership(_previous: MembershipFormState, formData: 
   if (tier === null) return { status: "error", message: UNKNOWN_PLAN_MESSAGE };
   if (!offersChoice(await requestBrand(), tier)) return { status: "error", message: UNKNOWN_PLAN_MESSAGE };
   const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
-  const outcome = await startMembershipCheckoutFor(customer, new Date(), tier);
+  // The add-ons ticked on the page are paid in this same payment. Only catalogue ids survive the read; what each costs,
+  // and whether the offer still stands, is decided on the server in startMembershipCheckoutFor.
+  const addOns = readBundleSelection(formData.getAll("addOn").filter((value): value is string => typeof value === "string"));
+  const outcome = await startMembershipCheckoutFor(customer, new Date(), tier, addOns);
   if (outcome.kind === "refused") return { status: "error", message: outcome.problem.message };
-  redirect(outcome.url);
-}
-
-const OFFER_ADD_ONS = MONTHLY_ADD_ON_IDS;
-
-/**
- * Adds one add-on at the first checkout (lib/billing/lifetime-offer.ts): opens its payment, priced with the 5% lifetime
- * offer. The form carries only which add-on; whether the offer still stands, and the price, are decided on the server
- * (startAddOnCheckoutFor, startPressReleaseFor), so a form posted after the first plan payment buys it at full price.
- */
-export async function addOfferAddOn(_previous: MembershipFormState, formData: FormData): Promise<MembershipFormState> {
-  const addOn = OFFER_ADD_ONS.find((candidate) => candidate === formData.get("addOn"));
-  if (addOn === undefined) return { status: "error", message: UNKNOWN_ADD_ON_MESSAGE };
-  const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
-  const outcome = await startAddOnCheckoutFor(customer, addOn, "buy", new Date());
-  if (outcome.kind === "refused") return { status: "error", message: outcome.message };
   redirect(outcome.url);
 }
 

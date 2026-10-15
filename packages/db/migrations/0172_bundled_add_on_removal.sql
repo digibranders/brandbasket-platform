@@ -1,0 +1,4 @@
+ALTER TABLE "subscriptions" DROP CONSTRAINT "subscriptions_bundled_check";--> statement-breakpoint
+ALTER TABLE "bundled_add_ons" ADD COLUMN "end_requested_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "subscriptions" ADD COLUMN "pending_bundled_add_on_net_cents" integer;--> statement-breakpoint
+ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_bundled_check" CHECK ("subscriptions"."bundled_add_on_net_cents" >= 0 and ("subscriptions"."pending_bundled_add_on_net_cents" is null or ("subscriptions"."pending_bundled_add_on_net_cents" >= 0 and "subscriptions"."pending_bundled_add_on_net_cents" < "subscriptions"."bundled_add_on_net_cents")));

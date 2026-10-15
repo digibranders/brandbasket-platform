@@ -37,6 +37,8 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
     retentionDiscountCents: 0,
     pendingPlanId: null,
     pendingDiscountAmountCents: 0,
+    bundledAddOnNetCents: 0,
+    pendingBundledAddOnNetCents: null,
     status: "active",
     activatedAt: new Date("2026-09-20T10:00:00Z"),
     commitmentEndsAt: null,

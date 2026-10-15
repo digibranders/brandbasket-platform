@@ -86,8 +86,9 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
     const discountAmountCents = manualDiscount(redeemable, plan);
 
     const decision = decideCheckout(
-      state.subscription,
-      { planId: plan.id, provider: "manual", referralCodeId: discountAmountCents === null ? null : redeemable?.id ?? null },
+      // A payment recorded by hand carries no add-ons, so it never reuses a checkout opened with some.
+      state.subscription === null ? null : { ...state.subscription, bundleKey: state.subscription.bundledAddOnNetCents > 0 ? "with-add-ons" : "" },
+      { planId: plan.id, provider: "manual", referralCodeId: discountAmountCents === null ? null : redeemable?.id ?? null, bundleKey: "" },
       now,
       { paymentUnderReview: false },
     );

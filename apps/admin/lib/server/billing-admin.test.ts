@@ -38,7 +38,10 @@ vi.mock("@fynix/db", () => {
   class MockBillingBusinessNotFoundError extends Error {}
   return {
     BillingBusinessNotFoundError: MockBillingBusinessNotFoundError,
+    activateBundledAddOns: vi.fn(async () => []),
+    bundledNetCents: (items: readonly { netAmountCents: number }[]) => items.reduce((total, item) => total + item.netAmountCents, 0),
     findActivePlan: vi.fn(),
+    findBundledAddOnsForSubscription: vi.fn(async () => []),
     findAffiliateAccrualContext: vi.fn(),
     findBillingState: vi.fn(),
     findBusinessReferralCode: vi.fn(),

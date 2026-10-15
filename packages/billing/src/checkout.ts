@@ -14,6 +14,8 @@ export interface LatestSubscription {
   readonly paidThroughAt: Date | null;
   /** The referral code this checkout was opened with, or null when it was opened at the full price. */
   readonly referralCodeId: string | null;
+  /** Which add-ons the checkout was opened with (bundleKey): empty when none. */
+  readonly bundleKey: string;
   readonly createdAt: Date;
 }
 
@@ -22,6 +24,13 @@ export interface CheckoutTarget {
   readonly provider: BillingProviderName;
   /** The referral code applied to the business now, or null. */
   readonly referralCodeId: string | null;
+  /** The add-ons the customer is paying for now (bundleKey): empty when none. */
+  readonly bundleKey: string;
+}
+
+/** A stable name for a choice of add-ons, so a checkout opened with a different choice is never reused. */
+export function bundleKey(addOnIds: readonly string[]): string {
+  return [...addOnIds].sort().join(",");
 }
 
 export interface CheckoutHistory {
@@ -70,11 +79,13 @@ export function decideCheckout(
       const age = now.getTime() - latest.createdAt.getTime();
       // The referral code is part of what a checkout *is*: the provider's subscription was opened with (or
       // without) an offer attached, and its discount is frozen on our row. A customer who applies, changes or
-      // removes a code after opening one must be sent to a fresh checkout, never back to the old amount.
+      // removes a code after opening one must be sent to a fresh checkout, never back to the old amount. So is one who
+      // changes which add-ons they are taking: the provider's plan charges the amount it was opened with.
       const reusable =
         latest.planId === target.planId &&
         latest.provider === target.provider &&
         latest.referralCodeId === target.referralCodeId &&
+        latest.bundleKey === target.bundleKey &&
         age >= 0 &&
         age < CHECKOUT_REUSE_WINDOW_MS;
       return reusable

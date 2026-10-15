@@ -277,6 +277,7 @@ describe("the tax invoice", () => {
     expect(vi.mocked(issueTaxInvoiceSafely).mock.calls[0]?.[2]).toEqual({
       kind: "plan",
       plan,
+      bundledAddOns: [],
       netAmountCents: 999_900,
       discountAmountCents: 199_980,
       retentionDiscountCents: 0,

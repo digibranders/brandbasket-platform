@@ -37,7 +37,7 @@ import { projectLaunchNoticeHref } from "@fynix/shared/lib/project-launch-notice
 import { projectPreviewNoticeHref } from "@fynix/shared/lib/project-preview-notices";
 import { addOnNoticeHref, noticeForEndOutcome, type AddOnNotice } from "@/lib/add-on-notices";
 import { clientListingKey, clientTagsHref } from "@/lib/client-tags";
-import { endClientAddOn, markClientAddOnContacted, setClientPressReleaseStatus } from "@/lib/server/add-ons-admin";
+import { endClientAddOn, markClientAddOnContacted, markClientBundledAddOnContacted, setClientPressReleaseStatus } from "@/lib/server/add-ons-admin";
 import { recordManualFirstPayment, resolveFlaggedPayment } from "@/lib/server/billing-admin";
 import { addClientCharge, markClientChargePaid, waiveClientCharge } from "@/lib/server/charges-admin";
 import { getStaffDb } from "@/lib/server/db";
@@ -448,6 +448,18 @@ export async function markAddOnContactedAction(formData: FormData): Promise<void
   const addOnSubscriptionId = readId(formData.get("addOnSubscriptionId"), "The purchase");
 
   const outcome = await markClientAddOnContacted({ businessId, addOnSubscriptionId, staffUserId: user.id }, new Date());
+  revalidateClient(businessId);
+  const notice: AddOnNotice = outcome === "marked" ? "contacted" : outcome === "already" ? "already-contacted" : "not-found";
+  redirect(addOnNoticeHref(businessId, notice));
+}
+
+/** Records that the team has been in touch about an add-on taken with the plan. Safe to repeat. */
+export async function markBundledAddOnContactedAction(formData: FormData): Promise<void> {
+  const { user } = await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "The purchase's business");
+  const bundledAddOnId = readId(formData.get("bundledAddOnId"), "The purchase");
+
+  const outcome = await markClientBundledAddOnContacted({ businessId, bundledAddOnId, staffUserId: user.id }, new Date());
   revalidateClient(businessId);
   const notice: AddOnNotice = outcome === "marked" ? "contacted" : outcome === "already" ? "already-contacted" : "not-found";
   redirect(addOnNoticeHref(businessId, notice));

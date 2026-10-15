@@ -1,6 +1,6 @@
 import "server-only";
 import { discountPlanCode, type BillingProvider } from "@fynix/billing";
-import { findProviderDiscountPlan, saveProviderDiscountPlan, type Database, type Plan } from "@fynix/db";
+import { findProviderBundlePlan, findProviderDiscountPlan, saveProviderBundlePlan, saveProviderDiscountPlan, type Database, type Plan } from "@fynix/db";
 
 /**
  * A discounted provider plan charges one amount every cycle. A base plan whose first payment differs from its monthly
@@ -30,9 +30,11 @@ export async function ensureDiscountPlanFor(
   provider: BillingProvider,
   plan: Plan,
   discountAmountCents: number,
+  bundledAddOnNetCents = 0,
 ): Promise<string | undefined> {
-  if (discountAmountCents === 0) return undefined;
+  if (discountAmountCents === 0 && bundledAddOnNetCents === 0) return undefined;
   if (plan.initialAmountCents !== plan.recurringAmountCents) throw new UnevenPlanDiscountError(plan.code);
+  if (bundledAddOnNetCents > 0) return ensureBundlePlanFor(staffDb, provider, plan, discountAmountCents, bundledAddOnNetCents);
   const key = { planId: plan.id, discountAmountCents, provider: provider.name };
   const existing = await findProviderDiscountPlan(staffDb, key);
   if (existing !== null) return existing;
@@ -45,4 +47,32 @@ export async function ensureDiscountPlanFor(
   });
   if (created.providerPlanId === null) return undefined;
   return saveProviderDiscountPlan(staffDb, { ...key, providerPlanId: created.providerPlanId });
+}
+
+/**
+ * The provider plan a subscription with add-ons runs on: one amount a month, the plan's net price plus the add-ons less
+ * the discount, with the plan's tax on top. It is the same figure the webhook expects (the plan's price plus the
+ * subscription's frozen add-ons, less its frozen discount, through chargedAmountCents), made once per amount.
+ */
+async function ensureBundlePlanFor(
+  staffDb: Database,
+  provider: BillingProvider,
+  plan: Plan,
+  discountAmountCents: number,
+  bundledAddOnNetCents: number,
+): Promise<string | undefined> {
+  const netMonthlyCents = plan.recurringAmountCents + bundledAddOnNetCents - discountAmountCents;
+  const key = { planId: plan.id, netMonthlyCents, provider: provider.name };
+  const existing = await findProviderBundlePlan(staffDb, key);
+  if (existing !== null) return existing;
+
+  const created = await provider.createPlan({
+    currency: plan.currency,
+    netMonthlyCents,
+    taxRateBasisPoints: plan.taxRateBasisPoints,
+    code: `${plan.code}-with-add-ons-${netMonthlyCents}`,
+    itemName: `Fynix plan with add-ons (${plan.currency})`,
+  });
+  if (created.providerPlanId === null) return undefined;
+  return saveProviderBundlePlan(staffDb, { ...key, providerPlanId: created.providerPlanId });
 }

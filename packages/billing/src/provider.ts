@@ -22,6 +22,12 @@ export interface StartCheckoutInput {
    * subtracts it directly.
    */
   readonly discountAmountCents?: number;
+  /**
+   * What the add-ons taken at this checkout cost a month before tax, already about to be frozen on the subscription: the
+   * checkout takes the plan's price plus this, less the discount. Defaults to 0. Razorpay takes it through
+   * `providerPlanId` (a plan priced at the sum); the fake provider adds it directly.
+   */
+  readonly bundledAddOnNetCents?: number;
 }
 
 export interface StartedCheckout {

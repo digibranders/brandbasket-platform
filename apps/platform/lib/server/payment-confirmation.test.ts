@@ -133,6 +133,8 @@ function unpaidSubscription(providerSubscriptionId: string, overrides: Partial<S
     providerSubscriptionId,
     status: "incomplete",
     discountAmountCents: 0,
+    bundledAddOnNetCents: 0,
+    pendingBundledAddOnNetCents: null,
     ...overrides,
   } as Subscription;
 }

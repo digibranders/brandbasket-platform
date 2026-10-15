@@ -1,3 +1,5 @@
+import { chargedAmountCents } from "@fynix/billing/tax";
+import { bundleLines } from "@fynix/shared/lib/billing/bundle";
 import { describe, expect, it } from "vitest";
 import { BRAND } from "./brand";
 import { LISTING_BRAND } from "./testing/listing-brand";
@@ -144,12 +146,27 @@ describe("orderSummary", () => {
   const care = { initialAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
 
   it("works out today's payment: the price, any code, the GST and the total the provider takes", () => {
-    expect(orderSummary(care, 0)).toEqual({ listCents: 299_900, discountCents: 0, netCents: 299_900, gstCents: 53_982, totalCents: 353_882 });
-    expect(orderSummary(care, 30_000)).toEqual({ listCents: 299_900, discountCents: 30_000, netCents: 269_900, gstCents: 48_582, totalCents: 318_482 });
+    expect(orderSummary(care, 0)).toEqual({ listCents: 299_900, discountCents: 0, planNetCents: 299_900, addOns: [], netCents: 299_900, gstCents: 53_982, totalCents: 353_882 });
+    expect(orderSummary(care, 30_000)).toEqual({ listCents: 299_900, discountCents: 30_000, planNetCents: 269_900, addOns: [], netCents: 269_900, gstCents: 48_582, totalCents: 318_482 });
   });
 
   it("charges no tax on a plan that carries none", () => {
     expect(orderSummary({ ...care, taxRateBasisPoints: 0 }, 0)).toMatchObject({ gstCents: 0, totalCents: 299_900 });
+  });
+
+  it("adds the add-ons taken at this checkout to the one payment, with their offer and the GST on all of it", () => {
+    const summary = orderSummary(care, 0, bundleLines(["social-media"]));
+    expect(summary.addOns.map((line) => line.addOn)).toEqual(["social-media"]);
+    expect(summary.netCents).toBe(299_900 + 189_905);
+    expect(summary.totalCents).toBe(chargedAmountCents(299_900 + 189_905, 0, 1800));
+    expect(summary.gstCents).toBe(summary.totalCents - summary.netCents);
+    expect(summary.planNetCents).toBe(299_900);
+  });
+
+  it("takes a code off the plan only, never off the add-ons", () => {
+    const summary = orderSummary(care, 30_000, bundleLines(["advertising"]));
+    expect(summary.netCents).toBe(299_900 - 30_000 + 569_905);
+    expect(summary.planNetCents).toBe(269_900);
   });
 });
 

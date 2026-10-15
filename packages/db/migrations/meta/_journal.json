@@ -1170,6 +1170,27 @@
       "when": 1792049162176,
       "tag": "0169_add_lead_generation_add_on",
       "breakpoints": true
+    },
+    {
+      "idx": 167,
+      "version": "7",
+      "when": 1792055898283,
+      "tag": "0170_bundled_add_ons",
+      "breakpoints": true
+    },
+    {
+      "idx": 168,
+      "version": "7",
+      "when": 1792056971279,
+      "tag": "0171_bundled_add_on_contacted",
+      "breakpoints": true
+    },
+    {
+      "idx": 169,
+      "version": "7",
+      "when": 1792057030236,
+      "tag": "0172_bundled_add_on_removal",
+      "breakpoints": true
     }
   ]
 }

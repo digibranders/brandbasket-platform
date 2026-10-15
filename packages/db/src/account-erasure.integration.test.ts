@@ -406,7 +406,7 @@ describe("eraseClosedAccount", () => {
 describe("what the erase knows about", () => {
   /** Tables with a foreign key to businesses that the erase keeps on purpose: the books, and ad auction history. */
   const KEPT = [
-    "account_closures", "add_on_payments", "add_on_subscriptions", "affiliate_earnings", "charges", "directory_ad_bids",
+    "account_closures", "add_on_payments", "add_on_subscriptions", "affiliate_earnings", "bundled_add_ons", "charges", "directory_ad_bids",
     "directory_ad_wins", "directory_promotions", "payments", "plan_upgrades", "press_releases", "subscriptions",
     "tax_invoices",
   ];

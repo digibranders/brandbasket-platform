@@ -17,6 +17,7 @@ import {
   addOnPayments,
   addOnProviderPlans,
   addOnSubscriptions,
+  bundledAddOns,
   businesses,
   charges,
   payments,
@@ -576,7 +577,8 @@ export async function setPressReleaseStatus(
 }
 
 export interface AddOnToContact {
-  readonly kind: "subscription" | "press-release";
+  /** A monthly add-on of its own, one taken with the plan at the first checkout, or a press release. */
+  readonly kind: "subscription" | "bundled" | "press-release";
   readonly id: string;
   readonly businessId: string;
   readonly businessName: string;
@@ -587,8 +589,8 @@ export interface AddOnToContact {
 }
 
 /**
- * What staff should get in touch about, oldest first: paid purchases not yet marked contacted, and press releases still
- * waiting. Staff connection only.
+ * What staff should get in touch about, oldest first: paid purchases (separate, or taken with the plan) not yet marked
+ * contacted, and press releases still waiting. Staff connection only.
  */
 export async function listAddOnsToContact(db: Runner, limit: number): Promise<AddOnToContact[]> {
   if (!Number.isSafeInteger(limit) || limit < 1) throw new RangeError("limit must be a positive integer");
@@ -604,6 +606,19 @@ export async function listAddOnsToContact(db: Runner, limit: number): Promise<Ad
     .innerJoin(businesses, eq(businesses.id, addOnSubscriptions.businessId))
     .where(and(isNotNull(addOnSubscriptions.activatedAt), isNull(addOnSubscriptions.contactedAt)))
     .orderBy(asc(addOnSubscriptions.activatedAt), asc(addOnSubscriptions.id))
+    .limit(limit);
+  const bundledRows = await db
+    .select({
+      id: bundledAddOns.id,
+      businessId: bundledAddOns.businessId,
+      businessName: businesses.name,
+      addOn: bundledAddOns.addOn,
+      activatedAt: bundledAddOns.activatedAt,
+    })
+    .from(bundledAddOns)
+    .innerJoin(businesses, eq(businesses.id, bundledAddOns.businessId))
+    .where(and(isNotNull(bundledAddOns.activatedAt), isNull(bundledAddOns.contactedAt)))
+    .orderBy(asc(bundledAddOns.activatedAt), asc(bundledAddOns.id))
     .limit(limit);
   const releaseRows = await db
     .select({
@@ -623,6 +638,9 @@ export async function listAddOnsToContact(db: Runner, limit: number): Promise<Ad
       // The filter above makes the activation time present.
       activatedAt === null ? [] : [{ kind: "subscription" as const, ...row, at: activatedAt }],
     ),
+    ...bundledRows.flatMap(({ activatedAt, ...row }) =>
+      activatedAt === null ? [] : [{ kind: "bundled" as const, ...row, at: activatedAt }],
+    ),
     ...releaseRows.map(({ createdAt, ...row }) => ({ kind: "press-release" as const, ...row, addOn: "press-release", at: createdAt })),
   ];
   return items.sort((a, b) => a.at.getTime() - b.at.getTime() || a.id.localeCompare(b.id)).slice(0, limit);
@@ -640,7 +658,7 @@ export interface LifetimeOfferStanding {
  */
 export async function findLifetimeOfferStanding(db: Runner, businessId: string): Promise<LifetimeOfferStanding> {
   if (!isUuid(businessId)) return { claimed: [] };
-  const rows = await db
+  const separate = await db
     .selectDistinct({ addOn: addOnSubscriptions.addOn })
     .from(addOnSubscriptions)
     .where(
@@ -650,5 +668,16 @@ export async function findLifetimeOfferStanding(db: Runner, businessId: string):
         sql`${addOnSubscriptions.offerDiscountAmountCents} > 0`,
       ),
     );
-  return { claimed: rows.map((row) => row.addOn) };
+  // An add-on taken at the first checkout is billed inside the plan; once active (or later removed) it has claimed the offer too.
+  const bundled = await db
+    .selectDistinct({ addOn: bundledAddOns.addOn })
+    .from(bundledAddOns)
+    .where(
+      and(
+        eq(bundledAddOns.businessId, businessId),
+        isNotNull(bundledAddOns.activatedAt),
+        sql`${bundledAddOns.offerDiscountAmountCents} > 0`,
+      ),
+    );
+  return { claimed: [...new Set([...separate, ...bundled].map((row) => row.addOn))] };
 }

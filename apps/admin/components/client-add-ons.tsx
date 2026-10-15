@@ -7,8 +7,8 @@ import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
 import { StatusDot } from "@/components/console/status-dot";
 import { ADD_ON_NOTICES, type AddOnNotice } from "@/lib/add-on-notices";
-import type { ClientAddOnRow, ClientPressReleaseRow, PressReleaseStatus } from "@/lib/client-add-ons";
-import { endAddOnAction, markAddOnContactedAction, setPressReleaseStatusAction } from "@/app/(protected)/clients/[businessId]/actions";
+import type { ClientAddOnRow, ClientBundledAddOnRow, ClientPressReleaseRow, PressReleaseStatus } from "@/lib/client-add-ons";
+import { endAddOnAction, markAddOnContactedAction, markBundledAddOnContactedAction, setPressReleaseStatusAction } from "@/app/(protected)/clients/[businessId]/actions";
 
 const STEP_BUTTONS: Readonly<Record<Exclude<PressReleaseStatus, "waiting">, string>> = {
   in_progress: "Mark in progress",
@@ -101,6 +101,35 @@ function AddOnRow({ businessId, row }: { readonly businessId: string; readonly r
   );
 }
 
+/** An add-on the customer took with the plan: billed in the plan's payment, so there is nothing to pause or cancel here. */
+function BundledAddOnRow({ businessId, row }: { readonly businessId: string; readonly row: ClientBundledAddOnRow }): ReactElement {
+  return (
+    <li className="py-4 first:pt-0">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+        <div className="min-w-0">
+          <p className="font-medium">{row.title}</p>
+          <p className="mt-0.5 text-sm tabular-nums text-ink-soft">{row.price}</p>
+          {row.dateLine === null ? null : <p className="mt-0.5 text-sm tabular-nums text-ink-soft">{row.dateLine}</p>}
+          {row.contactedOn === null ? null : <p className="mt-0.5 text-sm tabular-nums text-ink-soft">Contacted on {row.contactedOn}</p>}
+        </div>
+        <StatusDot tone={row.state.tone} label={row.state.label} />
+      </div>
+      {row.needsContact ? (
+        <div className="mt-4 flex flex-wrap items-start gap-3">
+          <form action={markBundledAddOnContactedAction}>
+            <input type="hidden" name="businessId" value={businessId} />
+            <input type="hidden" name="bundledAddOnId" value={row.id} />
+            <button type="submit" className={`${buttonSecondary} ${ROW_BUTTON}`}>
+              Mark contacted
+              <span className="sr-only"> for {row.title}</span>
+            </button>
+          </form>
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
 function PressReleaseRow({ businessId, release }: { readonly businessId: string; readonly release: ClientPressReleaseRow }): ReactElement {
   return (
     <li className="py-4 first:pt-0">
@@ -133,6 +162,7 @@ function PressReleaseRow({ businessId, release }: { readonly businessId: string;
 interface ClientAddOnsProps {
   readonly businessId: string;
   readonly addOns: readonly ClientAddOnRow[];
+  readonly bundledAddOns: readonly ClientBundledAddOnRow[];
   readonly pressReleases: readonly ClientPressReleaseRow[];
   readonly notice: AddOnNotice | null;
 }
@@ -142,8 +172,9 @@ interface ClientAddOnsProps {
  * date, who scheduled an end) and each press release with its status. Staff follow up a new purchase, pause or cancel
  * for the customer, and move a press release on. The id lets the Journey and every notice link land here.
  */
-export function ClientAddOns({ businessId, addOns, pressReleases, notice }: ClientAddOnsProps): ReactElement {
-  const toFollowUp = addOns.filter((row) => row.needsContact).length + pressReleases.filter((release) => release.status === "waiting").length;
+export function ClientAddOns({ businessId, addOns, bundledAddOns, pressReleases, notice }: ClientAddOnsProps): ReactElement {
+  const toFollowUp =
+    addOns.filter((row) => row.needsContact).length + bundledAddOns.filter((row) => row.needsContact).length + pressReleases.filter((release) => release.status === "waiting").length;
   return (
     <Section id="add-ons" title="Add-ons" aside={toFollowUp === 0 ? "Bought by the customer" : `${toFollowUp} to follow up`}>
       {notice === null ? null : (
@@ -151,12 +182,15 @@ export function ClientAddOns({ businessId, addOns, pressReleases, notice }: Clie
           {ADD_ON_NOTICES[notice].text}
         </Notice>
       )}
-      {addOns.length === 0 && pressReleases.length === 0 ? (
+      {addOns.length === 0 && bundledAddOns.length === 0 && pressReleases.length === 0 ? (
         <Quiet>Nothing bought yet. Social media, Outreach and lead generation and Paid advertising appear here when the customer buys one.</Quiet>
       ) : (
         <ul className="max-w-3xl divide-y divide-line">
           {addOns.map((row) => (
             <AddOnRow key={row.id} businessId={businessId} row={row} />
+          ))}
+          {bundledAddOns.map((row) => (
+            <BundledAddOnRow key={row.id} businessId={businessId} row={row} />
           ))}
           {pressReleases.map((release) => (
             <PressReleaseRow key={release.id} businessId={businessId} release={release} />

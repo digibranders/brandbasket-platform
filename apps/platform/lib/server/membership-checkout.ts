@@ -1,5 +1,5 @@
 import "server-only";
-import { findBillingState, findLifetimeOfferStanding, type Plan } from "@fynix/db";
+import { findBillingState, type Plan } from "@fynix/db";
 import { lifetimeOfferVisible } from "@fynix/shared/lib/billing/lifetime-offer";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import type { MembershipTier } from "@/lib/membership";
@@ -21,14 +21,15 @@ export interface MembershipCheckoutView {
   readonly billingDetails: BillingDetailsView | null;
   /**
    * The first-checkout lifetime offer (lib/billing/lifetime-offer.ts): `available` to show the card before the first plan
-   * payment, with the add-ons already bought at the offer price; none after. It never changes the plan's price.
+   * payment, none after. The add-ons it offers are taken with the plan in the same payment (lib/billing/bundle.ts); it never
+   * changes the plan's own price.
    */
   readonly offer: MembershipOffer;
 }
 
 export type MembershipOffer =
   | { readonly kind: "none" }
-  | { readonly kind: "available"; readonly claimed: readonly string[] };
+  | { readonly kind: "available" };
 
 /**
  * One plan's checkout, as the customer would pay for it right now. This page's own plan, not the account's: a free
@@ -43,17 +44,16 @@ export async function loadMembershipCheckout(
   const plan = await getMembershipPlan(tier);
   const { businessId } = customer.tenant;
   const staffDb = getStaffDb();
-  const [discount, lapsedCode, billingDetails, state, standing] = await Promise.all([
+  const [discount, lapsedCode, billingDetails, state] = await Promise.all([
     plan === null ? null : resolveAppliedDiscount(businessId, plan, now),
     plan === null ? null : findLapsedAppliedCode(businessId, plan, now),
     loadBillingDetailsView(customer),
     findBillingState(staffDb, businessId),
-    findLifetimeOfferStanding(staffDb, businessId),
   ]);
   const hasEverPaid = state?.hasEverPaid ?? true;
   let offer: MembershipOffer = { kind: "none" };
   if (!hasEverPaid && plan !== null) {
-    if (lifetimeOfferVisible({ hasEverPaid })) offer = { kind: "available", claimed: standing.claimed };
+    if (lifetimeOfferVisible({ hasEverPaid })) offer = { kind: "available" };
   }
   // A code that still works is not lapsed, whatever the second read says.
   return { plan, discount, lapsedCode: discount === null ? lapsedCode : null, billingDetails, offer };

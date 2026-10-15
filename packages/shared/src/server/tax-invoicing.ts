@@ -46,10 +46,21 @@ import { isConnectionFailure } from "./error-log-info";
  * What a payment bought, as the code that recorded it knows it. The caller passes what the payment was charged for,
  * not what the subscription says today, since a stay offer or a price can change after a payment.
  */
+/** An add-on billed inside the plan's subscription, as one more line on the plan's invoice. */
+export interface BundledInvoiceAddOn {
+  readonly addOn: string;
+  readonly listAmountCents: number;
+  /** The lifetime offer taken off the list price. */
+  readonly offerDiscountAmountCents: number;
+  readonly taxRateBasisPoints: number;
+}
+
 export type InvoiceSource =
   | {
       readonly kind: "plan";
       readonly plan: Plan;
+      /** The add-ons taken at the first checkout and billed with the plan, each a line of its own. Absent for a plan alone. */
+      readonly bundledAddOns?: readonly BundledInvoiceAddOn[];
       /** The price before discount: the plan's initial or recurring amount, whichever this payment was charged at. */
       readonly netAmountCents: number;
       /** Everything taken off this payment: the referral code's share plus any stay offer. */
@@ -331,23 +342,35 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
   const referralCodeId = subscription?.referralCodeId ?? null;
   const couponCents = source.discountAmountCents - source.retentionDiscountCents;
   const coupon = couponCents > 0 && referralCodeId !== null ? await findReferralCodeForInvoice(tx, referralCodeId) : null;
-  return [
-    {
-      description: planLineDescription(source.plan.name),
+  const planLine: InvoiceLineInput = {
+    description: planLineDescription(source.plan.name),
+    detail: planLineDetail(source.monthly, source.periodStart, source.periodEnd),
+    note: planLineNote({
+      coupon,
+      netAmountCents: source.netAmountCents,
+      discountAmountCents: source.discountAmountCents,
+      retentionDiscountCents: source.retentionDiscountCents,
+    }),
+    sac: FYNIX_SAC,
+    quantity: 1,
+    unitAmountCents: source.netAmountCents,
+    discountAmountCents: source.discountAmountCents,
+    taxRateBasisPoints: source.plan.taxRateBasisPoints,
+  };
+  const addOnLines = (source.bundledAddOns ?? []).map((bundled): InvoiceLineInput => {
+    if (!isMonthlyAddOnId(bundled.addOn)) throw new Error(`Bundled add-on ${bundled.addOn} is not a monthly add-on`);
+    return {
+      description: addOnById(bundled.addOn).title,
       detail: planLineDetail(source.monthly, source.periodStart, source.periodEnd),
-      note: planLineNote({
-        coupon,
-        netAmountCents: source.netAmountCents,
-        discountAmountCents: source.discountAmountCents,
-        retentionDiscountCents: source.retentionDiscountCents,
-      }),
+      note: addOnLineNote(bundled.offerDiscountAmountCents, bundled.offerDiscountAmountCents),
       sac: FYNIX_SAC,
       quantity: 1,
-      unitAmountCents: source.netAmountCents,
-      discountAmountCents: source.discountAmountCents,
-      taxRateBasisPoints: source.plan.taxRateBasisPoints,
-    },
-  ];
+      unitAmountCents: bundled.listAmountCents,
+      discountAmountCents: bundled.offerDiscountAmountCents,
+      taxRateBasisPoints: bundled.taxRateBasisPoints,
+    };
+  });
+  return [planLine, ...addOnLines];
 }
 
 /** An invoice for a payment, and whether this call issued it (false when it had been issued before). */

@@ -15,6 +15,7 @@ export async function ensureDiscountPlan(
   provider: BillingProvider,
   plan: Plan,
   discountAmountCents: number,
+  bundledAddOnNetCents = 0,
 ): Promise<string | undefined> {
-  return ensureDiscountPlanFor(getStaffDb(), provider, plan, discountAmountCents);
+  return ensureDiscountPlanFor(getStaffDb(), provider, plan, discountAmountCents, bundledAddOnNetCents);
 }

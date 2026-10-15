@@ -23,11 +23,20 @@ import {
 import { getCustomerBusinessEntry, isAwaitingMembership, requireCustomerAccess } from "@/lib/server/customer-access";
 import { loadMembershipCheckout } from "@/lib/server/membership-checkout";
 import { requestBrand } from "@/lib/server/request-brand";
-import { addOfferAddOn, chooseFreeListing, startMembership } from "@/app/app-host/(protected)/premium/actions";
+import { chooseFreeListing, startMembership } from "@/app/app-host/(protected)/premium/actions";
+import type { MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
+import { bundleLines, readBundleSelection } from "@fynix/shared/lib/billing/bundle";
 
 interface MembershipPageProps {
   readonly tier: MembershipTier;
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;
+}
+
+/** The add-ons named in the address (`?addons=social-media,advertising`), as catalogue ids only. */
+function readSelectedAddOns(params: Readonly<Record<string, string | string[] | undefined>>): readonly MonthlyAddOnId[] {
+  const raw = params.addons;
+  const text = Array.isArray(raw) ? raw.join(",") : (raw ?? "");
+  return readBundleSelection(text.split(","));
 }
 
 /** The other plan, for the line under the list: what a person reading this one may want to compare it with. */
@@ -54,7 +63,8 @@ const OTHER: Readonly<Record<MembershipTier, { readonly tier: MembershipTier; re
 export async function MembershipPage({ tier, searchParams }: MembershipPageProps): Promise<ReactElement> {
   const { tenant, billing } = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
   const entry = await getCustomerBusinessEntry(tenant.userId, tenant.businessId);
-  const notice = readMembershipPaymentNotice(await searchParams);
+  const params = await searchParams;
+  const notice = readMembershipPaymentNotice(params);
   // Already a member, by this payment or an earlier one: their dashboard is where they belong. Sent back from the
   // provider (`?payment=received`), it is this payment that opened the plan, so the dashboard greets them with the poppers.
   if (entry.kind !== "listing") redirect(notice === "received" ? MEMBER_WELCOME_HREF : MEMBER_HOME);
@@ -74,7 +84,12 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   // Only an account with something to pay is shown the summary and the Pay button: one whose payment is on its way, or under
   // review, is told so by the checkout instead.
   const payable = plan !== null && !waiting && !billing.paymentUnderReview;
-  const paying = payable ? orderSummary(plan, view.discount?.amountCents ?? 0) : null;
+  // The add-ons are ticked in the address, so they survive applying a code and a reload, and are paid with the plan. Only
+  // while the offer stands: the same rule the server applies when the payment opens.
+  const selected = view.offer.kind === "available" ? readSelectedAddOns(params) : [];
+  const pageHref = (selection: readonly MonthlyAddOnId[]): string =>
+    selection.length === 0 ? membershipPathFor(tier) : `${membershipPathFor(tier)}?addons=${selection.join(",")}`;
+  const paying = payable ? orderSummary(plan, view.discount?.amountCents ?? 0, bundleLines(selected)) : null;
 
   return (
     <div className="grid gap-x-12 gap-y-8 pb-16 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:pb-0">
@@ -92,7 +107,7 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
         {/* The first-checkout offer: shown until the first payment, before the way to pay. */}
         {view.offer.kind === "available" && payable ? (
           <div className="max-w-xl">
-            <OfferCard action={addOfferAddOn} claimed={view.offer.claimed} />
+            <OfferCard selected={selected} hrefFor={pageHref} />
           </div>
         ) : null}
 
@@ -103,7 +118,13 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
       {/* Today's payment, following the page down beside it on a wide screen and last on a phone. */}
       {plan !== null && payable ? (
         <aside aria-label="Payment" className="lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overscroll-contain">
-          <OrderSummary tier={tier} view={{ ...view, plan }} groups={groups}>
+          <OrderSummary
+            tier={tier}
+            view={{ ...view, plan }}
+            groups={groups}
+            addOns={bundleLines(selected)}
+            removeHref={(addOn) => pageHref(selected.filter((id) => id !== addOn))}
+          >
             <MembershipCheckout tier={tier} view={view} notice={notice} billing={billing} includePay={false} />
           </OrderSummary>
         </aside>
@@ -113,7 +134,7 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
       {paying === null ? null : (
         <div className="pointer-events-none sticky bottom-0 z-10 pb-4 lg:hidden">
           <div className="pointer-events-auto [&_button]:shadow-[0_10px_28px_-10px_rgb(20_20_30/0.55)]">
-            <MembershipPayForm action={startMembership} amount={formatMoney(paying.totalCents, plan?.currency ?? "INR")} tier={tier} />
+            <MembershipPayForm action={startMembership} amount={formatMoney(paying.totalCents, plan?.currency ?? "INR")} tier={tier} addOns={selected} />
           </div>
         </div>
       )}

@@ -1,24 +1,29 @@
 import "server-only";
 
-import { decideCheckout, type BillingProvider, type CheckoutDecision, type StartedCheckout } from "@fynix/billing";
+import { bundleKey, decideCheckout, type BillingProvider, type CheckoutDecision, type StartedCheckout } from "@fynix/billing";
 import {
   BillingBusinessNotFoundError,
   consumeRateLimit,
   findActivePlan,
   findBillingState,
   findBusinessEntry,
+  bundledNetCents,
+  findBundledAddOnsForSubscription,
   findBusinessReferralCode,
   findLatestSubscriptionForBusiness,
   findRedeemableReferralCode,
   lockBusinessForBilling,
   openCheckoutSubscription,
   withTenantScope,
+  type NewBundledAddOn,
   type Plan,
   type PlanTier,
   type RateLimitRule,
   type Subscription,
 } from "@fynix/db";
 import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
+import type { MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
+import { bundleLines } from "@fynix/shared/lib/billing/bundle";
 import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF, REACTIVATE_HREF } from "@fynix/shared/lib/billing/payment-step";
 import { firstMissing, onboardingChecklist } from "@fynix/shared/lib/onboarding/checklist";
 import { MEMBER_HOME } from "@/lib/membership";
@@ -78,6 +83,11 @@ interface PlannedCheckout {
    * subscription and is what every later amount check subtracts, never recomputed from the code's percentage.
    */
   readonly discount: AppliedDiscount | null;
+  /**
+   * The add-ons taken at this checkout, each with its lifetime offer, billed in the plan's own charge. Empty for a business
+   * that has paid before (the offer is for the first checkout only) and when none were chosen.
+   */
+  readonly bundle: readonly NewBundledAddOn[];
 }
 
 type DecisionStep = { readonly kind: "planned"; readonly planned: PlannedCheckout } | { readonly kind: "no-plan" };
@@ -109,16 +119,18 @@ async function openNewCheckout(
   const { user, tenant } = customer;
   const { discount } = planned;
   const discountAmountCents = discount?.amountCents ?? 0;
-  // Razorpay charges a subscription its plan's amount, so a discount is a cheaper plan of its own. Made (or found)
-  // before anything is opened at the provider: if it cannot be made, nothing exists to clean up.
+  const bundledAddOnNetCents = bundledNetCents(planned.bundle);
+  // Razorpay charges a subscription its plan's amount, so a discount, or add-ons billed with the plan, is a plan of its own.
+  // Made (or found) before anything is opened at the provider: if it cannot be made, nothing exists to clean up.
   let providerPlanId: string | undefined;
   try {
-    providerPlanId = await ensureDiscountPlan(provider, planned.plan, discountAmountCents);
+    providerPlanId = await ensureDiscountPlan(provider, planned.plan, discountAmountCents, bundledAddOnNetCents);
   } catch (error) {
     logBillingEvent("error", "discount-plan-failed", {
       businessId: tenant.businessId,
       planId: planned.plan.id,
       discountAmountCents,
+      bundledAddOnNetCents,
       ...describeError(error),
     });
     return refused(PAYMENT_UNAVAILABLE);
@@ -129,6 +141,7 @@ async function openNewCheckout(
     email: user.email,
     plan: planned.plan,
     discountAmountCents,
+    bundledAddOnNetCents,
     ...(providerPlanId === undefined ? {} : { providerPlanId }),
   });
   const orphan = {
@@ -154,6 +167,7 @@ async function openNewCheckout(
         providerSubscriptionId: started.providerSubscriptionId,
         referralCodeId: discount?.codeId ?? null,
         discountAmountCents: discount?.amountCents ?? 0,
+        bundledAddOns: planned.bundle,
         replacing: replacing?.id ?? null,
         now,
       });
@@ -224,7 +238,12 @@ export async function startCheckoutFor(customer: GrantedCustomer, now: Date): Pr
  * The kind is read before the lock rather than under it. A payment landing in between has made the business a client
  * with a paid subscription, which the decision under the lock then sees and answers by sending it to its dashboard.
  */
-export async function startMembershipCheckoutFor(customer: GrantedCustomer, now: Date, tier: PlanTier): Promise<CheckoutOutcome> {
+export async function startMembershipCheckoutFor(
+  customer: GrantedCustomer,
+  now: Date,
+  tier: PlanTier,
+  addOns: readonly MonthlyAddOnId[] = [],
+): Promise<CheckoutOutcome> {
   const { tenant } = customer;
   const appDb = getAppDb();
 
@@ -234,7 +253,7 @@ export async function startMembershipCheckoutFor(customer: GrantedCustomer, now:
   const entry = await withTenantScope(appDb, tenant, (tx) => findBusinessEntry(tx, tenant.businessId));
   if (entry?.kind !== "listing") return refused(ALREADY_A_MEMBER);
 
-  return openPlanCheckout(customer, now, MEMBER_HOME, tier);
+  return openPlanCheckout(customer, now, MEMBER_HOME, tier, addOns);
 }
 
 /**
@@ -265,7 +284,13 @@ export async function startReactivationFor(customer: GrantedCustomer, now: Date)
  * `tier` is the plan being bought, or null for a business that is already on one (a website client paying on Check and
  * send), which pays for the plan its billing state names.
  */
-async function openPlanCheckout(customer: GrantedCustomer, now: Date, paidHref: string, tier: PlanTier | null): Promise<CheckoutOutcome> {
+async function openPlanCheckout(
+  customer: GrantedCustomer,
+  now: Date,
+  paidHref: string,
+  tier: PlanTier | null,
+  addOns: readonly MonthlyAddOnId[] = [],
+): Promise<CheckoutOutcome> {
   const { tenant } = customer;
   const provider = getBillingProvider();
   const first = await getStaffDb().transaction(async (tx): Promise<DecisionStep> => {
@@ -285,13 +310,25 @@ async function openPlanCheckout(customer: GrantedCustomer, now: Date, paidHref: 
         ? null
         : await findRedeemableReferralCode(tx, { code: applied.code, currency: state.currency, now });
     const discount = redeemable === null ? null : discountFrom(redeemable, plan);
+    // The lifetime offer is for the first checkout: a business that has paid before takes no add-ons with its plan.
+    const bundle: readonly NewBundledAddOn[] = state.hasEverPaid
+      ? []
+      : bundleLines(addOns).map((line) => ({
+          addOn: line.addOn,
+          listAmountCents: line.listCents,
+          offerDiscountAmountCents: line.offerCents,
+          netAmountCents: line.netCents,
+          taxRateBasisPoints: plan.taxRateBasisPoints,
+        }));
+    const latestBundleKey =
+      state.subscription === null ? "" : bundleKey((await findBundledAddOnsForSubscription(tx, state.subscription.id)).filter((row) => row.status === "pending").map((row) => row.addOn));
     const decision = decideCheckout(
-      state.subscription,
-      { planId: plan.id, provider: provider.name, referralCodeId: discount?.codeId ?? null },
+      state.subscription === null ? null : { ...state.subscription, bundleKey: latestBundleKey },
+      { planId: plan.id, provider: provider.name, referralCodeId: discount?.codeId ?? null, bundleKey: bundleKey(bundle.map((item) => item.addOn)) },
       now,
       state,
     );
-    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount } };
+    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle } };
   });
   if (first.kind === "no-plan") return refused(NO_PLAN);
 
@@ -313,6 +350,7 @@ async function openPlanCheckout(customer: GrantedCustomer, now: Date, paidHref: 
         // discounted plan), but a provider that works the amount out again, as the fake one does, would otherwise
         // ask for full price.
         discountAmountCents: planned.latest?.discountAmountCents ?? 0,
+        bundledAddOnNetCents: planned.latest?.bundledAddOnNetCents ?? 0,
       });
       if (started.providerSubscriptionId !== decision.providerSubscriptionId) throw new CheckoutMismatchError();
       return { kind: "redirect", url: checkedUrl(started) };

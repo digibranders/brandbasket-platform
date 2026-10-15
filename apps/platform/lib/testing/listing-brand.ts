@@ -8,4 +8,5 @@ export const LISTING_BRAND: Brand = {
   ...BRAND,
   joinChoices: ["listing_only", "care", "premium"],
   showsListing: true,
+  about: "A directory listing for your business, with a website plan you can add.",
 };

@@ -5,6 +5,7 @@ import { ChevronDownIcon, TickIcon } from "@fynix/shared/ui/icons";
 import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
 import { billingPeriodProgress, type PeriodProgress } from "@fynix/shared/lib/billing/period";
 import { changesNote, renewalCharge } from "@fynix/shared/lib/billing/terms";
+import { nextBundledNetCents } from "@fynix/shared/lib/billing/bundle";
 import { planLabel } from "@fynix/shared/lib/billing/receipt-title";
 import { formatMoney } from "@fynix/shared/lib/money";
 import { carePlan } from "@fynix/shared/lib/pricing";
@@ -18,11 +19,12 @@ interface PlanSummaryProps {
 }
 
 /** Under the plan's name: the net price and its tax for a taxed plan, otherwise what the plan is. */
-export function priceNote(plan: Plan, discountAmountCents: number): string {
+export function priceNote(plan: Plan, discountAmountCents: number, bundledAddOnNetCents = 0): string {
   const discounted = discountAmountCents > 0 ? " Includes your discount." : "";
-  if (plan.taxRateBasisPoints === 0) return `Design, hosting and care for your website.${discounted}`;
-  const net = formatMoney(plan.recurringAmountCents - discountAmountCents, plan.currency);
-  return `${net} a month plus ${plan.taxRateBasisPoints / 100}% GST.${discounted}`;
+  const addOns = bundledAddOnNetCents > 0 ? " Includes your add-ons." : "";
+  if (plan.taxRateBasisPoints === 0) return `Design, hosting and care for your website.${discounted}${addOns}`;
+  const net = formatMoney(plan.recurringAmountCents + bundledAddOnNetCents - discountAmountCents, plan.currency);
+  return `${net} a month plus ${plan.taxRateBasisPoints / 100}% GST.${discounted}${addOns}`;
 }
 
 /** What the bar's caption says about the next payment, which depends on how the plan is paid and whether it ends. */
@@ -42,7 +44,7 @@ function NextPaymentCaption({
     return <>No more payments. Your plan ends on {end}.</>;
   }
   if (subscription.provider === "manual") return <>We’ll arrange your next payment with you directly.</>;
-  const amount = renewalCharge(plan, subscription.discountAmountCents);
+  const amount = renewalCharge(plan, subscription.discountAmountCents, nextBundledNetCents(subscription));
   if (amount === null) return <>Your next period starts on {end}.</>;
   return (
     <>
@@ -75,7 +77,7 @@ function PeriodBar({ progress, children }: { readonly progress: PeriodProgress; 
 
 /** The plan card: name, price per month, how far through the paid period the customer is, and what it includes. */
 export function PlanSummary({ plan, subscription, now }: PlanSummaryProps): ReactElement {
-  const price = renewalCharge(plan, subscription.discountAmountCents);
+  const price = renewalCharge(plan, subscription.discountAmountCents, nextBundledNetCents(subscription));
   const progress = billingPeriodProgress(subscription, now);
 
   return (
@@ -91,7 +93,7 @@ export function PlanSummary({ plan, subscription, now }: PlanSummaryProps): Reac
                 Monthly
               </span>
             </div>
-            <p className="mt-1 text-xs text-ink-soft">{priceNote(plan, subscription.discountAmountCents)}</p>
+            <p className="mt-1 text-xs text-ink-soft">{priceNote(plan, subscription.discountAmountCents, nextBundledNetCents(subscription))}</p>
           </div>
           {price === null ? null : (
             <p className="flex items-baseline gap-1.5">

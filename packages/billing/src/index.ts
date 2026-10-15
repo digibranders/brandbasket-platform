@@ -1,6 +1,7 @@
 export { hasBillingAccess, type BillingAccessInput } from "./access";
 export {
   CHECKOUT_REUSE_WINDOW_MS,
+  bundleKey,
   decideCheckout,
   type CheckoutDecision,
   type CheckoutHistory,

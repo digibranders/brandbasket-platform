@@ -3,6 +3,7 @@ import {
   consumeRateLimit,
   findActivePlan,
   findBillingState,
+  findBundledAddOnsForSubscription,
   findBusinessEntry,
   findBusinessReferralCode,
   findRedeemableReferralCode,
@@ -49,9 +50,11 @@ vi.mock("@fynix/db", () => {
   class MockBillingBusinessNotFoundError extends Error {}
   return {
     BillingBusinessNotFoundError: MockBillingBusinessNotFoundError,
+    bundledNetCents: (items: readonly { netAmountCents: number }[]) => items.reduce((total, item) => total + item.netAmountCents, 0),
     consumeRateLimit: vi.fn(),
     findActivePlan: vi.fn(),
     findBillingState: vi.fn(),
+    findBundledAddOnsForSubscription: vi.fn().mockResolvedValue([]),
     findBusinessEntry: vi.fn(),
     findBusinessReferralCode: vi.fn(),
     findRedeemableReferralCode: vi.fn(),
@@ -128,6 +131,7 @@ function newest(latest: Subscription | null, history: Partial<BillingState> = {}
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([]);
   events = [];
   openTransactions = 0;
   transactionCount = 0;
@@ -214,6 +218,7 @@ describe("startCheckoutFor", () => {
         providerSubscriptionId: expect.stringMatching(/^fake_sub_[0-9a-f]{24}$/),
         referralCodeId: null,
         discountAmountCents: 0,
+        bundledAddOns: [],
         replacing: null,
         now: NOW,
       },
@@ -476,7 +481,7 @@ describe("startMembershipCheckoutFor", () => {
 
     redirectUrl(await startMembershipCheckoutFor(owner, NOW, "premium"));
 
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 50_000);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 50_000, 0);
     expect(started).toHaveBeenCalledWith(expect.objectContaining({ providerPlanId: "plan_discounted", discountAmountCents: 50_000 }));
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },

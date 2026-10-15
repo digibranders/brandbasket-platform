@@ -19,6 +19,11 @@ export const BILLING_LOG_PREFIX = "[fynix:billing]";
  * - `discount-plan-failed`: the provider would not create the discounted plan a code needs, so no checkout opened.
  * - `retention-offer-failed`: the provider would not move a subscription to the discounted plan a stay offer needs, or
  *   our record of the offer could not be written after it had. Either way staff should check the subscription.
+ * - `bundled-add-on-removal-failed`: a customer asked to take an add-on out of the plan's payment and the provider would not
+ *   move the subscription to the lower amount, or our record of the request could not be written after it had. Either way
+ *   staff should check the subscription before its next renewal.
+ * - `bundled-renewal-at-old-amount`: a renewal arrived at the old amount while a removal of add-ons was waiting: the provider
+ *   has not moved the subscription, so the customer was charged for an add-on they asked to remove. Staff should refund it.
  * - `upgrade-provider-failed`: a customer paid to move up to Premium and the provider would not (or could not) move
  *   their subscription to Premium's plan from the next renewal. They have Premium; staff finish the move by hand.
  * - `upgrade-renewal-at-old-price`: a renewal arrived at the old plan's price while a paid move up was waiting for
@@ -49,6 +54,8 @@ export type BillingLogEvent =
   | "affiliate-currency-mismatch"
   | "discount-plan-failed"
   | "retention-offer-failed"
+  | "bundled-add-on-removal-failed"
+  | "bundled-renewal-at-old-amount"
   | "upgrade-provider-failed"
   | "upgrade-renewal-at-old-price"
   | "tax-invoice-issued"

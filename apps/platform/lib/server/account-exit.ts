@@ -12,6 +12,7 @@ import {
   type RateLimitRule,
 } from "@fynix/db";
 import { renewalCharge } from "@fynix/shared/lib/billing/terms";
+import { nextBundledNetCents } from "@fynix/shared/lib/billing/bundle";
 import {
   AddOnClosureChangedError,
   planAddOnClosure,
@@ -55,11 +56,11 @@ function resolveOffer(customer: GrantedCustomer, reason: ExitDetails["reason"]):
   const plan = billing.plan;
   const subscription = billing.subscription;
   if (terms === null || plan === null || subscription === null) return null;
-  const newPrice = renewalCharge(plan, terms.totalDiscountCents);
+  const newPrice = renewalCharge(plan, terms.totalDiscountCents, nextBundledNetCents(subscription));
   if (newPrice === null) return null;
   return {
     terms,
-    view: { percent: terms.percent, currentPrice: renewalCharge(plan, subscription.discountAmountCents), newPrice },
+    view: { percent: terms.percent, currentPrice: renewalCharge(plan, subscription.discountAmountCents, nextBundledNetCents(subscription)), newPrice },
   };
 }
 
@@ -104,7 +105,7 @@ export async function claimRetentionOfferFor(
     if (subscription.provider !== "manual") {
       // A discount can only reach a subscription at the provider that holds it.
       if (subscription.provider !== provider.name) throw new Error(`The subscription belongs to ${subscription.provider}.`);
-      const providerPlanId = await ensureDiscountPlan(provider, plan, offer.terms.totalDiscountCents);
+      const providerPlanId = await ensureDiscountPlan(provider, plan, offer.terms.totalDiscountCents, nextBundledNetCents(subscription));
       if (providerPlanId !== undefined) {
         await provider.changeSubscriptionPlanAtPeriodEnd(subscription.providerSubscriptionId, providerPlanId);
       }

@@ -11,7 +11,8 @@ export const RETURN_REFRESH_DELAYS_MS: readonly number[] = [3000, 8000];
 /** The part of a page entry the return check reads. A broken or missing entry has no state to wait on. */
 export type ReturnRefreshEntry =
   | { readonly kind: "ready"; readonly addOn: MonthlyAddOnId; readonly view: AddOnView }
-  | { readonly kind: "broken"; readonly addOn: MonthlyAddOnId };
+  | { readonly kind: "broken"; readonly addOn: MonthlyAddOnId }
+  | { readonly kind: "included"; readonly addOn: MonthlyAddOnId };
 
 /** States an add-on is still in before the payment is recorded: not bought, going to end or pause, or waiting on a payment. */
 const BEFORE_PAYMENT: ReadonlySet<AddOnView["state"]> = new Set(["none", "ended", "ending", "pausing", "paused", "failed"]);

@@ -1,19 +1,25 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { addMonthsUtc, CHECKOUT_REUSE_WINDOW_MS, CheckoutVerificationError, type BillingProvider, type ConfirmedAddOnPayment } from "@fynix/billing";
+import { addMonthsUtc, CHECKOUT_REUSE_WINDOW_MS, chargedAmountCents, CheckoutVerificationError, type BillingProvider, type ConfirmedAddOnPayment } from "@fynix/billing";
 import {
+  bundledNetAfterRemoving,
   cancelStaleAddOnCheckout,
   consumeRateLimit,
   findAddOnSubscription,
   findBillingState,
   findLifetimeOfferStanding,
+  findLiveBundledAddOns,
+  findPlanById,
+  findSubscriptionById,
   insertAddOnSubscription,
   listAddOnSubscriptionsForBusiness,
   lockBusinessForBilling,
+  recordBundledAddOnRemoval,
   recordUnappliedAddOnPayment,
   updateAddOnStatus,
   withTenantScope,
   type AddOnSubscription,
+  type BundledAddOn,
   type RateLimitRule,
   type Database,
   type ScopedTransaction,
@@ -49,6 +55,7 @@ import { cancelAtProvider } from "@fynix/shared/server/provider-cancellation";
 import { getBillingProvider } from "./billing";
 import { getCustomerBusinessKind, type GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
+import { ensureDiscountPlan } from "./discount-plans";
 
 /** A stuck button or a script must not be able to open subscriptions or charges at the provider without limit. */
 export const ADD_ON_CHECKOUT_RATE_LIMIT: RateLimitRule = { limit: 10, windowSeconds: 60 * 60 };
@@ -124,6 +131,18 @@ function storedPrice(row: AddOnSubscription): AddOnPrice {
     netCents: row.netAmountCents,
     taxRateBasisPoints: row.taxRateBasisPoints,
     chargedCents: row.chargedAmountCents,
+  };
+}
+
+/** What an add-on taken at the first checkout costs inside the plan's payment, as frozen on it. */
+function bundledPrice(row: BundledAddOn): AddOnPrice {
+  return {
+    listCents: row.listAmountCents,
+    discountCents: row.offerDiscountAmountCents,
+    offerCents: row.offerDiscountAmountCents,
+    netCents: row.netAmountCents,
+    taxRateBasisPoints: row.taxRateBasisPoints,
+    chargedCents: chargedAmountCents(row.netAmountCents, 0, row.taxRateBasisPoints),
   };
 }
 
@@ -288,6 +307,9 @@ export async function startAddOnCheckoutFor(
   const provider = getBillingProvider();
   const premium = await isPremiumMember(customer);
   const staffDb = getStaffDb();
+  // Taken at the first checkout, it is already billed with the plan: a second subscription would charge it twice.
+  const bundled = await findLiveBundledAddOns(staffDb, tenant.businessId);
+  if (bundled.some((row) => row.addOn === addOn)) return refused(`${addOnById(addOn).title} is already part of your monthly plan payment.`);
   const checkout = await staffDb.transaction((tx) => planCheckout(tx, provider, { businessId: tenant.businessId, addOn, intent, premium, now }));
   if (checkout.kind === "refused") return checkout;
   if (checkout.kind === "reuse") return { kind: "redirect", url: checkout.url };
@@ -399,6 +421,73 @@ export async function scheduleAddOnEndFor(
     now,
   );
   return { kind: outcome.kind === "refused" ? "refused" : "done", message: addOnEndMessage(outcome) };
+}
+
+const NOT_IN_PLAN = "That add-on isn't part of your plan payment any more. Reload the page to see where it stands.";
+const CANNOT_REMOVE_NOW = "We couldn't remove that just now. Please try again in a minute.";
+
+/** What taking an add-on out of the plan's payment came to. */
+export type BundledRemovalResult =
+  | { readonly kind: "scheduled"; readonly endsOn: Date; readonly message: string }
+  | { readonly kind: "refused"; readonly message: string };
+
+/**
+ * Takes an add-on out of the plan's monthly payment from the next billing date (the same timing as Cancel on a separate
+ * add-on). It stays active and paid for until then. The provider is moved to a plan at the lower amount first, for the cycle
+ * end, and our record follows: if the provider refuses nothing here changes. If our record cannot then be written the provider
+ * is ahead of us, which is logged for staff because the next renewal would arrive at an amount we do not expect. The page's
+ * form carries only the add-on; the row, its price and the new amount all come from the database, under the business's lock.
+ */
+export async function removeBundledAddOnFor(customer: Pick<GrantedCustomer, "tenant">, addOn: MonthlyAddOnId, now: Date): Promise<BundledRemovalResult> {
+  const { businessId } = customer.tenant;
+  const limit = await consumeRateLimit(getAppDb(), `add-on-checkout:business:${businessId}`, ADD_ON_CHECKOUT_RATE_LIMIT);
+  if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
+
+  const staffDb = getStaffDb();
+  const provider = getBillingProvider();
+  const planned = await staffDb.transaction(async (tx) => {
+    await lockBusinessForBilling(tx, businessId);
+    const live = await findLiveBundledAddOns(tx, businessId);
+    const row = live.find((candidate) => candidate.addOn === addOn && candidate.status === "active" && candidate.endRequestedAt === null);
+    if (row === undefined) return null;
+    const subscription = await findSubscriptionById(tx, row.subscriptionId);
+    if (subscription === null || subscription.businessId !== businessId || subscription.activatedAt === null || subscription.status === "cancelled") return null;
+    const plan = await findPlanById(tx, subscription.planId);
+    if (plan === null || subscription.paidThroughAt === null) return null;
+    return { row, subscription, plan, remainingNetCents: bundledNetAfterRemoving(live, row) };
+  });
+  if (planned === null) return refused(NOT_IN_PLAN);
+  const { row, subscription, plan, remainingNetCents } = planned;
+  const fields = { businessId, subscriptionId: subscription.id, addOn };
+
+  try {
+    if (subscription.provider !== "manual") {
+      if (subscription.provider !== provider.name) throw new Error(`The subscription belongs to ${subscription.provider}.`);
+      // The plan's own provider plan when nothing is left to add, else the one made for the lower amount (and any discount).
+      const providerPlanId =
+        remainingNetCents === 0 && subscription.discountAmountCents === 0
+          ? (plan.providerPlanId ?? undefined)
+          : await ensureDiscountPlan(provider, plan, subscription.discountAmountCents, remainingNetCents);
+      if (providerPlanId === undefined && provider.name === "razorpay") throw new Error(`Plan ${plan.code} has no provider plan to move to.`);
+      await provider.changeSubscriptionPlanAtPeriodEnd(subscription.providerSubscriptionId, providerPlanId ?? "");
+    }
+  } catch (error) {
+    logBillingEvent("error", "bundled-add-on-removal-failed", { ...fields, stage: "provider", ...describeError(error) });
+    return refused(CANNOT_REMOVE_NOW);
+  }
+
+  try {
+    const recorded = await staffDb.transaction(async (tx) => {
+      await lockBusinessForBilling(tx, businessId);
+      return recordBundledAddOnRemoval(tx, { id: row.id, businessId, pendingBundledAddOnNetCents: remainingNetCents, now });
+    });
+    if (!recorded) return refused(NOT_IN_PLAN);
+  } catch (error) {
+    logBillingEvent("error", "bundled-add-on-removal-failed", { ...fields, stage: "record", ...describeError(error) });
+    return refused(CANNOT_REMOVE_NOW);
+  }
+  const endsOn = subscription.paidThroughAt ?? now;
+  return { kind: "scheduled", endsOn, message: `${addOnById(addOn).title} stays until your next payment date, then it stops and your monthly payment goes down.` };
 }
 
 /** What the fake provider's test checkout page shows before the customer pays: the add-on and what it costs today. */
@@ -580,7 +669,17 @@ export type AddOnPageEntry =
       readonly endTargetId: string | null;
     }
   /** A row holds data no state can be worked out from. The page says so for this one add-on only. */
-  | { readonly kind: "broken"; readonly addOn: MonthlyAddOnId; readonly rowId: string | null };
+  | { readonly kind: "broken"; readonly addOn: MonthlyAddOnId; readonly rowId: string | null }
+  /** Taken at the first checkout and billed inside the plan's monthly payment: nothing to buy, pause or cancel here. */
+  | {
+      readonly kind: "included";
+      readonly addOn: MonthlyAddOnId;
+      readonly price: AddOnPrice;
+      /** The next billing date, when the add-on stops if it has been asked to; null while it is not ending. */
+      readonly endsOn: Date | null;
+      /** The next billing date, whether or not it is ending: when taking it out would take effect. */
+      readonly nextBillingOn: Date | null;
+    };
 
 export interface AddOnsPage {
   readonly addOns: readonly AddOnPageEntry[];
@@ -620,17 +719,23 @@ function entryFor(
 export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Promise<AddOnsPage> {
   const { tenant } = customer;
   const premium = await isPremiumMember(customer);
-  const { rows, offers } = await withTenantScope(getAppDb(), tenant, async (tx) => {
+  const { rows, offers, bundled } = await withTenantScope(getAppDb(), tenant, async (tx) => {
     const offered = new Map<MonthlyAddOnId, boolean>();
     for (const addOn of MONTHLY_ADD_ON_IDS) offered.set(addOn, await offerAppliesTo(tx, tenant.businessId, addOn));
     return {
       rows: await listAddOnSubscriptionsForBusiness(tx, tenant.businessId),
       offers: offered,
+      bundled: await findLiveBundledAddOns(tx, tenant.businessId),
     };
   });
-  const addOns = MONTHLY_ADD_ON_IDS.map((addOn) =>
-    entryFor(tenant.businessId, addOn, pickAddOnRows(rows.filter((row) => row.addOn === addOn)), { premium, offer: offers.get(addOn) === true }, now),
-  );
+  const addOns = MONTHLY_ADD_ON_IDS.map((addOn): AddOnPageEntry => {
+    const included = bundled.find((row) => row.addOn === addOn && row.status === "active");
+    if (included !== undefined) {
+      const nextBillingOn = customer.billing.subscription?.paidThroughAt ?? null;
+      return { kind: "included", addOn, price: bundledPrice(included), endsOn: included.endRequestedAt === null ? null : nextBillingOn, nextBillingOn };
+    }
+    return entryFor(tenant.businessId, addOn, pickAddOnRows(rows.filter((row) => row.addOn === addOn)), { premium, offer: offers.get(addOn) === true }, now);
+  });
   return { addOns, premium };
 }
 

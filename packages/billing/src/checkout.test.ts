@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { CHECKOUT_REUSE_WINDOW_MS, decideCheckout, type CheckoutHistory, type LatestSubscription } from "./checkout";
+import { bundleKey, CHECKOUT_REUSE_WINDOW_MS, decideCheckout, type CheckoutHistory, type LatestSubscription } from "./checkout";
 
 const NOW = new Date("2026-09-16T12:00:00.000Z");
 const PLAN_ID = "plan-usd";
-const TARGET = { planId: PLAN_ID, provider: "fake", referralCodeId: null } as const;
-const TARGET_WITH_CODE = { planId: PLAN_ID, provider: "fake", referralCodeId: "code-1" } as const;
+const TARGET = { planId: PLAN_ID, provider: "fake", referralCodeId: null, bundleKey: "" } as const;
+const TARGET_WITH_CODE = { planId: PLAN_ID, provider: "fake", referralCodeId: "code-1", bundleKey: "" } as const;
 // Whether the business paid before no longer changes the decision: a returning customer checks out like anyone.
 const NEVER_PAID: CheckoutHistory = { paymentUnderReview: false };
 const PAID_BEFORE: CheckoutHistory = NEVER_PAID;
@@ -18,6 +18,7 @@ function incomplete(ageMs: number, overrides: Partial<LatestSubscription> = {}):
     status: "incomplete",
     paidThroughAt: null,
     referralCodeId: null,
+    bundleKey: "",
     createdAt: new Date(NOW.getTime() - ageMs),
     ...overrides,
   };
@@ -154,5 +155,17 @@ describe("decideCheckout", () => {
     expect(decideCheckout(paid, TARGET, NOW, { paymentUnderReview: true })).toEqual({
       kind: "already-paid",
     });
+  });
+
+  it("sends a customer who changed their add-ons to a fresh checkout, and back to the same one when they did not", () => {
+    const withSocial = { ...TARGET, bundleKey: "social-media" };
+    expect(decideCheckout(incomplete(1000, { bundleKey: "social-media" }), withSocial, NOW, NEVER_PAID)).toMatchObject({ kind: "reuse" });
+    expect(decideCheckout(incomplete(1000), withSocial, NOW, NEVER_PAID)).toMatchObject({ kind: "replace" });
+    expect(decideCheckout(incomplete(1000, { bundleKey: "social-media" }), TARGET, NOW, NEVER_PAID)).toMatchObject({ kind: "replace" });
+  });
+
+  it("names a choice of add-ons the same whatever order it was made in", () => {
+    expect(bundleKey(["social-media", "advertising"])).toBe(bundleKey(["advertising", "social-media"]));
+    expect(bundleKey([])).toBe("");
   });
 });

@@ -6,11 +6,15 @@ import {
   findAddOnSubscription,
   findBillingState,
   findLifetimeOfferStanding,
+  findLiveBundledAddOns,
+  findPlanById,
+  findSubscriptionById,
   insertAddOnSubscription,
   listAddOnSubscriptionsForBusiness,
   listPressReleasesForBusiness,
   lockBusinessForBilling,
   markAddOnCancelled,
+  recordBundledAddOnRemoval,
   recordUnappliedAddOnPayment,
   scheduleAddOnEnd,
   updateAddOnStatus,
@@ -26,10 +30,12 @@ import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getCustomerBusinessKind } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
+import { ensureDiscountPlan } from "./discount-plans";
 import {
   ADD_ON_CHECKOUT_RATE_LIMIT,
   confirmFakeAddOnPaymentFor,
   loadAddOnsPage,
+  removeBundledAddOnFor,
   scheduleAddOnEndFor,
   startAddOnCheckoutFor,
   UnsafeAddOnCheckoutUrlError,
@@ -47,14 +53,20 @@ vi.mock("./customer-access", () => ({ getCustomerBusinessKind: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
 vi.mock("@fynix/shared/server/add-on-plans", () => ({ ensureAddOnPlan: vi.fn() }));
 vi.mock("@fynix/shared/server/add-on-activation", () => ({ applyAddOnPayment: vi.fn() }));
+vi.mock("./discount-plans", () => ({ ensureDiscountPlan: vi.fn() }));
 vi.mock("@fynix/db", () => {
   return {
+    bundledNetAfterRemoving: (rows: readonly { id: string; status: string; endRequestedAt: Date | null; netAmountCents: number }[], removing: { id: string }) =>
+      rows.filter((row) => row.id !== removing.id && row.status === "active" && row.endRequestedAt === null).reduce((total, row) => total + row.netAmountCents, 0),
     cancelStaleAddOnCheckout: vi.fn(),
     changeAddOnEndKind: vi.fn(),
     consumeRateLimit: vi.fn(),
     findAddOnSubscription: vi.fn(),
     findBillingState: vi.fn(),
     findLifetimeOfferStanding: vi.fn(),
+    findLiveBundledAddOns: vi.fn().mockResolvedValue([]),
+    findPlanById: vi.fn(),
+    findSubscriptionById: vi.fn(),
     findOpenChargeOfKind: vi.fn(),
     insertAddOnSubscription: vi.fn(),
     insertCharge: vi.fn(),
@@ -62,6 +74,7 @@ vi.mock("@fynix/db", () => {
     listPressReleasesForBusiness: vi.fn(),
     lockBusinessForBilling: vi.fn(),
     markAddOnCancelled: vi.fn(),
+    recordBundledAddOnRemoval: vi.fn(),
     recordUnappliedAddOnPayment: vi.fn(),
     scheduleAddOnEnd: vi.fn(),
     updateAddOnStatus: vi.fn(),
@@ -195,6 +208,7 @@ function makeTransaction(name: string): ScopedTransaction {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(findLiveBundledAddOns).mockResolvedValue([]);
   // A business that has paid before and earned nothing: no first-checkout offer applies unless a test says so.
   vi.mocked(findBillingState).mockResolvedValue({ hasEverPaid: true } as never);
   vi.mocked(findLifetimeOfferStanding).mockResolvedValue({ claimed: [] });
@@ -1216,5 +1230,110 @@ describe("loadAddOnsPage", () => {
     expect(page.addOns[2]).toMatchObject({ kind: "ready", addOn: "advertising", view: { state: "active" } });
     expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-view-failed .*"addOn":"social-media"/);
     expect(String(logged.mock.calls[0]?.[0])).toContain(`"addOnSubscriptionId":"${broken.id}"`);
+  });
+});
+
+describe("removeBundledAddOnFor", () => {
+  const PAID_THROUGH = new Date("2026-11-09T09:00:00.000Z");
+  const PROVIDER_SUBSCRIPTION = `fake_sub_${"a".repeat(24)}`;
+  const PLAN = { id: "plan-care", code: "care-inr", currency: "INR", providerPlanId: "plan_care_rzp" };
+  const bundledRow = (addOn: string, netAmountCents: number, overrides: Record<string, unknown> = {}) => ({
+    id: `0192f3c4-5555-7000-8000-${addOn === "social-media" ? "000000000001" : "000000000002"}`,
+    businessId: BUSINESS_ID,
+    subscriptionId: "sub-1",
+    addOn,
+    status: "active",
+    netAmountCents,
+    endRequestedAt: null,
+    ...overrides,
+  });
+  const subscription = (overrides: Record<string, unknown> = {}) => ({
+    id: "sub-1",
+    businessId: BUSINESS_ID,
+    planId: PLAN.id,
+    provider: "fake",
+    providerSubscriptionId: PROVIDER_SUBSCRIPTION,
+    status: "active",
+    activatedAt: PAID_AT,
+    paidThroughAt: PAID_THROUGH,
+    discountAmountCents: 0,
+    ...overrides,
+  });
+  let changed: MockInstance<BillingProvider["changeSubscriptionPlanAtPeriodEnd"]>;
+
+  beforeEach(() => {
+    changed = vi.spyOn(provider, "changeSubscriptionPlanAtPeriodEnd");
+    vi.mocked(findSubscriptionById).mockResolvedValue(subscription() as never);
+    vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
+    vi.mocked(recordBundledAddOnRemoval).mockResolvedValue(true);
+    vi.mocked(ensureDiscountPlan).mockResolvedValue("plan_lower");
+  });
+
+  it("moves the provider to a plan at what is left, then records the request, and says when it stops", async () => {
+    const social = bundledRow("social-media", 189_905);
+    const advertising = bundledRow("advertising", 569_905);
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([social, advertising] as never);
+
+    const result = await removeBundledAddOnFor(customer, "social-media", NOW);
+
+    expect(result).toMatchObject({ kind: "scheduled", endsOn: PAID_THROUGH });
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 569_905);
+    expect(changed).toHaveBeenCalledWith(PROVIDER_SUBSCRIPTION, "plan_lower");
+    expect(recordBundledAddOnRemoval).toHaveBeenCalledWith(expect.anything(), { id: social.id, businessId: BUSINESS_ID, pendingBundledAddOnNetCents: 569_905, now: NOW });
+    expect(events.filter((event) => event.includes("INSIDE"))).toEqual([]);
+  });
+
+  it("moves back to the plan's own provider plan when nothing is left to add", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("social-media", 189_905)] as never);
+
+    await removeBundledAddOnFor(customer, "social-media", NOW);
+
+    expect(ensureDiscountPlan).not.toHaveBeenCalled();
+    expect(changed).toHaveBeenCalledWith(PROVIDER_SUBSCRIPTION, "plan_care_rzp");
+    expect(recordBundledAddOnRemoval).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ pendingBundledAddOnNetCents: 0 }));
+  });
+
+  it("does not count an add-on that is already on its way out toward what is left", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([
+      bundledRow("social-media", 189_905),
+      bundledRow("advertising", 569_905, { endRequestedAt: new Date("2026-10-15T09:00:00.000Z") }),
+    ] as never);
+
+    await removeBundledAddOnFor(customer, "social-media", NOW);
+
+    expect(recordBundledAddOnRemoval).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ pendingBundledAddOnNetCents: 0 }));
+  });
+
+  it("refuses an add-on that is not part of the plan payment, or is already going, touching nothing", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("advertising", 569_905, { endRequestedAt: NOW })] as never);
+
+    expect(await removeBundledAddOnFor(customer, "social-media", NOW)).toMatchObject({ kind: "refused" });
+    expect(await removeBundledAddOnFor(customer, "advertising", NOW)).toMatchObject({ kind: "refused" });
+    expect(changed).not.toHaveBeenCalled();
+    expect(recordBundledAddOnRemoval).not.toHaveBeenCalled();
+  });
+
+  it("changes nothing when the provider refuses", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("social-media", 189_905), bundledRow("advertising", 569_905)] as never);
+    changed.mockRejectedValue(new Error("provider unreachable"));
+
+    const result = await removeBundledAddOnFor(customer, "social-media", NOW);
+
+    expect(result).toMatchObject({ kind: "refused" });
+    expect(recordBundledAddOnRemoval).not.toHaveBeenCalled();
+  });
+
+  it("says so when it was already asked about by the time it is recorded", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("social-media", 189_905)] as never);
+    vi.mocked(recordBundledAddOnRemoval).mockResolvedValue(false);
+
+    expect(await removeBundledAddOnFor(customer, "social-media", NOW)).toMatchObject({ kind: "refused" });
+  });
+
+  it("stops at the rate limit", async () => {
+    vi.mocked(consumeRateLimit).mockResolvedValue({ allowed: false, remaining: 0, retryAfterSeconds: 60 });
+
+    expect(await removeBundledAddOnFor(customer, "social-media", NOW)).toMatchObject({ kind: "refused" });
+    expect(findLiveBundledAddOns).not.toHaveBeenCalled();
   });
 });

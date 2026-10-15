@@ -2,16 +2,20 @@ import "server-only";
 import {
   findAddOnSubscription,
   listAddOnSubscriptionsForStaff,
+  listBundledAddOnsForBusiness,
   listPressReleasesForBusiness,
   markAddOnContacted,
+  markBundledAddOnContacted,
   setPressReleaseStatus,
 } from "@fynix/db";
 import { logBillingEvent } from "@fynix/shared/server/billing-log";
 import { scheduleAddOnEndFor, type AddOnEndOutcome, type AddOnEndRequest } from "@fynix/shared/server/add-on-ends";
 import {
   clientAddOnRows,
+  clientBundledAddOnRows,
   clientPressReleaseRows,
   type ClientAddOnRow,
+  type ClientBundledAddOnRow,
   type ClientPressReleaseRow,
   type PressReleaseStatus,
 } from "@/lib/client-add-ons";
@@ -26,19 +30,24 @@ import { getStaffDb } from "./db";
 
 export interface ClientAddOns {
   readonly addOns: readonly ClientAddOnRow[];
+  readonly bundledAddOns: readonly ClientBundledAddOnRow[];
   readonly pressReleases: readonly ClientPressReleaseRow[];
 }
 
 /** Everything the client page's Add-ons section shows for one business. */
 export async function loadClientAddOns(businessId: string, now: Date): Promise<ClientAddOns> {
   const db = getStaffDb();
-  const [rows, releases] = await Promise.all([listAddOnSubscriptionsForStaff(db, businessId), listPressReleasesForBusiness(db, businessId)]);
+  const [rows, releases, bundled] = await Promise.all([
+    listAddOnSubscriptionsForStaff(db, businessId),
+    listPressReleasesForBusiness(db, businessId),
+    listBundledAddOnsForBusiness(db, businessId),
+  ]);
   const addOns = clientAddOnRows(rows, now);
   for (const row of addOns) {
     // Ids only: the row holds the customer's price and dates, none of which belong in a log.
     if (row.broken) logBillingEvent("error", "add-on-view-failed", { businessId, addOnSubscriptionId: row.id });
   }
-  return { addOns, pressReleases: clientPressReleaseRows(releases) };
+  return { addOns, bundledAddOns: clientBundledAddOnRows(bundled), pressReleases: clientPressReleaseRows(releases) };
 }
 
 /**
@@ -65,6 +74,18 @@ export async function markClientAddOnContacted(
   const row = await findAddOnSubscription(db, input.businessId, input.addOnSubscriptionId);
   if (row === null || row.activatedAt === null) return "not-found";
   const marked = await markAddOnContacted(db, { id: row.id, staffUserId: input.staffUserId, now });
+  return marked ? "marked" : "already";
+}
+
+/** Records that the team has been in touch about an add-on taken with the plan. Safe to repeat, and only for this business's own. */
+export async function markClientBundledAddOnContacted(
+  input: { readonly businessId: string; readonly bundledAddOnId: string; readonly staffUserId: string },
+  now: Date,
+): Promise<MarkContactedOutcome> {
+  const db = getStaffDb();
+  const row = (await listBundledAddOnsForBusiness(db, input.businessId)).find((candidate) => candidate.id === input.bundledAddOnId);
+  if (row === undefined || row.activatedAt === null) return "not-found";
+  const marked = await markBundledAddOnContacted(db, { id: row.id, businessId: input.businessId, staffUserId: input.staffUserId, now });
   return marked ? "marked" : "already";
 }
 

@@ -188,8 +188,8 @@ describe("a member paying with an affiliate code", () => {
 
     const state = await findBillingState(staffDb, businessId);
     const decision = decideCheckout(
-      state?.subscription ?? null,
-      { planId: plan.id, provider: "fake", referralCodeId: codeId },
+      state?.subscription == null ? null : { ...state.subscription, bundleKey: "" },
+      { planId: plan.id, provider: "fake", referralCodeId: codeId, bundleKey: "" },
       NOW,
       { paymentUnderReview: false },
     );

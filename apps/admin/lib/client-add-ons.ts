@@ -1,5 +1,5 @@
-import type { AddOnSubscriptionForStaff, PressRelease } from "@fynix/db";
-import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
+import type { AddOnSubscriptionForStaff, BundledAddOn, PressRelease } from "@fynix/db";
+import { addOnById, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
 import { addOnActions, addOnView, type AddOnView } from "@fynix/shared/lib/billing/add-on-state";
 import { addOnFactsOf, pickAddOnRows } from "@fynix/shared/lib/billing/add-on-rows";
 import { formatCalendarDate } from "@fynix/shared/lib/format";
@@ -142,6 +142,43 @@ export function clientAddOnRows(rowsNewestFirst: readonly AddOnSubscriptionForSt
         throw error;
       }
     });
+  });
+}
+
+/** An add-on the customer took with the plan at the first checkout, billed in the plan's monthly charge. */
+export interface ClientBundledAddOnRow {
+  readonly id: string;
+  readonly title: string;
+  readonly state: ClientAddOnState;
+  /** What it adds to the monthly payment, before GST: "₹1,899.05 + GST a month, 5% lifetime offer, billed with the plan". */
+  readonly price: string;
+  readonly dateLine: string | null;
+  /** Paid, and nobody has marked the customer as contacted yet. */
+  readonly needsContact: boolean;
+  readonly contactedOn: string | null;
+}
+
+/** The add-ons taken with the plan worth showing: the ones paid for. A pending one belongs to a checkout that was never paid. */
+export function clientBundledAddOnRows(rows: readonly BundledAddOn[]): ClientBundledAddOnRow[] {
+  return rows.flatMap((row): ClientBundledAddOnRow[] => {
+    if (row.status === "pending" || row.activatedAt === null || !isMonthlyAddOnId(row.addOn)) return [];
+    const removed = row.status === "removed";
+    const ending = !removed && row.endRequestedAt !== null;
+    return [
+      {
+        id: row.id,
+        title: addOnById(row.addOn).title,
+        state: removed ? { tone: "quiet", label: "Removed" } : ending ? { tone: "waiting", label: "Ending" } : { tone: "done", label: "Active" },
+        price: `${formatMoney(row.netAmountCents, "INR")} + GST a month, ${row.offerDiscountAmountCents > 0 ? "5% lifetime offer, " : ""}billed with the plan`,
+        dateLine: removed
+          ? row.removedAt === null ? null : `Removed on ${day(row.removedAt)}`
+          : ending
+            ? `Customer asked to remove it on ${day(row.endRequestedAt ?? row.activatedAt)}; it stops at the next billing date`
+            : `Bought on ${day(row.activatedAt)}`,
+        needsContact: row.contactedAt === null,
+        contactedOn: row.contactedAt === null ? null : day(row.contactedAt),
+      },
+    ];
   });
 }
 

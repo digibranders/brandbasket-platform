@@ -702,6 +702,24 @@ export {
   type RecordedAddOnPayment,
 } from "./queries/add-ons";
 export {
+  activateBundledAddOns,
+  bundledAddOnIds,
+  bundledNetAfterRemoving,
+  completeBundledAddOnRemovals,
+  recordBundledAddOnRemoval,
+  bundledNetCents,
+  findBundledAddOnsForSubscription,
+  findLiveBundledAddOns,
+  findProviderBundlePlan,
+  insertBundledAddOns,
+  listBundledAddOnsForBusiness,
+  markBundledAddOnContacted,
+  removeBundledAddOnsOf,
+  saveProviderBundlePlan,
+  type BundlePlanKey,
+  type NewBundledAddOn,
+} from "./queries/bundled-add-ons";
+export {
   ChargeNotFoundError,
   countPaidBlogBlocks,
   findChargeByPaymentId,

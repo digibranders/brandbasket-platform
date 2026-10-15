@@ -174,6 +174,18 @@ export const subscriptions = pgTable(
     pendingPlanId: uuid("pending_plan_id").references(() => plans.id),
     /** What the discount that carries over takes off the pending plan's net price. Zero with no pending plan. */
     pendingDiscountAmountCents: integer("pending_discount_amount_cents").notNull().default(0),
+    /**
+     * What the add-ons taken at the first checkout cost every month before GST, after their lifetime offer, in the plan's
+     * minor units (bundled_add_ons, summed): frozen when the checkout opened. The provider bills one amount a month, the
+     * plan's price plus this, so every amount check adds it to the plan's price. Zero for a subscription with no add-ons.
+     */
+    bundledAddOnNetCents: integer("bundled_add_on_net_cents").notNull().default(0),
+    /**
+     * What the add-ons cost a month once the ones the customer has asked to remove have stopped: the provider has been told to
+     * move the subscription to a plan at this amount from the next renewal, which is then accepted at it and makes it
+     * `bundled_add_on_net_cents`. Null when no removal is waiting.
+     */
+    pendingBundledAddOnNetCents: integer("pending_bundled_add_on_net_cents"),
     status: subscriptionStatus("status").notNull().default("incomplete"),
     /** When the first payment was confirmed. Null until then. */
     activatedAt: timestamp("activated_at", { withTimezone: true }),
@@ -200,6 +212,10 @@ export const subscriptions = pgTable(
     index("subscriptions_business_id_idx").on(table.businessId),
     // A discount that is neither a referral code's nor a stay offer's, or an offer that is more than the whole
     // discount, is a bug rather than a state to handle.
+    check(
+      "subscriptions_bundled_check",
+      sql`${table.bundledAddOnNetCents} >= 0 and (${table.pendingBundledAddOnNetCents} is null or (${table.pendingBundledAddOnNetCents} >= 0 and ${table.pendingBundledAddOnNetCents} < ${table.bundledAddOnNetCents}))`,
+    ),
     check(
       "subscriptions_pending_check",
       sql`${table.pendingDiscountAmountCents} >= 0 and (${table.pendingDiscountAmountCents} = 0 or (${table.pendingPlanId} is not null and ${table.referralCodeId} is not null))`,
@@ -239,6 +255,33 @@ export const providerDiscountPlans = pgTable(
     uniqueIndex("provider_discount_plans_plan_discount_idx").on(table.planId, table.discountAmountCents, table.provider),
     check("provider_discount_plans_discount_check", sql`${table.discountAmountCents} > 0`),
     check("provider_discount_plans_provider_plan_check", sql`${table.providerPlanId} <> ''`),
+  ],
+);
+
+/**
+ * The provider plan a subscription with add-ons runs on: one amount every cycle, the plan's price plus its add-ons less
+ * any referral discount (a subscription with no add-ons uses provider_discount_plans). Made once per amount and reused.
+ * Staff connection only.
+ */
+export const providerBundlePlans = pgTable(
+  "provider_bundle_plans",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id),
+    /** The net monthly price this provider plan charges before tax, in minor units. */
+    netMonthlyCents: integer("net_monthly_cents").notNull(),
+    provider: billingProvider("provider").notNull(),
+    providerPlanId: text("provider_plan_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("provider_bundle_plans_plan_net_idx").on(table.planId, table.netMonthlyCents, table.provider),
+    check("provider_bundle_plans_net_check", sql`${table.netMonthlyCents} > 0`),
+    check("provider_bundle_plans_provider_plan_check", sql`${table.providerPlanId} <> ''`),
   ],
 );
 

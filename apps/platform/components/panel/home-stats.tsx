@@ -4,6 +4,7 @@ import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
 import { StatRow, StatTile, type StatTone } from "@fynix/shared/ui/panel/stat-tile";
 import { ONBOARDING_STEPS } from "@fynix/shared/lib/onboarding/steps";
 import { renewalCharge } from "@fynix/shared/lib/billing/terms";
+import { nextBundledNetCents } from "@fynix/shared/lib/billing/bundle";
 
 /**
  * What a customer would otherwise have to read four screens to find out.
@@ -66,7 +67,7 @@ function paymentTile({
     subscription.commitmentEndsAt !== null && subscription.commitmentEndsAt.getTime() > Date.now()
       ? subscription.commitmentEndsAt
       : subscription.paidThroughAt;
-  const amount = plan === null ? null : renewalCharge(plan, subscription.discountAmountCents);
+  const amount = plan === null ? null : renewalCharge(plan, subscription.discountAmountCents, nextBundledNetCents(subscription));
   if (amount === null || due === null) return { value: "—", hint: "Nothing scheduled." };
   return {
     value: amount,

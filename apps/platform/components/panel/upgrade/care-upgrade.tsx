@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { formatMoney } from "@fynix/shared/lib/money";
 import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
 import { renewalCharge } from "@fynix/shared/lib/billing/terms";
+import { nextBundledNetCents } from "@fynix/shared/lib/billing/bundle";
 import { BillingDetails } from "@/components/panel/billing/billing-details";
 import { PlanComparisonTable } from "@/components/panel/upgrade/plan-comparison-table";
 import { UpgradePayForm } from "@/components/panel/upgrade/upgrade-pay-form";
@@ -107,7 +108,7 @@ export async function CareUpgrade({ customer, payment }: CareUpgradeProps): Prom
     }
   } else if (screen.kind === "moving") {
     const { plan, subscription } = customer.billing;
-    const amount = plan === null || subscription === null ? null : renewalCharge(plan, subscription.discountAmountCents);
+    const amount = plan === null || subscription === null ? null : renewalCharge(plan, subscription.discountAmountCents, nextBundledNetCents(subscription));
     intro = (
       <>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-soft">

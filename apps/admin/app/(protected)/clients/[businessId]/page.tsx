@@ -697,6 +697,7 @@ export default async function ClientPage({
         <ClientAddOns
           businessId={client.businessId}
           addOns={clientAddOns.addOns}
+          bundledAddOns={clientAddOns.bundledAddOns}
           pressReleases={clientAddOns.pressReleases}
           notice={addOnNotice}
         />

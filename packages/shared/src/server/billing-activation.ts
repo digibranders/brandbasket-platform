@@ -1,6 +1,9 @@
 import "server-only";
 import { addMonthsUtc, chargedAmountCents } from "@fynix/billing";
 import {
+  activateBundledAddOns,
+  bundledNetCents,
+  findBundledAddOnsForSubscription,
   openMembershipForListingBusiness,
   recordPaymentAndActivate,
   type BillingCurrency,
@@ -13,7 +16,7 @@ import {
   type ScopedTransaction,
 } from "@fynix/db";
 import { accrueAffiliateEarning } from "./affiliate-accrual";
-import { issueTaxInvoiceSafely } from "./tax-invoicing";
+import { issueTaxInvoiceSafely, type BundledInvoiceAddOn } from "./tax-invoicing";
 
 export interface FirstPayment {
   readonly businessId: string;
@@ -63,8 +66,10 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   const termEnd = addMonthsUtc(payment.paidAt, payment.plan.initialTermMonths);
   // What was actually taken: net price less discount, with the plan's tax on top. chargedAmountCents throws for a
   // discount that would leave nothing, so a nonsense figure is never recorded as a payment.
+  // The add-ons taken at this checkout are billed in the same charge: the plan's price plus theirs, less the discount.
+  const bundled = (await findBundledAddOnsForSubscription(tx, payment.subscriptionId)).filter((row) => row.status === "pending");
   const amountCents = chargedAmountCents(
-    payment.plan.initialAmountCents,
+    payment.plan.initialAmountCents + bundledNetCents(bundled),
     payment.discountAmountCents ?? 0,
     payment.plan.taxRateBasisPoints,
   );
@@ -84,6 +89,7 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
     ...(payment.method === undefined ? {} : { method: payment.method }),
   });
   if (activation.alreadyRecorded) return { ...activation, openedMembership: null };
+  const activeBundle = await activateBundledAddOns(tx, { subscriptionId: payment.subscriptionId, now: payment.paidAt });
   await accrueAffiliateEarning(tx, { paymentId: activation.payment.id, subscriptionId: payment.subscriptionId, kind: "initial" });
   const openedMembership = await openMembershipForListingBusiness(tx, payment.businessId);
   // The last write that takes a lock outside this business's own rows: the invoice's serial holds the year's series row
@@ -92,6 +98,7 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   await issueTaxInvoiceSafely(tx, activation.payment, {
     kind: "plan",
     plan: payment.plan,
+    bundledAddOns: activeBundle,
     netAmountCents: payment.plan.initialAmountCents,
     discountAmountCents: payment.discountAmountCents ?? 0,
     // A stay offer is only ever added to a live subscription, never to its first payment.
@@ -106,6 +113,8 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
 /** What a renewal was charged at, exactly as the caller's amount check accepted it, for its tax invoice. */
 export interface RenewalInvoicedPrice {
   readonly plan: Plan;
+  /** The add-ons billed inside the plan's charge, each a line of the invoice. Empty for a plan alone. */
+  readonly bundledAddOns?: readonly BundledInvoiceAddOn[];
   /** The plan's recurring price before any discount. */
   readonly netAmountCents: number;
   /** Everything taken off: the referral code's share plus any stay offer. */

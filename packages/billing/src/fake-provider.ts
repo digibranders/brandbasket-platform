@@ -199,7 +199,7 @@ export function createFakeBillingProvider(options: FakeBillingProviderOptions): 
       // Charged through the same function everything else uses, discount before tax, so the local and test path
       // takes exactly what Razorpay would. It throws for a discount that leaves nothing to charge.
       const amountCents = chargedAmountCents(
-        input.plan.initialAmountCents,
+        input.plan.initialAmountCents + (input.bundledAddOnNetCents ?? 0),
         input.discountAmountCents ?? 0,
         input.plan.taxRateBasisPoints,
       );

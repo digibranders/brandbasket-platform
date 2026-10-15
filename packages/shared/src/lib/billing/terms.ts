@@ -62,10 +62,12 @@ export function monthlyPaymentAmount(plan: Pick<Plan, "recurringAmountCents" | "
 export function renewalCharge(
   plan: Pick<Plan, "recurringAmountCents" | "currency" | "taxRateBasisPoints">,
   discountAmountCents: number,
+  bundledAddOnNetCents = 0,
 ): string | null {
   if (discountAmountCents >= plan.recurringAmountCents) return null;
+  // The add-ons taken at the first checkout are billed in the same monthly charge.
   return formatMoney(
-    chargedAmountCents(plan.recurringAmountCents, discountAmountCents, plan.taxRateBasisPoints),
+    chargedAmountCents(plan.recurringAmountCents + bundledAddOnNetCents, discountAmountCents, plan.taxRateBasisPoints),
     plan.currency,
   );
 }

@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, ne, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
+import { bundledNetCents, insertBundledAddOns, removeBundledAddOnsOf, type NewBundledAddOn } from "./bundled-add-ons";
 import { markLeadPaidForBusiness } from "./leads";
 import { isUuid } from "./tenant";
 import {
@@ -158,6 +159,10 @@ export interface Subscription {
   /** The plan the next renewal will bill, once the customer has paid to move up (plan_upgrades); null otherwise. */
   readonly pendingPlanId: string | null;
   readonly pendingDiscountAmountCents: number;
+  /** What the add-ons taken at the first checkout cost a month before GST (bundled_add_ons, summed), billed within this subscription. */
+  readonly bundledAddOnNetCents: number;
+  /** What those add-ons cost once the ones the customer asked to remove have stopped, from the next renewal; null when none are waiting. */
+  readonly pendingBundledAddOnNetCents: number | null;
   readonly status: SubscriptionStatus;
   readonly activatedAt: Date | null;
   readonly commitmentEndsAt: Date | null;
@@ -181,6 +186,8 @@ const SUBSCRIPTION_COLUMNS = {
   retentionDiscountCents: subscriptions.retentionDiscountCents,
   pendingPlanId: subscriptions.pendingPlanId,
   pendingDiscountAmountCents: subscriptions.pendingDiscountAmountCents,
+  bundledAddOnNetCents: subscriptions.bundledAddOnNetCents,
+  pendingBundledAddOnNetCents: subscriptions.pendingBundledAddOnNetCents,
   status: subscriptions.status,
   activatedAt: subscriptions.activatedAt,
   commitmentEndsAt: subscriptions.commitmentEndsAt,
@@ -343,6 +350,8 @@ export interface NewSubscription {
    * and greater than 0 when there is: `subscriptions_discount_check` refuses anything else.
    */
   readonly discountAmountCents?: number;
+  /** What the add-ons taken at this checkout cost a month before GST: the sum of their net prices. Defaults to 0. */
+  readonly bundledAddOnNetCents?: number;
 }
 
 /**
@@ -360,6 +369,7 @@ export async function insertSubscription(db: Runner, input: NewSubscription): Pr
       providerStatus: input.providerStatus ?? null,
       referralCodeId: input.referralCodeId ?? null,
       discountAmountCents: input.discountAmountCents ?? 0,
+      bundledAddOnNetCents: input.bundledAddOnNetCents ?? 0,
       status: "incomplete",
     })
     .returning(SUBSCRIPTION_COLUMNS);
@@ -443,12 +453,17 @@ export async function cancelStaleSubscription(db: Runner, input: StaleSubscripti
     )
     .returning({ id: subscriptions.id });
   if (rows.length === 0) throw new StaleSubscriptionChangedError(input.subscriptionId);
+  // The add-ons billed inside it end with it: a checkout never paid never bought them, and a lapsed plan's are not carried into
+  // the plan that replaces it (a reactivation is the plan alone).
+  await removeBundledAddOnsOf(db, { subscriptionId: input.subscriptionId, now: input.now });
 }
 
-export interface CheckoutSubscription extends NewSubscription {
+export interface CheckoutSubscription extends Omit<NewSubscription, "bundledAddOnNetCents"> {
   /** The unpaid subscription this one replaces, or null when the business has no live subscription. */
   readonly replacing: string | null;
   readonly now: Date;
+  /** The add-ons taken at this checkout, billed with the plan. Their net prices are summed onto the subscription. */
+  readonly bundledAddOns?: readonly NewBundledAddOn[];
 }
 
 /**
@@ -465,7 +480,10 @@ export async function openCheckoutSubscription(db: Runner, input: CheckoutSubscr
         now: input.now,
       });
     }
-    return insertSubscription(tx, input);
+    const bundledAddOns = input.bundledAddOns ?? [];
+    const subscription = await insertSubscription(tx, { ...input, bundledAddOnNetCents: bundledNetCents(bundledAddOns) });
+    await insertBundledAddOns(tx, { businessId: input.businessId, subscriptionId: subscription.id, items: bundledAddOns });
+    return subscription;
   });
 }
 

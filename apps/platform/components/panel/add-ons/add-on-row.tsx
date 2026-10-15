@@ -4,7 +4,8 @@ import { LIFETIME_OFFER_PERCENT } from "@fynix/shared/lib/billing/lifetime-offer
 import { PREMIUM_ADD_ON_DISCOUNT_PERCENT, type AddOn, type AddOnPrice } from "@fynix/shared/lib/billing/add-ons";
 import type { AddOnAction, AddOnCheckoutIntent } from "@fynix/shared/lib/billing/add-on-state";
 import { formatRupees } from "@fynix/shared/lib/directory/ads";
-import { endAddOnAction, startAddOnAction } from "@/app/app-host/(protected)/add-ons/actions";
+import { endAddOnAction, removeBundledAddOnAction, startAddOnAction } from "@/app/app-host/(protected)/add-ons/actions";
+import { BundledAddOnRemove } from "@/components/panel/add-ons/bundled-add-on-remove";
 import { AddOnCheckoutDialog } from "@/components/panel/add-ons/add-on-checkout-dialog";
 import { AddOnEndConfirm } from "@/components/panel/add-ons/add-on-end-confirm";
 import {
@@ -52,8 +53,18 @@ export async function AddOnRow({ addOn, entry, price, now, invoice, children }: 
   // logs it; this keeps the row from throwing if one ever gets here anyway.
   const keepsWithoutDate = ready !== null && ready.actions.includes("keep") && keepDateOf(ready.view) === null;
   const broken = (entry !== null && entry.kind === "broken") || keepsWithoutDate;
-  const actions: readonly AddOnAction[] = broken ? [] : ready === null ? ["buy"] : ready.actions;
-  const stateLine = broken ? BROKEN_ADD_ON_LINE : view === null ? null : addOnStateLine(view, price.netCents);
+  const included = entry !== null && entry.kind === "included";
+  const actions: readonly AddOnAction[] = broken || included ? [] : ready === null ? ["buy"] : ready.actions;
+  const includedEntry = entry !== null && entry.kind === "included" ? entry : null;
+  const stateLine = broken
+    ? BROKEN_ADD_ON_LINE
+    : includedEntry !== null
+      ? includedEntry.endsOn === null
+        ? "Included in your monthly plan payment."
+        : `Stops on ${addOnDate(includedEntry.endsOn)}. You won't be charged for it after that.`
+      : view === null
+        ? null
+        : addOnStateLine(view, price.netCents);
   const checkoutAction = actions.find(isCheckoutIntent);
   // Pause and Cancel are only offered on a running add-on, and act on the row the server names.
   const endTargetId = ready !== null && view !== null && view.state === "active" ? ready.endTargetId : null;
@@ -125,6 +136,15 @@ export async function AddOnRow({ addOn, entry, price, now, invoice, children }: 
             {stateLine}
           </p>
           {dialog}
+          {includedEntry !== null && includedEntry.endsOn === null && includedEntry.nextBillingOn !== null ? (
+            <BundledAddOnRemove
+              addOn={addOn.id}
+              title={addOn.title}
+              endsOn={addOnDate(includedEntry.nextBillingOn)}
+              headingId={headingId}
+              action={removeBundledAddOnAction}
+            />
+          ) : null}
           {endTargetId !== null && view !== null && view.state === "active" ? (
             <AddOnEndConfirm
               addOnSubscriptionId={endTargetId}
