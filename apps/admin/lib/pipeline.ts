@@ -29,13 +29,18 @@ const STAGE_BY_PROJECT_STATUS: Readonly<Record<ProjectStatus, JourneyStage | "pa
   cancelled: "paused",
 };
 
-/** Lead statuses still on the way in. Later ones already have a business, so they appear as clients instead. */
+/**
+ * Lead statuses still on the way in. `account_created` is a sign-up on the dashboard that has not paid: it has a business,
+ * but a business is a client only once its first plan payment is captured (listClients), so until then it is a lead and
+ * must be drawn as one. A `paid` lead is a client by then and appears as one.
+ */
 const PIPELINE_LEAD_STATUSES: ReadonlySet<LeadStatus> = new Set<LeadStatus>([
   "new",
   "call_booked",
   "call_done",
   "agreed",
   "invite_sent",
+  "account_created",
 ]);
 
 /** Where a business is. One with no project yet has just signed up, so it is setting up. */

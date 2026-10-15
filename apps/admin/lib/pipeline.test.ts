@@ -87,7 +87,7 @@ describe("isLeadInPipeline", () => {
     ["call_done", true],
     ["agreed", true],
     ["invite_sent", true],
-    ["account_created", false],
+    ["account_created", true],
     ["paid", false],
     ["lost", false],
   ])("treats a %s lead as in the pipeline: %s", (status, expected) => {
@@ -277,6 +277,12 @@ describe("journeySubjects", () => {
     expect(journey.byStage.preview).toEqual([]);
     expect(journey.byStage.live.map((subject) => subject.id)).toEqual(["c"]);
     expect(journey.paused).toBe(1);
+  });
+
+  it("draws a sign-up that has not paid yet as a lead: it is not a client until its first payment", () => {
+    const journey = journeySubjects([], [lead("l1", "account_created"), lead("l2", "paid")], new Map());
+    expect(journey.byStage.lead.map((subject) => subject.id)).toEqual(["l1"]);
+    expect(journey.byStage.lead[0]?.statusLabel).toBe("Account created");
   });
 
   it("puts anyone who needs attention first in their stage, then the newest", () => {
