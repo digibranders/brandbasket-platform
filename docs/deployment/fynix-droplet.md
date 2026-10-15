@@ -271,6 +271,23 @@ challenge needs to reach the droplet. You can proxy it later; if you do, include
 Only first-level names are used (`app.`, `staff.`): Cloudflare's free Universal certificate covers `*.fynix.digital` and not a
 second level such as `admin.app.fynix.digital`.
 
+### Free website addresses (optional)
+
+A customer with no domain of their own can choose a free address in the Your domain step: `<name>.<base domain>`, kept until
+they enter their own domain, which replaces it. It is offered only when `CLIENT_SITE_BASE_DOMAIN` is set in `platform.env.local`
+(no restart of anything else; restart `fynix-app`). Setting it only decides the names. Before turning it on:
+
+- **Pick the base.** `fynix.digital` itself gives first-level names (`harbour.fynix.digital`), which Cloudflare's free Universal
+  certificate already covers, so a proxied wildcard record `*` is enough. `sites.fynix.digital` keeps customers' names apart from
+  your own, but its names are second-level (`harbour.sites.fynix.digital`), which the free certificate does **not** cover: it
+  needs Cloudflare's Advanced Certificate Manager or a wildcard certificate of your own.
+- **Wildcard DNS.** A `*` record on the base. Explicit records (`app`, `staff`, `api`, `www`, mail) keep winning over a wildcard,
+  and MX records are not touched.
+- **Whatever serves customers' websites must answer to those names.** The app only stores the address; it does not serve the
+  site. Check that before offering it to customers.
+- **Names we never give out** are in `RESERVED_SUBDOMAIN_NAMES` (packages/shared/src/lib/onboarding/domain-form.ts), and so is
+  any hostname the app's own origins name. Add to that list rather than relying on customers to avoid a word.
+
 Zone settings: SSL/TLS mode **Full (strict)**; Always Use HTTPS on; leave the rest.
 
 **Cloudflare Access for `console.fynix.digital`** (Zero Trust → Access → Applications → Add → Self-hosted, free for up to 50

@@ -125,3 +125,51 @@ export function parseDomainForm(formData: FormData, reservedHostnames: readonly 
 
   return { success: true, data: { hostname, ownerConfirmed: true } };
 }
+
+/** The shortest and longest name a customer may choose for their free address (the part before the base domain). */
+export const SUBDOMAIN_NAME_MIN = 3;
+export const SUBDOMAIN_NAME_MAX = 40;
+
+/**
+ * Names no customer may take for a free address: our own hosts and the ones a visitor would trust, such as the console, the
+ * mail and login names, and words that would pass for the company or a bank. The platform's own hostnames, read from its
+ * configured origins, are refused as well wherever they sit under the base domain (see the action).
+ */
+export const RESERVED_SUBDOMAIN_NAMES: ReadonlySet<string> = new Set([
+  "www", "app", "console", "staff", "admin", "administrator", "api", "mail", "email", "smtp", "imap", "pop", "ftp", "sftp", "ssh",
+  "ns", "ns1", "ns2", "dns", "mx", "cdn", "static", "assets", "media", "files", "status", "help", "support", "billing", "pay",
+  "payment", "payments", "invoice", "invoices", "login", "signin", "signup", "register", "account", "accounts", "dashboard",
+  "secure", "security", "auth", "oauth", "sso", "verify", "fynix", "fynixdigital", "digital", "sites", "site", "blog", "shop",
+  "store", "test", "testing", "staging", "dev", "demo", "preview", "localhost", "root", "postmaster", "webmaster", "abuse",
+  "noreply", "no-reply", "oyechats", "razorpay", "bank", "paypal", "google", "microsoft", "apple", "whatsapp", "instagram",
+  "facebook", "linkedin",
+]);
+
+const SUBDOMAIN_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export type SubdomainNameReading = { readonly ok: true; readonly name: string } | { readonly ok: false; readonly message: string };
+
+/**
+ * Reads the name a customer typed for their free address. Lower-cased and trimmed; a base domain typed on the end
+ * ("harbour.sites.fynix.digital") is dropped, so pasting the whole address works. Letters, numbers and single hyphens
+ * only, 3 to 40 characters, and never a reserved name.
+ */
+export function readSubdomainName(input: string, baseDomain: string | null = null): SubdomainNameReading {
+  let name = input.trim().toLowerCase();
+  if (baseDomain !== null && name.endsWith(`.${baseDomain}`)) name = name.slice(0, -(baseDomain.length + 1));
+  if (name === "") return { ok: false, message: "Choose a name for your free address." };
+  if (!SUBDOMAIN_NAME_PATTERN.test(name)) return { ok: false, message: "Use only letters, numbers and single hyphens, with no spaces or dots." };
+  if (name.length < SUBDOMAIN_NAME_MIN) return { ok: false, message: `Use at least ${SUBDOMAIN_NAME_MIN} letters or numbers.` };
+  if (name.length > SUBDOMAIN_NAME_MAX) return { ok: false, message: `Keep it to ${SUBDOMAIN_NAME_MAX} characters or fewer.` };
+  if (RESERVED_SUBDOMAIN_NAMES.has(name)) return { ok: false, message: "That name is kept for us. Choose another." };
+  return { ok: true, name };
+}
+
+/**
+ * The name to offer first, from the business's slug: the slug itself when it is a name a customer could take, else empty
+ * so the box starts blank rather than offering something that would be refused.
+ */
+export function suggestSubdomainName(businessSlug: string): string {
+  const trimmed = businessSlug.slice(0, SUBDOMAIN_NAME_MAX).replace(/-+$/g, "");
+  return readSubdomainName(trimmed).ok ? trimmed : "";
+}

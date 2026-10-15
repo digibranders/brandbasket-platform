@@ -4,6 +4,9 @@ import {
   isValidHostname,
   normalizeHostname,
   parseDomainForm,
+  readSubdomainName,
+  RESERVED_SUBDOMAIN_NAMES,
+  suggestSubdomainName,
   reservedHostnamesFrom,
   temporarySubdomainFor,
   clientSiteBaseDomain,
@@ -164,5 +167,58 @@ describe("reservedHostnamesFrom", () => {
 
   it("throws on an origin that is not a URL", () => {
     expect(() => reservedHostnamesFrom(["not a url"])).toThrow();
+  });
+});
+
+describe("readSubdomainName", () => {
+  it("accepts a plain name, lower-cased and trimmed", () => {
+    expect(readSubdomainName("  Harbour-Bakery ")).toEqual({ ok: true, name: "harbour-bakery" });
+    expect(readSubdomainName("shop24")).toEqual({ ok: true, name: "shop24" });
+  });
+
+  it("drops the base domain when the whole address was pasted", () => {
+    expect(readSubdomainName("harbour.sites.fynix.digital", "sites.fynix.digital")).toEqual({ ok: true, name: "harbour" });
+  });
+
+  it("refuses an empty name, one that is too short or too long, and anything but letters, numbers and single hyphens", () => {
+    expect(readSubdomainName("   ")).toMatchObject({ ok: false });
+    expect(readSubdomainName("ab")).toEqual({ ok: false, message: "Use at least 3 letters or numbers." });
+    expect(readSubdomainName("a".repeat(41))).toEqual({ ok: false, message: "Keep it to 40 characters or fewer." });
+    for (const bad of ["my shop", "my_shop", "-start", "end-", "double--hyphen", "a.b.c", "xn--bcher-kva", "caf\u00e9"]) {
+      expect(readSubdomainName(bad)).toMatchObject({ ok: false });
+    }
+  });
+
+  it("refuses the names kept for us, however they are written", () => {
+    for (const reserved of ["app", "console", "API", " www ", "fynix", "login", "Support"]) {
+      expect(readSubdomainName(reserved)).toMatchObject({ ok: false });
+    }
+    expect(readSubdomainName("app")).toEqual({ ok: false, message: "That name is kept for us. Choose another." });
+  });
+
+  it("keeps every reserved name lower-case, and says what is wrong with no dashes or exclamation marks", () => {
+    for (const name of RESERVED_SUBDOMAIN_NAMES) expect(name).toBe(name.toLowerCase());
+    for (const bad of ["", "a b", "ab", "app", "a".repeat(41)]) {
+      const reading = readSubdomainName(bad);
+      if (!reading.ok) expect(reading.message).not.toMatch(/[!\u2014\u2013]/);
+    }
+  });
+});
+
+describe("suggestSubdomainName", () => {
+  it("offers the business's slug when a customer could take it", () => {
+    expect(suggestSubdomainName("harbour-bakery")).toBe("harbour-bakery");
+  });
+
+  it("offers nothing when the slug is too short, reserved or not a name", () => {
+    expect(suggestSubdomainName("ab")).toBe("");
+    expect(suggestSubdomainName("app")).toBe("");
+    expect(suggestSubdomainName("business")).toBe("business");
+  });
+
+  it("cuts a long slug to the limit without a trailing hyphen", () => {
+    const suggestion = suggestSubdomainName(`${"a".repeat(39)}-bcd`);
+    expect(suggestion.length).toBeLessThanOrEqual(40);
+    expect(suggestion.endsWith("-")).toBe(false);
   });
 });

@@ -4,7 +4,8 @@ import type { ReactElement } from "react";
 import { DomainStepForm } from "@/components/panel/domain-step-form";
 import { DomainSummary, SummaryCard } from "@/components/panel/onboarding-summary";
 import { StepHeading } from "@/components/panel/step-heading";
-import { clientSiteBaseDomain, isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
+import { slugify } from "@fynix/db";
+import { clientSiteBaseDomain, isTemporarySubdomain, suggestSubdomainName } from "@fynix/shared/lib/onboarding/domain-form";
 
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
@@ -13,9 +14,9 @@ import { saveDomainStep, useTemporarySubdomainAction } from "./actions";
 export const metadata: Metadata = { title: "Your domain" };
 
 export default async function DomainStepPage(): Promise<ReactElement> {
-  await requireCustomerAccess();
+  const { tenant } = await requireCustomerAccess();
   const snapshot = await getOnboardingSnapshot();
-  const temporaryAddressOffered = clientSiteBaseDomain() !== null;
+  const baseDomain = clientSiteBaseDomain();
 
   if (snapshot.locked) {
     return (
@@ -33,7 +34,7 @@ export default async function DomainStepPage(): Promise<ReactElement> {
       <StepHeading step="domain">
         <p>
           The web address your website will live at.{" "}
-          {temporaryAddressOffered ? "Don’t have one yet? Use a free temporary address for now and switch to your own domain later." : null} Any questions, email us at{" "}
+          {baseDomain === null ? null : "Don’t have one yet? Choose a free address for now and switch to your own domain later."} Any questions, email us at{" "}
           <EmailUs />
           .
         </p>
@@ -44,7 +45,8 @@ export default async function DomainStepPage(): Promise<ReactElement> {
           useSubdomainAction={useTemporarySubdomainAction}
           hostname={snapshot.domain?.hostname ?? null}
           ownerConfirmed={(snapshot.domain?.ownerConfirmedAt ?? null) !== null}
-          temporaryAddressOffered={temporaryAddressOffered}
+          temporaryAddressBase={baseDomain}
+          suggestedName={suggestSubdomainName(slugify(tenant.businessName))}
           onTemporarySubdomain={snapshot.domain !== null && isTemporarySubdomain(snapshot.domain.hostname)}
         />
       </div>

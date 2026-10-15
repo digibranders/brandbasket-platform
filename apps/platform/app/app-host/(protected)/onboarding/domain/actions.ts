@@ -1,11 +1,11 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
-import { DomainTakenError, savePrimaryDomain, slugify } from "@fynix/db";
+import { DomainTakenError, savePrimaryDomain } from "@fynix/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   parseDomainForm,
+  readSubdomainName,
   reservedHostnamesFrom,
   temporarySubdomainFor,
   clientSiteBaseDomain,
@@ -17,9 +17,6 @@ import { getAppDb } from "@/lib/server/db";
 import { serverEnv } from "@/lib/server/env";
 import { saveOnboardingStep, type StepProblem } from "@/lib/server/onboarding";
 import { siteConfig } from "@fynix/shared/lib/site-config";
-
-const SUBDOMAIN_ATTEMPTS = 5;
-const SUBDOMAIN_SUFFIX_BYTES = 3;
 
 /** Never says which business holds the hostname. */
 function describeDomainError(error: unknown): StepProblem | null {
@@ -65,33 +62,39 @@ export async function saveDomainStep(_previous: StepFormState, formData: FormDat
 }
 
 /**
- * Step 04, for a business with no domain of their own yet: a free `<slug>.<base domain>` address, so they are never
- * blocked from sending onboarding while waiting to register one. The slug is generated fresh from the business
- * name (not read from `businesses.slug`, so no new read of that table is needed) and retried with a short random
- * disambiguator on a collision, the same shape insertBusiness in packages/db uses for the business slug itself.
+ * Step 04, for a business with no domain of their own yet: a free `<name>.<base domain>` address, so they are never
+ * blocked from sending onboarding while waiting to register one. The customer chooses the name (the page offers one made
+ * from the business name); it is read by readSubdomainName (letters, numbers and hyphens, never one of the names kept for
+ * us) and refused too if it is one of the platform's own hosts or already another business's. It is only for now: the
+ * form's own-domain box replaces it whenever they have registered one.
  */
 export async function useTemporarySubdomainAction(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
   const { tenant } = await requireCustomerAccess();
   // Not offered until the deployment says which domain the addresses are made on (CLIENT_SITE_BASE_DOMAIN).
   const baseDomain = clientSiteBaseDomain();
-  if (baseDomain === null) return refusedStepState({ message: "We can’t set up a temporary address. Enter your own domain instead.", field: "domain" }, formData);
-  const base = slugify(tenant.businessName);
+  if (baseDomain === null) return refusedStepState({ message: "We can’t set up a free address. Enter your own domain instead.", field: "domain" }, formData);
 
-  const problem = await saveOnboardingStep(getAppDb(), tenant, "domain", async (tx) => {
-    for (let attempt = 0; attempt < SUBDOMAIN_ATTEMPTS; attempt += 1) {
-      const hostname =
-        attempt === 0
-          ? temporarySubdomainFor(base)
-          : temporarySubdomainFor(base, randomBytes(SUBDOMAIN_SUFFIX_BYTES).toString("hex"));
-      try {
-        await savePrimaryDomain(tx, { hostname, ownerConfirmedAt: new Date() });
-        return null;
-      } catch (error) {
-        if (!(error instanceof DomainTakenError) || attempt === SUBDOMAIN_ATTEMPTS - 1) throw error;
-      }
-    }
-    throw new Error(`Could not find a free ${baseDomain} address for "${tenant.businessName}"`);
-  });
+  const typed = formData.get("name");
+  const reading = readSubdomainName(typeof typed === "string" ? typed : "", baseDomain);
+  if (!reading.ok) return refusedStepState({ message: reading.message, field: "name" }, formData);
+  const hostname = temporarySubdomainFor(reading.name);
+  // Our own hosts, wherever they sit under the base domain (the app and the console, if the base is the company's own domain).
+  const env = serverEnv();
+  if (reservedHostnamesFrom([siteConfig.url, siteConfig.appUrl, env.APP_ORIGIN, env.ADMIN_ORIGIN]).includes(hostname)) {
+    return refusedStepState({ message: "That name is kept for us. Choose another.", field: "name" }, formData);
+  }
+
+  const problem = await saveOnboardingStep(
+    getAppDb(),
+    tenant,
+    "domain",
+    async (tx) => {
+      await savePrimaryDomain(tx, { hostname, ownerConfirmedAt: new Date() });
+      return null;
+    },
+    (error) =>
+      error instanceof DomainTakenError ? { message: `${hostname} is already taken. Try another name.`, field: "name" } : null,
+  );
   if (problem !== null) return refusedStepState(problem, formData);
 
   // The step list in the layout reads what is done, so it must be read again or this step stays unticked.

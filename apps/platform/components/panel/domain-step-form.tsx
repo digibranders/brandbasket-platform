@@ -1,9 +1,10 @@
 "use client";
 
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 
 import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
 import {
+  STEP_FIELD_CLASSES,
   StepFormError,
   StepSubmit,
   StepTextField,
@@ -16,8 +17,10 @@ interface DomainStepFormProps {
   readonly useSubdomainAction: StepAction;
   readonly hostname: string | null;
   readonly ownerConfirmed: boolean;
-  /** Whether the deployment makes temporary addresses at all (CLIENT_SITE_BASE_DOMAIN, or Fynix Digital's own default). */
-  readonly temporaryAddressOffered: boolean;
+  /** The domain free addresses are made on (CLIENT_SITE_BASE_DOMAIN), or null when the deployment offers none. */
+  readonly temporaryAddressBase: string | null;
+  /** The name offered first for the free address, made from the business name; empty when none would be allowed. */
+  readonly suggestedName: string;
   /** Whether `hostname` is one of those temporary addresses: read on the server, which knows the base domain. */
   readonly onTemporarySubdomain: boolean;
 }
@@ -28,9 +31,11 @@ export function DomainStepForm({
   useSubdomainAction,
   hostname,
   ownerConfirmed,
-  temporaryAddressOffered,
+  temporaryAddressBase,
+  suggestedName,
   onTemporarySubdomain,
 }: DomainStepFormProps): ReactElement {
+  const [name, setName] = useState(suggestedName);
   const { formRef, errorRef, formAction, controls } = useStepForm(action);
   const {
     formRef: subdomainFormRef,
@@ -93,14 +98,41 @@ export function DomainStepForm({
         <StepSubmit controls={controls} label="Save and continue" pendingLabel="Saving…" />
       </form>
 
-      {onTemporarySubdomain || !temporaryAddressOffered ? null : (
+      {onTemporarySubdomain || temporaryAddressBase === null ? null : (
         <form ref={subdomainFormRef} action={subdomainFormAction} noValidate className="border-t border-line pt-6">
-          <p className="text-sm leading-relaxed text-ink-soft">
-            {"Don’t have a domain yet? We’ll put your website live on a free temporary address so there’s nothing stopping you, and you can move to your own domain whenever you’ve registered one."}
+          <p className="text-sm font-medium">Don’t have a domain yet?</p>
+          <p className="mt-0.5 text-sm text-ink-soft">
+            Choose a free address for your website, so there’s nothing stopping you. You can move to your own domain whenever you’ve
+            registered one.
+          </p>
+          <label htmlFor="free-address-name" className="mt-4 block text-sm font-medium">
+            Your free address
+          </label>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <input
+              id="free-address-name"
+              name="name"
+              type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              maxLength={60}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="yourbusiness"
+              aria-describedby="free-address-preview"
+              className={`${STEP_FIELD_CLASSES} min-w-0 flex-1 basis-40 sm:max-w-xs`}
+              {...subdomainControls.fieldStatus("name")}
+            />
+            <span className="text-sm text-ink-soft">.{temporaryAddressBase}</span>
+          </div>
+          <p id="free-address-preview" className="mt-2 text-sm text-ink-soft">
+            Your website will be at{" "}
+            <span className="font-medium text-ink">{name.trim() === "" ? "yourbusiness" : name.trim().toLowerCase()}.{temporaryAddressBase}</span>
           </p>
           <StepFormError controls={subdomainControls} errorRef={subdomainErrorRef} />
           <div className="mt-4">
-            <StepSubmit controls={subdomainControls} label={"Use a free temporary address for now"} pendingLabel="Setting it up…" />
+            <StepSubmit controls={subdomainControls} label="Use this free address" pendingLabel="Setting it up…" />
           </div>
         </form>
       )}
