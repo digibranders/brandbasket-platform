@@ -1,9 +1,9 @@
 import "server-only";
 import { readBookingContext, readPractitionerSchedules, readSiteFacts } from "@fynix/db";
-import { findTenantBySiteToken } from "@/lib/server/site-api";
+import { findTenantBySiteToken, siteHasAccess } from "@/lib/server/site-api";
 import { getStaffDb } from "@/lib/server/db";
 import { buildSiteInfo, offersBooking } from "@/lib/server/site-info";
-import { bearerToken, siteCorsHeaders, unauthorized } from "@/lib/server/site-cors";
+import { bearerToken, siteCorsHeaders, siteOffline, unauthorized } from "@/lib/server/site-cors";
 import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 
 /**
@@ -24,6 +24,7 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const tenant = await findTenantBySiteToken(token);
     if (tenant === null) return unauthorized(CORS_HEADERS);
+    if (!(await siteHasAccess(tenant.businessId))) return siteOffline(CORS_HEADERS);
 
     const db = getStaffDb();
     const [facts, booking] = await Promise.all([readSiteFacts(db, tenant.businessId), readBookingContext(db, tenant.businessId)]);

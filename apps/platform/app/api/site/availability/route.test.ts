@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listBusyIntervals, readBookingContext, readPractitionerSchedules, readSiteFacts } from "@fynix/db";
 import { getStaffDb } from "@/lib/server/db";
-import { findTenantBySiteToken } from "@/lib/server/site-api";
+import { findTenantBySiteToken, siteHasAccess } from "@/lib/server/site-api";
 import { GET, OPTIONS } from "./route";
 
 /*
@@ -11,7 +11,7 @@ import { GET, OPTIONS } from "./route";
  */
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("@/lib/server/site-api", () => ({ findTenantBySiteToken: vi.fn() }));
+vi.mock("@/lib/server/site-api", () => ({ findTenantBySiteToken: vi.fn(), siteHasAccess: vi.fn() }));
 vi.mock("@fynix/db", () => ({
   readBookingContext: vi.fn(),
   readSiteFacts: vi.fn(),
@@ -21,6 +21,7 @@ vi.mock("@fynix/db", () => ({
 
 const mockedGetStaffDb = vi.mocked(getStaffDb);
 const mockedFindTenant = vi.mocked(findTenantBySiteToken);
+const mockedSiteHasAccess = vi.mocked(siteHasAccess);
 const mockedReadBookingContext = vi.mocked(readBookingContext);
 const mockedReadSiteFacts = vi.mocked(readSiteFacts);
 const mockedListBusyIntervals = vi.mocked(listBusyIntervals);
@@ -41,6 +42,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockedGetStaffDb.mockReturnValue({} as never);
   mockedFindTenant.mockResolvedValue({ businessId: "biz-1", name: "Smile Dental" });
+  mockedSiteHasAccess.mockResolvedValue(true);
   mockedReadSiteFacts.mockResolvedValue({ timeZone: "Asia/Kolkata", hours: [], closures: [], announcement: null });
   mockedReadBookingContext.mockResolvedValue({
     enabled: true,
@@ -56,6 +58,15 @@ beforeEach(() => {
 });
 
 describe("GET /api/site/availability", () => {
+  it("answers 403 site_offline, with no-store, once the business's plan has ended", async () => {
+    mockedSiteHasAccess.mockResolvedValue(false);
+    const response = await GET(new Request("http://app.localhost:3001/api/site/availability", { headers: { authorization: `Bearer ${"t".repeat(40)}` } }));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "This website is offline.", code: "site_offline" });
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(mockedReadBookingContext).not.toHaveBeenCalled();
+  });
+
   it("refuses a request with no bearer token, with CORS and no-store headers", async () => {
     const response = await GET(request());
     expect(response.status).toBe(401);

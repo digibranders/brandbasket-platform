@@ -32,3 +32,13 @@ export function unauthorized(corsHeaders: Record<string, string>): Response {
     { status: 401, headers: { ...corsHeaders, "Cache-Control": "no-store" } },
   );
 }
+
+/** The answer once a business's plan has ended: the token is good, but its website is not being served. Says so, so a site can show a notice. */
+export const SITE_OFFLINE_MESSAGE = "This website is offline.";
+
+export function siteOffline(corsHeaders: Record<string, string>): Response {
+  return Response.json(
+    { error: SITE_OFFLINE_MESSAGE, code: "site_offline" },
+    { status: 403, headers: { ...corsHeaders, "Cache-Control": "no-store" } },
+  );
+}

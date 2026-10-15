@@ -1,6 +1,6 @@
 import "server-only";
-import { findTenantBySiteToken, listPublishedPosts } from "@/lib/server/site-api";
-import { bearerToken, siteCorsHeaders, unauthorized } from "@/lib/server/site-cors";
+import { findTenantBySiteToken, listPublishedPosts, siteHasAccess } from "@/lib/server/site-api";
+import { bearerToken, siteCorsHeaders, siteOffline, unauthorized } from "@/lib/server/site-cors";
 
 /**
  * `GET /api/site/posts` — the published blog posts belonging to whichever business owns the bearer token.
@@ -28,6 +28,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const tenant = await findTenantBySiteToken(token);
   if (tenant === null) return unauthorized(CORS_HEADERS);
+  if (!(await siteHasAccess(tenant.businessId))) return siteOffline(CORS_HEADERS);
 
   const posts = await listPublishedPosts(tenant.businessId);
   return Response.json(

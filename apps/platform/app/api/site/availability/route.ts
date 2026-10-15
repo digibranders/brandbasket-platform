@@ -3,8 +3,8 @@ import { addDays, zonedTimeToUtc } from "@fynix/shared/lib/calendar/local-date";
 import { getStaffDb } from "@/lib/server/db";
 import { buildAvailabilityResponse, parsePractitionerParam, resolveAvailabilityWindow } from "@/lib/server/availability";
 import { loadClinicCalendars } from "@/lib/server/clinic-calendars";
-import { bearerToken, siteCorsHeaders, unauthorized } from "@/lib/server/site-cors";
-import { findTenantBySiteToken } from "@/lib/server/site-api";
+import { bearerToken, siteCorsHeaders, siteOffline, unauthorized } from "@/lib/server/site-cors";
+import { findTenantBySiteToken, siteHasAccess } from "@/lib/server/site-api";
 import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 
 /**
@@ -40,6 +40,7 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const tenant = await findTenantBySiteToken(token);
     if (tenant === null) return unauthorized(CORS_HEADERS);
+    if (!(await siteHasAccess(tenant.businessId))) return siteOffline(CORS_HEADERS);
 
     const db = getStaffDb();
     const [context, facts] = await Promise.all([readBookingContext(db, tenant.businessId), readSiteFacts(db, tenant.businessId)]);

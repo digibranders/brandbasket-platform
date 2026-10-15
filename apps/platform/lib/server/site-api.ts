@@ -1,7 +1,10 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { getPayload } from "payload";
+import { hasBillingAccess } from "@fynix/billing";
+import { findBillingState } from "@fynix/db";
 import config from "@/payload.config";
+import { getStaffDb } from "./db";
 import { toSitePost, type RawSitePost, type SitePost } from "@/lib/site-post";
 
 export type { SitePost } from "@/lib/site-post";
@@ -13,9 +16,8 @@ export type { SitePost } from "@/lib/site-post";
  * business, so a request never names one: there is no business id to forge or enumerate, and a token can only
  * ever reach the posts of the business it belongs to.
  *
- * Everything here reads Payload's database only. The main database is not touched, which is why no Postgres role
- * is needed for this endpoint (see docs/superpowers/plans/2026-09-21-tenant-site-renderer.md for the read-only
- * role that the retired renderer used and why it is gone).
+ * Content is read from Payload's database. Whether the website may be shown at all is read from the main database
+ * (siteHasAccess): a business whose plan has ended gets nothing from this API, so its website goes down with its plan.
  */
 
 /** 32 bytes of hex. Long enough that guessing is hopeless, short enough to paste into an env var. */
@@ -58,6 +60,23 @@ export async function findTenantBySiteToken(token: string): Promise<SiteApiTenan
   if (tenant === undefined) return null;
   if (typeof tenant.businessId !== "string" || typeof tenant.name !== "string") return null;
   return { businessId: tenant.businessId, name: tenant.name };
+}
+
+/**
+ * Whether a business's website may be shown: the same rule as the dashboard (hasBillingAccess). There is no grace period:
+ * it is on while the period the customer paid for runs, and off the moment the payment is given up on (or the period ends
+ * with nothing renewed), so a website whose plan has ended stops being served at once. A business that never paid has none.
+ */
+export async function siteHasAccess(businessId: string, now: Date = new Date()): Promise<boolean> {
+  const state = await findBillingState(getStaffDb(), businessId);
+  return hasBillingAccess(state?.subscription ?? null, now);
+}
+
+/** findTenantBySiteToken, but null as well when the business's plan has ended: for the routes that answer a bad token the same way. */
+export async function findOnlineTenantBySiteToken(token: string): Promise<SiteApiTenant | null> {
+  const tenant = await findTenantBySiteToken(token);
+  if (tenant === null) return null;
+  return (await siteHasAccess(tenant.businessId)) ? tenant : null;
 }
 
 /**

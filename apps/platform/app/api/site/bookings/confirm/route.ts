@@ -1,6 +1,6 @@
 import { handleBookingConfirmRequest } from "@/lib/server/booking-confirm-intake";
 import { confirmBookingOtp } from "@/lib/server/booking-confirm";
-import { findTenantBySiteToken } from "@/lib/server/site-api";
+import { findOnlineTenantBySiteToken } from "@/lib/server/site-api";
 
 /**
  * `POST /api/site/bookings/confirm` — a client site's server confirming a booking with the code that was emailed to the patient. Server-to-server only (see
@@ -9,7 +9,7 @@ import { findTenantBySiteToken } from "@/lib/server/site-api";
  */
 export function POST(request: Request): Promise<Response> {
   return handleBookingConfirmRequest(request, {
-    findTenant: findTenantBySiteToken,
+    findTenant: findOnlineTenantBySiteToken,
     confirmOtp: confirmBookingOtp,
     now: () => new Date(),
   });

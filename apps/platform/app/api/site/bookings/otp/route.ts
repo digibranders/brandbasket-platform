@@ -1,6 +1,6 @@
 import { handleBookingOtpRequest } from "@/lib/server/booking-otp-intake";
 import { requestBookingOtp } from "@/lib/server/booking-otp";
-import { findTenantBySiteToken } from "@/lib/server/site-api";
+import { findOnlineTenantBySiteToken } from "@/lib/server/site-api";
 
 /**
  * `POST /api/site/bookings/otp` — a client site's server asking for a slot, with the patient's name, email and phone number
@@ -13,7 +13,7 @@ import { findTenantBySiteToken } from "@/lib/server/site-api";
  */
 export function POST(request: Request): Promise<Response> {
   return handleBookingOtpRequest(request, {
-    findTenant: findTenantBySiteToken,
+    findTenant: findOnlineTenantBySiteToken,
     requestOtp: requestBookingOtp,
     now: () => new Date(),
   });

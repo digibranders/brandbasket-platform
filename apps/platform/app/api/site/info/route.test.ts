@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readBookingContext, readPractitionerSchedules, readSiteFacts } from "@fynix/db";
 import { getStaffDb } from "@/lib/server/db";
-import { findTenantBySiteToken } from "@/lib/server/site-api";
+import { findTenantBySiteToken, siteHasAccess } from "@/lib/server/site-api";
 import { GET, OPTIONS } from "./route";
 
 /*
@@ -10,11 +10,12 @@ import { GET, OPTIONS } from "./route";
  */
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("@/lib/server/site-api", () => ({ findTenantBySiteToken: vi.fn() }));
+vi.mock("@/lib/server/site-api", () => ({ findTenantBySiteToken: vi.fn(), siteHasAccess: vi.fn() }));
 vi.mock("@fynix/db", () => ({ readBookingContext: vi.fn(), readPractitionerSchedules: vi.fn(), readSiteFacts: vi.fn() }));
 
 const mockedGetStaffDb = vi.mocked(getStaffDb);
 const mockedFindTenant = vi.mocked(findTenantBySiteToken);
+const mockedSiteHasAccess = vi.mocked(siteHasAccess);
 const mockedReadBookingContext = vi.mocked(readBookingContext);
 const mockedReadSiteFacts = vi.mocked(readSiteFacts);
 const mockedReadPractitionerSchedules = vi.mocked(readPractitionerSchedules);
@@ -30,6 +31,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockedGetStaffDb.mockReturnValue({} as never);
   mockedFindTenant.mockResolvedValue({ businessId: "biz-1", name: "Smile Dental" });
+  mockedSiteHasAccess.mockResolvedValue(true);
   mockedReadSiteFacts.mockResolvedValue({ timeZone: "Asia/Kolkata", hours: [], closures: [], announcement: null });
   mockedReadBookingContext.mockResolvedValue({ enabled: false, timeZone: null, settings: null, services: [] });
   mockedReadPractitionerSchedules.mockResolvedValue([]);
@@ -50,6 +52,17 @@ describe("GET /api/site/info", () => {
     expect(response.status).toBe(401);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(response.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("answers 403 site_offline, reading nothing, once the business's plan has ended", async () => {
+    mockedSiteHasAccess.mockResolvedValue(false);
+    const response = await GET(request({ authorization: `Bearer ${TOKEN}` }));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "This website is offline.", code: "site_offline" });
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(mockedSiteHasAccess).toHaveBeenCalledWith("biz-1");
+    expect(mockedReadSiteFacts).not.toHaveBeenCalled();
   });
 
   it("answers 500 with CORS and no-store headers when the token lookup itself throws", async () => {
