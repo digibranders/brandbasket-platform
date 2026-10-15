@@ -748,7 +748,7 @@ describe("paymentReceivedEmail", () => {
     const email = paymentReceivedEmail({
       ...base,
       lines: [
-        { label: "Social media, first month", amountCents: 199_900 },
+        { label: "Social media", amountCents: 199_900 },
         { label: "Lifetime offer, 5% off", amountCents: -9_995 },
       ],
       gstCents: 34_183,
