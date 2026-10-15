@@ -152,7 +152,7 @@ export function ClientAddOns({ businessId, addOns, pressReleases, notice }: Clie
         </Notice>
       )}
       {addOns.length === 0 && pressReleases.length === 0 ? (
-        <Quiet>Nothing bought yet. Local SEO, Performance marketing and Press releases appear here when the customer buys one.</Quiet>
+        <Quiet>Nothing bought yet. Social media, Outreach and lead generation and Paid advertising appear here when the customer buys one.</Quiet>
       ) : (
         <ul className="max-w-3xl divide-y divide-line">
           {addOns.map((row) => (

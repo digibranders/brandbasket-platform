@@ -85,22 +85,22 @@ describe("addOnStateLine", () => {
 
 describe("addOnActionLabel", () => {
   it("starts every aria-label with the visible words and names the add-on", () => {
-    expect(addOnActionLabel("buy", "Local SEO")).toEqual({ text: "Get it", ariaLabel: "Get it for Local SEO" });
-    expect(addOnActionLabel("pause", "Local SEO")).toEqual({ text: "Pause", ariaLabel: "Pause Local SEO" });
-    expect(addOnActionLabel("cancel", "Local SEO")).toEqual({ text: "Cancel", ariaLabel: "Cancel Local SEO" });
-    expect(addOnActionLabel("keep", "Local SEO")).toEqual({ text: "Keep it", ariaLabel: "Keep it for Local SEO" });
-    expect(addOnActionLabel("resume", "Local SEO")).toEqual({ text: "Resume", ariaLabel: "Resume Local SEO" });
-    expect(addOnActionLabel("pay-now", "Local SEO")).toEqual({ text: "Pay now", ariaLabel: "Pay now for Local SEO" });
+    expect(addOnActionLabel("buy", "Social media")).toEqual({ text: "Get it", ariaLabel: "Get it for Social media" });
+    expect(addOnActionLabel("pause", "Social media")).toEqual({ text: "Pause", ariaLabel: "Pause Social media" });
+    expect(addOnActionLabel("cancel", "Social media")).toEqual({ text: "Cancel", ariaLabel: "Cancel Social media" });
+    expect(addOnActionLabel("keep", "Social media")).toEqual({ text: "Keep it", ariaLabel: "Keep it for Social media" });
+    expect(addOnActionLabel("resume", "Social media")).toEqual({ text: "Resume", ariaLabel: "Resume Social media" });
+    expect(addOnActionLabel("pay-now", "Social media")).toEqual({ text: "Pay now", ariaLabel: "Pay now for Social media" });
   });
 });
 
 describe("endConfirmQuestion", () => {
   it("says exactly what will happen", () => {
-    expect(endConfirmQuestion("cancel", "Local SEO", "12 November 2026")).toBe(
-      "Cancel Local SEO? It stops on 12 November 2026 and you won't be charged again.",
+    expect(endConfirmQuestion("cancel", "Social media", "12 November 2026")).toBe(
+      "Cancel Social media? It stops on 12 November 2026 and you won't be charged again.",
     );
-    expect(endConfirmQuestion("pause", "Local SEO", "12 November 2026")).toBe(
-      "Pause Local SEO? It pauses on 12 November 2026; resume any time.",
+    expect(endConfirmQuestion("pause", "Social media", "12 November 2026")).toBe(
+      "Pause Social media? It pauses on 12 November 2026; resume any time.",
     );
   });
 });
@@ -108,8 +108,8 @@ describe("endConfirmQuestion", () => {
 describe("endSavedText", () => {
   it("is the very sentence the server says when it schedules the end", () => {
     for (const endKind of ["cancel", "pause"] as const) {
-      const server = addOnEndMessage({ kind: "scheduled", addOn: "local-seo", endKind, endsOn: NOV_12 });
-      expect(endSavedText(endKind, "Local SEO", addOnDate(NOV_12))).toBe(server);
+      const server = addOnEndMessage({ kind: "scheduled", addOn: "social-media", endKind, endsOn: NOV_12 });
+      expect(endSavedText(endKind, "Social media", addOnDate(NOV_12))).toBe(server);
     }
   });
 });
@@ -117,8 +117,8 @@ describe("endSavedText", () => {
 describe("checkoutCopy", () => {
   const base: CheckoutCopyInput = {
     intent: "buy",
-    addOnId: "local-seo",
-    title: "Local SEO",
+    addOnId: "social-media",
+    title: "Social media",
     monthly: true,
     chargeDate: null,
     renewDay: "12th",
@@ -128,30 +128,21 @@ describe("checkoutCopy", () => {
 
   it("explains a monthly purchase", () => {
     expect(checkoutCopy(base)).toEqual({
-      heading: "Get Local SEO",
+      heading: "Get Social media",
       lead: null,
       totalLabel: "Total today",
       notes: [renews, contact],
     });
   });
 
-  it("adds the ad platforms line for Performance marketing", () => {
-    const copy = checkoutCopy({ ...base, addOnId: "performance-marketing", title: "Performance marketing" });
+  it("adds the ad platforms line for Advertising", () => {
+    const copy = checkoutCopy({ ...base, addOnId: "advertising", title: "Advertising" });
     expect(copy.notes).toEqual([renews, "This is Fynix Digital's fee. You pay the ad platforms directly.", contact]);
   });
 
-  it("says a press release is a one-time payment, with no renewal", () => {
-    expect(checkoutCopy({ ...base, addOnId: "press-release", title: "Press release", monthly: false, renewDay: null })).toEqual({
-      heading: "Get Press release",
-      lead: null,
-      totalLabel: "Total today",
-      notes: ["One-time payment.", contact],
-    });
-  });
-
   it("names the action in the heading for Resume and Pay now", () => {
-    expect(checkoutCopy({ ...base, intent: "resume" }).heading).toBe("Resume Local SEO");
-    expect(checkoutCopy({ ...base, intent: "pay-now" }).heading).toBe("Pay for Local SEO");
+    expect(checkoutCopy({ ...base, intent: "resume" }).heading).toBe("Resume Social media");
+    expect(checkoutCopy({ ...base, intent: "pay-now" }).heading).toBe("Pay for Social media");
   });
 
   it("keeps the contact line for Resume, which staff see again, but drops it for Pay now, which they already know", () => {
@@ -163,7 +154,7 @@ describe("checkoutCopy", () => {
 
   it("for Keep it says when the card is charged, totals on that date, and promises no call", () => {
     const copy = checkoutCopy({ ...base, intent: "keep", chargeDate: "12 November 2026" });
-    expect(copy.heading).toBe("Keep Local SEO");
+    expect(copy.heading).toBe("Keep Social media");
     expect(copy.lead).toBe("Your card will be charged on 12 November 2026.");
     expect(copy.totalLabel).toBe("Total on 12 November 2026");
     expect(copy.notes).toEqual([renews]);
@@ -199,7 +190,7 @@ describe("checkoutCopy", () => {
   });
 
   it("uses no em or en dashes", () => {
-    const copy = checkoutCopy({ ...base, intent: "keep", chargeDate: "12 November 2026", addOnId: "performance-marketing" });
+    const copy = checkoutCopy({ ...base, intent: "keep", chargeDate: "12 November 2026", addOnId: "advertising" });
     expect(JSON.stringify(copy)).not.toMatch(/[\u2013\u2014]/);
   });
 });
@@ -231,21 +222,21 @@ describe("pressReleaseStatusLabel", () => {
 
 describe("testCheckoutCopy", () => {
   it("is a payment for anything that is not a keep", () => {
-    expect(testCheckoutCopy("Local SEO", null)).toEqual({
-      body: "This page stands in for the payment provider while payments are simulated. Pay records the payment for Local SEO; Cancel takes you back with nothing recorded.",
+    expect(testCheckoutCopy("Social media", null)).toEqual({
+      body: "This page stands in for the payment provider while payments are simulated. Pay records the payment for Social media; Cancel takes you back with nothing recorded.",
       buttonLabel: "Pay",
     });
   });
 
   it("is an authorisation for a keep, naming the date nothing is charged before", () => {
-    expect(testCheckoutCopy("Local SEO", NOV_12)).toEqual({
+    expect(testCheckoutCopy("Social media", NOV_12)).toEqual({
       body: "This page stands in for the payment provider while payments are simulated. Confirm records the authorisation. Nothing is charged until 12 November 2026. Cancel takes you back with nothing recorded.",
       buttonLabel: "Confirm",
     });
   });
 
   it("uses no em or en dashes", () => {
-    expect(JSON.stringify(testCheckoutCopy("Local SEO", NOV_12))).not.toMatch(/[\u2013\u2014]/);
+    expect(JSON.stringify(testCheckoutCopy("Social media", NOV_12))).not.toMatch(/[\u2013\u2014]/);
   });
 });
 
@@ -268,9 +259,9 @@ describe("keepDateOf", () => {
 
 describe("pending labels", () => {
   it("name what is happening and to which add-on, and start with the words the button shows", () => {
-    expect(endPendingLabel("pause", "Local SEO")).toEqual({ text: "Pausing…", ariaLabel: "Pausing Local SEO" });
-    expect(endPendingLabel("cancel", "Local SEO")).toEqual({ text: "Cancelling…", ariaLabel: "Cancelling Local SEO" });
-    expect(checkoutPendingLabel("Local SEO")).toEqual({ text: "Opening payment…", ariaLabel: "Opening payment for Local SEO" });
+    expect(endPendingLabel("pause", "Social media")).toEqual({ text: "Pausing…", ariaLabel: "Pausing Social media" });
+    expect(endPendingLabel("cancel", "Social media")).toEqual({ text: "Cancelling…", ariaLabel: "Cancelling Social media" });
+    expect(checkoutPendingLabel("Social media")).toEqual({ text: "Opening payment…", ariaLabel: "Opening payment for Social media" });
   });
 
   it("use no em or en dashes", () => {

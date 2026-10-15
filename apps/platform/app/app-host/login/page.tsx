@@ -7,6 +7,7 @@ import { TurnstileScope } from "@fynix/shared/ui/turnstile-scope";
 import { SignOutButton } from "@fynix/shared/ui/panel/sign-out-button";
 import { siteConfig } from "@fynix/shared/lib/site-config";
 import { EntrySwitch } from "@/components/panel/entry-switch";
+import { countryOptions } from "@fynix/shared/lib/countries";
 import { JoinForm } from "@/components/panel/join-form";
 import { loginNotice } from "@/lib/login-notice";
 import { requestBrand } from "@/lib/server/request-brand";
@@ -145,6 +146,7 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
           legalLinks={legalLinks}
           prices={prices}
           confirmsCodes={confirmsCodes}
+          countries={countryOptions()}
         />
       </TurnstileScope>
     </EntryScreen>

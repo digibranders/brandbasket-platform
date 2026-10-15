@@ -9,9 +9,9 @@ import { findAddOnProviderPlan, saveAddOnProviderPlan } from "@fynix/db";
 import { ensureAddOnPlan } from "./add-on-plans";
 
 const staffDb = { name: "staff-db" } as never;
-const LOCAL_SEO = addOnById("local-seo");
-const MEMBER_PRICE = addOnPrice(LOCAL_SEO, true);
-const KEY = { addOn: "local-seo", netAmountCents: 900_000, taxRateBasisPoints: 1_800, currency: "INR", provider: "razorpay" } as const;
+const SOCIAL_MEDIA = addOnById("social-media");
+const MEMBER_PRICE = addOnPrice(SOCIAL_MEDIA, true);
+const KEY = { addOn: "social-media", netAmountCents: 179_910, taxRateBasisPoints: 1_800, currency: "INR", provider: "razorpay" } as const;
 
 function providerWith(createPlan: BillingProvider["createPlan"]): BillingProvider {
   return { name: "razorpay", createPlan } as unknown as BillingProvider;
@@ -26,7 +26,7 @@ describe("ensureAddOnPlan", () => {
     vi.mocked(findAddOnProviderPlan).mockResolvedValue("plan_stored");
     const createPlan = vi.fn();
 
-    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: LOCAL_SEO, price: MEMBER_PRICE })).resolves.toBe("plan_stored");
+    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: SOCIAL_MEDIA, price: MEMBER_PRICE })).resolves.toBe("plan_stored");
 
     expect(findAddOnProviderPlan).toHaveBeenCalledWith(staffDb, KEY);
     expect(createPlan).not.toHaveBeenCalled();
@@ -38,14 +38,14 @@ describe("ensureAddOnPlan", () => {
     vi.mocked(saveAddOnProviderPlan).mockResolvedValue("plan_winner");
     const createPlan = vi.fn().mockResolvedValue({ providerPlanId: "plan_mine" });
 
-    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: LOCAL_SEO, price: MEMBER_PRICE })).resolves.toBe("plan_winner");
+    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: SOCIAL_MEDIA, price: MEMBER_PRICE })).resolves.toBe("plan_winner");
 
     expect(createPlan).toHaveBeenCalledWith({
       currency: "INR",
-      netMonthlyCents: 900_000,
+      netMonthlyCents: 179_910,
       taxRateBasisPoints: 1_800,
-      code: "addon-local-seo-900000",
-      itemName: "Fynix Local SEO",
+      code: "addon-social-media-179910",
+      itemName: "Fynix Social media",
     });
     expect(saveAddOnProviderPlan).toHaveBeenCalledWith(staffDb, { ...KEY, providerPlanId: "plan_mine" });
   });
@@ -54,19 +54,8 @@ describe("ensureAddOnPlan", () => {
     vi.mocked(findAddOnProviderPlan).mockResolvedValue(null);
     const createPlan = vi.fn().mockResolvedValue({ providerPlanId: null });
 
-    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: LOCAL_SEO, price: MEMBER_PRICE })).resolves.toBeNull();
+    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: SOCIAL_MEDIA, price: MEMBER_PRICE })).resolves.toBeNull();
 
     expect(saveAddOnProviderPlan).not.toHaveBeenCalled();
-  });
-
-  it("refuses a one-time add-on, which never runs on a plan", async () => {
-    const createPlan = vi.fn();
-
-    await expect(
-      ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: addOnById("press-release"), price: MEMBER_PRICE }),
-    ).rejects.toThrow(/press-release/);
-
-    expect(findAddOnProviderPlan).not.toHaveBeenCalled();
-    expect(createPlan).not.toHaveBeenCalled();
   });
 });

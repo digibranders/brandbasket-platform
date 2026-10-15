@@ -682,6 +682,7 @@ export {
   listAddOnSubscriptionsForBusiness,
   listAddOnSubscriptionsForStaff,
   listAddOnsToContact,
+  findLifetimeOfferStanding,
   listPressReleasesForBusiness,
   lockAddOnSubscription,
   markAddOnCancelled,
@@ -696,6 +697,7 @@ export {
   type AddOnProviderPlanKey,
   type AddOnSubscriptionForStaff,
   type AddOnToContact,
+  type LifetimeOfferStanding,
   type NewAddOnSubscription,
   type RecordedAddOnPayment,
 } from "./queries/add-ons";

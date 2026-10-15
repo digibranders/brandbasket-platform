@@ -42,14 +42,26 @@ async function type(name: string, value: string): Promise<void> {
   });
 }
 
-const JOIN_PROPS = { initialChoice: "care", preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { care: null, premium: null }, confirmsCodes: true } as const;
+const JOIN_PROPS = { initialChoice: "care", preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { care: null, premium: null }, confirmsCodes: true, countries: [{ code: "IN", name: "India" }, { code: "AE", name: "United Arab Emirates" }] } as const;
 const codeStep = { otpId: "challenge", emailHint: "o•••@example.test", confirmRequired: true };
+
+/** Picks a state the way a person does: India is the country already chosen, and the state is never filled in for them. */
+async function pickState(code = "mh"): Promise<void> {
+  const select = container.querySelector<HTMLSelectElement>('select[name="stateCode"]');
+  if (!select) throw new Error("Missing the state select");
+  const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+  await act(async () => {
+    setValue?.call(select, code);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
 
 /** Fills the details a Care sign-up asks for and asks for the code. */
 async function askForCode(): Promise<void> {
   await type("businessName", "Smile Dental");
   await type("name", "Owner");
   await type("email", "owner@example.test");
+  await pickState();
   await type("password", "a-long-password");
   await act(async () => container.querySelector<HTMLInputElement>('input[name="agree"]')?.click());
   await click("Email me a code");
@@ -85,6 +97,15 @@ it("focuses signup details when replacing the plan chooser", async () => {
   await act(async () => container.querySelector<HTMLInputElement>('input[value="listing_only"]')?.click());
   await click("Continue");
   expect(document.activeElement?.getAttribute("name")).toBe("name");
+});
+
+it("asks a sign-up for a country, and a state only for India", async () => {
+  await render(createElement(JoinForm, { ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "idle" }) }));
+  const country = container.querySelector<HTMLSelectElement>('select[name="country"]');
+  expect(country?.value).toBe("IN");
+  const state = container.querySelector<HTMLSelectElement>('select[name="stateCode"]');
+  expect(state?.value).toBe("");
+  expect(state?.options.length).toBeGreaterThan(30);
 });
 
 it("asks a sign-up for an email address, and never for a mobile number", async () => {
@@ -149,6 +170,7 @@ it("locks the details while a code is being sent", async () => {
   await type("businessName", "Smile Dental");
   await type("name", "Owner");
   await type("email", "owner@example.test");
+  await pickState();
   await type("password", "a-long-password");
   await act(async () => container.querySelector<HTMLInputElement>('input[name="agree"]')?.click());
   await click("Email me a code");

@@ -5,29 +5,27 @@ import {
   cancelStaleAddOnCheckout,
   consumeRateLimit,
   findAddOnSubscription,
-  findOpenChargeOfKind,
+  findBillingState,
+  findLifetimeOfferStanding,
   insertAddOnSubscription,
-  insertCharge,
   listAddOnSubscriptionsForBusiness,
-  listPressReleasesForBusiness,
   lockBusinessForBilling,
   recordUnappliedAddOnPayment,
   updateAddOnStatus,
   withTenantScope,
   type AddOnSubscription,
-  type Charge,
   type RateLimitRule,
+  type Database,
   type ScopedTransaction,
 } from "@fynix/db";
 import { BROKEN_ADD_ON_LINE, keepDateOf } from "@/lib/billing/add-on-copy";
-import { chargePayPath } from "@/lib/billing/charge-notices";
 import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
 import {
   addOnById,
   addOnPrice,
   isMonthlyAddOnId,
   MONTHLY_ADD_ON_IDS,
-  pressReleaseChargeDescription,
+  type AddOnId,
   type AddOnPrice,
   type MonthlyAddOnId,
 } from "@fynix/shared/lib/billing/add-ons";
@@ -41,6 +39,7 @@ import {
   type AddOnEndKind,
   type AddOnView,
 } from "@fynix/shared/lib/billing/add-on-state";
+import { lifetimeOfferApplies } from "@fynix/shared/lib/billing/lifetime-offer";
 import { applyAddOnPayment, type ProviderSubscriptionRef } from "@fynix/shared/server/add-on-activation";
 import { addOnEndMessage, scheduleAddOnEndFor as scheduleEndWithProvider } from "@fynix/shared/server/add-on-ends";
 import { ensureAddOnPlan } from "@fynix/shared/server/add-on-plans";
@@ -48,7 +47,6 @@ import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log
 import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { cancelAtProvider } from "@fynix/shared/server/provider-cancellation";
 import { getBillingProvider } from "./billing";
-import { startCustomerChargePayment } from "./charges";
 import { getCustomerBusinessKind, type GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 
@@ -94,7 +92,6 @@ const TOO_MANY_ATTEMPTS = "That's a lot of attempts in a short time. Please wait
 const PROVIDER_UNAVAILABLE = "We couldn't reach the payment provider. Try again in a minute.";
 const CHANGED_MEANWHILE = "Something changed while we were setting up your payment. Please try again.";
 const BROKEN_ROW = BROKEN_ADD_ON_LINE;
-const COULD_NOT_OPEN_PAYMENT = "We couldn't open that payment. Please try again.";
 
 function refused(message: string): { readonly kind: "refused"; readonly message: string } {
   return { kind: "refused", message };
@@ -107,11 +104,23 @@ async function isPremiumMember(customer: GrantedCustomer): Promise<boolean> {
   return kind === "website" && billing.tier === "premium";
 }
 
+/**
+ * Whether a new purchase of `addOn` is priced with the first-checkout lifetime offer: it is bought before the first plan
+ * payment, or this add-on was bought that way before (lib/billing/lifetime-offer.ts). Each add-on earns it on its own, so
+ * one missed at the first checkout stays at its full price. Read on whatever connection can see the business.
+ */
+async function offerAppliesTo(tx: Database | ScopedTransaction, businessId: string, addOn: AddOnId): Promise<boolean> {
+  const standing = await findLifetimeOfferStanding(tx, businessId);
+  const state = await findBillingState(tx, businessId);
+  return lifetimeOfferApplies({ hasEverPaid: state?.hasEverPaid ?? true, claimedBefore: standing.claimed.includes(addOn) });
+}
+
 /** What an existing purchase costs, as stored on it. A resume, Pay now or Keep it never uses today's catalogue. */
 function storedPrice(row: AddOnSubscription): AddOnPrice {
   return {
     listCents: row.listAmountCents,
     discountCents: row.discountAmountCents,
+    offerCents: row.offerDiscountAmountCents,
     netCents: row.netAmountCents,
     taxRateBasisPoints: row.taxRateBasisPoints,
     chargedCents: row.chargedAmountCents,
@@ -122,6 +131,7 @@ function samePrice(a: AddOnPrice, b: AddOnPrice): boolean {
   return (
     a.listCents === b.listCents &&
     a.discountCents === b.discountCents &&
+    a.offerCents === b.offerCents &&
     a.netCents === b.netCents &&
     a.taxRateBasisPoints === b.taxRateBasisPoints &&
     a.chargedCents === b.chargedCents
@@ -219,7 +229,7 @@ async function planCheckout(
   if (decision.continues && continued === null) {
     throw new Error(`Add-on checkout ${intent} for ${addOn} was allowed with no row to continue`);
   }
-  const price = continued === null ? addOnPrice(addOnById(addOn), premium) : storedPrice(continued);
+  const price = continued === null ? addOnPrice(addOnById(addOn), premium, await offerAppliesTo(tx, businessId, addOn)) : storedPrice(continued);
   const startAt = decision.startsOnPeriodEnd ? (continued?.currentPeriodEnd ?? null) : null;
   if (decision.startsOnPeriodEnd && startAt === null) throw new RangeError(`The ${addOn} row being kept has no period end`);
 
@@ -332,6 +342,7 @@ export async function startAddOnCheckoutFor(
         addOn,
         listAmountCents: price.listCents,
         discountAmountCents: price.discountCents,
+        offerDiscountAmountCents: price.offerCents,
         netAmountCents: price.netCents,
         taxRateBasisPoints: price.taxRateBasisPoints,
         chargedAmountCents: price.chargedCents,
@@ -556,66 +567,6 @@ export async function confirmFakeAddOnPaymentFor(
   return result.confirmation;
 }
 
-/** The row a checkout link names, only if it is the business's own. */
-function isSamePressReleaseCharge(charge: Charge, description: string, price: AddOnPrice): boolean {
-  return (
-    charge.description === description &&
-    charge.quantity === 1 &&
-    charge.unitAmountCents === price.netCents &&
-    charge.taxRateBasisPoints === price.taxRateBasisPoints &&
-    charge.amountCents === price.chargedCents
-  );
-}
-
-/**
- * Starts the payment for a press release: a one-time charge at the catalogue price, less the Premium member discount,
- * paid through the same charge path as any other extra (the pay page, the fake test checkout or Razorpay's `order.paid`
- * webhook), which creates its status row when it is paid. An unpaid press release charge at the same price is reused
- * rather than added again. A new charge is written on the staff connection (customers never
- * write charges), the price comes only from the server, and the charge's description says when the member price was
- * taken so the invoice explains its own amount.
- */
-export async function startPressReleaseFor(customer: GrantedCustomer): Promise<AddOnCheckoutOutcome> {
-  const { tenant } = customer;
-  const limit = await consumeRateLimit(getAppDb(), `add-on-checkout:business:${tenant.businessId}`, ADD_ON_CHECKOUT_RATE_LIMIT);
-  if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
-
-  const premium = await isPremiumMember(customer);
-  const price = addOnPrice(addOnById("press-release"), premium);
-  const description = pressReleaseChargeDescription(premium);
-  const earlier = await withTenantScope(getAppDb(), tenant, (tx) => findOpenChargeOfKind(tx, tenant.businessId, "press_release"));
-  // An abandoned attempt is picked up again, so unpaid lines never pile up on Billing. One at a price the customer would
-  // not pay now (they became a Premium member since) is left for staff: only they can waive a charge.
-  const charge =
-    earlier !== null && isSamePressReleaseCharge(earlier, description, price)
-      ? earlier
-      : await insertCharge(getStaffDb(), {
-          businessId: tenant.businessId,
-          kind: "press_release",
-          description,
-          quantity: 1,
-          unitAmountCents: price.netCents,
-          taxRateBasisPoints: price.taxRateBasisPoints,
-          amountCents: price.chargedCents,
-          currency: "INR",
-          createdByStaffId: null,
-        });
-  const start = await startCustomerChargePayment(customer, charge.id);
-  switch (start.kind) {
-    case "redirect":
-      return { kind: "redirect", url: start.url };
-    case "razorpay":
-      return { kind: "redirect", url: chargePayPath(start.charge.id) };
-    case "not-found":
-    case "not-open":
-      return refused(COULD_NOT_OPEN_PAYMENT);
-    default: {
-      const unhandled: never = start;
-      throw new Error(`Unhandled charge payment start: ${JSON.stringify(unhandled)}`);
-    }
-  }
-}
-
 /** One monthly add-on as the Add-ons page shows it. */
 export type AddOnPageEntry =
   | {
@@ -634,13 +585,15 @@ export type AddOnPageEntry =
 export interface AddOnsPage {
   readonly addOns: readonly AddOnPageEntry[];
   readonly premium: boolean;
-  /** What a press release costs this business now. */
-  readonly pressReleasePrice: AddOnPrice;
-  /** The business's paid press releases, newest first. */
-  readonly pressReleases: Awaited<ReturnType<typeof listPressReleasesForBusiness>>;
 }
 
-function entryFor(businessId: string, addOn: MonthlyAddOnId, picked: PickedRows, premium: boolean, now: Date): AddOnPageEntry {
+function entryFor(
+  businessId: string,
+  addOn: MonthlyAddOnId,
+  picked: PickedRows,
+  pricing: { readonly premium: boolean; readonly offer: boolean },
+  now: Date,
+): AddOnPageEntry {
   try {
     const view = viewOf(picked, now);
     const actions = addOnActions(view);
@@ -650,7 +603,7 @@ function entryFor(businessId: string, addOn: MonthlyAddOnId, picked: PickedRows,
       throw new RangeError(`Keep it is offered on an ending or pausing add-on, not on ${view.state}`);
     }
     const inForce = picked.successor ?? picked.current;
-    const price = view.state === "none" || view.state === "ended" || inForce === null ? addOnPrice(addOnById(addOn), premium) : storedPrice(inForce);
+    const price = view.state === "none" || view.state === "ended" || inForce === null ? addOnPrice(addOnById(addOn), pricing.premium, pricing.offer) : storedPrice(inForce);
     const ends = actions.includes("pause") || actions.includes("cancel");
     return { kind: "ready", addOn, view, actions, price, endTargetId: ends ? (inForce?.id ?? null) : null };
   } catch (error) {
@@ -661,17 +614,23 @@ function entryFor(businessId: string, addOn: MonthlyAddOnId, picked: PickedRows,
 
 /**
  * Everything the Add-ons page shows, read through row-level security as the signed-in customer: per monthly add-on its
- * state, buttons and price, and the business's press releases. Each add-on is worked out on its own, so one row with
+ * state, buttons and price. Each add-on is worked out on its own, so one row with
  * impossible data shows as broken and never takes the page down.
  */
 export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Promise<AddOnsPage> {
   const { tenant } = customer;
   const premium = await isPremiumMember(customer);
-  const { rows, pressReleases } = await withTenantScope(getAppDb(), tenant, async (tx) => ({
-    rows: await listAddOnSubscriptionsForBusiness(tx, tenant.businessId),
-    pressReleases: await listPressReleasesForBusiness(tx, tenant.businessId),
-  }));
-  const addOns = MONTHLY_ADD_ON_IDS.map((addOn) => entryFor(tenant.businessId, addOn, pickAddOnRows(rows.filter((row) => row.addOn === addOn)), premium, now));
-  return { addOns, premium, pressReleasePrice: addOnPrice(addOnById("press-release"), premium), pressReleases };
+  const { rows, offers } = await withTenantScope(getAppDb(), tenant, async (tx) => {
+    const offered = new Map<MonthlyAddOnId, boolean>();
+    for (const addOn of MONTHLY_ADD_ON_IDS) offered.set(addOn, await offerAppliesTo(tx, tenant.businessId, addOn));
+    return {
+      rows: await listAddOnSubscriptionsForBusiness(tx, tenant.businessId),
+      offers: offered,
+    };
+  });
+  const addOns = MONTHLY_ADD_ON_IDS.map((addOn) =>
+    entryFor(tenant.businessId, addOn, pickAddOnRows(rows.filter((row) => row.addOn === addOn)), { premium, offer: offers.get(addOn) === true }, now),
+  );
+  return { addOns, premium };
 }
 

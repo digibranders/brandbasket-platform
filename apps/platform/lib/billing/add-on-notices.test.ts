@@ -31,8 +31,8 @@ describe("readAddOnPaymentNotice", () => {
 
 describe("readKeptAddOn", () => {
   it("reads the monthly add-ons", () => {
-    expect(readKeptAddOn("local-seo")).toBe("local-seo");
-    expect(readKeptAddOn("performance-marketing")).toBe("performance-marketing");
+    expect(readKeptAddOn("social-media")).toBe("social-media");
+    expect(readKeptAddOn("advertising")).toBe("advertising");
   });
 
   it("ignores the press release, other text, a missing value and a list", () => {
@@ -41,7 +41,7 @@ describe("readKeptAddOn", () => {
     expect(readKeptAddOn("")).toBeNull();
     expect(readKeptAddOn(null)).toBeNull();
     expect(readKeptAddOn(undefined)).toBeNull();
-    expect(readKeptAddOn(["local-seo"])).toBeNull();
+    expect(readKeptAddOn(["social-media"])).toBeNull();
   });
 });
 
@@ -52,7 +52,7 @@ describe("addOnPaymentHref", () => {
   });
 
   it("names the add-on that was kept", () => {
-    expect(addOnPaymentHref("kept", "local-seo")).toBe("/add-ons?payment=kept&addOn=local-seo");
+    expect(addOnPaymentHref("kept", "social-media")).toBe("/add-ons?payment=kept&addOn=social-media");
     expect(addOnPaymentHref("kept")).toBe("/add-ons?payment=kept");
   });
 });
@@ -64,32 +64,32 @@ describe("addOnCallbackHref", () => {
   });
 
   it("sends a signed Keep it return to the kept notice, never to received", () => {
-    expect(addOnCallbackHref(true, "local-seo")).toBe("/add-ons?payment=kept&addOn=local-seo");
+    expect(addOnCallbackHref(true, "social-media")).toBe("/add-ons?payment=kept&addOn=social-media");
   });
 
   it("says failed for a Keep it return that was not signed", () => {
-    expect(addOnCallbackHref(false, "local-seo")).toBe("/add-ons?payment=failed");
+    expect(addOnCallbackHref(false, "social-media")).toBe("/add-ons?payment=failed");
   });
 });
 
 describe("addOnConfirmationHref", () => {
   it("maps each way the test checkout can end to a notice", () => {
-    expect(addOnConfirmationHref("paid", "local-seo")).toBe("/add-ons?payment=received");
-    expect(addOnConfirmationHref("already-recorded", "local-seo")).toBe("/add-ons?payment=recorded");
-    expect(addOnConfirmationHref("needs-attention", "local-seo")).toBe("/add-ons?payment=review");
-    expect(addOnConfirmationHref("invalid", "local-seo")).toBe("/add-ons?payment=failed");
+    expect(addOnConfirmationHref("paid", "social-media")).toBe("/add-ons?payment=received");
+    expect(addOnConfirmationHref("already-recorded", "social-media")).toBe("/add-ons?payment=recorded");
+    expect(addOnConfirmationHref("needs-attention", "social-media")).toBe("/add-ons?payment=review");
+    expect(addOnConfirmationHref("invalid", "social-media")).toBe("/add-ons?payment=failed");
   });
 
   it("sends an authorised Keep it to the kept notice, never to received", () => {
-    expect(addOnConfirmationHref("authorised", "performance-marketing")).toBe(
-      "/add-ons?payment=kept&addOn=performance-marketing",
+    expect(addOnConfirmationHref("authorised", "advertising")).toBe(
+      "/add-ons?payment=kept&addOn=advertising",
     );
   });
 });
 
 describe("keptNoticeText", () => {
   it("names the add-on and the date", () => {
-    expect(keptNoticeText("Local SEO", "12 November 2026")).toBe("Done. Local SEO carries on after 12 November 2026.");
+    expect(keptNoticeText("Social media", "12 November 2026")).toBe("Done. Social media carries on after 12 November 2026.");
   });
 });
 
@@ -104,7 +104,7 @@ describe("ADD_ON_PAYMENT_NOTICES", () => {
     for (const { text } of Object.values(ADD_ON_PAYMENT_NOTICES)) {
       expect(text).not.toMatch(/[\u2013\u2014]/);
     }
-    expect(keptNoticeText("Local SEO", "12 November 2026")).not.toMatch(/[\u2013\u2014]/);
+    expect(keptNoticeText("Social media", "12 November 2026")).not.toMatch(/[\u2013\u2014]/);
   });
 
   it("says a payment still being confirmed is not yet received", () => {

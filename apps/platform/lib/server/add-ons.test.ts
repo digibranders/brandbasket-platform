@@ -4,9 +4,9 @@ import {
   changeAddOnEndKind,
   consumeRateLimit,
   findAddOnSubscription,
-  findOpenChargeOfKind,
+  findBillingState,
+  findLifetimeOfferStanding,
   insertAddOnSubscription,
-  insertCharge,
   listAddOnSubscriptionsForBusiness,
   listPressReleasesForBusiness,
   lockBusinessForBilling,
@@ -16,7 +16,6 @@ import {
   updateAddOnStatus,
   withTenantScope,
   type AddOnSubscription,
-  type Charge,
   type Database,
   type ScopedTransaction,
 } from "@fynix/db";
@@ -24,7 +23,6 @@ import { applyAddOnPayment } from "@fynix/shared/server/add-on-activation";
 import { ensureAddOnPlan } from "@fynix/shared/server/add-on-plans";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { getBillingProvider } from "./billing";
-import { startCustomerChargePayment } from "./charges";
 import type { GrantedCustomer } from "./customer-access";
 import { getCustomerBusinessKind } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
@@ -34,7 +32,6 @@ import {
   loadAddOnsPage,
   scheduleAddOnEndFor,
   startAddOnCheckoutFor,
-  startPressReleaseFor,
   UnsafeAddOnCheckoutUrlError,
   verifyAddOnPaymentFor,
 } from "./add-ons";
@@ -56,6 +53,8 @@ vi.mock("@fynix/db", () => {
     changeAddOnEndKind: vi.fn(),
     consumeRateLimit: vi.fn(),
     findAddOnSubscription: vi.fn(),
+    findBillingState: vi.fn(),
+    findLifetimeOfferStanding: vi.fn(),
     findOpenChargeOfKind: vi.fn(),
     insertAddOnSubscription: vi.fn(),
     insertCharge: vi.fn(),
@@ -101,19 +100,20 @@ let transactionCount: number;
 
 let nextRow = 0;
 
-/** A Local SEO row at the list price, active and paid for the month to PERIOD_END, unless a test says otherwise. */
+/** A Social media row at the list price, active and paid for the month to PERIOD_END, unless a test says otherwise. */
 function addOnRow(overrides: Partial<AddOnSubscription> = {}): AddOnSubscription {
   nextRow += 1;
   const hex = nextRow.toString(16).padStart(24, "0");
   return {
     id: `0192f3c4-2222-7000-8000-${nextRow.toString(16).padStart(12, "0")}`,
     businessId: BUSINESS_ID,
-    addOn: "local-seo",
-    listAmountCents: 1_000_000,
+    addOn: "social-media",
+    listAmountCents: 199_900,
     discountAmountCents: 0,
-    netAmountCents: 1_000_000,
+    offerDiscountAmountCents: 0,
+    netAmountCents: 199_900,
     taxRateBasisPoints: 1_800,
-    chargedAmountCents: 1_180_000,
+    chargedAmountCents: 235_882,
     currency: "INR",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${hex}`,
@@ -146,9 +146,9 @@ function pausedRow(overrides: Partial<AddOnSubscription> = {}): AddOnSubscriptio
     endRequestedAt: new Date("2026-10-01T09:00:00.000Z"),
     currentPeriodEnd: new Date(NOW.getTime() - 7 * DAY_MS),
     endedAt: new Date(NOW.getTime() - 7 * DAY_MS),
-    listAmountCents: 800_000,
-    netAmountCents: 800_000,
-    chargedAmountCents: 944_000,
+    listAmountCents: 599_900,
+    netAmountCents: 599_900,
+    chargedAmountCents: 707_882,
     contactedAt: new Date("2026-09-15T09:00:00.000Z"),
     contactedByStaffId: "staff-1",
     ...overrides,
@@ -195,6 +195,9 @@ function makeTransaction(name: string): ScopedTransaction {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  // A business that has paid before and earned nothing: no first-checkout offer applies unless a test says so.
+  vi.mocked(findBillingState).mockResolvedValue({ hasEverPaid: true } as never);
+  vi.mocked(findLifetimeOfferStanding).mockResolvedValue({ claimed: [] });
   events = [];
   openTransactions = 0;
   transactionCount = 0;
@@ -272,7 +275,7 @@ const PROVIDER_DOWN = "We couldn't reach the payment provider. Try again in a mi
 
 describe("startAddOnCheckoutFor: buy", () => {
   it("decides under the lock, calls the provider with no transaction open, then records in a second one", async () => {
-    const outcome = await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW);
+    const outcome = await startAddOnCheckoutFor(customer, "social-media", "buy", NOW);
 
     const url = redirectUrl(outcome);
     expect(url.pathname).toBe(FAKE_ADD_ON_CONFIRM_PATH);
@@ -285,18 +288,53 @@ describe("startAddOnCheckoutFor: buy", () => {
     expect(cancelled).not.toHaveBeenCalled();
   });
 
+  it("prices Social media with the 5% lifetime offer before the business has paid for its plan, and stores the offer's part", async () => {
+    vi.mocked(findBillingState).mockResolvedValue({ hasEverPaid: false } as never);
+
+    await startAddOnCheckoutFor(customer, "social-media", "buy", NOW);
+
+    expect(insertedRow()).toMatchObject({
+      listAmountCents: 199_900,
+      discountAmountCents: 9_995,
+      offerDiscountAmountCents: 9_995,
+      netAmountCents: 189_905,
+      chargedAmountCents: 224_088,
+    });
+  });
+
+  it("gives the offer to any add-on bought before the first plan payment, each on its own", async () => {
+    vi.mocked(findBillingState).mockResolvedValue({ hasEverPaid: false } as never);
+
+    await startAddOnCheckoutFor(customer, "advertising", "buy", NOW);
+
+    expect(insertedRow()).toMatchObject({ addOn: "advertising", discountAmountCents: 29_995, offerDiscountAmountCents: 29_995, netAmountCents: 569_905 });
+  });
+
+  it("leaves an add-on missed at the first checkout at its full price afterwards, while a claimed one keeps the offer", async () => {
+    vi.mocked(findBillingState).mockResolvedValue({ hasEverPaid: true } as never);
+    vi.mocked(findLifetimeOfferStanding).mockResolvedValue({ claimed: ["advertising"] });
+
+    await startAddOnCheckoutFor(customer, "social-media", "buy", NOW);
+    expect(insertedRow()).toMatchObject({ addOn: "social-media", offerDiscountAmountCents: 0, discountAmountCents: 0, netAmountCents: 199_900 });
+
+    vi.mocked(insertAddOnSubscription).mockClear();
+    await startAddOnCheckoutFor(customer, "advertising", "buy", NOW);
+    expect(insertedRow()).toMatchObject({ addOn: "advertising", offerDiscountAmountCents: 29_995, netAmountCents: 569_905 });
+  });
+
   it("records a new unpaid row at the full price for a Care client, continuing nothing and starting at once", async () => {
-    await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW);
+    await startAddOnCheckoutFor(customer, "social-media", "buy", NOW);
 
     expect(insertedRow()).toEqual({
       id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
       businessId: BUSINESS_ID,
-      addOn: "local-seo",
-      listAmountCents: 1_000_000,
+      addOn: "social-media",
+      listAmountCents: 199_900,
       discountAmountCents: 0,
-      netAmountCents: 1_000_000,
+      offerDiscountAmountCents: 0,
+      netAmountCents: 199_900,
       taxRateBasisPoints: 1_800,
-      chargedAmountCents: 1_180_000,
+      chargedAmountCents: 235_882,
       currency: "INR",
       provider: "fake",
       providerSubscriptionId: expect.stringMatching(/^fake_sub_[0-9a-f]{24}$/),
@@ -309,41 +347,41 @@ describe("startAddOnCheckoutFor: buy", () => {
   });
 
   it("opens the subscription at the provider for the row's own id and charged amount", async () => {
-    await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW);
+    await startAddOnCheckoutFor(customer, "social-media", "buy", NOW);
 
     expect(started).toHaveBeenCalledWith({
       businessId: BUSINESS_ID,
       addOnSubscriptionId: insertedRow().id,
       providerPlanId: null,
-      amountCents: 1_180_000,
+      amountCents: 235_882,
       currency: "INR",
       startAt: null,
     });
   });
 
   it("gives a Premium member 10% off: the row holds the discount and the lower charge", async () => {
-    await startAddOnCheckoutFor(premiumCustomer, "local-seo", "buy", NOW);
+    await startAddOnCheckoutFor(premiumCustomer, "social-media", "buy", NOW);
 
-    expect(insertedRow()).toMatchObject({ listAmountCents: 1_000_000, discountAmountCents: 100_000, netAmountCents: 900_000, chargedAmountCents: 1_062_000 });
+    expect(insertedRow()).toMatchObject({ listAmountCents: 199_900, discountAmountCents: 19_990, netAmountCents: 179_910, chargedAmountCents: 212_294 });
     expect(ensureAddOnPlan).toHaveBeenCalledWith(
       expect.anything(),
       provider,
-      expect.objectContaining({ price: expect.objectContaining({ discountCents: 100_000, netCents: 900_000, chargedCents: 1_062_000 }) }),
+      expect.objectContaining({ price: expect.objectContaining({ discountCents: 19_990, netCents: 179_910, chargedCents: 212_294 }) }),
     );
   });
 
   it("never gives the discount to a free listing account, whatever its tier says", async () => {
     vi.mocked(getCustomerBusinessKind).mockResolvedValue("listing");
 
-    await startAddOnCheckoutFor(premiumCustomer, "performance-marketing", "buy", NOW);
+    await startAddOnCheckoutFor(premiumCustomer, "advertising", "buy", NOW);
 
-    expect(insertedRow()).toMatchObject({ addOn: "performance-marketing", discountAmountCents: 0, chargedAmountCents: 944_000 });
+    expect(insertedRow()).toMatchObject({ addOn: "advertising", discountAmountCents: 0, chargedAmountCents: 707_882 });
   });
 
   it("stores the provider's plan on the row", async () => {
     vi.mocked(ensureAddOnPlan).mockResolvedValue("plan_abc");
 
-    await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW);
+    await startAddOnCheckoutFor(customer, "social-media", "buy", NOW);
 
     expect(insertedRow().providerPlanId).toBe("plan_abc");
     expect(started).toHaveBeenCalledWith(expect.objectContaining({ providerPlanId: "plan_abc" }));
@@ -352,9 +390,9 @@ describe("startAddOnCheckoutFor: buy", () => {
   it("buys again after an add-on ended, as a fresh purchase", async () => {
     rowsAre(addOnRow({ status: "cancelled", endKind: "cancel", endRequestedAt: PAID_AT, currentPeriodEnd: new Date(NOW.getTime() - DAY_MS), endedAt: new Date(NOW.getTime() - DAY_MS) }));
 
-    redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW));
+    redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "buy", NOW));
 
-    expect(insertedRow()).toMatchObject({ continuesId: null, chargedAmountCents: 1_180_000 });
+    expect(insertedRow()).toMatchObject({ continuesId: null, chargedAmountCents: 235_882 });
   });
 
   it.each([
@@ -365,29 +403,29 @@ describe("startAddOnCheckoutFor: buy", () => {
   ])("refuses a buy while the add-on is %s", async (_state, row) => {
     rowsAre(row);
 
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).resolves.toEqual({ kind: "refused", message: "Local SEO is already running." });
+    await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).resolves.toEqual({ kind: "refused", message: "Social media is already running." });
     expect(events).toEqual(["tx1:begin", "tx1:commit"]);
     expect(started).not.toHaveBeenCalled();
   });
 
   it("points a buy while paused at Resume, and a buy while failed at Pay now", async () => {
     rowsAre(pausedRow());
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).resolves.toEqual({
+    await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).resolves.toEqual({
       kind: "refused",
-      message: "Local SEO is paused. Use Resume to start it again.",
+      message: "Social media is paused. Use Resume to start it again.",
     });
 
     rowsAre(haltedRow(1));
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).resolves.toEqual({
+    await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).resolves.toEqual({
       kind: "refused",
-      message: "Your last Local SEO payment didn't go through. Use Pay now to fix it.",
+      message: "Your last Social media payment didn't go through. Use Pay now to fix it.",
     });
   });
 
   it("treats the other add-on's rows as none of its business", async () => {
-    rowsAre(addOnRow({ addOn: "performance-marketing" }));
+    rowsAre(addOnRow({ addOn: "advertising" }));
 
-    redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW));
+    redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "buy", NOW));
   });
 });
 
@@ -401,7 +439,7 @@ describe("startAddOnCheckoutFor: an unpaid checkout already there", () => {
     const recent = checkoutRow();
     rowsAre(recent);
 
-    const url = redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW));
+    const url = redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "buy", NOW));
 
     expect(url.pathname).toBe(FAKE_ADD_ON_CONFIRM_PATH);
     expect(cancelStaleAddOnCheckout).toHaveBeenCalledWith(expect.objectContaining({ name: "tx2" }), recent.id, NOW);
@@ -414,7 +452,7 @@ describe("startAddOnCheckoutFor: an unpaid checkout already there", () => {
     const recent = checkoutRow({ provider: "razorpay" });
     rowsAre(recent);
 
-    const outcome = await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW);
+    const outcome = await startAddOnCheckoutFor(customer, "social-media", "buy", NOW);
 
     expect(outcome).toEqual({ kind: "redirect", url: `/add-ons/pay/${recent.id}` });
     expect(events).toEqual(["tx1:begin", "tx1:commit"]);
@@ -427,7 +465,7 @@ describe("startAddOnCheckoutFor: an unpaid checkout already there", () => {
     const stale = checkoutRow({ createdAt: new Date(NOW.getTime() - 25 * HOUR_MS) });
     rowsAre(stale);
 
-    redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW));
+    redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "buy", NOW));
 
     expect(cancelStaleAddOnCheckout).toHaveBeenCalledWith(expect.objectContaining({ name: "tx2" }), stale.id, NOW);
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:start", "tx2:begin", "record", "tx2:commit", "provider:cancel"]);
@@ -440,10 +478,10 @@ describe("startAddOnCheckoutFor: an unpaid checkout already there", () => {
     const recent = checkoutRow();
     rowsAre(recent);
 
-    redirectUrl(await startAddOnCheckoutFor(premiumCustomer, "local-seo", "buy", NOW));
+    redirectUrl(await startAddOnCheckoutFor(premiumCustomer, "social-media", "buy", NOW));
 
     expect(cancelStaleAddOnCheckout).toHaveBeenCalledWith(expect.anything(), recent.id, NOW);
-    expect(insertedRow()).toMatchObject({ chargedAmountCents: 1_062_000 });
+    expect(insertedRow()).toMatchObject({ chargedAmountCents: 212_294 });
   });
 
   it("replaces a recent one that belongs to another intent", async () => {
@@ -451,7 +489,7 @@ describe("startAddOnCheckoutFor: an unpaid checkout already there", () => {
     const recent = checkoutRow({ continuesId: null });
     rowsAre(recent, paused);
 
-    redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "resume", NOW));
+    redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "resume", NOW));
 
     expect(cancelStaleAddOnCheckout).toHaveBeenCalledWith(expect.anything(), recent.id, NOW);
     expect(insertedRow()).toMatchObject({ continuesId: paused.id });
@@ -461,7 +499,7 @@ describe("startAddOnCheckoutFor: an unpaid checkout already there", () => {
     const recent = checkoutRow({ provider: "razorpay" });
     rowsAre(recent);
 
-    redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW));
+    redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "buy", NOW));
 
     expect(cancelStaleAddOnCheckout).toHaveBeenCalledWith(expect.anything(), recent.id, NOW);
     // It cannot be cancelled from here, so it is logged for staff instead.
@@ -472,7 +510,7 @@ describe("startAddOnCheckoutFor: an unpaid checkout already there", () => {
     rowsAre(checkoutRow({ createdAt: new Date(NOW.getTime() - 25 * HOUR_MS) }));
     cancelled.mockRejectedValue(new Error("provider unreachable"));
 
-    redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW));
+    redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "buy", NOW));
 
     expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] provider-cancel-failed /);
   });
@@ -483,32 +521,32 @@ describe("startAddOnCheckoutFor: resume, pay now and keep", () => {
     const paused = pausedRow();
     rowsAre(paused);
 
-    redirectUrl(await startAddOnCheckoutFor(premiumCustomer, "local-seo", "resume", NOW));
+    redirectUrl(await startAddOnCheckoutFor(premiumCustomer, "social-media", "resume", NOW));
 
     expect(insertedRow()).toMatchObject({
-      listAmountCents: 800_000,
+      listAmountCents: 599_900,
       discountAmountCents: 0,
-      netAmountCents: 800_000,
+      netAmountCents: 599_900,
       taxRateBasisPoints: 1_800,
-      chargedAmountCents: 944_000,
+      chargedAmountCents: 707_882,
       continuesId: paused.id,
       startAt: null,
       // A resumed add-on is listed for staff again.
       contactedAt: null,
       contactedByStaffId: null,
     });
-    expect(started).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 944_000, startAt: null }));
+    expect(started).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 707_882, startAt: null }));
     expect(ensureAddOnPlan).toHaveBeenCalledWith(
       expect.anything(),
       provider,
-      expect.objectContaining({ price: { listCents: 800_000, discountCents: 0, netCents: 800_000, taxRateBasisPoints: 1_800, chargedCents: 944_000 } }),
+      expect.objectContaining({ price: { listCents: 599_900, discountCents: 0, offerCents: 0, netCents: 599_900, taxRateBasisPoints: 1_800, chargedCents: 707_882 } }),
     );
   });
 
   it("resumes a pause that came due while the paused row is still marked active", async () => {
     rowsAre(addOnRow({ endKind: "pause", endRequestedAt: PAID_AT, currentPeriodEnd: new Date(NOW.getTime() - DAY_MS) }));
 
-    redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "resume", NOW));
+    redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "resume", NOW));
   });
 
   it("is not fooled by checkouts abandoned since the pause: the paused row is still the one it continues", async () => {
@@ -516,7 +554,7 @@ describe("startAddOnCheckoutFor: resume, pay now and keep", () => {
     const abandoned = addOnRow({ status: "cancelled", activatedAt: null, currentPeriodEnd: null, createdAt: new Date(NOW.getTime() - 3 * DAY_MS) });
     rowsAre(abandoned, paused);
 
-    redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "resume", NOW));
+    redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "resume", NOW));
 
     expect(insertedRow().continuesId).toBe(paused.id);
   });
@@ -524,9 +562,9 @@ describe("startAddOnCheckoutFor: resume, pay now and keep", () => {
   it("refuses a resume when the add-on is not paused", async () => {
     rowsAre(addOnRow());
 
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "resume", NOW)).resolves.toEqual({
+    await expect(startAddOnCheckoutFor(customer, "social-media", "resume", NOW)).resolves.toEqual({
       kind: "refused",
-      message: "Local SEO isn't paused, so there is nothing to resume.",
+      message: "Social media isn't paused, so there is nothing to resume.",
     });
     expect(events).toEqual(["tx1:begin", "tx1:commit"]);
   });
@@ -535,12 +573,12 @@ describe("startAddOnCheckoutFor: resume, pay now and keep", () => {
     const halted = haltedRow(2);
     rowsAre(halted);
 
-    redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "pay-now", NOW));
+    redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "pay-now", NOW));
 
     expect(insertedRow()).toMatchObject({
       continuesId: halted.id,
       startAt: null,
-      chargedAmountCents: 1_180_000,
+      chargedAmountCents: 235_882,
       contactedAt: halted.contactedAt,
       contactedByStaffId: "staff-1",
     });
@@ -551,17 +589,17 @@ describe("startAddOnCheckoutFor: resume, pay now and keep", () => {
     const kept = haltedRow(2, { startAt: new Date(NOW.getTime() - 3 * DAY_MS), currentPeriodEnd: null, activatedAt: null, continuesId: ended.id });
     rowsAre(kept, ended);
 
-    redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "pay-now", NOW));
+    redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "pay-now", NOW));
 
-    expect(insertedRow()).toMatchObject({ continuesId: kept.id, startAt: null, chargedAmountCents: 1_180_000 });
+    expect(insertedRow()).toMatchObject({ continuesId: kept.id, startAt: null, chargedAmountCents: 235_882 });
   });
 
   it("refuses Pay now once the 7 days are up", async () => {
     rowsAre(haltedRow(8));
 
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "pay-now", NOW)).resolves.toEqual({
+    await expect(startAddOnCheckoutFor(customer, "social-media", "pay-now", NOW)).resolves.toEqual({
       kind: "refused",
-      message: "The time to pay for Local SEO has passed. You can buy it again from the Add-ons page.",
+      message: "The time to pay for Social media has passed. You can buy it again from the Add-ons page.",
     });
     expect(started).not.toHaveBeenCalled();
   });
@@ -572,48 +610,48 @@ describe("startAddOnCheckoutFor: resume, pay now and keep", () => {
       endRequestedAt: PAID_AT,
       contactedAt: new Date("2026-10-13T09:00:00.000Z"),
       contactedByStaffId: "staff-2",
-      discountAmountCents: 100_000,
-      netAmountCents: 900_000,
-      chargedAmountCents: 1_062_000,
+      discountAmountCents: 19_990,
+      netAmountCents: 179_910,
+      chargedAmountCents: 212_294,
     });
     rowsAre(ending);
 
-    redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "keep", NOW));
+    redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "keep", NOW));
 
     expect(insertedRow()).toMatchObject({
       continuesId: ending.id,
       startAt: PERIOD_END,
-      chargedAmountCents: 1_062_000,
+      chargedAmountCents: 212_294,
       contactedAt: ending.contactedAt,
       contactedByStaffId: "staff-2",
     });
-    expect(started).toHaveBeenCalledWith(expect.objectContaining({ startAt: PERIOD_END, amountCents: 1_062_000 }));
+    expect(started).toHaveBeenCalledWith(expect.objectContaining({ startAt: PERIOD_END, amountCents: 212_294 }));
   });
 
   it("keeps a pausing add-on the same way", async () => {
     rowsAre(addOnRow({ endKind: "pause", endRequestedAt: PAID_AT }));
 
-    redirectUrl(await startAddOnCheckoutFor(customer, "local-seo", "keep", NOW));
+    redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "keep", NOW));
 
     expect(insertedRow().startAt).toEqual(PERIOD_END);
   });
 
   it("refuses to keep an add-on that is not ending, and one already kept", async () => {
     rowsAre(addOnRow());
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "keep", NOW)).resolves.toEqual({
+    await expect(startAddOnCheckoutFor(customer, "social-media", "keep", NOW)).resolves.toEqual({
       kind: "refused",
-      message: "Local SEO isn't about to end, so there is nothing to keep.",
+      message: "Social media isn't about to end, so there is nothing to keep.",
     });
 
     const kept = addOnRow({ status: "scheduled", startAt: PERIOD_END, currentPeriodEnd: null, activatedAt: null, continuesId: "x" });
     rowsAre(kept, addOnRow({ endKind: "cancel", endRequestedAt: PAID_AT }));
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "keep", NOW)).resolves.toMatchObject({ kind: "refused" });
+    await expect(startAddOnCheckoutFor(customer, "social-media", "keep", NOW)).resolves.toMatchObject({ kind: "refused" });
   });
 
   it("refuses a buy while a kept subscription waits to start", async () => {
     rowsAre(addOnRow({ status: "scheduled", startAt: PERIOD_END, currentPeriodEnd: null, activatedAt: null, continuesId: "x" }), addOnRow({ endKind: "cancel", endRequestedAt: PAID_AT }));
 
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).resolves.toEqual({ kind: "refused", message: "Local SEO is already running." });
+    await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).resolves.toEqual({ kind: "refused", message: "Social media is already running." });
   });
 });
 
@@ -621,7 +659,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
   it("refuses once the business has used up its attempts, before reading anything", async () => {
     vi.mocked(consumeRateLimit).mockResolvedValue({ allowed: false, remaining: 0, retryAfterSeconds: 600 });
 
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).resolves.toEqual({
+    await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).resolves.toEqual({
       kind: "refused",
       message: "That's a lot of attempts in a short time. Please wait a little and try again.",
     });
@@ -632,7 +670,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
   it("refuses with nothing recorded when the provider's plan cannot be made", async () => {
     vi.mocked(ensureAddOnPlan).mockRejectedValue(new Error("Razorpay is down"));
 
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).resolves.toEqual({ kind: "refused", message: PROVIDER_DOWN });
+    await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).resolves.toEqual({ kind: "refused", message: PROVIDER_DOWN });
     expect(events).toEqual(["tx1:begin", "tx1:commit"]);
     expect(started).not.toHaveBeenCalled();
     expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-plan-failed /);
@@ -642,7 +680,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
   it("refuses with nothing recorded when the provider will not open the subscription", async () => {
     started.mockRejectedValue(new Error("provider unreachable"));
 
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).resolves.toEqual({ kind: "refused", message: PROVIDER_DOWN });
+    await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).resolves.toEqual({ kind: "refused", message: PROVIDER_DOWN });
     expect(events).toEqual(["tx1:begin", "tx1:commit"]);
     expect(insertAddOnSubscription).not.toHaveBeenCalled();
     expect(cancelStaleAddOnCheckout).not.toHaveBeenCalled();
@@ -653,7 +691,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
     // A second tab opened a checkout between the two transactions.
     vi.mocked(listAddOnSubscriptionsForBusiness).mockResolvedValueOnce([]).mockResolvedValueOnce([checkoutRow()]);
 
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).resolves.toEqual({
+    await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).resolves.toEqual({
       kind: "refused",
       message: "Something changed while we were setting up your payment. Please try again.",
     });
@@ -669,7 +707,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
       .mockResolvedValueOnce([paused])
       .mockResolvedValueOnce([{ ...paused, status: "active", endKind: null }]);
 
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "resume", NOW)).resolves.toMatchObject({ kind: "refused" });
+    await expect(startAddOnCheckoutFor(customer, "social-media", "resume", NOW)).resolves.toMatchObject({ kind: "refused" });
     expect(insertAddOnSubscription).not.toHaveBeenCalled();
     expect(cancelled).toHaveBeenCalledTimes(1);
     expect(cancelled).not.toHaveBeenCalledWith(paused.providerSubscriptionId);
@@ -678,7 +716,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
   it("cancels the orphaned subscription and logs when recording it fails", async () => {
     vi.mocked(insertAddOnSubscription).mockRejectedValue(new Error("connection lost"));
 
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).rejects.toThrow("connection lost");
+    await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).rejects.toThrow("connection lost");
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:start", "tx2:begin", "tx2:rollback", "provider:cancel"]);
     expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] checkout-orphaned .*record-failed/);
     // The error is named, never quoted: a database error's message carries the failed query's params.
@@ -691,7 +729,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
       startAddOnSubscription: async () => ({ providerSubscriptionId: `fake_sub_${"b".repeat(24)}`, checkoutUrl: "//evil.example/pay" }),
     });
 
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).rejects.toBeInstanceOf(UnsafeAddOnCheckoutUrlError);
+    await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).rejects.toBeInstanceOf(UnsafeAddOnCheckoutUrlError);
     expect(insertAddOnSubscription).not.toHaveBeenCalled();
     expect(cancelled).toHaveBeenCalledWith(`fake_sub_${"b".repeat(24)}`);
   });
@@ -703,7 +741,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
       startAddOnSubscription: async () => ({ providerSubscriptionId: "sub_Rzp123", checkoutUrl: null }),
     });
 
-    const outcome = await startAddOnCheckoutFor(customer, "local-seo", "buy", NOW);
+    const outcome = await startAddOnCheckoutFor(customer, "social-media", "buy", NOW);
 
     expect(outcome).toEqual({ kind: "redirect", url: `/add-ons/pay/${insertedRow().id}` });
     expect(insertedRow()).toMatchObject({ provider: "razorpay", providerSubscriptionId: "sub_Rzp123" });
@@ -712,94 +750,12 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
   it("refuses with a plain message and logs when a row holds data no state can be worked out from", async () => {
     rowsAre(addOnRow({ currentPeriodEnd: null }));
 
-    await expect(startAddOnCheckoutFor(customer, "local-seo", "buy", NOW)).resolves.toEqual({
+    await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).resolves.toEqual({
       kind: "refused",
       message: "Something is wrong with this add-on. We're looking into it.",
     });
     expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-view-failed /);
     expect(started).not.toHaveBeenCalled();
-  });
-});
-
-describe("startPressReleaseFor", () => {
-  const CHARGE = { id: "charge-1" } as Charge;
-
-  beforeEach(() => {
-    vi.mocked(insertCharge).mockResolvedValue(CHARGE);
-    vi.mocked(findOpenChargeOfKind).mockResolvedValue(null);
-    vi.mocked(startCustomerChargePayment).mockResolvedValue({ kind: "redirect", url: "/billing/charges/confirm?token=x" });
-  });
-
-  it("adds an open press release charge at the list price for a Care client and sends the customer to pay", async () => {
-    const outcome = await startPressReleaseFor(customer);
-
-    expect(outcome).toEqual({ kind: "redirect", url: "/billing/charges/confirm?token=x" });
-    expect(insertCharge).toHaveBeenCalledWith(staffDb, {
-      businessId: BUSINESS_ID,
-      kind: "press_release",
-      description: "Press release",
-      quantity: 1,
-      unitAmountCents: 700_000,
-      taxRateBasisPoints: 1_800,
-      amountCents: 826_000,
-      currency: "INR",
-      createdByStaffId: null,
-    });
-    expect(startCustomerChargePayment).toHaveBeenCalledWith(customer, "charge-1");
-  });
-
-  /** An unpaid press release charge left from an earlier attempt. */
-  function earlierCharge(overrides: Partial<Charge> = {}): Charge {
-    return { id: "charge-old", kind: "press_release", status: "open", description: "Press release", quantity: 1, unitAmountCents: 700_000, taxRateBasisPoints: 1_800, amountCents: 826_000, ...overrides } as Charge;
-  }
-
-  it("sends the customer back to their unpaid press release instead of adding another, so abandoned attempts never pile up", async () => {
-    vi.mocked(findOpenChargeOfKind).mockResolvedValue(earlierCharge());
-
-    await expect(startPressReleaseFor(customer)).resolves.toEqual({ kind: "redirect", url: "/billing/charges/confirm?token=x" });
-
-    expect(findOpenChargeOfKind).toHaveBeenCalledWith(appTx, BUSINESS_ID, "press_release");
-    expect(withTenantScope).toHaveBeenCalledWith(appDb, customer.tenant, expect.any(Function));
-    expect(insertCharge).not.toHaveBeenCalled();
-    expect(startCustomerChargePayment).toHaveBeenCalledWith(customer, "charge-old");
-  });
-
-  it("adds a new charge, and leaves the old one for staff, when the earlier one was at a price the customer would not pay now", async () => {
-    // Opened as a Care client; the customer has since become a Premium member.
-    vi.mocked(findOpenChargeOfKind).mockResolvedValue(earlierCharge());
-
-    await startPressReleaseFor(premiumCustomer);
-
-    expect(insertCharge).toHaveBeenCalledWith(staffDb, expect.objectContaining({ unitAmountCents: 630_000, amountCents: 743_400 }));
-    expect(startCustomerChargePayment).toHaveBeenCalledWith(premiumCustomer, "charge-1");
-  });
-
-  it("charges a Premium member the member price and says so on the charge", async () => {
-    await startPressReleaseFor(premiumCustomer);
-
-    expect(insertCharge).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ description: "Press release, Premium member price", unitAmountCents: 630_000, amountCents: 743_400 }),
-    );
-  });
-
-  it("sends a Razorpay customer to the charge's pay page", async () => {
-    vi.mocked(startCustomerChargePayment).mockResolvedValue({ kind: "razorpay", orderId: "order_1", charge: CHARGE });
-
-    await expect(startPressReleaseFor(customer)).resolves.toEqual({ kind: "redirect", url: "/billing/charges/charge-1/pay" });
-  });
-
-  it.each(["not-found", "not-open"] as const)("refuses when the charge turns out to be %s", async (kind) => {
-    vi.mocked(startCustomerChargePayment).mockResolvedValue({ kind });
-
-    await expect(startPressReleaseFor(customer)).resolves.toEqual({ kind: "refused", message: "We couldn't open that payment. Please try again." });
-  });
-
-  it("refuses once the business has used up its attempts, before adding a charge", async () => {
-    vi.mocked(consumeRateLimit).mockResolvedValue({ allowed: false, remaining: 0, retryAfterSeconds: 600 });
-
-    await expect(startPressReleaseFor(customer)).resolves.toMatchObject({ kind: "refused" });
-    expect(insertCharge).not.toHaveBeenCalled();
   });
 });
 
@@ -811,7 +767,7 @@ describe("scheduleAddOnEndFor", () => {
 
     const result = await scheduleAddOnEndFor(customer, row.id, "cancel", NOW);
 
-    expect(result).toEqual({ kind: "done", message: "Local SEO will stop on 12 November 2026. You won't be charged again." });
+    expect(result).toEqual({ kind: "done", message: "Social media will stop on 12 November 2026. You won't be charged again." });
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:end-at-period-end", "tx2:begin", "tx2:commit"]);
     expect(endedAtPeriodEnd).toHaveBeenCalledWith(row.providerSubscriptionId);
     expect(scheduleAddOnEnd).toHaveBeenCalledWith(expect.objectContaining({ name: "tx2" }), { id: row.id, kind: "cancel", now: NOW, staffUserId: null });
@@ -824,7 +780,7 @@ describe("scheduleAddOnEndFor", () => {
 
     await expect(scheduleAddOnEndFor(customer, row.id, "pause", NOW)).resolves.toEqual({
       kind: "done",
-      message: "Local SEO will pause on 12 November 2026.",
+      message: "Social media will pause on 12 November 2026.",
     });
   });
 
@@ -835,7 +791,7 @@ describe("scheduleAddOnEndFor", () => {
 
     const result = await scheduleAddOnEndFor(customer, kept.id, "cancel", NOW);
 
-    expect(result).toEqual({ kind: "done", message: "Local SEO will stop on 12 November 2026. You won't be charged again." });
+    expect(result).toEqual({ kind: "done", message: "Social media will stop on 12 November 2026. You won't be charged again." });
     expect(cancelled).toHaveBeenCalledWith(kept.providerSubscriptionId);
     expect(markAddOnCancelled).toHaveBeenCalledWith(expect.objectContaining({ name: "tx2" }), kept.id, NOW);
     expect(scheduleAddOnEnd).not.toHaveBeenCalled();
@@ -849,7 +805,7 @@ describe("scheduleAddOnEndFor", () => {
 
     const result = await scheduleAddOnEndFor(customer, kept.id, "pause", NOW);
 
-    expect(result).toEqual({ kind: "done", message: "Local SEO will pause on 12 November 2026." });
+    expect(result).toEqual({ kind: "done", message: "Social media will pause on 12 November 2026." });
     expect(changeAddOnEndKind).toHaveBeenCalledWith(expect.objectContaining({ name: "tx2" }), { id: ending.id, kind: "pause", now: NOW, staffUserId: null });
   });
 
@@ -862,8 +818,8 @@ describe("scheduleAddOnEndFor", () => {
   });
 
   it.each([
-    ["not running", addOnRow({ status: "halted" }), "Local SEO isn't running, so it can't be paused or cancelled."],
-    ["already ending", addOnRow({ endKind: "pause", endRequestedAt: PAID_AT }), "Local SEO is already set to pause on 12 November 2026."],
+    ["not running", addOnRow({ status: "halted" }), "Social media isn't running, so it can't be paused or cancelled."],
+    ["already ending", addOnRow({ endKind: "pause", endRequestedAt: PAID_AT }), "Social media is already set to pause on 12 November 2026."],
   ])("refuses a row that is %s, with a clear message", async (_state, row, message) => {
     vi.mocked(findAddOnSubscription).mockResolvedValue(row);
 
@@ -922,7 +878,7 @@ describe("confirmFakeAddOnPaymentFor", () => {
         addOnSubscriptionId: row.id,
         provider: "fake",
         providerPaymentId: expect.stringMatching(/^fake_pay_[0-9a-f]{24}$/),
-        amountCents: 1_180_000,
+        amountCents: 235_882,
         currency: "INR",
         paidAt: NOW,
         periodStart: NOW,
@@ -1022,13 +978,13 @@ describe("confirmFakeAddOnPaymentFor", () => {
   it("keeps a payment of another amount than the row's for staff, as the webhook does, and opens nothing", async () => {
     const row = checkoutRow();
     const token = await tokenFor(row);
-    vi.mocked(findAddOnSubscription).mockResolvedValue({ ...row, chargedAmountCents: 1_000_000 });
+    vi.mocked(findAddOnSubscription).mockResolvedValue({ ...row, chargedAmountCents: 199_900 });
 
     await expect(confirmFakeAddOnPaymentFor(customer, token, NOW)).resolves.toEqual({ kind: "needs-attention" });
 
     expect(recordUnappliedAddOnPayment).toHaveBeenCalledWith(
       expect.objectContaining({ name: "tx1" }),
-      expect.objectContaining({ addOnSubscriptionId: row.id, amountCents: 1_180_000, currency: "INR", reason: "amount_mismatch", now: NOW }),
+      expect.objectContaining({ addOnSubscriptionId: row.id, amountCents: 235_882, currency: "INR", reason: "amount_mismatch", now: NOW }),
     );
     expect(applyAddOnPayment).not.toHaveBeenCalled();
     expect(cancelled).not.toHaveBeenCalled();
@@ -1107,12 +1063,12 @@ describe("verifyAddOnPaymentFor", () => {
   }
 
   it("names the add-on and the amount for the customer's own link, reading through row-level security and writing nothing", async () => {
-    const row = checkoutRow({ addOn: "performance-marketing" });
+    const row = checkoutRow({ addOn: "advertising" });
     vi.mocked(findAddOnSubscription).mockResolvedValue(row);
 
     await expect(verifyAddOnPaymentFor(customer, await tokenFor(row))).resolves.toEqual({
-      addOn: "performance-marketing",
-      amountCents: 1_180_000,
+      addOn: "advertising",
+      amountCents: 235_882,
       currency: "INR",
       startAt: null,
     });
@@ -1179,36 +1135,34 @@ describe("loadAddOnsPage", () => {
 
     expect(withTenantScope).toHaveBeenCalledWith(appDb, customer.tenant, expect.any(Function));
     expect(listAddOnSubscriptionsForBusiness).toHaveBeenCalledWith(appTx, BUSINESS_ID);
-    expect(listPressReleasesForBusiness).toHaveBeenCalledWith(appTx, BUSINESS_ID);
     expect(getStaffDb).not.toHaveBeenCalled();
   });
 
-  it("offers a new customer both add-ons at today's price, and a Premium member the discounted one", async () => {
+  it("offers a new customer all three add-ons at today's price, and a Premium member the discounted one", async () => {
     const care = await loadAddOnsPage(customer, NOW);
     expect(care.addOns).toEqual([
-      expect.objectContaining({ kind: "ready", addOn: "local-seo", view: { state: "none" }, actions: ["buy"], endTargetId: null, price: expect.objectContaining({ chargedCents: 1_180_000 }) }),
-      expect.objectContaining({ kind: "ready", addOn: "performance-marketing", view: { state: "none" }, actions: ["buy"], price: expect.objectContaining({ chargedCents: 944_000 }) }),
+      expect.objectContaining({ kind: "ready", addOn: "social-media", view: { state: "none" }, actions: ["buy"], endTargetId: null, price: expect.objectContaining({ chargedCents: 235_882 }) }),
+      expect.objectContaining({ kind: "ready", addOn: "lead-generation", view: { state: "none" }, actions: ["buy"], price: expect.objectContaining({ chargedCents: 471_882 }) }),
+      expect.objectContaining({ kind: "ready", addOn: "advertising", view: { state: "none" }, actions: ["buy"], price: expect.objectContaining({ chargedCents: 707_882 }) }),
     ]);
-    expect(care.pressReleasePrice).toMatchObject({ chargedCents: 826_000 });
 
     const premium = await loadAddOnsPage(premiumCustomer, NOW);
-    expect(premium.addOns[0]).toMatchObject({ price: { discountCents: 100_000, chargedCents: 1_062_000 } });
-    expect(premium.pressReleasePrice).toMatchObject({ chargedCents: 743_400 });
+    expect(premium.addOns[0]).toMatchObject({ price: { discountCents: 19_990, chargedCents: 212_294 } });
   });
 
   it("shows a running add-on at the price it costs, with the buttons for its state and the row they act on", async () => {
-    const row = addOnRow({ listAmountCents: 800_000, netAmountCents: 800_000, chargedAmountCents: 944_000 });
+    const row = addOnRow({ listAmountCents: 599_900, netAmountCents: 599_900, chargedAmountCents: 707_882 });
     rowsAre(row);
 
     const page = await loadAddOnsPage(customer, NOW);
 
     expect(page.addOns[0]).toMatchObject({
       kind: "ready",
-      addOn: "local-seo",
+      addOn: "social-media",
       view: { state: "active", renewsOn: PERIOD_END },
       actions: ["pause", "cancel"],
       endTargetId: row.id,
-      price: { listCents: 800_000, chargedCents: 944_000 },
+      price: { listCents: 599_900, chargedCents: 707_882 },
     });
   });
 
@@ -1246,7 +1200,7 @@ describe("loadAddOnsPage", () => {
 
   it("offers Resume at the price the paused add-on was bought at, and Keep it for one that is ending", async () => {
     rowsAre(pausedRow());
-    expect((await loadAddOnsPage(customer, NOW)).addOns[0]).toMatchObject({ actions: ["resume"], price: { chargedCents: 944_000 } });
+    expect((await loadAddOnsPage(customer, NOW)).addOns[0]).toMatchObject({ actions: ["resume"], price: { chargedCents: 707_882 } });
 
     rowsAre(addOnRow({ endKind: "cancel", endRequestedAt: PAID_AT }));
     expect((await loadAddOnsPage(customer, NOW)).addOns[0]).toMatchObject({ view: { state: "ending", endsOn: PERIOD_END }, actions: ["keep"] });
@@ -1254,20 +1208,13 @@ describe("loadAddOnsPage", () => {
 
   it("shows one broken row as broken, logs it, and still shows the other add-on", async () => {
     const broken = addOnRow({ currentPeriodEnd: null });
-    rowsAre(broken, addOnRow({ addOn: "performance-marketing" }));
+    rowsAre(broken, addOnRow({ addOn: "advertising" }));
 
     const page = await loadAddOnsPage(customer, NOW);
 
-    expect(page.addOns[0]).toEqual({ kind: "broken", addOn: "local-seo", rowId: broken.id });
-    expect(page.addOns[1]).toMatchObject({ kind: "ready", addOn: "performance-marketing", view: { state: "active" } });
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-view-failed .*"addOn":"local-seo"/);
+    expect(page.addOns[0]).toEqual({ kind: "broken", addOn: "social-media", rowId: broken.id });
+    expect(page.addOns[2]).toMatchObject({ kind: "ready", addOn: "advertising", view: { state: "active" } });
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-view-failed .*"addOn":"social-media"/);
     expect(String(logged.mock.calls[0]?.[0])).toContain(`"addOnSubscriptionId":"${broken.id}"`);
-  });
-
-  it("lists the business's press releases as the query returns them", async () => {
-    const releases = [{ id: "release-1", status: "waiting", paidAt: NOW, amountCents: 826_000 }] as never;
-    vi.mocked(listPressReleasesForBusiness).mockResolvedValue(releases);
-
-    expect((await loadAddOnsPage(customer, NOW)).pressReleases).toBe(releases);
   });
 });

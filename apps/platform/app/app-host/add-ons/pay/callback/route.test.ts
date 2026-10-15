@@ -54,25 +54,25 @@ describe("POST /add-ons/pay/callback", () => {
           razorpay_subscription_id: "sub_1",
           razorpay_signature: signature("pay_1", "sub_1"),
         },
-        "?kept=local-seo",
+        "?kept=social-media",
       ),
     );
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("https://app.example.test/add-ons?payment=kept&addOn=local-seo");
+    expect(response.headers.get("location")).toBe("https://app.example.test/add-ons?payment=kept&addOn=social-media");
   });
 
   it("says failed for a Keep it return whose signature does not check out", async () => {
     const response = await POST(
       post(
         { razorpay_payment_id: "pay_1", razorpay_subscription_id: "sub_1", razorpay_signature: signature("pay_2", "sub_1") },
-        "?kept=local-seo",
+        "?kept=social-media",
       ),
     );
     expect(response.headers.get("location")).toBe("https://app.example.test/add-ons?payment=failed");
   });
 
   it("says failed for a declined Keep it", async () => {
-    const response = await POST(post({ "error[code]": "BAD_REQUEST_ERROR" }, "?kept=local-seo"));
+    const response = await POST(post({ "error[code]": "BAD_REQUEST_ERROR" }, "?kept=social-media"));
     expect(response.headers.get("location")).toBe("https://app.example.test/add-ons?payment=failed");
   });
 

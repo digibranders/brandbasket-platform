@@ -1,5 +1,5 @@
 import type { CurrentPaymentMethod } from "@fynix/db";
-import { supportEmailOf } from "@/lib/brand";
+import { offersChoice, supportEmailOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { EmailUs } from "@/components/panel/email-us";
 import type { Metadata } from "next";
@@ -276,7 +276,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
             You’ve moved up to Premium. Your month is paid, and it’s Premium’s price from{" "}
             <LocalDate iso={subscription.paidThroughAt.toISOString()} />.
           </p>
-        ) : billing.tier === "care" && billing.status === "paid" ? (
+        ) : billing.tier === "care" && billing.status === "paid" && offersChoice(brand, "premium") ? (
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft">
             Want appointments and marketing too?{" "}
             <Link href={UPGRADE_PATH} className="link-underline text-ink">

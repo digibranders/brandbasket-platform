@@ -46,8 +46,9 @@ function day(date: Date): string {
 }
 
 function priceOf(row: AddOnSubscriptionForStaff): string {
-  const premium = row.discountAmountCents > 0 ? ", Premium price" : "";
-  return `${formatMoney(row.netAmountCents, row.currency)} + GST a month${premium}`;
+  const premium = row.discountAmountCents - row.offerDiscountAmountCents > 0 ? ", Premium price" : "";
+  const offer = row.offerDiscountAmountCents > 0 ? ", 5% lifetime offer" : "";
+  return `${formatMoney(row.netAmountCents, row.currency)} + GST a month${premium}${offer}`;
 }
 
 function endNoteOf(row: AddOnSubscriptionForStaff): string | null {

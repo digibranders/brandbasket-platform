@@ -1,9 +1,10 @@
 import type { ReactElement, ReactNode } from "react";
 import { requestBrand } from "@/lib/server/request-brand";
+import { LIFETIME_OFFER_PERCENT } from "@fynix/shared/lib/billing/lifetime-offer";
 import { PREMIUM_ADD_ON_DISCOUNT_PERCENT, type AddOn, type AddOnPrice } from "@fynix/shared/lib/billing/add-ons";
 import type { AddOnAction, AddOnCheckoutIntent } from "@fynix/shared/lib/billing/add-on-state";
 import { formatRupees } from "@fynix/shared/lib/directory/ads";
-import { buyPressReleaseAction, endAddOnAction, startAddOnAction } from "@/app/app-host/(protected)/add-ons/actions";
+import { endAddOnAction, startAddOnAction } from "@/app/app-host/(protected)/add-ons/actions";
 import { AddOnCheckoutDialog } from "@/components/panel/add-ons/add-on-checkout-dialog";
 import { AddOnEndConfirm } from "@/components/panel/add-ons/add-on-end-confirm";
 import {
@@ -20,13 +21,13 @@ import type { AddOnPageEntry } from "@/lib/server/add-ons";
 
 interface AddOnRowProps {
   readonly addOn: AddOn;
-  /** The monthly add-on's state from the server, or null for the press release, which is always just "Get it". */
+  /** The add-on's state from the server, or null when there is none to show (it is then just "Get it"). */
   readonly entry: AddOnPageEntry | null;
   /** What it costs this business: the stored price while it is in force, else today's. */
   readonly price: AddOnPrice;
   readonly now: Date;
   readonly invoice: AddOnInvoiceNote;
-  /** Anything that belongs under the row, such as the customer's press releases. */
+  /** Anything that belongs under the row. */
   readonly children?: ReactNode;
 }
 
@@ -83,7 +84,7 @@ export async function AddOnRow({ addOn, entry, price, now, invoice, children }: 
           brand,
         })}
         invoice={invoice}
-        action={monthly ? startAddOnAction : buyPressReleaseAction}
+        action={startAddOnAction}
       />
     );
   }
@@ -113,6 +114,9 @@ export async function AddOnRow({ addOn, entry, price, now, invoice, children }: 
             ) : null}
             <p className="text-2xl font-semibold tabular-nums">{formatRupees(price.netCents)}</p>
             <p className="mt-0.5 text-sm text-ink-soft">{addOn.extra === undefined ? addOn.unit : `${addOn.unit} ${addOn.extra}`}</p>
+            {price.offerCents > 0 ? (
+              <p className="mt-1 text-sm text-accent-deep">{LIFETIME_OFFER_PERCENT}% lifetime discount</p>
+            ) : null}
           </div>
           <p
             role="status"

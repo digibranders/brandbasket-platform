@@ -226,13 +226,14 @@ describe("issueTaxInvoice for an add-on payment", () => {
     };
   }
 
-  /** Local SEO at the list price of 10,000 rupees, with the Premium 10% off when `discountAmountCents` is given. */
+  /** Social media at the list price of 10,000 rupees, with the Premium 10% off when `discountAmountCents` is given. */
   function addOnRow(overrides: Partial<AddOnSubscription> = {}): AddOnSubscription {
     const discountAmountCents = overrides.discountAmountCents ?? 0;
     return {
+      offerDiscountAmountCents: 0,
       id: "add-on-1",
       businessId: "business-1",
-      addOn: "local-seo",
+      addOn: "social-media",
       listAmountCents: 1_000_000,
       discountAmountCents,
       netAmountCents: 1_000_000 - discountAmountCents,
@@ -300,14 +301,14 @@ describe("issueTaxInvoice for an add-on payment", () => {
     vi.resetAllMocks();
   });
 
-  it("gives a Premium member's Local SEO payment one line with the period, the discount and its note", async () => {
+  it("gives a Premium member's Social media payment one line with the period, the discount and its note", async () => {
     const { inserted } = arrange(addOnRow({ discountAmountCents: 100_000 }));
 
     await issueTaxInvoice(tx, addOnPayment(1_062_000), source);
 
     expect(inserted().lines).toHaveLength(1);
     expect(inserted().lines[0]).toMatchObject({
-      description: "Local SEO",
+      description: "Social media",
       detail: "Monthly subscription, 12 Oct to 11 Nov 2026",
       note: "Premium member, 10% off",
       sac: FYNIX_SAC,
@@ -325,16 +326,16 @@ describe("issueTaxInvoice for an add-on payment", () => {
 
     await issueTaxInvoice(tx, addOnPayment(1_180_000), source);
 
-    expect(inserted().lines[0]).toMatchObject({ description: "Local SEO", note: null, discountAmountCents: 0 });
+    expect(inserted().lines[0]).toMatchObject({ description: "Social media", note: null, discountAmountCents: 0 });
     expect(inserted().totalCents).toBe(1_180_000);
   });
 
-  it("names Performance marketing by its catalogue title", async () => {
-    const { inserted } = arrange(addOnRow({ addOn: "performance-marketing", listAmountCents: 800_000, netAmountCents: 800_000 }));
+  it("names Paid advertising by its catalogue title", async () => {
+    const { inserted } = arrange(addOnRow({ addOn: "advertising", listAmountCents: 800_000, netAmountCents: 800_000 }));
 
     await issueTaxInvoice(tx, addOnPayment(944_000), source);
 
-    expect(inserted().lines[0]).toMatchObject({ description: "Performance marketing", unitAmountCents: 800_000 });
+    expect(inserted().lines[0]).toMatchObject({ description: "Paid advertising", unitAmountCents: 800_000 });
   });
 
   it("refuses a payment that is not linked to an add-on, without issuing or taking a number", async () => {

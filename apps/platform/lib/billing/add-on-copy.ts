@@ -197,7 +197,7 @@ export function checkoutCopy(input: CheckoutCopyInput): CheckoutCopy {
   if (monthly && renewDay !== null) {
     notes.push(renewalNote(renewDay));
   }
-  if (addOnId === "performance-marketing") notes.push("This is Fynix Digital's fee. You pay the ad platforms directly.");
+  if (addOnId === "advertising") notes.push("This is Fynix Digital's fee. You pay the ad platforms directly.");
   if (!monthly) notes.push("One-time payment.");
   if (teamContacts) notes.push("After you pay, our team will contact you to get started.");
 

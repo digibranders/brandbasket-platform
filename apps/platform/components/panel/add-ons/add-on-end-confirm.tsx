@@ -28,7 +28,7 @@ const DESTRUCTIVE = "text-accent-deep! hover:bg-accent-pale!";
  * the add-on can be ended; a refusal shows beside the buttons and keeps the question open. When it goes through the
  * page is redrawn with the add-on's new state, which removes these buttons, so focus is placed on the add-on's
  * heading first and the result is announced by the state line there. A payment notice left in the address ("Done.
- * Local SEO carries on...") would now contradict the page, so a successful Pause or Cancel also clears it.
+ * Social media carries on...") would now contradict the page, so a successful Pause or Cancel also clears it.
  *
  * Focus follows the question: pressing Pause or Cancel moves it to the sentence (the button it was on has gone), and
  * "Keep it" puts it back on the button that opened the question. While the request runs, the button's accessible name

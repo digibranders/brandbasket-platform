@@ -145,10 +145,21 @@ export function membershipPriceLine(plan: MembershipPricing): string {
   return `${amount} ${terms}`;
 }
 
-/** The same price in two parts, for a page that sets the figure large: "₹9,999" and "a month + 18% GST". */
-export function membershipPriceParts(plan: MembershipPricing): { readonly amount: string; readonly terms: string } {
-  const amount = formatMoney(plan.recurringAmountCents, plan.currency);
-  return { amount, terms: plan.taxRateBasisPoints === 0 ? "a month" : `a month + ${plan.taxRateBasisPoints / 100}% GST` };
+/**
+ * The same price in two parts, for a page that sets the figure large: "₹9,999" and "a month + 18% GST". With a discount
+ * (a code, the lifetime offer) the figure is the discounted price and `was` the list price.
+ */
+export function membershipPriceParts(
+  plan: MembershipPricing,
+  discountCents = 0,
+): { readonly amount: string; readonly terms: string; readonly was: string | null } {
+  const amount = formatMoney(plan.recurringAmountCents - discountCents, plan.currency);
+  return {
+    amount,
+    terms: plan.taxRateBasisPoints === 0 ? "a month" : `a month + ${plan.taxRateBasisPoints / 100}% GST`,
+    // The list price, shown struck through beside a discounted one.
+    was: discountCents > 0 ? formatMoney(plan.recurringAmountCents, plan.currency) : null,
+  };
 }
 
 /** The Pay form's state: idle, or the reason the payment could not be started. */

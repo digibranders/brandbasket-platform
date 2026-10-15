@@ -5,7 +5,7 @@ import { TickIcon } from "@fynix/shared/ui/icons";
 import { FreeListingButton } from "@/components/panel/membership/free-listing-button";
 import { MembershipCheckout } from "@/components/panel/membership/membership-checkout";
 import { PlanMark } from "@/components/panel/plan-mark";
-import { sellsFreeListing } from "@/lib/brand";
+import { offersChoice, sellsFreeListing } from "@/lib/brand";
 import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
 import {
   MEMBER_HOME,
@@ -81,7 +81,8 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   const brand = await requestBrand();
 
   const groups = groupedBenefits(tier, brand);
-  const price = plan === null ? null : membershipPriceParts(plan);
+  // What the plan costs this business: the list price less a code's share. The lifetime offer is on the add-ons, not the plan.
+  const price = plan === null ? null : membershipPriceParts(plan, view.discount?.amountCents ?? 0);
 
   return (
     <div className="grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -104,11 +105,13 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
             </section>
           ))}
         </div>
-        <p className="mt-5 max-w-xl text-sm text-ink-soft">
-          <Link href={membershipPathFor(other.tier)} className="link-underline">
-            {other.line}
-          </Link>
-        </p>
+        {offersChoice(brand, other.tier) ? (
+          <p className="mt-5 max-w-xl text-sm text-ink-soft">
+            <Link href={membershipPathFor(other.tier)} className="link-underline">
+              {other.line}
+            </Link>
+          </p>
+        ) : null}
       </div>
 
       {/* The way to pay, beside the list and staying with it as the page is scrolled. */}
@@ -120,6 +123,11 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
               {tier === "premium" ? "Premium" : "Care"}
             </p>
             <p className={`mt-3 font-serif text-5xl tabular-nums ${tier === "premium" ? "text-gold-deep" : "text-accent"}`}>{price.amount}</p>
+            {price.was === null ? null : (
+              <p className="text-sm text-ink-soft">
+                <s>{price.was}</s> before your discount
+              </p>
+            )}
             <p className="text-sm text-ink-soft">{price.terms}</p>
           </div>
         )}

@@ -1,4 +1,5 @@
 import { chargedAmountCents, GST_BASIS_POINTS } from "@fynix/billing/tax";
+import { lifetimeOfferCentsFor } from "./lifetime-offer";
 
 /**
  * The digital-marketing services a business buys from the Add-ons page (docs/superpowers/specs/2026-10-09-add-ons-
@@ -17,8 +18,8 @@ export const ADD_ON_GRACE_DAYS = 7;
 
 const PAISE_PER_RUPEE = 100;
 
-export type AddOnId = "local-seo" | "performance-marketing" | "press-release";
-export type MonthlyAddOnId = Extract<AddOnId, "local-seo" | "performance-marketing">;
+export type AddOnId = "social-media" | "lead-generation" | "advertising";
+export type MonthlyAddOnId = AddOnId;
 
 export interface AddOn {
   readonly id: AddOnId;
@@ -28,44 +29,44 @@ export interface AddOn {
   readonly billing: "monthly" | "one-time";
   /** The list price before any discount, net of GST, in paise. */
   readonly paise: number;
-  /** What the price is for: "a month" or "a release". */
+  /** What the price is for: "a month". */
   readonly unit: string;
   /** Costs the ad platforms charge on top, said in a few words; absent when there are none. */
   readonly extra?: string;
   readonly platforms?: readonly string[];
 }
 
-/** The services, dearest first. */
+/** The services, in the order the Add-ons page lists them (the same as the website's table). */
 export const ADD_ONS: readonly AddOn[] = [
   {
-    id: "local-seo",
-    title: "Local SEO",
-    line: "Be found when people nearby search.",
+    id: "social-media",
+    title: "Social media",
+    line: "Your Facebook and Instagram accounts managed for you.",
     billing: "monthly",
-    paise: 10_000 * PAISE_PER_RUPEE,
+    paise: 1_999 * PAISE_PER_RUPEE,
     unit: "a month",
   },
   {
-    id: "performance-marketing",
-    title: "Performance marketing",
-    line: "Campaigns built to drive leads, enquiries, bookings, and sales.",
+    id: "lead-generation",
+    title: "Outreach and lead generation",
+    line: "We reach out to the right people and bring you new leads.",
     billing: "monthly",
-    paise: 8_000 * PAISE_PER_RUPEE,
+    paise: 3_999 * PAISE_PER_RUPEE,
+    unit: "a month",
+  },
+  {
+    id: "advertising",
+    title: "Paid advertising",
+    line: "Google Ads and Meta Ads managed to bring in leads and enquiries.",
+    billing: "monthly",
+    paise: 5_999 * PAISE_PER_RUPEE,
     unit: "a month",
     extra: "+ platform fees",
-    platforms: ["Facebook Ads", "Instagram Ads", "YouTube Ads", "Google Ads", "Google Business Profile"],
-  },
-  {
-    id: "press-release",
-    title: "Press release",
-    line: "Your launch, offer or news, sent out.",
-    billing: "one-time",
-    paise: 7_000 * PAISE_PER_RUPEE,
-    unit: "a release",
+    platforms: ["Google Ads", "Facebook Ads", "Instagram Ads"],
   },
 ];
 
-export const MONTHLY_ADD_ON_IDS: readonly MonthlyAddOnId[] = ["local-seo", "performance-marketing"];
+export const MONTHLY_ADD_ON_IDS: readonly MonthlyAddOnId[] = ["social-media", "lead-generation", "advertising"];
 
 const BY_ID: ReadonlyMap<string, AddOn> = new Map(ADD_ONS.map((addOn) => [addOn.id, addOn]));
 
@@ -87,6 +88,8 @@ export function addOnById(id: AddOnId): AddOn {
 export interface AddOnPrice {
   readonly listCents: number;
   readonly discountCents: number;
+  /** The part of `discountCents` that is the first-checkout lifetime offer (lifetime-offer.ts), or 0. */
+  readonly offerCents: number;
   /** List less discount: the taxable value. */
   readonly netCents: number;
   readonly taxRateBasisPoints: number;
@@ -94,21 +97,16 @@ export interface AddOnPrice {
   readonly chargedCents: number;
 }
 
-export function addOnPrice(addOn: AddOn, premium: boolean): AddOnPrice {
-  const discountCents = premium ? Math.round((addOn.paise * PREMIUM_ADD_ON_DISCOUNT_PERCENT) / 100) : 0;
+export function addOnPrice(addOn: AddOn, premium: boolean, lifetimeOffer = false): AddOnPrice {
+  const premiumCents = premium ? Math.round((addOn.paise * PREMIUM_ADD_ON_DISCOUNT_PERCENT) / 100) : 0;
+  const offerCents = lifetimeOffer ? lifetimeOfferCentsFor(addOn.paise) : 0;
+  const discountCents = premiumCents + offerCents;
   return {
     listCents: addOn.paise,
     discountCents,
+    offerCents,
     netCents: addOn.paise - discountCents,
     taxRateBasisPoints: GST_BASIS_POINTS,
     chargedCents: chargedAmountCents(addOn.paise, discountCents, GST_BASIS_POINTS),
   };
-}
-
-/**
- * The line a press release's invoice prints. It says when the Premium member price was taken, so the amount on the
- * invoice is explained by the invoice itself. Plain characters only, so the invoice can always draw it.
- */
-export function pressReleaseChargeDescription(premium: boolean): string {
-  return premium ? "Press release, Premium member price" : "Press release";
 }

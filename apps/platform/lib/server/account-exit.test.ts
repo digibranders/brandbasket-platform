@@ -79,7 +79,7 @@ function addOnRow(overrides: Partial<AddOnSubscription> = {}): AddOnSubscription
   return {
     id: `0192f3c4-2222-7000-8000-${nextRow.toString(16).padStart(12, "0")}`,
     businessId: BUSINESS_ID,
-    addOn: "local-seo",
+    addOn: "social-media",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${nextRow.toString(16).padStart(24, "0")}`,
     status: "active",

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useId, useRef, type ReactElement } from "react";
 import type { AddOnId, AddOnPrice } from "@fynix/shared/lib/billing/add-ons";
+import { LIFETIME_OFFER_PERCENT } from "@fynix/shared/lib/billing/lifetime-offer";
 import type { AddOnCheckoutIntent } from "@fynix/shared/lib/billing/add-on-state";
 import { formatRupees } from "@fynix/shared/lib/directory/ads";
 import { Button } from "@fynix/shared/ui/panel/button";
@@ -121,8 +122,11 @@ export function AddOnCheckoutDialog({
 
           <dl className="mt-5 divide-y divide-line border-y border-line text-sm">
             <PriceRow label={title} amount={formatRupees(price.listCents)} />
-            {price.discountCents > 0 ? (
-              <PriceRow label={`Premium member, ${discountPercent}% off`} amount={`−${formatRupees(price.discountCents)}`} />
+            {price.discountCents - price.offerCents > 0 ? (
+              <PriceRow label={`Premium member, ${discountPercent}% off`} amount={`−${formatRupees(price.discountCents - price.offerCents)}`} />
+            ) : null}
+            {price.offerCents > 0 ? (
+              <PriceRow label={`Lifetime offer, ${LIFETIME_OFFER_PERCENT}% off`} amount={`−${formatRupees(price.offerCents)}`} />
             ) : null}
             <PriceRow label={`GST ${price.taxRateBasisPoints / 100}%`} amount={formatRupees(gstCents)} />
             <PriceRow label={copy.totalLabel} amount={formatRupees(price.chargedCents)} strong />

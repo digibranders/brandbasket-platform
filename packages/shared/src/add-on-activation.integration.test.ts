@@ -55,12 +55,12 @@ async function seedBusiness(): Promise<string> {
   return id;
 }
 
-/** A Local SEO row at the list price, as a purchase freezes it, with its own provider subscription id. */
+/** A Social media row at the list price, as a purchase freezes it, with its own provider subscription id. */
 function addRow(continuesId: string | null = null): Promise<AddOnSubscription> {
   return insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
     businessId,
-    addOn: "local-seo",
+    addOn: "social-media",
     listAmountCents: LIST_CENTS,
     discountAmountCents: 0,
     netAmountCents: LIST_CENTS,
@@ -147,7 +147,7 @@ describe("activateAddOnPayment", () => {
     });
     expect(await invoiceCount()).toBe(1);
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, recorded.payment.id);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Local SEO", unitAmountCents: LIST_CENTS });
+    expect(invoice?.lines[0]).toMatchObject({ description: "Social media", unitAmountCents: LIST_CENTS });
     expect(invoice?.totalCents).toBe(recorded.payment.amountCents);
   });
 
@@ -302,7 +302,7 @@ describe("applyAddOnPayment", () => {
 });
 
 describe("ensureAddOnPlan", () => {
-  const localSeo = addOnById("local-seo");
+  const localSeo = addOnById("social-media");
   const memberPrice = addOnPrice(localSeo, true);
 
   it("makes a plan once and reuses it for the same add-on and amount", async () => {

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { adChargeDescription } from "../directory/ads";
 import { PROMOTION_TAG_LABELS, promotionChargeDescription } from "../directory/promotion";
 import type { DirectoryPaidTag } from "@fynix/db";
-import { pressReleaseChargeDescription } from "./add-ons";
 import { chargePricing } from "./charges";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "./invoice-text";
 import { upgradeChargeDescription } from "./upgrade";
@@ -18,7 +17,6 @@ import { upgradeChargeDescription } from "./upgrade";
  * - ad spot won at settlement: adChargeDescription, via settleDirectoryAds
  * - listing promotion week: promotionChargeDescription, via openListingPromotionCharge
  * - blog posts unlock: chargePricing("blog_posts"), via openBlogUnlock -> openBlogPostsCharge
- * - press release: pressReleaseChargeDescription, via the add-on purchase
  * - staff charge: chargePricing for change hours, extra publish and blog posts, or staff's own wording for a custom one
  */
 
@@ -53,10 +51,6 @@ describe("charge descriptions on the invoice", () => {
 
   it("prints a blog posts unlock and each staff charge kind", () => {
     for (const kind of ["blog_posts", "change_hours", "extra_publish"] as const) expectPrintableOnInvoice(chargePricing(kind, PLAN).description);
-  });
-
-  it("prints a press release at the list price and at the Premium member price", () => {
-    for (const premium of [false, true]) expectPrintableOnInvoice(pressReleaseChargeDescription(premium));
   });
 
   it("prints staff's own wording for a custom charge once its curly quotes and dashes are straightened", () => {

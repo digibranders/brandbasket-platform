@@ -6,7 +6,6 @@ import { SignOutButton } from "@fynix/shared/ui/panel/sign-out-button";
 import { logoOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { signOut } from "@/lib/server/sign-out";
-import { SupportButton } from "./support/support-button";
 
 interface MembershipGateShellProps {
   readonly children: ReactNode;
@@ -26,7 +25,7 @@ export async function MembershipGateShell({ children }: MembershipGateShellProps
 
       <header className="flex items-center justify-between gap-4">
         <WordmarkLogo href={brand.siteUrl ?? siteConfig.url} brand={logoOf(brand)} />
-        <div className="flex items-center gap-5"><SupportButton /><SignOutButton signOut={signOut} /></div>
+        <SignOutButton signOut={signOut} />
       </header>
 
       <main id="main" className="mx-auto w-full max-w-3xl flex-1 py-12 sm:py-16">

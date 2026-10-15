@@ -1,37 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { ADD_ONS, addOnById, addOnPrice, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, pressReleaseChargeDescription } from "./add-ons";
+import { ADD_ONS, addOnById, addOnPrice, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS } from "./add-ons";
 
 describe("add-on catalogue", () => {
-  it("sells two monthly services and one one-time service, dearest first", () => {
-    expect(ADD_ONS.map((addOn) => [addOn.id, addOn.billing])).toEqual([
-      ["local-seo", "monthly"],
-      ["performance-marketing", "monthly"],
-      ["press-release", "one-time"],
+  it("sells three monthly services, in the order the website lists them", () => {
+    expect(ADD_ONS.map((addOn) => [addOn.id, addOn.title, addOn.billing])).toEqual([
+      ["social-media", "Social media", "monthly"],
+      ["lead-generation", "Outreach and lead generation", "monthly"],
+      ["advertising", "Paid advertising", "monthly"],
     ]);
-    expect(MONTHLY_ADD_ON_IDS).toEqual(["local-seo", "performance-marketing"]);
+    expect(MONTHLY_ADD_ON_IDS).toEqual(["social-media", "lead-generation", "advertising"]);
     expect(isMonthlyAddOnId("press-release")).toBe(false);
     expect(isMonthlyAddOnId("constructor")).toBe(false);
   });
 
-  it("prices without a discount: list price plus 18% GST", () => {
-    expect(addOnPrice(addOnById("local-seo"), false)).toEqual({
-      listCents: 1_000_000, discountCents: 0, netCents: 1_000_000, taxRateBasisPoints: 1_800, chargedCents: 1_180_000,
+  it("prices at 1,999, 3,999 and 5,999 rupees a month plus 18% GST", () => {
+    expect(addOnById("social-media").paise).toBe(199_900);
+    expect(addOnById("lead-generation").paise).toBe(399_900);
+    expect(addOnById("advertising").paise).toBe(599_900);
+    expect(addOnPrice(addOnById("social-media"), false)).toEqual({
+      listCents: 199_900, discountCents: 0, offerCents: 0, netCents: 199_900, taxRateBasisPoints: 1_800, chargedCents: 235_882,
     });
-    expect(addOnPrice(addOnById("press-release"), false).chargedCents).toBe(826_000);
+    expect(addOnPrice(addOnById("lead-generation"), false).chargedCents).toBe(471_882);
+    expect(addOnPrice(addOnById("advertising"), false).chargedCents).toBe(707_882);
   });
 
   it("takes 10% off for a Premium member, before tax", () => {
-    expect(addOnPrice(addOnById("local-seo"), true)).toEqual({
-      listCents: 1_000_000, discountCents: 100_000, netCents: 900_000, taxRateBasisPoints: 1_800, chargedCents: 1_062_000,
-    });
-    expect(addOnPrice(addOnById("performance-marketing"), true).chargedCents).toBe(849_600);
-    expect(addOnPrice(addOnById("press-release"), true).chargedCents).toBe(743_400);
+    expect(addOnPrice(addOnById("social-media"), true)).toMatchObject({ discountCents: 19_990, offerCents: 0, netCents: 179_910 });
   });
-});
 
-describe("pressReleaseChargeDescription", () => {
-  it("names the release, and says when the Premium member price was taken", () => {
-    expect(pressReleaseChargeDescription(false)).toBe("Press release");
-    expect(pressReleaseChargeDescription(true)).toBe("Press release, Premium member price");
+  it("takes the 5% lifetime offer off the list price, before tax: 99.95, 199.95 and 299.95 rupees", () => {
+    expect(addOnPrice(addOnById("social-media"), false, true)).toEqual({
+      listCents: 199_900, discountCents: 9_995, offerCents: 9_995, netCents: 189_905, taxRateBasisPoints: 1_800, chargedCents: 224_088,
+    });
+    expect(addOnPrice(addOnById("lead-generation"), false, true)).toMatchObject({ offerCents: 19_995, netCents: 379_905 });
+    expect(addOnPrice(addOnById("advertising"), false, true)).toMatchObject({ offerCents: 29_995, netCents: 569_905 });
+    expect(addOnPrice(addOnById("advertising"), true, true)).toMatchObject({ discountCents: 89_985, offerCents: 29_995, netCents: 509_915 });
   });
 });

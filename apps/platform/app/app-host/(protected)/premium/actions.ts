@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CARE_PATH, MEMBER_HOME, MEMBERSHIP_PATH, UPGRADE_PATH, readMembershipCallbackTier, type MembershipFormState } from "@/lib/membership";
-import { sellsFreeListing } from "@/lib/brand";
+import { offersChoice, sellsFreeListing } from "@/lib/brand";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
+import { MONTHLY_ADD_ON_IDS } from "@fynix/shared/lib/billing/add-ons";
+import { startAddOnCheckoutFor } from "@/lib/server/add-ons";
 import { startMembershipCheckoutFor } from "@/lib/server/checkout";
 import { LISTING_PAGE_PATH, requireCustomerAccess, type CustomerAccessOptions } from "@/lib/server/customer-access";
 import { continueWithFreeListing } from "@/lib/server/membership";
@@ -21,6 +23,7 @@ function revalidatePlanPages(): void {
   revalidatePath(UPGRADE_PATH);
 }
 
+const UNKNOWN_ADD_ON_MESSAGE = "We couldn't tell which add-on that was. Reload the page and try again.";
 const UNKNOWN_PLAN_MESSAGE = "We couldn't tell which plan that was. Reload the page and try again.";
 
 /**
@@ -32,9 +35,26 @@ const UNKNOWN_PLAN_MESSAGE = "We couldn't tell which plan that was. Reload the p
 export async function startMembership(_previous: MembershipFormState, formData: FormData): Promise<MembershipFormState> {
   const tier = readMembershipCallbackTier(typeof formData.get("tier") === "string" ? String(formData.get("tier")) : null);
   if (tier === null) return { status: "error", message: UNKNOWN_PLAN_MESSAGE };
+  if (!offersChoice(await requestBrand(), tier)) return { status: "error", message: UNKNOWN_PLAN_MESSAGE };
   const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
   const outcome = await startMembershipCheckoutFor(customer, new Date(), tier);
   if (outcome.kind === "refused") return { status: "error", message: outcome.problem.message };
+  redirect(outcome.url);
+}
+
+const OFFER_ADD_ONS = MONTHLY_ADD_ON_IDS;
+
+/**
+ * Adds one add-on at the first checkout (lib/billing/lifetime-offer.ts): opens its payment, priced with the 5% lifetime
+ * offer. The form carries only which add-on; whether the offer still stands, and the price, are decided on the server
+ * (startAddOnCheckoutFor, startPressReleaseFor), so a form posted after the first plan payment buys it at full price.
+ */
+export async function addOfferAddOn(_previous: MembershipFormState, formData: FormData): Promise<MembershipFormState> {
+  const addOn = OFFER_ADD_ONS.find((candidate) => candidate === formData.get("addOn"));
+  if (addOn === undefined) return { status: "error", message: UNKNOWN_ADD_ON_MESSAGE };
+  const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
+  const outcome = await startAddOnCheckoutFor(customer, addOn, "buy", new Date());
+  if (outcome.kind === "refused") return { status: "error", message: outcome.message };
   redirect(outcome.url);
 }
 

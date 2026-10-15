@@ -286,11 +286,11 @@ describe("eraseClosedAccount", () => {
   describe("with an add-on", () => {
     type AddOnRowInput = Partial<typeof addOnSubscriptions.$inferInsert>;
 
-    /** Local SEO at the list price, paid for the month to 10 December 2026 and not ended, unless a test says otherwise. */
+    /** Social media at the list price, paid for the month to 10 December 2026 and not ended, unless a test says otherwise. */
     async function seedAddOn(overrides: AddOnRowInput = {}): Promise<void> {
       await dbs.owner.db.insert(addOnSubscriptions).values({
         businessId,
-        addOn: "local-seo",
+        addOn: "social-media",
         listAmountCents: 1_000_000,
         discountAmountCents: 0,
         netAmountCents: 1_000_000,
@@ -384,7 +384,7 @@ describe("eraseClosedAccount", () => {
     it("erases when the add-ons are cancelled or were never paid for", async () => {
       const { closureId } = await seedClosedAccount();
       await seedAddOn({ status: "cancelled", endedAt: CLOSED_AT, providerSubscriptionId: `fake_sub_${"b".repeat(24)}` });
-      await seedAddOn({ status: "incomplete", addOn: "performance-marketing", activatedAt: null, currentPeriodStart: null, currentPeriodEnd: null, providerSubscriptionId: `fake_sub_${"c".repeat(24)}` });
+      await seedAddOn({ status: "incomplete", addOn: "advertising", activatedAt: null, currentPeriodStart: null, currentPeriodEnd: null, providerSubscriptionId: `fake_sub_${"c".repeat(24)}` });
       expect((await eraseClosedAccount(dbs.staff.db, { closureId, now: NOW })).kind).toBe("erased");
     });
   });

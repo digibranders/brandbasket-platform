@@ -372,10 +372,23 @@ async function claimTarget(
  */
 export async function createUnlistedAccountBusiness(
   db: Database,
-  account: { readonly userId: string; readonly businessName: string; readonly signupChoice?: SignupChoice | null },
+  account: {
+    readonly userId: string;
+    readonly businessName: string;
+    readonly signupChoice?: SignupChoice | null;
+    /** Where the owner said they are, asked at sign-up: an ISO alpha-2 code, and for India the GST state code. */
+    readonly countryCode?: string | null;
+    readonly stateCode?: string | null;
+  },
 ): Promise<{ readonly businessId: string }> {
   return db.transaction(async (tx) => {
     const business = await insertListingBusiness(tx, account.userId, account.businessName, account.signupChoice ?? null);
+    if (account.countryCode != null) {
+      await tx
+        .update(businesses)
+        .set({ countryCode: account.countryCode, stateCode: account.stateCode ?? null })
+        .where(eq(businesses.id, business.id));
+    }
     return { businessId: business.id };
   });
 }

@@ -33,6 +33,7 @@ import {
 } from "@fynix/db";
 import { stateCodeOfIndiaPostName } from "@fynix/db/india-states";
 import { addOnById, isMonthlyAddOnId, PREMIUM_ADD_ON_DISCOUNT_PERCENT } from "../lib/billing/add-ons";
+import { LIFETIME_OFFER_PERCENT } from "../lib/billing/lifetime-offer";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "../lib/billing/invoice-text";
 import { paymentLabel } from "../lib/billing/payment-method";
 import { planLabel } from "../lib/billing/receipt-title";
@@ -181,6 +182,9 @@ export interface PlanLineNoteInput {
   readonly retentionDiscountCents: number;
 }
 
+/** What the lifetime offer is called on an add-on invoice line. */
+export const LIFETIME_OFFER_INVOICE_NOTE = `Lifetime offer applied, ${LIFETIME_OFFER_PERCENT}% off`;
+
 /**
  * What the discount on a plan line was, in words, or null for none: "Coupon GAURAV applied, 20% off. Stay offer
  * applied". The coupon is named only for the part of the discount that is its own (the whole less any stay offer),
@@ -237,7 +241,8 @@ async function recipientFor(tx: ScopedTransaction, businessId: string): Promise<
     legalName: normaliseInvoiceText(fallback.name),
     gstin: null,
     addressLines: fallback.addressLines.map(nonBlank).filter((line): line is string => line !== null),
-    stateCode: fallback.region === null ? null : stateCodeOfIndiaPostName(fallback.region),
+    // The state the owner typed at sign-up decides first; the onboarding address is the fallback for older accounts.
+    stateCode: fallback.registeredStateCode ?? (fallback.region === null ? null : stateCodeOfIndiaPostName(fallback.region)),
   };
 }
 
@@ -265,6 +270,17 @@ function printedLine(line: InvoiceLineInput): InvoiceLineInput {
     detail: line.detail === null ? null : nonBlank(line.detail),
     note: line.note === null ? null : nonBlank(line.note),
   };
+}
+
+/** What an add-on line's discount was: the Premium member's 10%, the lifetime offer's 5%, or both. Null for none. */
+export function addOnLineNote(discountAmountCents: number, offerDiscountAmountCents: number): string | null {
+  if (offerDiscountAmountCents < 0 || offerDiscountAmountCents > discountAmountCents) {
+    throw new BillingRangeError(`A lifetime offer of ${offerDiscountAmountCents} cannot be part of a discount of ${discountAmountCents}`);
+  }
+  const notes: string[] = [];
+  if (discountAmountCents - offerDiscountAmountCents > 0) notes.push(`Premium member, ${PREMIUM_ADD_ON_DISCOUNT_PERCENT}% off`);
+  if (offerDiscountAmountCents > 0) notes.push(LIFETIME_OFFER_INVOICE_NOTE);
+  return notes.length === 0 ? null : notes.join(". ");
 }
 
 async function linesFor(tx: ScopedTransaction, payment: Payment, source: InvoiceSource): Promise<InvoiceLineInput[]> {
@@ -302,7 +318,7 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
       {
         description: addOnById(row.addOn).title,
         detail: planLineDetail(true, source.periodStart, source.periodEnd),
-        note: row.discountAmountCents > 0 ? `Premium member, ${PREMIUM_ADD_ON_DISCOUNT_PERCENT}% off` : null,
+        note: addOnLineNote(row.discountAmountCents, row.offerDiscountAmountCents),
         sac: FYNIX_SAC,
         quantity: 1,
         unitAmountCents: row.listAmountCents,

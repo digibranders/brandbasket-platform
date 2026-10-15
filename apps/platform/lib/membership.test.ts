@@ -127,9 +127,15 @@ describe("groupedBenefits", () => {
 describe("membershipPriceParts", () => {
   it("splits the price into the figure and what follows it, and the line is the two together", () => {
     const plan = { recurringAmountCents: 999_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
-    expect(membershipPriceParts(plan)).toEqual({ amount: "₹9,999", terms: "a month + 18% GST" });
+    expect(membershipPriceParts(plan)).toEqual({ amount: "₹9,999", terms: "a month + 18% GST", was: null });
     expect(membershipPriceLine(plan)).toBe("₹9,999 a month + 18% GST");
     expect(membershipPriceParts({ ...plan, taxRateBasisPoints: 0 }).terms).toBe("a month");
+  });
+
+  it("shows the discounted figure once a code or the lifetime offer is on, with the list price as was", () => {
+    const care = { recurringAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
+    expect(membershipPriceParts(care, 50_000)).toEqual({ amount: "₹2,499", terms: "a month + 18% GST", was: "₹2,999" });
+    expect(membershipPriceParts(care, 14_995).amount).toBe("₹2,849.05");
   });
 });
 

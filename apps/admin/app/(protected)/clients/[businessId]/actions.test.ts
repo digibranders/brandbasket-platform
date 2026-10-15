@@ -289,7 +289,7 @@ describe("the add-on actions", () => {
     });
 
     it("pauses as the signed-in staff member and says so", async () => {
-      vi.mocked(endClientAddOn).mockResolvedValue({ kind: "scheduled", addOn: "local-seo", endKind: "pause", endsOn: new Date() });
+      vi.mocked(endClientAddOn).mockResolvedValue({ kind: "scheduled", addOn: "social-media", endKind: "pause", endsOn: new Date() });
       await expect(endAddOnAction(form(END))).rejects.toThrow(NOTICE("pause-scheduled"));
       expect(endClientAddOn).toHaveBeenCalledWith(
         { businessId: BUSINESS, addOnSubscriptionId: ROW, kind: "pause", staffUserId: "staff-1" },
@@ -299,9 +299,9 @@ describe("the add-on actions", () => {
     });
 
     it("cancels, and says why when the provider could not be told", async () => {
-      vi.mocked(endClientAddOn).mockResolvedValue({ kind: "scheduled", addOn: "local-seo", endKind: "cancel", endsOn: new Date() });
+      vi.mocked(endClientAddOn).mockResolvedValue({ kind: "scheduled", addOn: "social-media", endKind: "cancel", endsOn: new Date() });
       await expect(endAddOnAction(form({ ...END, kind: "cancel" }))).rejects.toThrow(NOTICE("cancel-scheduled"));
-      vi.mocked(endClientAddOn).mockResolvedValue({ kind: "refused", reason: "provider-unavailable", addOn: "local-seo", endKind: null, endsOn: null });
+      vi.mocked(endClientAddOn).mockResolvedValue({ kind: "refused", reason: "provider-unavailable", addOn: "social-media", endKind: null, endsOn: null });
       await expect(endAddOnAction(form({ ...END, kind: "cancel" }))).rejects.toThrow(NOTICE("provider-unavailable"));
     });
   });

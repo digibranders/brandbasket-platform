@@ -57,8 +57,21 @@ export const businesses = pgTable("businesses", {
    * and announcement dates are read in it.
    */
   timeZone: text("time_zone"),
+  /**
+   * Where the owner is, asked at sign-up: an ISO 3166-1 alpha-2 code in capitals ("IN"). Null for accounts opened before
+   * the question was asked and for a business made from a setup link.
+   */
+  countryCode: text("country_code"),
+  /**
+   * The owner's state for GST, as a platform state code ("mh"), typed in by the owner, never worked out from a pincode.
+   * Asked only of India; null for any other country and for older accounts. It decides CGST and SGST against IGST on an
+   * invoice when the customer has given no billing details.
+   */
+  stateCode: text("state_code"),
   createdAt: createdAt(),
 }, (table) => [
+  check("businesses_country_code_check", sql`${table.countryCode} is null or ${table.countryCode} ~ '^[A-Z]{2}$'`),
+  check("businesses_state_code_check", sql`${table.stateCode} is null or (${table.stateCode} ~ '^[a-z]{2}$' and ${table.countryCode} = 'IN')`),
   check("businesses_website_url_https", sql`${table.websiteUrl} is null or ${table.websiteUrl} ~ '^https://[^/?#]+$'`),
 ]);
 

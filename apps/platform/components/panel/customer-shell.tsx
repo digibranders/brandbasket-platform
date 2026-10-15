@@ -26,6 +26,7 @@ import { LEADS_PATH } from "@/lib/leads";
 import { REVIEWS_PATH } from "@/lib/owner-replies";
 import { joinSections } from "@/lib/sidebar-sections";
 import { clientListingSections, type ClientListingSection, type ClientListingState } from "@/lib/listing-sections";
+import { BRAND, offersChoice } from "@/lib/brand";
 import { UPGRADE_PATH, type MembershipTier } from "@/lib/membership";
 import { ADVERTISE_PATH, LISTING_PAGE_PATH } from "@/lib/server/customer-access";
 import { logoOf } from "@/lib/brand";
@@ -152,7 +153,7 @@ function customerNav({
       { href: "/billing", label: "Billing", icon: <NavReceiptIcon className="size-5" /> },
     ],
     // Care is the website only: the way up to the rest is in the menu, where Premium's own sections would be.
-    tier === "care" ? [{ href: UPGRADE_PATH, label: "Upgrade", icon: <NavCircleArrowUpIcon className="size-5" /> }] : [],
+    tier === "care" && offersChoice(BRAND, "premium") ? [{ href: UPGRADE_PATH, label: "Upgrade", icon: <NavCircleArrowUpIcon className="size-5" /> }] : [],
   ]);
 }
 

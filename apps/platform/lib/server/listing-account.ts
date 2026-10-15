@@ -144,7 +144,13 @@ export async function createListingAccount(input: JoinInput): Promise<ListingAcc
 
   const businessName = input.businessName ?? input.name;
   try {
-    const { businessId } = await createUnlistedAccountBusiness(getStaffDb(), { userId, businessName, signupChoice: input.choice });
+    const { businessId } = await createUnlistedAccountBusiness(getStaffDb(), {
+      userId,
+      businessName,
+      signupChoice: input.choice,
+      countryCode: input.country,
+      stateCode: input.stateCode,
+    });
     await recordLeadForSignup({ name: input.name, businessName, email: signInAddress, businessId, choice: input.choice, userId });
   } catch (error) {
     // A brand-new account cannot already have a business; if it somehow does, signing in shows it.

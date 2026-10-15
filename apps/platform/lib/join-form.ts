@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { OtpRetry } from "@/lib/auth-retry";
 import { OTP_LENGTH } from "@fynix/shared/lib/appointments/otp";
+import { HOME_COUNTRY, isCountryCode } from "@fynix/shared/lib/countries";
+import { isIndiaStateCode } from "@fynix/shared/lib/directory/india-states";
 import { cleanLine } from "@fynix/shared/lib/validation/text";
 import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
 
@@ -79,6 +81,13 @@ interface JoinAccountBase {
   readonly choice: JoinChoice;
   readonly name: string;
   readonly password: string;
+  /** Where the owner is: an ISO alpha-2 code from the countries list. */
+  readonly country: string;
+  /**
+   * The owner's GST state ("mh"), picked by hand and never worked out from a pincode. Asked only of India; null for any
+   * other country, whatever the form sent.
+   */
+  readonly stateCode: string | null;
   /** Always true: a form whose terms box is not ticked is refused before it gets here. */
   readonly agreed: true;
   /** Null the first time the form is sent: send me a code. */
@@ -149,6 +158,21 @@ function readContact(formData: FormData): { readonly success: true; readonly con
   return email.success ? { success: true, contact: { email: email.data } } : { success: false, message: firstMessage(email.error) };
 }
 
+const COUNTRY_MESSAGE = "Choose your country.";
+const STATE_MESSAGE = "Choose your state.";
+
+/** The country and, for India, the state: both chosen from lists, so anything else the form sent is refused. */
+function readLocation(
+  formData: FormData,
+): { readonly success: true; readonly location: { readonly country: string; readonly stateCode: string | null } } | { readonly success: false; readonly message: string } {
+  const country = textValue(formData, "country");
+  if (!isCountryCode(country)) return { success: false, message: COUNTRY_MESSAGE };
+  if (country !== HOME_COUNTRY) return { success: true, location: { country, stateCode: null } };
+  const stateCode = textValue(formData, "stateCode");
+  if (!isIndiaStateCode(stateCode)) return { success: false, message: STATE_MESSAGE };
+  return { success: true, location: { country, stateCode } };
+}
+
 /** What the form was sent with: the plan, the owner's details and, on the code step (an `otpId`), the code. */
 export function parseJoinForm(formData: FormData): JoinParseResult {
   const choice = readJoinChoice(formData.get("choice"));
@@ -164,13 +188,15 @@ export function parseJoinForm(formData: FormData): JoinParseResult {
 
   if (textValue(formData, AGREE_FIELD) !== AGREE_VALUE) return { success: false, message: AGREE_MESSAGE };
 
+  const where = readLocation(formData);
+  if (!where.success) return { success: false, message: where.message };
   const code = readCode(formData);
   if (!code.ok) return { success: false, message: CODE_MESSAGE };
 
   // One clean line; a free sign-up never asks for it, so anything it sent here is ignored.
   const typed = cleanLine(textValue(formData, "businessName")).replace(/\s+/g, " ");
-  if (!isPaidChoice(choice)) return { success: true, data: { choice, businessName: null, ...account.data, agreed: true, code: code.code } };
+  if (!isPaidChoice(choice)) return { success: true, data: { choice, businessName: null, ...account.data, ...where.location, agreed: true, code: code.code } };
   if (typed === "") return { success: false, message: NEW_BUSINESS_NAME_MESSAGE };
   if (typed.length > JOIN_BUSINESS_NAME_MAX_LENGTH) return { success: false, message: "That business name is too long." };
-  return { success: true, data: { choice, businessName: typed, ...account.data, agreed: true, code: code.code } };
+  return { success: true, data: { choice, businessName: typed, ...account.data, ...where.location, agreed: true, code: code.code } };
 }

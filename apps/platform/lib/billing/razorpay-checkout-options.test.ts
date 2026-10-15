@@ -24,9 +24,9 @@ describe("razorpayCheckoutOptions", () => {
   it("describes a subscription with the given description when there is one", () => {
     const options = razorpayCheckoutOptions({
       ...BASE,
-      target: { kind: "subscription", subscriptionId: "sub_1", description: "Local SEO monthly" },
+      target: { kind: "subscription", subscriptionId: "sub_1", description: "Social media monthly" },
     });
-    expect(options).toMatchObject({ subscription_id: "sub_1", description: "Local SEO monthly" });
+    expect(options).toMatchObject({ subscription_id: "sub_1", description: "Social media monthly" });
   });
 
   it("opens a charge's checkout on its order id, describing the charge", () => {

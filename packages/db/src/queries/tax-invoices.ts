@@ -204,6 +204,8 @@ export interface InvoiceFallbackRecipient {
   readonly addressLines: string[];
   readonly region: string | null;
   readonly postalCode: string | null;
+  /** The GST state the owner typed at sign-up ("mh"), or null for an older account or a country outside India. */
+  readonly registeredStateCode: string | null;
 }
 
 /** What an invoice falls back on without billing details: the business name and its onboarding address. */
@@ -216,6 +218,7 @@ export async function findInvoiceFallbackRecipient(db: Runner, businessId: strin
       city: businessProfiles.city,
       region: businessProfiles.region,
       postalCode: businessProfiles.postalCode,
+      registeredStateCode: businesses.stateCode,
     })
     .from(businesses)
     .leftJoin(businessProfiles, eq(businessProfiles.businessId, businesses.id))
@@ -229,7 +232,7 @@ export async function findInvoiceFallbackRecipient(db: Runner, businessId: strin
   };
   const cityLine = [kept(row.city), kept(row.postalCode)].filter((part): part is string => part !== null).join(" ");
   const addressLines = [kept(row.line1), kept(row.line2), kept(cityLine)].filter((part): part is string => part !== null);
-  return { name: row.name, addressLines, region: kept(row.region), postalCode: kept(row.postalCode) };
+  return { name: row.name, addressLines, region: kept(row.region), postalCode: kept(row.postalCode), registeredStateCode: row.registeredStateCode };
 }
 
 /**

@@ -44,7 +44,7 @@ beforeEach(() => {
 
 describe("endClientAddOn", () => {
   it("ends the add-on through the one shared function, as the staff member, with the staff provider", async () => {
-    const outcome = { kind: "scheduled", addOn: "local-seo", endKind: "pause", endsOn: NOW } as const;
+    const outcome = { kind: "scheduled", addOn: "social-media", endKind: "pause", endsOn: NOW } as const;
     vi.mocked(scheduleAddOnEndFor).mockResolvedValue(outcome);
 
     const result = await endClientAddOn({ businessId: BUSINESS, addOnSubscriptionId: ROW, kind: "pause", staffUserId: STAFF }, NOW);
@@ -59,7 +59,7 @@ describe("endClientAddOn", () => {
   });
 
   it("passes a refusal back unchanged, so the caller can say why", async () => {
-    const refused = { kind: "refused", reason: "provider-unavailable", addOn: "local-seo", endKind: null, endsOn: null } as const;
+    const refused = { kind: "refused", reason: "provider-unavailable", addOn: "social-media", endKind: null, endsOn: null } as const;
     vi.mocked(scheduleAddOnEndFor).mockResolvedValue(refused);
     expect(await endClientAddOn({ businessId: BUSINESS, addOnSubscriptionId: ROW, kind: "cancel", staffUserId: STAFF }, NOW)).toBe(refused);
   });
@@ -128,7 +128,7 @@ describe("loadClientAddOns", () => {
       {
         id: ROW,
         businessId: BUSINESS,
-        addOn: "local-seo",
+        addOn: "social-media",
         discountAmountCents: 0,
         netAmountCents: 1_000_000,
         currency: "INR",
@@ -154,7 +154,7 @@ describe("loadClientAddOns", () => {
 
     expect(listAddOnSubscriptionsForStaff).toHaveBeenCalledWith({ name: "staff-db" }, BUSINESS);
     expect(loaded.addOns).toHaveLength(1);
-    expect(loaded.addOns[0]).toMatchObject({ id: ROW, title: "Local SEO", canEnd: true });
+    expect(loaded.addOns[0]).toMatchObject({ id: ROW, title: "Social media", canEnd: true });
     expect(loaded.pressReleases).toHaveLength(1);
     expect(loaded.pressReleases[0]).toMatchObject({ id: RELEASE, nextSteps: ["in_progress", "published"] });
     expect(logBillingEvent).not.toHaveBeenCalled();
@@ -165,7 +165,7 @@ describe("loadClientAddOns", () => {
       {
         id: ROW,
         businessId: BUSINESS,
-        addOn: "local-seo",
+        addOn: "social-media",
         discountAmountCents: 0,
         netAmountCents: 1_000_000,
         currency: "INR",

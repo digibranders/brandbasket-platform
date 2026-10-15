@@ -68,13 +68,14 @@ describe("entryHrefForJoin", () => {
   });
 });
 
-describe("readEntryRequest under Fynix, which sells Care and Premium only", () => {
+describe("readEntryRequest under Fynix, which sells Care only", () => {
   const fynix = (params: Params): ReturnType<typeof readFor> => readFor(params, BRAND);
 
   it("opens Sign in by default, and Create account with the plan the link names", () => {
     expect(fynix({})).toEqual({ view: "sign-in", choice: null, preselected: "care" });
     expect(fynix({ plan: "care" })).toEqual({ view: "create", choice: "care", preselected: "care" });
-    expect(fynix({ plan: "premium" })).toEqual({ view: "create", choice: "premium", preselected: "care" });
+    // Premium is no longer sold: a link that names it opens the plan question with Care ticked.
+    expect(fynix({ plan: "premium" })).toEqual({ view: "create", choice: null, preselected: "care" });
   });
 
   it("asks the question with Care ticked when nothing is named", () => {

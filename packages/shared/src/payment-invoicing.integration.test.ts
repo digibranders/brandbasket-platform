@@ -144,7 +144,7 @@ function payRenewal(subscriptionId: string, invoicedPrice: RenewalInvoicedPrice,
 }
 
 /**
- * Buys Local SEO on a new add-on row and records its first payment, then invoices it in the same transaction, as the
+ * Buys Social media on a new add-on row and records its first payment, then invoices it in the same transaction, as the
  * add-on activation will: the invoice is the last write. The row is priced as a purchase freezes it, so a Premium member
  * has 10% of the list price taken off before GST.
  */
@@ -153,7 +153,7 @@ async function payAddOn(premiumMember: boolean, providerPaymentId: string) {
   const row = await insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
     businessId,
-    addOn: "local-seo",
+    addOn: "social-media",
     listAmountCents: 1_000_000,
     discountAmountCents,
     netAmountCents: 1_000_000 - discountAmountCents,
@@ -261,7 +261,7 @@ describe("invoicing every payment path", () => {
         paidAt: NEXT_MONTH,
         paidThroughAt: MONTH_AFTER,
         periodStart: NEXT_MONTH,
-        invoicedPrice: { plan: premium, netAmountCents: premium.recurringAmountCents, discountAmountCents: 0, retentionDiscountCents: 0 },
+        invoicedPrice: { plan: premium, netAmountCents: premium.recurringAmountCents, discountAmountCents: 0, retentionDiscountCents: 0},
       }),
     );
 
@@ -476,7 +476,7 @@ describe("what the invoice describes", () => {
     expect(invoice?.totalCents).toBe(renewal.payment.amountCents);
   });
 
-  it("describes a Premium member's Local SEO payment by the add-on, the month and the discount, adding up to the payment", async () => {
+  it("describes a Premium member's Social media payment by the add-on, the month and the discount, adding up to the payment", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
     const { payment, issued } = await payAddOn(true, "fake_pay_add_on_premium");
@@ -485,7 +485,7 @@ describe("what the invoice describes", () => {
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
     expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({
-      description: "Local SEO",
+      description: "Social media",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       note: "Premium member, 10% off",
       quantity: 1,
@@ -499,13 +499,13 @@ describe("what the invoice describes", () => {
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
 
-  it("describes a Local SEO payment with no discount without a note, at the full price", async () => {
+  it("describes a Social media payment with no discount without a note, at the full price", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
     const { payment } = await payAddOn(false, "fake_pay_add_on_list");
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Local SEO", note: null, unitAmountCents: 1_000_000, discountAmountCents: 0 });
+    expect(invoice?.lines[0]).toMatchObject({ description: "Social media", note: null, unitAmountCents: 1_000_000, discountAmountCents: 0 });
     expect(invoice).toMatchObject({ taxableCents: 1_000_000, totalCents: 1_180_000 });
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });

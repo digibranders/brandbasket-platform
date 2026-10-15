@@ -53,7 +53,7 @@ function addOnRow(overrides: Partial<AddOnSubscription> = {}): AddOnSubscription
   return {
     id: ROW_ID,
     businessId: BUSINESS_ID,
-    addOn: "local-seo",
+    addOn: "social-media",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${"a".repeat(24)}`,
     status: "active",
@@ -110,7 +110,7 @@ describe("scheduleAddOnEndFor", () => {
   it("tells the provider to stop at the end of the month with no transaction open, then records the end under the lock", async () => {
     const outcome = await scheduleAddOnEndFor(staffDb, provider, REQUEST, NOW);
 
-    expect(outcome).toEqual({ kind: "scheduled", addOn: "local-seo", endKind: "cancel", endsOn: PERIOD_END });
+    expect(outcome).toEqual({ kind: "scheduled", addOn: "social-media", endKind: "cancel", endsOn: PERIOD_END });
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:end-at-period-end", "tx2:begin", "tx2:commit"]);
     expect(lockBusinessForBilling).toHaveBeenNthCalledWith(1, { name: "tx1" }, BUSINESS_ID);
     expect(lockBusinessForBilling).toHaveBeenNthCalledWith(2, { name: "tx2" }, BUSINESS_ID);
@@ -165,8 +165,8 @@ describe("scheduleAddOnEndFor", () => {
 
     const outcome = await scheduleAddOnEndFor(staffDb, provider, REQUEST, NOW);
 
-    expect(outcome).toMatchObject({ kind: "refused", reason: "not-running", addOn: "local-seo" });
-    expect(addOnEndMessage(outcome)).toBe("Local SEO isn't running, so it can't be paused or cancelled.");
+    expect(outcome).toMatchObject({ kind: "refused", reason: "not-running", addOn: "social-media" });
+    expect(addOnEndMessage(outcome)).toBe("Social media isn't running, so it can't be paused or cancelled.");
     expect(atPeriodEnd).not.toHaveBeenCalled();
     expect(cancelNow).not.toHaveBeenCalled();
   });
@@ -177,7 +177,7 @@ describe("scheduleAddOnEndFor", () => {
     const outcome = await scheduleAddOnEndFor(staffDb, provider, REQUEST, NOW);
 
     expect(outcome).toMatchObject({ kind: "refused", reason: "already-ending", endKind: "pause", endsOn: PERIOD_END });
-    expect(addOnEndMessage(outcome)).toBe("Local SEO is already set to pause on 12 November 2026.");
+    expect(addOnEndMessage(outcome)).toBe("Social media is already set to pause on 12 November 2026.");
     expect(atPeriodEnd).not.toHaveBeenCalled();
   });
 
@@ -223,8 +223,8 @@ describe("scheduleAddOnEndFor", () => {
     it("cancels it at the provider at once and marks it cancelled, which brings back the Ending state of the row it continues", async () => {
       const outcome = await scheduleAddOnEndFor(staffDb, provider, REQUEST, NOW);
 
-      expect(outcome).toEqual({ kind: "keep-undone", addOn: "local-seo", endKind: "cancel", endsOn: PERIOD_END });
-      expect(addOnEndMessage(outcome)).toBe("Local SEO will stop on 12 November 2026. You won't be charged again.");
+      expect(outcome).toEqual({ kind: "keep-undone", addOn: "social-media", endKind: "cancel", endsOn: PERIOD_END });
+      expect(addOnEndMessage(outcome)).toBe("Social media will stop on 12 November 2026. You won't be charged again.");
       expect(cancelNow).toHaveBeenCalledWith(kept.providerSubscriptionId);
       expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:cancel", "tx2:begin", "tx2:commit"]);
       expect(markAddOnCancelled).toHaveBeenCalledWith({ name: "tx2" }, ROW_ID, NOW);
@@ -244,8 +244,8 @@ describe("scheduleAddOnEndFor", () => {
 
       const outcome = await scheduleAddOnEndFor(staffDb, provider, { ...REQUEST, kind: "cancel", staffUserId: "staff-1" }, NOW);
 
-      expect(outcome).toEqual({ kind: "keep-undone", addOn: "local-seo", endKind: "cancel", endsOn: PERIOD_END });
-      expect(addOnEndMessage(outcome)).toBe("Local SEO will stop on 12 November 2026. You won't be charged again.");
+      expect(outcome).toEqual({ kind: "keep-undone", addOn: "social-media", endKind: "cancel", endsOn: PERIOD_END });
+      expect(addOnEndMessage(outcome)).toBe("Social media will stop on 12 November 2026. You won't be charged again.");
       expect(changeAddOnEndKind).toHaveBeenCalledWith({ name: "tx2" }, { id: OLD_ID, kind: "cancel", now: NOW, staffUserId: "staff-1" });
       expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:cancel", "tx2:begin", "tx2:commit"]);
     });
@@ -255,8 +255,8 @@ describe("scheduleAddOnEndFor", () => {
 
       const outcome = await scheduleAddOnEndFor(staffDb, provider, { ...REQUEST, kind: "pause" }, NOW);
 
-      expect(outcome).toEqual({ kind: "keep-undone", addOn: "local-seo", endKind: "pause", endsOn: PERIOD_END });
-      expect(addOnEndMessage(outcome)).toBe("Local SEO will pause on 12 November 2026.");
+      expect(outcome).toEqual({ kind: "keep-undone", addOn: "social-media", endKind: "pause", endsOn: PERIOD_END });
+      expect(addOnEndMessage(outcome)).toBe("Social media will pause on 12 November 2026.");
       expect(changeAddOnEndKind).toHaveBeenCalledWith({ name: "tx2" }, { id: OLD_ID, kind: "pause", now: NOW, staffUserId: null });
       expect(markAddOnCancelled).toHaveBeenCalledWith({ name: "tx2" }, ROW_ID, NOW);
     });
@@ -305,14 +305,14 @@ describe("scheduleAddOnEndFor", () => {
 });
 
 describe("addOnEndMessage", () => {
-  const scheduled = (endKind: "cancel" | "pause"): AddOnEndOutcome => ({ kind: "scheduled", addOn: "performance-marketing", endKind, endsOn: PERIOD_END });
+  const scheduled = (endKind: "cancel" | "pause"): AddOnEndOutcome => ({ kind: "scheduled", addOn: "advertising", endKind, endsOn: PERIOD_END });
 
   it("says the add-on will stop, and that no more is charged, for a cancel", () => {
-    expect(addOnEndMessage(scheduled("cancel"))).toBe("Performance marketing will stop on 12 November 2026. You won't be charged again.");
+    expect(addOnEndMessage(scheduled("cancel"))).toBe("Paid advertising will stop on 12 November 2026. You won't be charged again.");
   });
 
   it("says the add-on will pause for a pause", () => {
-    expect(addOnEndMessage(scheduled("pause"))).toBe("Performance marketing will pause on 12 November 2026.");
+    expect(addOnEndMessage(scheduled("pause"))).toBe("Paid advertising will pause on 12 November 2026.");
   });
 
   it("names the day in India time: late on the 12th in UTC is already the 13th in Mumbai", () => {
@@ -321,8 +321,8 @@ describe("addOnEndMessage", () => {
   });
 
   it("says the change that was in progress could not be finished, for a row that moved on", () => {
-    expect(addOnEndMessage({ kind: "refused", reason: "changed-meanwhile", addOn: "local-seo", endKind: null, endsOn: null })).toBe(
-      "Something changed while we were updating Local SEO. Please check the page and try again.",
+    expect(addOnEndMessage({ kind: "refused", reason: "changed-meanwhile", addOn: "social-media", endKind: null, endsOn: null })).toBe(
+      "Something changed while we were updating Social media. Please check the page and try again.",
     );
   });
 });

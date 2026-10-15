@@ -619,8 +619,9 @@ describe("billing details", () => {
       addressLines: ["Shop 4, Gokul Arcade", "Mumbai 400080"],
       region: "Maharashtra",
       postalCode: "400080",
+      registeredStateCode: null,
     });
-    expect(await findInvoiceFallbackRecipient(dbs.staff.db, businessB)).toEqual({ name: "Riverside", addressLines: [], region: null, postalCode: null });
+    expect(await findInvoiceFallbackRecipient(dbs.staff.db, businessB)).toEqual({ name: "Riverside", addressLines: [], region: null, postalCode: null, registeredStateCode: null });
     await expect(findInvoiceFallbackRecipient(dbs.staff.db, "00000000-0000-7000-8000-000000000000")).rejects.toThrow(/not found/);
   });
 
@@ -647,6 +648,7 @@ describe("billing details", () => {
       addressLines: ["Shop 4, Gokul Arcade", "Mumbai 400080"],
       region: null,
       postalCode: "400080",
+      registeredStateCode: null,
     });
     await dbs.staff.db.update(businessProfiles).set({ city: "\t", postalCode: " " }).where(eq(businessProfiles.businessId, businessA));
     expect(await findInvoiceFallbackRecipient(dbs.staff.db, businessA)).toEqual({
@@ -654,7 +656,14 @@ describe("billing details", () => {
       addressLines: ["Shop 4, Gokul Arcade"],
       region: null,
       postalCode: null,
+      registeredStateCode: null,
     });
+  });
+
+  it("returns the state the owner typed at sign-up, to decide the invoice's place of supply", async () => {
+    await dbs.staff.db.update(businesses).set({ countryCode: "IN", stateCode: "ka" }).where(eq(businesses.id, businessA));
+    expect((await findInvoiceFallbackRecipient(dbs.staff.db, businessA)).registeredStateCode).toBe("ka");
+    await expect(dbs.staff.db.update(businesses).set({ countryCode: "AE", stateCode: "ka" }).where(eq(businesses.id, businessA))).rejects.toThrow();
   });
 
   it("locks a payment for its invoice, and refuses one that does not exist", async () => {

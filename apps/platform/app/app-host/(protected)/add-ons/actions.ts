@@ -10,7 +10,6 @@ import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@
 import {
   scheduleAddOnEndFor,
   startAddOnCheckoutFor,
-  startPressReleaseFor,
   type AddOnCheckoutOutcome,
   type AddOnEndResult,
 } from "@/lib/server/add-ons";
@@ -56,19 +55,6 @@ export async function startAddOnAction(_previous: AddOnStartState, formData: For
     outcome = await startAddOnCheckoutFor(customer, parsed.data.addOn, parsed.data.intent, new Date());
   } catch (error) {
     console.error("[add-ons] startAddOnAction failed", errorLogInfo(error));
-    return startError(GENERIC_ERROR_MESSAGE);
-  }
-  return finishStart(outcome);
-}
-
-/** Get it for a press release. Nothing is read from the form: the price and the charge are the server's. */
-export async function buyPressReleaseAction(): Promise<AddOnStartState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow" });
-  let outcome: AddOnCheckoutOutcome;
-  try {
-    outcome = await startPressReleaseFor(customer);
-  } catch (error) {
-    console.error("[add-ons] buyPressReleaseAction failed", errorLogInfo(error));
     return startError(GENERIC_ERROR_MESSAGE);
   }
   return finishStart(outcome);

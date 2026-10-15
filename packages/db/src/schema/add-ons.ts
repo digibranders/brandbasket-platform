@@ -27,11 +27,13 @@ export const addOnSubscriptions = pgTable(
   {
     id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
     businessId: uuid("business_id").notNull().references(() => businesses.id),
-    /** A monthly id from the catalogue (packages/shared/src/lib/billing/add-ons.ts). */
+    /** A monthly id from the catalogue (packages/shared/src/lib/billing/add-ons.ts). The two earlier ids stay allowed for old rows. */
     addOn: text("add_on").notNull(),
     /** The price fixed at purchase, in paise: list, Premium discount, list less discount, GST rate, what Razorpay takes. */
     listAmountCents: integer("list_amount_cents").notNull(),
     discountAmountCents: integer("discount_amount_cents").notNull().default(0),
+    /** The part of `discountAmountCents` that is the first-checkout lifetime offer (5%); the rest is the Premium discount. */
+    offerDiscountAmountCents: integer("offer_discount_amount_cents").notNull().default(0),
     netAmountCents: integer("net_amount_cents").notNull(),
     taxRateBasisPoints: integer("tax_rate_basis_points").notNull(),
     chargedAmountCents: integer("charged_amount_cents").notNull(),
@@ -71,7 +73,11 @@ export const addOnSubscriptions = pgTable(
       .on(table.businessId, table.addOn)
       .where(sql`${table.status} = 'incomplete'`),
     index("add_on_subscriptions_business_idx").on(table.businessId, table.createdAt),
-    check("add_on_subscriptions_add_on_check", sql`${table.addOn} in ('local-seo', 'performance-marketing')`),
+    check("add_on_subscriptions_add_on_check", sql`${table.addOn} in ('social-media', 'lead-generation', 'advertising', 'local-seo', 'performance-marketing')`),
+    check(
+      "add_on_subscriptions_offer_check",
+      sql`${table.offerDiscountAmountCents} >= 0 and ${table.offerDiscountAmountCents} <= ${table.discountAmountCents}`,
+    ),
     check("add_on_subscriptions_currency_check", sql`${table.currency} = 'INR'`),
     check(
       "add_on_subscriptions_amounts_check",

@@ -513,11 +513,11 @@ describe("createPlan", () => {
       currency: "INR",
       netMonthlyCents: 500_000,
       taxRateBasisPoints: 1800,
-      code: "add-on-local-seo-590000",
-      itemName: "Local SEO",
+      code: "add-on-social-media-590000",
+      itemName: "Social media",
     });
     expect(createPlan).toHaveBeenCalledWith(
-      expect.objectContaining({ item: { name: "Local SEO", amount: 590_000, currency: "INR" } }),
+      expect.objectContaining({ item: { name: "Social media", amount: 590_000, currency: "INR" } }),
     );
   });
 });

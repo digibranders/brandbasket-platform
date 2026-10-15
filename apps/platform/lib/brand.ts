@@ -3,7 +3,7 @@ import type { JoinChoice } from "@/lib/join-form";
 
 /*
  * The name and look of this dashboard: Fynix Digital. One product, one brand, so there is one constant. It says the name and
- * logo shown and which plans are offered at sign-up and upgrade (Care and Premium). An account is opened with an email
+ * logo shown and which plans are offered at sign-up (Care only; Premium is no longer sold). An account is opened with an email
  * address and the code emailed to it.
  * Browser-safe and pure.
  */
@@ -36,7 +36,7 @@ export const BRAND: Brand = {
   privacyEmail: "privacy@fynix.digital",
   siteUrl: "https://fynix.digital",
   logo: { white: "/brand/fynix-logo-white.svg", dark: "/brand/fynix-logo-dark.svg", width: 89, height: 37 },
-  joinChoices: ["care", "premium"],
+  joinChoices: ["care"],
   showsListing: false,
 };
 

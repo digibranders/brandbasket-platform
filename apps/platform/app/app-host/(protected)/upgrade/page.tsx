@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
 import { CareUpgrade } from "@/components/panel/upgrade/care-upgrade";
 import { FreeUpgrade } from "@/components/panel/upgrade/free-upgrade";
+import { offersChoice } from "@/lib/brand";
+import { CARE_PATH, MEMBER_HOME } from "@/lib/membership";
+import { requestBrand } from "@/lib/server/request-brand";
 import { getCustomerBusinessEntry, requireCustomerAccess } from "@/lib/server/customer-access";
 
 export const metadata: Metadata = { title: "Upgrade" };
@@ -19,6 +23,8 @@ interface UpgradePageProps {
 export default async function UpgradePage({ searchParams }: UpgradePageProps): Promise<ReactElement> {
   const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const entry = await getCustomerBusinessEntry(customer.tenant.userId, customer.tenant.businessId);
+  // Fynix sells Care only: a Care client has nothing to move up to.
+  if (!offersChoice(await requestBrand(), "premium")) redirect(entry.kind === "listing" ? CARE_PATH : MEMBER_HOME);
   if (entry.kind === "listing") return <FreeUpgrade customer={customer} />;
   return <CareUpgrade customer={customer} payment={(await searchParams).payment} />;
 }

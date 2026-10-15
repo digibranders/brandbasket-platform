@@ -175,7 +175,7 @@ describe("attentionItems", () => {
 });
 
 function toContact(overrides: Partial<AddOnToContact> & Pick<AddOnToContact, "id" | "businessId">): AddOnToContact {
-  return { kind: "subscription", businessName: `Business ${overrides.businessId}`, addOn: "local-seo", at: NOW, ...overrides };
+  return { kind: "subscription", businessName: `Business ${overrides.businessId}`, addOn: "social-media", at: NOW, ...overrides };
 }
 
 describe("add-on purchases in attentionItems", () => {
@@ -183,14 +183,14 @@ describe("add-on purchases in attentionItems", () => {
     const items = attentionItems({
       ...noAttention(),
       addOns: [
-        toContact({ id: "s1", businessId: "oak", addOn: "local-seo", at: new Date(NOW.getTime() - 3 * DAY) }),
-        toContact({ id: "s2", businessId: "kettle", addOn: "performance-marketing", at: new Date(NOW.getTime() - 2 * DAY) }),
+        toContact({ id: "s1", businessId: "oak", addOn: "social-media", at: new Date(NOW.getTime() - 3 * DAY) }),
+        toContact({ id: "s2", businessId: "kettle", addOn: "advertising", at: new Date(NOW.getTime() - 2 * DAY) }),
         toContact({ id: "r1", businessId: "nila", kind: "press-release", addOn: "press-release", at: new Date(NOW.getTime() - DAY) }),
       ],
     });
     expect(items.map((item) => item.reason)).toEqual([
-      "New add-on to set up: Local SEO",
-      "New add-on to set up: Performance marketing",
+      "New add-on to set up: Social media",
+      "New add-on to set up: Paid advertising",
       "Press release to start",
     ]);
   });

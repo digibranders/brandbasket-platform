@@ -31,7 +31,7 @@ interface AddOnConfirmPageProps {
  */
 export default async function AddOnTestCheckoutPage({ searchParams }: AddOnConfirmPageProps): Promise<ReactElement> {
   if (!isFakeBillingProvider()) notFound();
-  const { tenant } = await requireCustomerAccess({ listingAccount: "allow" });
+  const { tenant } = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
 
   const { token } = await searchParams;
   const verified = typeof token === "string" ? await verifyAddOnPaymentFor({ tenant }, token) : null;
@@ -57,7 +57,7 @@ export default async function AddOnTestCheckoutPage({ searchParams }: AddOnConfi
   async function pay(): Promise<void> {
     "use server";
     if (!isFakeBillingProvider()) notFound();
-    const customer = await requireCustomerAccess({ listingAccount: "allow" });
+    const customer = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
     const result = await confirmFakeAddOnPaymentFor(customer, paymentToken, new Date());
     // A Keep it is only authorised here, so it reads as kept; the mapping lives with the other notices.
     redirect(addOnConfirmationHref(result.kind, addOn));

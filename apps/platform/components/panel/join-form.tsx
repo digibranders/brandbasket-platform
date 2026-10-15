@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, useSyncExternalStore, type ReactElement } from "react";
 import { createPortal } from "react-dom";
+import { HOME_COUNTRY, type CountryOption } from "@fynix/shared/lib/countries";
+import { INDIA_STATES } from "@fynix/shared/lib/directory/india-states";
 import { OTP_LENGTH } from "@fynix/shared/lib/appointments/otp";
 import { cn } from "@fynix/shared/lib/cn";
 import { Button } from "@fynix/shared/ui/panel/button";
@@ -83,6 +85,8 @@ interface JoinFormProps {
    * check. What the code step says comes from the server's own answer (JoinCodeStep.confirmRequired).
    */
   readonly confirmsCodes: boolean;
+  /** Every country the owner may pick, by English name (lib/countries.ts countryOptions). */
+  readonly countries: readonly CountryOption[];
 }
 
 function subscribeToNothing(): () => void {
@@ -170,6 +174,9 @@ function PaperFold({ chosen, flap }: { readonly chosen: boolean; readonly flap: 
   );
 }
 
+/** India's states and union territories by name, for the state select. */
+const STATE_OPTIONS = [...INDIA_STATES].sort((a, b) => a.name.localeCompare(b.name, "en"));
+
 const ERROR_ID = "join-error";
 /** The longest password the server accepts (lib/join-form.ts). */
 const PASSWORD_MAX_LENGTH = 128;
@@ -192,6 +199,7 @@ export function JoinForm({
   legalLinks,
   prices,
   confirmsCodes,
+  countries,
 }: JoinFormProps): ReactElement {
   const cooldown = useOtpRetryCooldown();
   const runAction = async (previous: JoinFormState, formData: FormData): Promise<JoinFormState> => {
@@ -210,6 +218,9 @@ export function JoinForm({
   /** Asked only of a Care or Premium sign-up. */
   const [newBusinessName, setNewBusinessName] = useState("");
   const [email, setEmail] = useState("");
+  /** India first: the product is sold there. The state is never filled in for the owner; they pick it. */
+  const [country, setCountry] = useState<string>(HOME_COUNTRY);
+  const [stateCode, setStateCode] = useState("");
   const [password, setPassword] = useState("");
   /** Never ticked for the owner: agreeing to the Terms and Privacy Notice is their own act (DPDP Act s.6). */
   const [agreed, setAgreed] = useState(false);
@@ -326,6 +337,8 @@ export function JoinForm({
         <input type="hidden" name="name" value={name} />
         {asksBusinessName ? <input type="hidden" name="businessName" value={newBusinessName} /> : null}
         <input type="hidden" name="email" value={email} />
+        <input type="hidden" name="country" value={country} />
+        {country === HOME_COUNTRY ? <input type="hidden" name="stateCode" value={stateCode} /> : null}
         <input type="hidden" name="password" value={password} />
         {agreed ? <input type="hidden" name={AGREE_FIELD} value={AGREE_VALUE} /> : null}
         <input type="hidden" name="otpId" value={otp.otpId} />
@@ -475,6 +488,60 @@ export function JoinForm({
           {confirmsCodes ? <>You sign in with it. We&rsquo;ll email it a code now.</> : "You sign in with it."}
         </p>
       </div>
+      <div>
+        <label htmlFor="join-country" className="block text-xs font-medium sm:text-sm">
+          Country
+          <RequiredMark />
+        </label>
+        <select
+          id="join-country"
+          name="country"
+          required
+          autoComplete="country"
+          value={country}
+          disabled={isPending}
+          onChange={(event) => setCountry(event.target.value)}
+          aria-describedby={describedBy}
+          className={INPUT_CLASSES}
+        >
+          {countries.map((option) => (
+            <option key={option.code} value={option.code}>
+              {option.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      {country === HOME_COUNTRY ? (
+        <div>
+          <label htmlFor="join-state" className="block text-xs font-medium sm:text-sm">
+            State
+            <RequiredMark />
+          </label>
+          <select
+            id="join-state"
+            name="stateCode"
+            required
+            autoComplete="address-level1"
+            value={stateCode}
+            disabled={isPending}
+            onChange={(event) => setStateCode(event.target.value)}
+            aria-describedby={`join-state-hint${describedBy === undefined ? "" : ` ${describedBy}`}`}
+            className={INPUT_CLASSES}
+          >
+            <option value="" disabled>
+              Choose your state
+            </option>
+            {STATE_OPTIONS.map((state) => (
+              <option key={state.code} value={state.code}>
+                {state.name}
+              </option>
+            ))}
+          </select>
+          <p id="join-state-hint" className="mt-2 text-xs text-ink-soft sm:text-sm">
+            Used for GST on your invoices.
+          </p>
+        </div>
+      ) : null}
       <div>
         <label htmlFor="join-password" className="block text-xs font-medium sm:text-sm">
           Choose a password

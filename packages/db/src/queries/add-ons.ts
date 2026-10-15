@@ -580,7 +580,7 @@ export interface AddOnToContact {
   readonly id: string;
   readonly businessId: string;
   readonly businessName: string;
-  /** A catalogue id: "local-seo", "performance-marketing" or "press-release". */
+  /** A catalogue id: "social-media", "advertising" or "press-release". */
   readonly addOn: string;
   /** When it was paid (a purchase) or bought (a press release). */
   readonly at: Date;
@@ -626,4 +626,29 @@ export async function listAddOnsToContact(db: Runner, limit: number): Promise<Ad
     ...releaseRows.map(({ createdAt, ...row }) => ({ kind: "press-release" as const, ...row, addOn: "press-release", at: createdAt })),
   ];
   return items.sort((a, b) => a.at.getTime() - b.at.getTime() || a.id.localeCompare(b.id)).slice(0, limit);
+}
+
+/** The add-ons whose first-checkout purchase carries the 5% lifetime offer, by catalogue id. */
+export interface LifetimeOfferStanding {
+  readonly claimed: readonly string[];
+}
+
+/**
+ * Which add-ons the business claimed the 5% lifetime offer on, read from the purchases alone, so there is no flag to drift
+ * from the money. An add-on is claimed when a row of it was activated (its first payment recorded) with the offer in its
+ * price; a cancelled row counts, because the discount is for life. Staff connection, or the owner's own scope.
+ */
+export async function findLifetimeOfferStanding(db: Runner, businessId: string): Promise<LifetimeOfferStanding> {
+  if (!isUuid(businessId)) return { claimed: [] };
+  const rows = await db
+    .selectDistinct({ addOn: addOnSubscriptions.addOn })
+    .from(addOnSubscriptions)
+    .where(
+      and(
+        eq(addOnSubscriptions.businessId, businessId),
+        isNotNull(addOnSubscriptions.activatedAt),
+        sql`${addOnSubscriptions.offerDiscountAmountCents} > 0`,
+      ),
+    );
+  return { claimed: rows.map((row) => row.addOn) };
 }

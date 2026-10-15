@@ -58,7 +58,7 @@ function addRow(overrides: Partial<Parameters<typeof insertAddOnSubscription>[1]
   return insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
     businessId,
-    addOn: "local-seo",
+    addOn: "social-media",
     listAmountCents: LIST_CENTS,
     discountAmountCents: 0,
     netAmountCents: LIST_CENTS,
@@ -89,7 +89,7 @@ async function activeRow(): Promise<AddOnSubscription> {
 }
 
 async function viewNow() {
-  const rows = (await listAddOnSubscriptionsForBusiness(dbs.staff.db, businessId)).filter((row) => row.addOn === "local-seo");
+  const rows = (await listAddOnSubscriptionsForBusiness(dbs.staff.db, businessId)).filter((row) => row.addOn === "social-media");
   const { current, successor } = pickAddOnRows(rows);
   return addOnView(current === null ? null : addOnFactsOf(current), successor === null ? null : addOnFactsOf(successor), NOW);
 }
@@ -119,7 +119,7 @@ describe("scheduleAddOnEndFor", () => {
 
     const outcome = await scheduleAddOnEndFor(dbs.staff.db, provider, { businessId, addOnSubscriptionId: row.id, kind: "cancel", staffUserId: null }, NOW);
 
-    expect(addOnEndMessage(outcome)).toBe("Local SEO will stop on 12 November 2026. You won't be charged again.");
+    expect(addOnEndMessage(outcome)).toBe("Social media will stop on 12 November 2026. You won't be charged again.");
     expect(await findAddOnSubscription(dbs.staff.db, businessId, row.id)).toMatchObject({
       status: "active",
       endKind: "cancel",
@@ -174,7 +174,7 @@ describe("scheduleAddOnEndFor", () => {
 
     const outcome = await scheduleAddOnEndFor(dbs.staff.db, provider, { businessId, addOnSubscriptionId: kept.id, kind: "pause", staffUserId: null }, NOW);
 
-    expect(addOnEndMessage(outcome)).toBe("Local SEO will pause on 12 November 2026.");
+    expect(addOnEndMessage(outcome)).toBe("Social media will pause on 12 November 2026.");
     expect(await findAddOnSubscription(dbs.staff.db, businessId, kept.id)).toMatchObject({ status: "cancelled" });
     expect(await findAddOnSubscription(dbs.staff.db, businessId, ending.id)).toMatchObject({ status: "active", endKind: "pause", currentPeriodEnd: PERIOD_END });
     expect(await viewNow()).toEqual({ state: "pausing", pausesOn: PERIOD_END });
@@ -189,7 +189,7 @@ describe("scheduleAddOnEndFor", () => {
 
     const outcome = await scheduleAddOnEndFor(dbs.staff.db, provider, { businessId, addOnSubscriptionId: kept.id, kind: "cancel", staffUserId: "staff-ends" }, NOW);
 
-    expect(addOnEndMessage(outcome)).toBe("Local SEO will stop on 12 November 2026. You won't be charged again.");
+    expect(addOnEndMessage(outcome)).toBe("Social media will stop on 12 November 2026. You won't be charged again.");
     expect(await findAddOnSubscription(dbs.staff.db, businessId, ending.id)).toMatchObject({ endKind: "cancel", endRequestedByStaffId: "staff-ends" });
     expect(await viewNow()).toEqual({ state: "ending", endsOn: PERIOD_END });
   });

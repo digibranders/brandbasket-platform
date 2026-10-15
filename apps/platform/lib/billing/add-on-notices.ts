@@ -33,7 +33,7 @@ export function readKeptAddOn(value: string | string[] | null | undefined): Mont
   return isMonthlyAddOnId(value) ? value : null;
 }
 
-/** "Done. Local SEO carries on after 12 November 2026." The date is the old billing date, already formatted. */
+/** "Done. Social media carries on after 12 November 2026." The date is the old billing date, already formatted. */
 export function keptNoticeText(title: string, date: string): string {
   return `Done. ${title} carries on after ${date}.`;
 }

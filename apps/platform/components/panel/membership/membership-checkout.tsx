@@ -5,13 +5,14 @@ import { EmailUs } from "@/components/panel/email-us";
 import { PAYMENT_RECEIVED_MESSAGE } from "@fynix/shared/lib/billing/payment-step";
 import { describeDiscountedPlanTerms, discountedFirstPaymentAmount } from "@fynix/shared/lib/billing/terms";
 import { BillingDetails } from "@/components/panel/billing/billing-details";
+import { OfferCard } from "@/components/panel/membership/offer-card";
 import { MembershipPayForm } from "@/components/panel/membership/membership-pay-form";
 import { PaymentWaiting } from "@/components/panel/payment-waiting";
 import { ReferralCodeForm } from "@/components/panel/referral-code-form";
 import { isWaitingOnPayment, unsettledCheckout, type MembershipPaymentNotice, type MembershipTier } from "@/lib/membership";
 import type { GrantedCustomer } from "@/lib/server/customer-access";
 import type { MembershipCheckoutView } from "@/lib/server/membership-checkout";
-import { applyMembershipCode, removeMembershipCode, startMembership } from "@/app/app-host/(protected)/premium/actions";
+import { addOfferAddOn, applyMembershipCode, removeMembershipCode, startMembership } from "@/app/app-host/(protected)/premium/actions";
 
 interface MembershipCheckoutProps {
   readonly tier: MembershipTier;
@@ -30,7 +31,7 @@ interface MembershipCheckoutProps {
  * for the same plan would only be refused.
  */
 export async function MembershipCheckout({ tier, view, notice, billing }: MembershipCheckoutProps): Promise<ReactElement> {
-  const { plan, discount, lapsedCode, billingDetails } = view;
+  const { plan, discount, lapsedCode, billingDetails, offer } = view;
   // Only an account with a checkout open can be waiting to hear about a payment: the address alone is not believed.
   const checkout = unsettledCheckout(billing.subscription);
   const waiting = checkout !== null && isWaitingOnPayment(billing.subscription, notice);
@@ -61,6 +62,7 @@ export async function MembershipCheckout({ tier, view, notice, billing }: Member
   }
   return (
     <div className="space-y-6">
+      {offer.kind === "available" ? <OfferCard action={addOfferAddOn} claimed={offer.claimed} /> : null}
       {notice === "failed" ? (
         <p role="alert" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
           We couldn&rsquo;t confirm that payment, so nothing has been recorded. You can try again below.

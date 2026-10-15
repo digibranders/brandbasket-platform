@@ -53,7 +53,7 @@ export function planLabel(name: string): string {
 }
 
 /**
- * The title of the monthly add-on a payment bought ("Local SEO"), or null when it is not an add-on payment or the
+ * The title of the monthly add-on a payment bought ("Social media"), or null when it is not an add-on payment or the
  * add-on is unknown.
  */
 export function addOnPaymentTitle(receipt: Pick<Receipt, "kind" | "addOnId">): string | null {
@@ -63,7 +63,7 @@ export function addOnPaymentTitle(receipt: Pick<Receipt, "kind" | "addOnId">): s
 
 /**
  * What a receipt was for: a paid extra by its own label ("Extra change hours · 2 h"), an add-on by its name
- * ("Local SEO, monthly"), anything else by the kind of payment it was, in the term of the plan it bought.
+ * ("Social media, monthly"), anything else by the kind of payment it was, in the term of the plan it bought.
  */
 export function receiptDescription(
   receipt: Pick<Receipt, "kind" | "initialTermMonths" | "chargeKind" | "chargeDescription" | "chargeQuantity" | "addOnId">,

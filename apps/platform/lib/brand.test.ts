@@ -3,12 +3,12 @@ import { BRAND, featureShownTo, FYNIX_DEFAULT_CHOICE, isDirectoryOnlyPath, logoO
 import { LISTING_BRAND } from "./testing/listing-brand";
 
 describe("the brand", () => {
-  it("sells Care and Premium only, Care first, and not the free listing", () => {
-    expect(BRAND.joinChoices).toEqual(["care", "premium"]);
+  it("sells Care only: no Premium, no free listing", () => {
+    expect(BRAND.joinChoices).toEqual(["care"]);
     expect(sellsFreeListing(BRAND)).toBe(false);
     expect(offersChoice(BRAND, "listing_only")).toBe(false);
     expect(offersChoice(BRAND, "care")).toBe(true);
-    expect(offersChoice(BRAND, "premium")).toBe(true);
+    expect(offersChoice(BRAND, "premium")).toBe(false);
     expect(BRAND.name).toBe("Fynix Digital");
     expect(BRAND.shortName).toBe("Fynix");
   });

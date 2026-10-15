@@ -12,6 +12,8 @@ const account = {
   name: " Meera Shah ",
   email: "  Meera.Shah@Example.TEST ",
   password: "correct-horse-battery",
+  country: "IN",
+  stateCode: "mh",
   agree: "yes",
 };
 const OTP_ID = "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
@@ -26,10 +28,29 @@ describe("parseJoinForm", () => {
         name: "Meera Shah",
         email: "meera.shah@example.test",
         password: "correct-horse-battery",
+        country: "IN",
+        stateCode: "mh",
         agreed: true,
         code: null,
       },
     });
+  });
+
+  it("asks for a country, and for an Indian owner a state they pick themselves", () => {
+    const noCountry = Object.fromEntries(Object.entries(account).filter(([key]) => key !== "country"));
+    expect(parseJoinForm(form(noCountry))).toEqual({ success: false, message: "Choose your country." });
+    expect(parseJoinForm(form({ ...account, country: "XX" }))).toEqual({ success: false, message: "Choose your country." });
+    expect(parseJoinForm(form({ ...account, country: "in" }))).toEqual({ success: false, message: "Choose your country." });
+    const noState = Object.fromEntries(Object.entries(account).filter(([key]) => key !== "stateCode"));
+    expect(parseJoinForm(form(noState))).toEqual({ success: false, message: "Choose your state." });
+    expect(parseJoinForm(form({ ...account, stateCode: "zz" }))).toEqual({ success: false, message: "Choose your state." });
+    expect(parseJoinForm(form({ ...account, stateCode: "" }))).toEqual({ success: false, message: "Choose your state." });
+  });
+
+  it("asks no state outside India, and keeps none whatever the form sent", () => {
+    const noState = Object.fromEntries(Object.entries(account).filter(([key]) => key !== "stateCode"));
+    expect(parseJoinForm(form({ ...noState, country: "AE" }))).toMatchObject({ success: true, data: { country: "AE", stateCode: null } });
+    expect(parseJoinForm(form({ ...account, country: "AE" }))).toMatchObject({ success: true, data: { country: "AE", stateCode: null } });
   });
 
   it("never asks for a mobile number, and ignores one it is sent", () => {

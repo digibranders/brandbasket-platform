@@ -31,7 +31,7 @@ export default async function AddOnPayPage({ params }: AddOnPayPageProps): Promi
   const { addOnSubscriptionId } = await params;
   if (!z.uuid().safeParse(addOnSubscriptionId).success) notFound();
 
-  const { tenant, user } = await requireCustomerAccess({ listingAccount: "allow" });
+  const { tenant, user } = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
   const row = await withTenantScope(getAppDb(), tenant, (tx) => findAddOnSubscription(tx, tenant.businessId, addOnSubscriptionId));
   if (row === null) notFound();
   // Paid already, cancelled or replaced: there is nothing to pay, and the Add-ons page shows where things stand.

@@ -2,7 +2,7 @@ import { receiptDescription } from "@fynix/shared/lib/billing/receipt-title";
 import type { MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
 
 /**
- * What a monthly add-on payment is called wherever it is paid: "Local SEO, monthly". It is the wording the add-on's
+ * What a monthly add-on payment is called wherever it is paid: "Social media, monthly". It is the wording the add-on's
  * receipts use, taken from receiptDescription so the payment window and the receipt never drift apart.
  */
 export function addOnPaymentLabel(addOn: MonthlyAddOnId): string {

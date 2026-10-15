@@ -22,21 +22,20 @@ const BEFORE_KEEP: ReadonlySet<AddOnView["state"]> = new Set(["none", "ended", "
  * Whether the page, shown right after a return from paying, is probably still missing what that payment changes.
  *
  * `kept` names its add-on, so only that add-on's row is checked. `received` names none (a monthly purchase, a Resume, a
- * Pay now and a press release all return the same way), so it waits while any add-on is still before its payment or no
- * press release is listed yet. Every other notice is final and never waits.
+ * Pay now all return the same way), so it waits while any add-on is still before its payment. Every other notice is
+ * final and never waits.
  */
 export function isAwaitingReturnWebhook(
   notice: AddOnPaymentNotice | null,
   keptAddOn: MonthlyAddOnId | null,
   entries: readonly ReturnRefreshEntry[],
-  pressReleaseCount: number,
 ): boolean {
   if (notice === "kept") {
     const entry = keptAddOn === null ? undefined : entries.find((candidate) => candidate.addOn === keptAddOn);
     return entry !== undefined && entry.kind === "ready" && BEFORE_KEEP.has(entry.view.state);
   }
   if (notice === "received") {
-    return pressReleaseCount === 0 || entries.some((entry) => entry.kind === "ready" && BEFORE_PAYMENT.has(entry.view.state));
+    return entries.some((entry) => entry.kind === "ready" && BEFORE_PAYMENT.has(entry.view.state));
   }
   return false;
 }

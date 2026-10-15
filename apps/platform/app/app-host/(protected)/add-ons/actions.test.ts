@@ -1,9 +1,9 @@
 import { refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
-import { scheduleAddOnEndFor, startAddOnCheckoutFor, startPressReleaseFor } from "@/lib/server/add-ons";
+import { scheduleAddOnEndFor, startAddOnCheckoutFor } from "@/lib/server/add-ons";
 import { GENERIC_ERROR_MESSAGE } from "@/lib/server/panel-form-errors";
-import { buyPressReleaseAction, endAddOnAction, startAddOnAction } from "./actions";
+import { endAddOnAction, startAddOnAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
@@ -15,7 +15,6 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("@/lib/server/add-ons", () => ({
   startAddOnCheckoutFor: vi.fn(),
-  startPressReleaseFor: vi.fn(),
   scheduleAddOnEndFor: vi.fn(),
 }));
 
@@ -37,31 +36,31 @@ beforeEach(() => {
 describe("startAddOnAction", () => {
   it("lets a listing account buy, and opens the checkout for the add-on and intent in the form", async () => {
     vi.mocked(startAddOnCheckoutFor).mockResolvedValue({ kind: "redirect", url: "/add-ons/pay/abc" });
-    await expect(startAddOnAction(IDLE, form({ addOn: "local-seo", intent: "buy" }))).rejects.toThrow("NEXT_REDIRECT /add-ons/pay/abc");
+    await expect(startAddOnAction(IDLE, form({ addOn: "social-media", intent: "buy" }))).rejects.toThrow("NEXT_REDIRECT /add-ons/pay/abc");
     expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow" });
-    expect(startAddOnCheckoutFor).toHaveBeenCalledWith(CUSTOMER, "local-seo", "buy", expect.any(Date));
+    expect(startAddOnCheckoutFor).toHaveBeenCalledWith(CUSTOMER, "social-media", "buy", expect.any(Date));
   });
 
   it.each(["buy", "resume", "pay-now", "keep"] as const)("passes the %s intent through", async (intent) => {
     vi.mocked(startAddOnCheckoutFor).mockResolvedValue({ kind: "redirect", url: "/x" });
-    await expect(startAddOnAction(IDLE, form({ addOn: "performance-marketing", intent }))).rejects.toThrow("NEXT_REDIRECT");
-    expect(startAddOnCheckoutFor).toHaveBeenCalledWith(CUSTOMER, "performance-marketing", intent, expect.any(Date));
+    await expect(startAddOnAction(IDLE, form({ addOn: "advertising", intent }))).rejects.toThrow("NEXT_REDIRECT");
+    expect(startAddOnCheckoutFor).toHaveBeenCalledWith(CUSTOMER, "advertising", intent, expect.any(Date));
   });
 
   it("hands back the server's reason when the purchase is refused, and does not redirect", async () => {
-    vi.mocked(startAddOnCheckoutFor).mockResolvedValue({ kind: "refused", message: "Local SEO is already running." });
-    expect(await startAddOnAction(IDLE, form({ addOn: "local-seo", intent: "buy" }))).toEqual({
+    vi.mocked(startAddOnCheckoutFor).mockResolvedValue({ kind: "refused", message: "Social media is already running." });
+    expect(await startAddOnAction(IDLE, form({ addOn: "social-media", intent: "buy" }))).toEqual({
       status: "error",
-      message: "Local SEO is already running.",
+      message: "Social media is already running.",
     });
   });
 
-  it("takes only ids from the form: the press release, an unknown add-on and an unknown intent are refused untouched", async () => {
+  it("takes only ids from the form: a retired add-on, an unknown add-on and an unknown intent are refused untouched", async () => {
     const badForms: ReadonlyArray<Record<string, string>> = [
       { addOn: "press-release", intent: "buy" },
       { addOn: "toString", intent: "buy" },
-      { addOn: "local-seo", intent: "free" },
-      { addOn: "local-seo" },
+      { addOn: "social-media", intent: "free" },
+      { addOn: "social-media" },
       {},
     ];
     for (const fields of badForms) {
@@ -74,7 +73,7 @@ describe("startAddOnAction", () => {
   it("answers with a plain message, and logs without the message, when opening the checkout throws", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.mocked(startAddOnCheckoutFor).mockRejectedValue(Object.assign(new Error("secret detail"), { code: "23505" }));
-    expect(await startAddOnAction(IDLE, form({ addOn: "local-seo", intent: "buy" }))).toEqual({
+    expect(await startAddOnAction(IDLE, form({ addOn: "social-media", intent: "buy" }))).toEqual({
       status: "error",
       message: GENERIC_ERROR_MESSAGE,
     });
@@ -83,34 +82,14 @@ describe("startAddOnAction", () => {
 
   it("does nothing when the customer may not use the page", async () => {
     vi.mocked(requireCustomerAccess).mockRejectedValueOnce(new Error("NEXT_REDIRECT /login"));
-    await expect(startAddOnAction(IDLE, form({ addOn: "local-seo", intent: "buy" }))).rejects.toThrow("NEXT_REDIRECT /login");
+    await expect(startAddOnAction(IDLE, form({ addOn: "social-media", intent: "buy" }))).rejects.toThrow("NEXT_REDIRECT /login");
     expect(startAddOnCheckoutFor).not.toHaveBeenCalled();
-  });
-});
-
-describe("buyPressReleaseAction", () => {
-  it("opens the payment for the signed-in customer and goes there", async () => {
-    vi.mocked(startPressReleaseFor).mockResolvedValue({ kind: "redirect", url: "/billing/charges/pay/c1" });
-    await expect(buyPressReleaseAction()).rejects.toThrow("NEXT_REDIRECT /billing/charges/pay/c1");
-    expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow" });
-    expect(startPressReleaseFor).toHaveBeenCalledWith(CUSTOMER);
-  });
-
-  it("hands back the reason when it is refused", async () => {
-    vi.mocked(startPressReleaseFor).mockResolvedValue({ kind: "refused", message: "That's a lot of attempts in a short time." });
-    expect(await buyPressReleaseAction()).toEqual({ status: "error", message: "That's a lot of attempts in a short time." });
-  });
-
-  it("answers with a plain message when it throws", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => undefined);
-    vi.mocked(startPressReleaseFor).mockRejectedValue(new Error("boom"));
-    expect(await buyPressReleaseAction()).toEqual({ status: "error", message: GENERIC_ERROR_MESSAGE });
   });
 });
 
 describe("endAddOnAction", () => {
   it("ends the add-on for the signed-in customer, refreshes the page and says it saved", async () => {
-    vi.mocked(scheduleAddOnEndFor).mockResolvedValue({ kind: "done", message: "Local SEO will stop on 12 November 2026. You won't be charged again." });
+    vi.mocked(scheduleAddOnEndFor).mockResolvedValue({ kind: "done", message: "Social media will stop on 12 November 2026. You won't be charged again." });
     expect(await endAddOnAction(IDLE, form({ addOnSubscriptionId: ROW_ID, kind: "cancel" }))).toEqual({ status: "saved" });
     expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow" });
     expect(scheduleAddOnEndFor).toHaveBeenCalledWith(CUSTOMER, ROW_ID, "cancel", expect.any(Date));
@@ -124,10 +103,10 @@ describe("endAddOnAction", () => {
   });
 
   it("hands back the server's reason on the form when refused, keeps the values, and still refreshes so the page is current", async () => {
-    vi.mocked(scheduleAddOnEndFor).mockResolvedValue({ kind: "refused", message: "Local SEO is already set to stop on 12 November 2026." });
+    vi.mocked(scheduleAddOnEndFor).mockResolvedValue({ kind: "refused", message: "Social media is already set to stop on 12 November 2026." });
     expect(await endAddOnAction(IDLE, form({ addOnSubscriptionId: ROW_ID, kind: "cancel" }))).toEqual({
       status: "error",
-      message: "Local SEO is already set to stop on 12 November 2026.",
+      message: "Social media is already set to stop on 12 November 2026.",
       field: null,
       values: { addOnSubscriptionId: ROW_ID, kind: "cancel" },
     });
