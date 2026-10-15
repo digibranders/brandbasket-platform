@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
+import { formatMoney } from "@fynix/shared/lib/money";
 import { TickIcon } from "@fynix/shared/ui/icons";
 import { FreeListingButton } from "@/components/panel/membership/free-listing-button";
+import { OrderSummary } from "@/components/panel/membership/order-summary";
 import { OfferCard } from "@/components/panel/membership/offer-card";
+import { MembershipPayForm } from "@/components/panel/membership/membership-pay-form";
 import { MembershipCheckout } from "@/components/panel/membership/membership-checkout";
-import { PlanMark } from "@/components/panel/plan-mark";
 import { offersChoice, sellsFreeListing } from "@/lib/brand";
 import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
 import {
@@ -15,6 +17,7 @@ import {
   isWaitingOnPayment,
   membershipPathFor,
   membershipPriceParts,
+  orderSummary,
   plansMoveToUpgradePage,
   readMembershipPaymentNotice,
   type MembershipTier,
@@ -22,7 +25,7 @@ import {
 import { getCustomerBusinessEntry, isAwaitingMembership, requireCustomerAccess } from "@/lib/server/customer-access";
 import { loadMembershipCheckout } from "@/lib/server/membership-checkout";
 import { requestBrand } from "@/lib/server/request-brand";
-import { addOfferAddOn, chooseFreeListing } from "@/app/app-host/(protected)/premium/actions";
+import { addOfferAddOn, chooseFreeListing, startMembership } from "@/app/app-host/(protected)/premium/actions";
 
 interface MembershipPageProps {
   readonly tier: MembershipTier;
@@ -85,13 +88,27 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   // What the plan costs this business: the list price less a code's share. The lifetime offer is on the add-ons, not the plan.
   const price = plan === null ? null : membershipPriceParts(plan, view.discount?.amountCents ?? 0);
 
-  return (
-    <div className="grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div>
-        <h1 className="panel-title">{HEADINGS[tier](brand.shortName)}</h1>
+  // Only an account with something to pay is shown the summary and the Pay button: one whose payment is on its way, or under
+  // review, is told so by the checkout instead.
+  const payable = plan !== null && !waiting && !billing.paymentUnderReview;
+  const paying = payable ? orderSummary(plan, view.discount?.amountCents ?? 0) : null;
 
-        {/* What the plan holds, sorted into the three layers it stacks. */}
-        <div className="mt-8 max-w-xl space-y-7">
+  return (
+    <div className="grid gap-x-12 gap-y-8 pb-16 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:pb-0">
+      <div className="min-w-0 space-y-10">
+        <div>
+          <h1 className="panel-title">{HEADINGS[tier](brand.shortName)}</h1>
+          {price === null ? null : (
+            <p className="mt-3 flex flex-wrap items-baseline gap-x-2 text-ink-soft">
+              <span className={`font-serif text-3xl tabular-nums ${tier === "premium" ? "text-gold-deep" : "text-accent"}`}>{price.amount}</span>
+              {price.was === null ? null : <s className="text-sm">{price.was}</s>}
+              <span className="text-sm">{price.terms}</span>
+            </p>
+          )}
+        </div>
+
+        {/* What the plan holds, sorted into the layers it stacks. */}
+        <div className="max-w-xl space-y-7">
           {groups.map((group) => (
             <section key={group.name} aria-label={group.name}>
               <h2 className="panel-section">{group.name}</h2>
@@ -105,42 +122,37 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
               </ul>
             </section>
           ))}
-        </div>
-        {offersChoice(brand, other.tier) ? (
-          <p className="mt-5 max-w-xl text-sm text-ink-soft">
-            <Link href={membershipPathFor(other.tier)} className="link-underline">
-              {other.line}
-            </Link>
-          </p>
-        ) : null}
-      </div>
-
-      {/* The plan's price, beside what it includes. */}
-      <div className="h-fit">
-        {price === null ? null : (
-          <div>
-            <p className="flex items-center gap-2 text-sm font-medium">
-              <PlanMark tier={tier} className="size-5" />
-              {tier === "premium" ? "Premium" : "Care"}
+          {offersChoice(brand, other.tier) ? (
+            <p className="text-sm text-ink-soft">
+              <Link href={membershipPathFor(other.tier)} className="link-underline">
+                {other.line}
+              </Link>
             </p>
-            <p className={`mt-3 font-serif text-5xl tabular-nums ${tier === "premium" ? "text-gold-deep" : "text-accent"}`}>{price.amount}</p>
-            {price.was === null ? null : (
-              <p className="text-sm text-ink-soft">
-                <s>{price.was}</s> before your discount
-              </p>
-            )}
-            <p className="text-sm text-ink-soft">{price.terms}</p>
-          </div>
-        )}
+          ) : null}
+        </div>
+
+        {/* The first-checkout offer: shown until the first payment, before the way to pay. */}
+        {view.offer.kind === "available" && payable ? <OfferCard action={addOfferAddOn} claimed={view.offer.claimed} /> : null}
+
+        {/* A code and the optional GST details; or why there is nothing to pay. */}
+        <MembershipCheckout tier={tier} view={view} notice={notice} billing={billing} includePay={false} />
       </div>
 
-      {/* The first-checkout offer, then the way to pay (a code, the invoice details and the Pay bar), in one container so the Pay bar can stay on screen. */}
-      <div aria-label="Payment" role="group" className="space-y-10 lg:col-span-2">
-        {view.offer.kind === "available" && !waiting && !billing.paymentUnderReview ? (
-          <OfferCard action={addOfferAddOn} claimed={view.offer.claimed} />
-        ) : null}
-        <MembershipCheckout tier={tier} view={view} notice={notice} billing={billing} />
-      </div>
+      {/* Today's payment, following the page down beside it on a wide screen and last on a phone. */}
+      {plan !== null && payable ? (
+        <aside aria-label="Payment" className="lg:sticky lg:top-6">
+          <OrderSummary tier={tier} view={{ ...view, plan }} />
+        </aside>
+      ) : null}
+
+      {/* On a phone the Pay button floats at the bottom, always in reach; the grid is its parent so it holds from the first screen. */}
+      {paying === null ? null : (
+        <div className="pointer-events-none sticky bottom-0 z-10 pb-4 lg:hidden">
+          <div className="pointer-events-auto [&_button]:shadow-[0_10px_28px_-10px_rgb(20_20_30/0.55)]">
+            <MembershipPayForm action={startMembership} amount={formatMoney(paying.totalCents, plan?.currency ?? "INR")} tier={tier} />
+          </div>
+        </div>
+      )}
 
       {/* Not while we wait to hear about a payment just made: the plan is about to open. */}
       {held && sellsFreeListing(brand) && (!waiting || billing.paymentUnderReview) ? (

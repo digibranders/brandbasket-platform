@@ -1,3 +1,4 @@
+import { chargedAmountCents } from "@fynix/billing/tax";
 import { formatMoney, type MoneyCurrency } from "@fynix/shared/lib/money";
 import { BRAND, featureShownTo, type Brand } from "@/lib/brand";
 import { featuresOf, MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
@@ -160,6 +161,29 @@ export function membershipPriceParts(
     // The list price, shown struck through beside a discounted one.
     was: discountCents > 0 ? formatMoney(plan.recurringAmountCents, plan.currency) : null,
   };
+}
+
+/** What today's payment is made of, in the plan's minor units, for the order summary beside the Pay button. */
+export interface OrderSummary {
+  /** The plan's price before any code. */
+  readonly listCents: number;
+  /** What the applied code takes off, or 0. */
+  readonly discountCents: number;
+  /** The taxable amount: the price less the code. */
+  readonly netCents: number;
+  readonly gstCents: number;
+  /** What the provider takes today: the same figure the Pay button shows and the checkout freezes. */
+  readonly totalCents: number;
+}
+
+/** The first payment broken into its parts. The total comes from chargedAmountCents, the one place the charge is worked out. */
+export function orderSummary(
+  plan: { readonly initialAmountCents: number; readonly taxRateBasisPoints: number },
+  discountCents: number,
+): OrderSummary {
+  const netCents = plan.initialAmountCents - discountCents;
+  const totalCents = chargedAmountCents(plan.initialAmountCents, discountCents, plan.taxRateBasisPoints);
+  return { listCents: plan.initialAmountCents, discountCents, netCents, gstCents: totalCents - netCents, totalCents };
 }
 
 /** The Pay form's state: idle, or the reason the payment could not be started. */

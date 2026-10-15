@@ -10,6 +10,7 @@ import {
   groupedBenefits,
   membershipBenefits,
   membershipPriceParts,
+  orderSummary,
   membershipFailedHref,
   membershipPathFor,
   membershipPriceLine,
@@ -136,6 +137,19 @@ describe("membershipPriceParts", () => {
     const care = { recurringAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
     expect(membershipPriceParts(care, 50_000)).toEqual({ amount: "₹2,499", terms: "a month + 18% GST", was: "₹2,999" });
     expect(membershipPriceParts(care, 14_995).amount).toBe("₹2,849.05");
+  });
+});
+
+describe("orderSummary", () => {
+  const care = { initialAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
+
+  it("works out today's payment: the price, any code, the GST and the total the provider takes", () => {
+    expect(orderSummary(care, 0)).toEqual({ listCents: 299_900, discountCents: 0, netCents: 299_900, gstCents: 53_982, totalCents: 353_882 });
+    expect(orderSummary(care, 30_000)).toEqual({ listCents: 299_900, discountCents: 30_000, netCents: 269_900, gstCents: 48_582, totalCents: 318_482 });
+  });
+
+  it("charges no tax on a plan that carries none", () => {
+    expect(orderSummary({ ...care, taxRateBasisPoints: 0 }, 0)).toMatchObject({ gstCents: 0, totalCents: 299_900 });
   });
 });
 

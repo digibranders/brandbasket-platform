@@ -19,6 +19,8 @@ interface MembershipCheckoutProps {
   /** What the address says about a payment the customer was sent back from, or null. */
   readonly notice: MembershipPaymentNotice | null;
   readonly billing: GrantedCustomer["billing"];
+  /** False when the page draws the order summary and the Pay button itself (membership-page.tsx). Defaults to true. */
+  readonly includePay?: boolean;
 }
 
 /**
@@ -29,7 +31,7 @@ interface MembershipCheckoutProps {
  * An account whose payment is on its way, or under review, is told so and offered nothing to pay: a second payment
  * for the same plan would only be refused.
  */
-export async function MembershipCheckout({ tier, view, notice, billing }: MembershipCheckoutProps): Promise<ReactElement> {
+export async function MembershipCheckout({ tier, view, notice, billing, includePay = true }: MembershipCheckoutProps): Promise<ReactElement> {
   const { plan, discount, lapsedCode, billingDetails } = view;
   // Only an account with a checkout open can be waiting to hear about a payment: the address alone is not believed.
   const checkout = unsettledCheckout(billing.subscription);
@@ -77,18 +79,15 @@ export async function MembershipCheckout({ tier, view, notice, billing }: Member
           compact
         />
         {billingDetails === null ? null : <BillingDetails view={billingDetails} variant="checkout" />}
-        <p className="text-sm leading-relaxed text-ink-soft">{describeDiscountedPlanTerms(plan, discount)}</p>
+        {includePay ? <p className="text-sm leading-relaxed text-ink-soft">{describeDiscountedPlanTerms(plan, discount)}</p> : null}
       </div>
-      {/*
-        The Pay button stays on screen while the page is scrolled, so it is never lost below the offer and the forms. It is a
-        sibling of the blocks above and of the offer card, because a sticky element only holds within its parent: the page
-        puts both in one container that runs from the offer to the end.
-      */}
-      <div className="pointer-events-none sticky bottom-0 z-10 pb-4 pt-3">
-        <div className="pointer-events-auto [&_button]:shadow-[0_10px_28px_-10px_rgb(20_20_30/0.55)]">
-          <MembershipPayForm action={startMembership} amount={discountedFirstPaymentAmount(plan, discount)} tier={tier} />
+      {includePay ? (
+        <div className="pointer-events-none sticky bottom-0 z-10 pb-4 pt-3">
+          <div className="pointer-events-auto [&_button]:shadow-[0_10px_28px_-10px_rgb(20_20_30/0.55)]">
+            <MembershipPayForm action={startMembership} amount={discountedFirstPaymentAmount(plan, discount)} tier={tier} />
+          </div>
         </div>
-      </div>
+      ) : null}
     </>
   );
 }

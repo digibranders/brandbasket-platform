@@ -28,7 +28,7 @@ export async function MembershipGateShell({ children }: MembershipGateShellProps
         <SignOutButton signOut={signOut} />
       </header>
 
-      <main id="main" className="mx-auto w-full max-w-3xl flex-1 py-12 sm:py-16">
+      <main id="main" className="mx-auto w-full max-w-5xl flex-1 py-12 sm:py-16">
         {children}
       </main>
     </div>
