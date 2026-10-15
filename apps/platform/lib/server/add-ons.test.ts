@@ -1156,7 +1156,7 @@ describe("loadAddOnsPage", () => {
     const care = await loadAddOnsPage(customer, NOW);
     expect(care.addOns).toEqual([
       expect.objectContaining({ kind: "ready", addOn: "social-media", view: { state: "none" }, actions: ["buy"], endTargetId: null, price: expect.objectContaining({ chargedCents: 235_882 }) }),
-      expect.objectContaining({ kind: "ready", addOn: "lead-generation", view: { state: "none" }, actions: ["buy"], price: expect.objectContaining({ chargedCents: 471_882 }) }),
+      expect.objectContaining({ kind: "ready", addOn: "lead-generation", view: { state: "none" }, actions: ["buy"], price: expect.objectContaining({ chargedCents: 589_882 }) }),
       expect.objectContaining({ kind: "ready", addOn: "advertising", view: { state: "none" }, actions: ["buy"], price: expect.objectContaining({ chargedCents: 707_882 }) }),
     ]);
 

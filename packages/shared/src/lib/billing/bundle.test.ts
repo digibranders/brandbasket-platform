@@ -16,7 +16,7 @@ describe("bundleLines", () => {
   it("takes the 5% lifetime offer off each add-on, to the paisa", () => {
     expect(bundleLines(["social-media", "lead-generation", "advertising"])).toEqual([
       { addOn: "social-media", title: "Social media", listCents: 199_900, offerCents: 9_995, netCents: 189_905 },
-      { addOn: "lead-generation", title: "Outreach and lead generation", listCents: 399_900, offerCents: 19_995, netCents: 379_905 },
+      { addOn: "lead-generation", title: "Outreach and lead generation", listCents: 499_900, offerCents: 24_995, netCents: 474_905 },
       { addOn: "advertising", title: "Paid advertising", listCents: 599_900, offerCents: 29_995, netCents: 569_905 },
     ]);
   });

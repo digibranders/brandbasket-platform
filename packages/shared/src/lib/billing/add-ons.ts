@@ -51,7 +51,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Outreach and lead generation",
     line: "Find and engage the right audience to get more business.",
     billing: "monthly",
-    paise: 3_999 * PAISE_PER_RUPEE,
+    paise: 4_999 * PAISE_PER_RUPEE,
     unit: "a month",
   },
   {
