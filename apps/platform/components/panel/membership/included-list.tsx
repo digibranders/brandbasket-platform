@@ -4,12 +4,10 @@ import type { IncludedIcon, IncludedItem } from "@/lib/checkout-included";
 /** One small line icon, drawn here so no icon font or image file is needed. Decorative: the words beside it say the same. */
 function Glyph({ icon }: { readonly icon: IncludedIcon }): ReactElement {
   if (icon === "chatbot") {
-    // The chatbot's own mark: a heavy open ring, drawn solid because it is a logo, not a line icon.
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-[1.125rem] shrink-0 text-ink">
-        <path d="M12 3.2a8.8 8.8 0 1 0 0 17.6c2.6 0 4.5-.9 6-2.6l-2.7-2.3a4.6 4.6 0 0 1-3.3 1.4 4.9 4.9 0 1 1 0-9.8c1.3 0 2.4.5 3.3 1.4L18 5.8a8.4 8.4 0 0 0-6-2.6Z" fill="currentColor" />
-      </svg>
-    );
+    // The chatbot's own mark, as its maker publishes it (public/brand/oyechats-icon.png).
+    // A plain img: it is a small fixed picture, which next/image would only add work to.
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src="/brand/oyechats-icon.png" alt="" width={18} height={18} className="size-[1.125rem] shrink-0" />;
   }
   return (
     <svg
