@@ -78,15 +78,16 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
           </p>
         ) : null}
       </div>
-      {foldedAway ? (
+      {saved === null && variant === "checkout" ? (
+        // The same control opens and folds the form: pressing it again puts the form away.
         <button
           type="button"
-          aria-expanded={false}
+          aria-expanded={editing}
           aria-controls="billing-details-form"
-          onClick={() => setEditing(true)}
+          onClick={() => setEditing(!editing)}
           className="mt-1 text-sm text-ink-soft underline decoration-line underline-offset-4 transition-colors duration-300 ease-calm hover:text-ink"
         >
-          Add your GST billing details (optional)
+          {editing ? "Hide GST billing details" : "Add your GST billing details (optional)"}
         </button>
       ) : null}
       {saved === null ? null : (
@@ -106,7 +107,7 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
         </Button>
       )}
       {editing ? (
-        <div id="billing-details-form" className={saved === null ? "mt-5" : "mt-6 border-t border-line pt-6"}>
+        <div id="billing-details-form" className={saved === null ? "mt-4" : "mt-6 border-t border-line pt-6"}>
           <BillingDetailsForm view={view} action={saveAndClose} layout={variant === "card" ? "wide" : "narrow"} />
         </div>
       ) : null}

@@ -117,7 +117,12 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
 
       {/* Today's payment, following the page down beside it on a wide screen and last on a phone. */}
       {plan !== null && payable ? (
-        <aside aria-label="Payment" className="lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overscroll-contain">
+        <aside
+          aria-label="Payment"
+          // Following the page down, and scrolling inside itself if it is taller than the window. While the billing form is
+          // open it is too tall for that to be comfortable, so the summary lets go and scrolls with the page instead.
+          className="lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overscroll-contain lg:has-[#billing-details-form]:static lg:has-[#billing-details-form]:max-h-none lg:has-[#billing-details-form]:overflow-visible"
+        >
           <OrderSummary
             tier={tier}
             view={{ ...view, plan }}
