@@ -85,7 +85,7 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   const price = plan === null ? null : membershipPriceParts(plan, view.discount?.amountCents ?? 0);
 
   return (
-    <div className="grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div className="grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_25rem]">
       <div>
         <h1 className="panel-title">{HEADINGS[tier](brand.shortName)}</h1>
 
