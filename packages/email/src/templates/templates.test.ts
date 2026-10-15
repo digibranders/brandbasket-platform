@@ -708,7 +708,7 @@ describe("paymentReceivedEmail", () => {
     ownerName: "Ravi",
     businessName: "Maple Cafe",
     currency: "INR",
-    lines: [{ label: "Plan, first month", amountCents: 299_900 }],
+    lines: [{ label: "Plan", amountCents: 299_900 }],
     gstRatePercent: 18,
     gstCents: 53_982,
     totalCents: 353_882,
@@ -723,7 +723,7 @@ describe("paymentReceivedEmail", () => {
     expect(email.subject).toBe("We received your payment of ₹3,538.82");
     expect(email.template).toBe("payment-received");
     for (const body of [email.bodyText, email.bodyHtml]) {
-      for (const detail of ["Plan, first month", "₹2,999.00", "GST 18%", "₹539.82", "₹3,538.82", "15 October 2026", "Maple Cafe"]) {
+      for (const detail of ["Plan", "₹2,999.00", "GST 18%", "₹539.82", "₹3,538.82", "15 October 2026", "Maple Cafe"]) {
         expect(body).toContain(detail);
       }
     }
