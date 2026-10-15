@@ -143,6 +143,11 @@ export const RESERVED_SUBDOMAIN_NAMES: ReadonlySet<string> = new Set([
   "store", "test", "testing", "staging", "dev", "demo", "preview", "localhost", "root", "postmaster", "webmaster", "abuse",
   "noreply", "no-reply", "oyechats", "razorpay", "bank", "paypal", "google", "microsoft", "apple", "whatsapp", "instagram",
   "facebook", "linkedin",
+  // Names Microsoft 365 mail and the old API use on the company's own domain, so a free address never shadows a record that is
+  // already there (an explicit DNS record wins over the wildcard, but the customer would be told the name was theirs).
+  "autodiscover", "autoconfig", "lyncdiscover", "sip", "msoid", "enterpriseregistration", "enterpriseenrollment", "selector1",
+  "selector2", "webmail", "calendar", "pavel", "vpn", "git", "docs", "wiki", "stage", "uat", "internal", "intranet", "portal",
+  "client", "clients", "customer", "customers", "team", "careers", "news", "press", "legal", "terms", "privacy",
 ]);
 
 const SUBDOMAIN_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

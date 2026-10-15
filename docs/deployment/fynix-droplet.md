@@ -277,10 +277,11 @@ A customer with no domain of their own can choose a free address in the Your dom
 they enter their own domain, which replaces it. It is offered only when `CLIENT_SITE_BASE_DOMAIN` is set in `platform.env.local`
 (no restart of anything else; restart `fynix-app`). Setting it only decides the names. Before turning it on:
 
-- **Pick the base.** `fynix.digital` itself gives first-level names (`harbour.fynix.digital`), which Cloudflare's free Universal
-  certificate already covers, so a proxied wildcard record `*` is enough. `sites.fynix.digital` keeps customers' names apart from
-  your own, but its names are second-level (`harbour.sites.fynix.digital`), which the free certificate does **not** cover: it
-  needs Cloudflare's Advanced Certificate Manager or a wildcard certificate of your own.
+- **The base is `fynix.digital` itself.** Names are first-level (`harbour.fynix.digital`), which Cloudflare's free Universal
+  certificate already covers when the wildcard record is proxied, so no extra certificate is needed. A second-level base such as
+  `sites.fynix.digital` would not be covered by that certificate. Because the names share the company's own domain, the names
+  other records use (`app`, `staff`, `console`, `api`, `www`, Microsoft 365's `autodiscover` and the rest) are in the reserved
+  list, and a record you add later should be added to it too.
 - **Wildcard DNS.** A `*` record on the base. Explicit records (`app`, `staff`, `api`, `www`, mail) keep winning over a wildcard,
   and MX records are not touched.
 - **Whatever serves customers' websites must answer to those names.** The app only stores the address; it does not serve the

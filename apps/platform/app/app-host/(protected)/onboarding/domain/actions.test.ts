@@ -77,9 +77,9 @@ describe("a free address", () => {
   });
 
   it("refuses a name that would be one of the platform's own hosts, even one the reserved list does not know", async () => {
-    hoisted.origins.ADMIN_ORIGIN = "https://portal.fynix.digital";
+    hoisted.origins.ADMIN_ORIGIN = "https://hub.fynix.digital";
 
-    expect(await run("portal")).toMatchObject({ status: "error", field: "name", message: "That name is kept for us. Choose another." });
+    expect(await run("hub")).toMatchObject({ status: "error", field: "name", message: "That name is kept for us. Choose another." });
     expect(savePrimaryDomain).not.toHaveBeenCalled();
   });
 

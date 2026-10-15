@@ -190,7 +190,7 @@ describe("readSubdomainName", () => {
   });
 
   it("refuses the names kept for us, however they are written", () => {
-    for (const reserved of ["app", "console", "API", " www ", "fynix", "login", "Support"]) {
+    for (const reserved of ["app", "console", "API", " www ", "fynix", "login", "Support", "autodiscover", "Selector1", "pavel"]) {
       expect(readSubdomainName(reserved)).toMatchObject({ ok: false });
     }
     expect(readSubdomainName("app")).toEqual({ ok: false, message: "That name is kept for us. Choose another." });
