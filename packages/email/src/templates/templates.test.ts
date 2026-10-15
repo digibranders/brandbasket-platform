@@ -4,6 +4,7 @@ import { confirmEmailEmail } from "./confirm-email";
 import { leadReceivedEmail } from "./lead-received";
 import { listingEnquiryEmail } from "./listing-enquiry";
 import { passwordResetEmail } from "./password-reset";
+import { paymentReceivedEmail } from "./payment-received";
 import { privacyRequestCodeEmail } from "./privacy-request-code";
 import { previewApprovedEmail } from "./preview-approved";
 import { privacyRequestAlertEmail, privacyRequestsDueEmail } from "./privacy-request-alert";
@@ -698,5 +699,79 @@ describe("privacyRequestCodeEmail", () => {
     for (const code of ["12345", "1234567", "12345a", "<b>1</b>", ""]) {
       expect(() => privacyRequestCodeEmail({ ...input, code })).toThrow("code");
     }
+  });
+});
+
+describe("paymentReceivedEmail", () => {
+  const base = {
+    to: "ravi@maplecafe.in",
+    ownerName: "Ravi",
+    businessName: "Maple Cafe",
+    currency: "INR",
+    lines: [{ label: "Plan, first month", amountCents: 299_900 }],
+    gstRatePercent: 18,
+    gstCents: 53_982,
+    totalCents: 353_882,
+    paidAt: new Date("2026-10-15T08:00:00Z"),
+    invoiceUrl: "https://app.fynix.digital/billing/invoices/0192f3c4",
+    logoUrl: "https://app.fynix.digital/brand/fynix-logo-dark.png",
+    nextPayment: { amountCents: 353_882, dueOn: new Date("2026-11-15T08:00:00Z") },
+  } as const;
+
+  it("puts the amount in the subject and the receipt lines in both bodies", () => {
+    const email = paymentReceivedEmail(base);
+    expect(email.subject).toBe("We received your payment of ₹3,538.82");
+    expect(email.template).toBe("payment-received");
+    for (const body of [email.bodyText, email.bodyHtml]) {
+      for (const detail of ["Plan, first month", "₹2,999.00", "GST 18%", "₹539.82", "₹3,538.82", "15 October 2026", "Maple Cafe"]) {
+        expect(body).toContain(detail);
+      }
+    }
+  });
+
+  it("links to the invoice and names the next payment", () => {
+    const email = paymentReceivedEmail(base);
+    expect(email.bodyHtml).toContain('href="https://app.fynix.digital/billing/invoices/0192f3c4"');
+    expect(email.bodyText).toContain("https://app.fynix.digital/billing/invoices/0192f3c4");
+    expect(email.bodyText).toContain("Your next payment is ₹3,538.82 on 15 November 2026.");
+    expect(email.bodyHtml).toContain("15 November 2026");
+  });
+
+  it("leaves the next payment out when there is none, and the name out when it is unknown", () => {
+    const email = paymentReceivedEmail({ ...base, ownerName: null, nextPayment: null });
+    expect(email.bodyText).not.toContain("next payment");
+    expect(email.bodyHtml).not.toContain("Next payment");
+    expect(email.bodyText).toContain("Hi, thank you for your payment.");
+  });
+
+  it("shows a discount as its own line", () => {
+    const email = paymentReceivedEmail({
+      ...base,
+      lines: [
+        { label: "Social media, first month", amountCents: 199_900 },
+        { label: "Lifetime offer, 5% off", amountCents: -9_995 },
+      ],
+      gstCents: 34_183,
+      totalCents: 224_088,
+    });
+    expect(email.bodyText).toContain("Lifetime offer, 5% off: minus ₹99.95");
+  });
+
+  it("escapes what customers typed", () => {
+    const email = paymentReceivedEmail({ ...base, businessName: "<b>Cafe</b> & Co", ownerName: "<i>Ravi</i>" });
+    expect(email.bodyHtml).not.toContain("<b>Cafe</b>");
+    expect(email.bodyHtml).toContain("&lt;b&gt;Cafe&lt;/b&gt; &amp; Co");
+    expect(email.bodyHtml).not.toContain("<i>Ravi</i>");
+  });
+
+  it("refuses links that are not web addresses and amounts that are not whole minor units", () => {
+    expect(() => paymentReceivedEmail({ ...base, invoiceUrl: "javascript:alert(1)" })).toThrow("invoiceUrl");
+    expect(() => paymentReceivedEmail({ ...base, totalCents: 10.5 })).toThrow(RangeError);
+  });
+
+  it("uses no dashes as punctuation and no exclamation marks", () => {
+    const email = paymentReceivedEmail(base);
+    expect(email.bodyText).not.toMatch(/[!\u2014\u2013]/);
+    expect(email.subject).not.toMatch(/[!\u2014\u2013]/);
   });
 });
