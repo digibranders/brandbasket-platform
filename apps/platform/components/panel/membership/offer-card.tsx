@@ -21,15 +21,15 @@ function OfferRow({ addOn, claimed, action }: { readonly addOn: AddOn; readonly 
   const message = state.status === "error" && !isPending ? state.message : null;
   const offered = addOnPrice(addOn, false, true);
   return (
-    <li className="py-4">
-      <form action={formAction} className="flex flex-wrap items-center gap-x-4 gap-y-3">
+    <li className="py-3.5 sm:py-4">
+      <form action={formAction} className="flex flex-wrap items-center gap-x-3 gap-y-3 sm:gap-x-4">
         <input type="hidden" name="addOn" value={addOn.id} />
         <AddOnMark addOn={addOn.id} />
         <div className="min-w-[10rem] flex-1">
-          <p className="text-base font-semibold leading-snug text-ink">{addOn.title}</p>
+          <p className="text-[0.9375rem] font-semibold leading-snug text-ink sm:text-base">{addOn.title}</p>
           <p className="mt-0.5 text-sm leading-snug text-ink-soft">{addOn.line}</p>
         </div>
-        <div className="flex basis-full items-center justify-between gap-4 sm:basis-auto sm:justify-end">
+        <div className="flex basis-full items-center justify-between gap-4 pl-[3.25rem] sm:basis-auto sm:justify-end sm:pl-0">
           <p className="text-left tabular-nums sm:text-right">
             <s className="block text-xs text-ink-soft">{formatMoney(offered.listCents, "INR")}</s>
             <span className="block text-lg font-semibold leading-tight text-ink">{formatMoney(offered.netCents, "INR")}</span>
@@ -62,23 +62,23 @@ function OfferRow({ addOn, claimed, action }: { readonly addOn: AddOn; readonly 
  */
 export function OfferCard({ action, claimed }: OfferCardProps): ReactElement {
   return (
-    <section aria-label="Checkout offer" className="rounded-card border border-ink-soft/40 bg-accent-pale/55 p-5 sm:p-7">
+    <section aria-label="Checkout offer" className="rounded-card border border-ink-soft/40 bg-accent-pale/55 p-4 sm:p-7">
       <div className="flex items-start justify-between gap-6">
         <div className="min-w-0">
-          <p className="inline-flex rounded-full bg-gold/25 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-gold-deep">
+          <p className="inline-flex rounded-full bg-gold/25 px-3 py-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-gold-deep sm:px-4 sm:py-2 sm:text-xs sm:tracking-[0.18em]">
             Exclusive checkout offer
           </p>
-          <h2 className="mt-5 font-sans text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-[1.75rem]">{LIFETIME_OFFER_HEADLINE}</h2>
-          <p className="mt-3 max-w-md text-base leading-snug text-ink-soft">{LIFETIME_OFFER_NOTE}</p>
+          <h2 className="mt-4 text-balance font-sans text-xl font-semibold leading-snug tracking-tight text-ink sm:mt-5 sm:text-[1.75rem] sm:leading-tight">{LIFETIME_OFFER_HEADLINE}</h2>
+          <p className="mt-2 max-w-md text-sm leading-snug text-ink-soft sm:mt-3 sm:text-base">{LIFETIME_OFFER_NOTE}</p>
         </div>
         <PlatformBadges className="hidden h-32 w-40 shrink-0 sm:block" />
       </div>
-      <ul aria-label="Add-ons at your lifetime price" className="mt-6 divide-y divide-ink-soft/25 border-y border-ink-soft/25">
+      <ul aria-label="Add-ons at your lifetime price" className="mt-5 divide-y divide-ink-soft/25 border-y border-ink-soft/25">
         {ADD_ONS.map((addOn) => (
           <OfferRow key={addOn.id} addOn={addOn} claimed={claimed.includes(addOn.id)} action={action} />
         ))}
       </ul>
-      <p className="mt-5 flex items-start gap-3 rounded-control bg-accent-pale px-4 py-3.5 text-sm leading-snug text-accent-deep">
+      <p className="mt-4 flex items-start gap-3 rounded-control bg-accent-pale px-3.5 py-3 text-sm sm:mt-5 sm:px-4 sm:py-3.5 leading-snug text-accent-deep">
         <TagIcon className="mt-0.5 size-5 shrink-0" />
         <span>
           Your extra <strong className="font-semibold">{LIFETIME_OFFER_PERCENT}% lifetime discount</strong> is applied automatically to each package you add here.

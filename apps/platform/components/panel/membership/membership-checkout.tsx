@@ -80,12 +80,14 @@ export async function MembershipCheckout({ tier, view, notice, billing }: Member
         <p className="text-sm leading-relaxed text-ink-soft">{describeDiscountedPlanTerms(plan, discount)}</p>
       </div>
       {/*
-        The Pay bar stays on screen while the page is scrolled, so it is never lost below the offer and the forms. It is a
+        The Pay button stays on screen while the page is scrolled, so it is never lost below the offer and the forms. It is a
         sibling of the blocks above and of the offer card, because a sticky element only holds within its parent: the page
         puts both in one container that runs from the offer to the end.
       */}
-      <div className="sticky bottom-0 z-10 -mx-5 border-t border-line bg-paper/95 px-5 pb-4 pt-3 backdrop-blur sm:mx-0 sm:rounded-card sm:border sm:px-4 sm:shadow-[0_-12px_30px_-18px_rgb(42_13_16/0.35)]">
-        <MembershipPayForm action={startMembership} amount={discountedFirstPaymentAmount(plan, discount)} tier={tier} />
+      <div className="pointer-events-none sticky bottom-0 z-10 pb-4 pt-3">
+        <div className="pointer-events-auto [&_button]:shadow-[0_10px_28px_-10px_rgb(20_20_30/0.55)]">
+          <MembershipPayForm action={startMembership} amount={discountedFirstPaymentAmount(plan, discount)} tier={tier} />
+        </div>
       </div>
     </>
   );
