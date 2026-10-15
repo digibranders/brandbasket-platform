@@ -87,18 +87,11 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
 
   return (
     <div className="grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <h1 className="panel-title lg:col-span-2">{HEADINGS[tier](brand.shortName)}</h1>
-
-      {/* The first-checkout offer, across the page like the plan it sits beside: shown until the first payment. */}
-      {view.offer.kind === "available" && !waiting && !billing.paymentUnderReview ? (
-        <div className="lg:col-span-2">
-          <OfferCard action={addOfferAddOn} claimed={view.offer.claimed} />
-        </div>
-      ) : null}
-
       <div>
+        <h1 className="panel-title">{HEADINGS[tier](brand.shortName)}</h1>
+
         {/* What the plan holds, sorted into the three layers it stacks. */}
-        <div className="max-w-xl space-y-7">
+        <div className="mt-8 max-w-xl space-y-7">
           {groups.map((group) => (
             <section key={group.name} aria-label={group.name}>
               <h2 className="panel-section">{group.name}</h2>
@@ -122,8 +115,8 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
         ) : null}
       </div>
 
-      {/* The way to pay, beside the list and staying with it as the page is scrolled. */}
-      <aside aria-label="Payment" className="h-fit space-y-6 lg:sticky lg:top-6">
+      {/* The plan's price, beside what it includes. */}
+      <div className="h-fit">
         {price === null ? null : (
           <div>
             <p className="flex items-center gap-2 text-sm font-medium">
@@ -139,9 +132,19 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
             <p className="text-sm text-ink-soft">{price.terms}</p>
           </div>
         )}
+      </div>
 
+      {/* The first-checkout offer, across the page under the plan and before the way to pay: shown until the first payment. */}
+      {view.offer.kind === "available" && !waiting && !billing.paymentUnderReview ? (
+        <div className="lg:col-span-2">
+          <OfferCard action={addOfferAddOn} claimed={view.offer.claimed} />
+        </div>
+      ) : null}
+
+      {/* The way to pay: a code, the invoice details and the Pay button. */}
+      <section aria-label="Payment" className="max-w-xl lg:col-span-2">
         <MembershipCheckout tier={tier} view={view} notice={notice} billing={billing} />
-      </aside>
+      </section>
 
       {/* Not while we wait to hear about a payment just made: the plan is about to open. */}
       {held && sellsFreeListing(brand) && (!waiting || billing.paymentUnderReview) ? (
