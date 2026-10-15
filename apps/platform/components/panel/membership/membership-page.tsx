@@ -15,7 +15,6 @@ import {
   groupedBenefits,
   isWaitingOnPayment,
   membershipPathFor,
-  membershipPriceParts,
   orderSummary,
   plansMoveToUpgradePage,
   readMembershipPaymentNotice,
@@ -30,19 +29,6 @@ interface MembershipPageProps {
   readonly tier: MembershipTier;
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;
 }
-
-const HEADINGS: Readonly<Record<MembershipTier, (brandName: string) => ReactElement>> = {
-  care: (brandName) => (
-    <>
-      {brandName} <em>Care.</em>
-    </>
-  ),
-  premium: () => (
-    <>
-      Premium <em>membership.</em>
-    </>
-  ),
-};
 
 /** The other plan, for the line under the list: what a person reading this one may want to compare it with. */
 const OTHER: Readonly<Record<MembershipTier, { readonly tier: MembershipTier; readonly line: string }>> = {
@@ -84,8 +70,6 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   const brand = await requestBrand();
 
   const groups = groupedBenefits(tier, brand);
-  // What the plan costs this business: the list price less a code's share. The lifetime offer is on the add-ons, not the plan.
-  const price = plan === null ? null : membershipPriceParts(plan, view.discount?.amountCents ?? 0);
 
   // Only an account with something to pay is shown the summary and the Pay button: one whose payment is on its way, or under
   // review, is told so by the checkout instead.
@@ -95,16 +79,7 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   return (
     <div className="grid gap-x-12 gap-y-8 pb-16 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:pb-0">
       <div className="min-w-0 space-y-10">
-        <div>
-          <h1 className="panel-title">{HEADINGS[tier](brand.shortName)}</h1>
-          {price === null ? null : (
-            <p className="mt-3 flex flex-wrap items-baseline gap-x-2 text-ink-soft">
-              <span className={`font-serif text-3xl tabular-nums ${tier === "premium" ? "text-gold-deep" : "text-accent"}`}>{price.amount}</span>
-              {price.was === null ? null : <s className="text-sm">{price.was}</s>}
-              <span className="text-sm">{price.terms}</span>
-            </p>
-          )}
-        </div>
+        <h1 className="sr-only">Checkout</h1>
 
         {offersChoice(brand, other.tier) ? (
           <p className="max-w-xl text-sm text-ink-soft">
@@ -115,7 +90,11 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
         ) : null}
 
         {/* The first-checkout offer: shown until the first payment, before the way to pay. */}
-        {view.offer.kind === "available" && payable ? <OfferCard action={addOfferAddOn} claimed={view.offer.claimed} /> : null}
+        {view.offer.kind === "available" && payable ? (
+          <div className="max-w-xl">
+            <OfferCard action={addOfferAddOn} claimed={view.offer.claimed} />
+          </div>
+        ) : null}
 
         {/* Why there is nothing to pay, when there is not: the code and the GST details are under Pay in the summary. */}
         {payable ? null : <MembershipCheckout tier={tier} view={view} notice={notice} billing={billing} includePay={false} />}

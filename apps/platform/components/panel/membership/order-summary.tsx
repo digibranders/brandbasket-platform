@@ -5,7 +5,7 @@ import { formatMoney } from "@fynix/shared/lib/money";
 import { MembershipPayForm } from "@/components/panel/membership/membership-pay-form";
 import { orderSummary, type MembershipTier } from "@/lib/membership";
 import type { MembershipCheckoutView } from "@/lib/server/membership-checkout";
-import { describeDiscountedPlanTerms, initialTermLabel } from "@fynix/shared/lib/billing/terms";
+import { describeDiscountedPlanTerms } from "@fynix/shared/lib/billing/terms";
 import { startMembership } from "@/app/app-host/(protected)/premium/actions";
 
 interface OrderSummaryProps {
@@ -18,11 +18,11 @@ interface OrderSummaryProps {
   readonly children?: ReactNode;
 }
 
-function Row({ label, amount, tone }: { readonly label: string; readonly amount: string; readonly tone?: "good" }): ReactElement {
+function Row({ label, amount }: { readonly label: string; readonly amount: string }): ReactElement {
   return (
     <div className="flex items-baseline justify-between gap-4 py-1.5 text-sm">
       <dt className="text-ink-soft">{label}</dt>
-      <dd className={`tabular-nums ${tone === "good" ? "text-success" : "text-ink"}`}>{amount}</dd>
+      <dd className="tabular-nums text-ink">{amount}</dd>
     </div>
   );
 }
@@ -45,8 +45,11 @@ export function OrderSummary({ tier, view, groups, children }: OrderSummaryProps
       <dl className="mt-3 divide-y divide-line">
         <div className="py-1.5">
           <div className="flex items-baseline justify-between gap-4 text-sm">
-            <dt className="text-ink">{`${tier === "premium" ? "Premium" : "Care"} plan, ${initialTermLabel(plan.initialTermMonths).toLowerCase()}`}</dt>
-            <dd className="tabular-nums text-ink">{money(parts.listCents)}</dd>
+            <dt className="text-ink">Website and hosting</dt>
+            <dd className="tabular-nums text-ink">
+              {parts.discountCents > 0 ? <s className="mr-2 text-xs text-ink-soft">{money(parts.listCents)}</s> : null}
+              <span className={parts.discountCents > 0 ? "font-semibold text-success" : undefined}>{money(parts.netCents)}</span>
+            </dd>
           </div>
           {/* What the plan includes, kept out of the way until asked for. */}
           <details className="group mt-1.5">
@@ -71,7 +74,6 @@ export function OrderSummary({ tier, view, groups, children }: OrderSummaryProps
             </div>
           </details>
         </div>
-        {parts.discountCents > 0 ? <Row label={`Code ${discount?.code ?? ""}`} amount={`−${money(parts.discountCents)}`} tone="good" /> : null}
         <Row label={`GST ${plan.taxRateBasisPoints / 100}%`} amount={money(parts.gstCents)} />
         <div className="flex items-baseline justify-between gap-4 pt-3">
           <dt className="text-sm font-semibold text-ink">Due today</dt>

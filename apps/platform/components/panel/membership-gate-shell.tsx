@@ -1,6 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
 import { siteConfig } from "@fynix/shared/lib/site-config";
-import { ContourField } from "@fynix/shared/ui/contour-field";
 import { WordmarkLogo } from "@fynix/shared/ui/logo";
 import { SignOutButton } from "@fynix/shared/ui/panel/sign-out-button";
 import { logoOf } from "@/lib/brand";
@@ -19,13 +18,10 @@ interface MembershipGateShellProps {
 export async function MembershipGateShell({ children }: MembershipGateShellProps): Promise<ReactElement> {
   const brand = await requestBrand();
   return (
-    <div className="relative isolate flex min-h-dvh flex-col overflow-clip px-5 py-5 sm:px-8 sm:py-6">
-      <ContourField seed={11} rings={6} className="absolute -left-80 -top-80 -z-10 size-[48rem] text-accent/10" />
-      <ContourField seed={29} rings={6} className="absolute -bottom-80 -right-80 -z-10 size-[48rem] text-accent/10" />
-
+    <div className="relative isolate flex min-h-dvh flex-col px-5 py-5 sm:px-8 sm:py-6">
       <header className="flex items-center justify-between gap-4">
         <WordmarkLogo href={brand.siteUrl ?? siteConfig.url} brand={logoOf(brand)} />
-        <SignOutButton signOut={signOut} />
+        <SignOutButton signOut={signOut} label="Go back" />
       </header>
 
       <main id="main" className="mx-auto w-full max-w-5xl flex-1 py-12 sm:py-16">

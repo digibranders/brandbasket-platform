@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { MembershipPage } from "@/components/panel/membership/membership-page";
 
-export const metadata: Metadata = { title: "Care plan" };
+export const metadata: Metadata = { title: "Checkout" };
 
 interface CarePageProps {
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;

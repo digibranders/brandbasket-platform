@@ -6,7 +6,7 @@ import { offersChoice } from "@/lib/brand";
 import { CARE_PATH } from "@/lib/membership";
 import { requestBrand } from "@/lib/server/request-brand";
 
-export const metadata: Metadata = { title: "Premium membership" };
+export const metadata: Metadata = { title: "Checkout" };
 
 interface PremiumPageProps {
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;

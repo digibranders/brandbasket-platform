@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { SignOutIcon } from "@fynix/shared/ui/icons";
+import { ArrowIcon, SignOutIcon } from "@fynix/shared/ui/icons";
 import { cn } from "../../lib/cn";
 
 interface SignOutButtonProps {
@@ -10,9 +10,14 @@ interface SignOutButtonProps {
   readonly signOut: () => Promise<void>;
   /** "dark" matches the admin console's deep-burgundy sidebar; "light" (default) matches the cream one. */
   readonly variant?: "light" | "dark";
+  /**
+   * The words on the button, "Sign out" by default. A page that holds a signed-in owner on one step (the checkout) calls it
+   * "Go back": it still ends the session and returns to the entry page, where the sign-up can be redone.
+   */
+  readonly label?: string;
 }
 
-export function SignOutButton({ signOut, variant = "light" }: SignOutButtonProps): ReactElement {
+export function SignOutButton({ signOut, variant = "light", label = "Sign out" }: SignOutButtonProps): ReactElement {
   return (
     <form action={signOut}>
       <button
@@ -24,8 +29,8 @@ export function SignOutButton({ signOut, variant = "light" }: SignOutButtonProps
             : "border-line bg-card hover:bg-paper-deep",
         )}
       >
-        <SignOutIcon className="size-4" />
-        Sign out
+        {label === "Sign out" ? <SignOutIcon className="size-4" /> : <ArrowIcon className="size-4 rotate-180" />}
+        {label}
       </button>
     </form>
   );
