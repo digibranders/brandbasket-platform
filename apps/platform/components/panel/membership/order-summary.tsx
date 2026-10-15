@@ -57,6 +57,8 @@ export function OrderSummary({ tier, view, addOns, removeHref, children }: Order
   const { plan, discount } = view;
   const money = (cents: number): string => formatMoney(cents, plan.currency);
   const parts = orderSummary(plan, discount?.amountCents ?? 0, addOns);
+  // What the code and the lifetime discounts take off, before GST: the same struck-through prices the lines above show.
+  const savedCents = parts.discountCents + parts.addOns.reduce((sum, line) => sum + line.listCents - line.netCents, 0);
 
   return (
     <section aria-label="Order summary" className="rounded-card border border-line bg-card p-5 shadow-[0_18px_40px_-28px_rgb(42_13_16/0.35)]">
@@ -89,7 +91,7 @@ export function OrderSummary({ tier, view, addOns, removeHref, children }: Order
               </dd>
             </div>
             <p className="mt-0.5 flex items-baseline justify-between gap-4 text-xs text-ink-soft">
-              <span>{LIFETIME_OFFER_PERCENT}% lifetime discount, billed monthly with your plan</span>
+              <span className="whitespace-nowrap">{LIFETIME_OFFER_PERCENT}% lifetime discount, billed monthly</span>
               <Link href={removeHref(line.addOn)} replace scroll={false} prefetch={false} aria-label={`Remove ${line.title}`} className="shrink-0 underline underline-offset-2 hover:text-ink">
                 Remove
               </Link>
@@ -101,6 +103,11 @@ export function OrderSummary({ tier, view, addOns, removeHref, children }: Order
           <dt className="text-sm font-semibold text-ink">Due today</dt>
           <dd className="font-serif text-3xl tabular-nums text-ink">{money(parts.totalCents)}</dd>
         </div>
+        {savedCents > 0 ? (
+          <div>
+            <p className="pt-1.5 text-right text-base font-semibold text-success">You saved {money(savedCents)}</p>
+          </div>
+        ) : null}
       </dl>
 
       <div className="mt-4 hidden lg:block">
