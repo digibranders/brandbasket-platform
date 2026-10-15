@@ -12,7 +12,6 @@ import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
 import {
   MEMBER_HOME,
   UPGRADE_PATH,
-  groupedBenefits,
   isWaitingOnPayment,
   membershipPathFor,
   orderSummary,
@@ -79,8 +78,6 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   const other = OTHER[tier];
   const brand = await requestBrand();
 
-  const groups = groupedBenefits(tier, brand);
-
   // Only an account with something to pay is shown the summary and the Pay button: one whose payment is on its way, or under
   // review, is told so by the checkout instead.
   const payable = plan !== null && !waiting && !billing.paymentUnderReview;
@@ -126,7 +123,6 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
           <OrderSummary
             tier={tier}
             view={{ ...view, plan }}
-            groups={groups}
             addOns={bundleLines(selected)}
             removeHref={(addOn) => pageHref(selected.filter((id) => id !== addOn))}
           >

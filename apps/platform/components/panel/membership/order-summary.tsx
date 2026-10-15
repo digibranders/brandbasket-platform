@@ -1,10 +1,12 @@
 import type { ReactElement, ReactNode } from "react";
-import { ChevronDownIcon, TickIcon } from "@fynix/shared/ui/icons";
+import { ChevronDownIcon } from "@fynix/shared/ui/icons";
 import type { MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
 import type { BundleLine } from "@fynix/shared/lib/billing/bundle";
 import { formatMoney } from "@fynix/shared/lib/money";
 import Link from "next/link";
+import { IncludedList } from "@/components/panel/membership/included-list";
 import { MembershipPayForm } from "@/components/panel/membership/membership-pay-form";
+import { MAINTENANCE_INCLUDED, WEBSITE_INCLUDED, type IncludedItem } from "@/lib/checkout-included";
 import { orderSummary, type MembershipTier } from "@/lib/membership";
 import type { MembershipCheckoutView } from "@/lib/server/membership-checkout";
 import { LIFETIME_OFFER_PERCENT } from "@fynix/shared/lib/billing/lifetime-offer";
@@ -15,8 +17,6 @@ interface OrderSummaryProps {
   readonly tier: MembershipTier;
   /** A view whose plan is on sale: the page only draws a summary when there is something to pay. */
   readonly view: MembershipCheckoutView & { readonly plan: NonNullable<MembershipCheckoutView["plan"]> };
-  /** What the plan includes, in the groups the page used to list: shown in a dropdown under the plan's line. */
-  readonly groups: readonly { readonly name: string; readonly items: readonly string[] }[];
   /** The add-ons ticked on the page, paid in this same payment. */
   readonly addOns: readonly BundleLine[];
   /** The address of this page with an add-on taken out: what each Remove goes to. */
@@ -34,13 +34,26 @@ function Row({ label, amount }: { readonly label: string; readonly amount: strin
   );
 }
 
+/** "What's included", kept out of the way until asked for: a native disclosure, so it works without JavaScript. */
+function Included({ items }: { readonly items: readonly IncludedItem[] }): ReactElement {
+  return (
+    <details className="group mt-1.5">
+      <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-ink-soft transition-colors duration-300 ease-calm hover:text-ink [&::-webkit-details-marker]:hidden">
+        What&rsquo;s included
+        <ChevronDownIcon className="size-3.5 transition-transform duration-300 ease-calm group-open:rotate-180" />
+      </summary>
+      <IncludedList items={items} />
+    </details>
+  );
+}
+
 /**
- * Today's payment, in one place: the plan, a code if one is applied, the GST, what is due and the Pay button. Beside the
+ * Today's payment, in one place: the free website and the monthly maintenance (each with what it includes), a code if one is applied, the GST, what is due and the Pay button. Beside the
  * page's content on a wide screen and following it down; below it on a phone, where the Pay button also floats
  * (membership-page.tsx). The add-ons ticked on the page are lines of the same payment and of every monthly payment after
  * it, each with its lifetime discount and a way to take it out.
  */
-export function OrderSummary({ tier, view, groups, addOns, removeHref, children }: OrderSummaryProps): ReactElement {
+export function OrderSummary({ tier, view, addOns, removeHref, children }: OrderSummaryProps): ReactElement {
   const { plan, discount } = view;
   const money = (cents: number): string => formatMoney(cents, plan.currency);
   const parts = orderSummary(plan, discount?.amountCents ?? 0, addOns);
@@ -51,34 +64,20 @@ export function OrderSummary({ tier, view, groups, addOns, removeHref, children 
       <dl className="mt-3 divide-y divide-line">
         <div className="py-1.5">
           <div className="flex items-baseline justify-between gap-4 text-sm">
-            <dt className="text-ink">Website and hosting</dt>
+            <dt className="text-ink">Website</dt>
+            <dd className="font-semibold text-success">Free</dd>
+          </div>
+          <Included items={WEBSITE_INCLUDED} />
+        </div>
+        <div className="py-1.5">
+          <div className="flex items-baseline justify-between gap-4 text-sm">
+            <dt className="text-ink">Maintenance</dt>
             <dd className="tabular-nums text-ink">
               {parts.discountCents > 0 ? <s className="mr-2 text-xs text-ink-soft">{money(parts.listCents)}</s> : null}
               <span className={parts.discountCents > 0 ? "font-semibold text-success" : undefined}>{money(parts.planNetCents)}</span>
             </dd>
           </div>
-          {/* What the plan includes, kept out of the way until asked for. */}
-          <details className="group mt-1.5">
-            <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-ink-soft transition-colors duration-300 ease-calm hover:text-ink [&::-webkit-details-marker]:hidden">
-              What&rsquo;s included
-              <ChevronDownIcon className="size-3.5 transition-transform duration-300 ease-calm group-open:rotate-180" />
-            </summary>
-            <div className="mt-2 space-y-3">
-              {groups.map((group) => (
-                <div key={group.name}>
-                  <p className="text-xs font-semibold text-ink">{group.name}</p>
-                  <ul className="mt-1 space-y-1">
-                    {group.items.map((item) => (
-                      <li key={item} className="flex items-baseline gap-2 text-xs text-ink-soft">
-                        <TickIcon className="size-3 shrink-0 translate-y-[0.1rem] text-success" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </details>
+          <Included items={MAINTENANCE_INCLUDED} />
         </div>
         {parts.addOns.map((line) => (
           <div key={line.addOn} className="py-1.5">

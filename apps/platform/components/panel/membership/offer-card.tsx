@@ -4,7 +4,7 @@ import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { addOnPrice, ADD_ONS, type AddOn, type MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
 import { LIFETIME_OFFER_HEADLINE, LIFETIME_OFFER_NOTE, LIFETIME_OFFER_PERCENT } from "@fynix/shared/lib/billing/lifetime-offer";
 import { formatMoney } from "@fynix/shared/lib/money";
-import { AddOnMark, PlatformBadges } from "@/components/panel/membership/offer-marks";
+import { AddOnMark } from "@/components/panel/membership/offer-marks";
 
 interface OfferCardProps {
   /** The add-ons ticked so far: they are paid in the same payment as the plan. */
@@ -67,9 +67,8 @@ export function OfferCard({ selected, hrefFor }: OfferCardProps): ReactElement {
             Exclusive checkout offer
           </p>
           <h2 className="mt-4 text-balance font-sans text-xl font-semibold leading-snug tracking-tight text-ink sm:mt-5 sm:text-[1.75rem] sm:leading-tight">{LIFETIME_OFFER_HEADLINE}</h2>
-          <p className="mt-2 max-w-md text-sm leading-snug text-ink-soft sm:mt-3 sm:text-base">{LIFETIME_OFFER_NOTE}</p>
+          <p className="mt-2 max-w-xl text-sm leading-snug text-ink-soft sm:mt-3 sm:text-base">{LIFETIME_OFFER_NOTE}</p>
         </div>
-        <PlatformBadges className="hidden h-32 w-40 shrink-0 sm:block" />
       </div>
       <ul aria-label="Add-ons at your lifetime price" className="mt-5 divide-y divide-ink-soft/25 border-y border-ink-soft/25">
         {ADD_ONS.map((addOn) => (

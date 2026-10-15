@@ -2,77 +2,9 @@ import type { ReactElement } from "react";
 import type { AddOnId } from "@fynix/shared/lib/billing/add-ons";
 
 /*
- * The offer card's pictures, drawn here so no image file or icon font is needed. The three platform badges at the top of the
- * card and each add-on's own mark. Decorative: every one is hidden from screen readers, the words say the same thing.
+ * The offer card's pictures, drawn here so no image file or icon font is needed: each add-on's own mark. Decorative: hidden
+ * from screen readers, the words say the same thing.
  */
-
-const INSTAGRAM_GRADIENT = "offer-instagram-gradient";
-
-function CameraGlyph({ className, stroke }: { readonly className?: string; readonly stroke: string }): ReactElement {
-  return (
-    <g className={className} fill="none" stroke={stroke} strokeWidth="2.2" strokeLinecap="round">
-      <rect x="6" y="6" width="20" height="20" rx="6" />
-      <circle cx="16" cy="16" r="4.6" />
-      <circle cx="21.6" cy="10.4" r="0.9" fill={stroke} stroke="none" />
-    </g>
-  );
-}
-
-/** The Instagram badge: a gradient tile with the camera outline. */
-function InstagramTile(): ReactElement {
-  return (
-    <svg viewBox="0 0 32 32" className="size-full">
-      <defs>
-        <linearGradient id={INSTAGRAM_GRADIENT} x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0" stopColor="#f58529" />
-          <stop offset="0.5" stopColor="#dd2a7b" />
-          <stop offset="1" stopColor="#8134af" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="8" fill={`url(#${INSTAGRAM_GRADIENT})`} />
-      <CameraGlyph stroke="#fff" />
-    </svg>
-  );
-}
-
-function LinkedInTile(): ReactElement {
-  return (
-    <svg viewBox="0 0 32 32" className="size-full">
-      <rect width="32" height="32" rx="8" fill="#0a66c2" />
-      <rect x="7" y="13" width="3.6" height="12" rx="0.6" fill="#fff" />
-      <circle cx="8.8" cy="8.9" r="2.2" fill="#fff" />
-      <path d="M14 13h3.4v1.7c.6-1.1 2-2 3.8-2 3.2 0 4.2 2 4.2 5V25h-3.6v-6.2c0-1.5-.4-2.6-1.9-2.6s-2.3 1.1-2.3 2.6V25H14z" fill="#fff" />
-    </svg>
-  );
-}
-
-function FacebookTile(): ReactElement {
-  return (
-    <svg viewBox="0 0 32 32" className="size-full">
-      <rect width="32" height="32" rx="8" fill="#1877f2" />
-      <path d="M21.6 32V19.6h4.1l.7-4.8h-4.8v-3c0-1.4.6-2.4 2.5-2.4h2.4V5.2c-.4-.1-1.9-.2-3.5-.2-3.6 0-6 2.2-6 6.1v3.7h-4v4.8h4V32z" fill="#fff" />
-    </svg>
-  );
-}
-
-/** The three platform badges, tilted and overlapping at the card's top right. */
-export function PlatformBadges({ className }: { readonly className?: string }): ReactElement {
-  return (
-    <div aria-hidden="true" className={className}>
-      <div className="relative size-full">
-        <div className="absolute right-4 top-0 size-[4.5rem] -rotate-6 rounded-[1.1rem] shadow-[0_10px_22px_-8px_rgb(60_40_10/0.4)]">
-          <InstagramTile />
-        </div>
-        <div className="absolute right-0 top-[3.4rem] size-14 rotate-6 rounded-[1rem] shadow-[0_10px_22px_-8px_rgb(60_40_10/0.4)]">
-          <LinkedInTile />
-        </div>
-        <div className="absolute right-[4.6rem] top-[3.9rem] size-14 -rotate-3 rounded-[1rem] shadow-[0_10px_22px_-8px_rgb(60_40_10/0.35)]">
-          <FacebookTile />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /** Each add-on's own mark inside its soft tile. */
 export function AddOnMark({ addOn }: { readonly addOn: AddOnId }): ReactElement {
