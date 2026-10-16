@@ -9,6 +9,8 @@ import { ChevronDownIcon } from "../icons";
 export interface SidebarNavChild {
   readonly href: string;
   readonly label: string;
+  /** A small icon before the label, drawn like the parent row's but smaller. */
+  readonly icon?: ReactNode;
 }
 
 export interface SidebarNavItem {
@@ -146,7 +148,7 @@ export function SidebarNav({ items, variant = "light" }: SidebarNavProps): React
                           href={child.href}
                           aria-current={childCurrent ? "page" : undefined}
                           className={cn(
-                            "flex items-center whitespace-nowrap rounded-[0.625rem] px-4 py-3 text-sm transition-colors duration-300 ease-calm lg:py-2",
+                            "flex items-center gap-2.5 whitespace-nowrap rounded-[0.625rem] px-4 py-3 text-sm transition-colors duration-300 ease-calm lg:py-2",
                             dark
                               ? childCurrent
                                 ? "bg-white/10 font-bold text-paper"
@@ -156,6 +158,11 @@ export function SidebarNav({ items, variant = "light" }: SidebarNavProps): React
                                 : "text-ink-soft hover:text-ink",
                           )}
                         >
+                          {child.icon === undefined ? null : (
+                            <span aria-hidden="true" className="shrink-0">
+                              {child.icon}
+                            </span>
+                          )}
                           {child.label}
                         </Link>
                       </li>

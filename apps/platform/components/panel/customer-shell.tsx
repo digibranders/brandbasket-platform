@@ -4,20 +4,21 @@ import {
   NavCalendarCheckIcon,
   NavCirclePlusIcon,
   NavCircleArrowUpIcon,
-  NavClipboardListIcon,
-  NavCompassIcon,
+  NavListChecksIcon,
+  NavBriefcaseIcon,
   NavHandHeartIcon,
-  NavHomeIcon,
+  NavDashboardIcon,
   NavGlobeIcon,
   NavImagesIcon,
   NavInboxIcon,
   NavMegaphoneIcon,
-  NavPenIcon,
+  NavNotebookPenIcon,
   NavPercentIcon,
-  NavReceiptIcon,
+  NavScrollTextIcon,
   NavStarIcon,
   NavStorefrontIcon,
 } from "@fynix/shared/ui/nav-icons";
+import { DocumentIcon, TagIcon, UserIcon } from "@fynix/shared/ui/icons";
 import { DashboardFrame, type DashboardPlanChip } from "@fynix/shared/ui/panel/dashboard-frame";
 import { AppointmentsNavRefresh } from "@/components/panel/appointments/appointments-nav-refresh";
 import { ADD_ONS_PATH } from "@/lib/add-ons";
@@ -107,7 +108,7 @@ function customerNav({
 }): readonly SidebarNavItem[] {
   return joinSections([
     [
-      { href: "/", label: "Home", icon: <NavHomeIcon className="size-5" /> },
+      { href: "/", label: "Home", icon: <NavDashboardIcon className="size-5" /> },
       ...(!appointmentsEnabled
         ? []
         : [
@@ -130,24 +131,24 @@ function customerNav({
     [
       ...(setupDone
         ? []
-        : [{ href: "/onboarding", label: "Set up your website", icon: <NavClipboardListIcon className="size-5" /> }]),
-      { href: "/project", label: "Your project", icon: <NavCompassIcon className="size-5" /> },
+        : [{ href: "/onboarding", label: "Set up your website", icon: <NavListChecksIcon className="size-5" /> }]),
+      { href: "/project", label: "Your project", icon: <NavBriefcaseIcon className="size-5" /> },
       { href: "/domain", label: "Your domain", icon: <NavGlobeIcon className="size-5" /> },
       // Content is a group: the blog's posts, the people who write them, and the categories they are filed under.
       {
         href: "/content/blog",
         label: "Content",
-        icon: <NavPenIcon className="size-5" />,
+        icon: <NavNotebookPenIcon className="size-5" />,
         children: [
-          { href: "/content/blog", label: "Blogs" },
-          { href: "/content/authors", label: "Authors" },
-          { href: "/content/categories", label: "Categories" },
+          { href: "/content/blog", label: "Blogs", icon: <DocumentIcon className="size-4" /> },
+          { href: "/content/authors", label: "Authors", icon: <UserIcon className="size-4" /> },
+          { href: "/content/categories", label: "Categories", icon: <TagIcon className="size-4" /> },
         ],
       },
     ],
     [
       { href: ADD_ONS_PATH, label: "Add-ons", icon: <NavCirclePlusIcon className="size-5" /> },
-      { href: "/billing", label: "Billing", icon: <NavReceiptIcon className="size-5" /> },
+      { href: "/billing", label: "Billing", icon: <NavScrollTextIcon className="size-5" /> },
     ],
     // Care is the website only: the way up to the rest is in the menu, where Premium's own sections would be.
     tier === "care" && offersChoice(BRAND, "premium") ? [{ href: UPGRADE_PATH, label: "Upgrade", icon: <NavCircleArrowUpIcon className="size-5" /> }] : [],

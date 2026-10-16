@@ -5,11 +5,12 @@ import { useCallback, useEffect, useId, useRef, useState, type ReactElement, typ
 import {
   BellIcon,
   BookIcon,
+  ChatIcon,
   CopyIcon,
   EllipsisIcon,
   HomeIcon,
   LifebuoyIcon,
-  PencilIcon,
+  ScrollTextIcon,
   SettingsIcon,
   SignOutIcon,
   SmileIcon,
@@ -274,7 +275,8 @@ export function AccountBar({ signOut, account,
     ...(support !== null && support.unread > 0 ? [{ id: "support-replies", text: `Support replies · ${support.unread}`, href: "/support", actionable: true }] : []),
   ];
   const needsYou = actionableCount(notices);
-  const status = panel === null ? null : siteStatusLine(panel.siteStatus);
+  // A site that is not live yet has nothing to report, so the menu shows no status line for it.
+  const status = panel === null || panel.siteStatus.kind === "not_launched" ? null : siteStatusLine(panel.siteStatus);
 
   return (
     <div
@@ -347,7 +349,7 @@ export function AccountBar({ signOut, account,
             {panel === null ? null : (
               <MenuLink
                 href="/changelog"
-                icon={<PencilIcon className="size-4" />}
+                icon={<ScrollTextIcon className="size-4" />}
                 label="Changelog"
                 dark={dark}
                 onSelect={closeMenu}
@@ -365,7 +367,7 @@ export function AccountBar({ signOut, account,
                 <button data-menu-item role="menuitem" type="button" className={menuItemClass(dark)} onClick={() => { closeMenu(); support.open("support", menuTriggerRef.current); }}>
                   <span>Help</span><LifebuoyIcon aria-hidden="true" className="size-4" />
                 </button>
-                <MenuLink href="/support" icon={<BookIcon className="size-4" />} label="My requests" dark={dark} onSelect={closeMenu} />
+                <MenuLink href="/support" icon={<ChatIcon className="size-4" />} label="My requests" dark={dark} onSelect={closeMenu} />
               </>
             )}
             <MenuLink

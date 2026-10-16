@@ -7,7 +7,7 @@ import {
   NavInboxIcon,
   NavMegaphoneIcon,
   NavPercentIcon,
-  NavReceiptIcon,
+  NavScrollTextIcon,
   NavStarIcon,
   NavStorefrontIcon,
 } from "@fynix/shared/ui/nav-icons";
@@ -57,7 +57,7 @@ function listingAccountNav(newLeadCount: number): readonly SidebarNavItem[] {
     ],
     [
       { href: ADD_ONS_PATH, label: "Add-ons", icon: <NavCirclePlusIcon className="size-5" /> },
-      { href: "/billing", label: "Billing", icon: <NavReceiptIcon className="size-5" /> },
+      { href: "/billing", label: "Billing", icon: <NavScrollTextIcon className="size-5" /> },
     ],
     [{ href: UPGRADE_PATH, label: "Upgrade", icon: <NavCircleArrowUpIcon className="size-5" /> }],
   ]);

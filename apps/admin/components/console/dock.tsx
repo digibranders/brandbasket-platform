@@ -10,23 +10,24 @@ import { cn } from "@fynix/shared/lib/cn";
 import type { StaffRole } from "@fynix/db";
 import { adminBrand } from "@/lib/brand";
 
-/** The Journey map's own mark: the path from lead to live. */
+/** The Journey map's own mark: the path from lead to live (Lucide route, drawn like the rest of the icon set). */
 function JourneyIcon({ className }: { readonly className?: string }): ReactElement {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className={className}>
-      <path d="M3 16.5c3-7 6-7 8-3.5s5 3.5 10-5" />
-      <circle cx="3" cy="16.5" r="1.4" fill="currentColor" stroke="none" />
-      <circle cx="21" cy="8" r="1.4" fill="currentColor" stroke="none" />
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="6" cy="19" r="3" />
+      <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
+      <circle cx="18" cy="5" r="3" />
     </svg>
   );
 }
 
-/** The Geography page's mark: a folded map. */
+/** The Geography page's mark: a folded map (Lucide map). */
 function GeographyIcon({ className }: { readonly className?: string }): ReactElement {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className={className}>
-      <path d="M3.5 6.5 9 4l6 2.5L20.5 4v13.5L15 20l-6-2.5L3.5 20z" />
-      <path d="M9 4v13.5M15 6.5V20" />
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" />
+      <path d="M15 5.764v15" />
+      <path d="M9 3.236v15" />
     </svg>
   );
 }

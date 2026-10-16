@@ -28,12 +28,14 @@ function LineIcon({ className, children }: NavIconProps & { readonly children: R
   );
 }
 
-/** Home. */
-export function NavHomeIcon({ className }: NavIconProps): ReactElement {
+/** Home: layout-dashboard. */
+export function NavDashboardIcon({ className }: NavIconProps): ReactElement {
   return (
     <LineIcon className={className}>
-      <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
-      <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <rect width="7" height="9" x="3" y="3" rx="1" />
+      <rect width="7" height="5" x="14" y="3" rx="1" />
+      <rect width="7" height="9" x="14" y="12" rx="1" />
+      <rect width="7" height="5" x="3" y="16" rx="1" />
     </LineIcon>
   );
 }
@@ -107,12 +109,12 @@ export function NavMegaphoneIcon({ className }: NavIconProps): ReactElement {
   );
 }
 
-/** Your project: compass. */
-export function NavCompassIcon({ className }: NavIconProps): ReactElement {
+/** Your project: briefcase. */
+export function NavBriefcaseIcon({ className }: NavIconProps): ReactElement {
   return (
     <LineIcon className={className}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
+      <path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+      <rect width="20" height="14" x="2" y="6" rx="2" />
     </LineIcon>
   );
 }
@@ -140,24 +142,28 @@ export function NavIdCardIcon({ className }: NavIconProps): ReactElement {
   );
 }
 
-/** Content: pen-line. */
-export function NavPenIcon({ className }: NavIconProps): ReactElement {
+/** Content: notebook-pen. */
+export function NavNotebookPenIcon({ className }: NavIconProps): ReactElement {
   return (
     <LineIcon className={className}>
-      <path d="M13 21h8" />
-      <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+      <path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" />
+      <path d="M2 6h4" />
+      <path d="M2 10h4" />
+      <path d="M2 14h4" />
+      <path d="M2 18h4" />
+      <path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" />
     </LineIcon>
   );
 }
 
-/** Billing: receipt. */
-export function NavReceiptIcon({ className }: NavIconProps): ReactElement {
+/** Billing: scroll-text. */
+export function NavScrollTextIcon({ className }: NavIconProps): ReactElement {
   return (
     <LineIcon className={className}>
-      <path d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z" />
-      <path d="M8 11h8" />
-      <path d="M8 7h8" />
-      <path d="M9 7a4 4 0 0 1 0 8H8l3 2" />
+      <path d="M15 12h-5" />
+      <path d="M15 8h-5" />
+      <path d="M19 17V5a2 2 0 0 0-2-2H4" />
+      <path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" />
     </LineIcon>
   );
 }
@@ -204,16 +210,15 @@ export function NavCirclePlusIcon({ className }: NavIconProps): ReactElement {
   );
 }
 
-/** Set up your website: clipboard-list. */
-export function NavClipboardListIcon({ className }: NavIconProps): ReactElement {
+/** Set up your website: list-checks. */
+export function NavListChecksIcon({ className }: NavIconProps): ReactElement {
   return (
     <LineIcon className={className}>
-      <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
-      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-      <path d="M12 11h4" />
-      <path d="M12 16h4" />
-      <path d="M8 11h.01" />
-      <path d="M8 16h.01" />
+      <path d="M13 5h8" />
+      <path d="M13 12h8" />
+      <path d="M13 19h8" />
+      <path d="m3 17 2 2 4-4" />
+      <path d="m3 7 2 2 4-4" />
     </LineIcon>
   );
 }
