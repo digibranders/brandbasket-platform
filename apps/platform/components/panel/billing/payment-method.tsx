@@ -4,6 +4,8 @@ import type { PaymentMethodView } from "@/lib/billing/payment-method-view";
 
 interface PaymentMethodProps {
   readonly view: PaymentMethodView;
+  /** `card` is its own card; `inline` sits inside another card (the plan's), with a small label instead of a heading. */
+  readonly variant?: "card" | "inline";
   /** The support address as a mailto link (the page's EmailUs). */
   readonly emailUs: ReactNode;
 }
@@ -13,10 +15,9 @@ interface PaymentMethodProps {
  * digits of a card, and no issuing bank (Razorpay sends a code for it, not a name). Changing the card is not built, so the
  * way to do it is a message to us.
  */
-export function PaymentMethod({ view, emailUs }: PaymentMethodProps): ReactElement {
-  return (
-    <Surface labelledBy="payment-method">
-      <SectionHeading id="payment-method">Payment method</SectionHeading>
+export function PaymentMethod({ view, emailUs, variant = "card" }: PaymentMethodProps): ReactElement {
+  const body = (
+    <>
       {view.kind === "bank-transfer" ? (
         <div className="mt-4 space-y-2 text-sm leading-relaxed">
           <p>You pay us by bank transfer. We record each payment when it reaches us.</p>
@@ -35,6 +36,23 @@ export function PaymentMethod({ view, emailUs }: PaymentMethodProps): ReactEleme
           You last paid with {view.label}. You choose how to pay each time.
         </p>
       )}
+    </>
+  );
+
+  if (variant === "inline") {
+    return (
+      <div aria-labelledby="payment-method">
+        <h3 id="payment-method" className="text-xs font-semibold text-ink-soft">
+          Payment method
+        </h3>
+        <div className="-mt-1">{body}</div>
+      </div>
+    );
+  }
+  return (
+    <Surface labelledBy="payment-method">
+      <SectionHeading id="payment-method">Payment method</SectionHeading>
+      {body}
     </Surface>
   );
 }

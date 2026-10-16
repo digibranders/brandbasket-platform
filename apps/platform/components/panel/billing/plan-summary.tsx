@@ -16,6 +16,8 @@ interface PlanSummaryProps {
   readonly now: Date;
   /** The brand the dashboard is sold under: it words the plan's name. Fynix when left out. */
   readonly brand?: Brand;
+  /** How they pay, shown inside the card under the price (components/panel/billing/payment-method.tsx), or left out. */
+  readonly paymentMethod?: ReactNode;
 }
 
 /** Under the plan's name: the net price and its tax for a taxed plan, otherwise what the plan is. */
@@ -75,38 +77,44 @@ function PeriodBar({ progress, children }: { readonly progress: PeriodProgress; 
   );
 }
 
-/** The plan card: name, price per month, how far through the paid period the customer is, and what it includes. */
-export function PlanSummary({ plan, subscription, now }: PlanSummaryProps): ReactElement {
+/** The plan card: name, price per month, how far through the paid period the customer is, how they pay, and what it includes. */
+export function PlanSummary({ plan, subscription, now, paymentMethod }: PlanSummaryProps): ReactElement {
   const price = renewalCharge(plan, subscription.discountAmountCents, nextBundledNetCents(subscription));
   const progress = billingPeriodProgress(subscription, now);
 
   return (
     <section aria-labelledby="plan-heading" className="flex flex-col rounded-card border border-line bg-card">
-      <div className="flex-1 p-6 sm:p-7">
-        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
-              <h2 id="plan-heading" className="panel-section text-base">
-                {planLabel(plan.name)}
-              </h2>
-              <span className="rounded-full bg-accent-pale px-2 py-0.5 text-[0.6875rem] font-semibold text-accent-deep">
-                Monthly
-              </span>
+      <div className={paymentMethod === undefined || paymentMethod === null ? "" : "grid md:grid-cols-2"}>
+        <div className="flex-1 p-6 sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <h2 id="plan-heading" className="panel-section text-base">
+                  {planLabel(plan.name)}
+                </h2>
+                <span className="rounded-full bg-accent-pale px-2 py-0.5 text-[0.6875rem] font-semibold text-accent-deep">
+                  Monthly
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-ink-soft">{priceNote(plan, subscription.discountAmountCents, nextBundledNetCents(subscription))}</p>
             </div>
-            <p className="mt-1 text-xs text-ink-soft">{priceNote(plan, subscription.discountAmountCents, nextBundledNetCents(subscription))}</p>
+            {price === null ? null : (
+              <p className="flex items-baseline gap-1.5">
+                <span className="font-serif text-3xl leading-none tracking-tight tabular-nums">{price}</span>
+                <span className="text-xs text-ink-soft">per month</span>
+              </p>
+            )}
           </div>
-          {price === null ? null : (
-            <p className="flex items-baseline gap-1.5">
-              <span className="font-serif text-3xl leading-none tracking-tight tabular-nums">{price}</span>
-              <span className="text-xs text-ink-soft">per month</span>
-            </p>
+
+          {progress === null ? null : (
+            <PeriodBar progress={progress}>
+              <NextPaymentCaption plan={plan} subscription={subscription} progress={progress} />
+            </PeriodBar>
           )}
         </div>
 
-        {progress === null ? null : (
-          <PeriodBar progress={progress}>
-            <NextPaymentCaption plan={plan} subscription={subscription} progress={progress} />
-          </PeriodBar>
+        {paymentMethod === undefined || paymentMethod === null ? null : (
+          <div className="border-t border-line p-6 sm:p-7 md:border-l md:border-t-0">{paymentMethod}</div>
         )}
       </div>
 
