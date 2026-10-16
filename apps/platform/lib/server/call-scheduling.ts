@@ -135,6 +135,7 @@ function calendlyScheduler(token: string, bookingUrl: string): CallScheduler {
         return { ok: true, call: { startsAt, endsAt: new Date(startsAt.getTime() + type.duration * 60_000), inviteeUri: booked.resource.uri } };
       } catch (error) {
         // Calendly answers a time that was taken a moment ago with a conflict.
+        if (!(error instanceof CalendlyError && error.status === 409)) console.error("[call-scheduling] Calendly did not book the call", error instanceof CalendlyError ? error.status : error);
         return { ok: false, reason: error instanceof CalendlyError && error.status === 409 ? "taken" : "failed" };
       }
     },
@@ -220,6 +221,7 @@ function calcomScheduler(key: string, page: { readonly username: string; readonl
         });
         return { ok: true, call: { startsAt: new Date(booked.data.start), endsAt: new Date(booked.data.end), inviteeUri: null } };
       } catch (error) {
+        if (!isTakenAnswer(error)) console.error("[call-scheduling] Cal.com did not book the call", error instanceof CalcomError ? `${String(error.status)} ${error.detail}` : error);
         return { ok: false, reason: isTakenAnswer(error) ? "taken" : "failed" };
       }
     },

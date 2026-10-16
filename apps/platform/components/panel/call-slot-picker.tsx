@@ -196,9 +196,10 @@ export function CallSlotPicker({ onBooked, onUnavailable }: CallSlotPickerProps)
           <p className="mt-4 text-[0.8125rem] text-ink-soft">Times are in {zoneName}.</p>
         </div>
 
-        <div>
+        <div className="sm:relative">
           <p className="text-sm text-ink-soft">{dayLong.format(dayDate(activeDay))}</p>
-          <ul className="mt-3 grid grid-cols-2 gap-2.5 sm:flex sm:max-h-72 sm:flex-col sm:overflow-y-auto sm:pr-1">
+          {/* On a wide screen the list is as tall as the calendar beside it, however many times there are, and scrolls inside that. */}
+          <ul className="mt-3 grid grid-cols-2 gap-2.5 sm:absolute sm:inset-x-0 sm:bottom-0 sm:top-7 sm:flex sm:flex-col sm:overflow-y-auto sm:pr-1">
             {times.map((iso) => (
               <li key={iso}>
                 <button
