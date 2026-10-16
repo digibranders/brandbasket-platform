@@ -417,7 +417,7 @@ describe("what the erase knows about", () => {
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
     "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "onboarding_progress",
     "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "projects", "services",
-    "setup_invites", "support_tickets",
+    "setup_call_bookings", "setup_invites", "support_tickets",
   ];
 
   it("sorts every table that points at a business into erased or kept, so a new one cannot be forgotten", async () => {

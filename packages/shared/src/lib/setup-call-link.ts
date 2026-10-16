@@ -44,3 +44,35 @@ export const SETUP_CALL_URL_PROBLEMS: Readonly<Record<SetupCallUrlProblem, strin
   "too-long": `That link is too long. Keep it under ${MAX_SETUP_CALL_URL_LENGTH} characters.`,
   "has-a-login": "Take the user name and password out of the link. A booking link never needs them.",
 };
+
+/**
+ * Whether the booking page is a Calendly one, which the dashboard can show inside the page. Anything else is a plain link
+ * that opens in a new tab: only Calendly's own script is loaded on the dashboard, never another site's.
+ */
+export function isCalendlyUrl(address: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(address);
+  } catch {
+    return false;
+  }
+  return url.protocol === "https:" && (url.hostname === "calendly.com" || url.hostname.endsWith(".calendly.com"));
+}
+
+export const MAX_INVITEE_URI_LENGTH = 300;
+
+/**
+ * Calendly's link for one booking (the invitee), as its page reports it when a time is picked, or null for anything that is
+ * not one. It arrives from the customer's browser, so only an https address on Calendly's API host, of a sane length, is
+ * kept; it is stored to find the booking again and is never followed.
+ */
+export function readInviteeUri(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > MAX_INVITEE_URI_LENGTH) return null;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  return url.protocol === "https:" && url.hostname === "api.calendly.com" && url.username === "" && url.password === "" ? url.toString() : null;
+}

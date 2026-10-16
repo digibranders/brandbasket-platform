@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readSetupCallUrl, SETUP_CALL_URL_PROBLEMS } from "./setup-call-link";
+import { isCalendlyUrl, readInviteeUri, readSetupCallUrl, SETUP_CALL_URL_PROBLEMS } from "./setup-call-link";
 
 describe("readSetupCallUrl", () => {
   it("keeps a secure booking address, trimmed", () => {
@@ -32,4 +32,27 @@ describe("readSetupCallUrl", () => {
   it("says what is wrong in plain words, with no dashes or exclamation marks", () => {
     for (const message of Object.values(SETUP_CALL_URL_PROBLEMS)) expect(message).not.toMatch(/[!—–]/);
   });
+});
+
+describe("isCalendlyUrl", () => {
+  it.each(["https://calendly.com/steve-fynix/30min", "https://www.calendly.com/steve-fynix/30min", "https://team.calendly.com/x"])("accepts %s", (address) => {
+    expect(isCalendlyUrl(address)).toBe(true);
+  });
+
+  it.each(["http://calendly.com/x", "https://calendly.com.evil.example/x", "https://evilcalendly.com/x", "https://cal.com/x", "calendly.com/x", ""])("refuses %s", (address) => {
+    expect(isCalendlyUrl(address)).toBe(false);
+  });
+});
+
+describe("readInviteeUri", () => {
+  it("keeps a Calendly API address", () => {
+    expect(readInviteeUri("https://api.calendly.com/scheduled_events/AB/invitees/CD")).toBe("https://api.calendly.com/scheduled_events/AB/invitees/CD");
+  });
+
+  it.each([null, undefined, 42, "", "http://api.calendly.com/x", "https://calendly.com/x", "https://api.calendly.com.evil.example/x", "https://user:pw@api.calendly.com/x", `https://api.calendly.com/${"a".repeat(300)}`])(
+    "drops %s",
+    (value) => {
+      expect(readInviteeUri(value)).toBeNull();
+    },
+  );
 });

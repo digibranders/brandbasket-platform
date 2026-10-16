@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
+import { isPhoneAccountEmail } from "@fynix/db";
 import { BillingBanner } from "@/components/panel/billing-banner";
+import { KickoffCallCard } from "@/components/panel/kickoff-call-card";
 import { NextStepCard } from "@/components/panel/next-step-card";
+import { PaidBadge } from "@/components/panel/paid-badge";
+import { PrepareChecklist } from "@/components/panel/prepare-checklist";
 import { firstName } from "@fynix/shared/lib/names";
 import { nextStep, type NextStep } from "@fynix/shared/lib/next-step";
 import { projectStageIndex } from "@/lib/project-stages";
 import { getBillingBanner } from "@/lib/server/billing-banner";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getLiveWebsite, getProjectOverview } from "@/lib/server/onboarding";
+import { getSetupCallState } from "@/lib/server/setup-call";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -20,8 +25,10 @@ const SUBTITLES: Readonly<Record<NextStep["kind"], string>> = {
   none: "Welcome back.",
 };
 
+const BOOKED_SUBTITLE = "Your call is booked. Get the steps ready before then.";
+
 export default async function AppHomePage(): Promise<ReactElement> {
-  const { user } = await requireCustomerAccess();
+  const { user, tenant, billing } = await requireCustomerAccess();
   const [overview, banner, liveWebsite] = await Promise.all([
     getProjectOverview(),
     getBillingBanner(),
@@ -30,9 +37,15 @@ export default async function AppHomePage(): Promise<ReactElement> {
   const { project, completed } = overview;
   const step = nextStep({ project, completedSteps: completed, liveWebsite });
   // Going live closes the project, so `overview.project` is null from launch onwards and the live site is the only
-  // thing that still knows the status. Without this both the build list and the tour below fall back to the state
-  // they show a customer who has not started, on the very screen that tells them their website is up.
+  // thing that still knows the status. Without this the build list falls back to the state it shows a customer who has
+  // not started, on the very screen that tells them their website is up.
   const status = liveWebsite === null ? (project?.status ?? null) : "live";
+
+  // Until the setup is sent, the home screen is about two things: booking the kickoff call, and having the steps ready for it.
+  const settingUp = step.kind === "start-onboarding" || step.kind === "continue-onboarding";
+  const setupCall = settingUp ? await getSetupCallState(tenant) : null;
+  const paidAt = billing.subscription?.activatedAt ?? null;
+  const booked = setupCall?.booking != null;
 
   return (
     <>
@@ -41,17 +54,33 @@ export default async function AppHomePage(): Promise<ReactElement> {
           <h1 className="panel-title">
             Hello, <em>{firstName(user.name)}.</em>
           </h1>
-          <p className="mt-2 text-sm text-ink-soft">{SUBTITLES[step.kind]}</p>
+          <p className="mt-2 text-sm text-ink-soft">{settingUp && booked ? BOOKED_SUBTITLE : SUBTITLES[step.kind]}</p>
         </div>
-        {banner === null ? null : <BillingBanner banner={banner} />}
+        <div className="flex flex-col items-start gap-4 xl:items-end">
+          {banner === null ? null : <BillingBanner banner={banner} />}
+          {settingUp && paidAt !== null ? (
+            <PaidBadge paidAtIso={paidAt.toISOString()} serverNowMs={setupCall?.readAtMs ?? 0} booking={setupCall?.booking ?? null} />
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-8">
-        <NextStepCard
-          step={step}
-          completedSteps={completed}
-          buildStageIndex={status === null ? 0 : projectStageIndex({ status, onboardingSubmittedAt: project?.onboardingSubmittedAt ?? null })}
-        />
+        {setupCall === null ? (
+          <NextStepCard
+            step={step}
+            buildStageIndex={status === null ? 0 : projectStageIndex({ status, onboardingSubmittedAt: project?.onboardingSubmittedAt ?? null })}
+          />
+        ) : (
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start">
+            <KickoffCallCard
+              url={setupCall.url}
+              booking={setupCall.booking}
+              prefill={{ name: user.name, email: isPhoneAccountEmail(user.email) ? null : user.email }}
+              businessId={tenant.businessId}
+            />
+            <PrepareChecklist completedSteps={completed} />
+          </div>
+        )}
       </div>
     </>
   );
