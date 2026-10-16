@@ -5,8 +5,12 @@ import { bookCallSlot, loadCallSlots } from "@/app/app-host/(protected)/setup-ca
 import { groupSlotsByDay, keyOf, monthWeeks } from "@fynix/shared/lib/call-slots";
 import { ChevronRightIcon } from "@fynix/shared/ui/icons";
 import { Button } from "@fynix/shared/ui/panel/button";
-import { SkeletonLine } from "@fynix/shared/ui/panel/skeleton";
 import { cn } from "@fynix/shared/lib/cn";
+
+/** A pulsing bar the shape of what will load; the shared one is always a pill, which would draw the calendar as an oval. */
+function Bar({ className }: { readonly className: string }): ReactElement {
+  return <span className={cn("block bg-ink/[0.07] motion-safe:animate-pulse", className)} />;
+}
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -64,16 +68,20 @@ export function CallSlotPicker({ onBooked, onUnavailable }: CallSlotPickerProps)
 
   if (slots === null) {
     return (
-      <div aria-busy="true" aria-label="Loading times" className="grid gap-6 rounded-card bg-card p-6 sm:grid-cols-[minmax(0,1fr)_11rem]">
-        <div className="space-y-3">
-          <SkeletonLine className="h-5 w-40" />
-          <SkeletonLine className="h-56 w-full rounded-control" />
+      <div aria-busy="true" aria-label="Loading times" className="grid gap-8 rounded-card bg-card p-4 sm:grid-cols-[minmax(0,1fr)_11rem] sm:p-6">
+        <div className="space-y-4">
+          <Bar className="h-5 w-36 rounded-full" />
+          <div className="grid grid-cols-7 gap-1.5">
+            {Array.from({ length: 35 }, (_, index) => (
+              <Bar key={index} className="aspect-square rounded-full" />
+            ))}
+          </div>
         </div>
-        <div className="space-y-3">
-          <SkeletonLine className="h-5 w-28" />
-          <SkeletonLine className="h-11 w-full rounded-control" />
-          <SkeletonLine className="h-11 w-full rounded-control" />
-          <SkeletonLine className="h-11 w-full rounded-control" />
+        <div className="space-y-2.5">
+          <Bar className="h-4 w-28 rounded-full" />
+          <Bar className="h-11 w-full rounded-control" />
+          <Bar className="h-11 w-full rounded-control" />
+          <Bar className="h-11 w-full rounded-control" />
         </div>
       </div>
     );
@@ -121,7 +129,7 @@ export function CallSlotPicker({ onBooked, onUnavailable }: CallSlotPickerProps)
   };
 
   return (
-    <div className="rounded-card bg-card p-6">
+    <div className="rounded-card bg-card p-4 sm:p-6">
       <div className="grid gap-8 sm:grid-cols-[minmax(0,1fr)_11rem]">
         <div>
           <div className="flex items-center justify-between">
@@ -190,7 +198,7 @@ export function CallSlotPicker({ onBooked, onUnavailable }: CallSlotPickerProps)
 
         <div>
           <p className="text-sm text-ink-soft">{dayLong.format(dayDate(activeDay))}</p>
-          <ul className="mt-3 flex max-h-72 flex-col gap-2.5 overflow-y-auto pr-1">
+          <ul className="mt-3 grid grid-cols-2 gap-2.5 sm:flex sm:max-h-72 sm:flex-col sm:overflow-y-auto sm:pr-1">
             {times.map((iso) => (
               <li key={iso}>
                 <button

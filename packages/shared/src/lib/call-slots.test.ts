@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayKey, groupSlotsByDay, keyOf, monthWeeks } from "./call-slots";
+import { callInviteHref, dayKey, groupSlotsByDay, keyOf, monthWeeks } from "./call-slots";
 
 describe("dayKey", () => {
   it("names the day in the viewer's zone, not UTC", () => {
@@ -28,5 +28,14 @@ describe("monthWeeks", () => {
 describe("keyOf", () => {
   it("pads month and day", () => {
     expect(keyOf(2026, 0, 5)).toBe("2026-01-05");
+  });
+});
+
+describe("callInviteHref", () => {
+  it("writes the start and end in UTC", () => {
+    const file = decodeURIComponent(callInviteHref("2026-10-19T05:30:00.000Z", "2026-10-19T06:00:00.000Z").split(",")[1] ?? "");
+    expect(file).toContain("DTSTART:20261019T053000Z");
+    expect(file).toContain("DTEND:20261019T060000Z");
+    expect(file.startsWith("BEGIN:VCALENDAR")).toBe(true);
   });
 });

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactElem
 import { ArrowIcon } from "@fynix/shared/ui/icons";
 import { ExternalButtonLink } from "@fynix/shared/ui/panel/button";
 import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import { callInviteHref } from "@fynix/shared/lib/call-slots";
 import { isCalendlyUrl } from "@fynix/shared/lib/setup-call-link";
 import { recordSetupCallBooked } from "@/app/app-host/(protected)/setup-call-actions";
 import { CallSlotPicker } from "@/components/panel/call-slot-picker";
@@ -125,12 +126,14 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
   const router = useRouter();
   const [, startTransition] = useTransition();
   // The time of a call booked in this visit: both null when the booking page's own widget reported it, which cannot say when.
-  const [justBooked, setJustBooked] = useState<{ readonly startsAtIso: string | null } | null>(null);
+  const [justBooked, setJustBooked] = useState<{ readonly startsAtIso: string | null; readonly endsAtIso: string | null } | null>(null);
   // Times are offered in our own calendar; when they cannot be (no scheduling set up here, or no email to invite), the booking page is shown.
   const [pageInstead, setPageInstead] = useState(false);
   const booked = booking !== null || justBooked !== null;
   const startsAtIso = booking?.startsAtIso ?? justBooked?.startsAtIso ?? null;
+  const endsAtIso = booking?.endsAtIso ?? justBooked?.endsAtIso ?? null;
   const waitingForTime = booked && startsAtIso === null;
+  const minutes = startsAtIso === null || endsAtIso === null ? null : Math.round((new Date(endsAtIso).getTime() - new Date(startsAtIso).getTime()) / 60_000);
   const ownCalendar = prefill.email !== null && !pageInstead;
 
   useEffect(() => {
@@ -144,7 +147,7 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
   // Stable, so the booking page is set up once and not again on every render.
   const onBooked = useCallback(
     (inviteeUri: unknown): void => {
-      setJustBooked({ startsAtIso: null });
+      setJustBooked({ startsAtIso: null, endsAtIso: null });
       startTransition(async () => {
         await recordSetupCallBooked(inviteeUri);
         router.refresh();
@@ -154,8 +157,8 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
   );
 
   const onPicked = useCallback(
-    (call: { readonly startsAtIso: string }): void => {
-      setJustBooked({ startsAtIso: call.startsAtIso });
+    (call: { readonly startsAtIso: string; readonly endsAtIso: string }): void => {
+      setJustBooked(call);
       router.refresh();
     },
     [router],
@@ -169,24 +172,42 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
           <h2 id="kickoff-call-heading" className="panel-title">
             Your kickoff call is booked
           </h2>
-          <div className="mt-4 rounded-card bg-card p-6">
+          <div className="mt-4 rounded-card bg-card p-5 sm:p-6">
             {startsAtIso === null ? (
               <p className="text-lg font-medium text-ink">Checking the time with the calendar…</p>
             ) : (
-              <p className="font-serif text-2xl text-ink tabular-nums">
+              <p className="text-2xl font-semibold tracking-tight text-ink tabular-nums">
                 <LocalDateTime iso={startsAtIso} />
               </p>
             )}
-            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-              We’ve emailed you the details and the video link. Pick up the setup steps on the right before then, so we can use the time well.
+            <p className="mt-1 text-[0.9375rem] text-ink-soft">
+              {minutes === null ? "Video call with the Fynix team" : `${String(minutes)} minutes, video call with the Fynix team`}
             </p>
-            {url === null ? null : (
-              <ExternalButtonLink href={url} target="_blank" rel="noopener noreferrer" variant="secondary" size="sm" className="group mt-5">
-                Book a different time
-                <span className="sr-only"> (opens in a new tab)</span>
-                <ArrowIcon className="size-4 shrink-0 transition-transform duration-300 ease-calm group-hover:translate-x-1" />
-              </ExternalButtonLink>
-            )}
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              {startsAtIso === null || endsAtIso === null ? null : (
+                <ExternalButtonLink href={callInviteHref(startsAtIso, endsAtIso)} download="fynix-kickoff-call.ics" variant="secondary" size="sm">
+                  Add to calendar
+                </ExternalButtonLink>
+              )}
+              {url === null ? null : (
+                <ExternalButtonLink href={url} target="_blank" rel="noopener noreferrer" variant="quiet" size="sm" className="group">
+                  Book a different time
+                  <span className="sr-only"> (opens in a new tab)</span>
+                  <ArrowIcon className="size-4 shrink-0 transition-transform duration-300 ease-calm group-hover:translate-x-1" />
+                </ExternalButtonLink>
+              )}
+            </div>
+            <p className="mt-5 text-sm leading-relaxed text-ink-soft">
+              You’ll get an email with the details and the video link. Fill in the checklist before the call so we can use the time well.
+            </p>
+          </div>
+          <div className="mt-6">
+            <p className="text-sm font-medium text-ink">On the call</p>
+            <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-ink-soft">
+              <li>We go through your business, your customers and the pages you need.</li>
+              <li>You choose the look and feel, and we agree the plan for the build.</li>
+              <li>You leave knowing the date your website goes live.</li>
+            </ul>
           </div>
         </>
       ) : (

@@ -30,3 +30,23 @@ export function monthWeeks(year: number, month: number): readonly (readonly (num
 export function keyOf(year: number, month: number, day: number): string {
   return `${String(year)}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
+
+/** A calendar file (.ics) for a booked call, as a link a browser can download, so the customer can add it to their own calendar. */
+export function callInviteHref(startIso: string, endIso: string): string {
+  const stamp = (iso: string): string => new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  const file = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Fynix Digital//Kickoff call//EN",
+    "BEGIN:VEVENT",
+    `UID:${stamp(startIso)}@fynix.digital`,
+    `DTSTAMP:${stamp(new Date().toISOString())}`,
+    `DTSTART:${stamp(startIso)}`,
+    `DTEND:${stamp(endIso)}`,
+    "SUMMARY:Fynix kickoff call",
+    "DESCRIPTION:The video link is in your confirmation email.",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+  return `data:text/calendar;charset=utf-8,${encodeURIComponent(file)}`;
+}
