@@ -1,8 +1,8 @@
 import { type Brand } from "@/lib/brand";
-import type { AddOnId } from "@fynix/shared/lib/billing/add-ons";
+import type { AddOnId, AddOnPrice } from "@fynix/shared/lib/billing/add-ons";
 import type { AddOnAction, AddOnCheckoutIntent, AddOnEndKind, AddOnView } from "@fynix/shared/lib/billing/add-on-state";
 import { formatCalendarDate } from "@fynix/shared/lib/format";
-import { formatRupees } from "@fynix/shared/lib/directory/ads";
+import { formatMoney } from "@fynix/shared/lib/money";
 
 /**
  * The words on the Add-ons page: what each state says, what each button is called, and what the purchase dialog tells
@@ -48,16 +48,16 @@ export function keepDateOf(view: AddOnView): Date | null {
 }
 
 /**
- * The line under an add-on's price, or null when the price speaks for itself (not bought, or ended). `netCents` is what
- * the customer pays each month before GST.
+ * The line under an add-on's price, or null when the price speaks for itself (not bought, or ended). `price.netCents` is
+ * what the customer pays each month before any tax; only a rupee price has GST on top.
  */
-export function addOnStateLine(view: AddOnView, netCents: number): string | null {
+export function addOnStateLine(view: AddOnView, price: Pick<AddOnPrice, "netCents" | "taxRateBasisPoints" | "currency">): string | null {
   switch (view.state) {
     case "none":
     case "ended":
       return null;
     case "active":
-      return `Active. Renews on ${addOnDate(view.renewsOn)} at ${formatRupees(netCents)} + GST.`;
+      return `Active. Renews on ${addOnDate(view.renewsOn)} at ${formatMoney(price.netCents, price.currency)}${price.taxRateBasisPoints > 0 ? " + GST" : ""}.`;
     case "ending":
       return `Ends on ${addOnDate(view.endsOn)}. You can use it until then.`;
     case "pausing":

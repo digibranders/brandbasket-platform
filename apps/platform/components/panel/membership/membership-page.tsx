@@ -86,7 +86,8 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   const selected = view.offer.kind === "available" ? readSelectedAddOns(params) : [];
   const pageHref = (selection: readonly MonthlyAddOnId[]): string =>
     selection.length === 0 ? membershipPathFor(tier) : `${membershipPathFor(tier)}?addons=${selection.join(",")}`;
-  const paying = payable ? orderSummary(plan, view.discount?.amountCents ?? 0, bundleLines(selected)) : null;
+  const lines = plan === null ? [] : bundleLines(selected, plan.currency);
+  const paying = payable ? orderSummary(plan, view.discount?.amountCents ?? 0, lines) : null;
 
   return (
     <div className="grid gap-x-12 gap-y-8 pb-16 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:pb-0">
@@ -104,7 +105,7 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
         {/* The first-checkout offer: shown until the first payment, before the way to pay. */}
         {view.offer.kind === "available" && payable ? (
           <div className="max-w-xl">
-            <OfferCard selected={selected} hrefFor={pageHref} />
+            <OfferCard selected={selected} hrefFor={pageHref} currency={plan.currency} />
           </div>
         ) : null}
 
@@ -123,7 +124,7 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
           <OrderSummary
             tier={tier}
             view={{ ...view, plan }}
-            addOns={bundleLines(selected)}
+            addOns={lines}
             removeHref={(addOn) => pageHref(selected.filter((id) => id !== addOn))}
           >
             <MembershipCheckout tier={tier} view={view} notice={notice} billing={billing} includePay={false} />

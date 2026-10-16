@@ -5,6 +5,7 @@ import {
   consumeRateLimit,
   findAddOnSubscription,
   findBillingState,
+  findBusinessCurrency,
   findLifetimeOfferStanding,
   findLiveBundledAddOns,
   findPlanById,
@@ -63,6 +64,7 @@ vi.mock("@fynix/db", () => {
     consumeRateLimit: vi.fn(),
     findAddOnSubscription: vi.fn(),
     findBillingState: vi.fn(),
+    findBusinessCurrency: vi.fn(),
     findLifetimeOfferStanding: vi.fn(),
     findLiveBundledAddOns: vi.fn().mockResolvedValue([]),
     findPlanById: vi.fn(),
@@ -212,6 +214,7 @@ beforeEach(() => {
   // A business that has paid before and earned nothing: no first-checkout offer applies unless a test says so.
   vi.mocked(findBillingState).mockResolvedValue({ hasEverPaid: true } as never);
   vi.mocked(findLifetimeOfferStanding).mockResolvedValue({ claimed: [] });
+  vi.mocked(findBusinessCurrency).mockResolvedValue("INR");
   events = [];
   openTransactions = 0;
   transactionCount = 0;
@@ -371,6 +374,14 @@ describe("startAddOnCheckoutFor: buy", () => {
       currency: "INR",
       startAt: null,
     });
+  });
+
+  it("prices and charges a business billed in dollars in dollars, with no tax", async () => {
+    vi.mocked(findBusinessCurrency).mockResolvedValue("USD");
+    await startAddOnCheckoutFor(customer, "lead-generation", "buy", NOW);
+
+    expect(insertedRow()).toMatchObject({ listAmountCents: 12_500, netAmountCents: 12_500, taxRateBasisPoints: 0, chargedAmountCents: 12_500, currency: "USD" });
+    expect(started).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 12_500, currency: "USD" }));
   });
 
   it("gives a Premium member 10% off: the row holds the discount and the lower charge", async () => {
@@ -553,7 +564,7 @@ describe("startAddOnCheckoutFor: resume, pay now and keep", () => {
     expect(ensureAddOnPlan).toHaveBeenCalledWith(
       expect.anything(),
       provider,
-      expect.objectContaining({ price: { listCents: 599_900, discountCents: 0, offerCents: 0, netCents: 599_900, taxRateBasisPoints: 1_800, chargedCents: 707_882 } }),
+      expect.objectContaining({ price: { currency: "INR", listCents: 599_900, discountCents: 0, offerCents: 0, netCents: 599_900, taxRateBasisPoints: 1_800, chargedCents: 707_882 } }),
     );
   });
 

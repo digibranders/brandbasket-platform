@@ -10,6 +10,7 @@ import {
 } from "@fynix/db";
 import { headers } from "next/headers";
 import { clientIpFrom } from "@fynix/shared/lib/client-ip";
+import { currencyForCountry } from "@fynix/shared/lib/pricing";
 import { retryMessage } from "@fynix/shared/lib/sign-in-limits";
 import type { JoinCodeStep, JoinInput } from "@/lib/join-form";
 import { membershipTierForChoice } from "@/lib/membership";
@@ -150,6 +151,8 @@ export async function createListingAccount(input: JoinInput): Promise<ListingAcc
       signupChoice: input.choice,
       countryCode: input.country,
       stateCode: input.stateCode,
+      // A plan is billed in rupees in India and dollars everywhere else; a free listing is in the directory, in India.
+      currency: input.choice === "listing_only" ? "INR" : currencyForCountry(input.country),
     });
     await recordLeadForSignup({ name: input.name, businessName, email: signInAddress, businessId, choice: input.choice, userId });
   } catch (error) {

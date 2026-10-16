@@ -1,10 +1,12 @@
 import { chargedAmountCents, GST_BASIS_POINTS } from "@fynix/billing/tax";
+import type { MoneyCurrency } from "../money";
 import { lifetimeOfferCentsFor } from "./lifetime-offer";
 
 /**
  * The digital-marketing services a business buys from the Add-ons page (docs/superpowers/specs/2026-10-09-add-ons-
- * design.md), and what each costs. Prices are net of GST, in paise, and match the website's Digital marketing page
- * (fynix-website content/for-business.ts): change both together. A price here only affects new purchases; what a
+ * design.md), and what each costs in each currency a business is billed in. Rupee prices are net of GST, in paise, and
+ * match the website's Digital marketing page; dollar prices are in cents with no tax and match its US page
+ * (fynix.digital/us/free-business-website): change both together. A price here only affects new purchases; what a
  * business pays for an existing subscription is stored on it. Pure and browser-safe.
  */
 
@@ -16,7 +18,7 @@ export const PREMIUM_ADD_ON_DISCOUNT_PERCENT = 10;
 /** Days after Razorpay gives up on a renewal during which the customer can still Pay now. */
 export const ADD_ON_GRACE_DAYS = 7;
 
-const PAISE_PER_RUPEE = 100;
+const MINOR_UNITS_PER_MAJOR = 100;
 
 export type AddOnId = "social-media" | "lead-generation" | "advertising";
 export type MonthlyAddOnId = AddOnId;
@@ -27,8 +29,8 @@ export interface AddOn {
   /** One line on what the service does for the business. */
   readonly line: string;
   readonly billing: "monthly" | "one-time";
-  /** The list price before any discount, net of GST, in paise. */
-  readonly paise: number;
+  /** The list price before any discount, in minor units of each currency: net of GST in rupees, untaxed in dollars. */
+  readonly prices: Readonly<Record<MoneyCurrency, number>>;
   /** What the price is for: "a month". */
   readonly unit: string;
   /** Costs the ad platforms charge on top, said in a few words; absent when there are none. */
@@ -43,7 +45,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Social media",
     line: "Content creation, posting and growth across major platforms.",
     billing: "monthly",
-    paise: 1_999 * PAISE_PER_RUPEE,
+    prices: { INR: 1_999 * MINOR_UNITS_PER_MAJOR, USD: 100 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
   },
   {
@@ -51,7 +53,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Outreach and lead generation",
     line: "Find and engage the right audience to get more business.",
     billing: "monthly",
-    paise: 4_999 * PAISE_PER_RUPEE,
+    prices: { INR: 4_999 * MINOR_UNITS_PER_MAJOR, USD: 125 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
   },
   {
@@ -59,7 +61,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Paid advertising",
     line: "Run and manage high-performing ads for better results.",
     billing: "monthly",
-    paise: 5_999 * PAISE_PER_RUPEE,
+    prices: { INR: 5_999 * MINOR_UNITS_PER_MAJOR, USD: 125 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
     extra: "+ platform fees",
     platforms: ["Google Ads", "Facebook Ads", "Instagram Ads"],
@@ -84,8 +86,9 @@ export function addOnById(id: AddOnId): AddOn {
   return addOn;
 }
 
-/** What one purchase costs, worked out once and stored on it. All amounts in paise. */
+/** What one purchase costs, worked out once and stored on it. All amounts in minor units of the purchase's currency. */
 export interface AddOnPrice {
+  readonly currency: MoneyCurrency;
   readonly listCents: number;
   readonly discountCents: number;
   /** The part of `discountCents` that is the first-checkout lifetime offer (lifetime-offer.ts), or 0. */
@@ -93,20 +96,28 @@ export interface AddOnPrice {
   /** List less discount: the taxable value. */
   readonly netCents: number;
   readonly taxRateBasisPoints: number;
-  /** What Razorpay takes: net plus GST, from chargedAmountCents like every other price. */
+  /** What Razorpay takes: net plus any tax, from chargedAmountCents like every other price. */
   readonly chargedCents: number;
 }
 
-export function addOnPrice(addOn: AddOn, premium: boolean, lifetimeOffer = false): AddOnPrice {
-  const premiumCents = premium ? Math.round((addOn.paise * PREMIUM_ADD_ON_DISCOUNT_PERCENT) / 100) : 0;
-  const offerCents = lifetimeOffer ? lifetimeOfferCentsFor(addOn.paise) : 0;
+/** GST in India; nothing of ours on a dollar price, as on the dollar plan (plans.tax_rate_basis_points). */
+export function addOnTaxRateBasisPoints(currency: MoneyCurrency): number {
+  return currency === "INR" ? GST_BASIS_POINTS : 0;
+}
+
+export function addOnPrice(addOn: AddOn, currency: MoneyCurrency, premium: boolean, lifetimeOffer = false): AddOnPrice {
+  const listCents = addOn.prices[currency];
+  const premiumCents = premium ? Math.round((listCents * PREMIUM_ADD_ON_DISCOUNT_PERCENT) / 100) : 0;
+  const offerCents = lifetimeOffer ? lifetimeOfferCentsFor(listCents) : 0;
   const discountCents = premiumCents + offerCents;
+  const taxRateBasisPoints = addOnTaxRateBasisPoints(currency);
   return {
-    listCents: addOn.paise,
+    currency,
+    listCents,
     discountCents,
     offerCents,
-    netCents: addOn.paise - discountCents,
-    taxRateBasisPoints: GST_BASIS_POINTS,
-    chargedCents: chargedAmountCents(addOn.paise, discountCents, GST_BASIS_POINTS),
+    netCents: listCents - discountCents,
+    taxRateBasisPoints,
+    chargedCents: chargedAmountCents(listCents, discountCents, taxRateBasisPoints),
   };
 }

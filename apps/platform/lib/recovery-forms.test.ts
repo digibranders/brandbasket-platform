@@ -42,7 +42,7 @@ async function type(name: string, value: string): Promise<void> {
   });
 }
 
-const JOIN_PROPS = { initialChoice: "care", preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { care: null, premium: null }, confirmsCodes: true, countries: [{ code: "IN", name: "India" }, { code: "AE", name: "United Arab Emirates" }] } as const;
+const JOIN_PROPS = { initialChoice: "care", preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { INR: { care: null, premium: null }, USD: { care: null, premium: null } }, confirmsCodes: true, countries: [{ code: "IN", name: "India" }, { code: "AE", name: "United Arab Emirates" }] } as const;
 const codeStep = { otpId: "challenge", emailHint: "o•••@example.test", confirmRequired: true };
 
 /** Picks a state the way a person does: India is the country already chosen, and the state is never filled in for them. */

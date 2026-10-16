@@ -5,10 +5,11 @@ import { EntryScreen } from "@/components/panel/entry-screen";
 import { SignInForm } from "@fynix/shared/ui/panel/sign-in-form";
 import { TurnstileScope } from "@fynix/shared/ui/turnstile-scope";
 import { SignOutButton } from "@fynix/shared/ui/panel/sign-out-button";
+import type { Plan } from "@fynix/db";
 import { siteConfig } from "@fynix/shared/lib/site-config";
 import { EntrySwitch } from "@/components/panel/entry-switch";
 import { countryOptions } from "@fynix/shared/lib/countries";
-import { JoinForm } from "@/components/panel/join-form";
+import { JoinForm, type PlanPricesByCurrency } from "@/components/panel/join-form";
 import { loginNotice } from "@/lib/login-notice";
 import { requestBrand } from "@/lib/server/request-brand";
 import { readEntryRequest } from "@/lib/account-entry";
@@ -119,10 +120,17 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
     );
   }
 
-  const [carePlan, premiumPlan] = await Promise.all([getMembershipPlan("care"), getMembershipPlan("premium")]);
-  const prices = {
-    care: carePlan === null ? null : membershipPriceLine(carePlan),
-    premium: premiumPlan === null ? null : membershipPriceLine(premiumPlan),
+  // Both currencies: the form shows the one for the country the owner picks.
+  const [indiaCare, indiaPremium, usCare, usPremium] = await Promise.all([
+    getMembershipPlan("care", "INR"),
+    getMembershipPlan("premium", "INR"),
+    getMembershipPlan("care", "USD"),
+    getMembershipPlan("premium", "USD"),
+  ]);
+  const priceLine = (plan: Plan | null): string | null => (plan === null ? null : membershipPriceLine(plan));
+  const prices: PlanPricesByCurrency = {
+    INR: { care: priceLine(indiaCare), premium: priceLine(indiaPremium) },
+    USD: { care: priceLine(usCare), premium: priceLine(usPremium) },
   };
   // With the local bypass on (EMAIL_CODE_BYPASS) any six digits are accepted, so the form must not promise a real check.
   const confirmsCodes = !emailCodeBypassed();

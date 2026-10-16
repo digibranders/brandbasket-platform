@@ -1,6 +1,7 @@
 import "server-only";
 import {
   findAddOnSubscription,
+  findBusinessCurrency,
   listAddOnSubscriptionsForStaff,
   listBundledAddOnsForBusiness,
   listPressReleasesForBusiness,
@@ -37,17 +38,19 @@ export interface ClientAddOns {
 /** Everything the client page's Add-ons section shows for one business. */
 export async function loadClientAddOns(businessId: string, now: Date): Promise<ClientAddOns> {
   const db = getStaffDb();
-  const [rows, releases, bundled] = await Promise.all([
+  const [rows, releases, bundled, currency] = await Promise.all([
     listAddOnSubscriptionsForStaff(db, businessId),
     listPressReleasesForBusiness(db, businessId),
     listBundledAddOnsForBusiness(db, businessId),
+    findBusinessCurrency(db, businessId),
   ]);
+  if (currency === null) throw new Error(`No business with id ${businessId} to list add-ons for`);
   const addOns = clientAddOnRows(rows, now);
   for (const row of addOns) {
     // Ids only: the row holds the customer's price and dates, none of which belong in a log.
     if (row.broken) logBillingEvent("error", "add-on-view-failed", { businessId, addOnSubscriptionId: row.id });
   }
-  return { addOns, bundledAddOns: clientBundledAddOnRows(bundled), pressReleases: clientPressReleaseRows(releases) };
+  return { addOns, bundledAddOns: clientBundledAddOnRows(bundled, currency), pressReleases: clientPressReleaseRows(releases) };
 }
 
 /**

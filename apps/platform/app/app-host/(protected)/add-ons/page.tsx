@@ -88,7 +88,7 @@ export default async function AddOnsPage({ searchParams }: AddOnsPageProps): Pro
       <ul className="mt-6 max-w-3xl divide-y divide-line border-y border-line">
         {ADD_ONS.map((addOn) => {
           const entry = entryOf.get(addOn.id) ?? null;
-          const price = entry !== null && (entry.kind === "ready" || entry.kind === "included") ? entry.price : addOnPrice(addOn, premium);
+          const price = entry !== null && (entry.kind === "ready" || entry.kind === "included") ? entry.price : addOnPrice(addOn, page.currency, premium);
           return <AddOnRow key={addOn.id} addOn={addOn} entry={entry} price={price} now={now} invoice={invoice} />;
         })}
       </ul>

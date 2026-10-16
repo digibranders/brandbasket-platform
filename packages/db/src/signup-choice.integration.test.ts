@@ -9,6 +9,7 @@ import {
   setListingSignupChoice,
 } from "./queries/directory-ads";
 import { insertBusiness } from "./queries/onboarding";
+import { findBusinessCurrency } from "./queries/tax-invoices";
 import { businesses, projects, users } from "./schema";
 import { withTenantScope } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
@@ -55,6 +56,13 @@ describe("the sign-up choice", () => {
       signupChoice: "own_website",
     });
     expect(await findBusinessEntry(dbs.staff.db, businessId)).toEqual({ kind: "listing", signupChoice: "own_website" });
+  });
+
+  it("opens the business in the currency the caller chose, rupees when it chose none", async () => {
+    const { businessId } = await createUnlistedAccountBusiness(dbs.staff.db, { userId: OWNER, businessName: "Hudson Dental", signupChoice: "care", currency: "USD" });
+    expect(await findBusinessCurrency(dbs.staff.db, businessId)).toBe("USD");
+    const other = await createUnlistedAccountBusiness(dbs.staff.db, { userId: OTHER, businessName: "Meera Shah" });
+    expect(await findBusinessCurrency(dbs.staff.db, other.businessId)).toBe("INR");
   });
 
   it("is null when none was given, and for a business nobody can see", async () => {

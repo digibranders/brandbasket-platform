@@ -47,7 +47,7 @@ describe("dayOfMonthLabel", () => {
 });
 
 describe("addOnStateLine", () => {
-  const net = 10_000 * 100;
+  const net = { netCents: 10_000 * 100, taxRateBasisPoints: 1_800, currency: "INR" } as const;
   const cases: ReadonlyArray<readonly [string, AddOnView, string | null]> = [
     ["none", { state: "none" }, null],
     ["ended", { state: "ended" }, null],
@@ -73,8 +73,14 @@ describe("addOnStateLine", () => {
   });
 
   it("shows the net price a member pays, not the list price", () => {
-    expect(addOnStateLine({ state: "active", renewsOn: NOV_12 }, 9_000 * 100)).toBe(
+    expect(addOnStateLine({ state: "active", renewsOn: NOV_12 }, { ...net, netCents: 9_000 * 100 })).toBe(
       "Active. Renews on 12 November 2026 at ₹9,000 + GST.",
+    );
+  });
+
+  it("says a dollar price with no GST", () => {
+    expect(addOnStateLine({ state: "active", renewsOn: NOV_12 }, { netCents: 12_500, taxRateBasisPoints: 0, currency: "USD" })).toBe(
+      "Active. Renews on 12 November 2026 at $125.",
     );
   });
 

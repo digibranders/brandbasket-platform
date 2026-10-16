@@ -313,7 +313,7 @@ async function openPlanCheckout(
     // The lifetime offer is for the first checkout: a business that has paid before takes no add-ons with its plan.
     const bundle: readonly NewBundledAddOn[] = state.hasEverPaid
       ? []
-      : bundleLines(addOns).map((line) => ({
+      : bundleLines(addOns, plan.currency).map((line) => ({
           addOn: line.addOn,
           listAmountCents: line.listCents,
           offerDiscountAmountCents: line.offerCents,

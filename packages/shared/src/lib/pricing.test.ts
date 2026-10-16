@@ -32,15 +32,15 @@ describe("formatPrice", () => {
 
 describe("carePlan", () => {
   it("prices the plan monthly from the first payment", () => {
-    expect(formatPrice(carePlan.monthlyCents)).toBe("$69");
+    expect(formatPrice(carePlan.monthlyCents)).toBe("$75");
     expect(carePlan).not.toHaveProperty("firstTermCents");
   });
 });
 
 describe("changePricing", () => {
-  it("includes the first hour of changes once, then charges $15 an hour", () => {
+  it("includes the first hour of changes once, then charges $10 an hour", () => {
     expect(changePricing.includedHours).toBe(1);
-    expect(formatPrice(changePricing.extraHourCents)).toBe("$15");
+    expect(formatPrice(changePricing.extraHourCents)).toBe("$10");
   });
 
   it("includes 100 blog posts, then sells them in blocks of 100 for $5", () => {
@@ -60,17 +60,17 @@ describe("planPrices", () => {
   });
 
   it("formats each price in its own currency", () => {
-    expect(planPrice("monthly", "USD")).toBe("$69");
+    expect(planPrice("monthly", "USD")).toBe("$75");
     expect(planPrice("monthly", "INR")).toBe("₹9,999");
-    expect(planPrice("extraHour", "USD")).toBe("$15");
+    expect(planPrice("extraHour", "USD")).toBe("$10");
     expect(planPrice("extraHour", "INR")).toBe("₹1,425");
     expect(planPrice("extraBlogPosts", "USD")).toBe("$5");
     expect(planPrice("extraBlogPosts", "INR")).toBe("₹475");
   });
 
   it("names both prices for text that can't switch currency", () => {
-    expect(planPriceInBoth("monthly")).toBe("$69 (₹9,999 in India)");
-    expect(planPriceInBoth("extraHour")).toBe("$15 (₹1,425 in India)");
+    expect(planPriceInBoth("monthly")).toBe("$75 (₹9,999 in India)");
+    expect(planPriceInBoth("extraHour")).toBe("$10 (₹1,425 in India)");
   });
 });
 

@@ -37,6 +37,7 @@ import {
   DIRECTORY_AD_PLACEMENTS,
   HOME_AD_SCOPE_SLUG,
   HOME_AD_SPOTS,
+  type BillingCurrency,
   type DirectoryEventKind,
   type DirectoryAdBidStatus,
   type DirectoryAdEventKind,
@@ -292,14 +293,15 @@ export async function findClaimablePlace(db: Runner, placeId: string): Promise<C
 }
 
 /**
- * A `listing` business (rupees) owned by `userId`, carrying what its owner chose at sign-up. Refuses a user who
- * already belongs to a business.
+ * A `listing` business owned by `userId`, billed in `currency`, carrying what its owner chose at sign-up. Refuses a user
+ * who already belongs to a business.
  */
 async function insertListingBusiness(
   tx: ScopedTransaction,
   userId: string,
   businessName: string,
   signupChoice: SignupChoice | null,
+  currency: BillingCurrency,
 ): Promise<{ readonly id: string }> {
   const existing = await tx
     .select({ businessId: businessMembers.businessId })
@@ -308,7 +310,7 @@ async function insertListingBusiness(
     .limit(1);
   if (existing.length > 0) throw new UserAlreadyHasBusinessError(userId);
 
-  const business = await insertBusiness(tx, businessName, "INR", "listing");
+  const business = await insertBusiness(tx, businessName, currency, "listing");
   if (signupChoice !== null) await tx.update(businesses).set({ signupChoice }).where(eq(businesses.id, business.id));
   await tx.insert(businessMembers).values({ businessId: business.id, userId, role: "owner" });
   return business;
@@ -330,7 +332,8 @@ export async function createListingAccountBusiness(
     // Before any row: the claim's place and address are decided here (holdPlaceRegistryShared).
     if (account.placeId !== undefined) await holdPlaceRegistryShared(tx);
     const target = await claimTarget(tx, account);
-    const business = await insertListingBusiness(tx, account.userId, account.businessName, account.signupChoice ?? null);
+    // The directory is in India: a claimed listing is billed in rupees.
+    const business = await insertListingBusiness(tx, account.userId, account.businessName, account.signupChoice ?? null, "INR");
     const inserted = await tx
       .insert(directoryClaims)
       .values({
@@ -379,10 +382,12 @@ export async function createUnlistedAccountBusiness(
     /** Where the owner said they are, asked at sign-up: an ISO alpha-2 code, and for India the GST state code. */
     readonly countryCode?: string | null;
     readonly stateCode?: string | null;
+    /** What the business is billed in, decided by the caller from where the owner is. Rupees when not given. */
+    readonly currency?: BillingCurrency;
   },
 ): Promise<{ readonly businessId: string }> {
   return db.transaction(async (tx) => {
-    const business = await insertListingBusiness(tx, account.userId, account.businessName, account.signupChoice ?? null);
+    const business = await insertListingBusiness(tx, account.userId, account.businessName, account.signupChoice ?? null, account.currency ?? "INR");
     if (account.countryCode != null) {
       await tx
         .update(businesses)

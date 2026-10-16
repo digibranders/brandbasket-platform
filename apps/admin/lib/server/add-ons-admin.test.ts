@@ -6,6 +6,7 @@ vi.mock("@fynix/db", async () => {
   return {
     ...actual,
     findAddOnSubscription: vi.fn(),
+    findBusinessCurrency: vi.fn(),
     listAddOnSubscriptionsForStaff: vi.fn(),
     listBundledAddOnsForBusiness: vi.fn(async () => []),
     listPressReleasesForBusiness: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock("./db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 
 import {
   findAddOnSubscription,
+  findBusinessCurrency,
   listAddOnSubscriptionsForStaff,
   listBundledAddOnsForBusiness,
   listPressReleasesForBusiness,
@@ -44,6 +46,7 @@ const NOW = new Date("2026-10-20T09:00:00.000Z");
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(findBusinessCurrency).mockResolvedValue("INR");
 });
 
 describe("endClientAddOn", () => {
@@ -206,6 +209,7 @@ describe("add-ons taken with the plan", () => {
     listAmountCents: 199_900,
     offerDiscountAmountCents: 9_995,
     netAmountCents: 189_905,
+    taxRateBasisPoints: 1_800,
     activatedAt: new Date("2026-10-09T09:00:00.000Z"),
     endRequestedAt: null,
     removedAt: null,

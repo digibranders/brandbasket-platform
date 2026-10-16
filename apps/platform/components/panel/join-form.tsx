@@ -7,6 +7,8 @@ import { HOME_COUNTRY, type CountryOption } from "@fynix/shared/lib/countries";
 import { INDIA_STATES } from "@fynix/shared/lib/directory/india-states";
 import { OTP_LENGTH } from "@fynix/shared/lib/appointments/otp";
 import { cn } from "@fynix/shared/lib/cn";
+import type { MoneyCurrency } from "@fynix/shared/lib/money";
+import { currencyForCountry } from "@fynix/shared/lib/pricing";
 import { Button } from "@fynix/shared/ui/panel/button";
 import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
@@ -33,6 +35,9 @@ export interface PlanPrices {
   readonly care: string | null;
   readonly premium: string | null;
 }
+
+/** The paid plans' price lines in each currency: the form shows the one for the country the owner picks. */
+export type PlanPricesByCurrency = Readonly<Record<MoneyCurrency, PlanPrices>>;
 
 /** What each plan is, in a line, for the choice's cards. The page's own copy: the full lists are on each plan's page. */
 const PLAN_OPTIONS: readonly {
@@ -78,8 +83,8 @@ interface JoinFormProps {
   readonly choices: readonly JoinChoice[];
   /** Where the Terms and the Privacy Notice are, for the brand this is sold under (lib/legal-links.ts legalLinksFor). */
   readonly legalLinks: LegalLinks;
-  /** Each paid plan's price as the page says it ("₹2,999 a month + 18% GST"); null when no plan of that tier is on sale. */
-  readonly prices: PlanPrices;
+  /** Each paid plan's price as the page says it ("₹2,999 a month + 18% GST", "$75 a month"); null when no plan of that tier is on sale in that currency. */
+  readonly prices: PlanPricesByCurrency;
   /**
    * False while the local bypass is on (EMAIL_CODE_BYPASS; lib/server/env.ts): the details step then promises no real
    * check. What the code step says comes from the server's own answer (JoinCodeStep.confirmRequired).
@@ -220,6 +225,7 @@ export function JoinForm({
   const [email, setEmail] = useState("");
   /** India first: the product is sold there. The state is never filled in for the owner; they pick it. */
   const [country, setCountry] = useState<string>(HOME_COUNTRY);
+  const planPrices = prices[currencyForCountry(country)];
   const [stateCode, setStateCode] = useState("");
   const [password, setPassword] = useState("");
   /** Never ticked for the owner: agreeing to the Terms and Privacy Notice is their own act (DPDP Act s.6). */
@@ -289,7 +295,7 @@ export function JoinForm({
           </legend>
           <div className="mt-3 space-y-3">
             {PLAN_OPTIONS.filter((option) => choices.includes(option.choice)).map((option) => {
-              const price = option.choice === "listing_only" ? "₹0" : prices[option.choice];
+              const price = option.choice === "listing_only" ? "₹0" : planPrices[option.choice];
               const tone = option.choice === "premium" ? OPTION_TONES.gold : OPTION_TONES.accent;
               return (
                 <label key={option.choice} className={OPTION_CLASSES}>
@@ -420,7 +426,7 @@ export function JoinForm({
         <p className="text-sm text-ink-soft">
           Signing up for the <span className="font-medium text-ink">{PLAN_OPTIONS.find((option) => option.choice === choice)?.name}</span> plan
           {" · "}
-          <span className="tabular-nums">{prices[choice]}</span>
+          <span className="tabular-nums">{planPrices[choice]}</span>
         </p>
       ) : null}
       {asksBusinessName ? (

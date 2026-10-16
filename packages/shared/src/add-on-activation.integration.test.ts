@@ -303,7 +303,7 @@ describe("applyAddOnPayment", () => {
 
 describe("ensureAddOnPlan", () => {
   const localSeo = addOnById("social-media");
-  const memberPrice = addOnPrice(localSeo, true);
+  const memberPrice = addOnPrice(localSeo, "INR", true);
 
   it("makes a plan once and reuses it for the same add-on and amount", async () => {
     const { provider, calls } = providerMakingPlans(() => "plan_fixed");
@@ -321,7 +321,7 @@ describe("ensureAddOnPlan", () => {
     const { provider, calls } = providerMakingPlans((call) => `plan_${call}`);
 
     const member = await ensureAddOnPlan(dbs.staff.db, provider, { addOn: localSeo, price: memberPrice });
-    const list = await ensureAddOnPlan(dbs.staff.db, provider, { addOn: localSeo, price: addOnPrice(localSeo, false) });
+    const list = await ensureAddOnPlan(dbs.staff.db, provider, { addOn: localSeo, price: addOnPrice(localSeo, "INR", false) });
 
     expect([member, list]).toEqual(["plan_1", "plan_2"]);
     expect(calls()).toBe(2);

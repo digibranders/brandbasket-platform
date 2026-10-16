@@ -1,3 +1,4 @@
+import type { MoneyCurrency } from "../money";
 import { addOnById, addOnPrice, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "./add-ons";
 
 /**
@@ -6,7 +7,7 @@ import { addOnById, addOnPrice, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "
  * lifetime offer. Pure and browser-safe, so the page, the server and the invoice all price a bundle the same way.
  */
 
-/** One bundled add-on as the checkout freezes it. All amounts in paise, before GST. */
+/** One bundled add-on as the checkout freezes it. All amounts in minor units of the plan's currency, before any tax. */
 export interface BundleLine {
   readonly addOn: MonthlyAddOnId;
   readonly title: string;
@@ -26,10 +27,10 @@ export function readBundleSelection(values: readonly string[]): readonly Monthly
   return MONTHLY_ADD_ON_IDS.filter((id) => chosen.has(id));
 }
 
-/** The lines of a bundle, each with the lifetime offer, in the catalogue's order. */
-export function bundleLines(selection: readonly MonthlyAddOnId[]): readonly BundleLine[] {
+/** The lines of a bundle in the plan's currency, each with the lifetime offer, in the catalogue's order. */
+export function bundleLines(selection: readonly MonthlyAddOnId[], currency: MoneyCurrency): readonly BundleLine[] {
   return readBundleSelection(selection).map((id) => {
-    const price = addOnPrice(addOnById(id), false, true);
+    const price = addOnPrice(addOnById(id), currency, false, true);
     return { addOn: id, title: addOnById(id).title, listCents: price.listCents, offerCents: price.offerCents, netCents: price.netCents };
   });
 }

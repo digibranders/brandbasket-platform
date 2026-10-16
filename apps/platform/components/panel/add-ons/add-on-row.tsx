@@ -3,7 +3,7 @@ import { requestBrand } from "@/lib/server/request-brand";
 import { LIFETIME_OFFER_PERCENT } from "@fynix/shared/lib/billing/lifetime-offer";
 import { PREMIUM_ADD_ON_DISCOUNT_PERCENT, type AddOn, type AddOnPrice } from "@fynix/shared/lib/billing/add-ons";
 import type { AddOnAction, AddOnCheckoutIntent } from "@fynix/shared/lib/billing/add-on-state";
-import { formatRupees } from "@fynix/shared/lib/directory/ads";
+import { formatMoney } from "@fynix/shared/lib/money";
 import { endAddOnAction, removeBundledAddOnAction, startAddOnAction } from "@/app/app-host/(protected)/add-ons/actions";
 import { BundledAddOnRemove } from "@/components/panel/add-ons/bundled-add-on-remove";
 import { AddOnCheckoutDialog } from "@/components/panel/add-ons/add-on-checkout-dialog";
@@ -64,7 +64,7 @@ export async function AddOnRow({ addOn, entry, price, now, invoice, children }: 
         : `Stops on ${addOnDate(includedEntry.endsOn)}. You won't be charged for it after that.`
       : view === null
         ? null
-        : addOnStateLine(view, price.netCents);
+        : addOnStateLine(view, price);
   const checkoutAction = actions.find(isCheckoutIntent);
   // Pause and Cancel are only offered on a running add-on, and act on the row the server names.
   const endTargetId = ready !== null && view !== null && view.state === "active" ? ready.endTargetId : null;
@@ -121,9 +121,9 @@ export async function AddOnRow({ addOn, entry, price, now, invoice, children }: 
         <div className="flex shrink-0 flex-col gap-4 sm:max-w-xs sm:items-end sm:text-right">
           <div>
             {price.discountCents > 0 ? (
-              <p className="text-sm tabular-nums text-ink-soft line-through">{formatRupees(price.listCents)}</p>
+              <p className="text-sm tabular-nums text-ink-soft line-through">{formatMoney(price.listCents, price.currency)}</p>
             ) : null}
-            <p className="text-2xl font-semibold tabular-nums">{formatRupees(price.netCents)}</p>
+            <p className="text-2xl font-semibold tabular-nums">{formatMoney(price.netCents, price.currency)}</p>
             <p className="mt-0.5 text-sm text-ink-soft">{addOn.extra === undefined ? addOn.unit : `${addOn.unit} ${addOn.extra}`}</p>
             {price.offerCents > 0 ? (
               <p className="mt-1 text-sm text-accent-deep">{LIFETIME_OFFER_PERCENT}% lifetime discount</p>

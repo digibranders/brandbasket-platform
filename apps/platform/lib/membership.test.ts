@@ -155,7 +155,7 @@ describe("orderSummary", () => {
   });
 
   it("adds the add-ons taken at this checkout to the one payment, with their offer and the GST on all of it", () => {
-    const summary = orderSummary(care, 0, bundleLines(["social-media"]));
+    const summary = orderSummary(care, 0, bundleLines(["social-media"], "INR"));
     expect(summary.addOns.map((line) => line.addOn)).toEqual(["social-media"]);
     expect(summary.netCents).toBe(299_900 + 189_905);
     expect(summary.totalCents).toBe(chargedAmountCents(299_900 + 189_905, 0, 1800));
@@ -163,8 +163,14 @@ describe("orderSummary", () => {
     expect(summary.planNetCents).toBe(299_900);
   });
 
+  it("prices a dollar plan with dollar add-ons and no tax: $75 and $95", () => {
+    const usd = { initialAmountCents: 7_500, currency: "USD", taxRateBasisPoints: 0 } as const;
+    const summary = orderSummary(usd, 0, bundleLines(["social-media"], "USD"));
+    expect(summary).toMatchObject({ planNetCents: 7_500, netCents: 7_500 + 9_500, gstCents: 0, totalCents: 17_000 });
+  });
+
   it("takes a code off the plan only, never off the add-ons", () => {
-    const summary = orderSummary(care, 30_000, bundleLines(["advertising"]));
+    const summary = orderSummary(care, 30_000, bundleLines(["advertising"], "INR"));
     expect(summary.netCents).toBe(299_900 - 30_000 + 569_905);
     expect(summary.planNetCents).toBe(269_900);
   });

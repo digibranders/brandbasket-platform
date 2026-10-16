@@ -42,7 +42,7 @@ let businessId = "";
 let care: Plan;
 
 function bundleOf(...ids: Parameters<typeof bundleLines>[0]): readonly NewBundledAddOn[] {
-  return bundleLines(ids).map((line) => ({
+  return bundleLines(ids, care.currency).map((line) => ({
     addOn: line.addOn,
     listAmountCents: line.listCents,
     offerDiscountAmountCents: line.offerCents,

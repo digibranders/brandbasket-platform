@@ -98,7 +98,7 @@ export function OrderSummary({ tier, view, addOns, removeHref, children }: Order
             </p>
           </div>
         ))}
-        <Row label={`GST ${plan.taxRateBasisPoints / 100}%`} amount={money(parts.gstCents)} />
+        {plan.taxRateBasisPoints > 0 ? <Row label={`GST ${plan.taxRateBasisPoints / 100}%`} amount={money(parts.gstCents)} /> : null}
         <div className="flex items-baseline justify-between gap-4 pt-3">
           <dt className="text-sm font-semibold text-ink">Due today</dt>
           <dd className="font-serif text-3xl tabular-nums text-ink">{money(parts.totalCents)}</dd>
@@ -116,7 +116,7 @@ export function OrderSummary({ tier, view, addOns, removeHref, children }: Order
       <p className="mt-3 text-xs leading-relaxed text-ink-soft">
         {addOns.length === 0
           ? describeDiscountedPlanTerms(plan, discount)
-          : `Your first payment covers one month, then ${money(parts.totalCents)} (GST included) is taken each month for your plan and add-ons.`}
+          : `Your first payment covers one month, then ${money(parts.totalCents)}${plan.taxRateBasisPoints > 0 ? " (GST included)" : ""} is taken each month for your plan and add-ons.`}
       </p>
 
       {children === undefined ? null : <div className="mt-4 space-y-5 border-t border-line pt-4">{children}</div>}

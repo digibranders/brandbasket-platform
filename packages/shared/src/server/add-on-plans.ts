@@ -13,7 +13,8 @@ import { isMonthlyAddOnId, type AddOn, type AddOnPrice } from "../lib/billing/ad
  * Like ensureDiscountPlanFor, the provider is called with no transaction open. Two checkouts making the same plan at
  * once each create one at the provider; saveAddOnProviderPlan keeps the first and both use it.
  *
- * The plan is priced at the net amount with GST on top, which is what Razorpay takes (AddOnPrice.chargedCents).
+ * The plan is priced at the net amount with any tax on top, which is what Razorpay takes (AddOnPrice.chargedCents), in
+ * the price's own currency.
  */
 export async function ensureAddOnPlan(
   staffDb: Database,
@@ -25,7 +26,7 @@ export async function ensureAddOnPlan(
     addOn: addOn.id,
     netAmountCents: price.netCents,
     taxRateBasisPoints: price.taxRateBasisPoints,
-    currency: "INR",
+    currency: price.currency,
     provider: provider.name,
   } as const;
   const existing = await findAddOnProviderPlan(staffDb, key);

@@ -3,7 +3,7 @@ import { TagIcon, TickIcon } from "@fynix/shared/ui/icons";
 import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { addOnPrice, ADD_ONS, type AddOn, type MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
 import { LIFETIME_OFFER_HEADLINE, LIFETIME_OFFER_NOTE, LIFETIME_OFFER_PERCENT } from "@fynix/shared/lib/billing/lifetime-offer";
-import { formatMoney } from "@fynix/shared/lib/money";
+import { formatMoney, type MoneyCurrency } from "@fynix/shared/lib/money";
 import { AddOnMark } from "@/components/panel/membership/offer-marks";
 
 interface OfferCardProps {
@@ -11,6 +11,8 @@ interface OfferCardProps {
   readonly selected: readonly MonthlyAddOnId[];
   /** The address of this page with exactly these add-ons ticked: what each button goes to. */
   readonly hrefFor: (selection: readonly MonthlyAddOnId[]) => string;
+  /** The plan's currency: the add-ons are paid with it. */
+  readonly currency: MoneyCurrency;
 }
 
 /** One add-on: its mark, what it is, its lifetime price and the button that ticks it, or the tick that says it is in. */
@@ -18,13 +20,15 @@ function OfferRow({
   addOn,
   added,
   toggleHref,
+  currency,
 }: {
   readonly addOn: AddOn;
+  readonly currency: MoneyCurrency;
   readonly added: boolean;
   /** Where the button goes: the page with this add-on ticked, or, when it already is, with it taken out again. */
   readonly toggleHref: string;
 }): ReactElement {
-  const offered = addOnPrice(addOn, false, true);
+  const offered = addOnPrice(addOn, currency, false, true);
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-3 py-3.5 sm:gap-x-4 sm:py-4">
       <AddOnMark addOn={addOn.id} />
@@ -34,9 +38,9 @@ function OfferRow({
       </div>
       <div className="flex basis-full items-center justify-between gap-4 pl-[3.25rem] sm:basis-auto sm:justify-end sm:pl-0">
         <p className="text-left tabular-nums sm:text-right">
-          <s className="block text-xs text-ink-soft">{formatMoney(offered.listCents, "INR")}</s>
-          <span className="block text-lg font-semibold leading-tight text-ink">{formatMoney(offered.netCents, "INR")}</span>
-          <span className="block text-xs text-ink-soft">a month + GST</span>
+          <s className="block text-xs text-ink-soft">{formatMoney(offered.listCents, currency)}</s>
+          <span className="block text-lg font-semibold leading-tight text-ink">{formatMoney(offered.netCents, currency)}</span>
+          <span className="block text-xs text-ink-soft">{currency === "INR" ? "a month + GST" : "a month"}</span>
         </p>
         {added ? (
           <ButtonLink href={toggleHref} replace scroll={false} prefetch={false} size="sm" variant="secondary" aria-label={`Remove ${addOn.title}`} className="min-w-[5.5rem] text-success">
@@ -58,7 +62,7 @@ function OfferRow({
  * Each add-on ticks on or off with its own button and joins the plan in one payment; it is discounted only if it is taken
  * here: one left out stays at its full price.
  */
-export function OfferCard({ selected, hrefFor }: OfferCardProps): ReactElement {
+export function OfferCard({ selected, hrefFor, currency }: OfferCardProps): ReactElement {
   return (
     <section aria-label="Checkout offer" className="rounded-card border border-ink-soft/40 bg-accent-pale/55 p-4 sm:p-7">
       <div className="flex items-start justify-between gap-6">
@@ -76,6 +80,7 @@ export function OfferCard({ selected, hrefFor }: OfferCardProps): ReactElement {
             key={addOn.id}
             addOn={addOn}
             added={selected.includes(addOn.id)}
+            currency={currency}
             toggleHref={hrefFor(selected.includes(addOn.id) ? selected.filter((id) => id !== addOn.id) : [...selected, addOn.id])}
           />
         ))}

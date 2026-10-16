@@ -1,4 +1,4 @@
-import type { AddOnSubscriptionForStaff, BundledAddOn, PressRelease } from "@fynix/db";
+import type { AddOnSubscriptionForStaff, BillingCurrency, BundledAddOn, PressRelease } from "@fynix/db";
 import { addOnById, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
 import { addOnActions, addOnView, type AddOnView } from "@fynix/shared/lib/billing/add-on-state";
 import { addOnFactsOf, pickAddOnRows } from "@fynix/shared/lib/billing/add-on-rows";
@@ -23,7 +23,7 @@ export interface ClientAddOnRow {
   readonly id: string;
   readonly title: string;
   readonly state: ClientAddOnState;
-  /** What the customer pays, before GST, as it was fixed at purchase: "₹10,000 + GST a month". */
+  /** What the customer pays, before any GST, as it was fixed at purchase: "₹10,000 + GST a month", "$125 a month". */
   readonly price: string;
   /** The next billing, end or pause date in words, or null when there is none to say. */
   readonly dateLine: string | null;
@@ -48,7 +48,7 @@ function day(date: Date): string {
 function priceOf(row: AddOnSubscriptionForStaff): string {
   const premium = row.discountAmountCents - row.offerDiscountAmountCents > 0 ? ", Premium price" : "";
   const offer = row.offerDiscountAmountCents > 0 ? ", 5% lifetime offer" : "";
-  return `${formatMoney(row.netAmountCents, row.currency)} + GST a month${premium}${offer}`;
+  return `${formatMoney(row.netAmountCents, row.currency)}${row.taxRateBasisPoints > 0 ? " + GST" : ""} a month${premium}${offer}`;
 }
 
 function endNoteOf(row: AddOnSubscriptionForStaff): string | null {
@@ -159,7 +159,7 @@ export interface ClientBundledAddOnRow {
 }
 
 /** The add-ons taken with the plan worth showing: the ones paid for. A pending one belongs to a checkout that was never paid. */
-export function clientBundledAddOnRows(rows: readonly BundledAddOn[]): ClientBundledAddOnRow[] {
+export function clientBundledAddOnRows(rows: readonly BundledAddOn[], currency: BillingCurrency): ClientBundledAddOnRow[] {
   return rows.flatMap((row): ClientBundledAddOnRow[] => {
     if (row.status === "pending" || row.activatedAt === null || !isMonthlyAddOnId(row.addOn)) return [];
     const removed = row.status === "removed";
@@ -169,7 +169,7 @@ export function clientBundledAddOnRows(rows: readonly BundledAddOn[]): ClientBun
         id: row.id,
         title: addOnById(row.addOn).title,
         state: removed ? { tone: "quiet", label: "Removed" } : ending ? { tone: "waiting", label: "Ending" } : { tone: "done", label: "Active" },
-        price: `${formatMoney(row.netAmountCents, "INR")} + GST a month, ${row.offerDiscountAmountCents > 0 ? "5% lifetime offer, " : ""}billed with the plan`,
+        price: `${formatMoney(row.netAmountCents, currency)}${row.taxRateBasisPoints > 0 ? " + GST" : ""} a month, ${row.offerDiscountAmountCents > 0 ? "5% lifetime offer, " : ""}billed with the plan`,
         dateLine: removed
           ? row.removedAt === null ? null : `Removed on ${day(row.removedAt)}`
           : ending

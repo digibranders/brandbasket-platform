@@ -41,14 +41,15 @@ export async function loadMembershipCheckout(
   tier: MembershipTier,
   now: Date,
 ): Promise<MembershipCheckoutView> {
-  const plan = await getMembershipPlan(tier);
   const { businessId } = customer.tenant;
   const staffDb = getStaffDb();
-  const [discount, lapsedCode, billingDetails, state] = await Promise.all([
+  // The plan the business is billed in, as startMembershipCheckoutFor will charge it; rupees when it has no billing state yet.
+  const state = await findBillingState(staffDb, businessId);
+  const plan = await getMembershipPlan(tier, state?.currency ?? "INR");
+  const [discount, lapsedCode, billingDetails] = await Promise.all([
     plan === null ? null : resolveAppliedDiscount(businessId, plan, now),
     plan === null ? null : findLapsedAppliedCode(businessId, plan, now),
     loadBillingDetailsView(customer),
-    findBillingState(staffDb, businessId),
   ]);
   const hasEverPaid = state?.hasEverPaid ?? true;
   let offer: MembershipOffer = { kind: "none" };

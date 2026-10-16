@@ -7,6 +7,7 @@ import {
   consumeRateLimit,
   findAddOnSubscription,
   findBillingState,
+  findBusinessCurrency,
   findLifetimeOfferStanding,
   findLiveBundledAddOns,
   findPlanById,
@@ -122,9 +123,17 @@ async function offerAppliesTo(tx: Database | ScopedTransaction, businessId: stri
   return lifetimeOfferApplies({ hasEverPaid: state?.hasEverPaid ?? true, claimedBefore: standing.claimed.includes(addOn) });
 }
 
+/** The currency the business is billed in, which a new add-on is priced and charged in. */
+async function billedCurrencyOf(tx: ScopedTransaction, businessId: string): Promise<AddOnPrice["currency"]> {
+  const currency = await findBusinessCurrency(tx, businessId);
+  if (currency === null) throw new Error(`No business with id ${businessId} to price an add-on for`);
+  return currency;
+}
+
 /** What an existing purchase costs, as stored on it. A resume, Pay now or Keep it never uses today's catalogue. */
 function storedPrice(row: AddOnSubscription): AddOnPrice {
   return {
+    currency: row.currency,
     listCents: row.listAmountCents,
     discountCents: row.discountAmountCents,
     offerCents: row.offerDiscountAmountCents,
@@ -135,8 +144,9 @@ function storedPrice(row: AddOnSubscription): AddOnPrice {
 }
 
 /** What an add-on taken at the first checkout costs inside the plan's payment, as frozen on it. */
-function bundledPrice(row: BundledAddOn): AddOnPrice {
+function bundledPrice(row: BundledAddOn, currency: AddOnPrice["currency"]): AddOnPrice {
   return {
+    currency,
     listCents: row.listAmountCents,
     discountCents: row.offerDiscountAmountCents,
     offerCents: row.offerDiscountAmountCents,
@@ -148,6 +158,7 @@ function bundledPrice(row: BundledAddOn): AddOnPrice {
 
 function samePrice(a: AddOnPrice, b: AddOnPrice): boolean {
   return (
+    a.currency === b.currency &&
     a.listCents === b.listCents &&
     a.discountCents === b.discountCents &&
     a.offerCents === b.offerCents &&
@@ -248,7 +259,10 @@ async function planCheckout(
   if (decision.continues && continued === null) {
     throw new Error(`Add-on checkout ${intent} for ${addOn} was allowed with no row to continue`);
   }
-  const price = continued === null ? addOnPrice(addOnById(addOn), premium, await offerAppliesTo(tx, businessId, addOn)) : storedPrice(continued);
+  const price =
+    continued === null
+      ? addOnPrice(addOnById(addOn), await billedCurrencyOf(tx, businessId), premium, await offerAppliesTo(tx, businessId, addOn))
+      : storedPrice(continued);
   const startAt = decision.startsOnPeriodEnd ? (continued?.currentPeriodEnd ?? null) : null;
   if (decision.startsOnPeriodEnd && startAt === null) throw new RangeError(`The ${addOn} row being kept has no period end`);
 
@@ -333,7 +347,7 @@ export async function startAddOnCheckoutFor(
       addOnSubscriptionId: id,
       providerPlanId,
       amountCents: price.chargedCents,
-      currency: "INR",
+      currency: price.currency,
       startAt,
     });
   } catch (error) {
@@ -368,7 +382,7 @@ export async function startAddOnCheckoutFor(
         netAmountCents: price.netCents,
         taxRateBasisPoints: price.taxRateBasisPoints,
         chargedAmountCents: price.chargedCents,
-        currency: "INR",
+        currency: price.currency,
         provider: provider.name,
         providerSubscriptionId: opened.providerSubscriptionId,
         providerPlanId,
@@ -683,6 +697,8 @@ export type AddOnPageEntry =
 
 export interface AddOnsPage {
   readonly addOns: readonly AddOnPageEntry[];
+  /** What the business is billed in: a new purchase is priced in it. */
+  readonly currency: AddOnPrice["currency"];
   readonly premium: boolean;
 }
 
@@ -690,7 +706,7 @@ function entryFor(
   businessId: string,
   addOn: MonthlyAddOnId,
   picked: PickedRows,
-  pricing: { readonly premium: boolean; readonly offer: boolean },
+  pricing: { readonly currency: AddOnPrice["currency"]; readonly premium: boolean; readonly offer: boolean },
   now: Date,
 ): AddOnPageEntry {
   try {
@@ -702,7 +718,7 @@ function entryFor(
       throw new RangeError(`Keep it is offered on an ending or pausing add-on, not on ${view.state}`);
     }
     const inForce = picked.successor ?? picked.current;
-    const price = view.state === "none" || view.state === "ended" || inForce === null ? addOnPrice(addOnById(addOn), pricing.premium, pricing.offer) : storedPrice(inForce);
+    const price = view.state === "none" || view.state === "ended" || inForce === null ? addOnPrice(addOnById(addOn), pricing.currency, pricing.premium, pricing.offer) : storedPrice(inForce);
     const ends = actions.includes("pause") || actions.includes("cancel");
     return { kind: "ready", addOn, view, actions, price, endTargetId: ends ? (inForce?.id ?? null) : null };
   } catch (error) {
@@ -719,23 +735,24 @@ function entryFor(
 export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Promise<AddOnsPage> {
   const { tenant } = customer;
   const premium = await isPremiumMember(customer);
-  const { rows, offers, bundled } = await withTenantScope(getAppDb(), tenant, async (tx) => {
+  const { rows, offers, bundled, currency } = await withTenantScope(getAppDb(), tenant, async (tx) => {
     const offered = new Map<MonthlyAddOnId, boolean>();
     for (const addOn of MONTHLY_ADD_ON_IDS) offered.set(addOn, await offerAppliesTo(tx, tenant.businessId, addOn));
     return {
       rows: await listAddOnSubscriptionsForBusiness(tx, tenant.businessId),
       offers: offered,
       bundled: await findLiveBundledAddOns(tx, tenant.businessId),
+      currency: await billedCurrencyOf(tx, tenant.businessId),
     };
   });
   const addOns = MONTHLY_ADD_ON_IDS.map((addOn): AddOnPageEntry => {
     const included = bundled.find((row) => row.addOn === addOn && row.status === "active");
     if (included !== undefined) {
       const nextBillingOn = customer.billing.subscription?.paidThroughAt ?? null;
-      return { kind: "included", addOn, price: bundledPrice(included), endsOn: included.endRequestedAt === null ? null : nextBillingOn, nextBillingOn };
+      return { kind: "included", addOn, price: bundledPrice(included, currency), endsOn: included.endRequestedAt === null ? null : nextBillingOn, nextBillingOn };
     }
-    return entryFor(tenant.businessId, addOn, pickAddOnRows(rows.filter((row) => row.addOn === addOn)), { premium, offer: offers.get(addOn) === true }, now);
+    return entryFor(tenant.businessId, addOn, pickAddOnRows(rows.filter((row) => row.addOn === addOn)), { currency, premium, offer: offers.get(addOn) === true }, now);
   });
-  return { addOns, premium };
+  return { addOns, premium, currency };
 }
 

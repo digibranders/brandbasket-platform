@@ -78,7 +78,6 @@ export const addOnSubscriptions = pgTable(
       "add_on_subscriptions_offer_check",
       sql`${table.offerDiscountAmountCents} >= 0 and ${table.offerDiscountAmountCents} <= ${table.discountAmountCents}`,
     ),
-    check("add_on_subscriptions_currency_check", sql`${table.currency} = 'INR'`),
     check(
       "add_on_subscriptions_amounts_check",
       sql`${table.listAmountCents} > 0 and ${table.discountAmountCents} >= 0

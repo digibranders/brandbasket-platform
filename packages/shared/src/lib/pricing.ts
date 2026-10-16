@@ -3,7 +3,7 @@ import { formatMoney, type MoneyCurrency } from "./money";
 /**
  * All money values are integers in minor units (US cents, or paise for INR) to avoid floating-point rounding.
  * Prices here are the single source of truth for every marketing page. What a customer is actually charged comes
- * from the plans table, whose active plans migration 0039 sets to these same amounts.
+ * from the plans table, whose active dollar Care plan migration 0174 sets to these same amounts.
  */
 
 export const PRICE_CURRENCY = "USD";
@@ -40,7 +40,7 @@ export const carePlan = {
   /** Pages in the standard website (the spec's plan.page_limit, not yet a database column). */
   pageLimit: 6,
   /** Charged from the first payment, which covers the first month, and every month after. */
-  monthlyCents: 6_900,
+  monthlyCents: 7_500,
   includes: [
     "Up to 5 pages, designed for your business",
     "Hosting and SSL certificate",
@@ -55,12 +55,12 @@ export const carePlan = {
 
 /**
  * Changes and blog posts (2026-09-17). The first hours of changes are free once per customer, then charged by the
- * hour; blog posts after the included ones are sold in blocks. The plans table holds the same amounts (migration
- * 0026); the website repository has its own copy of these prices.
+ * hour; blog posts after the included ones are sold in blocks. The plans table holds the same amounts (migrations
+ * 0026 and 0174); the website repository has its own copy of these prices.
  */
 export const changePricing = {
   includedHours: 1,
-  extraHourCents: 1_500,
+  extraHourCents: 1_000,
   includedBlogPosts: 100,
   blogPostBlockSize: 100,
   extraBlogPostsCents: 500,
@@ -84,7 +84,7 @@ export function planPrice(key: PlanPriceKey, currency: MoneyCurrency): string {
   return formatMoney(planPrices[currency][key], currency);
 }
 
-/** For text that can't switch currency (FAQ answers, search snippets): "$69 (₹9,999 in India)". The rupee figure is net of GST. */
+/** For text that can't switch currency (FAQ answers, search snippets): "$75 (₹9,999 in India)". The rupee figure is net of GST. */
 export function planPriceInBoth(key: PlanPriceKey): string {
   return `${planPrice(key, "USD")} (${planPrice(key, "INR")} in India)`;
 }
