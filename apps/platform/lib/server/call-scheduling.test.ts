@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BOOKING_WINDOW_DAYS, bookCallSlot, listCallSlots } from "./call-scheduling";
+import { BOOKING_WINDOW_DAYS, bookCallSlot, calcomPage, listCallSlots } from "./call-scheduling";
 
 vi.mock("server-only", () => ({}));
 
@@ -29,5 +29,20 @@ describe("the local call scheduler", () => {
     if (booked?.ok) expect(booked.call.endsAt.getTime() - booked.call.startsAt.getTime()).toBe(30 * 60_000);
     const refused = await bookCallSlot(URL, real.toISOString().replace(/\d\d:\d\d:\d\d/, "03:17:00"), INVITEE);
     expect(refused).toEqual({ ok: false, reason: "taken" });
+  });
+});
+
+describe("calcomPage", () => {
+  it("reads the user and event from a cal.com link", () => {
+    expect(calcomPage("https://cal.com/steve-fynix/30min")).toEqual({ username: "steve-fynix", slug: "30min" });
+    expect(calcomPage("https://cal.com/steve-fynix/30min/")).toEqual({ username: "steve-fynix", slug: "30min" });
+  });
+
+  it("refuses anything else", () => {
+    expect(calcomPage("https://cal.com/steve-fynix")).toBeNull();
+    expect(calcomPage("https://cal.com/team/acme/intro")).toBeNull();
+    expect(calcomPage("https://calendly.com/steve-fynix/30min")).toBeNull();
+    expect(calcomPage("http://cal.com/steve-fynix/30min")).toBeNull();
+    expect(calcomPage("not a link")).toBeNull();
   });
 });
