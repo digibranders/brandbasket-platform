@@ -1,5 +1,5 @@
 import "server-only";
-import { findClientDetail, markProjectLive, type Database } from "@fynix/db";
+import { findClientDetail, InvalidWebsiteUrlError, markProjectLive, setBusinessWebsiteUrl, type Database } from "@fynix/db";
 import { websiteLiveEmail } from "@fynix/email";
 import { customerEmailTransport } from "./email";
 import type { OwnerNotification } from "./project-preview";
@@ -29,7 +29,7 @@ export interface LaunchProjectInput {
  * reachable given the real flow up to here — but if it happens the project is left marked live without an email
  * having gone out, and this throws rather than silently sending nothing.
  *
- * An owner who signs in with a mobile number has no email address: the project goes live, nothing is emailed, and the
+ * Their website address is set to the domain they went live on. An owner who signs in with a mobile number has no email address: the project goes live, nothing is emailed, and the
  * answer says so, so the console can tell staff to call or message them (see sendProjectPreview).
  */
 export async function launchProject(db: Database, input: LaunchProjectInput, now: Date): Promise<OwnerNotification> {
@@ -38,6 +38,14 @@ export async function launchProject(db: Database, input: LaunchProjectInput, now
   const client = await findClientDetail(db, input.businessId);
   if (client === null || client.owner === null) throw new ProjectLaunchRecipientMissingError(input.businessId);
   if (client.domain === null) throw new ProjectLaunchDomainMissingError(input.businessId);
+
+  // From now on their website is at their own address, not the host's: blog previews and links follow it. An address that cannot
+  // be stored as one is left as it was; launching never fails over it.
+  try {
+    await setBusinessWebsiteUrl(db, input.businessId, `https://${client.domain.hostname}`);
+  } catch (error) {
+    if (!(error instanceof InvalidWebsiteUrlError)) throw error;
+  }
   if (client.owner.email === null) return "no-email";
 
   await customerEmailTransport(db).send(

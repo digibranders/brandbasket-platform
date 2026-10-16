@@ -19,6 +19,7 @@ import {
   type ClientDetail,
   type ClientHours,
   type Plan,
+  type DomainStatus,
 } from "@fynix/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -59,6 +60,8 @@ import { adminBrand } from "@/lib/brand";
 import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
 import { getSiteApiToken } from "@/lib/server/site-token";
 import { describeStoredDay } from "@fynix/shared/lib/onboarding/hours";
+import { DOMAIN_CONNECT_NOTICES, readDomainConnectNotice } from "@fynix/shared/lib/domain-connect-notices";
+import { registrableDomain } from "@fynix/shared/lib/onboarding/domain-dns";
 import { PROJECT_LAUNCH_NOTICES, readProjectLaunchNotice } from "@fynix/shared/lib/project-launch-notices";
 import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@fynix/shared/lib/project-preview-notices";
 import { safeExternalHref } from "@fynix/shared/lib/safe-link";
@@ -85,6 +88,7 @@ import { clientStage, lateReason } from "@/lib/pipeline";
 import { clientBillingDetails } from "@/lib/server/client-billing-details";
 import { readClientUpgrade } from "@/lib/server/plan-upgrade-admin";
 import {
+  markDomainReadyAction,
   markLiveAction,
   rotateSiteApiTokenAction,
   recordManualPaymentAction,
@@ -385,18 +389,87 @@ function SendPreviewForm({ businessId }: { readonly businessId: string }): React
   );
 }
 
-function MarkLiveForm({ businessId }: { readonly businessId: string }): ReactElement {
+function MarkLiveForm({ businessId, note }: { readonly businessId: string; readonly note?: string }): ReactElement {
   return (
     <form action={markLiveAction}>
       <p className="max-w-xl text-ink-soft">
-        Once the real site is deployed and DNS points at their domain, mark it live here. The client is emailed
-        their website address.
+        {note ?? "Once the real site is deployed and DNS points at their domain, mark it live here. The client is emailed their website address."}
       </p>
       <input type="hidden" name="businessId" value={businessId} />
       <button type="submit" className={`${buttonPrimary} mt-5`}>
         Mark live
       </button>
     </form>
+  );
+}
+
+const DNS_STATUS_TEXT: Readonly<Partial<Record<DomainStatus, string>>> = {
+  pending: "Not asked yet",
+  awaiting_dns: "Waiting for them to change their DNS",
+  misconfigured: "Their DNS points somewhere else",
+  verifying: "Connected. Check it loads, then mark it live",
+  active: "Live",
+};
+
+/**
+ * The last step before launch. A free address needs nothing but the button. A domain of the customer's own goes in order:
+ * staff add it to the website's host and ask the customer to change their DNS (the customer's card only appears then);
+ * the customer's own check moves it to "connected", and then it is marked live.
+ */
+function GoLivePanel({
+  businessId,
+  domain,
+  previewUrl,
+}: {
+  readonly businessId: string;
+  readonly domain: { readonly hostname: string; readonly status: DomainStatus } | null;
+  readonly previewUrl: string | null;
+}): ReactElement {
+  if (domain === null || isTemporarySubdomain(domain.hostname)) return <MarkLiveForm businessId={businessId} />;
+
+  const root = registrableDomain(domain.hostname);
+  return (
+    <div className="max-w-2xl space-y-8">
+      <Facts
+        items={[
+          { label: "Their own domain", value: domain.hostname },
+          ...(previewUrl === null ? [] : [{ label: "Site to add it to", value: <CustomerLink url={previewUrl} /> }]),
+          { label: "DNS", value: DNS_STATUS_TEXT[domain.status] ?? domain.status },
+        ]}
+      />
+
+      {domain.status === "pending" ? (
+        <form action={markDomainReadyAction}>
+          <ol className="list-decimal space-y-2 pl-5 text-ink-soft">
+            <li>
+              Open the Vercel project behind the site link above and add <span className="font-medium text-ink">{domain.hostname}</span>
+              {domain.hostname === root ? <> and <span className="font-medium text-ink">www.{root}</span></> : null} under Domains.
+            </li>
+            <li>Check that deployment is the project’s production deployment, not a one-off preview build.</li>
+            <li>Then ask the customer to change their DNS. They’re emailed, and the records show on their dashboard.</li>
+          </ol>
+          <input type="hidden" name="businessId" value={businessId} />
+          <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Emailing…">
+            Ready for customer’s DNS
+          </GatedSubmitButton>
+        </form>
+      ) : null}
+
+      {domain.status === "awaiting_dns" || domain.status === "misconfigured" ? (
+        <p className="max-w-xl text-ink-soft">
+          They’ve been asked to add the records and can check it themselves. You’re emailed the moment it’s connected.
+        </p>
+      ) : null}
+
+      <MarkLiveForm
+        businessId={businessId}
+        note={
+          domain.status === "verifying"
+            ? "Their DNS now points at the site. Open their address, check it loads, then mark it live. The client is emailed their website address."
+            : "Only once their address loads the site, however it was connected. The client is emailed their website address."
+        }
+      />
+    </div>
   );
 }
 
@@ -417,6 +490,7 @@ export default async function ClientPage({
   const notice = readManualPaymentNotice(sp.payment);
   const previewNotice = readProjectPreviewNotice(sp.preview);
   const launchNotice = readProjectLaunchNotice(sp.launch);
+  const dnsNotice = readDomainConnectNotice(sp.dns);
   const paymentState = clientPaymentState(client.billing, new Date());
   const canRecordPayment =
     paymentState.kind === "not-paid" || paymentState.kind === "checkout-open" || paymentState.kind === "lapsed";
@@ -535,7 +609,7 @@ export default async function ClientPage({
         <StageTrack stage={stage} />
       </PageHeader>
 
-      {notice === null && previewNotice === null && launchNotice === null ? null : (
+      {notice === null && previewNotice === null && launchNotice === null && dnsNotice === null ? null : (
         <div className="mt-10 space-y-3">
           {notice === null ? null : (
             <Notice tone={MANUAL_PAYMENT_NOTICES[notice].ok ? "ok" : "problem"}>{MANUAL_PAYMENT_NOTICES[notice].text}</Notice>
@@ -549,6 +623,9 @@ export default async function ClientPage({
             <Notice tone={PROJECT_LAUNCH_NOTICES[launchNotice].ok ? "ok" : "problem"}>
               {PROJECT_LAUNCH_NOTICES[launchNotice].text}
             </Notice>
+          )}
+          {dnsNotice === null ? null : (
+            <Notice tone={DOMAIN_CONNECT_NOTICES[dnsNotice].ok ? "ok" : "problem"}>{DOMAIN_CONNECT_NOTICES[dnsNotice].text}</Notice>
           )}
         </div>
       )}
@@ -574,8 +651,8 @@ export default async function ClientPage({
           </Section>
         ) : null}
         {nextStep === "live" ? (
-          <Section title="Mark it live" aside="The next step">
-            <MarkLiveForm businessId={client.businessId} />
+          <Section title="Go live" id="domain" aside="The next step">
+            <GoLivePanel businessId={client.businessId} domain={client.domain} previewUrl={project?.previewUrl ?? null} />
           </Section>
         ) : null}
 
@@ -779,6 +856,7 @@ export default async function ClientPage({
             <Facts
               items={[
                 { label: "Domain", value: client.domain.hostname },
+                { label: "DNS", value: DNS_STATUS_TEXT[client.domain.status] ?? client.domain.status },
                 {
                   label: "Ownership",
                   value:

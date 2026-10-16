@@ -1,16 +1,20 @@
-import { findClientDetail, markProjectLive, type Database } from "@fynix/db";
+import { findClientDetail, markProjectLive, setBusinessWebsiteUrl, type Database } from "@fynix/db";
 import { websiteLiveEmail } from "@fynix/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { customerEmailTransport } from "./email";
 import { ProjectLaunchDomainMissingError, ProjectLaunchRecipientMissingError, launchProject } from "./project-launch";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({ findClientDetail: vi.fn(), markProjectLive: vi.fn() }));
+vi.mock("@fynix/db", () => {
+  class MockInvalidWebsiteUrlError extends Error {}
+  return { findClientDetail: vi.fn(), InvalidWebsiteUrlError: MockInvalidWebsiteUrlError, markProjectLive: vi.fn(), setBusinessWebsiteUrl: vi.fn() };
+});
 vi.mock("@fynix/email", () => ({ websiteLiveEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 
 const mockedMarkLive = vi.mocked(markProjectLive);
 const mockedFindClient = vi.mocked(findClientDetail);
+const mockedSetWebsiteUrl = vi.mocked(setBusinessWebsiteUrl);
 const mockedCreateTransport = vi.mocked(customerEmailTransport);
 const mockedWebsiteLiveEmail = vi.mocked(websiteLiveEmail);
 const db = {} as Database;
@@ -51,6 +55,11 @@ beforeEach(() => {
 });
 
 describe("launchProject", () => {
+  it("sets their website address to the domain they went live on", async () => {
+    await launchProject(db, { businessId: "business-1" }, NOW);
+    expect(mockedSetWebsiteUrl).toHaveBeenCalledWith(db, "business-1", "https://riverside-plumbing.com");
+  });
+
   it("marks the project live before emailing the owner their real website address", async () => {
     await launchProject(db, { businessId: "business-1" }, NOW);
 

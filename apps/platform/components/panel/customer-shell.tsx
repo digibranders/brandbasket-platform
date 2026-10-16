@@ -8,7 +8,7 @@ import {
   NavCompassIcon,
   NavHandHeartIcon,
   NavHomeIcon,
-  NavIdCardIcon,
+  NavGlobeIcon,
   NavImagesIcon,
   NavInboxIcon,
   NavMegaphoneIcon,
@@ -90,7 +90,7 @@ const LISTING_NAV: Readonly<Record<ClientListingSection, SidebarNavItem>> = {
  * Care client with a claim keeps both.
  *
  * The rows come in sections with a hairline between them: the business's day-to-day (Home, bookings), its directory
- * pages, its website (setup, project, details, content), its account (add-ons, billing), and last the way up to a bigger
+ * pages, its website (setup, project, domain, content), its account (add-ons, billing), and last the way up to a bigger
  * plan, which a Premium member does not have.
  */
 function customerNav({
@@ -135,7 +135,7 @@ function customerNav({
         ? []
         : [{ href: "/onboarding", label: "Set up your website", icon: <NavClipboardListIcon className="size-5" /> }]),
       { href: "/project", label: "Your project", icon: <NavCompassIcon className="size-5" /> },
-      { href: "/details", label: "Your details", icon: <NavIdCardIcon className="size-5" /> },
+      { href: "/domain", label: "Your domain", icon: <NavGlobeIcon className="size-5" /> },
       // Content is a group: the blog's posts, the people who write them, and the categories they are filed under.
       {
         href: "/content/blog",

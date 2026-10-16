@@ -19,6 +19,7 @@ import {
   users,
   type BillingCurrency,
   type BillingProviderName,
+  type DomainStatus,
   type MediaAssetPurpose,
   type OnboardingStep,
   type PlanTier,
@@ -324,7 +325,7 @@ export interface ClientDetail extends ClientSummary {
     readonly styleLikes: string | null;
     readonly referenceUrls: readonly string[];
   } | null;
-  readonly domain: { readonly hostname: string; readonly ownerConfirmedAt: Date | null } | null;
+  readonly domain: { readonly hostname: string; readonly status: DomainStatus; readonly ownerConfirmedAt: Date | null } | null;
   readonly media: readonly ClientMedia[];
   readonly completedSteps: readonly OnboardingStep[];
 }
@@ -369,7 +370,7 @@ export async function findClientDetail(db: Database, businessId: string): Promis
       .where(and(eq(services.businessId, businessId), isNull(services.deletedAt)))
       .orderBy(asc(services.position)),
     db
-      .select({ hostname: domains.hostname, ownerConfirmedAt: domains.ownerConfirmedAt })
+      .select({ hostname: domains.hostname, status: domains.status, ownerConfirmedAt: domains.ownerConfirmedAt })
       .from(domains)
       .where(and(eq(domains.businessId, businessId), eq(domains.isPrimary, true), isNull(domains.removedAt)))
       .limit(1),

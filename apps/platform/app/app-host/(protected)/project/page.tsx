@@ -7,18 +7,21 @@ import { ButtonLink, ExternalButtonLink } from "@fynix/shared/ui/panel/button";
 import { SectionHeading, Surface } from "@fynix/shared/ui/panel/surface";
 import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import { ServicesList, SummaryCard } from "@/components/panel/onboarding-summary";
+import { ConnectDomainCard } from "@/components/panel/connect-domain-card";
 import { PreviewReviewActions } from "@/components/panel/preview-review-actions";
 import { ProjectTimeline } from "@/components/panel/project-timeline";
 import { StageDisclosure } from "@/components/panel/stage-disclosure";
 import { cn } from "@fynix/shared/lib/cn";
+import { dnsRecordsFor } from "@fynix/shared/lib/onboarding/domain-dns";
 import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
 import { PROJECT_RESPONSE_NOTICES, readProjectResponseNotice } from "@/lib/project-response-notices";
 import { PROJECT_STAGES, projectStageIndex } from "@/lib/project-stages";
 import { safeExternalHref } from "@fynix/shared/lib/safe-link";
+import type { PrimaryDomain, ProjectStatus } from "@fynix/db";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getLiveWebsite, getOnboardingSnapshot, type LiveWebsite } from "@/lib/server/onboarding";
 import { siteConfig } from "@fynix/shared/lib/site-config";
-import { approvePreviewAction, requestPreviewChangesAction } from "./actions";
+import { approvePreviewAction, checkDomainAction, requestPreviewChangesAction } from "./actions";
 
 export const metadata: Metadata = { title: "Your project" };
 
@@ -83,6 +86,40 @@ function LiveProject({ live }: { readonly live: LiveWebsite }): ReactElement {
   );
 }
 
+/**
+ * What the customer sees under "It goes live" when the site is approved and has a domain of its own. Until staff have added it
+ * to the website's host and asked, the records stay hidden: pointing DNS earlier would break their current site or show an error.
+ */
+function GoLiveExtra({ domain, status }: { readonly domain: PrimaryDomain | null; readonly status: ProjectStatus }): ReactElement | null {
+  if (status !== "approved" || domain === null || isTemporarySubdomain(domain.hostname)) return null;
+
+  if (domain.status === "pending") {
+    return (
+      <StageDisclosure summary="Connect your domain">
+        <p className="text-sm leading-relaxed text-ink-soft">
+          We’re getting <span className="font-medium text-ink">{domain.hostname}</span> ready. We’ll email you the moment it’s time to
+          connect it. Please don’t change anything at your domain company until then, so your current website and email carry on as
+          they are.
+        </p>
+      </StageDisclosure>
+    );
+  }
+
+  return (
+    <StageDisclosure summary="Connect your domain">
+      <div id="connect-domain">
+        <ConnectDomainCard
+          hostname={domain.hostname}
+          records={dnsRecordsFor(domain.hostname)}
+          checkAction={checkDomainAction}
+          emailUs={<EmailUs />}
+          alreadyConnected={domain.status === "verifying"}
+        />
+      </div>
+    </StageDisclosure>
+  );
+}
+
 export default async function ProjectPage({
   searchParams,
 }: {
@@ -129,6 +166,15 @@ export default async function ProjectPage({
       {project.status === "on_hold" ? (
         <p role="status" className="mt-4 max-w-2xl rounded-control bg-accent-pale px-5 py-4 text-sm text-accent-deep">
           Your build is paused. We’ll be in touch about what we need from you.
+        </p>
+      ) : null}
+
+      {project.status === "approved" && snapshot.domain !== null && !isTemporarySubdomain(snapshot.domain.hostname) && (snapshot.domain.status === "awaiting_dns" || snapshot.domain.status === "misconfigured") ? (
+        <p role="status" className="mt-4 max-w-2xl rounded-control bg-accent-pale px-5 py-4 text-sm text-accent-deep">
+          One last step: connect your domain to put your website live.{" "}
+          <a href="#connect-domain" className="link-underline font-medium">
+            See what to add
+          </a>
         </p>
       ) : null}
 
@@ -189,6 +235,7 @@ export default async function ProjectPage({
                       />
                     </StageDisclosure>
                   ),
+                3: <GoLiveExtra domain={snapshot.domain} status={project.status} />,
               }}
             />
           </div>

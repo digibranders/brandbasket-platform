@@ -2,6 +2,7 @@
 
 import {
   findBillingState,
+  DomainNotReadyForDnsError,
   findClientDetail,
   findListingPlacement,
   InvalidWebsiteUrlError,
@@ -33,6 +34,8 @@ import { businessModuleNoticeHref } from "@fynix/shared/lib/business-module-noti
 import { isBusinessModule } from "@fynix/shared/lib/business-modules";
 import { canonicalTimeZone } from "@fynix/shared/lib/calendar/local-date";
 import { parsePlacementForm } from "@fynix/shared/lib/directory/placement-form";
+import { domainConnectNoticeHref } from "@fynix/shared/lib/domain-connect-notices";
+import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
 import { projectLaunchNoticeHref } from "@fynix/shared/lib/project-launch-notices";
 import { projectPreviewNoticeHref } from "@fynix/shared/lib/project-preview-notices";
 import { addOnNoticeHref, noticeForEndOutcome, type AddOnNotice } from "@/lib/add-on-notices";
@@ -41,6 +44,7 @@ import { endClientAddOn, markClientAddOnContacted, markClientBundledAddOnContact
 import { recordManualFirstPayment, resolveFlaggedPayment } from "@/lib/server/billing-admin";
 import { addClientCharge, markClientChargePaid, waiveClientCharge } from "@/lib/server/charges-admin";
 import { getStaffDb } from "@/lib/server/db";
+import { DomainReadyRecipientMissingError, markDomainReady, type DomainReadyOutcome } from "@/lib/server/domain-ready";
 import { ProjectLaunchDomainMissingError, ProjectLaunchRecipientMissingError, launchProject } from "@/lib/server/project-launch";
 import { ProjectPreviewRecipientMissingError, sendProjectPreview, type OwnerNotification } from "@/lib/server/project-preview";
 import { rotateSiteApiToken } from "@/lib/server/site-token";
@@ -477,4 +481,31 @@ export async function setPressReleaseStatusAction(formData: FormData): Promise<v
   const notice: AddOnNotice =
     outcome === "changed" ? (status === "published" ? "release-published" : "release-in-progress") : outcome === "unchanged" ? "release-unchanged" : "not-found";
   redirect(addOnNoticeHref(businessId, notice));
+}
+
+/**
+ * Staff have added the customer's own domain to the website's host: asks the customer to connect it. A free address has no
+ * DNS for them to change, so it is refused here; the database checks the project is approved and there is a domain.
+ */
+export async function markDomainReadyAction(formData: FormData): Promise<void> {
+  await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "Ready for DNS's business");
+  const db = getStaffDb();
+
+  const client = await findClientDetail(db, businessId);
+  if (client?.domain != null && isTemporarySubdomain(client.domain.hostname)) {
+    redirect(domainConnectNoticeHref(businessId, "free-address"));
+  }
+
+  let outcome: DomainReadyOutcome;
+  try {
+    outcome = await markDomainReady(db, { businessId });
+  } catch (error) {
+    if (error instanceof DomainNotReadyForDnsError) redirect(domainConnectNoticeHref(businessId, "not-ready"));
+    if (error instanceof DomainReadyRecipientMissingError) redirect(domainConnectNoticeHref(businessId, "no-owner"));
+    throw error;
+  }
+
+  revalidateClient(businessId);
+  redirect(domainConnectNoticeHref(businessId, outcome === "emailed" ? "ready" : outcome === "no-email" ? "ready-no-email" : "already"));
 }

@@ -118,6 +118,16 @@ export function NavCompassIcon({ className }: NavIconProps): ReactElement {
 }
 
 /** Your details: id-card. */
+export function NavGlobeIcon({ className }: NavIconProps): ReactElement {
+  return (
+    <LineIcon className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z" />
+    </LineIcon>
+  );
+}
+
 export function NavIdCardIcon({ className }: NavIconProps): ReactElement {
   return (
     <LineIcon className={className}>

@@ -241,6 +241,13 @@ export {
   type StepProgress,
 } from "./queries/onboarding-data";
 export {
+  DomainNotReadyForDnsError,
+  markDomainReadyForDns,
+  recordDomainDnsCheck,
+  type DnsCheckRecorded,
+  type DomainReadyResult,
+} from "./queries/domain-connect";
+export {
   approveProjectPreview,
   FIRST_PREVIEW_DUE_HOURS,
   findLatestProject,
