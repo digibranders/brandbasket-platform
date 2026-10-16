@@ -110,7 +110,9 @@ export async function bookSetupCall(
         endsAt: result.call.endsAt,
       }),
     );
-    if (url !== null && previous?.inviteeUri != null && previous.inviteeUri !== result.call.inviteeUri) {
+    // Only a booking still ahead is cancelled: a call that has taken place stays in the booking service's history.
+    const previousAhead = previous?.startsAt != null && previous.startsAt > now;
+    if (url !== null && previousAhead && previous.inviteeUri != null && previous.inviteeUri !== result.call.inviteeUri) {
       await cancelCallBooking(url, previous.inviteeUri).catch((error: unknown) => {
         console.error("[setup-call] could not cancel the earlier booking", errorLogInfo(error));
       });

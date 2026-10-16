@@ -6,6 +6,7 @@ import { KickoffCallCard } from "@/components/panel/kickoff-call-card";
 import { NextStepCard } from "@/components/panel/next-step-card";
 import { PaidBadge } from "@/components/panel/paid-badge";
 import { PrepareChecklist } from "@/components/panel/prepare-checklist";
+import { TeamCallCard } from "@/components/panel/team-call-card";
 import { firstName } from "@fynix/shared/lib/names";
 import { nextStep, type NextStep } from "@fynix/shared/lib/next-step";
 import { projectStageIndex } from "@/lib/project-stages";
@@ -21,6 +22,8 @@ const SUBTITLES: Readonly<Record<NextStep["kind"], string>> = {
   "continue-onboarding": "Let’s get your business online.",
   building: "Your website is on its way.",
   "on-hold": "We’ll be in touch soon.",
+  review: "Your website is ready for you to look at.",
+  approved: "Your website is nearly live.",
   live: "Your website is live.",
   none: "Welcome back.",
 };
@@ -44,7 +47,13 @@ export default async function AppHomePage(): Promise<ReactElement> {
 
   // Until the setup is sent, the home screen is about two things: booking the kickoff call, and having the steps ready for it.
   const settingUp = step.kind === "start-onboarding" || step.kind === "continue-onboarding";
-  const setupCall = settingUp ? await getSetupCallState(tenant) : null;
+  const callState = await getSetupCallState(tenant);
+  const setupCall = settingUp ? callState : null;
+  // After setup, a call can be booked at any time; one that has taken place no longer counts, so another can be booked.
+  const callStart = callState.booking?.startsAtIso ?? null;
+  const upcomingCall =
+    callStart !== null && Date.parse(callStart) > callState.readAtMs ? { startsAtIso: callStart, endsAtIso: callState.booking?.endsAtIso ?? null } : null;
+  const email = isPhoneAccountEmail(user.email) ? null : user.email;
   const paidAt = billing.subscription?.activatedAt ?? null;
   const booked = setupCall?.booking != null;
   // One thing to do at a time: pick a time first, and the steps to prepare appear once a call is booked. With no booking page
@@ -71,16 +80,23 @@ export default async function AppHomePage(): Promise<ReactElement> {
 
       <div className="mt-8">
         {setupCall === null ? (
-          <NextStepCard
-            step={step}
-            buildStageIndex={status === null ? 0 : projectStageIndex({ status, onboardingSubmittedAt: project?.onboardingSubmittedAt ?? null })}
-          />
+          <div className="space-y-6">
+            <NextStepCard
+              step={step}
+              buildStageIndex={status === null ? 0 : projectStageIndex({ status, onboardingSubmittedAt: project?.onboardingSubmittedAt ?? null })}
+            />
+            {callState.url === null ? null : (
+              <div className="max-w-4xl">
+                <TeamCallCard url={callState.url} upcoming={upcomingCall} email={email} />
+              </div>
+            )}
+          </div>
         ) : (
           <div className={showSteps ? "grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start" : "max-w-4xl"}>
             <KickoffCallCard
               url={setupCall.url}
               booking={setupCall.booking}
-              prefill={{ name: user.name, email: isPhoneAccountEmail(user.email) ? null : user.email }}
+              prefill={{ name: user.name, email }}
               businessId={tenant.businessId}
             />
             {showSteps ? <PrepareChecklist completedSteps={completed} /> : null}

@@ -191,6 +191,27 @@ export function NextStepCard({ step, buildStageIndex }: NextStepCardProps): Reac
         </CardLayout>
       );
     }
+    case "review":
+      return (
+        <CardLayout
+          eyebrow={step.changesRequested ? "Changes in progress" : "Ready for you"}
+          heading={step.changesRequested ? "We’re making your changes" : "Your preview is ready"}
+          action={{ href: "/project", label: step.changesRequested ? "View progress" : "Review your preview" }}
+          list={buildList}
+        >
+          <p>
+            {step.changesRequested
+              ? "We have your notes and we’re updating the website. We’ll let you know when the new preview is ready."
+              : "Have a look at your website and approve it, or tell us what to change."}
+          </p>
+        </CardLayout>
+      );
+    case "approved":
+      return (
+        <CardLayout eyebrow="Approved" heading="Your website is nearly live" action={{ href: "/project", label: "View progress" }} list={buildList}>
+          <p>Thank you for approving it. We’re getting it ready to go live on your domain.</p>
+        </CardLayout>
+      );
     case "none":
       return null;
   }

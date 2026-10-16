@@ -49,8 +49,25 @@ describe("nextStep", () => {
     });
   });
 
-  it.each(["preview", "revisions", "approved", "cancelled"] as const)("shows nothing while %s", (status) => {
-    expect(nextStep({ project: project(status, DUE), completedSteps: ["business"], liveWebsite: null })).toEqual({
+  it("asks for a review while a preview is waiting, and says when changes are being made", () => {
+    expect(nextStep({ project: project("preview", DUE), completedSteps: ["business"], liveWebsite: null })).toEqual({
+      kind: "review",
+      changesRequested: false,
+    });
+    expect(nextStep({ project: project("revisions", DUE), completedSteps: ["business"], liveWebsite: null })).toEqual({
+      kind: "review",
+      changesRequested: true,
+    });
+  });
+
+  it("says when the website is approved", () => {
+    expect(nextStep({ project: project("approved", DUE), completedSteps: ["business"], liveWebsite: null })).toEqual({
+      kind: "approved",
+    });
+  });
+
+  it("shows nothing for a cancelled project", () => {
+    expect(nextStep({ project: project("cancelled", DUE), completedSteps: ["business"], liveWebsite: null })).toEqual({
       kind: "none",
     });
   });

@@ -19,6 +19,9 @@ export type NextStep =
   | { readonly kind: "continue-onboarding"; readonly completed: number; readonly total: number }
   | { readonly kind: "building"; readonly slaDueAt: Date | null }
   | { readonly kind: "on-hold" }
+  /** A preview is waiting for the customer, or the changes they asked for are being made. */
+  | { readonly kind: "review"; readonly changesRequested: boolean }
+  | { readonly kind: "approved" }
   | { readonly kind: "live"; readonly hostname: string }
   | { readonly kind: "none" };
 
@@ -43,8 +46,11 @@ export function nextStep({ project, completedSteps, liveWebsite }: NextStepInput
     case "on_hold":
       return { kind: "on-hold" };
     case "preview":
+      return { kind: "review", changesRequested: false };
     case "revisions":
+      return { kind: "review", changesRequested: true };
     case "approved":
+      return { kind: "approved" };
     case "live":
     case "cancelled":
       return { kind: "none" };
