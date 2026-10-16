@@ -24,6 +24,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TenantContext } from "@fynix/shared/lib/access";
 import { ONBOARDING_LOCKED_MESSAGE } from "@/lib/onboarding/form-state";
 import { readLiveWebsite, saveOnboardingStep, submitOnboardingFor } from "./onboarding";
+import { notifyTeamOnboardingSent } from "./onboarding-alert";
 
 // The database is a test double: the lock, row-level security and the one-way status change are proven in
 // packages/db's integration tests. What is checked here is what each outcome turns into, and that a refused
@@ -31,6 +32,7 @@ import { readLiveWebsite, saveOnboardingStep, submitOnboardingFor } from "./onbo
 vi.mock("server-only", () => ({}));
 vi.mock("./customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn() }));
+vi.mock("./onboarding-alert", () => ({ notifyTeamOnboardingSent: vi.fn() }));
 vi.mock("@fynix/db", () => {
   class MockOnboardingLockedError extends Error {}
   class MockProjectNotInOnboardingError extends Error {}
@@ -167,6 +169,16 @@ describe("submitOnboardingFor", () => {
     await expect(submitOnboardingFor(db, tenant, NOW)).resolves.toBeNull();
     expect(submitProject).toHaveBeenCalledWith(tx, { projectId: PROJECT.id, now: NOW });
     expect(outcome).toBe("committed");
+  });
+
+  it("tells the team once it has been sent, and not when it is refused", async () => {
+    await submitOnboardingFor(db, tenant, NOW);
+    expect(notifyTeamOnboardingSent).toHaveBeenCalledWith(BUSINESS_ID, "Bloom");
+
+    vi.mocked(notifyTeamOnboardingSent).mockClear();
+    vi.mocked(getPrimaryDomain).mockResolvedValue(null);
+    await submitOnboardingFor(db, tenant, NOW);
+    expect(notifyTeamOnboardingSent).not.toHaveBeenCalled();
   });
 
   it("changes the status before reading the checklist, so in-flight saves are waited for", async () => {

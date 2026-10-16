@@ -26,6 +26,7 @@ import { activateFirstPayment, activateReactivationPayment } from "@fynix/shared
 import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
 import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
+import { notifyTeamOnboardingSent } from "./onboarding-alert";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 
 /**
@@ -338,6 +339,10 @@ export async function confirmFirstPayment(
   // After the commit, as for a setup link: Payload's database is not ours, and the sync logs rather than throws.
   if (confirmation.kind === "membership-opened") {
     await syncTenantForBusiness({ businessId: tenant.businessId, name: tenant.businessName });
+  }
+  // Paying is what sent their details here, so the team hears of it now, after the commit.
+  if (confirmation.kind === "paid" && confirmation.submission === "sent") {
+    await notifyTeamOnboardingSent(tenant.businessId, tenant.businessName);
   }
   return confirmation;
 }

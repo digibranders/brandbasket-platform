@@ -6,6 +6,9 @@ import { listingEnquiryEmail } from "./listing-enquiry";
 import { passwordResetEmail } from "./password-reset";
 import { paymentReceivedEmail } from "./payment-received";
 import { privacyRequestCodeEmail } from "./privacy-request-code";
+import { domainConnectedEmail } from "./domain-connected";
+import { domainReadyEmail } from "./domain-ready";
+import { onboardingSentEmail } from "./onboarding-sent";
 import { previewApprovedEmail } from "./preview-approved";
 import { privacyRequestAlertEmail, privacyRequestsDueEmail } from "./privacy-request-alert";
 import { securityEventAlertEmail, staffAccessReviewEmail } from "./security-alert";
@@ -773,5 +776,80 @@ describe("paymentReceivedEmail", () => {
     const email = paymentReceivedEmail(base);
     expect(email.bodyText).not.toMatch(/[!\u2014\u2013]/);
     expect(email.subject).not.toMatch(/[!\u2014\u2013]/);
+  });
+});
+
+describe("onboardingSentEmail", () => {
+  const email = onboardingSentEmail({
+    to: "team@example.com",
+    businessName: "Riverside Plumbing",
+    clientUrl: "http://admin.localhost:3000/clients/0192f3c4",
+    previewDueHours: 48,
+  });
+
+  it("names the business in the subject", () => {
+    expect(email.subject).toBe("Riverside Plumbing sent their website details");
+  });
+
+  it("says how long the first preview has", () => {
+    expect(email.bodyText).toContain("due within 48 hours");
+    expect(email.bodyHtml).toContain("due within 48 hours");
+  });
+
+  it("links to the client in both bodies", () => {
+    expect(email.bodyText).toContain("http://admin.localhost:3000/clients/0192f3c4");
+    expect(email.bodyHtml).toContain('href="http://admin.localhost:3000/clients/0192f3c4"');
+  });
+
+  it("escapes a business name that carries markup", () => {
+    const risky = onboardingSentEmail({
+      to: "team@example.com",
+      businessName: "<script>x</script>",
+      clientUrl: "http://admin.localhost:3000/clients/1",
+      previewDueHours: 48,
+    });
+    expect(risky.bodyHtml).not.toContain("<script>x");
+  });
+});
+
+describe("domainReadyEmail", () => {
+  const email = domainReadyEmail({
+    to: "owner@example.com",
+    businessName: "Riverside Plumbing",
+    domain: "riverside.com",
+    projectUrl: "https://app.example.test/project",
+  });
+
+  it("names the domain in the subject", () => {
+    expect(email.subject).toContain("Connect riverside.com");
+  });
+
+  it("links to the project page and promises never to ask for a login", () => {
+    expect(email.bodyText).toContain("https://app.example.test/project");
+    expect(email.bodyHtml).toContain('href="https://app.example.test/project"');
+    expect(email.bodyText).toContain("We never need your login");
+  });
+
+  it("escapes a business name that carries markup", () => {
+    const risky = domainReadyEmail({ to: "a@example.com", businessName: "<b>x</b>", domain: "x.com", projectUrl: "https://app.example.test/project" });
+    expect(risky.bodyHtml).not.toContain("<b>x");
+  });
+});
+
+describe("domainConnectedEmail", () => {
+  const email = domainConnectedEmail({
+    to: "team@example.com",
+    businessName: "Riverside Plumbing",
+    domain: "riverside.com",
+    clientUrl: "http://admin.localhost:3000/clients/0192f3c4",
+  });
+
+  it("names the business in the subject", () => {
+    expect(email.subject).toBe("Riverside Plumbing's domain is connected");
+  });
+
+  it("links to the client in both bodies", () => {
+    expect(email.bodyText).toContain("http://admin.localhost:3000/clients/0192f3c4");
+    expect(email.bodyHtml).toContain('href="http://admin.localhost:3000/clients/0192f3c4"');
   });
 });

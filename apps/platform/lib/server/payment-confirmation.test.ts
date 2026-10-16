@@ -24,6 +24,7 @@ import { getBillingProvider } from "./billing";
 import { activateFirstPayment, activateReactivationPayment } from "@fynix/shared/server/billing-activation";
 import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
+import { notifyTeamOnboardingSent } from "./onboarding-alert";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { confirmFirstPayment, verifyCheckoutFor } from "./payment-confirmation";
 
@@ -34,6 +35,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("@fynix/shared/server/billing-activation", () => ({ activateFirstPayment: vi.fn(), activateReactivationPayment: vi.fn() }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
+vi.mock("./onboarding-alert", () => ({ notifyTeamOnboardingSent: vi.fn() }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 vi.mock("./onboarding", () => {
   class MockStepRefusedError extends Error {}
@@ -297,6 +299,7 @@ describe("confirmFirstPayment", () => {
     expect(withCustomerRole).toHaveBeenCalledWith(staffTx, tenant, expect.any(Function));
     expect(sendOnboardingWithin).toHaveBeenCalledWith(customerTx, NOW);
     expect(outcome).toBe("committed");
+    expect(notifyTeamOnboardingSent).toHaveBeenCalledWith(BUSINESS_ID, tenant.businessName);
   });
 
   it("writes nothing and opens no transaction for a token that does not verify", async () => {
@@ -558,6 +561,7 @@ describe("confirmFirstPayment", () => {
     });
     expect(activateFirstPayment).toHaveBeenCalledTimes(1);
     expect(outcome).toBe("committed");
+    expect(notifyTeamOnboardingSent).not.toHaveBeenCalled();
   });
 
   it("keeps the payment when there was nothing open to send", async () => {

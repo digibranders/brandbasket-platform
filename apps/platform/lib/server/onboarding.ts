@@ -33,6 +33,7 @@ import {
 import { onboardingStepHref, type OnboardingStepKey } from "@fynix/shared/lib/onboarding/steps";
 import { requireCustomerAccess } from "./customer-access";
 import { getAppDb } from "./db";
+import { notifyTeamOnboardingSent } from "./onboarding-alert";
 
 /** Why a step was not saved, for the form to show. `field` is the exact form field name, when there is one. */
 export interface StepProblem {
@@ -228,10 +229,12 @@ export async function sendOnboardingWithin(tx: ScopedTransaction, now: Date): Pr
 export async function submitOnboardingFor(db: Database, tenant: TenantContext, now: Date): Promise<StepProblem | null> {
   try {
     await withTenantScope(db, tenant, (tx) => sendOnboardingWithin(tx, now));
-    return null;
   } catch (error) {
     if (error instanceof StepRefusedError) return error.problem;
     if (error instanceof OnboardingLockedError || error instanceof ProjectNotInOnboardingError) return LOCKED_PROBLEM;
     throw error;
   }
+  // After the commit: a failed email must never undo or block what the customer has already sent.
+  await notifyTeamOnboardingSent(tenant.businessId, tenant.businessName);
+  return null;
 }
