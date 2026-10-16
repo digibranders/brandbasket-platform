@@ -1,10 +1,37 @@
 import { accounts, sessions, users, verifications, type Database } from "@fynix/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { hasAccountCreationGrant } from "./account-creation-grant";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, passwordPolicyProblem } from "./password-policy";
 
-export const PASSWORD_MIN_LENGTH = 10;
+export { PASSWORD_MIN_LENGTH };
+
+/**
+ * The routes that choose a new password, and the body field each carries it in. Sign-in is deliberately absent:
+ * accounts made under the older length-only rule must still be able to sign in.
+ */
+const NEW_PASSWORD_FIELDS: Readonly<Record<string, "password" | "newPassword">> = {
+  "/sign-up/email": "password",
+  "/reset-password": "newPassword",
+  "/change-password": "newPassword",
+};
+
+/**
+ * Better Auth checks only a password's length. This holds every new password to the full rule before the route
+ * runs, so no form or script can skip it.
+ */
+const enforcePasswordPolicy = createAuthMiddleware(async (ctx) => {
+  const field = NEW_PASSWORD_FIELDS[ctx.path];
+  if (field === undefined) return;
+  const body: unknown = ctx.body;
+  const password = typeof body === "object" && body !== null ? (body as Record<string, unknown>)[field] : undefined;
+  // A missing or non-string password is left to the route's own body validation.
+  if (typeof password !== "string") return;
+  const problem = passwordPolicyProblem(password);
+  if (problem !== null) throw new APIError("BAD_REQUEST", { code: "WEAK_PASSWORD", message: problem });
+});
 /** How long a customer stays signed in. The staff console asks for a shorter one (STAFF_SESSION_LIFETIME_SECONDS). */
 const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 7;
 /**
@@ -83,6 +110,7 @@ export function createAuth(config: AuthConfig) {
     emailAndPassword: {
       enabled: true,
       minPasswordLength: PASSWORD_MIN_LENGTH,
+      maxPasswordLength: PASSWORD_MAX_LENGTH,
       autoSignIn: false,
       // A reset is how someone locked out, or someone who fears their password is known, gets back in: every other
       // session of the account ends with it.
@@ -132,6 +160,7 @@ export function createAuth(config: AuthConfig) {
         },
       },
     },
+    hooks: { before: enforcePasswordPolicy },
     plugins: config.nextCookies ? [nextCookies()] : [],
   });
 }

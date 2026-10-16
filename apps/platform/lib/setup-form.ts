@@ -1,20 +1,19 @@
+import { PASSWORD_MAX_LENGTH, passwordPolicyProblem } from "@fynix/auth/password-policy";
 import { z } from "zod";
 
 /**
- * Matches PASSWORD_MIN_LENGTH in @fynix/auth (also 10). Kept here, rather than imported, so this module stays
- * browser-safe: it is used by the client SetupForm component, and @fynix/auth pulls in server-only dependencies.
- * lib/server/setup.ts sees both constants and fails at module load if they ever drift apart.
+ * A newly chosen password, held to the rule Better Auth also enforces on the server (@fynix/auth/password-policy,
+ * which is browser-safe). Every form that sets a password uses this, so they all say the same thing.
  */
-export const SETUP_PASSWORD_MIN_LENGTH = 10;
-const MAX_PASSWORD_LENGTH = 128;
+export const newPasswordSchema = z.string().superRefine((password, context) => {
+  const problem = passwordPolicyProblem(password);
+  if (problem !== null) context.addIssue({ code: "custom", message: problem });
+});
 
 const setupSchema = z
   .object({
     name: z.string().trim().min(1, "Tell us your name.").max(120, "That name is too long."),
-    password: z
-      .string()
-      .min(SETUP_PASSWORD_MIN_LENGTH, `Use at least ${SETUP_PASSWORD_MIN_LENGTH} characters.`)
-      .max(MAX_PASSWORD_LENGTH, "That password is too long."),
+    password: newPasswordSchema,
     confirmPassword: z.string(),
   })
   .refine((values) => values.password === values.confirmPassword, {
@@ -58,7 +57,7 @@ export function parseSetupForm(formData: FormData): SetupParseResult {
   const schema = existing
     ? z.object({
       name: setupSchema.shape.name,
-      password: z.string().min(1, "Enter your account’s password.").max(MAX_PASSWORD_LENGTH, "That password is too long."),
+      password: z.string().min(1, "Enter your account’s password.").max(PASSWORD_MAX_LENGTH, "That password is too long."),
     })
     : setupSchema;
   const result = schema.safeParse({

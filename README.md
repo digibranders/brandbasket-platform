@@ -46,7 +46,7 @@ Payload pushes schema changes itself.
 
 ## Accounts and email
 
-- **Create account** (`/login?new=1`): business name, your name, email, password (at least 10 characters), the Terms
+- **Create account** (`/login?new=1`): business name, your name, email, password (at least 8 characters, with a letter, a number and a symbol), the Terms
   box, and a plan (Care or Premium). A 6-digit code is emailed to the address (10 minutes, 5 tries, rate limited per
   network, per address and overall); the account is opened only once it is entered, with the address already confirmed.
   The owner then pays on the plan's page and lands on the dashboard.

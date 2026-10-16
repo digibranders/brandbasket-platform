@@ -26,8 +26,8 @@ function form(mode?: string): FormData {
   const data = new FormData();
   data.set("token", "invite");
   data.set("name", "Owner");
-  data.set("password", mode === "verify-existing" ? "short" : "new-password-proposal");
-  if (mode === undefined) data.set("confirmPassword", "new-password-proposal");
+  data.set("password", mode === "verify-existing" ? "short" : "new-password-proposal-9");
+  if (mode === undefined) data.set("confirmPassword", "new-password-proposal-9");
   else data.set("mode", mode);
   return data;
 }
@@ -42,7 +42,7 @@ describe.each([
     redeem.mockRejectedValue(new AccountAlreadyExistsError("owner@example.com"));
     const state = await action(initialSetupFormState, form());
     expect(state).toMatchObject({ status: "error", mode: "verify-existing", field: "password" });
-    expect(JSON.stringify(state)).not.toContain("new-password-proposal");
+    expect(JSON.stringify(state)).not.toContain("new-password-proposal-9");
   });
   it("passes current-password verification to the server without requiring confirmation", async () => {
     redeem.mockRejectedValue(new AccountAlreadyExistsError("owner@example.com"));
@@ -60,7 +60,7 @@ describe.each([
     const data = form();
     data.set("agree", "yes");
     await action(initialSetupFormState, data).catch(() => undefined);
-    expect(redeem).toHaveBeenCalledWith("invite", { name: "Owner", password: "new-password-proposal", agreed: true });
+    expect(redeem).toHaveBeenCalledWith("invite", { name: "Owner", password: "new-password-proposal-9", agreed: true });
   });
   it("retains verification mode and focuses its invalid empty password", async () => {
     const data = form("verify-existing");

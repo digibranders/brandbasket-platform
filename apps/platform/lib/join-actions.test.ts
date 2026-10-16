@@ -16,7 +16,7 @@ vi.mock("@/lib/server/customer-access", () => ({ LISTING_PAGE_PATH: "/business" 
 const otp = { otpId: "existing-challenge", emailHint: "o•••@example.test", confirmRequired: true };
 function form(code: boolean): FormData {
   const result = new FormData();
-  for (const [key, value] of Object.entries({ choice: "listing_only", name: "Owner", email: "Owner@Example.test", password: "long-password", country: "IN", stateCode: "mh", agree: "yes", otpId: otp.otpId })) {
+  for (const [key, value] of Object.entries({ choice: "listing_only", name: "Owner", email: "Owner@Example.test", password: "long-password-9", country: "IN", stateCode: "mh", agree: "yes", otpId: otp.otpId })) {
     result.set(key, value);
   }
   if (code) result.set("code", "123456");
@@ -47,7 +47,7 @@ it("retains signup confirmation retry instead of redirecting as a created accoun
 /** A Fynix form: Care, with the business's name. */
 function fynixForm(entries: Record<string, string>): FormData {
   const result = new FormData();
-  const base = { choice: "care", businessName: "Smile Dental", name: "Owner", email: "Owner@Example.test", password: "long-password", country: "IN", stateCode: "mh", agree: "yes" };
+  const base = { choice: "care", businessName: "Smile Dental", name: "Owner", email: "Owner@Example.test", password: "long-password-9", country: "IN", stateCode: "mh", agree: "yes" };
   for (const [key, value] of Object.entries({ ...base, ...entries })) result.set(key, value);
   return result;
 }

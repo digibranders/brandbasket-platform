@@ -5,10 +5,11 @@ import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
 import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
 import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { TurnstileWidget } from "@fynix/shared/ui/turnstile";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@fynix/auth/password-policy";
 import { EyeIcon, EyeOffIcon } from "@fynix/shared/ui/icons";
 import { useBrand } from "@/components/panel/brand-provider";
 import { legalLinksFor } from "@/lib/legal-links";
-import { initialSetupFormState, SETUP_AGREE_FIELD, SETUP_AGREE_VALUE, SETUP_PASSWORD_MIN_LENGTH, type SetupFormState } from "@/lib/setup-form";
+import { initialSetupFormState, SETUP_AGREE_FIELD, SETUP_AGREE_VALUE, type SetupFormState } from "@/lib/setup-form";
 
 interface SetupFormProps {
   readonly action: (state: SetupFormState, formData: FormData) => Promise<SetupFormState>;
@@ -99,7 +100,7 @@ export function SetupForm({
             type={passwordRevealed ? "text" : "password"}
             required
             autoComplete={existing ? "current-password" : "new-password"}
-            minLength={existing ? undefined : SETUP_PASSWORD_MIN_LENGTH}
+            minLength={existing ? undefined : PASSWORD_MIN_LENGTH}
             maxLength={PASSWORD_MAX_LENGTH}
             aria-invalid={errorMessage === null ? undefined : true}
             aria-describedby={describedBy}
@@ -117,7 +118,7 @@ export function SetupForm({
         </div>
         {existing ? (
           <p className="mt-2 text-sm text-ink-soft">Verify your {brand.shortName} account to finish linking this invite.</p>
-        ) : <p className="mt-2 text-sm text-ink-soft">At least {SETUP_PASSWORD_MIN_LENGTH} characters.</p>}
+        ) : <p className="mt-2 text-sm text-ink-soft">{PASSWORD_RULE}</p>}
       </div>
       {existing ? null : <div>
         <label htmlFor="setup-confirm" className="block text-sm font-medium">
@@ -131,7 +132,7 @@ export function SetupForm({
             type={confirmRevealed ? "text" : "password"}
             required
             autoComplete="new-password"
-            minLength={SETUP_PASSWORD_MIN_LENGTH}
+            minLength={PASSWORD_MIN_LENGTH}
             maxLength={PASSWORD_MAX_LENGTH}
             aria-invalid={errorMessage === null ? undefined : true}
             aria-describedby={describedBy}

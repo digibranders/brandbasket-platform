@@ -24,9 +24,9 @@ repository root, with the production environment loaded (it reads `ADMIN_ORIGIN`
 pnpm staff:create --email you@fynix.digital --name "Your Name" --role admin
 ```
 
-It asks twice for a password with no echo (at least 14 characters, and not in a known data breach: it checks Have I Been
-Pwned by sending only a 5-character hash prefix; if that service is unreachable it creates nothing). It needs an interactive
-terminal. Run it again with another email for each person; run it for an email that already has an account to give that
+It asks twice for a password with no echo (at least 8 characters with a letter, a number and a symbol, the same rule as
+customers, and not in a known data breach: it checks Have I Been Pwned by sending only a 5-character hash prefix; if that
+service is unreachable it creates nothing). It needs an interactive terminal. Run it again with another email for each person; run it for an email that already has an account to give that
 account console access without changing its password. `--role` is `support`, `finance` or `admin` (default `admin`).
 To take access away, set `active = false` on the person's row in `staff_members` (their record and log stay).
 

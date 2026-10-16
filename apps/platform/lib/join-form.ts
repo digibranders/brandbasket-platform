@@ -4,7 +4,7 @@ import { OTP_LENGTH } from "@fynix/shared/lib/appointments/otp";
 import { HOME_COUNTRY, isCountryCode } from "@fynix/shared/lib/countries";
 import { isIndiaStateCode } from "@fynix/shared/lib/directory/india-states";
 import { cleanLine } from "@fynix/shared/lib/validation/text";
-import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
+import { newPasswordSchema } from "@/lib/setup-form";
 
 /*
  * The sign-up form (/login, Create account): browser-safe, so the form component can share its limits. An owner gives
@@ -19,7 +19,6 @@ import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
  * (lib/server/listing-account.ts) checks the address.
  */
 
-const MAX_PASSWORD_LENGTH = 128;
 export const JOIN_NAME_MAX_LENGTH = 60;
 export const JOIN_BUSINESS_NAME_MAX_LENGTH = 200;
 
@@ -51,10 +50,7 @@ const CODE_MESSAGE = `Enter a ${OTP_LENGTH}-digit code.`;
 
 const accountSchema = z.object({
   name: z.string().trim().min(1, "Tell us your name.").max(JOIN_NAME_MAX_LENGTH, "That name is too long."),
-  password: z
-    .string()
-    .min(SETUP_PASSWORD_MIN_LENGTH, `Use at least ${SETUP_PASSWORD_MIN_LENGTH} characters for the password.`)
-    .max(MAX_PASSWORD_LENGTH, "That password is too long."),
+  password: newPasswordSchema,
 });
 
 /** The longest an email address can be (RFC 5321). */

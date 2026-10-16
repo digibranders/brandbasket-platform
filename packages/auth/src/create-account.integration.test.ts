@@ -6,7 +6,7 @@ import { AccountAlreadyExistsError, createAccountWithGrant } from "./create-acco
 import { createAuth, type Auth } from "./create-auth";
 
 const ORIGIN = "http://app.localhost:3000";
-const OWNER = { email: "owner@example.com", name: "Riley Owner", password: "correct-horse-battery" };
+const OWNER = { email: "owner@example.com", name: "Riley Owner", password: "correct-horse-battery-9" };
 
 let dbs: TestDatabases;
 let auth: Auth;

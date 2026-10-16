@@ -7,7 +7,7 @@ import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { TurnstileWidget } from "@fynix/shared/ui/turnstile";
 import { EyeIcon, EyeOffIcon } from "@fynix/shared/ui/icons";
 import { FORGOT_PASSWORD_PATH, initialResetPasswordState, type ResetPasswordFormState } from "@/lib/account-recovery-form";
-import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@fynix/auth/password-policy";
 
 interface ResetPasswordFormProps {
   readonly action: (state: ResetPasswordFormState, formData: FormData) => Promise<ResetPasswordFormState>;
@@ -64,7 +64,7 @@ export function ResetPasswordForm({ action, token }: ResetPasswordFormProps): Re
             type={passwordRevealed ? "text" : "password"}
             required
             autoComplete="new-password"
-            minLength={SETUP_PASSWORD_MIN_LENGTH}
+            minLength={PASSWORD_MIN_LENGTH}
             maxLength={PASSWORD_MAX_LENGTH}
             aria-invalid={errorMessage === null ? undefined : true}
             aria-describedby={describedBy}
@@ -80,7 +80,7 @@ export function ResetPasswordForm({ action, token }: ResetPasswordFormProps): Re
             {passwordRevealed ? <EyeOffIcon className="size-5" /> : <EyeIcon className="size-5" />}
           </button>
         </div>
-        <p className="mt-2 text-sm text-ink-soft">At least {SETUP_PASSWORD_MIN_LENGTH} characters.</p>
+        <p className="mt-2 text-sm text-ink-soft">{PASSWORD_RULE}</p>
       </div>
       <div>
         <label htmlFor="reset-confirm" className="block text-sm font-medium">
@@ -94,7 +94,7 @@ export function ResetPasswordForm({ action, token }: ResetPasswordFormProps): Re
             type={confirmRevealed ? "text" : "password"}
             required
             autoComplete="new-password"
-            minLength={SETUP_PASSWORD_MIN_LENGTH}
+            minLength={PASSWORD_MIN_LENGTH}
             maxLength={PASSWORD_MAX_LENGTH}
             aria-invalid={errorMessage === null ? undefined : true}
             aria-describedby={describedBy}

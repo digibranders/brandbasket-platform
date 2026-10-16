@@ -10,7 +10,7 @@ vi.mock("next/headers", () => ({ headers: vi.fn() }));
 beforeEach(() => { vi.resetAllMocks(); mocks.access.mockResolvedValue({ user: { id: "session-user" } }); });
 function passwords(): FormData {
   const form = new FormData();
-  form.set("currentPassword", "current-password"); form.set("newPassword", "new-long-password"); form.set("confirmPassword", "new-long-password");
+  form.set("currentPassword", "current-password"); form.set("newPassword", "new-long-password-9"); form.set("confirmPassword", "new-long-password-9");
   form.set("userId", "attacker-user");
   return form;
 }
@@ -18,7 +18,7 @@ describe("password settings actions", () => {
   it("maps partial success without replaying or retaining passwords", async () => {
     mocks.change.mockResolvedValue("changed-revoke-failed");
     expect(await changePasswordAction({ status: "idle" }, passwords())).toEqual({ status: "changed-revoke-failed" });
-    expect(mocks.change).toHaveBeenCalledWith("session-user", { currentPassword: "current-password", newPassword: "new-long-password" });
+    expect(mocks.change).toHaveBeenCalledWith("session-user", { currentPassword: "current-password", newPassword: "new-long-password-9" });
   });
   it("revokes only for the authenticated account and accepts no credentials", async () => {
     mocks.revoke.mockResolvedValue("revoked");

@@ -11,7 +11,7 @@ const account = {
   choice: "listing_only",
   name: " Meera Shah ",
   email: "  Meera.Shah@Example.TEST ",
-  password: "correct-horse-battery",
+  password: "correct-horse-battery-9",
   country: "IN",
   stateCode: "mh",
   agree: "yes",
@@ -27,7 +27,7 @@ describe("parseJoinForm", () => {
         businessName: null,
         name: "Meera Shah",
         email: "meera.shah@example.test",
-        password: "correct-horse-battery",
+        password: "correct-horse-battery-9",
         country: "IN",
         stateCode: "mh",
         agreed: true,
@@ -138,7 +138,7 @@ describe("parseJoinForm", () => {
     expect(parseJoinForm(form({ ...account, email: "" }))).toEqual({ success: false, message: "Enter your email address." });
     expect(parseJoinForm(form({ ...account, password: "short" }))).toEqual({
       success: false,
-      message: "Use at least 10 characters for the password.",
+      message: "Use at least 8 characters.",
     });
   });
 
@@ -152,7 +152,7 @@ describe("parseJoinForm", () => {
     const care = { ...account, choice: "care", businessName: " Smile Dental " };
     expect(parseJoinForm(form({ ...care, choice: "" }))).toEqual({ success: false, message: "Choose a plan to continue." });
     expect(parseJoinForm(form({ ...care, agree: "" }))).toEqual({ success: false, message: "Tick the box to agree to the Terms and Privacy Notice." });
-    expect(parseJoinForm(form({ ...care, password: "short" }))).toEqual({ success: false, message: "Use at least 10 characters for the password." });
+    expect(parseJoinForm(form({ ...care, password: "short" }))).toEqual({ success: false, message: "Use at least 8 characters." });
     expect(parseJoinForm(form({ ...care, businessName: " " }))).toEqual({ success: false, message: "Tell us your business's name." });
   });
 });

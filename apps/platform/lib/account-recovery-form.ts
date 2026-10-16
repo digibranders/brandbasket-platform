@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
+import { newPasswordSchema } from "@/lib/setup-form";
 
 /*
  * Getting back into an account, and proving an email address is its owner's: the forms behind /forgot-password and
@@ -18,14 +18,9 @@ export function confirmEmailPath(token: string): string {
   return `/confirm-email/${encodeURIComponent(token)}`;
 }
 
-const MAX_PASSWORD_LENGTH = 128;
-
 const resetSchema = z
   .object({
-    password: z
-      .string()
-      .min(SETUP_PASSWORD_MIN_LENGTH, `Use at least ${SETUP_PASSWORD_MIN_LENGTH} characters.`)
-      .max(MAX_PASSWORD_LENGTH, "That password is too long."),
+    password: newPasswordSchema,
     confirmPassword: z.string(),
   })
   .refine((values) => values.password === values.confirmPassword, {

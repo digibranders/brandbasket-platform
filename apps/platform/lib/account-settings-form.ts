@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { DELETE_CONFIRMATION_WORD, EXIT_COMMENT_MAX_LENGTH, isExitReason } from "@fynix/shared/lib/account-exit";
 import type { AccountExitReason } from "@fynix/db";
-import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
+import { newPasswordSchema } from "@/lib/setup-form";
 
 /*
  * The forms on the Settings page that act on the signed-in account: changing the password, and the steps of deleting
@@ -42,10 +42,7 @@ export const initialChangePasswordState: ChangePasswordFormState = { status: "id
 const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, "Enter your current password.").max(MAX_PASSWORD_LENGTH, "That password is too long."),
-    newPassword: z
-      .string()
-      .min(SETUP_PASSWORD_MIN_LENGTH, `Use at least ${SETUP_PASSWORD_MIN_LENGTH} characters.`)
-      .max(MAX_PASSWORD_LENGTH, "That password is too long."),
+    newPassword: newPasswordSchema,
     confirmPassword: z.string(),
   })
   .refine((values) => values.newPassword === values.confirmPassword, {

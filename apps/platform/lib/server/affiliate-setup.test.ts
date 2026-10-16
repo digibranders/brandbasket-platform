@@ -13,19 +13,15 @@ import { assertWithinSetupRateLimit, TermsNotAgreedError, verifyExistingAccount,
 // real AccountAlreadyExistsError class because the recovery path turns on `instanceof`.
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
-vi.mock("@fynix/auth", async () => {
-  const { SETUP_PASSWORD_MIN_LENGTH } = await import("@/lib/setup-form");
-  return {
-    AccountAlreadyExistsError: class AccountAlreadyExistsError extends Error {
-      constructor(email: string) {
-        super(`An account for ${email} already exists.`);
-        this.name = "AccountAlreadyExistsError";
-      }
-    },
-    createAccountWithGrant: vi.fn(),
-    PASSWORD_MIN_LENGTH: SETUP_PASSWORD_MIN_LENGTH,
-  };
-});
+vi.mock("@fynix/auth", () => ({
+  AccountAlreadyExistsError: class AccountAlreadyExistsError extends Error {
+    constructor(email: string) {
+      super(`An account for ${email} already exists.`);
+      this.name = "AccountAlreadyExistsError";
+    }
+  },
+  createAccountWithGrant: vi.fn(),
+}));
 vi.mock("@fynix/db", () => ({ claimAffiliateLoginLink: vi.fn(), findAffiliateLoginInvite: vi.fn(), resetAffiliateCredentialPassword: vi.fn() }));
 vi.mock("./auth", () => ({ getAuth: vi.fn(() => ({ $context: Promise.resolve({ password: { hash: vi.fn(async (password: string) => `hashed:${password}`) } }) })) }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
@@ -41,7 +37,7 @@ vi.mock("./setup", () => ({
 }));
 
 const TOKEN = "link-token";
-const ACCOUNT = { name: "Asha Nair", password: "a-long-password", agreed: true as const };
+const ACCOUNT = { name: "Asha Nair", password: "a-long-password-9", agreed: true as const };
 const INVITE: AffiliateLoginInvite = { affiliateId: "aff-1", name: "Asha Nair", email: "Asha@Example.com", userId: null };
 const requestHeaders = new Headers({ "x-forwarded-for": "203.0.113.7" });
 const transactionDb = {} as Database;
@@ -156,7 +152,7 @@ describe("redeemAffiliateLogin", () => {
     });
     const results = await Promise.allSettled([
       redeemAffiliateLogin(TOKEN, ACCOUNT),
-      redeemAffiliateLogin(TOKEN, { ...ACCOUNT, password: "different-long-password" }),
+      redeemAffiliateLogin(TOKEN, { ...ACCOUNT, password: "different-long-password-9" }),
     ]);
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     expect(resetAffiliateCredentialPassword).toHaveBeenCalledTimes(1);

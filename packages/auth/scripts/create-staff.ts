@@ -7,7 +7,10 @@ import { z } from "zod";
 import { createAccountWithGrant, createAuth, STAFF_SESSION_LIFETIME_SECONDS } from "../src";
 import { promptHidden } from "./prompt-hidden";
 import { BreachCheckUnavailableError, breachedPasswordCount } from "./breached-password";
-import { STAFF_PASSWORD_MIN_LENGTH, validateNewPassword } from "./password-rules";
+import { PASSWORD_MIN_LENGTH, passwordPolicyProblem } from "../src/password-policy";
+import { validateNewPassword } from "./password-rules";
+
+const PASSWORD_RULE_TEXT = `at least ${PASSWORD_MIN_LENGTH} characters, with a letter, a number and a symbol`;
 
 const USAGE = `Usage: pnpm staff:create --email <email> --name "<name>" [--role support|finance|admin]
 
@@ -16,7 +19,7 @@ existing account. The role defaults to admin, which can do everything:
   support   leads, clients, support requests and the directory
   finance   support, plus pricing, invoices and their export, payments and charges
   admin     everything, including the access log
-A new account's password must be at least ${STAFF_PASSWORD_MIN_LENGTH} characters and not in a known data breach.`;
+A new account's password: ${PASSWORD_RULE_TEXT}, and not in a known data breach.`;
 
 const argsSchema = z.object({
   email: z.string("--email is required").trim().toLowerCase().pipe(z.email("--email must be a valid email address")),
@@ -78,13 +81,14 @@ try {
 
   let userId: string;
   if (existingUser === undefined) {
-    const password = await promptHidden(`Password for ${email} (at least ${STAFF_PASSWORD_MIN_LENGTH} characters): `);
-    // Fail fast on an obviously-too-short password before bothering with a second prompt.
-    if (password.length < STAFF_PASSWORD_MIN_LENGTH) {
-      throw new Error(`The password must be at least ${STAFF_PASSWORD_MIN_LENGTH} characters.`);
+    const password = await promptHidden(`Password for ${email} (${PASSWORD_RULE_TEXT}): `);
+    // Fail fast on a password that breaks the rule before bothering with a second prompt.
+    const problem = passwordPolicyProblem(password);
+    if (problem !== null) {
+      throw new Error(problem);
     }
     const confirmation = await promptHidden("Repeat the password: ");
-    const passwordError = validateNewPassword(password, confirmation, STAFF_PASSWORD_MIN_LENGTH);
+    const passwordError = validateNewPassword(password, confirmation);
     if (passwordError !== null) {
       throw new Error(passwordError);
     }

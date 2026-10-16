@@ -19,24 +19,19 @@ import { findInviteForToken, redeemSetupInvite, TermsNotAgreedError, TooManySetu
 // Same approach as sign-in.test.ts: the database, Better Auth and the incoming request are all test doubles, so
 // the module's own decisions run in isolation. `@fynix/auth` is mocked rather than used for real because
 // better-auth is not a direct dependency of this package; the mocked AccountAlreadyExistsError is a real class,
-// because the recovery path turns on `instanceof`. Its PASSWORD_MIN_LENGTH comes from the browser-safe copy the
-// module asserts against, so the assertion under test still fails if the two ever drift apart for real.
+// because the recovery path turns on `instanceof`.
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
-vi.mock("@fynix/auth", async () => {
-  const { SETUP_PASSWORD_MIN_LENGTH } = await import("@/lib/setup-form");
-  return {
-    AccountAlreadyExistsError: class AccountAlreadyExistsError extends Error {
-      constructor(email: string) {
-        super(`An account for ${email} already exists.`);
-        this.name = "AccountAlreadyExistsError";
-      }
-    },
-    createAccountWithGrant: vi.fn(),
-    isInvalidCredentialsError: vi.fn(),
-    PASSWORD_MIN_LENGTH: SETUP_PASSWORD_MIN_LENGTH,
-  };
-});
+vi.mock("@fynix/auth", () => ({
+  AccountAlreadyExistsError: class AccountAlreadyExistsError extends Error {
+    constructor(email: string) {
+      super(`An account for ${email} already exists.`);
+      this.name = "AccountAlreadyExistsError";
+    }
+  },
+  createAccountWithGrant: vi.fn(),
+  isInvalidCredentialsError: vi.fn(),
+}));
 vi.mock("@fynix/db", () => ({
   consumeRateLimit: vi.fn(),
   findRedeemableInvite: vi.fn(),

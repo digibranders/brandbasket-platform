@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseSetupForm, SETUP_PASSWORD_MIN_LENGTH } from "./setup-form";
+import { PASSWORD_MIN_LENGTH } from "@fynix/auth/password-policy";
+import { parseSetupForm } from "./setup-form";
 
 function form(entries: Record<string, string>): FormData {
   const data = new FormData();
@@ -7,7 +8,7 @@ function form(entries: Record<string, string>): FormData {
   return data;
 }
 
-const valid = { name: " Riley Owner ", password: "correct-horse-battery", confirmPassword: "correct-horse-battery" };
+const valid = { name: " Riley Owner ", password: "correct-horse-battery-9", confirmPassword: "correct-horse-battery-9" };
 
 describe("parseSetupForm", () => {
   it("accepts an existing password without creation or confirmation rules", () => {
@@ -17,8 +18,8 @@ describe("parseSetupForm", () => {
   });
   it("carries the tick for the Terms and Privacy Notice, only when it was ticked", () => {
     expect(parseSetupForm(form({ ...valid, agree: "yes" }))).toMatchObject({ success: true, data: { agreed: true } });
-    expect(parseSetupForm(form({ ...valid, agree: "no" }))).toEqual({ success: true, data: { name: "Riley Owner", password: "correct-horse-battery" } });
-    expect(parseSetupForm(form(valid))).toEqual({ success: true, data: { name: "Riley Owner", password: "correct-horse-battery" } });
+    expect(parseSetupForm(form({ ...valid, agree: "no" }))).toEqual({ success: true, data: { name: "Riley Owner", password: "correct-horse-battery-9" } });
+    expect(parseSetupForm(form(valid))).toEqual({ success: true, data: { name: "Riley Owner", password: "correct-horse-battery-9" } });
   });
   it("points a mismatch at confirmation", () => {
     expect(parseSetupForm(form({ ...valid, confirmPassword: "different" }))).toMatchObject({ success: false, field: "confirmPassword" });
@@ -26,7 +27,7 @@ describe("parseSetupForm", () => {
   it("trims the name and keeps the password as typed", () => {
     expect(parseSetupForm(form(valid))).toEqual({
       success: true,
-      data: { name: "Riley Owner", password: "correct-horse-battery" },
+      data: { name: "Riley Owner", password: "correct-horse-battery-9" },
     });
   });
 
@@ -37,11 +38,20 @@ describe("parseSetupForm", () => {
     });
   });
 
-  it(`requires at least ${SETUP_PASSWORD_MIN_LENGTH} characters`, () => {
-    const short = "a".repeat(SETUP_PASSWORD_MIN_LENGTH - 1);
+  it(`requires at least ${PASSWORD_MIN_LENGTH} characters`, () => {
+    const short = "ab1!".padEnd(PASSWORD_MIN_LENGTH - 1, "c");
     expect(parseSetupForm(form({ ...valid, password: short, confirmPassword: short }))).toMatchObject({
       success: false,
-      message: `Use at least ${SETUP_PASSWORD_MIN_LENGTH} characters.`,
+      message: `Use at least ${PASSWORD_MIN_LENGTH} characters.`,
+    });
+  });
+
+  it("requires a letter, a number and a symbol, and points at the password", () => {
+    const noSymbol = "abcdefgh1";
+    expect(parseSetupForm(form({ ...valid, password: noSymbol, confirmPassword: noSymbol }))).toEqual({
+      success: false,
+      message: "Add at least one symbol, such as ! # or @.",
+      field: "password",
     });
   });
 

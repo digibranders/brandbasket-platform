@@ -7,7 +7,7 @@ import { createAuth, PASSWORD_MIN_LENGTH, type AccountMail, type Auth } from "./
 import { isAuthApiError, isInvalidCredentialsError, isInvalidTokenError } from "./errors";
 
 const ORIGIN = "http://app.localhost:3000";
-const OWNER = { email: "owner@example.com", name: "Riley Owner", password: "correct-horse-battery" };
+const OWNER = { email: "owner@example.com", name: "Riley Owner", password: "correct-horse-battery-9" };
 
 let dbs: TestDatabases;
 let auth: Auth;
@@ -74,16 +74,57 @@ describe("account creation grant", () => {
 });
 
 describe("password policy", () => {
+  async function signUpFailure(password: string): Promise<unknown> {
+    const account = { email: "weak-password@example.com", name: "Weak Pw", password };
+    return captureFailure(withAccountCreationGrant(account.email, () => auth.api.signUpEmail({ body: account })));
+  }
+
   it(`rejects a password shorter than ${PASSWORD_MIN_LENGTH} characters`, async () => {
-    const shortPassword = { email: "short-password@example.com", name: "Short Pw", password: "123456789" };
-    expect(shortPassword.password.length).toBeLessThan(PASSWORD_MIN_LENGTH);
+    const failure = await signUpFailure("ab1!efg");
+    expect("ab1!efg".length).toBeLessThan(PASSWORD_MIN_LENGTH);
+    expectApiErrorCode(failure, "WEAK_PASSWORD");
+    expect(await userCount()).toBe(0);
+  });
+
+  it("rejects a password missing a letter, a number or a symbol, and says which", async () => {
+    for (const [password, message] of [
+      ["12345678!", "Add at least one letter."],
+      ["abcdefgh!", "Add at least one number."],
+      ["abcdefgh1", "Add at least one symbol, such as ! # or @."],
+    ] as const) {
+      const failure = await signUpFailure(password);
+      expectApiErrorCode(failure, "WEAK_PASSWORD");
+      expect(isAuthApiError(failure) ? failure.body?.message : undefined).toBe(message);
+    }
+    expect(await userCount()).toBe(0);
+  });
+
+  it("accepts 8 characters with a letter, a number and a symbol", async () => {
+    const account = { email: "strong-password@example.com", name: "Strong Pw", password: "abcdef1!" };
+    await withAccountCreationGrant(account.email, () => auth.api.signUpEmail({ body: account }));
+    expect(await userCount()).toBe(1);
+  });
+
+  it("leaves signing in alone: a weak guess is just wrong credentials", async () => {
+    const failure = await captureFailure(auth.api.signInEmail({ body: { email: "nobody@example.com", password: "short" } }));
+    expect(isInvalidCredentialsError(failure)).toBe(true);
+  });
+
+  it("rejects a weak new password on change, and keeps the old one", async () => {
+    await withAccountCreationGrant(OWNER.email, () => auth.api.signUpEmail({ body: OWNER }));
+    const signedIn = await auth.api.signInEmail({ body: { email: OWNER.email, password: OWNER.password }, returnHeaders: true });
+    const cookie = signedIn.headers.get("set-cookie")?.split(";")[0] ?? "";
 
     const failure = await captureFailure(
-      withAccountCreationGrant(shortPassword.email, () => auth.api.signUpEmail({ body: shortPassword })),
+      auth.api.changePassword({
+        body: { currentPassword: OWNER.password, newPassword: "no-digits-here!" },
+        headers: new Headers({ cookie }),
+      }),
     );
 
-    expectApiErrorCode(failure, "PASSWORD_TOO_SHORT");
-    expect(await userCount()).toBe(0);
+    expectApiErrorCode(failure, "WEAK_PASSWORD");
+    const again = await auth.api.signInEmail({ body: { email: OWNER.email, password: OWNER.password } });
+    expect(again.user.email).toBe(OWNER.email);
   });
 });
 
@@ -144,7 +185,7 @@ describe("sign in", () => {
 
 describe("password reset and email confirmation", () => {
   const SECRET = "integration-test-secret-with-at-least-32-chars";
-  const NEW_PASSWORD = "a-brand-new-password";
+  const NEW_PASSWORD = "a-brand-new-password-7";
   let resets: AccountMail[];
   let confirmations: AccountMail[];
   let mailing: Auth;
@@ -205,8 +246,20 @@ describe("password reset and email confirmation", () => {
     const fresh = await mailing.api.signInEmail({ body: { email: OWNER.email, password: NEW_PASSWORD } });
     expect(fresh.user.email).toBe(OWNER.email);
 
-    const reused = await captureFailure(mailing.api.resetPassword({ body: { token, newPassword: "yet-another-password" } }));
+    const reused = await captureFailure(mailing.api.resetPassword({ body: { token, newPassword: "yet-another-password-8" } }));
     expect(isInvalidTokenError(reused)).toBe(true);
+  });
+
+  it("refuses a weak new password on reset, and leaves the token usable", async () => {
+    await mailing.api.requestPasswordReset({ body: { email: OWNER.email } });
+    const token = resets[0]?.token ?? "";
+
+    const weak = await captureFailure(mailing.api.resetPassword({ body: { token, newPassword: "abcdefgh!" } }));
+    expectApiErrorCode(weak, "WEAK_PASSWORD");
+
+    await mailing.api.resetPassword({ body: { token, newPassword: NEW_PASSWORD } });
+    const fresh = await mailing.api.signInEmail({ body: { email: OWNER.email, password: NEW_PASSWORD } });
+    expect(fresh.user.email).toBe(OWNER.email);
   });
 
   it("refuses a reset token that was never issued", async () => {

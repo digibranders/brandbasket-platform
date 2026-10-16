@@ -25,7 +25,7 @@ import {
   type JoinFormState,
 } from "@/lib/join-form";
 import type { LegalLinks } from "@/lib/legal-links";
-import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@fynix/auth/password-policy";
 import { useOtpRetryCooldown } from "@/lib/use-otp-retry-cooldown";
 
 /** The two paid plans' price lines. */
@@ -554,7 +554,7 @@ export function JoinForm({
             type={revealed ? "text" : "password"}
             required
             autoComplete="new-password"
-            minLength={SETUP_PASSWORD_MIN_LENGTH}
+            minLength={PASSWORD_MIN_LENGTH}
             maxLength={PASSWORD_MAX_LENGTH}
             value={password}
             readOnly={isPending}
@@ -573,7 +573,7 @@ export function JoinForm({
           </button>
         </div>
         <p id="join-password-hint" className="mt-2 text-xs text-ink-soft sm:text-sm">
-          At least {SETUP_PASSWORD_MIN_LENGTH} characters.
+          {PASSWORD_RULE}
         </p>
       </div>
 

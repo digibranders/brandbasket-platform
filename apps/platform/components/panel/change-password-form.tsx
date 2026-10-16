@@ -6,7 +6,7 @@ import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
 import { Button } from "@fynix/shared/ui/panel/button";
 import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
 import { initialChangePasswordState, initialRevokeOtherSessionsState, type ChangePasswordFormState, type RevokeOtherSessionsState } from "@/lib/account-settings-form";
-import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@fynix/auth/password-policy";
 
 interface ChangePasswordFormProps {
   readonly action: (state: ChangePasswordFormState, formData: FormData) => Promise<ChangePasswordFormState>;
@@ -95,7 +95,7 @@ export function ChangePasswordForm({ action, revokeAction }: ChangePasswordFormP
           autoComplete="new-password"
           describedBy={describedBy}
           invalid={invalid}
-          minLength={SETUP_PASSWORD_MIN_LENGTH}
+          minLength={PASSWORD_MIN_LENGTH}
         />
         <PasswordField
           id="confirm-password"
@@ -104,9 +104,9 @@ export function ChangePasswordForm({ action, revokeAction }: ChangePasswordFormP
           autoComplete="new-password"
           describedBy={describedBy}
           invalid={invalid}
-          minLength={SETUP_PASSWORD_MIN_LENGTH}
+          minLength={PASSWORD_MIN_LENGTH}
         />
-        <p className="text-sm text-ink-soft">At least {SETUP_PASSWORD_MIN_LENGTH} characters. Changing your password also signs out your other devices.</p>
+        <p className="text-sm text-ink-soft">{PASSWORD_RULE} Changing your password also signs out your other devices.</p>
 
         {errorMessage === null ? null : (
           <p id={ERROR_ID} role="alert" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">

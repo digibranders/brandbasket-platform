@@ -3,7 +3,6 @@ import {
   AccountAlreadyExistsError,
   createAccountWithGrant,
   isInvalidCredentialsError,
-  PASSWORD_MIN_LENGTH,
 } from "@fynix/auth";
 import {
   consumeRateLimit,
@@ -14,7 +13,6 @@ import {
 } from "@fynix/db";
 import { headers } from "next/headers";
 import { clientIpFrom } from "@fynix/shared/lib/client-ip";
-import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
 import { retryMessage } from "@fynix/shared/lib/sign-in-limits";
 import { recordAccountTermsConsent } from "./account-consent";
 import { getAuth } from "./auth";
@@ -27,20 +25,6 @@ const SETUP_ATTEMPT_LIMIT = 10;
 /** Opening the link is cheap and repeatable (a re-read email, a refresh), so the page gets a wider budget. */
 const SETUP_LOOKUP_LIMIT = 60;
 const ONE_HOUR_SECONDS = 60 * 60;
-
-/**
- * lib/setup-form.ts carries its own copy of the minimum password length so that it stays browser-safe. This is
- * the server module that sees both, so a drift fails at module load rather than letting the form accept a
- * password Better Auth would then reject.
- */
-function assertPasswordRulesAgree(formMinimum: number, authMinimum: number): void {
-  if (formMinimum !== authMinimum) {
-    throw new Error(
-      `SETUP_PASSWORD_MIN_LENGTH (${formMinimum}) must match PASSWORD_MIN_LENGTH (${authMinimum}) in @fynix/auth.`,
-    );
-  }
-}
-assertPasswordRulesAgree(SETUP_PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH);
 
 export class InviteNotUsableError extends Error {
   /** Developer-facing only: the setup action owns the one message every dead-link case shows the customer. */

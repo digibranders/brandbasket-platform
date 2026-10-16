@@ -1,13 +1,9 @@
 import "server-only";
-import {
-  AccountAlreadyExistsError,
-  createAccountWithGrant,
-  PASSWORD_MIN_LENGTH,
-} from "@fynix/auth";
+import { AccountAlreadyExistsError, createAccountWithGrant } from "@fynix/auth";
+import { passwordPolicyProblem } from "@fynix/auth/password-policy";
 import { claimAffiliateLoginLink, findAffiliateLoginInvite, resetAffiliateCredentialPassword, type AffiliateLoginInvite } from "@fynix/db";
 import { headers } from "next/headers";
 import { clientIpFrom } from "@fynix/shared/lib/client-ip";
-import { SETUP_PASSWORD_MIN_LENGTH } from "@/lib/setup-form";
 import { recordAccountTermsConsent } from "./account-consent";
 import { getAuth } from "./auth";
 import { getStaffDb } from "./db";
@@ -22,12 +18,6 @@ import {
   type SetupViewLimited,
 } from "./setup";
 
-/** Same as the client setup: the form's copy of the minimum must agree with Better Auth's, or the form accepts what auth rejects. */
-if (SETUP_PASSWORD_MIN_LENGTH !== PASSWORD_MIN_LENGTH) {
-  throw new Error(
-    `SETUP_PASSWORD_MIN_LENGTH (${SETUP_PASSWORD_MIN_LENGTH}) must match PASSWORD_MIN_LENGTH (${PASSWORD_MIN_LENGTH}) in @fynix/auth.`,
-  );
-}
 
 /** The account the link's address already belongs to is a different affiliate's sign-in. */
 export class AffiliateAccountTakenError extends Error {
@@ -75,9 +65,9 @@ export async function redeemAffiliateLogin(token: string, account: AffiliateAcco
     let signedIn = false;
     if (invite.userId !== null) {
       if (account.mode === "verify-existing") throw new InviteNotUsableError();
-      if (account.password.length < PASSWORD_MIN_LENGTH || account.password.length > 128) {
-        throw new RangeError(`A password must be ${PASSWORD_MIN_LENGTH} to 128 characters.`);
-      }
+      // This path hashes the password itself rather than going through Better Auth, so it applies the rule itself.
+      const problem = passwordPolicyProblem(account.password);
+      if (problem !== null) throw new RangeError(problem);
       const claimed = await claimAffiliateLoginLink(tx, { token, userId: invite.userId, now });
       if (claimed !== "claimed") throw new InviteNotUsableError();
       const context = await getAuth().$context;

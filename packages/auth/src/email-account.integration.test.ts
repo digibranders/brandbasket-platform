@@ -8,7 +8,7 @@ import { createVerifiedEmailAccountWithGrant } from "./email-account";
 import { isInvalidCredentialsError } from "./errors";
 
 const ORIGIN = "http://app.localhost:3000";
-const OWNER = { email: "  Asha@Example.TEST ", name: "Asha Owner", password: "correct-horse-battery" };
+const OWNER = { email: "  Asha@Example.TEST ", name: "Asha Owner", password: "correct-horse-battery-9" };
 
 let dbs: TestDatabases;
 let auth: Auth;
