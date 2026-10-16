@@ -128,7 +128,8 @@ function WebsiteIllustration(): ReactElement {
 interface LayoutProps {
   readonly eyebrow: string;
   readonly heading: string;
-  readonly children: ReactNode;
+  /** A line or two under the heading; omitted where the list beside the card already says it. */
+  readonly children?: ReactNode;
   readonly action?: { readonly href: string; readonly label: string };
   readonly note?: string;
   readonly list: ReactNode;
@@ -145,7 +146,7 @@ function CardLayout({ eyebrow, heading, children, action, note, list }: LayoutPr
         <h2 id="next-step-heading" className="mt-3 panel-title">
           {heading}
         </h2>
-        <div className="mt-3 max-w-xl text-sm leading-relaxed text-ink-soft">{children}</div>
+        {children === undefined ? null : <div className="mt-3 max-w-xl text-sm leading-relaxed text-ink-soft">{children}</div>}
         {action === undefined && note === undefined ? null : (
           <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3">
             {action === undefined ? null : (
@@ -181,9 +182,7 @@ export function NextStepCard({ step, completedSteps, buildStageIndex }: NextStep
           action={{ href: "/onboarding", label: "Start setup" }}
           note="Your answers save as you go."
           list={setupList}
-        >
-          <p>Five short steps: your details, services, photos and domain, then a last look before you send it.</p>
-        </CardLayout>
+        />
       );
     case "continue-onboarding": {
       const percent = Math.round((step.completed / step.total) * 100);
