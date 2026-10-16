@@ -43,6 +43,7 @@ import {
   practitioners,
   projectBriefs,
   projects,
+  setupCallBookings,
   services,
   sessions,
   setupInvites,
@@ -296,6 +297,7 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(onboardingProgress).where(eq(onboardingProgress.businessId, businessId));
     await tx.delete(projectBriefs).where(eq(projectBriefs.businessId, businessId));
     await tx.delete(projects).where(eq(projects.businessId, businessId));
+    await tx.delete(setupCallBookings).where(eq(setupCallBookings.businessId, businessId));
     await tx.delete(domains).where(eq(domains.businessId, businessId));
     await tx.delete(mediaAssets).where(eq(mediaAssets.businessId, businessId));
     // The chatbots OyeChats runs for the business, their webhook secrets and the visitors' details they collected.

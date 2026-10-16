@@ -1,5 +1,5 @@
 {
-  "id": "1cb0fc8e-e692-4bd0-9933-6e3ba7509866",
+  "id": "8792cd99-4db6-491b-b1fa-2857e16fa963",
   "prevId": "bdd94832-f1be-467e-99ba-4b010e68e830",
   "version": "7",
   "dialect": "postgresql",
@@ -4760,352 +4760,6 @@
         "businesses_website_url_https": {
           "name": "businesses_website_url_https",
           "value": "\"businesses\".\"website_url\" is null or \"businesses\".\"website_url\" ~ '^https://[^/?#]+$'"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.chatbot_leads": {
-      "name": "chatbot_leads",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "chatbot_id": {
-          "name": "chatbot_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "business_id": {
-          "name": "business_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "session_id": {
-          "name": "session_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "phone": {
-          "name": "phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "company": {
-          "name": "company",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "tier": {
-          "name": "tier",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "score": {
-          "name": "score",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "captured_at": {
-          "name": "captured_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "chatbot_leads_session_idx": {
-          "name": "chatbot_leads_session_idx",
-          "columns": [
-            {
-              "expression": "chatbot_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "session_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "chatbot_leads_business_idx": {
-          "name": "chatbot_leads_business_idx",
-          "columns": [
-            {
-              "expression": "business_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "captured_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "chatbot_leads_chatbot_id_chatbots_id_fk": {
-          "name": "chatbot_leads_chatbot_id_chatbots_id_fk",
-          "tableFrom": "chatbot_leads",
-          "tableTo": "chatbots",
-          "columnsFrom": [
-            "chatbot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "chatbot_leads_business_id_businesses_id_fk": {
-          "name": "chatbot_leads_business_id_businesses_id_fk",
-          "tableFrom": "chatbot_leads",
-          "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "chatbot_leads_session_check": {
-          "name": "chatbot_leads_session_check",
-          "value": "length(\"chatbot_leads\".\"session_id\") between 1 and 200"
-        },
-        "chatbot_leads_score_check": {
-          "name": "chatbot_leads_score_check",
-          "value": "\"chatbot_leads\".\"score\" is null or \"chatbot_leads\".\"score\" between 0 and 100"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.chatbot_webhook_secrets": {
-      "name": "chatbot_webhook_secrets",
-      "schema": "",
-      "columns": {
-        "chatbot_id": {
-          "name": "chatbot_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "secret": {
-          "name": "secret",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "chatbot_webhook_secrets_chatbot_id_chatbots_id_fk": {
-          "name": "chatbot_webhook_secrets_chatbot_id_chatbots_id_fk",
-          "tableFrom": "chatbot_webhook_secrets",
-          "tableTo": "chatbots",
-          "columnsFrom": [
-            "chatbot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "chatbot_webhook_secrets_secret_check": {
-          "name": "chatbot_webhook_secrets_secret_check",
-          "value": "length(\"chatbot_webhook_secrets\".\"secret\") between 16 and 200"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.chatbots": {
-      "name": "chatbots",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "business_id": {
-          "name": "business_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "oyechats_bot_id": {
-          "name": "oyechats_bot_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "website_url": {
-          "name": "website_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "chatbot_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'setting_up'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "chatbots_oyechats_bot_id_idx": {
-          "name": "chatbots_oyechats_bot_id_idx",
-          "columns": [
-            {
-              "expression": "oyechats_bot_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "chatbots_business_idx": {
-          "name": "chatbots_business_idx",
-          "columns": [
-            {
-              "expression": "business_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "chatbots_business_id_businesses_id_fk": {
-          "name": "chatbots_business_id_businesses_id_fk",
-          "tableFrom": "chatbots",
-          "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "chatbots_name_check": {
-          "name": "chatbots_name_check",
-          "value": "length(btrim(\"chatbots\".\"name\")) between 1 and 80"
-        },
-        "chatbots_oyechats_bot_id_check": {
-          "name": "chatbots_oyechats_bot_id_check",
-          "value": "\"chatbots\".\"oyechats_bot_id\" > 0"
-        },
-        "chatbots_website_url_check": {
-          "name": "chatbots_website_url_check",
-          "value": "\"chatbots\".\"website_url\" is null or \"chatbots\".\"website_url\" ~ '^https?://[^[:space:]]{1,255}$'"
         }
       },
       "isRLSEnabled": false
@@ -12493,6 +12147,109 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.setup_call_bookings": {
+      "name": "setup_call_bookings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invitee_uri": {
+          "name": "invitee_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "booked_at": {
+          "name": "booked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "starts_at": {
+          "name": "starts_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ends_at": {
+          "name": "ends_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "setup_call_bookings_business_idx": {
+          "name": "setup_call_bookings_business_idx",
+          "columns": [
+            {
+              "expression": "business_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "setup_call_bookings_business_id_businesses_id_fk": {
+          "name": "setup_call_bookings_business_id_businesses_id_fk",
+          "tableFrom": "setup_call_bookings",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "setup_call_bookings_invitee_check": {
+          "name": "setup_call_bookings_invitee_check",
+          "value": "\"setup_call_bookings\".\"invitee_uri\" is null or char_length(\"setup_call_bookings\".\"invitee_uri\") <= 300"
+        },
+        "setup_call_bookings_time_check": {
+          "name": "setup_call_bookings_time_check",
+          "value": "(\"setup_call_bookings\".\"starts_at\" is null and \"setup_call_bookings\".\"ends_at\" is null) or (\"setup_call_bookings\".\"starts_at\" is not null and \"setup_call_bookings\".\"ends_at\" is not null and \"setup_call_bookings\".\"ends_at\" > \"setup_call_bookings\".\"starts_at\")"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.rate_limit_buckets": {
       "name": "rate_limit_buckets",
       "schema": "",
@@ -15909,15 +15666,6 @@
         "listing_only",
         "premium",
         "care"
-      ]
-    },
-    "public.chatbot_status": {
-      "name": "chatbot_status",
-      "schema": "public",
-      "values": [
-        "setting_up",
-        "live",
-        "paused"
       ]
     },
     "public.billing_currency": {

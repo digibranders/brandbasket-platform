@@ -44,7 +44,7 @@ export async function loadLeadsPage(customer: Pick<GrantedCustomer, "tenant">, r
 
 /**
  * Renames one of the signed-in business's bots, through the customer's own connection and tenant scope: row-level security
- * and the column grant (0178) let it change this business's bot names and nothing else. False when no such bot.
+ * and the column grant (0179) let it change this business's bot names and nothing else. False when no such bot.
  */
 export async function renameCustomerChatbot(customer: Pick<GrantedCustomer, "tenant">, chatbotId: string, name: string): Promise<boolean> {
   const { tenant } = customer;

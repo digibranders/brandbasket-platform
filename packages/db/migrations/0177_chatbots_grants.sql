@@ -1,4 +1,4 @@
--- Grants and row-level security for chatbots (migration 0175). A customer reads only their own business's bots and the leads
+-- Grants and row-level security for chatbots (migration 0176). A customer reads only their own business's bots and the leads
 -- those bots collected; every write is staff's (the console registers a bot, and the signed OyeChats webhook records its
 -- leads on the staff connection). The webhook secrets are readable by staff alone: the app role has no grant on them, so
 -- a secret can never reach the dashboard.

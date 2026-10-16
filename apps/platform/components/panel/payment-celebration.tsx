@@ -14,8 +14,6 @@ interface PaymentCelebrationProps {
   readonly tier: MembershipTier;
 }
 
-const WORDS: Readonly<Record<MembershipTier, string>> = { care: "Care", premium: "Premium" };
-
 /** What each plan holds, in the order the sign-up page lists it: the list the pop-up ticks off. */
 const HOLDS: Readonly<Record<MembershipTier, readonly string[]>> = {
   care: ["Free listing", "Website", "Hosting and upkeep", "OyeChats chatbot"],
@@ -45,14 +43,15 @@ function subscribeToNothing(): () => void {
 }
 
 /**
- * What the dashboard does the moment a payment has opened the plan: party poppers, and a short word of welcome that
- * says which plan is open and what it holds. It shows while the address carries `welcome=1` (lib/celebration.ts), which
- * the payment's landing adds; closing it takes that off the address, so a refresh, a shared link or the back button
+ * What the dashboard does the moment a payment has opened the plan: party poppers, and a short welcome to the brand
+ * that lists what the plan holds. It shows while the address carries `welcome=1` (lib/celebration.ts), which the
+ * payment's landing adds; closing it takes that off the address, so a refresh, a shared link or the back button
  * after that never replays it. Read from the live address, not once: a payment lands here by a client-side redirect,
  * when the address is not yet the new one at first render.
  */
 export function PaymentCelebration({ tier }: PaymentCelebrationProps): ReactElement | null {
-  const showsListing = useBrand().showsListing;
+  const brand = useBrand();
+  const showsListing = brand.showsListing;
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams().toString();
@@ -115,7 +114,7 @@ export function PaymentCelebration({ tier }: PaymentCelebrationProps): ReactElem
           >
             {tier === "premium" ? <CrownIcon className="mx-auto size-8 fill-gold/40 text-gold" /> : <HeartIcon className="mx-auto size-8 text-paper" />}
             <h2 id="payment-celebration-title" className="heading-display mt-3 text-4xl [&_em]:text-amber">
-              Welcome to <em>{WORDS[tier]}.</em>
+              Welcome to <em>{brand.shortName}.</em>
             </h2>
           </div>
           <div className="fy-anim px-8 py-6" style={{ animation: `fy-unfold 0.7s ${EASE} both`, animationDelay: "0.35s", transformOrigin: "top" }}>

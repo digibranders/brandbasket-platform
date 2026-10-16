@@ -739,6 +739,7 @@ export {
   type RecordedAddOnPayment,
 } from "./queries/add-ons";
 export { clearSiteSetting, findSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "./queries/site-settings";
+export { findSetupCallBooking, recordSetupCallBooking } from "./queries/setup-calls";
 export {
   activateBundledAddOns,
   bundledAddOnIds,

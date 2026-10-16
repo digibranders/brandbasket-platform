@@ -1209,29 +1209,36 @@
     {
       "idx": 172,
       "version": "7",
-      "when": 1792153626792,
-      "tag": "0175_chatbots",
+      "when": 1792157679837,
+      "tag": "0175_setup_call_bookings",
       "breakpoints": true
     },
     {
       "idx": 173,
       "version": "7",
-      "when": 1792153627810,
-      "tag": "0176_chatbots_grants",
+      "when": 1792157680837,
+      "tag": "0176_chatbots",
       "breakpoints": true
     },
     {
       "idx": 174,
       "version": "7",
-      "when": 1792156180437,
-      "tag": "0177_chatbot_operator_key",
+      "when": 1792157681837,
+      "tag": "0177_chatbots_grants",
       "breakpoints": true
     },
     {
       "idx": 175,
       "version": "7",
-      "when": 1792157029827,
-      "tag": "0178_chatbot_rename_grant",
+      "when": 1792157682837,
+      "tag": "0178_chatbot_operator_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1792157683837,
+      "tag": "0179_chatbot_rename_grant",
       "breakpoints": true
     }
   ]

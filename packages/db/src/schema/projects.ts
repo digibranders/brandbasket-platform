@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  check,
   foreignKey,
   integer,
   pgEnum,
@@ -90,3 +91,38 @@ export const onboardingProgress = pgTable(
     }),
   ],
 );
+
+/**
+ * The kickoff call a business booked from its dashboard (the setup call link, lib/setup-call-link.ts): at most one row a
+ * business, written when the booking page says a time was picked. `startsAt` and `endsAt` are the meeting's time, filled
+ * in when the booking page reports it (the Calendly webhook); until then the row only says a call was booked, so the
+ * dashboard stops asking for one.
+ */
+export const setupCallBookings = pgTable(
+  "setup_call_bookings",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
+    /** The booking page's address for this booking (Calendly's invitee link), when it gave one. */
+    inviteeUri: text("invitee_uri"),
+    bookedAt: timestamp("booked_at", { withTimezone: true }).notNull().defaultNow(),
+    /** When the meeting starts and ends. Null until the booking page has reported it. Set together. */
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("setup_call_bookings_business_idx").on(table.businessId),
+    check("setup_call_bookings_invitee_check", sql`${table.inviteeUri} is null or char_length(${table.inviteeUri}) <= 300`),
+    check(
+      "setup_call_bookings_time_check",
+      sql`(${table.startsAt} is null and ${table.endsAt} is null) or (${table.startsAt} is not null and ${table.endsAt} is not null and ${table.endsAt} > ${table.startsAt})`,
+    ),
+  ],
+);
+export type SetupCallBooking = typeof setupCallBookings.$inferSelect;

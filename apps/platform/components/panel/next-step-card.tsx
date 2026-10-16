@@ -3,18 +3,14 @@ import type { ReactElement, ReactNode } from "react";
 import { ButtonLink } from "@fynix/shared/ui/panel/button";
 import { ArrowIcon, TickIcon } from "@fynix/shared/ui/icons";
 import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
-import { SiteSketch } from "@fynix/shared/ui/site-sketch";
-import { WaveLines } from "@fynix/shared/ui/wave-lines";
 import { cn } from "@fynix/shared/lib/cn";
 import type { NextStep } from "@fynix/shared/lib/next-step";
 import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
-import { firstIncompleteStep, ONBOARDING_STEPS, onboardingStepHref, type OnboardingStepKey } from "@fynix/shared/lib/onboarding/steps";
 import { PROJECT_STAGES } from "@/lib/project-stages";
 import { safeExternalHref } from "@fynix/shared/lib/safe-link";
 
 interface NextStepCardProps {
   readonly step: NextStep;
-  readonly completedSteps: readonly OnboardingStepKey[];
   /** The build stage in progress, for the list beside a build that's under way. See projectStageIndex. */
   readonly buildStageIndex: number;
 }
@@ -85,18 +81,6 @@ function StepList({ label, items }: { readonly label: string; readonly items: re
   );
 }
 
-function setupItems(completed: readonly OnboardingStepKey[]): readonly ListItem[] {
-  const done = new Set(completed);
-  const current = firstIncompleteStep(done);
-  return ONBOARDING_STEPS.map((step) => ({
-    key: step.key,
-    title: step.title,
-    detail: step.blurb,
-    state: done.has(step.key) ? "done" : step.key === current ? "current" : "todo",
-    href: onboardingStepHref(step.key),
-  }));
-}
-
 function buildItems(currentIndex: number): readonly ListItem[] {
   return PROJECT_STAGES.map((stage, index) => ({
     key: stage.title,
@@ -106,29 +90,11 @@ function buildItems(currentIndex: number): readonly ListItem[] {
   }));
 }
 
-/** A drawn website on a soft, tilted card: what they're setting up, without pretending to be their site. */
-function WebsiteIllustration(): ReactElement {
-  return (
-    <div
-      aria-hidden="true"
-      className="relative isolate hidden min-h-[16rem] overflow-hidden rounded-shell bg-paper-deep xl:block"
-    >
-      <WaveLines seed={41} className="absolute -right-24 -top-10 -z-10 h-[30rem] w-[22rem] rotate-12 text-accent/15" />
-      <div className="absolute inset-0 flex items-center justify-center p-6 [perspective:900px]">
-        <SiteSketch
-          accent="var(--color-accent)"
-          soft="var(--color-accent-pale)"
-          className="w-full max-w-[17rem] [transform:rotateY(-18deg)_rotateX(8deg)_rotateZ(-4deg)]"
-        />
-      </div>
-    </div>
-  );
-}
-
 interface LayoutProps {
   readonly eyebrow: string;
   readonly heading: string;
-  readonly children: ReactNode;
+  /** A line or two under the heading; omitted where the list beside the card already says it. */
+  readonly children?: ReactNode;
   readonly action?: { readonly href: string; readonly label: string };
   readonly note?: string;
   readonly list: ReactNode;
@@ -138,14 +104,14 @@ function CardLayout({ eyebrow, heading, children, action, note, list }: LayoutPr
   return (
     <section
       aria-labelledby="next-step-heading"
-      className="grid gap-8 rounded-shell border border-line bg-card p-6 shadow-[0_24px_60px_-48px_rgba(42,13,16,0.6)] sm:p-8 lg:grid-cols-[1.3fr_1fr] xl:grid-cols-[1.35fr_1fr_0.95fr] xl:items-center"
+      className="grid gap-8 rounded-shell border border-line bg-card p-6 shadow-[0_24px_60px_-48px_rgba(42,13,16,0.6)] sm:p-8 lg:grid-cols-[1.3fr_1fr] xl:items-center"
     >
       <div>
         <p className="text-[0.8125rem] font-semibold text-accent-deep">{eyebrow}</p>
         <h2 id="next-step-heading" className="mt-3 panel-title">
           {heading}
         </h2>
-        <div className="mt-3 max-w-xl text-sm leading-relaxed text-ink-soft">{children}</div>
+        {children === undefined ? null : <div className="mt-3 max-w-xl text-sm leading-relaxed text-ink-soft">{children}</div>}
         {action === undefined && note === undefined ? null : (
           <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3">
             {action === undefined ? null : (
@@ -162,59 +128,19 @@ function CardLayout({ eyebrow, heading, children, action, note, list }: LayoutPr
         )}
       </div>
       <div className="lg:border-l lg:border-line lg:pl-8">{list}</div>
-      <WebsiteIllustration />
     </section>
   );
 }
 
-/** The one thing to do next, on the home screen. Renders nothing when there is nothing to ask. */
-export function NextStepCard({ step, completedSteps, buildStageIndex }: NextStepCardProps): ReactElement | null {
-  const setupList = <StepList label="Setup steps" items={setupItems(completedSteps)} />;
+/** Where the website is, on the home screen once setup is sent: building, paused or live. Renders nothing while the customer is still setting up, or when there is nothing to say. */
+export function NextStepCard({ step, buildStageIndex }: NextStepCardProps): ReactElement | null {
   const buildList = <StepList label="Build stages" items={buildItems(buildStageIndex)} />;
 
   switch (step.kind) {
     case "start-onboarding":
-      return (
-        <CardLayout
-          eyebrow="Your next step"
-          heading="Tell us about your business"
-          action={{ href: "/onboarding", label: "Start setup" }}
-          note="Your answers save as you go."
-          list={setupList}
-        >
-          <p>Five short steps: your details, services, photos and domain, then a last look before you send it.</p>
-        </CardLayout>
-      );
-    case "continue-onboarding": {
-      const percent = Math.round((step.completed / step.total) * 100);
-      return (
-        <CardLayout
-          eyebrow="Your next step"
-          heading="Carry on setting up"
-          action={{ href: "/onboarding", label: "Continue setup" }}
-          note="Your answers save as you go."
-          list={setupList}
-        >
-          <p className="tabular-nums">
-            {step.completed} of {step.total} steps done. Pick up where you left off, or jump to any step.
-          </p>
-          <div
-            role="progressbar"
-            aria-label="Setup progress"
-            aria-valuemin={0}
-            aria-valuemax={step.total}
-            aria-valuenow={step.completed}
-            aria-valuetext={`${step.completed} of ${step.total} steps done`}
-            className="mt-4 h-2 w-full max-w-sm overflow-hidden rounded-full bg-paper-deep"
-          >
-            <div
-              className="h-full rounded-full bg-accent-deep transition-[width] duration-500 ease-calm"
-              style={{ width: `${percent}%` }}
-            />
-          </div>
-        </CardLayout>
-      );
-    }
+    case "continue-onboarding":
+      // Setting up is shown by the kickoff call and checklist on the home screen, not by this card.
+      return null;
     case "building":
       return (
         <CardLayout

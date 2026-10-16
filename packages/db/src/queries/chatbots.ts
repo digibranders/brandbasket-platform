@@ -172,7 +172,7 @@ export async function setChatbotStatus(
 }
 
 /**
- * Renames a bot, only if it is that business's. False when nothing matched. The customer's own connection may run this (0178
+ * Renames a bot, only if it is that business's. False when nothing matched. The customer's own connection may run this (0179
  * grants it the name and nothing else): it is how a customer changes what they call their bot.
  */
 export async function renameChatbot(

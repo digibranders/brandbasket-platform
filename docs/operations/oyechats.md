@@ -31,7 +31,7 @@ read. An operator key can only see its own bot: OyeChats refuses it anything els
 
    It is an origin only (`https://host`, no path). The `deploy` user owns the file (mode 600).
 
-2. Ship this change the way you ship any other. The four new migrations (0175 to 0178) run by themselves in the deploy's
+2. Ship this change the way you ship any other. The four new migrations (0176 to 0179) run by themselves in the deploy's
    migration step, before the new release goes live. Restart is part of the deploy; if you only changed the env file, restart the app:
 
    ```bash
