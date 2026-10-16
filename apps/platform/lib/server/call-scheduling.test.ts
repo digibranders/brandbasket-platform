@@ -55,7 +55,7 @@ describe("cancelCallBooking", () => {
 
   it("cancels a Cal.com booking this server made, and nothing else", async () => {
     vi.stubEnv("CALCOM_API_KEY", "cal_live_test");
-    const fetchMock = vi.fn((_address: string) => Promise.resolve(new Response(JSON.stringify({ status: "success" }), { status: 200 })));
+    const fetchMock = vi.fn<(address: string) => Promise<Response>>(() => Promise.resolve(new Response(JSON.stringify({ status: "success" }), { status: 200 })));
     vi.stubGlobal("fetch", fetchMock);
 
     await cancelCallBooking(URL.replace("calendly.com", "cal.com"), "https://api.cal.com/v2/bookings/abc123");
