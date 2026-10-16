@@ -22,6 +22,7 @@ import { DocumentIcon, TagIcon, UserIcon } from "@fynix/shared/ui/icons";
 import { DashboardFrame, type DashboardPlanChip } from "@fynix/shared/ui/panel/dashboard-frame";
 import { AppointmentsNavRefresh } from "@/components/panel/appointments/appointments-nav-refresh";
 import { ADD_ONS_PATH } from "@/lib/add-ons";
+import { CHATBOT_LEADS_PATH, CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
 import { DEALS_PATH } from "@/lib/deals";
 import { LEADS_PATH } from "@/lib/leads";
 import { REVIEWS_PATH } from "@/lib/owner-replies";
@@ -133,6 +134,19 @@ function customerNav({
         ? []
         : [{ href: "/onboarding", label: "Set up your website", icon: <NavListChecksIcon className="size-5" /> }]),
       { href: "/project", label: "Your project", icon: <NavBriefcaseIcon className="size-5" /> },
+      // OyeChats' own mark, white on the dark sidebar, as its maker publishes it (public/brand/oyechats-icon-white.png). A plain
+      // img: it is a small fixed picture, which next/image would only add work to.
+      // OyeChats is a group: the visitors who left their details, and what the customer calls their assistant.
+      {
+        href: CHATBOT_LEADS_PATH,
+        label: "OyeChats",
+        // eslint-disable-next-line @next/next/no-img-element
+        icon: <img src="/brand/oyechats-icon-white.png" alt="" width={20} height={20} className="size-5 object-contain" />,
+        children: [
+          { href: CHATBOT_LEADS_PATH, label: "Leads", icon: <UserIcon className="size-4" /> },
+          { href: CHATBOT_NAME_PATH, label: "Chatbot name", icon: <TagIcon className="size-4" /> },
+        ],
+      },
       { href: "/domain", label: "Your domain", icon: <NavGlobeIcon className="size-5" /> },
       // Content is a group: the blog's posts, the people who write them, and the categories they are filed under.
       {

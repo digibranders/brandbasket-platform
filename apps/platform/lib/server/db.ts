@@ -56,6 +56,15 @@ export function getAppDb(): Database {
  *   marketing website, like the other directory routes above.
  * - lib/server/account-email-code.ts (the code emailed to open an account): whoever asks has no session yet, and
  *   account_otps is staff-only (0073). It writes and reads those codes and the rate-limit counters, nothing else.
+ * - lib/server/oyechats-webhook.ts (POST /api/webhooks/oyechats), which records the leads OyeChats reports for a chatbot.
+ *   The sender has no session, and customers never write chatbots or chatbot_leads through their own connection. Nothing
+ *   in the body is believed until its signature checks out under that bot's own secret (chatbot_webhook_secrets, staff
+ *   only), and the business a lead goes to comes from our record of the bot, never from the body.
+ * - lib/server/chatbot-conversations.ts (the OyeChats page's message counts and the conversation pop-up), which reads one
+ *   bot's OyeChats operator key from chatbot_webhook_secrets, a staff-only table, to fetch conversations from OyeChats for the
+ *   signed-in customer. The bot comes from a read made through the customer's own tenant scope (and the lead from
+ *   findChatbotLeadForBusiness, under row-level security), so only a bot of their own business is ever looked up; the key
+ *   is used on the server and never sent to the browser. It reads that one column and writes nothing.
  * - Support submission rate limits, private screenshot lifecycle/closure checks, and the upload/erasure lock.
  *   Requester-owned ticket and attachment metadata use getAppDb with user scope. Staff access only finalizes
  *   private file lifecycle changes and records redacted automatic errors; it does not read customer messages.

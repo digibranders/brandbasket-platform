@@ -39,6 +39,8 @@ import { domainConnectNoticeHref } from "@fynix/shared/lib/domain-connect-notice
 import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
 import { projectLaunchNoticeHref } from "@fynix/shared/lib/project-launch-notices";
 import { projectPreviewNoticeHref } from "@fynix/shared/lib/project-preview-notices";
+import { chatbotNoticeHref, parseChatbotForm, parseOperatorKeyForm, readChatbotStatus } from "@/lib/chatbot-form";
+import { addClientChatbot, removeClientChatbot, setClientChatbotOperatorKey, setClientChatbotStatus } from "@/lib/server/chatbots-admin";
 import { addOnNoticeHref, noticeForEndOutcome, type AddOnNotice } from "@/lib/add-on-notices";
 import { clientListingKey, clientTagsHref } from "@/lib/client-tags";
 import { endClientAddOn, markClientAddOnContacted, markClientBundledAddOnContacted, setClientPressReleaseStatus } from "@/lib/server/add-ons-admin";
@@ -529,4 +531,60 @@ export async function switchDomainAction(formData: FormData): Promise<void> {
 
   revalidateClient(businessId);
   redirect(domainConnectNoticeHref(businessId, notified === "emailed" ? "switched" : "switched-no-email"));
+}
+
+/**
+ * Registers a chatbot OyeChats runs for the client, with the webhook secret OyeChats made for it. The business comes from
+ * the form's hidden id, checked as a UUID; the secret is stored for the webhook to check signatures against and is never shown again.
+ */
+export async function addChatbotAction(formData: FormData): Promise<void> {
+  await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "The chatbot's business");
+  const parsed = parseChatbotForm(formData);
+  if (!parsed.ok) redirect(chatbotNoticeHref(businessId, parsed.notice));
+
+  const outcome = await addClientChatbot(businessId, parsed.bot);
+  revalidateClient(businessId);
+  redirect(chatbotNoticeHref(businessId, outcome));
+}
+
+/** Sets where a chatbot stands, which the customer reads on their Chatbot page. */
+export async function setChatbotStatusAction(formData: FormData): Promise<void> {
+  await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "The chatbot's business");
+  const chatbotId = readId(formData.get("chatbotId"), "The chatbot");
+  const status = readChatbotStatus(formData.get("status"));
+  if (status === null) redirect(chatbotNoticeHref(businessId, "invalid-status"));
+
+  const changed = await setClientChatbotStatus(businessId, chatbotId, status);
+  revalidateClient(businessId);
+  redirect(chatbotNoticeHref(businessId, changed ? "status-saved" : "not-found"));
+}
+
+/**
+ * Saves, replaces or removes the key of the OyeChats operator bound to a chatbot, which the dashboard uses to show the
+ * customer a lead's conversation. Like the webhook secret it is stored and never shown again.
+ */
+export async function setChatbotOperatorKeyAction(formData: FormData): Promise<void> {
+  await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "The chatbot's business");
+  const chatbotId = readId(formData.get("chatbotId"), "The chatbot");
+  const change = parseOperatorKeyForm(formData);
+  if (!change.ok) redirect(chatbotNoticeHref(businessId, change.notice));
+
+  const saved = await setClientChatbotOperatorKey(businessId, chatbotId, change.operatorKey);
+  revalidateClient(businessId);
+  redirect(chatbotNoticeHref(businessId, saved ? (change.operatorKey === null ? "key-cleared" : "key-saved") : "not-found"));
+}
+
+/** Removes a chatbot with its leads and its secret, after the staff member ticks that they mean it. */
+export async function removeChatbotAction(formData: FormData): Promise<void> {
+  await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "The chatbot's business");
+  const chatbotId = readId(formData.get("chatbotId"), "The chatbot");
+  if (formData.get("confirm") !== "yes") redirect(chatbotNoticeHref(businessId, "unconfirmed"));
+
+  const removed = await removeClientChatbot(businessId, chatbotId);
+  revalidateClient(businessId);
+  redirect(chatbotNoticeHref(businessId, removed ? "removed" : "not-found"));
 }

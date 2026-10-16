@@ -1,3 +1,4 @@
+import { eraseChatbotsOfBusiness } from "./chatbots";
 import { and, asc, eq, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { listBusinessProductPhotoIds } from "./directory-business-catalog";
@@ -297,6 +298,8 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(projects).where(eq(projects.businessId, businessId));
     await tx.delete(domains).where(eq(domains.businessId, businessId));
     await tx.delete(mediaAssets).where(eq(mediaAssets.businessId, businessId));
+    // The chatbots OyeChats runs for the business, their webhook secrets and the visitors' details they collected.
+    await eraseChatbotsOfBusiness(tx, businessId);
 
     // The directory listing: what the owner wrote and uploaded goes; the place itself is public and stays, unclaimed.
     await tx.delete(directoryBusinessCategories).where(eq(directoryBusinessCategories.businessId, businessId));

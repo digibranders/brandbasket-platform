@@ -30,6 +30,7 @@ import { TickIcon } from "@fynix/shared/ui/icons";
 import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import { clientListingKey, readClientTagNotice } from "@/lib/client-tags";
 import { ClientAddOns } from "@/components/client-add-ons";
+import { ClientChatbots } from "@/components/client-chatbots";
 import { CopyTokenButton } from "@/components/copy-token-button";
 import { ClientCharges } from "@/components/client-charges";
 import { ClientListingTags } from "@/components/client-listing-tags";
@@ -38,6 +39,9 @@ import { ClientFeatures } from "@/components/client-features";
 import { ClientListing, type ListingNotice } from "@/components/client-listing";
 import { readStaffChargeNotice } from "@fynix/shared/lib/billing/charge-notices";
 import { loadClientAddOns } from "@/lib/server/add-ons-admin";
+import { serverEnv } from "@/lib/server/env";
+import { loadClientChatbots } from "@/lib/server/chatbots-admin";
+import { readChatbotNotice } from "@/lib/chatbot-form";
 import { listClientCharges } from "@/lib/server/charges-admin";
 import { PaymentsNeedingAttention } from "@/components/payments-needing-attention";
 import { ReceivedDateInput } from "@/components/received-date-input";
@@ -582,6 +586,7 @@ export default async function ClientPage({
     taxInvoices,
     missingInvoices,
     clientAddOns,
+    clientChatbots,
   ] = await Promise.all([
     canRecordPayment ? findActivePlan(db, client.currency, client.tier) : Promise.resolve(null),
     listPaymentsNeedingAttention(db, { businessId: client.businessId, limit: ATTENTION_SHOWN }),
@@ -601,6 +606,7 @@ export default async function ClientPage({
     invoiced ? listTaxInvoicesForBusiness(db, client.businessId) : Promise.resolve([]),
     invoiced ? listPaymentsWithoutTaxInvoice(db, client.businessId) : Promise.resolve([]),
     loadClientAddOns(client.businessId, renderedAt),
+    loadClientChatbots(client.businessId),
   ]);
   const planNotice = readPlanUpgradeNotice(sp.plan);
   const chargesNotice = readStaffChargeNotice(sp.charges);
@@ -609,6 +615,7 @@ export default async function ClientPage({
   const listingNotice = readListingNotice(sp.listing, sp.listingField);
   const invoiceNotice = readInvoiceNotice(sp.invoice);
   const addOnNotice = readAddOnNotice(sp.addOns);
+  const chatbotNotice = readChatbotNotice(sp.chatbots);
   const tagsNotice = readClientTagNotice(sp.tags);
   const listingPlaceId = listingPlacement?.placeId ?? null;
   // The tags are kept under the listing's place, or under its key until it has one.
@@ -859,6 +866,13 @@ export default async function ClientPage({
           bundledAddOns={clientAddOns.bundledAddOns}
           pressReleases={clientAddOns.pressReleases}
           notice={addOnNotice}
+        />
+
+        <ClientChatbots
+          businessId={client.businessId}
+          chatbots={clientChatbots}
+          notice={chatbotNotice}
+          webhookUrl={`${serverEnv().APP_ORIGIN}/api/webhooks/oyechats`}
         />
 
         <Section title="Business details">
