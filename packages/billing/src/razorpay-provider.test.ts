@@ -80,6 +80,10 @@ describe("createRazorpayProvider", () => {
       expect(create).toHaveBeenCalledWith(
         expect.objectContaining({ plan_id: "plan_razorpay123", customer_notify: false, quantity: 1 }),
       );
+      // The cycle count is the UPI mandate's length, and UPI refuses a mandate longer than 30 years (360 monthly cycles).
+      const cycles = (create.mock.calls[0]?.[0] as { total_count: number }).total_count;
+      expect(cycles).toBeGreaterThan(0);
+      expect(cycles).toBeLessThanOrEqual(360);
       // A discount is a discounted plan, never an Offer, so there is no offer key at all: an explicit
       // `offer_id: undefined` would be serialised by the SDK and rejected by Razorpay.
       expect(create.mock.calls[0]?.[0]).not.toHaveProperty("offer_id");
@@ -552,7 +556,7 @@ describe("add-on subscriptions", () => {
     });
     expect(create).toHaveBeenCalledWith({
       plan_id: "plan_addon",
-      total_count: 1_200,
+      total_count: 120,
       quantity: 1,
       customer_notify: false,
       notes: { businessId: BUSINESS_ID, addOnSubscriptionId: ADD_ON_SUBSCRIPTION_ID },

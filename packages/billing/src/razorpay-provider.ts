@@ -95,8 +95,13 @@ export interface RazorpayProviderOptions {
   resolveChargeOrder(providerOrderId: string): Promise<{ readonly businessId: string; readonly chargeId: string } | null>;
 }
 
-/** A subscription runs until cancelled, but Razorpay's API requires a bound. 1200 monthly cycles is 100 years. */
-const EFFECTIVELY_UNBOUNDED_CYCLES = 1_200;
+/**
+ * A subscription runs until cancelled, but Razorpay's API requires a bound. The bound is also the end date of the customer's
+ * UPI AutoPay mandate, and UPI refuses a mandate longer than 30 years (the customer's UPI app answers
+ * RECURRING_MANDATE_END_DATE_MAX_VALIDITY_BREACH): 1200 monthly cycles, 100 years, made every UPI payment fail. 120 monthly
+ * cycles is 10 years, Razorpay's own default mandate length; a subscription that reaches it completes and is started again.
+ */
+const EFFECTIVELY_UNBOUNDED_CYCLES = 120;
 
 /** Razorpay statuses of a subscription that will never charge again, so a cancel of it has nothing left to do. */
 const STOPPED_SUBSCRIPTION_STATUSES: ReadonlySet<string> = new Set(["cancelled", "completed", "expired"]);
