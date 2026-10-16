@@ -34,7 +34,7 @@ export async function markDomainReady(db: Database, input: { readonly businessId
       to: client.owner.email,
       businessName: client.businessName,
       domain: result.hostname,
-      projectUrl: new URL("/project", serverEnv().APP_ORIGIN).toString(),
+      projectUrl: new URL("/domain", serverEnv().APP_ORIGIN).toString(),
     }),
   );
   return "emailed";

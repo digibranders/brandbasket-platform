@@ -242,10 +242,16 @@ export {
 } from "./queries/onboarding-data";
 export {
   DomainNotReadyForDnsError,
+  DomainSwitchNotReadyError,
+  getConnectingDomain,
   markDomainReadyForDns,
   recordDomainDnsCheck,
+  requestDomainMove,
+  switchToDomain,
+  type ConnectingDomain,
   type DnsCheckRecorded,
   type DomainReadyResult,
+  type DomainSwitched,
 } from "./queries/domain-connect";
 export {
   approveProjectPreview,

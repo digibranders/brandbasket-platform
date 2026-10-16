@@ -326,6 +326,8 @@ export interface ClientDetail extends ClientSummary {
     readonly referenceUrls: readonly string[];
   } | null;
   readonly domain: { readonly hostname: string; readonly status: DomainStatus; readonly ownerConfirmedAt: Date | null } | null;
+  /** A domain this live customer has asked to move to, kept beside their main one until staff switch to it; null when there is none. */
+  readonly movingTo: { readonly hostname: string; readonly status: DomainStatus } | null;
   readonly media: readonly ClientMedia[];
   readonly completedSteps: readonly OnboardingStep[];
 }
@@ -410,6 +412,12 @@ export async function findClientDetail(db: Database, businessId: string): Promis
             .where(and(eq(onboardingProgress.projectId, project.id), eq(onboardingProgress.businessId, businessId))),
         ]);
 
+  const movingToRows = await db
+    .select({ hostname: domains.hostname, status: domains.status })
+    .from(domains)
+    .where(and(eq(domains.businessId, businessId), eq(domains.isPrimary, false), isNull(domains.removedAt)))
+    .limit(1);
+
   return {
     ...business,
     tier: tiers.get(businessId) ?? "premium",
@@ -421,6 +429,7 @@ export async function findClientDetail(db: Database, businessId: string): Promis
     services: serviceRows,
     brief: briefRows[0] ?? null,
     domain: domainRows[0] ?? null,
+    movingTo: movingToRows[0] ?? null,
     media,
     completedSteps: progressRows.map((row) => row.step),
   };

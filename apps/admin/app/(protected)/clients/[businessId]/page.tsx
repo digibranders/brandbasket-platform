@@ -90,6 +90,7 @@ import { readClientUpgrade } from "@/lib/server/plan-upgrade-admin";
 import {
   markDomainReadyAction,
   markLiveAction,
+  switchDomainAction,
   rotateSiteApiTokenAction,
   recordManualPaymentAction,
   resolvePaymentAttentionAction,
@@ -473,6 +474,73 @@ function GoLivePanel({
   );
 }
 
+/**
+ * A live customer has asked to move from the free address to a domain of their own. Same order as the first launch: add it to the
+ * website's host and ask them to connect it, then (once their DNS is found connected) switch. The free address keeps working
+ * throughout, and should forward to the new domain afterwards, which is set up in the host.
+ */
+function MoveDomainPanel({
+  businessId,
+  current,
+  movingTo,
+  siteUrl,
+}: {
+  readonly businessId: string;
+  readonly current: string;
+  readonly movingTo: { readonly hostname: string; readonly status: DomainStatus };
+  readonly siteUrl: string | null;
+}): ReactElement {
+  const root = registrableDomain(movingTo.hostname);
+  return (
+    <div className="max-w-2xl space-y-8">
+      <Facts
+        items={[
+          { label: "Their address now", value: current },
+          { label: "Wants to move to", value: movingTo.hostname },
+          ...(siteUrl === null ? [] : [{ label: "Site to add it to", value: <CustomerLink url={siteUrl} /> }]),
+          { label: "DNS", value: DNS_STATUS_TEXT[movingTo.status] ?? movingTo.status },
+        ]}
+      />
+
+      {movingTo.status === "pending" ? (
+        <form action={markDomainReadyAction}>
+          <ol className="list-decimal space-y-2 pl-5 text-ink-soft">
+            <li>
+              Open the Vercel project behind the site link above and add <span className="font-medium text-ink">{movingTo.hostname}</span>
+              {movingTo.hostname === root ? <> and <span className="font-medium text-ink">www.{root}</span></> : null} under Domains.
+            </li>
+            <li>Then ask the customer to change their DNS. They’re emailed, and the records show on their dashboard. Their free address keeps working.</li>
+          </ol>
+          <input type="hidden" name="businessId" value={businessId} />
+          <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Emailing…">
+            Ready for customer’s DNS
+          </GatedSubmitButton>
+        </form>
+      ) : null}
+
+      {movingTo.status === "awaiting_dns" || movingTo.status === "misconfigured" ? (
+        <p className="max-w-xl text-ink-soft">
+          They’ve been asked to add the records and can check it themselves. You’re emailed the moment it’s connected.
+        </p>
+      ) : null}
+
+      {movingTo.status === "verifying" ? (
+        <form action={switchDomainAction}>
+          <p className="max-w-xl text-ink-soft">
+            Their DNS now points at the site. Open <span className="font-medium text-ink">{movingTo.hostname}</span> and check it loads. Then, in
+            the Vercel project, redirect <span className="font-medium text-ink">{current}</span> to it, so old links keep working, and switch.
+            The client is emailed their new address.
+          </p>
+          <input type="hidden" name="businessId" value={businessId} />
+          <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Switching…">
+            Switch to their domain
+          </GatedSubmitButton>
+        </form>
+      ) : null}
+    </div>
+  );
+}
+
 export default async function ClientPage({
   params,
   searchParams,
@@ -648,6 +716,16 @@ export default async function ClientPage({
             aside={late === null ? "The next step" : <span className="font-semibold text-accent">{late}</span>}
           >
             <SendPreviewForm businessId={client.businessId} />
+          </Section>
+        ) : null}
+        {client.movingTo !== null && client.domain !== null ? (
+          <Section title="Move to their own domain" id="domain" aside="Asked by the customer">
+            <MoveDomainPanel
+              businessId={client.businessId}
+              current={client.domain.hostname}
+              movingTo={client.movingTo}
+              siteUrl={websiteUrl ?? project?.previewUrl ?? null}
+            />
           </Section>
         ) : null}
         {nextStep === "live" ? (

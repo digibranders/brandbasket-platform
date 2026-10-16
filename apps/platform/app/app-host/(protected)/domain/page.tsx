@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
+import { getConnectingDomain, withTenantScope } from "@fynix/db";
 import { ConnectDomainCard } from "@/components/panel/connect-domain-card";
+import { DomainMoveSteps } from "@/components/panel/domain-move-steps";
 import { EmailUs } from "@/components/panel/email-us";
-import { domainPageState } from "@/lib/domain-page";
+import { MoveDomainForm } from "@/components/panel/move-domain-form";
+import { domainPageState, moveStepIndex } from "@/lib/domain-page";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { getAppDb } from "@/lib/server/db";
 import { getLiveWebsite, getOnboardingSnapshot } from "@/lib/server/onboarding";
 import { dnsRecordsFor } from "@fynix/shared/lib/onboarding/domain-dns";
 import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
@@ -11,6 +15,7 @@ import { safeExternalHref } from "@fynix/shared/lib/safe-link";
 import { ButtonLink, ExternalButtonLink } from "@fynix/shared/ui/panel/button";
 import { SectionHeading, Surface } from "@fynix/shared/ui/panel/surface";
 import { checkDomainAction } from "../project/actions";
+import { requestOwnDomainAction } from "./actions";
 
 export const metadata: Metadata = { title: "Your domain" };
 
@@ -23,22 +28,45 @@ function Address({ hostname, note }: { readonly hostname: string; readonly note?
   );
 }
 
+function HelpBlock(): ReactElement {
+  return (
+    <Surface tone="quiet" className="mt-6 max-w-2xl">
+      <SectionHeading>Good to know</SectionHeading>
+      <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-ink-soft">
+        <li>Don’t have a domain yet? You can buy one from any domain registrar, such as GoDaddy, Namecheap or Cloudflare. It usually costs a few hundred rupees a year.</li>
+        <li>Not sure which company yours is with? It’s whoever you paid for the domain, or you can look it up with a “WHOIS” search.</li>
+        <li>Once you’ve moved, your free address keeps working and forwards to your own domain, so links you’ve already shared still reach you.</li>
+        <li>
+          Anything unclear? Email us at <EmailUs />.
+        </li>
+      </ul>
+    </Surface>
+  );
+}
+
 /**
- * The permanent home of the customer's web address: what it is, whether it's connected, and (once it is time) the DNS
- * records to add with a button to check them. The same records card the project page shows while the site goes live,
- * kept here for anyone who needs to look again or re-check later. Which of it shows is decided by domainPageState.
+ * The permanent home of the customer's web address: what it is, whether it's connected, and what to do next. A customer live on
+ * the free address can ask for a domain of their own here and follow it through to the switch; one on their own domain sees the
+ * DNS records and a check, kept for anyone who needs to look again. Which of it shows is decided by domainPageState.
  */
 export default async function DomainPage(): Promise<ReactElement> {
-  await requireCustomerAccess();
-  const [snapshot, live] = await Promise.all([getOnboardingSnapshot(), getLiveWebsite()]);
+  const { tenant } = await requireCustomerAccess();
+  const [snapshot, live, connecting] = await Promise.all([
+    getOnboardingSnapshot(),
+    getLiveWebsite(),
+    withTenantScope(getAppDb(), tenant, getConnectingDomain),
+  ]);
   const domain = snapshot.domain;
+  const moving = connecting !== null && !connecting.isPrimary ? connecting : null;
   const state = domainPageState({
     domain: domain === null ? null : { hostname: domain.hostname, status: domain.status },
+    moving: moving === null ? null : { hostname: moving.hostname, status: moving.status },
     isFreeAddress: domain !== null && isTemporarySubdomain(domain.hostname),
     live: live !== null,
     projectStatus: snapshot.project?.status ?? null,
   });
   const liveHref = live === null ? null : safeExternalHref(`https://${live.hostname}`);
+  const connect = state === "move-connect" ? moving : state === "own-connect" || state === "own-live" ? domain : null;
 
   return (
     <>
@@ -64,16 +92,56 @@ export default async function DomainPage(): Promise<ReactElement> {
         </Surface>
       ) : null}
 
-      {state === "free" && domain !== null ? (
+      {state === "free-building" && domain !== null ? (
         <>
           <Address hostname={domain.hostname} note="(free, temporary)" />
           <Surface tone="quiet" className="mt-6 max-w-2xl">
-            <SectionHeading>Moving to your own domain</SectionHeading>
+            <SectionHeading>Your own domain</SectionHeading>
             <p className="mt-2 text-sm text-ink-soft">
-              Whenever you’ve registered a domain, email us at <EmailUs /> with its name. We’ll move your website over, and show you
-              here exactly what to change at the company you bought it from. We’ll never ask for your login.
+              Once your website is live, you can ask for a domain of your own here. If you already have one, you can enter it in your setup instead.
+            </p>
+            {snapshot.locked ? null : (
+              <ButtonLink href="/onboarding/domain" variant="secondary" className="mt-5">
+                Change it in setup
+              </ButtonLink>
+            )}
+          </Surface>
+        </>
+      ) : null}
+
+      {state === "free" && domain !== null ? (
+        <>
+          <Address hostname={domain.hostname} note="(free, temporary)" />
+          {liveHref === null ? null : (
+            <ExternalButtonLink href={liveHref} target="_blank" rel="noopener noreferrer" variant="secondary" className="mt-4">
+              Visit your website
+            </ExternalButtonLink>
+          )}
+          <DomainMoveSteps current={0} />
+          <Surface className="mt-6 max-w-2xl" labelledBy="own-domain-heading">
+            <SectionHeading id="own-domain-heading">I’ve got my own domain</SectionHeading>
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+              Tell us the name and we’ll get your website ready for it. Your free address keeps working until you’re moved over.
+            </p>
+            <div className="mt-5">
+              <MoveDomainForm action={requestOwnDomainAction} />
+            </div>
+          </Surface>
+          <HelpBlock />
+        </>
+      ) : null}
+
+      {state === "move-requested" && domain !== null && moving !== null ? (
+        <>
+          <Address hostname={domain.hostname} note="(free, temporary) for now" />
+          <DomainMoveSteps current={moveStepIndex(state)} />
+          <Surface tone="quiet" className="mt-6 max-w-2xl">
+            <SectionHeading>We’re getting it ready</SectionHeading>
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+              We’ve got <span className="font-medium text-ink">{moving.hostname}</span>. We’re adding it to your website now and we’ll email you the moment it’s time to connect it. Please don’t change anything at your domain company until then. Your website carries on at your free address meanwhile.
             </p>
           </Surface>
+          <HelpBlock />
         </>
       ) : null}
 
@@ -102,35 +170,38 @@ export default async function DomainPage(): Promise<ReactElement> {
         </>
       ) : null}
 
-      {(state === "own-connect" || state === "own-live") && domain !== null ? (
+      {connect !== null ? (
         <>
           {state === "own-live" ? (
             <p className="mt-2 max-w-2xl text-sm text-ink-soft">
               Your website is live at{" "}
               {liveHref === null ? (
-                <span className="font-medium text-ink">{domain.hostname}</span>
+                <span className="font-medium text-ink">{connect.hostname}</span>
               ) : (
                 <a href={liveHref} target="_blank" rel="noopener noreferrer" className="link-underline font-medium text-ink">
-                  {domain.hostname}
+                  {connect.hostname}
                 </a>
               )}
               .
             </p>
+          ) : state === "move-connect" && domain !== null ? (
+            <Address hostname={domain.hostname} note="(free, temporary) for now" />
           ) : (
             <p role="status" className="mt-4 max-w-2xl rounded-control bg-accent-pale px-5 py-4 text-sm text-accent-deep">
               One last step: connect your domain to put your website live.
             </p>
           )}
+          {state === "move-connect" ? <DomainMoveSteps current={moveStepIndex(state)} /> : null}
 
           <Surface className="mt-6 max-w-2xl" labelledBy="dns-heading">
             <SectionHeading id="dns-heading">{state === "own-live" ? "Your DNS settings" : "Connect your domain"}</SectionHeading>
             <div className="mt-5">
               <ConnectDomainCard
-                hostname={domain.hostname}
-                records={dnsRecordsFor(domain.hostname)}
+                hostname={connect.hostname}
+                records={dnsRecordsFor(connect.hostname)}
                 checkAction={checkDomainAction}
                 emailUs={<EmailUs />}
-                alreadyConnected={domain.status === "verifying"}
+                alreadyConnected={connect.status === "verifying"}
               />
             </div>
           </Surface>

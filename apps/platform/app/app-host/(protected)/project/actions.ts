@@ -1,6 +1,6 @@
 "use server";
 
-import { getPrimaryDomain, ProjectNotAwaitingResponseError, recordDomainDnsCheck, withTenantScope } from "@fynix/db";
+import { getConnectingDomain, ProjectNotAwaitingResponseError, recordDomainDnsCheck, withTenantScope } from "@fynix/db";
 import { redirect } from "next/navigation";
 import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
 import { CHECK_FAILED_MESSAGE, type ConnectDomainState } from "@/lib/connect-domain-state";
@@ -48,7 +48,7 @@ export async function requestPreviewChangesAction(): Promise<void> {
  */
 export async function checkDomainAction(): Promise<ConnectDomainState> {
   const { tenant } = await requireCustomerAccess();
-  const domain = await withTenantScope(getAppDb(), tenant, getPrimaryDomain);
+  const domain = await withTenantScope(getAppDb(), tenant, getConnectingDomain);
   if (domain === null || isTemporarySubdomain(domain.hostname)) {
     return { status: "error", message: "There’s no domain of your own to check yet." };
   }

@@ -28,14 +28,14 @@ beforeEach(() => {
 });
 
 describe("markDomainReady", () => {
-  it("moves the domain to the DNS step, then emails the owner a link to their project page", async () => {
+  it("moves the domain to the DNS step, then emails the owner a link to their domain page", async () => {
     await expect(markDomainReady(db, { businessId: "business-1" })).resolves.toBe("emailed");
     expect(markDomainReadyForDns).toHaveBeenCalledWith(db, { businessId: "business-1" });
     expect(domainReadyEmail).toHaveBeenCalledWith({
       to: "riley@example.com",
       businessName: "Riverside Plumbing",
       domain: "riverside.com",
-      projectUrl: "https://app.example.test/project",
+      projectUrl: "https://app.example.test/domain",
     });
     expect(send).toHaveBeenCalledWith(message);
   });

@@ -1,6 +1,16 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { DomainNotReadyForDnsError, markDomainReadyForDns, recordDomainDnsCheck } from "./queries/domain-connect";
+import {
+  DomainNotReadyForDnsError,
+  DomainSwitchNotReadyError,
+  getConnectingDomain,
+  markDomainReadyForDns,
+  recordDomainDnsCheck,
+  requestDomainMove,
+  switchToDomain,
+} from "./queries/domain-connect";
+import { DomainTakenError } from "./queries/onboarding-data";
+import { withTenantScope } from "./scope";
 import { businesses, businessMembers, domains, projects, users, type DomainStatus, type ProjectStatus } from "./schema";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
@@ -106,5 +116,94 @@ describe("recordDomainDnsCheck", () => {
     await seedDomain("awaiting_dns");
     await expect(recordDomainDnsCheck(dbs.staff.db, { businessId, hostname: "old-name.com", result: "connected" })).resolves.toEqual({ becameConnected: false });
     expect(await domainStatus()).toBe("awaiting_dns");
+  });
+});
+
+describe("moving a live customer to their own domain", () => {
+  const FREE = "harbour.sites.example.test";
+  const OWN = "harbour-bakery.com";
+
+  async function seedLiveOnFreeAddress(): Promise<void> {
+    await setProjectStatus("live");
+    await dbs.staff.db.insert(domains).values({ businessId, hostname: FREE, isPrimary: true, status: "active" });
+  }
+
+  function asOwner<T>(work: Parameters<typeof withTenantScope<T>>[2]): Promise<T> {
+    return withTenantScope(dbs.app.db, { userId: "owner-1", businessId }, work);
+  }
+
+  async function rows(): Promise<readonly { hostname: string; status: DomainStatus; isPrimary: boolean; removed: boolean }[]> {
+    const all = await dbs.staff.db.select().from(domains).where(eq(domains.businessId, businessId));
+    return all.map((row) => ({ hostname: row.hostname, status: row.status, isPrimary: row.isPrimary, removed: row.removedAt !== null }));
+  }
+
+  it("keeps the free address as the main one while the request is pending", async () => {
+    await seedLiveOnFreeAddress();
+    const requested = await asOwner((tx) => requestDomainMove(tx, { hostname: OWN, ownerConfirmedAt: new Date() }));
+    expect(requested).toMatchObject({ hostname: OWN, status: "pending", isPrimary: false });
+    expect(await rows()).toEqual(
+      expect.arrayContaining([
+        { hostname: FREE, status: "active", isPrimary: true, removed: false },
+        { hostname: OWN, status: "pending", isPrimary: false, removed: false },
+      ]),
+    );
+  });
+
+  it("treats the requested domain as the one being connected", async () => {
+    await seedLiveOnFreeAddress();
+    await asOwner((tx) => requestDomainMove(tx, { hostname: OWN, ownerConfirmedAt: new Date() }));
+    await expect(asOwner((tx) => getConnectingDomain(tx))).resolves.toMatchObject({ hostname: OWN, isPrimary: false });
+  });
+
+  it("retires an earlier request instead of keeping two", async () => {
+    await seedLiveOnFreeAddress();
+    await asOwner((tx) => requestDomainMove(tx, { hostname: "first-choice.com", ownerConfirmedAt: new Date() }));
+    await asOwner((tx) => requestDomainMove(tx, { hostname: OWN, ownerConfirmedAt: new Date() }));
+    const live = (await rows()).filter((row) => !row.removed && !row.isPrimary);
+    expect(live.map((row) => row.hostname)).toEqual([OWN]);
+  });
+
+  it("refuses a domain that is live for another business, without saying whose", async () => {
+    await seedLiveOnFreeAddress();
+    const [other] = await dbs.staff.db.insert(businesses).values({ slug: "other-bakery", name: "Other Bakery", currency: "INR" }).returning({ id: businesses.id });
+    await dbs.staff.db.insert(domains).values({ businessId: other!.id, hostname: OWN, isPrimary: true, status: "active" });
+    await expect(asOwner((tx) => requestDomainMove(tx, { hostname: OWN, ownerConfirmedAt: new Date() }))).rejects.toThrow(DomainTakenError);
+  });
+
+  it("asks for DNS on a live site, but only for a domain it is moving to", async () => {
+    await seedLiveOnFreeAddress();
+    await expect(markDomainReadyForDns(dbs.staff.db, { businessId })).rejects.toThrow(DomainNotReadyForDnsError);
+    await asOwner((tx) => requestDomainMove(tx, { hostname: OWN, ownerConfirmedAt: new Date() }));
+    await expect(markDomainReadyForDns(dbs.staff.db, { businessId })).resolves.toEqual({ hostname: OWN, changed: true });
+  });
+
+  it("switches to the connected domain: it becomes the main one, the free address is retired and the website address follows", async () => {
+    await seedLiveOnFreeAddress();
+    await asOwner((tx) => requestDomainMove(tx, { hostname: OWN, ownerConfirmedAt: new Date() }));
+    await markDomainReadyForDns(dbs.staff.db, { businessId });
+    await recordDomainDnsCheck(dbs.staff.db, { businessId, hostname: OWN, result: "connected" });
+
+    await expect(switchToDomain(dbs.staff.db, { businessId })).resolves.toEqual({ oldHostname: FREE, newHostname: OWN });
+
+    expect(await rows()).toEqual(
+      expect.arrayContaining([
+        { hostname: FREE, status: "active", isPrimary: false, removed: true },
+        { hostname: OWN, status: "active", isPrimary: true, removed: false },
+      ]),
+    );
+    const [business] = await dbs.staff.db.select({ websiteUrl: businesses.websiteUrl }).from(businesses).where(eq(businesses.id, businessId));
+    expect(business?.websiteUrl).toBe(`https://${OWN}`);
+  });
+
+  it("refuses to switch before the DNS has been found connected", async () => {
+    await seedLiveOnFreeAddress();
+    await asOwner((tx) => requestDomainMove(tx, { hostname: OWN, ownerConfirmedAt: new Date() }));
+    await markDomainReadyForDns(dbs.staff.db, { businessId });
+    await expect(switchToDomain(dbs.staff.db, { businessId })).rejects.toThrow(DomainSwitchNotReadyError);
+  });
+
+  it("refuses to switch when there is nothing to move to", async () => {
+    await seedLiveOnFreeAddress();
+    await expect(switchToDomain(dbs.staff.db, { businessId })).rejects.toThrow(DomainSwitchNotReadyError);
   });
 });

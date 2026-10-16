@@ -3,6 +3,7 @@
 import {
   findBillingState,
   DomainNotReadyForDnsError,
+  DomainSwitchNotReadyError,
   findClientDetail,
   findListingPlacement,
   InvalidWebsiteUrlError,
@@ -45,6 +46,7 @@ import { recordManualFirstPayment, resolveFlaggedPayment } from "@/lib/server/bi
 import { addClientCharge, markClientChargePaid, waiveClientCharge } from "@/lib/server/charges-admin";
 import { getStaffDb } from "@/lib/server/db";
 import { DomainReadyRecipientMissingError, markDomainReady, type DomainReadyOutcome } from "@/lib/server/domain-ready";
+import { DomainSwitchRecipientMissingError, switchDomain } from "@/lib/server/domain-switch";
 import { ProjectLaunchDomainMissingError, ProjectLaunchRecipientMissingError, launchProject } from "@/lib/server/project-launch";
 import { ProjectPreviewRecipientMissingError, sendProjectPreview, type OwnerNotification } from "@/lib/server/project-preview";
 import { rotateSiteApiToken } from "@/lib/server/site-token";
@@ -492,8 +494,9 @@ export async function markDomainReadyAction(formData: FormData): Promise<void> {
   const businessId = readId(formData.get("businessId"), "Ready for DNS's business");
   const db = getStaffDb();
 
+  // A free address has no DNS to change. A live customer moving off one does: their requested domain is what gets connected.
   const client = await findClientDetail(db, businessId);
-  if (client?.domain != null && isTemporarySubdomain(client.domain.hostname)) {
+  if (client?.movingTo == null && client?.domain != null && isTemporarySubdomain(client.domain.hostname)) {
     redirect(domainConnectNoticeHref(businessId, "free-address"));
   }
 
@@ -508,4 +511,22 @@ export async function markDomainReadyAction(formData: FormData): Promise<void> {
 
   revalidateClient(businessId);
   redirect(domainConnectNoticeHref(businessId, outcome === "emailed" ? "ready" : outcome === "no-email" ? "ready-no-email" : "already"));
+}
+
+/** Staff move a live customer's website to the domain they connected: their own domain becomes the main address and they are emailed. */
+export async function switchDomainAction(formData: FormData): Promise<void> {
+  await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "Switch domain's business");
+
+  let notified: OwnerNotification;
+  try {
+    notified = await switchDomain(getStaffDb(), { businessId });
+  } catch (error) {
+    if (error instanceof DomainSwitchNotReadyError) redirect(domainConnectNoticeHref(businessId, "switch-not-ready"));
+    if (error instanceof DomainSwitchRecipientMissingError) redirect(domainConnectNoticeHref(businessId, "no-owner"));
+    throw error;
+  }
+
+  revalidateClient(businessId);
+  redirect(domainConnectNoticeHref(businessId, notified === "emailed" ? "switched" : "switched-no-email"));
 }

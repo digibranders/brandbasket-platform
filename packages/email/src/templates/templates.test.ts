@@ -7,7 +7,9 @@ import { passwordResetEmail } from "./password-reset";
 import { paymentReceivedEmail } from "./payment-received";
 import { privacyRequestCodeEmail } from "./privacy-request-code";
 import { domainConnectedEmail } from "./domain-connected";
+import { domainMovedEmail } from "./domain-moved";
 import { domainReadyEmail } from "./domain-ready";
+import { domainRequestedEmail } from "./domain-requested";
 import { onboardingSentEmail } from "./onboarding-sent";
 import { previewApprovedEmail } from "./preview-approved";
 import { privacyRequestAlertEmail, privacyRequestsDueEmail } from "./privacy-request-alert";
@@ -851,5 +853,44 @@ describe("domainConnectedEmail", () => {
   it("links to the client in both bodies", () => {
     expect(email.bodyText).toContain("http://admin.localhost:3000/clients/0192f3c4");
     expect(email.bodyHtml).toContain('href="http://admin.localhost:3000/clients/0192f3c4"');
+  });
+});
+
+describe("domainRequestedEmail", () => {
+  const email = domainRequestedEmail({
+    to: "team@example.com",
+    businessName: "Riverside Plumbing",
+    domain: "riverside.com",
+    clientUrl: "http://admin.localhost:3000/clients/0192f3c4",
+  });
+
+  it("names the business and the domain in the subject", () => {
+    expect(email.subject).toBe("Riverside Plumbing wants to move to riverside.com");
+  });
+
+  it("links to the client in both bodies", () => {
+    expect(email.bodyText).toContain("http://admin.localhost:3000/clients/0192f3c4");
+    expect(email.bodyHtml).toContain('href="http://admin.localhost:3000/clients/0192f3c4"');
+  });
+});
+
+describe("domainMovedEmail", () => {
+  const email = domainMovedEmail({
+    to: "owner@example.com",
+    businessName: "Riverside Plumbing",
+    websiteUrl: "https://riverside.com",
+    oldHostname: "riverside.sites.example.test",
+  });
+
+  it("links to the new address and says the old one forwards", () => {
+    expect(email.bodyText).toContain("https://riverside.com");
+    expect(email.bodyText).toContain("riverside.sites.example.test");
+    expect(email.bodyText).toContain("forwards");
+    expect(email.bodyHtml).toContain('href="https://riverside.com"');
+  });
+
+  it("escapes a business name that carries markup", () => {
+    const risky = domainMovedEmail({ to: "a@example.com", businessName: "<b>x</b>", websiteUrl: "https://x.com", oldHostname: "x.test" });
+    expect(risky.bodyHtml).not.toContain("<b>x");
   });
 });

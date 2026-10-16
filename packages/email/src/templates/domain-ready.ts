@@ -6,7 +6,7 @@ export interface DomainReadyInput {
   readonly businessName: string;
   /** The customer's own domain, as they entered it. */
   readonly domain: string;
-  /** The dashboard's "Your project" page, where the records to add are shown. */
+  /** The dashboard's "Your domain" page, where the records to add are shown. */
   readonly projectUrl: string;
 }
 

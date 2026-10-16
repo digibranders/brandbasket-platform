@@ -51,11 +51,8 @@ interface CustomerShellProps {
   readonly children: ReactNode;
 }
 
-/** What the plan chip under the wordmark says: Premium's gold crown, Care's heart. */
-const PLAN_CHIPS: Readonly<Record<MembershipTier, DashboardPlanChip>> = {
-  premium: { label: "Premium member", mark: "crown" },
-  care: { label: "Care plan", mark: "heart" },
-};
+/** The plan chip under the wordmark. Only Premium has one: the Care plan is the ordinary case and is not labelled. */
+const PREMIUM_CHIP: DashboardPlanChip = { label: "Premium member", mark: "crown" };
 
 /** The directory sections' menu items: the placed listing's tab, or the free listing's own pages a member kept. */
 const LISTING_NAV: Readonly<Record<ClientListingSection, SidebarNavItem>> = {
@@ -217,7 +214,7 @@ export async function CustomerShell({ userName, userEmail, businessId, tier, new
       panel={panel}
       variant="dark"
       brand={logoOf(brand)}
-      plan={PLAN_CHIPS[tier]}
+      {...(tier === "premium" ? { plan: PREMIUM_CHIP } : {})}
       topBar={
         <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-ink-soft">
           Your {brand.shortName} dashboard{tier === "care" ? " · Care" : ""}

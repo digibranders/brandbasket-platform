@@ -17,6 +17,8 @@ export { listingEnquiryEmail, type ListingEnquiryInput } from "./templates/listi
 export { passwordResetEmail, type PasswordResetInput } from "./templates/password-reset";
 export { privacyRequestCodeEmail, type PrivacyRequestCodeInput } from "./templates/privacy-request-code";
 export { domainConnectedEmail, type DomainConnectedInput } from "./templates/domain-connected";
+export { domainMovedEmail, type DomainMovedInput } from "./templates/domain-moved";
+export { domainRequestedEmail, type DomainRequestedInput } from "./templates/domain-requested";
 export { domainReadyEmail, type DomainReadyInput } from "./templates/domain-ready";
 export { onboardingSentEmail, type OnboardingSentInput } from "./templates/onboarding-sent";
 export { paymentReceivedEmail, type PaymentReceivedInput, type PaymentReceivedLine } from "./templates/payment-received";
