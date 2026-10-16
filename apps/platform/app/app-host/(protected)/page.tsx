@@ -10,8 +10,6 @@ import { projectStageIndex } from "@/lib/project-stages";
 import { getBillingBanner } from "@/lib/server/billing-banner";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getLiveWebsite, getProjectOverview } from "@/lib/server/onboarding";
-import { getBlogPosts } from "@/lib/server/blog";
-import { HomeStats } from "@/components/panel/home-stats";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -26,11 +24,10 @@ const SUBTITLES: Readonly<Record<NextStep["kind"], string>> = {
 
 export default async function AppHomePage(): Promise<ReactElement> {
   const { user, billing } = await requireCustomerAccess();
-  const [overview, banner, liveWebsite, posts] = await Promise.all([
+  const [overview, banner, liveWebsite] = await Promise.all([
     getProjectOverview(),
     getBillingBanner(),
     getLiveWebsite(),
-    getBlogPosts(),
   ]);
   const { project, completed } = overview;
   const step = nextStep({ project, completedSteps: completed, liveWebsite });
@@ -53,22 +50,6 @@ export default async function AppHomePage(): Promise<ReactElement> {
       </div>
 
       <div className="mt-8">
-        <HomeStats
-          status={status}
-          completedSteps={completed.length}
-          submitted={submitted}
-          liveSince={liveWebsite?.launchedAt ?? null}
-          plan={billing.plan}
-          subscription={billing.subscription}
-          billingPaid={billing.hasAccess}
-          posts={{
-            total: posts.length,
-            published: posts.filter((post) => post.status === "published").length,
-          }}
-        />
-      </div>
-
-      <div className="mt-4">
         <NextStepCard
           step={step}
           completedSteps={completed}
