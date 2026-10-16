@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactElement } from "react";
 import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { ExternalButtonLink } from "@fynix/shared/ui/panel/button";
+import { Button, ExternalButtonLink } from "@fynix/shared/ui/panel/button";
 import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
 import { callInviteHref } from "@fynix/shared/lib/call-slots";
 import { isCalendlyUrl } from "@fynix/shared/lib/setup-call-link";
@@ -226,11 +226,17 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
             ) : isCalendlyUrl(url) ? (
               <Embed url={url} prefill={prefill} businessId={businessId} onBooked={onBooked} />
             ) : (
-              <ExternalButtonLink href={url} target="_blank" rel="noopener noreferrer" size="md" className="group">
-                Pick a time
-                <span className="sr-only"> (opens in a new tab)</span>
-                <ArrowIcon className="size-4 shrink-0 transition-transform duration-300 ease-calm group-hover:translate-x-1" />
-              </ExternalButtonLink>
+              <div className="flex flex-wrap items-center gap-3">
+                <ExternalButtonLink href={url} target="_blank" rel="noopener noreferrer" size="md" className="group">
+                  Pick a time
+                  <span className="sr-only"> (opens in a new tab)</span>
+                  <ArrowIcon className="size-4 shrink-0 transition-transform duration-300 ease-calm group-hover:translate-x-1" />
+                </ExternalButtonLink>
+                {/* A booking made on another site cannot be seen from here, so the customer says when they have booked. */}
+                <Button type="button" variant="secondary" onClick={() => onBooked(null)}>
+                  I’ve booked a time
+                </Button>
+              </div>
             )}
           </div>
         </>

@@ -26,6 +26,7 @@ const SUBTITLES: Readonly<Record<NextStep["kind"], string>> = {
 };
 
 const BOOKED_SUBTITLE = "Your call is booked. Get the steps ready before then.";
+const BOOKING_SUBTITLE = "First, pick a time for your kickoff call.";
 
 export default async function AppHomePage(): Promise<ReactElement> {
   const { user, tenant, billing } = await requireCustomerAccess();
@@ -46,6 +47,10 @@ export default async function AppHomePage(): Promise<ReactElement> {
   const setupCall = settingUp ? await getSetupCallState(tenant) : null;
   const paidAt = billing.subscription?.activatedAt ?? null;
   const booked = setupCall?.booking != null;
+  // One thing to do at a time: pick a time first, and the steps to prepare appear once a call is booked. With no booking page
+  // set there is nothing to book, so the steps are shown straight away.
+  const showSteps = booked || setupCall?.url === null;
+  const subtitle = settingUp && booked ? BOOKED_SUBTITLE : settingUp && !showSteps ? BOOKING_SUBTITLE : SUBTITLES[step.kind];
 
   return (
     <>
@@ -54,7 +59,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
           <h1 className="panel-title">
             Hello, <em>{firstName(user.name)}.</em>
           </h1>
-          <p className="mt-2 text-sm text-ink-soft">{settingUp && booked ? BOOKED_SUBTITLE : SUBTITLES[step.kind]}</p>
+          <p className="mt-2 text-sm text-ink-soft">{subtitle}</p>
         </div>
         <div className="flex flex-col items-start gap-4 xl:items-end">
           {banner === null ? null : <BillingBanner banner={banner} />}
@@ -71,14 +76,14 @@ export default async function AppHomePage(): Promise<ReactElement> {
             buildStageIndex={status === null ? 0 : projectStageIndex({ status, onboardingSubmittedAt: project?.onboardingSubmittedAt ?? null })}
           />
         ) : (
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start">
+          <div className={showSteps ? "grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start" : "max-w-4xl"}>
             <KickoffCallCard
               url={setupCall.url}
               booking={setupCall.booking}
               prefill={{ name: user.name, email: isPhoneAccountEmail(user.email) ? null : user.email }}
               businessId={tenant.businessId}
             />
-            <PrepareChecklist completedSteps={completed} />
+            {showSteps ? <PrepareChecklist completedSteps={completed} /> : null}
           </div>
         )}
       </div>
