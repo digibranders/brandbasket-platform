@@ -130,8 +130,9 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
   // Times are offered in our own calendar; when they cannot be (no scheduling set up here, or no email to invite), the booking page is shown.
   const [pageInstead, setPageInstead] = useState(false);
   const booked = booking !== null || justBooked !== null;
-  const startsAtIso = booking?.startsAtIso ?? justBooked?.startsAtIso ?? null;
-  const endsAtIso = booking?.endsAtIso ?? justBooked?.endsAtIso ?? null;
+  const startsAtIso = justBooked?.startsAtIso ?? booking?.startsAtIso ?? null;
+  const endsAtIso = justBooked?.endsAtIso ?? booking?.endsAtIso ?? null;
+  const [changing, setChanging] = useState(false);
   const waitingForTime = booked && startsAtIso === null;
   const minutes = startsAtIso === null || endsAtIso === null ? null : Math.round((new Date(endsAtIso).getTime() - new Date(startsAtIso).getTime()) / 60_000);
   const ownCalendar = prefill.email !== null && !pageInstead;
@@ -159,6 +160,7 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
   const onPicked = useCallback(
     (call: { readonly startsAtIso: string; readonly endsAtIso: string }): void => {
       setJustBooked(call);
+      setChanging(false);
       router.refresh();
     },
     [router],
@@ -168,6 +170,20 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
   return (
     <section aria-labelledby="kickoff-call-heading" className="rounded-shell bg-paper-deep p-6 sm:p-8">
       {booked ? (
+        changing && ownCalendar ? (
+          <>
+            <h2 id="kickoff-call-heading" className="panel-title">
+              Pick a new time
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">Your current time stays until you confirm a new one.</p>
+            <div className="mt-6">
+              <CallSlotPicker onBooked={onPicked} onUnavailable={onUnavailable} />
+            </div>
+            <Button type="button" variant="quiet" size="sm" className="mt-4" onClick={() => setChanging(false)}>
+              Keep my current time
+            </Button>
+          </>
+        ) : (
         <>
           <h2 id="kickoff-call-heading" className="panel-title">
             Your kickoff call is booked
@@ -189,7 +205,11 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
                   Add to calendar
                 </ExternalButtonLink>
               )}
-              {url === null ? null : (
+              {ownCalendar ? (
+                <Button type="button" variant="quiet" size="sm" onClick={() => setChanging(true)}>
+                  Change time
+                </Button>
+              ) : url === null ? null : (
                 <ExternalButtonLink href={url} target="_blank" rel="noopener noreferrer" variant="quiet" size="sm" className="group">
                   Book a different time
                   <span className="sr-only"> (opens in a new tab)</span>
@@ -210,6 +230,7 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
             </ul>
           </div>
         </>
+        )
       ) : (
         <>
           <h2 id="kickoff-call-heading" className="panel-title">

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { BOOKING_WINDOW_DAYS, bookCallSlot, calcomPage, listCallSlots } from "./call-scheduling";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { BOOKING_WINDOW_DAYS, bookCallSlot, calcomPage, cancelCallBooking, listCallSlots } from "./call-scheduling";
 
 vi.mock("server-only", () => ({}));
 
@@ -44,5 +44,26 @@ describe("calcomPage", () => {
     expect(calcomPage("https://calendly.com/steve-fynix/30min")).toBeNull();
     expect(calcomPage("http://cal.com/steve-fynix/30min")).toBeNull();
     expect(calcomPage("not a link")).toBeNull();
+  });
+});
+
+describe("cancelCallBooking", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("cancels a Cal.com booking this server made, and nothing else", async () => {
+    vi.stubEnv("CALCOM_API_KEY", "cal_live_test");
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ status: "success" }), { status: 200 })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await cancelCallBooking(URL.replace("calendly.com", "cal.com"), "https://api.cal.com/v2/bookings/abc123");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://api.cal.com/v2/bookings/abc123/cancel");
+
+    await cancelCallBooking(URL.replace("calendly.com", "cal.com"), "https://api.calendly.com/scheduled_events/E1/invitees/I1");
+    await cancelCallBooking(URL.replace("calendly.com", "cal.com"), "https://api.cal.com/v2/bookings/abc/../../me");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

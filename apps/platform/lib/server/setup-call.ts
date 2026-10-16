@@ -4,7 +4,7 @@ import type { TenantContext } from "@fynix/shared/lib/access";
 import { readInviteeUri } from "@fynix/shared/lib/setup-call-link";
 import { errorLogInfo } from "@fynix/shared/server/error-log-info";
 import { getAppDb } from "./db";
-import { BOOKING_WINDOW_DAYS, bookCallSlot, listCallSlots } from "./call-scheduling";
+import { BOOKING_WINDOW_DAYS, bookCallSlot, cancelCallBooking, listCallSlots } from "./call-scheduling";
 import { getSetupCallUrl } from "./setup-call-link";
 
 /** What the home screen needs to show the kickoff call: where it is booked, and whether and when it has been. */
@@ -96,17 +96,25 @@ export async function bookSetupCall(
   }
   try {
     const url = await getSetupCallUrl();
+    // A business changing its time has a booking already; it is cancelled once the new one is made, never before.
+    const previous = await withTenantScope(getAppDb(), tenant, (tx) => findSetupCallBooking(tx, tenant.businessId));
     const result = url === null ? null : await bookCallSlot(url, start.toISOString(), { ...invitee, timeZone: zone, businessId: tenant.businessId });
     if (result === null || !result.ok) return result ?? { ok: false, reason: "failed" };
     await withTenantScope(getAppDb(), tenant, (tx) =>
       recordSetupCallBooking(tx, {
         businessId: tenant.businessId,
-        inviteeUri: readInviteeUri(result.call.inviteeUri),
+        // The booking service's own answer, not something from the browser.
+        inviteeUri: result.call.inviteeUri,
         now,
         startsAt: result.call.startsAt,
         endsAt: result.call.endsAt,
       }),
     );
+    if (url !== null && previous?.inviteeUri != null && previous.inviteeUri !== result.call.inviteeUri) {
+      await cancelCallBooking(url, previous.inviteeUri).catch((error: unknown) => {
+        console.error("[setup-call] could not cancel the earlier booking", errorLogInfo(error));
+      });
+    }
     return { ok: true, startsAtIso: result.call.startsAt.toISOString(), endsAtIso: result.call.endsAt.toISOString() };
   } catch (error) {
     console.error("[setup-call] could not book the call", errorLogInfo(error));

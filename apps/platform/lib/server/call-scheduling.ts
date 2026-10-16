@@ -153,6 +153,8 @@ const CALCOM_BOOKINGS_VERSION = "2026-02-25";
 
 const calcomSlotsSchema = z.object({ data: z.record(z.string(), z.array(z.object({ start: z.string() }))) });
 const calcomBookingSchema = z.object({ data: z.object({ uid: z.string(), start: z.string(), end: z.string() }) });
+/** The form a Cal.com booking is stored in; only a booking this server made has it, so only that is ever cancelled. */
+const CALCOM_BOOKING_URI = /^https:\/\/api\.cal\.com\/v2\/bookings\/([A-Za-z0-9_-]{1,64})$/;
 const calcomErrorSchema = z.object({ error: z.object({ message: z.string().optional() }).optional(), message: z.string().optional() });
 
 /** The host and event a Cal.com booking link points at, or null when the link is not a plain cal.com/<user>/<event> one. */
@@ -219,7 +221,10 @@ function calcomScheduler(key: string, page: { readonly username: string; readonl
           attendee: { name: invitee.name, email: invitee.email, timeZone: invitee.timeZone, language: "en" },
           metadata: { source: "dashboard", businessId: invitee.businessId },
         });
-        return { ok: true, call: { startsAt: new Date(booked.data.start), endsAt: new Date(booked.data.end), inviteeUri: null } };
+        return {
+          ok: true,
+          call: { startsAt: new Date(booked.data.start), endsAt: new Date(booked.data.end), inviteeUri: `${CALCOM_API}/bookings/${booked.data.uid}` },
+        };
       } catch (error) {
         if (!isTakenAnswer(error)) console.error("[call-scheduling] Cal.com did not book the call", error instanceof CalcomError ? `${String(error.status)} ${error.detail}` : error);
         return { ok: false, reason: isTakenAnswer(error) ? "taken" : "failed" };
@@ -282,4 +287,16 @@ export async function listCallSlots(bookingUrl: string, now: Date): Promise<read
 /** Books a time; null when times are not offered here. The time is checked by the service, not trusted from the browser. */
 export async function bookCallSlot(bookingUrl: string, startIso: string, invitee: CallInvitee): Promise<BookResult | null> {
   return schedulerFor(bookingUrl)?.book(startIso, invitee) ?? null;
+}
+
+/**
+ * Cancels the booking a business is replacing, once the new time is booked, so the host's calendar does not keep both.
+ * Only a Cal.com booking this server made can be cancelled; a Calendly one (or a link a browser reported) is left for the
+ * customer to cancel from the email (shortcut: Calendly's cancel needs the event id, upgrade when Calendly is the main provider).
+ */
+export async function cancelCallBooking(bookingUrl: string, inviteeUri: string): Promise<void> {
+  const key = process.env.CALCOM_API_KEY?.trim();
+  const uid = CALCOM_BOOKING_URI.exec(inviteeUri)?.[1];
+  if (key === undefined || key === "" || uid === undefined || calcomPage(bookingUrl) === null) return;
+  await calcom(key, `/bookings/${uid}/cancel`, CALCOM_BOOKINGS_VERSION, z.unknown(), { cancellationReason: "The customer picked another time" });
 }
