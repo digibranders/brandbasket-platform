@@ -5,7 +5,7 @@ import { MOVE_STEPS } from "@/lib/domain-page";
 /** The four steps of moving to a domain of your own, with the ones done ticked and the current one marked. */
 export function DomainMoveSteps({ current }: { readonly current: number }): ReactElement {
   return (
-    <ol aria-label="Moving to your own domain" className="mt-6 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
+    <ol aria-label="Moving to your own domain" className="mt-6 flex max-w-2xl flex-wrap items-center gap-x-8 gap-y-3">
       {MOVE_STEPS.map((label, index) => {
         const done = index < current;
         const active = index === current;
