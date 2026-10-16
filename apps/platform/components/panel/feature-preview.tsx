@@ -18,8 +18,6 @@ interface FeaturePreviewProps {
   readonly states: readonly TourStageState[];
   /** Before the first payment, stages not yet started say "Live once you pay": the payment is what starts them. */
   readonly locked: boolean;
-  /** How changes and blog posts are charged, already in the customer's currency. See changesNote. */
-  readonly changesNote: string;
 }
 
 interface Stage {
@@ -30,36 +28,36 @@ interface Stage {
 
 const ICON = "size-6";
 
-function stagesFor(changesNote: string): readonly Stage[] {
+function stagesFor(): readonly Stage[] {
   return [
     {
       title: "Tell us about your business",
-      body: "Your services, opening hours, photos and the words for your pages.",
+      body: "Services, hours and photos.",
       icon: <DocumentIcon className={ICON} />,
     },
     {
       title: "We design it",
-      body: "A design built around your business, not a template.",
+      body: "Built around your business.",
       icon: <PaletteIcon className={ICON} />,
     },
     {
       title: "We build it",
-      body: "A five-page website, written with you, built for phones first.",
+      body: "Five pages, made for phones.",
       icon: <CodeIcon className={ICON} />,
     },
     {
       title: "You review it",
-      body: "You see it first. Two rounds of changes are included.",
+      body: "Two rounds of changes included.",
       icon: <UsersIcon className={ICON} />,
     },
     {
       title: "We put it live",
-      body: "On your own domain, secure and looked after every month.",
+      body: "On your domain, looked after monthly.",
       icon: <RocketIcon className={ICON} />,
     },
     {
       title: "We keep it fresh",
-      body: `Ask for changes any time. ${changesNote}`,
+      body: "Ask for changes any time.",
       icon: <RefreshIcon className={ICON} />,
     },
   ];
@@ -102,10 +100,10 @@ function StageChip({ state, locked }: { readonly state: TourStageState; readonly
  * The home screen's tour of what the plan includes, in the order it happens, with where each stage stands. The
  * stages come from the same project status as the next-step card above, so the two always agree.
  */
-export function FeaturePreview({ states, locked, changesNote }: FeaturePreviewProps): ReactElement {
+export function FeaturePreview({ states, locked }: FeaturePreviewProps): ReactElement {
   return (
     <ol className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {stagesFor(changesNote).map((stage, index) => {
+      {stagesFor().map((stage, index) => {
         const state = states[index] ?? "not-started";
         return (
           <li key={stage.title} className="flex flex-col rounded-card border border-line bg-card p-6">

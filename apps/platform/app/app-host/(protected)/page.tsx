@@ -4,8 +4,6 @@ import { BillingBanner } from "@/components/panel/billing-banner";
 import { FeaturePreview } from "@/components/panel/feature-preview";
 import { NextStepCard } from "@/components/panel/next-step-card";
 import { firstName } from "@fynix/shared/lib/names";
-import { changePricing } from "@fynix/shared/lib/pricing";
-import { changesNote } from "@fynix/shared/lib/billing/terms";
 import { nextStep, type NextStep } from "@fynix/shared/lib/next-step";
 import { tourStageStates } from "@/lib/plan-tour";
 import { projectStageIndex } from "@/lib/project-stages";
@@ -13,20 +11,9 @@ import { getBillingBanner } from "@/lib/server/billing-banner";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getLiveWebsite, getProjectOverview } from "@/lib/server/onboarding";
 import { getBlogPosts } from "@/lib/server/blog";
-import { CareIncludes } from "@/components/panel/care-includes";
 import { HomeStats } from "@/components/panel/home-stats";
 
 export const metadata: Metadata = { title: "Home" };
-
-/** The USD plan's change pricing, for a business whose currency has no plan to read it from. */
-const DEFAULT_CHANGE_PRICING = {
-  currency: "USD",
-  includedChangeHours: changePricing.includedHours,
-  extraHourAmountCents: changePricing.extraHourCents,
-  includedBlogPosts: changePricing.includedBlogPosts,
-  blogPostBlockSize: changePricing.blogPostBlockSize,
-  extraBlogPostsAmountCents: changePricing.extraBlogPostsCents,
-} as const;
 
 const SUBTITLES: Readonly<Record<NextStep["kind"], string>> = {
   "start-onboarding": "Let’s get your business online.",
@@ -89,18 +76,14 @@ export default async function AppHomePage(): Promise<ReactElement> {
         />
       </div>
 
-      {billing.tier === "care" ? <CareIncludes /> : null}
-
       <section aria-labelledby="what-happens-heading" className="mt-10">
         <h2 id="what-happens-heading" className="panel-section">
           What happens from here
         </h2>
-        <p className="mt-2 max-w-2xl text-sm text-ink-soft">What your plan includes, in order.</p>
         <div className="mt-6">
           <FeaturePreview
             states={tourStageStates({ status, completedSteps: completed.length, submitted })}
             locked={!billing.hasAccess}
-            changesNote={changesNote(billing.plan ?? DEFAULT_CHANGE_PRICING)}
           />
         </div>
       </section>

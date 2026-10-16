@@ -34,19 +34,19 @@ function websiteTile({
 } {
   if (status === "live") {
     // A live site whose billing has lapsed is taken down, which the customer needs to see here and not on Billing.
-    if (!billingPaid) return { value: "Offline", hint: "A payment is due. See Billing.", tone: "attention" };
+    if (!billingPaid) return { value: "Offline", hint: "Payment due. See Billing.", tone: "attention" };
     return {
       value: "Live",
-      hint: liveSince === null ? "Your website is up." : <>Up since <LocalDate iso={liveSince.toISOString()} /></>,
+      hint: liveSince === null ? "Up and running." : <>Up since <LocalDate iso={liveSince.toISOString()} /></>,
       tone: "good",
     };
   }
   if (status === "on_hold") return { value: "Paused", hint: "We’ll be in touch.", tone: "attention" };
   if (status === "submitted" || status === "building") {
-    return { value: "Being built", hint: "We’re working on it now.", tone: "neutral" };
+    return { value: "Being built", hint: "In progress.", tone: "neutral" };
   }
-  if (status === "preview") return { value: "Ready to review", hint: "Your preview is waiting.", tone: "attention" };
-  return { value: "Not started", hint: "It begins when you finish setup.", tone: "neutral" };
+  if (status === "preview") return { value: "Ready to review", hint: "Preview ready.", tone: "attention" };
+  return { value: "Not started", hint: "Starts after setup.", tone: "neutral" };
 }
 
 function paymentTile({
@@ -58,10 +58,10 @@ function paymentTile({
   readonly hint: ReactElement | string;
 } {
   if (subscription === null) {
-    return { value: "—", hint: submitted ? "Nothing due right now." : "You pay at the end of setup." };
+    return { value: "—", hint: submitted ? "Nothing due." : "Due after setup." };
   }
-  if (subscription.status === "cancelled") return { value: "None", hint: "Your plan ends when the paid period does." };
-  if (subscription.provider === "manual") return { value: "—", hint: "Arranged with you directly." };
+  if (subscription.status === "cancelled") return { value: "None", hint: "Ends with the paid period." };
+  if (subscription.provider === "manual") return { value: "—", hint: "Arranged directly." };
 
   const due =
     subscription.commitmentEndsAt !== null && subscription.commitmentEndsAt.getTime() > Date.now()
@@ -87,7 +87,7 @@ export function HomeStats(input: HomeStatsInput): ReactElement {
       <StatTile
         label="Setup"
         value={setupDone ? "Sent" : `${String(input.completedSteps)} of ${String(totalSteps)}`}
-        hint={setupDone ? "Everything is with us." : "Steps finished so far."}
+        hint={setupDone ? "With our team." : "Steps done."}
         tone={setupDone ? "good" : "neutral"}
         showDot
       />
@@ -97,7 +97,7 @@ export function HomeStats(input: HomeStatsInput): ReactElement {
         value={String(input.posts.total)}
         hint={
           input.posts.total === 0
-            ? "Nothing written yet."
+            ? "None yet."
             : `${String(input.posts.published)} published, ${String(input.posts.total - input.posts.published)} draft.`
         }
       />
