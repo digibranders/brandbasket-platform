@@ -224,9 +224,6 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
     hasAccess: billing.hasAccess,
     paymentUnderReview: billing.paymentUnderReview,
   });
-  // The plan card carries the payment method itself; any other card in its place (reactivating, a missing plan) leaves it standalone.
-  const planCardShowsPaymentMethod =
-    returnView !== "confirming" && !(lapsed && reactivationPlan !== null) && !(lapsed || plan === null || subscription === null);
   const chargeReturn = readChargeNotice(params.charge);
   // A charge payment is confirmed once none is open any more.
   const chargeWaiting = chargeReturn === "processing" && openCharges.length > 0;
@@ -272,17 +269,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
             </p>
           </Card>
         ) : (
-          <PlanSummary
-            plan={plan}
-            subscription={subscription}
-            now={new Date()}
-            brand={brand}
-            paymentMethod={
-              paymentMethod === null ? null : (
-                <PaymentMethod view={paymentMethodView(paymentMethod, renewsAutomatically(billing))} emailUs={<EmailUs />} variant="inline" />
-              )
-            }
-          />
+          <PlanSummary plan={plan} subscription={subscription} now={new Date()} brand={brand} />
         )}
         {billing.upgradePaid && subscription?.paidThroughAt != null ? (
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft">
@@ -299,11 +286,11 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
           </p>
         ) : null}
       </div>
-      {planCardShowsPaymentMethod ? null : <PaymentMethodSection method={paymentMethod} renews={renewsAutomatically(billing)} />}
-      <div className="mt-8">
+      <PaymentMethodSection method={paymentMethod} renews={renewsAutomatically(billing)} />
+      <BillingDetailsSection view={billingDetails} />
+      <div className="mt-12">
         <MonthlyBilling months={billingMonths(receipts, openCharges, brand)} />
       </div>
-      <BillingDetailsSection view={billingDetails} />
     </>
   );
 }
