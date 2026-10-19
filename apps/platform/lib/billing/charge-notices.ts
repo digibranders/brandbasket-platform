@@ -45,10 +45,11 @@ const AD_NOTICE: Readonly<Record<ChargeNotice, string>> = {
 
 /**
  * Where paying a charge returns to: Billing, or for a won ad spot (`directory_ad`) the Advertise page, where the
- * owner sees the ad go up rather than a list of receipts.
+ * owner sees the ad go up rather than a list of receipts, and for an add-on (`add_on`) the Add-ons page, where it shows on.
  */
 export function chargeReturnHref(kind: string, notice: ChargeNotice): string {
   if (kind === "directory_ad") return `/advertise?notice=${AD_NOTICE[notice]}`;
+  if (kind === "add_on") return `/add-ons?charge=${notice}`;
   return chargeNoticeHref(notice);
 }
 
@@ -60,12 +61,14 @@ export const AD_RETURN_PARAM = "for";
 export const AD_RETURN_VALUE = "ad";
 export const UPGRADE_RETURN_VALUE = "upgrade";
 export const PRESS_RELEASE_RETURN_VALUE = "press-release";
+export const ADD_ON_RETURN_VALUE = "add-on";
 
 /** The kind of charge a provider return address names, for chargeReturnHref. Anything else is an ordinary charge. */
 export function chargeKindOfReturn(value: string | null): string {
   if (value === AD_RETURN_VALUE) return "directory_ad";
   if (value === UPGRADE_RETURN_VALUE) return "plan_upgrade";
   if (value === PRESS_RELEASE_RETURN_VALUE) return "press_release";
+  if (value === ADD_ON_RETURN_VALUE) return "add_on";
   return "charge";
 }
 

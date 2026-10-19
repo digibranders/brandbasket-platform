@@ -1,14 +1,22 @@
 import { refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
-import { removeBundledAddOnFor } from "@/lib/server/add-ons";
+import { addBundledAddOnFor, removeBundledAddOnFor } from "@/lib/server/add-ons";
+import { redirectForChargePayment } from "@/lib/server/charge-redirect";
+import { startCustomerChargePayment } from "@/lib/server/charges";
 import { GENERIC_ERROR_MESSAGE } from "@/lib/server/panel-form-errors";
-import { removeBundledAddOnAction } from "./actions";
+import { addBundledAddOnAction, removeBundledAddOnAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
-vi.mock("@/lib/server/add-ons", () => ({ removeBundledAddOnFor: vi.fn() }));
+vi.mock("@/lib/server/add-ons", () => ({ addBundledAddOnFor: vi.fn(), removeBundledAddOnFor: vi.fn() }));
+vi.mock("@/lib/server/charges", () => ({ startCustomerChargePayment: vi.fn() }));
+vi.mock("@/lib/server/charge-redirect", () => ({
+  redirectForChargePayment: vi.fn(() => {
+    throw new Error("NEXT_REDIRECT");
+  }),
+}));
 
 const CUSTOMER = { tenant: { userId: "user-1", businessId: "0192f3c4-1111-7000-8000-000000000001", businessName: "Riverside", role: "owner" } };
 const IDLE = { status: "idle" } as const;
@@ -81,5 +89,40 @@ describe("removeBundledAddOnAction", () => {
     vi.mocked(requireCustomerAccess).mockRejectedValueOnce(new Error("NEXT_REDIRECT /login"));
     await expect(removeBundledAddOnAction(IDLE, form({ addOn: "digital-growth" }))).rejects.toThrow("NEXT_REDIRECT /login");
     expect(removeBundledAddOnFor).not.toHaveBeenCalled();
+  });
+});
+
+describe("addBundledAddOnAction", () => {
+  it("opens the charge for the signed-in customer and sends them straight to pay it", async () => {
+    vi.mocked(addBundledAddOnFor).mockResolvedValue({ kind: "pay", chargeId: "charge-1" });
+    vi.mocked(startCustomerChargePayment).mockResolvedValue({ kind: "redirect", url: "/billing/charges/confirm?token=t" });
+
+    await expect(addBundledAddOnAction(IDLE, form({ addOn: "digital-growth" }))).rejects.toThrow("NEXT_REDIRECT");
+    expect(addBundledAddOnFor).toHaveBeenCalledWith(CUSTOMER, "digital-growth", expect.any(Date));
+    expect(startCustomerChargePayment).toHaveBeenCalledWith(CUSTOMER, "charge-1");
+    expect(redirectForChargePayment).toHaveBeenCalledWith({ kind: "redirect", url: "/billing/charges/confirm?token=t" });
+  });
+
+  it("redraws the page and says it saved when it is on with nothing to pay", async () => {
+    vi.mocked(addBundledAddOnFor).mockResolvedValue({ kind: "done" });
+
+    expect(await addBundledAddOnAction(IDLE, form({ addOn: "local-seo-aeo" }))).toEqual({ status: "saved" });
+    expect(refresh).toHaveBeenCalled();
+    expect(startCustomerChargePayment).not.toHaveBeenCalled();
+  });
+
+  it("shows the refusal and redraws the page", async () => {
+    vi.mocked(addBundledAddOnFor).mockResolvedValue({ kind: "refused", message: "We couldn't add that just now. Reload the page to see where it stands." });
+
+    expect(await addBundledAddOnAction(IDLE, form({ addOn: "digital-growth" }))).toMatchObject({
+      status: "error",
+      message: "We couldn't add that just now. Reload the page to see where it stands.",
+    });
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("refuses an add-on id that is not in the catalogue, touching nothing", async () => {
+    expect(await addBundledAddOnAction(IDLE, form({ addOn: "social-media" }))).toMatchObject({ status: "error" });
+    expect(addBundledAddOnFor).not.toHaveBeenCalled();
   });
 });

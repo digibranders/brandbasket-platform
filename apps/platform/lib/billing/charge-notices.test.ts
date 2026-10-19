@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   AD_RETURN_PARAM,
   PRESS_RELEASE_RETURN_VALUE,
+  ADD_ON_RETURN_VALUE,
   chargeKindOfReturn,
   chargeNoticeHref,
   chargeReturnHref,
@@ -38,6 +39,11 @@ describe("chargeReturnHref", () => {
     expect(chargeReturnHref("directory_ad", "failed")).toBe("/advertise?notice=pay-failed");
   });
 
+  it("returns an add-on's charge to Add-ons, for every outcome", () => {
+    const notices: readonly ChargeNotice[] = ["paid", "processing", "failed", "duplicate", "review", "stale", "not-open"];
+    for (const notice of notices) expect(chargeReturnHref("add_on", notice), notice).toBe(`/add-ons?charge=${notice}`);
+  });
+
   it("returns a plan upgrade or a press release to Billing like any other charge, for every outcome", () => {
     const notices: readonly ChargeNotice[] = ["paid", "processing", "failed", "duplicate", "review", "stale", "not-open"];
     for (const kind of ["plan_upgrade", "press_release"]) {
@@ -52,6 +58,7 @@ describe("chargeKindOfReturn", () => {
     expect(chargeKindOfReturn("ad")).toBe("directory_ad");
     expect(chargeKindOfReturn("upgrade")).toBe("plan_upgrade");
     expect(chargeKindOfReturn(PRESS_RELEASE_RETURN_VALUE)).toBe("press_release");
+    expect(chargeKindOfReturn(ADD_ON_RETURN_VALUE)).toBe("add_on");
   });
 
   it("treats anything else as an ordinary charge", () => {

@@ -15,6 +15,7 @@ import { firstIncompleteStep, onboardingStepHref } from "@brandbasket/shared/lib
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { BillingDetails } from "@/components/panel/billing/billing-details";
 import { MonthlyBilling } from "@/components/panel/billing/monthly-billing";
+import { NoticeBanner } from "@/components/panel/notice-banner";
 import { PaymentWaiting } from "@/components/panel/payment-waiting";
 import { PaymentMethod } from "@/components/panel/billing/payment-method";
 import { PlanSummary, priceNote } from "@/components/panel/billing/plan-summary";
@@ -104,17 +105,6 @@ function RenewalFailingCard({ until }: { readonly until: Date }): ReactElement {
         us at <EmailUs />.
       </p>
     </section>
-  );
-}
-
-function NoticeBanner({ ok, text }: { readonly ok: boolean; readonly text: string }): ReactElement {
-  return (
-    <p
-      role="status"
-      className={`mt-6 rounded-control px-4 py-3 text-sm ${ok ? "bg-paper-deep text-ink" : "bg-accent-pale text-accent-deep"}`}
-    >
-      {text}
-    </p>
   );
 }
 
