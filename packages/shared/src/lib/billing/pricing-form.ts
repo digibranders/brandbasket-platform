@@ -48,7 +48,7 @@ export function parsePricingForm(formData: FormData): PricingForm {
   const currency = formData.get(PRICING_CURRENCY_FIELD);
   if (currency !== "USD" && currency !== "INR") return { ok: false, problem: "invalid-currency" };
   const tier = formData.get(PRICING_TIER_FIELD);
-  if (tier !== "care" && tier !== "premium") return { ok: false, problem: "invalid-tier" };
+  if (tier !== "managed") return { ok: false, problem: "invalid-tier" };
   const monthlyCents = price(formData, PRICING_MONTHLY_FIELD);
   if (monthlyCents === null) return { ok: false, problem: "invalid-monthly" };
   const extraHourCents = price(formData, PRICING_EXTRA_HOUR_FIELD);

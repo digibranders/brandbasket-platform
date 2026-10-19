@@ -4,7 +4,6 @@ import { PROMOTION_TAG_LABELS, promotionChargeDescription } from "../directory/p
 import type { DirectoryPaidTag } from "@brandbasket/db";
 import { chargePricing } from "./charges";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "./invoice-text";
-import { upgradeChargeDescription } from "./upgrade";
 
 /**
  * Every place the code writes a charge description. A charge's description is the line the invoice prints, and an
@@ -13,7 +12,6 @@ import { upgradeChargeDescription } from "./upgrade";
  * invoice normalises. A producer added without a case here is a producer whose payments could be held unissued.
  *
  * Producers (everything that inserts a `charges` row):
- * - plan upgrade: upgradeChargeDescription, via startUpgrade -> openPlanUpgrade
  * - ad spot won at settlement: adChargeDescription, via settleDirectoryAds
  * - listing promotion week: promotionChargeDescription, via openListingPromotionCharge
  * - blog posts unlock: chargePricing("blog_posts"), via openBlogUnlock -> openBlogPostsCharge
@@ -27,10 +25,6 @@ function expectPrintableOnInvoice(description: string): void {
 }
 
 describe("charge descriptions on the invoice", () => {
-  it("prints a plan upgrade for one day left and for many", () => {
-    for (const daysLeft of [1, 2, 18, 31]) expectPrintableOnInvoice(upgradeChargeDescription(daysLeft));
-  });
-
   it("prints an ad spot for every placement, in a month-spanning week and a plain one", () => {
     const market = { categorySlug: "dentists", citySlug: "thane", areaSlug: "naupada" };
     for (const placement of ["top", "side", "profile", "home"] as const) {

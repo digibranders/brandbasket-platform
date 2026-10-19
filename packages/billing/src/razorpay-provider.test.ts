@@ -59,10 +59,10 @@ describe("createRazorpayProvider", () => {
         email: "owner@acme.test",
         plan: {
           id: "plan-row-id",
-          code: "care-usd",
-          name: "Brandbasket care plan",
+          code: "managed-usd-2026-10",
+          name: "Managed Website",
           currency: "USD",
-          tier: "premium",
+          tier: "managed",
           initialAmountCents: 7_500,
           initialTermMonths: 1,
           recurringAmountCents: 7_500,
@@ -121,7 +121,7 @@ describe("createRazorpayProvider", () => {
         businessId: "11111111-1111-7111-8111-111111111111",
         businessName: "Acme",
         email: "owner@acme.test",
-        plan: { providerPlanId: "plan_razorpay123", code: "care-usd" } as never,
+        plan: { providerPlanId: "plan_razorpay123", code: "managed-usd-2026-10" } as never,
         providerPlanId: "plan_discounted456",
         discountAmountCents: 1_125,
       });

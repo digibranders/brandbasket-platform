@@ -23,14 +23,13 @@ import {
 } from "@brandbasket/db";
 import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
 import { chargeAmountCents } from "./lib/billing/charges";
-import { upgradeChargeDescription } from "./lib/billing/upgrade";
 import {
   InvoiceSourceMismatchError,
   issueMissingTaxInvoice,
   NoMissingInvoiceError,
   UnsupportedPaymentKindError,
 } from "./server/tax-invoice-reissue";
-import { InvoiceDatedBeforePaymentError, UnprintableInvoiceTextError } from "./server/tax-invoicing";
+import { InvoiceDatedBeforePaymentError, LIFETIME_OFFER_INVOICE_NOTE, UnprintableInvoiceTextError } from "./server/tax-invoicing";
 
 // The issuer is server-only in the app; there is no browser here to keep it out of.
 vi.mock("server-only", () => ({}));
@@ -93,20 +92,22 @@ async function seedPayment(overrides: Partial<typeof payments.$inferInsert> & { 
 }
 
 /**
- * An add-on payment recorded without an invoice, through the same recorder the webhook uses: Social media at the list price,
+ * An add-on payment recorded without an invoice, through the same recorder the webhook uses: Digital Growth at the list price,
  * with the Premium 10% off when `premiumMember`. Returns the payment and the add-on row it paid for.
  */
-async function seedAddOnPayment(premiumMember: boolean, providerPaymentId: string): Promise<{ readonly payment: Payment; readonly addOnSubscriptionId: string }> {
-  const discountAmountCents = premiumMember ? 100_000 : 0;
+async function seedAddOnPayment(signupOffer: boolean, providerPaymentId: string): Promise<{ readonly payment: Payment; readonly addOnSubscriptionId: string }> {
+  // Digital Growth at ₹7,000, with the 5% sign-up offer (₹350) when it was chosen with the first checkout.
+  const discountAmountCents = signupOffer ? 35_000 : 0;
   const row = await insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
     businessId,
-    addOn: "social-media",
-    listAmountCents: 1_000_000,
+    addOn: "digital-growth",
+    listAmountCents: 700_000,
     discountAmountCents,
-    netAmountCents: 1_000_000 - discountAmountCents,
+    offerDiscountAmountCents: discountAmountCents,
+    netAmountCents: 700_000 - discountAmountCents,
     taxRateBasisPoints: 1_800,
-    chargedAmountCents: chargedAmountCents(1_000_000, discountAmountCents, 1_800),
+    chargedAmountCents: chargedAmountCents(700_000, discountAmountCents, 1_800),
     currency: "INR",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${randomUUID()}`,
@@ -156,7 +157,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
-  const plan = await findActivePlan(dbs.staff.db, "INR", "premium");
+  const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (plan === null) throw new Error("No active INR Premium plan was seeded");
   premium = plan;
   await dbs.owner.db.insert(users).values({ id: STAFF_USER, name: "Superadmin", email: "admin@example.test", emailVerified: true });
@@ -183,7 +184,7 @@ describe("issueMissingTaxInvoice", () => {
       totalCents: payment.amountCents,
     });
     expect(invoice.lines[0]).toMatchObject({
-      description: "Brandbasket Premium plan",
+      description: "Brandbasket Managed Website plan",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       unitAmountCents: premium.initialAmountCents,
       discountAmountCents: 0,
@@ -272,36 +273,6 @@ describe("issueMissingTaxInvoice", () => {
     expect(invoice.lines[0]).toMatchObject({ description: "Extra change hours", quantity: 2, unitAmountCents });
     expect(invoice.totalCents).toBe(charge.amountCents);
     expect(invoice.issuedOn).toBe("2026-11-15");
-  });
-
-  it("issues the invoice a paid move up to Premium was held without, printing the dot of its description as a comma", async () => {
-    // The state staff found before the fix: the upgrade charge was paid, and its invoice was held for the dot.
-    const netCents = 205_500;
-    const amountCents = chargedAmountCents(netCents, 0, premium.taxRateBasisPoints);
-    const payment = await seedPayment({ providerPaymentId: "pay_upgrade", kind: "charge", amountCents });
-    const description = upgradeChargeDescription(31);
-    await dbs.owner.db.insert(charges).values({
-      businessId,
-      kind: "plan_upgrade",
-      description,
-      quantity: 1,
-      unitAmountCents: netCents,
-      taxRateBasisPoints: premium.taxRateBasisPoints,
-      amountCents,
-      currency: "INR",
-      status: "paid",
-      createdByStaffId: STAFF_USER,
-      paymentId: payment.id,
-      paidAt: PAID_AT,
-    });
-
-    const invoice = await issue(payment.id);
-
-    expect(invoice.lines[0]).toMatchObject({ description: "Upgrade to Premium, 31 days left", quantity: 1, unitAmountCents: netCents });
-    expect(invoice).toMatchObject({ number: "FY/26-27/000001", issuedOn: "2026-11-15", paidOn: "2026-10-09", totalCents: amountCents });
-    // The charge keeps the wording the app shows.
-    const stored = await querySql<{ description: string }>(dbs.owner, "select description from charges where kind = 'plan_upgrade'");
-    expect(stored[0]?.description).toBe(description);
   });
 
   it("refuses a payment whose amount no known price explains, leaving no invoice and spending no number", async () => {
@@ -397,7 +368,7 @@ describe("issueMissingTaxInvoice", () => {
     const invoice = await issue(payment.id);
 
     expect(invoice.lines[0]).toMatchObject({
-      description: "Brandbasket Premium plan",
+      description: "Brandbasket Managed Website plan",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       unitAmountCents: premium.recurringAmountCents,
       discountAmountCents: 0,
@@ -418,45 +389,6 @@ describe("issueMissingTaxInvoice", () => {
 
     expect(invoice.lines[0]?.detail).toBe("Subscription, 09 Oct 2026 to 08 Jan 2027");
     expect(invoice.lines[0]?.detail).not.toContain("Monthly");
-  });
-
-  it("rebuilds a renewal after a plan upgrade completed from the plan and discount the subscription now holds", async () => {
-    const care = await findActivePlan(dbs.staff.db, "INR", "care");
-    if (care === null) throw new Error("No active INR Care plan was seeded");
-    const discount = { kind: "amount", amountCents: 50_000 } as const;
-    const code = await createReferralCode(dbs.staff.db, {
-      code: "KEEP",
-      currency: "INR",
-      affiliateId: null,
-      discount,
-      expiresAt: null,
-      maxRedemptions: null,
-      createdByStaffId: STAFF_USER,
-    });
-    const subscription = await openSubscription(care);
-    // What completePlanUpgradeAtRenewal leaves: the subscription names Premium, with the carried discount and no stay offer.
-    await execSql(
-      dbs.owner,
-      `update subscriptions set plan_id = '${premium.id}', referral_code_id = '${code.id}', discount_amount_cents = 50000, retention_discount_cents = 0 where id = '${subscription.id}'`,
-    );
-    const renewal = await seedPayment({
-      providerPaymentId: "pay_renewal_after_upgrade",
-      kind: "renewal",
-      subscriptionId: subscription.id,
-      paidAt: new Date("2026-11-09T09:00:00.000Z"),
-      amountCents: chargedAmountCents(premium.recurringAmountCents, 50_000, premium.taxRateBasisPoints),
-    });
-
-    const invoice = await issue(renewal.id);
-
-    expect(invoice.lines[0]).toMatchObject({
-      description: "Brandbasket Premium plan",
-      unitAmountCents: premium.recurringAmountCents,
-      discountAmountCents: 50_000,
-      note: "Coupon KEEP applied",
-      detail: "Monthly subscription, 09 Nov to 08 Dec 2026",
-    });
-    expect(invoice.totalCents).toBe(renewal.amountCents);
   });
 
   it("refuses a payment whose plan has changed price since, writing nothing and taking no number", async () => {
@@ -486,22 +418,22 @@ describe("issueMissingTaxInvoice", () => {
 
     const invoice = await issue(payment.id);
 
-    expect(invoice.lines[0]).toMatchObject({ description: "Brandbasket Premium plan", unitAmountCents: premium.initialAmountCents });
+    expect(invoice.lines[0]).toMatchObject({ description: "Brandbasket Managed Website plan", unitAmountCents: premium.initialAmountCents });
     expect(await invoiceCount()).toBe(1);
   });
 
-  it("rebuilds an add-on payment from its add-on, the month from the day paid, with the Premium discount and its note", async () => {
-    const { payment } = await seedAddOnPayment(true, "pay_add_on_premium");
+  it("rebuilds an add-on payment from its add-on, the month from the day paid, with the sign-up offer and its note", async () => {
+    const { payment } = await seedAddOnPayment(true, "pay_add_on_offer");
 
     const invoice = await issue(payment.id);
 
-    expect(invoice).toMatchObject({ issuedOn: "2026-11-15", paidOn: "2026-10-09", paymentId: payment.id, totalCents: 1_062_000 });
+    expect(invoice).toMatchObject({ issuedOn: "2026-11-15", paidOn: "2026-10-09", paymentId: payment.id, totalCents: 784_700 });
     expect(invoice.lines[0]).toMatchObject({
-      description: "Social media",
+      description: "Digital Growth",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
-      note: "Premium member, 10% off",
-      unitAmountCents: 1_000_000,
-      discountAmountCents: 100_000,
+      note: LIFETIME_OFFER_INVOICE_NOTE,
+      unitAmountCents: 700_000,
+      discountAmountCents: 35_000,
     });
   });
 
@@ -510,8 +442,8 @@ describe("issueMissingTaxInvoice", () => {
 
     const invoice = await issue(payment.id);
 
-    expect(invoice.totalCents).toBe(1_180_000);
-    expect(invoice.lines[0]).toMatchObject({ description: "Social media", note: null, discountAmountCents: 0 });
+    expect(invoice.totalCents).toBe(826_000);
+    expect(invoice.lines[0]).toMatchObject({ description: "Digital Growth", note: null, discountAmountCents: 0 });
   });
 
   it("says no price explains an add-on payment that is not linked to an add-on, and takes no number", async () => {

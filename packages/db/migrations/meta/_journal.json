@@ -1247,6 +1247,13 @@
       "when": 1792408377760,
       "tag": "0180_managed_plan",
       "breakpoints": true
+    },
+    {
+      "idx": 178,
+      "version": "7",
+      "when": 1792410432548,
+      "tag": "0181_brandbasket_add_ons",
+      "breakpoints": true
     }
   ]
 }

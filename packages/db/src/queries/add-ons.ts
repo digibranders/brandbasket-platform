@@ -582,7 +582,7 @@ export interface AddOnToContact {
   readonly id: string;
   readonly businessId: string;
   readonly businessName: string;
-  /** A catalogue id: "social-media", "advertising" or "press-release". */
+  /** A catalogue id: "digital-growth", "local-seo-aeo" or "press-release". */
   readonly addOn: string;
   /** When it was paid (a purchase) or bought (a press release). */
   readonly at: Date;

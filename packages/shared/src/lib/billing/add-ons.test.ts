@@ -2,47 +2,42 @@ import { describe, expect, it } from "vitest";
 import { ADD_ONS, addOnById, addOnPrice, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS } from "./add-ons";
 
 describe("add-on catalogue", () => {
-  it("sells three monthly services, in the order the website lists them", () => {
+  it("sells Digital Growth and Local SEO + AEO, monthly, in the order the website lists them", () => {
     expect(ADD_ONS.map((addOn) => [addOn.id, addOn.title, addOn.billing])).toEqual([
-      ["social-media", "Social media", "monthly"],
-      ["lead-generation", "Outreach and lead generation", "monthly"],
-      ["advertising", "Paid advertising", "monthly"],
+      ["digital-growth", "Digital Growth", "monthly"],
+      ["local-seo-aeo", "Local SEO + AEO", "monthly"],
     ]);
-    expect(MONTHLY_ADD_ON_IDS).toEqual(["social-media", "lead-generation", "advertising"]);
-    expect(isMonthlyAddOnId("press-release")).toBe(false);
+    expect(MONTHLY_ADD_ON_IDS).toEqual(["digital-growth", "local-seo-aeo"]);
+    expect(isMonthlyAddOnId("social-media")).toBe(false);
+    expect(isMonthlyAddOnId("local-seo")).toBe(false);
     expect(isMonthlyAddOnId("constructor")).toBe(false);
   });
 
-  it("prices at 1,999, 4,999 and 5,999 rupees a month plus 18% GST", () => {
-    expect(addOnById("social-media").prices.INR).toBe(199_900);
-    expect(addOnById("lead-generation").prices.INR).toBe(499_900);
-    expect(addOnById("advertising").prices.INR).toBe(599_900);
-    expect(addOnPrice(addOnById("social-media"), "INR", false)).toEqual({
-      currency: "INR", listCents: 199_900, discountCents: 0, offerCents: 0, netCents: 199_900, taxRateBasisPoints: 1_800, chargedCents: 235_882,
+  it("prices at 7,000 and 25,000 rupees a month plus 18% GST", () => {
+    expect(addOnById("digital-growth").prices.INR).toBe(700_000);
+    expect(addOnById("local-seo-aeo").prices.INR).toBe(2_500_000);
+    expect(addOnPrice(addOnById("digital-growth"), "INR")).toEqual({
+      currency: "INR", listCents: 700_000, discountCents: 0, offerCents: 0, netCents: 700_000, taxRateBasisPoints: 1_800, chargedCents: 826_000,
     });
-    expect(addOnPrice(addOnById("lead-generation"), "INR", false).chargedCents).toBe(589_882);
-    expect(addOnPrice(addOnById("advertising"), "INR", false).chargedCents).toBe(707_882);
+    expect(addOnPrice(addOnById("local-seo-aeo"), "INR").chargedCents).toBe(2_950_000);
   });
 
-  it("prices at 100, 125 and 125 dollars a month with no tax", () => {
-    expect(addOnPrice(addOnById("social-media"), "USD", false)).toEqual({
-      currency: "USD", listCents: 10_000, discountCents: 0, offerCents: 0, netCents: 10_000, taxRateBasisPoints: 0, chargedCents: 10_000,
-    });
-    expect(addOnPrice(addOnById("lead-generation"), "USD", false).chargedCents).toBe(12_500);
-    expect(addOnPrice(addOnById("advertising"), "USD", false).chargedCents).toBe(12_500);
-    expect(addOnPrice(addOnById("social-media"), "USD", false, true)).toMatchObject({ offerCents: 500, netCents: 9_500, chargedCents: 9_500 });
+  it("prices at 75 and 350 dollars a month with no tax", () => {
+    expect(addOnPrice(addOnById("digital-growth"), "USD")).toMatchObject({ listCents: 7_500, taxRateBasisPoints: 0, chargedCents: 7_500 });
+    expect(addOnPrice(addOnById("local-seo-aeo"), "USD")).toMatchObject({ listCents: 35_000, taxRateBasisPoints: 0, chargedCents: 35_000 });
   });
 
-  it("takes 10% off for a Premium member, before tax", () => {
-    expect(addOnPrice(addOnById("social-media"), "INR", true)).toMatchObject({ discountCents: 19_990, offerCents: 0, netCents: 179_910 });
+  it("takes the 5% sign-up offer off the list price, before tax: 6,650 and 23,750 rupees, 71.25 and 332.50 dollars", () => {
+    expect(addOnPrice(addOnById("digital-growth"), "INR", true)).toEqual({
+      currency: "INR", listCents: 700_000, discountCents: 35_000, offerCents: 35_000, netCents: 665_000, taxRateBasisPoints: 1_800, chargedCents: 784_700,
+    });
+    expect(addOnPrice(addOnById("local-seo-aeo"), "INR", true).netCents).toBe(2_375_000);
+    expect(addOnPrice(addOnById("digital-growth"), "USD", true).netCents).toBe(7_125);
+    expect(addOnPrice(addOnById("local-seo-aeo"), "USD", true).netCents).toBe(33_250);
   });
 
-  it("takes the 5% lifetime offer off the list price, before tax: 99.95, 249.95 and 299.95 rupees", () => {
-    expect(addOnPrice(addOnById("social-media"), "INR", false, true)).toEqual({
-      currency: "INR", listCents: 199_900, discountCents: 9_995, offerCents: 9_995, netCents: 189_905, taxRateBasisPoints: 1_800, chargedCents: 224_088,
-    });
-    expect(addOnPrice(addOnById("lead-generation"), "INR", false, true)).toMatchObject({ offerCents: 24_995, netCents: 474_905 });
-    expect(addOnPrice(addOnById("advertising"), "INR", false, true)).toMatchObject({ offerCents: 29_995, netCents: 569_905 });
-    expect(addOnPrice(addOnById("advertising"), "INR", true, true)).toMatchObject({ discountCents: 89_985, offerCents: 29_995, netCents: 509_915 });
+  it("says that ad spend is paid to Meta on top of Digital Growth, and nothing extra for Local SEO + AEO", () => {
+    expect(addOnById("digital-growth").extra).toBe("+ your ad spend");
+    expect(addOnById("local-seo-aeo").extra).toBeUndefined();
   });
 });

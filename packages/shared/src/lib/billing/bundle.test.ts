@@ -3,33 +3,32 @@ import { bundleLines, bundleNetCents, nextBundledNetCents, readBundleSelection }
 
 describe("readBundleSelection", () => {
   it("keeps catalogue ids once each, in the catalogue's order", () => {
-    expect(readBundleSelection(["advertising", "social-media", "social-media"])).toEqual(["social-media", "advertising"]);
+    expect(readBundleSelection(["local-seo-aeo", "digital-growth", "digital-growth"])).toEqual(["digital-growth", "local-seo-aeo"]);
   });
 
   it("drops anything that is not a monthly add-on", () => {
-    expect(readBundleSelection(["press-release", "local-seo", "", "lead-generation"])).toEqual(["lead-generation"]);
+    expect(readBundleSelection(["press-release", "local-seo", "social-media", "", "local-seo-aeo"])).toEqual(["local-seo-aeo"]);
     expect(readBundleSelection([])).toEqual([]);
   });
 });
 
 describe("bundleLines", () => {
-  it("takes the 5% lifetime offer off each add-on, to the paisa", () => {
-    expect(bundleLines(["social-media", "lead-generation", "advertising"], "INR")).toEqual([
-      { addOn: "social-media", title: "Social media", listCents: 199_900, offerCents: 9_995, netCents: 189_905 },
-      { addOn: "lead-generation", title: "Outreach and lead generation", listCents: 499_900, offerCents: 24_995, netCents: 474_905 },
-      { addOn: "advertising", title: "Paid advertising", listCents: 599_900, offerCents: 29_995, netCents: 569_905 },
+  it("takes the 5% sign-up offer off each add-on, to the paisa", () => {
+    expect(bundleLines(["digital-growth", "local-seo-aeo"], "INR")).toEqual([
+      { addOn: "digital-growth", title: "Digital Growth", listCents: 700_000, offerCents: 35_000, netCents: 665_000 },
+      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 2_500_000, offerCents: 125_000, netCents: 2_375_000 },
     ]);
   });
 
   it("prices a dollar plan's bundle in cents", () => {
-    expect(bundleLines(["social-media", "advertising"], "USD")).toEqual([
-      { addOn: "social-media", title: "Social media", listCents: 10_000, offerCents: 500, netCents: 9_500 },
-      { addOn: "advertising", title: "Paid advertising", listCents: 12_500, offerCents: 625, netCents: 11_875 },
+    expect(bundleLines(["local-seo-aeo", "digital-growth"], "USD")).toEqual([
+      { addOn: "digital-growth", title: "Digital Growth", listCents: 7_500, offerCents: 375, netCents: 7_125 },
+      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 35_000, offerCents: 1_750, netCents: 33_250 },
     ]);
   });
 
   it("adds the nets together, and is nothing for no add-ons", () => {
-    expect(bundleNetCents(bundleLines(["social-media", "advertising"], "INR"))).toBe(189_905 + 569_905);
+    expect(bundleNetCents(bundleLines(["digital-growth", "local-seo-aeo"], "INR"))).toBe(665_000 + 2_375_000);
     expect(bundleNetCents(bundleLines([], "INR"))).toBe(0);
   });
 });

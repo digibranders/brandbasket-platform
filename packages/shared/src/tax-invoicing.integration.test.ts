@@ -191,7 +191,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
-  const plan = await findActivePlan(dbs.staff.db, "INR", "premium");
+  const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (plan === null) throw new Error("No active INR Premium plan was seeded");
   premium = plan;
   await dbs.owner.db.insert(users).values({ id: STAFF_USER, name: "Superadmin", email: "admin@example.test", emailVerified: true });
@@ -237,7 +237,7 @@ describe("issueTaxInvoice", () => {
     });
     expect(invoice?.lines).toEqual([
       {
-        description: "Brandbasket Premium plan",
+        description: "Brandbasket Managed Website plan",
         detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
         note: "Coupon GAURAV applied, 20% off",
         sac: "998361",
@@ -278,7 +278,7 @@ describe("issueTaxInvoice", () => {
 
     expect(invoice).toMatchObject({ number: "FY/26-27/000001", prefix: "FY", serial: 1 });
     expect(invoice?.supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Brandbasket", email: "hello@brandbasket.in", gstin: "27AAICD9268J1Z0" });
-    expect(invoice?.lines[0]?.description).toBe("Brandbasket Premium plan");
+    expect(invoice?.lines[0]?.description).toBe("Brandbasket Managed Website plan");
   });
 
   it("returns the invoice already issued when asked again, takes no new number and logs the issue once", async () => {

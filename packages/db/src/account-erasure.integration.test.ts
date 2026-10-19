@@ -290,7 +290,7 @@ describe("eraseClosedAccount", () => {
     async function seedAddOn(overrides: AddOnRowInput = {}): Promise<void> {
       await dbs.owner.db.insert(addOnSubscriptions).values({
         businessId,
-        addOn: "social-media",
+        addOn: "digital-growth",
         listAmountCents: 1_000_000,
         discountAmountCents: 0,
         netAmountCents: 1_000_000,
@@ -384,7 +384,7 @@ describe("eraseClosedAccount", () => {
     it("erases when the add-ons are cancelled or were never paid for", async () => {
       const { closureId } = await seedClosedAccount();
       await seedAddOn({ status: "cancelled", endedAt: CLOSED_AT, providerSubscriptionId: `fake_sub_${"b".repeat(24)}` });
-      await seedAddOn({ status: "incomplete", addOn: "advertising", activatedAt: null, currentPeriodStart: null, currentPeriodEnd: null, providerSubscriptionId: `fake_sub_${"c".repeat(24)}` });
+      await seedAddOn({ status: "incomplete", addOn: "local-seo-aeo", activatedAt: null, currentPeriodStart: null, currentPeriodEnd: null, providerSubscriptionId: `fake_sub_${"c".repeat(24)}` });
       expect((await eraseClosedAccount(dbs.staff.db, { closureId, now: NOW })).kind).toBe("erased");
     });
   });

@@ -17,10 +17,10 @@ const PAID_AT = new Date("2026-09-16T12:00:00.000Z");
 
 const USD_PLAN: Plan = {
   id: "0192f3c4-3333-7000-8000-000000000003",
-  code: "care-usd",
-  name: "Brandbasket care plan",
+  code: "managed-usd-2026-10",
+  name: "Managed Website",
   currency: "USD",
-  tier: "premium",
+  tier: "managed",
   initialAmountCents: 22500,
   initialTermMonths: 3,
   recurringAmountCents: 7500,
@@ -339,10 +339,10 @@ describe("createFakeBillingProvider", () => {
 describe("a referral discount", () => {
   const PLAN = {
     id: "plan-row-id",
-    code: "care-usd",
-    name: "Brandbasket care plan",
+    code: "managed-usd-2026-10",
+    name: "Managed Website",
     currency: "USD",
-    tier: "premium",
+    tier: "managed",
     initialAmountCents: 7_500,
     initialTermMonths: 1,
     recurringAmountCents: 7_500,

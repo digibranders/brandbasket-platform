@@ -24,8 +24,7 @@ import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromM
 import { chargeAmountCents } from "./lib/billing/charges";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment, type RenewalInvoicedPrice } from "./server/billing-activation";
 import { recordChargePaymentWithInvoice } from "./server/charge-payments";
-import { startUpgrade } from "./server/plan-upgrade";
-import { issueTaxInvoice } from "./server/tax-invoicing";
+import { issueTaxInvoice, LIFETIME_OFFER_INVOICE_NOTE } from "./server/tax-invoicing";
 
 // The activation is server-only in the app; there is no browser here to keep it out of.
 vi.mock("server-only", () => ({}));
@@ -144,18 +143,20 @@ function payRenewal(subscriptionId: string, invoicedPrice: RenewalInvoicedPrice,
 }
 
 /**
- * Buys Social media on a new add-on row and records its first payment, then invoices it in the same transaction, as the
+ * Buys Digital Growth on a new add-on row and records its first payment, then invoices it in the same transaction, as the
  * add-on activation will: the invoice is the last write. The row is priced as a purchase freezes it, so a Premium member
  * has 10% of the list price taken off before GST.
  */
-async function payAddOn(premiumMember: boolean, providerPaymentId: string) {
-  const discountAmountCents = premiumMember ? 100_000 : 0;
+async function payAddOn(signupOffer: boolean, providerPaymentId: string) {
+  // A round list price of 10,000 rupees, with the 5% sign-up offer when it was chosen with the first checkout.
+  const discountAmountCents = signupOffer ? 50_000 : 0;
   const row = await insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
     businessId,
-    addOn: "social-media",
+    addOn: "digital-growth",
     listAmountCents: 1_000_000,
     discountAmountCents,
+    offerDiscountAmountCents: discountAmountCents,
     netAmountCents: 1_000_000 - discountAmountCents,
     taxRateBasisPoints: 1_800,
     chargedAmountCents: chargedAmountCents(1_000_000, discountAmountCents, 1_800),
@@ -202,7 +203,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
-  const plan = await findActivePlan(dbs.staff.db, "INR", "premium");
+  const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (plan === null) throw new Error("No active INR Premium plan was seeded");
   premium = plan;
   await dbs.owner.db.insert(users).values({ id: STAFF_USER, name: "Superadmin", email: "admin@example.test", emailVerified: true });
@@ -324,44 +325,8 @@ describe("invoicing every payment path", () => {
     });
   });
 
-  it("invoices a Care customer's paid move up to Premium at once, with the dot of its description printed as a comma", async () => {
-    await saveMaharashtraDetails("27AAPFU0939F1ZV");
-    const care = await findActivePlan(dbs.staff.db, "INR", "care");
-    if (care === null) throw new Error("No active INR Care plan was seeded");
-    await payFirst(await openSubscription(businessId, care), care);
-    // Five days into the paid month, through the code the Upgrade button runs.
-    const now = new Date(PAID_AT.getTime() + 5 * 86_400_000);
-    const started = await startUpgrade(dbs.staff.db, { businessId, source: "customer", staffId: null, providerName: "fake", now });
-    if (started.kind !== "pay") throw new Error(`Expected a charge to pay, got ${started.kind}`);
-    const stored = await querySql<{ description: string; amount_cents: number }>(dbs.owner, `select description, amount_cents from charges where id = '${started.chargeId}'`);
-    const charge = stored[0];
-    if (charge === undefined) throw new Error("The upgrade's charge was not stored");
-    // The app keeps showing the dot; only the invoice changes it.
-    expect(charge.description).toMatch(/^Upgrade to Premium \u00B7 \d+ days left$/);
-
-    const recorded = await dbs.staff.db.transaction((tx) =>
-      recordChargePaymentWithInvoice(tx, {
-        chargeId: started.chargeId,
-        businessId,
-        provider: "fake",
-        providerPaymentId: "fake_pay_upgrade",
-        amountCents: charge.amount_cents,
-        currency: "INR",
-        paidAt: now,
-        now,
-      }),
-    );
-
-    expect(recorded.outcome).toBe("paid");
-    const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, recorded.payment.id);
-    expect(invoice).toMatchObject({ number: "FY/26-27/000002", totalCents: recorded.payment.amountCents });
-    expect(invoice?.lines[0]?.description).toMatch(/^Upgrade to Premium, \d+ days left$/);
-    expect(invoice?.lines[0]?.description).toBe(charge.description.replace(" \u00B7 ", ", "));
-    expect(vi.mocked(console.error)).not.toHaveBeenCalled();
-  });
-
   it("issues nothing for a dollar payment", async () => {
-    const usd = await findActivePlan(dbs.staff.db, "USD", "premium");
+    const usd = await findActivePlan(dbs.staff.db, "USD", "managed");
     if (usd === null) throw new Error("No active USD Premium plan was seeded");
     const dollarBusiness = await addBusiness("USD", "qa-dollar");
 
@@ -440,72 +405,36 @@ describe("what the invoice describes", () => {
     expect(invoice?.totalCents).toBe(renewal.payment.amountCents);
   });
 
-  it("describes the renewal that completes a paid move up at the new plan's price and its pending discount", async () => {
-    // Driven through activateRenewalPayment with the invoicedPrice the webhook handler builds for this case (the handler
-    // lives in the platform app, which this package cannot import); the handler's own branch is covered by its unit tests.
-    await saveMaharashtraDetails("27AAPFU0939F1ZV");
-    const care = await findActivePlan(dbs.staff.db, "INR", "care");
-    if (care === null) throw new Error("No active INR Care plan was seeded");
-    expect(care.recurringAmountCents).not.toBe(premium.recurringAmountCents);
-    const coupon = await percentCoupon("GAURAV", 2_000, care.initialAmountCents);
-    const opened = await openSubscription(businessId, care, coupon);
-    await payFirst(opened, care, "fake_pay_first", coupon.discountAmountCents);
-    const pendingDiscountCents = discountCentsFor({ kind: "percent", basisPoints: 2_000 }, premium.recurringAmountCents);
-    await execSql(
-      dbs.owner,
-      `update subscriptions set pending_plan_id = '${premium.id}', pending_discount_amount_cents = ${pendingDiscountCents} where id = '${opened.id}'`,
-    );
-    const subscription = await findSubscriptionById(dbs.staff.db, opened.id);
-    if (subscription === null || subscription.pendingPlanId !== premium.id) throw new Error("The move up was not recorded");
-
-    const renewal = await payRenewal(subscription.id, {
-      plan: premium,
-      netAmountCents: premium.recurringAmountCents,
-      discountAmountCents: subscription.pendingDiscountAmountCents,
-      retentionDiscountCents: 0,
-    });
-
-    const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id);
-    expect(invoice?.lines[0]).toMatchObject({
-      description: "Brandbasket Premium plan",
-      unitAmountCents: premium.recurringAmountCents,
-      discountAmountCents: pendingDiscountCents,
-      note: "Coupon GAURAV applied, 20% off",
-    });
-    expect(invoice?.taxableCents).toBe(premium.recurringAmountCents - pendingDiscountCents);
-    expect(invoice?.totalCents).toBe(renewal.payment.amountCents);
-  });
-
-  it("describes a Premium member's Social media payment by the add-on, the month and the discount, adding up to the payment", async () => {
+  it("describes a Digital Growth payment with the sign-up offer by the add-on, the month and the discount, adding up to the payment", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
-    const { payment, issued } = await payAddOn(true, "fake_pay_add_on_premium");
+    const { payment, issued } = await payAddOn(true, "fake_pay_add_on_offer");
 
     expect(issued?.issued).toBe(true);
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
     expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({
-      description: "Social media",
+      description: "Digital Growth",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
-      note: "Premium member, 10% off",
+      note: LIFETIME_OFFER_INVOICE_NOTE,
       quantity: 1,
       unitAmountCents: 1_000_000,
-      discountAmountCents: 100_000,
+      discountAmountCents: 50_000,
       taxRateBasisPoints: 1_800,
     });
-    expect(invoice).toMatchObject({ taxableCents: 900_000, totalCents: 1_062_000 });
-    expect(invoice?.cgstCents).toBe(81_000);
-    expect(invoice?.sgstCents).toBe(81_000);
+    expect(invoice).toMatchObject({ taxableCents: 950_000, totalCents: 1_121_000 });
+    expect(invoice?.cgstCents).toBe(85_500);
+    expect(invoice?.sgstCents).toBe(85_500);
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
 
-  it("describes a Social media payment with no discount without a note, at the full price", async () => {
+  it("describes a Digital Growth payment with no discount without a note, at the full price", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
     const { payment } = await payAddOn(false, "fake_pay_add_on_list");
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Social media", note: null, unitAmountCents: 1_000_000, discountAmountCents: 0 });
+    expect(invoice?.lines[0]).toMatchObject({ description: "Digital Growth", note: null, unitAmountCents: 1_000_000, discountAmountCents: 0 });
     expect(invoice).toMatchObject({ taxableCents: 1_000_000, totalCents: 1_180_000 });
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
@@ -513,7 +442,7 @@ describe("what the invoice describes", () => {
   it("calls a first payment that covers three months a subscription, not a monthly one", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
     await execSql(dbs.owner, `update plans set initial_term_months = 3 where id = '${premium.id}'`);
-    const threeMonths = await findActivePlan(dbs.staff.db, "INR", "premium");
+    const threeMonths = await findActivePlan(dbs.staff.db, "INR", "managed");
     if (threeMonths === null || threeMonths.initialTermMonths !== 3) throw new Error("The plan did not take a three month term");
 
     const activation = await payFirst(await openSubscription(businessId, threeMonths), threeMonths);

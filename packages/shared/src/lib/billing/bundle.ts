@@ -30,7 +30,7 @@ export function readBundleSelection(values: readonly string[]): readonly Monthly
 /** The lines of a bundle in the plan's currency, each with the lifetime offer, in the catalogue's order. */
 export function bundleLines(selection: readonly MonthlyAddOnId[], currency: MoneyCurrency): readonly BundleLine[] {
   return readBundleSelection(selection).map((id) => {
-    const price = addOnPrice(addOnById(id), currency, false, true);
+    const price = addOnPrice(addOnById(id), currency, true);
     return { addOn: id, title: addOnById(id).title, listCents: price.listCents, offerCents: price.offerCents, netCents: price.netCents };
   });
 }

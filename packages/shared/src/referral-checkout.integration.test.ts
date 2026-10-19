@@ -46,7 +46,7 @@ let dbs: TestDatabases;
 let businessId = "";
 
 async function requirePlan(): Promise<Plan> {
-  const plan = await findActivePlan(dbs.staff.db, "INR", "premium");
+  const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (plan === null) throw new Error("No active INR plan was seeded");
   return plan;
 }
@@ -67,10 +67,9 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
-  // These check how a code's discount and an affiliate's reward are worked out, to the paisa, against Premium as it was
-  // sold at ₹2,999 (the figures below are built on it). The arithmetic does not depend on which price ships, so they
-  // stop short of 0110, which raised it to ₹6,999.
-  await seedPlansFromMigrations(dbs.owner, { withPremiumPrice: false });
+  // These check how a code's discount and an affiliate's reward are worked out, to the paisa, against Managed Website at
+  // ₹2,999 (the figures below are built on it).
+  await seedPlansFromMigrations(dbs.owner);
   await dbs.owner.db
     .insert(users)
     .values({ id: STAFF_USER, name: "Superadmin", email: "admin@example.test", emailVerified: true });

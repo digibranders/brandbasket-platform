@@ -32,7 +32,7 @@ import {
   type TaxInvoicePartyRecord,
 } from "@brandbasket/db";
 import { stateCodeOfIndiaPostName } from "@brandbasket/db/india-states";
-import { addOnById, isMonthlyAddOnId, PREMIUM_ADD_ON_DISCOUNT_PERCENT } from "../lib/billing/add-ons";
+import { addOnById, isMonthlyAddOnId } from "../lib/billing/add-ons";
 import { LIFETIME_OFFER_PERCENT } from "../lib/billing/lifetime-offer";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "../lib/billing/invoice-text";
 import { paymentLabel } from "../lib/billing/payment-method";
@@ -283,15 +283,12 @@ function printedLine(line: InvoiceLineInput): InvoiceLineInput {
   };
 }
 
-/** What an add-on line's discount was: the Premium member's 10%, the lifetime offer's 5%, or both. Null for none. */
+/** What an add-on line's discount was: the 5% sign-up offer, or null for none. */
 export function addOnLineNote(discountAmountCents: number, offerDiscountAmountCents: number): string | null {
   if (offerDiscountAmountCents < 0 || offerDiscountAmountCents > discountAmountCents) {
     throw new BillingRangeError(`A lifetime offer of ${offerDiscountAmountCents} cannot be part of a discount of ${discountAmountCents}`);
   }
-  const notes: string[] = [];
-  if (discountAmountCents - offerDiscountAmountCents > 0) notes.push(`Premium member, ${PREMIUM_ADD_ON_DISCOUNT_PERCENT}% off`);
-  if (offerDiscountAmountCents > 0) notes.push(LIFETIME_OFFER_INVOICE_NOTE);
-  return notes.length === 0 ? null : notes.join(". ");
+  return offerDiscountAmountCents > 0 ? LIFETIME_OFFER_INVOICE_NOTE : null;
 }
 
 async function linesFor(tx: ScopedTransaction, payment: Payment, source: InvoiceSource): Promise<InvoiceLineInput[]> {

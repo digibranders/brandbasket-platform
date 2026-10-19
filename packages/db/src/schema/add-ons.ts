@@ -27,7 +27,7 @@ export const addOnSubscriptions = pgTable(
   {
     id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
     businessId: uuid("business_id").notNull().references(() => businesses.id),
-    /** A monthly id from the catalogue (packages/shared/src/lib/billing/add-ons.ts). The two earlier ids stay allowed for old rows. */
+    /** A monthly id from the catalogue (packages/shared/src/lib/billing/add-ons.ts): Digital Growth or Local SEO + AEO. */
     addOn: text("add_on").notNull(),
     /** The price fixed at purchase, in paise: list, Premium discount, list less discount, GST rate, what Razorpay takes. */
     listAmountCents: integer("list_amount_cents").notNull(),
@@ -73,7 +73,7 @@ export const addOnSubscriptions = pgTable(
       .on(table.businessId, table.addOn)
       .where(sql`${table.status} = 'incomplete'`),
     index("add_on_subscriptions_business_idx").on(table.businessId, table.createdAt),
-    check("add_on_subscriptions_add_on_check", sql`${table.addOn} in ('social-media', 'lead-generation', 'advertising', 'local-seo', 'performance-marketing')`),
+    check("add_on_subscriptions_add_on_check", sql`${table.addOn} in ('digital-growth', 'local-seo-aeo')`),
     check(
       "add_on_subscriptions_offer_check",
       sql`${table.offerDiscountAmountCents} >= 0 and ${table.offerDiscountAmountCents} <= ${table.discountAmountCents}`,
@@ -154,7 +154,7 @@ export const bundledAddOns = pgTable(
   (table) => [
     uniqueIndex("bundled_add_ons_subscription_add_on_idx").on(table.subscriptionId, table.addOn),
     index("bundled_add_ons_business_idx").on(table.businessId, table.createdAt),
-    check("bundled_add_ons_add_on_check", sql`${table.addOn} in ('social-media', 'lead-generation', 'advertising')`),
+    check("bundled_add_ons_add_on_check", sql`${table.addOn} in ('digital-growth', 'local-seo-aeo')`),
     check(
       "bundled_add_ons_amounts_check",
       sql`${table.listAmountCents} > 0 and ${table.offerDiscountAmountCents} >= 0

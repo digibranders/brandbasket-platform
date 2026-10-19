@@ -7,18 +7,18 @@ function form(fields: Record<string, string>): FormData {
   return data;
 }
 
-const INR = { currency: "INR", tier: "premium", monthly: "2,999", extraHour: "1425", extraPublish: "300", extraBlogPosts: "475" };
+const INR = { currency: "INR", tier: "managed", monthly: "2,999", extraHour: "1425", extraPublish: "300", extraBlogPosts: "475" };
 
 describe("parsePricingForm", () => {
   it("reads every price in minor units", () => {
     expect(parsePricingForm(form(INR))).toEqual({
       ok: true,
-      sheet: { currency: "INR", tier: "premium", monthlyCents: 299_900, extraHourCents: 142_500, extraPublishCents: 30_000, extraBlogPostsCents: 47_500 },
+      sheet: { currency: "INR", tier: "managed", monthlyCents: 299_900, extraHourCents: 142_500, extraPublishCents: 30_000, extraBlogPostsCents: 47_500 },
     });
   });
 
   it("reads which plan the prices are for, Care or Premium, and nothing else", () => {
-    expect(parsePricingForm(form({ ...INR, tier: "care" }))).toMatchObject({ ok: true, sheet: { tier: "care" } });
+    expect(parsePricingForm(form({ ...INR, tier: "managed" }))).toMatchObject({ ok: true, sheet: { tier: "managed" } });
     expect(parsePricingForm(form({ ...INR, tier: "gold" }))).toEqual({ ok: false, problem: "invalid-tier" });
     expect(parsePricingForm(form({ ...INR, tier: "" }))).toEqual({ ok: false, problem: "invalid-tier" });
   });

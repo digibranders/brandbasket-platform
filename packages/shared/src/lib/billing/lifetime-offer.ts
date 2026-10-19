@@ -1,11 +1,11 @@
 /**
- * The first-checkout offer: each add-on bought before the first plan payment (Social media, Outreach and lead generation, Paid advertising) is
+ * The first-checkout offer: each add-on chosen with Managed Website before the first plan payment (Digital Growth, Local SEO + AEO) is
  * 5% off for good. It is earned add-on by add-on: one not bought then stays at its full price. The plan itself is never
  * discounted by it. Pure and browser-safe. Which add-ons were claimed is read from the purchases themselves
  * (packages/db findLifetimeOfferStanding), so there is no flag to drift from the money.
  */
 
-/** The owner's wording, in the two parts the card sets in different sizes. It names no one add-on: all three carry the offer. */
+/** The owner's wording, in the two parts the card sets in different sizes. It names no one add-on: both carry the offer. */
 export const LIFETIME_OFFER_HEADLINE = "Add any package and get an additional 5% lifetime discount!";
 export const LIFETIME_OFFER_NOTE = "This is a one-time offer available only during this checkout.";
 export const LIFETIME_OFFER_TEXT = `${LIFETIME_OFFER_HEADLINE} ${LIFETIME_OFFER_NOTE}`;

@@ -3,24 +3,21 @@ import type { MoneyCurrency } from "../money";
 import { lifetimeOfferCentsFor } from "./lifetime-offer";
 
 /**
- * The digital-marketing services a business buys from the Add-ons page (docs/superpowers/specs/2026-10-09-add-ons-
- * design.md), and what each costs in each currency a business is billed in. Rupee prices are net of GST, in paise, and
- * match the website's Digital marketing page; dollar prices are in cents with no tax and match its US page
- * (brandbasket.in/us/free-business-website): change both together. A price here only affects new purchases; what a
- * business pays for an existing subscription is stored on it. Pure and browser-safe.
+ * The services a business adds to Managed Website: Digital Growth and Local SEO + AEO (docs/plans/11-platform-plans.md in
+ * the BrandBasket workspace), and what each costs in each currency a business is billed in. Rupee prices are net of GST,
+ * in paise; dollar prices are in cents with no tax. They match the website's pricing page: change both together. A price
+ * here only affects new purchases; what a business pays for an existing subscription is stored on it. Pure and
+ * browser-safe.
  */
 
 export const ADD_ONS_PATH = "/add-ons";
-
-/** What a Premium member takes off an add-on, as a whole percent, at the moment of purchase. */
-export const PREMIUM_ADD_ON_DISCOUNT_PERCENT = 10;
 
 /** Days after Razorpay gives up on a renewal during which the customer can still Pay now. */
 export const ADD_ON_GRACE_DAYS = 7;
 
 const MINOR_UNITS_PER_MAJOR = 100;
 
-export type AddOnId = "social-media" | "lead-generation" | "advertising";
+export type AddOnId = "digital-growth" | "local-seo-aeo";
 export type MonthlyAddOnId = AddOnId;
 
 export interface AddOn {
@@ -33,42 +30,34 @@ export interface AddOn {
   readonly prices: Readonly<Record<MoneyCurrency, number>>;
   /** What the price is for: "a month". */
   readonly unit: string;
-  /** Costs the ad platforms charge on top, said in a few words; absent when there are none. */
+  /** Costs paid to others on top, said in a few words; absent when there are none. */
   readonly extra?: string;
   readonly platforms?: readonly string[];
 }
 
-/** The services, in the order the Add-ons page lists them (the same as the website's table). */
+/** The services, in the order the website's pricing page lists them. */
 export const ADD_ONS: readonly AddOn[] = [
   {
-    id: "social-media",
-    title: "Social media",
-    line: "Content creation, posting and growth across major platforms.",
+    id: "digital-growth",
+    title: "Digital Growth",
+    line: "Your Google Business Profile kept active, with up to 8 posts a month and review replies, and your Facebook and Instagram ads run for you.",
     billing: "monthly",
-    prices: { INR: 1_999 * MINOR_UNITS_PER_MAJOR, USD: 100 * MINOR_UNITS_PER_MAJOR },
+    prices: { INR: 7_000 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
+    extra: "+ your ad spend",
+    platforms: ["Google Business Profile", "Facebook Ads", "Instagram Ads"],
   },
   {
-    id: "lead-generation",
-    title: "Outreach and lead generation",
-    line: "Find and engage the right audience to get more business.",
+    id: "local-seo-aeo",
+    title: "Local SEO + AEO",
+    line: "Local search and AI answer optimisation: keyword research, up to 5 pages optimised a month, schema, and ranking tracking.",
     billing: "monthly",
-    prices: { INR: 4_999 * MINOR_UNITS_PER_MAJOR, USD: 125 * MINOR_UNITS_PER_MAJOR },
+    prices: { INR: 25_000 * MINOR_UNITS_PER_MAJOR, USD: 350 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
-  },
-  {
-    id: "advertising",
-    title: "Paid advertising",
-    line: "Run and manage high-performing ads for better results.",
-    billing: "monthly",
-    prices: { INR: 5_999 * MINOR_UNITS_PER_MAJOR, USD: 125 * MINOR_UNITS_PER_MAJOR },
-    unit: "a month",
-    extra: "+ platform fees",
-    platforms: ["Google Ads", "Facebook Ads", "Instagram Ads"],
   },
 ];
 
-export const MONTHLY_ADD_ON_IDS: readonly MonthlyAddOnId[] = ["social-media", "lead-generation", "advertising"];
+export const MONTHLY_ADD_ON_IDS: readonly MonthlyAddOnId[] = ["digital-growth", "local-seo-aeo"];
 
 const BY_ID: ReadonlyMap<string, AddOn> = new Map(ADD_ONS.map((addOn) => [addOn.id, addOn]));
 
@@ -105,11 +94,11 @@ export function addOnTaxRateBasisPoints(currency: MoneyCurrency): number {
   return currency === "INR" ? GST_BASIS_POINTS : 0;
 }
 
-export function addOnPrice(addOn: AddOn, currency: MoneyCurrency, premium: boolean, lifetimeOffer = false): AddOnPrice {
+/** What one purchase costs: the list price, less the 5% sign-up offer when the add-on is taken with the first checkout. */
+export function addOnPrice(addOn: AddOn, currency: MoneyCurrency, lifetimeOffer = false): AddOnPrice {
   const listCents = addOn.prices[currency];
-  const premiumCents = premium ? Math.round((listCents * PREMIUM_ADD_ON_DISCOUNT_PERCENT) / 100) : 0;
   const offerCents = lifetimeOffer ? lifetimeOfferCentsFor(listCents) : 0;
-  const discountCents = premiumCents + offerCents;
+  const discountCents = offerCents;
   const taxRateBasisPoints = addOnTaxRateBasisPoints(currency);
   return {
     currency,
