@@ -120,15 +120,15 @@ FROM "affiliates" AS a
 WHERE lower(btrim(a."email")) = lower(btrim(rc."referrer_email"));
 --> statement-breakpoint
 
--- Staff-only, like referral_codes (0030): fynix_app is granted nothing on any of these tables. Earnings and
+-- Staff-only, like referral_codes (0030): bb_app is granted nothing on any of these tables. Earnings and
 -- payouts are never deleted; a payout is never edited. Earnings change status (owed to paid or cancelled) only.
-GRANT SELECT, INSERT, UPDATE ON "affiliates" TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE ON "affiliates" TO bb_staff;
 --> statement-breakpoint
-GRANT SELECT, INSERT, UPDATE ON "affiliate_earnings" TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE ON "affiliate_earnings" TO bb_staff;
 --> statement-breakpoint
-GRANT SELECT, INSERT ON "affiliate_payouts" TO fynix_staff;
+GRANT SELECT, INSERT ON "affiliate_payouts" TO bb_staff;
 --> statement-breakpoint
-GRANT SELECT, INSERT ON "provider_discount_plans" TO fynix_staff;
+GRANT SELECT, INSERT ON "provider_discount_plans" TO bb_staff;
 --> statement-breakpoint
 ALTER TABLE "affiliates" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
@@ -138,10 +138,10 @@ ALTER TABLE "affiliate_payouts" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 ALTER TABLE "provider_discount_plans" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
-CREATE POLICY affiliates_staff_all ON "affiliates" FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY affiliates_staff_all ON "affiliates" FOR ALL TO bb_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
-CREATE POLICY affiliate_earnings_staff_all ON "affiliate_earnings" FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY affiliate_earnings_staff_all ON "affiliate_earnings" FOR ALL TO bb_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
-CREATE POLICY affiliate_payouts_staff_all ON "affiliate_payouts" FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY affiliate_payouts_staff_all ON "affiliate_payouts" FOR ALL TO bb_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
-CREATE POLICY provider_discount_plans_staff_all ON "provider_discount_plans" FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY provider_discount_plans_staff_all ON "provider_discount_plans" FOR ALL TO bb_staff USING (true) WITH CHECK (true);

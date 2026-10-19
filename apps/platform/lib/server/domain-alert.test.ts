@@ -6,7 +6,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@brandbasket/email", () => ({
   createAppEmailTransport: vi.fn(),
   domainConnectedEmail: vi.fn(),
-  emailTeamInboxDefault: () => "hello@fynix.digital",
+  emailTeamInboxDefault: () => "hello@brandbasket.in",
 }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({})) }));
 vi.mock("./env", () => ({ serverEnv: () => ({ ADMIN_ORIGIN: "http://admin.localhost:3001" }) }));
@@ -24,12 +24,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env.FYNIX_TEAM_EMAIL;
+  delete process.env.BRANDBASKET_TEAM_EMAIL;
 });
 
 describe("notifyTeamDomainConnected", () => {
   it("emails the team inbox with the business, the domain and a link to the client", async () => {
-    process.env.FYNIX_TEAM_EMAIL = "team@example.com";
+    process.env.BRANDBASKET_TEAM_EMAIL = "team@example.com";
     await notifyTeamDomainConnected("business-1", "Riverside Plumbing", "riverside.com");
     expect(domainConnectedEmail).toHaveBeenCalledWith({
       to: "team@example.com",
@@ -42,7 +42,7 @@ describe("notifyTeamDomainConnected", () => {
 
   it("falls back to the default team inbox", async () => {
     await notifyTeamDomainConnected("business-1", "Riverside Plumbing", "riverside.com");
-    expect(domainConnectedEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "hello@fynix.digital" }));
+    expect(domainConnectedEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "hello@brandbasket.in" }));
   });
 
   it("logs and never throws when the email cannot be sent", async () => {

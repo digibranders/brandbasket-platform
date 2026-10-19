@@ -1,0 +1,38 @@
+# What this does: serves the Brandbasket customer dashboard over https and hands it to brandbasket-app on 127.0.0.1:3201.
+# Installed to /etc/nginx/sites-available/brandbasket-app.conf (and linked into sites-enabled) by bootstrap-droplet.sh, AFTER the
+# certificate exists. `app.brandbasket.in` is replaced with the real hostname (--app-host).
+# Assumes: the Let's Encrypt certificate for that name at /etc/letsencrypt/live/app.brandbasket.in/ (certbot certonly --webroot,
+# see brandbasket-acme.conf.example); /etc/nginx/snippets/brandbasket-proxy.conf; the DNS record for this name is DNS-only (grey cloud) in
+# Cloudflare, so visitors reach this machine directly and $remote_addr is the real visitor.
+# If you later turn the orange cloud on for this name, also include brandbasket-cloudflare-realip.conf here, as brandbasket-admin.conf does,
+# or every visitor will look like one of Cloudflare's addresses and share one rate limit.
+server {
+    # nginx 1.24 (Ubuntu 24.04) has no `http2 on;` (added in 1.25.1): http2 goes on the listen lines.
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name app.brandbasket.in;
+
+    ssl_certificate     /etc/letsencrypt/live/app.brandbasket.in/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.brandbasket.in/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:brandbasket_ssl:10m;
+    ssl_session_timeout 1d;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    # Uploads (support screenshots, product photos). The app enforces its own, smaller limits per route.
+    client_max_body_size 25m;
+    server_tokens off;
+
+    # Next's content-hashed assets never change for a given URL: let browsers keep them. (The app sets these headers itself;
+    # this only stops nginx buffering large responses to disk for them.)
+    location /_next/static/ {
+        include /etc/nginx/snippets/brandbasket-proxy.conf;
+        proxy_pass http://127.0.0.1:3201;
+    }
+
+    location / {
+        include /etc/nginx/snippets/brandbasket-proxy.conf;
+        proxy_pass http://127.0.0.1:3201;
+    }
+}

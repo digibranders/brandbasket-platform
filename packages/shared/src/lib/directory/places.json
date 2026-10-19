@@ -1,5 +1,5 @@
 {
-  "source": "website-listing content/local/thane-places.json and thane-taxonomy.json, 2026-10-05 (Fynix Core Shortlist). 'categories' is every category a business may be listed in; 'services' is those with their own website page, the only ones open for ads. Keep in step with the website repo.",
+  "source": "website-listing content/local/thane-places.json and thane-taxonomy.json, 2026-10-05 (Brandbasket Core Shortlist). 'categories' is every category a business may be listed in; 'services' is those with their own website page, the only ones open for ads. Keep in step with the website repo.",
   "state": {
     "code": "mh",
     "name": "Maharashtra"

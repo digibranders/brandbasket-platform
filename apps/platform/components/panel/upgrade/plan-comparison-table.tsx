@@ -7,7 +7,7 @@ import { cellWords, COMPARISON_COLUMNS, comparisonRowsFor, type ComparisonCell, 
 interface PlanComparisonTableProps {
   /** The customer's own column, tagged "Your plan". */
   readonly yours: ComparisonColumnId;
-  /** The brand the table is worded for. It also decides whether the Free column is shown: not under a brand that sells no free listing (Fynix). */
+  /** The brand the table is worded for. It also decides whether the Free column is shown: not under a brand that sells no free listing (Brandbasket). */
   readonly brand?: Brand;
 }
 

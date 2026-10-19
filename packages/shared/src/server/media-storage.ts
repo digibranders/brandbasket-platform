@@ -96,7 +96,7 @@ export function createLocalMediaStorage(rootDir: string): MediaStorage {
 }
 
 /** The environment variable that sets the media root, absolute. Written by `pnpm env:init` for both apps. */
-export const MEDIA_ROOT_VARIABLE = "FYNIX_MEDIA_ROOT";
+export const MEDIA_ROOT_VARIABLE = "BRANDBASKET_MEDIA_ROOT";
 
 /**
  * Where uploaded media lives on disk.

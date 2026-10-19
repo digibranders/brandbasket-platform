@@ -1,7 +1,7 @@
 -- Puts back what 0132 dropped from the appointment guard. A customer may not mark an appointment done or a no-show before
 -- it has started, but that rule is about the move itself: it must not also block the customer's other edits (marking a
 -- booking seen, say) to a future booking that staff already marked done or a no-show. 0051 had it as
--- `OLD.status <> 'done'`; 0132 rewrote the guard without it, so for fynix_app those edits
+-- `OLD.status <> 'done'`; 0132 rewrote the guard without it, so for bb_app those edits
 -- were refused. Everything else in the function is 0132's, unchanged.
 CREATE OR REPLACE FUNCTION public.appointments_guard_customer_transition()
   RETURNS trigger
@@ -11,7 +11,7 @@ AS $$
 DECLARE
   person_changed boolean;
 BEGIN
-  IF current_user NOT IN ('fynix_app', 'fynix_app') THEN
+  IF current_user NOT IN ('bb_app', 'bb_app') THEN
     RETURN NEW;
   END IF;
 

@@ -20,7 +20,7 @@ export default async function OyeChatsLeadsPage({ searchParams }: { readonly sea
   const { page: requested } = await searchParams;
   const { bots, leads, total, page, pageCount } = await loadLeadsPage(customer, readPageParam(requested));
   // Message counts come from OyeChats itself. A bot without a key, or OyeChats being down, only means the
-  // count shows a dash: the leads Fynix already holds are listed regardless.
+  // count shows a dash: the leads Brandbasket already holds are listed regardless.
   const activity = await loadBotActivity(bots);
   const rows = buildLeadRows(leads, activity, new Map(bots.map((bot) => [bot.id, bot.name] as const)));
 

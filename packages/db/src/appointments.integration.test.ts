@@ -191,7 +191,7 @@ beforeEach(async () => {
     { id: OWNER_A, name: "Ana Diaz", email: "ana@example.com" },
     { id: EDITOR_A, name: "Eli Ray", email: "eli@example.com" },
     { id: OWNER_B, name: "Ben Ortiz", email: "ben@example.com" },
-    { id: STAFF_USER, name: "Sam Staff", email: "sam@fynix.test" },
+    { id: STAFF_USER, name: "Sam Staff", email: "sam@brandbasket.test" },
   ]);
   const inserted = await dbs.staff.db
     .insert(businesses)
@@ -212,7 +212,7 @@ beforeEach(async () => {
 describe("appointments while the module is off", () => {
   it("hides existing rows from the scoped tenant even though they exist", async () => {
     await setBusinessTimeZone(dbs.staff.db, businessA, "Asia/Kolkata");
-    // Insert directly on the staff connection: the module is off, so fynix_app could not have booked this, and
+    // Insert directly on the staff connection: the module is off, so bb_app could not have booked this, and
     // no default practitioner was ever seeded for it.
     const [practitioner] = await dbs.staff.db
       .insert(practitioners)
@@ -234,7 +234,7 @@ describe("appointments while the module is off", () => {
     expect(await as("ownerA", (tx) => listAppointmentsForDates(tx, "2037-10-01", "2037-10-01"))).toEqual([]);
   });
 
-  it("refuses fynix_app writes to appointment_settings while the module is off", async () => {
+  it("refuses bb_app writes to appointment_settings while the module is off", async () => {
     await setBusinessTimeZone(dbs.staff.db, businessA, "Asia/Kolkata");
     expect(await as("ownerA", (tx) => updateAppointmentSettings(tx, { accepting: false }, NOW))).toBe(false);
   });
@@ -246,7 +246,7 @@ describe("row-level security once appointments is on", () => {
     await enableAppointments(businessB);
   });
 
-  it("fynix_app cannot INSERT appointments directly", async () => {
+  it("bb_app cannot INSERT appointments directly", async () => {
     const practitionerId = await defaultPractitionerId(businessA);
     const message = await captureErrorText(
       as("ownerA", (tx) =>
@@ -277,7 +277,7 @@ describe("row-level security once appointments is on", () => {
     expect(ownAppointments[0]?.id).not.toBe(otherAppointments[0]?.id);
   });
 
-  it("fynix_app cannot SELECT booking_otps", async () => {
+  it("bb_app cannot SELECT booking_otps", async () => {
     await createBookingOtp(dbs.staff.db, newOtpInput());
     const message = await captureErrorText(as("ownerA", (tx) => tx.select().from(bookingOtps)));
     expect(message).toMatch(/permission denied for table booking_otps/);
@@ -286,17 +286,17 @@ describe("row-level security once appointments is on", () => {
 });
 
 describe("security properties", () => {
-  it("fynix_public is denied on appointments", async () => {
+  it("bb_public is denied on appointments", async () => {
     const message = await captureErrorText(dbs.publicRole.db.select().from(appointments));
     expect(message).toMatch(/permission denied for table appointments/);
   });
 
-  it("fynix_public is denied on booking_otps", async () => {
+  it("bb_public is denied on booking_otps", async () => {
     const message = await captureErrorText(dbs.publicRole.db.select().from(bookingOtps));
     expect(message).toMatch(/permission denied for table booking_otps/);
   });
 
-  it("fynix_public is denied on patients", async () => {
+  it("bb_public is denied on patients", async () => {
     const message = await captureErrorText(dbs.publicRole.db.select().from(patients));
     expect(message).toMatch(/permission denied for table patients/);
   });
@@ -317,7 +317,7 @@ describe("security properties", () => {
 
   it("a pg_temp business_modules table cannot fool app_module_enabled into thinking the module is on", async () => {
     await setBusinessTimeZone(dbs.staff.db, businessA, "Asia/Kolkata");
-    // Inserted directly on the staff connection while the module is off -- fynix_app could never do this itself,
+    // Inserted directly on the staff connection while the module is off -- bb_app could never do this itself,
     // and should never be able to see it back, temp-table shadowing or not.
     await dbs.staff.db.insert(appointmentServices).values({ businessId: businessA, name: "Consultation", position: 0 });
 
@@ -599,12 +599,12 @@ describe("transitionAppointment", () => {
       expect(found?.handledByUserId).toBe(OWNER_A);
     });
 
-    it("refuses fynix_app setting handled_by_user_id to someone else's id", async () => {
+    it("refuses bb_app setting handled_by_user_id to someone else's id", async () => {
       const booked = await book(businessA, newAppointmentInput());
       const message = await captureErrorText(
         as("editorA", (tx) => tx.update(appointments).set({ handledByUserId: OWNER_A }).where(eq(appointments.id, booked.id))),
       );
-      expect(message).toMatch(/(fynix_app|fynix_app) may only set handled_by_user_id to its own user id/);
+      expect(message).toMatch(/(bb_app|bb_app) may only set handled_by_user_id to its own user id/);
     });
 
     it("refuses clearing the handler recorded by an earlier transition", async () => {
@@ -614,7 +614,7 @@ describe("transitionAppointment", () => {
       const message = await captureErrorText(
         as("editorA", (tx) => tx.update(appointments).set({ handledByUserId: null }).where(eq(appointments.id, booked.id))),
       );
-      expect(message).toMatch(/(fynix_app|fynix_app) may only set handled_by_user_id to its own user id/);
+      expect(message).toMatch(/(bb_app|bb_app) may only set handled_by_user_id to its own user id/);
       expect((await as("editorA", (tx) => findAppointment(tx, booked.id)))?.handledByUserId).toBe(OWNER_A);
     });
 
@@ -633,13 +633,13 @@ describe("appointments_guard_customer_transition trigger", () => {
     await enableAppointments(businessA);
   });
 
-  it("lets fynix_app move booked to cancelled", async () => {
+  it("lets bb_app move booked to cancelled", async () => {
     const booked = await book(businessA, newAppointmentInput());
     const cancelled = await as("ownerA", (tx) => transitionAppointment(tx, booked.id, { action: "cancel", reason: "Reschedule" }, OWNER_A, NOW));
     expect(cancelled?.status).toBe("cancelled");
   });
 
-  it("lets fynix_app move booked to done", async () => {
+  it("lets bb_app move booked to done", async () => {
     const booked = await book(businessA, pastAppointmentInput());
     const done = await as("ownerA", (tx) =>
       transitionAppointment(tx, booked.id, { action: "done" }, OWNER_A, AFTER_APPOINTMENT_STARTS),
@@ -656,7 +656,7 @@ describe("appointments_guard_customer_transition trigger", () => {
     const message = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ status: "done", doneAt: NOW }).where(eq(appointments.id, booked.id))),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may not mark an appointment done before it has started/);
+    expect(message).toMatch(/(bb_app|bb_app) may not mark an appointment done before it has started/);
   });
 
   it("refuses to move a done appointment back to booked", async () => {
@@ -665,7 +665,7 @@ describe("appointments_guard_customer_transition trigger", () => {
     const message = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ status: "booked" }).where(eq(appointments.id, booked.id))),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may not move an appointment from done to booked/);
+    expect(message).toMatch(/(bb_app|bb_app) may not move an appointment from done to booked/);
   });
 
   it("refuses to move a cancelled appointment back to booked", async () => {
@@ -674,7 +674,7 @@ describe("appointments_guard_customer_transition trigger", () => {
     const message = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ status: "booked" }).where(eq(appointments.id, booked.id))),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may not move an appointment from cancelled to booked/);
+    expect(message).toMatch(/(bb_app|bb_app) may not move an appointment from cancelled to booked/);
   });
 
   it("refuses to mark a no-show before its slot has started, even bypassing transitionAppointment's own WHERE guard", async () => {
@@ -682,7 +682,7 @@ describe("appointments_guard_customer_transition trigger", () => {
     const message = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ status: "no_show", noShowAt: NOW }).where(eq(appointments.id, booked.id))),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may not mark an appointment a no-show before it has started/);
+    expect(message).toMatch(/(bb_app|bb_app) may not mark an appointment a no-show before it has started/);
   });
 
   it("refuses a no-show that does not stamp no_show_at", async () => {
@@ -690,7 +690,7 @@ describe("appointments_guard_customer_transition trigger", () => {
     const message = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ status: "no_show" }).where(eq(appointments.id, booked.id))),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) must stamp no_show_at, and only no_show_at, when marking an appointment a no-show/);
+    expect(message).toMatch(/(bb_app|bb_app) must stamp no_show_at, and only no_show_at, when marking an appointment a no-show/);
   });
 
   it("refuses a no-show that also sets done_at", async () => {
@@ -700,7 +700,7 @@ describe("appointments_guard_customer_transition trigger", () => {
         tx.update(appointments).set({ status: "no_show", noShowAt: NOW, doneAt: NOW }).where(eq(appointments.id, booked.id)),
       ),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) must stamp no_show_at, and only no_show_at, when marking an appointment a no-show/);
+    expect(message).toMatch(/(bb_app|bb_app) must stamp no_show_at, and only no_show_at, when marking an appointment a no-show/);
   });
 
   it("refuses to move a no-show back to booked or on to done", async () => {
@@ -709,11 +709,11 @@ describe("appointments_guard_customer_transition trigger", () => {
     const backMessage = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ status: "booked", noShowAt: null }).where(eq(appointments.id, booked.id))),
     );
-    expect(backMessage).toMatch(/(fynix_app|fynix_app) may not move an appointment from no_show to booked/);
+    expect(backMessage).toMatch(/(bb_app|bb_app) may not move an appointment from no_show to booked/);
     const doneMessage = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ status: "done", doneAt: NOW }).where(eq(appointments.id, booked.id))),
     );
-    expect(doneMessage).toMatch(/(fynix_app|fynix_app) may not move an appointment from no_show to done/);
+    expect(doneMessage).toMatch(/(bb_app|bb_app) may not move an appointment from no_show to done/);
   });
 
   it("refuses to change no_show_at once a booking is a no-show", async () => {
@@ -722,7 +722,7 @@ describe("appointments_guard_customer_transition trigger", () => {
     const message = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ noShowAt: NOW }).where(eq(appointments.id, booked.id))),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may not change cancel_reason, cancelled_at, done_at or no_show_at without changing status/);
+    expect(message).toMatch(/(bb_app|bb_app) may not change cancel_reason, cancelled_at, done_at or no_show_at without changing status/);
   });
 
   it("refuses to set no_show_at when marking an appointment done", async () => {
@@ -732,7 +732,7 @@ describe("appointments_guard_customer_transition trigger", () => {
         tx.update(appointments).set({ status: "done", doneAt: NOW, noShowAt: NOW }).where(eq(appointments.id, booked.id)),
       ),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may not set cancel_reason, cancelled_at or no_show_at when marking an appointment done/);
+    expect(message).toMatch(/(bb_app|bb_app) may not set cancel_reason, cancelled_at or no_show_at when marking an appointment done/);
   });
 
   it("refuses an arbitrary edit of a booking's phone, name, email or note", async () => {
@@ -746,7 +746,7 @@ describe("appointments_guard_customer_transition trigger", () => {
       const message = await captureErrorText(
         as("ownerA", (tx) => tx.update(appointments).set(set).where(eq(appointments.id, booked.id))),
       );
-      expect(message).toMatch(/(fynix_app|fynix_app) may only change a booking's patient details by merging or erasing a patient/);
+      expect(message).toMatch(/(bb_app|bb_app) may only change a booking's patient details by merging or erasing a patient/);
     }
   });
 
@@ -755,7 +755,7 @@ describe("appointments_guard_customer_transition trigger", () => {
     const message = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ cancelReason: "Sneaky" }).where(eq(appointments.id, booked.id))),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may not change cancel_reason, cancelled_at, done_at or no_show_at without changing status/);
+    expect(message).toMatch(/(bb_app|bb_app) may not change cancel_reason, cancelled_at, done_at or no_show_at without changing status/);
   });
 
   it("refuses a same-status change to clinic_note: the private note is gone, only erasing a patient clears it", async () => {
@@ -763,7 +763,7 @@ describe("appointments_guard_customer_transition trigger", () => {
     const message = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ clinicNote: "Allergic to penicillin" }).where(eq(appointments.id, booked.id))),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may only change a booking's patient details by merging or erasing a patient/);
+    expect(message).toMatch(/(bb_app|bb_app) may only change a booking's patient details by merging or erasing a patient/);
   });
 
   it("refuses to set cancel_reason when marking an appointment done", async () => {
@@ -773,7 +773,7 @@ describe("appointments_guard_customer_transition trigger", () => {
         tx.update(appointments).set({ status: "done", doneAt: NOW, cancelReason: "Sneaky" }).where(eq(appointments.id, booked.id)),
       ),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may not set cancel_reason, cancelled_at or no_show_at when marking an appointment done/);
+    expect(message).toMatch(/(bb_app|bb_app) may not set cancel_reason, cancelled_at or no_show_at when marking an appointment done/);
   });
 
   it("refuses to set cancelled_at when marking an appointment done", async () => {
@@ -783,7 +783,7 @@ describe("appointments_guard_customer_transition trigger", () => {
         tx.update(appointments).set({ status: "done", doneAt: NOW, cancelledAt: NOW }).where(eq(appointments.id, booked.id)),
       ),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may not set cancel_reason, cancelled_at or no_show_at when marking an appointment done/);
+    expect(message).toMatch(/(bb_app|bb_app) may not set cancel_reason, cancelled_at or no_show_at when marking an appointment done/);
   });
 
   it("refuses to set done_at when cancelling an appointment", async () => {
@@ -793,17 +793,17 @@ describe("appointments_guard_customer_transition trigger", () => {
         tx.update(appointments).set({ status: "cancelled", cancelledAt: NOW, doneAt: NOW }).where(eq(appointments.id, booked.id)),
       ),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may not set done_at or no_show_at when cancelling an appointment/);
+    expect(message).toMatch(/(bb_app|bb_app) may not set done_at or no_show_at when cancelling an appointment/);
   });
 
-  it("lets fynix_app set seen_at from null to a value, without changing status", async () => {
+  it("lets bb_app set seen_at from null to a value, without changing status", async () => {
     const booked = await book(businessA, newAppointmentInput());
     await as("ownerA", (tx) => tx.update(appointments).set({ seenAt: NOW }).where(eq(appointments.id, booked.id)));
     const found = await as("ownerA", (tx) => findAppointment(tx, booked.id));
     expect(found?.seenAt).toEqual(NOW);
   });
 
-  it("lets fynix_app set seen_at in the same statement as a status transition", async () => {
+  it("lets bb_app set seen_at in the same statement as a status transition", async () => {
     const booked = await book(businessA, newAppointmentInput());
     await as("ownerA", (tx) =>
       tx.update(appointments).set({ status: "cancelled", cancelledAt: NOW, seenAt: NOW }).where(eq(appointments.id, booked.id)),
@@ -819,7 +819,7 @@ describe("appointments_guard_customer_transition trigger", () => {
     const message = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ seenAt: null }).where(eq(appointments.id, booked.id))),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may not clear or change seen_at once it is set/);
+    expect(message).toMatch(/(bb_app|bb_app) may not clear or change seen_at once it is set/);
   });
 
   it("refuses to change seen_at to a different timestamp once it is set", async () => {
@@ -829,7 +829,7 @@ describe("appointments_guard_customer_transition trigger", () => {
     const message = await captureErrorText(
       as("ownerA", (tx) => tx.update(appointments).set({ seenAt: later }).where(eq(appointments.id, booked.id))),
     );
-    expect(message).toMatch(/(fynix_app|fynix_app) may not clear or change seen_at once it is set/);
+    expect(message).toMatch(/(bb_app|bb_app) may not clear or change seen_at once it is set/);
   });
 
   it("allows re-setting seen_at to the exact same value it already has", async () => {

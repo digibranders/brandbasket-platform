@@ -24,24 +24,24 @@ CREATE INDEX "breach_register_detected_at_idx" ON "breach_register" USING btree 
 ALTER TABLE breach_register ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY breach_register_staff_select ON breach_register FOR SELECT TO fynix_staff USING (true);
+CREATE POLICY breach_register_staff_select ON breach_register FOR SELECT TO bb_staff USING (true);
 --> statement-breakpoint
 
-CREATE POLICY breach_register_staff_insert ON breach_register FOR INSERT TO fynix_staff WITH CHECK (true);
+CREATE POLICY breach_register_staff_insert ON breach_register FOR INSERT TO bb_staff WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY breach_register_staff_update ON breach_register FOR UPDATE TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY breach_register_staff_update ON breach_register FOR UPDATE TO bb_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON breach_register TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE ON breach_register TO bb_staff;
 --> statement-breakpoint
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
-    CREATE POLICY breach_register_legacy_staff_select ON breach_register FOR SELECT TO fynix_staff USING (true);
-    CREATE POLICY breach_register_legacy_staff_insert ON breach_register FOR INSERT TO fynix_staff WITH CHECK (true);
-    CREATE POLICY breach_register_legacy_staff_update ON breach_register FOR UPDATE TO fynix_staff USING (true) WITH CHECK (true);
-    GRANT SELECT, INSERT, UPDATE ON breach_register TO fynix_staff;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bb_staff') THEN
+    CREATE POLICY breach_register_legacy_staff_select ON breach_register FOR SELECT TO bb_staff USING (true);
+    CREATE POLICY breach_register_legacy_staff_insert ON breach_register FOR INSERT TO bb_staff WITH CHECK (true);
+    CREATE POLICY breach_register_legacy_staff_update ON breach_register FOR UPDATE TO bb_staff USING (true) WITH CHECK (true);
+    GRANT SELECT, INSERT, UPDATE ON breach_register TO bb_staff;
   END IF;
 END $$;

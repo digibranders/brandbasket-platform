@@ -14,8 +14,8 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await dbs.owner.db.insert(users).values([
-    { id: "staff-asha", name: "Asha", email: "asha@fynix.digital", emailVerified: true },
-    { id: "staff-left", name: "Ravi", email: "ravi@fynix.digital", emailVerified: true },
+    { id: "staff-asha", name: "Asha", email: "asha@brandbasket.in", emailVerified: true },
+    { id: "staff-left", name: "Ravi", email: "ravi@brandbasket.in", emailVerified: true },
     { id: "owner-1", name: "Meera", email: "meera@example.com", emailVerified: true },
   ]);
   await dbs.owner.db.insert(staffMembers).values([
@@ -26,11 +26,11 @@ beforeEach(async () => {
 
 describe("findActiveStaffUserIdByEmail", () => {
   it("finds an active staff member by the address they sign in with", async () => {
-    expect(await findActiveStaffUserIdByEmail(dbs.staff.db, "asha@fynix.digital")).toBe("staff-asha");
+    expect(await findActiveStaffUserIdByEmail(dbs.staff.db, "asha@brandbasket.in")).toBe("staff-asha");
   });
 
   it("finds nothing for a deactivated staff member or a customer", async () => {
-    expect(await findActiveStaffUserIdByEmail(dbs.staff.db, "ravi@fynix.digital")).toBeNull();
+    expect(await findActiveStaffUserIdByEmail(dbs.staff.db, "ravi@brandbasket.in")).toBeNull();
     expect(await findActiveStaffUserIdByEmail(dbs.staff.db, "meera@example.com")).toBeNull();
     expect(await findActiveStaffUserIdByEmail(dbs.staff.db, "nobody@example.com")).toBeNull();
   });
@@ -42,13 +42,13 @@ describe("staff roles", () => {
   });
 
   it("returns the role a staff member was given", async () => {
-    await dbs.owner.db.insert(users).values({ id: "staff-finance", name: "Kiran", email: "kiran@fynix.digital", emailVerified: true });
+    await dbs.owner.db.insert(users).values({ id: "staff-finance", name: "Kiran", email: "kiran@brandbasket.in", emailVerified: true });
     await dbs.owner.db.insert(staffMembers).values({ userId: "staff-finance", role: "finance" });
     expect(await findActiveStaffMember(dbs.staff.db, "staff-finance")).toEqual({ userId: "staff-finance", role: "finance" });
   });
 
   it("refuses a role it does not know", async () => {
-    await dbs.owner.db.insert(users).values({ id: "staff-odd", name: "Odd", email: "odd@fynix.digital", emailVerified: true });
+    await dbs.owner.db.insert(users).values({ id: "staff-odd", name: "Odd", email: "odd@brandbasket.in", emailVerified: true });
     const text = await captureErrorText(dbs.owner.db.insert(staffMembers).values({ userId: "staff-odd", role: "superuser" as never }));
     expect(text).toContain("staff_members_role_check");
   });

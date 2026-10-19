@@ -53,7 +53,7 @@ interface PlacesStore {
   readonly labels: Map<string, string>;
 }
 
-const STORE_KEY = Symbol.for("fynix.directory.places");
+const STORE_KEY = Symbol.for("brandbasket.directory.places");
 const storeHost = globalThis as typeof globalThis & { [STORE_KEY]?: PlacesStore };
 storeHost[STORE_KEY] ??= {
   cities: [...PLACES.cities],
@@ -137,7 +137,7 @@ export function applyPlacesCatalog(catalog: PlacesCatalog): boolean {
 }
 
 /** Where the directory is served. Paths from `listingPath` are appended to this. */
-export const DIRECTORY_ORIGIN = "https://fynix.digital";
+export const DIRECTORY_ORIGIN = "https://brandbasket.in";
 
 /**
  * A category's page in one area on the website, /in/<state>/<district>/<area>/<category>. There is no city in the

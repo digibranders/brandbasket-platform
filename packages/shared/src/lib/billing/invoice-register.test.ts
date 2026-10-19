@@ -30,7 +30,7 @@ const interState = (overrides: Partial<RegisterInvoice> = {}): RegisterInvoice =
   });
 
 const lineOf = (overrides: Partial<TaxInvoiceLineRecord> = {}): TaxInvoiceLineRecord => ({
-  description: "Fynix Premium plan",
+  description: "Brandbasket Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: null,
   sac: "998361",
@@ -60,7 +60,7 @@ function stored(overrides: Partial<TaxInvoice> = {}): TaxInvoice {
     paidOn: "2026-10-09",
     supplier: {
       legalName: "Digibranders Private Limited",
-      tradeName: "Fynix",
+      tradeName: "Brandbasket",
       gstin: "27AAICD9268J1Z0",
       cin: null,
       addressLines: ["Thane West"],

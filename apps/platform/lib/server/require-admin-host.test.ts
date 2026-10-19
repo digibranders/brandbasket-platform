@@ -22,7 +22,7 @@ describe("isAdminHostRequest", () => {
 
   it("refuses an unrelated (marketing) host", () => {
     expect(isAdminHostRequest(requestWithHost("localhost:3000"))).toBe(false);
-    expect(isAdminHostRequest(requestWithHost("fynix.digital"))).toBe(false);
+    expect(isAdminHostRequest(requestWithHost("brandbasket.in"))).toBe(false);
   });
 
   it("refuses a missing Host header", () => {

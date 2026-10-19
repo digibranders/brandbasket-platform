@@ -940,7 +940,7 @@ export type ReassignResult = "reassigned" | "taken" | "not_found";
  *
  * Whether the target actually *works* at that time (their hours, their leave) is the caller's check, made with the
  * pure slot engine before calling this, same division of labour as bookSlot's `practitionerIds`. The database
- * independently holds the rest: appointments_guard_customer_transition only lets fynix_app change practitioner_id
+ * independently holds the rest: appointments_guard_customer_transition only lets bb_app change practitioner_id
  * on a row that is booked before and after, and the composite foreign key refuses another business's practitioner.
  */
 export async function reassignAppointment(

@@ -64,7 +64,7 @@ export async function forgetGoogleImport(): Promise<void> {
 }
 
 /**
- * Where the import's pages are, as Google must be told and the owner sent back: the dashboard's own origin (the Fynix
+ * Where the import's pages are, as Google must be told and the owner sent back: the dashboard's own origin (the Brandbasket
  * host's, for an owner on it, whose Google redirect address must be authorised too), or under `next dev` the local
  * address the owner is using, so their session cookie comes along.
  */

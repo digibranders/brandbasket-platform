@@ -48,7 +48,7 @@ export async function joinForListing(previous: JoinFormState, formData: FormData
     const onCodeStep = formData.get("otpId") !== null && formData.get("otpId") !== "";
     return { status: "error", message: parsed.message, otp: onCodeStep ? current : null };
   }
-  // The form only offers what the host sells, but a form is whatever it is sent: Fynix sells Care and Premium, and a post
+  // The form only offers what the host sells, but a form is whatever it is sent: Brandbasket sells Care and Premium, and a post
   // for the free listing is refused here as it would be on the plans page.
   if (!offersChoice(brand, parsed.data.choice)) {
     const onCodeStep = formData.get("otpId") !== null && formData.get("otpId") !== "";

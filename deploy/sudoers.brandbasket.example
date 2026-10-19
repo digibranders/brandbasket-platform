@@ -1,0 +1,7 @@
+# What this does: lets the deploy user do exactly what a deploy needs as root, and nothing else: run the migration wrapper
+# (which reads the owner's password from a root-only file) and restart the two apps. Installed to /etc/sudoers.d/brandbasket
+# (mode 0440) by bootstrap-droplet.sh, which checks it with `visudo -cf` first. No wildcards, no shell, no arguments for migrate.
+# (systemctl restart is allowed per unit, so the deploy user cannot restart other services, edit units, or stop anything.)
+deploy ALL=(root) NOPASSWD: /usr/local/sbin/brandbasket-migrate
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart brandbasket-app, /usr/bin/systemctl restart brandbasket-admin
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl status brandbasket-app, /usr/bin/systemctl status brandbasket-admin

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# What this does: prepares Fynix's OWN DigitalOcean droplet to run the dashboard and the staff console: packages, Node and pnpm, the
-# deploy user, the /srv/fynix layout, systemd units and timers, the sudo rule, the root-owned helper scripts, and the nginx files
+# What this does: prepares Brandbasket's OWN DigitalOcean droplet to run the dashboard and the staff console: packages, Node and pnpm, the
+# deploy user, the /srv/brandbasket layout, systemd units and timers, the sudo rule, the root-owned helper scripts, and the nginx files
 # (port 80 first, then https once the certificates exist). It does NOT touch the database (setup-database.sh does), the environment
 # files (make-env-files.sh does), DNS, Cloudflare, or the firewall, and it never removes or edits anything that was already there:
 # every file it installs is compared first ("unchanged" / "installed"), and nginx is only reloaded after `nginx -t` passes (a link it
@@ -14,8 +14,8 @@
 #
 # Options:
 #   --apply                 really do it
-#   --app-host NAME         the dashboard's hostname      (default app.fynix.digital)
-#   --admin-host NAME       the staff console's hostname  (default console.fynix.digital)
+#   --app-host NAME         the dashboard's hostname      (default app.brandbasket.in)
+#   --admin-host NAME       the staff console's hostname  (default console.brandbasket.in)
 #   --deploy-user NAME      the unprivileged user that owns releases and runs the apps (default deploy)
 #   --authorize-root-keys   give the deploy user the same ssh keys root already has (otherwise add one yourself, see the runbook)
 #   --swap SIZE             create /swapfile of this size (e.g. 2G) if the machine has no swap; recommended on 2 GB droplets
@@ -25,15 +25,15 @@
 #   --skip-node             do not install Node (you installed Node 24 yourself)
 #   --skip-cloudflare       do not fetch Cloudflare's address ranges (the staff console's nginx file needs them)
 #   --pnpm-version V        pnpm to activate (default read from package.json, 10.30.3)
-# Test hooks: FYNIX_PREFIX (a directory standing in for / for /etc, /usr/local/sbin, /srv, /var/www), FYNIX_TEST=1 (skip the root check).
+# Test hooks: BRANDBASKET_PREFIX (a directory standing in for / for /etc, /usr/local/sbin, /srv, /var/www), BRANDBASKET_TEST=1 (skip the root check).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 APPLY=0; HOST=""; ON_SERVER=0
-APP_HOST="app.fynix.digital"; ADMIN_HOST="console.fynix.digital"; DEPLOY_USER="deploy"
+APP_HOST="app.brandbasket.in"; ADMIN_HOST="console.brandbasket.in"; DEPLOY_USER="deploy"
 AUTH_ROOT_KEYS=0; SWAP=""; CERTBOT_EMAIL=""; SKIP_NODE=0; SKIP_CF=0; PNPM_VERSION=""
-SSH_OPTS="${FYNIX_SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=15}"
+SSH_OPTS="${BRANDBASKET_SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=15}"
 ARGS=("$@")
 
 while [[ $# -gt 0 ]]; do
@@ -73,32 +73,32 @@ if [[ $ON_SERVER -eq 0 ]]; then
     fwd+=("$a")
   done
   if [[ $APPLY -eq 0 ]]; then
-    say "[dry-run] would copy deploy/ and scripts/server/ to $HOST:/root/fynix-kit/ (rsync) and run there:"
-    say "[dry-run]   bash /root/fynix-kit/scripts/server/bootstrap-droplet.sh --on-server ${fwd[*]:-}"
+    say "[dry-run] would copy deploy/ and scripts/server/ to $HOST:/root/brandbasket-kit/ (rsync) and run there:"
+    say "[dry-run]   bash /root/brandbasket-kit/scripts/server/bootstrap-droplet.sh --on-server ${fwd[*]:-}"
     say "To see the full step list without connecting: run this with --on-server on any machine (it only reads, in dry-run)."
     say "Nothing was done. Add --apply."
     exit 0
   fi
   # shellcheck disable=SC2086
-  ssh $SSH_OPTS "$HOST" 'mkdir -p /root/fynix-kit/scripts/server /root/fynix-kit/deploy'
+  ssh $SSH_OPTS "$HOST" 'mkdir -p /root/brandbasket-kit/scripts/server /root/brandbasket-kit/deploy'
   # shellcheck disable=SC2086
-  rsync -az --delete -e "ssh $SSH_OPTS" "$REPO/deploy/" "$HOST:/root/fynix-kit/deploy/"
+  rsync -az --delete -e "ssh $SSH_OPTS" "$REPO/deploy/" "$HOST:/root/brandbasket-kit/deploy/"
   # shellcheck disable=SC2086
-  rsync -az -e "ssh $SSH_OPTS" --exclude test --exclude '*.ts' "$REPO/scripts/server/" "$HOST:/root/fynix-kit/scripts/server/"
+  rsync -az -e "ssh $SSH_OPTS" --exclude test --exclude '*.ts' "$REPO/scripts/server/" "$HOST:/root/brandbasket-kit/scripts/server/"
   # shellcheck disable=SC2086
-  ssh $SSH_OPTS "$HOST" "bash /root/fynix-kit/scripts/server/bootstrap-droplet.sh --on-server ${fwd[*]:-}"
+  ssh $SSH_OPTS "$HOST" "bash /root/brandbasket-kit/scripts/server/bootstrap-droplet.sh --on-server ${fwd[*]:-}"
   exit $?
 fi
 
 # --- on the droplet ---------------------------------------------------------------------------------------------------------
-PREFIX="${FYNIX_PREFIX:-}"
-ETC="$PREFIX/etc"; SBIN="$PREFIX/usr/local/sbin"; FYNIX="$PREFIX/srv/fynix"; WWW="$PREFIX/var/www"
+PREFIX="${BRANDBASKET_PREFIX:-}"
+ETC="$PREFIX/etc"; SBIN="$PREFIX/usr/local/sbin"; BRANDBASKET="$PREFIX/srv/brandbasket"; WWW="$PREFIX/var/www"
 KIT_DEPLOY="$REPO/deploy"; KIT_SCRIPTS="$REPO/scripts/server"
 have() { command -v "$1" >/dev/null 2>&1; }
 planned=0; failed=0
 
-if [[ $APPLY -eq 1 && "${FYNIX_TEST:-0}" != 1 && "$(id -u)" -ne 0 ]]; then echo "--apply must run as root on the droplet." >&2; exit 1; fi
-say "Fynix droplet bootstrap ($([[ $APPLY -eq 1 ]] && echo APPLY || echo dry-run)): dashboard $APP_HOST, console $ADMIN_HOST, deploy user $DEPLOY_USER"
+if [[ $APPLY -eq 1 && "${BRANDBASKET_TEST:-0}" != 1 && "$(id -u)" -ne 0 ]]; then echo "--apply must run as root on the droplet." >&2; exit 1; fi
+say "Brandbasket droplet bootstrap ($([[ $APPLY -eq 1 ]] && echo APPLY || echo dry-run)): dashboard $APP_HOST, console $ADMIN_HOST, deploy user $DEPLOY_USER"
 # The kit copied to the droplet holds no package.json, so a failed read must not stop the script (set -e): fall back to the default below.
 if [[ -z "$PNPM_VERSION" ]]; then PNPM_VERSION="$(sed -n 's/.*"packageManager": *"pnpm@\([0-9.]*\)".*/\1/p' "$REPO/package.json" 2>/dev/null | head -n 1)" || PNPM_VERSION=""; fi
 PNPM_VERSION="${PNPM_VERSION:-10.30.3}"
@@ -150,7 +150,7 @@ if have pnpm && [[ "$(pnpm -v 2>/dev/null || true)" == "$PNPM_VERSION" ]]; then 
 fi
 
 # --- 3. deploy user and directories ------------------------------------------------------------------------------------------
-say; say "3. The $DEPLOY_USER user and /srv/fynix"
+say; say "3. The $DEPLOY_USER user and /srv/brandbasket"
 if id "$DEPLOY_USER" >/dev/null 2>&1; then done_already "user $DEPLOY_USER exists"; else
   run "create user $DEPLOY_USER (no password, no sudo group)" adduser --disabled-password --gecos "" "$DEPLOY_USER"
 fi
@@ -160,17 +160,17 @@ if [[ $AUTH_ROOT_KEYS -eq 1 ]]; then
     run "copy root's ssh keys to $DEPLOY_USER" bash -c "mkdir -p '$home/.ssh' && cp '$PREFIX/root/.ssh/authorized_keys' '$home/.ssh/authorized_keys' && chown -R '$DEPLOY_USER:$DEPLOY_USER' '$home/.ssh' && chmod 700 '$home/.ssh' && chmod 600 '$home/.ssh/authorized_keys'"
   fi
 else say "  (ssh keys for $DEPLOY_USER: not touched; add yours with: ssh-copy-id $DEPLOY_USER@<address>, or re-run with --authorize-root-keys)"; fi
-# /srv/fynix itself belongs to the deploy user: a deploy creates the links `deploying`, `current-platform` and `current-admin`
+# /srv/brandbasket itself belongs to the deploy user: a deploy creates the links `deploying`, `current-platform` and `current-admin`
 # directly inside it, which root's ownership would refuse. Only the folders below it that hold root-only data stay root's.
-fynix_owner="$(stat -c '%U' "$FYNIX" 2>/dev/null || echo unknown)"
-if [[ "$fynix_owner" == "$DEPLOY_USER" ]]; then done_already "$FYNIX is owned by $DEPLOY_USER"; elif [[ -d "$FYNIX" || $APPLY -eq 0 ]]; then
-  run "make $FYNIX owned by $DEPLOY_USER (the deploy links live in it)" bash -c "mkdir -p '$FYNIX' && chown '$DEPLOY_USER:$DEPLOY_USER' '$FYNIX'"
+bb_owner="$(stat -c '%U' "$BRANDBASKET" 2>/dev/null || echo unknown)"
+if [[ "$bb_owner" == "$DEPLOY_USER" ]]; then done_already "$BRANDBASKET is owned by $DEPLOY_USER"; elif [[ -d "$BRANDBASKET" || $APPLY -eq 0 ]]; then
+  run "make $BRANDBASKET owned by $DEPLOY_USER (the deploy links live in it)" bash -c "mkdir -p '$BRANDBASKET' && chown '$DEPLOY_USER:$DEPLOY_USER' '$BRANDBASKET'"
 fi
 for dir in releases shared media support-private; do
-  if [[ -d "$FYNIX/$dir" ]]; then done_already "$FYNIX/$dir exists"; else run "create $FYNIX/$dir" bash -c "mkdir -p '$FYNIX/$dir' && chown '$DEPLOY_USER:$DEPLOY_USER' '$FYNIX/$dir'"; fi
+  if [[ -d "$BRANDBASKET/$dir" ]]; then done_already "$BRANDBASKET/$dir exists"; else run "create $BRANDBASKET/$dir" bash -c "mkdir -p '$BRANDBASKET/$dir' && chown '$DEPLOY_USER:$DEPLOY_USER' '$BRANDBASKET/$dir'"; fi
 done
-if [[ -d "$FYNIX/backups" ]]; then done_already "$FYNIX/backups exists"; else run "create $FYNIX/backups (root only)" bash -c "mkdir -p '$FYNIX/backups' && chmod 700 '$FYNIX/backups'"; fi
-if [[ -d "$ETC/fynix" ]]; then done_already "$ETC/fynix exists"; else run "create $ETC/fynix" mkdir -p "$ETC/fynix"; fi
+if [[ -d "$BRANDBASKET/backups" ]]; then done_already "$BRANDBASKET/backups exists"; else run "create $BRANDBASKET/backups (root only)" bash -c "mkdir -p '$BRANDBASKET/backups' && chmod 700 '$BRANDBASKET/backups'"; fi
+if [[ -d "$ETC/brandbasket" ]]; then done_already "$ETC/brandbasket exists"; else run "create $ETC/brandbasket" mkdir -p "$ETC/brandbasket"; fi
 if [[ -d "$WWW/certbot" ]]; then done_already "$WWW/certbot exists"; else run "create $WWW/certbot (for the certificate challenge)" mkdir -p "$WWW/certbot"; fi
 if [[ -n "$SWAP" ]]; then
   if [[ -f "$PREFIX/proc/swaps" ]] && [[ "$(wc -l <"$PREFIX/proc/swaps")" -gt 1 ]]; then done_already "swap already exists"; elif [[ -e "$PREFIX/swapfile" ]]; then done_already "$PREFIX/swapfile already exists"; else
@@ -181,18 +181,18 @@ fi
 # --- 4. root-owned helper scripts, units, sudo rule -------------------------------------------------------------------------
 say; say "4. Helper scripts, systemd units and the sudo rule"
 # Root-owned copies: a script a root-run unit starts must never live in a directory the deploy user can write.
-install_file "$KIT_SCRIPTS/fynix-migrate" "$SBIN/fynix-migrate" 755
-install_file "$KIT_SCRIPTS/backup.sh" "$SBIN/fynix-backup" 755
-install_file "$KIT_SCRIPTS/restore-test.sh" "$SBIN/fynix-restore-test" 755
-install_file "$KIT_SCRIPTS/run-erase-job.sh" "$SBIN/fynix-erase-job" 755
-install_file "$KIT_SCRIPTS/cloudflare-ips.sh" "$SBIN/fynix-cloudflare-ips" 755
+install_file "$KIT_SCRIPTS/brandbasket-migrate" "$SBIN/brandbasket-migrate" 755
+install_file "$KIT_SCRIPTS/backup.sh" "$SBIN/brandbasket-backup" 755
+install_file "$KIT_SCRIPTS/restore-test.sh" "$SBIN/brandbasket-restore-test" 755
+install_file "$KIT_SCRIPTS/run-erase-job.sh" "$SBIN/brandbasket-erase-job" 755
+install_file "$KIT_SCRIPTS/cloudflare-ips.sh" "$SBIN/brandbasket-cloudflare-ips" 755
 for unit in "$KIT_DEPLOY"/systemd/*; do
   install_file "$unit" "$ETC/systemd/system/$(basename "$unit")" 644 "s/^User=deploy\$/User=$DEPLOY_USER/;s/^Group=deploy\$/Group=$DEPLOY_USER/"
 done
 if [[ $APPLY -eq 1 ]]; then if have systemctl; then systemctl daemon-reload; step "systemctl daemon-reload"; fi; else step "[would] systemctl daemon-reload"; fi
 # The sudo rule is checked with visudo before it is put in place: a broken sudoers file locks everyone out of sudo.
-sudoers_dest="$ETC/sudoers.d/fynix"
-tmp_sudoers="$(mktemp)"; sed "s/^deploy /$DEPLOY_USER /" "$KIT_DEPLOY/sudoers.fynix.example" >"$tmp_sudoers"
+sudoers_dest="$ETC/sudoers.d/brandbasket"
+tmp_sudoers="$(mktemp)"; sed "s/^deploy /$DEPLOY_USER /" "$KIT_DEPLOY/sudoers.brandbasket.example" >"$tmp_sudoers"
 if [[ -f "$sudoers_dest" ]] && cmp -s "$tmp_sudoers" "$sudoers_dest"; then done_already "$sudoers_dest unchanged"; else
   if have visudo && ! visudo -cf "$tmp_sudoers" >/dev/null 2>&1; then echo "The sudoers rule failed visudo's check; not installing it." >&2; failed=1
   elif [[ $APPLY -eq 1 ]]; then mkdir -p "$ETC/sudoers.d"; install -m 440 "$tmp_sudoers" "$sudoers_dest"; step "installed $sudoers_dest (checked with visudo)"
@@ -205,18 +205,18 @@ say "  (the timers are installed but NOT enabled yet: enable them at go-live, ru
 say; say "5. nginx (nothing already served is touched; only two new server names are added)"
 if ! have nginx && [[ $APPLY -eq 1 ]]; then echo "nginx is not installed (step 1 did not install it)." >&2; exit 1; fi
 SITES="$ETC/nginx/sites-available"; ENABLED="$ETC/nginx/sites-enabled"
-HOSTSED="s/app\\.fynix\\.digital/$APP_HOST/g;s/console\\.fynix\\.digital/$ADMIN_HOST/g"
-install_file "$KIT_DEPLOY/nginx/fynix-proxy.conf.example" "$ETC/nginx/snippets/fynix-proxy.conf" 644
-install_file "$KIT_DEPLOY/nginx/fynix-acme.conf.example" "$SITES/fynix-acme.conf" 644 "$HOSTSED"
+HOSTSED="s/app\\.brandbasket\\.digital/$APP_HOST/g;s/console\\.brandbasket\\.digital/$ADMIN_HOST/g"
+install_file "$KIT_DEPLOY/nginx/brandbasket-proxy.conf.example" "$ETC/nginx/snippets/brandbasket-proxy.conf" 644
+install_file "$KIT_DEPLOY/nginx/brandbasket-acme.conf.example" "$SITES/brandbasket-acme.conf" 644 "$HOSTSED"
 added=()
 enable_site() { # file name in sites-available
   local file="$1"
   if [[ -e "$ENABLED/$file" ]]; then done_already "$file already enabled"; return 0; fi
   if [[ $APPLY -eq 1 ]]; then mkdir -p "$ENABLED"; ln -s "$SITES/$file" "$ENABLED/$file"; added+=("$file"); step "enabled $file"; else step "[would] enable $file"; planned=$((planned + 1)); fi
 }
-enable_site fynix-acme.conf
+enable_site brandbasket-acme.conf
 if [[ $SKIP_CF -eq 0 ]]; then
-  if [[ -f "$ETC/nginx/conf.d/fynix-cloudflare-geo.conf" && -f "$ETC/nginx/snippets/fynix-cloudflare-realip.conf" ]]; then done_already "Cloudflare range files exist (refresh them with fynix-cloudflare-ips --apply)"; else
+  if [[ -f "$ETC/nginx/conf.d/brandbasket-cloudflare-geo.conf" && -f "$ETC/nginx/snippets/brandbasket-cloudflare-realip.conf" ]]; then done_already "Cloudflare range files exist (refresh them with brandbasket-cloudflare-ips --apply)"; else
     run "write Cloudflare's address ranges for the console's nginx file" bash "$KIT_SCRIPTS/cloudflare-ips.sh" --apply --nginx-dir "$ETC/nginx"
   fi
 fi
@@ -248,13 +248,13 @@ if [[ -n "$CERTBOT_EMAIL" && ! -f "$cert_dir/fullchain.pem" ]]; then
   run "obtain the Let's Encrypt certificate for $APP_HOST" certbot certonly --webroot -w "$WWW/certbot" -d "$APP_HOST" --agree-tos -m "$CERTBOT_EMAIL" --no-eff-email --non-interactive
 fi
 if [[ -f "$cert_dir/fullchain.pem" || -n "$CERTBOT_EMAIL" ]]; then
-  install_file "$KIT_DEPLOY/nginx/fynix-app.conf.example" "$SITES/fynix-app.conf" 644 "$HOSTSED"
-  enable_site fynix-app.conf
-else say "  - fynix-app.conf is installed once the certificate exists (re-run this script then)."; fi
-if [[ -f "$PREFIX/etc/ssl/fynix/staff.pem" && -f "$PREFIX/etc/ssl/fynix/staff.key" ]]; then
-  install_file "$KIT_DEPLOY/nginx/fynix-admin.conf.example" "$SITES/fynix-admin.conf" 644 "$HOSTSED"
-  enable_site fynix-admin.conf
-else say "  - fynix-admin.conf is installed once the Cloudflare Origin certificate is at /etc/ssl/fynix/staff.pem and .key (runbook section 7); re-run then."; fi
+  install_file "$KIT_DEPLOY/nginx/brandbasket-app.conf.example" "$SITES/brandbasket-app.conf" 644 "$HOSTSED"
+  enable_site brandbasket-app.conf
+else say "  - brandbasket-app.conf is installed once the certificate exists (re-run this script then)."; fi
+if [[ -f "$PREFIX/etc/ssl/brandbasket/staff.pem" && -f "$PREFIX/etc/ssl/brandbasket/staff.key" ]]; then
+  install_file "$KIT_DEPLOY/nginx/brandbasket-admin.conf.example" "$SITES/brandbasket-admin.conf" 644 "$HOSTSED"
+  enable_site brandbasket-admin.conf
+else say "  - brandbasket-admin.conf is installed once the Cloudflare Origin certificate is at /etc/ssl/brandbasket/staff.pem and .key (runbook section 7); re-run then."; fi
 reload_nginx || failed=1
 
 # --- 6. what this does not do ------------------------------------------------------------------------------------------------

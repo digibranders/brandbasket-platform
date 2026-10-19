@@ -25,13 +25,13 @@ ALTER TABLE "directory_deals" ADD CONSTRAINT "directory_deals_created_by_user_id
 ALTER TABLE "directory_deals" ADD CONSTRAINT "directory_deals_taken_down_by_user_id_users_id_fk" FOREIGN KEY ("taken_down_by_user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "directory_deals_business_idx" ON "directory_deals" USING btree ("business_id","ends_on") WHERE "directory_deals"."removed_at" is null;--> statement-breakpoint
 CREATE INDEX "directory_deals_on_show_idx" ON "directory_deals" USING btree ("starts_on","ends_on") WHERE "directory_deals"."status" = 'live' and "directory_deals"."removed_at" is null;--> statement-breakpoint
-GRANT SELECT ON directory_deals TO fynix_app;
+GRANT SELECT ON directory_deals TO bb_app;
 --> statement-breakpoint
-GRANT SELECT, INSERT, UPDATE ON directory_deals TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE ON directory_deals TO bb_staff;
 --> statement-breakpoint
 ALTER TABLE directory_deals ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
-CREATE POLICY directory_deals_tenant_read ON directory_deals FOR SELECT TO fynix_app
+CREATE POLICY directory_deals_tenant_read ON directory_deals FOR SELECT TO bb_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
-CREATE POLICY directory_deals_staff_all ON directory_deals FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_deals_staff_all ON directory_deals FOR ALL TO bb_staff USING (true) WITH CHECK (true);

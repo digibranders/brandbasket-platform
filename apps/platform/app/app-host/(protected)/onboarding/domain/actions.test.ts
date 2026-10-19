@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({
 
 const hoisted = vi.hoisted(() => {
   class MockDomainTakenError extends Error {}
-  return { MockDomainTakenError, origins: { APP_ORIGIN: "https://app.fynix.digital", ADMIN_ORIGIN: "https://console.fynix.digital" } };
+  return { MockDomainTakenError, origins: { APP_ORIGIN: "https://app.brandbasket.in", ADMIN_ORIGIN: "https://console.brandbasket.in" } };
 });
 vi.mock("@brandbasket/db", () => ({ DomainTakenError: hoisted.MockDomainTakenError, savePrimaryDomain: vi.fn() }));
 vi.mock("@/lib/server/customer-access", () => ({
@@ -52,21 +52,21 @@ async function run(name: string): Promise<unknown> {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  hoisted.origins.ADMIN_ORIGIN = "https://console.fynix.digital";
-  vi.stubEnv("CLIENT_SITE_BASE_DOMAIN", "fynix.digital");
+  hoisted.origins.ADMIN_ORIGIN = "https://console.brandbasket.in";
+  vi.stubEnv("CLIENT_SITE_BASE_DOMAIN", "brandbasket.in");
 });
 
 describe("a free address", () => {
   it("is saved under the base domain, in lower case, and the customer goes on to the review", async () => {
     expect(await run(" Lotus-Studio ")).toBe("redirect:/onboarding/review");
 
-    expect(savePrimaryDomain).toHaveBeenCalledWith({ name: "tx" }, { hostname: "lotus-studio.fynix.digital", ownerConfirmedAt: expect.any(Date) });
+    expect(savePrimaryDomain).toHaveBeenCalledWith({ name: "tx" }, { hostname: "lotus-studio.brandbasket.in", ownerConfirmedAt: expect.any(Date) });
   });
 
   it("takes the whole address when that was pasted", async () => {
-    await run("lotus-studio.fynix.digital");
+    await run("lotus-studio.brandbasket.in");
 
-    expect(savePrimaryDomain).toHaveBeenCalledWith({ name: "tx" }, expect.objectContaining({ hostname: "lotus-studio.fynix.digital" }));
+    expect(savePrimaryDomain).toHaveBeenCalledWith({ name: "tx" }, expect.objectContaining({ hostname: "lotus-studio.brandbasket.in" }));
   });
 
   it("refuses the names kept for us, too short or malformed names, and saves nothing", async () => {
@@ -77,7 +77,7 @@ describe("a free address", () => {
   });
 
   it("refuses a name that would be one of the platform's own hosts, even one the reserved list does not know", async () => {
-    hoisted.origins.ADMIN_ORIGIN = "https://hub.fynix.digital";
+    hoisted.origins.ADMIN_ORIGIN = "https://hub.brandbasket.in";
 
     expect(await run("hub")).toMatchObject({ status: "error", field: "name", message: "That name is kept for us. Choose another." });
     expect(savePrimaryDomain).not.toHaveBeenCalled();
@@ -89,7 +89,7 @@ describe("a free address", () => {
     expect(await run("lotus-studio")).toMatchObject({
       status: "error",
       field: "name",
-      message: "lotus-studio.fynix.digital is already taken. Try another name.",
+      message: "lotus-studio.brandbasket.in is already taken. Try another name.",
     });
   });
 

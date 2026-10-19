@@ -12,12 +12,12 @@ const db = {} as Database;
 function message(linkWithheld: boolean): EmailMessage {
   return {
     to: "asha@example.in",
-    subject: "Reset your Fynix password",
+    subject: "Reset your Brandbasket password",
     template: "password-reset",
-    bodyText: "full body with https://app.fynix.digital/reset-password/TOKEN",
+    bodyText: "full body with https://app.brandbasket.in/reset-password/TOKEN",
     bodyHtml: "<p>full</p>",
     outboxCopy: {
-      subject: "Reset your Fynix password",
+      subject: "Reset your Brandbasket password",
       bodyText: "copy without the link",
       bodyHtml: "<p>copy</p>",
       ...(linkWithheld ? { linkWithheld: true as const } : {}),

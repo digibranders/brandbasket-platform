@@ -16,13 +16,13 @@ describe("businessDetails", () => {
 });
 
 describe("what customers read", () => {
-  it("trades as Fynix Digital with Fynix's own contact, the registered company unchanged", () => {
+  it("trades as Brandbasket with Brandbasket's own contact, the registered company unchanged", () => {
     expect(businessDetails).toMatchObject({
       legalName: "Digibranders Private Limited",
-      tradeName: "Fynix Digital",
-      email: "hello@fynix.digital",
-      website: "https://fynix.digital",
+      tradeName: "Brandbasket",
+      email: "hello@brandbasket.in",
+      website: "https://brandbasket.in",
     });
-    expect(siteConfig).toMatchObject({ name: "Fynix Digital", email: "hello@fynix.digital", url: "https://fynix.digital" });
+    expect(siteConfig).toMatchObject({ name: "Brandbasket", email: "hello@brandbasket.in", url: "https://brandbasket.in" });
   });
 });

@@ -23,7 +23,7 @@ interface WebAddressProps {
   /** The business the page is about, so the page refreshes once the address changes. */
   readonly businessId: string;
   readonly place: WebAddressPlace;
-  /** The full current address, https://fynix.digital/in/mh/business/<name>/<code>. */
+  /** The full current address, https://brandbasket.in/in/mh/business/<name>/<code>. */
   readonly url: string;
   /** Link the address: only once its page is public, so staff never open a page that isn't there. */
   readonly linked?: boolean;

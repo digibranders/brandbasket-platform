@@ -13,6 +13,6 @@ export const POST = createErrorReportCollector({
   getSessionUser,
   writeReport: (report, userId) => recordErrorReport(getStaffDb(), report, userId),
   consumeLimit: async (key, rule) => (await consumeRateLimit(getStaffDb(), key, rule)).allowed,
-  release: process.env.NEXT_PUBLIC_FYNIX_RELEASE,
+  release: process.env.NEXT_PUBLIC_BRANDBASKET_RELEASE,
 });
 

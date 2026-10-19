@@ -20,7 +20,7 @@ const CONSOLE_PATH = "/privacy-requests";
 
 /** Where the emails go: PRIVACY_ALERT_EMAIL if set, otherwise the support alert mailbox, otherwise the team address. */
 export function privacyAlertRecipient(env: Readonly<Record<string, string | undefined>>): string {
-  return env.PRIVACY_ALERT_EMAIL?.trim() || env.SUPPORT_ALERT_EMAIL?.trim() || env.FYNIX_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
+  return env.PRIVACY_ALERT_EMAIL?.trim() || env.SUPPORT_ALERT_EMAIL?.trim() || env.BRANDBASKET_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
 }
 
 /** The staff console's page for these requests. */

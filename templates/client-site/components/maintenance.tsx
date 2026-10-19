@@ -57,7 +57,7 @@ function Gear({ cx, cy, r, className }: { readonly cx: number; readonly cy: numb
 
 /**
  * Shown in place of the whole website while its plan has ended. No links: nothing else on the site works either.
- * The builder is the same character as the Fynix blog screens, fixing things at his laptop.
+ * The builder is the same character as the Brandbasket blog screens, fixing things at his laptop.
  */
 export function Maintenance({ businessName }: MaintenanceProps) {
   const headline = businessName === undefined ? "We'll be back soon" : `${businessName} is taking a short break`;

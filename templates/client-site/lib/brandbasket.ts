@@ -1,16 +1,16 @@
 /**
- * Reads a business's content from the Fynix platform for a client website.
+ * Reads a business's content from the Brandbasket platform for a client website.
  *
  * The platform answers every request with the site token's business in mind. Once that business's plan has ended it
  * answers 403 with `{ code: "site_offline" }`: the token is good, but the website is not being served. This file turns
  * that into its own result, `offline`, so a site can show a maintenance page instead of an error.
  *
  * Environment (set in the site's hosting, never in the code):
- *   FYNIX_API_ORIGIN  the platform's address, e.g. https://app.fynix.digital
- *   FYNIX_SITE_TOKEN  the business's Site API token, from the client's page in the console
+ *   BRANDBASKET_API_ORIGIN  the platform's address, e.g. https://app.brandbasket.in
+ *   BRANDBASKET_SITE_TOKEN  the business's Site API token, from the client's page in the console
  */
 
-export type FynixResult<T> =
+export type BrandbasketResult<T> =
   | { readonly kind: "ok"; readonly data: T }
   /** The plan has ended: show the maintenance page. */
   | { readonly kind: "offline" }
@@ -38,11 +38,11 @@ async function isOfflineAnswer(response: Response): Promise<boolean> {
   }
 }
 
-/** GET one of the platform's /api/site/* routes, e.g. `fynixGet<SiteInfo>("/api/site/info")`. */
-export async function fynixGet<T>(path: string): Promise<FynixResult<T>> {
+/** GET one of the platform's /api/site/* routes, e.g. `brandbasketGet<SiteInfo>("/api/site/info")`. */
+export async function brandbasketGet<T>(path: string): Promise<BrandbasketResult<T>> {
   // Read first, outside the try: a missing setting is a mistake to fix, not a platform that cannot be reached.
-  const url = new URL(path, setting("FYNIX_API_ORIGIN"));
-  const token = setting("FYNIX_SITE_TOKEN");
+  const url = new URL(path, setting("BRANDBASKET_API_ORIGIN"));
+  const token = setting("BRANDBASKET_SITE_TOKEN");
   let response: Response;
   try {
     response = await fetch(url, {

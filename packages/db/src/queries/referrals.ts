@@ -7,7 +7,7 @@ import { isUuid } from "./tenant";
 type Runner = Database | ScopedTransaction;
 
 /**
- * Referral codes are staff-only: `fynix_app` holds no grant on the table, so every read here runs on the staff
+ * Referral codes are staff-only: `bb_app` holds no grant on the table, so every read here runs on the staff
  * connection, including the ones made on a customer's behalf while they are applying a code. The caller is
  * responsible for having checked that the customer owns the business it is acting on.
  */

@@ -53,7 +53,7 @@ const VALID_FORM = { identifier: "  Owner@Example.com ", password: "correct-hors
 const NORMALISED_EMAIL = "owner@example.com";
 const PHONE_FORM = { identifier: " 98200 11223 ", password: "correct-horse" };
 const E164 = "+919820011223";
-const PLACEHOLDER = "919820011223@phone.fynix.invalid";
+const PLACEHOLDER = "919820011223@phone.brandbasket.invalid";
 
 const ALLOWED: RateLimitResult = { allowed: true, remaining: 10, retryAfterSeconds: 0 };
 

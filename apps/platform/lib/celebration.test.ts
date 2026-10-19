@@ -53,7 +53,7 @@ describe("createPieces", () => {
     expect(right.every((piece) => piece.vy < 0 && piece.vx < 0)).toBe(true);
   });
 
-  it("uses only Fynix Digital's colours", () => {
+  it("uses only Brandbasket's colours", () => {
     const allowed: readonly string[] = CONFETTI_COLOURS;
     expect(pieces.every((piece) => allowed.includes(piece.colour))).toBe(true);
   });

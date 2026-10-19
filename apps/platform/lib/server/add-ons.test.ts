@@ -528,7 +528,7 @@ describe("startAddOnCheckoutFor: an unpaid checkout already there", () => {
 
     expect(cancelStaleAddOnCheckout).toHaveBeenCalledWith(expect.anything(), recent.id, NOW);
     // It cannot be cancelled from here, so it is logged for staff instead.
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] provider-cancel-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] provider-cancel-failed /);
   });
 
   it("logs, and still sends the customer on, when the replaced checkout cannot be cancelled at the provider", async () => {
@@ -537,7 +537,7 @@ describe("startAddOnCheckoutFor: an unpaid checkout already there", () => {
 
     redirectUrl(await startAddOnCheckoutFor(customer, "social-media", "buy", NOW));
 
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] provider-cancel-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] provider-cancel-failed /);
   });
 });
 
@@ -698,7 +698,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
     await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).resolves.toEqual({ kind: "refused", message: PROVIDER_DOWN });
     expect(events).toEqual(["tx1:begin", "tx1:commit"]);
     expect(started).not.toHaveBeenCalled();
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-plan-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] add-on-plan-failed /);
     expect(String(logged.mock.calls[0]?.[0])).not.toContain("Razorpay is down");
   });
 
@@ -709,7 +709,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
     expect(events).toEqual(["tx1:begin", "tx1:commit"]);
     expect(insertAddOnSubscription).not.toHaveBeenCalled();
     expect(cancelStaleAddOnCheckout).not.toHaveBeenCalled();
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-checkout-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] add-on-checkout-failed /);
   });
 
   it("cancels its own new subscription, records nothing and asks to retry when the add-on changed meanwhile", async () => {
@@ -723,7 +723,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
     expect(insertAddOnSubscription).not.toHaveBeenCalled();
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:start", "tx2:begin", "tx2:commit", "provider:cancel"]);
     expect(cancelled).toHaveBeenCalledWith(expect.stringMatching(/^fake_sub_[0-9a-f]{24}$/));
-    expect(String(warned.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] checkout-orphaned .*changed-meanwhile/);
+    expect(String(warned.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] checkout-orphaned .*changed-meanwhile/);
   });
 
   it("notices a pause that was undone between the two transactions, and leaves the row it saw alone", async () => {
@@ -743,7 +743,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
 
     await expect(startAddOnCheckoutFor(customer, "social-media", "buy", NOW)).rejects.toThrow("connection lost");
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:start", "tx2:begin", "tx2:rollback", "provider:cancel"]);
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] checkout-orphaned .*record-failed/);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] checkout-orphaned .*record-failed/);
     // The error is named, never quoted: a database error's message carries the failed query's params.
     expect(String(logged.mock.calls[0]?.[0])).not.toContain("connection lost");
   });
@@ -779,7 +779,7 @@ describe("startAddOnCheckoutFor: gates and failures", () => {
       kind: "refused",
       message: "Something is wrong with this add-on. We're looking into it.",
     });
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-view-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] add-on-view-failed /);
     expect(started).not.toHaveBeenCalled();
   });
 });
@@ -1239,7 +1239,7 @@ describe("loadAddOnsPage", () => {
 
     expect(page.addOns[0]).toEqual({ kind: "broken", addOn: "social-media", rowId: broken.id });
     expect(page.addOns[2]).toMatchObject({ kind: "ready", addOn: "advertising", view: { state: "active" } });
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] add-on-view-failed .*"addOn":"social-media"/);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] add-on-view-failed .*"addOn":"social-media"/);
     expect(String(logged.mock.calls[0]?.[0])).toContain(`"addOnSubscriptionId":"${broken.id}"`);
   });
 });

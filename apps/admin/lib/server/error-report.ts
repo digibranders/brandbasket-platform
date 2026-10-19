@@ -5,6 +5,6 @@ import { getStaffDb } from "./db";
 const reporter = createDatabaseErrorReporter(getStaffDb);
 
 export async function reportServerError(error: unknown, context: ServerErrorContext): Promise<string | null> {
-  return reporter(error, { ...context, release: process.env.NEXT_PUBLIC_FYNIX_RELEASE });
+  return reporter(error, { ...context, release: process.env.NEXT_PUBLIC_BRANDBASKET_RELEASE });
 }
 

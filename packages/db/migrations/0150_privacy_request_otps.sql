@@ -20,16 +20,16 @@ CREATE INDEX "privacy_request_otps_expires_at_idx" ON "privacy_request_otps" USI
 ALTER TABLE privacy_request_otps ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY privacy_request_otps_staff_all ON privacy_request_otps FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY privacy_request_otps_staff_all ON privacy_request_otps FOR ALL TO bb_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON privacy_request_otps TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON privacy_request_otps TO bb_staff;
 --> statement-breakpoint
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
-    CREATE POLICY privacy_request_otps_legacy_staff_all ON privacy_request_otps FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
-    GRANT SELECT, INSERT, UPDATE, DELETE ON privacy_request_otps TO fynix_staff;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bb_staff') THEN
+    CREATE POLICY privacy_request_otps_legacy_staff_all ON privacy_request_otps FOR ALL TO bb_staff USING (true) WITH CHECK (true);
+    GRANT SELECT, INSERT, UPDATE, DELETE ON privacy_request_otps TO bb_staff;
   END IF;
 END $$;

@@ -9,7 +9,7 @@ const { passwordResetEmail } = await import("./templates/password-reset");
 const { signupCodeEmail } = await import("./templates/signup-code");
 
 const db = {} as Database;
-const reset = passwordResetEmail({ to: "asha@example.in", resetUrl: "https://app.fynix.digital/reset-password/TOKEN", expiresInMinutes: 60 });
+const reset = passwordResetEmail({ to: "asha@example.in", resetUrl: "https://app.brandbasket.in/reset-password/TOKEN", expiresInMinutes: 60 });
 
 beforeEach(() => vi.mocked(recordEmail).mockClear());
 
@@ -38,10 +38,10 @@ describe("createAppEmailTransport", () => {
   });
 });
 
-describe("a sign-up code on a Fynix server", () => {
+describe("a sign-up code on a Brandbasket server", () => {
   const code = signupCodeEmail({ to: "owner@example.test", code: "482913", expiresInMinutes: 10 });
 
-  it("goes through Brevo's transactional API as Fynix Digital, and the outbox keeps no code", async () => {
+  it("goes through Brevo's transactional API as Brandbasket, and the outbox keeps no code", async () => {
     const fetchFn = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => new Response("{}", { status: 201 }));
     vi.stubGlobal("fetch", fetchFn);
     try {
@@ -54,9 +54,9 @@ describe("a sign-up code on a Fynix server", () => {
     expect(init?.headers).toMatchObject({ "api-key": "test-key" });
     const sent = JSON.parse(String(init?.body)) as { sender: unknown; to: unknown; subject: string; textContent: string };
     expect(sent).toMatchObject({
-      sender: { email: "no-reply@fynix.digital", name: "Fynix Digital" },
+      sender: { email: "no-reply@brandbasket.in", name: "Brandbasket" },
       to: [{ email: "owner@example.test" }],
-      subject: "Your Fynix Digital verification code",
+      subject: "Your Brandbasket verification code",
     });
     expect(sent.textContent).toContain("482913");
     const stored = vi.mocked(recordEmail).mock.calls[0]?.[1];

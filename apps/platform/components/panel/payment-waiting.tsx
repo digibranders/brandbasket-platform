@@ -15,7 +15,7 @@ interface PaymentWaitingProps {
 /** How often the page is loaded again to see whether the payment has been confirmed, and when it stops trying. */
 const CHECK_EVERY_MS = 3_000;
 const GIVE_UP_AFTER_MS = 60_000;
-const STORAGE_PREFIX = "fynix:payment-wait:";
+const STORAGE_PREFIX = "brandbasket:payment-wait:";
 
 /** When this browser tab started waiting on this checkout; now, if it cannot remember (storage off) or never did. */
 function waitStartedAt(key: string, now: number): number {

@@ -9,7 +9,7 @@ let reporter: ReturnType<typeof createDatabaseErrorReporter> | undefined;
 export async function reportServerError(error: unknown, context: ServerErrorContext): Promise<string | null> {
   try {
     reporter ??= createDatabaseErrorReporter(() => getStaffDb());
-    const eventId = await reporter(error, { ...context, release: process.env.NEXT_PUBLIC_FYNIX_RELEASE });
+    const eventId = await reporter(error, { ...context, release: process.env.NEXT_PUBLIC_BRANDBASKET_RELEASE });
     if (eventId) {
       void sendSystemErrorAlert({
         app: context.app,
@@ -17,7 +17,7 @@ export async function reportServerError(error: unknown, context: ServerErrorCont
         errorClass: error instanceof Error ? error.name || "Error" : "UnknownError",
         route: context.route,
         severity: "error",
-        release: process.env.NEXT_PUBLIC_FYNIX_RELEASE,
+        release: process.env.NEXT_PUBLIC_BRANDBASKET_RELEASE,
         eventId,
       }).catch((err) => console.error("[support-alert] Error alert failed", err));
     }

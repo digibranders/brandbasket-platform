@@ -1,7 +1,7 @@
 import { runtimeRequirements, type RequirementsApp } from "./production-requirements";
 
 /*
- * Checks a Fynix deployment's two environment files (the platform's and the console's) before the apps are started on them:
+ * Checks a Brandbasket deployment's two environment files (the platform's and the console's) before the apps are started on them:
  * everything the apps themselves refuse to start without (production-requirements.ts), plus what only a pair of files can
  * get wrong (a secret that differs between them), and what the apps accept but a real deployment must not have (a bypass
  * switch, fake billing). Pure: the CLI is scripts/server/check-env.ts, which the deploy runs on the server. Messages name
@@ -35,7 +35,7 @@ export function parseEnvFile(text: string): Record<string, string> {
 
 const MIN_SECRET_LENGTH = 32;
 /** Never set where real customers can reach the app. */
-const FORBIDDEN = ["EMAIL_CODE_BYPASS", "FYNIX_ALLOW_FAKE_BILLING"] as const;
+const FORBIDDEN = ["EMAIL_CODE_BYPASS", "BRANDBASKET_ALLOW_FAKE_BILLING"] as const;
 const SHARED_EQUAL = ["BETTER_AUTH_SECRET", "PAYLOAD_SECRET", "APP_ORIGIN", "ADMIN_ORIGIN", "DATABASE_URL_PAYLOAD"] as const;
 const SECRETS: Readonly<Record<RequirementsApp, readonly string[]>> = {
   platform: ["BETTER_AUTH_SECRET", "PAYLOAD_SECRET", "ACCOUNT_CODE_SECRET"],
@@ -43,10 +43,10 @@ const SECRETS: Readonly<Record<RequirementsApp, readonly string[]>> = {
 };
 /** The database roles the code expects each connection to use (packages/db/src/roles.ts). */
 const EXPECTED_ROLES: Readonly<Record<string, string>> = {
-  DATABASE_URL: "fynix_app",
-  DATABASE_URL_STAFF: "fynix_staff",
-  DATABASE_URL_PUBLIC: "fynix_public",
-  DATABASE_URL_PAYLOAD: "fynix_cms",
+  DATABASE_URL: "bb_app",
+  DATABASE_URL_STAFF: "bb_staff",
+  DATABASE_URL_PUBLIC: "bb_public",
+  DATABASE_URL_PAYLOAD: "bb_cms",
 };
 
 const blank = (value: string | undefined): boolean => value === undefined || value.trim() === "";
@@ -92,7 +92,7 @@ function checkApp(app: RequirementsApp, env: EnvValues, errors: string[], warnin
     const url = urlOf(env[name]);
     if (url !== null && !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) warnings.push(`${app}: ${name} is not on this machine (${url.hostname}); the plan is Postgres on the droplet.`);
   }
-  if (blank(env.FYNIX_MEDIA_ROOT)) warnings.push(`${app}: FYNIX_MEDIA_ROOT is unset, so uploads go to a folder inside the release and are lost at the next deploy. Set one absolute path, the same in both files.`);
+  if (blank(env.BRANDBASKET_MEDIA_ROOT)) warnings.push(`${app}: BRANDBASKET_MEDIA_ROOT is unset, so uploads go to a folder inside the release and are lost at the next deploy. Set one absolute path, the same in both files.`);
 }
 
 /** Checks the platform's and the console's environments, as each file holds them. Either may be omitted to check one alone. */
@@ -113,9 +113,9 @@ export function checkProductionEnv(files: { readonly platform?: EnvValues; reado
     for (const name of SHARED_EQUAL) {
       if (!blank(platform[name]) && !blank(admin[name]) && platform[name]?.trim() !== admin[name]?.trim()) errors.push(`${name} differs between the platform's file and the console's; it must be identical.`);
     }
-    const a = platform.FYNIX_MEDIA_ROOT?.trim() ?? "";
-    const b = admin.FYNIX_MEDIA_ROOT?.trim() ?? "";
-    if (a !== b) errors.push("FYNIX_MEDIA_ROOT differs between the two files: the dashboard writes uploads and the console reads them.");
+    const a = platform.BRANDBASKET_MEDIA_ROOT?.trim() ?? "";
+    const b = admin.BRANDBASKET_MEDIA_ROOT?.trim() ?? "";
+    if (a !== b) errors.push("BRANDBASKET_MEDIA_ROOT differs between the two files: the dashboard writes uploads and the console reads them.");
   }
   return { errors, warnings };
 }

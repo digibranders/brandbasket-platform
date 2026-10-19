@@ -356,7 +356,7 @@ export function BidPanel({
               </p>
               {offer.bookedUntil === null ? null : (
                 <p className="mt-2 max-w-sm text-sm text-ink-soft">
-                  {"Fynix has this spot booked for that whole time, so it takes no bids until then. It opens to bidding again after that."}
+                  {"Brandbasket has this spot booked for that whole time, so it takes no bids until then. It opens to bidding again after that."}
                 </p>
               )}
             </div>

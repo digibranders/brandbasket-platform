@@ -349,7 +349,7 @@ describe("startCheckoutFor", () => {
 
     redirectUrl(await startCheckoutFor(customer, NOW));
     expect(logged).toHaveBeenCalledTimes(1);
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] provider-cancel-failed /);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] provider-cancel-failed /);
     expect(String(logged.mock.calls[0]?.[0])).toContain('"subscriptionId":"sub-old"');
   });
 
@@ -396,7 +396,7 @@ describe("startCheckoutFor", () => {
     expect(openCheckoutSubscription).not.toHaveBeenCalled();
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:start", "tx2:begin", "tx2:commit", "provider:cancel"]);
     expect(cancelled).toHaveBeenCalledWith(expect.stringMatching(/^fake_sub_[0-9a-f]{24}$/));
-    expect(String(warned.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] checkout-orphaned .*changed-meanwhile/);
+    expect(String(warned.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] checkout-orphaned .*changed-meanwhile/);
   });
 
   it("notices a checkout that was paid between the two transactions", async () => {
@@ -416,7 +416,7 @@ describe("startCheckoutFor", () => {
 
     await expect(startCheckoutFor(customer, NOW)).rejects.toThrow("connection lost");
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:start", "tx2:begin", "tx2:rollback", "provider:cancel"]);
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] checkout-orphaned .*record-failed/);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] checkout-orphaned .*record-failed/);
     // The error is named, never quoted: a database error's message carries the failed query's params.
     expect(String(logged.mock.calls[0]?.[0])).toContain('"errorName":"Error"');
     expect(String(logged.mock.calls[0]?.[0])).not.toContain("connection lost");
@@ -440,7 +440,7 @@ describe("startCheckoutFor", () => {
 describe("startMembershipCheckoutFor", () => {
   const INR_PLAN = { id: "plan-inr", currency: "INR", initialAmountCents: 299_900, initialTermMonths: 1, taxRateBasisPoints: 1800 } as Plan;
   const owner: GrantedCustomer = {
-    user: { id: "user-a", email: "919820011223@phone.fynix.invalid", name: "Meera Shah", emailConfirmed: false, phone: "+919820011223" },
+    user: { id: "user-a", email: "919820011223@phone.brandbasket.invalid", name: "Meera Shah", emailConfirmed: false, phone: "+919820011223" },
     tenant: { userId: "user-a", businessId: BUSINESS_ID, businessName: "Smile Dental", role: "owner" },
     billing: { status: "unpaid", hasAccess: false, subscription: null, tier: "premium", upgradePaid: false, plan: INR_PLAN, paymentUnderReview: false, renewalFailingUntil: null },
   };

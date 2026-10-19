@@ -12,7 +12,7 @@ function json(body: unknown, status: number): Response {
 /**
  * OyeChats' server-to-server delivery of a visitor's details (and, later, how warm the lead is). Staff register this
  * address as the bot's webhook in OyeChats and keep the secret OyeChats made for it on the bot's page in the console.
- * Answers 200 once the signature is valid, even for an event Fynix does not use, so OyeChats does not retry it for hours;
+ * Answers 200 once the signature is valid, even for an event Brandbasket does not use, so OyeChats does not retry it for hours;
  * anything unsigned, or signed for a bot we do not know, gets one 401.
  */
 export async function POST(request: Request): Promise<Response> {

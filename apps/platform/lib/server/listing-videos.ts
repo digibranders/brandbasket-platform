@@ -90,7 +90,7 @@ export function listingVideoDeps(staffDb: Database): ListingVideoDeps {
     discard: (input) => discardDirectoryVideo(staffDb, input),
     remove: (input) => removeDirectoryVideo(staffDb, input),
     log: (message, error) => {
-      console.error(`[fynix:videos] ${message}`, errorLogInfo(error));
+      console.error(`[brandbasket:videos] ${message}`, errorLogInfo(error));
     },
   };
 }
@@ -166,7 +166,7 @@ export async function requestVideoUpload(
   } catch (error) {
     deps.log("Vimeo would not make an upload.", error);
     if (error instanceof VimeoError && error.reason === "quota") return { ok: false, refusal: "quota", message: QUOTA_MESSAGE };
-    // A refused token, or no Fynix folder to file the video in: nothing is made, and the owner is told it is not available.
+    // A refused token, or no Brandbasket folder to file the video in: nothing is made, and the owner is told it is not available.
     if (error instanceof VimeoError && (error.reason === "unauthorized" || error.reason === "configuration")) {
       return { ok: false, refusal: "unavailable", message: VIDEO_UNAVAILABLE_MESSAGE };
     }

@@ -33,7 +33,7 @@ async function exists(target: string): Promise<boolean> {
 
 beforeEach(async () => {
   // The storage root sits one level inside the sandbox, so a file escaping the root would still be visible here.
-  sandbox = await mkdtemp(path.join(tmpdir(), "fynix-media-"));
+  sandbox = await mkdtemp(path.join(tmpdir(), "brandbasket-media-"));
   root = path.join(sandbox, "media");
   storage = createLocalMediaStorage(root);
 });
@@ -133,7 +133,7 @@ describe("createLocalMediaStorage", () => {
  */
 describe("localMediaRoot", () => {
   it("uses the configured root, resolved to an absolute path", () => {
-    expect(localMediaRoot({ [MEDIA_ROOT_VARIABLE]: "/srv/fynix/.data/media" })).toBe("/srv/fynix/.data/media");
+    expect(localMediaRoot({ [MEDIA_ROOT_VARIABLE]: "/srv/brandbasket/.data/media" })).toBe("/srv/brandbasket/.data/media");
     expect(localMediaRoot({ [MEDIA_ROOT_VARIABLE]: "  /srv/media  " })).toBe("/srv/media");
   });
 
@@ -161,7 +161,7 @@ describe("deleteMediaFiles", () => {
   const bytes = new Uint8Array([1, 2, 3]);
 
   beforeEach(async () => {
-    sandbox = await mkdtemp(path.join(tmpdir(), "fynix-media-delete-"));
+    sandbox = await mkdtemp(path.join(tmpdir(), "brandbasket-media-delete-"));
     storage = createLocalMediaStorage(sandbox);
   });
 

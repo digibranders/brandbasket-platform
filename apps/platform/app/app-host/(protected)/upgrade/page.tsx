@@ -23,7 +23,7 @@ interface UpgradePageProps {
 export default async function UpgradePage({ searchParams }: UpgradePageProps): Promise<ReactElement> {
   const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const entry = await getCustomerBusinessEntry(customer.tenant.userId, customer.tenant.businessId);
-  // Fynix sells Care only: a Care client has nothing to move up to.
+  // Brandbasket sells Care only: a Care client has nothing to move up to.
   if (!offersChoice(await requestBrand(), "premium")) redirect(entry.kind === "listing" ? CARE_PATH : MEMBER_HOME);
   if (entry.kind === "listing") return <FreeUpgrade customer={customer} />;
   return <CareUpgrade customer={customer} payment={(await searchParams).payment} />;

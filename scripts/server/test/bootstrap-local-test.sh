@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # What this does: rehearses scripts/server/bootstrap-droplet.sh --on-server --apply on this machine with no server involved:
-# FYNIX_PREFIX points "/" at a temporary directory, and fake apt-get, adduser, chown, systemctl, nginx, visudo, certbot and curl sit on
+# BRANDBASKET_PREFIX points "/" at a temporary directory, and fake apt-get, adduser, chown, systemctl, nginx, visudo, certbot and curl sit on
 # PATH. Proves: files land where they should with the right contents (hostnames substituted), a second run reports everything
 # unchanged, and when `nginx -t` fails the links the run added are removed again and the script exits non-zero.
 # Assumes bash, and that node/pnpm are present (the Node step is skipped with --skip-node). It cannot prove `nginx -t` accepts the real
@@ -8,7 +8,7 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT="$HERE/../bootstrap-droplet.sh"
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/fynix-bootstrap-test.XXXXXX")"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/brandbasket-bootstrap-test.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 SHIMS="$WORK/shims"; PFX="$WORK/root"; mkdir -p "$SHIMS" "$PFX"
 for tool in apt-get adduser chown systemctl visudo certbot corepack; do printf '#!/bin/sh\necho "%s $*" >> "%s/calls.log"\n' "$tool" "$WORK" >"$SHIMS/$tool"; done
@@ -32,7 +32,7 @@ case "$url" in
 esac
 SH
 chmod +x "$SHIMS"/*
-export PATH="$SHIMS:$PATH" FYNIX_PREFIX="$PFX" FYNIX_TEST=1
+export PATH="$SHIMS:$PATH" BRANDBASKET_PREFIX="$PFX" BRANDBASKET_TEST=1
 failures=0
 check() { local what="$1"; shift; if "$@" >/dev/null 2>&1; then printf '  PASS  %s\n' "$what"; else printf '  FAIL  %s\n' "$what"; failures=$((failures + 1)); fi; }
 run() { bash "$SCRIPT" --on-server --skip-node "$@"; }
@@ -43,23 +43,23 @@ check "no files created" test ! -e "$PFX/etc"
 
 echo "== apply (no certificate yet)"
 run --apply --app-host dash.example.com --admin-host staff.example.com | sed 's/^/    /'
-check "migrate wrapper installed executable" test -x "$PFX/usr/local/sbin/fynix-migrate"
-check "units installed" test -f "$PFX/etc/systemd/system/fynix-app.service"
-check "sudoers installed" grep -q 'NOPASSWD: /usr/local/sbin/fynix-migrate' "$PFX/etc/sudoers.d/fynix"
-check "hostname substituted in the port-80 file" grep -q 'server_name dash.example.com staff.example.com;' "$PFX/etc/nginx/sites-available/fynix-acme.conf"
-check "port-80 site enabled" test -L "$PFX/etc/nginx/sites-enabled/fynix-acme.conf"
-check "https dashboard file NOT installed before the certificate exists" test ! -e "$PFX/etc/nginx/sites-available/fynix-app.conf"
-check "Cloudflare geo file written" grep -q 'default 0;' "$PFX/etc/nginx/conf.d/fynix-cloudflare-geo.conf"
-check "proxy snippet overwrites X-Forwarded-For" grep -q 'X-Forwarded-For \$remote_addr;' "$PFX/etc/nginx/snippets/fynix-proxy.conf"
+check "migrate wrapper installed executable" test -x "$PFX/usr/local/sbin/brandbasket-migrate"
+check "units installed" test -f "$PFX/etc/systemd/system/brandbasket-app.service"
+check "sudoers installed" grep -q 'NOPASSWD: /usr/local/sbin/brandbasket-migrate' "$PFX/etc/sudoers.d/brandbasket"
+check "hostname substituted in the port-80 file" grep -q 'server_name dash.example.com staff.example.com;' "$PFX/etc/nginx/sites-available/brandbasket-acme.conf"
+check "port-80 site enabled" test -L "$PFX/etc/nginx/sites-enabled/brandbasket-acme.conf"
+check "https dashboard file NOT installed before the certificate exists" test ! -e "$PFX/etc/nginx/sites-available/brandbasket-app.conf"
+check "Cloudflare geo file written" grep -q 'default 0;' "$PFX/etc/nginx/conf.d/brandbasket-cloudflare-geo.conf"
+check "proxy snippet overwrites X-Forwarded-For" grep -q 'X-Forwarded-For \$remote_addr;' "$PFX/etc/nginx/snippets/brandbasket-proxy.conf"
 check "timers installed but not enabled" bash -c "! grep -q 'enable' '$WORK/calls.log'"
 
 echo "== a certificate and an origin certificate appear; second run installs the https files"
-mkdir -p "$PFX/etc/letsencrypt/live/dash.example.com" "$PFX/etc/ssl/fynix"
-touch "$PFX/etc/letsencrypt/live/dash.example.com/fullchain.pem" "$PFX/etc/ssl/fynix/staff.pem" "$PFX/etc/ssl/fynix/staff.key"
+mkdir -p "$PFX/etc/letsencrypt/live/dash.example.com" "$PFX/etc/ssl/brandbasket"
+touch "$PFX/etc/letsencrypt/live/dash.example.com/fullchain.pem" "$PFX/etc/ssl/brandbasket/staff.pem" "$PFX/etc/ssl/brandbasket/staff.key"
 run --apply --app-host dash.example.com --admin-host staff.example.com | sed 's/^/    /'
-check "dashboard https file uses the new name and cert path" grep -q '/etc/letsencrypt/live/dash.example.com/fullchain.pem' "$PFX/etc/nginx/sites-available/fynix-app.conf"
-check "console file uses the new name" grep -q 'server_name staff.example.com;' "$PFX/etc/nginx/sites-available/fynix-admin.conf"
-check "both enabled" bash -c "test -L '$PFX/etc/nginx/sites-enabled/fynix-app.conf' && test -L '$PFX/etc/nginx/sites-enabled/fynix-admin.conf'"
+check "dashboard https file uses the new name and cert path" grep -q '/etc/letsencrypt/live/dash.example.com/fullchain.pem' "$PFX/etc/nginx/sites-available/brandbasket-app.conf"
+check "console file uses the new name" grep -q 'server_name staff.example.com;' "$PFX/etc/nginx/sites-available/brandbasket-admin.conf"
+check "both enabled" bash -c "test -L '$PFX/etc/nginx/sites-enabled/brandbasket-app.conf' && test -L '$PFX/etc/nginx/sites-enabled/brandbasket-admin.conf'"
 
 echo "== third run changes nothing"
 out="$(run --apply --app-host dash.example.com --admin-host staff.example.com)"
@@ -67,11 +67,11 @@ out="$(run --apply --app-host dash.example.com --admin-host staff.example.com)"
 check "no file installed, link made or directory created" bash -c "! grep -E -- '-> (installed|enabled|create /)' <<<'$out'"
 
 echo "== nginx -t fails: the links this run added are taken out again"
-unlink "$PFX/etc/nginx/sites-enabled/fynix-app.conf"
+unlink "$PFX/etc/nginx/sites-enabled/brandbasket-app.conf"
 touch "$WORK/nginx-fails"
 if run --apply --app-host dash.example.com --admin-host staff.example.com 2>&1 | sed 's/^/    /'; then rc=0; else rc=1; fi
 check "script exited non-zero" test "$rc" -eq 1 || true
-check "the dashboard link added by the failed run is gone" test ! -e "$PFX/etc/nginx/sites-enabled/fynix-app.conf"
-check "links that were there before are untouched" test -L "$PFX/etc/nginx/sites-enabled/fynix-acme.conf"
+check "the dashboard link added by the failed run is gone" test ! -e "$PFX/etc/nginx/sites-enabled/brandbasket-app.conf"
+check "links that were there before are untouched" test -L "$PFX/etc/nginx/sites-enabled/brandbasket-acme.conf"
 echo
 if [[ $failures -eq 0 ]]; then echo "ALL CHECKS PASSED"; else echo "$failures CHECK(S) FAILED"; exit 1; fi

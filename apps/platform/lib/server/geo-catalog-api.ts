@@ -24,7 +24,7 @@ export async function handleGeoCatalog(request: Request, deps: GeoCatalogApiDeps
     const body: GeoCatalogResponse = { contract: GEO_CATALOG_CONTRACT_VERSION, ...(await deps.readCatalog()) };
     return reply(200, body);
   } catch (error) {
-    console.error("[fynix:directory] GET /api/directory/catalog failed", errorLogInfo(error));
+    console.error("[brandbasket:directory] GET /api/directory/catalog failed", errorLogInfo(error));
     return reply(503, { error: "The catalog is unavailable right now." });
   }
 }

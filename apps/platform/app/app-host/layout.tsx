@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactElement, ReactNode } from "react";
 import { DashboardRoot, dashboardMetadataBase, dashboardViewport } from "@brandbasket/shared/ui/panel/dashboard-root";
 import { BrandProvider } from "@/components/panel/brand-provider";
-import { figtree } from "@/lib/fynix-font";
+import { figtree } from "@/lib/brandbasket-font";
 import { requestBrand } from "@/lib/server/request-brand";
 import { requireSurfaceHost } from "@/lib/server/surface-host";
 import { SupportProvider } from "@/components/panel/support/support-provider";
@@ -11,7 +11,7 @@ import { getSessionUser } from "@/lib/server/session";
 
 // A root layout (see components/dashboard-root.tsx for why): this app no longer has a single shared
 // app/layout.tsx, so metadataBase/applicationName/viewport must be supplied here, same as before the split.
-// A function, not a constant, because the title carries the name of the brand the host is sold under (Fynix Digital on
+// A function, not a constant, because the title carries the name of the brand the host is sold under (Brandbasket on
 // its own host).
 export async function generateMetadata(): Promise<Metadata> {
   const brand = await requestBrand();
@@ -31,6 +31,6 @@ interface AppHostLayoutProps {
 export default async function AppHostLayout({ children }: AppHostLayoutProps): Promise<ReactElement> {
   await requireSurfaceHost("app");
   const brand = await requestBrand();
-  const userId = process.env.FYNIX_SUPPORT_MODE === "internal" ? (await getSessionUser())?.id ?? null : null;
-  return <DashboardRoot brand={{ id: "fynix", className: figtree.variable }}><BrandProvider brand={brand}><SupportProvider canCreate={canCreateSupportRequest(userId)}>{children}</SupportProvider></BrandProvider></DashboardRoot>;
+  const userId = process.env.BRANDBASKET_SUPPORT_MODE === "internal" ? (await getSessionUser())?.id ?? null : null;
+  return <DashboardRoot brand={{ id: "brandbasket", className: figtree.variable }}><BrandProvider brand={brand}><SupportProvider canCreate={canCreateSupportRequest(userId)}>{children}</SupportProvider></BrandProvider></DashboardRoot>;
 }

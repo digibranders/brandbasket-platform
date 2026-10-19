@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # What this does: writes the two nginx files that the staff console's server block relies on, from Cloudflare's published
 # address ranges:
-#   snippets/fynix-cloudflare-realip.conf   set_real_ip_from <each range>; real_ip_header CF-Connecting-IP;   (so $remote_addr is the visitor)
-#   conf.d/fynix-cloudflare-geo.conf        geo $realip_remote_addr $fynix_from_cloudflare { ... }          (1 only for Cloudflare's own addresses;
+#   snippets/brandbasket-cloudflare-realip.conf   set_real_ip_from <each range>; real_ip_header CF-Connecting-IP;   (so $remote_addr is the visitor)
+#   conf.d/brandbasket-cloudflare-geo.conf        geo $realip_remote_addr $brandbasket_from_cloudflare { ... }          (1 only for Cloudflare's own addresses;
 #                                           the server block answers 444 to everything else). It checks the ORIGINAL connection address,
 #                                           because after the real_ip step $remote_addr is the visitor, not Cloudflare.
 # Assumes: run as root on the droplet (it writes under /etc/nginx), curl present, and either internet access to
@@ -43,8 +43,8 @@ if [[ "$count" -lt 10 ]]; then echo "Only $count ranges found; Cloudflare publis
   echo "real_ip_recursive off;"
 } >"$TMP/realip.conf"
 {
-  echo "# Written by scripts/server/cloudflare-ips.sh. \$fynix_from_cloudflare is 1 only when the TCP connection itself came from Cloudflare."
-  echo "geo \$realip_remote_addr \$fynix_from_cloudflare {"
+  echo "# Written by scripts/server/cloudflare-ips.sh. \$brandbasket_from_cloudflare is 1 only when the TCP connection itself came from Cloudflare."
+  echo "geo \$realip_remote_addr \$brandbasket_from_cloudflare {"
   echo "    default 0;"
   while read -r r; do echo "    $r 1;"; done <"$TMP/ranges"
   echo "}"
@@ -52,14 +52,14 @@ if [[ "$count" -lt 10 ]]; then echo "Only $count ranges found; Cloudflare publis
 
 echo "$count Cloudflare ranges."
 if [[ $APPLY -eq 0 ]]; then
-  echo "[dry-run] would write $NGINX_DIR/snippets/fynix-cloudflare-realip.conf and $NGINX_DIR/conf.d/fynix-cloudflare-geo.conf:"
+  echo "[dry-run] would write $NGINX_DIR/snippets/brandbasket-cloudflare-realip.conf and $NGINX_DIR/conf.d/brandbasket-cloudflare-geo.conf:"
   sed 's/^/    /' "$TMP/realip.conf" | head -6; echo "    ..."
   echo "Nothing was written. Add --apply."
   exit 0
 fi
 mkdir -p "$NGINX_DIR/snippets" "$NGINX_DIR/conf.d"
 changed=0
-for pair in "realip.conf:snippets/fynix-cloudflare-realip.conf" "geo.conf:conf.d/fynix-cloudflare-geo.conf"; do
+for pair in "realip.conf:snippets/brandbasket-cloudflare-realip.conf" "geo.conf:conf.d/brandbasket-cloudflare-geo.conf"; do
   src="$TMP/${pair%%:*}"; dest="$NGINX_DIR/${pair#*:}"
   if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then echo "unchanged $dest"; else install -m 644 "$src" "$dest"; echo "wrote $dest"; changed=1; fi
 done

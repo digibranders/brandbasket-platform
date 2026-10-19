@@ -25,7 +25,7 @@ interface WordmarkLogoProps {
   readonly tone?: "accent" | "light";
 }
 
-/** The Fynix logo, as the sign-in screens and the dashboard's sidebar draw it. */
+/** The Brandbasket logo, as the sign-in screens and the dashboard's sidebar draw it. */
 export function WordmarkLogo({ className, href, tone = "accent", brand }: WordmarkLogoProps): ReactElement {
   return (
     <Link href={href} aria-label={brand.name} className={cn("inline-flex items-center rounded-md py-1", className)}>

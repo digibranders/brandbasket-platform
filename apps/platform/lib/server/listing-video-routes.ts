@@ -19,7 +19,7 @@ export function videoRequestDeps(): VideoRequestDeps {
     requestUpload: (tenant, slot, size) => requestVideoUpload(videos, tenant, slot, size, new Date()),
     checkProgress: (tenant, videoId) => checkVideoProgress(videos, tenant, videoId, new Date()),
     log: (message, error) => {
-      console.error(`[fynix:videos] ${message}`, errorLogInfo(error));
+      console.error(`[brandbasket:videos] ${message}`, errorLogInfo(error));
     },
   };
 }

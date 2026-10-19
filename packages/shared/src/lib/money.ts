@@ -1,4 +1,4 @@
-/** The currencies Fynix bills in. Matches the database's billing_currency enum. */
+/** The currencies Brandbasket bills in. Matches the database's billing_currency enum. */
 export type MoneyCurrency = "USD" | "INR";
 
 const LOCALES: Readonly<Record<MoneyCurrency, string>> = {

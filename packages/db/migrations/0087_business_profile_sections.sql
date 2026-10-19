@@ -2,7 +2,7 @@
 -- Customer conversion, Reviews, Promotions, Trust): more columns on the profile row, a services table and a products
 -- table, and the picture slots for the banner and the gallery. drizzle-kit's DDL, then the grants and row-level
 -- security for the two new tables in the same pattern as 0081: the customer reads its own rows and writes nothing,
--- every write runs on the staff connection after the platform has checked the customer, fynix_public gets nothing.
+-- every write runs on the staff connection after the platform has checked the customer, bb_public gets nothing.
 -- directory_business_profiles' own grants (0081) cover its new columns.
 
 ALTER TYPE "public"."directory_picture_slot" ADD VALUE 'banner';--> statement-breakpoint
@@ -78,20 +78,20 @@ ALTER TABLE "directory_business_profiles" ADD CONSTRAINT "directory_business_pro
 ALTER TABLE "directory_business_profiles" ADD CONSTRAINT "directory_business_profiles_payment_methods_check" CHECK ("directory_business_profiles"."payment_methods" <@ ARRAY['cash','upi','card','net_banking','cheque','emi']::text[]);--> statement-breakpoint
 ALTER TABLE "directory_business_profiles" ADD CONSTRAINT "directory_business_profiles_licences_check" CHECK (cardinality("directory_business_profiles"."licences") <= 10 and char_length(array_to_string("directory_business_profiles"."licences", E'\n')) <= 1010);
 --> statement-breakpoint
-GRANT SELECT ON directory_business_services, directory_business_products TO fynix_app;
+GRANT SELECT ON directory_business_services, directory_business_products TO bb_app;
 --> statement-breakpoint
-GRANT SELECT, INSERT, UPDATE, DELETE ON directory_business_services, directory_business_products TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON directory_business_services, directory_business_products TO bb_staff;
 --> statement-breakpoint
 ALTER TABLE directory_business_services ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 ALTER TABLE directory_business_products ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
-CREATE POLICY directory_business_services_tenant_read ON directory_business_services FOR SELECT TO fynix_app
+CREATE POLICY directory_business_services_tenant_read ON directory_business_services FOR SELECT TO bb_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
-CREATE POLICY directory_business_products_tenant_read ON directory_business_products FOR SELECT TO fynix_app
+CREATE POLICY directory_business_products_tenant_read ON directory_business_products FOR SELECT TO bb_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
-CREATE POLICY directory_business_services_staff_all ON directory_business_services FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_business_services_staff_all ON directory_business_services FOR ALL TO bb_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
-CREATE POLICY directory_business_products_staff_all ON directory_business_products FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY directory_business_products_staff_all ON directory_business_products FOR ALL TO bb_staff USING (true) WITH CHECK (true);

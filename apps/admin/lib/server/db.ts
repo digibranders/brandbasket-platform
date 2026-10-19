@@ -3,7 +3,7 @@ import { createDatabase, type Database } from "@brandbasket/db";
 import { serverEnv } from "@/lib/server/env";
 
 // Kept on globalThis so hot reloads in development reuse the pool instead of opening new ones.
-const holder = globalThis as typeof globalThis & { fynixAdminDb?: Database };
+const holder = globalThis as typeof globalThis & { brandbasketAdminDb?: Database };
 
 /**
  * The staff connection, and the only one this app has.
@@ -12,6 +12,6 @@ const holder = globalThis as typeof globalThis & { fynixAdminDb?: Database };
  * work, authorised by `requireStaffAccess`, and scoped by an explicit business id rather than row-level security.
  */
 export function getStaffDb(): Database {
-  holder.fynixAdminDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;
-  return holder.fynixAdminDb;
+  holder.brandbasketAdminDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;
+  return holder.brandbasketAdminDb;
 }

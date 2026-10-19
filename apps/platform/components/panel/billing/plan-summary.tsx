@@ -14,7 +14,7 @@ interface PlanSummaryProps {
   readonly plan: Plan;
   readonly subscription: Subscription;
   readonly now: Date;
-  /** The brand the dashboard is sold under: it words the plan's name. Fynix when left out. */
+  /** The brand the dashboard is sold under: it words the plan's name. Brandbasket when left out. */
   readonly brand?: Brand;
   /** How they pay, shown inside the card under the price (components/panel/billing/payment-method.tsx), or left out. */
   readonly paymentMethod?: ReactNode;

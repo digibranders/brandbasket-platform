@@ -13,7 +13,7 @@ describe("DirectoryOnly", () => {
     expect(renderToStaticMarkup(<DirectoryOnly directory>Ads</DirectoryOnly>)).toBe("Ads");
   });
 
-  it("answers as a page that does not exist where it does not (Fynix)", () => {
+  it("answers as a page that does not exist where it does not (Brandbasket)", () => {
     expect(() => renderToStaticMarkup(<DirectoryOnly directory={false}>Ads</DirectoryOnly>)).toThrow("NEXT_NOT_FOUND");
   });
 });

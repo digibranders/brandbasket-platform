@@ -1,7 +1,7 @@
 /*
  * The settings a real deployment must have before it starts (instrumentation.ts of each app) or builds on Vercel
- * (next.config.ts). Fynix is its own product on its own server: it has no marketing website to take leads from, no team
- * inbox named in the environment (alerts default to Fynix's own address), and no directory or video accounts, so none
+ * (next.config.ts). Brandbasket is its own product on its own server: it has no marketing website to take leads from, no team
+ * inbox named in the environment (alerts default to Brandbasket's own address), and no directory or video accounts, so none
  * of those settings is demanded. It sends nothing to phones: every code is emailed. Every safety guard that is not about a
  * feature (secrets, origins, no code bypass, a Brevo key for the emailed codes) is demanded.
  */

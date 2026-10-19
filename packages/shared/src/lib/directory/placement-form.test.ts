@@ -52,12 +52,12 @@ describe("parsePlacementForm", () => {
   it("takes the business id a new listing takes over, from the id itself or a full business address", () => {
     expect(parsePlacementForm(form({ takeOverPlaceId: " k7m2q9a " }))).toMatchObject({ success: true, data: { takeOverPlaceId: "k7m2q9a" } });
     expect(
-      parsePlacementForm(form({ takeOverPlaceId: "https://fynix.digital/in/mh/thane/business/smile-dental/k7m2q9a" })),
+      parsePlacementForm(form({ takeOverPlaceId: "https://brandbasket.in/in/mh/thane/business/smile-dental/k7m2q9a" })),
     ).toMatchObject({ success: true, data: { takeOverPlaceId: "k7m2q9a" } });
     expect(parsePlacementForm(form({ takeOverPlaceId: "" }))).toMatchObject({ success: true, data: { takeOverPlaceId: null } });
     expect(parsePlacementForm(form({ takeOverPlaceId: "K7M2Q9A" }))).toMatchObject({ success: true, data: { takeOverPlaceId: "k7m2q9a" } });
     expect(
-      parsePlacementForm(form({ takeOverPlaceId: "https://fynix.digital/in/mh/thane/business/smile-dental/K7M2Q9A" })),
+      parsePlacementForm(form({ takeOverPlaceId: "https://brandbasket.in/in/mh/thane/business/smile-dental/K7M2Q9A" })),
     ).toMatchObject({ success: true, data: { takeOverPlaceId: "k7m2q9a" } });
   });
 
@@ -66,7 +66,7 @@ describe("parsePlacementForm", () => {
       form({
         whatsappPhone: "+91 90000 00001",
         bookingUrl: "https://smiledental.in/book",
-        replacesSourcePath: "https://fynix.digital/in/dentists/mh/thane/naupada/smile-dental?x=1",
+        replacesSourcePath: "https://brandbasket.in/in/dentists/mh/thane/naupada/smile-dental?x=1",
       }),
     );
     expect(result).toMatchObject({
@@ -92,7 +92,7 @@ describe("parsePlacementForm", () => {
     [{ replacesSourcePath: "/blog/something" }, "replacesSourcePath"],
     [{ takeOverPlaceId: "smile-dental" }, "takeOverPlaceId"],
     [{ takeOverPlaceId: "kkkkkkk" }, "takeOverPlaceId"],
-    [{ takeOverPlaceId: "https://fynix.digital/in/dentists/mh/thane/naupada/smile-dental" }, "takeOverPlaceId"],
+    [{ takeOverPlaceId: "https://brandbasket.in/in/dentists/mh/thane/naupada/smile-dental" }, "takeOverPlaceId"],
     [{ area: OTHER_CITY_AREA_SLUG }, "area"],
     [{ lon: "75.5" }, "lon"],
     [{ slug: "a".repeat(81) }, "slug"],
@@ -114,7 +114,7 @@ describe("parsePlacementForm", () => {
   });
 
   it("drops a trailing slash, query and hash from the unconfirmed path", () => {
-    const raw = "https://fynix.digital/in/dentists/mh/thane/naupada/smile-dental/?x=1#reviews";
+    const raw = "https://brandbasket.in/in/dentists/mh/thane/naupada/smile-dental/?x=1#reviews";
     expect(parsePlacementForm(form({ replacesSourcePath: raw }))).toMatchObject({
       success: true,
       data: { replacesSourcePath: "/in/dentists/mh/thane/naupada/smile-dental" },

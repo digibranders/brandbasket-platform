@@ -14,7 +14,7 @@ describe("realDeployment", () => {
 
   it("is true for the dashboard served over https on a public host", () => {
     vi.stubEnv("VERCEL_ENV", "");
-    vi.stubEnv("APP_ORIGIN", "https://app.fynix.digital");
+    vi.stubEnv("APP_ORIGIN", "https://app.brandbasket.in");
     expect(realDeployment()).toBe(true);
   });
 });

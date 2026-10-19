@@ -37,7 +37,7 @@ export async function completeSetup(_previous: SetupFormState, formData: FormDat
     }
     // Both a duplicate creation attempt and a failed ownership check lead to the same explicit verification step.
     if (error instanceof AccountAlreadyExistsError) {
-      return { status: "error", message: "This email already has a Fynix account. Enter that account’s password to finish setup.", mode: "verify-existing", field: "password" };
+      return { status: "error", message: "This email already has a Brandbasket account. Enter that account’s password to finish setup.", mode: "verify-existing", field: "password" };
     }
     throw error;
   }

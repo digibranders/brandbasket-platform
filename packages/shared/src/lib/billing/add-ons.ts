@@ -6,7 +6,7 @@ import { lifetimeOfferCentsFor } from "./lifetime-offer";
  * The digital-marketing services a business buys from the Add-ons page (docs/superpowers/specs/2026-10-09-add-ons-
  * design.md), and what each costs in each currency a business is billed in. Rupee prices are net of GST, in paise, and
  * match the website's Digital marketing page; dollar prices are in cents with no tax and match its US page
- * (fynix.digital/us/free-business-website): change both together. A price here only affects new purchases; what a
+ * (brandbasket.in/us/free-business-website): change both together. A price here only affects new purchases; what a
  * business pays for an existing subscription is stored on it. Pure and browser-safe.
  */
 

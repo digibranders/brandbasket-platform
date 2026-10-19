@@ -1,14 +1,14 @@
 # Staff access
 
-The staff console is its own app (`apps/admin`) on its own address: **https://console.fynix.digital** in production, beside the
-customer dashboard at https://app.fynix.digital. Set `ADMIN_ORIGIN=https://console.fynix.digital` in both apps'
+The staff console is its own app (`apps/admin`) on its own address: **https://console.brandbasket.in** in production, beside the
+customer dashboard at https://app.brandbasket.in. Set `ADMIN_ORIGIN=https://console.brandbasket.in` in both apps'
 environments (`apps/admin/.env.production.example`, `apps/platform/.env.production.example`).
 
 ## Two origins, no shared cookie
 
 Each app signs people in on its own host and sets a **host-only** session cookie (no `Domain` attribute), so the browser never
 sends the dashboard's cookie to the console, or the console's to the dashboard. Nothing is configured to share a cookie
-across `fynix.digital`; do not add a `Domain=.fynix.digital` cookie or Better Auth's `crossSubDomainCookies`. Staff get a
+across `brandbasket.in`; do not add a `Domain=.brandbasket.in` cookie or Better Auth's `crossSubDomainCookies`. Staff get a
 12-hour session (customers get longer). Both apps list the two origins as trusted (`trustedOrigins`); every other origin is
 refused. Checked locally with the dashboard on `app.localhost:3098` and the console on
 `staff.localhost:3099`: two cookies, one per host, neither with a domain; a customer's session cookie sent to
@@ -21,7 +21,7 @@ repository root, with the production environment loaded (it reads `ADMIN_ORIGIN`
 `BETTER_AUTH_SECRET`):
 
 ```bash
-pnpm staff:create --email you@fynix.digital --name "Your Name" --role admin
+pnpm staff:create --email you@brandbasket.in --name "Your Name" --role admin
 ```
 
 It asks twice for a password with no echo (at least 8 characters with a letter, a number and a symbol, the same rule as
@@ -38,7 +38,7 @@ To take access away, set `active = false` on the person's row in `staff_members`
 | `finance` | Everything `support` can, plus Pricing, Invoices and their export, payments, charges, waivers, upgrades. |
 | `admin` | Everything, including the access log. |
 
-The console's directory sections (Directory, Places, Ads, Deals, Affiliates) are switched off for Fynix: those addresses answer
+The console's directory sections (Directory, Places, Ads, Deals, Affiliates) are switched off for Brandbasket: those addresses answer
 "not found".
 
 ## The access log
@@ -67,12 +67,12 @@ staff account is protected by its password alone (plus the limits above). Treat 
 ## Recommendations
 
 1. Put the console behind **Cloudflare Access** (or another identity-aware proxy) with the team's own identity provider and a
-   second factor, so `console.fynix.digital` is not reachable at all without it. This is the quickest real second factor.
-2. Or, at least, an **IP allow-list** (Cloudflare WAF rule or the server's firewall / nginx `allow`) for `console.fynix.digital`
+   second factor, so `console.brandbasket.in` is not reachable at all without it. This is the quickest real second factor.
+2. Or, at least, an **IP allow-list** (Cloudflare WAF rule or the server's firewall / nginx `allow`) for `console.brandbasket.in`
    to the office and the team's VPN.
 3. Use `admin` for as few people as possible; day-to-day staff are `support` or `finance`. Review the Access log weekly.
 4. Set `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET` in production, and `SECURITY_ALERT_EMAIL` to a monitored inbox.
-5. Keep `console.fynix.digital` off search engines and links (the console already sends `noindex`); do not put its address in
+5. Keep `console.brandbasket.in` off search engines and links (the console already sends `noindex`); do not put its address in
    customer emails.
 6. Deactivate people the day they leave. Rotate `BETTER_AUTH_SECRET` after a suspected leak (this signs everyone out).
 7. Plan real two-factor sign-in (Better Auth has a two-factor plugin) before the console is reachable without 1 or 2.

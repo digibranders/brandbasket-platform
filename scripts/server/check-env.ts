@@ -1,9 +1,9 @@
 /*
- * Checks a Fynix deployment's environment files before the apps are started on them. Run by scripts/server/deploy.sh on the
+ * Checks a Brandbasket deployment's environment files before the apps are started on them. Run by scripts/server/deploy.sh on the
  * server (and by hand): it reads the two files, prints problems by setting name (never a value), and exits 1 if any stop a
  * deploy. The rules are packages/shared/src/lib/production-env-check.ts, which has the tests.
  *
- *   pnpm exec tsx scripts/server/check-env.ts --platform /srv/fynix/shared/platform.env.local --admin /srv/fynix/shared/admin.env.local
+ *   pnpm exec tsx scripts/server/check-env.ts --platform /srv/brandbasket/shared/platform.env.local --admin /srv/brandbasket/shared/admin.env.local
  *
  * Either flag may be left out to check one file alone. Needs nothing from the network or the database.
  */

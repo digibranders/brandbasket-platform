@@ -38,7 +38,7 @@ function deps(overrides: Partial<BlogPreviewDeps> = {}): BlogPreviewDeps {
 }
 
 function request(previewToken: string | null, siteToken: string | null = SITE_TOKEN): Request {
-  const url = new URL("https://app.fynix.digital/api/site/posts/preview");
+  const url = new URL("https://app.brandbasket.in/api/site/posts/preview");
   if (previewToken !== null) url.searchParams.set("token", previewToken);
   return new Request(url, { headers: siteToken === null ? {} : { Authorization: `Bearer ${siteToken}` } });
 }

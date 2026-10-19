@@ -92,7 +92,7 @@ describe("setupLinkEmail", () => {
   });
 
   it("addresses the business and states how long the link lasts", () => {
-    expect(email.subject).toBe("Set up your Fynix Digital account");
+    expect(email.subject).toBe("Set up your Brandbasket account");
     expect(email.bodyText).toContain("Riverside Plumbing");
     expect(email.bodyText).toContain("7 days");
     expect(email.bodyHtml).toContain("7 days");
@@ -112,7 +112,7 @@ describe("previewReadyEmail", () => {
   });
 
   it("names the business in the subject", () => {
-    expect(email.subject).toBe("Your Fynix Digital preview is ready");
+    expect(email.subject).toBe("Your Brandbasket preview is ready");
     expect(email.bodyText).toContain("Riverside Plumbing");
   });
 
@@ -197,7 +197,7 @@ describe("websiteLiveEmail", () => {
   });
 
   it("names the business in the subject", () => {
-    expect(email.subject).toBe("Your Fynix Digital website is live");
+    expect(email.subject).toBe("Your Brandbasket website is live");
     expect(email.bodyText).toContain("Riverside Plumbing");
   });
 
@@ -225,10 +225,10 @@ describe("websiteLiveEmail", () => {
 });
 
 describe("privacy request alerts", () => {
-  const CONSOLE = "https://console.fynix.digital/privacy-requests";
+  const CONSOLE = "https://console.brandbasket.in/privacy-requests";
 
   it("announces a new request with its reference, kind, due day and a console link, and nothing about the person", () => {
-    const message = privacyRequestAlertEmail({ to: "hello@fynix.digital", reference: "PR-7K2M9QXD", kindLabel: "Erasure", dueDay: "12 November 2026", consoleUrl: CONSOLE });
+    const message = privacyRequestAlertEmail({ to: "hello@brandbasket.in", reference: "PR-7K2M9QXD", kindLabel: "Erasure", dueDay: "12 November 2026", consoleUrl: CONSOLE });
     expect(message.subject).toBe("New privacy request PR-7K2M9QXD (Erasure)");
     expect(message.template).toBe("privacy-request-alert");
     for (const body of [message.bodyText, message.bodyHtml]) {
@@ -248,7 +248,7 @@ describe("privacy request alerts", () => {
 
   it("lists each open request with its stage and how many days are left or overdue", () => {
     const message = privacyRequestsDueEmail({
-      to: "hello@fynix.digital",
+      to: "hello@brandbasket.in",
       consoleUrl: CONSOLE,
       items: [
         { reference: "PR-LATE0001", kindLabel: "Grievance", dueDay: "5 November 2026", stage: "overdue", daysLeft: -3 },
@@ -274,13 +274,13 @@ describe("privacy request alerts", () => {
 describe("security alerts", () => {
   it("says what happened, how many and over what time, with the runbook and the CERT-In clock", () => {
     const message = securityEventAlertEmail({
-      to: "hello@fynix.digital",
+      to: "hello@brandbasket.in",
       eventLabel: "Sign-ins blocked for too many tries",
       advice: "Many accounts or addresses are being tried.",
       count: 20,
       windowMinutes: 60,
       app: "platform",
-      consoleUrl: "https://console.fynix.digital/access-log",
+      consoleUrl: "https://console.brandbasket.in/access-log",
     });
     expect(message.subject).toBe("[Security] Sign-ins blocked for too many tries (20 or more in 60 minutes)");
     expect(message.template).toBe("security-event-alert");
@@ -293,14 +293,14 @@ describe("security alerts", () => {
 
   it("lists each staff finding in the nightly review, and refuses an empty review", () => {
     const message = staffAccessReviewEmail({
-      to: "hello@fynix.digital",
+      to: "hello@brandbasket.in",
       hours: 24,
-      consoleUrl: "https://console.fynix.digital/access-log",
-      findings: [{ staff: "asha@fynix.digital", what: "Exported the invoice register", count: 5 }],
+      consoleUrl: "https://console.brandbasket.in/access-log",
+      findings: [{ staff: "asha@brandbasket.in", what: "Exported the invoice register", count: 5 }],
     });
     expect(message.subject).toBe("[Security] Staff access review: 1 item to check");
-    expect(message.bodyText).toContain("asha@fynix.digital: Exported the invoice register, 5 times");
-    expect(() => staffAccessReviewEmail({ to: "a@b.in", hours: 24, consoleUrl: "https://console.fynix.digital/access-log", findings: [] })).toThrow("at least one");
+    expect(message.bodyText).toContain("asha@brandbasket.in: Exported the invoice register, 5 times");
+    expect(() => staffAccessReviewEmail({ to: "a@b.in", hours: 24, consoleUrl: "https://console.brandbasket.in/access-log", findings: [] })).toThrow("at least one");
   });
 });
 
@@ -376,7 +376,7 @@ describe("passwordResetEmail", () => {
   const email = passwordResetEmail({ to: "owner@example.com", resetUrl: "http://app.localhost:3000/reset-password/abc123", expiresInMinutes: 60 });
 
   it("carries the link, how long it lasts, and that ignoring it changes nothing", () => {
-    expect(email.subject).toBe("Reset your Fynix Digital password");
+    expect(email.subject).toBe("Reset your Brandbasket password");
     expect(email.template).toBe("password-reset");
     for (const body of [email.bodyText, email.bodyHtml]) {
       expect(body).toContain("http://app.localhost:3000/reset-password/abc123");
@@ -394,7 +394,7 @@ describe("confirmEmailEmail", () => {
   const email = confirmEmailEmail({ to: "owner@example.com", confirmUrl: "http://app.localhost:3000/confirm-email/tok.en", expiresInDays: 3 });
 
   it("carries the link and how long it lasts", () => {
-    expect(email.subject).toBe("Confirm your email for Fynix Digital");
+    expect(email.subject).toBe("Confirm your email for Brandbasket");
     expect(email.template).toBe("confirm-email");
     for (const body of [email.bodyText, email.bodyHtml]) {
       expect(body).toContain("http://app.localhost:3000/confirm-email/tok.en");
@@ -442,7 +442,7 @@ describe("listingEnquiryEmail", () => {
 
 describe("supportTicketAlertEmail", () => {
   const input = {
-    to: "hello@fynix.digital",
+    to: "hello@brandbasket.in",
     reference: "SUP-2026-A1B2",
     ticketId: "0192f3c4-1234-7000-8000-000000000001",
     category: "bug",
@@ -463,7 +463,7 @@ describe("supportTicketAlertEmail", () => {
   it("formats subject with category, subject, and reference", () => {
     const email = supportTicketAlertEmail(input);
     expect(email.subject).toBe("[Report a bug] Cannot upload photos (SUP-2026-A1B2)");
-    expect(email.to).toBe("hello@fynix.digital");
+    expect(email.to).toBe("hello@brandbasket.in");
     expect(email.template).toBe("support-ticket-alert");
   });
 
@@ -511,7 +511,7 @@ describe("supportTicketAlertEmail", () => {
 
 describe("supportReplyAlertEmail", () => {
   const input = {
-    to: "hello@fynix.digital",
+    to: "hello@brandbasket.in",
     reference: "SUP-2026-A1B2",
     ticketId: "0192f3c4-1234-7000-8000-000000000001",
     subject: "Cannot upload photos",
@@ -525,7 +525,7 @@ describe("supportReplyAlertEmail", () => {
   it("formats subject and contains customer reply details", () => {
     const email = supportReplyAlertEmail(input);
     expect(email.subject).toBe("[Customer Reply] Cannot upload photos (SUP-2026-A1B2)");
-    expect(email.to).toBe("hello@fynix.digital");
+    expect(email.to).toBe("hello@brandbasket.in");
     expect(email.template).toBe("support-reply-alert");
     for (const body of [email.bodyText, email.bodyHtml]) {
       expect(body).toContain("Still happening today on Chrome.");
@@ -552,7 +552,7 @@ describe("supportReplyAlertEmail", () => {
 
 describe("systemErrorAlertEmail", () => {
   const input = {
-    to: "hello@fynix.digital",
+    to: "hello@brandbasket.in",
     app: "platform",
     operation: "server_action",
     errorClass: "DatabaseConnectionTimeout",
@@ -580,9 +580,9 @@ describe("systemErrorAlertEmail", () => {
 describe("emails that sign someone in keep their link out of the outbox", () => {
   const TOKEN = "Kq8vR2mN4tY7wZ1x";
   const cases = [
-    ["password-reset", passwordResetEmail({ to: "asha@example.in", resetUrl: `https://app.fynix.digital/reset-password/${TOKEN}`, expiresInMinutes: 60 })],
-    ["confirm-email", confirmEmailEmail({ to: "asha@example.in", confirmUrl: `https://app.fynix.digital/confirm-email/${TOKEN}`, expiresInDays: 7 })],
-    ["setup-link", setupLinkEmail({ to: "asha@example.in", businessName: "Bloom Dental", setupUrl: `https://app.fynix.digital/setup/${TOKEN}`, expiresInDays: 7 })],
+    ["password-reset", passwordResetEmail({ to: "asha@example.in", resetUrl: `https://app.brandbasket.in/reset-password/${TOKEN}`, expiresInMinutes: 60 })],
+    ["confirm-email", confirmEmailEmail({ to: "asha@example.in", confirmUrl: `https://app.brandbasket.in/confirm-email/${TOKEN}`, expiresInDays: 7 })],
+    ["setup-link", setupLinkEmail({ to: "asha@example.in", businessName: "Bloom Dental", setupUrl: `https://app.brandbasket.in/setup/${TOKEN}`, expiresInDays: 7 })],
   ] as const;
 
   it.each(cases)("%s sends the link to the recipient", (_name, message) => {
@@ -600,10 +600,10 @@ describe("emails that sign someone in keep their link out of the outbox", () => 
 });
 
 describe("the staff-sent customer emails", () => {
-  it("speak as Fynix Digital", () => {
-    expect(setupLinkEmail({ to: "o@example.com", businessName: "Acme", setupUrl: "https://app.fynix.digital/setup/t", expiresInDays: 7 }).subject).toBe("Set up your Fynix Digital account");
-    expect(websiteLiveEmail({ to: "o@example.com", businessName: "Acme", websiteUrl: "https://acme.example" }).subject).toBe("Your Fynix Digital website is live");
-    expect(previewReadyEmail({ to: "o@example.com", businessName: "Acme", previewUrl: "https://preview.example/acme" }).subject).toBe("Your Fynix Digital preview is ready");
+  it("speak as Brandbasket", () => {
+    expect(setupLinkEmail({ to: "o@example.com", businessName: "Acme", setupUrl: "https://app.brandbasket.in/setup/t", expiresInDays: 7 }).subject).toBe("Set up your Brandbasket account");
+    expect(websiteLiveEmail({ to: "o@example.com", businessName: "Acme", websiteUrl: "https://acme.example" }).subject).toBe("Your Brandbasket website is live");
+    expect(previewReadyEmail({ to: "o@example.com", businessName: "Acme", previewUrl: "https://preview.example/acme" }).subject).toBe("Your Brandbasket preview is ready");
   });
 });
 
@@ -613,11 +613,11 @@ describe("signupCodeEmail", () => {
 
   it("carries the code and how long it lasts, ", () => {
     expect(email.template).toBe("signup-code");
-    expect(email.subject).toBe("Your Fynix Digital verification code");
+    expect(email.subject).toBe("Your Brandbasket verification code");
     for (const body of [email.bodyText, email.bodyHtml]) {
       expect(body).toContain("482913");
       expect(body).toContain("expires in 10 minutes");
-      expect(body).toContain("Fynix Digital");
+      expect(body).toContain("Brandbasket");
     }
     for (const text of [email.subject, email.bodyText, email.bodyHtml, email.outboxCopy?.subject ?? "", email.outboxCopy?.bodyText ?? ""]) {
       expect(text).not.toMatch(/first\s?fold/i);
@@ -718,8 +718,8 @@ describe("paymentReceivedEmail", () => {
     gstCents: 53_982,
     totalCents: 353_882,
     paidAt: new Date("2026-10-15T08:00:00Z"),
-    invoiceUrl: "https://app.fynix.digital/billing/invoices/0192f3c4",
-    logoUrl: "https://app.fynix.digital/brand/fynix-logo-dark.png",
+    invoiceUrl: "https://app.brandbasket.in/billing/invoices/0192f3c4",
+    logoUrl: "https://app.brandbasket.in/brand/brandbasket-logo-dark.png",
     nextPayment: { amountCents: 353_882, dueOn: new Date("2026-11-15T08:00:00Z") },
   } as const;
 
@@ -736,8 +736,8 @@ describe("paymentReceivedEmail", () => {
 
   it("links to the invoice and names the next payment", () => {
     const email = paymentReceivedEmail(base);
-    expect(email.bodyHtml).toContain('href="https://app.fynix.digital/billing/invoices/0192f3c4"');
-    expect(email.bodyText).toContain("https://app.fynix.digital/billing/invoices/0192f3c4");
+    expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/billing/invoices/0192f3c4"');
+    expect(email.bodyText).toContain("https://app.brandbasket.in/billing/invoices/0192f3c4");
     expect(email.bodyText).toContain("Your next payment is ₹3,538.82 on 15 November 2026.");
     expect(email.bodyHtml).toContain("15 November 2026");
   });

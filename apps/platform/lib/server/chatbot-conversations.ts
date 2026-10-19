@@ -6,7 +6,7 @@ import { fetchConversation, fetchLeadActivity, type ConversationMessage, type Le
 
 /**
  * What the customer's OyeChats page reads from OyeChats itself: each lead's message count and last activity, and the messages
- * of one conversation. The conversations are not copied into Fynix. The key that reads them is a staff-only credential, so
+ * of one conversation. The conversations are not copied into Brandbasket. The key that reads them is a staff-only credential, so
  * these functions read it on the staff connection (a sanctioned exception, see lib/server/db.ts) and only ever for a bot that
  * the signed-in customer's own business owns.
  */

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# What this does: ships the current commit of this repository to the Fynix droplet, safely, from the operator's machine
+# What this does: ships the current commit of this repository to the Brandbasket droplet, safely, from the operator's machine
 # (a Mac or Linux box with node, pnpm, git, rsync and ssh). Nothing here depends on GitHub Actions.
 #
 #   deploy.sh --host deploy@DROPLET                  show the plan (dry-run: touches nothing, not even the network)
@@ -10,17 +10,17 @@
 # The steps, in order, and where a failure stops:
 #   1. build   a clean export of HEAD (git archive, so no .env files and no uncommitted change) is installed and built here with
 #              the production NEXT_PUBLIC values from deploy/build.env. The droplet never builds (a 2 GB box cannot).
-#   2. upload  rsync to /srv/fynix/releases/<release>.partial, renamed to <release> only when complete; links the shared env files.
+#   2. upload  rsync to /srv/brandbasket/releases/<release>.partial, renamed to <release> only when complete; links the shared env files.
 #   3. install `pnpm install --frozen-lockfile` in the release on the server (native modules for the server's own platform).
 #   4. check   `pnpm env:check` on the server's two env files: a missing key stops the deploy BEFORE anything changes.
-#   5. migrate fynix-migrate (main DB, as its owner, through sudo) then scripts/cms-migrate.sh (Payload's DB). Still before the
+#   5. migrate brandbasket-migrate (main DB, as its owner, through sudo) then scripts/cms-migrate.sh (Payload's DB). Still before the
 #              switch: the old code keeps serving while the schema moves, so migrations must work with the previous release.
 #   6. switch  current-platform then current-admin are pointed at the release and each service restarted ONE AT A TIME; each must
 #              answer /login within 90 s. If any does not, every app already switched goes back to the release it ran before.
 #   7. prune   the newest 5 releases are kept (and anything a symlink points at).
 #
-# Assumes on the server: the layout of docs/deployment/fynix-droplet.md (the deploy user, /srv/fynix, the systemd units
-# fynix-app and fynix-admin, /usr/local/sbin/fynix-migrate, a sudoers rule for exactly those two commands).
+# Assumes on the server: the layout of docs/deployment/brandbasket-droplet.md (the deploy user, /srv/brandbasket, the systemd units
+# brandbasket-app and brandbasket-admin, /usr/local/sbin/brandbasket-migrate, a sudoers rule for exactly those two commands).
 # Never contacts any server unless you pass --apply (or --list/--status, which only read). The address is always a parameter.
 #
 # The two public hostnames only matter for the health check (the Host header sent to 127.0.0.1); the defaults below are the
@@ -33,7 +33,7 @@ usage() { awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' 
 
 HOST=""
 LOCAL_ROOT=""
-ROOT="/srv/fynix"
+ROOT="/srv/brandbasket"
 SOURCE=""
 SHA=""
 APPLY=0
@@ -45,14 +45,14 @@ KEEP=5
 MODE="deploy"
 ROLLBACK_TO=""
 ROLLBACK_APP="both"
-SSH_OPTS="${FYNIX_SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=15}"
-APP_HOST="app.fynix.digital"
-ADMIN_HOST="console.fynix.digital"
-APP_PORT=3001
-ADMIN_PORT=3003
-HEALTH_TRIES="${FYNIX_HEALTH_TRIES:-45}"
-HEALTH_PAUSE="${FYNIX_HEALTH_PAUSE:-2}"
-MIGRATE_CMD="${FYNIX_MIGRATE_CMD:-sudo -n /usr/local/sbin/fynix-migrate}"
+SSH_OPTS="${BRANDBASKET_SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=15}"
+APP_HOST="app.brandbasket.in"
+ADMIN_HOST="console.brandbasket.in"
+APP_PORT=3201
+ADMIN_PORT=3203
+HEALTH_TRIES="${BRANDBASKET_HEALTH_TRIES:-45}"
+HEALTH_PAUSE="${BRANDBASKET_HEALTH_PAUSE:-2}"
+MIGRATE_CMD="${BRANDBASKET_MIGRATE_CMD:-sudo -n /usr/local/sbin/brandbasket-migrate}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -126,7 +126,7 @@ LIST
 # Prints "PREV=<path>" for the release the app ran before, then restarts it and waits for /login. Exit 1 if it never answers.
 switch_app() { # app release
   local app="$1" release="$2" unit host port
-  if [[ "$app" == platform ]]; then unit=fynix-app; host="$APP_HOST"; port="$APP_PORT"; else unit=fynix-admin; host="$ADMIN_HOST"; port="$ADMIN_PORT"; fi
+  if [[ "$app" == platform ]]; then unit=brandbasket-app; host="$APP_HOST"; port="$APP_PORT"; else unit=brandbasket-admin; host="$ADMIN_HOST"; port="$ADMIN_PORT"; fi
   { prelude; cat <<SWITCH
 app='$app'; unit='$unit'; host='$host'; port='$port'; release='$release'
 target="\$ROOT/releases/\$release"
@@ -152,7 +152,7 @@ restore_app() { # app previous
   local app="$1" previous="$2"
   if [[ -z "$previous" ]]; then say "  $app: it had no previous release to go back to."; return 0; fi
   say "  $app: going back to $(basename "$previous")"
-  if switch_app "$app" "$(basename "$previous")" >/dev/null; then say "  $app: back and answering."; else say "  $app: WENT BACK BUT DID NOT ANSWER. Look at: journalctl -u fynix-$([[ $app == platform ]] && echo app || echo admin) -n 80"; fi
+  if switch_app "$app" "$(basename "$previous")" >/dev/null; then say "  $app: back and answering."; else say "  $app: WENT BACK BUT DID NOT ANSWER. Look at: journalctl -u brandbasket-$([[ $app == platform ]] && echo app || echo admin) -n 80"; fi
 }
 
 # --- --rollback ------------------------------------------------------------------------------------------------------------
@@ -219,8 +219,8 @@ deploy() {
     say "note: you have uncommitted changes. They are NOT deployed (the build is a clean export of HEAD); commit first, or pass --allow-dirty to silence this."
   fi
   say "Release $release -> $(target)"
-  say "  app       https://$APP_HOST   (fynix-app :$APP_PORT)"
-  say "  admin     https://$ADMIN_HOST   (fynix-admin :$ADMIN_PORT)"
+  say "  app       https://$APP_HOST   (brandbasket-app :$APP_PORT)"
+  say "  admin     https://$ADMIN_HOST   (brandbasket-admin :$ADMIN_PORT)"
   if [[ $APPLY -eq 0 ]]; then
     cat <<PLAN
 [dry-run] would, in order:
@@ -229,7 +229,7 @@ deploy() {
   3. pnpm install --frozen-lockfile in the release, on the server
   4. pnpm env:check on $ROOT/shared/platform.env.local and admin.env.local
   5. migrate: $MIGRATE_CMD   then   bash scripts/cms-migrate.sh
-  6. switch current-platform, restart fynix-app, wait for /login; then the same for current-admin / fynix-admin
+  6. switch current-platform, restart brandbasket-app, wait for /login; then the same for current-admin / brandbasket-admin
      (on any failure every app already switched goes back to the release it ran before)
   7. keep the newest $KEEP releases
 Nothing was done. Add --apply to do it.
@@ -240,7 +240,7 @@ PLAN
 
   if [[ -n "$SOURCE" ]]; then tree="$SOURCE"; say "== 1/7 build: skipped, deploying $SOURCE as it is"
   elif [[ $SKIP_BUILD -eq 1 ]]; then die "--skip-build needs --source DIR (a tree that is already built)."
-  else dir="$(mktemp -d "${TMPDIR:-/tmp}/fynix-build.XXXXXX")"; tree="$dir"; build_here "$dir" "$release"; fi
+  else dir="$(mktemp -d "${TMPDIR:-/tmp}/brandbasket-build.XXXXXX")"; tree="$dir"; build_here "$dir" "$release"; fi
   [[ -d "$tree/apps/platform/.next" && -d "$tree/apps/admin/.next" ]] || die "$tree has no built apps (apps/*/.next)."
 
   say "== 2/7 upload"
@@ -312,7 +312,7 @@ done
 rm -f deploying
 PRUNE
   } | remote
-  say "Deployed $release. Smoke test: docs/deployment/fynix-droplet.md, section 14."
+  say "Deployed $release. Smoke test: docs/deployment/brandbasket-droplet.md, section 14."
 }
 
 # What never goes to the server: dependencies (installed there; only the TOP-level node_modules folders are excluded, because each

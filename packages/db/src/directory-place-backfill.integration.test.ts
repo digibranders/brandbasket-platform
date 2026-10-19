@@ -54,7 +54,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
-  await dbs.staff.db.insert(users).values({ id: STAFF, name: "Sam Staff", email: "staff@fynix.digital" });
+  await dbs.staff.db.insert(users).values({ id: STAFF, name: "Sam Staff", email: "staff@brandbasket.in" });
   await importOpenDataPlaces(dbs.staff.db, [SMILE, GYM], EARLIER);
 });
 

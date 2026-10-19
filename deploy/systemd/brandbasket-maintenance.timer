@@ -1,0 +1,11 @@
+# What this does: starts brandbasket-maintenance.service once a day (03:30 server time); Persistent runs a missed one after a reboot.
+[Unit]
+Description=Brandbasket daily maintenance
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

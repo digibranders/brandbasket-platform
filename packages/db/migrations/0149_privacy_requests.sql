@@ -40,24 +40,24 @@ CREATE INDEX "privacy_requests_status_due_idx" ON "privacy_requests" USING btree
 ALTER TABLE privacy_requests ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY privacy_requests_staff_select ON privacy_requests FOR SELECT TO fynix_staff USING (true);
+CREATE POLICY privacy_requests_staff_select ON privacy_requests FOR SELECT TO bb_staff USING (true);
 --> statement-breakpoint
 
-CREATE POLICY privacy_requests_staff_insert ON privacy_requests FOR INSERT TO fynix_staff WITH CHECK (true);
+CREATE POLICY privacy_requests_staff_insert ON privacy_requests FOR INSERT TO bb_staff WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY privacy_requests_staff_update ON privacy_requests FOR UPDATE TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY privacy_requests_staff_update ON privacy_requests FOR UPDATE TO bb_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON privacy_requests TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE ON privacy_requests TO bb_staff;
 --> statement-breakpoint
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
-    CREATE POLICY privacy_requests_legacy_staff_select ON privacy_requests FOR SELECT TO fynix_staff USING (true);
-    CREATE POLICY privacy_requests_legacy_staff_insert ON privacy_requests FOR INSERT TO fynix_staff WITH CHECK (true);
-    CREATE POLICY privacy_requests_legacy_staff_update ON privacy_requests FOR UPDATE TO fynix_staff USING (true) WITH CHECK (true);
-    GRANT SELECT, INSERT, UPDATE ON privacy_requests TO fynix_staff;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bb_staff') THEN
+    CREATE POLICY privacy_requests_legacy_staff_select ON privacy_requests FOR SELECT TO bb_staff USING (true);
+    CREATE POLICY privacy_requests_legacy_staff_insert ON privacy_requests FOR INSERT TO bb_staff WITH CHECK (true);
+    CREATE POLICY privacy_requests_legacy_staff_update ON privacy_requests FOR UPDATE TO bb_staff USING (true) WITH CHECK (true);
+    GRANT SELECT, INSERT, UPDATE ON privacy_requests TO bb_staff;
   END IF;
 END $$;

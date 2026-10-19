@@ -44,8 +44,8 @@ it("retains signup confirmation retry instead of redirecting as a created accoun
   expect(requestJoinCode).not.toHaveBeenCalled();
 });
 
-/** A Fynix form: Care, with the business's name. */
-function fynixForm(entries: Record<string, string>): FormData {
+/** A Brandbasket form: Care, with the business's name. */
+function brandbasketForm(entries: Record<string, string>): FormData {
   const result = new FormData();
   const base = { choice: "care", businessName: "Smile Dental", name: "Owner", email: "Owner@Example.test", password: "long-password-9", country: "IN", stateCode: "mh", agree: "yes" };
   for (const [key, value] of Object.entries({ ...base, ...entries })) result.set(key, value);
@@ -53,25 +53,25 @@ function fynixForm(entries: Record<string, string>): FormData {
 }
 const emailOtp = { otpId: "email-challenge", emailHint: "o•••@example.test", confirmRequired: true };
 
-it("refuses the free listing on the Fynix host, before any code is emailed or any account made", async () => {
+it("refuses the free listing on the Brandbasket host, before any code is emailed or any account made", async () => {
   host.brand = BRAND;
-  const result = await joinForListing({ status: "idle" }, fynixForm({ choice: "listing_only" }));
+  const result = await joinForListing({ status: "idle" }, brandbasketForm({ choice: "listing_only" }));
   expect(result).toMatchObject({ status: "error", message: "Choose a plan to continue." });
   expect(requestJoinCode).not.toHaveBeenCalled();
   expect(createListingAccount).not.toHaveBeenCalled();
 });
 
-it("sends the code for Care on the Fynix host, to the email address", async () => {
+it("sends the code for Care on the Brandbasket host, to the email address", async () => {
   host.brand = BRAND;
   vi.mocked(requestJoinCode).mockResolvedValue({ kind: "code", otp: emailOtp });
-  expect(await joinForListing({ status: "idle" }, fynixForm({}))).toMatchObject({ status: "code", otp: emailOtp });
+  expect(await joinForListing({ status: "idle" }, brandbasketForm({}))).toMatchObject({ status: "code", otp: emailOtp });
   expect(requestJoinCode).toHaveBeenCalledWith(expect.objectContaining({ choice: "care", email: "owner@example.test", code: null }));
   expect(vi.mocked(requestJoinCode).mock.calls[0]?.[0]).not.toHaveProperty("phone");
 });
 
 it("asks a sign-up for an email address, and sends nothing without one, even when a number is posted", async () => {
   host.brand = BRAND;
-  const data = fynixForm({ phone: "9820000000" });
+  const data = brandbasketForm({ phone: "9820000000" });
   data.delete("email");
   expect(await joinForListing({ status: "idle" }, data)).toMatchObject({ status: "error", message: "Enter your email address." });
   expect(requestJoinCode).not.toHaveBeenCalled();
@@ -80,7 +80,7 @@ it("asks a sign-up for an email address, and sends nothing without one, even whe
 it("opens an account once the emailed code is confirmed, and goes on to pay for the plan", async () => {
   host.brand = BRAND;
   vi.mocked(createListingAccount).mockResolvedValue({ kind: "wrong-code", message: "That code isn't right. 4 tries left." });
-  expect(await joinForListing({ status: "code", otp: emailOtp }, fynixForm({ otpId: emailOtp.otpId, code: "123456" }))).toMatchObject({
+  expect(await joinForListing({ status: "code", otp: emailOtp }, brandbasketForm({ otpId: emailOtp.otpId, code: "123456" }))).toMatchObject({
     status: "error", message: "That code isn't right. 4 tries left.", otp: emailOtp,
   });
   expect(createListingAccount).toHaveBeenCalledWith(expect.objectContaining({ email: "owner@example.test", code: { otpId: emailOtp.otpId, code: "123456" } }));

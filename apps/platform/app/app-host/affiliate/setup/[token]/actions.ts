@@ -38,7 +38,7 @@ export async function completeAffiliateSetup(_previous: SetupFormState, formData
         status: "error",
         mode: "verify-existing",
         field: "password",
-        message: "This email already has a Fynix account. Enter that account’s password to link it, or ask us to use another email.",
+        message: "This email already has a Brandbasket account. Enter that account’s password to link it, or ask us to use another email.",
       };
     }
     if (error instanceof AffiliateAccountTakenError) {

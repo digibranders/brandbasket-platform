@@ -68,7 +68,7 @@ describe("changeWebAddress", () => {
   it("changes the URL in one transaction and answers with the full new address", async () => {
     expect(await change()).toEqual({
       status: "changed",
-      url: `https://fynix.digital/in/mh/business/smile-dental-care/${businessUrlCode("k7m2q9a")}`,
+      url: `https://brandbasket.in/in/mh/business/smile-dental-care/${businessUrlCode("k7m2q9a")}`,
     });
     expect(changePlaceUrl).toHaveBeenCalledWith(
       TX,
@@ -103,7 +103,7 @@ describe("changeWebAddress", () => {
     vi.mocked(findPlaces).mockResolvedValue(new Map([[SMILE.id, { ...SMILE, citySlug: "new-town" }]]));
     expect(await change({ citySlug: "new-town" })).toEqual({
       status: "changed",
-      url: `https://fynix.digital/in/mh/business/smile-dental-care/${businessUrlCode("k7m2q9a")}`,
+      url: `https://brandbasket.in/in/mh/business/smile-dental-care/${businessUrlCode("k7m2q9a")}`,
     });
     expect(await change({ citySlug: "old-town" })).toMatchObject({ status: "error", field: "citySlug", message: WEB_ADDRESS_MESSAGES.citySlug });
   });

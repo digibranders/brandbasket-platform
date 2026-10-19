@@ -1,4 +1,4 @@
-import { FYNIX_DEFAULT_CHOICE, offersChoice, type Brand } from "@/lib/brand";
+import { BRANDBASKET_DEFAULT_CHOICE, offersChoice, type Brand } from "@/lib/brand";
 import { readJoinChoice, type JoinChoice } from "@/lib/join-form";
 
 /*
@@ -32,7 +32,7 @@ export interface EntryRequest {
   readonly view: "sign-in" | "create";
   /** The choice the link makes for the visitor, which they can still change; null asks the question. */
   readonly choice: JoinChoice | null;
-  /** The plan the question opens with already ticked, for a brand that has a default (Fynix: Care); null ticks none. */
+  /** The plan the question opens with already ticked, for a brand that has a default (Brandbasket: Care); null ticks none. */
   readonly preselected: JoinChoice | null;
 }
 
@@ -40,7 +40,7 @@ export interface EntryRequest {
  * What the entry page's address asks for. It opens on Create account when the address says so or when it names a plan:
  * both come from a button that means "I'm new".
  *
- * Under a brand that does not sell the free listing (Fynix) the address cannot choose it: `plan=free`, or a plan that
+ * Under a brand that does not sell the free listing (Brandbasket) the address cannot choose it: `plan=free`, or a plan that
  * is not sold, opens the plans with the brand's default ticked.
  */
 export function readEntryRequest(params: SearchParams, brand: Brand): EntryRequest {
@@ -48,13 +48,13 @@ export function readEntryRequest(params: SearchParams, brand: Brand): EntryReque
   const named = readPlanParam(asked);
   const choice = named !== null && offersChoice(brand, named) ? named : null;
   const sellsFree = offersChoice(brand, "listing_only");
-  // Whatever plan a Fynix address names, even one it does not sell, is someone who wants to sign up.
+  // Whatever plan a Brandbasket address names, even one it does not sell, is someone who wants to sign up.
   const namesAPlan = sellsFree ? named !== null : asked !== "";
   const asksToCreate = single(params[NEW_PARAM]) === "1" || namesAPlan;
   return {
     view: asksToCreate ? "create" : "sign-in",
     choice,
-    preselected: sellsFree ? null : FYNIX_DEFAULT_CHOICE,
+    preselected: sellsFree ? null : BRANDBASKET_DEFAULT_CHOICE,
   };
 }
 

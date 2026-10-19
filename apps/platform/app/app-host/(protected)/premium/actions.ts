@@ -70,7 +70,7 @@ export async function removeMembershipCode(_previous: StepFormState, formData: F
  * becomes an ordinary free listing account and its dashboard opens. Premium stays one click away there.
  */
 export async function chooseFreeListing(): Promise<void> {
-  // The Fynix host sells no free listing: its page has no such button, and a form posted without one is sent back to the plan.
+  // The Brandbasket host sells no free listing: its page has no such button, and a form posted without one is sent back to the plan.
   if (!sellsFreeListing(await requestBrand())) redirect(MEMBER_HOME);
   const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
   const free = await continueWithFreeListing(customer);

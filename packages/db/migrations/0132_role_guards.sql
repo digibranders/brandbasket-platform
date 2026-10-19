@@ -1,4 +1,4 @@
--- The customer, staff and public connections log in as fynix_app, fynix_staff and fynix_public. These trigger functions check
+-- The customer, staff and public connections log in as bb_app, bb_staff and bb_public. These trigger functions check
 -- current_user against those names so a customer connection can only make the moves a customer may make.
 --> statement-breakpoint
 
@@ -9,7 +9,7 @@ CREATE OR REPLACE FUNCTION public.projects_guard_customer_transition()
   SET search_path TO 'pg_catalog'
 AS $$
 BEGIN
-  IF current_user = 'fynix_app' AND NOT (OLD.status = 'onboarding' AND NEW.status = 'submitted') THEN
+  IF current_user = 'bb_app' AND NOT (OLD.status = 'onboarding' AND NEW.status = 'submitted') THEN
     RAISE EXCEPTION '% may only move a project from onboarding to submitted', current_user
       USING ERRCODE = 'insufficient_privilege';
   END IF;
@@ -25,7 +25,7 @@ CREATE OR REPLACE FUNCTION public.domains_guard_customer_insert()
   SET search_path TO 'pg_catalog'
 AS $$
 BEGIN
-  IF current_user = 'fynix_app' AND NEW.status <> 'pending' THEN
+  IF current_user = 'bb_app' AND NEW.status <> 'pending' THEN
     RAISE EXCEPTION '% may only add a domain as pending', current_user
       USING ERRCODE = 'insufficient_privilege';
   END IF;
@@ -43,7 +43,7 @@ AS $$
 DECLARE
   person_changed boolean;
 BEGIN
-  IF current_user <> 'fynix_app' THEN
+  IF current_user <> 'bb_app' THEN
     RETURN NEW;
   END IF;
 
@@ -173,14 +173,14 @@ BEGIN
   IF NEW.author_user_id IS DISTINCT FROM public.app_current_user_id() THEN
     RAISE EXCEPTION 'Support message author must match the current user';
   END IF;
-  IF current_user = 'fynix_app' AND (NEW.author_role <> 'customer' OR NEW.visibility <> 'public') THEN
+  IF current_user = 'bb_app' AND (NEW.author_role <> 'customer' OR NEW.visibility <> 'public') THEN
     RAISE EXCEPTION 'Customers may add only public customer replies';
   END IF;
-  IF current_user = 'fynix_staff' AND NEW.author_role <> 'staff' THEN
+  IF current_user = 'bb_staff' AND NEW.author_role <> 'staff' THEN
     RAISE EXCEPTION 'Staff must write as staff';
   END IF;
   IF NEW.author_role = 'staff' THEN
-    IF (current_user <> 'fynix_staff') OR NOT EXISTS (SELECT 1 FROM public.staff_members WHERE user_id = NEW.author_user_id AND active) THEN
+    IF (current_user <> 'bb_staff') OR NOT EXISTS (SELECT 1 FROM public.staff_members WHERE user_id = NEW.author_user_id AND active) THEN
       RAISE EXCEPTION 'Support staff messages require an active staff author';
     END IF;
   END IF;
@@ -205,7 +205,7 @@ CREATE OR REPLACE FUNCTION public.support_deny_history_mutation()
   SET search_path TO 'pg_catalog', 'public'
 AS $$
 BEGIN
-  IF current_user NOT IN ('fynix_app', 'fynix_staff', 'fynix_public')
+  IF current_user NOT IN ('bb_app', 'bb_staff', 'bb_public')
      AND (EXISTS (SELECT 1 FROM public.support_tickets t WHERE t.id = OLD.ticket_id AND t.requester_user_id = nullif(current_setting('support.erase_user', true), ''))
        OR OLD.ticket_id::text = nullif(current_setting('support.purge_ticket', true), '')) THEN
     RETURN OLD;

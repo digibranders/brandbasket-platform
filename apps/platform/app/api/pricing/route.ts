@@ -22,7 +22,7 @@ export async function GET(): Promise<Response> {
     for (const plan of plans) (plan.tier === "care" ? carePrices : prices)[plan.currency] = publicPrices(plan);
     return Response.json({ prices, carePrices }, { status: 200, headers: { "Cache-Control": CACHE_CONTROL } });
   } catch (error) {
-    console.error("[fynix:pricing] GET /api/pricing failed", errorLogInfo(error));
+    console.error("[brandbasket:pricing] GET /api/pricing failed", errorLogInfo(error));
     return Response.json({ error: "Prices are unavailable right now." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }

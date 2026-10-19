@@ -219,7 +219,7 @@ export function PlaceAdForm({ action, categories, areasByCity, cities, spots, we
             autoComplete="off"
             maxLength={2000}
             defaultValue={values.listing ?? ""}
-            placeholder="fynix.digital/in/mh/business/smile-dental/9f94ykmdjp"
+            placeholder="brandbasket.in/in/mh/business/smile-dental/9f94ykmdjp"
             className={fieldClasses}
             {...fieldStatus("listing", "place-listing-hint")}
           />

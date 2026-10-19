@@ -43,7 +43,7 @@ const NOW = new Date("2026-09-22T12:00:00.000Z");
 const PLAN = {
   id: "plan-inr",
   code: "care-inr",
-  name: "Fynix care plan",
+  name: "Brandbasket care plan",
   tier: "premium",
   currency: "INR",
   initialAmountCents: 350_000,
@@ -80,7 +80,7 @@ function state(overrides: Partial<BillingState> = {}): BillingState {
 }
 
 const customer = {
-  user: { phone: "+919820099101", email: "919820099101@phone.fynix.invalid" },
+  user: { phone: "+919820099101", email: "919820099101@phone.brandbasket.invalid" },
   tenant: { businessId: BUSINESS_ID },
 } as unknown as GrantedCustomer;
 
@@ -251,7 +251,7 @@ describe("isOwnAffiliateCode", () => {
   const AFFILIATE = { phone: "+919820011223", email: "priya@example.com" };
 
   it("matches the affiliate's own proven phone number", () => {
-    expect(isOwnAffiliateCode(AFFILIATE, { phone: "+919820011223", email: "919820011223@phone.fynix.invalid" })).toBe(true);
+    expect(isOwnAffiliateCode(AFFILIATE, { phone: "+919820011223", email: "919820011223@phone.brandbasket.invalid" })).toBe(true);
   });
 
   it("matches the affiliate's email whatever its case", () => {
@@ -264,9 +264,9 @@ describe("isOwnAffiliateCode", () => {
 
   it("never matches on a phone account's placeholder email", () => {
     expect(
-      isOwnAffiliateCode({ phone: null, email: "919820099101@phone.fynix.invalid" }, {
+      isOwnAffiliateCode({ phone: null, email: "919820099101@phone.brandbasket.invalid" }, {
         phone: "+919820099101",
-        email: "919820099101@phone.fynix.invalid",
+        email: "919820099101@phone.brandbasket.invalid",
       }),
     ).toBe(false);
   });

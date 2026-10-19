@@ -1,4 +1,4 @@
--- Dollar prices for customers outside India, matching the website's US page (fynix.digital/us/free-business-website): the
+-- Dollar prices for customers outside India, matching the website's US page (brandbasket.in/us/free-business-website): the
 -- Care plan is $75 a month and changes are $10 an hour, with no tax of ours. India's plan and prices are not touched.
 --
 -- Add-ons can now be sold in dollars too ($100, $125 and $125 a month, priced in packages/shared/src/lib/billing/add-ons.ts),

@@ -47,7 +47,7 @@ function recordedAs(replacedStorageKeys: readonly string[] = []): void {
 
 beforeEach(async () => {
   recordDirectoryPicture.mockReset();
-  sandbox = await mkdtemp(path.join(tmpdir(), "fynix-listing-pictures-"));
+  sandbox = await mkdtemp(path.join(tmpdir(), "brandbasket-listing-pictures-"));
   storage = createLocalMediaStorage(sandbox);
 });
 

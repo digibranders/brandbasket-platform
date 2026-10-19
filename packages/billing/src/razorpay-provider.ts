@@ -310,7 +310,7 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
         period: "monthly",
         interval: 1,
         item: { name: input.itemName ?? `Subscription plan (${input.currency})`, amount, currency: input.currency },
-        notes: { fynixPlanCode: input.code },
+        notes: { brandbasketPlanCode: input.code },
       });
       return { providerPlanId: created.id };
     },

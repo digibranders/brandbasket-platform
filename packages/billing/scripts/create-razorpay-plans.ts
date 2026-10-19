@@ -46,7 +46,7 @@ async function main(): Promise<void> {
         amount,
         currency: plan.currency,
       },
-      notes: { fynixPlanCode: plan.code },
+      notes: { brandbasketPlanCode: plan.code },
     });
     console.log(`${plan.code}: ${created.id} (${amount} minor units)`);
   }

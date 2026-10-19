@@ -57,7 +57,7 @@ const accountCodeSecretSchema = z.string().min(32, "ACCOUNT_CODE_SECRET must be 
 
 /**
  * The HMAC-SHA256 key every emailed code is hashed with (lib/server/account-email-code.ts, booking-otp.ts,
- * privacy-requests.ts): ACCOUNT_CODE_SECRET, which a Fynix deployment sets, else BOOKING_OTP_SECRET, the name an older
+ * privacy-requests.ts): ACCOUNT_CODE_SECRET, which a Brandbasket deployment sets, else BOOKING_OTP_SECRET, the name an older
  * deployment already has it under. Read when a code is asked for or checked, not at start, so a deployment that never sends
  * one needs neither.
  */

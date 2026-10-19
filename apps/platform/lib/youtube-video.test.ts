@@ -23,7 +23,7 @@ describe("parseYoutubeLink", () => {
   it("refuses links that are not one YouTube video", () => {
     for (const typed of [
       "",
-      "https://www.youtube.com/@fynix",
+      "https://www.youtube.com/@brandbasket",
       "https://www.youtube.com/watch?v=short",
       "https://vimeo.com/123456",
       `https://youtube.com.evil.example/watch?v=${ID}`,

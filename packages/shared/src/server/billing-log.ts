@@ -5,8 +5,8 @@ import { InvalidGstinError } from "@brandbasket/billing/gstin";
 import { InvoiceAmountMismatchError } from "@brandbasket/billing/tax-invoice";
 import { constraintOf, errorLogInfo, providerErrorInfo } from "./error-log-info";
 
-/** Every billing log line starts with this, so `grep '\[fynix:billing\]'` finds them all. */
-export const BILLING_LOG_PREFIX = "[fynix:billing]";
+/** Every billing log line starts with this, so `grep '\[brandbasket:billing\]'` finds them all. */
+export const BILLING_LOG_PREFIX = "[brandbasket:billing]";
 
 /**
  * The billing events worth a log line. Each is a fixed, greppable name; the details travel as fields.

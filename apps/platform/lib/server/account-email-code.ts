@@ -20,7 +20,7 @@ import { generateOtpCode, hashOtpCode, otpCodeMatches } from "./otp-crypto";
 import { getPublicDb } from "./public-db";
 
 /**
- * The code emailed to an address to open an account with it (the Fynix sign-up): 6 digits, 10 minutes, 5 tries, HMAC with
+ * The code emailed to an address to open an account with it (the Brandbasket sign-up): 6 digits, 10 minutes, 5 tries, HMAC with
  * ACCOUNT_CODE_SECRET (see accountCodeSecret in ./env.ts), used once, with a budget per network, per address and overall.
  * A patient's booking code (./booking-otp.ts) and a privacy request's (./privacy-requests.ts) follow the same rules. Only a sign-up has one here: a forgotten password is a link
  * (./account-recovery.ts), never a code that could be guessed.

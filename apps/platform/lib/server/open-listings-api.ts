@@ -55,7 +55,7 @@ export async function handleOpenListingsVersion(request: Request, deps: OpenList
     const body: OpenListingsVersion = { contract: OPEN_LISTINGS_CONTRACT_VERSION, version: await deps.readVersion() };
     return reply(200, body);
   } catch (error) {
-    console.error("[fynix:directory] GET /api/directory/open-listings/version failed", errorLogInfo(error));
+    console.error("[brandbasket:directory] GET /api/directory/open-listings/version failed", errorLogInfo(error));
     return reply(503, { error: "Listings are unavailable right now." });
   }
 }
@@ -88,7 +88,7 @@ export async function handleOpenListingsPage(request: Request, deps: OpenListing
     };
     return reply(200, body);
   } catch (error) {
-    console.error("[fynix:directory] GET /api/directory/open-listings failed", errorLogInfo(error));
+    console.error("[brandbasket:directory] GET /api/directory/open-listings failed", errorLogInfo(error));
     return reply(503, { error: "Listings are unavailable right now." });
   }
 }

@@ -7,7 +7,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("./auth", () => ({ getAuth: vi.fn() }));
 
 const signInEmail = vi.fn();
-const requestHeaders = new Headers({ host: "app.fynix.digital" }) as Awaited<ReturnType<typeof headers>>;
+const requestHeaders = new Headers({ host: "app.brandbasket.in" }) as Awaited<ReturnType<typeof headers>>;
 
 beforeEach(() => {
   vi.clearAllMocks();

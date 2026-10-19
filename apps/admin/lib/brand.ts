@@ -1,14 +1,14 @@
 import type { BrandLogo } from "@brandbasket/shared/ui/logo";
 
 /*
- * What the staff console wears: Fynix Digital's name and logo. Browser-safe and pure. The customer dashboard's richer
+ * What the staff console wears: Brandbasket's name and logo. Browser-safe and pure. The customer dashboard's richer
  * brand module is apps/platform/lib/brand.ts.
  */
 export interface AdminBrand {
-  readonly id: "fynix";
+  readonly id: "brandbasket";
   /** The company's name in full: titles, sign-in copy. */
   readonly name: string;
-  /** The label after a page title: "Pricing · Fynix staff". */
+  /** The label after a page title: "Pricing · Brandbasket staff". */
   readonly staffLabel: string;
   /** What staff call the public directory, in a sentence. */
   readonly directoryName: string;
@@ -19,15 +19,15 @@ export interface AdminBrand {
 }
 
 const LOGO: BrandLogo = {
-  name: "Fynix Digital",
-  siteUrl: "https://fynix.digital",
-  white: "/brand/fynix-logo-white.svg",
-  dark: "/brand/fynix-logo-dark.svg",
-  width: 89,
-  height: 37,
+  name: "Brandbasket",
+  siteUrl: "https://brandbasket.in",
+  white: "/brand/brandbasket-logo-white.svg",
+  dark: "/brand/brandbasket-logo-dark.svg",
+  width: 182,
+  height: 32,
 };
 
-const BRAND: AdminBrand = { id: "fynix", name: "Fynix Digital", staffLabel: "Fynix staff", directoryName: "the local directory", logo: LOGO, sellsDirectory: false };
+const BRAND: AdminBrand = { id: "brandbasket", name: "Brandbasket", staffLabel: "Brandbasket staff", directoryName: "the local directory", logo: LOGO, sellsDirectory: false };
 
 export function adminBrand(): AdminBrand {
   return BRAND;

@@ -60,7 +60,7 @@ const sampleBillingDetails = {
 
 const SUPPLIER: TaxInvoicePartyRecord = {
   legalName: "Digibranders Private Limited",
-  tradeName: "Fynix",
+  tradeName: "Brandbasket",
   gstin: "27AAPFU0939F1ZV",
   cin: "U72900MH2020PTC123456",
   addressLines: ["Mumbai 400080"],
@@ -81,7 +81,7 @@ const RECIPIENT: TaxInvoicePartyRecord = {
 };
 
 const INTRA_LINE: TaxInvoiceLineRecord = {
-  description: "Fynix Premium plan",
+  description: "Brandbasket Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: "Coupon GAURAV applied",
   sac: "998361",
@@ -302,7 +302,7 @@ describe("storing an invoice", () => {
 
   it("refuses a number longer than the 16 characters GST allows, even when it matches its series", async () => {
     const error = await captureErrorText(
-      insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA, prefix: "FYNIX", serial: 1, number: numberFor("FYNIX", "26-27", 1) })),
+      insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA, prefix: "BRANDBASKET", serial: 1, number: numberFor("BRANDBASKET", "26-27", 1) })),
     );
     expect(error).toMatch(/tax_invoices_number_check/);
   });

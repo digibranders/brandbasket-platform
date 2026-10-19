@@ -9,10 +9,10 @@ ALTER TABLE "site_settings" ADD CONSTRAINT "site_settings_updated_by_staff_id_us
 
 -- Staff only, like the Razorpay plan tables: customers never read a setting through their own connection. The platform
 -- reads the ones it shows through its staff connection, on the server. Staff may change and clear a setting.
-GRANT SELECT, INSERT, UPDATE, DELETE ON site_settings TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON site_settings TO bb_staff;
 --> statement-breakpoint
 
 ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY site_settings_staff_all ON site_settings FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY site_settings_staff_all ON site_settings FOR ALL TO bb_staff USING (true) WITH CHECK (true);

@@ -11,7 +11,7 @@ const APP_ORIGIN = "http://app.localhost:3000";
 const APP_HOST = "app.localhost:3000";
 const UPLOAD_URL = `${APP_ORIGIN}/api/uploads?purpose=photo`;
 const TOO_LARGE = "That file is larger than 4 MB. Please upload a smaller image.";
-const WRONG_HOST = "Uploads only work from your Fynix dashboard. Open it and try again.";
+const WRONG_HOST = "Uploads only work from your Brandbasket dashboard. Open it and try again.";
 const WRONG_ORIGIN = "That upload didn't come from your dashboard. Reload the page and try again.";
 const SIGNED_OUT = "Your session has ended. Sign in again, then try the upload.";
 

@@ -21,7 +21,7 @@ interface ClientChatbotsProps {
 }
 
 /**
- * The client's chatbots, which Fynix runs in OyeChats. A bot has no account the customer can use, so staff register each one
+ * The client's chatbots, which Brandbasket runs in OyeChats. A bot has no account the customer can use, so staff register each one
  * here with the webhook secret OyeChats made for it, keep its status current, and the customer reads both on their OyeChats
  * page. The secret is write-only: it is stored for the signature check and never shown again.
  */

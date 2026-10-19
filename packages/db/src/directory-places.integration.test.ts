@@ -53,7 +53,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
-  await dbs.staff.db.insert(users).values({ id: STAFF, name: "Sam Staff", email: "staff@fynix.digital" });
+  await dbs.staff.db.insert(users).values({ id: STAFF, name: "Sam Staff", email: "staff@brandbasket.in" });
 });
 
 /** A valid letter-first id for the n-th generated row: "a2" plus n in base 31 over the id alphabet. */
@@ -358,7 +358,7 @@ describe("table rules", () => {
 
   it("gives the app and public roles nothing, and staff no way to delete or rewrite history", async () => {
     const tables = ["directory_places", "directory_place_legacy_keys", "directory_place_url_changes"];
-    for (const role of ["fynix_app", "fynix_public"]) {
+    for (const role of ["bb_app", "bb_public"]) {
       for (const table of tables) {
         const result = await dbs.owner.db.execute<{ allowed: boolean }>(
           sql`select has_table_privilege(${role}, ${`public.${table}`}, 'SELECT, INSERT, UPDATE, DELETE') as allowed`,
@@ -380,9 +380,9 @@ describe("table rules", () => {
     ];
     for (const [table, privilege, expected] of staff) {
       const result = await dbs.owner.db.execute<{ allowed: boolean }>(
-        sql`select has_table_privilege('fynix_staff', ${`public.${table}`}, ${privilege}) as allowed`,
+        sql`select has_table_privilege('bb_staff', ${`public.${table}`}, ${privilege}) as allowed`,
       );
-      expect(result.rows[0]?.allowed, `fynix_staff ${privilege} on ${table}`).toBe(expected);
+      expect(result.rows[0]?.allowed, `bb_staff ${privilege} on ${table}`).toBe(expected);
     }
   });
 });

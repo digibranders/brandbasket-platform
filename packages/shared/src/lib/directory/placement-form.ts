@@ -75,7 +75,7 @@ function bookingAddress(raw: string): string | null | undefined {
   return url.href;
 }
 
-/** Accepts a bare path or a full fynix.digital URL; keeps only the path. */
+/** Accepts a bare path or a full brandbasket.in URL; keeps only the path. */
 function sourcePath(raw: string): string | null | undefined {
   const trimmed = raw.trim();
   if (trimmed === "") return null;

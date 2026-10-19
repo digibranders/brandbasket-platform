@@ -21,7 +21,7 @@ afterEach(() => {
 
 describe("findWorkspaceRoot", () => {
   it("walks up to the directory that contains pnpm-workspace.yaml", () => {
-    const root = makeTempDir("fynix-root-");
+    const root = makeTempDir("brandbasket-root-");
     writeFileSync(join(root, "pnpm-workspace.yaml"), "packages: []\n");
     const nested = join(root, "packages", "db", "src");
     mkdirSync(nested, { recursive: true });
@@ -30,13 +30,13 @@ describe("findWorkspaceRoot", () => {
   });
 
   it("throws a helpful error outside a workspace", () => {
-    const outside = makeTempDir("fynix-outside-");
+    const outside = makeTempDir("brandbasket-outside-");
 
     expect(() => findWorkspaceRoot(outside)).toThrow(/Could not find pnpm-workspace\.yaml/);
   });
 
   it("resolves a relative start directory instead of stopping immediately", () => {
-    const root = makeTempDir("fynix-relative-root-");
+    const root = makeTempDir("brandbasket-relative-root-");
     writeFileSync(join(root, "pnpm-workspace.yaml"), "packages: []\n");
     const nested = join(root, "packages", "db", "src");
     mkdirSync(nested, { recursive: true });
@@ -52,7 +52,7 @@ describe("findWorkspaceRoot", () => {
 });
 
 describe("requireEnv", () => {
-  const NAME = "FYNIX_TEST_REQUIRE_ENV";
+  const NAME = "BRANDBASKET_TEST_REQUIRE_ENV";
 
   afterEach(() => {
     delete process.env[NAME];

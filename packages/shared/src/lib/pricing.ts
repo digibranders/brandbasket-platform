@@ -68,7 +68,7 @@ export const changePricing = {
 
 export type PlanPriceKey = "monthly" | "extraHour" | "extraBlogPosts";
 
-/** The plan's prices in each currency Fynix sells in: dollars everywhere, rupees in India. */
+/** The plan's prices in each currency Brandbasket sells in: dollars everywhere, rupees in India. */
 export const planPrices: Readonly<Record<MoneyCurrency, Readonly<Record<PlanPriceKey, number>>>> = {
   USD: {
     monthly: carePlan.monthlyCents,

@@ -16,7 +16,7 @@ interface DashboardErrorProps {
 export default function DashboardError({ error, reset }: DashboardErrorProps): ReactElement {
   useEffect(() => {
     if (isStaleDeployError(error)) return;
-    reportBrowserError(error, { app: "admin", operation: "error_boundary", route: window.location.pathname, release: process.env.NEXT_PUBLIC_FYNIX_RELEASE });
+    reportBrowserError(error, { app: "admin", operation: "error_boundary", route: window.location.pathname, release: process.env.NEXT_PUBLIC_BRANDBASKET_RELEASE });
   }, [error]);
   if (isStaleDeployError(error)) {
     return <main className="grid min-h-dvh place-items-center p-8"><DeploymentUpdate /></main>;

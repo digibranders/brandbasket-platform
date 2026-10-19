@@ -4,14 +4,14 @@ import { serverEnv } from "@/lib/server/env";
 
 // Kept on globalThis so hot reloads in development reuse pools instead of opening new ones.
 const holder = globalThis as typeof globalThis & {
-  fynixAppDb?: Database;
-  fynixStaffDb?: Database;
+  brandbasketAppDb?: Database;
+  brandbasketStaffDb?: Database;
 };
 
 /** Customer-facing work. Bound by row-level security: scope queries with withUserScope / withTenantScope. */
 export function getAppDb(): Database {
-  holder.fynixAppDb ??= createDatabase(serverEnv().DATABASE_URL).db;
-  return holder.fynixAppDb;
+  holder.brandbasketAppDb ??= createDatabase(serverEnv().DATABASE_URL).db;
+  return holder.brandbasketAppDb;
 }
 
 /**
@@ -70,6 +70,6 @@ export function getAppDb(): Database {
  *   private file lifecycle changes and records redacted automatic errors; it does not read customer messages.
  */
 export function getStaffDb(): Database {
-  holder.fynixStaffDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;
-  return holder.fynixStaffDb;
+  holder.brandbasketStaffDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;
+  return holder.brandbasketStaffDb;
 }

@@ -25,20 +25,20 @@ CREATE INDEX "staff_access_log_staff_created_at_idx" ON "staff_access_log" USING
 ALTER TABLE staff_access_log ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY staff_access_log_staff_select ON staff_access_log FOR SELECT TO fynix_staff USING (true);
+CREATE POLICY staff_access_log_staff_select ON staff_access_log FOR SELECT TO bb_staff USING (true);
 --> statement-breakpoint
 
-CREATE POLICY staff_access_log_staff_insert ON staff_access_log FOR INSERT TO fynix_staff WITH CHECK (true);
+CREATE POLICY staff_access_log_staff_insert ON staff_access_log FOR INSERT TO bb_staff WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT ON staff_access_log TO fynix_staff;
+GRANT SELECT, INSERT ON staff_access_log TO bb_staff;
 --> statement-breakpoint
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
-    CREATE POLICY staff_access_log_legacy_staff_select ON staff_access_log FOR SELECT TO fynix_staff USING (true);
-    CREATE POLICY staff_access_log_legacy_staff_insert ON staff_access_log FOR INSERT TO fynix_staff WITH CHECK (true);
-    GRANT SELECT, INSERT ON staff_access_log TO fynix_staff;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bb_staff') THEN
+    CREATE POLICY staff_access_log_legacy_staff_select ON staff_access_log FOR SELECT TO bb_staff USING (true);
+    CREATE POLICY staff_access_log_legacy_staff_insert ON staff_access_log FOR INSERT TO bb_staff WITH CHECK (true);
+    GRANT SELECT, INSERT ON staff_access_log TO bb_staff;
   END IF;
 END $$;

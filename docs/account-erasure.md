@@ -39,15 +39,15 @@ A closure restored a moment before the run is never erased: the transaction re-r
 `ACCOUNT_ERASE_TOKEN` (at least 32 characters, `openssl rand -hex 32`) in the platform's environment is the route's own
 secret, not `LEADS_API_TOKEN`. Unset, the route answers 503 to everything.
 
-On the VPS the route is called every night at 03:30 IST by `fynix-erase.timer`, which runs
-`/usr/local/sbin/fynix-erase` (both in `vps-setup/platform`). The script reads the token from the
+On the VPS the route is called every night at 03:30 IST by `brandbasket-erase.timer`, which runs
+`/usr/local/sbin/brandbasket-erase` (both in `vps-setup/platform`). The script reads the token from the
 platform's env file, calls the route on the server's own app port, prints the JSON report to the journal
-(`journalctl -u fynix-erase`) and fails the unit if any account failed, so the next run retries.
+(`journalctl -u brandbasket-erase`) and fails the unit if any account failed, so the next run retries.
 
 Look first, change nothing:
 
 ```bash
-sudo fynix-erase --dry-run
+sudo brandbasket-erase --dry-run
 ```
 
 Each run erases at most 25 accounts. The report lists each closure as `erased`, `would-erase`, `skipped` (with a reason)

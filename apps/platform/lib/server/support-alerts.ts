@@ -7,7 +7,7 @@ import { serverEnv } from "@/lib/server/env";
 import { getStaffDb } from "./db";
 
 function getAlertRecipient(): string {
-  return process.env.SUPPORT_ALERT_EMAIL?.trim() || process.env.FYNIX_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
+  return process.env.SUPPORT_ALERT_EMAIL?.trim() || process.env.BRANDBASKET_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
 }
 
 /**

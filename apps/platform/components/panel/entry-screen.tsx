@@ -6,21 +6,21 @@ import { requestBrand } from "@/lib/server/request-brand";
 import { ENTRY_LEDE_SLOT_ID } from "@/lib/account-entry";
 
 /**
- * What a business owner is told on the Fynix sign-in: one plain line each, every one something the website really does.
+ * What a business owner is told on the Brandbasket sign-in: one plain line each, every one something the website really does.
  * No numbers or results are claimed.
  */
-const FYNIX_POINTS = [
+const BRANDBASKET_POINTS = [
   { title: "Be found", line: "On Google Maps and in local search." },
   { title: "Be reached", line: "Click-to-call, WhatsApp and enquiry forms on every page." },
   { title: "Be trusted", line: "A fast, secure website that is hosted and kept up to date for you." },
 ] as const;
 
 /**
- * The Fynix side of the account screens: a solid navy panel of type, no photograph. From 1024px it fills the left of
- * the screen with the headline, a line about the offer, the three points and the way to write to Fynix; on a phone it is
+ * The Brandbasket side of the account screens: a solid navy panel of type, no photograph. From 1024px it fills the left of
+ * the screen with the headline, a line about the offer, the three points and the way to write to Brandbasket; on a phone it is
  * a band across the top with the logo and the headline, the form sheet drawn up over its edge.
  */
-function FynixPanel({ brand }: { readonly brand: Brand }): ReactElement {
+function BrandbasketPanel({ brand }: { readonly brand: Brand }): ReactElement {
   return (
     <section
       aria-label={brand.name}
@@ -36,7 +36,7 @@ function FynixPanel({ brand }: { readonly brand: Brand }): ReactElement {
         </p>
       </div>
       <ol className="mt-8 hidden border-b border-white/15 lg:block">
-        {FYNIX_POINTS.map((point, index) => (
+        {BRANDBASKET_POINTS.map((point, index) => (
           <li key={point.title} className="grid grid-cols-[2.25rem_1fr] gap-x-1 border-t border-white/15 py-3.5">
             <span aria-hidden="true" className="pt-0.5 text-sm text-amber tabular-nums">
               {String(index + 1).padStart(2, "0")}
@@ -78,7 +78,7 @@ export async function EntryScreen({ title, lede, switcher, children }: EntryScre
   const brand = await requestBrand();
   return (
     <div className="min-h-dvh bg-paper lg:grid lg:grid-cols-[46fr_54fr]">
-      <FynixPanel brand={brand} />
+      <BrandbasketPanel brand={brand} />
 
       <main
         id="main"

@@ -28,7 +28,7 @@ describe("resolveBillingProviderName", () => {
   });
 
   it("keeps the local verify server working without the opt-in", () => {
-    // .claude/launch.json's fynix-verify: `next start` (NODE_ENV=production) on plain-http app.localhost.
+    // .claude/launch.json's brandbasket-verify: `next start` (NODE_ENV=production) on plain-http app.localhost.
     expect(
       resolveBillingProviderName({
         BILLING_PROVIDER: "fake",
@@ -40,8 +40,8 @@ describe("resolveBillingProviderName", () => {
 
   it.each([
     ["Vercel production", { VERCEL_ENV: "production" }],
-    ["an https public origin", { APP_ORIGIN: "https://app.fynix.digital" }],
-    ["an https Vercel preview origin", { VERCEL_ENV: "preview", APP_ORIGIN: "https://fynix-git-x.vercel.app" }],
+    ["an https public origin", { APP_ORIGIN: "https://app.brandbasket.in" }],
+    ["an https Vercel preview origin", { VERCEL_ENV: "preview", APP_ORIGIN: "https://brandbasket-git-x.vercel.app" }],
     ["an origin that cannot be read", { APP_ORIGIN: "not a url" }],
   ])("refuses fake on %s", (_label, env) => {
     expect(() => resolveBillingProviderName({ BILLING_PROVIDER: "fake", NODE_ENV: "production", ...env })).toThrow(
@@ -54,15 +54,15 @@ describe("resolveBillingProviderName", () => {
 
   it("refuses the unset-means-fake default on a real deployment too", () => {
     expect(() =>
-      resolveBillingProviderName({ NODE_ENV: "development", APP_ORIGIN: "https://app.fynix.digital" }),
+      resolveBillingProviderName({ NODE_ENV: "development", APP_ORIGIN: "https://app.brandbasket.in" }),
     ).toThrow(REFUSED_ON_REAL_DEPLOYMENT);
   });
 
-  it("allows fake on a real deployment only when FYNIX_ALLOW_FAKE_BILLING is exactly 1", () => {
+  it("allows fake on a real deployment only when BRANDBASKET_ALLOW_FAKE_BILLING is exactly 1", () => {
     const real = { BILLING_PROVIDER: "fake", NODE_ENV: "production", VERCEL_ENV: "production" } as const;
-    expect(resolveBillingProviderName({ ...real, FYNIX_ALLOW_FAKE_BILLING: "1" })).toBe("fake");
+    expect(resolveBillingProviderName({ ...real, BRANDBASKET_ALLOW_FAKE_BILLING: "1" })).toBe("fake");
     for (const value of ["true", "yes", " 1", "0", ""]) {
-      expect(() => resolveBillingProviderName({ ...real, FYNIX_ALLOW_FAKE_BILLING: value })).toThrow(
+      expect(() => resolveBillingProviderName({ ...real, BRANDBASKET_ALLOW_FAKE_BILLING: value })).toThrow(
         REFUSED_ON_REAL_DEPLOYMENT,
       );
     }
@@ -79,8 +79,8 @@ describe("isRealDeployment", () => {
     [{ APP_ORIGIN: "https://localhost" }, false],
     [{ APP_ORIGIN: "https://127.0.0.1:3000" }, false],
     [{ APP_ORIGIN: "https://[::1]:3000" }, false],
-    [{ APP_ORIGIN: "http://app.fynix.digital" }, false],
-    [{ APP_ORIGIN: "https://app.fynix.digital" }, true],
+    [{ APP_ORIGIN: "http://app.brandbasket.in" }, false],
+    [{ APP_ORIGIN: "https://app.brandbasket.in" }, true],
     [{ APP_ORIGIN: "https://localhost.evil.example" }, true],
     [{ VERCEL_ENV: "production", APP_ORIGIN: "http://app.localhost:3000" }, true],
   ])("%j is real: %s", (env, expected) => {

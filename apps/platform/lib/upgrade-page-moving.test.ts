@@ -17,7 +17,7 @@ vi.mock("@/lib/server/plan-upgrade", () => ({ readUpgradePage: vi.fn() }));
 vi.mock("@/lib/server/request-brand", () => ({ requestBrand: async () => (await import("@/lib/brand")).BRAND }));
 vi.mock("@/lib/server/billing-details", () => ({ loadBillingDetailsView: vi.fn(async () => null) }));
 vi.mock("@/app/app-host/(protected)/upgrade/actions", () => ({ startUpgrade: vi.fn() }));
-vi.mock("@/components/panel/email-us", () => ({ EmailUs: () => "hello@fynix.digital" }));
+vi.mock("@/components/panel/email-us", () => ({ EmailUs: () => "hello@brandbasket.in" }));
 vi.mock("@/components/panel/billing/billing-details", () => ({ BillingDetails: () => null }));
 
 /*
@@ -103,9 +103,9 @@ describe("the Upgrade page for a Care customer whose move to Premium is paid and
     expect(html).not.toMatch(/Care(<[^>]+>|\s|·)*Your plan/);
   });
 
-  it("names Fynix and nothing of Fynix", async () => {
+  it("names Brandbasket and nothing of Brandbasket", async () => {
     const html = await render(MOVED);
-    expect(BRAND.name).toBe("Fynix Digital");
+    expect(BRAND.name).toBe("Brandbasket");
     expect(html).not.toMatch(/first\s?fold/i);
   });
 });

@@ -129,7 +129,7 @@ describe("changeWebAddressAction", () => {
   });
 
   it("changes the address as the signed-in staff member and refreshes the pages that show it", async () => {
-    const changed = { status: "changed", url: "https://fynix.digital/in/mh/thane/business/smile-dental-care/k7m2q9a" } as const;
+    const changed = { status: "changed", url: "https://brandbasket.in/in/mh/thane/business/smile-dental-care/k7m2q9a" } as const;
     vi.mocked(changeWebAddress).mockResolvedValue(changed);
     const data = form(POSTED);
     expect(await changeWebAddressAction(IDLE, data)).toEqual(changed);

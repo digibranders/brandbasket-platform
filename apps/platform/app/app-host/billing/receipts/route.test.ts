@@ -69,12 +69,12 @@ function invoiceFor(paymentId: string, serial: number): TaxInvoice {
     paidOn: "2026-10-09",
     supplier: {
       legalName: "Digibranders Private Limited",
-      tradeName: "Fynix",
+      tradeName: "Brandbasket",
       gstin: "27AAICD9268J1Z0",
       cin: "U72900MH2021PTC372344",
       addressLines: ["Thane West, Maharashtra 400607, India"],
       stateCode: "mh",
-      email: "hello@fynix.digital",
+      email: "hello@brandbasket.in",
       phone: "+91 789 789 6607",
     },
     recipient: {
@@ -92,7 +92,7 @@ function invoiceFor(paymentId: string, serial: number): TaxInvoice {
     supplyType: "intra_state",
     lines: [
       {
-        description: "Fynix Premium plan",
+        description: "Brandbasket Premium plan",
         detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
         note: null,
         sac: "998361",
@@ -174,7 +174,7 @@ describe("GET /billing/receipts", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/pdf");
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-receipt-002.pdf"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="brandbasket-receipt-002.pdf"');
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(await pageCount(response)).toBe(1);
   });
@@ -183,7 +183,7 @@ describe("GET /billing/receipts", () => {
     const response = await get();
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-receipts.pdf"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="brandbasket-receipts.pdf"');
     expect(await pageCount(response)).toBe(2);
   });
 
@@ -201,7 +201,7 @@ describe("GET /billing/receipts", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/pdf");
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-invoice-FY-26-27-000001.pdf"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="brandbasket-invoice-FY-26-27-000001.pdf"');
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(mockedInvoices).toHaveBeenCalledWith(expect.anything(), [SECOND]);
@@ -221,7 +221,7 @@ describe("GET /billing/receipts", () => {
     } as never);
 
     expect((await get(`?ids=${SECOND}`)).status).toBe(200);
-    expect(renderTaxInvoicesPdf).toHaveBeenCalledWith([invoice], { recipientPhone: "+91 98200 12345", brandName: "Fynix Digital" });
+    expect(renderTaxInvoicesPdf).toHaveBeenCalledWith([invoice], { recipientPhone: "+91 98200 12345", brandName: "Brandbasket" });
   });
 
   it("hands the invoice no mobile when the signed-in member is an editor, not the owner", async () => {
@@ -235,7 +235,7 @@ describe("GET /billing/receipts", () => {
     } as never);
 
     expect((await get(`?ids=${SECOND}`)).status).toBe(200);
-    expect(renderTaxInvoicesPdf).toHaveBeenCalledWith([invoice], { recipientPhone: null, brandName: "Fynix Digital" });
+    expect(renderTaxInvoicesPdf).toHaveBeenCalledWith([invoice], { recipientPhone: null, brandName: "Brandbasket" });
   });
 
   it("hands the invoice no mobile for an account that has none", async () => {
@@ -244,16 +244,16 @@ describe("GET /billing/receipts", () => {
     mockedInvoices.mockResolvedValue([invoice]);
 
     expect((await get(`?ids=${SECOND}`)).status).toBe(200);
-    expect(renderTaxInvoicesPdf).toHaveBeenCalledWith([invoice], { recipientPhone: null, brandName: "Fynix Digital" });
+    expect(renderTaxInvoicesPdf).toHaveBeenCalledWith([invoice], { recipientPhone: null, brandName: "Brandbasket" });
   });
 
   it("still downloads a payment from before invoicing as a receipt, and reads no invoice", async () => {
     const response = await get(`?ids=${FIRST}`);
 
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-receipt-001.pdf"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="brandbasket-receipt-001.pdf"');
     expect(mockedInvoices).not.toHaveBeenCalled();
     const pdf = await PDFDocument.load(new Uint8Array(await response.arrayBuffer()));
-    expect(pdf.getTitle()).toBe("Fynix Digital Receipt #001");
+    expect(pdf.getTitle()).toBe("Brandbasket Receipt #001");
   });
 
   it("puts invoices and older receipts in one PDF, oldest first", async () => {
@@ -263,7 +263,7 @@ describe("GET /billing/receipts", () => {
 
     const response = await get();
 
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-invoices-and-receipts.pdf"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="brandbasket-invoices-and-receipts.pdf"');
     expect(await pageKinds(response)).toEqual(["receipt", "invoice"]);
   });
 
@@ -275,7 +275,7 @@ describe("GET /billing/receipts", () => {
 
     const response = await get();
 
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-invoices.pdf"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="brandbasket-invoices.pdf"');
     expect(await pageKinds(response)).toEqual(["invoice", "invoice"]);
   });
 
@@ -293,7 +293,7 @@ describe("GET /billing/receipts", () => {
     const response = await get();
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-invoices-and-receipts.pdf"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="brandbasket-invoices-and-receipts.pdf"');
     expect(await pageKinds(response)).toEqual(["invoice", "receipt", "invoice"]);
   });
 
@@ -303,11 +303,11 @@ describe("GET /billing/receipts", () => {
 
     const response = await get(`?ids=${SECOND}`);
 
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-receipt-002.pdf"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="brandbasket-receipt-002.pdf"');
     expect(await pageCount(response)).toBe(1);
   });
 
-  it("draws the invoice as stored, under Fynix Digital's name", async () => {
+  it("draws the invoice as stored, under Brandbasket's name", async () => {
     const invoice = invoiceFor(SECOND, 1);
     mockedReceipts.mockResolvedValue([invoicedReceipt(SECOND, 2, invoice)]);
     mockedInvoices.mockResolvedValue([invoice]);
@@ -315,10 +315,10 @@ describe("GET /billing/receipts", () => {
     const response = await get(`?ids=${SECOND}`);
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Disposition")).toContain("filename=\"fynix-invoice-");
+    expect(response.headers.get("Content-Disposition")).toContain("filename=\"brandbasket-invoice-");
     const [shown, options] = vi.mocked(renderTaxInvoicesPdf).mock.calls.at(-1) ?? [];
     expect(shown?.[0]).toEqual(invoice);
-    expect(options).toMatchObject({ brandName: "Fynix Digital" });
+    expect(options).toMatchObject({ brandName: "Brandbasket" });
   });
 
   it("finds nothing for another business's payment, and reads no invoice for it", async () => {

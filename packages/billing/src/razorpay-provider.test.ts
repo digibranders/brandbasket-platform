@@ -60,7 +60,7 @@ describe("createRazorpayProvider", () => {
         plan: {
           id: "plan-row-id",
           code: "care-usd",
-          name: "Fynix care plan",
+          name: "Brandbasket care plan",
           currency: "USD",
           tier: "premium",
           initialAmountCents: 7_500,
@@ -500,7 +500,7 @@ describe("createPlan", () => {
       period: "monthly",
       interval: 1,
       item: { name: "Subscription plan (INR)", amount: 412_882, currency: "INR" },
-      notes: { fynixPlanCode: "care-inr-20261002-093000" },
+      notes: { brandbasketPlanCode: "care-inr-20261002-093000" },
     });
   });
 

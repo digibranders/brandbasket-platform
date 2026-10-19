@@ -70,7 +70,7 @@ paper/70 8.1.
 |---|---|
 | Newsreader (`font-serif`) | Page titles (`heading-display`), section titles, big figures, stage counts, names in glass cards, quoted lead messages |
 | Hanken Grotesk (`font-sans`) | Everything else: body, labels, buttons, rows, dock |
-| Outfit (`font-brand`) | The Fynix wordmark only |
+| Outfit (`font-brand`) | The Brandbasket wordmark only |
 
 | Step | Size | Where |
 |---|---|---|

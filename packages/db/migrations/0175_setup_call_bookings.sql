@@ -17,19 +17,19 @@ CREATE UNIQUE INDEX "setup_call_bookings_business_idx" ON "setup_call_bookings" 
 -- A customer notes that they booked the kickoff call and reads their own row; every row is theirs alone (row-level
 -- security by business), a business never deletes its own, and staff and system paths (the account erase, a booking page's report) work on the
 -- staff connection.
-GRANT SELECT, INSERT, UPDATE ON setup_call_bookings TO fynix_app;
+GRANT SELECT, INSERT, UPDATE ON setup_call_bookings TO bb_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON setup_call_bookings TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON setup_call_bookings TO bb_staff;
 --> statement-breakpoint
 
 ALTER TABLE setup_call_bookings ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
 CREATE POLICY setup_call_bookings_tenant_all ON setup_call_bookings
-  FOR ALL TO fynix_app
+  FOR ALL TO bb_app
   USING (business_id = app_current_business_id())
   WITH CHECK (business_id = app_current_business_id());
 --> statement-breakpoint
 
-CREATE POLICY setup_call_bookings_staff_all ON setup_call_bookings FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY setup_call_bookings_staff_all ON setup_call_bookings FOR ALL TO bb_staff USING (true) WITH CHECK (true);

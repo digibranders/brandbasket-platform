@@ -151,7 +151,7 @@ function ProfileCard({ data }: { readonly data: AdPreviewData }): ReactElement {
 }
 
 const FRAME_TITLES: Readonly<Record<DirectoryAdPlacement, string>> = {
-  home: "fynix.digital",
+  home: "brandbasket.in",
   top: "Dentists in your area",
   side: "Dentists in your area",
   profile: "A business page",
@@ -164,7 +164,7 @@ export function AdPreview({
 }: {
   readonly placement: DirectoryAdPlacement;
   readonly data: AdPreviewData;
-  /** The brand the dashboard is sold under: the home page frame is titled with the directory's address, which is Fynix Digital's. */
+  /** The brand the dashboard is sold under: the home page frame is titled with the directory's address, which is Brandbasket's. */
   readonly brand?: Brand;
 }): ReactElement {
   return (

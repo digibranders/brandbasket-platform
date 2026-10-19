@@ -115,7 +115,7 @@ export function receiptDocument(receipt: Receipt, customer: ReceiptCustomer, bra
         ];
 
   return {
-    fileName: `fynix-receipt-${number.slice(1)}.pdf`,
+    fileName: `brandbasket-receipt-${number.slice(1)}.pdf`,
     title: `Receipt ${number}`,
     issuedOn: receiptDate(receipt.paidAt ?? receipt.createdAt),
     status: receiptStatus(receipt),

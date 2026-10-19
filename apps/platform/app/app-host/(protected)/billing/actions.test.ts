@@ -194,7 +194,7 @@ describe("lookupBillingPincodeAction", () => {
     expect(await lookupBillingPincodeAction("999999")).toEqual({ kind: "not-found" });
   });
 
-  it("says there is no directory, and not that the pincode is wrong, where none is loaded (Fynix)", async () => {
+  it("says there is no directory, and not that the pincode is wrong, where none is loaded (Brandbasket)", async () => {
     vi.mocked(findPincode).mockResolvedValue(null);
     vi.mocked(hasPincodeDirectory).mockResolvedValue(false);
     expect(await lookupBillingPincodeAction("400080")).toEqual({ kind: "no-directory" });

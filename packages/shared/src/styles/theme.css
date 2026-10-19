@@ -1,5 +1,5 @@
 /*
- * Fynix Digital's shared look: palette, fonts, base styles and the motion both apps use. Imported by
+ * Brandbasket's shared look: palette, fonts, base styles and the motion both apps use. Imported by
  * apps/website/app/globals.css and apps/platform/app/globals.css, each after `@import "tailwindcss"`.
  */
 
@@ -186,7 +186,7 @@
 /*
  * The dashboard type scale. The marketing site opens at hero sizes because a visitor is being introduced to
  * something; a customer already inside their dashboard is working, so the same voice is kept at a working size.
- * Both tiers stay serif, which is what keeps the panel recognisably Fynix rather than a stock admin theme.
+ * Both tiers stay serif, which is what keeps the panel recognisably Brandbasket rather than a stock admin theme.
  */
 
 /* Page title, one per screen. */
@@ -337,14 +337,14 @@
 }
 
 /*
- * The dashboard sold under Fynix Digital's name (a data-brand="fynix" on <html>, set from the request's host: see
+ * The dashboard sold under Brandbasket's name (a data-brand="brandbasket" on <html>, set from the request's host: see
  * components/panel/dashboard-root.tsx). Only the palette and the typeface change; every layout, size and behaviour is the
- * Fynix dashboard's. The palette is the Fynix site's own: warm near-white ground, navy primary, peach accent. Peach is
+ * Brandbasket dashboard's. The palette is the Brandbasket site's own: warm near-white ground, navy primary, peach accent. Peach is
  * 1.9:1 on the ground, so it is used on dark surfaces and for fills only; the emphasised words of a headline on the
  * light ground take the deeper aged-gold shade instead (4.9:1). Contrast, measured: ink on paper 16.5:1, ink-soft on paper
  * 6.5:1, paper on dark-surface 16.5:1, accent-deep on accent-pale 12.1:1.
  */
-html[data-brand="fynix"] {
+html[data-brand="brandbasket"] {
   --color-paper: #fcfcfb;
   --color-paper-deep: #f6f5f2;
   --color-card: #fcfcfb;
@@ -368,12 +368,12 @@ html[data-brand="fynix"] {
   --font-outfit: var(--font-figtree);
 }
 
-html[data-brand="fynix"] :where(.heading-display, .panel-title) em {
+html[data-brand="brandbasket"] :where(.heading-display, .panel-title) em {
   color: #8b6a2e;
 }
 
-/* The paper grain is Fynix Digital's; the Fynix site has none. */
-html[data-brand="fynix"] body::after {
+/* The paper grain is Brandbasket's; the Brandbasket site has none. */
+html[data-brand="brandbasket"] body::after {
   display: none;
 }
 

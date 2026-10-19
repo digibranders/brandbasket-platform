@@ -1,6 +1,6 @@
 /*
  * The clock on a rights or grievance request. DPDP Act 2023 s.13 and Rules 2025 r.14: answer a grievance within a
- * reasonable period that does not exceed 90 days. Fynix Digital's own target is 30 days from the day the request was received,
+ * reasonable period that does not exceed 90 days. Brandbasket's own target is 30 days from the day the request was received,
  * so a request that reaches day 90 has already gone far past what we promise. Staff are reminded at day 20 and again at
  * day 25 of the 30. The tracker is the staff console's Privacy requests page.
  */
@@ -9,7 +9,7 @@ export const REQUEST_TARGET_DAYS = 30;
 export const REQUEST_CEILING_DAYS = 90;
 /**
  * A complaint about something posted on the local directory (a review, a comment, a listing) is a grievance about content
- * Fynix hosts as an intermediary: IT (Intermediary Guidelines) Rules 2021 r.3(2)(a) give 15 days to resolve it. The
+ * Brandbasket hosts as an intermediary: IT (Intermediary Guidelines) Rules 2021 r.3(2)(a) give 15 days to resolve it. The
  * reference shown at once is the acknowledgement the same rule wants within 24 hours.
  */
 export const CONTENT_GRIEVANCE_DAYS = 15;
@@ -25,7 +25,7 @@ export interface RequestDeadlines {
   readonly legalCeilingAt: Date;
 }
 
-/** When a request received now is due by Fynix Digital's own target, and the latest the Act allows. */
+/** When a request received now is due by Brandbasket's own target, and the latest the Act allows. */
 export function requestDeadlines(receivedAt: Date): RequestDeadlines {
   return {
     dueAt: new Date(receivedAt.getTime() + REQUEST_TARGET_DAYS * DAY_MS),

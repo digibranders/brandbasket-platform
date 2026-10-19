@@ -55,5 +55,5 @@ export async function sendStaffAccessReview(
 
 /** Where security alerts go: SECURITY_ALERT_EMAIL if set, else the support alert mailbox, else the team address. */
 export function securityAlertRecipient(env: Readonly<Record<string, string | undefined>>): string {
-  return env.SECURITY_ALERT_EMAIL?.trim() || env.SUPPORT_ALERT_EMAIL?.trim() || env.FYNIX_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
+  return env.SECURITY_ALERT_EMAIL?.trim() || env.SUPPORT_ALERT_EMAIL?.trim() || env.BRANDBASKET_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
 }

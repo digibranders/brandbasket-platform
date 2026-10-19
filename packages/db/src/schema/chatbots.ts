@@ -5,7 +5,7 @@ import { businesses } from "./businesses";
 import { createdAt, updatedAt } from "./columns";
 
 /**
- * The chatbots OyeChats runs for a business. A bot has no account of its own here or for the customer: Fynix staff set it
+ * The chatbots OyeChats runs for a business. A bot has no account of its own here or for the customer: Brandbasket staff set it
  * up and look after it in OyeChats, and the dashboard is the customer's window onto it (its status, and the leads it
  * collects). Staff register a bot on the client's page in the console; OyeChats then reports each captured lead to
  * POST /api/webhooks/oyechats, signed with the secret OyeChats made for that bot's webhook.
@@ -39,7 +39,7 @@ export const chatbots = pgTable(
 );
 
 /**
- * The credentials Fynix holds for one bot, staff only: no customer role can read or write this table, so nothing in it ever
+ * The credentials Brandbasket holds for one bot, staff only: no customer role can read or write this table, so nothing in it ever
  * reaches the browser. `secret` is what OyeChats signs the bot's webhook deliveries with. `operatorKey` is the key of an
  * OyeChats operator bound to that one bot, which the dashboard server uses to read the bot's own conversations when the
  * customer opens a lead (OyeChats scopes such a key to its single bot). Null until staff add it.

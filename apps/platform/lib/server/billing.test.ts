@@ -288,21 +288,21 @@ describe("requireBillingAccess", () => {
 });
 
 describe("getBillingProvider", () => {
-  const holder = globalThis as typeof globalThis & { fynixBillingProvider?: unknown };
+  const holder = globalThis as typeof globalThis & { brandbasketBillingProvider?: unknown };
 
   beforeEach(() => {
-    delete holder.fynixBillingProvider;
+    delete holder.brandbasketBillingProvider;
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    delete holder.fynixBillingProvider;
+    delete holder.brandbasketBillingProvider;
   });
 
   it("refuses the fake provider on a real deployment", () => {
     vi.stubEnv("BILLING_PROVIDER", "fake");
-    vi.stubEnv("APP_ORIGIN", "https://app.fynix.digital");
-    vi.stubEnv("FYNIX_ALLOW_FAKE_BILLING", "");
+    vi.stubEnv("APP_ORIGIN", "https://app.brandbasket.in");
+    vi.stubEnv("BRANDBASKET_ALLOW_FAKE_BILLING", "");
     expect(() => getBillingProvider()).toThrow(BillingConfigurationError);
   });
 
@@ -311,9 +311,9 @@ describe("getBillingProvider", () => {
     vi.stubEnv("APP_ORIGIN", "http://app.localhost:3100");
     expect(getBillingProvider().name).toBe("fake");
 
-    delete holder.fynixBillingProvider;
-    vi.stubEnv("APP_ORIGIN", "https://preview.fynix.digital");
-    vi.stubEnv("FYNIX_ALLOW_FAKE_BILLING", "1");
+    delete holder.brandbasketBillingProvider;
+    vi.stubEnv("APP_ORIGIN", "https://preview.brandbasket.in");
+    vi.stubEnv("BRANDBASKET_ALLOW_FAKE_BILLING", "1");
     expect(getBillingProvider().name).toBe("fake");
   });
 
@@ -359,17 +359,17 @@ describe("getBillingProvider", () => {
 });
 
 describe("getRazorpayProvider", () => {
-  const holder = globalThis as typeof globalThis & { fynixBillingProvider?: unknown; fynixRazorpayProvider?: unknown };
+  const holder = globalThis as typeof globalThis & { brandbasketBillingProvider?: unknown; brandbasketRazorpayProvider?: unknown };
 
   beforeEach(() => {
-    delete holder.fynixBillingProvider;
-    delete holder.fynixRazorpayProvider;
+    delete holder.brandbasketBillingProvider;
+    delete holder.brandbasketRazorpayProvider;
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    delete holder.fynixBillingProvider;
-    delete holder.fynixRazorpayProvider;
+    delete holder.brandbasketBillingProvider;
+    delete holder.brandbasketRazorpayProvider;
   });
 
   it("is the same provider getBillingProvider gives, when that is Razorpay", () => {

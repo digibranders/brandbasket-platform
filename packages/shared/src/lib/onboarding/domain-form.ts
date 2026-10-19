@@ -38,7 +38,7 @@ export function isValidHostname(hostname: string): boolean {
   return labels.every((label) => LABEL.test(label)) && TOP_LEVEL.test(topLevel);
 }
 
-/** True for one of Fynix Digital's own hosts or anything under one of them. */
+/** True for one of Brandbasket's own hosts or anything under one of them. */
 export function isReservedHostname(hostname: string, reserved: readonly string[]): boolean {
   return reserved.some((host) => hostname === host || hostname.endsWith(`.${host}`));
 }
@@ -81,7 +81,7 @@ export function isTemporarySubdomain(hostname: string, env: Env = process.env): 
 }
 
 /**
- * Fynix Digital's own hostnames from its configured origins, for parseDomainForm: each origin's hostname with any
+ * Brandbasket's own hostnames from its configured origins, for parseDomainForm: each origin's hostname with any
  * leading `www.` removed, since a customer's entry is compared the same way, plus `localhost`. An origin that is
  * not a URL is a configuration mistake and throws rather than leaving a host unguarded.
  */
@@ -95,7 +95,7 @@ export function reservedHostnamesFrom(origins: readonly string[]): string[] {
 }
 
 /**
- * Step 04. `reservedHostnames` are Fynix Digital's own hosts, which no customer may claim; the action passes the real
+ * Step 04. `reservedHostnames` are Brandbasket's own hosts, which no customer may claim; the action passes the real
  * list so this stays a pure function.
  */
 export function parseDomainForm(formData: FormData, reservedHostnames: readonly string[]): StepParseResult<DomainStepInput> {
@@ -139,7 +139,7 @@ export const RESERVED_SUBDOMAIN_NAMES: ReadonlySet<string> = new Set([
   "www", "app", "console", "staff", "admin", "administrator", "api", "mail", "email", "smtp", "imap", "pop", "ftp", "sftp", "ssh",
   "ns", "ns1", "ns2", "dns", "mx", "cdn", "static", "assets", "media", "files", "status", "help", "support", "billing", "pay",
   "payment", "payments", "invoice", "invoices", "login", "signin", "signup", "register", "account", "accounts", "dashboard",
-  "secure", "security", "auth", "oauth", "sso", "verify", "fynix", "fynixdigital", "digital", "sites", "site", "blog", "shop",
+  "secure", "security", "auth", "oauth", "sso", "verify", "brandbasket", "fynix", "fynixdigital", "digital", "sites", "site", "blog", "shop",
   "store", "test", "testing", "staging", "dev", "demo", "preview", "localhost", "root", "postmaster", "webmaster", "abuse",
   "noreply", "no-reply", "oyechats", "razorpay", "bank", "paypal", "google", "microsoft", "apple", "whatsapp", "instagram",
   "facebook", "linkedin",
@@ -156,7 +156,7 @@ export type SubdomainNameReading = { readonly ok: true; readonly name: string } 
 
 /**
  * Reads the name a customer typed for their free address. Lower-cased and trimmed; a base domain typed on the end
- * ("harbour.sites.fynix.digital") is dropped, so pasting the whole address works. Letters, numbers and single hyphens
+ * ("harbour.sites.brandbasket.in") is dropped, so pasting the whole address works. Letters, numbers and single hyphens
  * only, 3 to 40 characters, and never a reserved name.
  */
 export function readSubdomainName(input: string, baseDomain: string | null = null): SubdomainNameReading {

@@ -205,7 +205,7 @@ export interface StatusIntakeDeps {
   readonly readStatuses: (ask: DirectoryAsk) => Promise<StatusResponse>;
 }
 
-/** `GET /api/directory/status?keys=k1,k2,…` / `?ids=i1,i2,…`: each business Fynix has verified, with the number to
+/** `GET /api/directory/status?keys=k1,k2,…` / `?ids=i1,i2,…`: each business Brandbasket has verified, with the number to
  * show, keyed by what was asked, cached by shared caches for 60 seconds like the ratings. */
 export async function handleStatusRequest(request: Request, deps: StatusIntakeDeps): Promise<Response> {
   const refused = refuseUnauthorised(request, "GET", deps.token);

@@ -3,10 +3,10 @@ import { deploymentBrandShortName } from "../lib/deployment-brand";
 
 /*
  * Vimeo's API, for a Premium member's short videos (docs/superpowers/specs/2026-10-07-business-videos-design.md): the
- * videos live in Fynix Digital's own Vimeo account as unlisted, embeddable and not downloadable, and the business page
+ * videos live in Brandbasket's own Vimeo account as unlisted, embeddable and not downloadable, and the business page
  * plays them in Vimeo's player. Only what we use is here: ask for a resumable upload, read a video back, delete one.
  * The browser sends the file to Vimeo itself with the upload address this returns; our servers never carry it. Every video
- * is made inside the account's "Fynix" folder, never loose in the library.
+ * is made inside the account's "Brandbasket" folder, never loose in the library.
  *
  * Everything Vimeo answers is checked before it is passed on: the upload address must be Vimeo's, and a video is only
  * "ready" once it has the privacy hash its embed address needs and a poster on Vimeo's image host.
@@ -19,7 +19,7 @@ const REQUEST_TIMEOUT_MS = 15_000;
 /** The Vimeo error codes that mean the account's upload allowance is used up: yearly or lifetime, weekly, daily. */
 const QUOTA_ERROR_CODES: ReadonlySet<number> = new Set([4101, 4102, 4104]);
 
-/** `configuration`: something we were told to rely on is not there (the Fynix folder), so nothing is made. */
+/** `configuration`: something we were told to rely on is not there (the Brandbasket folder), so nothing is made. */
 export type VimeoFailure = "quota" | "unauthorized" | "configuration" | "other";
 
 /** Vimeo refused or failed a request. `reason` says what to do about it; the message never holds the token. */
@@ -74,13 +74,13 @@ export function vimeoTokenFromEnv(env: Readonly<Record<string, string | undefine
   return token === undefined || token === "" ? null : token;
 }
 
-/** The folder every member's video goes in, found by name (whatever its capitals) the first time it is needed: the deployment's brand, "Fynix" or "Fynix". */
+/** The folder every member's video goes in, found by name (whatever its capitals) the first time it is needed: the deployment's brand, "Brandbasket" or "Brandbasket". */
 export function vimeoFolderName(env: Readonly<Record<string, string | undefined>> = process.env): string {
   return deploymentBrandShortName();
 }
 const FOLDER_URI = /^\/users\/[0-9]{1,20}\/projects\/[0-9]{1,20}$/;
 const FOLDER_PAGE_SIZE = 100;
-/** More folders than this and the lookup gives up: a Fynix account has a handful. */
+/** More folders than this and the lookup gives up: a Brandbasket account has a handful. */
 const FOLDER_MAX_PAGES = 5;
 const VIDEO_ID = /^[0-9]{1,20}$/;
 const HASH = /^[0-9a-f]{6,32}$/;

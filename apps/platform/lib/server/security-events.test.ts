@@ -5,7 +5,7 @@ import { noteSecurityEvent, SECURITY_EVENTS } from "./security-events";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({}) as Database) }));
-vi.mock("./env", () => ({ serverEnv: vi.fn(() => ({ ADMIN_ORIGIN: "https://console.fynix.digital" })) }));
+vi.mock("./env", () => ({ serverEnv: vi.fn(() => ({ ADMIN_ORIGIN: "https://console.brandbasket.in" })) }));
 vi.mock("@brandbasket/db", () => ({ consumeRateLimit: vi.fn() }));
 vi.mock("@brandbasket/email", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/email")>("@brandbasket/email");
@@ -37,7 +37,7 @@ describe("noteSecurityEvent", () => {
     expect(consumeRateLimit).toHaveBeenLastCalledWith(expect.anything(), "security-alert:webhook_signature_invalid", { limit: 1, windowSeconds: 3600 }, NOW);
     const message = send.mock.calls[0]?.[0];
     expect(message?.subject).toBe(`[Security] ${SECURITY_EVENTS.webhook_signature_invalid.label} (3 or more in 60 minutes)`);
-    expect(message?.bodyText).toContain("https://console.fynix.digital/access-log");
+    expect(message?.bodyText).toContain("https://console.brandbasket.in/access-log");
   });
 
   it("sends no second email in the same window", async () => {

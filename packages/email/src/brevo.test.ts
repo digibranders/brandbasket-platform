@@ -3,7 +3,7 @@ import { BrevoDeliveryError, createAppEmailTransport, createBrevoTransport, crea
 import type { EmailMessage } from "./message";
 
 const sampleMessage: EmailMessage = {
-  to: "hello@fynix.digital",
+  to: "hello@brandbasket.in",
   subject: "[New Bug] Broken button (SUP-001)",
   template: "support-ticket-alert",
   bodyText: "A customer reported a broken button.",
@@ -26,7 +26,7 @@ describe("createBrevoTransport", () => {
 
     const transport = createBrevoTransport({
       apiKey: "test-api-key",
-      defaultSender: { email: "no-reply@fynix.digital", name: "Fynix Alerts" },
+      defaultSender: { email: "no-reply@brandbasket.in", name: "Brandbasket Alerts" },
       fetchFn: mockFetch,
     });
 
@@ -37,8 +37,8 @@ describe("createBrevoTransport", () => {
     expect((capturedOptions?.headers as Record<string, string>)["api-key"]).toBe("test-api-key");
 
     const body = JSON.parse(capturedOptions?.body as string);
-    expect(body.sender).toEqual({ email: "no-reply@fynix.digital", name: "Fynix Alerts" });
-    expect(body.to).toEqual([{ email: "hello@fynix.digital" }]);
+    expect(body.sender).toEqual({ email: "no-reply@brandbasket.in", name: "Brandbasket Alerts" });
+    expect(body.to).toEqual([{ email: "hello@brandbasket.in" }]);
     expect(body.subject).toBe(sampleMessage.subject);
     expect(body.htmlContent).toBe(sampleMessage.bodyHtml);
     expect(body.textContent).toBe(sampleMessage.bodyText);
@@ -68,14 +68,14 @@ describe("createBrevoTransport", () => {
 
     const transport = createBrevoTransport({
       apiKey: "test-key",
-      replyTo: { email: "hello@fynix.digital", name: "Support Team" },
+      replyTo: { email: "hello@brandbasket.in", name: "Support Team" },
       fetchFn: mockFetch,
     });
 
     await transport.send(sampleMessage);
 
     const body = JSON.parse(capturedOptions?.body as string);
-    expect(body.replyTo).toEqual({ email: "hello@fynix.digital", name: "Support Team" });
+    expect(body.replyTo).toEqual({ email: "hello@brandbasket.in", name: "Support Team" });
   });
 });
 
@@ -142,7 +142,7 @@ describe("createDualTransport", () => {
     await createDualTransport({ send: brevoSend }, db).send(message);
     expect(brevoSend).toHaveBeenCalledWith(message);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ subject: "Support request SUP-001", bodyText: "Reference SUP-001", transport: "brevo", toAddress: "hello@fynix.digital" });
+    expect(rows[0]).toMatchObject({ subject: "Support request SUP-001", bodyText: "Reference SUP-001", transport: "brevo", toAddress: "hello@brandbasket.in" });
     expect(JSON.stringify(rows)).not.toContain("4242");
   });
 
@@ -170,7 +170,7 @@ describe("createAppEmailTransport", () => {
     const transport = createAppEmailTransport(mockDb, {
       env: {
         BREVO_API_KEY: "test-key",
-        ALERTS_FROM_EMAIL: "no-reply@fynix.digital",
+        ALERTS_FROM_EMAIL: "no-reply@brandbasket.in",
       },
     });
     expect(transport).toBeDefined();
@@ -222,24 +222,24 @@ describe("who mail comes from", () => {
     return body;
   }
 
-  it("is Fynix Digital <no-reply@fynix.digital> with replies to hello@fynix.digital", async () => {
+  it("is Brandbasket <no-reply@brandbasket.in> with replies to hello@brandbasket.in", async () => {
     const body = await sentBody({});
-    expect(body.sender).toEqual({ email: "no-reply@fynix.digital", name: "Fynix Digital" });
-    expect(body.replyTo).toEqual({ email: "hello@fynix.digital", name: "Fynix Support" });
+    expect(body.sender).toEqual({ email: "no-reply@brandbasket.in", name: "Brandbasket" });
+    expect(body.replyTo).toEqual({ email: "hello@brandbasket.in", name: "Brandbasket Support" });
   });
 
-  it("sends Fynix mail from FYNIX_MAIL_FROM, named Fynix Digital", async () => {
-    const body = await sentBody({ FYNIX_MAIL_FROM: "hello@mail.fynix.digital" });
-    expect(body.sender).toEqual({ email: "hello@mail.fynix.digital", name: "Fynix Digital" });
+  it("sends Brandbasket mail from BRANDBASKET_MAIL_FROM, named Brandbasket", async () => {
+    const body = await sentBody({ BRANDBASKET_MAIL_FROM: "hello@mail.brandbasket.in" });
+    expect(body.sender).toEqual({ email: "hello@mail.brandbasket.in", name: "Brandbasket" });
   });
 
-  it("ignores a blank FYNIX_MAIL_FROM", async () => {
-    expect((await sentBody({ FYNIX_MAIL_FROM: "  " })).sender).toEqual({ email: "no-reply@fynix.digital", name: "Fynix Digital" });
+  it("ignores a blank BRANDBASKET_MAIL_FROM", async () => {
+    expect((await sentBody({ BRANDBASKET_MAIL_FROM: "  " })).sender).toEqual({ email: "no-reply@brandbasket.in", name: "Brandbasket" });
   });
 
   it("lets the environment's own addresses win on either", async () => {
-    const body = await sentBody({ ALERTS_FROM_EMAIL: "no-reply@fynix.digital", ALERTS_FROM_NAME: "Fynix Digital", SUPPORT_ALERT_EMAIL: "care@fynix.digital" });
-    expect(body.sender).toEqual({ email: "no-reply@fynix.digital", name: "Fynix Digital" });
-    expect(body.replyTo).toMatchObject({ email: "care@fynix.digital" });
+    const body = await sentBody({ ALERTS_FROM_EMAIL: "no-reply@brandbasket.in", ALERTS_FROM_NAME: "Brandbasket", SUPPORT_ALERT_EMAIL: "care@brandbasket.in" });
+    expect(body.sender).toEqual({ email: "no-reply@brandbasket.in", name: "Brandbasket" });
+    expect(body.replyTo).toMatchObject({ email: "care@brandbasket.in" });
   });
 });

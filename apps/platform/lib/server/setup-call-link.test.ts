@@ -14,9 +14,9 @@ beforeEach(() => {
 
 describe("getSetupCallUrl", () => {
   it("is the link staff saved", async () => {
-    vi.mocked(findSiteSetting).mockResolvedValue({ key: "setup_call_url", value: "https://calendly.com/fynix/setup", updatedByStaffId: null, updatedAt: new Date() });
+    vi.mocked(findSiteSetting).mockResolvedValue({ key: "setup_call_url", value: "https://calendly.com/brandbasket/setup", updatedByStaffId: null, updatedAt: new Date() });
 
-    expect(await getSetupCallUrl()).toBe("https://calendly.com/fynix/setup");
+    expect(await getSetupCallUrl()).toBe("https://calendly.com/brandbasket/setup");
     expect(findSiteSetting).toHaveBeenCalledWith({ name: "staff-db" }, "setup_call_url");
   });
 

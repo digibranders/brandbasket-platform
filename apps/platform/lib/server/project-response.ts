@@ -23,9 +23,9 @@ export async function respondToPreview(db: Database, input: RespondToPreviewInpu
     await requestProjectRevisions(db, { businessId: input.businessId, now });
   }
 
-  const teamInbox = process.env.FYNIX_TEAM_EMAIL;
+  const teamInbox = process.env.BRANDBASKET_TEAM_EMAIL;
   if (teamInbox === undefined || teamInbox.trim() === "") {
-    console.error("FYNIX_TEAM_EMAIL is not set, so nobody was told about a preview response.", {
+    console.error("BRANDBASKET_TEAM_EMAIL is not set, so nobody was told about a preview response.", {
       businessId: input.businessId,
     });
     return;

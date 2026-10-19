@@ -23,7 +23,7 @@ function segmentClass(segment: AddressSegment, active: boolean): string {
 
 /**
  * An address on the local directory, part by part, such as the page a business is listed on,
- * `fynix.digital/in/mh/<district>/<area>/<category>`. Chosen parts are in ink, the parts still to pick are dotted
+ * `brandbasket.in/in/mh/<district>/<area>/<category>`. Chosen parts are in ink, the parts still to pick are dotted
  * placeholders, so the owner watches the address fill in.
  */
 export function ListingAddressLine({ segments, active = null }: ListingAddressLineProps): ReactElement {

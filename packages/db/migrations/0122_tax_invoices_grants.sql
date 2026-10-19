@@ -3,47 +3,47 @@
 -- needs (0097). Customers read their own invoices and write none: invoices are issued by the payment paths on the
 -- staff connection. Nobody may update or delete an invoice, staff included: an issued invoice is corrected by a credit
 -- note, never edited, and it is a financial record that erasure leaves whole. The series counter is staff only.
--- fynix_public gets nothing.
+-- bb_public gets nothing.
 
-GRANT SELECT, INSERT, UPDATE ON billing_profiles TO fynix_app;
+GRANT SELECT, INSERT, UPDATE ON billing_profiles TO bb_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON billing_profiles TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE, DELETE ON billing_profiles TO bb_staff;
 --> statement-breakpoint
 
 ALTER TABLE billing_profiles ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY billing_profiles_tenant_all ON billing_profiles FOR ALL TO fynix_app
+CREATE POLICY billing_profiles_tenant_all ON billing_profiles FOR ALL TO bb_app
   USING (business_id = app_current_business_id()) WITH CHECK (business_id = app_current_business_id());
 --> statement-breakpoint
 
-CREATE POLICY billing_profiles_staff_all ON billing_profiles FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY billing_profiles_staff_all ON billing_profiles FOR ALL TO bb_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT ON tax_invoices TO fynix_app;
+GRANT SELECT ON tax_invoices TO bb_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT ON tax_invoices TO fynix_staff;
+GRANT SELECT, INSERT ON tax_invoices TO bb_staff;
 --> statement-breakpoint
 
 ALTER TABLE tax_invoices ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY tax_invoices_tenant_select ON tax_invoices FOR SELECT TO fynix_app
+CREATE POLICY tax_invoices_tenant_select ON tax_invoices FOR SELECT TO bb_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
 
-CREATE POLICY tax_invoices_staff_select ON tax_invoices FOR SELECT TO fynix_staff USING (true);
+CREATE POLICY tax_invoices_staff_select ON tax_invoices FOR SELECT TO bb_staff USING (true);
 --> statement-breakpoint
 
-CREATE POLICY tax_invoices_staff_insert ON tax_invoices FOR INSERT TO fynix_staff WITH CHECK (true);
+CREATE POLICY tax_invoices_staff_insert ON tax_invoices FOR INSERT TO bb_staff WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON tax_invoice_series TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE ON tax_invoice_series TO bb_staff;
 --> statement-breakpoint
 
 ALTER TABLE tax_invoice_series ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY tax_invoice_series_staff_all ON tax_invoice_series FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY tax_invoice_series_staff_all ON tax_invoice_series FOR ALL TO bb_staff USING (true) WITH CHECK (true);

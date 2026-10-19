@@ -6,7 +6,7 @@ import type { SiteInfo, SiteInfoBooking, SiteInfoClosure, SiteInfoHours, SiteInf
 
 /**
  * The zone a business's hours, closures and announcement are read in until it has chosen one (it is set when
- * Appointments is switched on). Fynix serves businesses in India, so this is the right answer far more often than
+ * Appointments is switched on). Brandbasket serves businesses in India, so this is the right answer far more often than
  * UTC, which would roll "today" over at 5:30 am local time.
  */
 export const DEFAULT_SITE_TIME_ZONE = "Asia/Kolkata";

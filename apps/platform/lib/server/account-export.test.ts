@@ -108,8 +108,8 @@ describe("buildAccountExport", () => {
 });
 
 describe("the export's names", () => {
-  it("are Fynix's", () => {
-    expect(ACCOUNT_EXPORT_FORMAT).toBe("fynix-account-export/1");
-    expect(accountExportFilename("2026-11-01")).toBe("fynix-my-data-2026-11-01.json");
+  it("are Brandbasket's", () => {
+    expect(ACCOUNT_EXPORT_FORMAT).toBe("brandbasket-account-export/1");
+    expect(accountExportFilename("2026-11-01")).toBe("brandbasket-my-data-2026-11-01.json");
   });
 });

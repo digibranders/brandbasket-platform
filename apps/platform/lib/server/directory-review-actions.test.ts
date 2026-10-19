@@ -118,7 +118,7 @@ describe("markReviewHelpful", () => {
 });
 
 describe("requestCommentOtp", () => {
-  it("is unavailable and touches nothing: Fynix sends no code to a phone, so there is no way to prove a number", async () => {
+  it("is unavailable and touches nothing: Brandbasket sends no code to a phone, so there is no way to prove a number", async () => {
     expect(await requestCommentOtp()).toEqual({ kind: "unavailable" });
     expect(findPublishedDirectoryReviewForComment).not.toHaveBeenCalled();
     expect(createDirectoryCommentOtp).not.toHaveBeenCalled();

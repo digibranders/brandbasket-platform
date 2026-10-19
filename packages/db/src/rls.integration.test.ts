@@ -50,8 +50,8 @@ beforeEach(async () => {
   ]);
 });
 
-describe("row-level security for fynix_app", () => {
-  it.each(["fynix_staff", "fynix_staff"] as const)("lets %s switch to the customer role with tenant isolation", async (role) => {
+describe("row-level security for bb_app", () => {
+  it.each(["bb_staff", "bb_staff"] as const)("lets %s switch to the customer role with tenant isolation", async (role) => {
     await dbs.owner.db.transaction(async (tx) => {
       // Change the session identity as well: SET ROLE alone would retain the owner's permission to switch roles.
       await tx.execute(sql.raw(`set local session authorization ${role}`));
@@ -143,17 +143,17 @@ describe("row-level security for fynix_app", () => {
 });
 
 describe("row-level security coverage", () => {
-  // Any new table fynix_app can read must enable row-level security, or be added to this list on purpose.
+  // Any new table bb_app can read must enable row-level security, or be added to this list on purpose.
   // india_pincodes is India Post's public PIN directory, and the geo_* tables are the geography and category catalog
   // staff edit (migration 0113): the same rows for every business, nothing to scope.
-  it("leaves only the auth, rate-limit, PIN directory and geography catalog tables readable by fynix_app without RLS", async () => {
+  it("leaves only the auth, rate-limit, PIN directory and geography catalog tables readable by bb_app without RLS", async () => {
     const result = await dbs.owner.db.execute<{ table_name: string }>(sql`
       select c.relname as table_name
       from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public'
         and c.relkind in ('r', 'p', 'v', 'm')
-        and has_any_column_privilege('fynix_app', c.oid, 'SELECT')
+        and has_any_column_privilege('bb_app', c.oid, 'SELECT')
         and not c.relrowsecurity
       order by c.relname
     `);

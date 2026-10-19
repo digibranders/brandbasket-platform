@@ -28,7 +28,7 @@ export async function findPincode(db: Runner, pincode: string): Promise<PincodeR
 }
 
 /**
- * Whether any PIN has been loaded at all. A deployment that never imported India Post's directory (Fynix's has none) can
+ * Whether any PIN has been loaded at all. A deployment that never imported India Post's directory (Brandbasket's has none) can
  * say nothing about a PIN, so a PIN it does not know is no sign the customer mistyped it.
  */
 export async function hasPincodeDirectory(db: Runner): Promise<boolean> {

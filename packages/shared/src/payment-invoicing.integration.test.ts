@@ -467,7 +467,7 @@ describe("what the invoice describes", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id);
     expect(invoice?.lines[0]).toMatchObject({
-      description: "Fynix Premium plan",
+      description: "Brandbasket Premium plan",
       unitAmountCents: premium.recurringAmountCents,
       discountAmountCents: pendingDiscountCents,
       note: "Coupon GAURAV applied, 20% off",

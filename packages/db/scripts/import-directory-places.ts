@@ -75,7 +75,7 @@ async function main(): Promise<void> {
   const rows = parseLedger(readFileSync(resolve(process.env.INIT_CWD ?? process.cwd(), file), "utf8"));
 
   loadLocalEnv();
-  // The registry is staff-only (0076): the import runs as fynix_staff, like the routes that read it.
+  // The registry is staff-only (0076): the import runs as bb_staff, like the routes that read it.
   const { db, close } = createDatabase(requireEnv("DATABASE_URL_STAFF"), { max: 1 });
   try {
     const result = await importOpenDataPlaces(db, rows, new Date());

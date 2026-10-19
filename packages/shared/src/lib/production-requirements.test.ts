@@ -11,7 +11,7 @@ describe("what a real deployment must have set to start", () => {
 
   it("asks for nothing that belongs to a marketing website, a team inbox, a directory or video accounts, and nothing for sending to phones", () => {
     const required = runtimeRequirements("platform");
-    for (const name of ["LEADS_API_TOKEN", "FYNIX_TEAM_EMAIL", "NEXT_PUBLIC_SITE_URL", "DIRECTORY_URL_KEY", "BOOKING_OTP_SECRET", "MSG91_AUTH_KEY", "SMS_PROVIDER", "VIMEO_ACCESS_TOKEN", "SIGNED_IN_HINT_DOMAIN", "MARKETING_ORIGIN"]) {
+    for (const name of ["LEADS_API_TOKEN", "BRANDBASKET_TEAM_EMAIL", "NEXT_PUBLIC_SITE_URL", "DIRECTORY_URL_KEY", "BOOKING_OTP_SECRET", "MSG91_AUTH_KEY", "SMS_PROVIDER", "VIMEO_ACCESS_TOKEN", "SIGNED_IN_HINT_DOMAIN", "MARKETING_ORIGIN"]) {
       expect(required).not.toContain(name);
     }
   });
@@ -25,6 +25,6 @@ describe("what a Vercel production build must have set", () => {
   it("is the dashboard's address, the origins, the database connections and the secrets, and nothing about a website or leads", () => {
     const required = vercelProductionRequirements();
     expect(required).toEqual(expect.arrayContaining(["NEXT_PUBLIC_APP_URL", "APP_ORIGIN", "DATABASE_URL", "PAYLOAD_SECRET"]));
-    for (const name of ["NEXT_PUBLIC_SITE_URL", "LEADS_API_TOKEN", "FYNIX_TEAM_EMAIL"]) expect(required).not.toContain(name);
+    for (const name of ["NEXT_PUBLIC_SITE_URL", "LEADS_API_TOKEN", "BRANDBASKET_TEAM_EMAIL"]) expect(required).not.toContain(name);
   });
 });

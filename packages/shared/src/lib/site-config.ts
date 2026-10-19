@@ -59,7 +59,7 @@ export interface SiteConfig {
 export interface BusinessDetails {
   /** The company that supplies the service and holds the GSTIN. */
   readonly legalName: string;
-  /** The name customers know. Printed under the legal name: "Trading as Fynix Digital". */
+  /** The name customers know. Printed under the legal name: "Trading as Brandbasket". */
   readonly tradeName: string;
   /** Corporate Identity Number, from the certificate of incorporation. */
   readonly cin: string;
@@ -80,12 +80,12 @@ export interface BusinessDetails {
 }
 
 /**
- * Digibranders is the company that supplies the service and holds the GSTIN; customers know it as Fynix Digital, and
- * the invoices and pages give Fynix's own contact address and site.
+ * Digibranders is the company that supplies the service and holds the GSTIN; customers know it as Brandbasket, and
+ * the invoices and pages give Brandbasket's own contact address and site.
  */
 export const businessDetails: BusinessDetails = {
   legalName: "Digibranders Private Limited",
-  tradeName: "Fynix Digital",
+  tradeName: "Brandbasket",
   cin: "U72900MH2021PTC372344",
   address: [
     "Office No. 2617, 26th Floor, Solus Building,",
@@ -96,8 +96,8 @@ export const businessDetails: BusinessDetails = {
   gstNumber: "27AAICD9268J1Z0",
   phone: "+91 789 789 6607",
   phoneHref: "+917897896607",
-  email: "hello@fynix.digital",
-  website: "https://fynix.digital",
+  email: "hello@brandbasket.in",
+  website: "https://brandbasket.in",
 };
 
 export const siteConfig: SiteConfig = {
@@ -120,7 +120,7 @@ export interface CallHost {
 
 export const callHost: CallHost = {
   name: "Steve Jason",
-  role: "Fynix Digital",
+  role: "Brandbasket",
   photo: null,
   minutes: 30,
 };

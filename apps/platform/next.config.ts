@@ -80,7 +80,7 @@ const nextConfig: NextConfig = {
 // Uploads source maps on production builds when SENTRY_AUTH_TOKEN is set, so stack traces show original code.
 export default withSentryConfig(withPayload(nextConfig), {
   org: "fynix-digital",
-  project: "fynix-platform",
+  project: "brandbasket-platform",
   authToken: process.env.SENTRY_AUTH_TOKEN,
   widenClientFileUpload: true,
   silent: !process.env.CI,

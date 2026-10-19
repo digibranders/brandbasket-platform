@@ -75,7 +75,7 @@ export const DIRECTORY_URL_KEY_MIN_LENGTH = 32;
  * (website-listing lib/server/env.ts INTERIM_DIRECTORY_URL_KEY, user, 2026-10-05), so both build the same URLs until
  * the real key is set in both, together.
  */
-export const INTERIM_DIRECTORY_URL_KEY = "fynix-interim-business-url-key-2026-10-05";
+export const INTERIM_DIRECTORY_URL_KEY = "brandbasket-interim-business-url-key-2026-10-05";
 const BUSINESS_URL_CODE_PATTERN = new RegExp(`^[${PLACE_ID_ALPHABET}]{${BUSINESS_URL_CODE_LENGTH}}$`);
 
 /**

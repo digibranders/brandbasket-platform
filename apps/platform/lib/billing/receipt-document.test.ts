@@ -60,7 +60,7 @@ describe("receiptDocument", () => {
     const doc = receiptDocument(receipt(), CUSTOMER);
 
     expect(doc).toMatchObject({
-      fileName: "fynix-receipt-007.pdf",
+      fileName: "brandbasket-receipt-007.pdf",
       title: "Receipt #007",
       issuedOn: "12 Sep 2026",
       status: "Paid",
@@ -73,14 +73,14 @@ describe("receiptDocument", () => {
       total: { label: "Total paid", amount: "INR 3,538.82" },
     });
     expect(doc.from).toEqual([
-      "Fynix Digital",
+      "Brandbasket",
       "Digibranders Private Limited",
       "Office No. 2617, 26th Floor, Solus Building,",
       "Hiranandani Estate, Ghodbunder Road,",
       "Thane West, Maharashtra 400607, India",
       "GSTIN 27AAICD9268J1Z0",
       "CIN U72900MH2021PTC372344",
-      "hello@fynix.digital",
+      "hello@brandbasket.in",
     ]);
   });
 
@@ -92,7 +92,7 @@ describe("receiptDocument", () => {
 
     expect(doc.lines).toEqual([{ label: "Care plan · First payment, covering your first month", amount: "USD 69.00" }]);
     expect(doc.total).toEqual({ label: "Total paid", amount: "USD 69.00" });
-    expect(doc.fileName).toBe("fynix-receipt-001.pdf");
+    expect(doc.fileName).toBe("brandbasket-receipt-001.pdf");
   });
 
   it("groups large rupee amounts the Indian way", () => {
@@ -177,12 +177,12 @@ describe("receiptDocument for an add-on payment", () => {
   });
 });
 
-describe("receiptDocument under Fynix", () => {
-  it("is headed with Fynix, files itself as Fynix and points questions at Fynix's address", () => {
+describe("receiptDocument under Brandbasket", () => {
+  it("is headed with Brandbasket, files itself as Brandbasket and points questions at Brandbasket's address", () => {
     const doc = receiptDocument(receipt(), { businessName: "Chennai Cafe", email: "owner@chennaicafe.in" }, BRAND);
-    expect(doc.fileName).toBe("fynix-receipt-007.pdf");
-    expect(doc.from[0]).toBe("Fynix Digital");
-    expect(doc.note).toContain("hello@fynix.digital");
+    expect(doc.fileName).toBe("brandbasket-receipt-007.pdf");
+    expect(doc.from[0]).toBe("Brandbasket");
+    expect(doc.note).toContain("hello@brandbasket.in");
     expect([...doc.from, doc.note, doc.fileName].join(" ")).not.toMatch(/first\s?fold/i);
   });
 });

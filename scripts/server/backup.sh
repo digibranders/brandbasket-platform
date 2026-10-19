@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# What this does: one backup run for the Fynix droplet. Installed as /usr/local/sbin/fynix-backup (root-owned) and started every
-# night by fynix-backup.timer. It writes, under /srv/fynix/backups:
-#   db/<database>-<UTC stamp>.dump   pg_dump custom format of fynix_platform and fynix_platform_payload (checked with pg_restore --list)
+# What this does: one backup run for the Brandbasket droplet. Installed as /usr/local/sbin/brandbasket-backup (root-owned) and started every
+# night by brandbasket-backup.timer. It writes, under /srv/brandbasket/backups:
+#   db/<database>-<UTC stamp>.dump   pg_dump custom format of brandbasket_platform and brandbasket_platform_payload (checked with pg_restore --list)
 #   files/media, files/support-private   a mirror of the uploaded media and the private support screenshots
-#   secrets/secrets-<stamp>.tar     the environment files and /root/fynix-secrets.env (mode 600, stays on this machine)
+#   secrets/secrets-<stamp>.tar     the environment files and /root/brandbasket-secrets.env (mode 600, stays on this machine)
 #   SHA256SUMS-<stamp>, LATEST      a checksum list and the name of the newest good run
-# then, when /etc/fynix/backup.conf names a destination, copies db/ and files/ off this machine, and deletes this script's OWN
+# then, when /etc/brandbasket/backup.conf names a destination, copies db/ and files/ off this machine, and deletes this script's OWN
 # dumps and secrets archives older than KEEP_DAYS (default 14). Nothing else is ever deleted.
 #
-# Assumes: PostgreSQL on this machine with the postgres OS user (peer authentication); /srv/fynix as in docs/deployment/fynix-droplet.md.
+# Assumes: PostgreSQL on this machine with the postgres OS user (peer authentication); /srv/brandbasket as in docs/deployment/brandbasket-droplet.md.
 # Dry-run by default (it prints what it would do and touches nothing); --apply does it. Safe to re-run: every run has its own stamp.
-# Config (/etc/fynix/backup.conf, plain shell VARIABLE=value lines, optional):
+# Config (/etc/brandbasket/backup.conf, plain shell VARIABLE=value lines, optional):
 #   KEEP_DAYS=14
-#   OFFSITE_RSYNC=backup@backup-host:/backups/fynix        copy with rsync over ssh (the root user's key must be allowed there)
-#   OFFSITE_RCLONE=spaces:fynix-backups                    or copy with rclone (a DigitalOcean Spaces / S3 remote you configured)
-# Test hooks: FYNIX_ROOT, FYNIX_BACKUP_CONF, FYNIX_SECRETS_FILE, FYNIX_PG_RUNAS ("" = run pg_dump as the current user, honouring PGHOST etc.).
+#   OFFSITE_RSYNC=backup@backup-host:/backups/brandbasket        copy with rsync over ssh (the root user's key must be allowed there)
+#   OFFSITE_RCLONE=spaces:brandbasket-backups                    or copy with rclone (a DigitalOcean Spaces / S3 remote you configured)
+# Test hooks: BRANDBASKET_ROOT, BRANDBASKET_BACKUP_CONF, BRANDBASKET_SECRETS_FILE, BRANDBASKET_PG_RUNAS ("" = run pg_dump as the current user, honouring PGHOST etc.).
 set -euo pipefail
 
 APPLY=0
@@ -27,11 +27,11 @@ for arg in "$@"; do
   esac
 done
 
-ROOT="${FYNIX_ROOT:-/srv/fynix}"
-CONF="${FYNIX_BACKUP_CONF:-/etc/fynix/backup.conf}"
-SECRETS_FILE="${FYNIX_SECRETS_FILE:-/root/fynix-secrets.env}"
-PG_RUNAS="${FYNIX_PG_RUNAS-runuser -u postgres --}"
-DATABASES="fynix_platform fynix_platform_payload"
+ROOT="${BRANDBASKET_ROOT:-/srv/brandbasket}"
+CONF="${BRANDBASKET_BACKUP_CONF:-/etc/brandbasket/backup.conf}"
+SECRETS_FILE="${BRANDBASKET_SECRETS_FILE:-/root/brandbasket-secrets.env}"
+PG_RUNAS="${BRANDBASKET_PG_RUNAS-runuser -u postgres --}"
+DATABASES="brandbasket_platform brandbasket_platform_payload"
 KEEP_DAYS=14
 OFFSITE_RSYNC=""
 OFFSITE_RCLONE=""
@@ -42,7 +42,7 @@ if ! [[ "$KEEP_DAYS" =~ ^[0-9]+$ ]] || [[ "$KEEP_DAYS" -lt 3 ]]; then echo "KEEP
 BACKUPS="$ROOT/backups"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 say() { printf '%s\n' "$*"; }
-# Runs a PostgreSQL client command as the postgres OS user (or as the current user when FYNIX_PG_RUNAS is empty).
+# Runs a PostgreSQL client command as the postgres OS user (or as the current user when BRANDBASKET_PG_RUNAS is empty).
 pg() {
   if [[ -n "$PG_RUNAS" ]]; then
     # shellcheck disable=SC2086 # PG_RUNAS is a command prefix with arguments on purpose
@@ -89,7 +89,7 @@ for dir in media support-private; do
 done
 
 secrets=()
-for f in "$ROOT"/shared/*.env.local "$SECRETS_FILE" /etc/fynix/backup.conf; do [[ -f "$f" ]] && secrets+=("$f"); done
+for f in "$ROOT"/shared/*.env.local "$SECRETS_FILE" /etc/brandbasket/backup.conf; do [[ -f "$f" ]] && secrets+=("$f"); done
 if [[ ${#secrets[@]} -gt 0 ]]; then tar -cf "$BACKUPS/secrets/secrets-$STAMP.tar" "${secrets[@]}" 2>/dev/null; chmod 600 "$BACKUPS/secrets/secrets-$STAMP.tar"; fi
 
 ( cd "$BACKUPS" && { sha256sum db/*-"$STAMP".dump 2>/dev/null || shasum -a 256 db/*-"$STAMP".dump; } >"SHA256SUMS-$STAMP" )

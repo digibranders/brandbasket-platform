@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { displayBusinessId } from "@/lib/business-profile";
 
 /**
- * The business's Business ID, its permanent id on Fynix, as the owner reads it: in capitals, spaced for reading out
+ * The business's Business ID, its permanent id on Brandbasket, as the owner reads it: in capitals, spaced for reading out
  * on the phone. It never changes, whatever else about the business does.
  */
 export function BusinessIdLine({ placeId }: { readonly placeId: string }): ReactElement {

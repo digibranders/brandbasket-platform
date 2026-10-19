@@ -20,7 +20,7 @@ function folders(...names: readonly [string, string][]): Response {
   return reply(200, { data: names.map(([name, uri]) => ({ name, uri })), paging: { next: null } });
 }
 
-const FYNIX_FOLDER = (): Response => folders(["My library", "/users/165439204/projects/30820329"], ["Fynix", FOLDER_URI]);
+const BRANDBASKET_FOLDER = (): Response => folders(["My library", "/users/165439204/projects/30820329"], ["Brandbasket", FOLDER_URI]);
 
 const READY = {
   status: "available",
@@ -49,8 +49,8 @@ describe("vimeoTokenFromEnv", () => {
 
 describe("createUpload", () => {
   it("asks Vimeo for a resumable upload of a private-link video that others cannot download, and reads back its id and upload address", async () => {
-    const { client, fetch } = clientWith(FYNIX_FOLDER(), reply(200, { uri: "/videos/1233986429", upload: { approach: "tus", upload_link: "https://global.upload.vimeo.com/files/abc?x=1" } }));
-    expect(await client.createUpload({ size: 20_000_000, name: "Fynix clip" })).toEqual({
+    const { client, fetch } = clientWith(BRANDBASKET_FOLDER(), reply(200, { uri: "/videos/1233986429", upload: { approach: "tus", upload_link: "https://global.upload.vimeo.com/files/abc?x=1" } }));
+    expect(await client.createUpload({ size: 20_000_000, name: "Brandbasket clip" })).toEqual({
       vimeoId: "1233986429",
       uploadLink: "https://global.upload.vimeo.com/files/abc?x=1",
     });
@@ -64,15 +64,15 @@ describe("createUpload", () => {
     expect(headers.get("content-type")).toBe("application/json");
     expect(JSON.parse(String(init?.body))).toEqual({
       upload: { approach: "tus", size: 20_000_000 },
-      name: "Fynix clip",
+      name: "Brandbasket clip",
       privacy: { view: "unlisted", embed: "public", download: false },
       folder_uri: FOLDER_URI,
     });
   });
 
-  it("puts every video in the Fynix folder, found by name whatever its capitals, looking it up once", async () => {
+  it("puts every video in the Brandbasket folder, found by name whatever its capitals, looking it up once", async () => {
     const { client, fetch } = clientWith(
-      folders(["Other", "/users/1/projects/1"], ["fynix", FOLDER_URI]),
+      folders(["Other", "/users/1/projects/1"], ["brandbasket", FOLDER_URI]),
       reply(200, { uri: "/videos/1", upload: { approach: "tus", upload_link: "https://global.upload.vimeo.com/files/a" } }),
       reply(200, { uri: "/videos/2", upload: { approach: "tus", upload_link: "https://global.upload.vimeo.com/files/b" } }),
     );
@@ -87,14 +87,14 @@ describe("createUpload", () => {
     const first = reply(200, { data: [{ name: "My library", uri: "/users/1/projects/2" }], paging: { next: "/me/projects?page=2&per_page=100" } });
     const { client, fetch } = clientWith(
       first,
-      folders(["Fynix", FOLDER_URI]),
+      folders(["Brandbasket", FOLDER_URI]),
       reply(200, { uri: "/videos/1", upload: { approach: "tus", upload_link: "https://global.upload.vimeo.com/files/a" } }),
     );
     await client.createUpload({ size: 1000, name: "one" });
     expect(String(fetch.mock.calls[1]?.[0])).toContain("page=2");
   });
 
-  it("makes no video at all when there is no Fynix folder, rather than leave one loose in the library, and says why", async () => {
+  it("makes no video at all when there is no Brandbasket folder, rather than leave one loose in the library, and says why", async () => {
     const { client, fetch } = clientWith(folders(["My library", "/users/165439204/projects/30820329"]));
     await expect(client.createUpload({ size: 1000, name: "x" })).rejects.toMatchObject({ name: "VimeoError", reason: "configuration" });
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -102,8 +102,8 @@ describe("createUpload", () => {
 
   it("will not use a folder address that is not an ordinary one, and tries the lookup again next time", async () => {
     const { client, fetch } = clientWith(
-      folders(["Fynix", "/users/1/projects/1/../../me/videos"]),
-      FYNIX_FOLDER(),
+      folders(["Brandbasket", "/users/1/projects/1/../../me/videos"]),
+      BRANDBASKET_FOLDER(),
       reply(200, { uri: "/videos/1", upload: { approach: "tus", upload_link: "https://global.upload.vimeo.com/files/a" } }),
     );
     await expect(client.createUpload({ size: 1000, name: "x" })).rejects.toMatchObject({ reason: "configuration" });
@@ -112,13 +112,13 @@ describe("createUpload", () => {
   });
 
   it("refuses an answer that is not a resumable upload, or whose upload address is not Vimeo's, rather than send a browser anywhere else", async () => {
-    const wrongApproach = clientWith(FYNIX_FOLDER(), reply(200, { uri: "/videos/1", upload: { approach: "post", upload_link: "https://global.upload.vimeo.com/x" } }));
+    const wrongApproach = clientWith(BRANDBASKET_FOLDER(), reply(200, { uri: "/videos/1", upload: { approach: "post", upload_link: "https://global.upload.vimeo.com/x" } }));
     await expect(wrongApproach.client.createUpload({ size: 1000, name: "x" })).rejects.toThrow("resumable");
-    const elsewhere = clientWith(FYNIX_FOLDER(), reply(200, { uri: "/videos/1", upload: { approach: "tus", upload_link: "https://evil.example.com/files/abc" } }));
+    const elsewhere = clientWith(BRANDBASKET_FOLDER(), reply(200, { uri: "/videos/1", upload: { approach: "tus", upload_link: "https://evil.example.com/files/abc" } }));
     await expect(elsewhere.client.createUpload({ size: 1000, name: "x" })).rejects.toThrow("upload address");
-    const http = clientWith(FYNIX_FOLDER(), reply(200, { uri: "/videos/1", upload: { approach: "tus", upload_link: "http://global.upload.vimeo.com/files/abc" } }));
+    const http = clientWith(BRANDBASKET_FOLDER(), reply(200, { uri: "/videos/1", upload: { approach: "tus", upload_link: "http://global.upload.vimeo.com/files/abc" } }));
     await expect(http.client.createUpload({ size: 1000, name: "x" })).rejects.toThrow("upload address");
-    const noId = clientWith(FYNIX_FOLDER(), reply(200, { uri: "/videos/not-digits", upload: { approach: "tus", upload_link: "https://global.upload.vimeo.com/files/abc" } }));
+    const noId = clientWith(BRANDBASKET_FOLDER(), reply(200, { uri: "/videos/not-digits", upload: { approach: "tus", upload_link: "https://global.upload.vimeo.com/files/abc" } }));
     await expect(noId.client.createUpload({ size: 1000, name: "x" })).rejects.toThrow("video id");
   });
 
@@ -127,14 +127,14 @@ describe("createUpload", () => {
     [4102, "quota"],
     [4104, "quota"],
   ] as const)("says the upload limit was reached for Vimeo's error %i, so the owner can be told to try later", async (code, reason) => {
-    const { client } = clientWith(FYNIX_FOLDER(), reply(403, { error_code: code, developer_message: "Basic users have limited disk space for a given period." }));
+    const { client } = clientWith(BRANDBASKET_FOLDER(), reply(403, { error_code: code, developer_message: "Basic users have limited disk space for a given period." }));
     await expect(client.createUpload({ size: 1000, name: "x" })).rejects.toMatchObject({ name: "VimeoError", reason, status: 403 });
   });
 
   it("says the token was refused for a 401, and keeps other failures plain", async () => {
-    const refused = clientWith(FYNIX_FOLDER(), reply(401, { error: "You must provide a valid authenticated access token." }));
+    const refused = clientWith(BRANDBASKET_FOLDER(), reply(401, { error: "You must provide a valid authenticated access token." }));
     await expect(refused.client.createUpload({ size: 1000, name: "x" })).rejects.toMatchObject({ reason: "unauthorized", status: 401 });
-    const broken = clientWith(FYNIX_FOLDER(), reply(500, null));
+    const broken = clientWith(BRANDBASKET_FOLDER(), reply(500, null));
     await expect(broken.client.createUpload({ size: 1000, name: "x" })).rejects.toBeInstanceOf(VimeoError);
   });
 });

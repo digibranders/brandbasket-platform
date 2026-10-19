@@ -9,7 +9,7 @@ export const BREACH_STATUSES = ["open", "contained", "closed"] as const;
 export type BreachStatus = (typeof BREACH_STATUSES)[number];
 
 /**
- * Every personal data breach Fynix has had, kept so the time limits can be met and shown (DPDP Rules 2025 r.7: tell the
+ * Every personal data breach Brandbasket has had, kept so the time limits can be met and shown (DPDP Rules 2025 r.7: tell the
  * Data Protection Board without delay and send the detailed report within 72 hours; tell each affected person; CERT-In
  * Directions 2022: report within 6 hours of noticing). Staff only. A row can be added and updated but never deleted, and a
  * report date cannot be taken back once set (see queries/breach-register.ts).

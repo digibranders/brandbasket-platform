@@ -1,5 +1,5 @@
 /**
- * Which published text a person agreed to. Stored on every consent record (DPDP Act 2023 s.6, r.3) so Fynix can
+ * Which published text a person agreed to. Stored on every consent record (DPDP Act 2023 s.6, r.3) so Brandbasket can
  * show which Terms and Privacy Notice were on screen when they ticked the box.
  *
  * "pre-dpdp" named the texts published before 13 October 2026. The label now matches the website's (lib/legal-version.ts

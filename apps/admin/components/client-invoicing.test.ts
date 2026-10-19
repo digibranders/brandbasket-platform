@@ -15,7 +15,7 @@ vi.mock("@/app/(protected)/clients/[businessId]/invoice-actions", () => ({
 const BUSINESS = "01920000-0000-7000-8000-0000000000b1";
 
 const line: TaxInvoiceLineRecord = {
-  description: "Fynix Premium plan",
+  description: "Brandbasket Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: null,
   sac: "998361",

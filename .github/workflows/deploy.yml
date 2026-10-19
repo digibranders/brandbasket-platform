@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-fynix
+  group: deploy-brandbasket
   cancel-in-progress: false
 
 permissions:
@@ -43,9 +43,9 @@ jobs:
       - name: Write the build settings
         run: |
           cat > deploy/build.env <<'EOF'
-          APP_ORIGIN=https://app.fynix.digital
-          ADMIN_ORIGIN=https://console.fynix.digital
-          NEXT_PUBLIC_APP_URL=https://app.fynix.digital
+          APP_ORIGIN=https://app.brandbasket.in
+          ADMIN_ORIGIN=https://console.brandbasket.in
+          NEXT_PUBLIC_APP_URL=https://app.brandbasket.in
           EOF
       - name: Deploy (migrations run inside, before the switch)
         env:

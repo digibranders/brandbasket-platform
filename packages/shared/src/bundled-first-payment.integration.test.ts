@@ -128,7 +128,7 @@ describe("a first payment with add-ons", () => {
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.totalCents).toBe(expected);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
-      [expect.stringContaining("Fynix"), care.initialAmountCents, 0],
+      [expect.stringContaining("Brandbasket"), care.initialAmountCents, 0],
       ["Social media", 199_900, 9_995],
       ["Paid advertising", 599_900, 29_995],
     ]);
@@ -188,7 +188,7 @@ describe("a first payment with add-ons", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id);
     expect(invoice?.totalCents).toBe(amountCents);
-    expect(invoice?.lines.map((line) => line.description)).toEqual([expect.stringContaining("Fynix"), "Social media"]);
+    expect(invoice?.lines.map((line) => line.description)).toEqual([expect.stringContaining("Brandbasket"), "Social media"]);
   });
 
   describe("taking an add-on out afterwards", () => {

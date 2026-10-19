@@ -16,7 +16,7 @@ import { uuidv7 } from "uuidv7";
 import { businesses } from "./businesses";
 import { createdAt, updatedAt } from "./columns";
 
-/** The build's state machine. See docs/superpowers/specs/2026-09-15-fynix-platform-design.md §5.3. */
+/** The build's state machine. See docs/superpowers/specs/2026-09-15-brandbasket-platform-design.md §5.3. */
 export const projectStatus = pgEnum("project_status", [
   "onboarding",
   "submitted",

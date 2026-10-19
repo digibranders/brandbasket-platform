@@ -3,7 +3,7 @@ import { z } from "zod";
 
 /**
  * Reads from OyeChats on behalf of a customer who opens their OyeChats page: how many messages each lead exchanged and when it
- * was last active, and the messages of one conversation. Fynix keeps none of this: the conversations stay in OyeChats and are
+ * was last active, and the messages of one conversation. Brandbasket keeps none of this: the conversations stay in OyeChats and are
  * fetched when asked for.
  *
  * Every call is made with the key of an OyeChats operator bound to that one bot (X-Operator-Key). OyeChats refuses such a key

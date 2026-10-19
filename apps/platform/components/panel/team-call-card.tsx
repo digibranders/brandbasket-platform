@@ -87,7 +87,7 @@ export function TeamCallCard({ url, upcoming, email }: TeamCallCardProps): React
               </Button>
             )}
             {call === null || call.endsAtIso === null ? null : (
-              <ExternalButtonLink href={callInviteHref(call.startsAtIso, call.endsAtIso)} download="fynix-call.ics" variant="quiet" size="sm">
+              <ExternalButtonLink href={callInviteHref(call.startsAtIso, call.endsAtIso)} download="brandbasket-call.ics" variant="quiet" size="sm">
                 Add to calendar
               </ExternalButtonLink>
             )}

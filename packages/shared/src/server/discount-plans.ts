@@ -71,7 +71,7 @@ async function ensureBundlePlanFor(
     netMonthlyCents,
     taxRateBasisPoints: plan.taxRateBasisPoints,
     code: `${plan.code}-with-add-ons-${netMonthlyCents}`,
-    itemName: `Fynix plan with add-ons (${plan.currency})`,
+    itemName: `Brandbasket plan with add-ons (${plan.currency})`,
   });
   if (created.providerPlanId === null) return undefined;
   return saveProviderBundlePlan(staffDb, { ...key, providerPlanId: created.providerPlanId });

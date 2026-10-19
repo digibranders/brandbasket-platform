@@ -22,7 +22,7 @@ async function webp(width: number, height: number): Promise<Uint8Array> {
 }
 
 beforeEach(async () => {
-  sandbox = await mkdtemp(path.join(tmpdir(), "fynix-backfill-"));
+  sandbox = await mkdtemp(path.join(tmpdir(), "brandbasket-backfill-"));
   storage = createLocalMediaStorage(sandbox);
   await storage.put(keyOf(A), await webp(960, 600), "image/webp");
   await storage.put(keyOf(B), await webp(640, 640), "image/webp");

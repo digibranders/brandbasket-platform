@@ -99,7 +99,7 @@ beforeEach(() => {
 });
 
 describe("requestReviewOtp", () => {
-  it("is unavailable and touches nothing: Fynix sends no code to a phone, so there is no way to prove a number", async () => {
+  it("is unavailable and touches nothing: Brandbasket sends no code to a phone, so there is no way to prove a number", async () => {
     expect(await requestReviewOtp()).toEqual({ kind: "unavailable" });
     expect(resolveDirectoryNamed).not.toHaveBeenCalled();
     expect(createDirectoryReviewOtp).not.toHaveBeenCalled();

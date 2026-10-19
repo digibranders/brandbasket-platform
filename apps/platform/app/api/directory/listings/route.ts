@@ -16,7 +16,7 @@ export async function GET(): Promise<Response> {
     const feed = await readDirectoryFeed(getStaffDb(), new Date());
     return Response.json(feed, { status: 200, headers: { "Cache-Control": CACHE_CONTROL } });
   } catch (error) {
-    console.error("[fynix:directory] GET /api/directory/listings failed", errorLogInfo(error));
+    console.error("[brandbasket:directory] GET /api/directory/listings failed", errorLogInfo(error));
     return Response.json(
       { error: "Listings are unavailable right now." },
       { status: 503, headers: { "Cache-Control": "no-store" } },

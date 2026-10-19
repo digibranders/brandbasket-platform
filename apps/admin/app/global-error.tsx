@@ -8,7 +8,7 @@ import { reportBrowserError } from "@brandbasket/shared/lib/error-report";
 export default function GlobalError({ error, reset }: { readonly error: Error & { readonly digest?: string }; readonly reset: () => void }): ReactElement {
   useEffect(() => {
     if (isStaleDeployError(error)) return;
-    reportBrowserError(error, { app: "admin", operation: "error_boundary", route: window.location.pathname, severity: "fatal", release: process.env.NEXT_PUBLIC_FYNIX_RELEASE });
+    reportBrowserError(error, { app: "admin", operation: "error_boundary", route: window.location.pathname, severity: "fatal", release: process.env.NEXT_PUBLIC_BRANDBASKET_RELEASE });
   }, [error]);
   return (
     <html lang="en">

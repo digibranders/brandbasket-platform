@@ -22,7 +22,7 @@ describe.each([DashboardError, GlobalError])("deployment recovery boundary", (Bo
     const reload = vi.fn();
     vi.stubGlobal("window", { location: { reload }, get sessionStorage(): never { throw new Error("Storage blocked"); } });
     const markup = renderToStaticMarkup(createElement(Boundary, { error, reset: vi.fn() }));
-    expect(markup).toContain("Fynix Digital was updated. Reload to continue.");
+    expect(markup).toContain("Brandbasket was updated. Reload to continue.");
     expect(markup).toContain('role="alert"');
     expect(markup).toContain("Reload page");
     expect(markup).toContain("Enter your details again after reloading.");
@@ -34,7 +34,7 @@ describe.each([DashboardError, GlobalError])("deployment recovery boundary", (Bo
   it("keeps the generic fallback for unrelated failures", () => {
     const markup = renderToStaticMarkup(createElement(Boundary, { error: new Error("Internal fault"), reset: vi.fn() }));
     expect(markup).toContain("Try again");
-    expect(markup).not.toContain("Fynix Digital was updated");
+    expect(markup).not.toContain("Brandbasket was updated");
     expect(markup).not.toContain("Internal fault");
   });
 });

@@ -4,7 +4,7 @@ import { BOOKING_WINDOW_DAYS, bookCallSlot, calcomPage, cancelCallBooking, listC
 vi.mock("server-only", () => ({}));
 
 const NOW = new Date("2026-10-16T08:00:00.000Z"); // a Friday
-const URL = "https://calendly.com/steve-fynix/30min";
+const URL = "https://calendly.com/steve-brandbasket/30min";
 const INVITEE = { name: "Meera Shah", email: "meera@example.com", timeZone: "Asia/Kolkata", businessId: "b1" };
 
 describe("the local call scheduler", () => {
@@ -34,15 +34,15 @@ describe("the local call scheduler", () => {
 
 describe("calcomPage", () => {
   it("reads the user and event from a cal.com link", () => {
-    expect(calcomPage("https://cal.com/steve-fynix/30min")).toEqual({ username: "steve-fynix", slug: "30min" });
-    expect(calcomPage("https://cal.com/steve-fynix/30min/")).toEqual({ username: "steve-fynix", slug: "30min" });
+    expect(calcomPage("https://cal.com/steve-brandbasket/30min")).toEqual({ username: "steve-brandbasket", slug: "30min" });
+    expect(calcomPage("https://cal.com/steve-brandbasket/30min/")).toEqual({ username: "steve-brandbasket", slug: "30min" });
   });
 
   it("refuses anything else", () => {
-    expect(calcomPage("https://cal.com/steve-fynix")).toBeNull();
+    expect(calcomPage("https://cal.com/steve-brandbasket")).toBeNull();
     expect(calcomPage("https://cal.com/team/acme/intro")).toBeNull();
-    expect(calcomPage("https://calendly.com/steve-fynix/30min")).toBeNull();
-    expect(calcomPage("http://cal.com/steve-fynix/30min")).toBeNull();
+    expect(calcomPage("https://calendly.com/steve-brandbasket/30min")).toBeNull();
+    expect(calcomPage("http://cal.com/steve-brandbasket/30min")).toBeNull();
     expect(calcomPage("not a link")).toBeNull();
   });
 });

@@ -225,7 +225,7 @@ describe("plans", () => {
 
   it("allows only one active plan per currency and tier, but any number of retired ones", async () => {
     const duplicate = {
-      name: "Fynix care plan",
+      name: "Brandbasket care plan",
       currency: "USD" as const,
       initialAmountCents: 30000,
       taxRateBasisPoints: 0,

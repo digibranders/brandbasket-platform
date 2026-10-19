@@ -73,7 +73,7 @@ describe("receiptRows", () => {
 
   it("copes with a payment that has no date or plan", () => {
     const [row] = receiptRows([receipt({ paidAt: null, planName: null, currency: "USD", amountCents: 6_900 })]);
-    expect(row).toMatchObject({ title: "Receipt #007", paidAtIso: null, plan: "Fynix", amount: "$69" });
+    expect(row).toMatchObject({ title: "Receipt #007", paidAtIso: null, plan: "Brandbasket", amount: "$69" });
   });
 
   it("names a paid extra by what it was, not by a plan", () => {

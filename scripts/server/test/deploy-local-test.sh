@@ -9,7 +9,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY="$HERE/../deploy.sh"
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/fynix-deploy-test.XXXXXX")"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/brandbasket-deploy-test.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 SERVER="$WORK/server"; SHIMS="$WORK/shims"; TREE="$WORK/tree"
 mkdir -p "$SERVER/shared" "$SHIMS" "$TREE/apps/platform/.next" "$TREE/apps/admin/.next" "$TREE/scripts"
@@ -42,7 +42,7 @@ SH
 cat > "$SHIMS/curl" <<'SH'
 #!/usr/bin/env bash
 url="${*: -1}"
-case "$url" in *:3001/*) app=platform ;; *:3003/*) app=admin ;; *) echo 000; exit 0 ;; esac
+case "$url" in *:3201/*) app=platform ;; *:3203/*) app=admin ;; *) echo 000; exit 0 ;; esac
 if [ -e "$FAKE_SERVER/current-$app/apps/$app/BROKEN" ]; then echo 500; else echo 200; fi
 SH
 cat > "$SHIMS/pnpm" <<'SH'
@@ -53,12 +53,12 @@ exit 0
 SH
 cat > "$WORK/migrate-shim" <<'SH'
 #!/usr/bin/env bash
-echo "fynix-migrate ran for $(basename "$(readlink "$FAKE_SERVER/deploying")")" >> "$FAKE_LOG"
+echo "brandbasket-migrate ran for $(basename "$(readlink "$FAKE_SERVER/deploying")")" >> "$FAKE_LOG"
 [ ! -e "$FAKE_STATE/migrate-fails" ]
 SH
 chmod +x "$SHIMS"/* "$WORK/migrate-shim" "$TREE/scripts/cms-migrate.sh"
 
-export PATH="$SHIMS:$PATH" FYNIX_MIGRATE_CMD="$WORK/migrate-shim" FYNIX_HEALTH_TRIES=2 FYNIX_HEALTH_PAUSE=0
+export PATH="$SHIMS:$PATH" BRANDBASKET_MIGRATE_CMD="$WORK/migrate-shim" BRANDBASKET_HEALTH_TRIES=2 BRANDBASKET_HEALTH_PAUSE=0
 
 failures=0
 check() { # description, command...
@@ -84,8 +84,8 @@ check "no real .env file was uploaded (the linked one is a symlink)" bash -c "[ 
 check ".next/node_modules (the build's links to externals) DID travel, links intact" bash -c "test -L '$SERVER/releases/'*aaaa111/apps/admin/.next/node_modules/pg-abc123"
 check "platform points at it" points platform aaaa111
 check "admin points at it" points admin aaaa111
-check "migrations ran before the restarts" bash -c "awk '/fynix-migrate ran/{m=NR} /systemctl restart/{if(!r)r=NR} END{exit !(m && r && m<r)}' '$FAKE_LOG'"
-check "restarted app then admin, one at a time" bash -c "grep 'systemctl restart' '$FAKE_LOG' | head -2 | tr '\n' ' ' | grep -q 'fynix-app.*fynix-admin'"
+check "migrations ran before the restarts" bash -c "awk '/brandbasket-migrate ran/{m=NR} /systemctl restart/{if(!r)r=NR} END{exit !(m && r && m<r)}' '$FAKE_LOG'"
+check "restarted app then admin, one at a time" bash -c "grep 'systemctl restart' '$FAKE_LOG' | head -2 | tr '\n' ' ' | grep -q 'brandbasket-app.*brandbasket-admin'"
 sleep 1
 
 section "3. second deploy"
@@ -120,7 +120,7 @@ section "7. an incomplete environment stops before migrating"
 : > "$FAKE_LOG"; touch "$FAKE_STATE/envcheck-fails"
 if run --apply --sha ffff666 2>&1 | sed 's/^/    /'; then :; fi
 rm -f "$FAKE_STATE/envcheck-fails"
-check "no migration was attempted" bash -c "! grep -q 'fynix-migrate ran' '$FAKE_LOG'"
+check "no migration was attempted" bash -c "! grep -q 'brandbasket-migrate ran' '$FAKE_LOG'"
 sleep 1
 
 section "8. --list and --rollback"

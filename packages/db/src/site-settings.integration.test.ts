@@ -30,25 +30,25 @@ describe("site settings", () => {
   });
 
   it("keeps what was saved, and who saved it and when", async () => {
-    await saveSiteSetting(dbs.staff.db, { key: KEY, value: "https://calendly.com/fynix/a", staffUserId: STAFF, now: FIRST });
+    await saveSiteSetting(dbs.staff.db, { key: KEY, value: "https://calendly.com/brandbasket/a", staffUserId: STAFF, now: FIRST });
 
     expect(await findSiteSettingWithEditor(dbs.staff.db, KEY)).toMatchObject({
       key: KEY,
-      value: "https://calendly.com/fynix/a",
+      value: "https://calendly.com/brandbasket/a",
       updatedByEmail: "staff@example.com",
       updatedAt: FIRST,
     });
   });
 
   it("replaces the value when it is saved again, in the same row", async () => {
-    await saveSiteSetting(dbs.staff.db, { key: KEY, value: "https://calendly.com/fynix/a", staffUserId: STAFF, now: FIRST });
-    await saveSiteSetting(dbs.staff.db, { key: KEY, value: "https://cal.com/fynix/b", staffUserId: STAFF, now: LATER });
+    await saveSiteSetting(dbs.staff.db, { key: KEY, value: "https://calendly.com/brandbasket/a", staffUserId: STAFF, now: FIRST });
+    await saveSiteSetting(dbs.staff.db, { key: KEY, value: "https://cal.com/brandbasket/b", staffUserId: STAFF, now: LATER });
 
-    expect(await findSiteSetting(dbs.staff.db, KEY)).toMatchObject({ value: "https://cal.com/fynix/b", updatedAt: LATER });
+    expect(await findSiteSetting(dbs.staff.db, KEY)).toMatchObject({ value: "https://cal.com/brandbasket/b", updatedAt: LATER });
   });
 
   it("is not set any more once it is cleared, and clearing nothing is harmless", async () => {
-    await saveSiteSetting(dbs.staff.db, { key: KEY, value: "https://calendly.com/fynix/a", staffUserId: STAFF, now: FIRST });
+    await saveSiteSetting(dbs.staff.db, { key: KEY, value: "https://calendly.com/brandbasket/a", staffUserId: STAFF, now: FIRST });
     await clearSiteSetting(dbs.staff.db, KEY);
     await clearSiteSetting(dbs.staff.db, KEY);
 
@@ -56,7 +56,7 @@ describe("site settings", () => {
   });
 
   it("is closed to a customer's connection: only staff read or write settings", async () => {
-    await saveSiteSetting(dbs.staff.db, { key: KEY, value: "https://calendly.com/fynix/a", staffUserId: STAFF, now: FIRST });
+    await saveSiteSetting(dbs.staff.db, { key: KEY, value: "https://calendly.com/brandbasket/a", staffUserId: STAFF, now: FIRST });
 
     await expect(findSiteSetting(dbs.app.db, KEY)).rejects.toThrow();
   });

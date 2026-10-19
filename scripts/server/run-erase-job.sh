@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 # What this does: calls the dashboard's daily erase endpoint (POST /api/internal/erase-closed-accounts) on this machine,
 # with the bearer token from the dashboard's environment file, and prints the report it answers. Installed on the droplet as
-# /usr/local/sbin/fynix-erase-job (root-owned) and run by fynix-erase.service as the deploy user.
+# /usr/local/sbin/brandbasket-erase-job (root-owned) and run by brandbasket-erase.service as the deploy user.
 #
-# Assumes: the dashboard is up on 127.0.0.1:3001 and ACCOUNT_ERASE_TOKEN is set in the env file (docs/account-erasure.md).
+# Assumes: the dashboard is up on 127.0.0.1:3201 and ACCOUNT_ERASE_TOKEN is set in the env file (docs/account-erasure.md).
 # The token is passed to curl on its standard input, so it never appears in the process list. Fails (exit 1) on any answer but 2xx,
 # so systemd and journalctl show a failed run. Takes no action in the database itself.
 #
-#   run-erase-job.sh --env-file /srv/fynix/shared/platform.env.local [--dry-run] [--limit N] [--url URL]
+#   run-erase-job.sh --env-file /srv/brandbasket/shared/platform.env.local [--dry-run] [--limit N] [--url URL]
 # --dry-run asks the endpoint to report what it WOULD erase without erasing (?dryRun=1). Safe to run any time.
 set -euo pipefail
 
 ENV_FILE=""
 DRY=0
 LIMIT=""
-URL="http://127.0.0.1:3001/api/internal/erase-closed-accounts"
+URL="http://127.0.0.1:3201/api/internal/erase-closed-accounts"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --env-file) ENV_FILE="${2:?--env-file needs a path}"; shift 2 ;;

@@ -52,8 +52,8 @@ describe("private support storage", () => {
     );
     expect(() =>
       createSupportStorage({
-        FYNIX_SUPPORT_ROOT: "/data/media/support",
-        FYNIX_MEDIA_ROOT: "/data/media",
+        BRANDBASKET_SUPPORT_ROOT: "/data/media/support",
+        BRANDBASKET_MEDIA_ROOT: "/data/media",
       }),
     ).toThrow("separate");
   });
@@ -61,8 +61,8 @@ describe("private support storage", () => {
 it("rejects private roots inside public media even when the directory begins with two dots", () => {
   expect(() =>
     createSupportStorage({
-      FYNIX_SUPPORT_ROOT: "/data/media/..screenshots",
-      FYNIX_MEDIA_ROOT: "/data/media",
+      BRANDBASKET_SUPPORT_ROOT: "/data/media/..screenshots",
+      BRANDBASKET_MEDIA_ROOT: "/data/media",
     }),
   ).toThrow("separate");
 });

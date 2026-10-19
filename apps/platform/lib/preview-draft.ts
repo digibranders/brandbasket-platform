@@ -115,10 +115,10 @@ export interface PreviewFields {
 }
 
 /** The message the dashboard sends the preview, and the one it sends back once it can take drafts. */
-export const PREVIEW_DRAFT_MESSAGE = "fynix-preview-draft";
-export const PREVIEW_READY_MESSAGE = "fynix-preview-ready";
+export const PREVIEW_DRAFT_MESSAGE = "brandbasket-preview-draft";
+export const PREVIEW_READY_MESSAGE = "brandbasket-preview-ready";
 /** Asks the preview to bring a card of the page into view: the one the tab being edited fills. */
-export const PREVIEW_SECTION_MESSAGE = "fynix-preview-section";
+export const PREVIEW_SECTION_MESSAGE = "brandbasket-preview-section";
 
 /** The cards of the business's page the preview can scroll to (their ids on the website). */
 export type PreviewSection = "about" | "offers" | "services" | "products" | "faq" | "gallery";

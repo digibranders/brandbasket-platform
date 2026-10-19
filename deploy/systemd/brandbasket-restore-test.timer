@@ -1,6 +1,6 @@
 # What this does: starts the restore test weekly, on Sunday at 05:00 server time (after a night's backup exists).
 [Unit]
-Description=Fynix weekly backup restore test
+Description=Brandbasket weekly backup restore test
 
 [Timer]
 OnCalendar=Sun *-*-* 05:00:00

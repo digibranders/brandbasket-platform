@@ -12,7 +12,7 @@ const DAY = 24 * 60 * 60 * 1000;
 const RECEIVED = new Date("2026-11-01T06:00:00.000Z");
 const at = (days: number): Date => new Date(RECEIVED.getTime() + days * DAY);
 const db = {} as Database;
-const ADMIN = "https://console.fynix.digital";
+const ADMIN = "https://console.brandbasket.in";
 
 function stored(overrides: Partial<StoredPrivacyRequest> = {}): StoredPrivacyRequest {
   return {
@@ -43,18 +43,18 @@ function transport(): { readonly send: ReturnType<typeof vi.fn<(message: EmailMe
 }
 
 describe("privacyAlertRecipient", () => {
-  it("prefers the privacy mailbox, then the support alert mailbox, then the team address, then hello@fynix.digital", () => {
-    expect(privacyAlertRecipient({ PRIVACY_ALERT_EMAIL: " grievance@fynix.digital ", SUPPORT_ALERT_EMAIL: "s@fynix.digital" })).toBe("grievance@fynix.digital");
-    expect(privacyAlertRecipient({ SUPPORT_ALERT_EMAIL: "s@fynix.digital", FYNIX_TEAM_EMAIL: "t@fynix.digital" })).toBe("s@fynix.digital");
-    expect(privacyAlertRecipient({ FYNIX_TEAM_EMAIL: "t@fynix.digital" })).toBe("t@fynix.digital");
-    expect(privacyAlertRecipient({ PRIVACY_ALERT_EMAIL: "  " })).toBe("hello@fynix.digital");
-    expect(privacyAlertRecipient({})).toBe("hello@fynix.digital");
+  it("prefers the privacy mailbox, then the support alert mailbox, then the team address, then hello@brandbasket.in", () => {
+    expect(privacyAlertRecipient({ PRIVACY_ALERT_EMAIL: " grievance@brandbasket.in ", SUPPORT_ALERT_EMAIL: "s@brandbasket.in" })).toBe("grievance@brandbasket.in");
+    expect(privacyAlertRecipient({ SUPPORT_ALERT_EMAIL: "s@brandbasket.in", BRANDBASKET_TEAM_EMAIL: "t@brandbasket.in" })).toBe("s@brandbasket.in");
+    expect(privacyAlertRecipient({ BRANDBASKET_TEAM_EMAIL: "t@brandbasket.in" })).toBe("t@brandbasket.in");
+    expect(privacyAlertRecipient({ PRIVACY_ALERT_EMAIL: "  " })).toBe("hello@brandbasket.in");
+    expect(privacyAlertRecipient({})).toBe("hello@brandbasket.in");
   });
 });
 
 describe("links and dates", () => {
   it("points at the console page and writes a date in India's calendar day", () => {
-    expect(privacyRequestsConsoleUrl(ADMIN)).toBe("https://console.fynix.digital/privacy-requests");
+    expect(privacyRequestsConsoleUrl(ADMIN)).toBe("https://console.brandbasket.in/privacy-requests");
     expect(dueDayWords(new Date("2026-11-30T20:00:00.000Z"))).toBe("1 December 2026");
   });
 });
@@ -62,11 +62,11 @@ describe("links and dates", () => {
 describe("sendNewPrivacyRequestAlert", () => {
   it("sends the reference, kind and due day to the mailbox, and none of what the person wrote", async () => {
     const { send, asTransport } = transport();
-    await sendNewPrivacyRequestAlert(asTransport, { reference: "PR-7K2M9QXD", kind: "erasure", dueAt: at(30) }, { to: "hello@fynix.digital", adminOrigin: ADMIN });
+    await sendNewPrivacyRequestAlert(asTransport, { reference: "PR-7K2M9QXD", kind: "erasure", dueAt: at(30) }, { to: "hello@brandbasket.in", adminOrigin: ADMIN });
     const message = send.mock.calls[0]?.[0];
-    expect(message?.to).toBe("hello@fynix.digital");
+    expect(message?.to).toBe("hello@brandbasket.in");
     expect(message?.subject).toBe("New privacy request PR-7K2M9QXD (Erasure)");
-    expect(message?.bodyText).toContain("https://console.fynix.digital/privacy-requests");
+    expect(message?.bodyText).toContain("https://console.brandbasket.in/privacy-requests");
   });
 
   it("never throws when the email cannot be sent", async () => {

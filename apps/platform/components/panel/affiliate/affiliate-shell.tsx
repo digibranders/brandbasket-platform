@@ -31,7 +31,7 @@ export async function AffiliateShell({ userName, userEmail, children }: Affiliat
       account={{ name: userName, email: userEmail }}
       panel={null}
       variant="dark"
-      topBar={<p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-ink-soft">{"Your Fynix affiliate dashboard"}</p>}
+      topBar={<p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-ink-soft">{"Your Brandbasket affiliate dashboard"}</p>}
     >
       {children}
     </DashboardFrame>

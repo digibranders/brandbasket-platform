@@ -72,7 +72,7 @@ function blankToNull(value: string | null): string | null {
 /**
  * Serialises the list-shape writes (add, move, archive) for one tenant, so two of them racing cannot both read the
  * same "19 active" or the same pair of neighbours and both act on it. A transaction-scoped advisory lock for the
- * same reason replaceOpeningHours (business-facts.ts) uses one: fynix_app cannot lock the businesses row, and no
+ * same reason replaceOpeningHours (business-facts.ts) uses one: bb_app cannot lock the businesses row, and no
  * practitioners row is guaranteed to cover the whole list. The "practitioners:" prefix keeps it apart from every
  * other feature's lock on the same business id.
  */

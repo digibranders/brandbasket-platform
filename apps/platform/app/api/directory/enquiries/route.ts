@@ -5,7 +5,7 @@ import { leadsApiToken } from "@/lib/server/website-api-auth";
 
 /**
  * `POST /api/directory/enquiries` — "Send enquiry" on a directory card or business page (the business named by `id` or
- * `key`), or the list page's "Get the list of top …" form, stored for Fynix staff. Server-to-server only, with
+ * `key`), or the list page's "Get the list of top …" form, stored for Brandbasket staff. Server-to-server only, with
  * LEADS_API_TOKEN (see lib/server/directory-intake.ts): no CORS.
  */
 export function POST(request: Request): Promise<Response> {

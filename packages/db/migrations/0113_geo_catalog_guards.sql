@@ -45,7 +45,7 @@ CREATE TRIGGER geo_areas_guard_slug BEFORE INSERT OR UPDATE ON geo_areas FOR EAC
 CREATE TRIGGER geo_categories_guard_slug BEFORE INSERT OR UPDATE ON geo_categories FOR EACH ROW EXECUTE FUNCTION geo_guard_slug();
 --> statement-breakpoint
 
-GRANT SELECT ON geo_districts, geo_areas, geo_categories TO fynix_app;
+GRANT SELECT ON geo_districts, geo_areas, geo_categories TO bb_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON geo_districts, geo_areas, geo_categories TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE ON geo_districts, geo_areas, geo_categories TO bb_staff;

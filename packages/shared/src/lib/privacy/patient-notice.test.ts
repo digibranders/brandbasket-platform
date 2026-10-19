@@ -19,16 +19,16 @@ describe("patientNotice", () => {
   it("covers who holds the details and how to ask about them, in English", () => {
     const text = patientNotice("Smile Dental", "en");
     expect(text).toContain("confirm your appointment");
-    expect(text).toContain("Fynix");
+    expect(text).toContain("Brandbasket");
     expect(text).toContain("see, correct or delete");
   });
 
-  it("names whoever runs the booking page: Fynix unless told, or the deployment's own brand, in every language", () => {
+  it("names whoever runs the booking page: Brandbasket unless told, or the deployment's own brand, in every language", () => {
     for (const language of PATIENT_NOTICE_LANGUAGES) {
-      expect(patientNotice("Smile Dental", language)).toContain("Fynix");
-      const fynix = patientNotice("Smile Dental", language, "Fynix");
-      expect(fynix).toContain("Fynix");
-      expect(fynix).not.toMatch(/first\s?fold|\{operator\}|\{clinic\}/i);
+      expect(patientNotice("Smile Dental", language)).toContain("Brandbasket");
+      const brandbasket = patientNotice("Smile Dental", language, "Brandbasket");
+      expect(brandbasket).toContain("Brandbasket");
+      expect(brandbasket).not.toMatch(/first\s?fold|\{operator\}|\{clinic\}/i);
     }
   });
 

@@ -1,4 +1,4 @@
-import { FYNIX_SAC } from "@brandbasket/billing";
+import { BRANDBASKET_SAC } from "@brandbasket/billing";
 import { BillingRangeError } from "@brandbasket/billing/billing-range-error";
 import { InvoiceAmountMismatchError } from "@brandbasket/billing/tax-invoice";
 import type { AddOnSubscription, NewTaxInvoice, Payment, ScopedTransaction, TaxInvoice } from "@brandbasket/db";
@@ -76,25 +76,25 @@ describe("the invoice refusals staff see a notice for", () => {
 });
 
 describe("what the invoice calls us", () => {
-  it("names the plan under Fynix, whichever way the plan row is named", () => {
-    expect(planLineDescription("Fynix Premium")).toBe("Fynix Premium plan");
-    expect(planLineDescription("Care")).toBe("Fynix Care plan");
-    expect(planLineDescription(" Fynix Care plan ")).toBe("Fynix Care plan");
+  it("names the plan under Brandbasket, whichever way the plan row is named", () => {
+    expect(planLineDescription("Brandbasket Premium")).toBe("Brandbasket Premium plan");
+    expect(planLineDescription("Care")).toBe("Brandbasket Care plan");
+    expect(planLineDescription(" Brandbasket Care plan ")).toBe("Brandbasket Care plan");
   });
 
-  it("prints the registered company trading as Fynix Digital, with Fynix's own contact", () => {
+  it("prints the registered company trading as Brandbasket, with Brandbasket's own contact", () => {
     const supplier = supplierFor();
-    expect(supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Fynix Digital", email: "hello@fynix.digital", stateCode: "mh" });
+    expect(supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Brandbasket", email: "hello@brandbasket.in", stateCode: "mh" });
     expect(JSON.stringify(supplier)).not.toMatch(/first\s?fold/i);
   });
 });
 
 describe("planLineDescription", () => {
-  it("names the plan once, with Fynix in front and plan at the end", () => {
-    expect(planLineDescription("Fynix Premium")).toBe("Fynix Premium plan");
-    expect(planLineDescription("Premium")).toBe("Fynix Premium plan");
-    expect(planLineDescription("Care")).toBe("Fynix Care plan");
-    expect(planLineDescription(" Fynix Care plan ")).toBe("Fynix Care plan");
+  it("names the plan once, with Brandbasket in front and plan at the end", () => {
+    expect(planLineDescription("Brandbasket Premium")).toBe("Brandbasket Premium plan");
+    expect(planLineDescription("Premium")).toBe("Brandbasket Premium plan");
+    expect(planLineDescription("Care")).toBe("Brandbasket Care plan");
+    expect(planLineDescription(" Brandbasket Care plan ")).toBe("Brandbasket Care plan");
   });
 });
 
@@ -311,7 +311,7 @@ describe("issueTaxInvoice for an add-on payment", () => {
       description: "Social media",
       detail: "Monthly subscription, 12 Oct to 11 Nov 2026",
       note: "Premium member, 10% off",
-      sac: FYNIX_SAC,
+      sac: BRANDBASKET_SAC,
       quantity: 1,
       unitAmountCents: 1_000_000,
       discountAmountCents: 100_000,

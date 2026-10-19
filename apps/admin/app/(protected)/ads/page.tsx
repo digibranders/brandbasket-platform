@@ -102,7 +102,7 @@ const DOT = " · ";
 /** Whole rupees from 100 to 100,000, which is all parseAdRupees accepts; the typing rule already drops commas. */
 const RUPEES_PATTERN = "[0-9]{3,6}";
 const RUPEES_TITLE = "Whole rupees, from 100 to 100000";
-const WEBSITE = "https://fynix.digital";
+const WEBSITE = "https://brandbasket.in";
 /** How many weeks ahead an ad placed by staff may start. */
 const STAFF_AD_START_WEEKS = 9;
 

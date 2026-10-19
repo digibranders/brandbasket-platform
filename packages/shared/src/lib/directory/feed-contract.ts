@@ -192,7 +192,7 @@ export interface DirectoryFeedAddedProfile {
 }
 
 /**
- * A business its owner added free (it was not in the directory's open data) and Fynix then confirmed on a call.
+ * A business its owner added free (it was not in the directory's open data) and Brandbasket then confirmed on a call.
  * Its map position is the pin from its owner's Google Maps link when there is one (`pin`); without one the directory
  * places it at its area. Its number is the one the call confirmed.
  */
@@ -201,16 +201,16 @@ export interface DirectoryFeedAddedListing extends DirectoryFeedPlace {
   readonly name: string;
   /** As the owner typed it; may be empty. */
   readonly streetAddress: string;
-  /** E.164, the number Fynix called. */
+  /** E.164, the number Brandbasket called. */
   readonly phone: string;
-  /** ISO 8601: when Fynix confirmed the business on the call. */
+  /** ISO 8601: when Brandbasket confirmed the business on the call. */
   readonly confirmedAt: string;
   /** The owner's approved square photo, as a picture id (GET /api/directory/pictures/<id>), or null. */
   readonly photo: string | null;
   /** The business's own website as its owner gave it, an http(s) URL. Absent when none is given. */
   readonly website?: string;
   /**
-   * Whether Fynix verified it (a staff call, or the owner's code check). False for a business its owner only
+   * Whether Brandbasket verified it (a staff call, or the owner's code check). False for a business its owner only
    * published: the directory calls it Claimed, not Verified. Absent from an older platform, which the directory reads
    * as verified.
    */
@@ -249,7 +249,7 @@ export interface DirectoryFeed {
   readonly version: typeof DIRECTORY_FEED_VERSION;
   readonly generatedAt: string;
   readonly listings: readonly DirectoryFeedListing[];
-  /** Owner-added businesses Fynix has confirmed (added 2026-09-30). Absent from an older platform. */
+  /** Owner-added businesses Brandbasket has confirmed (added 2026-09-30). Absent from an older platform. */
   readonly added?: readonly DirectoryFeedAddedListing[];
   /** Owner profiles of approved claims on businesses the directory already had (added 2026-10-12). Absent from an older platform. */
   readonly claimed?: readonly DirectoryFeedClaimedProfile[];

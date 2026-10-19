@@ -33,7 +33,7 @@ import { otpCodeMatches } from "./otp-crypto";
  * Helpful: a visitor marks a published review once a week. Who they are is never stored: the only trace is a rate-limit
  * bucket keyed by an HMAC of their address and the review, which expires by itself, and the review's own count.
  *
- * A comment used to be confirmed by a code sent to the commenter's phone. Fynix sends nothing to phones and the directory
+ * A comment used to be confirmed by a code sent to the commenter's phone. Brandbasket sends nothing to phones and the directory
  * is closed, so a code can no longer be asked for (`requestCommentOtp`); a recognised visitor's comment
  * (`publishCommentAsVisitor`) and the confirmation of a code already held (`confirmCommentOtp`, 6 digits, 10 minutes, 5
  * attempts, HMAC with the account code secret) are left as they were.
@@ -94,7 +94,7 @@ export async function markReviewHelpful(reviewId: string, clientIp: string, now:
 }
 
 /**
- * Asks for a code to publish a comment. Always `unavailable`: the code went to the commenter's phone, Fynix sends nothing to
+ * Asks for a code to publish a comment. Always `unavailable`: the code went to the commenter's phone, Brandbasket sends nothing to
  * phones, and the directory pages are closed, so there is no way to prove a number. A client that still asks gets the answer
  * it already handles for a deployment that cannot send codes.
  */

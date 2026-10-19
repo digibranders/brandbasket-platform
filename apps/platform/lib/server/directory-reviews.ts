@@ -47,7 +47,7 @@ import { otpCodeMatches } from "./otp-crypto";
  * exceptions on `getStaffDb` in ./db.ts): the directory tables are staff-only, and the website's shared secret has
  * already been checked by the route.
  *
- * A review used to be confirmed by a code sent to the reviewer's phone. Fynix sends nothing to phones and the directory is
+ * A review used to be confirmed by a code sent to the reviewer's phone. Brandbasket sends nothing to phones and the directory is
  * closed, so a code can no longer be asked for (`requestReviewOtp`); a recognised visitor's review (`publishReviewAsVisitor`) and
  * the confirmation of a code already held (`confirmReviewOtp`, 6 digits, 10 minutes, 5 attempts, HMAC with the account code
  * secret) are left as they were.
@@ -99,7 +99,7 @@ function loggable(business: DirectoryNamed | null, error: unknown): SafeErrorLog
 }
 
 /**
- * Asks for a code to publish a review. Always `unavailable`: the code went to the reviewer's phone, Fynix sends nothing to
+ * Asks for a code to publish a review. Always `unavailable`: the code went to the reviewer's phone, Brandbasket sends nothing to
  * phones, and the directory pages are closed, so there is no way to prove a number. A client that still asks gets the answer
  * it already handles for a deployment that cannot send codes.
  */

@@ -15,7 +15,7 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
-  await dbs.owner.db.insert(users).values({ id: STAFF, name: "Asha", email: "asha@fynix.digital", emailVerified: true });
+  await dbs.owner.db.insert(users).values({ id: STAFF, name: "Asha", email: "asha@brandbasket.in", emailVerified: true });
 });
 
 const INPUT = { recordedBy: STAFF, detectedAt: DETECTED, summary: "A staff laptop with a console session was lost.", dataCategories: ["contact details", "billing details"] };

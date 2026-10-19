@@ -457,7 +457,7 @@ describe("edge cases around prices and providers", () => {
     await execSql(
       dbs.owner,
       `insert into plans (id, code, name, currency, tier, initial_amount_cents, initial_term_months, recurring_amount_cents, included_publishes_per_month, extra_publish_amount_cents, tax_rate_basis_points, active)
-       values (gen_random_uuid(), 'care-inr-repriced', 'Fynix Care', 'INR', 'care', 499900, 1, 499900, 3, 300, 1800, true)`,
+       values (gen_random_uuid(), 'care-inr-repriced', 'Brandbasket Care', 'INR', 'care', 499900, 1, 499900, 3, 300, 1800, true)`,
     );
 
     const offer = await assess();
@@ -475,7 +475,7 @@ describe("edge cases around prices and providers", () => {
     await execSql(
       dbs.owner,
       `insert into plans (id, code, name, currency, tier, initial_amount_cents, initial_term_months, recurring_amount_cents, included_publishes_per_month, extra_publish_amount_cents, tax_rate_basis_points, active, provider_plan_id)
-       values (gen_random_uuid(), 'premium-inr-repriced', 'Fynix Premium', 'INR', 'premium', 1299900, 1, 1299900, 3, 300, 1800, true, 'plan_new_premium')`,
+       values (gen_random_uuid(), 'premium-inr-repriced', 'Brandbasket Premium', 'INR', 'premium', 1299900, 1, 1299900, 3, 300, 1800, true, 'plan_new_premium')`,
     );
 
     expect(await finish(upgradeId)).toEqual({ kind: "scheduled" });

@@ -45,7 +45,7 @@ describe("ensureAddOnPlan", () => {
       netMonthlyCents: 179_910,
       taxRateBasisPoints: 1_800,
       code: "addon-social-media-179910",
-      itemName: "Fynix Social media",
+      itemName: "Brandbasket Social media",
     });
     expect(saveAddOnProviderPlan).toHaveBeenCalledWith(staffDb, { ...KEY, providerPlanId: "plan_mine" });
   });

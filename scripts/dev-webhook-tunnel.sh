@@ -9,7 +9,7 @@
 # apps/platform/.env.local, and its events are the ones listed in apps/platform/.env.example.
 set -euo pipefail
 
-PORT="${PORT:-3001}"
+PORT="${PORT:-3198}"
 command -v cloudflared >/dev/null || { echo "cloudflared is not installed: brew install cloudflared" >&2; exit 1; }
 
 log="$(mktemp)"

@@ -35,10 +35,10 @@ describe("logStaffAccess", () => {
   });
 
   it("never blocks the page when the log cannot be written, and logs no personal data", async () => {
-    vi.mocked(recordStaffAccess).mockRejectedValueOnce(new Error("connection refused for asha@fynix.digital"));
+    vi.mocked(recordStaffAccess).mockRejectedValueOnce(new Error("connection refused for asha@brandbasket.in"));
     await expect(logStaffAccess({ staffUserId: "staff-1", action: "lead.view", targetId: "lead-1" })).resolves.toBeUndefined();
     expect(console.error).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("asha@fynix.digital");
+    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("asha@brandbasket.in");
   });
 });
 

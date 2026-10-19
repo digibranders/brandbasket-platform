@@ -17,7 +17,7 @@ import { describeError } from "@brandbasket/shared/server/billing-log";
 import { getBillingProvider } from "./billing-provider";
 import { getStaffDb } from "./db";
 
-/** What the payment provider's checkout calls a plan, in this deployment's brand: "Fynix Care plan (INR)". */
+/** What the payment provider's checkout calls a plan, in this deployment's brand: "Brandbasket Care plan (INR)". */
 export function providerPlanItemName(tier: "care" | "premium", currency: string): string {
   return `${deploymentBrandShortName()} ${tier === "care" ? "Care" : "Premium"} plan (${currency})`;
 }
@@ -74,7 +74,7 @@ export async function savePriceSheet(
         itemName: providerPlanItemName(sheet.tier, sheet.currency),
       }));
     } catch (error) {
-      console.error(`[fynix:pricing] could not create the provider plan for ${code}`, describeError(error));
+      console.error(`[brandbasket:pricing] could not create the provider plan for ${code}`, describeError(error));
       return { kind: "provider-failed" };
     }
     await replaceMonthlyPrice(db, {
@@ -102,7 +102,7 @@ export async function savePriceSheet(
       });
       if (providerPlanId !== null) providerPlanFilled = await attachProviderPlan(db, { planId: current.id, providerPlanId });
     } catch (error) {
-      console.error(`[fynix:pricing] could not create the provider plan for ${current.code}`, describeError(error));
+      console.error(`[brandbasket:pricing] could not create the provider plan for ${current.code}`, describeError(error));
       return { kind: "provider-failed" };
     }
   }

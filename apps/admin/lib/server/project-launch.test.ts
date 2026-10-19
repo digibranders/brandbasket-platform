@@ -46,7 +46,7 @@ beforeEach(() => {
   mockedCreateTransport.mockReturnValue({ send });
   mockedWebsiteLiveEmail.mockReturnValue({
     to: "riley@example.com",
-    subject: "Your Fynix website is live",
+    subject: "Your Brandbasket website is live",
     template: "website-live",
     bodyText: "text",
     bodyHtml: "html",

@@ -150,7 +150,7 @@ describe("approveProjectPreview", () => {
       caught = error;
     }
     expect(caught).toBeInstanceOf(Error);
-    expect(String((caught as Error).cause)).toMatch(/(fynix_app|fynix_app) may only move a project from onboarding to submitted/);
+    expect(String((caught as Error).cause)).toMatch(/(bb_app|bb_app) may only move a project from onboarding to submitted/);
   });
 });
 

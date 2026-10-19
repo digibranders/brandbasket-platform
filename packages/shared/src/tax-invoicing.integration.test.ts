@@ -237,7 +237,7 @@ describe("issueTaxInvoice", () => {
     });
     expect(invoice?.lines).toEqual([
       {
-        description: "Fynix Premium plan",
+        description: "Brandbasket Premium plan",
         detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
         note: "Coupon GAURAV applied, 20% off",
         sac: "998361",
@@ -265,20 +265,20 @@ describe("issueTaxInvoice", () => {
     });
     expect(invoice?.supplier).toMatchObject({
       legalName: "Digibranders Private Limited",
-      tradeName: "Fynix Digital",
+      tradeName: "Brandbasket",
       gstin: "27AAICD9268J1Z0",
       stateCode: "mh",
     });
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('"invoiceNumber":"FY/26-27/000001"'));
   });
 
-  it("issues the invoice in the FY series, trading as Fynix Digital", async () => {
+  it("issues the invoice in the FY series, trading as Brandbasket", async () => {
     await saveDetails();
-    const invoice = await issueSafely(await seedCouponRenewal("fake_pay_fynix"), planSource());
+    const invoice = await issueSafely(await seedCouponRenewal("fake_pay_brandbasket"), planSource());
 
     expect(invoice).toMatchObject({ number: "FY/26-27/000001", prefix: "FY", serial: 1 });
-    expect(invoice?.supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Fynix Digital", email: "hello@fynix.digital", gstin: "27AAICD9268J1Z0" });
-    expect(invoice?.lines[0]?.description).toBe("Fynix Premium plan");
+    expect(invoice?.supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Brandbasket", email: "hello@brandbasket.in", gstin: "27AAICD9268J1Z0" });
+    expect(invoice?.lines[0]?.description).toBe("Brandbasket Premium plan");
   });
 
   it("returns the invoice already issued when asked again, takes no new number and logs the issue once", async () => {

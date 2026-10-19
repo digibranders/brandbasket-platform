@@ -42,7 +42,7 @@ describe("EMAIL_CODE_BYPASS", () => {
   });
 
   it("is refused where real customers can reach the app", () => {
-    process.env.APP_ORIGIN = "https://app.fynix.digital";
+    process.env.APP_ORIGIN = "https://app.brandbasket.in";
     delete process.env.VERCEL_ENV;
     process.env.EMAIL_CODE_BYPASS = "true";
     expect(emailCodeBypassed()).toBe(false);

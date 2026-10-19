@@ -38,7 +38,7 @@ interface DockItem {
   readonly icon: ReactNode;
   /** Shown only to roles that can do this. Left out, every role sees it. */
   readonly needs?: StaffCapability;
-  /** Part of the Fynix product (the public directory and what is sold on it): a brand without a directory does not show it. */
+  /** Part of the Brandbasket product (the public directory and what is sold on it): a brand without a directory does not show it. */
   readonly directory?: true;
 }
 

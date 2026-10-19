@@ -41,10 +41,10 @@ ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_bundled_check" CHECK (
 
 -- Grants and row-level security, as for add_on_subscriptions (0126): customers read their own bundled add-ons, every write
 -- goes through a server path on the staff connection, and nobody deletes. The Razorpay plan table is staff only.
-GRANT SELECT ON bundled_add_ons TO fynix_app;
+GRANT SELECT ON bundled_add_ons TO bb_app;
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE ON bundled_add_ons, provider_bundle_plans TO fynix_staff;
+GRANT SELECT, INSERT, UPDATE ON bundled_add_ons, provider_bundle_plans TO bb_staff;
 --> statement-breakpoint
 
 ALTER TABLE bundled_add_ons ENABLE ROW LEVEL SECURITY;
@@ -53,11 +53,11 @@ ALTER TABLE bundled_add_ons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE provider_bundle_plans ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY bundled_add_ons_tenant_select ON bundled_add_ons FOR SELECT TO fynix_app
+CREATE POLICY bundled_add_ons_tenant_select ON bundled_add_ons FOR SELECT TO bb_app
   USING (business_id = app_current_business_id());
 --> statement-breakpoint
 
-CREATE POLICY bundled_add_ons_staff_all ON bundled_add_ons FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY bundled_add_ons_staff_all ON bundled_add_ons FOR ALL TO bb_staff USING (true) WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY provider_bundle_plans_staff_all ON provider_bundle_plans FOR ALL TO fynix_staff USING (true) WITH CHECK (true);
+CREATE POLICY provider_bundle_plans_staff_all ON provider_bundle_plans FOR ALL TO bb_staff USING (true) WITH CHECK (true);

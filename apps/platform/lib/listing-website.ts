@@ -25,7 +25,7 @@ export function parseListingWebsite(typed: string): ListingWebsiteResult {
     return { ok: false, message: INVALID };
   }
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return { ok: false, message: INVALID };
-  // A sign-in hidden in the address ("https://fynix.digital@evil.example") is how a link pretends to be another site.
+  // A sign-in hidden in the address ("https://brandbasket.in@evil.example") is how a link pretends to be another site.
   if (parsed.username !== "" || parsed.password !== "") return { ok: false, message: INVALID };
   // A real site has a dotted name: not "localhost", not a bare word.
   if (!/^[^.]+(\.[^.]+)+$/.test(parsed.hostname)) return { ok: false, message: INVALID };

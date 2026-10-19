@@ -19,7 +19,7 @@ export interface OpenedDistrict {
  * replaced in place by the catalog's live districts. It lives on globalThis so every bundle's copy of this module
  * sees the one list.
  */
-const OPENED_KEY = Symbol.for("fynix.openedDistricts");
+const OPENED_KEY = Symbol.for("brandbasket.openedDistricts");
 type OpenedStore = { [OPENED_KEY]?: OpenedDistrict[] };
 const openedStore = globalThis as typeof globalThis & OpenedStore;
 openedStore[OPENED_KEY] ??= [{ stateCode: "mh", districtSlug: "thane" }];

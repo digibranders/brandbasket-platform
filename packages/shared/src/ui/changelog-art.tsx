@@ -232,7 +232,7 @@ function StackScene(): ReactElement {
         <line x1="132" y1="200" x2="132" y2="207" {...INK} />
       </g>
 
-      {/* Layer 4 (Top tier: The Fynix & Visual Interface) */}
+      {/* Layer 4 (Top tier: The Brandbasket & Visual Interface) */}
       <g>
         <path d="M 68 150 L 128 166 L 188 150 L 128 134 Z" fill={CARD_FILL} {...INK} />
         <path d="M 68 150 L 68 157 L 128 173 L 188 157 L 188 150" fill={CARD_FILL} {...INK} />
@@ -245,9 +245,9 @@ function StackScene(): ReactElement {
 }
 
 /* =========================================================================
-   SCENE 3: NAME ("We're Fynix now")
+   SCENE 3: NAME ("We're Brandbasket now")
    The builder proudly holds an origami paper-fold banner
-   marking the new name and address: Fynix / fynix.digital.
+   marking the new name and address: Brandbasket / brandbasket.in.
    ========================================================================= */
 function NameScene(): ReactElement {
   return (
@@ -256,7 +256,7 @@ function NameScene(): ReactElement {
       <BuilderBody />
       <BuilderHead eyeGaze="forward" smile={true} />
 
-      {/* Geometric Fynix Paper Plaque & Name Banner */}
+      {/* Geometric Brandbasket Paper Plaque & Name Banner */}
       <g>
         {/* Main Banner body */}
         <path
@@ -265,7 +265,7 @@ function NameScene(): ReactElement {
           {...INK}
         />
 
-        {/* The "Fynix" diagonal crease line across the plaque corner */}
+        {/* The "Brandbasket" diagonal crease line across the plaque corner */}
         <path d="M 44 165 L 78 130" stroke="currentColor" strokeWidth={1.8} strokeDasharray="3 3" fill="none" />
         <path d="M 44 165 L 78 165 L 78 130 Z" fill={CARD_FILL} {...INK} />
 

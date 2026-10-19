@@ -1,0 +1,11 @@
+# What this does: starts brandbasket-erase.service once a day (03:50 server time), after the maintenance job.
+[Unit]
+Description=Brandbasket daily erase of closed accounts
+
+[Timer]
+OnCalendar=*-*-* 03:50:00
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

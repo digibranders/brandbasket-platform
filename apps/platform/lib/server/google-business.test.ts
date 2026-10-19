@@ -6,7 +6,7 @@ const { exchangeGoogleCode, fetchGoogleLocations, GoogleBusinessError, googleAut
   "./google-business"
 );
 
-const CONFIG = { clientId: "client-1.apps.googleusercontent.com", clientSecret: "secret-1", redirectUri: "https://app.fynix.digital/google-business/callback" };
+const CONFIG = { clientId: "client-1.apps.googleusercontent.com", clientSecret: "secret-1", redirectUri: "https://app.brandbasket.in/google-business/callback" };
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });

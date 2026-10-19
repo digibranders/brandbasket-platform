@@ -1,8 +1,8 @@
 # Processors and sub-processors
 
-Every outside service that receives personal data from Fynix. Update this file before a new vendor receives any data.
+Every outside service that receives personal data from Brandbasket. Update this file before a new vendor receives any data.
 
-**Standing fact (owner, 2026-10-14):** Fynix sends nothing to a phone: no SMS and no texted codes. A person is reached by email, through Brevo, for the codes they ask for (sign-up, a patient's booking, a privacy request) and the links they ask for (password reset, setup). Do not add an SMS or voice vendor.
+**Standing fact (owner, 2026-10-14):** Brandbasket sends nothing to a phone: no SMS and no texted codes. A person is reached by email, through Brevo, for the codes they ask for (sign-up, a patient's booking, a privacy request) and the links they ask for (password reset, setup). Do not add an SMS or voice vendor.
 
 **Why:** DPDP Act s.8(2) allows a processor only under a valid contract, and Rules r.6(1)(f) put security terms in it. A person's right to know who their data was shared with (s.11(1)(b)) is answered from this list. The Customer Data Processing Addendum draws its sub-processor schedule from it. Review it every six months.
 
@@ -19,7 +19,7 @@ Every outside service that receives personal data from Fynix. Update this file b
 |---|---|---|---|---|---|
 | Hostinger International | VPS, database, media disk | Everything | Mumbai, India | Unconfirmed | `vps-setup/README.md` |
 | Cloudflare, Inc. | Proxy and TLS (all traffic in clear at the edge), DNS; R2 for encrypted backups and public media; Turnstile robot check on the sign-in, sign-up, password, setup and enquiry forms (the visitor's IP address and browser signals, sent from the browser and with the server's check) | All web traffic; encrypted backups; public media | Global edge; R2 jurisdiction left at the default | Unconfirmed | `vps-setup/CLOUDFLARE.md` |
-| Brevo (Sendinblue SAS) | The codes and links people ask for (sign-up, a patient's booking, a privacy request, password reset, setup), and alerts to the Fynix team: support and feedback requests, new leads, automatic error and security alerts, new and due privacy requests | The email address a code or link goes to, with the code or link; the text of a support request with the requester's name and number; a new lead from the website contact form (name, business, email, phone, message); privacy and security alerts carry no customer data | European Union | Unconfirmed | `packages/email/src/brevo.ts` |
+| Brevo (Sendinblue SAS) | The codes and links people ask for (sign-up, a patient's booking, a privacy request, password reset, setup), and alerts to the Brandbasket team: support and feedback requests, new leads, automatic error and security alerts, new and due privacy requests | The email address a code or link goes to, with the code or link; the text of a support request with the requester's name and number; a new lead from the website contact form (name, business, email, phone, message); privacy and security alerts carry no customer data | European Union | Unconfirmed | `packages/email/src/brevo.ts` |
 | Razorpay Software Private Limited | Payments | Owner mobile number (prefill); payment method details returned to us | India | Merchant agreement; data terms unconfirmed | `packages/billing/src/razorpay-provider.ts` |
 | Functional Software, Inc. (Sentry) | Error monitoring | Error reports with personal details removed: URL path, browser, stack trace | United States | Unconfirmed | `apps/platform/lib/sentry-scrub.ts` |
 | Zoho Corporation | Support and grievance mailbox | Anything people write to us | India | Unconfirmed | `vps-setup/README.md` (MX records) |

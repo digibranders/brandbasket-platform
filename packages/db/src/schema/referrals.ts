@@ -22,7 +22,7 @@ export type ReferralValueKind = (typeof referralValueKind.enumValues)[number];
  * their discount. It is freely editable: nothing outside this database knows it, and an edit only changes what is
  * earned from then on. Bank details are deliberately not stored; staff keep them outside the system.
  *
- * Staff-only, like the codes: `fynix_app` is granted nothing.
+ * Staff-only, like the codes: `bb_app` is granted nothing.
  */
 export const affiliates = pgTable(
   "affiliates",
@@ -100,7 +100,7 @@ export const affiliates = pgTable(
  * frozen onto `subscriptions.discount_amount_cents`, so editing or retiring a code can never change what an existing
  * member is charged. The discount is therefore fixed for the code's life.
  *
- * Staff-only. `fynix_app` is granted nothing on this table: every lookup on a member's behalf runs on the staff
+ * Staff-only. `bb_app` is granted nothing on this table: every lookup on a member's behalf runs on the staff
  * connection, like the rest of billing.
  */
 export const referralCodes = pgTable(

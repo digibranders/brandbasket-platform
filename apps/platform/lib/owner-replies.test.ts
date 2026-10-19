@@ -41,7 +41,7 @@ describe("requestedReviewFilter", () => {
 });
 
 describe("ownerCorsHeaders", () => {
-  const WEBSITE = "https://fynix.digital";
+  const WEBSITE = "https://brandbasket.in";
 
   it("lets the website's own origin in, with its credentials, and says the answer depends on the origin", () => {
     expect(ownerCorsHeaders(WEBSITE, WEBSITE)).toMatchObject({
@@ -53,21 +53,21 @@ describe("ownerCorsHeaders", () => {
   });
 
   it("lets the www twin of the website in, answering it with its own origin", () => {
-    expect(ownerCorsHeaders("https://www.fynix.digital", WEBSITE)).toMatchObject({
-      "Access-Control-Allow-Origin": "https://www.fynix.digital",
+    expect(ownerCorsHeaders("https://www.brandbasket.in", WEBSITE)).toMatchObject({
+      "Access-Control-Allow-Origin": "https://www.brandbasket.in",
       "Access-Control-Allow-Credentials": "true",
     });
-    expect(websiteOriginAllowed(WEBSITE, "https://www.fynix.digital")).toBe(true);
+    expect(websiteOriginAllowed(WEBSITE, "https://www.brandbasket.in")).toBe(true);
   });
 
   it("does not take a look-alike for the website", () => {
-    for (const origin of ["https://www.fynix.digital.evil.example", "https://wwwfynix.digital", "http://www.fynix.digital", "https://www.fynix.digital:8443", "https://www.fynix.digital/path", "null"]) {
+    for (const origin of ["https://www.brandbasket.in.evil.example", "https://wwwbrandbasket.in", "http://www.brandbasket.in", "https://www.brandbasket.in:8443", "https://www.brandbasket.in/path", "null"]) {
       expect(websiteOriginAllowed(origin, WEBSITE)).toBe(false);
     }
   });
 
   it("gives any other origin, or none, nothing to read the answer with", () => {
-    for (const origin of ["https://evil.example", "http://fynix.digital", "https://fynix.digital.evil.example", "https://app.fynix.digital", null]) {
+    for (const origin of ["https://evil.example", "http://brandbasket.in", "https://brandbasket.in.evil.example", "https://app.brandbasket.in", null]) {
       expect(ownerCorsHeaders(origin, WEBSITE)).toEqual({ Vary: "Origin" });
     }
   });

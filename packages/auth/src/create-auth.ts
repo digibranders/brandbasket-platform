@@ -98,7 +98,7 @@ export function createAuth(config: AuthConfig) {
   const { mailer } = config;
   return betterAuth({
     // Better Auth names the product in anything it prints itself (this app sends its own emails, so rarely): the deployment's brand.
-    appName: "Fynix Digital",
+    appName: "Brandbasket",
     baseURL: config.baseURL,
     secret: config.secret,
     trustedOrigins: [...config.trustedOrigins],

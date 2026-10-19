@@ -173,7 +173,7 @@ function listingKeyOf(segments: readonly string[]): string | null {
 
 /**
  * The listing key (`<service>/<city>/<area>/<slug>`) of an older business page on the website, from what staff paste: the
- * full address (`https://fynix.digital/in/restaurants/mh/ambarnath/sarvodaya-nagar/golden-punjab-hotel`, any host,
+ * full address (`https://brandbasket.in/in/restaurants/mh/ambarnath/sarvodaya-nagar/golden-punjab-hotel`, any host,
  * with or without a query, fragment or trailing slash), the bare path (`/in/restaurants/mh/…`, the leading slash
  * optional), or the key itself. Null for anything else, including a list page or a page outside Maharashtra.
  */
@@ -228,7 +228,7 @@ export type VerificationParseResult =
 
 export const LISTING_MISSING_MESSAGE = "Paste the address of the business's page on the website.";
 export const LISTING_INVALID_MESSAGE =
-  "That isn't a business page. It looks like fynix.digital/in/mh/business/smile-dental/9f94ykmdjp.";
+  "That isn't a business page. It looks like brandbasket.in/in/mh/business/smile-dental/9f94ykmdjp.";
 export const BUSINESS_NAME_MISSING_MESSAGE = "Enter the business's name as it should show.";
 export const BUSINESS_NAME_TOO_LONG_MESSAGE = `Keep the name to ${MAX_BUSINESS_NAME_LENGTH} characters.`;
 

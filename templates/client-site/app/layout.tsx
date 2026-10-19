@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { Maintenance } from "@/components/maintenance";
-import { fynixGet } from "@/lib/fynix";
+import { brandbasketGet } from "@/lib/brandbasket";
 
 /**
  * Optional, set in the site's hosting. When the plan has ended the platform sends no business details, so the notice
@@ -22,12 +22,12 @@ interface SiteInfo {
  * or link is shown, only the maintenance notice. `noindex` keeps search engines from remembering the notice as the site.
  */
 export async function generateMetadata(): Promise<Metadata> {
-  const info = await fynixGet<SiteInfo>("/api/site/info");
+  const info = await brandbasketGet<SiteInfo>("/api/site/info");
   return info.kind === "offline" ? { title: "Under maintenance", robots: { index: false, follow: false } } : {};
 }
 
 export default async function RootLayout({ children }: { readonly children: ReactNode }) {
-  const info = await fynixGet<SiteInfo>("/api/site/info");
+  const info = await brandbasketGet<SiteInfo>("/api/site/info");
   return (
     <html lang="en">
       <body>{info.kind === "offline" ? <Maintenance {...maintenanceProps()} /> : children}</body>

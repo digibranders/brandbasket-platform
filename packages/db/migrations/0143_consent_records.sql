@@ -27,30 +27,30 @@ CREATE INDEX "consent_records_subject_idx" ON "consent_records" USING btree ("su
 ALTER TABLE consent_records ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY consent_records_staff_select ON consent_records FOR SELECT TO fynix_staff USING (true);
+CREATE POLICY consent_records_staff_select ON consent_records FOR SELECT TO bb_staff USING (true);
 --> statement-breakpoint
 
-CREATE POLICY consent_records_staff_insert ON consent_records FOR INSERT TO fynix_staff WITH CHECK (true);
+CREATE POLICY consent_records_staff_insert ON consent_records FOR INSERT TO bb_staff WITH CHECK (true);
 --> statement-breakpoint
 
-CREATE POLICY consent_records_public_insert ON consent_records FOR INSERT TO fynix_public WITH CHECK (true);
+CREATE POLICY consent_records_public_insert ON consent_records FOR INSERT TO bb_public WITH CHECK (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT ON consent_records TO fynix_staff;
+GRANT SELECT, INSERT ON consent_records TO bb_staff;
 --> statement-breakpoint
 
-GRANT INSERT ON consent_records TO fynix_public;
+GRANT INSERT ON consent_records TO bb_public;
 --> statement-breakpoint
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
-    CREATE POLICY consent_records_legacy_staff_select ON consent_records FOR SELECT TO fynix_staff USING (true);
-    CREATE POLICY consent_records_legacy_staff_insert ON consent_records FOR INSERT TO fynix_staff WITH CHECK (true);
-    GRANT SELECT, INSERT ON consent_records TO fynix_staff;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bb_staff') THEN
+    CREATE POLICY consent_records_legacy_staff_select ON consent_records FOR SELECT TO bb_staff USING (true);
+    CREATE POLICY consent_records_legacy_staff_insert ON consent_records FOR INSERT TO bb_staff WITH CHECK (true);
+    GRANT SELECT, INSERT ON consent_records TO bb_staff;
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_public') THEN
-    CREATE POLICY consent_records_legacy_public_insert ON consent_records FOR INSERT TO fynix_public WITH CHECK (true);
-    GRANT INSERT ON consent_records TO fynix_public;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bb_public') THEN
+    CREATE POLICY consent_records_legacy_public_insert ON consent_records FOR INSERT TO bb_public WITH CHECK (true);
+    GRANT INSERT ON consent_records TO bb_public;
   END IF;
 END $$;

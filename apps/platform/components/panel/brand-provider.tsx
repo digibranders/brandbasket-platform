@@ -10,7 +10,7 @@ export function BrandProvider({ brand, children }: { readonly brand: Brand; read
   return <BrandContext value={brand}>{children}</BrandContext>;
 }
 
-/** The brand the dashboard is sold under: Fynix Digital's wherever no provider is above (a test, a page outside the dashboard). */
+/** The brand the dashboard is sold under: Brandbasket's wherever no provider is above (a test, a page outside the dashboard). */
 export function useBrand(): Brand {
   return useContext(BrandContext);
 }

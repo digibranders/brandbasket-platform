@@ -76,7 +76,7 @@ const LEAD_COLUMNS = {
 
 /**
  * Called from the public marketing form. The id is generated here rather than read back with RETURNING, because
- * RETURNING needs SELECT privilege and the fynix_public role deliberately has none on this table.
+ * RETURNING needs SELECT privilege and the bb_public role deliberately has none on this table.
  */
 export async function createLead(db: Database, lead: NewLead): Promise<{ readonly id: string }> {
   const id = uuidv7();

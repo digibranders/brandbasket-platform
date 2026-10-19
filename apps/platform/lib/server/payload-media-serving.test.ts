@@ -21,7 +21,7 @@ vi.mock("payload", () => ({ getPayload: vi.fn(async () => ({ findByID, collectio
 const mockedReadFile = vi.mocked(readFile);
 const mockedGetPayload = vi.mocked(getPayload);
 
-const STATIC_DIR = "/tmp/fynix-test-media";
+const STATIC_DIR = "/tmp/brandbasket-test-media";
 const collections = { media: { config: { upload: { staticDir: STATIC_DIR } } } };
 
 const BUSINESS_A = "0192f3c4-aaaa-7000-8000-00000000000a";

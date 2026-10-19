@@ -30,7 +30,7 @@ const verifyEmail = vi.fn();
 const committed: RecordedEmail[] = [];
 const insert = vi.fn();
 const send = vi.fn(async () => undefined);
-const message = passwordResetEmail({ to: "owner@example.com", resetUrl: "https://app.fynix.digital/reset-password/real-token", expiresInMinutes: 60 });
+const message = passwordResetEmail({ to: "owner@example.com", resetUrl: "https://app.brandbasket.in/reset-password/real-token", expiresInMinutes: 60 });
 
 beforeEach(() => {
   vi.clearAllMocks();

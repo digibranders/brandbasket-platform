@@ -103,7 +103,7 @@ describe("handleListingPictureRequest", () => {
   });
 
   it("refuses another host or origin before looking anything up", async () => {
-    await expectRefused(await handleListingPictureRequest(pictureRequest({ host: "fynix.digital" }), deps), 403);
+    await expectRefused(await handleListingPictureRequest(pictureRequest({ host: "brandbasket.in" }), deps), 403);
     await expectRefused(await handleListingPictureRequest(pictureRequest({ origin: "https://evil.example" }), deps), 403);
     expect(deps.getTenant).not.toHaveBeenCalled();
     expectNothingDone();

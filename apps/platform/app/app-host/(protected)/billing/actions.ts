@@ -88,7 +88,7 @@ export type BillingPincodeLookup =
   | { readonly kind: "found"; readonly stateCode: string; readonly stateName: string; readonly district: string }
   /** The directory has this pincode's neighbours but not it: a new one, or a typo. */
   | { readonly kind: "not-found" }
-  /** No pincode directory is loaded on this deployment (Fynix's has none): the lookup has nothing to say, so the form says nothing. */
+  /** No pincode directory is loaded on this deployment (Brandbasket's has none): the lookup has nothing to say, so the form says nothing. */
   | { readonly kind: "no-directory" };
 
 /**

@@ -7,7 +7,7 @@ describe("isLedgerSourceRef", () => {
     expect(isLedgerSourceRef("osm:node/8261403277")).toBe(true);
   });
 
-  it("accepts a Fynix survey ref", () => {
+  it("accepts a Brandbasket survey ref", () => {
     expect(isLedgerSourceRef("survey:0x3be7b92181d5c545:0x2bdfd32ad6f69f08")).toBe(true);
   });
 

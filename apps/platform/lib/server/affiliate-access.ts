@@ -12,7 +12,7 @@ import { getSessionUser } from "./session";
  * no page, form or address ever names one, so an affiliate can only ever see their own figures.
  *
  * Runs on the staff connection, against the rule in ./db.ts, because the affiliate tables are staff-only by design
- * (`fynix_app` holds no grant on them) and an affiliate has no business to scope a customer connection under.
+ * (`bb_app` holds no grant on them) and an affiliate has no business to scope a customer connection under.
  */
 export type AffiliateAccess =
   | { readonly kind: "none" }

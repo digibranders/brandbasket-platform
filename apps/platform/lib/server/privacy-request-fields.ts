@@ -21,7 +21,7 @@ const KINDS_NEEDING_DETAILS: ReadonlySet<string> = new Set(["correction", "griev
 
 /**
  * The page a request is about, if the request names one: only an address on the website's own origin, so staff never open
- * a link someone else chose. fynix.digital sends visitors on to www.fynix.digital, so both count (websiteOriginAllowed).
+ * a link someone else chose. brandbasket.in sends visitors on to www.brandbasket.in, so both count (websiteOriginAllowed).
  * Undefined for none, null for one that is not the website's.
  */
 export function requestAbout(raw: string | undefined, websiteOrigin: string): string | null | undefined {

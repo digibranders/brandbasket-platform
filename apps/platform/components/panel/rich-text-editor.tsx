@@ -109,7 +109,7 @@ const EDITOR_NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, 
 function canLoadEditorState(json: string): boolean {
   try {
     const trialEditor = createEditor({
-      namespace: "fynix-blog-body-trial",
+      namespace: "brandbasket-blog-body-trial",
       nodes: EDITOR_NODES,
       onError: () => {
         // This trial only asks "would mounting throw" — nothing here needs a real handler.
@@ -581,7 +581,7 @@ export function RichTextEditor({ initialValue, onChange, placeholder = "Start wr
 
   const initialConfig = useMemo(
     () => ({
-      namespace: "fynix-blog-body",
+      namespace: "brandbasket-blog-body",
       theme: EDITOR_THEME,
       onError(error: Error): void {
         // The editor degrades gracefully (content just stops updating); logging is enough here.

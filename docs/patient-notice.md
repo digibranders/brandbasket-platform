@@ -1,6 +1,6 @@
 # Patient notice on a clinic's booking page
 
-A clinic that takes bookings through Fynix is the one that decides why a patient's name, phone number and email address are collected. The email address is where the confirmation code goes; the phone number is how the clinic calls the patient, and is never verified: nothing is sent to it. DPDP Act 2023 s.5 and Rule 3 ask for a notice before they are. This is how a client site shows it and how Fynix keeps proof.
+A clinic that takes bookings through Brandbasket is the one that decides why a patient's name, phone number and email address are collected. The email address is where the confirmation code goes; the phone number is how the clinic calls the patient, and is never verified: nothing is sent to it. DPDP Act 2023 s.5 and Rule 3 ask for a notice before they are. This is how a client site shows it and how Brandbasket keeps proof.
 
 **On the client site**, above the booking button:
 

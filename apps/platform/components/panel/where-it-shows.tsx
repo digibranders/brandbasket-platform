@@ -22,7 +22,7 @@ const SCROLL_MARGIN_PX = 90;
  */
 export function WhereItShows({ spot, caption }: WhereItShowsProps): ReactElement | null {
   const brand = useBrand();
-  // The screenshot is a business page on Fynix Digital's directory: a brand that does not run the directory has nothing to show.
+  // The screenshot is a business page on Brandbasket's directory: a brand that does not run the directory has nothing to show.
   if (!brand.showsListing) return null;
   return <WhereItShowsDialog spot={spot} caption={caption} />;
 }
@@ -76,7 +76,7 @@ function WhereItShowsDialog({ spot, caption }: WhereItShowsProps): ReactElement 
                 src={WHERE_IT_SHOWS_PAGE.src}
                 width={WHERE_IT_SHOWS_PAGE.width}
                 height={WHERE_IT_SHOWS_PAGE.height}
-                alt={`A business page on Fynix, with the part for ${WHERE_IT_SHOWS_LABELS[spot].toLowerCase()} lit up`}
+                alt={`A business page on Brandbasket, with the part for ${WHERE_IT_SHOWS_LABELS[spot].toLowerCase()} lit up`}
                 sizes="52rem"
                 unoptimized
                 className="block h-auto w-full"

@@ -30,11 +30,11 @@ describe("planCardBase", () => {
   });
 });
 
-describe("Premium's pitch under Fynix", () => {
-  it("does not mention a listing, which Fynix does not sell", () => {
-    const fynix = planCardBase("premium", null, BRAND);
-    expect(fynix.pitch).not.toMatch(/listing/i);
-    expect(fynix.list.join(" ")).not.toMatch(/listing/i);
+describe("Premium's pitch under Brandbasket", () => {
+  it("does not mention a listing, which Brandbasket does not sell", () => {
+    const brandbasket = planCardBase("premium", null, BRAND);
+    expect(brandbasket.pitch).not.toMatch(/listing/i);
+    expect(brandbasket.list.join(" ")).not.toMatch(/listing/i);
   });
 
   it("keeps the listing in the pitch for a brand that sells it", () => {

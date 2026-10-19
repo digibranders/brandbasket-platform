@@ -161,7 +161,7 @@ export function parseStaffAdForm(values: StaffAdValues): StaffAdParseResult {
     if (values.listing.trim() === "") return refuse("listing", "Paste the address of the business's page on the website.");
     listingKey = listingKeyFromPageAddress(values.listing);
     if (listingKey === null) {
-      return refuse("listing", "That isn't a business page. It looks like fynix.digital/in/mh/business/smile-dental/9f94ykmdjp.");
+      return refuse("listing", "That isn't a business page. It looks like brandbasket.in/in/mh/business/smile-dental/9f94ykmdjp.");
     }
     own = marketOfListing(listingKey);
   }

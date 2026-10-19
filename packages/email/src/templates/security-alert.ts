@@ -1,7 +1,7 @@
 import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
 
 /*
- * Security alerts to the Fynix team (CERT-In Directions 2022 and the breach runbook, vps-setup/BREACH-RESPONSE.md: watch
+ * Security alerts to the Brandbasket team (CERT-In Directions 2022 and the breach runbook, vps-setup/BREACH-RESPONSE.md: watch
  * for signs of an attack, and act within six hours of noticing one). They go to the team's alert mailbox only, and carry
  * no customer data: what kind of event, how many, over what time, and where to look.
  */

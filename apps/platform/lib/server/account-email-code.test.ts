@@ -67,7 +67,7 @@ beforeEach(() => {
 });
 
 describe("requestAccountEmailCode", () => {
-  it("stores a hashed code for the address and emails the code, as Fynix, for ten minutes", async () => {
+  it("stores a hashed code for the address and emails the code, as Brandbasket, for ten minutes", async () => {
     const outcome = await requestAccountEmailCode({ email: EMAIL }, IP, NOW);
     expect(outcome).toMatchObject({ kind: "sent", expiresInSeconds: 600, emailHint: "m•••@example.test", confirmRequired: true });
 
@@ -76,7 +76,7 @@ describe("requestAccountEmailCode", () => {
     expect(stored).not.toHaveProperty("phone");
 
     const message = send.mock.calls[0]?.[0];
-    expect(message).toMatchObject({ to: EMAIL, template: "signup-code", subject: "Your Fynix Digital verification code" });
+    expect(message).toMatchObject({ to: EMAIL, template: "signup-code", subject: "Your Brandbasket verification code" });
     expect(message?.bodyText).toContain("expires in 10 minutes");
     expect(message?.bodyText).not.toMatch(/first\s?fold/i);
     const code = emailedCode();
@@ -133,7 +133,7 @@ describe("requestAccountEmailCode", () => {
   it("names the brand the request came in on", async () => {
     vi.mocked(currentBrand).mockResolvedValue(BRAND);
     await requestAccountEmailCode({ email: EMAIL }, IP, NOW);
-    expect(send.mock.calls[0]?.[0].subject).toBe("Your Fynix Digital verification code");
+    expect(send.mock.calls[0]?.[0].subject).toBe("Your Brandbasket verification code");
   });
 });
 

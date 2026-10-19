@@ -79,12 +79,12 @@ describe("signInWithPassword", () => {
   });
 
   it("refuses a phone account's placeholder address like any unknown account, without checking a password", async () => {
-    const outcome = await signInWithPassword(form({ email: "919820011223@phone.fynix.invalid", password: "correct-horse" }));
+    const outcome = await signInWithPassword(form({ email: "919820011223@phone.brandbasket.invalid", password: "correct-horse" }));
 
     expect(outcome).toEqual({
       status: "error",
       message: "That email and password don’t match an account.",
-      email: "919820011223@phone.fynix.invalid",
+      email: "919820011223@phone.brandbasket.invalid",
     });
     expect(mockedConsumeRateLimit).not.toHaveBeenCalled();
     expect(signInEmail).not.toHaveBeenCalled();

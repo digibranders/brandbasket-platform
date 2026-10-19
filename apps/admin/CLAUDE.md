@@ -2,7 +2,7 @@
 
 # apps/admin: staff console
 
-The app at console.fynix.digital where Fynix staff run clients, billing, support and compliance. Production sits behind Cloudflare Access. Repo-wide rules are in `../../CLAUDE.md`; visual rules are in `DESIGN.md` here.
+The app at console.brandbasket.in where Brandbasket staff run clients, billing, support and compliance. Production sits behind Cloudflare Access. Repo-wide rules are in `../../CLAUDE.md`; visual rules are in `DESIGN.md` here.
 
 ## Access
 
@@ -35,7 +35,7 @@ Tokens come from `packages/shared/src/styles/theme.css`. Follow `DESIGN.md`, inc
 ## Commands (from this folder)
 
 ```bash
-npx next dev -p 3099     # with ADMIN_ORIGIN=http://staff.localhost:3099 in .env.local
+npx next dev -p 3199     # with ADMIN_ORIGIN=http://console.brandbasket.localhost:3199 in .env.local
 pnpm lint
 pnpm typecheck
 pnpm test

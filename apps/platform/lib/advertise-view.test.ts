@@ -59,8 +59,8 @@ describe("weekLabel", () => {
 
 describe("marketPageHref", () => {
   it("points at the market's page on the website", () => {
-    expect(marketPageHref({ categorySlug: "dentists", citySlug: "thane", areaSlug: "naupada" }, "https://fynix.digital")).toBe(
-      "https://fynix.digital/in/mh/thane/naupada/dentists",
+    expect(marketPageHref({ categorySlug: "dentists", citySlug: "thane", areaSlug: "naupada" }, "https://brandbasket.in")).toBe(
+      "https://brandbasket.in/in/mh/thane/naupada/dentists",
     );
   });
 });
@@ -69,10 +69,10 @@ describe("placementPageHref", () => {
   const market = { categorySlug: "dentists", citySlug: "thane", areaSlug: "naupada" };
 
   it("points the home spot at the home page, the list spots at the market's page, and a business page spot nowhere", () => {
-    expect(placementPageHref("home", market, "https://fynix.digital")).toBe("https://fynix.digital/");
-    expect(placementPageHref("top", market, "https://fynix.digital")).toBe("https://fynix.digital/in/mh/thane/naupada/dentists");
-    expect(placementPageHref("side", market, "https://fynix.digital")).toBe("https://fynix.digital/in/mh/thane/naupada/dentists");
-    expect(placementPageHref("profile", market, "https://fynix.digital")).toBeNull();
+    expect(placementPageHref("home", market, "https://brandbasket.in")).toBe("https://brandbasket.in/");
+    expect(placementPageHref("top", market, "https://brandbasket.in")).toBe("https://brandbasket.in/in/mh/thane/naupada/dentists");
+    expect(placementPageHref("side", market, "https://brandbasket.in")).toBe("https://brandbasket.in/in/mh/thane/naupada/dentists");
+    expect(placementPageHref("profile", market, "https://brandbasket.in")).toBeNull();
   });
 });
 

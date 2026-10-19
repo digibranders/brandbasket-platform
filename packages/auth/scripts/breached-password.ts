@@ -25,7 +25,7 @@ export async function breachedPasswordCount(password: string, fetchFn: typeof fe
   let response: Response;
   try {
     response = await fetchFn(`${RANGE_URL}${prefix}`, {
-      headers: { "Add-Padding": "true", "User-Agent": "fynix-staff-create" },
+      headers: { "Add-Padding": "true", "User-Agent": "brandbasket-staff-create" },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch {

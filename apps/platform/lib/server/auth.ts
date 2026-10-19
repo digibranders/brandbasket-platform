@@ -22,7 +22,7 @@ let auth: Auth | undefined;
 /**
  * The account emails, with links to this app's own pages (the auth library has no HTTP routes here). Written through
  * the intake connection, which may only add outbox messages: these are sent on behalf of someone who is not signed in.
- * The links point at the host the request came in on, so a Fynix owner's link opens on the Fynix host.
+ * The links point at the host the request came in on, so a Brandbasket owner's link opens on the Brandbasket host.
  */
 function accountMailer(): AuthMailer {
   return {

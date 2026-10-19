@@ -16,7 +16,7 @@ export function geoCatalogSource(env: Readonly<Record<string, string | undefined
 }
 
 const REFRESH_MS = 15_000;
-const STATE_KEY = Symbol.for("fynix.directory.geoCatalogRefresh");
+const STATE_KEY = Symbol.for("brandbasket.directory.geoCatalogRefresh");
 interface RefreshState {
   loadedAt: number;
   applied: boolean;

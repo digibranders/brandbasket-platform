@@ -13,7 +13,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 export const BLOG_PREVIEW_TTL_MS = 30 * 60 * 1000;
 
 /** Separates this key from every other use of the same secret. Bump the version to invalidate every link. */
-const KEY_CONTEXT = "fynix:blog-preview:v1";
+const KEY_CONTEXT = "brandbasket:blog-preview:v1";
 
 export interface BlogPreviewClaims {
   readonly businessId: string;

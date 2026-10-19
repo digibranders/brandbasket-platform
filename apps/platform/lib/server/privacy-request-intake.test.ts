@@ -6,8 +6,8 @@ vi.mock("server-only", () => ({}));
 const TOKEN = "t".repeat(40);
 const NOW = new Date("2026-11-01T06:00:00.000Z");
 const OTP_ID = "0198f2c0-0000-7000-8000-000000000001";
-const WEBSITE = "https://fynix.digital";
-const REVIEW_PAGE = "https://fynix.digital/in/mh/business/wow-momo/h3t9qcv2fv#review-0198f2c0-0000-7000-8000-0000000000bb";
+const WEBSITE = "https://brandbasket.in";
+const REVIEW_PAGE = "https://brandbasket.in/in/mh/business/wow-momo/h3t9qcv2fv#review-0198f2c0-0000-7000-8000-0000000000bb";
 const BODY = { kind: "erasure", name: "Meera", email: "Meera@Example.com", details: "", website: "", clientIp: "203.0.113.9" };
 
 function post(path: string, body: unknown, headers: Record<string, string> = {}): Request {
@@ -70,14 +70,14 @@ describe("POST /api/privacy-requests/otp", () => {
     expect(await listing.json()).toMatchObject({ field: "details", message: "Tell us which listing, and what is wrong with it." });
     expect(requestOtp).not.toHaveBeenCalled();
 
-    const fromListing = await handlePrivacyRequestOtp(post("/x", { ...BODY, kind: "listing_removal", about: "https://fynix.digital/in/mh/business/wow-momo/h3t9qcv2fv" }), deps);
+    const fromListing = await handlePrivacyRequestOtp(post("/x", { ...BODY, kind: "listing_removal", about: "https://brandbasket.in/in/mh/business/wow-momo/h3t9qcv2fv" }), deps);
     expect(fromListing.status).toBe(200);
-    expect(requestOtp).toHaveBeenCalledWith(expect.objectContaining({ details: "About: https://fynix.digital/in/mh/business/wow-momo/h3t9qcv2fv" }), "203.0.113.9", NOW);
+    expect(requestOtp).toHaveBeenCalledWith(expect.objectContaining({ details: "About: https://brandbasket.in/in/mh/business/wow-momo/h3t9qcv2fv" }), "203.0.113.9", NOW);
   });
 
-  it("takes a page on the website's www address, where fynix.digital sends every visitor", async () => {
+  it("takes a page on the website's www address, where brandbasket.in sends every visitor", async () => {
     const { deps, requestOtp } = otpDeps();
-    const www = "https://www.fynix.digital/in/mh/business/wow-momo/h3t9qcv2fv#review-0198f2c0-0000-7000-8000-0000000000bb";
+    const www = "https://www.brandbasket.in/in/mh/business/wow-momo/h3t9qcv2fv#review-0198f2c0-0000-7000-8000-0000000000bb";
     const response = await handlePrivacyRequestOtp(post("/x", { ...BODY, kind: "content_report", details: "Spam.", about: www }), deps);
     expect(response.status).toBe(200);
     expect(requestOtp).toHaveBeenCalledWith(expect.objectContaining({ details: `About: ${www}\n\nSpam.` }), "203.0.113.9", NOW);
@@ -85,7 +85,7 @@ describe("POST /api/privacy-requests/otp", () => {
 
   it("refuses a page that is not on the website, so staff never open a link someone else chose", async () => {
     const { deps, requestOtp } = otpDeps();
-    for (const about of ["https://evil.example/fynix.digital", "javascript:alert(1)", "not a url", "http://fynix.digital/in", "https://www.evil.example/x", "https://app.fynix.digital/x"]) {
+    for (const about of ["https://evil.example/brandbasket.in", "javascript:alert(1)", "not a url", "http://brandbasket.in/in", "https://www.evil.example/x", "https://app.brandbasket.in/x"]) {
       expect((await handlePrivacyRequestOtp(post("/x", { ...BODY, kind: "content_report", details: "Spam.", about }), deps)).status).toBe(400);
     }
     expect(requestOtp).not.toHaveBeenCalled();

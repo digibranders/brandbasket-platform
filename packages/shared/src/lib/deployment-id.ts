@@ -1,6 +1,6 @@
 /**
  * The id of the release this build is part of, for Next's version skew protection (`deploymentId`). The VPS unpacks
- * every deploy into /srv/fynix/releases/<commit>[+rebuild], builds there and runs from there, so the commit in the working
+ * every deploy into /srv/brandbasket/releases/<commit>[+rebuild], builds there and runs from there, so the commit in the working
  * directory is the same at build time and at run time, on every instance. Elsewhere (a laptop, CI) there is none, and
  * protection stays off. NEXT_DEPLOYMENT_ID, when set, wins.
  */

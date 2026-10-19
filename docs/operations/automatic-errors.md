@@ -1,6 +1,6 @@
 # Native automatic errors
 
-Fynix captures unexpected browser errors, unhandled promise rejections, React error-boundary failures and Next.js `onRequestError` failures into the private staff console at `/support/errors`. Explicit caught-error sites call `reportServerError` with a fixed operation and route. The native inbox works with the existing staff database connection; it needs no external monitoring account or credentials.
+Brandbasket captures unexpected browser errors, unhandled promise rejections, React error-boundary failures and Next.js `onRequestError` failures into the private staff console at `/support/errors`. Explicit caught-error sites call `reportServerError` with a fixed operation and route. The native inbox works with the existing staff database connection; it needs no external monitoring account or credentials.
 
 ## Sentry and the native inbox
 
@@ -35,10 +35,10 @@ Native automatic-error tables and ticket-error links are private to the staff da
 
 ## Releases and source locations
 
-Set optional `NEXT_PUBLIC_FYNIX_RELEASE` to the deployment's hexadecimal Git commit hash (7 to 64 characters) before building both applications and keep that value for their runtime. Missing or invalid values become `unknown`. The collector overwrites client-supplied release values with the deployed application's value.
+Set optional `NEXT_PUBLIC_BRANDBASKET_RELEASE` to the deployment's hexadecimal Git commit hash (7 to 64 characters) before building both applications and keep that value for their runtime. Missing or invalid values become `unknown`. The collector overwrites client-supplied release values with the deployed application's value.
 
 Production frames can point to compiled JavaScript chunks. This implementation does not upload, resolve or symbolicate source maps. Safe class/operation/route/group references provide native triage, but diagnosing a production location may require inspecting the corresponding build artifact. Avoid claiming full source-map diagnosis.
 
 ## Review lifecycle
 
-Staff can mark an issue New, Investigating, Resolved or Ignored and assign it to an active staff member. A subsequent distinct occurrence reopens a resolved issue and increments its regression count. Ignored issues continue counting without reopening. A status update includes the reviewed occurrence count so an incident that changes during review must be refreshed before it can be resolved. The scheduled support maintenance command (`pnpm support:attachments:maintain`, see `docs/deployment/fynix-droplet.md`) removes resolved issues 90 days after resolution and expires old event receipts; active and ignored issues stay available. User-created support tickets remain separate; staff can privately link them to an automatic issue by its UUID reference.
+Staff can mark an issue New, Investigating, Resolved or Ignored and assign it to an active staff member. A subsequent distinct occurrence reopens a resolved issue and increments its regression count. Ignored issues continue counting without reopening. A status update includes the reviewed occurrence count so an incident that changes during review must be refreshed before it can be resolved. The scheduled support maintenance command (`pnpm support:attachments:maintain`, see `docs/deployment/brandbasket-droplet.md`) removes resolved issues 90 days after resolution and expires old event receipts; active and ignored issues stay available. User-created support tickets remain separate; staff can privately link them to an automatic issue by its UUID reference.

@@ -10,7 +10,7 @@ import { serverEnv } from "./env";
  */
 export async function notifyTeamDomainConnected(businessId: string, businessName: string, domain: string): Promise<void> {
   try {
-    const to = process.env.FYNIX_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
+    const to = process.env.BRANDBASKET_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
     const clientUrl = new URL(`/clients/${businessId}`, serverEnv().ADMIN_ORIGIN).toString();
     await createAppEmailTransport(getStaffDb()).send(domainConnectedEmail({ to, businessName, domain, clientUrl }));
   } catch (error) {
@@ -24,7 +24,7 @@ export async function notifyTeamDomainConnected(businessId: string, businessName
  */
 export async function notifyTeamDomainRequested(businessId: string, businessName: string, domain: string): Promise<void> {
   try {
-    const to = process.env.FYNIX_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
+    const to = process.env.BRANDBASKET_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
     const clientUrl = new URL(`/clients/${businessId}`, serverEnv().ADMIN_ORIGIN).toString();
     await createAppEmailTransport(getStaffDb()).send(domainRequestedEmail({ to, businessName, domain, clientUrl }));
   } catch (error) {

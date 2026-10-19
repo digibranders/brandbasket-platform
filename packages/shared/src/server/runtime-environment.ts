@@ -18,13 +18,13 @@ export function assertRuntimeEnvironment(
   env: Readonly<Record<string, string | undefined>>,
   required: readonly string[],
 ): void {
-  // A build is not a running server; vps-setup/platform/fynix-platform-build.env holds placeholders only.
+  // A build is not a running server; vps-setup/platform/brandbasket-platform-build.env holds placeholders only.
   if (env.NEXT_PHASE === "phase-production-build") return;
   if (!isRealDeployment({ VERCEL_ENV: env.VERCEL_ENV, APP_ORIGIN: env.APP_ORIGIN })) return;
 
   const missing = required.filter((name) => !env[name]?.trim());
   if (missing.length > 0) {
-    throw new RuntimeEnvironmentError(`This deployment is missing required settings: ${missing.join(", ")}. See .env.production.example (Fynix) or .env.example.`);
+    throw new RuntimeEnvironmentError(`This deployment is missing required settings: ${missing.join(", ")}. See .env.production.example (Brandbasket) or .env.example.`);
   }
 
   const bypasses = CODE_BYPASS_SWITCHES.filter((name) => env[name]?.trim() === "true");

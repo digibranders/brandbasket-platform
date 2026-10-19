@@ -17,7 +17,7 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
-  await dbs.owner.db.insert(users).values({ id: STAFF_ID, name: "Asha", email: "asha@fynix.digital", emailVerified: true });
+  await dbs.owner.db.insert(users).values({ id: STAFF_ID, name: "Asha", email: "asha@brandbasket.in", emailVerified: true });
 });
 
 describe("the staff access log", () => {
@@ -27,7 +27,7 @@ describe("the staff access log", () => {
 
     const rows = await listRecentStaffAccess(dbs.staff.db, 10);
     expect(rows.map((row) => row.action)).toEqual(["invoice.export", "client.view"]);
-    expect(rows[1]).toMatchObject({ staffUserId: STAFF_ID, staffEmail: "asha@fynix.digital", targetType: "business", businessId: BUSINESS_ID, ipAddress: "203.0.113.9", result: "ok" });
+    expect(rows[1]).toMatchObject({ staffUserId: STAFF_ID, staffEmail: "asha@brandbasket.in", targetType: "business", businessId: BUSINESS_ID, ipAddress: "203.0.113.9", result: "ok" });
     expect(rows[0]?.detail).toBe("month=2026-10 rows=42");
   });
 
@@ -57,7 +57,7 @@ describe("the staff access log", () => {
 
 describe("the nightly tally of staff access", () => {
   it("counts each staff member's actions by result since a moment, leaving out what came before", async () => {
-    await dbs.owner.db.insert(users).values({ id: "staff-ravi", name: "Ravi", email: "ravi@fynix.digital", emailVerified: true });
+    await dbs.owner.db.insert(users).values({ id: "staff-ravi", name: "Ravi", email: "ravi@brandbasket.in", emailVerified: true });
     for (let n = 0; n < 3; n += 1) await recordStaffAccess(dbs.staff.db, { staffUserId: STAFF_ID, action: "invoice.export" });
     await recordStaffAccess(dbs.staff.db, { staffUserId: STAFF_ID, action: "staff.sign_in", result: "failed" });
     await recordStaffAccess(dbs.staff.db, { staffUserId: STAFF_ID, action: "staff.sign_in", result: "ok" });
@@ -67,10 +67,10 @@ describe("the nightly tally of staff access", () => {
 
     const tally = await tallyStaffAccessSince(dbs.staff.db, new Date(Date.now() - 24 * 60 * 60 * 1000));
     const find = (staff: string, action: string, result: string) => tally.find((row) => row.staffEmail === staff && row.action === action && row.result === result)?.count;
-    expect(find("asha@fynix.digital", "invoice.export", "ok")).toBe(3);
-    expect(find("asha@fynix.digital", "staff.sign_in", "failed")).toBe(1);
-    expect(find("asha@fynix.digital", "staff.sign_in", "ok")).toBe(1);
-    expect(find("ravi@fynix.digital", "invoice.export", "ok")).toBe(1);
+    expect(find("asha@brandbasket.in", "invoice.export", "ok")).toBe(3);
+    expect(find("asha@brandbasket.in", "staff.sign_in", "failed")).toBe(1);
+    expect(find("asha@brandbasket.in", "staff.sign_in", "ok")).toBe(1);
+    expect(find("ravi@brandbasket.in", "invoice.export", "ok")).toBe(1);
     expect(tally).toHaveLength(4);
   });
 });

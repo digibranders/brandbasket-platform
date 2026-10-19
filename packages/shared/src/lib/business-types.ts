@@ -1,5 +1,5 @@
 /**
- * The trades Fynix builds for. The stored value is the slug, never the label, so wording can change
+ * The trades Brandbasket builds for. The stored value is the slug, never the label, so wording can change
  * without rewriting past leads.
  */
 export const BUSINESS_TYPES = [

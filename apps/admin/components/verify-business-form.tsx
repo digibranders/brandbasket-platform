@@ -53,7 +53,7 @@ function Field({
 }
 
 /**
- * Verifying a directory business: the address of its page on the website, the name to show and the number Fynix
+ * Verifying a directory business: the address of its page on the website, the name to show and the number Brandbasket
  * confirmed, and whether to give it the Trusted tag as well. Parsed on the server (lib/directory-view.ts); a refusal points at its field and keeps what was typed.
  */
 export function VerifyBusinessForm({ action, phoneCountries, defaultPhoneCountry }: VerifyBusinessFormProps): ReactElement {
@@ -96,7 +96,7 @@ export function VerifyBusinessForm({ action, phoneCountries, defaultPhoneCountry
           autoComplete="off"
           maxLength={2000}
           defaultValue={values.listing}
-          placeholder="fynix.digital/in/mh/business/smile-dental/9f94ykmdjp"
+          placeholder="brandbasket.in/in/mh/business/smile-dental/9f94ykmdjp"
           className={fieldClasses}
           {...fieldStatus("listing", "verify-listing-hint")}
         />

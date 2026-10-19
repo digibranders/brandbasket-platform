@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Re-take the picture behind "See where this shows" from the real Fynix business page.
+"""Re-take the picture behind "See where this shows" from the real Brandbasket business page.
 
 One full-page screenshot of a well-filled business page, plus the place each dashboard input shows
 on it. The dashboard draws the spotlight over the picture, so nothing is baked in. Run it whenever the business page

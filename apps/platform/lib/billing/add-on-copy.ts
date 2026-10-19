@@ -157,7 +157,7 @@ export interface CheckoutCopyInput {
   readonly chargeDate: string | null;
   /** For a monthly add-on, the day of the month it renews on: "12th". Null for the press release. */
   readonly renewDay: string | null;
-  /** The brand the dashboard is sold under; Fynix when left out. */
+  /** The brand the dashboard is sold under; Brandbasket when left out. */
   readonly brand?: Brand;
 }
 
@@ -197,7 +197,7 @@ export function checkoutCopy(input: CheckoutCopyInput): CheckoutCopy {
   if (monthly && renewDay !== null) {
     notes.push(renewalNote(renewDay));
   }
-  if (addOnId === "advertising") notes.push("This is Fynix Digital's fee. You pay the ad platforms directly.");
+  if (addOnId === "advertising") notes.push("This is Brandbasket's fee. You pay the ad platforms directly.");
   if (!monthly) notes.push("One-time payment.");
   if (teamContacts) notes.push("After you pay, our team will contact you to get started.");
 

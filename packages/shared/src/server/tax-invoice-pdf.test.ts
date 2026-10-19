@@ -6,7 +6,7 @@ import { recipientPhoneToPrint, renderTaxInvoicesPdf } from "./tax-invoice-pdf";
 vi.mock("server-only", () => ({}));
 
 const line: TaxInvoiceLineRecord = {
-  description: "Fynix Premium plan",
+  description: "Brandbasket Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: "Coupon GAURAV applied, 20% off",
   sac: "998361",
@@ -34,12 +34,12 @@ const invoice: TaxInvoice = {
   paidOn: "2026-10-09",
   supplier: {
     legalName: "Digibranders Private Limited",
-    tradeName: "Fynix",
+    tradeName: "Brandbasket",
     gstin: "27AAICD9268J1Z0",
     cin: "U72900MH2021PTC372344",
     addressLines: ["Office No. 2617, 26th Floor, Solus Building,", "Hiranandani Estate, Ghodbunder Road,", "Thane West, Maharashtra 400607, India"],
     stateCode: "mh",
-    email: "support@fynix.io",
+    email: "support@brandbasket.io",
     phone: "+91 789 789 6607",
   },
   recipient: {
@@ -78,8 +78,8 @@ describe("renderTaxInvoicesPdf", () => {
     const { width, height } = pdf.getPage(0).getSize();
     expect(width).toBeCloseTo(595.28, 1);
     expect(height).toBeCloseTo(841.89, 1);
-    expect(pdf.getTitle()).toBe("Fynix Digital tax invoices");
-    expect(pdf.getCreator()).toBe("Fynix Digital");
+    expect(pdf.getTitle()).toBe("Brandbasket tax invoices");
+    expect(pdf.getCreator()).toBe("Brandbasket");
   });
 
   it("names a single invoice in the document title", async () => {
@@ -182,13 +182,13 @@ describe("renderTaxInvoicesPdf with the customer's mobile", () => {
 
 describe("renderTaxInvoicesPdf with a letterhead and contact line of its own", () => {
   const letterhead = { paths: ["M0 0L10 0L10 10L0 10Z"], height: 10, colorHex: "#0C1E2E" } as const;
-  const contact = { email: "hello@fynix.digital", website: "https://fynix.digital" } as const;
+  const contact = { email: "hello@brandbasket.in", website: "https://brandbasket.in" } as const;
 
   it("draws the given letterhead and contact line, still on one page", async () => {
-    const bytes = await renderTaxInvoicesPdf([invoice], { brandName: "Fynix Digital", letterhead, contact });
+    const bytes = await renderTaxInvoicesPdf([invoice], { brandName: "Brandbasket", letterhead, contact });
     const pdf = await PDFDocument.load(bytes);
     expect(pdf.getPageCount()).toBe(1);
-    expect(pdf.getCreator()).toBe("Fynix Digital");
+    expect(pdf.getCreator()).toBe("Brandbasket");
     expect(pdf.getTitle()).toBe("Tax invoice FY/26-27/000001");
   });
 

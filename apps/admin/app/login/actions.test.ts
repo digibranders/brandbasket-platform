@@ -20,16 +20,16 @@ beforeEach(() => {
 describe("signInStaff", () => {
   it("refuses a staff sign-in that fails the robot check, before it looks at the password", async () => {
     vi.mocked(checkHuman).mockResolvedValue({ ok: false, message: "The robot check did not pass. Reload the page and try again." });
-    const result = await signInStaff({ status: "idle" }, form({ email: " asha@fynix.digital ", password: "x" }));
-    expect(result).toEqual({ status: "error", message: "The robot check did not pass. Reload the page and try again.", email: "asha@fynix.digital" });
+    const result = await signInStaff({ status: "idle" }, form({ email: " asha@brandbasket.in ", password: "x" }));
+    expect(result).toEqual({ status: "error", message: "The robot check did not pass. Reload the page and try again.", email: "asha@brandbasket.in" });
     expect(checkHuman).toHaveBeenCalledWith(expect.any(FormData), "staff_sign_in");
     expect(signInWithPassword).not.toHaveBeenCalled();
   });
 
   it("goes on to the password when the robot check passes", async () => {
     vi.mocked(checkHuman).mockResolvedValue({ ok: true });
-    vi.mocked(signInWithPassword).mockResolvedValue({ status: "error", message: "Wrong password.", email: "asha@fynix.digital" });
-    const result = await signInStaff({ status: "idle" }, form({ email: "asha@fynix.digital", password: "x" }));
+    vi.mocked(signInWithPassword).mockResolvedValue({ status: "error", message: "Wrong password.", email: "asha@brandbasket.in" });
+    const result = await signInStaff({ status: "idle" }, form({ email: "asha@brandbasket.in", password: "x" }));
     expect(result).toMatchObject({ status: "error", message: "Wrong password." });
     expect(signInWithPassword).toHaveBeenCalledOnce();
   });

@@ -3,4 +3,4 @@
 -- a foreign key, so the database refuses it outright. That is deliberate. A redeemed code is part of the billing
 -- record of everyone paying on it, and the frozen discount on their subscription would lose the row explaining
 -- where it came from. Turn such a code off instead.
-GRANT DELETE ON referral_codes TO fynix_staff;
+GRANT DELETE ON referral_codes TO bb_staff;

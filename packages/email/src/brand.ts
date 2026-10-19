@@ -7,9 +7,9 @@ export interface EmailAddress {
   readonly name: string;
 }
 
-const BRAND_NAME = "Fynix Digital";
+const BRAND_NAME = "Brandbasket";
 
-/** The name emails call the product: "Fynix Digital". */
+/** The name emails call the product: "Brandbasket". */
 export function emailBrandName(): string {
   return BRAND_NAME;
 }
@@ -17,12 +17,12 @@ export function emailBrandName(): string {
 /** Who mail comes from, and where replies go, when the environment names no one. */
 export function emailSenderDefaults(): { readonly from: EmailAddress; readonly replyTo: EmailAddress } {
   return {
-    from: { email: "no-reply@fynix.digital", name: "Fynix Digital" },
-    replyTo: { email: "hello@fynix.digital", name: "Fynix Support" },
+    from: { email: "no-reply@brandbasket.in", name: "Brandbasket" },
+    replyTo: { email: "hello@brandbasket.in", name: "Brandbasket Support" },
   };
 }
 
 /** Where team alerts go when the environment names no inbox: the product's own support address. */
 export function emailTeamInboxDefault(): string {
-  return "hello@fynix.digital";
+  return "hello@brandbasket.in";
 }

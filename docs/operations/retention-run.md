@@ -3,8 +3,8 @@
 **Why:** DPDP Act s.8(7) asks that personal data is erased once its purpose is served. The periods are in
 `retention-schedule.md`, approved by the owner on 13 October 2026.
 
-**What it removes**, nightly (it runs inside the support maintenance run, `fynix-maintenance.timer`; see
-`docs/deployment/fynix-droplet.md`):
+**What it removes**, nightly (it runs inside the support maintenance run, `brandbasket-maintenance.timer`; see
+`docs/deployment/brandbasket-droplet.md`):
 
 | What | Removed when |
 |---|---|

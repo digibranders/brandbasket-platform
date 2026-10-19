@@ -6,7 +6,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: () => ({}) }));
 vi.mock("./public-db", () => ({ getPublicDb: vi.fn() }));
 vi.mock("./env", () => ({ serverEnv: () => ({
-  BETTER_AUTH_SECRET: "s".repeat(32), APP_ORIGIN: "https://app.fynix.digital", ADMIN_ORIGIN: "https://console.fynix.digital",
+  BETTER_AUTH_SECRET: "s".repeat(32), APP_ORIGIN: "https://app.brandbasket.in", ADMIN_ORIGIN: "https://console.brandbasket.in",
 }) }));
 vi.mock("@brandbasket/auth", async () => ({
   ...await vi.importActual<typeof import("@brandbasket/auth")>("@brandbasket/auth"), createAuth: vi.fn(),

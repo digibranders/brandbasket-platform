@@ -2,7 +2,7 @@
 
 Support screenshots are served only through the platform and staff attachment routes. They must never use the public media bucket, a CDN URL, or the public `MediaStorage` adapter.
 
-Set `FYNIX_SUPPORT_ROOT` to the same absolute private directory in the platform and admin environments for local storage. The directory must sit outside `FYNIX_MEDIA_ROOT` and any static/web server root. The server creates screenshot files with mode `0600` and directories with mode `0700`. Preserve this directory with the application database in backups.
+Set `BRANDBASKET_SUPPORT_ROOT` to the same absolute private directory in the platform and admin environments for local storage. The directory must sit outside `BRANDBASKET_MEDIA_ROOT` and any static/web server root. The server creates screenshot files with mode `0600` and directories with mode `0700`. Preserve this directory with the application database in backups.
 
 Optional object storage uses **all four** dedicated variables: `SUPPORT_R2_ACCOUNT_ID`, `SUPPORT_R2_ACCESS_KEY_ID`, `SUPPORT_R2_SECRET_ACCESS_KEY`, and `SUPPORT_R2_BUCKET`. The bucket must be private with public access and custom public domains disabled. Use a scoped credential for only this bucket. It must differ from `R2_BUCKET`; public media credentials are never reused automatically. No public URL variable exists. The application cannot verify a bucket's dashboard public-access settings, so verify those settings before enabling the configuration. Partial configuration fails rather than falling back to disk.
 
@@ -21,7 +21,7 @@ Verify a staged object remains unavailable through customer GET, another request
 
 Closed ticket content, internal notes, contextual details, error links, read state, and screenshots are removed 24 calendar months after the ticket's last change, the period in the retention schedule (`docs/operations/retention-schedule.md`). `SUPPORT_TICKET_RETENTION_MONTHS` may set another whole number of months from 1 to 120; any other value, 0 included, is refused so a typo cannot purge data early or turn the schedule off. This does not change financial record retention. Resolved tickets remain available; only closed tickets enter this pass. A claimed ticket cannot receive new replies or changes while its objects are being removed. Its content is retained when any object delete fails, and removed only after every associated object is marked deleted. No customer-identifying analytics are preserved by this command.
 
-The same command also removes resolved automatic error issues 90 days after resolution (see `docs/operations/automatic-errors.md`). `docs/deployment/fynix-droplet.md` describes how to schedule it.
+The same command also removes resolved automatic error issues 90 days after resolution (see `docs/operations/automatic-errors.md`). `docs/deployment/brandbasket-droplet.md` describes how to schedule it.
 
 ## Where customer text can be stored
 

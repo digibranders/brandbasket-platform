@@ -18,6 +18,6 @@ export function reportBoundaryError(error: Error & { readonly digest?: string },
     operation: "error_boundary",
     route: window.location.pathname,
     severity,
-    release: process.env.NEXT_PUBLIC_FYNIX_RELEASE,
+    release: process.env.NEXT_PUBLIC_BRANDBASKET_RELEASE,
   });
 }

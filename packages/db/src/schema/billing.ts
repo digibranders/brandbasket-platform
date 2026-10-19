@@ -77,7 +77,7 @@ export const UNAPPLIED_PAYMENT_REASONS = [
 
 /**
  * What a plan includes (docs/superpowers/specs/2026-10-07-care-plan-design.md). `care` is the website only: the
- * website, its management, the chatbot, the server and hosting. `premium` is everything in Care plus the Fynix
+ * website, its management, the chatbot, the server and hosting. `premium` is everything in Care plus the Brandbasket
  * listing, videos, appointments, better ranking and the social and Google profile management.
  */
 export const planTier = pgEnum("plan_tier", ["care", "premium"]);

@@ -7,7 +7,7 @@ import { stateName } from "@brandbasket/db/india-states";
 import { PDFDocument, PDFString, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
 import { deploymentBrandName } from "../lib/deployment-brand";
 import { businessDetails } from "../lib/site-config";
-import { FYNIX_LETTERHEAD } from "./fynix-letterhead";
+import { BRANDBASKET_LETTERHEAD } from "./brandbasket-letterhead";
 import { HANKEN_BOLD, HANKEN_REGULAR, HANKEN_SEMIBOLD, RUPEE_ADVANCE, RUPEE_PATH, RUPEE_UNITS_PER_EM } from "./tax-invoice-fonts.generated";
 
 /**
@@ -190,7 +190,7 @@ function hexColor(hex: string): ReturnType<typeof rgb> {
 function header(page: PDFPage, fonts: Fonts, continued: boolean, options: TaxInvoiceRenderOptions): number {
   const logoHeight = 9.5 * MM;
   const headBottom = TOP - 34;
-  const letterhead = options.letterhead ?? FYNIX_LETTERHEAD;
+  const letterhead = options.letterhead ?? BRANDBASKET_LETTERHEAD;
   const scale = logoHeight / letterhead.height;
   const color = hexColor(letterhead.colorHex);
   for (const path of letterhead.paths) page.drawSvgPath(path, { x: LEFT, y: headBottom + logoHeight, scale, color });
@@ -243,10 +243,10 @@ function facts(page: PDFPage, invoice: TaxInvoice, top: number, fonts: Fonts): n
 
 /** What a render may add that an invoice's stored snapshot deliberately does not hold. */
 export interface TaxInvoiceRenderOptions {
-  /** The name the PDF files itself under (its title and creator): "Fynix Digital" unless the caller names another. */
+  /** The name the PDF files itself under (its title and creator): "Brandbasket" unless the caller names another. */
   readonly brandName?: string;
   /**
-   * A letterhead to draw in place of Fynix Digital's own: the logo's SVG paths, the height of the viewBox they are
+   * A letterhead to draw in place of Brandbasket's own: the logo's SVG paths, the height of the viewBox they are
    * drawn in, and the colour to fill them (a hex like "#0C1E2E"). The company on the invoice (name, GSTIN, address) is
    * the stored snapshot's and never changes; this is only the name the customer knows it by.
    */
@@ -526,7 +526,7 @@ function continuationPage(doc: PDFDocument, invoice: TaxInvoice, fonts: Fonts, o
 }
 
 /**
- * Draws one invoice from a fresh page. It is one page in every case Fynix issues today (one line); lines that
+ * Draws one invoice from a fresh page. It is one page in every case Brandbasket issues today (one line); lines that
  * do not fit carry on to a continuation page, and the totals and declaration always end the invoice. Every page of
  * an invoice that runs to more than one says "Page n of N".
  */

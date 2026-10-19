@@ -15,30 +15,30 @@ ALTER TABLE "user_privacy_settings" ADD CONSTRAINT "user_privacy_settings_user_i
 ALTER TABLE user_privacy_settings ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 
-CREATE POLICY user_privacy_settings_customer ON user_privacy_settings FOR ALL TO fynix_app USING (user_id = app_current_user_id()) WITH CHECK (user_id = app_current_user_id());
+CREATE POLICY user_privacy_settings_customer ON user_privacy_settings FOR ALL TO bb_app USING (user_id = app_current_user_id()) WITH CHECK (user_id = app_current_user_id());
 --> statement-breakpoint
 
-CREATE POLICY user_privacy_settings_staff_select ON user_privacy_settings FOR SELECT TO fynix_staff USING (true);
+CREATE POLICY user_privacy_settings_staff_select ON user_privacy_settings FOR SELECT TO bb_staff USING (true);
 --> statement-breakpoint
 
-CREATE POLICY user_privacy_settings_staff_delete ON user_privacy_settings FOR DELETE TO fynix_staff USING (true);
+CREATE POLICY user_privacy_settings_staff_delete ON user_privacy_settings FOR DELETE TO bb_staff USING (true);
 --> statement-breakpoint
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON user_privacy_settings TO fynix_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON user_privacy_settings TO bb_app;
 --> statement-breakpoint
 
-GRANT SELECT, DELETE ON user_privacy_settings TO fynix_staff;
+GRANT SELECT, DELETE ON user_privacy_settings TO bb_staff;
 --> statement-breakpoint
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_app') THEN
-    CREATE POLICY user_privacy_settings_legacy_customer ON user_privacy_settings FOR ALL TO fynix_app USING (user_id = app_current_user_id()) WITH CHECK (user_id = app_current_user_id());
-    GRANT SELECT, INSERT, UPDATE, DELETE ON user_privacy_settings TO fynix_app;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bb_app') THEN
+    CREATE POLICY user_privacy_settings_legacy_customer ON user_privacy_settings FOR ALL TO bb_app USING (user_id = app_current_user_id()) WITH CHECK (user_id = app_current_user_id());
+    GRANT SELECT, INSERT, UPDATE, DELETE ON user_privacy_settings TO bb_app;
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
-    CREATE POLICY user_privacy_settings_legacy_staff_select ON user_privacy_settings FOR SELECT TO fynix_staff USING (true);
-    CREATE POLICY user_privacy_settings_legacy_staff_delete ON user_privacy_settings FOR DELETE TO fynix_staff USING (true);
-    GRANT SELECT, DELETE ON user_privacy_settings TO fynix_staff;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bb_staff') THEN
+    CREATE POLICY user_privacy_settings_legacy_staff_select ON user_privacy_settings FOR SELECT TO bb_staff USING (true);
+    CREATE POLICY user_privacy_settings_legacy_staff_delete ON user_privacy_settings FOR DELETE TO bb_staff USING (true);
+    GRANT SELECT, DELETE ON user_privacy_settings TO bb_staff;
   END IF;
 END $$;

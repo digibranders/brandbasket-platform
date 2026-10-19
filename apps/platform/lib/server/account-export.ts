@@ -16,11 +16,11 @@ import { DATA_RECIPIENTS } from "@brandbasket/shared/lib/privacy/recipients";
  * session's own ids, never from the request; support requests are read under the owner's own scope.
  */
 
-export const ACCOUNT_EXPORT_FORMAT = "fynix-account-export/1";
+export const ACCOUNT_EXPORT_FORMAT = "brandbasket-account-export/1";
 
-/** What the download is saved as: "fynix-my-data-2026-11-01.json". */
+/** What the download is saved as: "brandbasket-my-data-2026-11-01.json". */
 export function accountExportFilename(day: string): string {
-  return `fynix-my-data-${day}.json`;
+  return `brandbasket-my-data-${day}.json`;
 }
 /** The support list's own page size limit is 25; the export pages through it up to this many requests. */
 const SUPPORT_PAGE_SIZE = 25;

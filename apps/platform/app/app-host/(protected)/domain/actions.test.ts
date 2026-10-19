@@ -25,13 +25,13 @@ function form(fields: Record<string, string>): FormData {
 }
 
 const idle = { status: "idle" } as const;
-const LIVE = { hostname: "bloom.sites.fynix.digital", launchedAt: null };
+const LIVE = { hostname: "bloom.sites.brandbasket.in", launchedAt: null };
 
 beforeEach(() => {
   vi.resetAllMocks();
-  process.env.CLIENT_SITE_BASE_DOMAIN = "sites.fynix.digital";
+  process.env.CLIENT_SITE_BASE_DOMAIN = "sites.brandbasket.in";
   vi.mocked(withTenantScope).mockImplementation(async (_db, _tenant, work) => work({} as never));
-  vi.mocked(getPrimaryDomain).mockResolvedValue({ hostname: "bloom.sites.fynix.digital" } as Awaited<ReturnType<typeof getPrimaryDomain>>);
+  vi.mocked(getPrimaryDomain).mockResolvedValue({ hostname: "bloom.sites.brandbasket.in" } as Awaited<ReturnType<typeof getPrimaryDomain>>);
   vi.mocked(getLiveWebsite).mockResolvedValue(LIVE);
   vi.mocked(requestDomainMove).mockResolvedValue({ id: "d1", hostname: "bloom.com", status: "pending", isPrimary: false });
 });

@@ -20,7 +20,7 @@ describe("parseAccountIdentifier", () => {
   });
 
   it("does not take a phone account's placeholder address: that account signs in with its number", () => {
-    expect(parseAccountIdentifier("919820011223@phone.fynix.invalid")).toEqual({ success: false, message: "Enter your mobile number." });
+    expect(parseAccountIdentifier("919820011223@phone.brandbasket.invalid")).toEqual({ success: false, message: "Enter your mobile number." });
   });
 
   it("asks for one when empty", () => {
@@ -29,7 +29,7 @@ describe("parseAccountIdentifier", () => {
 
   it("asks for an email address instead when told the brand signs in with one", () => {
     expect(parseAccountIdentifier("  ", "email")).toEqual({ success: false, message: "Enter your email address." });
-    expect(parseAccountIdentifier("919820011223@phone.fynix.invalid", "email")).toEqual({ success: false, message: "Enter your email address." });
+    expect(parseAccountIdentifier("919820011223@phone.brandbasket.invalid", "email")).toEqual({ success: false, message: "Enter your email address." });
     expect(parseAccountIdentifier("Meera@Example.com", "email")).toEqual({ success: true, identifier: { kind: "email", email: "meera@example.com" } });
   });
 
@@ -47,7 +47,7 @@ describe("parseCustomerSignInForm", () => {
     });
   });
 
-  it("asks a Fynix sign-in for its email, and reads one", () => {
+  it("asks a Brandbasket sign-in for its email, and reads one", () => {
     expect(parseCustomerSignInForm(form({ identifier: "", password: "x" }), "email")).toMatchObject({ success: false, message: "Enter your email address." });
     expect(parseCustomerSignInForm(form({ identifier: "Owner@Example.test", password: "correct-horse-battery" }), "email")).toEqual({
       success: true,

@@ -15,6 +15,6 @@ Sentry.init({
 
 // The native staff inbox (/support/errors) takes its own filtered copy of each browser failure. It is separate from
 // Sentry and sends nothing outside our own app.
-installBrowserErrorCapture("platform", process.env.NEXT_PUBLIC_FYNIX_RELEASE);
+installBrowserErrorCapture("platform", process.env.NEXT_PUBLIC_BRANDBASKET_RELEASE);
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

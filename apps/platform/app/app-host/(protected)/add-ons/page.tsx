@@ -54,7 +54,7 @@ function NoticeBanner({ ok, text }: Notice): ReactElement {
 }
 
 /**
- * The digital-marketing services Fynix runs for a business (lib/add-ons.ts), open to every account: a free listing,
+ * The digital-marketing services Brandbasket runs for a business (lib/add-ons.ts), open to every account: a free listing,
  * a Care client and a Premium member. Social media, Outreach and lead generation and Paid advertising are monthly subscriptions the customer buys,
  * pauses, cancels, resumes and keeps here; a press release is a one-time payment, listed below its row once bought.
  * Premium members see 10% off each price; for everyone else a line says where that comes from. Buying opens a dialog

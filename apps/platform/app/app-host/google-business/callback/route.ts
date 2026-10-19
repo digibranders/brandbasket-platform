@@ -32,7 +32,7 @@ export async function GET(request: Request): Promise<Response> {
     return back((await rememberGoogleImport(tenant.businessId, locations)) ? "google-imported" : "google-failed");
   } catch (error) {
     if (!(error instanceof GoogleBusinessError)) throw error;
-    console.error("[fynix:google-business] import failed", errorLogInfo(error));
+    console.error("[brandbasket:google-business] import failed", errorLogInfo(error));
     return back("google-failed");
   }
 }

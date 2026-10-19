@@ -183,7 +183,7 @@ describe("issueMissingTaxInvoice", () => {
       totalCents: payment.amountCents,
     });
     expect(invoice.lines[0]).toMatchObject({
-      description: "Fynix Premium plan",
+      description: "Brandbasket Premium plan",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       unitAmountCents: premium.initialAmountCents,
       discountAmountCents: 0,
@@ -397,7 +397,7 @@ describe("issueMissingTaxInvoice", () => {
     const invoice = await issue(payment.id);
 
     expect(invoice.lines[0]).toMatchObject({
-      description: "Fynix Premium plan",
+      description: "Brandbasket Premium plan",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       unitAmountCents: premium.recurringAmountCents,
       discountAmountCents: 0,
@@ -450,7 +450,7 @@ describe("issueMissingTaxInvoice", () => {
     const invoice = await issue(renewal.id);
 
     expect(invoice.lines[0]).toMatchObject({
-      description: "Fynix Premium plan",
+      description: "Brandbasket Premium plan",
       unitAmountCents: premium.recurringAmountCents,
       discountAmountCents: 50_000,
       note: "Coupon KEEP applied",
@@ -486,7 +486,7 @@ describe("issueMissingTaxInvoice", () => {
 
     const invoice = await issue(payment.id);
 
-    expect(invoice.lines[0]).toMatchObject({ description: "Fynix Premium plan", unitAmountCents: premium.initialAmountCents });
+    expect(invoice.lines[0]).toMatchObject({ description: "Brandbasket Premium plan", unitAmountCents: premium.initialAmountCents });
     expect(await invoiceCount()).toBe(1);
   });
 

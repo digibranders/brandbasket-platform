@@ -32,7 +32,7 @@ beforeEach(() => {
   mockedCreateTransport.mockReturnValue({ send });
   mockedPreviewReadyEmail.mockReturnValue({
     to: "riley@example.com",
-    subject: "Your Fynix preview is ready",
+    subject: "Your Brandbasket preview is ready",
     template: "preview-ready",
     bodyText: "text",
     bodyHtml: "html",

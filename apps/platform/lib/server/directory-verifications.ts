@@ -12,7 +12,7 @@ import type { ListingStatus, StatusResponse } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
 
 /**
- * The work behind `GET /api/directory/status`: which of a list page's businesses Fynix has verified, with the
+ * The work behind `GET /api/directory/status`: which of a list page's businesses Brandbasket has verified, with the
  * confirmed number, the owner's approved photo and the owner's own website to show for each. Read on the staff connection (see `getStaffDb`'s
  * sanctioned exceptions): the verifications and pictures tables are not the website's to read, and the website's
  * shared secret has already been checked by the route. Each business is read once, by its place (or by its key, for a

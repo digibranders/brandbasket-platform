@@ -94,7 +94,7 @@ describe("requestJoinCode", () => {
   });
 
   it("refuses an address in the phone accounts' placeholder domain, which is nobody's inbox", async () => {
-    expect(await requestJoinCode({ ...FIRST, email: "919820011223@phone.fynix.invalid" })).toEqual({ kind: "refused", message: "Enter a valid email address." });
+    expect(await requestJoinCode({ ...FIRST, email: "919820011223@phone.brandbasket.invalid" })).toEqual({ kind: "refused", message: "Enter a valid email address." });
     expect(requestAccountEmailCode).not.toHaveBeenCalled();
   });
 
@@ -196,7 +196,7 @@ describe("createListingAccount", () => {
   });
 
   it("refuses a placeholder address before spending the code", async () => {
-    expect(await createListingAccount({ ...WITH_CODE, email: "919820011223@phone.fynix.invalid" })).toEqual({ kind: "refused", message: "Enter a valid email address." });
+    expect(await createListingAccount({ ...WITH_CODE, email: "919820011223@phone.brandbasket.invalid" })).toEqual({ kind: "refused", message: "Enter a valid email address." });
     expect(confirmAccountEmailCode).not.toHaveBeenCalled();
   });
 

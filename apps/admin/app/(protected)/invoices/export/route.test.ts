@@ -15,7 +15,7 @@ vi.mock("@brandbasket/db", async () => {
 });
 
 const line: TaxInvoiceLineRecord = {
-  description: "Fynix Premium plan",
+  description: "Brandbasket Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: null,
   sac: "998361",
@@ -44,7 +44,7 @@ function invoiceFor(name: string): TaxInvoice {
     paidOn: "2026-10-09",
     supplier: {
       legalName: "Digibranders Private Limited",
-      tradeName: "Fynix",
+      tradeName: "Brandbasket",
       gstin: "27AAICD9268J1Z0",
       cin: null,
       addressLines: ["Thane West"],
@@ -111,7 +111,7 @@ describe("GET /invoices/export", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("text/csv; charset=utf-8");
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-invoices-2026-10.csv"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="brandbasket-invoices-2026-10.csv"');
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(listTaxInvoicesIssuedBetween).toHaveBeenCalledWith({ name: "staff-db" }, "2026-10-01", "2026-11-01");

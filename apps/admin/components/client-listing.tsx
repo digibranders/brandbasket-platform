@@ -390,7 +390,7 @@ export function ClientListing({
             className={fieldClasses}
           />
           <p id="listing-replaces-hint" className={hintClasses}>
-            Optional. Paste its fynix.digital/in address so it disappears and nothing shows twice.
+            Optional. Paste its brandbasket.in/in address so it disappears and nothing shows twice.
           </p>
         </div>
 

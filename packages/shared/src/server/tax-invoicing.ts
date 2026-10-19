@@ -3,7 +3,7 @@ import {
   BillingRangeError,
   buildTaxInvoice,
   discountCentsFor,
-  FYNIX_SAC,
+  BRANDBASKET_SAC,
   financialYearOf,
   formatInvoiceNumber,
   indianDate,
@@ -160,10 +160,10 @@ export function servicePeriod(start: Date, endExclusive: Date): string {
 }
 
 /**
- * "Fynix Premium plan", whether the plan row is named "Fynix Premium" or plain "Premium".
+ * "Brandbasket Premium plan", whether the plan row is named "Brandbasket Premium" or plain "Premium".
  */
 export function planLineDescription(planName: string): string {
-  const label = planLabel(planName).replace(/^fynix\s+/i, "");
+  const label = planLabel(planName).replace(/^brandbasket\s+/i, "");
   return `${PRODUCT_SHORT_NAME} ${label}`;
 }
 
@@ -308,7 +308,7 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
         description: charge.description,
         detail: null,
         note: null,
-        sac: FYNIX_SAC,
+        sac: BRANDBASKET_SAC,
         quantity: charge.quantity,
         unitAmountCents: charge.unitAmountCents,
         discountAmountCents: 0,
@@ -330,7 +330,7 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
         description: addOnById(row.addOn).title,
         detail: planLineDetail(true, source.periodStart, source.periodEnd),
         note: addOnLineNote(row.discountAmountCents, row.offerDiscountAmountCents),
-        sac: FYNIX_SAC,
+        sac: BRANDBASKET_SAC,
         quantity: 1,
         unitAmountCents: row.listAmountCents,
         discountAmountCents: row.discountAmountCents,
@@ -351,7 +351,7 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
       discountAmountCents: source.discountAmountCents,
       retentionDiscountCents: source.retentionDiscountCents,
     }),
-    sac: FYNIX_SAC,
+    sac: BRANDBASKET_SAC,
     quantity: 1,
     unitAmountCents: source.netAmountCents,
     discountAmountCents: source.discountAmountCents,
@@ -363,7 +363,7 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
       description: addOnById(bundled.addOn).title,
       detail: planLineDetail(source.monthly, source.periodStart, source.periodEnd),
       note: addOnLineNote(bundled.offerDiscountAmountCents, bundled.offerDiscountAmountCents),
-      sac: FYNIX_SAC,
+      sac: BRANDBASKET_SAC,
       quantity: 1,
       unitAmountCents: bundled.listAmountCents,
       discountAmountCents: bundled.offerDiscountAmountCents,

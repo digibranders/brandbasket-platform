@@ -25,7 +25,7 @@ import { hasPostgresCode, isUuid, UNIQUE_VIOLATION } from "./tenant";
 type Runner = Database | ScopedTransaction;
 
 /**
- * Affiliates, what they earn and what they have been paid. Staff-only: `fynix_app` holds no grant on any of these
+ * Affiliates, what they earn and what they have been paid. Staff-only: `bb_app` holds no grant on any of these
  * tables. Earnings are written by the payment path (accrueAffiliateEarning in packages/shared), in the payment's own
  * transaction; everything else here is the staff console's, and the affiliate's own dashboard, which reads them on the
  * staff connection for the one affiliate the signed-in user is linked to (findAffiliateByUserId).

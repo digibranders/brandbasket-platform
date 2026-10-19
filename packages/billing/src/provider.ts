@@ -93,7 +93,7 @@ export interface CreatePlanInput {
   readonly taxRateBasisPoints: number;
   /** Our plan code for the new version, recorded on the provider's plan for tracing. */
   readonly code: string;
-  /** The provider plan's item name. Absent for the main plan, which keeps "Fynix care plan (CUR)". */
+  /** The provider plan's item name. Absent for the main plan, which keeps "Brandbasket care plan (CUR)". */
   readonly itemName?: string;
 }
 

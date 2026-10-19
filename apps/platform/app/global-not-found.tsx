@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { DashboardRoot } from "@brandbasket/shared/ui/panel/dashboard-root";
 import { PanelNotFound } from "@brandbasket/shared/ui/panel/panel-not-found";
 import { logoOf } from "@/lib/brand";
-import { figtree } from "@/lib/fynix-font";
+import { figtree } from "@/lib/brandbasket-font";
 import { requestBrand } from "@/lib/server/request-brand";
 
 /**
@@ -18,7 +18,7 @@ import { requestBrand } from "@/lib/server/request-brand";
  * one only catches a path that bypasses proxy.ts's matcher entirely (e.g. an extension it treats as a static
  * asset) and matches no real route at all.
  *
- * The title and logo are the brand the request's host is sold under (Fynix Digital on its own host).
+ * The title and logo are the brand the request's host is sold under (Brandbasket on its own host).
  */
 export async function generateMetadata(): Promise<Metadata> {
   const brand = await requestBrand();
@@ -31,7 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function GlobalNotFound(): Promise<ReactElement> {
   const brand = await requestBrand();
   return (
-    <DashboardRoot brand={{ id: "fynix", className: figtree.variable }}>
+    <DashboardRoot brand={{ id: "brandbasket", className: figtree.variable }}>
       <PanelNotFound brand={logoOf(brand)} />
     </DashboardRoot>
   );

@@ -24,7 +24,7 @@ import { ipRateLimitKey } from "./ip-key";
  * The work behind `POST /api/directory/enquiries`: "Send enquiry" on a directory card or business page, and the list
  * page's "Get the list of top …" form. No code confirms an enquiry (like the website's Get started form), so the rate
  * limits are what hold back a flood. Stored on the staff connection (see `getStaffDb`'s sanctioned exceptions), for
- * Fynix staff to read in the console and pass on. An enquiry to a business whose owner has an account is also
+ * Brandbasket staff to read in the console and pass on. An enquiry to a business whose owner has an account is also
  * emailed to that owner, and listed on their dashboard.
  */
 
@@ -43,7 +43,7 @@ export type EnquiryOutcome = "received" | "unknown_business" | "limited" | "fail
 
 
 /**
- * Emails the enquiry to the business's owner, when the listing has one on Fynix whose address is confirmed. An
+ * Emails the enquiry to the business's owner, when the listing has one on Brandbasket whose address is confirmed. An
  * unowned listing's enquiries stay with staff, who pass them on. The enquiry is already saved by this point, so a
  * failure here is logged and never shown to the visitor.
  */

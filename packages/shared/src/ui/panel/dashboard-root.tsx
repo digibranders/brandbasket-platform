@@ -57,8 +57,8 @@ export const dashboardViewport: Viewport = {
 interface DashboardRootProps {
   readonly children: ReactNode;
   /**
-   * A brand whose look replaces Fynix Digital's (packages/shared/src/styles/theme.css, `html[data-brand]`). `className` carries
-   * that brand's own font variable. Omitted: the document is exactly Fynix Digital's.
+   * A brand whose look replaces Brandbasket's (packages/shared/src/styles/theme.css, `html[data-brand]`). `className` carries
+   * that brand's own font variable. Omitted: the document is exactly Brandbasket's.
    */
   readonly brand?: { readonly id: string; readonly className: string };
 }

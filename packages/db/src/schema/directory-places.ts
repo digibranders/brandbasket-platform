@@ -33,7 +33,7 @@ export const directoryPlaces = pgTable(
     id: text("id").primaryKey(),
     origin: directoryPlaceOrigin("origin").notNull(),
     /**
-     * "overture:<id>" / "osm:<type>/<id>" for an open-data business, "survey:0x…:0x…" for one the Fynix team
+     * "overture:<id>" / "osm:<type>/<id>" for an open-data business, "survey:0x…:0x…" for one the Brandbasket team
      * surveyed, from the dataset ledger (directory-place-ledger.ts); null otherwise.
      */
     sourceRef: text("source_ref").unique("directory_places_source_ref_key"),

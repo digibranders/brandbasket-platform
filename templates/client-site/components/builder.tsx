@@ -1,5 +1,5 @@
 /**
- * The Fynix builder: curly hair, round spectacles, an L-shaped nose. The same drawing as the dashboard's blog screens
+ * The Brandbasket builder: curly hair, round spectacles, an L-shaped nose. The same drawing as the dashboard's blog screens
  * (packages/shared/src/ui/changelog-art.tsx), copied here because a client site shares no build with the platform.
  * Keep the two in step by hand. Drawn in the current text colour; the fills use `--paper` so it sits on any background.
  */

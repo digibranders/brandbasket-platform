@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/server", () => ({ after: vi.fn() }));
-vi.mock("./website-origin", () => ({ websiteOrigin: () => "https://fynix.digital" }));
+vi.mock("./website-origin", () => ({ websiteOrigin: () => "https://brandbasket.in" }));
 
 import { after } from "next/server";
 import { refreshWebsiteBusiness, scheduleWebsiteRefresh, websiteIdOf } from "./website-refresh";
@@ -33,7 +33,7 @@ describe("refreshWebsiteBusiness", () => {
     await refreshWebsiteBusiness({ placeId: "k7m2q9a", listingKey: null });
 
     const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
-    expect(url.toString()).toBe("https://fynix.digital/api/directory-refresh");
+    expect(url.toString()).toBe("https://brandbasket.in/api/directory-refresh");
     expect(init).toMatchObject({ method: "POST", redirect: "error", headers: { Authorization: `Bearer ${TOKEN}` } });
     expect(JSON.parse(String(init.body))).toEqual({ id: "k7m2q9a" });
   });

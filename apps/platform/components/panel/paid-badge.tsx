@@ -27,7 +27,7 @@ function readClock(): number {
 }
 
 /**
- * A small proof that Fynix has seen the payment and is ready: how long ago it was made, counting up while the customer has not
+ * A small proof that Brandbasket has seen the payment and is ready: how long ago it was made, counting up while the customer has not
  * booked their kickoff call. Once they have, it says so instead (with the time, when the booking page has reported it).
  */
 export function PaidBadge({ paidAtIso, serverNowMs, booking }: PaidBadgeProps): ReactElement {

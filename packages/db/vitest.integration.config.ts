@@ -4,7 +4,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
-    // The suites pin Fynix Digital's wording (FY numbers, "Fynix Premium plan"), so an INVOICE_PREFIX set in
+    // The suites pin Brandbasket's wording (FY numbers, "Brandbasket Premium plan"), so an INVOICE_PREFIX set in
     // apps/platform/.env.local, which the setup loads, must not change it.
     env: { INVOICE_PREFIX: "" },
     include: ["src/**/*.integration.test.ts"],

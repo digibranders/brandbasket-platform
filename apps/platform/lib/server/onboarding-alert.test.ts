@@ -6,7 +6,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@brandbasket/db", () => ({ FIRST_PREVIEW_DUE_HOURS: 48 }));
 vi.mock("@brandbasket/email", () => ({
   createAppEmailTransport: vi.fn(),
-  emailTeamInboxDefault: () => "hello@fynix.digital",
+  emailTeamInboxDefault: () => "hello@brandbasket.in",
   onboardingSentEmail: vi.fn(),
 }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({ name: "staff-db" })) }));
@@ -25,12 +25,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env.FYNIX_TEAM_EMAIL;
+  delete process.env.BRANDBASKET_TEAM_EMAIL;
 });
 
 describe("notifyTeamOnboardingSent", () => {
   it("emails the team inbox with a link to the client's page", async () => {
-    process.env.FYNIX_TEAM_EMAIL = "team@example.com";
+    process.env.BRANDBASKET_TEAM_EMAIL = "team@example.com";
 
     await notifyTeamOnboardingSent("business-1", "Riverside Plumbing");
 
@@ -45,7 +45,7 @@ describe("notifyTeamOnboardingSent", () => {
 
   it("falls back to the default team inbox when none is configured", async () => {
     await notifyTeamOnboardingSent("business-1", "Riverside Plumbing");
-    expect(onboardingSentEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "hello@fynix.digital" }));
+    expect(onboardingSentEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "hello@brandbasket.in" }));
   });
 
   it("logs and never throws when the email cannot be sent", async () => {

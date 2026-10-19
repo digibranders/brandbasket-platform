@@ -118,14 +118,14 @@ async function seedClosedAccount(withSupport = false): Promise<{ closureId: stri
     number: "FY/26-27/000001",
     issuedOn: "2026-10-01",
     paidOn: "2026-10-01",
-    supplier: { legalName: "Digibranders Private Limited", tradeName: "Fynix", gstin: null, cin: null, addressLines: ["Mumbai"], stateCode: "mh", email: null, phone: null },
+    supplier: { legalName: "Digibranders Private Limited", tradeName: "Brandbasket", gstin: null, cin: null, addressLines: ["Mumbai"], stateCode: "mh", email: null, phone: null },
     recipient: { legalName: "Aster Physio LLP", tradeName: null, gstin: null, cin: null, addressLines: ["1 Road", "Thane 400601"], stateCode: "mh", email: null, phone: null },
     placeOfSupplyStateCode: "mh",
     placeOfSupplyBasis: "billing_address",
     supplyType: "intra_state",
     lines: [
       {
-        description: "Fynix Premium plan",
+        description: "Brandbasket Premium plan",
         detail: null,
         note: null,
         sac: "998361",

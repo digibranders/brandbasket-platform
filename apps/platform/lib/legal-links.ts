@@ -14,7 +14,7 @@ export interface LegalLinks {
 }
 
 /**
- * The legal pages for a brand. Fynix Digital's are on its website; Fynix's are on its own site, which has no privacy-request
+ * The legal pages for a brand. Brandbasket's are on its website; Brandbasket's are on its own site, which has no privacy-request
  * form, so a request goes to its privacy mailbox.
  */
 export function legalLinksFor(brand: Brand): LegalLinks {

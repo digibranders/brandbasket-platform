@@ -6,7 +6,7 @@ vi.mock("server-only", () => ({}));
 const BASE: StaffAdValues = {
   kind: "business",
   link: "",
-  listing: "https://fynix.digital/in/beauty-salons/mh/thane/vartak-nagar/glow-salon?ref=x",
+  listing: "https://brandbasket.in/in/beauty-salons/mh/thane/vartak-nagar/glow-salon?ref=x",
   businessName: "  Glow Salon ",
   tagline: "Bridal  packages",
   category: "dentists",
@@ -55,7 +55,7 @@ describe("parseStaffAdForm", () => {
 
   it.each([
     ["listing", { listing: "" }],
-    ["listing", { listing: "https://fynix.digital/in/beauty-salons/mh/thane" }],
+    ["listing", { listing: "https://brandbasket.in/in/beauty-salons/mh/thane" }],
     ["businessName", { businessName: "   " }],
     ["tagline", { tagline: "x".repeat(81) }],
     ["category", { category: "not-a-category" }],
@@ -74,7 +74,7 @@ describe("parseStaffAdForm", () => {
   it("takes ads only in a category with its own website page", () => {
     // Plumbers is a directory category, but it has no page yet: no business in it has reached five.
     expect(parseStaffAdForm({ ...BASE, category: "plumbers" })).toMatchObject({ success: false, field: "category" });
-    const ownUnpublished = { ...BASE, listing: "https://fynix.digital/in/plumbers/mh/thane/vartak-nagar/sai-plumbing", category: "" };
+    const ownUnpublished = { ...BASE, listing: "https://brandbasket.in/in/plumbers/mh/thane/vartak-nagar/sai-plumbing", category: "" };
     expect(parseStaffAdForm(ownUnpublished)).toMatchObject({
       success: false,
       field: "category",
@@ -99,7 +99,7 @@ describe("parseStaffAdForm", () => {
   });
 
   it("keeps the business's own area when only the category is all, and the business's own category when only the area is all", () => {
-    const own = { ...BASE, listing: "https://fynix.digital/in/dentists/mh/thane/naupada/care-dental" };
+    const own = { ...BASE, listing: "https://brandbasket.in/in/dentists/mh/thane/naupada/care-dental" };
     expect(parseStaffAdForm({ ...own, category: "all", area: "" })).toMatchObject({ success: true, data: { market: { categorySlug: "all", areaSlug: "naupada" } } });
     expect(parseStaffAdForm({ ...own, category: "", area: "thane/all" })).toMatchObject({ success: true, data: { market: { categorySlug: "dentists", areaSlug: "all" } } });
   });

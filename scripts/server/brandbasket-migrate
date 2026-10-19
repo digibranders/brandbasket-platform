@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# What this does: applies pending migrations to Fynix's main production database (fynix_platform) as its migration owner
-# (fynix_owner). Installed on the droplet as /usr/local/sbin/fynix-migrate (root:root 0755) by bootstrap-droplet.sh, and
+# What this does: applies pending migrations to Brandbasket's main production database (brandbasket_platform) as its migration owner
+# (bb_owner). Installed on the droplet as /usr/local/sbin/brandbasket-migrate (root:root 0755) by bootstrap-droplet.sh, and
 # called by scripts/server/deploy.sh through sudo. Besides restarting the two apps it is the only thing the deploy user
-# may run through sudo (see deploy/sudoers.fynix.example).
+# may run through sudo (see deploy/sudoers.brandbasket.example).
 #
-# Assumes: /root/fynix-secrets.env (mode 600, written by setup-database.sh) holds OWNER_PW; PostgreSQL listens on
-# localhost:5432; /srv/fynix/deploying is a symlink to the release being deployed; node and pnpm are on the deploy user's PATH.
+# Assumes: /root/brandbasket-secrets.env (mode 600, written by setup-database.sh) holds OWNER_PW; PostgreSQL listens on
+# localhost:5432; /srv/brandbasket/deploying is a symlink to the release being deployed; node and pnpm are on the deploy user's PATH.
 #
 # Root is needed for one reason: the owner's password lives in a root-only file. Nothing else runs as root. The migration
 # itself runs as the deploy user, because the release directory is theirs: executing that code as root would hand root to
@@ -14,15 +14,15 @@
 # Safe to re-run: pending migrations are applied once, already-applied ones are skipped by the migration runner.
 set -euo pipefail
 
-readonly SECRETS_FILE="${FYNIX_SECRETS_FILE:-/root/fynix-secrets.env}"
-readonly DEPLOY_ROOT="${FYNIX_ROOT:-/srv/fynix}"
+readonly SECRETS_FILE="${BRANDBASKET_SECRETS_FILE:-/root/brandbasket-secrets.env}"
+readonly DEPLOY_ROOT="${BRANDBASKET_ROOT:-/srv/brandbasket}"
 readonly DEPLOYING="$DEPLOY_ROOT/deploying"
-readonly DEPLOY_USER="${FYNIX_DEPLOY_USER:-deploy}"
-readonly DB_NAME=fynix_platform
-readonly DB_OWNER=fynix_owner
+readonly DEPLOY_USER="${BRANDBASKET_DEPLOY_USER:-deploy}"
+readonly DB_NAME=brandbasket_platform
+readonly DB_OWNER=bb_owner
 
 if [[ $# -ne 0 ]]; then
-  echo "fynix-migrate takes no arguments." >&2
+  echo "brandbasket-migrate takes no arguments." >&2
   exit 64
 fi
 if [[ ! -r "$SECRETS_FILE" ]]; then
@@ -47,7 +47,7 @@ owner_url="$(OWNER_PW="$owner_pw" PG_USER="$DB_OWNER" PG_DB="$DB_NAME" node -e \
 # A malformed address would only show up as a confusing "password authentication failed" later: refuse it here, loudly.
 case "$owner_url" in
   "postgresql://$DB_OWNER:"*"@localhost:5432/$DB_NAME") ;;
-  *) echo "fynix-migrate: could not build the owner connection address (internal error)." >&2; exit 1 ;;
+  *) echo "brandbasket-migrate: could not build the owner connection address (internal error)." >&2; exit 1 ;;
 esac
 
 # Only ever a release directory: the symlink is deploy's to set, but the code it points at runs as deploy below, never as
@@ -60,7 +60,7 @@ fi
 cd "$app_root"
 # packages/db/scripts/migrate.ts lets an already-set variable win over the env file, so the owner connection exists only
 # for this one process and is never written to disk.
-if [[ "${FYNIX_MIGRATE_DRY_RUN:-0}" == 1 ]]; then
+if [[ "${BRANDBASKET_MIGRATE_DRY_RUN:-0}" == 1 ]]; then
   echo "[dry-run] would run as $DEPLOY_USER in $app_root: pnpm db:migrate (database $DB_NAME as $DB_OWNER; address user: $(printf %s "$owner_url" | sed -E 's#^postgresql://([^:]*):.*/([^/]*)$#\1 db \2#'))"
   exit 0
 fi

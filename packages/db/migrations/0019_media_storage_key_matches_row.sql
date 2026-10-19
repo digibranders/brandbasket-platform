@@ -1,4 +1,4 @@
--- Ties each media row's storage key to the row itself. 0016 stopped fynix_app from changing a key after insert,
+-- Ties each media row's storage key to the row itself. 0016 stopped bb_app from changing a key after insert,
 -- but said nothing about the key an INSERT supplies: a bug in the app could still record a row whose key names
 -- another business's file, and serving that row would hand the other business's image to this tenant. The key is
 -- always built as t/{business_id}/{id}/display (mediaStorageKey in apps/web), so any other value is refused here,

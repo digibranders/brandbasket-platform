@@ -57,9 +57,9 @@ async function keepNoticeProof(leadId: string, noticeVersion: string): Promise<v
 
 /** The lead is already saved by this point, so a failure here is logged and never shown to the visitor. */
 async function notifyTeam(leadId: string, lead: LeadInput): Promise<void> {
-  const teamInbox = process.env.FYNIX_TEAM_EMAIL;
+  const teamInbox = process.env.BRANDBASKET_TEAM_EMAIL;
   if (teamInbox === undefined || teamInbox.trim() === "") {
-    console.error("FYNIX_TEAM_EMAIL is not set, so nobody was told about a new lead.", { leadId });
+    console.error("BRANDBASKET_TEAM_EMAIL is not set, so nobody was told about a new lead.", { leadId });
     return;
   }
 

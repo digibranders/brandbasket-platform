@@ -49,13 +49,13 @@ export const PRIVACY_REQUEST_OUTCOMES = ["fulfilled", "refused", "withdrawn"] as
 export type PrivacyRequestOutcome = (typeof PRIVACY_REQUEST_OUTCOMES)[number];
 
 /**
- * Every rights request and grievance Fynix has received, with the date it is due (DPDP Act ss.11 to 14, Rules 2025 r.14:
+ * Every rights request and grievance Brandbasket has received, with the date it is due (DPDP Act ss.11 to 14, Rules 2025 r.14:
  * a grievance is answered within a reasonable period of at most 90 days; our own target is 30). Staff only. A row can be
  * added and updated but never deleted, and a request once closed stays closed (see queries/privacy-requests.ts).
  *
  * `subject_contact` is how to reach the person (an email address or a mobile number) and `subject_user_id` the account the
  * request concerns, when there is one. It has no foreign key on purpose: the record of a request, and when it was answered,
- * must outlive the account erased by it. `details` is what the person wrote; `resolution` is what Fynix did, in a few
+ * must outlive the account erased by it. `details` is what the person wrote; `resolution` is what Brandbasket did, in a few
  * words, written when the request is closed.
  */
 export const privacyRequests = pgTable(

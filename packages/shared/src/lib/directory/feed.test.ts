@@ -289,7 +289,7 @@ describe("buildAddedFeedListing", () => {
     expect(listing).not.toHaveProperty("legacyKeys");
   });
 
-  it("sends whether Fynix verified the business, so an owner-published one is not called Verified", () => {
+  it("sends whether Brandbasket verified the business, so an owner-published one is not called Verified", () => {
     const business = { businessId: "biz-added", listingKey: "cafes/thane/charai/sunrise", placeId: null, businessName: "Sunrise", streetAddress: null, phone: "+919820041002", websiteUrl: null, confirmedAt, stateCode: "mh", postal: null, pin: null };
     expect(buildAddedFeedListing({ ...business, verified: false }, null, null)).toMatchObject({ verified: false });
     expect(buildAddedFeedListing({ ...business, verified: true }, null, null)).toMatchObject({ verified: true });

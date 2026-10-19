@@ -155,7 +155,7 @@ export async function replaceOpeningHours(
   const businessId = await currentBusinessId(tx);
   // Serialises two saves racing for the same tenant, so they run one after the other rather than interleaving
   // their delete-then-insert (which could otherwise let the second save's delete remove rows the first save had
-  // not inserted yet, or vice versa). A transaction-scoped advisory lock rather than a row lock: fynix_app has
+  // not inserted yet, or vice versa). A transaction-scoped advisory lock rather than a row lock: bb_app has
   // no UPDATE grant on businesses itself (so that row cannot take a FOR UPDATE lock), and every row-owning table
   // it could lock instead -- business_profiles included -- is optional and often absent (many already-live
   // businesses have no onboarding row left, or never had one), so a FOR UPDATE on any of them can silently lock

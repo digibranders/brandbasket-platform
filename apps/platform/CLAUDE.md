@@ -2,7 +2,7 @@
 
 # apps/platform: customer dashboard
 
-The app at app.fynix.digital: sign-up and sign-in, onboarding, the business dashboard, billing and the public APIs that client websites call. Repo-wide rules are in `../../CLAUDE.md`; visual rules are in `DESIGN.md` here.
+The app at app.brandbasket.in: sign-up and sign-in, onboarding, the business dashboard, billing and the public APIs that client websites call. Repo-wide rules are in `../../CLAUDE.md`; visual rules are in `DESIGN.md` here.
 
 ## Routing
 
@@ -41,7 +41,7 @@ The app at app.fynix.digital: sign-up and sign-in, onboarding, the business dash
 ## Commands (from this folder)
 
 ```bash
-npx next dev -p 3098     # with APP_ORIGIN=http://app.localhost:3098 in .env.local
+npx next dev -p 3198     # with APP_ORIGIN=http://app.brandbasket.localhost:3198 in .env.local
 pnpm lint
 pnpm typecheck
 pnpm test

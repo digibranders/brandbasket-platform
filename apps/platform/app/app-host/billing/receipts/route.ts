@@ -81,11 +81,11 @@ async function joinPdfs(parts: readonly Uint8Array[], brand: Brand): Promise<Uin
 function fileNameFor(pieces: readonly Piece[], customer: ReceiptCustomer, brand: Brand): string {
   const only = pieces[0];
   if (pieces.length !== 1 || only === undefined) {
-    if (pieces.every((piece) => piece.kind === "invoice")) return `fynix-invoices.pdf`;
-    if (pieces.every((piece) => piece.kind === "receipt")) return `fynix-receipts.pdf`;
-    return `fynix-invoices-and-receipts.pdf`;
+    if (pieces.every((piece) => piece.kind === "invoice")) return `brandbasket-invoices.pdf`;
+    if (pieces.every((piece) => piece.kind === "receipt")) return `brandbasket-receipts.pdf`;
+    return `brandbasket-invoices-and-receipts.pdf`;
   }
-  if (only.kind === "invoice") return `fynix-invoice-${only.invoice.number.replaceAll("/", "-")}.pdf`;
+  if (only.kind === "invoice") return `brandbasket-invoice-${only.invoice.number.replaceAll("/", "-")}.pdf`;
   return receiptDocument(only.receipt, customer, brand).fileName;
 }
 

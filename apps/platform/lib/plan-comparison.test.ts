@@ -81,12 +81,12 @@ describe("planListFor", () => {
   });
 });
 
-describe("the table under Fynix", () => {
+describe("the table under Brandbasket", () => {
   it("is the whole table for a brand that sells the listing", () => {
     expect(comparisonRowsFor(LISTING_BRAND)).toEqual(COMPARISON_ROWS);
   });
 
-  it("leaves out every row about the directory listing, which Fynix does not sell, and keeps the rest in order", () => {
+  it("leaves out every row about the directory listing, which Brandbasket does not sell, and keeps the rest in order", () => {
     const ids = comparisonRowsFor(BRAND).map((row) => row.id);
     for (const hidden of ["listing", "images", "videos", "competitor-ads", "listing-management", "featured", "ranking"]) {
       expect(ids).not.toContain(hidden);
@@ -96,13 +96,13 @@ describe("the table under Fynix", () => {
     expect(ids).toContain("appointments");
   });
 
-  it("words the marketing row without Fynix Digital's name", () => {
+  it("words the marketing row without Brandbasket's name", () => {
     const labels = comparisonRowsFor(BRAND).map((row) => row.label);
     expect(labels).toContain("Digital marketing services");
     for (const label of labels) expect(label).not.toMatch(/first\s?fold/i);
   });
 
-  it("lists plans to a Fynix customer with no mention of Fynix", () => {
+  it("lists plans to a Brandbasket customer with no mention of Brandbasket", () => {
     const lists = [planListFor("care", BRAND), planListFor("premium", BRAND)];
     expect(lists[1]).toContain("10% off digital marketing services");
     for (const line of lists.flat()) expect(line).not.toMatch(/first\s?fold/i);

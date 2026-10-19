@@ -12,6 +12,6 @@ UPDATE "tax_invoices" SET "paid_on" = "issued_on" WHERE "paid_on" IS NULL OR "pa
 ALTER TABLE "tax_invoices" ALTER COLUMN "paid_on" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "tax_invoices" ADD CONSTRAINT "tax_invoices_paid_on_check" CHECK ("tax_invoices"."paid_on" <= "tax_invoices"."issued_on");--> statement-breakpoint
 INSERT INTO "tax_invoicing_start" DEFAULT VALUES;--> statement-breakpoint
-GRANT SELECT ON tax_invoicing_start TO fynix_staff;--> statement-breakpoint
+GRANT SELECT ON tax_invoicing_start TO bb_staff;--> statement-breakpoint
 ALTER TABLE tax_invoicing_start ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
-CREATE POLICY tax_invoicing_start_staff_select ON tax_invoicing_start FOR SELECT TO fynix_staff USING (true);
+CREATE POLICY tax_invoicing_start_staff_select ON tax_invoicing_start FOR SELECT TO bb_staff USING (true);

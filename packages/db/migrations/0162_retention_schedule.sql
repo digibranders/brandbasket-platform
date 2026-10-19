@@ -4,22 +4,22 @@ ALTER TABLE "consent_records" ADD COLUMN "subject_erased_at" timestamp with time
 -- tables were add-only; they get a DELETE policy that matches a row only once it is past its period, measured on the
 -- database clock, so even the staff connection cannot remove a recent record. Consent records may additionally have
 -- subject_erased_at set, once, to the current time, which starts their three years.
-GRANT DELETE ON directory_enquiries, account_exit_feedback, staff_access_log, privacy_requests, breach_register, consent_records TO fynix_staff;--> statement-breakpoint
-GRANT UPDATE (subject_erased_at) ON consent_records TO fynix_staff;--> statement-breakpoint
-CREATE POLICY staff_access_log_staff_delete ON staff_access_log FOR DELETE TO fynix_staff USING (created_at < now() - interval '400 days');--> statement-breakpoint
-CREATE POLICY privacy_requests_staff_delete ON privacy_requests FOR DELETE TO fynix_staff USING (status = 'closed' AND closed_at < now() - interval '3 years');--> statement-breakpoint
-CREATE POLICY breach_register_staff_delete ON breach_register FOR DELETE TO fynix_staff USING (status = 'closed' AND updated_at < now() - interval '5 years');--> statement-breakpoint
-CREATE POLICY consent_records_staff_mark_erased ON consent_records FOR UPDATE TO fynix_staff USING (subject_erased_at IS NULL) WITH CHECK (subject_erased_at BETWEEN now() - interval '1 minute' AND now() + interval '1 minute');--> statement-breakpoint
-CREATE POLICY consent_records_staff_delete ON consent_records FOR DELETE TO fynix_staff USING (subject_erased_at < now() - interval '3 years');--> statement-breakpoint
+GRANT DELETE ON directory_enquiries, account_exit_feedback, staff_access_log, privacy_requests, breach_register, consent_records TO bb_staff;--> statement-breakpoint
+GRANT UPDATE (subject_erased_at) ON consent_records TO bb_staff;--> statement-breakpoint
+CREATE POLICY staff_access_log_staff_delete ON staff_access_log FOR DELETE TO bb_staff USING (created_at < now() - interval '400 days');--> statement-breakpoint
+CREATE POLICY privacy_requests_staff_delete ON privacy_requests FOR DELETE TO bb_staff USING (status = 'closed' AND closed_at < now() - interval '3 years');--> statement-breakpoint
+CREATE POLICY breach_register_staff_delete ON breach_register FOR DELETE TO bb_staff USING (status = 'closed' AND updated_at < now() - interval '5 years');--> statement-breakpoint
+CREATE POLICY consent_records_staff_mark_erased ON consent_records FOR UPDATE TO bb_staff USING (subject_erased_at IS NULL) WITH CHECK (subject_erased_at BETWEEN now() - interval '1 minute' AND now() + interval '1 minute');--> statement-breakpoint
+CREATE POLICY consent_records_staff_delete ON consent_records FOR DELETE TO bb_staff USING (subject_erased_at < now() - interval '3 years');--> statement-breakpoint
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fynix_staff') THEN
-    GRANT DELETE ON directory_enquiries, account_exit_feedback, staff_access_log, privacy_requests, breach_register, consent_records TO fynix_staff;
-    GRANT UPDATE (subject_erased_at) ON consent_records TO fynix_staff;
-    CREATE POLICY staff_access_log_legacy_staff_delete ON staff_access_log FOR DELETE TO fynix_staff USING (created_at < now() - interval '400 days');
-    CREATE POLICY privacy_requests_legacy_staff_delete ON privacy_requests FOR DELETE TO fynix_staff USING (status = 'closed' AND closed_at < now() - interval '3 years');
-    CREATE POLICY breach_register_legacy_staff_delete ON breach_register FOR DELETE TO fynix_staff USING (status = 'closed' AND updated_at < now() - interval '5 years');
-    CREATE POLICY consent_records_legacy_staff_mark_erased ON consent_records FOR UPDATE TO fynix_staff USING (subject_erased_at IS NULL) WITH CHECK (subject_erased_at BETWEEN now() - interval '1 minute' AND now() + interval '1 minute');
-    CREATE POLICY consent_records_legacy_staff_delete ON consent_records FOR DELETE TO fynix_staff USING (subject_erased_at < now() - interval '3 years');
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'bb_staff') THEN
+    GRANT DELETE ON directory_enquiries, account_exit_feedback, staff_access_log, privacy_requests, breach_register, consent_records TO bb_staff;
+    GRANT UPDATE (subject_erased_at) ON consent_records TO bb_staff;
+    CREATE POLICY staff_access_log_legacy_staff_delete ON staff_access_log FOR DELETE TO bb_staff USING (created_at < now() - interval '400 days');
+    CREATE POLICY privacy_requests_legacy_staff_delete ON privacy_requests FOR DELETE TO bb_staff USING (status = 'closed' AND closed_at < now() - interval '3 years');
+    CREATE POLICY breach_register_legacy_staff_delete ON breach_register FOR DELETE TO bb_staff USING (status = 'closed' AND updated_at < now() - interval '5 years');
+    CREATE POLICY consent_records_legacy_staff_mark_erased ON consent_records FOR UPDATE TO bb_staff USING (subject_erased_at IS NULL) WITH CHECK (subject_erased_at BETWEEN now() - interval '1 minute' AND now() + interval '1 minute');
+    CREATE POLICY consent_records_legacy_staff_delete ON consent_records FOR DELETE TO bb_staff USING (subject_erased_at < now() - interval '3 years');
   END IF;
 END $$;

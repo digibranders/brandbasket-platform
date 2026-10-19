@@ -257,7 +257,7 @@ describe("recordManualFirstPayment", () => {
 
     await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
     expect(outcome).toBe("committed");
-    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[fynix:billing\] provider-cancel-failed .*sub-open/);
+    expect(String(logged.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] provider-cancel-failed .*sub-open/);
   });
 
   it("logs rather than calls a provider that is not the one the replaced checkout was opened at", async () => {

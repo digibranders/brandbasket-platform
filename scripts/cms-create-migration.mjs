@@ -3,7 +3,7 @@
  * Generates a Payload migration, safely.
  *
  * `payload migrate:create` writes the difference between the collections and *the database it connects to*. In
- * development Payload pushes schema changes straight to `fynix_platform_payload` as you edit a collection, so by the time
+ * development Payload pushes schema changes straight to `brandbasket_platform_payload` as you edit a collection, so by the time
  * you think to create a migration that database already matches — and the command cheerfully writes an empty one.
  * Nothing fails, nothing warns, and production comes up missing the column.
  *

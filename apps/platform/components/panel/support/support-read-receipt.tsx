@@ -12,7 +12,7 @@ export function SupportReadReceipt({ ticketId, messageId }: { readonly ticketId:
       if (sent || document.visibilityState !== "visible") return;
       sent = true;
       void acknowledgeSupportReplies(ticketId, messageId).then((saved) => {
-        if (active && saved) window.dispatchEvent(new Event("fynix:support-read"));
+        if (active && saved) window.dispatchEvent(new Event("brandbasket:support-read"));
       }).catch(() => undefined);
     };
     acknowledge();

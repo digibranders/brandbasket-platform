@@ -45,7 +45,7 @@ describe("resolveSurface", () => {
   it("returns null for unknown or missing hosts, including the marketing website's", () => {
     expect(resolveSurface("localhost:3000", origins)).toBeNull();
     expect(resolveSurface("evil.example", origins)).toBeNull();
-    expect(resolveSurface("aster-physio.fynix.digital", origins)).toBeNull();
+    expect(resolveSurface("aster-physio.brandbasket.in", origins)).toBeNull();
     // The staff console is its own app on its own origin now, so its host is not ours to answer.
     expect(resolveSurface("admin.localhost:3000", origins)).toBeNull();
     expect(resolveSurface(null, origins)).toBeNull();
@@ -63,7 +63,7 @@ describe("any local address, in local development", () => {
     for (const host of ["localhost", "localhost:3081", "app.localhost:3000", "anything.at.all.localhost:9", "127.0.0.1:3081", "127.8.9.10"]) {
       expect(isLocalHost(host)).toBe(true);
     }
-    for (const host of ["fynix.digital", "localhost.evil.example", "notlocalhost:3000", "128.0.0.1", "127.0.0.1.evil.example", "10.0.0.5:3000"]) {
+    for (const host of ["brandbasket.in", "localhost.evil.example", "notlocalhost:3000", "128.0.0.1", "127.0.0.1.evil.example", "10.0.0.5:3000"]) {
       expect(isLocalHost(host)).toBe(false);
     }
   });
@@ -76,7 +76,7 @@ describe("any local address, in local development", () => {
   });
 
   it("still refuses every host that is not local", () => {
-    for (const host of ["evil.example", "localhost.evil.example:3081", "aster-physio.fynix.digital", "192.168.1.20:3081", "[::1]:3081"]) {
+    for (const host of ["evil.example", "localhost.evil.example:3081", "aster-physio.brandbasket.in", "192.168.1.20:3081", "[::1]:3081"]) {
       expect(resolveSurface(host, local)).toBeNull();
     }
     expect(resolveSurface(null, local)).toBeNull();

@@ -14,7 +14,7 @@ import { getStaffDb } from "./db";
  */
 export async function notifyTeamOnboardingSent(businessId: string, businessName: string): Promise<void> {
   try {
-    const to = process.env.FYNIX_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
+    const to = process.env.BRANDBASKET_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
     const clientUrl = new URL(`/clients/${businessId}`, serverEnv().ADMIN_ORIGIN).toString();
     await createAppEmailTransport(getStaffDb()).send(
       onboardingSentEmail({ to, businessName, clientUrl, previewDueHours: FIRST_PREVIEW_DUE_HOURS }),

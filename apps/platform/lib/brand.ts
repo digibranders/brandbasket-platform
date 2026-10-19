@@ -2,7 +2,7 @@ import type { BrandLogo } from "@brandbasket/shared/ui/logo";
 import type { JoinChoice } from "@/lib/join-form";
 
 /*
- * The name and look of this dashboard: Fynix Digital. One product, one brand, so there is one constant. It says the name and
+ * The name and look of this dashboard: Brandbasket. One product, one brand, so there is one constant. It says the name and
  * logo shown and which plans are offered at sign-up (Care only; Premium is no longer sold). An account is opened with an email
  * address and the code emailed to it.
  * Browser-safe and pure.
@@ -10,7 +10,7 @@ import type { JoinChoice } from "@/lib/join-form";
 export interface Brand {
   /** The company's name in full: titles, sign-in copy. */
   readonly name: string;
-  /** What copy calls the product: "Your Fynix dashboard". */
+  /** What copy calls the product: "Your Brandbasket dashboard". */
   readonly shortName: string;
   /** What copy calls the public directory the business's page appears on, in the middle of a sentence ("live on ..."). */
   readonly directory: string;
@@ -31,20 +31,20 @@ export interface Brand {
 }
 
 export const BRAND: Brand = {
-  name: "Fynix Digital",
-  shortName: "Fynix",
+  name: "Brandbasket",
+  shortName: "Brandbasket",
   directory: "the local directory",
-  contactEmail: "hello@fynix.digital",
-  privacyEmail: "privacy@fynix.digital",
-  siteUrl: "https://fynix.digital",
-  logo: { white: "/brand/fynix-logo-white.svg", dark: "/brand/fynix-logo-dark.svg", width: 89, height: 37 },
+  contactEmail: "hello@brandbasket.in",
+  privacyEmail: "privacy@brandbasket.in",
+  siteUrl: "https://brandbasket.in",
+  logo: { white: "/brand/brandbasket-logo-white.svg", dark: "/brand/brandbasket-logo-dark.svg", width: 182, height: 32 },
   joinChoices: ["care"],
   showsListing: false,
   about: "We build your business website and look after it every month: design, hosting and care, with marketing services you can add as you grow.",
 };
 
 /** The plan a sign-up opens with when its address names none, or names one it does not sell (`free`, a typo). */
-export const FYNIX_DEFAULT_CHOICE: JoinChoice = "care";
+export const BRANDBASKET_DEFAULT_CHOICE: JoinChoice = "care";
 
 /** Where a person writes for help. */
 export function supportEmailOf(brand: Brand): string {

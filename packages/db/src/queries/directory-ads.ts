@@ -900,7 +900,7 @@ export async function readClaimedWebsites(db: Database, lookup: DirectoryLookup)
   return out;
 }
 
-/** Who a listing's visitors' enquiries go to: the account that owns it on Fynix. */
+/** Who a listing's visitors' enquiries go to: the account that owns it on Brandbasket. */
 export interface ListingOwner {
   readonly businessId: string;
   /**
@@ -922,7 +922,7 @@ export interface ListingOwner {
 }
 
 /**
- * The owner of a directory business, or null when nobody on Fynix owns it: the paying client whose listing staff
+ * The owner of a directory business, or null when nobody on Brandbasket owns it: the paying client whose listing staff
  * placed on its place, else the free listing account whose claim to it (or whose added business) staff approved. Each
  * is unique per place (directory_listings_place_id_idx, directory_claims_place_id_approved_idx); a claim made by one of
  * the place's legacy keys before the backfill counts too, after one that has the place. A key no place has is owned by
@@ -1066,7 +1066,7 @@ export interface ConfirmedAddedBusiness {
   readonly websiteUrl: string | null;
   readonly confirmedAt: Date;
   /**
-   * Whether Fynix has verified it: staff approved it (a confirmation call), or it has a verification row (the
+   * Whether Brandbasket has verified it: staff approved it (a confirmation call), or it has a verification row (the
    * owner's code check). An owner who only published it (Claimed) has neither, so the website must not call it Verified.
    */
   readonly verified: boolean;

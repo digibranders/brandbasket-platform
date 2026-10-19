@@ -128,10 +128,10 @@ export function createDualTransport(brevoTransport: EmailTransport, db: Database
 }
 
 /**
- * Who mail comes from, and where replies go, when the environment names no one: Fynix's own addresses (the domain has to be
- * authenticated in Brevo first, as for any sender). It sends as "Fynix Digital" from FYNIX_MAIL_FROM (no-reply@fynix.digital
+ * Who mail comes from, and where replies go, when the environment names no one: Brandbasket's own addresses (the domain has to be
+ * authenticated in Brevo first, as for any sender). It sends as "Brandbasket" from BRANDBASKET_MAIL_FROM (no-reply@brandbasket.in
  * when it is unset). ALERTS_FROM_EMAIL, ALERTS_FROM_NAME and SUPPORT_ALERT_EMAIL, when set, win over the defaults;
- * FYNIX_MAIL_FROM wins over ALERTS_FROM_EMAIL.
+ * BRANDBASKET_MAIL_FROM wins over ALERTS_FROM_EMAIL.
  */
 function brevoFromEnv(env: EmailEnvironment, replyTo?: BrevoSender, fetchFn?: typeof fetch): EmailTransport | null {
   const apiKey = env.BREVO_API_KEY?.trim();
@@ -140,7 +140,7 @@ function brevoFromEnv(env: EmailEnvironment, replyTo?: BrevoSender, fetchFn?: ty
   return createBrevoTransport({
     apiKey,
     defaultSender: {
-      email: env.FYNIX_MAIL_FROM?.trim() || env.ALERTS_FROM_EMAIL?.trim() || defaults.from.email,
+      email: env.BRANDBASKET_MAIL_FROM?.trim() || env.ALERTS_FROM_EMAIL?.trim() || defaults.from.email,
       name: env.ALERTS_FROM_NAME?.trim() || defaults.from.name,
     },
     replyTo: replyTo ?? { email: env.SUPPORT_ALERT_EMAIL?.trim() || defaults.replyTo.email, name: defaults.replyTo.name },

@@ -19,7 +19,7 @@ describe("WhereItShows", () => {
     expect(markup(LISTING_BRAND)).toContain("See where this shows");
   });
 
-  it("shows Fynix owners nothing: the screenshot is Fynix Digital's directory page", () => {
+  it("shows Brandbasket owners nothing: the screenshot is Brandbasket's directory page", () => {
     expect(markup(BRAND)).toBe("");
   });
 });

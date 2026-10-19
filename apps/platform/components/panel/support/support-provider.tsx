@@ -15,8 +15,8 @@ export function SupportProvider({ children, canCreate }: { readonly children: Re
   const pathname = usePathname();
   const refresh = useCallback(() => { void readSupportUnreadCount().then(setUnread).catch(() => undefined); }, []);
   useEffect(() => {
-    refresh(); window.addEventListener("focus", refresh); window.addEventListener("fynix:support-read", refresh);
-    return () => { window.removeEventListener("focus", refresh); window.removeEventListener("fynix:support-read", refresh); };
+    refresh(); window.addEventListener("focus", refresh); window.addEventListener("brandbasket:support-read", refresh);
+    return () => { window.removeEventListener("focus", refresh); window.removeEventListener("brandbasket:support-read", refresh); };
   }, [refresh]);
   useEffect(() => { refresh(); }, [pathname, refresh]);
   const open = useCallback((category: "support" | null, trigger: HTMLElement | null): void => {

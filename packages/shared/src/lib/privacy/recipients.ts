@@ -10,7 +10,7 @@ import { ambientBrandShortName } from "../deployment-brand";
 export interface DataRecipient {
   /** The vendor's name as docs/operations/processors.md writes it. */
   readonly name: string;
-  /** What it does for Fynix. */
+  /** What it does for Brandbasket. */
   readonly service: string;
   /** What of the owner's data it receives. */
   readonly receives: string;

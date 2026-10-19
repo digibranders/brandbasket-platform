@@ -143,7 +143,7 @@ describe("checkoutCopy", () => {
 
   it("adds the ad platforms line for Advertising", () => {
     const copy = checkoutCopy({ ...base, addOnId: "advertising", title: "Advertising" });
-    expect(copy.notes).toEqual([renews, "This is Fynix Digital's fee. You pay the ad platforms directly.", contact]);
+    expect(copy.notes).toEqual([renews, "This is Brandbasket's fee. You pay the ad platforms directly.", contact]);
   });
 
   it("names the action in the heading for Resume and Pay now", () => {

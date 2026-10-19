@@ -18,7 +18,7 @@ const INVOICE_ID = "01920000-0000-7000-8000-000000000001";
 const UNKNOWN_ID = "01920000-0000-7000-8000-0000000000ff";
 
 const line: TaxInvoiceLineRecord = {
-  description: "Fynix Premium plan",
+  description: "Brandbasket Premium plan",
   detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
   note: null,
   sac: "998361",
@@ -46,12 +46,12 @@ const invoice: TaxInvoice = {
   paidOn: "2026-10-09",
   supplier: {
     legalName: "Digibranders Private Limited",
-    tradeName: "Fynix",
+    tradeName: "Brandbasket",
     gstin: "27AAICD9268J1Z0",
     cin: "U72900MH2021PTC372344",
     addressLines: ["Thane West, Maharashtra 400607, India"],
     stateCode: "mh",
-    email: "hello@fynix.digital",
+    email: "hello@brandbasket.in",
     phone: "+91 789 789 6607",
   },
   recipient: {
@@ -129,7 +129,7 @@ describe("GET /invoices/[invoiceId]", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/pdf");
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="fynix-invoice-FY-26-27-000001.pdf"');
+    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="brandbasket-invoice-FY-26-27-000001.pdf"');
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
     const bytes = new Uint8Array(await response.arrayBuffer());

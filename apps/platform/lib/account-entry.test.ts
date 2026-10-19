@@ -5,7 +5,7 @@ import { CREATE_ACCOUNT_HREF, entryHrefForJoin, entryHrefForPlan, readEntryReque
 
 type Params = Parameters<typeof readFor>[0];
 
-/** The reading under a brand that sells the free listing, which is the one the tests until the Fynix block were written against. */
+/** The reading under a brand that sells the free listing, which is the one the tests until the Brandbasket block were written against. */
 const readEntryRequest = (params: Params): ReturnType<typeof readFor> => readFor(params, LISTING_BRAND);
 
 describe("readEntryRequest", () => {
@@ -68,23 +68,23 @@ describe("entryHrefForJoin", () => {
   });
 });
 
-describe("readEntryRequest under Fynix, which sells Care only", () => {
-  const fynix = (params: Params): ReturnType<typeof readFor> => readFor(params, BRAND);
+describe("readEntryRequest under Brandbasket, which sells Care only", () => {
+  const brandbasket = (params: Params): ReturnType<typeof readFor> => readFor(params, BRAND);
 
   it("opens Sign in by default, and Create account with the plan the link names", () => {
-    expect(fynix({})).toEqual({ view: "sign-in", choice: null, preselected: "care" });
-    expect(fynix({ plan: "care" })).toEqual({ view: "create", choice: "care", preselected: "care" });
+    expect(brandbasket({})).toEqual({ view: "sign-in", choice: null, preselected: "care" });
+    expect(brandbasket({ plan: "care" })).toEqual({ view: "create", choice: "care", preselected: "care" });
     // Premium is no longer sold: a link that names it opens the plan question with Care ticked.
-    expect(fynix({ plan: "premium" })).toEqual({ view: "create", choice: null, preselected: "care" });
+    expect(brandbasket({ plan: "premium" })).toEqual({ view: "create", choice: null, preselected: "care" });
   });
 
   it("asks the question with Care ticked when nothing is named", () => {
-    expect(fynix({ new: "1" })).toEqual({ view: "create", choice: null, preselected: "care" });
+    expect(brandbasket({ new: "1" })).toEqual({ view: "create", choice: null, preselected: "care" });
   });
 
   it("never lets the address choose the free listing: plan=free and plans it does not know fall back to Care", () => {
     for (const plan of ["free", "listing_only", "gold", "own_website"]) {
-      const request = fynix({ plan });
+      const request = brandbasket({ plan });
       expect(request.view, plan).toBe("create");
       expect(request.choice, plan).toBeNull();
       expect(request.preselected, plan).toBe("care");
@@ -92,7 +92,7 @@ describe("readEntryRequest under Fynix, which sells Care only", () => {
   });
 
   it("no longer reads a directory claim link at all: it opens Sign in like any other address with nothing to say", () => {
-    expect(fynix({ listing: "dentists/thane/naupada/smile-dental", name: "Smile Dental", sig: "abc" })).toEqual({
+    expect(brandbasket({ listing: "dentists/thane/naupada/smile-dental", name: "Smile Dental", sig: "abc" })).toEqual({
       view: "sign-in",
       choice: null,
       preselected: "care",

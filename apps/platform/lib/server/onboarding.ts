@@ -102,7 +102,7 @@ export const getProjectOverview = cache(async (): Promise<ProjectOverview> => {
 });
 
 export interface LiveWebsite {
-  /** The address the site is served at, their own domain or the free `*.fynix.digital` one they started on. */
+  /** The address the site is served at, their own domain or the free `*.brandbasket.in` one they started on. */
   readonly hostname: string;
   /** When the team put it live. Null for a project that went live before launches were stamped. */
   readonly launchedAt: Date | null;

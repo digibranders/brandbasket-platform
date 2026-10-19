@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
 /*
- * What OyeChats sends Fynix when a visitor leaves their details in a bot (OyeChats' webhook_service.py): a JSON body
+ * What OyeChats sends Brandbasket when a visitor leaves their details in a bot (OyeChats' webhook_service.py): a JSON body
  * { event, bot_id, timestamp, data } and a header `X-OyeChats-Signature: sha256=<hex>`, the HMAC-SHA256 of the exact body
  * bytes under the secret OyeChats made for that bot's webhook. Pure, so the route stays thin and both halves are tested.
  */
@@ -82,12 +82,12 @@ export type OyeChatsEvent =
       readonly tier: string;
       readonly score: number | null;
     }
-  /** An event Fynix does not use, or one it cannot read: acknowledged and dropped. */
+  /** An event Brandbasket does not use, or one it cannot read: acknowledged and dropped. */
   | { readonly kind: "ignored" };
 
 const IGNORED: OyeChatsEvent = { kind: "ignored" };
 
-/** Reads the events Fynix uses (`lead_captured`, `tier_transition`) and ignores the rest. Never throws. */
+/** Reads the events Brandbasket uses (`lead_captured`, `tier_transition`) and ignores the rest. Never throws. */
 export function parseOyeChatsEvent(body: string): OyeChatsEvent {
   const envelope = parseJsonObject(body);
   if (envelope === null) return IGNORED;

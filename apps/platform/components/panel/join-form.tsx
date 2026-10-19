@@ -44,7 +44,7 @@ const PLAN_OPTIONS: readonly {
   readonly choice: JoinChoice;
   readonly name: string;
   readonly line: string;
-  /** The same line for a brand that does not sell the free listing (Fynix), so the cards never mention one. */
+  /** The same line for a brand that does not sell the free listing (Brandbasket), so the cards never mention one. */
   readonly lineWithoutFree: string;
   /** The plan's mark, the same one its dashboard carries: a pin, a heart (Care), a crown (Premium). */
   readonly icon: (selected: boolean) => ReactElement;
@@ -77,9 +77,9 @@ interface JoinFormProps {
   readonly action: (state: JoinFormState, formData: FormData) => Promise<JoinFormState>;
   /** A plan the link already chose (the website's plan buttons): the form opens on the details with it set. */
   readonly initialChoice: JoinChoice | null;
-  /** The plan the plans open with already ticked, when the link chose none (Fynix: Care); null ticks none. */
+  /** The plan the plans open with already ticked, when the link chose none (Brandbasket: Care); null ticks none. */
   readonly preselected: JoinChoice | null;
-  /** The plans this brand sells, in the order shown: the free listing is among them only on Fynix. */
+  /** The plans this brand sells, in the order shown: the free listing is among them only on Brandbasket. */
   readonly choices: readonly JoinChoice[];
   /** Where the Terms and the Privacy Notice are, for the brand this is sold under (lib/legal-links.ts legalLinksFor). */
   readonly legalLinks: LegalLinks;

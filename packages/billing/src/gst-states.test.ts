@@ -9,7 +9,7 @@ describe("GST state codes", () => {
     expect(new Set(codes).size).toBe(36);
   });
 
-  it("maps the codes Fynix deals with most", () => {
+  it("maps the codes Brandbasket deals with most", () => {
     expect(gstStateCodeOf("mh")).toBe("27");
     expect(gstStateCodeOf("ka")).toBe("29");
     expect(gstStateCodeOf("dh")).toBe("26");

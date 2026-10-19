@@ -197,11 +197,11 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
               </p>
             )}
             <p className="mt-1 text-[0.9375rem] text-ink-soft">
-              {minutes === null ? "Video call with the Fynix team" : `${String(minutes)} minutes, video call with the Fynix team`}
+              {minutes === null ? "Video call with the Brandbasket team" : `${String(minutes)} minutes, video call with the Brandbasket team`}
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               {startsAtIso === null || endsAtIso === null ? null : (
-                <ExternalButtonLink href={callInviteHref(startsAtIso, endsAtIso)} download="fynix-kickoff-call.ics" variant="secondary" size="sm">
+                <ExternalButtonLink href={callInviteHref(startsAtIso, endsAtIso)} download="brandbasket-kickoff-call.ics" variant="secondary" size="sm">
                   Add to calendar
                 </ExternalButtonLink>
               )}

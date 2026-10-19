@@ -30,7 +30,7 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
-  await dbs.owner.db.insert(users).values({ id: STAFF, name: "Asha", email: "asha@fynix.digital", emailVerified: true });
+  await dbs.owner.db.insert(users).values({ id: STAFF, name: "Asha", email: "asha@brandbasket.in", emailVerified: true });
 });
 
 const INPUT = {

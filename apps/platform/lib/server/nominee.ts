@@ -3,7 +3,7 @@ import { cleanLine } from "@brandbasket/shared/lib/validation/text";
 import { parsePhoneEntry } from "@brandbasket/shared/lib/validation/phone";
 import { NOMINEE_NAME_MAX_LENGTH, type NomineeFormField } from "@/lib/privacy-settings-form";
 
-/** Numbers typed without a country code are Indian: Fynix Digital's people are. A number with +CC keeps its own country. */
+/** Numbers typed without a country code are Indian: Brandbasket's people are. A number with +CC keeps its own country. */
 const DEFAULT_PHONE_COUNTRY = "IN";
 
 const NAME_MISSING_MESSAGE = "Enter the name of the person you are naming.";

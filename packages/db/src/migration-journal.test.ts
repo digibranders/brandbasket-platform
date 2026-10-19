@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
  * Guards the migration journal without a database. The migrator applies a migration only when its `when` is greater
  * than the newest one already recorded, so an entry whose `when` is not above the one before it is silently skipped in
  * production. drizzle-kit writes `when` from the machine's clock: if that clock is behind an entry already in the
- * journal, edit the new entry's `when` by hand to a larger value (see docs/deployment/fynix-droplet.md).
+ * journal, edit the new entry's `when` by hand to a larger value (see docs/deployment/brandbasket-droplet.md).
  */
 
 const MIGRATIONS = fileURLToPath(new URL("../migrations", import.meta.url));

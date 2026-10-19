@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BRAND, featureShownTo, FYNIX_DEFAULT_CHOICE, isDirectoryOnlyPath, logoOf, offersChoice, sellsFreeListing, supportEmailOf } from "./brand";
+import { BRAND, featureShownTo, BRANDBASKET_DEFAULT_CHOICE, isDirectoryOnlyPath, logoOf, offersChoice, sellsFreeListing, supportEmailOf } from "./brand";
 import { LISTING_BRAND } from "./testing/listing-brand";
 
 describe("the brand", () => {
@@ -9,17 +9,17 @@ describe("the brand", () => {
     expect(offersChoice(BRAND, "listing_only")).toBe(false);
     expect(offersChoice(BRAND, "care")).toBe(true);
     expect(offersChoice(BRAND, "premium")).toBe(false);
-    expect(BRAND.name).toBe("Fynix Digital");
-    expect(BRAND.shortName).toBe("Fynix");
+    expect(BRAND.name).toBe("Brandbasket");
+    expect(BRAND.shortName).toBe("Brandbasket");
   });
 
   it("opens a sign-up on a plan it sells", () => {
-    expect(offersChoice(BRAND, FYNIX_DEFAULT_CHOICE)).toBe(true);
+    expect(offersChoice(BRAND, BRANDBASKET_DEFAULT_CHOICE)).toBe(true);
   });
 
-  it("writes to hello@fynix.digital and draws the Fynix logo", () => {
-    expect(supportEmailOf(BRAND)).toBe("hello@fynix.digital");
-    expect(logoOf(BRAND)).toMatchObject({ name: "Fynix Digital", siteUrl: "https://fynix.digital", email: "hello@fynix.digital", white: "/brand/fynix-logo-white.svg" });
+  it("writes to hello@brandbasket.in and draws the Brandbasket logo", () => {
+    expect(supportEmailOf(BRAND)).toBe("hello@brandbasket.in");
+    expect(logoOf(BRAND)).toMatchObject({ name: "Brandbasket", siteUrl: "https://brandbasket.in", email: "hello@brandbasket.in", white: "/brand/brandbasket-logo-white.svg" });
   });
 
   it("leaves out the plan-table rows about the directory listing, which it does not sell", () => {

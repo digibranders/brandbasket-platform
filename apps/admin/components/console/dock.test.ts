@@ -23,7 +23,7 @@ describe("the console dock", () => {
     expect(html).toContain('href="/leads/new"');
   });
 
-  it("leaves out the directory's sections where the deployment has no directory (Fynix), and keeps the rest", () => {
+  it("leaves out the directory's sections where the deployment has no directory (Brandbasket), and keeps the rest", () => {
     const html = render("/clients", false, "admin", false);
     for (const href of ["/directory", "/geography", "/ads", "/deals"]) expect(html).not.toContain(`href="${href}"`);
     for (const href of ["/", "/leads", "/clients", "/coupons", "/affiliates", "/pricing", "/invoices", "/leaving", "/outbox", "/access-log", "/leads/new"]) {

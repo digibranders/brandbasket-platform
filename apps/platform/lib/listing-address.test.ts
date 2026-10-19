@@ -4,13 +4,13 @@ import { areaOptions, categoryOptions, cityOptions, filterOptions, listingChange
 
 describe("listingChangeRequestHref", () => {
   it("opens an email to us that already names the listing and asks what to change", () => {
-    const href = listingChangeRequestHref("support@example.com", "Smile Dental", "fynix.digital/in/mh/business/smile-dental/9f94ykmdjp");
+    const href = listingChangeRequestHref("support@example.com", "Smile Dental", "brandbasket.in/in/mh/business/smile-dental/9f94ykmdjp");
     const url = new URL(href);
     expect(url.protocol).toBe("mailto:");
     expect(url.pathname).toBe("support@example.com");
     expect(url.searchParams.get("subject")).toBe("Change my listing: Smile Dental");
     expect(url.searchParams.get("body")).toBe(
-      "Please change my listing (fynix.digital/in/mh/business/smile-dental/9f94ykmdjp).\n\nWhat to change (name, category, city, area, address or phone):\n",
+      "Please change my listing (brandbasket.in/in/mh/business/smile-dental/9f94ykmdjp).\n\nWhat to change (name, category, city, area, address or phone):\n",
     );
     // Spaces must be %20 in a mailto link: mail apps show a + as a plus sign.
     expect(href).not.toContain("+");

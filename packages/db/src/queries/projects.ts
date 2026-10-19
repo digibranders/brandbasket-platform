@@ -183,8 +183,8 @@ export interface ProjectPreviewResponse {
  * (status `preview`) can be approved — the condition is the gate, the same shape as recordProjectPreviewSent.
  *
  * Staff-privileged on purpose, not a customer-role `ScopedTransaction`: `projects_guard_customer_transition`
- * (migration 0014) locks `fynix_app` to the single onboarding -> submitted transition at the database level, so
- * every later transition, including this one, has to run as `fynix_staff` even though a customer triggers it.
+ * (migration 0014) locks `bb_app` to the single onboarding -> submitted transition at the database level, so
+ * every later transition, including this one, has to run as `bb_staff` even though a customer triggers it.
  * The caller (the customer's own server action) is what proves the request is really theirs — via
  * `requireCustomerAccess()`, before ever reaching this function — the same shape as every other staff-privileged
  * write in this codebase that a customer action sets off (e.g. activateFirstPayment).

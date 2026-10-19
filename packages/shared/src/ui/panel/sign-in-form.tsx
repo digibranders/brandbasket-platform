@@ -20,7 +20,7 @@ interface SignInFormProps {
   /**
    * What the first field takes. `email` (the default, the staff console): an email address, sent as `email`.
    * `phone-or-email` (the customer dashboard): a mobile number or an email, sent as `identifier`.
-   * `customer-email` (the customer dashboard of a brand whose accounts are opened with an email, Fynix): asks for an
+   * `customer-email` (the customer dashboard of a brand whose accounts are opened with an email, Brandbasket): asks for an
    * email only, sent as `identifier` all the same, so the same server action reads it.
    */
   readonly identifier?: "email" | "phone-or-email" | "customer-email";

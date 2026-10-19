@@ -34,7 +34,7 @@ export function requestedReviewFilter(raw: string | readonly string[] | undefine
 }
 
 /**
- * Whether a request's `Origin` is the website's own. fynix.digital redirects to www.fynix.digital, so a visitor's browser
+ * Whether a request's `Origin` is the website's own. brandbasket.in redirects to www.brandbasket.in, so a visitor's browser
  * sends whichever of the two it ended on: the website's origin and its twin (the same scheme and port, the host with
  * or without a leading "www.") both count, and nothing else does.
  */
@@ -60,7 +60,7 @@ function withoutWww(hostname: string): string {
  * The headers that let the website's own page call the owner routes from the browser with the dashboard's session
  * cookie: only that origin or its www twin (never `*`, which a credentialed request refuses anyway), and `Vary: Origin` so no cache
  * serves one origin's answer to another. A request from any other origin, or with none, gets no CORS headers, so the
- * browser withholds the answer from the page that asked. Same-site by the parent domain (fynix.digital), so the
+ * browser withholds the answer from the page that asked. Same-site by the parent domain (brandbasket.in), so the
  * session cookie is sent.
  */
 export function ownerCorsHeaders(requestOrigin: string | null, websiteOrigin: string): Readonly<Record<string, string>> {

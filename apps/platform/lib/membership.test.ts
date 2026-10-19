@@ -228,14 +228,14 @@ describe("plansMoveToUpgradePage", () => {
   });
 });
 
-describe("the plan lists under Fynix", () => {
+describe("the plan lists under Brandbasket", () => {
   it("keeps the listing's lines for a brand that sells it and drops them for the product", () => {
     expect(membershipBenefits("premium", LISTING_BRAND)).toContain("Business listing");
-    const fynix = membershipBenefits("premium", BRAND);
-    expect(fynix).not.toContain("Business listing");
-    expect(fynix.join(" ").toLowerCase()).not.toContain("listing");
-    expect(fynix).toContain("10% off digital marketing services");
-    for (const line of [...fynix, ...groupedBenefits("premium", BRAND).flatMap((group) => group.items)]) {
+    const brandbasket = membershipBenefits("premium", BRAND);
+    expect(brandbasket).not.toContain("Business listing");
+    expect(brandbasket.join(" ").toLowerCase()).not.toContain("listing");
+    expect(brandbasket).toContain("10% off digital marketing services");
+    for (const line of [...brandbasket, ...groupedBenefits("premium", BRAND).flatMap((group) => group.items)]) {
       expect(line).not.toMatch(/first\s?fold/i);
     }
   });

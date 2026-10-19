@@ -1,4 +1,4 @@
--- Fynix sends no text messages and holds no texted codes. Every code is now emailed:
+-- Brandbasket sends no text messages and holds no texted codes. Every code is now emailed:
 --
 --  * Public booking (Premium Appointments): the patient gives a name, an EMAIL and a phone number. The code goes to the email
 --    (booking_otps.email, new); the phone stays on the booking as a number the clinic calls, collected but never verified or
