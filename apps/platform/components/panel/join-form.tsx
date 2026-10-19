@@ -336,7 +336,6 @@ export function JoinForm({
         {sentFields}
         {/* The details again: nothing about the owner is kept on the server until the code is confirmed. */}
         <input type="hidden" name="name" value={name} />
-        {addOns.length === 0 ? null : <input type="hidden" name="addons" value={addOns.join(",")} />}
         {asksBusinessName ? <input type="hidden" name="businessName" value={newBusinessName} /> : null}
         <input type="hidden" name="email" value={email} />
         <input type="hidden" name="country" value={country} />
