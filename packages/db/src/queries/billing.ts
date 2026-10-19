@@ -759,10 +759,10 @@ export interface PaymentAttentionFlag {
   readonly paymentId: string;
   readonly businessId: string;
   /**
-   * Only the reasons of a payment that did apply: `submission_failed` and `upgrade_provider_pending`. An unapplied
-   * payment is flagged when it is recorded, by recordUnappliedPayment.
+   * Only the reasons of a payment that did apply: `submission_failed`, `upgrade_provider_pending` and
+   * `add_on_provider_pending`. An unapplied payment is flagged when it is recorded, by recordUnappliedPayment.
    */
-  readonly reason: Extract<PaymentAttentionReason, "submission_failed" | "upgrade_provider_pending">;
+  readonly reason: Extract<PaymentAttentionReason, "submission_failed" | "upgrade_provider_pending" | "add_on_provider_pending">;
   readonly now: Date;
 }
 

@@ -219,7 +219,7 @@ export const subscriptions = pgTable(
     // discount, is a bug rather than a state to handle.
     check(
       "subscriptions_bundled_check",
-      sql`${table.bundledAddOnNetCents} >= 0 and (${table.pendingBundledAddOnNetCents} is null or (${table.pendingBundledAddOnNetCents} >= 0 and ${table.pendingBundledAddOnNetCents} < ${table.bundledAddOnNetCents}))`,
+      sql`${table.bundledAddOnNetCents} >= 0 and (${table.pendingBundledAddOnNetCents} is null or ${table.pendingBundledAddOnNetCents} >= 0)`,
     ),
     check(
       "subscriptions_pending_check",
@@ -479,7 +479,7 @@ export const charges = pgTable(
       sql`case ${table.status}
         when 'open' then ${table.paymentId} is null and ${table.paidAt} is null and ${table.waivedAt} is null
         when 'paid' then ${table.paymentId} is not null and ${table.paidAt} is not null and ${table.waivedAt} is null
-        else ${table.paymentId} is null and ${table.paidAt} is null and ${table.waivedAt} is not null and (${table.waivedByStaffId} is not null or ${table.kind} in ('directory_ad', 'plan_upgrade'))
+        else ${table.paymentId} is null and ${table.paidAt} is null and ${table.waivedAt} is not null and (${table.waivedByStaffId} is not null or ${table.kind} in ('directory_ad', 'plan_upgrade', 'add_on'))
       end`,
     ),
   ],

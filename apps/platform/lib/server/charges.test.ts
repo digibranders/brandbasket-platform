@@ -16,6 +16,8 @@ vi.mock("@brandbasket/db", async () => {
   };
 });
 vi.mock("@brandbasket/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));
+vi.mock("@brandbasket/shared/server/basket-change", () => ({ finishAddOnAfterPayment: vi.fn() }));
+vi.mock("./add-ons", () => ({ basketDeps: () => ({ name: "basket-deps" }) }));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./db", () => ({
   getAppDb: () => ({ name: "app-db" }),
@@ -29,6 +31,7 @@ import {
   openBlogPostsCharge,
   setChargeProviderOrder,
 } from "@brandbasket/db";
+import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-change";
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
 import { getBillingProvider } from "./billing";
 import {
@@ -153,6 +156,8 @@ describe("confirmFakeChargePayment", () => {
       { name: "staff-tx" },
       expect.objectContaining({ chargeId: CHARGE_ID, providerPaymentId: "fake_pay_1", amountCents: 336_300, now: NOW }),
     );
+    // A paid add-on's provider step runs after the payment's transaction: it is a no-op for any other charge.
+    expect(finishAddOnAfterPayment).toHaveBeenCalledWith({ name: "basket-deps" }, { businessId: BUSINESS, chargeId: CHARGE_ID, now: NOW });
   });
 
   it("refuses a link for another business, and a link that does not verify, recording nothing", async () => {

@@ -1,21 +1,16 @@
 import "server-only";
 import { chargedAmountCents } from "@brandbasket/billing";
 import {
-  bundledNetAfterRemoving,
   consumeRateLimit,
   findBusinessCurrency,
   findLiveBundledAddOns,
-  findPlanById,
-  findSubscriptionById,
-  lockBusinessForBilling,
-  recordBundledAddOnRemoval,
   withTenantScope,
   type BundledAddOn,
   type RateLimitRule,
   type ScopedTransaction,
 } from "@brandbasket/db";
 import { addOnById, addOnPrice, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
+import { removeBundledAddOn, type BasketDeps } from "@brandbasket/shared/server/basket-change";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
@@ -101,61 +96,36 @@ export type BundledRemovalResult =
   | { readonly kind: "scheduled"; readonly endsOn: Date; readonly message: string }
   | { readonly kind: "refused"; readonly message: string };
 
+/** The connections and plan maker the shared basket changes run with, on the platform. */
+export function basketDeps(): BasketDeps {
+  return { staffDb: getStaffDb(), provider: getBillingProvider(), ensureDiscountPlan };
+}
+
 /**
- * Takes an add-on out of the plan's monthly payment from the next billing date (the same timing as Cancel on a separate
- * add-on). It stays active and paid for until then. The provider is moved to a plan at the lower amount first, for the cycle
- * end, and our record follows: if the provider refuses nothing here changes. If our record cannot then be written the provider
- * is ahead of us, which is logged for staff because the next renewal would arrive at an amount we do not expect. The page's
- * form carries only the add-on; the row, its price and the new amount all come from the database, under the business's lock.
+ * Takes an add-on out of the plan's monthly payment from the next billing date (removeBundledAddOn in
+ * @brandbasket/shared/server/basket-change). The page's form carries only the add-on; the row, its price and the new amount
+ * all come from the database, under the business's lock.
  */
 export async function removeBundledAddOnFor(customer: Pick<GrantedCustomer, "tenant">, addOn: MonthlyAddOnId, now: Date): Promise<BundledRemovalResult> {
   const { businessId } = customer.tenant;
   const limit = await consumeRateLimit(getAppDb(), `add-on-checkout:business:${businessId}`, ADD_ON_CHECKOUT_RATE_LIMIT);
   if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
 
-  const staffDb = getStaffDb();
-  const provider = getBillingProvider();
-  const planned = await staffDb.transaction(async (tx) => {
-    await lockBusinessForBilling(tx, businessId);
-    const live = await findLiveBundledAddOns(tx, businessId);
-    const row = live.find((candidate) => candidate.addOn === addOn && candidate.status === "active" && candidate.endRequestedAt === null);
-    if (row === undefined) return null;
-    const subscription = await findSubscriptionById(tx, row.subscriptionId);
-    if (subscription === null || subscription.businessId !== businessId || subscription.activatedAt === null || subscription.status === "cancelled") return null;
-    const plan = await findPlanById(tx, subscription.planId);
-    if (plan === null || subscription.paidThroughAt === null) return null;
-    return { row, subscription, plan, remainingNetCents: bundledNetAfterRemoving(live, row) };
-  });
-  if (planned === null) return refused(NOT_IN_PLAN);
-  const { row, subscription, plan, remainingNetCents } = planned;
-  const fields = { businessId, subscriptionId: subscription.id, addOn };
-
-  try {
-    if (subscription.provider !== "manual") {
-      if (subscription.provider !== provider.name) throw new Error(`The subscription belongs to ${subscription.provider}.`);
-      // The plan's own provider plan when nothing is left to add, else the one made for the lower amount (and any discount).
-      const providerPlanId =
-        remainingNetCents === 0 && subscription.discountAmountCents === 0
-          ? (plan.providerPlanId ?? undefined)
-          : await ensureDiscountPlan(provider, plan, subscription.discountAmountCents, remainingNetCents);
-      if (providerPlanId === undefined && provider.name === "razorpay") throw new Error(`Plan ${plan.code} has no provider plan to move to.`);
-      await provider.changeSubscriptionPlanAtPeriodEnd(subscription.providerSubscriptionId, providerPlanId ?? "");
+  const removal = await removeBundledAddOn(basketDeps(), { businessId, addOn, now });
+  switch (removal.kind) {
+    case "scheduled":
+      return {
+        kind: "scheduled",
+        endsOn: removal.endsOn,
+        message: `${addOnById(addOn).title} stays until your next payment date, then it stops and your monthly payment goes down.`,
+      };
+    case "not-in-plan":
+      return refused(NOT_IN_PLAN);
+    case "failed":
+      return refused(CANNOT_REMOVE_NOW);
+    default: {
+      const unhandled: never = removal;
+      throw new Error(`Unhandled removal outcome: ${String(unhandled)}`);
     }
-  } catch (error) {
-    logBillingEvent("error", "bundled-add-on-removal-failed", { ...fields, stage: "provider", ...describeError(error) });
-    return refused(CANNOT_REMOVE_NOW);
   }
-
-  try {
-    const recorded = await staffDb.transaction(async (tx) => {
-      await lockBusinessForBilling(tx, businessId);
-      return recordBundledAddOnRemoval(tx, { id: row.id, businessId, pendingBundledAddOnNetCents: remainingNetCents, now });
-    });
-    if (!recorded) return refused(NOT_IN_PLAN);
-  } catch (error) {
-    logBillingEvent("error", "bundled-add-on-removal-failed", { ...fields, stage: "record", ...describeError(error) });
-    return refused(CANNOT_REMOVE_NOW);
-  }
-  const endsOn = subscription.paidThroughAt ?? now;
-  return { kind: "scheduled", endsOn, message: `${addOnById(addOn).title} stays until your next payment date, then it stops and your monthly payment goes down.` };
 }

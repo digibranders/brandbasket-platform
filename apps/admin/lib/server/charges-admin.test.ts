@@ -14,11 +14,14 @@ vi.mock("@brandbasket/db", async () => {
   };
 });
 vi.mock("@brandbasket/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));
+vi.mock("@brandbasket/shared/server/basket-change", () => ({ finishAddOnAfterPayment: vi.fn() }));
+vi.mock("./basket-deps", () => ({ basketDeps: () => ({ name: "basket-deps" }) }));
 vi.mock("./db", () => ({
   getStaffDb: () => ({ name: "staff-db", transaction: (fn: (tx: unknown) => unknown) => fn({ name: "staff-tx" }) }),
 }));
 
 import { findBillingState, findChargeForBusiness, insertCharge, lockBusinessForBilling } from "@brandbasket/db";
+import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-change";
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
 import { addClientCharge, markClientChargePaid } from "./charges-admin";
 
@@ -107,6 +110,7 @@ describe("markClientChargePaid", () => {
         manual: { recordedByStaffId: "staff-1", reference: "NEFT 123", receivedOn: "2026-10-01" },
       }),
     );
+    expect(finishAddOnAfterPayment).toHaveBeenCalledWith({ name: "basket-deps" }, { businessId: BUSINESS, chargeId: "charge-1", now: NOW });
   });
 
   it("writes nothing for a charge already settled, or not the client's", async () => {

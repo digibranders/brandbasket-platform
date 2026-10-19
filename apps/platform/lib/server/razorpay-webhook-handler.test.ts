@@ -14,7 +14,7 @@ vi.mock("@brandbasket/db", async () => {
     recordUnappliedPayment: vi.fn(),
     lockBusinessForBilling: vi.fn(),
     completePlanUpgradeAtRenewal: vi.fn(),
-    completeBundledAddOnRemovals: vi.fn(),
+    completeBundledAddOnChanges: vi.fn(),
     hasEverPaid: vi.fn(async () => false),
     // Not an add-on, unless a test says otherwise.
     findAddOnSubscriptionByProviderId: vi.fn(async () => null),
@@ -45,7 +45,7 @@ vi.mock("./billing", () => ({ getRazorpayProvider: () => razorpay }));
 
 import {
   AddOnPaymentConflictError,
-  completeBundledAddOnRemovals,
+  completeBundledAddOnChanges,
   completePlanUpgradeAtRenewal,
   findAddOnSubscriptionByProviderId,
   findBundledAddOnsForSubscription,
@@ -747,7 +747,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
         expect.anything(),
         expect.objectContaining({ amountCents: LOWER_TOTAL, invoicedPrice: expect.objectContaining({ bundledAddOns: [staying] }) }),
       );
-      expect(completeBundledAddOnRemovals).toHaveBeenCalledWith(expect.anything(), { subscriptionId: "sub_row_6", now: new Date("2026-10-14T12:00:00.000Z") });
+      expect(completeBundledAddOnChanges).toHaveBeenCalledWith(expect.anything(), { subscriptionId: "sub_row_6", now: new Date("2026-10-14T12:00:00.000Z") });
       expect(recordUnappliedPayment).not.toHaveBeenCalled();
     });
 
@@ -759,7 +759,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
       await handleRazorpayWebhookEvent(chargedAt(OLD_TOTAL));
 
       expect(activateRenewalPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: OLD_TOTAL }));
-      expect(completeBundledAddOnRemovals).not.toHaveBeenCalled();
+      expect(completeBundledAddOnChanges).not.toHaveBeenCalled();
     });
 
     it("refuses an amount that is neither", async () => {
@@ -770,6 +770,85 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
 
       expect(activateRenewalPayment).not.toHaveBeenCalled();
       expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: "amount_mismatch" }));
+    });
+  });
+
+  describe("after the customer added an add-on this month", () => {
+    // Digital Growth (₹7,000) was added and its rest-of-month charge paid: the next renewal is (₹2,999 + ₹7,000) with GST.
+    const SIGNED_UP = new Date("2026-09-01T00:00:00.000Z");
+    const ADDED = { ...BUNDLED, activatedAt: SIGNED_UP, bundledAddOnNetCents: 0, pendingBundledAddOnNetCents: 700_000 };
+    const NEW_TOTAL = 1_179_882;
+    const OLD_TOTAL = 353_882;
+    const row = (addOn: string, netAmountCents: number, billedFrom: Date | null, endRequestedAt: Date | null = null) => ({
+      addOn,
+      status: "active",
+      billedFrom,
+      endRequestedAt,
+      listAmountCents: netAmountCents,
+      offerDiscountAmountCents: 0,
+      netAmountCents,
+      taxRateBasisPoints: 1_800,
+    });
+
+    it("accepts the renewal at the higher amount, invoices the added add-on, and starts billing it", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue(ADDED as never);
+      vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
+      const growth = row("digital-growth", 700_000, null);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([growth] as never);
+
+      await handleRazorpayWebhookEvent(chargedAt(NEW_TOTAL));
+
+      expect(activateRenewalPayment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ amountCents: NEW_TOTAL, invoicedPrice: expect.objectContaining({ bundledAddOns: [growth] }) }),
+      );
+      expect(completeBundledAddOnChanges).toHaveBeenCalledWith(expect.anything(), { subscriptionId: "sub_row_6", now: new Date("2026-10-14T12:00:00.000Z") });
+      expect(recordUnappliedPayment).not.toHaveBeenCalled();
+    });
+
+    it("still accepts the old amount if the provider had not moved yet, invoicing only what that amount billed", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue(ADDED as never);
+      vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("digital-growth", 700_000, null)] as never);
+
+      await handleRazorpayWebhookEvent(chargedAt(OLD_TOTAL));
+
+      expect(activateRenewalPayment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ amountCents: OLD_TOTAL, invoicedPrice: expect.objectContaining({ bundledAddOns: [] }) }),
+      );
+      expect(completeBundledAddOnChanges).not.toHaveBeenCalled();
+    });
+
+    it("finishes an add-on added and then taken out in the same month at the plan's own price", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ ...ADDED, pendingBundledAddOnNetCents: 0 } as never);
+      vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("digital-growth", 700_000, null, new Date("2026-10-10T00:00:00.000Z"))] as never);
+
+      await handleRazorpayWebhookEvent(chargedAt(OLD_TOTAL));
+
+      expect(activateRenewalPayment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ amountCents: OLD_TOTAL, invoicedPrice: expect.objectContaining({ bundledAddOns: [] }) }),
+      );
+      expect(completeBundledAddOnChanges).toHaveBeenCalled();
+    });
+
+    it("adds to an add-on taken at sign-up, which keeps its offer price", async () => {
+      // Digital Growth at ₹6,650 since sign-up, Local SEO + AEO added at ₹25,000.
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ ...ADDED, bundledAddOnNetCents: 665_000, pendingBundledAddOnNetCents: 665_000 + 2_500_000 } as never);
+      vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
+      const growth = row("digital-growth", 665_000, SIGNED_UP);
+      const search = row("local-seo-aeo", 2_500_000, null);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([growth, search] as never);
+
+      await handleRazorpayWebhookEvent(chargedAt(4_088_582));
+
+      expect(activateRenewalPayment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ amountCents: 4_088_582, invoicedPrice: expect.objectContaining({ bundledAddOns: [growth, search] }) }),
+      );
+      expect(completeBundledAddOnChanges).toHaveBeenCalled();
     });
   });
 });

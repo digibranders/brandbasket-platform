@@ -1,7 +1,15 @@
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
-import { bundledAddOns, providerBundlePlans, subscriptions, type BillingProviderName, type BundledAddOn } from "../schema";
+import {
+  bundledAddOns,
+  charges,
+  providerBundlePlans,
+  subscriptions,
+  type BillingCurrency,
+  type BillingProviderName,
+  type BundledAddOn,
+} from "../schema";
 import { isUuid } from "./tenant";
 
 /** Reads run both on their own and inside a tenant-scoped transaction, so they accept either runner. */
@@ -172,13 +180,16 @@ export async function markBundledAddOnContacted(
 }
 
 /**
- * What the monthly add-ons cost once `removing` has stopped: the nets of the subscription's other active add-ons that are not
- * already on their way out. The figure the provider's plan is made at, and what `recordBundledAddOnRemoval` stores.
+ * What the monthly add-ons cost from the next renewal: the nets of the active add-ons that are not on their way out, those
+ * added this month included. The figure the provider's plan is made at.
  */
+export function nextBundledNetCents(rows: readonly BundledAddOn[]): number {
+  return bundledNetCents(rows.filter((row) => row.status === "active" && row.endRequestedAt === null));
+}
+
+/** What the monthly add-ons cost once `removing` has stopped too. What `recordBundledAddOnRemoval` stores. */
 export function bundledNetAfterRemoving(rows: readonly BundledAddOn[], removing: Pick<BundledAddOn, "id">): number {
-  return bundledNetCents(
-    rows.filter((row) => row.id !== removing.id && row.status === "active" && row.endRequestedAt === null),
-  );
+  return nextBundledNetCents(rows.filter((row) => row.id !== removing.id));
 }
 
 /**
@@ -216,11 +227,11 @@ export async function recordBundledAddOnRemoval(
 }
 
 /**
- * The renewal at the lower amount has been recorded: the add-ons the customer asked to remove stop (`removed`) and the
- * subscription's billed amount becomes the pending one. A no-op for a subscription with no removal waiting. Staff connection,
- * in the transaction that records the renewal.
+ * The renewal at the new amount has been recorded: the add-ons the customer asked to remove stop (`removed`), the ones added
+ * this month are billed from now, and the subscription's billed amount becomes the pending one. A no-op for a subscription
+ * with no change waiting. Staff connection, in the transaction that records the renewal.
  */
-export async function completeBundledAddOnRemovals(db: Runner, input: { readonly subscriptionId: string; readonly now: Date }): Promise<void> {
+export async function completeBundledAddOnChanges(db: Runner, input: { readonly subscriptionId: string; readonly now: Date }): Promise<void> {
   if (!isUuid(input.subscriptionId)) return;
   await db
     .update(bundledAddOns)
@@ -229,7 +240,276 @@ export async function completeBundledAddOnRemovals(db: Runner, input: { readonly
       and(eq(bundledAddOns.subscriptionId, input.subscriptionId), eq(bundledAddOns.status, "active"), isNotNull(bundledAddOns.endRequestedAt)),
     );
   await db
+    .update(bundledAddOns)
+    .set({ billedFrom: input.now, updatedAt: input.now })
+    .where(and(eq(bundledAddOns.subscriptionId, input.subscriptionId), eq(bundledAddOns.status, "active"), isNull(bundledAddOns.billedFrom)));
+  await db
     .update(subscriptions)
     .set({ bundledAddOnNetCents: sql`${subscriptions.pendingBundledAddOnNetCents}`, pendingBundledAddOnNetCents: null, updatedAt: input.now })
     .where(and(eq(subscriptions.id, input.subscriptionId), isNotNull(subscriptions.pendingBundledAddOnNetCents)));
+}
+
+/*
+ * Adding an add-on to a running plan (docs/plans/13-platform-add-ons-after-signup.md in the BrandBasket workspace). The
+ * platform works out the quote for the rest of the paid month (lib/billing/add-on-proration.ts in @brandbasket/shared, which
+ * this package cannot import); what lives here is the record of it and the transitions the money drives: the charge is
+ * opened with a `pending` row, paying it turns the row `active` and raises the amount the next renewal must arrive at, and
+ * that renewal bills it (completeBundledAddOnChanges). Every write is on the staff connection under the business's billing
+ * lock, like every other billing write.
+ */
+
+/** An add-on added to a running plan, at the quote the platform worked out. */
+export interface NewAddedAddOn {
+  readonly businessId: string;
+  readonly subscriptionId: string;
+  /** A monthly add-on id from the catalogue. */
+  readonly addOn: string;
+  /** Its monthly list price, billed in full from the next renewal: an add-on added later has no offer. */
+  readonly listAmountCents: number;
+  readonly taxRateBasisPoints: number;
+  readonly currency: BillingCurrency;
+  /** The share of the monthly price for the days left, before tax. */
+  readonly netCents: number;
+  /** What is taken now, tax included. Zero when the share is too small to charge: the add-on is on at once. */
+  readonly chargeCents: number;
+  /** The end of the paid month the quote was worked out for. */
+  readonly quotedPeriodEnd: Date;
+  /** What the customer reads on Billing and the invoice: "Digital Growth, 05 Nov to 18 Nov 2026". */
+  readonly description: string;
+  /** The staff member adding it for the client, or null when the client is. */
+  readonly staffId: string | null;
+  readonly now: Date;
+}
+
+/** Why an add-on cannot be added against the subscription as it now stands. */
+export class BundledAddOnNotPossibleError extends Error {
+  readonly reason: "no-subscription" | "not-live" | "already-added";
+
+  constructor(reason: BundledAddOnNotPossibleError["reason"]) {
+    super(`The add-on could not be added: ${reason}.`);
+    this.name = "BundledAddOnNotPossibleError";
+    this.reason = reason;
+  }
+}
+
+interface LockedSubscription {
+  readonly businessId: string;
+  readonly status: string;
+  readonly activatedAt: Date | null;
+  readonly paidThroughAt: Date | null;
+  readonly cancelRequestedAt: Date | null;
+  readonly bundledAddOnNetCents: number;
+}
+
+async function lockSubscription(tx: ScopedTransaction, subscriptionId: string): Promise<LockedSubscription | null> {
+  const rows = await tx
+    .select({
+      businessId: subscriptions.businessId,
+      status: subscriptions.status,
+      activatedAt: subscriptions.activatedAt,
+      paidThroughAt: subscriptions.paidThroughAt,
+      cancelRequestedAt: subscriptions.cancelRequestedAt,
+      bundledAddOnNetCents: subscriptions.bundledAddOnNetCents,
+    })
+    .from(subscriptions)
+    .where(eq(subscriptions.id, subscriptionId))
+    .limit(1)
+    .for("update");
+  return rows[0] ?? null;
+}
+
+/** Whether the subscription is still the live, paid month the quote was worked out for. */
+function stillQuotedFor(subscription: LockedSubscription, quotedPeriodEnd: Date): boolean {
+  return (
+    subscription.status === "active" &&
+    subscription.activatedAt !== null &&
+    subscription.cancelRequestedAt === null &&
+    subscription.paidThroughAt !== null &&
+    subscription.paidThroughAt.getTime() === quotedPeriodEnd.getTime()
+  );
+}
+
+/**
+ * Sets the amount the next renewal must arrive at from the subscription's add-ons as they now stand. Null when nothing is
+ * changing (no add-on is ending or waiting to be billed), so the renewal is simply at the amount billed now.
+ */
+async function settlePendingNet(tx: ScopedTransaction, subscriptionId: string, now: Date): Promise<void> {
+  const active = (await findBundledAddOnsForSubscription(tx, subscriptionId)).filter((row) => row.status === "active");
+  const changing = active.some((row) => row.endRequestedAt !== null || row.billedFrom === null);
+  await tx
+    .update(subscriptions)
+    .set({ pendingBundledAddOnNetCents: changing ? nextBundledNetCents(active) : null, updatedAt: now })
+    .where(eq(subscriptions.id, subscriptionId));
+}
+
+/** Closes an add-on still waiting for its charge: the row stops and an open charge is waived, so it can no longer be paid. */
+async function dropWaitingAddOn(tx: ScopedTransaction, row: Pick<BundledAddOn, "id" | "chargeId">, now: Date): Promise<void> {
+  await tx.update(bundledAddOns).set({ status: "removed", removedAt: now, updatedAt: now }).where(eq(bundledAddOns.id, row.id));
+  if (row.chargeId !== null) {
+    await tx
+      .update(charges)
+      .set({ status: "waived", waivedAt: now })
+      .where(and(eq(charges.id, row.chargeId), eq(charges.status, "open")));
+  }
+}
+
+export interface OpenedBundledAddOn {
+  readonly row: BundledAddOn;
+  /** The charge to pay, or null when the add-on was turned on with nothing to take. */
+  readonly chargeId: string | null;
+}
+
+/**
+ * Opens the add, in the caller's transaction under its billing lock. The subscription must still be the paid month the
+ * quote was for. An earlier open charge for the same add-on is replaced. With a charge, the row is `pending` until it is
+ * paid; with nothing to take, it is `active` at once and the next renewal's amount is raised. Throws
+ * BundledAddOnNotPossibleError when the subscription has moved on, or the add-on is already active (an ending one is kept
+ * with keepBundledAddOn instead).
+ */
+export async function openBundledAddOn(tx: ScopedTransaction, input: NewAddedAddOn): Promise<OpenedBundledAddOn> {
+  const subscription = await lockSubscription(tx, input.subscriptionId);
+  if (subscription === null || subscription.businessId !== input.businessId) throw new BundledAddOnNotPossibleError("no-subscription");
+  if (!stillQuotedFor(subscription, input.quotedPeriodEnd)) throw new BundledAddOnNotPossibleError("not-live");
+
+  const live = (await findBundledAddOnsForSubscription(tx, input.subscriptionId)).filter(
+    (row) => row.addOn === input.addOn && row.status !== "removed",
+  );
+  if (live.some((row) => row.status === "active")) throw new BundledAddOnNotPossibleError("already-added");
+  // An earlier quote is replaced: its price was for a different moment, and only one add of an add-on is open at a time.
+  for (const row of live) await dropWaitingAddOn(tx, row, input.now);
+
+  const common = {
+    businessId: input.businessId,
+    subscriptionId: input.subscriptionId,
+    addOn: input.addOn,
+    listAmountCents: input.listAmountCents,
+    offerDiscountAmountCents: 0,
+    netAmountCents: input.listAmountCents,
+    taxRateBasisPoints: input.taxRateBasisPoints,
+    quotedPeriodEnd: input.quotedPeriodEnd,
+    addedByStaffId: input.staffId,
+  } as const;
+
+  if (input.chargeCents > 0) {
+    const insertedCharge = await tx
+      .insert(charges)
+      .values({
+        businessId: input.businessId,
+        kind: "add_on",
+        description: input.description,
+        quantity: 1,
+        unitAmountCents: input.netCents,
+        taxRateBasisPoints: input.taxRateBasisPoints,
+        amountCents: input.chargeCents,
+        currency: input.currency,
+        createdByStaffId: input.staffId,
+      })
+      .returning({ id: charges.id });
+    const charge = insertedCharge[0];
+    if (charge === undefined) throw new Error("Inserting the add-on's charge returned no row");
+    const inserted = await tx.insert(bundledAddOns).values({ ...common, chargeId: charge.id }).returning();
+    const row = inserted[0];
+    if (row === undefined) throw new Error("Inserting the added add-on returned no row");
+    return { row, chargeId: charge.id };
+  }
+
+  const inserted = await tx.insert(bundledAddOns).values({ ...common, status: "active", activatedAt: input.now }).returning();
+  const row = inserted[0];
+  if (row === undefined) throw new Error("Inserting the added add-on returned no row");
+  await settlePendingNet(tx, input.subscriptionId, input.now);
+  return { row, chargeId: null };
+}
+
+/** The add-on a charge pays for, or null. */
+export async function findBundledAddOnByCharge(db: Runner, chargeId: string): Promise<BundledAddOn | null> {
+  if (!isUuid(chargeId)) return null;
+  const rows = await db.select().from(bundledAddOns).where(eq(bundledAddOns.chargeId, chargeId)).limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Whether a payment for an add-on's charge still buys it: the add-on is waiting for it and the subscription is the paid
+ * month it was quoted for. Called by recordChargePayment before it settles the charge, under the same lock.
+ */
+export async function bundledAddOnStillApplies(tx: ScopedTransaction, chargeId: string): Promise<boolean> {
+  const row = await findBundledAddOnByCharge(tx, chargeId);
+  if (row === null || row.status !== "pending" || row.quotedPeriodEnd === null) return false;
+  const subscription = await lockSubscription(tx, row.subscriptionId);
+  return subscription !== null && stillQuotedFor(subscription, row.quotedPeriodEnd);
+}
+
+/**
+ * The add-on's money has arrived and its quote stood: it is on from this moment and the next renewal must arrive at the new
+ * amount. Runs inside recordChargePayment's transaction, so the payment, the paid charge and the add-on never disagree.
+ */
+export async function applyPaidBundledAddOn(tx: ScopedTransaction, chargeId: string, paidAt: Date): Promise<BundledAddOn | null> {
+  const activated = await tx
+    .update(bundledAddOns)
+    .set({ status: "active", activatedAt: paidAt, updatedAt: paidAt })
+    .where(and(eq(bundledAddOns.chargeId, chargeId), eq(bundledAddOns.status, "pending")))
+    .returning();
+  const row = activated[0];
+  if (row === undefined) return null;
+  await settlePendingNet(tx, row.subscriptionId, paidAt);
+  return row;
+}
+
+/**
+ * The add-on stops before it started: its charge was waived, or paid after the quote stopped standing (that money is kept on
+ * record and flagged for a refund by recordChargePayment). Inside the caller's transaction.
+ */
+export async function dropBundledAddOnOfCharge(db: Runner, chargeId: string, now: Date): Promise<void> {
+  await db
+    .update(bundledAddOns)
+    .set({ status: "removed", removedAt: now, updatedAt: now })
+    .where(and(eq(bundledAddOns.chargeId, chargeId), eq(bundledAddOns.status, "pending")));
+}
+
+/**
+ * Keeps an add-on the customer had asked to remove: it is still paid for up to the renewal, so nothing is charged, and the
+ * next renewal's amount goes back to include it. False when it is not active and ending, or not the business's. Inside the
+ * caller's transaction under its billing lock, after the provider has been moved back.
+ */
+export async function keepBundledAddOn(
+  tx: ScopedTransaction,
+  input: { readonly id: string; readonly businessId: string; readonly now: Date },
+): Promise<boolean> {
+  if (!isUuid(input.id) || !isUuid(input.businessId)) return false;
+  const rows = await tx
+    .update(bundledAddOns)
+    .set({ endRequestedAt: null, updatedAt: input.now })
+    .where(
+      and(
+        eq(bundledAddOns.id, input.id),
+        eq(bundledAddOns.businessId, input.businessId),
+        eq(bundledAddOns.status, "active"),
+        isNotNull(bundledAddOns.endRequestedAt),
+      ),
+    )
+    .returning({ subscriptionId: bundledAddOns.subscriptionId });
+  const subscriptionId = rows[0]?.subscriptionId;
+  if (subscriptionId === undefined) return false;
+  await settlePendingNet(tx, subscriptionId, input.now);
+  return true;
+}
+
+/**
+ * The provider has been told to bill the added add-ons from the next renewal: stamps the active ones not yet billed and not
+ * yet stamped, and returns how many. Staff connection.
+ */
+export async function markBundledAddOnsScheduled(db: Runner, input: { readonly subscriptionId: string; readonly now: Date }): Promise<number> {
+  if (!isUuid(input.subscriptionId)) return 0;
+  const rows = await db
+    .update(bundledAddOns)
+    .set({ providerScheduledAt: input.now, updatedAt: input.now })
+    .where(
+      and(
+        eq(bundledAddOns.subscriptionId, input.subscriptionId),
+        eq(bundledAddOns.status, "active"),
+        isNull(bundledAddOns.billedFrom),
+        isNull(bundledAddOns.providerScheduledAt),
+      ),
+    )
+    .returning({ id: bundledAddOns.id });
+  return rows.length;
 }

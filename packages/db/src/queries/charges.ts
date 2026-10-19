@@ -15,6 +15,7 @@ import {
 } from "./billing";
 import { markDirectoryAdWinPaid } from "./directory-ads";
 import { startDirectoryPromotionForCharge } from "./directory-promotions";
+import { applyPaidBundledAddOn, bundledAddOnStillApplies, dropBundledAddOnOfCharge } from "./bundled-add-ons";
 import { applyPaidPlanUpgrade, cancelStalePlanUpgrade, planUpgradeStillApplies } from "./plan-upgrades";
 import {
   charges,
@@ -266,6 +267,8 @@ export async function waiveCharge(
       .set({ status: "cancelled", cancelledAt: input.now, updatedAt: input.now })
       .where(and(eq(planUpgrades.chargeId, input.chargeId), eq(planUpgrades.status, "open")));
   }
+  // Waiving the charge of an add-on that has not been paid drops the add-on: nothing is left to pay for it.
+  if (rows[0]?.kind === "add_on") await dropBundledAddOnOfCharge(db, input.chargeId, input.now);
   return rows.length > 0;
 }
 
@@ -295,12 +298,12 @@ export interface ChargePayment {
 }
 
 /**
- * What recording did: `paid` settled the charge; `not-open`, `amount-mismatch` and `upgrade-not-applied` kept the
- * money on record but flagged it for staff (a payment for a charge already paid or waived is a duplicate to refund; a
- * wrong amount or currency is never treated as payment in full; a payment for a move up whose quote no longer stood
- * buys nothing, see planUpgradeStillApplies).
+ * What recording did: `paid` settled the charge; `not-open`, `amount-mismatch`, `upgrade-not-applied` and
+ * `add-on-not-applied` kept the money on record but flagged it for staff (a payment for a charge already paid or waived
+ * is a duplicate to refund; a wrong amount or currency is never treated as payment in full; a payment for a move up or an
+ * add-on whose quote no longer stood buys nothing, see planUpgradeStillApplies and bundledAddOnStillApplies).
  */
-export type ChargePaymentOutcome = "paid" | "not-open" | "amount-mismatch" | "upgrade-not-applied";
+export type ChargePaymentOutcome = "paid" | "not-open" | "amount-mismatch" | "upgrade-not-applied" | "add-on-not-applied";
 
 export interface RecordedChargePayment {
   readonly payment: Payment;
@@ -313,6 +316,7 @@ function flagFor(outcome: ChargePaymentOutcome): UnappliedPaymentReason | null {
   if (outcome === "not-open") return "already_paid";
   if (outcome === "amount-mismatch") return "amount_mismatch";
   if (outcome === "upgrade-not-applied") return "upgrade_not_applied";
+  if (outcome === "add-on-not-applied") return "add_on_not_applied";
   return null;
 }
 
@@ -354,7 +358,9 @@ export async function recordChargePayment(db: Runner, input: ChargePayment): Pro
             ? "amount-mismatch"
             : existing.attentionReason === "upgrade_not_applied"
               ? "upgrade-not-applied"
-              : "paid";
+              : existing.attentionReason === "add_on_not_applied"
+                ? "add-on-not-applied"
+                : "paid";
       return { payment: existing, outcome, alreadyRecorded: true };
     }
 
@@ -364,11 +370,13 @@ export async function recordChargePayment(db: Runner, input: ChargePayment): Pro
         : charge.amountCents !== input.amountCents || charge.currency !== input.currency
           ? "amount-mismatch"
           : "paid";
-    // A move up is only bought while the subscription is in the state the quote was for.
+    // A move up or an add-on is only bought while the subscription is in the state the quote was for.
     const outcome: ChargePaymentOutcome =
       matched === "paid" && charge.kind === "plan_upgrade" && !(await planUpgradeStillApplies(tx, input.chargeId))
         ? "upgrade-not-applied"
-        : matched;
+        : matched === "paid" && charge.kind === "add_on" && !(await bundledAddOnStillApplies(tx, input.chargeId))
+          ? "add-on-not-applied"
+          : matched;
     const reason = flagFor(outcome);
 
     const inserted = await tx
@@ -416,6 +424,8 @@ export async function recordChargePayment(db: Runner, input: ChargePayment): Pro
       if (charge.kind === "directory_ad") await markDirectoryAdWinPaid(tx, input.chargeId, input.paidAt);
       // A paid move up is Premium from this moment: the subscription's pending plan is set in the same transaction.
       if (charge.kind === "plan_upgrade") await applyPaidPlanUpgrade(tx, input.chargeId, input.paidAt);
+      // A paid add-on is on from this moment, and the next renewal's amount is raised in the same transaction.
+      if (charge.kind === "add_on") await applyPaidBundledAddOn(tx, input.chargeId, input.paidAt);
       // A paid press release starts its status row, waiting for the team, in the same transaction as the money.
       if (charge.kind === "press_release") {
         await tx
@@ -426,8 +436,9 @@ export async function recordChargePayment(db: Runner, input: ChargePayment): Pro
     }
     // The quote went stale before the money arrived: nothing is applied, and the charge is closed so it cannot be paid
     // again; the payment stays on record, flagged for a refund.
-    if (outcome === "upgrade-not-applied") {
-      await cancelStalePlanUpgrade(tx, input.chargeId, input.now);
+    if (outcome === "upgrade-not-applied" || outcome === "add-on-not-applied") {
+      if (outcome === "upgrade-not-applied") await cancelStalePlanUpgrade(tx, input.chargeId, input.now);
+      else await dropBundledAddOnOfCharge(tx, input.chargeId, input.now);
       await tx
         .update(charges)
         .set({ status: "waived", waivedAt: input.now })

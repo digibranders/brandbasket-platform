@@ -55,6 +55,8 @@ export type BillingLogEvent =
   | "discount-plan-failed"
   | "retention-offer-failed"
   | "bundled-add-on-removal-failed"
+  | "bundled-add-on-keep-failed"
+  | "add-on-provider-failed"
   | "bundled-renewal-at-old-amount"
   | "upgrade-provider-failed"
   | "upgrade-renewal-at-old-price"

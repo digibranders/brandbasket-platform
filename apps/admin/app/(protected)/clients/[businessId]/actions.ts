@@ -125,6 +125,7 @@ export async function markChargePaidAction(formData: FormData): Promise<void> {
       redirect(staffChargeNoticeHref(businessId, "not-open"));
     case "amount-mismatch":
     case "upgrade-not-applied":
+    case "add-on-not-applied":
       redirect(staffChargeNoticeHref(businessId, "payment-kept"));
     default: {
       const unhandled: never = outcome;

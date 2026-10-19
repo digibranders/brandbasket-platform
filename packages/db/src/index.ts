@@ -742,9 +742,16 @@ export { clearSiteSetting, findSiteSetting, findSiteSettingWithEditor, saveSiteS
 export { findSetupCallBooking, recordSetupCallBooking } from "./queries/setup-calls";
 export {
   activateBundledAddOns,
+  BundledAddOnNotPossibleError,
   bundledAddOnIds,
+  bundledAddOnStillApplies,
   bundledNetAfterRemoving,
-  completeBundledAddOnRemovals,
+  completeBundledAddOnChanges,
+  findBundledAddOnByCharge,
+  keepBundledAddOn,
+  markBundledAddOnsScheduled,
+  nextBundledNetCents,
+  openBundledAddOn,
   recordBundledAddOnRemoval,
   bundledNetCents,
   findBundledAddOnsForSubscription,
@@ -756,7 +763,9 @@ export {
   removeBundledAddOnsOf,
   saveProviderBundlePlan,
   type BundlePlanKey,
+  type NewAddedAddOn,
   type NewBundledAddOn,
+  type OpenedBundledAddOn,
 } from "./queries/bundled-add-ons";
 export {
   ChargeNotFoundError,

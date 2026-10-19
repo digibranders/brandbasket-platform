@@ -17,7 +17,9 @@ import {
 import { blogAllowance, chargeAmountCents, chargeLabel, chargePricing } from "@brandbasket/shared/lib/billing/charges";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
+import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-change";
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
+import { basketDeps } from "./add-ons";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
@@ -118,11 +120,15 @@ async function recordVerifiedChargePayment({ confirmed, method, now }: RecordInp
             ? "charge-not-open"
             : recorded.outcome === "upgrade-not-applied"
               ? "upgrade-quote-stale"
-              : "charge-amount-mismatch",
+              : recorded.outcome === "add-on-not-applied"
+                ? "add-on-quote-stale"
+                : "charge-amount-mismatch",
       });
     }
     return recorded.outcome;
   });
+  // A paid add-on is on; the provider is told to bill it from the next renewal, with the payment's transaction committed.
+  if (outcome === "paid") await finishAddOnAfterPayment(basketDeps(), { businessId: confirmed.businessId, chargeId: confirmed.chargeId, now });
   return outcome;
 }
 

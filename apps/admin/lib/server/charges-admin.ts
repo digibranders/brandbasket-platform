@@ -14,7 +14,9 @@ import {
 import { chargeAmountCents, chargePricing } from "@brandbasket/shared/lib/billing/charges";
 import type { ChargeRequest } from "@brandbasket/shared/lib/billing/charge-form";
 import type { ManualPaymentDetails } from "@brandbasket/shared/lib/billing/manual-payment-form";
+import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-change";
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
+import { basketDeps } from "./basket-deps";
 import { getStaffDb } from "./db";
 
 /** How many charges one client page lists. */
@@ -97,6 +99,8 @@ export async function markClientChargePaid(
     });
     return recorded.outcome;
   });
+  // A paid add-on is on; the provider is told to bill it from the next renewal, with the payment's transaction committed.
+  if (outcome === "paid") await finishAddOnAfterPayment(basketDeps(), { businessId: input.businessId, chargeId: input.chargeId, now });
   return outcome;
 }
 

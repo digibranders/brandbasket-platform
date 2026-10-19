@@ -1,7 +1,7 @@
 import "server-only";
 import { chargedAmountCents, mapRazorpayStatus, type RazorpayWebhookEvent } from "@brandbasket/billing";
 import {
-  completeBundledAddOnRemovals,
+  completeBundledAddOnChanges,
   completePlanUpgradeAtRenewal,
   findAddOnSubscriptionByProviderId,
   findBundledAddOnsForSubscription,
@@ -197,10 +197,10 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           subscription.pendingDiscountAmountCents,
           pendingPlan.taxRateBasisPoints,
         ) === event.amountCents;
-      // A customer who took add-ons out of the plan's payment is billed the lower amount from the next renewal: the provider
-      // was told to move the subscription at the cycle end. `pendingBundledAddOnNetCents` is the only thing that makes this
-      // amount acceptable, so a renewal at a made-up lower price is still refused.
-      const renewalAtLowerAddOns =
+      // A customer who added an add-on to the plan's payment, or took one out, is billed the new amount from the next renewal:
+      // the provider was told to move the subscription at the cycle end. `pendingBundledAddOnNetCents` is the only thing that
+      // makes this amount acceptable, so a renewal at a made-up price is still refused.
+      const renewalAtPendingAddOns =
         !renewalAtNewPrice &&
         plan !== null &&
         plan !== undefined &&
@@ -213,7 +213,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           subscription.discountAmountCents,
           plan.taxRateBasisPoints,
         ) === event.amountCents;
-      if (!renewalAtNewPrice && !renewalAtLowerAddOns && (plan === null || plan === undefined || expectedAmount !== event.amountCents || plan.currency !== event.currency)) {
+      if (!renewalAtNewPrice && !renewalAtPendingAddOns && (plan === null || plan === undefined || expectedAmount !== event.amountCents || plan.currency !== event.currency)) {
         await recordUnappliedPayment(tx, {
           businessId: subscription.businessId,
           subscriptionId: subscription.id,
@@ -279,8 +279,11 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         // The amount check above refused a renewal with no plan at either price, so this only guards the types.
         if (renewedPlan === null || renewedPlan === undefined) throw new Error(`Subscription ${subscription.id} renewed with no plan to invoice`);
         const activeAddOns = (await findBundledAddOnsForSubscription(tx, subscription.id)).filter((row) => row.status === "active");
-        // This charge no longer includes the add-ons the customer asked to remove, so its invoice does not either.
-        const bundledAddOns = renewalAtLowerAddOns ? activeAddOns.filter((row) => row.endRequestedAt === null) : activeAddOns;
+        // At the new amount the charge covers the add-ons that are staying, those added this month included. At the amount
+        // billed now it covers what that amount was made of: not an add-on added this month and not billed yet.
+        const bundledAddOns = renewalAtPendingAddOns
+          ? activeAddOns.filter((row) => row.endRequestedAt === null)
+          : activeAddOns.filter((row) => row.billedFrom !== null);
         const invoicedPrice = {
           plan: renewedPlan,
           bundledAddOns,
@@ -306,10 +309,10 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         });
         // The first renewal at Premium's price is the move completing: the subscription now names Premium. A redelivery
         // of the same payment recorded nothing new and leaves the subscription as the first delivery left it.
-        if (renewalAtLowerAddOns && !renewal.alreadyRecorded) {
-          await completeBundledAddOnRemovals(tx, { subscriptionId: subscription.id, now: event.paidAt });
+        if (renewalAtPendingAddOns && !renewal.alreadyRecorded) {
+          await completeBundledAddOnChanges(tx, { subscriptionId: subscription.id, now: event.paidAt });
         } else if (subscription.pendingBundledAddOnNetCents !== null && !renewal.alreadyRecorded && !renewalAtNewPrice) {
-          // Renewed at the old amount while a removal was waiting: the provider has not moved the subscription.
+          // Renewed at the old amount while an add-on change was waiting: the provider has not moved the subscription.
           logBillingEvent("warn", "bundled-renewal-at-old-amount", {
             businessId: subscription.businessId,
             subscriptionId: subscription.id,

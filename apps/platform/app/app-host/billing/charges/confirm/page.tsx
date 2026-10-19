@@ -24,6 +24,7 @@ const NOTICE_AFTER: Readonly<Record<ChargeConfirmation, ChargeNotice>> = {
   "not-open": "duplicate",
   "amount-mismatch": "review",
   "upgrade-not-applied": "stale",
+  "add-on-not-applied": "stale",
   invalid: "failed",
 };
 

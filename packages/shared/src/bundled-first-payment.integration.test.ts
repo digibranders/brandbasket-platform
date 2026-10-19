@@ -11,7 +11,7 @@ import {
   findSubscriptionById,
   findTaxInvoiceByPaymentId,
   bundledNetAfterRemoving,
-  completeBundledAddOnRemovals,
+  completeBundledAddOnChanges,
   listAddOnsToContact,
   listBundledAddOnsForBusiness,
   markBundledAddOnContacted,
@@ -235,7 +235,7 @@ describe("a first payment with add-ons", () => {
       const { subscription, growth } = await paidWithTwo();
       await recordBundledAddOnRemoval(dbs.staff.db, { id: growth.id, businessId, pendingBundledAddOnNetCents: 2_375_000, now: NEXT_MONTH });
 
-      await dbs.staff.db.transaction((tx) => completeBundledAddOnRemovals(tx, { subscriptionId: subscription.id, now: MONTH_AFTER }));
+      await dbs.staff.db.transaction((tx) => completeBundledAddOnChanges(tx, { subscriptionId: subscription.id, now: MONTH_AFTER }));
 
       const after = await findSubscriptionById(dbs.staff.db, subscription.id);
       expect(after).toMatchObject({ bundledAddOnNetCents: 2_375_000, pendingBundledAddOnNetCents: null });
@@ -255,7 +255,7 @@ describe("a first payment with add-ons", () => {
       if (only === undefined) throw new Error("Nothing was bundled");
 
       expect(await recordBundledAddOnRemoval(dbs.staff.db, { id: only.id, businessId, pendingBundledAddOnNetCents: 0, now: NEXT_MONTH })).toBe(true);
-      await dbs.staff.db.transaction((tx) => completeBundledAddOnRemovals(tx, { subscriptionId: subscription.id, now: MONTH_AFTER }));
+      await dbs.staff.db.transaction((tx) => completeBundledAddOnChanges(tx, { subscriptionId: subscription.id, now: MONTH_AFTER }));
 
       expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 0, pendingBundledAddOnNetCents: null });
     });
