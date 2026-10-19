@@ -108,40 +108,8 @@ export async function captureErrorText(operation: Promise<unknown>): Promise<str
   throw new Error("Expected the operation to fail, but it succeeded.");
 }
 
-const PLAN_SEED_MIGRATION = new URL("../../migrations/0009_billing.sql", import.meta.url);
-/** Every later migration that changes a seeded plan's price, in the order they run. */
-const PLAN_PRICE_MIGRATIONS: readonly URL[] = [
-  new URL("../../migrations/0012_inr_one_month_plan.sql", import.meta.url),
-  new URL("../../migrations/0021_usd_monthly_plan.sql", import.meta.url),
-  new URL("../../migrations/0023_inr_3500_plan.sql", import.meta.url),
-  new URL("../../migrations/0026_hourly_changes_and_blog_blocks.sql", import.meta.url),
-];
-
-/**
- * Price changes that add plan rows rather than editing them (see 0039 for why), run whole: every statement in the
- * file, in order. Each retires the plans on sale and inserts the new ones.
- */
-const PLAN_REPLACEMENT_MIGRATIONS: readonly URL[] = [
-  new URL("../../migrations/0039_plans_69_and_2999.sql", import.meta.url),
-];
-
-/** 0098 adds the Care plan; its data statements are replayed on top of the schema the tests already run on. */
-const CARE_PLAN_MIGRATION = new URL("../../migrations/0098_care_plan_tier.sql", import.meta.url);
-
-/** 0110 puts Premium on sale at ₹6,999 as a new plan version; the whole file is replayed, statement by statement. */
-const PREMIUM_PRICE_MIGRATION = new URL("../../migrations/0110_premium_price_6999.sql", import.meta.url);
-
-/** 0164 does the same at ₹9,999, on top of 0110. */
-const PREMIUM_PRICE_9999_MIGRATION = new URL("../../migrations/0164_premium_price_9999.sql", import.meta.url);
-
-/** Every statement in a migration file, in order, skipping the comment-only fragments between breakpoints. */
-async function statementsFrom(migrationUrl: URL): Promise<string[]> {
-  const migration = await readFile(migrationUrl, "utf8");
-  return migration
-    .split("--> statement-breakpoint")
-    .map((part) => part.trim())
-    .filter((part) => part.split("\n").some((line) => line.trim() !== "" && !line.trim().startsWith("--")));
-}
+/** The migration that replaced Fynix's Care and Premium rows with Managed Website, the only plan on sale. */
+const MANAGED_PLAN_MIGRATION = new URL("../../migrations/0180_managed_plan.sql", import.meta.url);
 
 /** One statement out of a migration file, found by what it contains, so tests run exactly what ships. */
 async function statementFrom(migrationUrl: URL, marker: string): Promise<string> {
@@ -151,40 +119,27 @@ async function statementFrom(migrationUrl: URL, marker: string): Promise<string>
   return statement;
 }
 
+/** resetTestDatabase empties every table, the seeded plan included. This re-applies the Managed Website INSERT from 0180. */
+export async function seedPlansFromMigrations(owner: DatabaseHandle): Promise<void> {
+  await owner.db.execute(sql.raw(await statementFrom(MANAGED_PLAN_MIGRATION, 'INSERT INTO "plans"')));
+}
+
 /**
- * resetTestDatabase empties every table, the seeded plans included. This re-applies the plan INSERT from 0009,
- * then each later in-place price change (0012, 0023 and 0026 for INR, 0021 for USD), then 0039, which retires those
- * plans and adds the $69 and ₹2,999-plus-GST ones, then 0098, which names those Premium and adds the Care plan, in
- * migration order, then 0110 and 0164, which put Premium on sale at ₹6,999 and then ₹9,999 as new versions, so tests check
- * the prices that actually ship. `withPremiumPrice: false` stops short of 0110, for a test that needs Premium as it was before it.
- * The retired plans are still there, as they are in every real database, for tests about subscriptions sold on them.
+ * A dollar Managed Website plan, for tests about dollar billing. Brandbasket has no dollar price yet (the owner sets it),
+ * so no migration inserts one: this test-only row stands in for it, at the old Care dollar price.
  */
-export async function seedPlansFromMigrations(owner: DatabaseHandle, options: { readonly withPremiumPrice?: boolean } = {}): Promise<void> {
-  await owner.db.execute(sql.raw(await statementFrom(PLAN_SEED_MIGRATION, "INSERT INTO plans")));
-  for (const migration of PLAN_PRICE_MIGRATIONS) {
-    await owner.db.execute(sql.raw(await statementFrom(migration, "UPDATE plans")));
-  }
-  for (const migration of PLAN_REPLACEMENT_MIGRATIONS) {
-    for (const statement of await statementsFrom(migration)) await owner.db.execute(sql.raw(statement));
-  }
-  // Last, as in a real database: Premium's plans are renamed and the Care plan is added beside them.
-  for (const marker of ['UPDATE "plans"', 'INSERT INTO "plans"']) {
-    await owner.db.execute(sql.raw(await statementFrom(CARE_PLAN_MIGRATION, marker)));
-  }
-  if (options.withPremiumPrice !== false) {
-    await applyPremiumPriceMigration(owner);
-    await applyPremiumPrice9999Migration(owner);
-  }
-}
-
-/** Runs 0164, Premium at ₹9,999, on a database that has had 0110. */
-export async function applyPremiumPrice9999Migration(owner: DatabaseHandle): Promise<void> {
-  for (const statement of await statementsFrom(PREMIUM_PRICE_9999_MIGRATION)) await owner.db.execute(sql.raw(statement));
-}
-
-/** Runs 0110, Premium at ₹6,999, on a database that has the plans from before it. */
-export async function applyPremiumPriceMigration(owner: DatabaseHandle): Promise<void> {
-  for (const statement of await statementsFrom(PREMIUM_PRICE_MIGRATION)) await owner.db.execute(sql.raw(statement));
+export async function seedDollarPlanForTests(owner: DatabaseHandle): Promise<void> {
+  await owner.db.execute(
+    sql.raw(`INSERT INTO "plans" (
+      "id", "code", "name", "currency", "tier", "initial_amount_cents", "initial_term_months", "recurring_amount_cents",
+      "included_publishes_per_month", "extra_publish_amount_cents", "included_change_hours", "extra_hour_amount_cents",
+      "included_blog_posts", "blog_post_block_size", "extra_blog_posts_amount_cents", "provider_plan_id",
+      "tax_rate_basis_points", "active"
+    ) VALUES (
+      gen_random_uuid(), 'managed-usd-test', 'Managed Website', 'USD', 'managed', 7500, 1, 7500,
+      3, 300, 1, 1000, 100, 100, 500, NULL, 0, true
+    )`),
+  );
 }
 
 /**

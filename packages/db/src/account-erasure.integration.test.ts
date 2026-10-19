@@ -166,7 +166,7 @@ beforeEach(async () => {
   await seedPlansFromMigrations(dbs.owner);
   await dbs.owner.db.insert(users).values({ id: STAFF_ID, name: "Staff", email: "staff@example.com", emailVerified: true });
   await dbs.owner.db.insert(staffMembers).values({ userId: STAFF_ID });
-  const active = await findActivePlan(dbs.staff.db, "INR", "premium");
+  const active = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (active === null) throw new Error("No active INR plan was seeded");
   plan = active;
 });

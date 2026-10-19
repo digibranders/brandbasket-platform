@@ -285,7 +285,7 @@ export async function listClients(db: Database): Promise<ClientSummary[]> {
 
   return rows.map((row) => ({
     ...row,
-    tier: tiers.get(row.businessId) ?? "premium",
+    tier: tiers.get(row.businessId) ?? "managed",
     owner: owners.get(row.businessId) ?? null,
     project: projectsByBusiness.get(row.businessId) ?? null,
     billing: allBilling.get(row.businessId) ?? NO_BILLING,
@@ -420,7 +420,7 @@ export async function findClientDetail(db: Database, businessId: string): Promis
 
   return {
     ...business,
-    tier: tiers.get(businessId) ?? "premium",
+    tier: tiers.get(businessId) ?? "managed",
     owner: owners.get(businessId) ?? null,
     project,
     billing: billing.get(businessId) ?? NO_BILLING,

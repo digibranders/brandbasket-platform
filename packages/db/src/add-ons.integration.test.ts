@@ -124,7 +124,7 @@ async function pressReleaseFor(businessId: string, createdAt: Date): Promise<str
 
 /** A plan payment for the business, so tests can tell it apart from an add-on payment. */
 async function payForPlan(businessId: string, providerSubscriptionId: string, paidAt: Date): Promise<string> {
-  const plan = await findActivePlan(dbs.staff.db, "INR", "premium");
+  const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (plan === null) throw new Error("No INR plan seeded");
   const subscription = await insertSubscription(dbs.staff.db, { businessId, planId: plan.id, provider: "fake", providerSubscriptionId });
   const { payment } = await recordPaymentAndActivate(dbs.staff.db, {

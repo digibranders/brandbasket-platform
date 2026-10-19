@@ -76,11 +76,10 @@ export const UNAPPLIED_PAYMENT_REASONS = [
 ] as const satisfies readonly PaymentAttentionReason[];
 
 /**
- * What a plan includes (docs/superpowers/specs/2026-10-07-care-plan-design.md). `care` is the website only: the
- * website, its management, the chatbot, the server and hosting. `premium` is everything in Care plus the Brandbasket
- * listing, videos, appointments, better ranking and the social and Google profile management.
+ * The plan a business pays for. Brandbasket sells one, `managed`: Managed Website (docs/plans/11-platform-plans.md).
+ * Digital Growth and Local SEO + AEO are add-ons billed inside its subscription, not tiers.
  */
-export const planTier = pgEnum("plan_tier", ["care", "premium"]);
+export const planTier = pgEnum("plan_tier", ["managed"]);
 export type PlanTier = (typeof planTier.enumValues)[number];
 
 /** One row per currency and tier. The price the customer sees and is charged comes from here, never from copy. */
@@ -93,8 +92,8 @@ export const plans = pgTable(
     code: text("code").notNull().unique(),
     name: text("name").notNull(),
     currency: billingCurrency("currency").notNull(),
-    /** Which of the two plans this price is for. Rows from before the Care plan existed are all Premium's. */
-    tier: planTier("tier").notNull().default("premium"),
+    /** Which plan this price is for: always `managed`. */
+    tier: planTier("tier").notNull().default("managed"),
     /** Paid up front, covering the first `initialTermMonths` months of subscription. */
     initialAmountCents: integer("initial_amount_cents").notNull(),
     initialTermMonths: integer("initial_term_months").notNull(),

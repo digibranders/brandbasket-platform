@@ -42,9 +42,9 @@ async function projectsOf(businessId: string): Promise<{ readonly kind: string; 
 
 describe("the sign-up choice", () => {
   it("is stored with a new business, and its owner can read it", async () => {
-    const { businessId } = await createUnlistedAccountBusiness(dbs.staff.db, { userId: OWNER, businessName: "Meera Shah", signupChoice: "premium" });
+    const { businessId } = await createUnlistedAccountBusiness(dbs.staff.db, { userId: OWNER, businessName: "Meera Shah", signupChoice: "managed" });
     const entry = await withTenantScope(dbs.app.db, { userId: OWNER, businessId }, (tx) => findBusinessEntry(tx, businessId));
-    expect(entry).toEqual({ kind: "listing", signupChoice: "premium" });
+    expect(entry).toEqual({ kind: "listing", signupChoice: "managed" });
   });
 
   it("is stored with a claimed listing's business too", async () => {
@@ -59,7 +59,7 @@ describe("the sign-up choice", () => {
   });
 
   it("opens the business in the currency the caller chose, rupees when it chose none", async () => {
-    const { businessId } = await createUnlistedAccountBusiness(dbs.staff.db, { userId: OWNER, businessName: "Hudson Dental", signupChoice: "care", currency: "USD" });
+    const { businessId } = await createUnlistedAccountBusiness(dbs.staff.db, { userId: OWNER, businessName: "Hudson Dental", signupChoice: "managed", currency: "USD" });
     expect(await findBusinessCurrency(dbs.staff.db, businessId)).toBe("USD");
     const other = await createUnlistedAccountBusiness(dbs.staff.db, { userId: OTHER, businessName: "Meera Shah" });
     expect(await findBusinessCurrency(dbs.staff.db, other.businessId)).toBe("INR");
@@ -72,12 +72,12 @@ describe("the sign-up choice", () => {
   });
 
   it("can be changed for a free listing account, and not for a website client", async () => {
-    const { businessId } = await createUnlistedAccountBusiness(dbs.staff.db, { userId: OWNER, businessName: "Meera Shah", signupChoice: "premium" });
+    const { businessId } = await createUnlistedAccountBusiness(dbs.staff.db, { userId: OWNER, businessName: "Meera Shah", signupChoice: "managed" });
     expect(await setListingSignupChoice(dbs.staff.db, businessId, "listing_only")).toBe(true);
     expect(await findBusinessEntry(dbs.staff.db, businessId)).toEqual({ kind: "listing", signupChoice: "listing_only" });
 
     const client = await dbs.staff.db.transaction((tx) => insertBusiness(tx, "Aster Physio", "INR"));
-    expect(await setListingSignupChoice(dbs.staff.db, client.id, "premium")).toBe(false);
+    expect(await setListingSignupChoice(dbs.staff.db, client.id, "managed")).toBe(false);
     expect(await findBusinessEntry(dbs.staff.db, client.id)).toEqual({ kind: "website", signupChoice: null });
   });
 });
@@ -89,11 +89,11 @@ describe("openMembershipForListingBusiness", () => {
       listingKey: LISTING_KEY,
       businessName: "Smile Dental",
       phone: "+919820000011",
-      signupChoice: "premium",
+      signupChoice: "managed",
     });
 
     expect(await dbs.staff.db.transaction((tx) => openMembershipForListingBusiness(tx, businessId))).toEqual({ businessName: "Smile Dental" });
-    expect(await findBusinessEntry(dbs.staff.db, businessId)).toEqual({ kind: "website", signupChoice: "premium" });
+    expect(await findBusinessEntry(dbs.staff.db, businessId)).toEqual({ kind: "website", signupChoice: "managed" });
     expect(await projectsOf(businessId)).toEqual([{ kind: "initial_build", status: "onboarding" }]);
     // Its page on the local directory stays: the claim is left as it was.
     expect(await findClaimForBusiness(dbs.staff.db, businessId)).toMatchObject({ listingKey: LISTING_KEY });

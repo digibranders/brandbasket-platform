@@ -4,7 +4,8 @@ import { findActivePlan, insertSubscription } from "./queries/billing";
 import { changeLeadCurrency, createLead, isBillingStarted } from "./queries/leads";
 import { createReferralCode } from "./queries/referrals";
 import { businesses, leads, users } from "./schema";
-import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
+import { openTestDatabases, resetTestDatabase, seedDollarPlanForTests,
+  seedPlansFromMigrations, type TestDatabases } from "./testing";
 
 const STAFF_USER = "staff-user-currency";
 
@@ -36,7 +37,7 @@ async function signUp(): Promise<void> {
 }
 
 async function startCheckout(): Promise<void> {
-  const plan = await findActivePlan(dbs.staff.db, "USD", "premium");
+  const plan = await findActivePlan(dbs.staff.db, "USD", "managed");
   if (plan === null) throw new Error("no USD plan seeded");
   await insertSubscription(dbs.staff.db, {
     businessId,
@@ -59,6 +60,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
+  await seedDollarPlanForTests(dbs.owner);
   await dbs.owner.db.insert(users).values({ id: STAFF_USER, name: "Staff", email: "staff@example.com", emailVerified: true });
   const created = await createLead(dbs.staff.db, {
     name: "Siddique",

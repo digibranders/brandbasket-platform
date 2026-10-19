@@ -34,6 +34,7 @@ import {
   captureErrorText,
   openTestDatabases,
   resetTestDatabase,
+  seedDollarPlanForTests,
   seedPlansFromMigrations,
   type TestDatabases,
 } from "./testing";
@@ -52,7 +53,7 @@ let businessB = "";
 const scopeA = (): { userId: string; businessId: string } => ({ userId: USER_A, businessId: businessA });
 
 async function usdPlan(): Promise<Plan> {
-  const plan = await findActivePlan(dbs.staff.db, "USD", "premium");
+  const plan = await findActivePlan(dbs.staff.db, "USD", "managed");
   if (plan === null) throw new Error("No USD plan was seeded");
   return plan;
 }
@@ -119,6 +120,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
+  await seedDollarPlanForTests(dbs.owner);
   await dbs.staff.db.insert(users).values([
     { id: USER_A, name: "Ana Diaz", email: "ana@example.com" },
     { id: USER_B, name: "Ben Ortiz", email: "ben@example.com" },

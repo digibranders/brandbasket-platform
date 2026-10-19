@@ -287,12 +287,11 @@ export function paymentWasApplied(): SQL {
 }
 
 /**
- * The plan a sign-up choice buys: Care for an owner who chose it, Premium for everyone else. A business that chose
- * neither (a free listing, an account from before the choice was asked, one made from a setup link) is priced as
- * Premium, the plan every client had before Care existed.
+ * The plan a sign-up choice buys. Brandbasket sells one plan, so every choice (Managed Website, a free listing, an
+ * account from a setup link) is priced as Managed Website. The choice stays a parameter so callers read the same.
  */
-export function planTierForSignupChoice(choice: SignupChoice | null): PlanTier {
-  return choice === "care" ? "care" : "premium";
+export function planTierForSignupChoice(_choice: SignupChoice | null): PlanTier {
+  return "managed";
 }
 
 /**

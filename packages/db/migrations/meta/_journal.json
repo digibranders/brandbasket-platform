@@ -1240,6 +1240,13 @@
       "when": 1792157683837,
       "tag": "0179_chatbot_rename_grant",
       "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1792408377760,
+      "tag": "0180_managed_plan",
+      "breakpoints": true
     }
   ]
 }

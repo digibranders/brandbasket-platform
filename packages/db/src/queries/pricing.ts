@@ -98,9 +98,7 @@ export async function updateExtraPrices(
     if (value !== undefined) assertPrice(value, what);
   }
   return db.transaction(async (tx) => {
-    // The extras are the same for both plans, so either one's price shows what they are now.
-    const current =
-      (await findActivePlan(tx, input.currency, "premium")) ?? (await findActivePlan(tx, input.currency, "care"));
+    const current = await findActivePlan(tx, input.currency, "managed");
     if (current === null) throw new NoActivePlanError(input.currency);
 
     const changes = EXTRA_FIELDS.flatMap(({ key, field }) => {

@@ -50,6 +50,7 @@ import {
   captureErrorText,
   openTestDatabases,
   resetTestDatabase,
+  seedDollarPlanForTests,
   seedPlansFromMigrations,
   type TestDatabases,
 } from "./testing";
@@ -75,7 +76,7 @@ function idForSlug(rows: readonly { id: string; slug: string }[], slug: string):
 }
 
 async function usdPlan(): Promise<Plan> {
-  const plan = await findActivePlan(dbs.staff.db, "USD", "premium");
+  const plan = await findActivePlan(dbs.staff.db, "USD", "managed");
   if (plan === null) throw new Error("No USD plan was seeded");
   return plan;
 }
@@ -152,6 +153,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
+  await seedDollarPlanForTests(dbs.owner);
   await dbs.staff.db.insert(users).values([
     { id: USER_A, name: "Ana Diaz", email: "ana@example.com" },
     { id: USER_B, name: "Ben Ortiz", email: "ben@example.com" },
@@ -589,7 +591,7 @@ describe("openCheckoutSubscription", () => {
 
     expect(await findFirstPayment(dbs.staff.db, businessA)).toMatchObject({
       provider: "manual",
-      amountCents: 6900,
+      amountCents: 7500,
       paidAt: PAID_AT,
     });
     const stored = await dbs.staff.db
@@ -658,7 +660,7 @@ describe("findBillingState", () => {
     expect(own).toMatchObject({
       currency: "USD",
       subscription: { status: "incomplete", providerSubscriptionId: "fake_sub_a" },
-      plan: { code: "care-usd-2026-09", initialAmountCents: 6900, initialTermMonths: 1 },
+      plan: { code: "managed-usd-test", initialAmountCents: 7500, initialTermMonths: 1 },
     });
 
     const other = await withTenantScope(dbs.app.db, scopeA(), (tx) => findBillingState(tx, businessB));
@@ -672,7 +674,7 @@ describe("findBillingState", () => {
     expect(state).toMatchObject({
       currency: "INR",
       subscription: null,
-      plan: { code: "premium-inr-2026-10-9999", initialAmountCents: 999900, taxRateBasisPoints: 1800, initialTermMonths: 1 },
+      plan: { code: "managed-inr-2026-10", initialAmountCents: 300000, taxRateBasisPoints: 1800, initialTermMonths: 1 },
     });
   });
 
@@ -714,7 +716,7 @@ describe("listClients billing", () => {
         paidThroughAt: THREE_MONTHS_ON,
         commitmentEndsAt: THREE_MONTHS_ON,
       },
-      firstPayment: { amountCents: 6900, currency: "USD", provider: "fake", paidAt: PAID_AT, manual: null },
+      firstPayment: { amountCents: 7500, currency: "USD", provider: "fake", paidAt: PAID_AT, manual: null },
     });
     // Opening a checkout does not make a client; paying does.
     expect(unpaid).toBeUndefined();

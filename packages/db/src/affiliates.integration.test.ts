@@ -110,7 +110,7 @@ beforeEach(async () => {
     .values({ slug: "curry-cook", name: "Curry Cook", currency: "INR" })
     .returning({ id: businesses.id });
   businessId = rows[0]?.id ?? "";
-  const active = await findActivePlan(dbs.staff.db, "INR", "premium");
+  const active = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (active === null) throw new Error("No active INR plan was seeded");
   plan = active;
 });

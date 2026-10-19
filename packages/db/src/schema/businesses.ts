@@ -26,7 +26,7 @@ export type BusinessKind = (typeof businessKind.enumValues)[number];
  * longer offered, but accounts opened that way keep it. A `listing` business that chose `care` or `premium` is held
  * on that plan's payment page until it pays, or changes its mind to `listing_only`.
  */
-export const signupChoice = pgEnum("signup_choice", ["own_website", "listing_only", "premium", "care"]);
+export const signupChoice = pgEnum("signup_choice", ["own_website", "listing_only", "managed"]);
 export type SignupChoice = (typeof signupChoice.enumValues)[number];
 
 /** A business is the tenant: the isolation, billing and hosting boundary. */
