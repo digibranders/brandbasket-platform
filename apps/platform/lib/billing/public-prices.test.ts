@@ -19,7 +19,7 @@ describe("publicPrices", () => {
       includedBlogPosts: 100,
       blogPostBlockSize: 100,
       extraBlogPostsAmountCents: 47_500,
-      tier: "premium",
+      tier: "managed",
       providerPlanId: "plan_secretish",
       taxRateBasisPoints: 1800,
     } satisfies Plan;

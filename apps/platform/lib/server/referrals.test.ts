@@ -44,7 +44,7 @@ const PLAN = {
   id: "plan-inr",
   code: "care-inr",
   name: "Brandbasket care plan",
-  tier: "premium",
+  tier: "managed",
   currency: "INR",
   initialAmountCents: 350_000,
   initialTermMonths: 1,
@@ -76,7 +76,7 @@ function code(overrides: Partial<ReferralCode> = {}): ReferralCode {
 }
 
 function state(overrides: Partial<BillingState> = {}): BillingState {
-  return { currency: "INR", tier: "premium", upgradePaid: false, subscription: null, hasEverPaid: false, paymentUnderReview: false, plan: PLAN, ...overrides };
+  return { currency: "INR", tier: "managed", upgradePaid: false, subscription: null, hasEverPaid: false, paymentUnderReview: false, plan: PLAN, ...overrides };
 }
 
 const customer = {

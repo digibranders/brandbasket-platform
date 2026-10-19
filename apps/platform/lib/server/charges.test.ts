@@ -17,8 +17,6 @@ vi.mock("@brandbasket/db", async () => {
 });
 vi.mock("@brandbasket/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
-// What a paid move up does next is covered by plan-upgrade-finish and the shared integration test.
-vi.mock("./plan-upgrade-finish", () => ({ finishUpgradeForCharge: vi.fn() }));
 vi.mock("./db", () => ({
   getAppDb: () => ({ name: "app-db" }),
   getStaffDb: () => ({ name: "staff-db", transaction: (fn: (tx: unknown) => unknown) => fn({ name: "staff-tx" }) }),
@@ -33,7 +31,6 @@ import {
 } from "@brandbasket/db";
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
 import { getBillingProvider } from "./billing";
-import { finishUpgradeForCharge } from "./plan-upgrade-finish";
 import {
   confirmFakeChargePayment,
   openBlogUnlock,
@@ -156,21 +153,6 @@ describe("confirmFakeChargePayment", () => {
       { name: "staff-tx" },
       expect.objectContaining({ chargeId: CHARGE_ID, providerPaymentId: "fake_pay_1", amountCents: 336_300, now: NOW }),
     );
-  });
-
-  it("finishes a paid move up at the provider once the payment has committed, and not for a payment that settled nothing", async () => {
-    vi.mocked(getBillingProvider).mockReturnValue(provider({ confirmChargePayment: vi.fn().mockResolvedValue(confirmed) }));
-    await confirmFakeChargePayment(TENANT, { token: "t" }, NOW);
-    expect(finishUpgradeForCharge).toHaveBeenCalledWith(CHARGE_ID, NOW);
-
-    vi.mocked(finishUpgradeForCharge).mockClear();
-    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValueOnce({ outcome: "upgrade-not-applied", alreadyRecorded: false, payment: {} } as never);
-    await expect(confirmFakeChargePayment(TENANT, { token: "t" }, NOW)).resolves.toBe("upgrade-not-applied");
-    expect(finishUpgradeForCharge).not.toHaveBeenCalled();
-
-    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValueOnce({ outcome: "not-open", alreadyRecorded: false, payment: {} } as never);
-    await confirmFakeChargePayment(TENANT, { token: "t" }, NOW);
-    expect(finishUpgradeForCharge).not.toHaveBeenCalled();
   });
 
   it("refuses a link for another business, and a link that does not verify, recording nothing", async () => {

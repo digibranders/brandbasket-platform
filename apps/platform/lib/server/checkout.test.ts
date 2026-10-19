@@ -77,7 +77,7 @@ const PLAN = { id: "plan-usd", currency: "USD", initialAmountCents: 22500, initi
 const customer: GrantedCustomer = {
   user: { id: "user-a", email: "ana@example.com", name: "Ana Diaz", emailConfirmed: true, phone: null },
   tenant: { userId: "user-a", businessId: BUSINESS_ID, businessName: "Riverside Plumbing", role: "owner" },
-  billing: { status: "unpaid", hasAccess: false, subscription: null, tier: "premium", upgradePaid: false, plan: PLAN, paymentUnderReview: false, renewalFailingUntil: null },
+  billing: { status: "unpaid", hasAccess: false, subscription: null, tier: "managed", upgradePaid: false, plan: PLAN, paymentUnderReview: false, renewalFailingUntil: null },
 };
 
 const COMPLETE: OnboardingSnapshot = {
@@ -120,7 +120,7 @@ function subscription(overrides: Partial<Subscription>): Subscription {
 }
 
 function billingState(latest: Subscription | null, history: Partial<BillingState> = {}): BillingState {
-  return { currency: "USD", tier: "premium", upgradePaid: false, subscription: latest, hasEverPaid: false, paymentUnderReview: false, plan: PLAN, ...history };
+  return { currency: "USD", tier: "managed", upgradePaid: false, subscription: latest, hasEverPaid: false, paymentUnderReview: false, plan: PLAN, ...history };
 }
 
 /** The same newest subscription seen by both transactions, unless a test says otherwise. */
@@ -442,11 +442,11 @@ describe("startMembershipCheckoutFor", () => {
   const owner: GrantedCustomer = {
     user: { id: "user-a", email: "919820011223@phone.brandbasket.invalid", name: "Meera Shah", emailConfirmed: false, phone: "+919820011223" },
     tenant: { userId: "user-a", businessId: BUSINESS_ID, businessName: "Smile Dental", role: "owner" },
-    billing: { status: "unpaid", hasAccess: false, subscription: null, tier: "premium", upgradePaid: false, plan: INR_PLAN, paymentUnderReview: false, renewalFailingUntil: null },
+    billing: { status: "unpaid", hasAccess: false, subscription: null, tier: "managed", upgradePaid: false, plan: INR_PLAN, paymentUnderReview: false, renewalFailingUntil: null },
   };
 
   beforeEach(() => {
-    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "premium" });
+    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "managed" });
     vi.mocked(findActivePlan).mockResolvedValue(INR_PLAN);
     vi.mocked(findBillingState).mockResolvedValue(billingState(null, { currency: "INR", plan: INR_PLAN }));
     // A free listing account has no project and has answered nothing.
@@ -454,7 +454,7 @@ describe("startMembershipCheckoutFor", () => {
   });
 
   it("opens the plan's checkout for a free listing account that has no project and no answers", async () => {
-    const url = redirectUrl(await startMembershipCheckoutFor(owner, NOW, "premium"));
+    const url = redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed"));
 
     expect(url.pathname).toBe("/billing/confirm");
     expect(readOnboardingSnapshot).not.toHaveBeenCalled();
@@ -479,7 +479,7 @@ describe("startMembershipCheckoutFor", () => {
     vi.mocked(ensureDiscountPlan).mockResolvedValue("plan_discounted");
     const started = vi.spyOn(provider, "startCheckout");
 
-    redirectUrl(await startMembershipCheckoutFor(owner, NOW, "premium"));
+    redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed"));
 
     expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 50_000, 0);
     expect(started).toHaveBeenCalledWith(expect.objectContaining({ providerPlanId: "plan_discounted", discountAmountCents: 50_000 }));
@@ -505,7 +505,7 @@ describe("startMembershipCheckoutFor", () => {
     vi.mocked(findRedeemableReferralCode).mockResolvedValue(coupon);
     vi.mocked(ensureDiscountPlan).mockRejectedValue(new Error("Razorpay is down"));
 
-    const outcome = await startMembershipCheckoutFor(owner, NOW, "premium");
+    const outcome = await startMembershipCheckoutFor(owner, NOW, "managed");
 
     expect(outcome).toMatchObject({ kind: "refused" });
     expect(events).not.toContain("provider:start");
@@ -513,20 +513,17 @@ describe("startMembershipCheckoutFor", () => {
     expect(logged).toHaveBeenCalledWith(expect.stringContaining("discount-plan-failed"));
   });
 
-  it("prices the checkout from the plan whose page the owner pressed Pay on, whatever they chose at sign-up", async () => {
-    await startMembershipCheckoutFor(owner, NOW, "care");
-    expect(findActivePlan).toHaveBeenLastCalledWith(expect.anything(), "INR", "care");
-
-    await startMembershipCheckoutFor(owner, NOW, "premium");
-    expect(findActivePlan).toHaveBeenLastCalledWith(expect.anything(), "INR", "premium");
+  it("prices the checkout from the active plan for the tier on the page and the business's currency", async () => {
+    await startMembershipCheckoutFor(owner, NOW, "managed");
+    expect(findActivePlan).toHaveBeenLastCalledWith(expect.anything(), "INR", "managed");
   });
 
   it("refuses a website client, who pays on Check and send, and opens nothing", async () => {
     vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: null });
 
-    await expect(startMembershipCheckoutFor(owner, NOW, "premium")).resolves.toMatchObject({
+    await expect(startMembershipCheckoutFor(owner, NOW, "managed")).resolves.toMatchObject({
       kind: "refused",
-      problem: { message: expect.stringMatching(/already a Premium member/) },
+      problem: { message: expect.stringMatching(/already paid for Managed Website/) },
     });
     expect(events).toEqual([]);
   });
@@ -534,7 +531,7 @@ describe("startMembershipCheckoutFor", () => {
   it("shares the checkout rate limit, checked before anything is read", async () => {
     vi.mocked(consumeRateLimit).mockResolvedValue({ allowed: false, remaining: 0, retryAfterSeconds: 600 });
 
-    await expect(startMembershipCheckoutFor(owner, NOW, "premium")).resolves.toMatchObject({ kind: "refused" });
+    await expect(startMembershipCheckoutFor(owner, NOW, "managed")).resolves.toMatchObject({ kind: "refused" });
     expect(consumeRateLimit).toHaveBeenCalledWith(appDb, `checkout:business:${BUSINESS_ID}`, CHECKOUT_RATE_LIMIT);
     expect(findBusinessEntry).not.toHaveBeenCalled();
     expect(events).toEqual([]);
@@ -547,7 +544,7 @@ describe("startMembershipCheckoutFor", () => {
       hasEverPaid: true,
     });
 
-    await expect(startMembershipCheckoutFor(owner, NOW, "premium")).resolves.toEqual({ kind: "redirect", url: "/" });
+    await expect(startMembershipCheckoutFor(owner, NOW, "managed")).resolves.toEqual({ kind: "redirect", url: "/" });
     expect(openCheckoutSubscription).not.toHaveBeenCalled();
   });
 
@@ -556,7 +553,7 @@ describe("startMembershipCheckoutFor", () => {
     const opened = await real.startCheckout({ businessId: BUSINESS_ID, businessName: "Smile Dental", email: owner.user.email, plan: INR_PLAN, discountAmountCents: 0 });
     newest(subscription({ planId: "plan-inr", providerSubscriptionId: opened.providerSubscriptionId }), { currency: "INR", plan: INR_PLAN });
 
-    expect(redirectUrl(await startMembershipCheckoutFor(owner, NOW, "premium")).pathname).toBe("/billing/confirm");
+    expect(redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed")).pathname).toBe("/billing/confirm");
     expect(openCheckoutSubscription).not.toHaveBeenCalled();
   });
 });

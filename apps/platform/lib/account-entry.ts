@@ -1,5 +1,7 @@
 import { BRANDBASKET_DEFAULT_CHOICE, offersChoice, type Brand } from "@/lib/brand";
 import { readJoinChoice, type JoinChoice } from "@/lib/join-form";
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 
 /*
  * The one entry page (/login): everyone signs in and everyone creates their account here (docs/superpowers/specs/
@@ -17,10 +19,12 @@ export const ENTRY_LEDE_SLOT_ID = "entry-lede-action";
 
 /** Opens the page on its Create account view. */
 const NEW_PARAM = "new";
-/** Opens the Create account view with a plan already chosen: the website links to `care` and `premium`. */
+/** The add-ons the website's basket chose, comma separated: `digital-growth,local-seo-aeo`. */
+const ADDONS_PARAM = "addons";
+/** Opens the Create account view with a plan already chosen: the website links to `managed`. */
 const PLAN_PARAM = "plan";
 /** What the address calls each plan: the database's `listing_only` is `free` here, so the link reads as the owner thinks of it. */
-const PLAN_PARAM_VALUES: Readonly<Record<JoinChoice, string>> = { listing_only: "free", care: "care", premium: "premium" };
+const PLAN_PARAM_VALUES: Readonly<Record<JoinChoice, string>> = { listing_only: "free", managed: "managed" };
 
 type SearchParams = Readonly<Record<string, string | string[] | undefined>>;
 
@@ -32,8 +36,10 @@ export interface EntryRequest {
   readonly view: "sign-in" | "create";
   /** The choice the link makes for the visitor, which they can still change; null asks the question. */
   readonly choice: JoinChoice | null;
-  /** The plan the question opens with already ticked, for a brand that has a default (Brandbasket: Care); null ticks none. */
+  /** The plan the question opens with already ticked, for a brand that has a default (Brandbasket: Managed Website); null ticks none. */
   readonly preselected: JoinChoice | null;
+  /** The add-ons the website's basket chose (`?addons=`), catalogue ids only: ticked on the plan's page after sign-up. */
+  readonly addOns: readonly MonthlyAddOnId[];
 }
 
 /**
@@ -55,6 +61,7 @@ export function readEntryRequest(params: SearchParams, brand: Brand): EntryReque
     view: asksToCreate ? "create" : "sign-in",
     choice,
     preselected: sellsFree ? null : BRANDBASKET_DEFAULT_CHOICE,
+    addOns: readBundleSelection([params[ADDONS_PARAM] ?? ""].flat().join(",").split(",")),
   };
 }
 

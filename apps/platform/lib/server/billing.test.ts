@@ -73,7 +73,7 @@ function subscription(status: Subscription["status"], paidThroughAt: Date | null
 function billingState(sub: Subscription | null, overrides: Partial<BillingState> = {}): BillingState {
   return {
     currency: "USD",
-    tier: "premium",
+    tier: "managed",
     upgradePaid: false,
     subscription: sub,
     hasEverPaid: sub !== null && sub.status !== "incomplete",
@@ -117,57 +117,27 @@ describe("requireCustomerAccess for free listing accounts", () => {
   });
 });
 
-describe("requireCustomerAccess for an account that chose Premium and has not paid", () => {
+describe("requireCustomerAccess for an account that chose Managed Website and has not paid", () => {
   beforeEach(() => {
-    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "premium" });
+    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "managed" });
     vi.mocked(findBillingState).mockResolvedValue(billingState(null));
   });
 
-  it("holds it on the membership page, from a website client's page and from a listing page alike", async () => {
-    await expect(requireCustomerAccess()).rejects.toThrow("redirect:/premium");
-    await expect(requireCustomerAccess({ listingAccount: "allow" })).rejects.toThrow("redirect:/premium");
+  it("holds it on the plan page, from a website client's page and from a listing page alike", async () => {
+    await expect(requireCustomerAccess()).rejects.toThrow("redirect:/plan");
+    await expect(requireCustomerAccess({ listingAccount: "allow" })).rejects.toThrow("redirect:/plan");
     expect(findBillingState).not.toHaveBeenCalled();
   });
 
   it("lets it into the membership page and the payment pages, which say so", async () => {
     const access = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
     expect(access.tenant.businessId).toBe(BUSINESS_ID);
+    expect(access.billing.tier).toBe("managed");
   });
 
   it("opens the client's dashboard once the payment has made it a website client", async () => {
-    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: "premium" });
+    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: "managed" });
     expect((await requireCustomerAccess()).tenant.businessId).toBe(BUSINESS_ID);
-  });
-});
-
-describe("requireCustomerAccess for an account that chose Care and has not paid", () => {
-  beforeEach(() => {
-    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "care" });
-    vi.mocked(findBillingState).mockResolvedValue(billingState(null, { tier: "care" }));
-  });
-
-  it("holds it on the Care page, from a website client's page and from a listing page alike", async () => {
-    await expect(requireCustomerAccess()).rejects.toThrow("redirect:/care");
-    await expect(requireCustomerAccess({ listingAccount: "allow" })).rejects.toThrow("redirect:/care");
-    expect(findBillingState).not.toHaveBeenCalled();
-  });
-
-  it("lets it into the plan pages and the payment pages, which say so", async () => {
-    const access = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
-    expect(access.billing.tier).toBe("care");
-  });
-});
-
-describe("requireCustomerAccess for pages that are Premium's", () => {
-  it("sends a Care client Home from a Premium page, and lets a Premium client in", async () => {
-    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: "care" });
-    vi.mocked(findBillingState).mockResolvedValue(billingState(null, { tier: "care" }));
-    await expect(requireCustomerAccess({ plan: "premium" })).rejects.toThrow("redirect:/");
-    // The same client reaches a page that is not Premium's.
-    expect((await requireCustomerAccess()).billing.tier).toBe("care");
-
-    vi.mocked(findBillingState).mockResolvedValue(billingState(null, { tier: "premium" }));
-    expect((await requireCustomerAccess({ plan: "premium" })).billing.tier).toBe("premium");
   });
 });
 

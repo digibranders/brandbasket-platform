@@ -34,23 +34,14 @@ describe("chargeReturnHref", () => {
     expect(chargeReturnHref("charge", "paid")).toBe("/billing?charge=paid");
   });
 
-  it("returns a won ad spot to Advertise and a move up to Upgrade", () => {
+  it("returns a won ad spot to Advertise", () => {
     expect(chargeReturnHref("directory_ad", "failed")).toBe("/advertise?notice=pay-failed");
-    expect(chargeReturnHref("plan_upgrade", "paid")).toBe("/upgrade?payment=paid");
   });
 
-  it("returns a press release to the Add-ons page, with a notice for every outcome", () => {
-    const expected: Readonly<Record<ChargeNotice, string>> = {
-      paid: "received",
-      processing: "confirming",
-      failed: "failed",
-      duplicate: "review",
-      review: "review",
-      stale: "review",
-      "not-open": "nothing-due",
-    };
-    for (const [notice, payment] of Object.entries(expected)) {
-      expect(chargeReturnHref("press_release", notice as ChargeNotice)).toBe(`/add-ons?payment=${payment}`);
+  it("returns a plan upgrade or a press release to Billing like any other charge, for every outcome", () => {
+    const notices: readonly ChargeNotice[] = ["paid", "processing", "failed", "duplicate", "review", "stale", "not-open"];
+    for (const kind of ["plan_upgrade", "press_release"]) {
+      for (const notice of notices) expect(chargeReturnHref(kind, notice), `${kind} ${notice}`).toBe(`/billing?charge=${notice}`);
     }
   });
 });

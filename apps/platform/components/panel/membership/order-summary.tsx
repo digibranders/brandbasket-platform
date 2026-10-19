@@ -11,7 +11,7 @@ import { orderSummary, type MembershipTier } from "@/lib/membership";
 import type { MembershipCheckoutView } from "@/lib/server/membership-checkout";
 import { LIFETIME_OFFER_PERCENT } from "@brandbasket/shared/lib/billing/lifetime-offer";
 import { describeDiscountedPlanTerms } from "@brandbasket/shared/lib/billing/terms";
-import { startMembership } from "@/app/app-host/(protected)/premium/actions";
+import { startMembership } from "@/app/app-host/(protected)/plan/actions";
 
 interface OrderSummaryProps {
   readonly tier: MembershipTier;

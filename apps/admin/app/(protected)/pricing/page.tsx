@@ -143,8 +143,7 @@ function PriceSheetForm({ plan }: { readonly plan: Plan }): ReactElement {
         </div>
         <p className="mt-6 max-w-2xl border-l-2 border-gold-deep py-1 pl-4 text-sm leading-relaxed">
           A new monthly price creates a new Razorpay plan: customers who already subscribe keep paying their current
-          price. Care and Premium have their own monthly price; the extras are the same for both and apply to everyone
-          from now on. Extras already added keep their price.
+          price. The extras apply to everyone from now on. Extras already added keep their price.
         </p>
         <GatedSubmitButton className={`${buttonPrimary} mt-6`} pendingLabel="Saving…">
           Save {TIER_LABELS[plan.tier]} {plan.currency} prices

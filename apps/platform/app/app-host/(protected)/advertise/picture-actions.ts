@@ -17,7 +17,7 @@ function back(notice: AdvertiseNotice): never {
  * featured photo is removed from the Business profile (removePhotoAction).
  */
 export async function removeAdPictureAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   if (parsePictureKind(formData.get("kind")) !== "ad") back("picture-invalid");
   await removeListingPictures({ staffDb: getStaffDb(), storage: getMediaStorage() }, customer.tenant, "ad", new Date());
   back("picture-removed");

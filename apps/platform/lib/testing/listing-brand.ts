@@ -6,7 +6,7 @@ import { BRAND, type Brand } from "@/lib/brand";
  */
 export const LISTING_BRAND: Brand = {
   ...BRAND,
-  joinChoices: ["listing_only", "care", "premium"],
+  joinChoices: ["listing_only", "managed"],
   showsListing: true,
   about: "A directory listing for your business, with a website plan you can add.",
 };

@@ -45,7 +45,7 @@ interface DoctorsPageProps {
  */
 export default async function DoctorsPage({ searchParams }: DoctorsPageProps): Promise<ReactElement> {
   await requireAppointmentsModule();
-  const { tenant } = await requireCustomerAccess({ plan: "premium" });
+  const { tenant } = await requireCustomerAccess();
 
   const sp = await searchParams;
   const requestedId = typeof sp.doctor === "string" ? sp.doctor : null;

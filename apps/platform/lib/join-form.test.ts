@@ -95,30 +95,21 @@ describe("parseJoinForm", () => {
     });
   });
 
-  it("reads what the owner wants: only the free listing, the Care plan, or the Premium membership", () => {
-    for (const choice of ["listing_only", "care", "premium"] as const) {
+  it("reads what the owner wants: only the free listing or Managed Website", () => {
+    for (const choice of ["listing_only", "managed"] as const) {
       expect(parseJoinForm(form({ ...account, businessName: "Smile Dental", choice }))).toMatchObject({ success: true, data: { choice } });
     }
   });
 
-  it("asks a Care sign-up for the business's name too, since it pays before anything else", () => {
-    const care = { ...account, choice: "care" };
-    expect(parseJoinForm(form(care))).toEqual({ success: false, message: "Tell us your business's name." });
-    expect(parseJoinForm(form({ ...care, businessName: "Smile Dental" }))).toMatchObject({
+  it("asks a Managed Website sign-up for the business's name, as one clean line, since it pays before anything else", () => {
+    const managed = { ...account, choice: "managed" };
+    expect(parseJoinForm(form(managed))).toEqual({ success: false, message: "Tell us your business's name." });
+    expect(parseJoinForm(form({ ...managed, businessName: "  " }))).toEqual({ success: false, message: "Tell us your business's name." });
+    expect(parseJoinForm(form({ ...managed, businessName: " Smile\n Dental\u0007 " }))).toMatchObject({
       success: true,
-      data: { choice: "care", businessName: "Smile Dental" },
+      data: { choice: "managed", businessName: "Smile Dental" },
     });
-  });
-
-  it("asks a Premium sign-up for the business's name, as one clean line", () => {
-    const premium = { ...account, choice: "premium" };
-    expect(parseJoinForm(form(premium))).toEqual({ success: false, message: "Tell us your business's name." });
-    expect(parseJoinForm(form({ ...premium, businessName: "  " }))).toEqual({ success: false, message: "Tell us your business's name." });
-    expect(parseJoinForm(form({ ...premium, businessName: " Smile\n Dental\u0007 " }))).toMatchObject({
-      success: true,
-      data: { choice: "premium", businessName: "Smile Dental" },
-    });
-    expect(parseJoinForm(form({ ...premium, businessName: "x".repeat(201) }))).toEqual({ success: false, message: "That business name is too long." });
+    expect(parseJoinForm(form({ ...managed, businessName: "x".repeat(201) }))).toEqual({ success: false, message: "That business name is too long." });
   });
 
   it("takes no business name from a free sign-up, which names the business when it adds it", () => {
@@ -131,6 +122,8 @@ describe("parseJoinForm", () => {
     expect(parseJoinForm(form(unanswered))).toEqual(refusal);
     expect(parseJoinForm(form({ ...account, choice: "website" }))).toEqual(refusal);
     expect(parseJoinForm(form({ ...account, choice: "own_website" }))).toEqual(refusal);
+    expect(parseJoinForm(form({ ...account, businessName: "Smile Dental", choice: "care" }))).toEqual(refusal);
+    expect(parseJoinForm(form({ ...account, businessName: "Smile Dental", choice: "premium" }))).toEqual(refusal);
   });
 
   it("asks for a name, an email address and a long enough password, in the order the form shows them", () => {
@@ -149,22 +142,23 @@ describe("parseJoinForm", () => {
   });
 
   it("keeps the other rules: a plan, the terms box, a long enough password, and the business's name for a paid plan", () => {
-    const care = { ...account, choice: "care", businessName: " Smile Dental " };
-    expect(parseJoinForm(form({ ...care, choice: "" }))).toEqual({ success: false, message: "Choose a plan to continue." });
-    expect(parseJoinForm(form({ ...care, agree: "" }))).toEqual({ success: false, message: "Tick the box to agree to the Terms and Privacy Notice." });
-    expect(parseJoinForm(form({ ...care, password: "short" }))).toEqual({ success: false, message: "Use at least 8 characters." });
-    expect(parseJoinForm(form({ ...care, businessName: " " }))).toEqual({ success: false, message: "Tell us your business's name." });
+    const managed = { ...account, choice: "managed", businessName: " Smile Dental " };
+    expect(parseJoinForm(form({ ...managed, choice: "" }))).toEqual({ success: false, message: "Choose a plan to continue." });
+    expect(parseJoinForm(form({ ...managed, agree: "" }))).toEqual({ success: false, message: "Tick the box to agree to the Terms and Privacy Notice." });
+    expect(parseJoinForm(form({ ...managed, password: "short" }))).toEqual({ success: false, message: "Use at least 8 characters." });
+    expect(parseJoinForm(form({ ...managed, businessName: " " }))).toEqual({ success: false, message: "Tell us your business's name." });
   });
 });
 
 describe("readJoinChoice", () => {
-  it("reads one of the three choices, and nothing else", () => {
-    expect(readJoinChoice("premium")).toBe("premium");
-    expect(readJoinChoice("care")).toBe("care");
-    expect(readJoinChoice("own_website")).toBeNull();
+  it("reads one of the two choices, and nothing else, including the retired plans", () => {
+    expect(readJoinChoice("managed")).toBe("managed");
     expect(readJoinChoice("listing_only")).toBe("listing_only");
-    expect(readJoinChoice("Premium")).toBeNull();
+    expect(readJoinChoice("care")).toBeNull();
+    expect(readJoinChoice("premium")).toBeNull();
+    expect(readJoinChoice("own_website")).toBeNull();
+    expect(readJoinChoice("Managed")).toBeNull();
     expect(readJoinChoice(undefined)).toBeNull();
-    expect(readJoinChoice(["premium"])).toBeNull();
+    expect(readJoinChoice(["managed"])).toBeNull();
   });
 });

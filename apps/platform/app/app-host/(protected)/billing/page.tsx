@@ -1,9 +1,8 @@
 import type { CurrentPaymentMethod } from "@brandbasket/db";
-import { offersChoice, supportEmailOf } from "@/lib/brand";
+import { supportEmailOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { EmailUs } from "@/components/panel/email-us";
 import type { Metadata } from "next";
-import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 import { ArrowIcon } from "@brandbasket/shared/ui/icons";
 import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
@@ -23,7 +22,6 @@ import { ReactivatePlan } from "@/components/panel/billing/reactivate-plan";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import { paymentMethodView, renewsAutomatically } from "@/lib/billing/payment-method-view";
 import { CHARGE_NOTICES, readChargeNotice } from "@/lib/billing/charge-notices";
-import { UPGRADE_PATH } from "@/lib/membership";
 import { billingMonths } from "@/lib/billing/billing-months";
 import { listOpenCustomerCharges } from "@/lib/server/charges";
 import { findCustomerPaymentMethod, findReactivationPlan, listCustomerReceipts } from "@/lib/server/billing";
@@ -271,20 +269,6 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
         ) : (
           <PlanSummary plan={plan} subscription={subscription} now={new Date()} brand={brand} />
         )}
-        {billing.upgradePaid && subscription?.paidThroughAt != null ? (
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft">
-            You’ve moved up to Premium. Your month is paid, and it’s Premium’s price from{" "}
-            <LocalDate iso={subscription.paidThroughAt.toISOString()} />.
-          </p>
-        ) : billing.tier === "care" && billing.status === "paid" && offersChoice(brand, "premium") ? (
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft">
-            Want appointments and marketing too?{" "}
-            <Link href={UPGRADE_PATH} className="link-underline text-ink">
-              Move up to Premium
-            </Link>
-            .
-          </p>
-        ) : null}
       </div>
       <PaymentMethodSection method={paymentMethod} renews={renewsAutomatically(billing)} />
       <BillingDetailsSection view={billingDetails} />

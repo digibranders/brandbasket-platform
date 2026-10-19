@@ -37,12 +37,10 @@ interface AppLoginPageProps {
 }
 
 /**
- * The one entry page (docs/superpowers/specs/2026-09-30-single-entry-premium-design.md). Everyone signs in here, and
- * everyone creates their account here, choosing the Care plan or the Premium membership
- * (docs/superpowers/specs/2026-10-07-care-plan-design.md).
+ * The one entry page. Everyone signs in here, and everyone creates their account here, choosing Managed Website.
  *
- * The website's plan buttons link to it with `plan=care` or `plan=premium`. Someone already signed in goes to their
- * dashboard, or to the plan's page when that is what they came for.
+ * The website's buttons link to it with `plan=managed`, and `addons=` for the add-ons its basket chose. Someone already
+ * signed in goes to their dashboard, or to the plan's page when that is what they came for.
  */
 export default async function AppLoginPage({ searchParams }: AppLoginPageProps): Promise<ReactElement> {
   const params = await searchParams;
@@ -121,16 +119,11 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
   }
 
   // Both currencies: the form shows the one for the country the owner picks.
-  const [indiaCare, indiaPremium, usCare, usPremium] = await Promise.all([
-    getMembershipPlan("care", "INR"),
-    getMembershipPlan("premium", "INR"),
-    getMembershipPlan("care", "USD"),
-    getMembershipPlan("premium", "USD"),
-  ]);
+  const [india, us] = await Promise.all([getMembershipPlan("managed", "INR"), getMembershipPlan("managed", "USD")]);
   const priceLine = (plan: Plan | null): string | null => (plan === null ? null : membershipPriceLine(plan));
   const prices: PlanPricesByCurrency = {
-    INR: { care: priceLine(indiaCare), premium: priceLine(indiaPremium) },
-    USD: { care: priceLine(usCare), premium: priceLine(usPremium) },
+    INR: { managed: priceLine(india) },
+    USD: { managed: priceLine(us) },
   };
   // With the local bypass on (EMAIL_CODE_BYPASS) any six digits are accepted, so the form must not promise a real check.
   const confirmsCodes = !emailCodeBypassed();
@@ -149,6 +142,7 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
         <JoinForm
           action={joinForListing}
           initialChoice={entry.choice}
+          addOns={entry.addOns}
           preselected={entry.preselected}
           choices={brand.joinChoices}
           legalLinks={legalLinks}

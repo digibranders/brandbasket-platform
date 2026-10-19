@@ -11,7 +11,7 @@ import { ReferralCodeForm } from "@/components/panel/referral-code-form";
 import { isWaitingOnPayment, unsettledCheckout, type MembershipPaymentNotice, type MembershipTier } from "@/lib/membership";
 import type { GrantedCustomer } from "@/lib/server/customer-access";
 import type { MembershipCheckoutView } from "@/lib/server/membership-checkout";
-import { applyMembershipCode, removeMembershipCode, startMembership } from "@/app/app-host/(protected)/premium/actions";
+import { applyMembershipCode, removeMembershipCode, startMembership } from "@/app/app-host/(protected)/plan/actions";
 
 interface MembershipCheckoutProps {
   readonly tier: MembershipTier;

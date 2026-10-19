@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { CARE_PATH, MEMBER_HOME, MEMBERSHIP_PATH, UPGRADE_PATH, readMembershipCallbackTier, type MembershipFormState } from "@/lib/membership";
+import { MEMBER_HOME, MEMBERSHIP_PATH, readMembershipCallbackTier, type MembershipFormState } from "@/lib/membership";
 import { offersChoice, sellsFreeListing } from "@/lib/brand";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
 import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
@@ -15,17 +15,15 @@ import { requestBrand } from "@/lib/server/request-brand";
 /** The plan pages' actions are open to the two accounts the pages are: a free listing account, held here or not. */
 const MEMBERSHIP_PAGE: CustomerAccessOptions = { listingAccount: "allow", membershipCheckout: "allow" };
 
-/** A code is applied or removed from either plan's page or from the Upgrade page, and all show the price it makes. */
+/** A code is applied or removed on the plan's page, which shows the price it makes. */
 function revalidatePlanPages(): void {
   revalidatePath(MEMBERSHIP_PATH);
-  revalidatePath(CARE_PATH);
-  revalidatePath(UPGRADE_PATH);
 }
 
 const UNKNOWN_PLAN_MESSAGE = "We couldn't tell which plan that was. Reload the page and try again.";
 
 /**
- * Buy a plan, Care or Premium: starts its first payment. What is read from the posted form is which plan's page the
+ * Buy Managed Website: starts its first payment. What is read from the posted form is which plan's page the
  * button was on, and which add-ons were ticked to go in the same payment; both are checked here; whether this business may pay, and what for, is decided on the server
  * in startMembershipCheckoutFor. On success the owner is sent to the provider's checkout, and the payment's
  * confirmation opens the membership.
@@ -66,8 +64,8 @@ export async function removeMembershipCode(_previous: StepFormState, formData: F
 }
 
 /**
- * "Continue with the free listing", for an owner who chose Care or Premium at sign-up and is held on a plan's page: their business
- * becomes an ordinary free listing account and its dashboard opens. Premium stays one click away there.
+ * "Continue with the free listing", for a brand that sells one (Brandbasket does not): an owner held on the plan's page
+ * carries on with a free listing account instead.
  */
 export async function chooseFreeListing(): Promise<void> {
   // The Brandbasket host sells no free listing: its page has no such button, and a form posted without one is sent back to the plan.

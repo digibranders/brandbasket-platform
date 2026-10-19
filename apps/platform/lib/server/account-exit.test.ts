@@ -59,7 +59,7 @@ const customer = (subscription: Subscription | null): GrantedCustomer =>
   ({
     user: { id: USER_ID, email: "ana@example.com", name: "Ana Diaz", emailConfirmed: true, phone: null },
     tenant: { userId: USER_ID, businessId: BUSINESS_ID, businessName: "Riverside Dental", role: "owner" },
-    billing: { status: "paid", hasAccess: true, subscription, tier: "care", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
+    billing: { status: "paid", hasAccess: true, subscription, tier: "managed", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
   }) as GrantedCustomer;
 
 /** A paid plan at the fake provider that has not been asked to end. */
@@ -79,7 +79,7 @@ function addOnRow(overrides: Partial<AddOnSubscription> = {}): AddOnSubscription
   return {
     id: `0192f3c4-2222-7000-8000-${nextRow.toString(16).padStart(12, "0")}`,
     businessId: BUSINESS_ID,
-    addOn: "social-media",
+    addOn: "digital-growth",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${nextRow.toString(16).padStart(24, "0")}`,
     status: "active",

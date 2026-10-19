@@ -3,17 +3,17 @@ import { BRAND, featureShownTo, BRANDBASKET_DEFAULT_CHOICE, isDirectoryOnlyPath,
 import { LISTING_BRAND } from "./testing/listing-brand";
 
 describe("the brand", () => {
-  it("sells Care only: no Premium, no free listing", () => {
-    expect(BRAND.joinChoices).toEqual(["care"]);
+  it("sells Managed Website only: no free listing", () => {
+    expect(BRAND.joinChoices).toEqual(["managed"]);
     expect(sellsFreeListing(BRAND)).toBe(false);
     expect(offersChoice(BRAND, "listing_only")).toBe(false);
-    expect(offersChoice(BRAND, "care")).toBe(true);
-    expect(offersChoice(BRAND, "premium")).toBe(false);
+    expect(offersChoice(BRAND, "managed")).toBe(true);
     expect(BRAND.name).toBe("Brandbasket");
     expect(BRAND.shortName).toBe("Brandbasket");
   });
 
   it("opens a sign-up on a plan it sells", () => {
+    expect(BRANDBASKET_DEFAULT_CHOICE).toBe("managed");
     expect(offersChoice(BRAND, BRANDBASKET_DEFAULT_CHOICE)).toBe(true);
   });
 

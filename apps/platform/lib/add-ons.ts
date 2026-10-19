@@ -5,7 +5,6 @@
 export {
   ADD_ONS,
   ADD_ONS_PATH,
-  PREMIUM_ADD_ON_DISCOUNT_PERCENT,
   addOnById,
   addOnPrice,
   type AddOn,

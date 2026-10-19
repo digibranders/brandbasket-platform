@@ -3,8 +3,8 @@ import { addOnPaymentLabel } from "./add-on-label";
 
 describe("addOnPaymentLabel", () => {
   it("names each monthly add-on the way its receipt does", () => {
-    expect(addOnPaymentLabel("social-media")).toBe("Social media, monthly");
-    expect(addOnPaymentLabel("lead-generation")).toBe("Outreach and lead generation, monthly");
-    expect(addOnPaymentLabel("advertising")).toBe("Paid advertising, monthly");
+    expect(addOnPaymentLabel("digital-growth")).toBe("Digital Growth, monthly");
+    expect(addOnPaymentLabel("local-seo-aeo")).toBe("Local SEO + AEO, monthly");
+    expect(addOnPaymentLabel("local-seo-aeo")).toBe("Local SEO + AEO, monthly");
   });
 });

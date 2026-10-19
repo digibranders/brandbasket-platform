@@ -12,10 +12,10 @@ describe("what the checkout lists as included", () => {
       "OyeChats professional chatbot",
     ]);
     expect(MAINTENANCE_INCLUDED.map((item) => item.text)).toEqual([
-      "Security monitoring",
-      "Performance monitoring",
-      "Hosting and uptime monitoring",
-      "Routine updates and upkeep",
+      "Hosting, SSL and uptime monitoring",
+      "Security checks, backups and maintenance",
+      "Bug fixes and small mobile fixes",
+      "2 small content edits a month",
       "Monthly health report",
     ]);
     const icons = [...WEBSITE_INCLUDED, ...MAINTENANCE_INCLUDED].map((item) => item.icon);

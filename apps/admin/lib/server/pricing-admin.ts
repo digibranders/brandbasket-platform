@@ -89,7 +89,7 @@ export async function savePriceSheet(
     });
   }
 
-  // A price a migration put on sale (Care's, Premium's ₹9,999) has no provider plan yet, so the provider would refuse to
+  // A price a migration put on sale (Managed Website's ₹2,999 and $75) has no provider plan yet, so the provider would refuse to
   // charge it. Saving it here is how it gets one: the plan the same price already is, given its provider plan, with
   // nothing about its price changed.
   let providerPlanFilled = false;

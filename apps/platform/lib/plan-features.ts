@@ -1,72 +1,36 @@
 /*
- * What each plan includes (docs/superpowers/specs/2026-10-07-care-plan-design.md). The comparison table on the website's
- * Premium page is the source of truth; this is its twin for the dashboard, so the payment pages and the Care client's
- * Home read the same lists. Browser-safe and pure.
+ * What Managed Website includes, from the plans document's Plan A (docs/plans/11-platform-plans.md in the BrandBasket
+ * workspace): the one list the payment page and the client's Home read. Browser-safe and pure.
  */
 
-/** A plan a business can buy. */
-export type MembershipTier = "care" | "premium";
+/** The plan a business can buy. Brandbasket sells one. */
+export type MembershipTier = "managed";
 
-export const MEMBERSHIP_TIERS: readonly MembershipTier[] = ["care", "premium"];
-
-/** What a plan gives for one row of the table: a yes, a no, or a short note ("5 pages (free)"). */
-export type FeatureValue = boolean | string;
+export const MEMBERSHIP_TIERS: readonly MembershipTier[] = ["managed"];
 
 export interface PlanFeature {
   readonly id: string;
-  /** The row's label, as the table words it. */
+  /** The line as the page says it. */
   readonly label: string;
-  readonly free: FeatureValue;
-  readonly care: FeatureValue;
-  readonly premium: FeatureValue;
 }
 
-/** The table's rows, in its order. */
+/** What the plan includes, in the plans document's order. */
 export const PLAN_FEATURES: readonly PlanFeature[] = [
-  { id: "listing", label: "Business listing", free: true, care: false, premium: true },
-  { id: "images", label: "Images", free: true, care: false, premium: true },
-  { id: "videos", label: "Videos", free: false, care: false, premium: true },
-  { id: "competitor-ads", label: "No competitor ads on your listing", free: false, care: false, premium: true },
-  { id: "listing-management", label: "Business listing management", free: false, care: false, premium: true },
-  { id: "website", label: "Next.js business website", free: false, care: true, premium: "5 pages (free)" },
-  { id: "website-management", label: "Website management", free: false, care: true, premium: true },
-  { id: "chatbot", label: "OyeChats professional chatbot", free: false, care: true, premium: true },
-  { id: "hosting", label: "Server and hosting", free: false, care: true, premium: true },
-  { id: "appointments", label: "Appointment management system", free: false, care: false, premium: true },
-  { id: "featured", label: "Homepage featured placement", free: false, care: false, premium: "Hot & Growing" },
-  { id: "ranking", label: "Better listing ranking", free: false, care: false, premium: true },
-  { id: "google-business", label: "Google Business Profile management", free: false, care: false, premium: true },
-  { id: "facebook", label: "Facebook account management", free: false, care: false, premium: true },
-  { id: "instagram", label: "Instagram account management", free: false, care: false, premium: true },
-  { id: "marketing-discount", label: "10% off digital marketing services", free: false, care: false, premium: true },
+  { id: "website", label: "Your business website, built free" },
+  { id: "hosting", label: "Hosting and SSL certificate" },
+  { id: "monitoring", label: "Uptime and availability monitoring" },
+  { id: "security", label: "Security checks and routine maintenance" },
+  { id: "backups", label: "Regular backups and recovery support" },
+  { id: "fixes", label: "Bug fixes and small mobile fixes" },
+  { id: "forms", label: "Contact and enquiry form checks" },
+  { id: "analytics", label: "Analytics, indexing and sitemap checks" },
+  { id: "edits", label: "2 small content edits a month, up to 30 minutes each" },
+  { id: "report", label: "A monthly website health report" },
+  { id: "chatbot", label: "OyeChats professional chatbot" },
 ];
 
-/** Whether a plan includes a row: a note counts as yes. */
-export function includes(value: FeatureValue): boolean {
-  return value !== false;
+/** What a plan includes, in order. One plan, so this is the whole list. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- one plan today; callers name it so a second plan needs no call changes
+export function featuresOf(_tier: MembershipTier): readonly PlanFeature[] {
+  return PLAN_FEATURES;
 }
-
-/** The rows a plan includes, in the table's order. */
-export function featuresOf(tier: MembershipTier): readonly PlanFeature[] {
-  return PLAN_FEATURES.filter((feature) => includes(feature[tier]));
-}
-
-/** The rows only Premium includes: what a Care client is shown as the step up. */
-export function premiumOnlyFeatures(): readonly PlanFeature[] {
-  return PLAN_FEATURES.filter((feature) => includes(feature.premium) && !includes(feature.care));
-}
-
-/**
- * The parts of the customer dashboard that belong to Premium. A Care client has none of them: their menu items are
- * not drawn and their pages send them Home (lib/server/customer-access.ts, `plan: "premium"`).
- */
-export const PREMIUM_ONLY_SECTIONS = ["appointments", "patients", "listing", "leads", "photos", "advertise"] as const;
-export type PremiumOnlySection = (typeof PREMIUM_ONLY_SECTIONS)[number];
-
-/** The four things Care includes, for the Care client's Home: what each is called and what it means for them. */
-export const CARE_INCLUDES = [
-  { id: "website", title: "Your website", line: "A fast, custom Next.js website, built and launched for you." },
-  { id: "website-management", title: "Website management", line: "Changes, updates and your blog, looked after by our team." },
-  { id: "chatbot", title: "OyeChats chatbot", line: "A professional chatbot on your site that answers visitors for you." },
-  { id: "hosting", title: "Server and hosting", line: "Your site is hosted, secured and kept online. Nothing to manage." },
-] as const;

@@ -29,12 +29,12 @@ export default async function AppProtectedLayout({ children }: AppProtectedLayou
   const { user, tenant, billing } = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
   await ensureGeoCatalog();
   const entry = await getCustomerBusinessEntry(tenant.userId, tenant.businessId);
-  // An owner who chose Care or Premium and has not paid has one page, that plan's, and no dashboard around it yet.
+  // An owner who chose Managed Website and has not paid has one page, the plan's, and no dashboard around it yet.
   if (isAwaitingMembership(entry)) return <MembershipGateShell>{children}</MembershipGateShell>;
   const placeId = await getOwnPlaceId({ tenant });
   const businessId = placeId === null ? null : displayBusinessId(placeId);
-  // A Care client has no Leads in the menu, so there is nothing to count for them.
-  const newLeadCount = entry.kind === "website" && billing.tier === "care" ? 0 : await readNewLeadCount(tenant);
+  // A website client has no Leads in the menu (the directory is off), so there is nothing to count for them.
+  const newLeadCount = entry.kind === "website" ? 0 : await readNewLeadCount(tenant);
   if (entry.kind === "listing") {
     // Premium is highlighted for an account that said it has no website (and for accounts older than the question).
     const premiumOffer = entry.signupChoice === "own_website" || billing.plan === null ? null : membershipPriceLine(billing.plan);
@@ -57,7 +57,7 @@ export default async function AppProtectedLayout({ children }: AppProtectedLayou
   const banner = await getBillingBanner();
 
   return (
-    <CustomerShell userName={user.name} userEmail={accountLabel(user)} businessId={businessId} tier={billing.tier} newLeadCount={newLeadCount}>
+    <CustomerShell userName={user.name} userEmail={accountLabel(user)} businessId={businessId}>
       {/* Goes off once, when a payment has just opened the plan (the address says so; see lib/celebration.ts). */}
       <PaymentCelebration tier={billing.tier} />
       {banner === null ? null : (

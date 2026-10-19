@@ -1,4 +1,3 @@
-import { addOnPaymentHref, type AddOnPaymentNotice } from "./add-on-notices";
 
 /** What the Billing page says after a customer tried to pay a charge, keyed by `?charge=` in its address. */
 export const CHARGE_NOTICES = {
@@ -16,7 +15,7 @@ export const CHARGE_NOTICES = {
   "not-open": { ok: false, text: "That charge has already been paid or cleared, so there’s nothing to pay." },
   stale: {
     ok: false,
-    text: "Your month renewed before that payment arrived, so the upgrade wasn’t applied and we’ve kept your payment aside to refund. You can start the upgrade again.",
+    text: "Your month renewed before that payment arrived, so it wasn’t applied and we’ve kept your payment aside to refund.",
   },
 } as const satisfies Readonly<Record<string, { readonly ok: boolean; readonly text: string }>>;
 
@@ -44,43 +43,18 @@ const AD_NOTICE: Readonly<Record<ChargeNotice, string>> = {
   stale: "pay-problem",
 };
 
-/** What the Upgrade page's `?payment=` says for each outcome of paying for a move up to Premium. */
-const UPGRADE_NOTICE: Readonly<Record<ChargeNotice, string>> = {
-  paid: "paid",
-  processing: "processing",
-  failed: "failed",
-  duplicate: "problem",
-  review: "problem",
-  "not-open": "problem",
-  stale: "stale",
-};
-
-/** What the Add-ons page's `?payment=` says for each outcome of paying for a press release. */
-const PRESS_RELEASE_NOTICE: Readonly<Record<ChargeNotice, AddOnPaymentNotice>> = {
-  paid: "received",
-  processing: "confirming",
-  failed: "failed",
-  duplicate: "review",
-  review: "review",
-  "not-open": "nothing-due",
-  stale: "review",
-};
-
 /**
  * Where paying a charge returns to: Billing, or for a won ad spot (`directory_ad`) the Advertise page, where the
- * owner sees the ad go up rather than a list of receipts, or for a press release the Add-ons page.
+ * owner sees the ad go up rather than a list of receipts.
  */
 export function chargeReturnHref(kind: string, notice: ChargeNotice): string {
   if (kind === "directory_ad") return `/advertise?notice=${AD_NOTICE[notice]}`;
-  // A move up to Premium returns to the Upgrade page, which shows the client their Premium dashboard coming up.
-  if (kind === "plan_upgrade") return `/upgrade?payment=${UPGRADE_NOTICE[notice]}`;
-  if (kind === "press_release") return addOnPaymentHref(PRESS_RELEASE_NOTICE[notice]);
   return chargeNoticeHref(notice);
 }
 
 /**
- * Added to the payment provider's return address for a won ad spot, a move up to Premium or a press release, so the
- * return lands on Advertise, Upgrade or Add-ons rather than Billing.
+ * Added to the payment provider's return address for a won ad spot, so the return lands on Advertise rather than
+ * Billing.
  */
 export const AD_RETURN_PARAM = "for";
 export const AD_RETURN_VALUE = "ad";

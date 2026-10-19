@@ -6,7 +6,7 @@ const PLAN: Plan = {
   id: "plan-1",
   code: "premium-inr",
   name: "Premium",
-  tier: "premium",
+  tier: "managed",
   currency: "INR",
   initialAmountCents: 999_900,
   initialTermMonths: 1,

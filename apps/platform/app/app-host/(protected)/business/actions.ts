@@ -57,7 +57,7 @@ function done(tab: string, notice?: ProfileNotice): never {
 
 /** Saves the Identity tab. A business still being set up goes on to Listing; a live one stays on Identity. */
 export async function saveDetailsAction(_previous: BusinessDetailsFormState, formData: FormData): Promise<BusinessDetailsFormState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   // A claim on a business the directory had keeps the directory's name, address and number, so the form asks for no address.
   const before = await getBusinessProfilePage(customer);
   const parsed = parseBusinessDetailsForm(formData, new Date(), { claimed: before.state.listing === "claimed" });
@@ -74,7 +74,7 @@ export async function saveDetailsAction(_previous: BusinessDetailsFormState, for
 
 /** Saves the Listing tab. The first save gives the business its Business ID, which the tab then shows. */
 export async function saveListingAction(_previous: BusinessListingFormState, formData: FormData): Promise<BusinessListingFormState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   await ensureGeoCatalog();
   const parsed = parseBusinessListingForm(formData);
   if (!parsed.success) return { status: "error", field: parsed.field, message: parsed.message };
@@ -86,7 +86,7 @@ export async function saveListingAction(_previous: BusinessListingFormState, for
 
 /** Saves the categories the business also lists in. A save that works lands back on the Listing tab with a notice. */
 export async function saveExtraCategoriesAction(_previous: ItemFormState, formData: FormData): Promise<ItemFormState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   await ensureGeoCatalog();
   const parsed = parseExtraCategoriesForm(formData);
   if (!parsed.success) return { status: "error", message: parsed.message };
@@ -96,7 +96,7 @@ export async function saveExtraCategoriesAction(_previous: ItemFormState, formDa
 }
 
 export async function saveVideoAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   if (!isVideoForm(formData)) done("photos", "invalid");
   const typed = formData.get("video");
   const parsed = parseYoutubeLink(typeof typed === "string" ? typed : "");
@@ -105,7 +105,7 @@ export async function saveVideoAction(formData: FormData): Promise<void> {
 }
 
 export async function removeVideoAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   if (!isEmptyForm(formData)) done("photos", "invalid");
   await setOwnVideo(customer, null);
   done("photos", "video-removed");
@@ -115,7 +115,7 @@ const isClipForm = ownerFormCheck(["slot"]);
 
 /** Removes one of a member's short videos, live or being got ready: the row first, then the video on Vimeo. Allowed whatever the membership. */
 export async function removeClipAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   if (!isClipForm(formData)) done("photos", "invalid");
   const slot = parseVideoSlot(formData.get("slot"));
   if (slot === null) done("photos", "invalid");
@@ -130,7 +130,7 @@ const isFeatureClipForm = ownerFormCheck(["video", "featured"]);
  * one video is there at a time: choosing another replaces it.
  */
 export async function featureClipAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   if (!isFeatureClipForm(formData)) done("photos", "invalid");
   const video = formData.get("video");
   const featured = formData.get("featured");
@@ -142,7 +142,7 @@ export async function featureClipAction(formData: FormData): Promise<void> {
 
 /** Publishes the business: its page goes live as Claimed, with no call from us. */
 export async function publishAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   if (!isEmptyForm(formData)) done("review", "invalid");
   const outcome = await publishOwnBusiness(customer);
   if (outcome.kind === "published") done("review", "published");
@@ -162,7 +162,7 @@ function photoKindOf(formData: FormData): PictureKind | null {
 
 /** Removes one of the business's pictures (feature image, banner or a gallery photo), live or not: rows first, then the file. */
 export async function removePhotoAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const kind = photoKindOf(formData);
   // The ad pictures are removed from Advertise, not here.
   if (kind === null || kind === "ad") done("photos", "invalid");
@@ -172,7 +172,7 @@ export async function removePhotoAction(formData: FormData): Promise<void> {
 
 /** Saves one service: a new one, or the one the form names. A save that works lands back on Services with a notice. */
 export async function saveServiceAction(_previous: ItemFormState, formData: FormData): Promise<ItemFormState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const parsed = parseServiceForm(formData);
   if (!parsed.success) return { status: "error", message: parsed.message };
   const outcome = await saveOwnService(customer, parsed.id, parsed.data);
@@ -181,7 +181,7 @@ export async function saveServiceAction(_previous: ItemFormState, formData: Form
 }
 
 export async function removeServiceAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const id = isItemDeleteForm(formData) ? readItemId(formData) : null;
   if (id === null) done("services", "invalid");
   await removeOwnService(customer, id);
@@ -190,7 +190,7 @@ export async function removeServiceAction(formData: FormData): Promise<void> {
 
 /** Saves one product: a new one, or the one the form names. */
 export async function saveProductAction(_previous: ItemFormState, formData: FormData): Promise<ItemFormState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const parsed = parseProductForm(formData);
   if (!parsed.success) return { status: "error", message: parsed.message };
   const outcome = await saveOwnProduct(customer, parsed.id, parsed.data);
@@ -199,7 +199,7 @@ export async function saveProductAction(_previous: ItemFormState, formData: Form
 }
 
 export async function removeProductAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const id = isItemDeleteForm(formData) ? readItemId(formData) : null;
   if (id === null) done("products", "invalid");
   await removeOwnProduct(customer, id);
@@ -208,7 +208,7 @@ export async function removeProductAction(formData: FormData): Promise<void> {
 
 /** Takes the photo off one product. The photo is added from the product's edit sheet, which uploads it on its own. */
 export async function removeProductPhotoAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const id = isItemDeleteForm(formData) ? readItemId(formData) : null;
   if (id === null) done("products", "invalid");
   await removeOwnProductPhoto(customer, id);
@@ -217,7 +217,7 @@ export async function removeProductPhotoAction(formData: FormData): Promise<void
 
 /** Saves one question and its answer: a new one, or the one the form names. */
 export async function saveFaqAction(_previous: ItemFormState, formData: FormData): Promise<ItemFormState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const parsed = parseFaqForm(formData);
   if (!parsed.success) return { status: "error", message: parsed.message };
   const outcome = await saveOwnFaq(customer, parsed.id, parsed.data);
@@ -226,7 +226,7 @@ export async function saveFaqAction(_previous: ItemFormState, formData: FormData
 }
 
 export async function removeFaqAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const id = isItemDeleteForm(formData) ? readItemId(formData) : null;
   if (id === null) done("faq", "invalid");
   await removeOwnFaq(customer, id);
@@ -235,7 +235,7 @@ export async function removeFaqAction(formData: FormData): Promise<void> {
 
 /** Saves which buttons visitors get on the business's page. */
 export async function saveContactOptionsAction(_previous: ItemFormState, formData: FormData): Promise<ItemFormState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const parsed = parseContactOptionsForm(formData);
   if (!parsed.success) return { status: "error", message: parsed.message };
   const outcome = await saveOwnContactOptions(customer, parsed.data);
@@ -245,7 +245,7 @@ export async function saveContactOptionsAction(_previous: ItemFormState, formDat
 
 /** Saves which optional tabs the business's public page shows. */
 export async function savePageTabsAction(_previous: ItemFormState, formData: FormData): Promise<ItemFormState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const parsed = parsePageTabsForm(formData);
   if (!parsed.success) return { status: "error", message: parsed.message };
   const outcome = await saveOwnPageTabs(customer, parsed.data);
@@ -255,7 +255,7 @@ export async function savePageTabsAction(_previous: ItemFormState, formData: For
 
 /** Saves how the business takes payment and its licences. */
 export async function saveTrustAction(_previous: ItemFormState, formData: FormData): Promise<ItemFormState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const parsed = parseTrustForm(formData);
   if (!parsed.success) return { status: "error", message: parsed.message };
   const outcome = await saveOwnTrust(customer, parsed.data);
@@ -265,7 +265,7 @@ export async function saveTrustAction(_previous: ItemFormState, formData: FormDa
 
 /** Drops what an import from Google found, without using it. */
 export async function discardGoogleImportAction(formData: FormData): Promise<void> {
-  await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  await requireCustomerAccess({ listingAccount: "allow" });
   if (!isEmptyForm(formData)) done("details", "invalid");
   await forgetGoogleImport();
   done("details");

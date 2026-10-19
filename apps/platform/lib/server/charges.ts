@@ -21,7 +21,6 @@ import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charg
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
-import { finishUpgradeForCharge } from "./plan-upgrade-finish";
 
 /** How many open charges the Billing page lists. More than this many unpaid extras at once is not a real case. */
 const OPEN_CHARGES_SHOWN = 20;
@@ -124,9 +123,6 @@ async function recordVerifiedChargePayment({ confirmed, method, now }: RecordInp
     }
     return recorded.outcome;
   });
-  // A paid move up to Premium: the client has Premium already (the payment's transaction set it); the provider is told
-  // now, after that has committed. Harmless for any other charge, and safe to repeat for a redelivered payment.
-  if (outcome === "paid") await finishUpgradeForCharge(confirmed.chargeId, now);
   return outcome;
 }
 

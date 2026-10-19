@@ -38,7 +38,7 @@ interface PatientsPageProps {
  */
 export default async function PatientsPage({ searchParams }: PatientsPageProps): Promise<ReactElement> {
   await requireAppointmentsModule();
-  const { tenant } = await requireCustomerAccess({ plan: "premium" });
+  const { tenant } = await requireCustomerAccess();
 
   const sp = await searchParams;
   const filter = parsePatientFilter(sp.filter);

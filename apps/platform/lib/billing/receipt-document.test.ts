@@ -163,14 +163,14 @@ describe("receiptDocument for an add-on payment", () => {
         subscriptionId: null,
         planName: null,
         initialTermMonths: null,
-        addOnId: "social-media",
+        addOnId: "digital-growth",
         amountCents: 1_062_000,
         taxRateBasisPoints: 1800,
       }),
       CUSTOMER,
     );
     expect(doc.lines).toEqual([
-      { label: "Social media, monthly", amount: "INR 9,000.00" },
+      { label: "Digital Growth, monthly", amount: "INR 9,000.00" },
       { label: "GST 18%", amount: "INR 1,620.00" },
     ]);
     expect(doc.total.amount).toBe("INR 10,620.00");

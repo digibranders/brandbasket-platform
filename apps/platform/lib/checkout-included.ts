@@ -1,6 +1,6 @@
 /**
- * What each part of the Care payment includes, as the order summary's two "What's included" dropdowns list it: the website
- * (free with the plan) and the monthly maintenance (what the plan's price pays for). Each line has the icon drawn beside it
+ * What each part of the Managed Website payment includes, as the order summary's two "What's included" dropdowns list it:
+ * the website (built free) and the monthly management (what the plan's price pays for). Each line has the icon drawn beside it
  * (components/panel/membership/included-list.tsx).
  */
 
@@ -32,9 +32,9 @@ export const WEBSITE_INCLUDED: readonly IncludedItem[] = [
 ];
 
 export const MAINTENANCE_INCLUDED: readonly IncludedItem[] = [
-  { icon: "security", text: "Security monitoring" },
-  { icon: "performance", text: "Performance monitoring" },
-  { icon: "hosting", text: "Hosting and uptime monitoring" },
-  { icon: "updates", text: "Routine updates and upkeep" },
+  { icon: "hosting", text: "Hosting, SSL and uptime monitoring" },
+  { icon: "security", text: "Security checks, backups and maintenance" },
+  { icon: "performance", text: "Bug fixes and small mobile fixes" },
+  { icon: "updates", text: "2 small content edits a month" },
   { icon: "report", text: "Monthly health report" },
 ];

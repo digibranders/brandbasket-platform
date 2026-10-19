@@ -465,7 +465,7 @@ function single(value: string | string[] | undefined): string | null {
  * ad itself, and what was missed and why.
  */
 export default async function AdvertiseScreen({ searchParams }: AdvertisePageProps): Promise<ReactElement> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const now = new Date();
   const [kind, page, params, photos] = await Promise.all([
     getCustomerBusinessKind(customer.tenant.userId, customer.tenant.businessId),

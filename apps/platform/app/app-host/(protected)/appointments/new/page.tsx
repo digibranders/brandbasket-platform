@@ -46,7 +46,7 @@ interface AddBookingPageProps {
  */
 export default async function AddBookingPage({ searchParams }: AddBookingPageProps): Promise<ReactElement> {
   await requireAppointmentsModule();
-  const { tenant } = await requireCustomerAccess({ plan: "premium" });
+  const { tenant } = await requireCustomerAccess();
 
   const params = parseAddBookingParams(await searchParams);
   const now = new Date();

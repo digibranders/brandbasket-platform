@@ -40,8 +40,8 @@ export const metadata: Metadata = {
 const FAILED_HREF = `${PAYMENT_STEP_HREF}?payment=failed`;
 
 /**
- * Open to a free listing account too: it pays for the Care plan or the Premium membership here, before it has a project (docs/
- * superpowers/specs/2026-09-30-single-entry-premium-design.md). The token still has to be its own business's.
+ * Open to the account a sign-up opened too: it pays for Managed Website here, before it has a project. The token still
+ * has to be its own business's.
  */
 const PAYING: CustomerAccessOptions = { listingAccount: "allow", membershipCheckout: "allow" };
 

@@ -44,10 +44,10 @@ it("retains signup confirmation retry instead of redirecting as a created accoun
   expect(requestJoinCode).not.toHaveBeenCalled();
 });
 
-/** A Brandbasket form: Care, with the business's name. */
+/** A Brandbasket form: Managed Website, with the business's name. */
 function brandbasketForm(entries: Record<string, string>): FormData {
   const result = new FormData();
-  const base = { choice: "care", businessName: "Smile Dental", name: "Owner", email: "Owner@Example.test", password: "long-password-9", country: "IN", stateCode: "mh", agree: "yes" };
+  const base = { choice: "managed", businessName: "Smile Dental", name: "Owner", email: "Owner@Example.test", password: "long-password-9", country: "IN", stateCode: "mh", agree: "yes" };
   for (const [key, value] of Object.entries({ ...base, ...entries })) result.set(key, value);
   return result;
 }
@@ -61,11 +61,19 @@ it("refuses the free listing on the Brandbasket host, before any code is emailed
   expect(createListingAccount).not.toHaveBeenCalled();
 });
 
-it("sends the code for Care on the Brandbasket host, to the email address", async () => {
+it("refuses the retired plans on the Brandbasket host like any choice it never offered", async () => {
+  host.brand = BRAND;
+  for (const choice of ["care", "premium"]) {
+    expect(await joinForListing({ status: "idle" }, brandbasketForm({ choice })), choice).toMatchObject({ status: "error", message: "Choose a plan to continue." });
+  }
+  expect(requestJoinCode).not.toHaveBeenCalled();
+});
+
+it("sends the code for Managed Website on the Brandbasket host, to the email address", async () => {
   host.brand = BRAND;
   vi.mocked(requestJoinCode).mockResolvedValue({ kind: "code", otp: emailOtp });
   expect(await joinForListing({ status: "idle" }, brandbasketForm({}))).toMatchObject({ status: "code", otp: emailOtp });
-  expect(requestJoinCode).toHaveBeenCalledWith(expect.objectContaining({ choice: "care", email: "owner@example.test", code: null }));
+  expect(requestJoinCode).toHaveBeenCalledWith(expect.objectContaining({ choice: "managed", email: "owner@example.test", code: null }));
   expect(vi.mocked(requestJoinCode).mock.calls[0]?.[0]).not.toHaveProperty("phone");
 });
 

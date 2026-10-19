@@ -1,4 +1,5 @@
 import { chargedAmountCents } from "@brandbasket/billing/tax";
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleNetCents, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { BRAND, featureShownTo, type Brand } from "@/lib/brand";
@@ -7,9 +8,8 @@ import { featuresOf, MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-fe
 export { MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
 
 /*
- * The two paid plans bought from a free listing account, Care and Premium (docs/superpowers/specs/2026-09-30-single-
- * entry-premium-design.md, 2026-10-07-care-plan-design.md): where each one's page is, and where the payment pages send
- * someone who is buying it. Plain constants and small functions, so the server modules, the pages and the payment
+ * The plan bought from the account a sign-up opens, Managed Website (docs/plans/11-platform-plans.md in the BrandBasket
+ * workspace): where its page is, and where the payment pages send someone who is buying it. Plain constants and small functions, so the server modules, the pages and the payment
  * callback all name the same addresses.
  */
 
@@ -17,28 +17,24 @@ export { MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
  * A plan's page: what it includes, what it costs, and the button that pays for it. A free listing account opens it
  * from its dashboard; one that chose the plan at sign-up is held on it until it pays or decides to carry on free.
  */
-const MEMBERSHIP_PATHS: Readonly<Record<MembershipTier, string>> = { care: "/care", premium: "/premium" };
+const MEMBERSHIP_PATHS: Readonly<Record<MembershipTier, string>> = { managed: "/plan" };
 
 export function membershipPathFor(tier: MembershipTier): string {
   return MEMBERSHIP_PATHS[tier];
 }
 
-/** The Premium membership's page. */
-export const MEMBERSHIP_PATH = MEMBERSHIP_PATHS.premium;
+/** The plan's page with add-ons already ticked (`?addons=digital-growth,local-seo-aeo`): what the website's basket links to. */
+export function membershipHrefWithAddOns(tier: MembershipTier, addOns: readonly MonthlyAddOnId[]): string {
+  return addOns.length === 0 ? membershipPathFor(tier) : `${membershipPathFor(tier)}?addons=${addOns.join(",")}`;
+}
 
-/** The Care plan's page. */
-export const CARE_PATH = MEMBERSHIP_PATHS.care;
+/** The plan's page. */
+export const MEMBERSHIP_PATH = MEMBERSHIP_PATHS.managed;
 
 /** The tier a sign-up choice buys, or null for a choice that buys nothing (the free listing). */
 export function membershipTierForChoice(choice: string | null): MembershipTier | null {
   return MEMBERSHIP_TIERS.find((tier) => tier === choice) ?? null;
 }
-
-/**
- * The Upgrade page: Free, Care and Premium side by side. A free listing account buys either plan from it; a Care client
- * moves up to Premium on the subscription it has (docs/superpowers/specs/2026-10-08-care-to-premium-upgrade-design.md).
- */
-export const UPGRADE_PATH = "/upgrade";
 
 /** Where a business that has just become a member lands: the client dashboard's Home, with setup as its next step. */
 export const MEMBER_HOME = "/";
@@ -76,59 +72,28 @@ export function readMembershipCallbackTier(value: string | null): MembershipTier
 }
 
 /** The plan's name as the pages say it. */
-export const MEMBERSHIP_NAMES: Readonly<Record<MembershipTier, string>> = { care: "Care plan", premium: "Premium membership" };
+export const MEMBERSHIP_NAMES: Readonly<Record<MembershipTier, string>> = { managed: "Managed Website" };
 
 /**
  * What a plan includes, in the order the website's comparison table lists it (lib/plan-features.ts). Short lines: the
  * page shows them as a list, and the dashboard has no room for paragraphs.
  */
 export function membershipBenefits(tier: MembershipTier, brand: Brand = BRAND): readonly string[] {
-  return featuresOf(tier).filter((feature) => featureShownTo(feature.id, brand)).map((feature) => {
-    const value = feature[tier];
-    const label = feature.label;
-    return typeof value === "string" ? `${label}: ${value}` : label;
-  });
+  return featuresOf(tier).filter((feature) => featureShownTo(feature.id, brand)).map((feature) => feature.label);
 }
 
-/** The three layers a plan stacks, which the payment page sorts what a plan holds into. */
-export type BenefitGroupName = "Listing" | "Website" | "Social media";
+/** The heading the payment page sorts what the plan holds under. */
+export type BenefitGroupName = "Website";
 
 export interface BenefitGroup {
   readonly name: BenefitGroupName;
   readonly items: readonly string[];
 }
 
-/** Which layer each row of the plan table belongs to, by its id. A row that is not here is the listing's. */
-const FEATURE_GROUPS: Readonly<Record<string, BenefitGroupName>> = {
-  website: "Website",
-  "website-management": "Website",
-  chatbot: "Website",
-  hosting: "Website",
-  appointments: "Website",
-  "google-business": "Social media",
-  facebook: "Social media",
-  instagram: "Social media",
-  "marketing-discount": "Social media",
-};
-
-const GROUP_ORDER: readonly BenefitGroupName[] = ["Listing", "Website", "Social media"];
-
-/**
- * What a plan includes, sorted into the layers it stacks: the listing, the website, social media. Each group keeps the
- * table's order, and a group a plan has nothing in is left out (Care has no social media, for one).
- */
+/** What the plan includes, under its one heading. */
 export function groupedBenefits(tier: MembershipTier, brand: Brand = BRAND): readonly BenefitGroup[] {
-  const buckets = new Map<BenefitGroupName, string[]>(GROUP_ORDER.map((name) => [name, []]));
-  for (const feature of featuresOf(tier).filter((item) => featureShownTo(item.id, brand))) {
-    const value = feature[tier];
-    const label = feature.label;
-    const line = typeof value === "string" ? `${label}: ${value}` : label;
-    buckets.get(FEATURE_GROUPS[feature.id] ?? "Listing")?.push(line);
-  }
-  return GROUP_ORDER.flatMap((name) => {
-    const items = buckets.get(name) ?? [];
-    return items.length === 0 ? [] : [{ name, items }];
-  });
+  const items = membershipBenefits(tier, brand);
+  return items.length === 0 ? [] : [{ name: "Website", items }];
 }
 
 /** The part of a plan the price line is made from. */
@@ -233,16 +198,3 @@ export function isWaitingOnPayment<T extends MembershipCheckout>(subscription: T
   return checkout !== null && (notice === "received" || checkout.status === "active");
 }
 
-/**
- * Whether a plan's own page (/care, /premium) hands a free account over to the Upgrade page. Only an account opening it
- * from its dashboard: an owner held there on the plan they chose, a payment's return address, and an account whose
- * payment is still being settled each need the page's own words.
- */
-export function plansMoveToUpgradePage(state: {
-  readonly held: boolean;
-  readonly notice: MembershipPaymentNotice | null;
-  readonly waiting: boolean;
-  readonly paymentUnderReview: boolean;
-}): boolean {
-  return !state.held && state.notice === null && !state.waiting && !state.paymentUnderReview;
-}

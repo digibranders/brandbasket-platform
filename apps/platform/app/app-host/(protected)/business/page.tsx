@@ -371,7 +371,7 @@ function pageTabSources({ state, running }: { readonly state: ProfileState; read
  * its details up to date.
  */
 export default async function BusinessProfileScreen({ searchParams }: BusinessProfileScreenProps): Promise<ReactElement> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   // The layout refreshes the catalog too, but a layout and its page render side by side: read the lists below only
   // after the places are current.
   const [kind, page, params] = await Promise.all([

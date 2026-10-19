@@ -71,7 +71,7 @@ const PLAN = {
   id: "0192f3c4-3333-7000-8000-000000000003",
   code: "care-usd",
   name: "Brandbasket care plan",
-  tier: "premium",
+  tier: "managed",
   currency: "USD",
   initialAmountCents: 22500,
   initialTermMonths: 3,
@@ -101,7 +101,7 @@ let logged: MockInstance<typeof console.error>;
 
 const NOT_PAID: BillingState = {
   currency: "USD",
-  tier: "premium",
+  tier: "managed",
   upgradePaid: false,
   subscription: null,
   hasEverPaid: false,

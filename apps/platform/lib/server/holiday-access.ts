@@ -12,6 +12,6 @@ export async function holidayAccessOrNull(): Promise<GrantedCustomer | null> {
   const tenant = await getCustomerTenant();
   if (tenant === null) return requireCustomerAccess();
   const kind = await getCustomerBusinessKind(tenant.userId, tenant.businessId);
-  if (kind === "listing") return requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  if (kind === "listing") return requireCustomerAccess({ listingAccount: "allow" });
   return paidCustomerOrNull();
 }

@@ -4,11 +4,11 @@ import { MembershipPage } from "@/components/panel/membership/membership-page";
 
 export const metadata: Metadata = { title: "Checkout" };
 
-interface CarePageProps {
+interface PlanPageProps {
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;
 }
 
-/** The Care plan's page (components/panel/membership/membership-page.tsx). */
-export default function CarePage({ searchParams }: CarePageProps): ReactElement {
-  return <MembershipPage tier="care" searchParams={searchParams} />;
+/** The Managed Website plan's page (components/panel/membership/membership-page.tsx). */
+export default function PlanPage({ searchParams }: PlanPageProps): ReactElement {
+  return <MembershipPage tier="managed" searchParams={searchParams} />;
 }

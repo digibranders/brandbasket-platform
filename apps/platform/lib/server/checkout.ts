@@ -69,7 +69,7 @@ const TOO_MANY_ATTEMPTS = "That’s a lot of attempts in a short time. Please wa
 const NOTHING_TO_PAY_FOR = `There’s nothing to pay for right now. If you think that’s wrong, email us at ${businessDetails.email}.`;
 const NO_PLAN = `We can’t take payment in your currency just yet. Email us at ${businessDetails.email} and we’ll sort it out.`;
 const CHANGED_MEANWHILE = "Something changed while we were setting up your payment. Please try again.";
-const ALREADY_A_MEMBER = "You’re already a Premium member. Open your dashboard to carry on.";
+const ALREADY_A_MEMBER = "You’ve already paid for Managed Website. Open your dashboard to carry on.";
 const PAYMENT_UNAVAILABLE = "We couldn’t open your payment just now. Please try again in a minute.";
 
 /** What was decided under the lock, carried past its commit. */
@@ -226,8 +226,8 @@ export async function startCheckoutFor(customer: GrantedCustomer, now: Date): Pr
 }
 
 /**
- * Starts the first payment for the plan a free listing account is buying, Care or Premium, from that account (docs/superpowers/specs/2026-09-30-
- * single-entry-premium-design.md). These members pay before there is a project or a single answer, so neither is
+ * Starts the first payment for Managed Website from the account a sign-up opened (docs/plans/11-platform-plans.md in the
+ * BrandBasket workspace). These members pay before there is a project or a single answer, so neither is
  * asked for: the payment itself opens the project (activateFirstPayment). Checked on the server, whatever the page
  * showed: the same rate limit as any checkout, and that the business really is a free listing account, since a
  * website client pays on Check and send, where its answers are checked first.
@@ -297,7 +297,7 @@ async function openPlanCheckout(
     await lockBusinessForBilling(tx, tenant.businessId);
     const state = await findBillingState(tx, tenant.businessId);
     if (state === null) throw new BillingBusinessNotFoundError(tenant.businessId);
-    // The plan the business is on or chose: a Care client is never quoted Premium's price, or the other way round.
+    // The plan the business is on or chose: Managed Website, in the business's currency.
     const plan = await findActivePlan(tx, state.currency, tier ?? state.tier);
     if (plan === null) return { kind: "no-plan" };
     // Re-validated here, under the lock, rather than trusted from when the customer pressed Apply: a code can be

@@ -30,7 +30,7 @@ export const PRICING_NOTICES: Readonly<Record<PricingNotice, { readonly text: st
     ok: false,
   },
   "invalid-currency": { text: "Nothing changed: pick dollars or rupees.", ok: false },
-  "invalid-tier": { text: "Nothing changed: pick Care or Premium.", ok: false },
+  "invalid-tier": { text: "Nothing changed: that plan is not one Brandbasket sells.", ok: false },
   "invalid-monthly": { text: "Nothing changed: give a monthly price above zero, like 69 or 2,999.", ok: false },
   "invalid-extra-hour": { text: "Nothing changed: give an hourly price above zero.", ok: false },
   "invalid-extra-publish": { text: "Nothing changed: give an extra publish price above zero.", ok: false },

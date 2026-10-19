@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
 import { formatMoney } from "@brandbasket/shared/lib/money";
@@ -7,22 +6,20 @@ import { OrderSummary } from "@/components/panel/membership/order-summary";
 import { OfferCard } from "@/components/panel/membership/offer-card";
 import { MembershipPayForm } from "@/components/panel/membership/membership-pay-form";
 import { MembershipCheckout } from "@/components/panel/membership/membership-checkout";
-import { offersChoice, sellsFreeListing } from "@/lib/brand";
+import { sellsFreeListing } from "@/lib/brand";
 import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
 import {
   MEMBER_HOME,
-  UPGRADE_PATH,
   isWaitingOnPayment,
-  membershipPathFor,
+  membershipHrefWithAddOns,
   orderSummary,
-  plansMoveToUpgradePage,
   readMembershipPaymentNotice,
   type MembershipTier,
 } from "@/lib/membership";
 import { getCustomerBusinessEntry, isAwaitingMembership, requireCustomerAccess } from "@/lib/server/customer-access";
 import { loadMembershipCheckout } from "@/lib/server/membership-checkout";
 import { requestBrand } from "@/lib/server/request-brand";
-import { chooseFreeListing, startMembership } from "@/app/app-host/(protected)/premium/actions";
+import { chooseFreeListing, startMembership } from "@/app/app-host/(protected)/plan/actions";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines, readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 
@@ -31,27 +28,20 @@ interface MembershipPageProps {
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;
 }
 
-/** The add-ons named in the address (`?addons=social-media,advertising`), as catalogue ids only. */
+/** The add-ons named in the address (`?addons=digital-growth,local-seo-aeo`), as catalogue ids only. */
 function readSelectedAddOns(params: Readonly<Record<string, string | string[] | undefined>>): readonly MonthlyAddOnId[] {
   const raw = params.addons;
   const text = Array.isArray(raw) ? raw.join(",") : (raw ?? "");
   return readBundleSelection(text.split(","));
 }
 
-/** The other plan, for the line under the list: what a person reading this one may want to compare it with. */
-const OTHER: Readonly<Record<MembershipTier, { readonly tier: MembershipTier; readonly line: string }>> = {
-  care: { tier: "premium", line: "Want appointments and marketing handled too? See Premium." },
-  premium: { tier: "care", line: "Only need the website, chatbot and hosting? See Care." },
-};
-
 /**
- * One plan's page, for a free listing account (docs/superpowers/specs/2026-09-30-single-entry-premium-design.md,
- * 2026-10-07-care-plan-design.md): what it includes, what it costs, and the button that pays for it. The payment is what
+ * The plan's page, for the account a sign-up opens (docs/plans/11-platform-plans.md in the BrandBasket workspace): what
+ * Managed Website includes, what it costs with any add-ons chosen, and the button that pays for it. The payment is what
  * opens the plan: the business becomes a website client and this page sends it on to its dashboard.
  *
  * An owner who chose the plan at sign-up is held here (requireCustomerAccess) and sees it without a dashboard around
- * it, with a way to carry on free instead. Any other free listing account is sent on to the Upgrade page, which
- * shows both plans (app/app-host/(protected)/upgrade).
+ * it.
  *
  * A coupon or an affiliate code may be applied before paying; the Pay button then shows the discounted price, worked
  * out by the same function checkout freezes it with, against this page's own plan.
@@ -70,12 +60,8 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
 
   const held = isAwaitingMembership(entry);
   const waiting = isWaitingOnPayment(billing.subscription, notice);
-  // A plan's page opened from the dashboard is the Upgrade page's job now: it shows both plans and the way to pay. This
-  // page stays for the owner held on their plan, a payment's return address, and a payment still being settled.
-  if (plansMoveToUpgradePage({ held, notice, waiting, paymentUnderReview: billing.paymentUnderReview })) redirect(UPGRADE_PATH);
   const view = await loadMembershipCheckout({ tenant, billing }, tier, new Date());
   const { plan } = view;
-  const other = OTHER[tier];
   const brand = await requestBrand();
 
   // Only an account with something to pay is shown the summary and the Pay button: one whose payment is on its way, or under
@@ -84,8 +70,7 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   // The add-ons are ticked in the address, so they survive applying a code and a reload, and are paid with the plan. Only
   // while the offer stands: the same rule the server applies when the payment opens.
   const selected = view.offer.kind === "available" ? readSelectedAddOns(params) : [];
-  const pageHref = (selection: readonly MonthlyAddOnId[]): string =>
-    selection.length === 0 ? membershipPathFor(tier) : `${membershipPathFor(tier)}?addons=${selection.join(",")}`;
+  const pageHref = (selection: readonly MonthlyAddOnId[]): string => membershipHrefWithAddOns(tier, selection);
   const lines = plan === null ? [] : bundleLines(selected, plan.currency);
   const paying = payable ? orderSummary(plan, view.discount?.amountCents ?? 0, lines) : null;
 
@@ -93,14 +78,6 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
     <div className="grid gap-x-12 gap-y-8 pb-16 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:pb-0">
       <div className="min-w-0 space-y-10">
         <h1 className="sr-only">Checkout</h1>
-
-        {offersChoice(brand, other.tier) ? (
-          <p className="max-w-xl text-sm text-ink-soft">
-            <Link href={membershipPathFor(other.tier)} className="link-underline">
-              {other.line}
-            </Link>
-          </p>
-        ) : null}
 
         {/* The first-checkout offer: shown until the first payment, before the way to pay. */}
         {view.offer.kind === "available" && payable ? (

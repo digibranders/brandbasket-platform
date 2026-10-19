@@ -28,7 +28,7 @@ function OfferRow({
   /** Where the button goes: the page with this add-on ticked, or, when it already is, with it taken out again. */
   readonly toggleHref: string;
 }): ReactElement {
-  const offered = addOnPrice(addOn, currency, false, true);
+  const offered = addOnPrice(addOn, currency, true);
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-3 py-3.5 sm:gap-x-4 sm:py-4">
       <AddOnMark addOn={addOn.id} />

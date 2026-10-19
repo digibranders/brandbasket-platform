@@ -13,7 +13,7 @@ import { appOriginForHostHeader } from "@/lib/server/request-brand";
  * parse as form data is treated the same as a failure: claiming a payment was received when we cannot even read
  * the POST would be the worse mistake.
  *
- * A free listing account buying the Care plan or the Premium membership has no Check and send: the pay page marks its
+ * An account buying Managed Website from sign-up has no Check and send: the pay page marks its
  * callback address with the plan, and the browser goes back to that plan's page instead. A reactivation is marked to go
  * back to Billing. The marks only pick between pages the signed-in customer could open anyway, each of which checks for
  * itself who is looking (payCallbackDestination).

@@ -4,16 +4,15 @@ import { describe, expect, it } from "vitest";
 import { BRAND } from "./brand";
 import { LISTING_BRAND } from "./testing/listing-brand";
 import {
-  CARE_PATH,
+  MEMBERSHIP_NAMES,
   MEMBERSHIP_PATH,
-  UPGRADE_PATH,
   isWaitingOnPayment,
-  plansMoveToUpgradePage,
   groupedBenefits,
   membershipBenefits,
   membershipPriceParts,
   orderSummary,
   membershipFailedHref,
+  membershipHrefWithAddOns,
   membershipPathFor,
   membershipPriceLine,
   membershipReceivedHref,
@@ -29,7 +28,7 @@ describe("membershipPriceLine", () => {
   });
 
   it("says nothing about tax for a plan with none", () => {
-    expect(membershipPriceLine({ recurringAmountCents: 6_900, currency: "USD", taxRateBasisPoints: 0 })).toBe("$69 a month");
+    expect(membershipPriceLine({ recurringAmountCents: 7_500, currency: "USD", taxRateBasisPoints: 0 })).toBe("$75 a month");
   });
 });
 
@@ -62,68 +61,46 @@ describe("unsettledCheckout", () => {
   });
 });
 
-describe("the two plans' pages", () => {
-  it("gives each plan its own page, and sends its payment notices back to it", () => {
-    expect(membershipPathFor("care")).toBe("/care");
-    expect(membershipPathFor("premium")).toBe("/premium");
-    expect([CARE_PATH, MEMBERSHIP_PATH]).toEqual(["/care", "/premium"]);
-    expect(membershipReceivedHref("care")).toBe("/care?payment=received");
-    expect(membershipFailedHref("premium")).toBe("/premium?payment=failed");
+describe("the plan's page", () => {
+  it("puts Managed Website on /plan, and sends its payment notices back to it", () => {
+    expect(membershipPathFor("managed")).toBe("/plan");
+    expect(MEMBERSHIP_PATH).toBe("/plan");
+    expect(MEMBERSHIP_NAMES.managed).toBe("Managed Website");
+    expect(membershipReceivedHref("managed")).toBe("/plan?payment=received");
+    expect(membershipFailedHref("managed")).toBe("/plan?payment=failed");
   });
 
-  it("reads the plan a sign-up choice buys, and nothing for the free listing or an unknown choice", () => {
-    expect(membershipTierForChoice("care")).toBe("care");
-    expect(membershipTierForChoice("premium")).toBe("premium");
+  it("reads the plan a sign-up choice buys, and nothing for the free listing, a retired plan or an unknown choice", () => {
+    expect(membershipTierForChoice("managed")).toBe("managed");
     expect(membershipTierForChoice("listing_only")).toBeNull();
+    expect(membershipTierForChoice("care")).toBeNull();
+    expect(membershipTierForChoice("premium")).toBeNull();
     expect(membershipTierForChoice("own_website")).toBeNull();
     expect(membershipTierForChoice(null)).toBeNull();
   });
 
   it("reads the plan a payment callback names, and nothing else", () => {
-    expect(readMembershipCallbackTier("care")).toBe("care");
-    expect(readMembershipCallbackTier("premium")).toBe("premium");
+    expect(readMembershipCallbackTier("managed")).toBe("managed");
+    expect(readMembershipCallbackTier("care")).toBeNull();
+    expect(readMembershipCallbackTier("premium")).toBeNull();
     expect(readMembershipCallbackTier("gold")).toBeNull();
     expect(readMembershipCallbackTier(null)).toBeNull();
   });
 
-  it("lists what Care includes, which is the website's four and no listing", () => {
-    expect(membershipBenefits("care", LISTING_BRAND)).toEqual([
-      "Next.js business website",
-      "Website management",
-      "OyeChats professional chatbot",
-      "Server and hosting",
-    ]);
-  });
-
-  it("lists everything in Care and the listing besides for Premium, with the table's notes", () => {
-    const premium = membershipBenefits("premium", LISTING_BRAND);
-    for (const line of membershipBenefits("care", LISTING_BRAND).filter((line) => line !== "Next.js business website")) expect(premium).toContain(line);
-    expect(premium).toContain("Next.js business website: 5 pages (free)");
-    expect(premium).toContain("Business listing");
-    expect(premium).toContain("Appointment management system");
-    expect(premium).toContain("Homepage featured placement: Hot & Growing");
+  it("lists what Managed Website includes, starting with the free website", () => {
+    const benefits = membershipBenefits("managed", LISTING_BRAND);
+    expect(benefits[0]).toBe("Your business website, built free");
+    expect(benefits).toContain("Hosting and SSL certificate");
+    expect(benefits).toContain("2 small content edits a month, up to 30 minutes each");
+    expect(benefits).toContain("OyeChats professional chatbot");
   });
 });
 
 describe("groupedBenefits", () => {
-  it("sorts what Premium holds into the listing, the website and social media, keeping the table's order", () => {
-    const groups = groupedBenefits("premium", LISTING_BRAND);
-    expect(groups.map((group) => group.name)).toEqual(["Listing", "Website", "Social media"]);
-    expect(groups.find((group) => group.name === "Website")?.items).toEqual([
-      "Next.js business website: 5 pages (free)",
-      "Website management",
-      "OyeChats professional chatbot",
-      "Server and hosting",
-      "Appointment management system",
-    ]);
-    expect(groups.find((group) => group.name === "Social media")?.items).toContain("Instagram account management");
-  });
-
-  it("leaves out a layer a plan has nothing in, and loses no line", () => {
-    expect(groupedBenefits("care", LISTING_BRAND).map((group) => group.name)).toEqual(["Website"]);
-    for (const tier of ["care", "premium"] as const) {
-      expect(groupedBenefits(tier, LISTING_BRAND).flatMap((group) => group.items)).toHaveLength(membershipBenefits(tier, LISTING_BRAND).length);
-    }
+  it("puts everything the plan holds under one Website heading, in order, losing no line", () => {
+    const groups = groupedBenefits("managed", LISTING_BRAND);
+    expect(groups.map((group) => group.name)).toEqual(["Website"]);
+    expect(groups[0]?.items).toEqual(membershipBenefits("managed", LISTING_BRAND));
   });
 });
 
@@ -136,49 +113,44 @@ describe("membershipPriceParts", () => {
   });
 
   it("shows the discounted figure once a code or the lifetime offer is on, with the list price as was", () => {
-    const care = { recurringAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
-    expect(membershipPriceParts(care, 50_000)).toEqual({ amount: "₹2,499", terms: "a month + 18% GST", was: "₹2,999" });
-    expect(membershipPriceParts(care, 14_995).amount).toBe("₹2,849.05");
+    const managed = { recurringAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
+    expect(membershipPriceParts(managed, 50_000)).toEqual({ amount: "₹2,499", terms: "a month + 18% GST", was: "₹2,999" });
+    expect(membershipPriceParts(managed, 14_995).amount).toBe("₹2,849.05");
   });
 });
 
 describe("orderSummary", () => {
-  const care = { initialAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
+  const managed = { initialAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
 
   it("works out today's payment: the price, any code, the GST and the total the provider takes", () => {
-    expect(orderSummary(care, 0)).toEqual({ listCents: 299_900, discountCents: 0, planNetCents: 299_900, addOns: [], netCents: 299_900, gstCents: 53_982, totalCents: 353_882 });
-    expect(orderSummary(care, 30_000)).toEqual({ listCents: 299_900, discountCents: 30_000, planNetCents: 269_900, addOns: [], netCents: 269_900, gstCents: 48_582, totalCents: 318_482 });
+    expect(orderSummary(managed, 0)).toEqual({ listCents: 299_900, discountCents: 0, planNetCents: 299_900, addOns: [], netCents: 299_900, gstCents: 53_982, totalCents: 353_882 });
+    expect(orderSummary(managed, 30_000)).toEqual({ listCents: 299_900, discountCents: 30_000, planNetCents: 269_900, addOns: [], netCents: 269_900, gstCents: 48_582, totalCents: 318_482 });
   });
 
   it("charges no tax on a plan that carries none", () => {
-    expect(orderSummary({ ...care, taxRateBasisPoints: 0 }, 0)).toMatchObject({ gstCents: 0, totalCents: 299_900 });
+    expect(orderSummary({ ...managed, taxRateBasisPoints: 0 }, 0)).toMatchObject({ gstCents: 0, totalCents: 299_900 });
   });
 
   it("adds the add-ons taken at this checkout to the one payment, with their offer and the GST on all of it", () => {
-    const summary = orderSummary(care, 0, bundleLines(["social-media"], "INR"));
-    expect(summary.addOns.map((line) => line.addOn)).toEqual(["social-media"]);
-    expect(summary.netCents).toBe(299_900 + 189_905);
-    expect(summary.totalCents).toBe(chargedAmountCents(299_900 + 189_905, 0, 1800));
+    const summary = orderSummary(managed, 0, bundleLines(["digital-growth"], "INR"));
+    expect(summary.addOns.map((line) => line.addOn)).toEqual(["digital-growth"]);
+    expect(summary.addOns[0]).toMatchObject({ listCents: 700_000, offerCents: 35_000, netCents: 665_000 });
+    expect(summary.netCents).toBe(299_900 + 665_000);
+    expect(summary.totalCents).toBe(chargedAmountCents(299_900 + 665_000, 0, 1800));
     expect(summary.gstCents).toBe(summary.totalCents - summary.netCents);
     expect(summary.planNetCents).toBe(299_900);
   });
 
-  it("prices a dollar plan with dollar add-ons and no tax: $75 and $95", () => {
+  it("prices a dollar plan with dollar add-ons and no tax: $75 and $75 less the 5% offer", () => {
     const usd = { initialAmountCents: 7_500, currency: "USD", taxRateBasisPoints: 0 } as const;
-    const summary = orderSummary(usd, 0, bundleLines(["social-media"], "USD"));
-    expect(summary).toMatchObject({ planNetCents: 7_500, netCents: 7_500 + 9_500, gstCents: 0, totalCents: 17_000 });
+    const summary = orderSummary(usd, 0, bundleLines(["digital-growth"], "USD"));
+    expect(summary).toMatchObject({ planNetCents: 7_500, netCents: 7_500 + 7_125, gstCents: 0, totalCents: 14_625 });
   });
 
   it("takes a code off the plan only, never off the add-ons", () => {
-    const summary = orderSummary(care, 30_000, bundleLines(["advertising"], "INR"));
-    expect(summary.netCents).toBe(299_900 - 30_000 + 569_905);
+    const summary = orderSummary(managed, 30_000, bundleLines(["local-seo-aeo"], "INR"));
+    expect(summary.netCents).toBe(299_900 - 30_000 + 2_375_000);
     expect(summary.planNetCents).toBe(269_900);
-  });
-});
-
-describe("UPGRADE_PATH", () => {
-  it("is the one page a free listing account or a Care client compares the plans on", () => {
-    expect(UPGRADE_PATH).toBe("/upgrade");
   });
 });
 
@@ -206,37 +178,20 @@ describe("isWaitingOnPayment", () => {
   });
 });
 
-describe("plansMoveToUpgradePage", () => {
-  const quiet = { held: false, notice: null, waiting: false, paymentUnderReview: false } as const;
-
-  it("sends a free account that just opened a plan's page to the Upgrade page", () => {
-    expect(plansMoveToUpgradePage(quiet)).toBe(true);
-  });
-
-  it("keeps an owner held on the plan they chose at sign-up", () => {
-    expect(plansMoveToUpgradePage({ ...quiet, held: true })).toBe(false);
-  });
-
-  it("keeps a payment's return address on the plan page that says what happened", () => {
-    expect(plansMoveToUpgradePage({ ...quiet, notice: "failed" })).toBe(false);
-    expect(plansMoveToUpgradePage({ ...quiet, notice: "received" })).toBe(false);
-  });
-
-  it("keeps an account whose payment is being settled where it is told so", () => {
-    expect(plansMoveToUpgradePage({ ...quiet, waiting: true })).toBe(false);
-    expect(plansMoveToUpgradePage({ ...quiet, paymentUnderReview: true })).toBe(false);
+describe("the plan list under Brandbasket", () => {
+  it("is the same list for the product as for a brand that sells the listing, since none of it is about the listing", () => {
+    const brandbasket = membershipBenefits("managed", BRAND);
+    expect(brandbasket).toEqual(membershipBenefits("managed", LISTING_BRAND));
+    expect(brandbasket.join(" ").toLowerCase()).not.toContain("listing");
+    for (const line of [...brandbasket, ...groupedBenefits("managed", BRAND).flatMap((group) => group.items)]) {
+      expect(line).not.toMatch(/first\s?fold/i);
+    }
   });
 });
 
-describe("the plan lists under Brandbasket", () => {
-  it("keeps the listing's lines for a brand that sells it and drops them for the product", () => {
-    expect(membershipBenefits("premium", LISTING_BRAND)).toContain("Business listing");
-    const brandbasket = membershipBenefits("premium", BRAND);
-    expect(brandbasket).not.toContain("Business listing");
-    expect(brandbasket.join(" ").toLowerCase()).not.toContain("listing");
-    expect(brandbasket).toContain("10% off digital marketing services");
-    for (const line of [...brandbasket, ...groupedBenefits("premium", BRAND).flatMap((group) => group.items)]) {
-      expect(line).not.toMatch(/first\s?fold/i);
-    }
+describe("membershipHrefWithAddOns", () => {
+  it("is the plan's page, carrying the add-ons chosen on the website when there are any", () => {
+    expect(membershipHrefWithAddOns("managed", [])).toBe("/plan");
+    expect(membershipHrefWithAddOns("managed", ["digital-growth", "local-seo-aeo"])).toBe("/plan?addons=digital-growth,local-seo-aeo");
   });
 });
