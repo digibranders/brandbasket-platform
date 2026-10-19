@@ -123,10 +123,12 @@ export const addOnPayments = pgTable(
 export const bundledAddOnStatus = pgEnum("bundled_add_on_status", ["pending", "active", "removed"]);
 
 /**
- * An add-on taken at the first checkout, billed inside the plan's own subscription: the one monthly charge is the plan
- * plus these. `pending` until the first payment is recorded, `active` after it, `removed` once it has stopped being
- * billed. The price is frozen here at the checkout (list, the 5% lifetime offer, net) and summed onto
- * `subscriptions.bundled_add_on_net_cents`. Rows are kept on erasure, like every record of what was sold.
+ * An add-on billed inside the plan's own subscription: the one monthly charge is the plan plus these. Taken at the first
+ * checkout, it is `pending` until the first payment is recorded and `active` after it. Added to a running plan, it is
+ * `pending` with a charge for the rest of the paid month (`charge_id`), `active` once that is paid, and joins the monthly
+ * amount at the next renewal (`billed_from`). `removed` once it has stopped being billed. The price is frozen here (list,
+ * the 5% lifetime offer taken at the first checkout only, net) and summed onto `subscriptions.bundled_add_on_net_cents`.
+ * Rows are kept on erasure, like every record of what was sold.
  */
 export const bundledAddOns = pgTable(
   "bundled_add_ons",
@@ -145,6 +147,16 @@ export const bundledAddOns = pgTable(
     /** The customer asked to remove it: it stays billed, and active, until the next billing date, then it is `removed`. */
     endRequestedAt: timestamp("end_requested_at", { withTimezone: true }),
     removedAt: timestamp("removed_at", { withTimezone: true }),
+    /** The charge for the rest of the paid month, for an add-on added to a running plan; null for one taken at sign-up. */
+    chargeId: uuid("charge_id").references(() => charges.id),
+    /** The end of the paid month that charge was worked out for: paying it after a renewal buys nothing. */
+    quotedPeriodEnd: timestamp("quoted_period_end", { withTimezone: true }),
+    /** When its net became part of `subscriptions.bundled_add_on_net_cents`: the first payment, or the renewal after it was added. */
+    billedFrom: timestamp("billed_from", { withTimezone: true }),
+    /** When the provider was told to bill the new monthly amount from the next renewal. */
+    providerScheduledAt: timestamp("provider_scheduled_at", { withTimezone: true }),
+    /** The staff member who added it for the client, or null when the client did. */
+    addedByStaffId: text("added_by_staff_id").references(() => users.id),
     /** When staff got in touch about this purchase, as for add_on_subscriptions; null until then. */
     contactedAt: timestamp("contacted_at", { withTimezone: true }),
     contactedByStaffId: text("contacted_by_staff_id").references(() => users.id),
@@ -152,7 +164,11 @@ export const bundledAddOns = pgTable(
     updatedAt: updatedAt(),
   },
   (table) => [
-    uniqueIndex("bundled_add_ons_subscription_add_on_idx").on(table.subscriptionId, table.addOn),
+    // One live row per add-on: it can be taken again after an earlier one has stopped.
+    uniqueIndex("bundled_add_ons_subscription_add_on_idx")
+      .on(table.subscriptionId, table.addOn)
+      .where(sql`${table.status} in ('pending', 'active')`),
+    uniqueIndex("bundled_add_ons_charge_idx").on(table.chargeId).where(sql`${table.chargeId} is not null`),
     index("bundled_add_ons_business_idx").on(table.businessId, table.createdAt),
     check("bundled_add_ons_add_on_check", sql`${table.addOn} in ('digital-growth', 'local-seo-aeo')`),
     check(

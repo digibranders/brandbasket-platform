@@ -52,10 +52,13 @@ export type PaymentStatus = (typeof paymentStatus.enumValues)[number];
  * - `amount_mismatch`: the provider took an amount or currency that is not the plan's first payment.
  * - `upgrade_not_applied`: it paid a move up to Premium whose quote no longer stood (the month had renewed, or the
  *   subscription was no longer live), so nothing changed and it is a payment to refund.
- * The last two are payments that did apply, where something after them went wrong:
+ * - `add_on_not_applied`: it paid the rest-of-month charge for an add-on whose quote no longer stood, likewise.
+ * The rest are payments that did apply, where something after them went wrong:
  * - `submission_failed`: the payment activated the subscription, but sending the customer's answers failed.
  * - `upgrade_provider_pending`: the payment moved the customer up to Premium, but the provider has not yet been told
  *   to bill Premium from the next renewal. Staff finish it from the client page.
+ * - `add_on_provider_pending`: the payment turned an add-on on, but the provider has not yet been told to bill it from
+ *   the next renewal. Staff retry it from the client page.
  */
 export const paymentAttentionReason = pgEnum("payment_attention_reason", [
   "checkout_replaced",
@@ -64,6 +67,8 @@ export const paymentAttentionReason = pgEnum("payment_attention_reason", [
   "submission_failed",
   "upgrade_not_applied",
   "upgrade_provider_pending",
+  "add_on_not_applied",
+  "add_on_provider_pending",
 ]);
 export type PaymentAttentionReason = (typeof paymentAttentionReason.enumValues)[number];
 
@@ -73,6 +78,7 @@ export const UNAPPLIED_PAYMENT_REASONS = [
   "already_paid",
   "amount_mismatch",
   "upgrade_not_applied",
+  "add_on_not_applied",
 ] as const satisfies readonly PaymentAttentionReason[];
 
 /**
@@ -378,6 +384,7 @@ export const chargeKind = pgEnum("charge_kind", [
   "directory_ad",
   "plan_upgrade",
   "press_release",
+  "add_on",
 ]);
 export type ChargeKind = (typeof chargeKind.enumValues)[number];
 

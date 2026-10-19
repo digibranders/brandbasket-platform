@@ -68,7 +68,7 @@ export async function findLiveBundledAddOns(db: Runner, businessId: string): Pro
     .orderBy(asc(bundledAddOns.createdAt), asc(bundledAddOns.id));
 }
 
-/** Turns a subscription's `pending` add-ons `active`, in the transaction that records its first payment. Returns them. */
+/** Turns a subscription's `pending` add-ons `active` and billed, in the transaction that records its first payment. Returns them. */
 export async function activateBundledAddOns(
   db: Runner,
   input: { readonly subscriptionId: string; readonly now: Date },
@@ -76,7 +76,7 @@ export async function activateBundledAddOns(
   if (!isUuid(input.subscriptionId)) return [];
   const activated = await db
     .update(bundledAddOns)
-    .set({ status: "active", activatedAt: input.now, updatedAt: input.now })
+    .set({ status: "active", activatedAt: input.now, billedFrom: input.now, updatedAt: input.now })
     .where(and(eq(bundledAddOns.subscriptionId, input.subscriptionId), eq(bundledAddOns.status, "pending")))
     .returning();
   // RETURNING has no order of its own, and these become the invoice's lines: keep them in the order they were added.
