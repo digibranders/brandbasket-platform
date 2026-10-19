@@ -24,7 +24,6 @@ import {
   openTestDatabases,
   resetTestDatabase,
   seedPlansFromMigrations,
-  seedDollarPlanForTests,
   type TestDatabases,
 } from "./testing";
 
@@ -102,7 +101,6 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
-  await seedDollarPlanForTests(dbs.owner);
   await dbs.staff.db.insert(users).values([
     { id: USER_A, name: "Ana Diaz", email: "ana@example.com" },
     { id: USER_B, name: "Ben Ortiz", email: "ben@example.com" },
@@ -130,14 +128,14 @@ describe("plans", () => {
       .orderBy(asc(plans.code));
     expect(rows).toEqual([
       { code: "managed-inr-2026-10", currency: "INR", tier: "managed", active: true, name: "Managed Website" },
-      { code: "managed-usd-test", currency: "USD", tier: "managed", active: true, name: "Managed Website" },
+      { code: "managed-usd-2026-10", currency: "USD", tier: "managed", active: true, name: "Managed Website" },
     ]);
   });
 
   it("prices every business from Managed Website, whatever it chose at sign-up", async () => {
     await dbs.owner.db.update(businesses).set({ signupChoice: "listing_only" }).where(eq(businesses.id, businessB));
     expect(await findBillingState(dbs.staff.db, businessB)).toMatchObject({ tier: "managed", plan: { code: "managed-inr-2026-10" } });
-    expect(await findBillingState(dbs.staff.db, businessA)).toMatchObject({ tier: "managed", plan: { code: "managed-usd-test" } });
+    expect(await findBillingState(dbs.staff.db, businessA)).toMatchObject({ tier: "managed", plan: { code: "managed-usd-2026-10" } });
   });
 
   it("finds the plan for a currency and never the other one", async () => {
@@ -146,14 +144,14 @@ describe("plans", () => {
 
     // Both start at their monthly price and cover one month: the test $75 with no tax of ours, and ₹3,000 a month in
     // paise with 18% GST on top.
-    expect(usd).toMatchObject({ code: "managed-usd-test", currency: "USD", initialAmountCents: 7500, taxRateBasisPoints: 0, initialTermMonths: 1, recurringAmountCents: 7500 });
+    expect(usd).toMatchObject({ code: "managed-usd-2026-10", currency: "USD", initialAmountCents: 7500, taxRateBasisPoints: 0, initialTermMonths: 1, recurringAmountCents: 7500 });
     expect(inr).toMatchObject({
       code: "managed-inr-2026-10",
       currency: "INR",
-      initialAmountCents: 300000,
+      initialAmountCents: 299900,
       taxRateBasisPoints: 1800,
       initialTermMonths: 1,
-      recurringAmountCents: 300000,
+      recurringAmountCents: 299900,
       extraPublishAmountCents: 30000,
       includedChangeHours: 1,
       extraHourAmountCents: 50000,
@@ -186,11 +184,11 @@ describe("plans", () => {
       { ...duplicate, code: "managed-usd-old-2", active: false },
     ]);
     // The live price is still the only one found.
-    expect(await findActivePlan(dbs.staff.db, "USD", "managed")).toMatchObject({ code: "managed-usd-test", initialAmountCents: 7500 });
+    expect(await findActivePlan(dbs.staff.db, "USD", "managed")).toMatchObject({ code: "managed-usd-2026-10", initialAmountCents: 7500 });
   });
 
   it("returns null once a currency has no active plan, rather than a retired price", async () => {
-    await dbs.owner.db.update(plans).set({ active: false }).where(eq(plans.code, "managed-usd-test"));
+    await dbs.owner.db.update(plans).set({ active: false }).where(eq(plans.code, "managed-usd-2026-10"));
 
     expect(await findActivePlan(dbs.staff.db, "USD", "managed")).toBeNull();
     expect(await findActivePlan(dbs.staff.db, "INR", "managed")).not.toBeNull();
@@ -326,7 +324,7 @@ describe("recordPaymentAndActivate", () => {
 
     const oneMonthOn = new Date("2026-04-01T10:00:00.000Z");
     expect(plan.initialTermMonths).toBe(1);
-    expect(result.payment).toMatchObject({ amountCents: 300000, currency: "INR", kind: "initial" });
+    expect(result.payment).toMatchObject({ amountCents: 299900, currency: "INR", kind: "initial" });
     expect(await findLatestSubscriptionForBusiness(dbs.staff.db, businessB)).toMatchObject({
       status: "active",
       commitmentEndsAt: oneMonthOn,
@@ -441,7 +439,7 @@ describe("what the customer's connection may do with billing rows", () => {
     expect(seen.subscription).toMatchObject({ id: subscriptionId, status: "active" });
     expect(seen.payments.map((payment) => payment.providerPaymentId)).toEqual(["fake_pay_a"]);
     // Prices are the same for everyone, so the payment screen can read the plan.
-    expect(seen.plan).toMatchObject({ code: "managed-usd-test" });
+    expect(seen.plan).toMatchObject({ code: "managed-usd-2026-10" });
   });
 
   it("cannot read another tenant's subscription or payments", async () => {
@@ -538,7 +536,7 @@ describe("findCurrentPaymentMethod", () => {
       businessId: businessA,
       provider: "razorpay",
       kind: "renewal",
-      amountCents: 300000,
+      amountCents: 299900,
       currency: "INR",
       status: "captured",
       paidAt: values.createdAt,

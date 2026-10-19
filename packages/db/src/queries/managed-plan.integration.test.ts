@@ -18,18 +18,21 @@ afterAll(async () => {
 });
 
 describe("the Managed Website plan", () => {
-  it("is the only plan, and the only one on sale", async () => {
+  it("is the only plan, one row per currency, both on sale", async () => {
     const rows = await querySql<{ code: string; tier: string; active: boolean }>(databases.owner, "select code, tier, active from plans");
-    expect(rows).toEqual([{ code: "managed-inr-2026-10", tier: "managed", active: true }]);
+    expect(rows.sort((a, b) => a.code.localeCompare(b.code))).toEqual([
+      { code: "managed-inr-2026-10", tier: "managed", active: true },
+      { code: "managed-usd-2026-10", tier: "managed", active: true },
+    ]);
   });
 
-  it("costs ₹3,000 a month before 18% GST, the first payment covering one month, with ₹500 extra hours", async () => {
+  it("costs ₹2,999 a month before 18% GST, the first payment covering one month, with ₹500 extra hours", async () => {
     expect(await findActivePlan(databases.staff.db, "INR", "managed")).toMatchObject({
       name: "Managed Website",
       tier: "managed",
-      initialAmountCents: 300_000,
+      initialAmountCents: 299_900,
       initialTermMonths: 1,
-      recurringAmountCents: 300_000,
+      recurringAmountCents: 299_900,
       taxRateBasisPoints: 1800,
       includedChangeHours: 1,
       extraHourAmountCents: 50_000,
@@ -39,8 +42,13 @@ describe("the Managed Website plan", () => {
     });
   });
 
-  it("has no dollar price until the owner sets one", async () => {
-    expect(await findActivePlan(databases.staff.db, "USD", "managed")).toBeNull();
+  it("costs $75 a month in dollars, with no tax of ours", async () => {
+    expect(await findActivePlan(databases.staff.db, "USD", "managed")).toMatchObject({
+      initialAmountCents: 7_500,
+      recurringAmountCents: 7_500,
+      taxRateBasisPoints: 0,
+      extraHourAmountCents: 1_000,
+    });
   });
 
   it("is what every sign-up choice buys", () => {

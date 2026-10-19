@@ -16,7 +16,6 @@ import {
   captureErrorText,
   openTestDatabases,
   resetTestDatabase,
-  seedDollarPlanForTests,
   seedPlansFromMigrations,
   type TestDatabases,
 } from "./testing";
@@ -39,7 +38,6 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
-  await seedDollarPlanForTests(dbs.owner);
   await dbs.staff.db.insert(users).values([
     { id: STAFF, name: "Staff Person", email: "staff@example.com" },
     { id: OWNER, name: "Owner", email: "owner@example.com" },
@@ -123,7 +121,7 @@ describe("replaceMonthlyPrice", () => {
     await replaceMonthlyPrice(dbs.staff.db, { currency: "USD", tier: "managed", netMonthlyCents: 7_900, providerPlanId: null, staffId: STAFF, now: NOW });
     expect((await listActivePlans(dbs.staff.db)).map((plan) => [plan.currency, plan.tier, plan.recurringAmountCents])).toEqual([
       ["USD", "managed", 7_900],
-      ["INR", "managed", 300_000],
+      ["INR", "managed", 299_900],
     ]);
   });
 

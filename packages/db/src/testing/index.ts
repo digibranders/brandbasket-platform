@@ -125,24 +125,6 @@ export async function seedPlansFromMigrations(owner: DatabaseHandle): Promise<vo
 }
 
 /**
- * A dollar Managed Website plan, for tests about dollar billing. Brandbasket has no dollar price yet (the owner sets it),
- * so no migration inserts one: this test-only row stands in for it, at the old Care dollar price.
- */
-export async function seedDollarPlanForTests(owner: DatabaseHandle): Promise<void> {
-  await owner.db.execute(
-    sql.raw(`INSERT INTO "plans" (
-      "id", "code", "name", "currency", "tier", "initial_amount_cents", "initial_term_months", "recurring_amount_cents",
-      "included_publishes_per_month", "extra_publish_amount_cents", "included_change_hours", "extra_hour_amount_cents",
-      "included_blog_posts", "blog_post_block_size", "extra_blog_posts_amount_cents", "provider_plan_id",
-      "tax_rate_basis_points", "active"
-    ) VALUES (
-      gen_random_uuid(), 'managed-usd-test', 'Managed Website', 'USD', 'managed', 7500, 1, 7500,
-      3, 300, 1, 1000, 100, 100, 500, NULL, 0, true
-    )`),
-  );
-}
-
-/**
  * Runs one statement on the owner connection, for tests in packages that do not carry the query builder (shared's
  * integration tests arrange state with it). The statement is test code, never built from input.
  */

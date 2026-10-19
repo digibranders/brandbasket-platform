@@ -15,7 +15,7 @@ import {
 } from "./queries/referrals";
 import { createAffiliate, updateAffiliate } from "./queries/affiliates";
 import { businesses, referralCodes, users } from "./schema";
-import { captureErrorText, openTestDatabases, resetTestDatabase, seedDollarPlanForTests,
+import { captureErrorText, openTestDatabases, resetTestDatabase,
   seedPlansFromMigrations, type TestDatabases } from "./testing";
 
 const STAFF_USER = "staff-user";
@@ -102,7 +102,6 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
-  await seedDollarPlanForTests(dbs.owner);
   await dbs.owner.db
     .insert(users)
     .values({ id: STAFF_USER, name: "Staff", email: "staff@example.com", emailVerified: true });

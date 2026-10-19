@@ -34,7 +34,6 @@ import {
   captureErrorText,
   openTestDatabases,
   resetTestDatabase,
-  seedDollarPlanForTests,
   seedPlansFromMigrations,
   type TestDatabases,
 } from "./testing";
@@ -120,7 +119,6 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
-  await seedDollarPlanForTests(dbs.owner);
   await dbs.staff.db.insert(users).values([
     { id: USER_A, name: "Ana Diaz", email: "ana@example.com" },
     { id: USER_B, name: "Ben Ortiz", email: "ben@example.com" },

@@ -50,7 +50,6 @@ import {
   captureErrorText,
   openTestDatabases,
   resetTestDatabase,
-  seedDollarPlanForTests,
   seedPlansFromMigrations,
   type TestDatabases,
 } from "./testing";
@@ -153,7 +152,6 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
-  await seedDollarPlanForTests(dbs.owner);
   await dbs.staff.db.insert(users).values([
     { id: USER_A, name: "Ana Diaz", email: "ana@example.com" },
     { id: USER_B, name: "Ben Ortiz", email: "ben@example.com" },
@@ -660,7 +658,7 @@ describe("findBillingState", () => {
     expect(own).toMatchObject({
       currency: "USD",
       subscription: { status: "incomplete", providerSubscriptionId: "fake_sub_a" },
-      plan: { code: "managed-usd-test", initialAmountCents: 7500, initialTermMonths: 1 },
+      plan: { code: "managed-usd-2026-10", initialAmountCents: 7500, initialTermMonths: 1 },
     });
 
     const other = await withTenantScope(dbs.app.db, scopeA(), (tx) => findBillingState(tx, businessB));
@@ -674,7 +672,7 @@ describe("findBillingState", () => {
     expect(state).toMatchObject({
       currency: "INR",
       subscription: null,
-      plan: { code: "managed-inr-2026-10", initialAmountCents: 300000, taxRateBasisPoints: 1800, initialTermMonths: 1 },
+      plan: { code: "managed-inr-2026-10", initialAmountCents: 299900, taxRateBasisPoints: 1800, initialTermMonths: 1 },
     });
   });
 

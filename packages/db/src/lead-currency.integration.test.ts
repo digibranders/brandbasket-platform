@@ -4,7 +4,7 @@ import { findActivePlan, insertSubscription } from "./queries/billing";
 import { changeLeadCurrency, createLead, isBillingStarted } from "./queries/leads";
 import { createReferralCode } from "./queries/referrals";
 import { businesses, leads, users } from "./schema";
-import { openTestDatabases, resetTestDatabase, seedDollarPlanForTests,
+import { openTestDatabases, resetTestDatabase,
   seedPlansFromMigrations, type TestDatabases } from "./testing";
 
 const STAFF_USER = "staff-user-currency";
@@ -60,7 +60,6 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
-  await seedDollarPlanForTests(dbs.owner);
   await dbs.owner.db.insert(users).values({ id: STAFF_USER, name: "Staff", email: "staff@example.com", emailVerified: true });
   const created = await createLead(dbs.staff.db, {
     name: "Siddique",
