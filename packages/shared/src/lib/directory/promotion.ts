@@ -1,6 +1,6 @@
-import type { DirectoryPaidTag, DirectoryPromotion } from "@fynix/db";
+import type { DirectoryPaidTag, DirectoryPromotion } from "@brandbasket/db";
 // The subpath, not the package index: this module reaches client components, and the index pulls in the database.
-import { chargedAmountCents, GST_BASIS_POINTS } from "@fynix/billing/tax";
+import { chargedAmountCents, GST_BASIS_POINTS } from "@brandbasket/billing/tax";
 
 /*
  * Paid listing tags on the local directory, as the customer's Listing page and the staff console show them. A week of one

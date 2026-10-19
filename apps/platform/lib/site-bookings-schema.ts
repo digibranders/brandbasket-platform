@@ -6,8 +6,8 @@
  * but types — this file, and the zod dependency it needs, are platform-only.
  */
 import { z } from "zod";
-import { bookingFieldsSchema } from "@fynix/shared/lib/appointments/booking-form";
-import { isOtpCode } from "@fynix/shared/lib/appointments/otp";
+import { bookingFieldsSchema } from "@brandbasket/shared/lib/appointments/booking-form";
+import { isOtpCode } from "@brandbasket/shared/lib/appointments/otp";
 
 export const siteOtpRequestSchema = z.object({
   fields: bookingFieldsSchema,

@@ -1,4 +1,4 @@
-import { SETUP_CALL_URL_PROBLEMS, type SetupCallUrlProblem } from "@fynix/shared/lib/setup-call-link";
+import { SETUP_CALL_URL_PROBLEMS, type SetupCallUrlProblem } from "@brandbasket/shared/lib/setup-call-link";
 
 /** What the Settings page says after a save. Fixed messages only: the query parameter picks one, nothing more. */
 export type SettingsNotice = "setup-call-saved" | "setup-call-cleared" | SetupCallUrlProblem;

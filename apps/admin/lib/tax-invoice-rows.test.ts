@@ -1,4 +1,4 @@
-import type { Payment, TaxInvoice } from "@fynix/db";
+import type { Payment, TaxInvoice } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { missingInvoiceRow, taxInvoiceRow } from "./tax-invoice-rows";
 

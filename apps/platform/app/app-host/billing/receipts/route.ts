@@ -1,8 +1,8 @@
 import "server-only";
 import { BRAND, type Brand } from "@/lib/brand";
-import type { Receipt, TaxInvoice } from "@fynix/db";
-import { displayPhoneText } from "@fynix/shared/server/phone-display";
-import { renderTaxInvoicesPdf } from "@fynix/shared/server/tax-invoice-pdf";
+import type { Receipt, TaxInvoice } from "@brandbasket/db";
+import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
+import { renderTaxInvoicesPdf } from "@brandbasket/shared/server/tax-invoice-pdf";
 import { PDFDocument } from "pdf-lib";
 import { isDownloadableReceipt, receiptDocument, type ReceiptCustomer } from "@/lib/billing/receipt-document";
 import { parseReceiptSelection } from "@/lib/billing/receipt-download";

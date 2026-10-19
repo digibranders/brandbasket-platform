@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 
 export interface FigureItem {
   readonly value: ReactNode;

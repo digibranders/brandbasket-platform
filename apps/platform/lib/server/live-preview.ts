@@ -12,13 +12,13 @@ import {
   readSiteFacts,
   type DirectoryClaim,
   type DirectoryProfile,
-} from "@fynix/db";
-import { DEFAULT_BUSINESS_TIME_ZONE, localDateIn } from "@fynix/shared/lib/calendar/local-date";
-import { DIRECTORY_DEALS_TIME_ZONE } from "@fynix/shared/lib/directory/deals-contract";
-import { buildAddedFeedListing, buildAddedProfile } from "@fynix/shared/lib/directory/feed";
-import type { DirectoryFeedAddedListing } from "@fynix/shared/lib/directory/feed-contract";
-import { GALLERY_SLOTS } from "@fynix/shared/lib/directory/pictures";
-import { siteConfig } from "@fynix/shared/lib/site-config";
+} from "@brandbasket/db";
+import { DEFAULT_BUSINESS_TIME_ZONE, localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
+import { DIRECTORY_DEALS_TIME_ZONE } from "@brandbasket/shared/lib/directory/deals-contract";
+import { buildAddedFeedListing, buildAddedProfile } from "@brandbasket/shared/lib/directory/feed";
+import type { DirectoryFeedAddedListing } from "@brandbasket/shared/lib/directory/feed-contract";
+import { GALLERY_SLOTS } from "@brandbasket/shared/lib/directory/pictures";
+import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import { LEADS_API_TOKEN_MIN_LENGTH } from "@/lib/leads-api";
 import { previewOrigins } from "@/lib/preview-origins";
 import { previewLink } from "@/lib/preview-link";

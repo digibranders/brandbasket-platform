@@ -1,4 +1,4 @@
-import { saveBillingProfile } from "@fynix/db";
+import { saveBillingProfile } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,8 +10,8 @@ import { issueMissingInvoiceAction, saveClientBillingDetailsAction } from "./inv
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return { ...actual, saveBillingProfile: vi.fn() };
 });
 vi.mock("@/lib/server/staff-access", () => ({ requireStaffAccess: vi.fn() }));

@@ -1,12 +1,12 @@
-import { findClientDetail, switchToDomain, type Database } from "@fynix/db";
-import { domainMovedEmail } from "@fynix/email";
+import { findClientDetail, switchToDomain, type Database } from "@brandbasket/db";
+import { domainMovedEmail } from "@brandbasket/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { customerEmailTransport } from "./email";
 import { DomainSwitchRecipientMissingError, switchDomain } from "./domain-switch";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({ findClientDetail: vi.fn(), switchToDomain: vi.fn() }));
-vi.mock("@fynix/email", () => ({ domainMovedEmail: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ findClientDetail: vi.fn(), switchToDomain: vi.fn() }));
+vi.mock("@brandbasket/email", () => ({ domainMovedEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 
 const db = {} as Database;

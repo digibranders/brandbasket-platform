@@ -1,4 +1,4 @@
-import type { BillingProfileInput } from "@fynix/db";
+import type { BillingProfileInput } from "@brandbasket/db";
 import { stateCodeOfIndiaPostName } from "../directory/india-states";
 import { FALLBACK_PHONE_COUNTRY } from "../phone/fields";
 

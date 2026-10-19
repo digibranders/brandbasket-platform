@@ -10,11 +10,11 @@ import {
   waiveCharge,
   type Charge,
   type ChargePaymentOutcome,
-} from "@fynix/db";
-import { chargeAmountCents, chargePricing } from "@fynix/shared/lib/billing/charges";
-import type { ChargeRequest } from "@fynix/shared/lib/billing/charge-form";
-import type { ManualPaymentDetails } from "@fynix/shared/lib/billing/manual-payment-form";
-import { recordChargePaymentWithInvoice } from "@fynix/shared/server/charge-payments";
+} from "@brandbasket/db";
+import { chargeAmountCents, chargePricing } from "@brandbasket/shared/lib/billing/charges";
+import type { ChargeRequest } from "@brandbasket/shared/lib/billing/charge-form";
+import type { ManualPaymentDetails } from "@brandbasket/shared/lib/billing/manual-payment-form";
+import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
 import { getStaffDb } from "./db";
 import { finishUpgradeForChargeAfterManualPayment } from "./plan-upgrade-admin";
 

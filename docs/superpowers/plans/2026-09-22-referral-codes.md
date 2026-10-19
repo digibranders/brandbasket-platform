@@ -28,8 +28,8 @@ work touches it; the fix is that session's to make.
    at the full price** even though Razorpay took less. It now takes `discountAmountCents` and records what was
    actually charged; the term is deliberately unaffected. Covered by four tests in
    `packages/shared/src/server/billing-activation.test.ts`.
-2. Both `referral-code-form.tsx` client components imported from `@fynix/billing`, whose index re-exports the
-   Razorpay provider and, through it, `@fynix/db` and the `pg` driver — pulling Postgres into the browser
+2. Both `referral-code-form.tsx` client components imported from `@brandbasket/billing`, whose index re-exports the
+   Razorpay provider and, through it, `@brandbasket/db` and the `pg` driver — pulling Postgres into the browser
    bundle. `packages/billing` now has a `./referral` subpath export (that module imports nothing) and both forms
    use it.
 
@@ -110,7 +110,7 @@ describe("dividesExactly", () => {
 
 - [x] **Step 2: Run it and watch it fail**
 
-`pnpm --filter @fynix/billing test -- referral` → FAIL, module not found.
+`pnpm --filter @brandbasket/billing test -- referral` → FAIL, module not found.
 
 - [x] **Step 3: Implement `referral.ts`**
 
@@ -145,7 +145,7 @@ describe("dividesExactly", () => {
 
 - [x] **Step 1:** Write `referrals.ts` with the table and the four checks from the spec (code format, percent 1–99, reward ≥ 0, max_redemptions > 0).
 - [x] **Step 2:** Add `referralCodeId` to `businesses`; add `referralCodeId` and `discountAmountCents` (NOT NULL DEFAULT 0) plus `subscriptions_discount_check` to `subscriptions`.
-- [x] **Step 3:** `pnpm --filter @fynix/db db:generate`, then hand-edit the generated SQL to append the grants block:
+- [x] **Step 3:** `pnpm --filter @brandbasket/db db:generate`, then hand-edit the generated SQL to append the grants block:
 
 ```sql
 GRANT SELECT, INSERT, UPDATE ON referral_codes TO fynix_staff;

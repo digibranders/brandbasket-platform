@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
-import type { Auth } from "@fynix/auth";
-import { AccountAlreadyExistsError, createAccountWithGrant, isInvalidCredentialsError } from "@fynix/auth";
+import type { Auth } from "@brandbasket/auth";
+import { AccountAlreadyExistsError, createAccountWithGrant, isInvalidCredentialsError } from "@brandbasket/auth";
 import {
   consumeRateLimit,
   findRedeemableInvite,
@@ -8,7 +8,7 @@ import {
   type Database,
   type RateLimitResult,
   type SetupInvite,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { recordAccountTermsConsent } from "./account-consent";
 import { getAuth } from "./auth";
@@ -17,12 +17,12 @@ import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { findInviteForToken, redeemSetupInvite, TermsNotAgreedError, TooManySetupAttemptsError } from "./setup";
 
 // Same approach as sign-in.test.ts: the database, Better Auth and the incoming request are all test doubles, so
-// the module's own decisions run in isolation. `@fynix/auth` is mocked rather than used for real because
+// the module's own decisions run in isolation. `@brandbasket/auth` is mocked rather than used for real because
 // better-auth is not a direct dependency of this package; the mocked AccountAlreadyExistsError is a real class,
 // because the recovery path turns on `instanceof`.
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
-vi.mock("@fynix/auth", () => ({
+vi.mock("@brandbasket/auth", () => ({
   AccountAlreadyExistsError: class AccountAlreadyExistsError extends Error {
     constructor(email: string) {
       super(`An account for ${email} already exists.`);
@@ -32,7 +32,7 @@ vi.mock("@fynix/auth", () => ({
   createAccountWithGrant: vi.fn(),
   isInvalidCredentialsError: vi.fn(),
 }));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   consumeRateLimit: vi.fn(),
   findRedeemableInvite: vi.fn(),
   redeemInviteIntoBusiness: vi.fn(),

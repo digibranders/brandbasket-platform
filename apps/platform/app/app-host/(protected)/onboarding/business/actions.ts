@@ -1,12 +1,12 @@
 "use server";
 
-import { replaceBusinessHours, saveBusinessProfile } from "@fynix/db";
+import { replaceBusinessHours, saveBusinessProfile } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseBusinessForm } from "@/lib/onboarding/business-form";
-import { toStoredHours } from "@fynix/shared/lib/onboarding/hours";
+import { toStoredHours } from "@brandbasket/shared/lib/onboarding/hours";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
-import { hrefAfter } from "@fynix/shared/lib/onboarding/steps";
+import { hrefAfter } from "@brandbasket/shared/lib/onboarding/steps";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
 import { saveOnboardingStep } from "@/lib/server/onboarding";

@@ -7,8 +7,8 @@ import type { LoginLinkState } from "@/components/affiliate-login-link";
 import { cancelEarningFor, issueLoginLinkFor, recordPayoutFor, updateAffiliateFor } from "@/lib/server/affiliate-admin";
 import { serverEnv } from "@/lib/server/env";
 import { requireStaffAccess } from "@/lib/server/staff-access";
-import { formatMoney } from "@fynix/shared/lib/money";
-import type { BillingCurrency } from "@fynix/db";
+import { formatMoney } from "@brandbasket/shared/lib/money";
+import type { BillingCurrency } from "@brandbasket/db";
 
 /**
  * The affiliate page's actions. `affiliateId` (and `earningId`) come from the page through a closure, which Next.js

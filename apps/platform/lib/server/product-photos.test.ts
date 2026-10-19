@@ -1,15 +1,15 @@
 import sharp from "sharp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Database } from "@fynix/db";
-import type { TenantContext } from "@fynix/shared/lib/access";
-import type { MediaStorage } from "@fynix/shared/server/media-storage";
+import type { Database } from "@brandbasket/db";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
+import type { MediaStorage } from "@brandbasket/shared/server/media-storage";
 
 vi.mock("server-only", () => ({}));
 
 const setPhoto = vi.fn();
 const clearPhoto = vi.fn();
-vi.mock("@fynix/db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@fynix/db")>()),
+vi.mock("@brandbasket/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@brandbasket/db")>()),
   setBusinessProductPhoto: (...args: unknown[]) => setPhoto(...args),
   clearBusinessProductPhoto: (...args: unknown[]) => clearPhoto(...args),
 }));

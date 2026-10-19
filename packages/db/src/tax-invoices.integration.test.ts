@@ -97,7 +97,7 @@ const INTRA_LINE: TaxInvoiceLineRecord = {
   taxCents: 100_786,
 };
 
-/** The number a serial gets. Written out here because @fynix/billing depends on this package, not the reverse. */
+/** The number a serial gets. Written out here because @brandbasket/billing depends on this package, not the reverse. */
 function numberFor(prefix: string, financialYear: string, serial: number): string {
   return `${prefix}/${financialYear}/${String(serial).padStart(6, "0")}`;
 }

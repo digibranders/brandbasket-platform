@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-import { SupportQueryError } from "@fynix/db";
+import { SupportQueryError } from "@brandbasket/db";
 import { createStaffSupportActions } from "./support-admin-actions";
 
 const TICKET = "0192f3c4-1111-7000-8000-000000000001";

@@ -6,8 +6,8 @@ import {
   readLiveDirectoryPictures,
   resolveDirectoryAsk,
   type DirectoryAsk,
-} from "@fynix/db";
-import { safeWebsiteHref } from "@fynix/shared/lib/safe-link";
+} from "@brandbasket/db";
+import { safeWebsiteHref } from "@brandbasket/shared/lib/safe-link";
 import type { ListingStatus, StatusResponse } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
 

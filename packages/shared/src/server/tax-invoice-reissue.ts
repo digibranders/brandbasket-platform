@@ -1,5 +1,5 @@
 import "server-only";
-import { addMonthsUtc, chargedAmountCents } from "@fynix/billing";
+import { addMonthsUtc, chargedAmountCents } from "@brandbasket/billing";
 import {
   findAddOnSubscriptionForPayment,
   findBundledAddOnsForSubscription,
@@ -13,7 +13,7 @@ import {
   type ScopedTransaction,
   type Subscription,
   type TaxInvoice,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { issueTaxInvoice, type InvoiceSource } from "./tax-invoicing";
 
 /** The payment is not one staff can invoice now: it has its invoice, gets none (D1), or is from before invoicing (D17). */

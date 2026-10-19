@@ -25,7 +25,7 @@
 
 **Architecture:** A third host surface (`sites`) inside `apps/platform`, alongside `app-host` and `admin-host`. Middleware stays pure routing and never touches the database: any host that is not the app or admin origin is rewritten to `/site-host/...`, and the page resolves the hostname to a business itself. Reads go through a new read-only Postgres role (`fynix_sites`) for the main database, and through Payload's Local API for content.
 
-**Why a surface and not `apps/sites` yet:** the design spec puts the renderer in its own app so a bad dashboard deploy cannot take customer sites down, and so the renderer holds no write credentials. That split also requires extracting Payload's config and collections into `@fynix/cms`, which the admin-repo-split plan already owns. Doing the split first would mean no working loop for days. This plan closes the loop now behind a clean seam — `lib/server/site-*.ts` has no imports from `app-host` or `admin-host` — so extracting it later is a move, not a rewrite. **Task 7 records the hardening debt; do not mark this plan done without reading it.**
+**Why a surface and not `apps/sites` yet:** the design spec puts the renderer in its own app so a bad dashboard deploy cannot take customer sites down, and so the renderer holds no write credentials. That split also requires extracting Payload's config and collections into `@brandbasket/cms`, which the admin-repo-split plan already owns. Doing the split first would mean no working loop for days. This plan closes the loop now behind a clean seam — `lib/server/site-*.ts` has no imports from `app-host` or `admin-host` — so extracting it later is a move, not a rewrite. **Task 7 records the hardening debt; do not mark this plan done without reading it.**
 
 **Tech Stack:** Next.js 16 App Router, Payload 3 Local API, Drizzle + Postgres, Vitest.
 
@@ -72,7 +72,7 @@ Add `sitesPassword: "sites-pass"` to the `SECRETS` fixture at the top of that fi
 
 - [x] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @fynix/db vitest run src/local-env-template.test.ts`
+Run: `pnpm --filter @brandbasket/db vitest run src/local-env-template.test.ts`
 Expected: FAIL — `expected undefined to be 'postgresql://fynix_sites:...'`
 
 - [x] **Step 3: Register the role**
@@ -149,7 +149,7 @@ The last one proves the grant is column-level, not table-wide.
 
 - [x] **Step 8: Run the db tests**
 
-Run: `pnpm --filter @fynix/db test`
+Run: `pnpm --filter @brandbasket/db test`
 Expected: PASS
 
 ---
@@ -226,7 +226,7 @@ Read `packages/db/src/onboarding.integration.test.ts` first and reuse whatever h
 
 - [x] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @fynix/db vitest run --config vitest.integration.config.ts src/sites.integration.test.ts`
+Run: `pnpm --filter @brandbasket/db vitest run --config vitest.integration.config.ts src/sites.integration.test.ts`
 Expected: FAIL — `findSiteByHostname is not a function`
 
 - [x] **Step 3: Write the implementation**
@@ -323,7 +323,7 @@ export { findSiteByHostname, isSiteServable, type SiteTenant } from "./queries/s
 
 - [x] **Step 5: Run the tests**
 
-Run: `pnpm --filter @fynix/db vitest run --config vitest.integration.config.ts src/sites.integration.test.ts`
+Run: `pnpm --filter @brandbasket/db vitest run --config vitest.integration.config.ts src/sites.integration.test.ts`
 Expected: PASS, 5 tests
 
 - [x] **Step 6: Commit**
@@ -369,7 +369,7 @@ describe("resolveSurface with the sites surface", () => {
 
 - [x] **Step 2: Run it to verify it fails**
 
-Run: `pnpm --filter @fynix/platform vitest run lib/surfaces.test.ts`
+Run: `pnpm --filter @brandbasket/platform vitest run lib/surfaces.test.ts`
 Expected: FAIL — `expected null to be 'sites'`
 
 - [x] **Step 3: Add the surface**
@@ -420,7 +420,7 @@ Match `handle` to whatever helper that file already defines for building a reque
 
 - [x] **Step 5: Run it to verify it fails**
 
-Run: `pnpm --filter @fynix/platform vitest run proxy.test.ts`
+Run: `pnpm --filter @brandbasket/platform vitest run proxy.test.ts`
 Expected: FAIL — the robots assertion fails, because `rewriteTo` sets the header unconditionally.
 
 - [x] **Step 6: Make robots conditional**
@@ -448,7 +448,7 @@ The Payload-admin branch becomes `return rewriteTo(request, pathname, search, fa
 
 - [x] **Step 7: Run both test files**
 
-Run: `pnpm --filter @fynix/platform vitest run proxy.test.ts lib/surfaces.test.ts`
+Run: `pnpm --filter @brandbasket/platform vitest run proxy.test.ts lib/surfaces.test.ts`
 Expected: PASS
 
 - [x] **Step 8: Commit**
@@ -491,7 +491,7 @@ Create `apps/platform/lib/server/site-tenant.ts`:
 
 ```ts
 import "server-only";
-import { findSiteByHostname, isSiteServable, type SiteTenant } from "@fynix/db";
+import { findSiteByHostname, isSiteServable, type SiteTenant } from "@brandbasket/db";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { cache } from "react";
@@ -516,7 +516,7 @@ export const requireSiteTenant = cache(async (): Promise<SiteTenant> => {
 
 - [x] **Step 4: Typecheck**
 
-Run: `pnpm --filter @fynix/platform typecheck`
+Run: `pnpm --filter @brandbasket/platform typecheck`
 Expected: PASS
 
 - [x] **Step 5: Commit**
@@ -586,7 +586,7 @@ describe("sitePageFrom", () => {
 
 - [x] **Step 2: Run it to verify it fails**
 
-Run: `pnpm --filter @fynix/platform vitest run lib/server/site-content.test.ts`
+Run: `pnpm --filter @brandbasket/platform vitest run lib/server/site-content.test.ts`
 Expected: FAIL — cannot find module `./site-content`
 
 - [x] **Step 3: Write the reader**
@@ -690,7 +690,7 @@ export const getSitePages = cache(async (businessId: string): Promise<readonly S
 
 - [x] **Step 4: Run it to verify it passes**
 
-Run: `pnpm --filter @fynix/platform vitest run lib/server/site-content.test.ts`
+Run: `pnpm --filter @brandbasket/platform vitest run lib/server/site-content.test.ts`
 Expected: PASS, 2 tests
 
 - [x] **Step 5: Commit**
@@ -854,7 +854,7 @@ export default async function SiteSlugPage({
 
 - [x] **Step 5: Full checkpoint**
 
-Run: `pnpm lint && pnpm --filter @fynix/platform typecheck && pnpm test && pnpm --filter @fynix/db test:integration && pnpm --filter @fynix/platform build`
+Run: `pnpm lint && pnpm --filter @brandbasket/platform typecheck && pnpm test && pnpm --filter @brandbasket/db test:integration && pnpm --filter @brandbasket/platform build`
 Expected: all PASS
 
 - [x] **Step 6: Walk it in the browser**
@@ -901,7 +901,7 @@ content, proving both the preview path and tenant isolation.
 
 These are real and must not be forgotten:
 
-1. **The renderer shares a process with the dashboards.** The design spec wants `apps/sites` so a bad dashboard deploy cannot take customer sites down. Extracting it needs `@fynix/cms` (Payload config plus collections), which the admin-repo-split plan already owns.
+1. **The renderer shares a process with the dashboards.** The design spec wants `apps/sites` so a bad dashboard deploy cannot take customer sites down. Extracting it needs `@brandbasket/cms` (Payload config plus collections), which the admin-repo-split plan already owns.
 2. **No design.** Customer sites render unstyled. The open question — one shared template versus per-business code — is still undecided, and the marketing site promises "a design built around your business, not a template."
 3. **A customer's save is instantly public.** No publish step, no cache, no version history, no rollback, no staff review.
 4. **Gallery and blog are not rendered.** Only pages are. Both collections already carry `businessId` and read the same way.
@@ -949,7 +949,7 @@ production-ready.**
 4. **The renderer shares a process with the dashboards.** The design spec wants `apps/sites` so a bad dashboard
    deploy cannot take customer sites down, and so the renderer holds no write credentials. It does hold them today
    — `getSitesDb()` is read-only, but `getAppDb()` and `getStaffDb()` live in the same process. Extracting needs
-   `@fynix/cms` (Payload config plus collections), which the admin-repo-split plan owns. The seam is clean:
+   `@brandbasket/cms` (Payload config plus collections), which the admin-repo-split plan owns. The seam is clean:
    `lib/server/site-*.ts`, `app/site-host/` and `components/site/` import nothing from the dashboards.
 5. **The renderer's RLS policies are permissive** (`USING (true)`). Unlike `fynix_app`, this role serves
    anonymous traffic and has no session business id to scope to, so the tenant boundary is the hostname lookup in

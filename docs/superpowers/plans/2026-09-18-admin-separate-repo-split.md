@@ -7,7 +7,7 @@
 **Architecture:** Today one Next.js app (`apps/platform`) serves two hosts via `proxy.ts`: `app.` → the customer app, `admin.` → the staff console. After this plan:
 - `fynix-platform` (this repo) keeps `apps/platform`, serving only the customer app.
 - A new, separate repo, `fynix-admin`, is its own Next.js app serving the staff console at its own root.
-- Code both apps need — the DB schema (`@fynix/db`), auth (`@fynix/auth`), billing (`@fynix/billing`), email (`@fynix/email`), shared UI primitives (`@fynix/shared`), the dashboard shell/sign-in code (a new `@fynix/dashboard`), and the Payload CMS config/collections (a new `@fynix/cms`) — is published as **private npm packages on GitHub Packages**, under the `@fynix` scope, tied to this repo via each package's `repository` field (GitHub Packages resolves ownership from that field, not from the scope needing to equal the GitHub account name — confirmed against GitHub's own docs before writing this plan).
+- Code both apps need — the DB schema (`@brandbasket/db`), auth (`@brandbasket/auth`), billing (`@brandbasket/billing`), email (`@brandbasket/email`), shared UI primitives (`@brandbasket/shared`), the dashboard shell/sign-in code (a new `@brandbasket/dashboard`), and the Payload CMS config/collections (a new `@brandbasket/cms`) — is published as **private npm packages on GitHub Packages**, under the `@fynix` scope, tied to this repo via each package's `repository` field (GitHub Packages resolves ownership from that field, not from the scope needing to equal the GitHub account name — confirmed against GitHub's own docs before writing this plan).
 - `fynix-admin` installs those packages as ordinary versioned dependencies, the same way it'd depend on any third-party library. When shared code changes here, bump the package's version and republish; `fynix-admin` picks it up on its next `pnpm update`.
 
 **Tech Stack:** pnpm, Next.js 16.3.5 App Router, React 19, Tailwind 4, better-auth, Drizzle ORM, Vitest, GitHub Packages (private npm registry), Vercel.
@@ -20,7 +20,7 @@ An earlier plan (`docs/superpowers/plans/2026-09-18-admin-app-split.md`, halted 
 
 Where this plan reuses that earlier plan's already-worked-out content (the dashboard-UI extraction, the sign-in dependency-injection refactor, the admin app's own env/auth/session files), it says so and carries the code across with paths adjusted, rather than re-deriving it.
 
-**One deliberate simplification over the halted plan's Task 9:** the halted plan mounted Payload's own generated admin UI (`/admin`) inside whichever app serves staff. Per the corrected Payload CMS architecture (see `docs/superpowers/plans/2026-09-17-payload-cms-migration.md`'s "Architecture, corrected" section), **nobody — staff or customer — ever uses Payload's own admin UI**; both use Fynix Digital's own hand-built screens, and Payload is reached only through its Local API. Payload's Local API does not require the admin UI route to be mounted at all. So this plan does not move `apps/platform/app/(payload)/admin/[[...segments]]/page.tsx` anywhere — it deletes it from `apps/platform` (Task 9) and never creates it in `fynix-admin`. Only the collections/config (`@fynix/cms`) and the API/GraphQL routes Payload's Local API needs move or get shared. This removes an already-unused surface instead of relocating it — flag it to the user once during review in case they want Payload's admin UI kept as a break-glass tool, but nothing in this repo's history suggests they do.
+**One deliberate simplification over the halted plan's Task 9:** the halted plan mounted Payload's own generated admin UI (`/admin`) inside whichever app serves staff. Per the corrected Payload CMS architecture (see `docs/superpowers/plans/2026-09-17-payload-cms-migration.md`'s "Architecture, corrected" section), **nobody — staff or customer — ever uses Payload's own admin UI**; both use Fynix Digital's own hand-built screens, and Payload is reached only through its Local API. Payload's Local API does not require the admin UI route to be mounted at all. So this plan does not move `apps/platform/app/(payload)/admin/[[...segments]]/page.tsx` anywhere — it deletes it from `apps/platform` (Task 9) and never creates it in `fynix-admin`. Only the collections/config (`@brandbasket/cms`) and the API/GraphQL routes Payload's Local API needs move or get shared. This removes an already-unused surface instead of relocating it — flag it to the user once during review in case they want Payload's admin UI kept as a break-glass tool, but nothing in this repo's history suggests they do.
 
 ## Preconditions (check before Task 1; stop and ask the user if any fails)
 
@@ -46,14 +46,14 @@ fynix-platform/                       (this repo — unchanged root, apps/platfo
     app/(payload)/                  Payload's API/GraphQL routes only — admin UI route deleted (Task 9)
     lib/surfaces.ts                 one surface: "app"
     proxy.ts                        404s every host but the app host
-    payload.config.ts               re-exports @fynix/cms's buildFynixPayloadConfig()
+    payload.config.ts               re-exports @brandbasket/cms's buildFynixPayloadConfig()
   packages/
     db/, auth/, billing/, email/, shared/     existing, now also published (Task 1)
-    dashboard/                      NEW @fynix/dashboard: dashboard shell UI + sign-in logic, published (Task 3)
-    cms/                            NEW @fynix/cms: Payload collections + buildFynixPayloadConfig(), published (Task 4)
+    dashboard/                      NEW @brandbasket/dashboard: dashboard shell UI + sign-in logic, published (Task 3)
+    cms/                            NEW @brandbasket/cms: Payload collections + buildFynixPayloadConfig(), published (Task 4)
 
 fynix-admin/                     NEW, separate GitHub repo (56steve/fynix-admin), own git history
-  package.json                      depends on @fynix/{db,auth,billing,email,shared,dashboard,cms} as published versions
+  package.json                      depends on @brandbasket/{db,auth,billing,email,shared,dashboard,cms} as published versions
   app/                              staff console routes (was apps/platform/app/admin-host/**)
     (protected)/...                 leads, clients, outbox, content editor
     login/...
@@ -61,7 +61,7 @@ fynix-admin/                     NEW, separate GitHub repo (56steve/fynix-admin)
     api/admin-content-media/route.ts
   components/                       admin-only UI (admin-shell, new-lead-form, admin-page-editor, …)
   lib/, lib/server/                 admin-only logic + this app's own env/db/auth/session
-  payload.config.ts                 calls @fynix/cms's buildFynixPayloadConfig(), Local API only
+  payload.config.ts                 calls @brandbasket/cms's buildFynixPayloadConfig(), Local API only
 ```
 
 ---
@@ -71,7 +71,7 @@ fynix-admin/                     NEW, separate GitHub repo (56steve/fynix-admin)
 **Files:**
 - Modify: `packages/db/package.json`, `packages/auth/package.json`, `packages/billing/package.json`, `packages/email/package.json`, `packages/shared/package.json`
 
-Every one of these currently has `"private": true` and exports raw `.ts` source directly (e.g. `"exports": {".": "./src/index.ts"}`). That's fine to keep publishing as-is — Next.js's `transpilePackages` compiles TS from `node_modules` the same way it compiles it from a workspace symlink — but each package needs three things added: it must not be `private`, it needs a `repository` field so GitHub Packages can tie the scoped name `@fynix/*` to this repo (GitHub Packages resolves ownership from `repository`, not from the scope matching the GitHub account — this repo's account is `56steve`, not `fynix`), and a `publishConfig` pointing at the GitHub Packages registry so a stray `pnpm publish` never targets the public npm registry by accident.
+Every one of these currently has `"private": true` and exports raw `.ts` source directly (e.g. `"exports": {".": "./src/index.ts"}`). That's fine to keep publishing as-is — Next.js's `transpilePackages` compiles TS from `node_modules` the same way it compiles it from a workspace symlink — but each package needs three things added: it must not be `private`, it needs a `repository` field so GitHub Packages can tie the scoped name `@brandbasket/*` to this repo (GitHub Packages resolves ownership from `repository`, not from the scope matching the GitHub account — this repo's account is `56steve`, not `fynix`), and a `publishConfig` pointing at the GitHub Packages registry so a stray `pnpm publish` never targets the public npm registry by accident.
 
 - [ ] **Step 1: Edit each package.json**
 
@@ -79,7 +79,7 @@ For `packages/db/package.json` (apply the same three edits to `packages/auth`, `
 
 ```json
 {
-  "name": "@fynix/db",
+  "name": "@brandbasket/db",
   "version": "0.1.0",
   "repository": {
     "type": "git",
@@ -130,7 +130,7 @@ In `~/.npmrc` (create if it doesn't exist):
 //npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}
 ```
 
-In the repo root's `.npmrc` (safe to commit — no token, just the scope mapping so anyone on the team resolves `@fynix/*` from the right registry):
+In the repo root's `.npmrc` (safe to commit — no token, just the scope mapping so anyone on the team resolves `@brandbasket/*` from the right registry):
 
 ```
 @fynix:registry=https://npm.pkg.github.com
@@ -144,7 +144,7 @@ for pkg in db auth billing email shared; do
 done
 ```
 
-`--no-git-checks` is needed because these packages don't have their own git tags — this monorepo tags releases differently, if at all. Expected: five `+ @fynix/<name>@0.1.0` lines, no errors.
+`--no-git-checks` is needed because these packages don't have their own git tags — this monorepo tags releases differently, if at all. Expected: five `+ @brandbasket/<name>@0.1.0` lines, no errors.
 
 - [ ] **Step 3: Confirm from the outside**
 
@@ -156,7 +156,7 @@ Expected: lists `db`, `auth`, `billing`, `email`, `shared` (a personal GitHub ac
 
 ---
 
-### Task 3: Extract `@fynix/dashboard` (shared dashboard shell + sign-in)
+### Task 3: Extract `@brandbasket/dashboard` (shared dashboard shell + sign-in)
 
 This is the halted plan's Tasks 2, 3, 4 and 5, unchanged in substance — same files, same dependency-injection refactor for `signInWithPassword` and `SignOutButton` — carried here with one difference: the package gets published at the end instead of staying a workspace-only package.
 
@@ -181,7 +181,7 @@ cp packages/shared/vitest.config.ts packages/dashboard/vitest.config.ts
 
 ```json
 {
-  "name": "@fynix/dashboard",
+  "name": "@brandbasket/dashboard",
   "version": "0.1.0",
   "type": "module",
   "repository": {
@@ -204,9 +204,9 @@ cp packages/shared/vitest.config.ts packages/dashboard/vitest.config.ts
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@fynix/auth": "workspace:*",
-    "@fynix/db": "workspace:*",
-    "@fynix/shared": "workspace:*",
+    "@brandbasket/auth": "workspace:*",
+    "@brandbasket/db": "workspace:*",
+    "@brandbasket/shared": "workspace:*",
     "server-only": "0.0.1",
     "zod": "^4.6.5"
   },
@@ -236,7 +236,7 @@ for m in access sign-in-form sign-in-limits; do
 done
 ```
 
-Run: `pnpm --filter @fynix/dashboard test`. If a moved test fails on an `@/` import, change it to a relative import (`./sign-in-limits`) or a package import (`@fynix/shared/...`).
+Run: `pnpm --filter @brandbasket/dashboard test`. If a moved test fails on an `@/` import, change it to a relative import (`./sign-in-limits`) or a package import (`@brandbasket/shared/...`).
 
 - [ ] **Step 4: Move `rate-limits.ts`**
 
@@ -260,17 +260,17 @@ const outcome = await signInWithPassword(formData, { auth: fakeAuth, db: fakeDb 
 
 Keep every existing case and assertion — only how the collaborators are supplied changes.
 
-Run: `pnpm --filter @fynix/dashboard test -- sign-in`
+Run: `pnpm --filter @brandbasket/dashboard test -- sign-in`
 Expected: FAIL — `signInWithPassword` still takes one parameter and still imports `./auth`.
 
 Replace the top of `packages/dashboard/src/server/sign-in.ts`:
 
 ```ts
 import "server-only";
-import { isInvalidCredentialsError, type Auth } from "@fynix/auth";
-import type { Database } from "@fynix/db";
+import { isInvalidCredentialsError, type Auth } from "@brandbasket/auth";
+import type { Database } from "@brandbasket/db";
 import { headers } from "next/headers";
-import { clientIpFrom } from "@fynix/shared/lib/client-ip";
+import { clientIpFrom } from "@brandbasket/shared/lib/client-ip";
 import { parseSignInForm, type SignInFormState } from "../lib/sign-in-form";
 import { retryMessage } from "../lib/sign-in-limits";
 import { firstBlockedSignInLimit } from "./rate-limits";
@@ -291,7 +291,7 @@ export async function signInWithPassword(
 
 In the body, replace `getAppDb()` with `db` and `getAuth()` with `auth`. Leave the rest of the function's logic as it is.
 
-Run: `pnpm --filter @fynix/dashboard test -- sign-in`
+Run: `pnpm --filter @brandbasket/dashboard test -- sign-in`
 Expected: PASS.
 
 - [ ] **Step 6: Platform wrapper**
@@ -300,7 +300,7 @@ Create `apps/platform/lib/server/sign-in.ts`:
 
 ```ts
 import "server-only";
-import { signInWithPassword as signIn, type SignInOutcome } from "@fynix/dashboard/server/sign-in";
+import { signInWithPassword as signIn, type SignInOutcome } from "@brandbasket/dashboard/server/sign-in";
 import { getAuth } from "./auth";
 import { getAppDb } from "./db";
 
@@ -312,7 +312,7 @@ export function signInWithPassword(formData: FormData): Promise<SignInOutcome> {
 }
 ```
 
-Point `apps/platform/lib/server/setup.ts`'s import of `rate-limits` at `@fynix/dashboard/server/rate-limits`.
+Point `apps/platform/lib/server/setup.ts`'s import of `rate-limits` at `@brandbasket/dashboard/server/rate-limits`.
 
 - [ ] **Step 7: Move the shared UI**
 
@@ -347,9 +347,9 @@ In `packages/dashboard/src/ui/dashboard-frame.tsx`: add `readonly signOutAction:
 ```bash
 cd apps/platform
 grep -rlE '@/lib/(access|sign-in-form|sign-in-limits)"' app components lib proxy.ts | xargs sed -i '' -E \
-  's#@/lib/(access|sign-in-form|sign-in-limits)"#@fynix/dashboard/lib/\1"#g'
+  's#@/lib/(access|sign-in-form|sign-in-limits)"#@brandbasket/dashboard/lib/\1"#g'
 grep -rlE '@/components/(panel/)?(dashboard-frame|sidebar-nav|sign-out-button|sign-in-form|auth-screen|panel-not-found|local-date-time|dashboard-root)"' app components lib \
-  | xargs sed -i '' -E 's#"@/components/(panel/)?(dashboard-frame|sidebar-nav|sign-out-button|sign-in-form|auth-screen|panel-not-found|local-date-time|dashboard-root)"#"@fynix/dashboard/ui/\2"#g'
+  | xargs sed -i '' -E 's#"@/components/(panel/)?(dashboard-frame|sidebar-nav|sign-out-button|sign-in-form|auth-screen|panel-not-found|local-date-time|dashboard-root)"#"@brandbasket/dashboard/ui/\2"#g'
 cd -
 ```
 
@@ -357,7 +357,7 @@ Then, where TypeScript points out the new `signOutAction` prop is missing:
 - `components/panel/customer-shell.tsx`: import `signOut` from `@/lib/server/sign-out`, pass `signOutAction={signOut}` to `<DashboardFrame>`.
 - `app/app-host/(protected)/settings/page.tsx` and `app/app-host/login/page.tsx`: pass `action={signOut}` to `<SignOutButton>`.
 
-Add `"@fynix/dashboard": "workspace:*"` to `apps/platform/package.json`'s dependencies and `"@fynix/dashboard"` to `transpilePackages` in `apps/platform/next.config.ts`.
+Add `"@brandbasket/dashboard": "workspace:*"` to `apps/platform/package.json`'s dependencies and `"@brandbasket/dashboard"` to `transpilePackages` in `apps/platform/next.config.ts`.
 
 In `apps/platform/app/globals.css`, below the existing `@source` line:
 
@@ -381,7 +381,7 @@ cd packages/dashboard && pnpm publish --no-git-checks && cd -
 
 ---
 
-### Task 4: Extract `@fynix/cms` (Payload collections + config)
+### Task 4: Extract `@brandbasket/cms` (Payload collections + config)
 
 Both apps need Payload's Local API — the customer app for its own content actions (already built, this session's Payload CMS migration), the staff app for the admin content editor (also already built, currently living in `apps/platform/app/admin-host`). Rather than duplicate the five collection files and `payload.config.ts`, they move into a published package both apps call to build their own `payload.config.ts`.
 
@@ -410,7 +410,7 @@ cp packages/dashboard/tsconfig.json packages/cms/tsconfig.json
 
 ```json
 {
-  "name": "@fynix/cms",
+  "name": "@brandbasket/cms",
   "version": "0.1.0",
   "type": "module",
   "repository": {
@@ -496,7 +496,7 @@ Adjust this to match whatever Step 1 actually found in `apps/platform/payload.co
 - [ ] **Step 5: Rewire `apps/platform/payload.config.ts`**
 
 ```ts
-import { buildFynixPayloadConfig } from "@fynix/cms";
+import { buildFynixPayloadConfig } from "@brandbasket/cms";
 import { serverEnv } from "./lib/server/env";
 
 export default buildFynixPayloadConfig({
@@ -505,7 +505,7 @@ export default buildFynixPayloadConfig({
 });
 ```
 
-Add `"@fynix/cms": "workspace:*"` to `apps/platform/package.json` and `"@fynix/cms"` to `transpilePackages` in `next.config.ts`.
+Add `"@brandbasket/cms": "workspace:*"` to `apps/platform/package.json` and `"@brandbasket/cms"` to `transpilePackages` in `next.config.ts`.
 
 - [ ] **Step 6: Checkpoint**
 
@@ -559,7 +559,7 @@ The actual token still comes from `~/.npmrc` (Task 2, Step 1) — same machine, 
 
 ```json
 {
-  "name": "@fynix/admin",
+  "name": "@brandbasket/admin",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -573,13 +573,13 @@ The actual token still comes from `~/.npmrc` (Task 2, Step 1) — same machine, 
   "dependencies": {
     "@payloadcms/db-postgres": "^3.89.0",
     "@payloadcms/next": "^3.89.0",
-    "@fynix/auth": "^0.1.0",
-    "@fynix/billing": "^0.1.0",
-    "@fynix/cms": "^0.1.0",
-    "@fynix/dashboard": "^0.1.0",
-    "@fynix/db": "^0.1.0",
-    "@fynix/email": "^0.1.0",
-    "@fynix/shared": "^0.1.0",
+    "@brandbasket/auth": "^0.1.0",
+    "@brandbasket/billing": "^0.1.0",
+    "@brandbasket/cms": "^0.1.0",
+    "@brandbasket/dashboard": "^0.1.0",
+    "@brandbasket/db": "^0.1.0",
+    "@brandbasket/email": "^0.1.0",
+    "@brandbasket/shared": "^0.1.0",
     "libphonenumber-js": "1.13.13",
     "next": "16.3.5",
     "payload": "^3.89.0",
@@ -613,7 +613,7 @@ cp "$FY/apps/platform/vitest.config.mts" ./vitest.config.mts 2>/dev/null || true
 cp "$FY/apps/platform/app/icon.tsx" "$FY/apps/platform/app/apple-icon.tsx" ./app/
 ```
 
-Open `tsconfig.json` and remove any `paths` entries that pointed at other workspace packages by relative path (e.g. `"@fynix/*": ["../../packages/*/src"]`) — this repo has no such packages; `@fynix/*` now resolves through `node_modules` like any installed dependency.
+Open `tsconfig.json` and remove any `paths` entries that pointed at other workspace packages by relative path (e.g. `"@brandbasket/*": ["../../packages/*/src"]`) — this repo has no such packages; `@brandbasket/*` now resolves through `node_modules` like any installed dependency.
 
 - [ ] **Step 5: Install**
 
@@ -621,7 +621,7 @@ Open `tsconfig.json` and remove any `paths` entries that pointed at other worksp
 pnpm install
 ```
 
-Expected: pnpm resolves `@fynix/*` from `npm.pkg.github.com` (confirm with `pnpm why @fynix/db` — it should show a registry-resolved version, not a `link:` to a local path).
+Expected: pnpm resolves `@brandbasket/*` from `npm.pkg.github.com` (confirm with `pnpm why @brandbasket/db` — it should show a registry-resolved version, not a `link:` to a local path).
 
 - [ ] **Step 6: `.env.example`**
 
@@ -658,11 +658,11 @@ Never print `.env.local`'s contents to chat or a screenshot.
 ```markdown
 # Fynix Admin
 
-The staff console for Fynix. Runs against the same Postgres database as `fynix-platform`'s customer app (`apps/platform`), sharing schema/auth/billing code through published `@fynix/*` packages instead of a workspace — see `fynix-platform`'s `docs/superpowers/plans/2026-09-18-admin-separate-repo-split.md` for why.
+The staff console for Fynix. Runs against the same Postgres database as `fynix-platform`'s customer app (`apps/platform`), sharing schema/auth/billing code through published `@brandbasket/*` packages instead of a workspace — see `fynix-platform`'s `docs/superpowers/plans/2026-09-18-admin-separate-repo-split.md` for why.
 
 ## Local setup
 
-1. `.npmrc` already points `@fynix/*` at GitHub Packages. You need a personal access token with `read:packages` (and `repo`, since `fynix-platform` is private) in `~/.npmrc`:
+1. `.npmrc` already points `@brandbasket/*` at GitHub Packages. You need a personal access token with `read:packages` (and `repo`, since `fynix-platform` is private) in `~/.npmrc`:
    ```
    //npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}
    ```
@@ -671,14 +671,14 @@ The staff console for Fynix. Runs against the same Postgres database as `fynix-p
 
 ## Bumping a shared package
 
-When `fynix-platform` publishes a new `@fynix/*` version, run `pnpm update @fynix/<name>` here and re-test.
+When `fynix-platform` publishes a new `@brandbasket/*` version, run `pnpm update @brandbasket/<name>` here and re-test.
 ```
 
 - [ ] **Step 9: First commit**
 
 ```bash
 git add -A
-git commit -m "Scaffold fynix-admin, depending on published @fynix/* packages"
+git commit -m "Scaffold fynix-admin, depending on published @brandbasket/* packages"
 ```
 
 (This repo has no prior history and no standing "don't commit" instruction the way `fynix-platform` does — the user's "no commits unless asked" memory is specifically about the Fynix *repos already in progress*; confirm with the user before this first push all the same, since it's a new repo's first commit, not a routine one.)
@@ -700,7 +700,7 @@ while read -r m; do
 done < /tmp/admin-deps.txt
 ```
 
-Anything reported `ADMIN-ONLY` copies straight into `fynix-admin`. Anything with other users but not already covered by `@fynix/dashboard` (Task 3) or `@fynix/cms` (Task 4) is a small module both apps need — copy it into `fynix-admin` too and accept the duplication (same "copy, don't move, for small pure modules" call the halted plan made for `currency`, `lead-status`, `billing/terms`, `billing/manual-payment-form`, `billing/client-payment`, the `onboarding/*` field helpers). If the scan turns up something that isn't in that list, stop and reconcile before continuing — don't guess.
+Anything reported `ADMIN-ONLY` copies straight into `fynix-admin`. Anything with other users but not already covered by `@brandbasket/dashboard` (Task 3) or `@brandbasket/cms` (Task 4) is a small module both apps need — copy it into `fynix-admin` too and accept the duplication (same "copy, don't move, for small pure modules" call the halted plan made for `currency`, `lead-status`, `billing/terms`, `billing/manual-payment-form`, `billing/client-payment`, the `onboarding/*` field helpers). If the scan turns up something that isn't in that list, stop and reconcile before continuing — don't guess.
 
 - [ ] **Step 1: Copy the routes**
 
@@ -752,8 +752,8 @@ cd "$AD" && sed -i '' -E 's#"@/components/panel/#"@/components/#g' $(grep -rl '@
 cd /Users/siddiqueahmed/Desktop/AI/fynix-platform/fynix-admin
 grep -rlE '@/lib/(access|sign-in-form|sign-in-limits)"|@/components/(dashboard-root|dashboard-frame|sidebar-nav|sign-out-button|sign-in-form|auth-screen|panel-not-found|local-date-time)"' app components lib \
   | xargs sed -i '' -E \
-    -e 's#"@/lib/(access|sign-in-form|sign-in-limits)"#"@fynix/dashboard/lib/\1"#g' \
-    -e 's#"@/components/(dashboard-root|dashboard-frame|sidebar-nav|sign-out-button|sign-in-form|auth-screen|panel-not-found|local-date-time)"#"@fynix/dashboard/ui/\1"#g'
+    -e 's#"@/lib/(access|sign-in-form|sign-in-limits)"#"@brandbasket/dashboard/lib/\1"#g' \
+    -e 's#"@/components/(dashboard-root|dashboard-frame|sidebar-nav|sign-out-button|sign-in-form|auth-screen|panel-not-found|local-date-time)"#"@brandbasket/dashboard/ui/\1"#g'
 ```
 
 In `app/components/admin-shell.tsx`: import `signOut` from `@/lib/server/sign-out`, pass `signOutAction={signOut}` to `<DashboardFrame>`.
@@ -764,7 +764,7 @@ In `app/components/admin-shell.tsx`: import `signOut` from `@/lib/server/sign-ou
 
 ```tsx
 import type { ReactElement, ReactNode } from "react";
-import { DashboardRoot } from "@fynix/dashboard/ui/dashboard-root";
+import { DashboardRoot } from "@brandbasket/dashboard/ui/dashboard-root";
 import "./globals.css";
 
 interface AdminLayoutProps {
@@ -782,10 +782,10 @@ This app serves only the admin console — there's no second host to tell apart,
 
 ```css
 @import "tailwindcss";
-@import "@fynix/shared/styles/theme.css";
+@import "@brandbasket/shared/styles/theme.css";
 
-@source "../../../node_modules/@fynix/shared/src";
-@source "../../../node_modules/@fynix/dashboard/src";
+@source "../../../node_modules/@brandbasket/shared/src";
+@source "../../../node_modules/@brandbasket/dashboard/src";
 ```
 
 (The `@source` paths point into `node_modules` here, not a sibling workspace package as they did in `fynix-platform` — Tailwind still needs to scan those files for class names even though they're an installed dependency now.)
@@ -802,7 +802,7 @@ Don't run `pnpm build` yet — `next.config.ts` and the env/auth files don't exi
 
 ### Task 7: `fynix-admin`'s own env, db, auth, session, sign-in, and Payload config
 
-Same shape as the halted plan's Task 6 Step 5 — copied here with `@fynix/*` imports resolving to published packages instead of workspace ones.
+Same shape as the halted plan's Task 6 Step 5 — copied here with `@brandbasket/*` imports resolving to published packages instead of workspace ones.
 
 **Files:**
 - Create: `fynix-admin/lib/server/{env,env.test,db,auth,session,sign-out,sign-in}.ts`
@@ -901,7 +901,7 @@ Copy `fynix-platform/apps/platform/lib/server/db.ts` as a starting point. Rename
 
 ```ts
 import "server-only";
-import { createAuth, type Auth } from "@fynix/auth";
+import { createAuth, type Auth } from "@brandbasket/auth";
 import { getAppDb } from "./db";
 import { serverEnv } from "./env";
 
@@ -925,13 +925,13 @@ export function getAuth(): Auth {
 
 - [ ] **Step 5: `lib/server/session.ts`, `sign-out.ts`, `sign-in.ts`**
 
-Copy `fynix-platform/apps/platform/lib/server/session.ts` and `sign-out.ts` unchanged in logic (they import `./auth`, which already resolves correctly here). In `session.ts`, change its `SessionUser` type import to `@fynix/dashboard/lib/access`.
+Copy `fynix-platform/apps/platform/lib/server/session.ts` and `sign-out.ts` unchanged in logic (they import `./auth`, which already resolves correctly here). In `session.ts`, change its `SessionUser` type import to `@brandbasket/dashboard/lib/access`.
 
 `sign-in.ts`:
 
 ```ts
 import "server-only";
-import { signInWithPassword as signIn, type SignInOutcome } from "@fynix/dashboard/server/sign-in";
+import { signInWithPassword as signIn, type SignInOutcome } from "@brandbasket/dashboard/server/sign-in";
 import { getAuth } from "./auth";
 import { getAppDb } from "./db";
 
@@ -946,7 +946,7 @@ export function signInWithPassword(formData: FormData): Promise<SignInOutcome> {
 - [ ] **Step 6: `payload.config.ts`**
 
 ```ts
-import { buildFynixPayloadConfig } from "@fynix/cms";
+import { buildFynixPayloadConfig } from "@brandbasket/cms";
 import { serverEnv } from "./lib/server/env";
 
 export default buildFynixPayloadConfig({
@@ -962,7 +962,7 @@ Any file under `app/(protected)/clients/[businessId]/content` or `app/content-me
 ```ts
 import { withPayload } from "@payloadcms/next/withPayload";
 import type { NextConfig } from "next";
-import { securityHeaders } from "@fynix/shared/lib/security-headers";
+import { securityHeaders } from "@brandbasket/shared/lib/security-headers";
 
 const REQUIRED_FOR_PRODUCTION = [
   "NEXT_PUBLIC_SITE_URL",
@@ -1003,13 +1003,13 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [{ source: "/favicon.ico", destination: "/icon", permanent: true }];
   },
-  transpilePackages: ["@fynix/auth", "@fynix/billing", "@fynix/cms", "@fynix/dashboard", "@fynix/db", "@fynix/email", "@fynix/shared"],
+  transpilePackages: ["@brandbasket/auth", "@brandbasket/billing", "@brandbasket/cms", "@brandbasket/dashboard", "@brandbasket/db", "@brandbasket/email", "@brandbasket/shared"],
 };
 
 export default withPayload(nextConfig);
 ```
 
-Check `securityHeaders`'s actual return shape (`@fynix/shared`'s `src/lib/security-headers.ts`, now resolved from `node_modules`) before trusting the spread above — same caveat the halted plan flagged.
+Check `securityHeaders`'s actual return shape (`@brandbasket/shared`'s `src/lib/security-headers.ts`, now resolved from `node_modules`) before trusting the spread above — same caveat the halted plan flagged.
 
 - [ ] **Step 8: Checkpoint**
 
@@ -1040,7 +1040,7 @@ Open `http://admin.localhost:3001` (the platform's own dev server, not the new o
 
 ### Task 9: Make `fynix-platform` serve only the customer app
 
-This is the halted plan's Task 7, plus deleting Payload's now-fully-unused admin UI route and the collections files that moved to `@fynix/cms` in Task 4.
+This is the halted plan's Task 7, plus deleting Payload's now-fully-unused admin UI route and the collections files that moved to `@brandbasket/cms` in Task 4.
 
 **Files:**
 - Modify: `apps/platform/lib/surfaces.ts`, `apps/platform/lib/surfaces.test.ts`
@@ -1065,7 +1065,7 @@ it("404s the old admin host now that the staff console is its own repo", () => {
 
 Use the file's existing request-building helper (adapt the name if it's not literally `requestFor`). Remove any test that expects the admin host to rewrite to `/admin-host`. Remove the admin cases in `lib/surfaces.test.ts` too.
 
-Run: `pnpm --filter @fynix/platform test -- proxy surfaces`. Expected: FAIL.
+Run: `pnpm --filter @brandbasket/platform test -- proxy surfaces`. Expected: FAIL.
 
 - [ ] **Step 2: Remove the admin surface and the Payload admin-path carve-out**
 
@@ -1083,7 +1083,7 @@ In `apps/platform/lib/server/env.ts`: remove `ADMIN_ORIGIN`. In `lib/server/auth
 
 - [ ] **Step 3: Run the tests**
 
-Run: `pnpm --filter @fynix/platform test -- proxy surfaces`. Expected: PASS.
+Run: `pnpm --filter @brandbasket/platform test -- proxy surfaces`. Expected: PASS.
 
 - [ ] **Step 4: Delete what moved**
 
@@ -1144,7 +1144,7 @@ Done by the user in the Vercel dashboard — this repo split makes it simpler th
   - `PAYLOAD_SECRET`: can be the same value as the platform's, since nothing authenticates against it directly — but keep them in sync if you ever rotate one.
   - `BETTER_AUTH_SECRET`: a **new** value, different from the platform's.
   - `ADMIN_ORIGIN`, `APP_ORIGIN`, `NEXT_PUBLIC_SITE_URL`: the real domains.
-- [ ] **Step 2: NPM auth for Vercel's build.** Vercel needs to install `@fynix/*` from GitHub Packages too. Add an `NPM_TOKEN` (or reuse `GITHUB_PACKAGES_TOKEN`) environment variable in the `fynix-admin` Vercel project, and either commit a build-time `.npmrc` that reads `${NPM_TOKEN}` (safe — no literal secret in the repo) or use Vercel's "Install Command" override to write one before `pnpm install`. The repo's committed `.npmrc` from Task 5 Step 2 already has the registry mapping; it just needs the token available as an env var at build time.
+- [ ] **Step 2: NPM auth for Vercel's build.** Vercel needs to install `@brandbasket/*` from GitHub Packages too. Add an `NPM_TOKEN` (or reuse `GITHUB_PACKAGES_TOKEN`) environment variable in the `fynix-admin` Vercel project, and either commit a build-time `.npmrc` that reads `${NPM_TOKEN}` (safe — no literal secret in the repo) or use Vercel's "Install Command" override to write one before `pnpm install`. The repo's committed `.npmrc` from Task 5 Step 2 already has the registry mapping; it just needs the token available as an env var at build time.
 - [ ] **Step 3: Lock it down.** Turn on Vercel Deployment Protection for all deployments if the plan allows it; otherwise Vercel Authentication for previews, relying on staff login for production. Attach only the admin domain to this project.
 - [ ] **Step 4: `fynix-platform`'s existing Vercel project.** Remove `ADMIN_ORIGIN` from its environment variables and detach the admin domain from it, now that `apps/platform` no longer serves it.
 
@@ -1152,13 +1152,13 @@ Done by the user in the Vercel dashboard — this repo split makes it simpler th
 
 ## Out of scope (tell the user; don't build here)
 
-- **Media storage must become a shared bucket before production** — unchanged from the Payload plan's own outstanding item; now doubly true, since `fynix-admin` and `apps/platform` are separate deployments and can't share a local disk even in principle. Solve it once, in `@fynix/cms` or a new shared storage module, not per-app.
-- **A CI/automated publish pipeline for the `@fynix/*` packages.** This plan documents manual `pnpm publish` steps because the team is one person. If that changes, a GitHub Actions workflow triggered on a version bump is the natural next step — not built here.
-- **Removing the small per-app-copied modules** (`currency`, `lead-status`, `billing/client-payment`, etc.). If either copy starts to diverge, promote it into `@fynix/shared` or `@fynix/dashboard` instead of letting two copies drift.
+- **Media storage must become a shared bucket before production** — unchanged from the Payload plan's own outstanding item; now doubly true, since `fynix-admin` and `apps/platform` are separate deployments and can't share a local disk even in principle. Solve it once, in `@brandbasket/cms` or a new shared storage module, not per-app.
+- **A CI/automated publish pipeline for the `@brandbasket/*` packages.** This plan documents manual `pnpm publish` steps because the team is one person. If that changes, a GitHub Actions workflow triggered on a version bump is the natural next step — not built here.
+- **Removing the small per-app-copied modules** (`currency`, `lead-status`, `billing/client-payment`, etc.). If either copy starts to diverge, promote it into `@brandbasket/shared` or `@brandbasket/dashboard` instead of letting two copies drift.
 
 ## Self-review
 
-- Every module the halted monorepo plan identified as shared or admin-only is accounted for here too, just retargeted: shared UI/sign-in → Task 3 (`@fynix/dashboard`, published); Payload collections/config → Task 4 (`@fynix/cms`, new, not in the halted plan since Payload hadn't landed when it was written); admin-only screens/components/lib → Task 6; per-app small copies → Task 6's "what moves where" scan; platform cleanup → Task 9; deploy → Task 10.
+- Every module the halted monorepo plan identified as shared or admin-only is accounted for here too, just retargeted: shared UI/sign-in → Task 3 (`@brandbasket/dashboard`, published); Payload collections/config → Task 4 (`@brandbasket/cms`, new, not in the halted plan since Payload hadn't landed when it was written); admin-only screens/components/lib → Task 6; per-app small copies → Task 6's "what moves where" scan; platform cleanup → Task 9; deploy → Task 10.
 - Names used consistently across tasks: `signInWithPassword(formData, { auth, db })` and `SignInDependencies` (Task 3, reused in Task 7); `signOutAction` on `DashboardFrame` / `action` on `SignOutButton` (Task 3, used in Task 6); `adminEnvSchema`/`serverEnv()` (Task 7); `buildFynixPayloadConfig({ databaseUrl, secret })` (Task 4, reused identically in Task 7 and in `apps/platform`'s own `payload.config.ts`).
 - The GitHub Packages `repository`-field trick (Task 1) was verified against GitHub's own docs before being written into this plan, not assumed — see the "Why this shape" section.
-- Task 4 (`@fynix/cms`) explicitly tells the executor to read the real, current `apps/platform/payload.config.ts` before writing the extraction, rather than trusting this plan's best-guess reconstruction of it.
+- Task 4 (`@brandbasket/cms`) explicitly tells the executor to read the real, current `apps/platform/payload.config.ts` before writing the extraction, rather than trusting this plan's best-guess reconstruction of it.

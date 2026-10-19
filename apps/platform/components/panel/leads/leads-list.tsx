@@ -1,9 +1,9 @@
 import type { ReactElement } from "react";
-import type { ListingLead } from "@fynix/db";
-import { cn } from "@fynix/shared/lib/cn";
-import { displayPhone } from "@fynix/shared/server/phone-display";
-import { PhoneIcon, TickIcon, WhatsAppIcon } from "@fynix/shared/ui/icons";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import type { ListingLead } from "@brandbasket/db";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { displayPhone } from "@brandbasket/shared/server/phone-display";
+import { PhoneIcon, TickIcon, WhatsAppIcon } from "@brandbasket/shared/ui/icons";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { setLeadRepliedAction } from "@/app/app-host/(protected)/leads/actions";
 import { leadSerialNumber, leadWhatsAppUrl } from "@/lib/leads";
 

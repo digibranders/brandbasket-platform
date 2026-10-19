@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState, useTransition, type ReactElement } from "react";
 import { bookCallSlot, loadCallSlots } from "@/app/app-host/(protected)/setup-call-actions";
-import { groupSlotsByDay, keyOf, monthWeeks } from "@fynix/shared/lib/call-slots";
-import { ChevronRightIcon } from "@fynix/shared/ui/icons";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { cn } from "@fynix/shared/lib/cn";
+import { groupSlotsByDay, keyOf, monthWeeks } from "@brandbasket/shared/lib/call-slots";
+import { ChevronRightIcon } from "@brandbasket/shared/ui/icons";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { cn } from "@brandbasket/shared/lib/cn";
 
 /** A pulsing bar the shape of what will load; the shared one is always a pill, which would draw the calendar as an oval. */
 function Bar({ className }: { readonly className: string }): ReactElement {

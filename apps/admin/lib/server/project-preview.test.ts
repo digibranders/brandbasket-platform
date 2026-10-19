@@ -1,12 +1,12 @@
-import { findClientDetail, recordProjectPreviewSent, type Database } from "@fynix/db";
-import { previewReadyEmail } from "@fynix/email";
+import { findClientDetail, recordProjectPreviewSent, type Database } from "@brandbasket/db";
+import { previewReadyEmail } from "@brandbasket/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { customerEmailTransport } from "./email";
 import { ProjectPreviewRecipientMissingError, sendProjectPreview } from "./project-preview";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({ findClientDetail: vi.fn(), recordProjectPreviewSent: vi.fn() }));
-vi.mock("@fynix/email", () => ({ previewReadyEmail: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ findClientDetail: vi.fn(), recordProjectPreviewSent: vi.fn() }));
+vi.mock("@brandbasket/email", () => ({ previewReadyEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 
 const mockedRecordSent = vi.mocked(recordProjectPreviewSent);

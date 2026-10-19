@@ -1,9 +1,9 @@
-import { findAddOnSubscription, withTenantScope } from "@fynix/db";
+import { findAddOnSubscription, withTenantScope } from "@brandbasket/db";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import type { ReactElement } from "react";
 import { z } from "zod";
-import { ADD_ONS_PATH, isMonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
+import { ADD_ONS_PATH, isMonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { RazorpayCheckoutScreen } from "@/components/panel/razorpay-checkout-screen";
 import { addOnPaymentLabel } from "@/lib/billing/add-on-label";
 import { ADD_ON_KEPT_CALLBACK_PARAM } from "@/lib/billing/add-on-notices";

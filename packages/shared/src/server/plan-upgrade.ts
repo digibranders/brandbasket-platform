@@ -1,5 +1,5 @@
 import "server-only";
-import { discountCentsFor, hasBillingAccess, isChargeableDiscount, type BillingProvider } from "@fynix/billing";
+import { discountCentsFor, hasBillingAccess, isChargeableDiscount, type BillingProvider } from "@brandbasket/billing";
 import {
   completePlanUpgradeAtRenewal,
   findActivePlan,
@@ -22,7 +22,7 @@ import {
   type PlanUpgradeSource,
   type ReferralCode,
   type ScopedTransaction,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { billingPeriodProgress } from "../lib/billing/period";
 import {
   quoteUpgrade,
@@ -38,7 +38,7 @@ import { describeError, logBillingEvent } from "./billing-log";
  * Moving a Care client up to Premium, server side (docs/superpowers/specs/2026-10-08-care-to-premium-upgrade-design.md).
  * Shared by the dashboard (the customer pays) and the staff console (staff move a client with nothing to take), so both
  * work out the same quote, apply the same rules and finish the same way. The database transitions are in
- * @fynix/db (queries/plan-upgrades.ts); this decides what to ask of them.
+ * @brandbasket/db (queries/plan-upgrades.ts); this decides what to ask of them.
  */
 
 /** What happens to the code on the subscription when it moves to Premium. */

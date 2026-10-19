@@ -1,6 +1,6 @@
 import "server-only";
-import { cleanLine, cleanMultiline } from "@fynix/shared/lib/validation/text";
-import { requiredEmail } from "@fynix/shared/lib/validation/contact";
+import { cleanLine, cleanMultiline } from "@brandbasket/shared/lib/validation/text";
+import { requiredEmail } from "@brandbasket/shared/lib/validation/contact";
 import { websiteOriginAllowed } from "@/lib/owner-replies";
 import {
   REQUEST_DETAILS_MAX_LENGTH,

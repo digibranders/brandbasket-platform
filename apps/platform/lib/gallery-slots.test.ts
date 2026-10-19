@@ -1,5 +1,5 @@
-import { DIRECTORY_PICTURE_SLOTS } from "@fynix/db";
-import { GALLERY_SLOTS, PICTURE_KIND_SLOTS, PICTURE_SHAPES, PICTURE_SLOT_LABELS, parsePictureKind } from "@fynix/shared/lib/directory/pictures";
+import { DIRECTORY_PICTURE_SLOTS } from "@brandbasket/db";
+import { GALLERY_SLOTS, PICTURE_KIND_SLOTS, PICTURE_SHAPES, PICTURE_SLOT_LABELS, parsePictureKind } from "@brandbasket/shared/lib/directory/pictures";
 import { describe, expect, it } from "vitest";
 import { MAX_GALLERY_PHOTOS } from "@/lib/directory-api";
 

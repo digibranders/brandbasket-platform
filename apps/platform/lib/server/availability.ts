@@ -1,8 +1,8 @@
 import { z } from "zod";
-import type { BookingContext, SiteFacts } from "@fynix/db";
-import { isIsoDate, localDateIn, mondayOf } from "@fynix/shared/lib/calendar/local-date";
-import { buildClinicWeek, type PractitionerCalendar } from "@fynix/shared/lib/appointments/clinic-availability";
-import type { SiteAvailability } from "@fynix/shared/lib/appointments/slots";
+import type { BookingContext, SiteFacts } from "@brandbasket/db";
+import { isIsoDate, localDateIn, mondayOf } from "@brandbasket/shared/lib/calendar/local-date";
+import { buildClinicWeek, type PractitionerCalendar } from "@brandbasket/shared/lib/appointments/clinic-availability";
+import type { SiteAvailability } from "@brandbasket/shared/lib/appointments/slots";
 import { nowMinutesIn } from "./local-time";
 
 /**

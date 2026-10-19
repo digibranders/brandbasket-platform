@@ -1,10 +1,10 @@
-import { createAppEmailTransport, onboardingSentEmail } from "@fynix/email";
+import { createAppEmailTransport, onboardingSentEmail } from "@brandbasket/email";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { notifyTeamOnboardingSent } from "./onboarding-alert";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({ FIRST_PREVIEW_DUE_HOURS: 48 }));
-vi.mock("@fynix/email", () => ({
+vi.mock("@brandbasket/db", () => ({ FIRST_PREVIEW_DUE_HOURS: 48 }));
+vi.mock("@brandbasket/email", () => ({
   createAppEmailTransport: vi.fn(),
   emailTeamInboxDefault: () => "hello@fynix.digital",
   onboardingSentEmail: vi.fn(),

@@ -9,7 +9,7 @@ import {
   type Affiliate,
   type Plan,
   type ReferralCode,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffDb } from "./db";
 import {
@@ -22,8 +22,8 @@ import {
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     ...actual,
     createReferralCode: vi.fn(),

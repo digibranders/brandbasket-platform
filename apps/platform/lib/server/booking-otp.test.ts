@@ -11,9 +11,9 @@ import {
   type BookingContext,
   type PractitionerScheduleRow,
   type SiteFacts,
-} from "@fynix/db";
-import { EmailConfigurationError, type EmailMessage } from "@fynix/email";
-import type { BookingInput } from "@fynix/shared/lib/appointments/booking-form";
+} from "@brandbasket/db";
+import { EmailConfigurationError, type EmailMessage } from "@brandbasket/email";
+import type { BookingInput } from "@brandbasket/shared/lib/appointments/booking-form";
 import { getStaffDb } from "./db";
 import { customerEmailTransport } from "./email";
 import { accountCodeSecret, emailCodeBypassed } from "./env";
@@ -26,7 +26,7 @@ vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./env", () => ({ accountCodeSecret: vi.fn(), emailCodeBypassed: vi.fn(() => false) }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 vi.mock("./public-db", () => ({ getPublicDb: vi.fn() }));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   consumeRateLimit: vi.fn(),
   createBookingOtp: vi.fn(),
   deleteBookingOtp: vi.fn(),

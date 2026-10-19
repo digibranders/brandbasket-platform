@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createLocalMediaStorage, mediaStorageKey, type MediaStorage } from "@fynix/shared/server/media-storage";
+import { createLocalMediaStorage, mediaStorageKey, type MediaStorage } from "@brandbasket/shared/server/media-storage";
 import { backfillPictureCopies, formatBackfillReport } from "./picture-copy-backfill";
 
 vi.mock("server-only", () => ({}));

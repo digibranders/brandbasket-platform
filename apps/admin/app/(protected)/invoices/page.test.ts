@@ -1,5 +1,5 @@
-import type { Payment, TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
-import { listMissingTaxInvoices, listTaxInvoicesIssuedBetween } from "@fynix/db";
+import type { Payment, TaxInvoice, TaxInvoiceLineRecord } from "@brandbasket/db";
+import { listMissingTaxInvoices, listTaxInvoicesIssuedBetween } from "@brandbasket/db";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireStaffAccess } from "@/lib/server/staff-access";
@@ -16,8 +16,8 @@ vi.mock("next/navigation", async (importOriginal) => ({
   }),
 }));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return { ...actual, listTaxInvoicesIssuedBetween: vi.fn(), listMissingTaxInvoices: vi.fn() };
 });
 

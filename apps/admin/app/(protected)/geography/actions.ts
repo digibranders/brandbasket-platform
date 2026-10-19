@@ -9,10 +9,10 @@ import {
   updateGeoArea,
   updateGeoCategory,
   updateGeoDistrict,
-} from "@fynix/db";
-import { geoSlugify } from "@fynix/db/geo-catalog-rules";
-import { stateName } from "@fynix/db/india-states";
-import { refreshGeoCatalog } from "@fynix/shared/lib/directory/geo-catalog-source";
+} from "@brandbasket/db";
+import { geoSlugify } from "@brandbasket/db/geo-catalog-rules";
+import { stateName } from "@brandbasket/db/india-states";
+import { refreshGeoCatalog } from "@brandbasket/shared/lib/directory/geo-catalog-source";
 import { revalidatePath } from "next/cache";
 import type { GeoFormState } from "@/lib/geo-form-state";
 import {

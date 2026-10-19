@@ -2,7 +2,7 @@
  * Turns a raw failure into a `PanelFormState`, kept apart from any one feature's actions.ts so this mapping can be
  * unit-tested without mocking the database or billing. Nothing here does I/O -- no logging, no queries -- so every
  * function is a plain, deterministic function of its inputs. Logging the raw error is each action's own job (see
- * `errorLogInfo` in `@fynix/shared/server/error-log-info`, which only extracts what's safe to write to the log, and doesn't write anything
+ * `errorLogInfo` in `@brandbasket/shared/server/error-log-info`, which only extracts what's safe to write to the log, and doesn't write anything
  * itself).
  *
  * Shared by every panel-form feature (today: "Your details" and Appointments) -- started as details/errors.ts,
@@ -10,7 +10,7 @@
  * Each feature keeps only its own messages and states (e.g. details/errors.ts's closure ones,
  * appointments/errors.ts's module-off and schedule ones) alongside this.
  */
-import { CHECK_VIOLATION, hasPostgresCode } from "@fynix/db";
+import { CHECK_VIOLATION, hasPostgresCode } from "@brandbasket/db";
 import { PAID_PLAN_REQUIRED_MESSAGE } from "@/lib/server/blog-access";
 import { panelFormErrorState, type PanelFormState } from "@/lib/panel-form-state";
 

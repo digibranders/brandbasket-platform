@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { listBusyIntervals, readPractitionerSchedules, type Database, type PractitionerScheduleRow } from "@fynix/db";
+import { listBusyIntervals, readPractitionerSchedules, type Database, type PractitionerScheduleRow } from "@brandbasket/db";
 import { buildPractitionerCalendars, loadClinicCalendars } from "./clinic-calendars";
 
-vi.mock("@fynix/db", () => ({ listBusyIntervals: vi.fn(), readPractitionerSchedules: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ listBusyIntervals: vi.fn(), readPractitionerSchedules: vi.fn() }));
 
 const mockedListBusyIntervals = vi.mocked(listBusyIntervals);
 const mockedReadPractitionerSchedules = vi.mocked(readPractitionerSchedules);

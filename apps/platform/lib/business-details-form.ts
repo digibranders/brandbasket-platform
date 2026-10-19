@@ -1,10 +1,10 @@
-import { isValidGstin, normaliseGstin } from "@fynix/billing";
+import { isValidGstin, normaliseGstin } from "@brandbasket/billing";
 import "server-only";
-import { WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
-import type { OpeningHours } from "@fynix/shared/lib/onboarding/hours";
-import { optionalEmail } from "@fynix/shared/lib/validation/contact";
-import { cleanLine, cleanMultiline } from "@fynix/shared/lib/validation/text";
-import { parsePhoneEntry } from "@fynix/shared/lib/validation/phone";
+import { WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
+import type { OpeningHours } from "@brandbasket/shared/lib/onboarding/hours";
+import { optionalEmail } from "@brandbasket/shared/lib/validation/contact";
+import { cleanLine, cleanMultiline } from "@brandbasket/shared/lib/validation/text";
+import { parsePhoneEntry } from "@brandbasket/shared/lib/validation/phone";
 import { BUSINESS_ADDRESS_MAX_LENGTH, readBusinessName } from "@/lib/business-name";
 import {
   BUSINESS_ABOUT_MAX_LENGTH,

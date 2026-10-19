@@ -1,1 +1,1 @@
-export { isStaleDeployError } from "@fynix/shared/lib/stale-deploy";
+export { isStaleDeployError } from "@brandbasket/shared/lib/stale-deploy";

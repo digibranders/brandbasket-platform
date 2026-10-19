@@ -1,6 +1,6 @@
 import "server-only";
-import { cleanLine } from "@fynix/shared/lib/validation/text";
-import { parsePhoneEntry } from "@fynix/shared/lib/validation/phone";
+import { cleanLine } from "@brandbasket/shared/lib/validation/text";
+import { parsePhoneEntry } from "@brandbasket/shared/lib/validation/phone";
 import { NOMINEE_NAME_MAX_LENGTH, type NomineeFormField } from "@/lib/privacy-settings-form";
 
 /** Numbers typed without a country code are Indian: Fynix Digital's people are. A number with +CC keeps its own country. */

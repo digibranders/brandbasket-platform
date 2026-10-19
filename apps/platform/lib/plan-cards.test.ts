@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Plan } from "@fynix/db";
+import type { Plan } from "@brandbasket/db";
 import { BRAND } from "./brand";
 import { LISTING_BRAND } from "./testing/listing-brand";
 import { planCardBase, planCardPrice, PLAN_NAMES } from "./plan-cards";

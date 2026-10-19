@@ -1,6 +1,6 @@
 import "server-only";
-import type { PrivacyRequestKind } from "@fynix/db";
-import { createAppEmailTransport } from "@fynix/email";
+import type { PrivacyRequestKind } from "@brandbasket/db";
+import { createAppEmailTransport } from "@brandbasket/email";
 import { privacyAlertRecipient, sendNewPrivacyRequestAlert } from "@/lib/privacy-request-alerts";
 import { getStaffDb } from "./db";
 import { serverEnv } from "./env";

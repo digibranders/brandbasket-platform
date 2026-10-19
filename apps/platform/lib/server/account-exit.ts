@@ -10,17 +10,17 @@ import {
   restoreAccountClosure,
   withTenantScope,
   type RateLimitRule,
-} from "@fynix/db";
-import { renewalCharge } from "@fynix/shared/lib/billing/terms";
-import { nextBundledNetCents } from "@fynix/shared/lib/billing/bundle";
+} from "@brandbasket/db";
+import { renewalCharge } from "@brandbasket/shared/lib/billing/terms";
+import { nextBundledNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import {
   AddOnClosureChangedError,
   planAddOnClosure,
   recordAddOnClosure,
   stopAddOnsAtProvider,
-} from "@fynix/shared/server/add-on-ends";
-import { cancelAtProvider } from "@fynix/shared/server/provider-cancellation";
-import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
+} from "@brandbasket/shared/server/add-on-ends";
+import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
+import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import type { ExitDetails, RetentionOfferView } from "@/lib/account-settings-form";
 import { eraseAfterFor, hasRunningAddOns, planClosureFor, retentionOfferTerms, type RetentionOfferTerms } from "@/lib/account-exit-rules";
 import { getBillingProvider } from "./billing";

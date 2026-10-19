@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DirectoryVideo } from "@fynix/db";
-import { VimeoError, type VimeoVideo } from "@fynix/shared/server/vimeo";
+import type { DirectoryVideo } from "@brandbasket/db";
+import { VimeoError, type VimeoVideo } from "@brandbasket/shared/server/vimeo";
 import { checkVideoProgress, removeListingVideo, requestVideoUpload, type ListingVideoDeps } from "./listing-videos";
 
 vi.mock("server-only", () => ({}));

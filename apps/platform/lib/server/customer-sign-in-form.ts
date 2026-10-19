@@ -1,7 +1,7 @@
 import "server-only";
-import { isPhoneAccountEmail } from "@fynix/db";
+import { isPhoneAccountEmail } from "@brandbasket/db";
 import { z } from "zod";
-import { parsePhoneEntry } from "@fynix/shared/lib/validation/phone";
+import { parsePhoneEntry } from "@brandbasket/shared/lib/validation/phone";
 
 /*
  * What a customer signs in with: the mobile number a free listing account was opened with, or the email a website

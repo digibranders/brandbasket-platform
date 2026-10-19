@@ -3,7 +3,7 @@
 import { useSelectedLayoutSegment } from "next/navigation";
 import type { ReactElement } from "react";
 import { OnboardingStepList } from "@/components/panel/onboarding-step-list";
-import { ONBOARDING_STEPS, type OnboardingStepKey } from "@fynix/shared/lib/onboarding/steps";
+import { ONBOARDING_STEPS, type OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
 
 interface OnboardingStepsProps {
   readonly completed: readonly OnboardingStepKey[];

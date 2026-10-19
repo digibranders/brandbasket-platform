@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import { BlogEmptyState } from "@/components/panel/blog-editor/blog-empty-state";
 import { CategoriesTable } from "@/components/panel/blog-editor/categories-table";
 import { getBlogCategoriesWithStats } from "@/lib/server/blog-taxonomy";

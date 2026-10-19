@@ -1,8 +1,8 @@
-import { listRecentEmails } from "@fynix/db";
+import { listRecentEmails } from "@brandbasket/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
-import { MailIcon } from "@fynix/shared/ui/icons";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { MailIcon } from "@brandbasket/shared/ui/icons";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
 import { getStaffDb } from "@/lib/server/db";

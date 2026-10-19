@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { NO_PICTURE, StaffAdPictureField, useHiddenPictureInput, type StaffAdPictureState } from "@/components/staff-ad-picture-field";
@@ -34,7 +34,7 @@ interface PlaceAdFormProps {
 }
 
 const ERROR_ID = "place-ad-error";
-/** What a category or area is when the ad is for all of them: the same word the home market uses (AD_ALL_SLUG in @fynix/db). */
+/** What a category or area is when the ad is for all of them: the same word the home market uses (AD_ALL_SLUG in @brandbasket/db). */
 const ALL_VALUE = "all";
 /** Whole weeks, because the customers' auctions run Monday to Sunday: a month is four of them. */
 const DURATION_CHOICES = [

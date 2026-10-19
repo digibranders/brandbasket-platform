@@ -177,7 +177,7 @@ Expected: a new `packages/cms/src/migrations/2026…_blog_categories_authors_seo
 `no_index` to `blog_posts`; `migrations/index.ts` updated. Open the file and confirm it contains those statements
 and nothing unrelated.
 
-- [ ] **Step 6:** `pnpm --filter @fynix/cms typecheck` → exit 0.
+- [ ] **Step 6:** `pnpm --filter @brandbasket/cms typecheck` → exit 0.
 
 ### Task 2: Pure slug helpers (moved, then reused)
 
@@ -208,7 +208,7 @@ describe("firstUnusedSlug", () => {
 });
 ```
 
-- [ ] **Step 2:** `pnpm --filter @fynix/platform exec vitest run lib/blog-slug.test.ts` → FAIL (module missing).
+- [ ] **Step 2:** `pnpm --filter @brandbasket/platform exec vitest run lib/blog-slug.test.ts` → FAIL (module missing).
 
 - [ ] **Step 3: Implement**
 
@@ -553,7 +553,7 @@ export function toSitePost(post: RawSitePost): SitePost {
 - [ ] **Step 5: Fix the preview test fixture** — `lib/server/blog-preview-request.test.ts`'s `POST: SitePost`
   constant gains `updatedAt: null, category: null, author: null, seo: { title: <same title>, description: null, noIndex: false }`.
 
-- [ ] **Step 6:** `pnpm --filter @fynix/platform exec vitest run lib/` → PASS.
+- [ ] **Step 6:** `pnpm --filter @brandbasket/platform exec vitest run lib/` → PASS.
 
 ### Task 5: Shared paid-access helper and taxonomy reads
 
@@ -676,7 +676,7 @@ export const getBlogAuthors = cache(async (): Promise<readonly BlogAuthor[]> => 
     `categoryName: typeof (doc.category as { name?: unknown } | null)?.name === "string" ? (doc.category as { name: string }).name : null`.
     Write this as a small `categoryNameOf(value: unknown): string | null` helper rather than inline casts.
 
-- [ ] **Step 4:** `pnpm --filter @fynix/platform typecheck` → only errors are in `actions.ts`/edit form
+- [ ] **Step 4:** `pnpm --filter @brandbasket/platform typecheck` → only errors are in `actions.ts`/edit form
   (fixed in Tasks 6–8).
 
 ### Task 6: Post save accepts category, author and SEO
@@ -868,7 +868,7 @@ export const getBlogAuthors = cache(async (): Promise<readonly BlogAuthor[]> => 
 
 import { refresh } from "next/cache";
 import { getPayload, NotFound, type Payload } from "payload";
-import { cleanLine } from "@fynix/shared/lib/validation/text";
+import { cleanLine } from "@brandbasket/shared/lib/validation/text";
 import config from "@/payload.config";
 import { firstUnusedSlug, slugify } from "@/lib/blog-slug";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
@@ -1035,7 +1035,7 @@ export async function deleteBlogAuthorAction(id: string): Promise<TaxonomyDelete
   (Two authors may share a name — two people called "Priya" is real — so authors are not de-duplicated.)
   Note: `sameName` alone doesn't cover the "same slug, different name" test; `freeCategorySlug` does.
 
-- [ ] **Step 4:** run → PASS. Then the whole platform suite: `pnpm --filter @fynix/platform test` → PASS.
+- [ ] **Step 4:** run → PASS. Then the whole platform suite: `pnpm --filter @brandbasket/platform test` → PASS.
 
 ### Task 8: Editor UI
 
@@ -1047,7 +1047,7 @@ export async function deleteBlogAuthorAction(id: string): Promise<TaxonomyDelete
 ```tsx
 "use client";
 
-import { Button } from "@fynix/shared/ui/panel/button";
+import { Button } from "@brandbasket/shared/ui/panel/button";
 import { useState, useTransition, type ReactElement } from "react";
 import type { TaxonomyOption, TaxonomyResult } from "@/app/app-host/(protected)/content/blog/taxonomy-actions";
 
@@ -1228,7 +1228,7 @@ export function BlogSeoFields({ metaTitle, metaDescription, noIndex, titleFallba
   }
   ```
   and pass `createAuthor={createBlogAuthorByNameAction}`.
-- [ ] **Step 5:** `pnpm --filter @fynix/platform typecheck` → exit 0.
+- [ ] **Step 5:** `pnpm --filter @brandbasket/platform typecheck` → exit 0.
 
 ### Task 9: "Categories & authors" page and list page
 
@@ -1290,7 +1290,7 @@ export default async function BlogSettingsPage(): Promise<ReactElement> {
   `<ButtonLink href="/content/blog/settings" size="sm" variant="secondary">Categories & authors</ButtonLink>`
   (wrap both in `flex gap-3`). In each row, show `post.categoryName` before the status when non-null:
   `<span className="text-sm text-ink-soft">{post.categoryName === null ? "" : `${post.categoryName} · `}{status}</span>`.
-- [ ] **Step 4:** `pnpm --filter @fynix/platform typecheck` → exit 0.
+- [ ] **Step 4:** `pnpm --filter @brandbasket/platform typecheck` → exit 0.
 
 ### Task 10: Platform verification
 

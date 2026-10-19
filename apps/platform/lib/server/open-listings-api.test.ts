@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { VisibleOpenListing } from "@fynix/db";
+import type { VisibleOpenListing } from "@brandbasket/db";
 import { handleOpenListingsPage, handleOpenListingsVersion, toTuple } from "./open-listings-api";
 
 vi.mock("server-only", () => ({}));

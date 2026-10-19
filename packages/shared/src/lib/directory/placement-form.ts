@@ -1,5 +1,5 @@
 /** Parses the staff Listing form on the admin client page. Server-only: the business id check comes from ./place-id. */
-import type { ListingPlacementInput } from "@fynix/db";
+import type { ListingPlacementInput } from "@brandbasket/db";
 import { textField, type FormParseResult } from "../form-result";
 import { cleanLine } from "../validation/text";
 import { isPlaceId } from "./place-id";

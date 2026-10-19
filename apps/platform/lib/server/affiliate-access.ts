@@ -1,9 +1,9 @@
 import "server-only";
-import { findAffiliateByUserId, listMembershipsForUser, type Affiliate } from "@fynix/db";
+import { findAffiliateByUserId, listMembershipsForUser, type Affiliate } from "@brandbasket/db";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import type { SessionUser } from "@fynix/shared/lib/access";
-import { AFFILIATE_PATH } from "@fynix/shared/lib/affiliate-links";
+import type { SessionUser } from "@brandbasket/shared/lib/access";
+import { AFFILIATE_PATH } from "@brandbasket/shared/lib/affiliate-links";
 import { getAppDb, getStaffDb } from "./db";
 import { getSessionUser } from "./session";
 

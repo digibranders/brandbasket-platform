@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { TickIcon } from "@fynix/shared/ui/icons";
-import { cn } from "@fynix/shared/lib/cn";
-import { formatStepNumber } from "@fynix/shared/lib/format";
-import { ONBOARDING_STEPS, onboardingStepHref, type OnboardingStepKey } from "@fynix/shared/lib/onboarding/steps";
+import { TickIcon } from "@brandbasket/shared/ui/icons";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { formatStepNumber } from "@brandbasket/shared/lib/format";
+import { ONBOARDING_STEPS, onboardingStepHref, type OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
 
 interface OnboardingStepListProps {
   readonly current: OnboardingStepKey;

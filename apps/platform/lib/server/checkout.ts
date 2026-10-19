@@ -1,6 +1,6 @@
 import "server-only";
 
-import { bundleKey, decideCheckout, type BillingProvider, type CheckoutDecision, type StartedCheckout } from "@fynix/billing";
+import { bundleKey, decideCheckout, type BillingProvider, type CheckoutDecision, type StartedCheckout } from "@brandbasket/billing";
 import {
   BillingBusinessNotFoundError,
   consumeRateLimit,
@@ -20,21 +20,21 @@ import {
   type PlanTier,
   type RateLimitRule,
   type Subscription,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
-import type { MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
-import { bundleLines } from "@fynix/shared/lib/billing/bundle";
-import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF, REACTIVATE_HREF } from "@fynix/shared/lib/billing/payment-step";
-import { firstMissing, onboardingChecklist } from "@fynix/shared/lib/onboarding/checklist";
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
+import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF, REACTIVATE_HREF } from "@brandbasket/shared/lib/billing/payment-step";
+import { firstMissing, onboardingChecklist } from "@brandbasket/shared/lib/onboarding/checklist";
 import { MEMBER_HOME } from "@/lib/membership";
 import { checklistInputFrom } from "@/lib/onboarding/snapshot";
-import { businessDetails } from "@fynix/shared/lib/site-config";
+import { businessDetails } from "@brandbasket/shared/lib/site-config";
 import { getBillingProvider } from "./billing";
-import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
+import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { missingProblem, readOnboardingSnapshot, type StepProblem } from "./onboarding";
-import { cancelAtProvider } from "@fynix/shared/server/provider-cancellation";
+import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { discountFrom, type AppliedDiscount } from "./referrals";
 import { ensureDiscountPlan } from "./discount-plans";
 

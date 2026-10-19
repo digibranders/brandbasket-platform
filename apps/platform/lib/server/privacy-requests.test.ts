@@ -10,8 +10,8 @@ import {
   receiveVerifiedPrivacyRequest,
   type Database,
   type PrivacyRequestOtpRow,
-} from "@fynix/db";
-import { EmailConfigurationError, type EmailMessage } from "@fynix/email";
+} from "@brandbasket/db";
+import { EmailConfigurationError, type EmailMessage } from "@brandbasket/email";
 import { getStaffDb } from "./db";
 import { customerEmailTransport } from "./email";
 import { accountCodeSecret, emailCodeBypassed } from "./env";
@@ -28,7 +28,7 @@ vi.mock("./website-refresh", () => ({ scheduleWebsiteRefresh: vi.fn() }));
 vi.mock("./env", () => ({ accountCodeSecret: vi.fn(), emailCodeBypassed: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 vi.mock("./public-db", () => ({ getPublicDb: vi.fn() }));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   claimPrivacyRequestOtpAttempt: vi.fn(),
   consumeRateLimit: vi.fn(),
   createPrivacyRequestOtp: vi.fn(),

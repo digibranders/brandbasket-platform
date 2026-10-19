@@ -3,23 +3,23 @@ import {
   AccountAlreadyExistsError,
   createAccountWithGrant,
   isInvalidCredentialsError,
-} from "@fynix/auth";
+} from "@brandbasket/auth";
 import {
   consumeRateLimit,
   findRedeemableInvite,
   redeemInviteIntoBusiness,
   type Database,
   type SetupInvite,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { headers } from "next/headers";
-import { clientIpFrom } from "@fynix/shared/lib/client-ip";
-import { retryMessage } from "@fynix/shared/lib/sign-in-limits";
+import { clientIpFrom } from "@brandbasket/shared/lib/client-ip";
+import { retryMessage } from "@brandbasket/shared/lib/sign-in-limits";
 import { recordAccountTermsConsent } from "./account-consent";
 import { getAuth } from "./auth";
 import { getStaffDb } from "./db";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { signInCustomer } from "./customer-sign-in";
-import { firstBlockedSignInLimit } from "@fynix/shared/server/rate-limits";
+import { firstBlockedSignInLimit } from "@brandbasket/shared/server/rate-limits";
 
 const SETUP_ATTEMPT_LIMIT = 10;
 /** Opening the link is cheap and repeatable (a re-read email, a refresh), so the page gets a wider budget. */
@@ -55,7 +55,7 @@ function staffDbForSetup(): Database {
 /** The request headers Next hands to a server component or action; Better Auth reads and writes cookies through them. */
 export type RequestHeaders = Awaited<ReturnType<typeof headers>>;
 
-/** Matches how @fynix/auth stores addresses and how parseSignInForm keys the sign-in limits. */
+/** Matches how @brandbasket/auth stores addresses and how parseSignInForm keys the sign-in limits. */
 export function normaliseEmail(email: string): string {
   return email.trim().toLowerCase();
 }

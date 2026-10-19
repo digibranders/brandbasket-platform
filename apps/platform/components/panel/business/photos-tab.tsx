@@ -1,10 +1,10 @@
 import type { ReactElement } from "react";
-import type { DirectoryPictureSlot } from "@fynix/db";
-import { GALLERY_SLOTS } from "@fynix/shared/lib/directory/pictures";
-import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import type { DirectoryPictureSlot } from "@brandbasket/db";
+import { GALLERY_SLOTS } from "@brandbasket/shared/lib/directory/pictures";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { VideosSection } from "@/components/panel/business/videos-section";
 import { PhotosEditor } from "@/components/panel/business/photos-editor";
 import { profileHref } from "@/lib/business-profile-notices";

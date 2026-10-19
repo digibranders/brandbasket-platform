@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import { WordmarkLogo } from "@fynix/shared/ui/logo";
+import { WordmarkLogo } from "@brandbasket/shared/ui/logo";
 import { adminBrand } from "@/lib/brand";
 import { pathD } from "@/lib/journey-layout";
 

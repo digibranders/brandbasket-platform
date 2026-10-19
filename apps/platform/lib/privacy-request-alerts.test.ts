@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { listOpenPrivacyRequests, markPrivacyRequestsReminded, type Database, type StoredPrivacyRequest } from "@fynix/db";
-import type { EmailMessage, EmailTransport } from "@fynix/email";
+import { listOpenPrivacyRequests, markPrivacyRequestsReminded, type Database, type StoredPrivacyRequest } from "@brandbasket/db";
+import type { EmailMessage, EmailTransport } from "@brandbasket/email";
 import { dueDayWords, privacyAlertRecipient, privacyRequestsConsoleUrl, sendNewPrivacyRequestAlert, sendPrivacyRequestReminders } from "./privacy-request-alerts";
 
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return { PRIVACY_REQUEST_KIND_LABELS: actual.PRIVACY_REQUEST_KIND_LABELS, listOpenPrivacyRequests: vi.fn(), markPrivacyRequestsReminded: vi.fn(async () => 1) };
 });
 

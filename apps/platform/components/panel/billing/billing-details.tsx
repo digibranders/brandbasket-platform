@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { stateName } from "@fynix/shared/lib/directory/india-states";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { SectionHeading, Surface } from "@fynix/shared/ui/panel/surface";
+import { stateName } from "@brandbasket/shared/lib/directory/india-states";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SectionHeading, Surface } from "@brandbasket/shared/ui/panel/surface";
 import { saveBillingDetailsAction } from "@/app/app-host/(protected)/billing/actions";
 import { BillingDetailsForm, SAVED_TEXT } from "@/components/panel/billing/billing-details-form";
 import type { PanelFormAction } from "@/components/panel/form/panel-form";

@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, type ReactElement } from "react";
-import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { Button } from "@fynix/shared/ui/panel/button";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { Button } from "@brandbasket/shared/ui/panel/button";
 import { initialReactivateFormState, type ReactivateFormState } from "@/lib/billing/reactivate-form";
 
 interface ReactivatePlanProps {

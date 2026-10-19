@@ -1,5 +1,5 @@
-import type { Plan } from "@fynix/db";
-import { monthlyPaymentAmount } from "@fynix/shared/lib/billing/terms";
+import type { Plan } from "@brandbasket/db";
+import { monthlyPaymentAmount } from "@brandbasket/shared/lib/billing/terms";
 import { membershipPriceParts, type MembershipTier } from "@/lib/membership";
 import { BRAND, type Brand } from "@/lib/brand";
 import { planListFor } from "@/lib/plan-comparison";

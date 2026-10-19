@@ -81,7 +81,7 @@ Integration tests (each is its own `it`): record stores a pending video; a free 
 
 Tests: a key with variant `video` builds; `parse range`: `bytes=0-99`, `bytes=100-`, `bytes=-50`, invalid and out-of-range cases; 206 body is the slice and `Content-Length` is its length; R2 `put` sends `PutObjectCommand` with bucket, key, content type (tested against an injected fake client); `publicUrl` joins base and key.
 
-- [ ] Add `@aws-sdk/client-s3` (`pnpm --filter @fynix/shared add @aws-sdk/client-s3`), tests first, then code.
+- [ ] Add `@aws-sdk/client-s3` (`pnpm --filter @brandbasket/shared add @aws-sdk/client-s3`), tests first, then code.
 
 ### Task 4: Video processing (`apps/platform/lib/server/video-process.ts`)
 

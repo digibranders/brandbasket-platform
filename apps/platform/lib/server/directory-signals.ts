@@ -15,11 +15,11 @@ import {
   type DirectoryAsk,
   type DirectoryNamed,
   type RateLimitRule,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import type { DirectoryEventKind, ListingSignals, SignalsResponse } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
 import { accountCodeSecret } from "./env";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { ipRateLimitKey } from "./ip-key";
 
 /**

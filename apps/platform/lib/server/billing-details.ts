@@ -1,7 +1,7 @@
 import "server-only";
-import { findBillingProfile, findBusinessCurrency, getBusinessProfile, withTenantScope } from "@fynix/db";
-import { billingDetailsStart, savedBillingDetails } from "@fynix/shared/lib/billing/billing-details-start";
-import { savedPhoneStart } from "@fynix/shared/server/phone-defaults";
+import { findBillingProfile, findBusinessCurrency, getBusinessProfile, withTenantScope } from "@brandbasket/db";
+import { billingDetailsStart, savedBillingDetails } from "@brandbasket/shared/lib/billing/billing-details-start";
+import { savedPhoneStart } from "@brandbasket/shared/server/phone-defaults";
 import { billsInRupees, type BillingDetailsView } from "@/lib/billing/billing-details-view";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb } from "./db";

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Database } from "@fynix/db";
-import type { SupportStorage } from "@fynix/shared/server/support-storage";
+import type { Database } from "@brandbasket/db";
+import type { SupportStorage } from "@brandbasket/shared/server/support-storage";
 
 vi.mock("server-only", () => ({}));
 const claimExpiredSupportAttachments = vi.fn(async () => undefined);
@@ -9,7 +9,7 @@ const markSupportAttachmentPurged = vi.fn(async () => undefined);
 const claimSupportTicketsDueRetention = vi.fn(async () => ({ ticketIds: [] as string[], attachments: [] as never[] }));
 const finalizeSupportTicketRetention = vi.fn(async () => 0);
 const purgeErrorIssues = vi.fn(async () => 0);
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   claimExpiredSupportAttachments,
   listDeletingSupportAttachments,
   markSupportAttachmentPurged,

@@ -5,7 +5,7 @@ import {
   DIRECTORY_STATE,
   isDirectoryArea,
   isDirectoryCategory,
-} from "@fynix/shared/lib/directory/places";
+} from "@brandbasket/shared/lib/directory/places";
 import { categoryOptions, type PickOption } from "@/lib/listing-address";
 import { OWNER_FORM_FIELDS_MESSAGE, ownerFormCheck } from "@/lib/owner-form";
 

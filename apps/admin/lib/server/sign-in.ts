@@ -1,14 +1,14 @@
 import "server-only";
-import { isInvalidCredentialsError } from "@fynix/auth";
-import { findActiveStaffMember, findActiveStaffUserIdByEmail, isPhoneAccountEmail } from "@fynix/db";
+import { isInvalidCredentialsError } from "@brandbasket/auth";
+import { findActiveStaffMember, findActiveStaffUserIdByEmail, isPhoneAccountEmail } from "@brandbasket/db";
 import { headers } from "next/headers";
-import { clientIpFrom } from "@fynix/shared/lib/client-ip";
-import { parseSignInForm, type SignInFormState } from "@fynix/shared/lib/sign-in-form";
-import { retryMessage } from "@fynix/shared/lib/sign-in-limits";
+import { clientIpFrom } from "@brandbasket/shared/lib/client-ip";
+import { parseSignInForm, type SignInFormState } from "@brandbasket/shared/lib/sign-in-form";
+import { retryMessage } from "@brandbasket/shared/lib/sign-in-limits";
 import { getAuth } from "./auth";
 import { getStaffDb } from "./db";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
-import { firstBlockedSignInLimit } from "@fynix/shared/server/rate-limits";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
+import { firstBlockedSignInLimit } from "@brandbasket/shared/server/rate-limits";
 import { logStaffAccess } from "./staff-access-log";
 
 export type SignInOutcome = SignInFormState | { readonly status: "signed-in" };

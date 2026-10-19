@@ -49,7 +49,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { lexicalToPlainText } from "@/lib/blog-text";
 import { countWords, readingMinutes } from "@/lib/blog-text-stats";
 import {

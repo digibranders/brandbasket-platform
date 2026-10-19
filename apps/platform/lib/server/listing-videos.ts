@@ -1,4 +1,4 @@
-import { deploymentBrandShortName } from "@fynix/shared/lib/deployment-brand";
+import { deploymentBrandShortName } from "@brandbasket/shared/lib/deployment-brand";
 import "server-only";
 import {
   completeDirectoryVideo,
@@ -21,14 +21,14 @@ import {
   type RateLimitRule,
   type SetFeaturedDirectoryVideoOutcome,
   type StartDirectoryVideoOutcome,
-} from "@fynix/db";
-import type { TenantContext } from "@fynix/shared/lib/access";
-import { isVideoLengthAllowed, VIDEO_PREMIUM_MESSAGE, videoTooLongMessage, type VideoSlot } from "@fynix/shared/lib/directory/videos";
-import { getVimeoClient, VimeoError, type VimeoClient } from "@fynix/shared/server/vimeo";
+} from "@brandbasket/db";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
+import { isVideoLengthAllowed, VIDEO_PREMIUM_MESSAGE, videoTooLongMessage, type VideoSlot } from "@brandbasket/shared/lib/directory/videos";
+import { getVimeoClient, VimeoError, type VimeoClient } from "@brandbasket/shared/server/vimeo";
 import { videoAccessOf, type VideoAccess } from "@/lib/videos-view";
 import { getCustomerBusinessEntry, type GrantedCustomer } from "./customer-access";
 import { getAppDb } from "./db";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { retryMinutes, type UploadAllowance } from "./onboarding-media";
 
 /*

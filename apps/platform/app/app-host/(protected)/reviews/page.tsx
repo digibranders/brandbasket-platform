@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { listReviewsForOwner } from "@fynix/db";
-import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { listReviewsForOwner } from "@brandbasket/db";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import { ReviewsList } from "@/components/panel/reviews/reviews-list";
 import { leadsPaging, requestedLeadsPage, type LeadsPaging } from "@/lib/leads";
 import { REVIEWS_PATH, REVIEWS_PER_PAGE, requestedReviewFilter } from "@/lib/owner-replies";

@@ -15,7 +15,7 @@ import {
   SignOutIcon,
   SmileIcon,
   TickIcon,
-} from "@fynix/shared/ui/icons";
+} from "@brandbasket/shared/ui/icons";
 import { cn } from "../../lib/cn";
 import { clientBrandName } from "../../lib/deployment-brand";
 import { initialsOf } from "../../lib/names";

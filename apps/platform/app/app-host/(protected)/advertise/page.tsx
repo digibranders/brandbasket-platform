@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { EmailUs } from "@/components/panel/email-us";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import type { DirectoryAdMarket, DirectoryAdWin } from "@fynix/db";
+import type { DirectoryAdMarket, DirectoryAdWin } from "@brandbasket/db";
 import {
   AD_MARKER,
   AD_PLACEMENTS,
@@ -15,11 +15,11 @@ import {
   formatRupees,
   marketLabel,
   parseAdPlacement,
-} from "@fynix/shared/lib/directory/ads";
-import { siteConfig } from "@fynix/shared/lib/site-config";
-import { displayPhone } from "@fynix/shared/server/phone-display";
-import { Button, ButtonLink } from "@fynix/shared/ui/panel/button";
-import { areaName } from "@fynix/shared/lib/directory/places";
+} from "@brandbasket/shared/lib/directory/ads";
+import { siteConfig } from "@brandbasket/shared/lib/site-config";
+import { displayPhone } from "@brandbasket/shared/server/phone-display";
+import { Button, ButtonLink } from "@brandbasket/shared/ui/panel/button";
+import { areaName } from "@brandbasket/shared/lib/directory/places";
 import { AdResultsView } from "@/components/panel/advertise/ad-results";
 import type { AdPreviewData } from "@/components/panel/advertise/ad-preview";
 import { BidPanel } from "@/components/panel/advertise/bid-panel";

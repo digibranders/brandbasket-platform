@@ -1,6 +1,6 @@
 import "server-only";
-import { FIRST_PREVIEW_DUE_HOURS } from "@fynix/db";
-import { createAppEmailTransport, emailTeamInboxDefault, onboardingSentEmail } from "@fynix/email";
+import { FIRST_PREVIEW_DUE_HOURS } from "@brandbasket/db";
+import { createAppEmailTransport, emailTeamInboxDefault, onboardingSentEmail } from "@brandbasket/email";
 import { serverEnv } from "./env";
 import { getStaffDb } from "./db";
 

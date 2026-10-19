@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import sharp, { type OutputInfo } from "sharp";
 import { MAX_IMAGE_DIMENSION, MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "@/lib/uploads/limits";
-import { PICTURE_COPY_WIDTHS, type PictureCopyWidth } from "@fynix/shared/server/media-keys";
+import { PICTURE_COPY_WIDTHS, type PictureCopyWidth } from "@brandbasket/shared/server/media-keys";
 import { createSemaphore, SemaphoreFullError } from "./semaphore";
 
 export { MAX_IMAGE_DIMENSION, MAX_UPLOAD_BYTES };

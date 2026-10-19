@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { META_DESCRIPTION_MAX_LENGTH, META_TITLE_MAX_LENGTH, truncateAtWord } from "@/lib/blog-seo";
 import { seoHealthGrade, type SeoHealth } from "@/lib/blog-seo-health";
 import { CheckGlyph } from "./icons";

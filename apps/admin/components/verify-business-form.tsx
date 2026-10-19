@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useRef, type ReactElement, type ReactNode } from "react";
-import type { PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { PhoneField } from "@fynix/shared/ui/phone-field";
+import type { PhoneCountryOption } from "@brandbasket/shared/lib/phone/fields";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { PhoneField } from "@brandbasket/shared/ui/phone-field";
 import { buttonPrimary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { TrustedMark, VerifiedMark } from "@/components/directory-tag-marks";

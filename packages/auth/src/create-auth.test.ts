@@ -1,4 +1,4 @@
-import { createDatabase } from "@fynix/db";
+import { createDatabase } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createAuth } from "./create-auth";
 

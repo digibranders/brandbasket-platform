@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ChangeEvent, type ReactElement } from "react";
-import { PRODUCT_PHOTO_MINIMUM, PRODUCT_PHOTO_SIZE } from "@fynix/shared/lib/directory/pictures";
+import { PRODUCT_PHOTO_MINIMUM, PRODUCT_PHOTO_SIZE } from "@brandbasket/shared/lib/directory/pictures";
 import { ownProductPhotoHref } from "@/lib/photos-view";
 import { cropBounds, cropRect, startView } from "@/lib/uploads/crop-geometry";
 import { cropToBlob, openPhoto } from "@/lib/uploads/crop-image";

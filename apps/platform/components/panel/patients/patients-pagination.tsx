@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import type { PatientFilter } from "@fynix/db";
-import { cn } from "@fynix/shared/lib/cn";
+import type { PatientFilter } from "@brandbasket/db";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { pageItems, patientsHref } from "@/app/app-host/(protected)/patients/view";
 
 interface PatientsPaginationProps {

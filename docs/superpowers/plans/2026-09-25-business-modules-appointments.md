@@ -63,7 +63,7 @@ Payload 3 (tokens only), pnpm workspace.
 
 **Files:** create everything under "Shared rules" in the file map, and add exports to `packages/shared/package.json`
 if that package uses an explicit `exports` map (check first; follow how `lib/business-types.ts` is imported as
-`@fynix/shared/lib/business-types`).
+`@brandbasket/shared/lib/business-types`).
 
 - [ ] **Step 1: `business-modules.ts`**
 
@@ -253,7 +253,7 @@ Messages must be ones a patient can act on, e.g. "Enter your phone number."
   - `parsePausedMessage(raw)`: trimmed, ≤160, empty → null.
   - `parseServiceName(raw)`: trimmed, 1–80.
 
-- [ ] **Step 9: Run** `pnpm --filter @fynix/shared test` and `pnpm --filter @fynix/shared typecheck`. All
+- [ ] **Step 9: Run** `pnpm --filter @brandbasket/shared test` and `pnpm --filter @brandbasket/shared typecheck`. All
   green.
 
 ---
@@ -409,7 +409,7 @@ Run: `pnpm db:migrate && pnpm db:migrate:test`
 Expected: "Migrations applied to the dev database." and the same for test. Then
 `psql fynix_appt -c "\d appointment_requests"` shows the table and its policies.
 
-- [ ] **Step 8: Run** `pnpm --filter @fynix/db typecheck`.
+- [ ] **Step 8: Run** `pnpm --filter @brandbasket/db typecheck`.
 
 ---
 
@@ -566,7 +566,7 @@ value, `sanitizeHeaderValue` on the subject, `assertWebUrl` on links, `htmlDocum
   - `businessPhone` may be null. Leave that line out when it is.
 - [ ] **Step 2: Tests:** each template escapes `<script>` in patient-supplied text, has a non-empty `bodyText`, and
   keeps the note out of the subject.
-- [ ] **Step 3: Run** `pnpm --filter @fynix/email test` and typecheck.
+- [ ] **Step 3: Run** `pnpm --filter @brandbasket/email test` and typecheck.
 
 ---
 
@@ -649,7 +649,7 @@ value, `sanitizeHeaderValue` on the subject, `assertWebUrl` on links, `htmlDocum
   - each outcome's status and body
   - that `record` receives the tenant's businessId, never anything from the body
 
-- [ ] **Step 9: Run** `pnpm --filter @fynix/platform test`, `pnpm --filter @fynix/platform lint`,
+- [ ] **Step 9: Run** `pnpm --filter @brandbasket/platform test`, `pnpm --filter @brandbasket/platform lint`,
   `pnpm typecheck`.
 
 ---
@@ -678,7 +678,7 @@ value, `sanitizeHeaderValue` on the subject, `assertWebUrl` on links, `htmlDocum
   the existing `Promise.all`. Render `<Section title="Features">` right after "Their website".
 - [ ] **Step 4: Lead page:** under the business type, render `Suggested: Appointments` (using
   `suggestedModules(lead.businessType)` and the labels) when non-empty.
-- [ ] **Step 5: Run** `pnpm --filter @fynix/admin test`, `pnpm --filter @fynix/admin lint`, `pnpm typecheck`.
+- [ ] **Step 5: Run** `pnpm --filter @brandbasket/admin test`, `pnpm --filter @brandbasket/admin lint`, `pnpm typecheck`.
 
 ---
 
@@ -702,7 +702,7 @@ value, `sanitizeHeaderValue` on the subject, `assertWebUrl` on links, `htmlDocum
 
   Client components for the forms use `useActionState`. Labels stay short and there are no explanatory paragraphs.
 - [ ] **Step 3: Nav:** add `{ href: "/details", label: "Your details", icon: <ClockIcon/> }` after "Your project".
-  Use an existing icon from `@fynix/shared/ui/icons`. If none fits, add one there in the same style.
+  Use an existing icon from `@brandbasket/shared/ui/icons`. If none fits, add one there in the same style.
 - [ ] **Step 4: Run** platform test, lint and typecheck.
 
 ---
@@ -786,8 +786,8 @@ then `pnpm install` and copy `.env.local`.
 ### Task 10: Local end-to-end
 
 Servers go in `.claude/launch.json` in the worktree:
-- **platform:** `pnpm --filter @fynix/platform exec next dev -p 3011`
-- **admin:** `pnpm --filter @fynix/admin exec next dev -p 3013`
+- **platform:** `pnpm --filter @brandbasket/platform exec next dev -p 3011`
+- **admin:** `pnpm --filter @brandbasket/admin exec next dev -p 3013`
 - **client site:** `pnpm exec next dev -p 3015` in the client-site worktree, with `FYNIX_API_ORIGIN=http://localhost:3011`
 
 - [ ] **Step 1:** Create a test business the real way.

@@ -2,10 +2,10 @@
 
 import { useEffect, type ReactElement } from "react";
 import { reportBoundaryError } from "@/lib/report-boundary-error";
-import { isStaleDeployError } from "@fynix/shared/lib/stale-deploy";
-import { DeploymentUpdate } from "@fynix/shared/ui/panel/deployment-update";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { WordmarkLogo } from "@fynix/shared/ui/logo";
+import { isStaleDeployError } from "@brandbasket/shared/lib/stale-deploy";
+import { DeploymentUpdate } from "@brandbasket/shared/ui/panel/deployment-update";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { WordmarkLogo } from "@brandbasket/shared/ui/logo";
 import { useBrand } from "@/components/panel/brand-provider";
 import { logoOf } from "@/lib/brand";
 

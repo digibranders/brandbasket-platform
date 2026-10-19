@@ -4,14 +4,14 @@
  */
 import "server-only";
 import { z } from "zod";
-import { PHONE_COUNTRY_FIELD } from "@fynix/shared/lib/phone/fields";
-import { optionalEmail } from "@fynix/shared/lib/validation/contact";
-import { optionalPhone, phoneFormField } from "@fynix/shared/lib/validation/phone";
-import { cleanLine, cleanMultiline } from "@fynix/shared/lib/validation/text";
+import { PHONE_COUNTRY_FIELD } from "@brandbasket/shared/lib/phone/fields";
+import { optionalEmail } from "@brandbasket/shared/lib/validation/contact";
+import { optionalPhone, phoneFormField } from "@brandbasket/shared/lib/validation/phone";
+import { cleanLine, cleanMultiline } from "@brandbasket/shared/lib/validation/text";
 import { blankOr, httpsUrl, isGoogleBusinessUrl } from "@/lib/validation/url";
-import { dayModeField, WEEKDAYS, type BusinessStepInput } from "@fynix/shared/lib/onboarding/business-fields";
-import { fieldNameOf, textField, type StepParseResult } from "@fynix/shared/lib/onboarding/form-result";
-import { isDayMode, type OpeningHours } from "@fynix/shared/lib/onboarding/hours";
+import { dayModeField, WEEKDAYS, type BusinessStepInput } from "@brandbasket/shared/lib/onboarding/business-fields";
+import { fieldNameOf, textField, type StepParseResult } from "@brandbasket/shared/lib/onboarding/form-result";
+import { isDayMode, type OpeningHours } from "@brandbasket/shared/lib/onboarding/hours";
 
 const TIME_OF_DAY = /^([01]\d|2[0-3]):[0-5]\d$/;
 

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import type { AppointmentRow } from "@fynix/db";
-import { slotLabel } from "@fynix/shared/lib/appointments/slots";
-import { APPOINTMENT_STATUS_LABELS } from "@fynix/shared/lib/appointments/status";
-import { displayPhoneText } from "@fynix/shared/server/phone-display";
+import type { AppointmentRow } from "@brandbasket/db";
+import { slotLabel } from "@brandbasket/shared/lib/appointments/slots";
+import { APPOINTMENT_STATUS_LABELS } from "@brandbasket/shared/lib/appointments/status";
+import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
 import { formatLongDate } from "@/lib/appointments/date-format";
 import { groupByDate, serialNumbersById } from "@/lib/appointments/view-ranges";
 import { PractitionerBadge } from "./practitioner-badge";

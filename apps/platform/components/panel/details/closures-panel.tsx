@@ -1,12 +1,12 @@
 "use client";
 
-import type { ClosureRow } from "@fynix/db";
+import type { ClosureRow } from "@brandbasket/db";
 import { useEffect, useRef, useState, type ReactElement } from "react";
-import { CLOSURE_NOTE_MAX_LENGTH } from "@fynix/shared/lib/business-facts/closures";
-import { formatStoredDate } from "@fynix/shared/lib/format";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { CLOSURE_NOTE_MAX_LENGTH } from "@brandbasket/shared/lib/business-facts/closures";
+import { formatStoredDate } from "@brandbasket/shared/lib/format";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { BookingClashList } from "@/components/panel/appointments/booking-clash-list";
 import {
   FIELD_CLASSES,

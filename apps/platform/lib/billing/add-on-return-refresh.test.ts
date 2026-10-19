@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AddOnView } from "@fynix/shared/lib/billing/add-on-state";
+import type { AddOnView } from "@brandbasket/shared/lib/billing/add-on-state";
 import { isAwaitingReturnWebhook, RETURN_REFRESH_DELAYS_MS, type ReturnRefreshEntry } from "./add-on-return-refresh";
 
 const DATE = new Date("2026-11-12T04:30:00Z");

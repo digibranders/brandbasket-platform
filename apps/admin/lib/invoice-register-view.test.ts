@@ -1,6 +1,6 @@
-import type { Payment } from "@fynix/db";
+import type { Payment } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
-import { registerTotals, type RegisterInvoice } from "@fynix/shared/lib/billing/invoice-register";
+import { registerTotals, type RegisterInvoice } from "@brandbasket/shared/lib/billing/invoice-register";
 import {
   missingRegisterRow,
   monthLabel,

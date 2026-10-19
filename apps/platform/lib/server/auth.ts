@@ -6,8 +6,8 @@ import {
   type Auth,
   type AuthConfig,
   type AuthMailer,
-} from "@fynix/auth";
-import { confirmEmailEmail, passwordResetEmail, type EmailMessage } from "@fynix/email";
+} from "@brandbasket/auth";
+import { confirmEmailEmail, passwordResetEmail, type EmailMessage } from "@brandbasket/email";
 import { confirmEmailPath, resetPasswordPath } from "@/lib/account-recovery-form";
 import { getAppDb } from "./db";
 import { customerEmailTransport } from "./email";

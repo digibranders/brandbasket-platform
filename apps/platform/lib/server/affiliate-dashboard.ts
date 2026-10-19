@@ -14,7 +14,7 @@ import {
   type AffiliateMonthlyActivity,
   type AffiliatePayout,
   type ListedReferralCode,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { monthsWindowStart } from "@/lib/affiliate-dashboard";
 import { getStaffDb } from "./db";
 

@@ -554,11 +554,11 @@ export type AdsResponse = z.infer<typeof adsResponseSchema>;
 /** The market that holds a city's home page ads: `<HOME_AD_MARKET_SLUG>/<city>/<HOME_AD_MARKET_SLUG>`. */
 export const HOME_AD_MARKET_SLUG = "all";
 
-/** Where an ad shows. Must match DIRECTORY_AD_PLACEMENTS in @fynix/db (directory-parity.test.ts checks). */
+/** Where an ad shows. Must match DIRECTORY_AD_PLACEMENTS in @brandbasket/db (directory-parity.test.ts checks). */
 export const DIRECTORY_AD_PLACEMENTS = ["top", "side", "profile", "home"] as const;
 export type DirectoryAdPlacement = (typeof DIRECTORY_AD_PLACEMENTS)[number];
 
-/** What a visitor did with an ad: saw it on the page, or followed it. Must match DIRECTORY_AD_EVENT_KINDS in @fynix/db. */
+/** What a visitor did with an ad: saw it on the page, or followed it. Must match DIRECTORY_AD_EVENT_KINDS in @brandbasket/db. */
 export const DIRECTORY_AD_EVENT_KINDS = ["impression", "click"] as const;
 export type DirectoryAdEventKind = (typeof DIRECTORY_AD_EVENT_KINDS)[number];
 

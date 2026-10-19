@@ -1,7 +1,7 @@
 import { deploymentBrandShortName } from "../lib/deployment-brand";
 import "server-only";
-import type { BillingProvider } from "@fynix/billing";
-import { findAddOnProviderPlan, saveAddOnProviderPlan, type Database } from "@fynix/db";
+import type { BillingProvider } from "@brandbasket/billing";
+import { findAddOnProviderPlan, saveAddOnProviderPlan, type Database } from "@brandbasket/db";
 import { isMonthlyAddOnId, type AddOn, type AddOnPrice } from "../lib/billing/add-ons";
 
 /**

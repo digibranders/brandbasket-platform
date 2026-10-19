@@ -8,7 +8,7 @@ import {
   setChatbotStatus,
   type ChatbotForStaff,
   type ChatbotStatus,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import type { ChatbotFormValues } from "@/lib/chatbot-form";
 import { getStaffDb } from "./db";
 

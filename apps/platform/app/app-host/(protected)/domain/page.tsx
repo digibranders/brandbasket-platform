@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { getConnectingDomain, withTenantScope } from "@fynix/db";
+import { getConnectingDomain, withTenantScope } from "@brandbasket/db";
 import { ConnectDomainCard } from "@/components/panel/connect-domain-card";
 import { DomainMoveSteps } from "@/components/panel/domain-move-steps";
 import { EmailUs } from "@/components/panel/email-us";
@@ -9,11 +9,11 @@ import { domainPageState, moveStepIndex } from "@/lib/domain-page";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
 import { getLiveWebsite, getOnboardingSnapshot } from "@/lib/server/onboarding";
-import { dnsRecordsFor } from "@fynix/shared/lib/onboarding/domain-dns";
-import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
-import { safeExternalHref } from "@fynix/shared/lib/safe-link";
-import { ButtonLink, ExternalButtonLink } from "@fynix/shared/ui/panel/button";
-import { SectionHeading, Surface } from "@fynix/shared/ui/panel/surface";
+import { dnsRecordsFor } from "@brandbasket/shared/lib/onboarding/domain-dns";
+import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
+import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
+import { ButtonLink, ExternalButtonLink } from "@brandbasket/shared/ui/panel/button";
+import { SectionHeading, Surface } from "@brandbasket/shared/ui/panel/surface";
 import { checkDomainAction } from "../project/actions";
 import { requestOwnDomainAction } from "./actions";
 

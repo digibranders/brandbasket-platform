@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ReactElement } from "react";
-import type { BrandLogo } from "@fynix/shared/ui/logo";
+import type { BrandLogo } from "@brandbasket/shared/ui/logo";
 
 interface BrandAboutProps {
   readonly brand: BrandLogo;

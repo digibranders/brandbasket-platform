@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { BookingContext, SiteFacts } from "@fynix/db";
-import type { PractitionerCalendar } from "@fynix/shared/lib/appointments/clinic-availability";
+import type { BookingContext, SiteFacts } from "@brandbasket/db";
+import type { PractitionerCalendar } from "@brandbasket/shared/lib/appointments/clinic-availability";
 import {
   buildAvailabilityResponse,
   DEFAULT_PAUSED_MESSAGE,

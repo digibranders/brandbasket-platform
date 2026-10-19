@@ -1,18 +1,18 @@
 import "server-only";
-import { BillingRangeError, InvalidGstinError, InvoiceAmountMismatchError, UnknownStateError } from "@fynix/billing";
-import { lockBusinessForBilling } from "@fynix/db";
-import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
+import { BillingRangeError, InvalidGstinError, InvoiceAmountMismatchError, UnknownStateError } from "@brandbasket/billing";
+import { lockBusinessForBilling } from "@brandbasket/db";
+import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import {
   InvoiceSourceMismatchError,
   issueMissingTaxInvoice,
   NoMissingInvoiceError,
   UnsupportedPaymentKindError,
-} from "@fynix/shared/server/tax-invoice-reissue";
+} from "@brandbasket/shared/server/tax-invoice-reissue";
 import {
   InvalidServicePeriodError,
   InvoiceDatedBeforePaymentError,
   UnprintableInvoiceTextError,
-} from "@fynix/shared/server/tax-invoicing";
+} from "@brandbasket/shared/server/tax-invoicing";
 import type { InvoiceNotice } from "@/lib/invoice-notices";
 import { getStaffDb } from "./db";
 

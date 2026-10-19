@@ -1,10 +1,10 @@
-import { CheckoutVerificationError, type BillingProvider } from "@fynix/billing";
-import type { Charge } from "@fynix/db";
+import { CheckoutVerificationError, type BillingProvider } from "@brandbasket/billing";
+import type { Charge } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     ...actual,
     findChargeByProviderOrder: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock("@fynix/db", async () => {
     withTenantScope: (_db: unknown, _tenant: unknown, work: (tx: unknown) => unknown) => work({ name: "app-tx" }),
   };
 });
-vi.mock("@fynix/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));
+vi.mock("@brandbasket/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
 // What a paid move up does next is covered by plan-upgrade-finish and the shared integration test.
 vi.mock("./plan-upgrade-finish", () => ({ finishUpgradeForCharge: vi.fn() }));
@@ -30,8 +30,8 @@ import {
   lockBusinessForBilling,
   openBlogPostsCharge,
   setChargeProviderOrder,
-} from "@fynix/db";
-import { recordChargePaymentWithInvoice } from "@fynix/shared/server/charge-payments";
+} from "@brandbasket/db";
+import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
 import { getBillingProvider } from "./billing";
 import { finishUpgradeForCharge } from "./plan-upgrade-finish";
 import {

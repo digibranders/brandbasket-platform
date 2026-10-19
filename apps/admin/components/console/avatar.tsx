@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { avatarInitials, avatarTone } from "@/lib/avatar";
 import type { AttentionKind } from "@/lib/pipeline";
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, type ReactElement } from "react";
-import { isStaleDeployError } from "@fynix/shared/lib/stale-deploy";
-import { DeploymentUpdate } from "@fynix/shared/ui/panel/deployment-update";
-import { reportBrowserError } from "@fynix/shared/lib/error-report";
+import { isStaleDeployError } from "@brandbasket/shared/lib/stale-deploy";
+import { DeploymentUpdate } from "@brandbasket/shared/ui/panel/deployment-update";
+import { reportBrowserError } from "@brandbasket/shared/lib/error-report";
 import { buttonPrimary } from "@/components/console/buttons";
 import { QuietFrame } from "@/components/console/quiet-frame";
 

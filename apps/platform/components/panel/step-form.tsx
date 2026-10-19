@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import type { InputRule } from "@fynix/shared/lib/forms/input-rules";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import type { InputRule } from "@brandbasket/shared/lib/forms/input-rules";
 import {
   useActionState,
   useEffect,

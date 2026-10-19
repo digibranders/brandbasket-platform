@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import type { ReactElement, ReactNode } from "react";
-import { BriefcaseIcon, CardIcon, DocumentIcon, LinkIcon, MailIcon, MouseIcon, PercentIcon, PinIcon, PlusIcon, ShieldIcon, SignOutIcon, TagIcon, UsersIcon } from "@fynix/shared/ui/icons";
-import { staffCan, type StaffCapability } from "@fynix/shared/lib/access";
-import { cn } from "@fynix/shared/lib/cn";
-import type { StaffRole } from "@fynix/db";
+import { BriefcaseIcon, CardIcon, DocumentIcon, LinkIcon, MailIcon, MouseIcon, PercentIcon, PinIcon, PlusIcon, ShieldIcon, SignOutIcon, TagIcon, UsersIcon } from "@brandbasket/shared/ui/icons";
+import { staffCan, type StaffCapability } from "@brandbasket/shared/lib/access";
+import { cn } from "@brandbasket/shared/lib/cn";
+import type { StaffRole } from "@brandbasket/db";
 import { adminBrand } from "@/lib/brand";
 
 /** The Journey map's own mark: the path from lead to live (Lucide route, drawn like the rest of the icon set). */

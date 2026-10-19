@@ -1,10 +1,10 @@
 "use server";
 
 
-import { AccountAlreadyExistsError } from "@fynix/auth";
+import { AccountAlreadyExistsError } from "@brandbasket/auth";
 import { redirect } from "next/navigation";
-import { AFFILIATE_PATH } from "@fynix/shared/lib/affiliate-links";
-import { checkHuman } from "@fynix/shared/server/turnstile-request";
+import { AFFILIATE_PATH } from "@brandbasket/shared/lib/affiliate-links";
+import { checkHuman } from "@brandbasket/shared/server/turnstile-request";
 import { parseSetupForm, SETUP_AGREE_MESSAGE, type SetupFormState } from "@/lib/setup-form";
 import { AffiliateAccountTakenError, redeemAffiliateLogin } from "@/lib/server/affiliate-setup";
 import { InviteNotUsableError, TermsNotAgreedError, TooManySetupAttemptsError } from "@/lib/server/setup";

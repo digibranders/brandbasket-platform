@@ -1,5 +1,5 @@
 import "server-only";
-import { findActivePlan, setListingSignupChoice, type BillingCurrency, type Plan } from "@fynix/db";
+import { findActivePlan, setListingSignupChoice, type BillingCurrency, type Plan } from "@brandbasket/db";
 import type { MembershipTier } from "@/lib/membership";
 import { cache } from "react";
 import type { GrantedCustomer } from "./customer-access";

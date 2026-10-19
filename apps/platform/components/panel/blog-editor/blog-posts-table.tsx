@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactElement } from "react";
-import { SearchIcon } from "@fynix/shared/ui/icons";
-import { cn } from "@fynix/shared/lib/cn";
+import { SearchIcon } from "@brandbasket/shared/ui/icons";
+import { cn } from "@brandbasket/shared/lib/cn";
 import type { BlogPublishState } from "@/lib/blog-publish-state";
 import type { BlogPostSummary } from "@/lib/server/blog";
 import { BlogEmptyState } from "./blog-empty-state";

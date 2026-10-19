@@ -1,4 +1,4 @@
-import type { GeoCatalogSnapshot } from "@fynix/db";
+import type { GeoCatalogSnapshot } from "@brandbasket/db";
 
 /*
  * What GET /api/directory/catalog sends the marketing website's server (with LEADS_API_TOKEN): the whole geography and

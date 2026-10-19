@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useId, useState, type ReactElement, type ReactNode } from "react";
-import type { ListingContentRow } from "@fynix/db";
+import type { ListingContentRow } from "@brandbasket/db";
 import {
   LISTING_ABOUT_MAX_LENGTH,
   LISTING_BUTTONS,
@@ -17,9 +17,9 @@ import {
   isTaglineColour,
   containsContactDetails,
   type ListingButton,
-} from "@fynix/shared/lib/directory/listing-content";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { Button } from "@fynix/shared/ui/panel/button";
+} from "@brandbasket/shared/lib/directory/listing-content";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { Button } from "@brandbasket/shared/ui/panel/button";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 import { WhereItShows } from "@/components/panel/where-it-shows";
 import type { WhereItShowsSpot } from "@/lib/where-it-shows";

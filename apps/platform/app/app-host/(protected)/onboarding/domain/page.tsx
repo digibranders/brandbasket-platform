@@ -4,8 +4,8 @@ import type { ReactElement } from "react";
 import { DomainStepForm } from "@/components/panel/domain-step-form";
 import { DomainSummary, SummaryCard } from "@/components/panel/onboarding-summary";
 import { StepHeading } from "@/components/panel/step-heading";
-import { slugify } from "@fynix/db";
-import { clientSiteBaseDomain, isTemporarySubdomain, suggestSubdomainName } from "@fynix/shared/lib/onboarding/domain-form";
+import { slugify } from "@brandbasket/db";
+import { clientSiteBaseDomain, isTemporarySubdomain, suggestSubdomainName } from "@brandbasket/shared/lib/onboarding/domain-form";
 
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";

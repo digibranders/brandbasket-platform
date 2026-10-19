@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DirectoryAdBid, DirectoryAdWin } from "@fynix/db";
+import type { DirectoryAdBid, DirectoryAdWin } from "@brandbasket/db";
 import { adOutcomes, bidPanelWeeks, marketPageHref, placementPageHref, weekLabel } from "./advertise-view";
 
 vi.mock("server-only", () => ({}));

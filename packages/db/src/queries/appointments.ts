@@ -334,7 +334,7 @@ interface TransitionEdge {
 
 /**
  * Must match ACTION_TRANSITIONS in packages/shared/src/lib/appointments/status.ts; packages/db does not depend on
- * @fynix/shared (the dependency points the other way), so the data is written literally here and
+ * @brandbasket/shared (the dependency points the other way), so the data is written literally here and
  * status-db-parity.test.ts in packages/shared asserts the two agree.
  */
 export const APPOINTMENT_TRANSITIONS: Readonly<Record<AppointmentAction, readonly TransitionEdge[]>> = {
@@ -485,7 +485,7 @@ export async function listBusyIntervals(db: Database, businessId: string, fromUt
 
 /** The parsed booking the OTP will turn into an appointment once verified -- SiteBookingFields
  * (packages/shared/src/lib/appointments/booking-form.ts) plus the fields resolved server-side. packages/db does
- * not depend on @fynix/shared, so this shape is written literally here rather than imported; it is opaque
+ * not depend on @brandbasket/shared, so this shape is written literally here rather than imported; it is opaque
  * jsonb to Postgres and only ever read back by the platform route that wrote it. */
 export interface BookingOtpPayload {
   readonly name: string;

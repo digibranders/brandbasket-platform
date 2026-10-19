@@ -1,8 +1,8 @@
 import Image from "next/image";
 import type { ReactElement } from "react";
-import type { DirectoryAdPlacement } from "@fynix/db";
+import type { DirectoryAdPlacement } from "@brandbasket/db";
 import { type Brand } from "@/lib/brand";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 
 /*
  * How an ad will look on the website, drawn the way the website draws it: the same picture-led cards, the Ad mark, the

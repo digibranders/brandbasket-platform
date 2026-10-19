@@ -1,6 +1,6 @@
-import { firstPayBy, weekStartOf, type DirectoryAdMarket, type DirectoryAdPlacement, type DirectoryAdWin } from "@fynix/db";
-import { formatAdDeadline, formatAdLastDay, formatAdWeek } from "@fynix/shared/lib/directory/ads";
-import { directoryCategoryPath } from "@fynix/shared/lib/directory/places";
+import { firstPayBy, weekStartOf, type DirectoryAdMarket, type DirectoryAdPlacement, type DirectoryAdWin } from "@brandbasket/db";
+import { formatAdDeadline, formatAdLastDay, formatAdWeek } from "@brandbasket/shared/lib/directory/ads";
+import { directoryCategoryPath } from "@brandbasket/shared/lib/directory/places";
 import type { AdvertisePage } from "@/lib/server/directory-ads";
 
 /*

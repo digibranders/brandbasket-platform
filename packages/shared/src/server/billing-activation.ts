@@ -1,5 +1,5 @@
 import "server-only";
-import { addMonthsUtc, chargedAmountCents } from "@fynix/billing";
+import { addMonthsUtc, chargedAmountCents } from "@brandbasket/billing";
 import {
   activateBundledAddOns,
   bundledNetCents,
@@ -14,7 +14,7 @@ import {
   type Plan,
   type RecordedActivation,
   type ScopedTransaction,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { accrueAffiliateEarning } from "./affiliate-accrual";
 import { issueTaxInvoiceSafely, type BundledInvoiceAddOn } from "./tax-invoicing";
 

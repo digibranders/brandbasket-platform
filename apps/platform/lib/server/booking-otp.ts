@@ -8,11 +8,11 @@ import {
   readBookingContext,
   readSiteFacts,
   type BookingOtpPayload,
-} from "@fynix/db";
-import { addDays, zonedTimeToUtc } from "@fynix/shared/lib/calendar/local-date";
-import { bookingCodeEmail, EmailConfigurationError } from "@fynix/email";
-import type { BookingInput } from "@fynix/shared/lib/appointments/booking-form";
-import { OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
+} from "@brandbasket/db";
+import { addDays, zonedTimeToUtc } from "@brandbasket/shared/lib/calendar/local-date";
+import { bookingCodeEmail, EmailConfigurationError } from "@brandbasket/email";
+import type { BookingInput } from "@brandbasket/shared/lib/appointments/booking-form";
+import { OTP_TTL_SECONDS } from "@brandbasket/shared/lib/appointments/otp";
 import { emailHint } from "@/lib/email-hint";
 import { DEFAULT_PAUSED_MESSAGE } from "./availability";
 import { loggableBookingError } from "./booking-log";

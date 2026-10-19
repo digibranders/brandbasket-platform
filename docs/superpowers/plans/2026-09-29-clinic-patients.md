@@ -26,7 +26,7 @@ cloned from the appointments branch DBs and migrated to 0049; env files in `apps
   tenant-scoped queries through `withTenantScope`, `currentBusinessId(tx)` + `isUuid` guards like
   `packages/db/src/queries/appointments.ts`.
 - Migrations are hand-finished SQL in `packages/db/migrations` with drizzle meta (journal + snapshot) kept in sync:
-  change the drizzle schema, run `pnpm --filter @fynix/db db:generate` for the table/column DDL, then append the
+  change the drizzle schema, run `pnpm --filter @brandbasket/db db:generate` for the table/column DDL, then append the
   hand-written parts (backfill, triggers, grants, RLS) in the same pattern as 0041/0042 and 0044/0045. Apply with
   `pnpm db:migrate && pnpm db:migrate:test` from the worktree root.
 - Drizzle's migrator runs pending migrations in one transaction: a new enum value added with `ALTER TYPE ... ADD
@@ -36,7 +36,7 @@ cloned from the appointments branch DBs and migrated to 0049; env files in `apps
   labels. Reuse `panel-title`, `panel-section`, `link-underline`, `FIELD_CLASSES`, `Button`, `usePanelForm`,
   `PanelFormStatus` exactly as `apps/platform/components/panel/appointments/*` do.
 - Checks per task: targeted `vitest run`; the final task runs `pnpm lint`, `pnpm typecheck`, `pnpm test`,
-  `pnpm --filter @fynix/db test:integration`, `pnpm build`.
+  `pnpm --filter @brandbasket/db test:integration`, `pnpm build`.
 
 ---
 

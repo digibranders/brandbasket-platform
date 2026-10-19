@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useState, type ReactElement, type ReactNode } from "react";
-import { CopyIcon, TickIcon } from "@fynix/shared/ui/icons";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import type { DnsRecord, DnsStatus } from "@fynix/shared/lib/onboarding/domain-dns";
+import { CopyIcon, TickIcon } from "@brandbasket/shared/ui/icons";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import type { DnsRecord, DnsStatus } from "@brandbasket/shared/lib/onboarding/domain-dns";
 import { initialConnectDomainState, type ConnectDomainState } from "@/lib/connect-domain-state";
 
 interface ConnectDomainCardProps {

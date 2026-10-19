@@ -1,5 +1,5 @@
-import { tallyStaffAccessSince, type Database, type StaffAccessTally } from "@fynix/db";
-import { emailTeamInboxDefault, staffAccessReviewEmail, type EmailTransport, type StaffAccessFinding } from "@fynix/email";
+import { tallyStaffAccessSince, type Database, type StaffAccessTally } from "@brandbasket/db";
+import { emailTeamInboxDefault, staffAccessReviewEmail, type EmailTransport, type StaffAccessFinding } from "@brandbasket/email";
 
 /*
  * The nightly look at the staff access log (CERT-In Directions 2022, and the breach runbook's "watch for signs"): a staff

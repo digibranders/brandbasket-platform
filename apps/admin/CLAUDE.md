@@ -14,7 +14,7 @@ The app at console.fynix.digital where Fynix staff run clients, billing, support
 
 - This app has one connection: `getStaffDb()` in `lib/server/db.ts`. There is no row-level security here, so every query must name the business it acts on explicitly.
 - Staff opening customer data is recorded for DPDP Rules 2025 r.6(1)(c) through `lib/server/staff-access-log.ts`, shown at `/access-log`. Call `logStaffAccess` on new customer-data pages, and `logStaffAccessOrThrow` on exports and downloads so nothing is served unlogged.
-- Shared domain logic (charges, add-ons, plan upgrades, tax invoices) comes from `@fynix/shared/server` and `@fynix/db`. Do not fork it into this app.
+- Shared domain logic (charges, add-ons, plan upgrades, tax invoices) comes from `@brandbasket/shared/server` and `@brandbasket/db`. Do not fork it into this app.
 
 ## Where things live
 

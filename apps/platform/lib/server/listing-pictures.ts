@@ -11,11 +11,11 @@ import {
   type DirectoryClaim,
   type DirectoryPictureSlot,
   type DirectoryPictureStatus,
-} from "@fynix/db";
-import type { TenantContext } from "@fynix/shared/lib/access";
-import { GALLERY_SLOTS, PICTURE_KIND_SLOTS, PICTURE_SHAPES, type PictureKind } from "@fynix/shared/lib/directory/pictures";
-import { deleteMediaFiles, mediaStorageKey, type MediaStorage } from "@fynix/shared/server/media-storage";
-import { pictureCopyKey } from "@fynix/shared/server/media-keys";
+} from "@brandbasket/db";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
+import { GALLERY_SLOTS, PICTURE_KIND_SLOTS, PICTURE_SHAPES, type PictureKind } from "@brandbasket/shared/lib/directory/pictures";
+import { deleteMediaFiles, mediaStorageKey, type MediaStorage } from "@brandbasket/shared/server/media-storage";
+import { pictureCopyKey } from "@brandbasket/shared/server/media-keys";
 import { NO_LISTING_MESSAGE, slotPictures, type SlotPictures } from "@/lib/photos-view";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb } from "./db";

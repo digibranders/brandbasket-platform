@@ -4,7 +4,7 @@ import sharp from "sharp";
 import {
   supportStorageKey,
   type SupportStorage,
-} from "@fynix/shared/server/support-storage";
+} from "@brandbasket/shared/server/support-storage";
 import { detectImageType } from "./media-upload";
 import { BodyTooLargeError, readLimitedBody } from "./read-limited-body";
 import { createSemaphore, SemaphoreFullError } from "./semaphore";

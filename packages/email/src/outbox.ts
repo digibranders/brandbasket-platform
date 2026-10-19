@@ -1,4 +1,4 @@
-import { recordEmail, type Database, type ScopedTransaction } from "@fynix/db";
+import { recordEmail, type Database, type ScopedTransaction } from "@brandbasket/db";
 import type { EmailMessage, EmailOutboxCopy } from "./message";
 
 export interface EmailTransport {

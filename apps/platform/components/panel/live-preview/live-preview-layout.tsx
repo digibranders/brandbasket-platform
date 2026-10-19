@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefCallback } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 import {
   PREVIEW_DRAFT_MESSAGE,
   PREVIEW_READY_MESSAGE,

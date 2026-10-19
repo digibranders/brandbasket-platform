@@ -1,10 +1,10 @@
 /** The patient register's commands, pure and independent of the database and of `"use server"`: each run function
  * takes its reads and writes as ports over the caller's one tenant-scoped transaction (actions.ts binds them to it,
  * the tests to plain fakes), and each outcome maps to the form problem the customer sees, or to none on success.
- * Parsing the forms themselves is @fynix/shared's patients/patient-form.ts. */
-import type { ErasePatientResult, MergePatientsResult, PatientEdit, PatientRow, UpdatePatientResult } from "@fynix/db";
-import { ALT_PHONE_FIELD, PATIENT_PHONE_FIELD } from "@fynix/shared/lib/patients/fields";
-import type { MergeLookupCommand, PatientEditCommand } from "@fynix/shared/lib/patients/patient-form";
+ * Parsing the forms themselves is @brandbasket/shared's patients/patient-form.ts. */
+import type { ErasePatientResult, MergePatientsResult, PatientEdit, PatientRow, UpdatePatientResult } from "@brandbasket/db";
+import { ALT_PHONE_FIELD, PATIENT_PHONE_FIELD } from "@brandbasket/shared/lib/patients/fields";
+import type { MergeLookupCommand, PatientEditCommand } from "@brandbasket/shared/lib/patients/patient-form";
 import type { PanelFormProblem } from "@/lib/panel-form-state";
 import {
   HAS_UPCOMING_MESSAGE,

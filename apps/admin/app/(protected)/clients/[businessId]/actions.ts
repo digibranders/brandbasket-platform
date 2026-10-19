@@ -23,22 +23,22 @@ import {
   trustDirectoryBusiness,
   UnknownPlaceError,
   upsertDirectoryVerification,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { parseChargeForm } from "@fynix/shared/lib/billing/charge-form";
-import { staffChargeNoticeHref } from "@fynix/shared/lib/billing/charge-notices";
-import { parseManualPaymentForm } from "@fynix/shared/lib/billing/manual-payment-form";
-import { manualPaymentNoticeHref } from "@fynix/shared/lib/billing/manual-payment-notices";
-import { businessModuleNoticeHref } from "@fynix/shared/lib/business-module-notices";
-import { isBusinessModule } from "@fynix/shared/lib/business-modules";
-import { canonicalTimeZone } from "@fynix/shared/lib/calendar/local-date";
-import { parsePlacementForm } from "@fynix/shared/lib/directory/placement-form";
-import { domainConnectNoticeHref } from "@fynix/shared/lib/domain-connect-notices";
-import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
-import { projectLaunchNoticeHref } from "@fynix/shared/lib/project-launch-notices";
-import { projectPreviewNoticeHref } from "@fynix/shared/lib/project-preview-notices";
+import { parseChargeForm } from "@brandbasket/shared/lib/billing/charge-form";
+import { staffChargeNoticeHref } from "@brandbasket/shared/lib/billing/charge-notices";
+import { parseManualPaymentForm } from "@brandbasket/shared/lib/billing/manual-payment-form";
+import { manualPaymentNoticeHref } from "@brandbasket/shared/lib/billing/manual-payment-notices";
+import { businessModuleNoticeHref } from "@brandbasket/shared/lib/business-module-notices";
+import { isBusinessModule } from "@brandbasket/shared/lib/business-modules";
+import { canonicalTimeZone } from "@brandbasket/shared/lib/calendar/local-date";
+import { parsePlacementForm } from "@brandbasket/shared/lib/directory/placement-form";
+import { domainConnectNoticeHref } from "@brandbasket/shared/lib/domain-connect-notices";
+import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
+import { projectLaunchNoticeHref } from "@brandbasket/shared/lib/project-launch-notices";
+import { projectPreviewNoticeHref } from "@brandbasket/shared/lib/project-preview-notices";
 import { chatbotNoticeHref, parseChatbotForm, parseOperatorKeyForm, readChatbotStatus } from "@/lib/chatbot-form";
 import { addClientChatbot, removeClientChatbot, setClientChatbotOperatorKey, setClientChatbotStatus } from "@/lib/server/chatbots-admin";
 import { addOnNoticeHref, noticeForEndOutcome, type AddOnNotice } from "@/lib/add-on-notices";

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import type { PatientListRow } from "@fynix/db";
-import { displayPhoneText } from "@fynix/shared/server/phone-display";
+import type { PatientListRow } from "@brandbasket/db";
+import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
 import { countLabel, formatShortDate } from "@/app/app-host/(protected)/patients/view";
 
 interface PatientsListProps {

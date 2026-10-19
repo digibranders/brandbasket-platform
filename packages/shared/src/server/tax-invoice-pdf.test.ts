@@ -1,6 +1,6 @@
 import { PDFDict, PDFDocument, PDFName, PDFString } from "pdf-lib";
 import { describe, expect, it, vi } from "vitest";
-import type { TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
+import type { TaxInvoice, TaxInvoiceLineRecord } from "@brandbasket/db";
 import { recipientPhoneToPrint, renderTaxInvoicesPdf } from "./tax-invoice-pdf";
 
 vi.mock("server-only", () => ({}));

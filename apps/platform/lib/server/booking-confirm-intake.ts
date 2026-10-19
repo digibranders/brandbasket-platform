@@ -5,7 +5,7 @@ import type { BookingConfirmOutcome } from "./booking-confirm";
 import { BodyTooLargeError, readLimitedBody } from "./read-limited-body";
 import type { SiteApiTenant } from "./site-api";
 import { bearerToken, SITE_UNAUTHORIZED_MESSAGE } from "./site-cors";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 
 /** {otpId, code, clientIp}, all short strings: well inside this even generously. */
 const MAX_BODY_BYTES = 4 * 1024;

@@ -1,4 +1,4 @@
-import type { MediaAsset } from "@fynix/db";
+import type { MediaAsset } from "@brandbasket/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { BrandStepForm, type UploadedImage } from "@/components/panel/media-uploader";

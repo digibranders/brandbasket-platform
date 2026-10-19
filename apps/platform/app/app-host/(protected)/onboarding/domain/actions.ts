@@ -1,6 +1,6 @@
 "use server";
 
-import { DomainTakenError, savePrimaryDomain } from "@fynix/db";
+import { DomainTakenError, savePrimaryDomain } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -9,14 +9,14 @@ import {
   reservedHostnamesFrom,
   temporarySubdomainFor,
   clientSiteBaseDomain,
-} from "@fynix/shared/lib/onboarding/domain-form";
+} from "@brandbasket/shared/lib/onboarding/domain-form";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
-import { hrefAfter } from "@fynix/shared/lib/onboarding/steps";
+import { hrefAfter } from "@brandbasket/shared/lib/onboarding/steps";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
 import { serverEnv } from "@/lib/server/env";
 import { saveOnboardingStep, type StepProblem } from "@/lib/server/onboarding";
-import { siteConfig } from "@fynix/shared/lib/site-config";
+import { siteConfig } from "@brandbasket/shared/lib/site-config";
 
 /** Never says which business holds the hostname. */
 function describeDomainError(error: unknown): StepProblem | null {

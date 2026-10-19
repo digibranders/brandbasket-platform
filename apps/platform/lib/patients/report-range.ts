@@ -1,4 +1,4 @@
-import { isIsoDate } from "@fynix/shared/lib/calendar/local-date";
+import { isIsoDate } from "@brandbasket/shared/lib/calendar/local-date";
 
 /**
  * The Reports page's three ranges (`?range=month|quarter|year`), all in the business's own calendar and all ending

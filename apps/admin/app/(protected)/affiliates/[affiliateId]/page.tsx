@@ -8,16 +8,16 @@ import {
   listReferralCodes,
   type Affiliate,
   type AffiliateEarningStatus,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { describeReferralDiscount, formatPercent } from "@fynix/shared/lib/billing/referral-value";
-import { formatMoney } from "@fynix/shared/lib/money";
-import { TagIcon } from "@fynix/shared/ui/icons";
-import { displayPhoneText } from "@fynix/shared/server/phone-display";
-import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
+import { describeReferralDiscount, formatPercent } from "@brandbasket/shared/lib/billing/referral-value";
+import { formatMoney } from "@brandbasket/shared/lib/money";
+import { TagIcon } from "@brandbasket/shared/ui/icons";
+import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
+import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { AffiliateForm, CancelEarningButton, PayoutForm, type AffiliateFormValues } from "@/components/affiliate-forms";
 import { AffiliateLoginLink } from "@/components/affiliate-login-link";
 import { buttonSecondary } from "@/components/console/buttons";

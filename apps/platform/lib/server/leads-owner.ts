@@ -1,7 +1,7 @@
 import "server-only";
-import { countNewLeads, findClaimForBusiness, findOwnListing, withTenantScope } from "@fynix/db";
-import type { TenantContext } from "@fynix/shared/lib/access";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { countNewLeads, findClaimForBusiness, findOwnListing, withTenantScope } from "@brandbasket/db";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { leadsSource, type LeadsSource } from "@/lib/leads";
 import { getCustomerBusinessKind } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";

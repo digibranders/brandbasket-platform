@@ -1,7 +1,7 @@
 import "server-only";
 import { after } from "next/server";
-import type { DirectoryRef } from "@fynix/db";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import type { DirectoryRef } from "@brandbasket/db";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { DIRECTORY_REFRESH_PATH, type DirectoryRefreshRequest } from "@/lib/directory-api";
 import { leadsApiToken } from "./website-api-auth";
 import { websiteOrigin } from "./website-origin";

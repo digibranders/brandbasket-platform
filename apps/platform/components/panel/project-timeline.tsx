@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
-import { TickIcon } from "@fynix/shared/ui/icons";
-import { cn } from "@fynix/shared/lib/cn";
+import { TickIcon } from "@brandbasket/shared/ui/icons";
+import { cn } from "@brandbasket/shared/lib/cn";
 
 export interface TimelineStage {
   readonly title: string;

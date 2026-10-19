@@ -201,8 +201,8 @@ build_here() { # builddir release
     export DATABASE_URL_PAYLOAD="postgresql://build:build@127.0.0.1:5432/build" DATABASE_URL_PUBLIC="postgresql://build:build@127.0.0.1:5432/build"
     export PAYLOAD_SECRET="build-placeholder-not-a-real-secret-0000" BETTER_AUTH_SECRET="build-placeholder-not-a-real-secret-0000"
     pnpm install --frozen-lockfile
-    pnpm --filter @fynix/platform build
-    pnpm --filter @fynix/admin build
+    pnpm --filter @brandbasket/platform build
+    pnpm --filter @brandbasket/admin build
   )
 }
 

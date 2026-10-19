@@ -1,6 +1,6 @@
 /**
- * The permanent directory business id format. Server-only (node:crypto). The implementation lives in @fynix/db
- * (shared depends on db, so db cannot import it from here); it is re-exported from the @fynix/db/place-id
+ * The permanent directory business id format. Server-only (node:crypto). The implementation lives in @brandbasket/db
+ * (shared depends on db, so db cannot import it from here); it is re-exported from the @brandbasket/db/place-id
  * subpath, not the barrel, so importing it never pulls in drizzle or pg.
  */
 export {
@@ -22,4 +22,4 @@ export {
   isBusinessUrlCode,
   placeUrlPath,
   toPlaceUrlSlug,
-} from "@fynix/db/place-id";
+} from "@brandbasket/db/place-id";

@@ -1,4 +1,4 @@
-import { INDIA_STATES } from "@fynix/db/india-states";
+import { INDIA_STATES } from "@brandbasket/db/india-states";
 import { describe, expect, it } from "vitest";
 import { gstStateCodeOf, stateCodeOfGstCode, UnknownStateError } from "./gst-states";
 

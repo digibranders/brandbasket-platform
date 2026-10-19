@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "@fynix/db";
+import type { ProjectStatus } from "@brandbasket/db";
 import type { ReactElement } from "react";
 import { cn } from "../../lib/cn";
 import { PROJECT_STATUS_LABELS, PROJECT_STATUSES_WAITING_ON_US } from "../../lib/project-status";

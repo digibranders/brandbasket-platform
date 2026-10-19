@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AccountAlreadyExistsError } from "@fynix/auth";
+import { AccountAlreadyExistsError } from "@brandbasket/auth";
 import { completeSetup } from "@/app/app-host/setup/[token]/actions";
 import { completeAffiliateSetup } from "@/app/app-host/affiliate/setup/[token]/actions";
 import { redeemSetupInvite, TermsNotAgreedError } from "@/lib/server/setup";
@@ -10,9 +10,9 @@ vi.mock("@/lib/server/request-brand", async () => {
   const { LISTING_BRAND } = await import("@/lib/testing/listing-brand");
   return { requestBrand: async () => LISTING_BRAND, currentBrand: async () => LISTING_BRAND };
 });
-vi.mock("@fynix/shared/server/turnstile-request", () => ({ checkHuman: vi.fn(async () => ({ ok: true })), turnstileSiteKey: () => null }));
-vi.mock("@fynix/auth", () => ({ AccountAlreadyExistsError: class extends Error {} }));
-vi.mock("@fynix/db", () => ({ InviteNoLongerRedeemableError: class extends Error {} }));
+vi.mock("@brandbasket/shared/server/turnstile-request", () => ({ checkHuman: vi.fn(async () => ({ ok: true })), turnstileSiteKey: () => null }));
+vi.mock("@brandbasket/auth", () => ({ AccountAlreadyExistsError: class extends Error {} }));
+vi.mock("@brandbasket/db", () => ({ InviteNoLongerRedeemableError: class extends Error {} }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn(() => { throw new Error("redirect"); }) }));
 vi.mock("@/lib/server/setup", () => ({
   redeemSetupInvite: vi.fn(), InviteNotUsableError: class extends Error {}, TooManySetupAttemptsError: class extends Error {},

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TenantContext } from "@fynix/shared/lib/access";
-import { VIDEO_MAX_UPLOAD_BYTES, VIDEO_PREMIUM_MESSAGE, VIDEO_TOO_LARGE_MESSAGE } from "@fynix/shared/lib/directory/videos";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
+import { VIDEO_MAX_UPLOAD_BYTES, VIDEO_PREMIUM_MESSAGE, VIDEO_TOO_LARGE_MESSAGE } from "@brandbasket/shared/lib/directory/videos";
 import {
   handleVideoFinishRequest,
   handleVideoUploadRequest,

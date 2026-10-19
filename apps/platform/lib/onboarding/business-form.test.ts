@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
+import { WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
 
 vi.mock("server-only", () => ({}));
 

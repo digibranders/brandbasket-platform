@@ -1,4 +1,4 @@
-import type { DnsStatus } from "@fynix/shared/lib/onboarding/domain-dns";
+import type { DnsStatus } from "@brandbasket/shared/lib/onboarding/domain-dns";
 
 /** What "Check my domain" last found, for the card to show. `records` is one status per record asked for, by its host. */
 export type ConnectDomainState =

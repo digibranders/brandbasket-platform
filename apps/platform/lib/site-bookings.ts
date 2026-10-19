@@ -51,7 +51,7 @@ export interface SiteBookingFields {
   /** Null or missing: any doctor. */
   readonly practitionerId?: string | null;
   /** The version of the patient notice the page showed above the booking button (PATIENT_NOTICE_VERSION in
-   * @fynix/shared/lib/privacy/patient-notice), kept as proof of the notice the patient saw. Optional while client
+   * @brandbasket/shared/lib/privacy/patient-notice), kept as proof of the notice the patient saw. Optional while client
    * sites catch up. */
   readonly noticeVersion?: string | null;
 }

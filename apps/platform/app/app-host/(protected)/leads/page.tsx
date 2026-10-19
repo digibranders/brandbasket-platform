@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { readListingLeads, type CategoryLeadCount, type ListingLeads } from "@fynix/db";
-import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { readListingLeads, type CategoryLeadCount, type ListingLeads } from "@brandbasket/db";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import { LeadsList } from "@/components/panel/leads/leads-list";
 import {
   LEADS_PATH,

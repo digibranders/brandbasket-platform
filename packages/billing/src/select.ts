@@ -1,4 +1,4 @@
-import type { BillingProviderName } from "@fynix/db";
+import type { BillingProviderName } from "@brandbasket/db";
 
 /** The providers this build can configure by name. Razorpay is accepted as a provider name but its adapter is not yet constructible (a later task finishes it). */
 export const SUPPORTED_BILLING_PROVIDERS = ["fake", "razorpay"] as const satisfies readonly BillingProviderName[];

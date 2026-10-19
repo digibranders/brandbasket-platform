@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState, type ReactElement, type ReactNode } from "react";
-import { SearchIcon } from "@fynix/shared/ui/icons";
+import { SearchIcon } from "@brandbasket/shared/ui/icons";
 import { filterOptions, type PickOption } from "@/lib/listing-address";
 
 /*

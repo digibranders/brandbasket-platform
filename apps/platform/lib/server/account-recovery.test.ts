@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { consumeRateLimit, type Database, type RecordedEmail } from "@fynix/db";
-import { passwordResetEmail } from "@fynix/email";
+import { consumeRateLimit, type Database, type RecordedEmail } from "@brandbasket/db";
+import { passwordResetEmail } from "@brandbasket/email";
 import { after } from "next/server";
 import { confirmEmail, requestPasswordReset } from "./account-recovery";
 import { generatePasswordResetEmail, getAuth } from "./auth";
@@ -14,12 +14,12 @@ vi.mock("./public-db", () => ({ getPublicDb: vi.fn() }));
 vi.mock("./auth", () => ({ getAuth: vi.fn(), generatePasswordResetEmail: vi.fn() }));
 vi.mock("next/server", () => ({ after: vi.fn() }));
 vi.mock("./email", () => ({ realDeployment: vi.fn(() => true) }));
-vi.mock("@fynix/email", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@fynix/email")>()),
+vi.mock("@brandbasket/email", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@brandbasket/email")>()),
   createEmailDelivery: vi.fn(() => ({ send })),
 }));
-vi.mock("@fynix/db", async () => ({
-  ...await vi.importActual<typeof import("@fynix/db")>("@fynix/db"), consumeRateLimit: vi.fn(),
+vi.mock("@brandbasket/db", async () => ({
+  ...await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db"), consumeRateLimit: vi.fn(),
 }));
 
 function apiError(code: string): Error & { body: { code: string } } {

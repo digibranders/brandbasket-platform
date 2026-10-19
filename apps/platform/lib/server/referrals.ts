@@ -1,5 +1,5 @@
 import "server-only";
-import { discountCentsFor, isChargeableDiscount, normaliseReferralCode } from "@fynix/billing";
+import { discountCentsFor, isChargeableDiscount, normaliseReferralCode } from "@brandbasket/billing";
 import {
   consumeRateLimit,
   findAffiliateById,
@@ -13,8 +13,8 @@ import {
   type RateLimitRule,
   type ReferralCode,
   type ReferralDiscount,
-} from "@fynix/db";
-import type { SessionUser } from "@fynix/shared/lib/access";
+} from "@brandbasket/db";
+import type { SessionUser } from "@brandbasket/shared/lib/access";
 import type { StepProblem } from "./onboarding";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";

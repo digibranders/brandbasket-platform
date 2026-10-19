@@ -37,7 +37,7 @@ The existing `BillingProvider` interface (`packages/billing/src/provider.ts`) is
 - [ ] **Step 1: Add the SDK**
 
 ```bash
-pnpm --filter @fynix/billing add razorpay
+pnpm --filter @brandbasket/billing add razorpay
 ```
 
 - [ ] **Step 2: Turn Razorpay on in `select.ts`**
@@ -86,7 +86,7 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=
 - [ ] **Step 4: Verify**
 
 ```bash
-pnpm --filter @fynix/billing typecheck
+pnpm --filter @brandbasket/billing typecheck
 ```
 Expected: passes (the SDK has its own types; nothing references it yet).
 
@@ -111,7 +111,7 @@ Razorpay's own "Plan" object (period + amount + currency) is a separate thing fr
 // duplicate plans at Razorpay rather than reusing existing ones, because the Plans API has no "find by name": check
 // the dashboard first if you are not sure whether this has already been run.
 //
-// Usage: RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=... pnpm --filter @fynix/billing exec tsx scripts/create-razorpay-plans.ts
+// Usage: RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=... pnpm --filter @brandbasket/billing exec tsx scripts/create-razorpay-plans.ts
 
 import Razorpay from "razorpay";
 
@@ -163,7 +163,7 @@ main().catch((error: unknown) => {
 
 ```bash
 RAZORPAY_KEY_ID=<your test key id> RAZORPAY_KEY_SECRET=<your test key secret> \
-  pnpm --filter @fynix/billing exec tsx scripts/create-razorpay-plans.ts
+  pnpm --filter @brandbasket/billing exec tsx scripts/create-razorpay-plans.ts
 ```
 Expected output: two lines, `care-usd: plan_XXXXXXXXXXXXXX` and `care-inr: plan_YYYYYYYYYYYYYY`. Keep these ids.
 
@@ -318,7 +318,7 @@ describe("parseRazorpayWebhookEvent", () => {
 - [ ] **Step 2: Run it to see it fail**
 
 ```bash
-pnpm --filter @fynix/billing test -- razorpay-webhook
+pnpm --filter @brandbasket/billing test -- razorpay-webhook
 ```
 Expected: FAIL — `razorpay-webhook.ts` does not exist yet.
 
@@ -328,7 +328,7 @@ Expected: FAIL — `razorpay-webhook.ts` does not exist yet.
 // packages/billing/src/razorpay-webhook.ts
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import type { BillingCurrency } from "@fynix/db";
+import type { BillingCurrency } from "@brandbasket/db";
 
 /**
  * True when `signature` is the HMAC-SHA256 of the exact raw `body` string, keyed with `webhookSecret`. The caller
@@ -477,12 +477,12 @@ export function parseRazorpayWebhookEvent(body: string): RazorpayWebhookEvent {
 }
 ```
 
-Add `billingCurrency` to the file's `@fynix/db` import (`import { billingCurrency, type BillingCurrency } from "@fynix/db";`) — check `packages/db/src/schema/currency.ts` for its exact export name before assuming.
+Add `billingCurrency` to the file's `@brandbasket/db` import (`import { billingCurrency, type BillingCurrency } from "@brandbasket/db";`) — check `packages/db/src/schema/currency.ts` for its exact export name before assuming.
 
 - [ ] **Step 4: Run the tests**
 
 ```bash
-pnpm --filter @fynix/billing test -- razorpay-webhook
+pnpm --filter @brandbasket/billing test -- razorpay-webhook
 ```
 Expected: PASS.
 
@@ -701,7 +701,7 @@ describe("createRazorpayProvider", () => {
 - [ ] **Step 2: Run it to see it fail**
 
 ```bash
-pnpm --filter @fynix/billing test -- razorpay-provider
+pnpm --filter @brandbasket/billing test -- razorpay-provider
 ```
 Expected: FAIL — `razorpay-provider.ts` does not exist yet.
 
@@ -710,7 +710,7 @@ Expected: FAIL — `razorpay-provider.ts` does not exist yet.
 ```ts
 // packages/billing/src/razorpay-provider.ts
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { BillingCurrency } from "@fynix/db";
+import type { BillingCurrency } from "@brandbasket/db";
 import {
   CheckoutVerificationError,
   type BillingProvider,
@@ -869,7 +869,7 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Billin
 - [ ] **Step 4: Run the tests**
 
 ```bash
-pnpm --filter @fynix/billing test -- razorpay-provider
+pnpm --filter @brandbasket/billing test -- razorpay-provider
 ```
 Expected: PASS.
 
@@ -1025,7 +1025,7 @@ Add `findSubscriptionByProviderId` and `updateSubscriptionProviderStatus` to thi
 - [ ] **Step 4: Run it**
 
 ```bash
-pnpm --filter @fynix/db test:integration
+pnpm --filter @brandbasket/db test:integration
 ```
 Expected: all pass, including the new ones.
 
@@ -1043,12 +1043,12 @@ Expected: all pass, including the new ones.
 import { describe, expect, it, vi } from "vitest";
 import { activateRenewalPayment } from "./billing-activation";
 
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return { ...actual, recordPaymentAndActivate: vi.fn() };
 });
 
-import { recordPaymentAndActivate } from "@fynix/db";
+import { recordPaymentAndActivate } from "@brandbasket/db";
 
 describe("activateRenewalPayment", () => {
   it("records a renewal payment, carrying the existing commitmentEndsAt through unchanged", async () => {
@@ -1091,7 +1091,7 @@ describe("activateRenewalPayment", () => {
 - [ ] **Step 2: Run it to see it fail**
 
 ```bash
-pnpm --filter @fynix/platform test -- billing-activation
+pnpm --filter @brandbasket/platform test -- billing-activation
 ```
 Expected: FAIL — `activateRenewalPayment` is not exported.
 
@@ -1140,12 +1140,12 @@ export async function activateRenewalPayment(tx: ScopedTransaction, payment: Ren
 }
 ```
 
-Add `BillingCurrency` to that file's existing `@fynix/db` import line.
+Add `BillingCurrency` to that file's existing `@brandbasket/db` import line.
 
 - [ ] **Step 4: Run it**
 
 ```bash
-pnpm --filter @fynix/platform test -- billing-activation
+pnpm --filter @brandbasket/platform test -- billing-activation
 ```
 Expected: PASS.
 
@@ -1237,7 +1237,7 @@ import { RazorpayCheckoutLauncher } from "@/components/panel/razorpay-checkout-l
 import { PAYMENT_STEP_HREF } from "@/lib/billing/payment-step";
 import { getBillingProvider } from "@/lib/server/billing";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
-import { businessDetails } from "@fynix/shared/lib/site-config";
+import { businessDetails } from "@brandbasket/shared/lib/site-config";
 
 export const metadata: Metadata = { title: "Redirecting to payment" };
 
@@ -1305,7 +1305,7 @@ export async function POST(): Promise<Response> {
 - [ ] **Step 5: Verify**
 
 ```bash
-pnpm --filter @fynix/platform typecheck && pnpm --filter @fynix/platform build
+pnpm --filter @brandbasket/platform typecheck && pnpm --filter @brandbasket/platform build
 ```
 Expected: passes.
 
@@ -1330,8 +1330,8 @@ import {
   createRazorpayProvider,
   resolveBillingProviderName,
   type BillingProvider,
-} from "@fynix/billing";
-import { findSubscriptionByProviderId, listReceiptsForBusiness, withTenantScope, type Receipt } from "@fynix/db";
+} from "@brandbasket/billing";
+import { findSubscriptionByProviderId, listReceiptsForBusiness, withTenantScope, type Receipt } from "@brandbasket/db";
 import { requireCustomerAccess, type GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { serverEnv } from "@/lib/server/env";
@@ -1397,8 +1397,8 @@ export function razorpayWebhookSecret(): string {
 // apps/platform/lib/server/razorpay-webhook-handler.test.ts
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     ...actual,
     findSubscriptionByProviderId: vi.fn(),
@@ -1409,7 +1409,7 @@ vi.mock("@fynix/db", async () => {
 vi.mock("./billing-activation", () => ({ activateRenewalPayment: vi.fn(), activateFirstPayment: vi.fn() }));
 vi.mock("./db", () => ({ getStaffDb: () => ({ transaction: (fn: (tx: unknown) => unknown) => fn({}) }) }));
 
-import { findPlanById, findSubscriptionByProviderId, updateSubscriptionProviderStatus } from "@fynix/db";
+import { findPlanById, findSubscriptionByProviderId, updateSubscriptionProviderStatus } from "@brandbasket/db";
 import { activateFirstPayment, activateRenewalPayment } from "./billing-activation";
 import { handleRazorpayWebhookEvent } from "./razorpay-webhook-handler";
 
@@ -1491,7 +1491,7 @@ describe("handleRazorpayWebhookEvent", () => {
 - [ ] **Step 3: Run it to see it fail**
 
 ```bash
-pnpm --filter @fynix/platform test -- razorpay-webhook-handler
+pnpm --filter @brandbasket/platform test -- razorpay-webhook-handler
 ```
 Expected: FAIL — the module does not exist yet.
 
@@ -1500,14 +1500,14 @@ Expected: FAIL — the module does not exist yet.
 ```ts
 // apps/platform/lib/server/razorpay-webhook-handler.ts
 import "server-only";
-import { mapRazorpayStatus, type RazorpayWebhookEvent } from "@fynix/billing";
+import { mapRazorpayStatus, type RazorpayWebhookEvent } from "@brandbasket/billing";
 import {
   findPlanById,
   findSubscriptionByProviderId,
   lockBusinessForBilling,
   recordUnappliedPayment,
   updateSubscriptionProviderStatus,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { activateRenewalPayment, activateFirstPayment } from "./billing-activation";
 import { describeError, logBillingEvent } from "./billing-log";
 import { getStaffDb } from "./db";
@@ -1635,7 +1635,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
 - [ ] **Step 5: Run it**
 
 ```bash
-pnpm --filter @fynix/platform test -- razorpay-webhook-handler
+pnpm --filter @brandbasket/platform test -- razorpay-webhook-handler
 ```
 Expected: PASS.
 
@@ -1643,7 +1643,7 @@ Expected: PASS.
 
 ```ts
 // apps/platform/app/api/webhooks/razorpay/route.ts
-import { parseRazorpayWebhookEvent, verifyRazorpayWebhookSignature } from "@fynix/billing";
+import { parseRazorpayWebhookEvent, verifyRazorpayWebhookSignature } from "@brandbasket/billing";
 import { razorpayWebhookSecret } from "@/lib/server/billing";
 import { logBillingEvent } from "@/lib/server/billing-log";
 import { handleRazorpayWebhookEvent } from "@/lib/server/razorpay-webhook-handler";

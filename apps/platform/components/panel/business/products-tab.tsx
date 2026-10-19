@@ -1,9 +1,9 @@
 import type { ReactElement } from "react";
-import type { BusinessProduct } from "@fynix/db";
-import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
-import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
+import type { BusinessProduct } from "@brandbasket/db";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
+import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import { INPUT_CLASSES, ItemRow, Labelled, priceText, RemoveButton } from "@/components/panel/business/catalog-parts";
 import { ItemForm } from "@/components/panel/business/item-form";
 import { ProductPhotoControl } from "@/components/panel/business/product-photo-control";

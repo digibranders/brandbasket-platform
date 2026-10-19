@@ -1,5 +1,5 @@
 {
-  "name": "@fynix/billing",
+  "name": "@brandbasket/billing",
   "version": "0.1.0",
   "private": true,
   "repository": {
@@ -25,7 +25,7 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@fynix/db": "workspace:*",
+    "@brandbasket/db": "workspace:*",
     "razorpay": "^2.9.8",
     "zod": "^4.6.5"
   },

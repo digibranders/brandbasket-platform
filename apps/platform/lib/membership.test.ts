@@ -1,5 +1,5 @@
-import { chargedAmountCents } from "@fynix/billing/tax";
-import { bundleLines } from "@fynix/shared/lib/billing/bundle";
+import { chargedAmountCents } from "@brandbasket/billing/tax";
+import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
 import { describe, expect, it } from "vitest";
 import { BRAND } from "./brand";
 import { LISTING_BRAND } from "./testing/listing-brand";

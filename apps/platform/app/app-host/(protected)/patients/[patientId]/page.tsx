@@ -8,13 +8,13 @@ import {
   listPractitioners,
   withTenantScope,
   type AppointmentRow,
-} from "@fynix/db";
-import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
-import { FALLBACK_PHONE_COUNTRY } from "@fynix/shared/lib/phone/fields";
-import { phoneCountryOptions } from "@fynix/shared/server/phone-countries";
-import { savedPhoneStart } from "@fynix/shared/server/phone-defaults";
-import { displayPhoneText } from "@fynix/shared/server/phone-display";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
+} from "@brandbasket/db";
+import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
+import { FALLBACK_PHONE_COUNTRY } from "@brandbasket/shared/lib/phone/fields";
+import { phoneCountryOptions } from "@brandbasket/shared/server/phone-countries";
+import { savedPhoneStart } from "@brandbasket/shared/server/phone-defaults";
+import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import { PatientDeleteForm } from "@/components/panel/patients/patient-delete-form";
 import { PatientEditForm } from "@/components/panel/patients/patient-edit-form";
 import { PatientBookingLink, PatientHistory } from "@/components/panel/patients/patient-history";

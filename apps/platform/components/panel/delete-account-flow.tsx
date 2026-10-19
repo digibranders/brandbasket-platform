@@ -2,17 +2,17 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, type ReactElement } from "react";
-import type { AccountExitReason } from "@fynix/db";
+import type { AccountExitReason } from "@brandbasket/db";
 import {
   DELETE_CONFIRMATION_WORD,
   EXIT_COMMENT_MAX_LENGTH,
   EXIT_REASON_OPTIONS,
-} from "@fynix/shared/lib/account-exit";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
+} from "@brandbasket/shared/lib/account-exit";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import {
   initialClaimOfferState,
   initialDeleteAccountState,

@@ -2,9 +2,9 @@
 
 import { useActionState, useCallback, useEffect, useRef, useState, type ClipboardEvent, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { FIELD_CLASSES } from "@/components/panel/form/panel-form";
 import { replyToSupportRequest } from "@/app/app-host/(support)/support/actions";
 import { INITIAL_SUPPORT_STATE } from "@/lib/support-form-state";

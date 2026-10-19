@@ -1,7 +1,7 @@
-import type { MediaAsset } from "@fynix/db";
+import type { MediaAsset } from "@brandbasket/db";
 import Image from "next/image";
 import type { ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 
 interface MediaThumbnailProps {
   readonly asset: Pick<MediaAsset, "id" | "width" | "height">;

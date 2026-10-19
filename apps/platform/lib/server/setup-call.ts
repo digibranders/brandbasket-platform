@@ -1,8 +1,8 @@
 import "server-only";
-import { findSetupCallBooking, recordSetupCallBooking, withTenantScope } from "@fynix/db";
-import type { TenantContext } from "@fynix/shared/lib/access";
-import { readInviteeUri } from "@fynix/shared/lib/setup-call-link";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { findSetupCallBooking, recordSetupCallBooking, withTenantScope } from "@brandbasket/db";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
+import { readInviteeUri } from "@brandbasket/shared/lib/setup-call-link";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { getAppDb } from "./db";
 import { BOOKING_WINDOW_DAYS, bookCallSlot, cancelCallBooking, listCallSlots } from "./call-scheduling";
 import { getSetupCallUrl } from "./setup-call-link";

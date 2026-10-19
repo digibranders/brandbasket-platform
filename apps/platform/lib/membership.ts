@@ -1,6 +1,6 @@
-import { chargedAmountCents } from "@fynix/billing/tax";
-import { bundleNetCents, type BundleLine } from "@fynix/shared/lib/billing/bundle";
-import { formatMoney, type MoneyCurrency } from "@fynix/shared/lib/money";
+import { chargedAmountCents } from "@brandbasket/billing/tax";
+import { bundleNetCents, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
+import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { BRAND, featureShownTo, type Brand } from "@/lib/brand";
 import { featuresOf, MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
 

@@ -1,7 +1,7 @@
 import "server-only";
-import { consumeRateLimit, type RateLimitRule } from "@fynix/db";
-import { createAppEmailTransport, securityEventAlertEmail } from "@fynix/email";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { consumeRateLimit, type RateLimitRule } from "@brandbasket/db";
+import { createAppEmailTransport, securityEventAlertEmail } from "@brandbasket/email";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { securityAlertRecipient } from "@/lib/security-review";
 import { getStaffDb } from "./db";
 import { serverEnv } from "./env";

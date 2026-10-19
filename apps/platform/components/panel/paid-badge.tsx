@@ -1,9 +1,9 @@
 "use client";
 
 import { useSyncExternalStore, type ReactElement } from "react";
-import { ClockIcon } from "@fynix/shared/ui/icons";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
-import { formatPaidAgo } from "@fynix/shared/lib/paid-ago";
+import { ClockIcon } from "@brandbasket/shared/ui/icons";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { formatPaidAgo } from "@brandbasket/shared/lib/paid-ago";
 import type { SetupCallBookingView } from "@/lib/server/setup-call";
 
 interface PaidBadgeProps {

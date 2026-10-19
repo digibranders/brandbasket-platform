@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { AddOnId } from "@fynix/shared/lib/billing/add-ons";
+import type { AddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 
 /*
  * The offer card's pictures, drawn here so no image file or icon font is needed: each add-on's own mark. Decorative: hidden

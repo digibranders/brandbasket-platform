@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useRef, useState, type ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
-import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { StatusDot } from "@/components/console/status-dot";
 

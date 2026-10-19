@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
+import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import type { AttentionKind } from "@/lib/pipeline";
 
 interface AttentionReasonProps {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DomainStatus } from "@fynix/db";
+import type { DomainStatus } from "@brandbasket/db";
 import { domainPageState, moveStepIndex, type DomainPageInput } from "./domain-page";
 
 const domain = (status: DomainStatus, hostname = "riverside.com") => ({ hostname, status });

@@ -1,5 +1,5 @@
-import type { Database, ScopedTransaction } from "@fynix/db";
-import { setOwnDirectoryPromotionVisible, updateOwnListingContent, withTenantScope } from "@fynix/db";
+import type { Database, ScopedTransaction } from "@brandbasket/db";
+import { setOwnDirectoryPromotionVisible, updateOwnListingContent, withTenantScope } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PanelFormState } from "@/lib/panel-form-state";
@@ -43,9 +43,9 @@ vi.mock("@/lib/server/blog-access", () => ({
   paidCustomerOrNull: vi.fn(),
   PAID_PLAN_REQUIRED_MESSAGE: "This opens once your plan is paid. You can pay from Billing.",
 }));
-vi.mock("@fynix/db", async (importOriginal) => {
+vi.mock("@brandbasket/db", async (importOriginal) => {
   // hasPostgresCode/CHECK_VIOLATION are real: panel-form-errors.ts uses them to tell a check violation apart.
-  const actual = await importOriginal<typeof import("@fynix/db")>();
+  const actual = await importOriginal<typeof import("@brandbasket/db")>();
   return {
     hasPostgresCode: actual.hasPostgresCode,
     CHECK_VIOLATION: actual.CHECK_VIOLATION,

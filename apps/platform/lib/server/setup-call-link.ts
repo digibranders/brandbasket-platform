@@ -1,7 +1,7 @@
 import "server-only";
-import { findSiteSetting } from "@fynix/db";
-import { readSetupCallUrl, SETUP_CALL_URL_KEY } from "@fynix/shared/lib/setup-call-link";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { findSiteSetting } from "@brandbasket/db";
+import { readSetupCallUrl, SETUP_CALL_URL_KEY } from "@brandbasket/shared/lib/setup-call-link";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { getStaffDb } from "./db";
 
 /**

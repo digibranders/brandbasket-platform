@@ -1,11 +1,11 @@
-import { countChatbotLeadsForBusiness, listChatbotLeadsForBusiness, listChatbotsForBusiness, renameChatbot, withTenantScope } from "@fynix/db";
+import { countChatbotLeadsForBusiness, listChatbotLeadsForBusiness, listChatbotsForBusiness, renameChatbot, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LEADS_PER_PAGE, loadChatbots, loadLeadsPage, renameCustomerChatbot } from "./chatbots";
 import { getAppDb } from "./db";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn() }));
-vi.mock("@fynix/db", () => ({ countChatbotLeadsForBusiness: vi.fn(), listChatbotLeadsForBusiness: vi.fn(), listChatbotsForBusiness: vi.fn(), renameChatbot: vi.fn(), withTenantScope: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ countChatbotLeadsForBusiness: vi.fn(), listChatbotLeadsForBusiness: vi.fn(), listChatbotsForBusiness: vi.fn(), renameChatbot: vi.fn(), withTenantScope: vi.fn() }));
 
 const appDb = { name: "app-db" } as never;
 const appTx = { name: "app-tx" } as never;

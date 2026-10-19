@@ -1,13 +1,13 @@
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
-import { ArrowIcon, TickIcon } from "@fynix/shared/ui/icons";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
-import { cn } from "@fynix/shared/lib/cn";
-import type { NextStep } from "@fynix/shared/lib/next-step";
-import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
+import { ArrowIcon, TickIcon } from "@brandbasket/shared/ui/icons";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { cn } from "@brandbasket/shared/lib/cn";
+import type { NextStep } from "@brandbasket/shared/lib/next-step";
+import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { PROJECT_STAGES } from "@/lib/project-stages";
-import { safeExternalHref } from "@fynix/shared/lib/safe-link";
+import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
 
 interface NextStepCardProps {
   readonly step: NextStep;

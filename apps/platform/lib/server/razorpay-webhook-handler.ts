@@ -1,5 +1,5 @@
 import "server-only";
-import { chargedAmountCents, mapRazorpayStatus, type RazorpayWebhookEvent } from "@fynix/billing";
+import { chargedAmountCents, mapRazorpayStatus, type RazorpayWebhookEvent } from "@brandbasket/billing";
 import {
   completeBundledAddOnRemovals,
   completePlanUpgradeAtRenewal,
@@ -16,12 +16,12 @@ import {
   type AddOnSubscription,
   type OpenedMembership,
   type UnappliedPaymentReason,
-} from "@fynix/db";
-import { nextAddOnStatus } from "@fynix/shared/lib/billing/add-on-state";
-import { applyAddOnPayment, type ProviderSubscriptionRef } from "@fynix/shared/server/add-on-activation";
-import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "@fynix/shared/server/billing-activation";
-import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
-import { cancelAtProvider } from "@fynix/shared/server/provider-cancellation";
+} from "@brandbasket/db";
+import { nextAddOnStatus } from "@brandbasket/shared/lib/billing/add-on-state";
+import { applyAddOnPayment, type ProviderSubscriptionRef } from "@brandbasket/shared/server/add-on-activation";
+import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "@brandbasket/shared/server/billing-activation";
+import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
+import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { getRazorpayProvider } from "./billing";
 import { recordRazorpayChargePayment } from "./charges";
 import { getStaffDb } from "./db";

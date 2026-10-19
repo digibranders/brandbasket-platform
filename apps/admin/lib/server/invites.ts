@@ -5,8 +5,8 @@ import {
   LeadNotFoundError,
   revokeOpenInvites,
   setLeadStatusUnlessSystemSet,
-} from "@fynix/db";
-import { setupLinkEmail } from "@fynix/email";
+} from "@brandbasket/db";
+import { setupLinkEmail } from "@brandbasket/email";
 import { getStaffDb } from "./db";
 import { customerEmailTransport } from "./email";
 import { serverEnv } from "@/lib/server/env";

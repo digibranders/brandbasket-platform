@@ -6,7 +6,7 @@
 
 **Architecture:** A new `change_requests` table holds one row per request with its own small state machine, separate from `projects` (a live project is closed by `projects_one_open_per_business_idx`, and reopening it would break the live dashboard). Every transition is a single conditional `UPDATE … WHERE status = …` in `packages/db/src/queries/change-requests.ts` ("the condition is the gate", as in `queries/projects.ts`), run on the staff connection even when a customer triggers it, after `requireCustomerAccess()` has proved it is their business. Pricing is a pure function in `packages/shared`. Emails are two templates (one to the customer, one to the team) written to the outbox. Payment for extra hours is recorded by staff by hand; no payment-provider change.
 
-**Tech Stack:** Next.js 16 server actions, Drizzle ORM + hand-written SQL migrations on Postgres 16 with row-level security, Vitest (unit + `*.integration.test.ts` against `fynix_platform_test`), `@fynix/email` outbox.
+**Tech Stack:** Next.js 16 server actions, Drizzle ORM + hand-written SQL migrations on Postgres 16 with row-level security, Vitest (unit + `*.integration.test.ts` against `fynix_platform_test`), `@brandbasket/email` outbox.
 
 **Decided with the user (2026-09-23):**
 - The customer asks in writing, in the dashboard.
@@ -154,15 +154,15 @@ describe("quoteChange", () => {
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/billing/change-pricing.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/billing/change-pricing.test.ts`
 Expected: FAIL, "Cannot find module './change-pricing'".
 
 - [ ] **Step 3: Implement**
 
 ```ts
 // The subpath, not the package index: this module reaches client components, and the index pulls in the database.
-import { chargedAmountCents } from "@fynix/billing/tax";
-import type { MoneyCurrency } from "@fynix/shared/lib/money";
+import { chargedAmountCents } from "@brandbasket/billing/tax";
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 
 /** The parts of a plan that price a change. */
 export interface ChangePricingPlan {
@@ -213,7 +213,7 @@ export function quoteChange(plan: ChangePricingPlan, estimateMinutes: number, fr
 
 - [ ] **Step 4: Run the tests and see them pass**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/billing/change-pricing.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/billing/change-pricing.test.ts`
 Expected: PASS (7 tests).
 
 - [ ] **Step 5: Commit**
@@ -333,12 +333,12 @@ export * from "./change-requests";
 
 - [ ] **Step 3: Generate the table migration**
 
-Run: `pnpm --filter @fynix/db exec drizzle-kit generate --name change_requests`
+Run: `pnpm --filter @brandbasket/db exec drizzle-kit generate --name change_requests`
 Expected: `packages/db/migrations/0040_change_requests.sql` is created, containing `CREATE TYPE "public"."change_request_status"`, `CREATE TABLE "change_requests"`, the partial unique index and the four checks.
 
 - [ ] **Step 4: Write the grants migration**
 
-Run: `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name change_request_grants`, then put this in the new `0041_change_request_grants.sql`:
+Run: `pnpm --filter @brandbasket/db exec drizzle-kit generate --custom --name change_request_grants`, then put this in the new `0041_change_request_grants.sql`:
 
 ```sql
 -- Staff do every write, including the ones a customer triggers (the same shape as projects: see
@@ -558,7 +558,7 @@ describe("reads", () => {
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `pnpm db:migrate:test && pnpm --filter @fynix/db exec vitest run --config vitest.integration.config.ts src/change-requests.integration.test.ts`
+Run: `pnpm db:migrate:test && pnpm --filter @brandbasket/db exec vitest run --config vitest.integration.config.ts src/change-requests.integration.test.ts`
 Expected: FAIL, "Cannot find module './queries/change-requests'".
 
 - [ ] **Step 3: Implement the queries**
@@ -793,7 +793,7 @@ One point to check while implementing: `usedFreeEstimateMinutes` counts a reques
 
 - [ ] **Step 4: Run the tests and see them pass**
 
-Run: `pnpm --filter @fynix/db exec vitest run --config vitest.integration.config.ts src/change-requests.integration.test.ts`
+Run: `pnpm --filter @brandbasket/db exec vitest run --config vitest.integration.config.ts src/change-requests.integration.test.ts`
 Expected: PASS (11 tests).
 
 - [ ] **Step 5: Commit**
@@ -838,13 +838,13 @@ describe("change request status copy", () => {
 
 - [ ] **Step 2: Run it and see it fail**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/change-request-status.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/change-request-status.test.ts`
 Expected: FAIL, the module is not found.
 
 - [ ] **Step 3: Implement**
 
 ```ts
-import { CHANGE_REQUEST_STATUSES_WAITING_ON_STAFF, type ChangeRequestStatus } from "@fynix/db";
+import { CHANGE_REQUEST_STATUSES_WAITING_ON_STAFF, type ChangeRequestStatus } from "@brandbasket/db";
 
 interface StatusCopy {
   /** One line for the customer's dashboard. */
@@ -873,12 +873,12 @@ export function isWaitingOnStaff(status: ChangeRequestStatus): boolean {
 }
 ```
 
-This module reaches client components, so importing a value from the `@fynix/db` index would pull the database driver into the browser bundle. If `@fynix/db` has no client-safe subpath for schema constants, move `CHANGE_REQUEST_STATUSES_WAITING_ON_STAFF` and the status union into a dependency-free file (`packages/db/src/schema/change-request-statuses.ts`, which has no drizzle imports), export it through a `package.json` subpath the way `@fynix/billing/tax` is, and import it from there in both places.
+This module reaches client components, so importing a value from the `@brandbasket/db` index would pull the database driver into the browser bundle. If `@brandbasket/db` has no client-safe subpath for schema constants, move `CHANGE_REQUEST_STATUSES_WAITING_ON_STAFF` and the status union into a dependency-free file (`packages/db/src/schema/change-request-statuses.ts`, which has no drizzle imports), export it through a `package.json` subpath the way `@brandbasket/billing/tax` is, and import it from there in both places.
 
 - [ ] **Step 4: Run it and see it pass**, then **commit**
 
 ```bash
-pnpm --filter @fynix/shared exec vitest run src/lib/change-request-status.test.ts
+pnpm --filter @brandbasket/shared exec vitest run src/lib/change-request-status.test.ts
 git add packages/shared/src/lib/change-request-status.ts packages/shared/src/lib/change-request-status.test.ts
 git commit -m "Shared wording for each change request status"
 ```
@@ -941,7 +941,7 @@ describe("changeRequestTeamEmail", () => {
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `pnpm --filter @fynix/email exec vitest run`
+Run: `pnpm --filter @brandbasket/email exec vitest run`
 Expected: FAIL, the exports don't exist.
 
 - [ ] **Step 3: Implement the customer email**
@@ -1054,7 +1054,7 @@ export * from "./templates/change-request-team";
 - [ ] **Step 6: Run and commit**
 
 ```bash
-pnpm --filter @fynix/email exec vitest run
+pnpm --filter @brandbasket/email exec vitest run
 git add packages/email/src
 git commit -m "Change request emails: one to the customer, one to the team"
 ```
@@ -1069,26 +1069,26 @@ git commit -m "Change request emails: one to the customer, one to the team"
 
 What it does: every customer action checks the website is live (`getLiveWebsite()` from `lib/server/onboarding.ts` returns non-null), runs the query on `getStaffDb()`, then sends the team email. The email is best-effort and never undoes the write, the same as `respondToPreview` in `lib/server/project-response.ts`.
 
-- [ ] **Step 1: Write the failing tests.** Follow `apps/platform/lib/server/project-response.test.ts`: `vi.mock("server-only")`, mock `@fynix/db` and `@fynix/email`, and set `process.env.FYNIX_TEAM_EMAIL`.
+- [ ] **Step 1: Write the failing tests.** Follow `apps/platform/lib/server/project-response.test.ts`: `vi.mock("server-only")`, mock `@brandbasket/db` and `@brandbasket/email`, and set `process.env.FYNIX_TEAM_EMAIL`.
 
 ```ts
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { acceptChangeQuote, approveChangePreview, createChangeRequest, requestChangeRevisions, withdrawChangeRequest } from "@fynix/db";
-import { changeRequestTeamEmail, createOutboxTransport } from "@fynix/email";
+import { acceptChangeQuote, approveChangePreview, createChangeRequest, requestChangeRevisions, withdrawChangeRequest } from "@brandbasket/db";
+import { changeRequestTeamEmail, createOutboxTransport } from "@brandbasket/email";
 import { respondToChange, submitChangeRequest } from "./change-requests";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./env", () => ({ serverEnv: () => ({ ADMIN_ORIGIN: "https://console.fynix.digital" }) }));
-vi.mock("@fynix/db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@fynix/db")>()),
+vi.mock("@brandbasket/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@brandbasket/db")>()),
   createChangeRequest: vi.fn(),
   acceptChangeQuote: vi.fn(),
   approveChangePreview: vi.fn(),
   requestChangeRevisions: vi.fn(),
   withdrawChangeRequest: vi.fn(),
 }));
-vi.mock("@fynix/email", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@fynix/email")>()),
+vi.mock("@brandbasket/email", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@brandbasket/email")>()),
   createOutboxTransport: vi.fn(),
 }));
 
@@ -1144,7 +1144,7 @@ describe("respondToChange", () => {
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `pnpm --filter @fynix/platform exec vitest run lib/server/change-requests.test.ts`
+Run: `pnpm --filter @brandbasket/platform exec vitest run lib/server/change-requests.test.ts`
 Expected: FAIL, the module is not found.
 
 - [ ] **Step 3: Implement**
@@ -1159,9 +1159,9 @@ import {
   requestChangeRevisions,
   withdrawChangeRequest,
   type Database,
-} from "@fynix/db";
-import { changeRequestTeamEmail, createOutboxTransport, type ChangeRequestTeamEvent } from "@fynix/email";
-import { cleanMultiline } from "@fynix/shared/lib/validation/text";
+} from "@brandbasket/db";
+import { changeRequestTeamEmail, createOutboxTransport, type ChangeRequestTeamEvent } from "@brandbasket/email";
+import { cleanMultiline } from "@brandbasket/shared/lib/validation/text";
 import { serverEnv } from "./env";
 
 export type ChangeFormResult = { readonly ok: true } | { readonly ok: false; readonly message: string };
@@ -1186,7 +1186,7 @@ const RESPONSES = {
 
 /**
  * Opens a change request after the caller proved the business is theirs and its website is live. Runs as staff for
- * the same reason as every customer-triggered transition (see approveProjectPreview in @fynix/db).
+ * the same reason as every customer-triggered transition (see approveProjectPreview in @brandbasket/db).
  */
 export async function submitChangeRequest(db: Database, tenant: ChangeTenant, description: string, now: Date): Promise<ChangeFormResult> {
   const cleaned = cleanMultiline(description);
@@ -1221,12 +1221,12 @@ async function notifyTeam(db: Database, tenant: ChangeTenant, event: ChangeReque
 }
 ```
 
-Check two names while implementing: that `cleanMultiline` exists at `@fynix/shared/lib/validation/text` (the blog actions use it), and that `MAX_CHANGE_REQUEST_LENGTH` is exported from `@fynix/db` through the schema (Task 2).
+Check two names while implementing: that `cleanMultiline` exists at `@brandbasket/shared/lib/validation/text` (the blog actions use it), and that `MAX_CHANGE_REQUEST_LENGTH` is exported from `@brandbasket/db` through the schema (Task 2).
 
 - [ ] **Step 4: Run and commit**
 
 ```bash
-pnpm --filter @fynix/platform exec vitest run lib/server/change-requests.test.ts
+pnpm --filter @brandbasket/platform exec vitest run lib/server/change-requests.test.ts
 git add apps/platform/lib/server/change-requests.ts apps/platform/lib/server/change-requests.test.ts
 git commit -m "Customer change-request operations: submit, accept, approve, revise, withdraw"
 ```
@@ -1247,7 +1247,7 @@ git commit -m "Customer change-request operations: submit, accept, approve, revi
 ```ts
 "use server";
 
-import { ChangeRequestAlreadyOpenError, ChangeRequestNotInStateError } from "@fynix/db";
+import { ChangeRequestAlreadyOpenError, ChangeRequestNotInStateError } from "@brandbasket/db";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -1304,7 +1304,7 @@ Make sure `requireCustomerAccess()` returns `user`. It does: `GrantedCustomer` h
 "use client";
 
 import { useActionState, type ReactElement } from "react";
-import { Button } from "@fynix/shared/ui/panel/button";
+import { Button } from "@brandbasket/shared/ui/panel/button";
 import type { ChangeFormResult } from "@/lib/server/change-requests";
 
 const initialState: ChangeFormResult = { ok: true };
@@ -1386,7 +1386,7 @@ git commit -m "Customers request, accept, approve and withdraw website changes f
 
 - [ ] **Step 2: Run them and see them fail**
 
-Run: `pnpm --filter @fynix/admin exec vitest run lib/server/change-requests.test.ts`
+Run: `pnpm --filter @brandbasket/admin exec vitest run lib/server/change-requests.test.ts`
 
 - [ ] **Step 3: Implement**
 
@@ -1402,10 +1402,10 @@ import {
   sendChangePreview,
   usedFreeEstimateMinutes,
   type Database,
-} from "@fynix/db";
-import { changeRequestUpdateEmail, createOutboxTransport, type ChangeRequestCustomerEvent } from "@fynix/email";
-import { freeMinutesRemaining, quoteChange } from "@fynix/shared/lib/billing/change-pricing";
-import { formatMoney } from "@fynix/shared/lib/money";
+} from "@brandbasket/db";
+import { changeRequestUpdateEmail, createOutboxTransport, type ChangeRequestCustomerEvent } from "@brandbasket/email";
+import { freeMinutesRemaining, quoteChange } from "@brandbasket/shared/lib/billing/change-pricing";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { serverEnv } from "./env";
 
 export class ChangeRecipientMissingError extends Error {
@@ -1477,7 +1477,7 @@ export function recordChangePaymentBy(
 - [ ] **Step 4: Run and commit**
 
 ```bash
-pnpm --filter @fynix/admin exec vitest run lib/server/change-requests.test.ts
+pnpm --filter @brandbasket/admin exec vitest run lib/server/change-requests.test.ts
 git add apps/admin/lib/server/change-requests.ts apps/admin/lib/server/change-requests.test.ts
 git commit -m "Staff change-request operations: estimate, preview, ship, decline, record payment"
 ```

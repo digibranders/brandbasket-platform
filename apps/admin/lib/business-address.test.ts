@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { businessUrlCode } from "@fynix/shared/lib/directory/place-id";
+import { businessUrlCode } from "@brandbasket/shared/lib/directory/place-id";
 import { businessAddressOf } from "./business-address";
 
 const PLACE = { id: "k7m2q9a", stateCode: "mh", urlSlug: "smile-dental" };

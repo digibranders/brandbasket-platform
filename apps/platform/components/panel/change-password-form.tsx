@@ -1,12 +1,12 @@
 "use client";
 
 import { useActionState, useState, type ReactElement } from "react";
-import { EyeIcon, EyeOffIcon } from "@fynix/shared/ui/icons";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { EyeIcon, EyeOffIcon } from "@brandbasket/shared/ui/icons";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { initialChangePasswordState, initialRevokeOtherSessionsState, type ChangePasswordFormState, type RevokeOtherSessionsState } from "@/lib/account-settings-form";
-import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@fynix/auth/password-policy";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
 
 interface ChangePasswordFormProps {
   readonly action: (state: ChangePasswordFormState, formData: FormData) => Promise<ChangePasswordFormState>;

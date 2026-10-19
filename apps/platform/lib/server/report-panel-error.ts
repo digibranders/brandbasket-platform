@@ -1,5 +1,5 @@
 import "server-only";
-import { CHECK_VIOLATION, hasPostgresCode } from "@fynix/db";
+import { CHECK_VIOLATION, hasPostgresCode } from "@brandbasket/db";
 import { unstable_rethrow } from "next/navigation";
 import { reportServerError } from "./error-report";
 

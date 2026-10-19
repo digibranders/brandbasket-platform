@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import { installBrowserErrorCapture } from "@fynix/shared/lib/error-report";
+import { installBrowserErrorCapture } from "@brandbasket/shared/lib/error-report";
 import { sentryPrivacyOptions, sentryTracesSampleRate } from "./lib/sentry-options";
 
 // Browser runtime: client errors, unhandled rejections and navigation spans. Without a DSN the SDK stays off, so local

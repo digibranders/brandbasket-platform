@@ -5,15 +5,15 @@ import {
   readLiveDirectoryPictures,
   resolveDirectoryAsk,
   type Database,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { statusResponseSchema } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
 import { readStatuses } from "./directory-verifications";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     answerByAsked: actual.answerByAsked,
     readClaimedWebsites: vi.fn(),

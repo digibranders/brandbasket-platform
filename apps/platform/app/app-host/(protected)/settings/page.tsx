@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 
 import { EmailUs } from "@/components/panel/email-us";
 import type { ReactElement, ReactNode } from "react";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
-import { SignOutButton } from "@fynix/shared/ui/panel/sign-out-button";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
+import { SignOutButton } from "@brandbasket/shared/ui/panel/sign-out-button";
 import { ChangePasswordForm } from "@/components/panel/change-password-form";
 import { DELETE_ACCOUNT_PATH } from "@/lib/account-settings-form";
 import { PRIVACY_SETTINGS_PATH } from "@/lib/privacy-settings-form";
 import { changePasswordAction, revokeOtherSessionsAction } from "./actions";
-import { SectionHeading, Surface, type SurfaceTone } from "@fynix/shared/ui/panel/surface";
+import { SectionHeading, Surface, type SurfaceTone } from "@brandbasket/shared/ui/panel/surface";
 import { signOut } from "@/lib/server/sign-out";
-import { describePlanTerms } from "@fynix/shared/lib/billing/terms";
-import { BILLING_CURRENCY_LABELS } from "@fynix/shared/lib/currency";
+import { describePlanTerms } from "@brandbasket/shared/lib/billing/terms";
+import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
 import { accountLabel } from "@/lib/server/account-label";
 import { getCustomerBusinessKind, requireCustomerAccess } from "@/lib/server/customer-access";
 

@@ -1,4 +1,4 @@
-import type { AppointmentRow } from "@fynix/db";
+import type { AppointmentRow } from "@brandbasket/db";
 import type { LeaveClash } from "./leave-added-state";
 
 /** The appointment fields closureClashes reads: a subset of AppointmentRow, so tests need not build a whole row. */

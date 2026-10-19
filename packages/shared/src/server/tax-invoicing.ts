@@ -10,7 +10,7 @@ import {
   invoicePrefix,
   type InvoiceLineInput,
   type RecipientInput,
-} from "@fynix/billing";
+} from "@brandbasket/billing";
 import {
   allocateInvoiceSerial,
   findAddOnSubscriptionForPayment,
@@ -30,8 +30,8 @@ import {
   type ScopedTransaction,
   type TaxInvoice,
   type TaxInvoicePartyRecord,
-} from "@fynix/db";
-import { stateCodeOfIndiaPostName } from "@fynix/db/india-states";
+} from "@brandbasket/db";
+import { stateCodeOfIndiaPostName } from "@brandbasket/db/india-states";
 import { addOnById, isMonthlyAddOnId, PREMIUM_ADD_ON_DISCOUNT_PERCENT } from "../lib/billing/add-ons";
 import { LIFETIME_OFFER_PERCENT } from "../lib/billing/lifetime-offer";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "../lib/billing/invoice-text";

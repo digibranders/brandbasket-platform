@@ -19,7 +19,7 @@ import {
  * stamped with `businessId` taken only from their session, never from client input. Built for this plan's Task 6
  * (docs/superpowers/plans/2026-09-17-payload-cms-migration.md), which explicitly leaves the gallery-upload-scope
  * decision to the implementer: the old gallery only let customers add photos already uploaded during onboarding
- * (`@fynix/db`'s onboarding media_assets table), a different store from Payload's own `media` collection the
+ * (`@brandbasket/db`'s onboarding media_assets table), a different store from Payload's own `media` collection the
  * new, Payload-backed gallery references. Rather than bridge two unrelated stores, this route lets customers
  * upload straight into Payload's `media` collection — the same collection every other image in this app now goes
  * through — which is simpler and, now that `Media` has working upload handling "for free" (see collections/Media.ts),

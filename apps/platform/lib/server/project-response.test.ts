@@ -1,11 +1,11 @@
-import { approveProjectPreview, requestProjectRevisions, type Database } from "@fynix/db";
-import { createAppEmailTransport, previewApprovedEmail, previewRevisionsRequestedEmail } from "@fynix/email";
+import { approveProjectPreview, requestProjectRevisions, type Database } from "@brandbasket/db";
+import { createAppEmailTransport, previewApprovedEmail, previewRevisionsRequestedEmail } from "@brandbasket/email";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { respondToPreview } from "./project-response";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({ approveProjectPreview: vi.fn(), requestProjectRevisions: vi.fn() }));
-vi.mock("@fynix/email", () => ({
+vi.mock("@brandbasket/db", () => ({ approveProjectPreview: vi.fn(), requestProjectRevisions: vi.fn() }));
+vi.mock("@brandbasket/email", () => ({
   createAppEmailTransport: vi.fn(),
   previewApprovedEmail: vi.fn(),
   previewRevisionsRequestedEmail: vi.fn(),

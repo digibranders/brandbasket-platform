@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 
 /**
  * The two marks the website shows beside a business's name, drawn the same way here so staff see what a visitor will:

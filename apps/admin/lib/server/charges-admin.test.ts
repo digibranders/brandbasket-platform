@@ -1,9 +1,9 @@
-import type { Charge } from "@fynix/db";
+import type { Charge } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     ...actual,
     findBillingState: vi.fn(),
@@ -13,13 +13,13 @@ vi.mock("@fynix/db", async () => {
     waiveCharge: vi.fn(),
   };
 });
-vi.mock("@fynix/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));
+vi.mock("@brandbasket/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));
 vi.mock("./db", () => ({
   getStaffDb: () => ({ name: "staff-db", transaction: (fn: (tx: unknown) => unknown) => fn({ name: "staff-tx" }) }),
 }));
 
-import { findBillingState, findChargeForBusiness, insertCharge, lockBusinessForBilling } from "@fynix/db";
-import { recordChargePaymentWithInvoice } from "@fynix/shared/server/charge-payments";
+import { findBillingState, findChargeForBusiness, insertCharge, lockBusinessForBilling } from "@brandbasket/db";
+import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
 import { addClientCharge, markClientChargePaid } from "./charges-admin";
 
 const BUSINESS = "0192f3c4-1111-7000-8000-000000000001";

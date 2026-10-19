@@ -3,10 +3,10 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactElement, type ReactNode } from "react";
-import type { DirectoryPictureSlot } from "@fynix/db";
-import { cn } from "@fynix/shared/lib/cn";
-import { PICTURE_KIND_SLOTS, PICTURE_KINDS, PICTURE_SHAPES, PICTURE_SLOT_LABELS, type PictureKind } from "@fynix/shared/lib/directory/pictures";
-import { PlusIcon } from "@fynix/shared/ui/icons";
+import type { DirectoryPictureSlot } from "@brandbasket/db";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { PICTURE_KIND_SLOTS, PICTURE_KINDS, PICTURE_SHAPES, PICTURE_SLOT_LABELS, type PictureKind } from "@brandbasket/shared/lib/directory/pictures";
+import { PlusIcon } from "@brandbasket/shared/ui/icons";
 import { ImageCropper, type CroppedPicture, type CropStep } from "@/components/panel/pictures/image-cropper";
 import { ownPictureHref } from "@/lib/photos-view";
 import { uploadListingPicture } from "@/lib/uploads/upload-client";

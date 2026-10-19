@@ -1,8 +1,8 @@
 import "server-only";
-import { BillingRangeError } from "@fynix/billing/billing-range-error";
-import { UnknownStateError } from "@fynix/billing/gst-states";
-import { InvalidGstinError } from "@fynix/billing/gstin";
-import { InvoiceAmountMismatchError } from "@fynix/billing/tax-invoice";
+import { BillingRangeError } from "@brandbasket/billing/billing-range-error";
+import { UnknownStateError } from "@brandbasket/billing/gst-states";
+import { InvalidGstinError } from "@brandbasket/billing/gstin";
+import { InvoiceAmountMismatchError } from "@brandbasket/billing/tax-invoice";
 import { constraintOf, errorLogInfo, providerErrorInfo } from "./error-log-info";
 
 /** Every billing log line starts with this, so `grep '\[fynix:billing\]'` finds them all. */

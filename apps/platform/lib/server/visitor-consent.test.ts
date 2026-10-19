@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { recordConsent, type Database } from "@fynix/db";
+import { recordConsent, type Database } from "@brandbasket/db";
 import { recordContributionConsent } from "./visitor-consent";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({ recordConsent: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ recordConsent: vi.fn() }));
 
 const DB = {} as Database;
 const VISITOR = "01939c54-1111-7222-8333-444455556666";

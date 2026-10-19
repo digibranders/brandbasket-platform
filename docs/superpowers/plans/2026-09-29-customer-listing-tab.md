@@ -155,7 +155,7 @@ describe("directory places", () => {
 
 - [ ] **Step 3: Run it to see it fail**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/places.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/directory/places.test.ts`
 Expected: FAIL, `Failed to resolve import "./places"`.
 
 - [ ] **Step 4: Implement**
@@ -247,7 +247,7 @@ export function slugifyBusinessName(name: string): string {
 
 - [ ] **Step 5: Run it to see it pass**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/places.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/directory/places.test.ts`
 Expected: PASS (4 tests).
 
 ---
@@ -359,7 +359,7 @@ describe("parseVisibleForm", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/listing-content.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/directory/listing-content.test.ts`
 Expected: FAIL, cannot resolve `./listing-content`.
 
 - [ ] **Step 3: Implement**
@@ -458,7 +458,7 @@ export function parseVisibleForm(formData: FormData): FormParseResult<{ readonly
 
 - [ ] **Step 4: Run it to see it pass**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/listing-content.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/directory/listing-content.test.ts`
 Expected: PASS. If "24x7 emergency" is flagged, the phone pattern is too loose: it must need 9+ digit-or-separator
 characters between two digits, as written above.
 
@@ -580,7 +580,7 @@ export * from "./directory";
 
 - [ ] **Step 2: Generate the migration**
 
-Run: `pnpm --filter @fynix/db exec drizzle-kit generate --name directory_listings`
+Run: `pnpm --filter @brandbasket/db exec drizzle-kit generate --name directory_listings`
 Expected: `packages/db/migrations/0052_directory_listings.sql` created with two `CREATE TABLE`s, the unique
 constraint, the checks and the two foreign keys. Open it and confirm the regex checks read `'^[a-z0-9]+(-[a-z0-9]+)*$'`
 and `'^\+[0-9]{8,15}$'` (single backslash in SQL).
@@ -602,7 +602,7 @@ and `'^\+[0-9]{8,15}$'` (single backslash in SQL).
 
 - [ ] **Step 1: Create the empty custom migration**
 
-Run: `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name directory_listings_grants`
+Run: `pnpm --filter @brandbasket/db exec drizzle-kit generate --custom --name directory_listings_grants`
 Expected: an empty `0053_directory_listings_grants.sql`.
 
 - [ ] **Step 2: Fill it**
@@ -873,7 +873,7 @@ column without a default to the `projects` insert above (for example `kind: "ini
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @fynix/db exec vitest run --config vitest.integration.config.ts src/directory-listings.integration.test.ts`
+Run: `pnpm --filter @brandbasket/db exec vitest run --config vitest.integration.config.ts src/directory-listings.integration.test.ts`
 Expected: FAIL, cannot resolve `./queries/directory-listings`.
 
 - [ ] **Step 3: Implement**
@@ -1183,13 +1183,13 @@ If `hasPostgresCode`/`UNIQUE_VIOLATION` are not exported from `./tenant` under t
 
 - [ ] **Step 4: Run it to see it pass**
 
-Run: `pnpm --filter @fynix/db exec vitest run --config vitest.integration.config.ts src/directory-listings.integration.test.ts`
+Run: `pnpm --filter @brandbasket/db exec vitest run --config vitest.integration.config.ts src/directory-listings.integration.test.ts`
 Expected: PASS (10 tests). If "reads its own listing" fails with an empty result, check that
 `businessMembers` gives the app role visibility; the RLS policies in 0053 only check `app_current_business_id()`.
 
 - [ ] **Step 5: Typecheck the package**
 
-Run: `pnpm --filter @fynix/db typecheck`
+Run: `pnpm --filter @brandbasket/db typecheck`
 Expected: no errors.
 
 ---
@@ -1287,7 +1287,7 @@ describe("parsePlacementForm", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/placement-form.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/directory/placement-form.test.ts`
 Expected: FAIL, cannot resolve `./placement-form`.
 
 - [ ] **Step 3: Implement**
@@ -1295,7 +1295,7 @@ Expected: FAIL, cannot resolve `./placement-form`.
 ```ts
 // packages/shared/src/lib/directory/placement-form.ts
 /** Parses the staff Listing form on the admin client page. */
-import type { ListingPlacementInput } from "@fynix/db";
+import type { ListingPlacementInput } from "@brandbasket/db";
 import { textField, type FormParseResult } from "../form-result";
 import { cleanLine } from "../validation/text";
 import { DIRECTORY_STATE, isDirectoryArea, isDirectoryCategory, isDirectoryCity } from "./places";
@@ -1420,7 +1420,7 @@ export function parsePlacementForm(formData: FormData): FormParseResult<ListingP
 
 - [ ] **Step 4: Run it to see it pass**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/placement-form.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/directory/placement-form.test.ts`
 Expected: PASS (12 tests).
 
 ---
@@ -1467,7 +1467,7 @@ describe("listingStage", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/stage.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/directory/stage.test.ts`
 Expected: FAIL, cannot resolve `./stage`.
 
 - [ ] **Step 3: Implement**
@@ -1505,7 +1505,7 @@ If `CustomerBillingStatus` is not exported from `../billing/status`, export it t
 
 - [ ] **Step 4: Run it to see it pass**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/stage.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/directory/stage.test.ts`
 Expected: PASS (4 tests).
 
 ---
@@ -1587,7 +1587,7 @@ export interface DirectoryFeed {
 
 ```ts
 // packages/shared/src/lib/directory/feed.test.ts
-import type { DirectoryListingRow, SiteFacts } from "@fynix/db";
+import type { DirectoryListingRow, SiteFacts } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { buildFeedListing } from "./feed";
 
@@ -1710,14 +1710,14 @@ describe("buildFeedListing", () => {
 
 - [ ] **Step 3: Run it to see it fail**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/feed.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/directory/feed.test.ts`
 Expected: FAIL, cannot resolve `./feed`.
 
 - [ ] **Step 4: Implement**
 
 ```ts
 // packages/shared/src/lib/directory/feed.ts
-import type { DirectoryListingRow, SiteFacts } from "@fynix/db";
+import type { DirectoryListingRow, SiteFacts } from "@brandbasket/db";
 import type { DirectoryFeedButtons, DirectoryFeedHours, DirectoryFeedListing } from "./feed-contract";
 
 export interface FeedListingInput {
@@ -1807,8 +1807,8 @@ export function buildFeedListing({ row, facts, paid, bookingEnabled, today }: Fe
 
 - [ ] **Step 5: Run it to see it pass**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/feed.test.ts`
-Expected: PASS (5 tests). `SiteFacts` must be exported from `@fynix/db` (it is, beside `readSiteFacts`).
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/directory/feed.test.ts`
+Expected: PASS (5 tests). `SiteFacts` must be exported from `@brandbasket/db` (it is, beside `readSiteFacts`).
 
 ---
 
@@ -1858,7 +1858,7 @@ describe("GET /api/directory/listings", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @fynix/platform exec vitest run app/api/directory/listings/route.test.ts`
+Run: `pnpm --filter @brandbasket/platform exec vitest run app/api/directory/listings/route.test.ts`
 Expected: FAIL, cannot resolve `./route`.
 
 - [ ] **Step 3: Implement the reader**
@@ -1866,11 +1866,11 @@ Expected: FAIL, cannot resolve `./route`.
 ```ts
 // apps/platform/lib/server/directory-feed.ts
 import "server-only";
-import { hasBillingAccess } from "@fynix/billing";
-import { findBillingState, isModuleEnabled, listLiveDirectoryListings, readSiteFacts, type Database } from "@fynix/db";
-import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
-import { buildFeedListing } from "@fynix/shared/lib/directory/feed";
-import { DIRECTORY_FEED_VERSION, type DirectoryFeed, type DirectoryFeedListing } from "@fynix/shared/lib/directory/feed-contract";
+import { hasBillingAccess } from "@brandbasket/billing";
+import { findBillingState, isModuleEnabled, listLiveDirectoryListings, readSiteFacts, type Database } from "@brandbasket/db";
+import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
+import { buildFeedListing } from "@brandbasket/shared/lib/directory/feed";
+import { DIRECTORY_FEED_VERSION, type DirectoryFeed, type DirectoryFeedListing } from "@brandbasket/shared/lib/directory/feed-contract";
 
 /** Listings without their own time zone are read in India's, the only market the directory serves today. */
 const DEFAULT_TIME_ZONE = "Asia/Kolkata";
@@ -1934,7 +1934,7 @@ export async function GET(): Promise<Response> {
 
 - [ ] **Step 5: Run it to see it pass**
 
-Run: `pnpm --filter @fynix/platform exec vitest run app/api/directory/listings/route.test.ts`
+Run: `pnpm --filter @brandbasket/platform exec vitest run app/api/directory/listings/route.test.ts`
 Expected: PASS (2 tests).
 
 - [ ] **Step 6: Check the route is reachable through the app host's proxy**
@@ -1970,8 +1970,8 @@ export function listingMissingState(formData: FormData): PanelFormState {
 
 ```ts
 // apps/platform/app/app-host/(protected)/listing/actions.test.ts
-import type { Database, ScopedTransaction } from "@fynix/db";
-import { updateOwnListingContent, withTenantScope } from "@fynix/db";
+import type { Database, ScopedTransaction } from "@brandbasket/db";
+import { updateOwnListingContent, withTenantScope } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { paidCustomerOrNull, PAID_PLAN_REQUIRED_MESSAGE } from "@/lib/server/blog-access";
@@ -1986,8 +1986,8 @@ vi.mock("@/lib/server/blog-access", () => ({
   paidCustomerOrNull: vi.fn(),
   PAID_PLAN_REQUIRED_MESSAGE: "This opens once your plan is paid. You can pay from Billing.",
 }));
-vi.mock("@fynix/db", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@fynix/db")>();
+vi.mock("@brandbasket/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@brandbasket/db")>();
   return {
     hasPostgresCode: actual.hasPostgresCode,
     CHECK_VIOLATION: actual.CHECK_VIOLATION,
@@ -2068,7 +2068,7 @@ describe("listing actions", () => {
 
 - [ ] **Step 3: Run it to see it fail**
 
-Run: `pnpm --filter @fynix/platform exec vitest run "app/app-host/(protected)/listing/actions.test.ts"`
+Run: `pnpm --filter @brandbasket/platform exec vitest run "app/app-host/(protected)/listing/actions.test.ts"`
 Expected: FAIL, cannot resolve `./actions`.
 
 - [ ] **Step 4: Implement**
@@ -2078,14 +2078,14 @@ Expected: FAIL, cannot resolve `./actions`.
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { updateOwnListingContent, withTenantScope, type ListingContentPatch } from "@fynix/db";
-import type { FormParseResult } from "@fynix/shared/lib/form-result";
+import { updateOwnListingContent, withTenantScope, type ListingContentPatch } from "@brandbasket/db";
+import type { FormParseResult } from "@brandbasket/shared/lib/form-result";
 import {
   parseAboutForm,
   parseButtonsForm,
   parseTagsForm,
   parseVisibleForm,
-} from "@fynix/shared/lib/directory/listing-content";
+} from "@brandbasket/shared/lib/directory/listing-content";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
 import { getAppDb } from "@/lib/server/db";
@@ -2141,7 +2141,7 @@ export async function setListingVisibleAction(_previous: PanelFormState, formDat
 
 - [ ] **Step 5: Run it to see it pass**
 
-Run: `pnpm --filter @fynix/platform exec vitest run "app/app-host/(protected)/listing/actions.test.ts"`
+Run: `pnpm --filter @brandbasket/platform exec vitest run "app/app-host/(protected)/listing/actions.test.ts"`
 Expected: PASS (5 tests).
 
 ---
@@ -2162,7 +2162,7 @@ No unit test: the logic under this page is tested in Tasks 2, 5, 7 and 10; the p
 "use client";
 
 import { useState, type ReactElement } from "react";
-import { Button } from "@fynix/shared/ui/panel/button";
+import { Button } from "@brandbasket/shared/ui/panel/button";
 
 interface ListingLinkProps {
   readonly url: string;
@@ -2218,15 +2218,15 @@ outlined button.
 "use client";
 
 import { useState, type ReactElement, type ReactNode } from "react";
-import type { ListingContentRow } from "@fynix/db";
+import type { ListingContentRow } from "@brandbasket/db";
 import {
   LISTING_ABOUT_MAX_LENGTH,
   LISTING_BUTTONS,
   LISTING_BUTTON_LABELS,
   LISTING_TAG_LIMIT,
   type ListingButton,
-} from "@fynix/shared/lib/directory/listing-content";
-import { Button } from "@fynix/shared/ui/panel/button";
+} from "@brandbasket/shared/lib/directory/listing-content";
+import { Button } from "@brandbasket/shared/ui/panel/button";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 interface ListingDetailsProps {
@@ -2468,14 +2468,14 @@ export function ListingDetails({ content, editable, unavailable, hoursLines, ann
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { findAnnouncement, findBusinessTimeZone, findBusinessWebsiteUrl, findOwnListing, getBusinessHours, getBusinessProfile, hasLiveProject, listingPath, withTenantScope } from "@fynix/db";
-import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
-import type { ListingButton } from "@fynix/shared/lib/directory/listing-content";
-import { DIRECTORY_ORIGIN, areaName, categoryLabel, cityName } from "@fynix/shared/lib/directory/places";
-import { LISTING_STAGE_LABELS, listingStage } from "@fynix/shared/lib/directory/stage";
-import { WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
-import { describeStoredDay } from "@fynix/shared/lib/onboarding/hours";
-import { siteConfig } from "@fynix/shared/lib/site-config";
+import { findAnnouncement, findBusinessTimeZone, findBusinessWebsiteUrl, findOwnListing, getBusinessHours, getBusinessProfile, hasLiveProject, listingPath, withTenantScope } from "@brandbasket/db";
+import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
+import type { ListingButton } from "@brandbasket/shared/lib/directory/listing-content";
+import { DIRECTORY_ORIGIN, areaName, categoryLabel, cityName } from "@brandbasket/shared/lib/directory/places";
+import { LISTING_STAGE_LABELS, listingStage } from "@brandbasket/shared/lib/directory/stage";
+import { WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
+import { describeStoredDay } from "@brandbasket/shared/lib/onboarding/hours";
+import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import { ListingDetails } from "@/components/panel/listing/listing-details";
 import { ListingLink } from "@/components/panel/listing/listing-link";
 import { getEnabledModules } from "@/lib/server/business-modules";
@@ -2615,15 +2615,15 @@ export default async function ListingPage(): Promise<ReactElement> {
 ```
 
 Notes for this step:
-- `getBusinessHours` is the tenant read `details/page.tsx` already uses; import it from `@fynix/db` the same way.
+- `getBusinessHours` is the tenant read `details/page.tsx` already uses; import it from `@brandbasket/db` the same way.
 - If `describeStoredDay` rejects `BusinessHoursRow` (type mismatch), map rows to `StoredHoursRow` with the same fields
   (`dayOfWeek, opensAt, closesAt, closed, openAllDay`).
-- `getBusinessProfile` (onboarding-data.ts) is the tenant read of `business_profiles`; export it from `@fynix/db` if
+- `getBusinessProfile` (onboarding-data.ts) is the tenant read of `business_profiles`; export it from `@brandbasket/db` if
   it is not already. Show the phone as stored (E.164); formatting it is a later nicety.
 
 - [ ] **Step 4: Typecheck**
 
-Run: `pnpm --filter @fynix/platform exec tsc --noEmit`
+Run: `pnpm --filter @brandbasket/platform exec tsc --noEmit`
 Expected: no errors.
 
 ---
@@ -2639,7 +2639,7 @@ Expected: no errors.
 ```ts
 // apps/platform/lib/server/listing.ts
 import "server-only";
-import { findOwnListing, withTenantScope } from "@fynix/db";
+import { findOwnListing, withTenantScope } from "@brandbasket/db";
 import { cache } from "react";
 import { getCustomerAccess } from "./customer-access";
 import { getAppDb } from "./db";
@@ -2656,7 +2656,7 @@ export const hasOwnListing = cache(async (): Promise<boolean> => {
 
 In `customer-shell.tsx`:
 
-1. Import `hasOwnListing` from `@/lib/server/listing` and a pin icon (`MapPinIcon` from `@fynix/shared/ui/icons` if it
+1. Import `hasOwnListing` from `@/lib/server/listing` and a pin icon (`MapPinIcon` from `@brandbasket/shared/ui/icons` if it
    exists; otherwise add one there next to `HomeIcon`, a 24×24 stroke icon of a map pin).
 2. Add `listingExists: boolean` to `customerNav`'s parameters and insert, after the appointments block and before
    the setup item:
@@ -2684,7 +2684,7 @@ async function readListingNav(): Promise<boolean> {
 
 - [ ] **Step 3: Typecheck and run the platform unit tests**
 
-Run: `pnpm --filter @fynix/platform exec tsc --noEmit && pnpm --filter @fynix/platform test`
+Run: `pnpm --filter @brandbasket/platform exec tsc --noEmit && pnpm --filter @brandbasket/platform test`
 Expected: no type errors; all tests pass.
 
 ---
@@ -2699,8 +2699,8 @@ Expected: no type errors; all tests pass.
 - [ ] **Step 1: The action** (append to `actions.ts`; add the imports to its import block)
 
 ```ts
-import { ListingAddressTakenError, saveListingPlacement } from "@fynix/db";
-import { parsePlacementForm } from "@fynix/shared/lib/directory/placement-form";
+import { ListingAddressTakenError, saveListingPlacement } from "@brandbasket/db";
+import { parsePlacementForm } from "@brandbasket/shared/lib/directory/placement-form";
 
 /** Creates or changes where the client's listing sits on the local directory. */
 export async function saveListingPlacementAction(formData: FormData): Promise<void> {
@@ -2727,15 +2727,15 @@ export async function saveListingPlacementAction(formData: FormData): Promise<vo
 ```tsx
 // apps/admin/components/client-listing.tsx
 import type { ReactElement } from "react";
-import { listingPath, type ListingPlacement } from "@fynix/db";
+import { listingPath, type ListingPlacement } from "@brandbasket/db";
 import {
   DIRECTORY_AREAS,
   DIRECTORY_CATEGORIES,
   DIRECTORY_CITIES,
   DIRECTORY_ORIGIN,
   slugifyBusinessName,
-} from "@fynix/shared/lib/directory/places";
-import { PLACEMENT_FIELD_MESSAGES, type PlacementField } from "@fynix/shared/lib/directory/placement-form";
+} from "@brandbasket/shared/lib/directory/places";
+import { PLACEMENT_FIELD_MESSAGES, type PlacementField } from "@brandbasket/shared/lib/directory/placement-form";
 import { saveListingPlacementAction } from "@/app/(protected)/clients/[businessId]/actions";
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
@@ -2888,8 +2888,8 @@ export function ClientListing({ businessId, displayName, placement, live, notice
 
 In `apps/admin/app/(protected)/clients/[businessId]/page.tsx`:
 
-1. Import `findListingPlacement, hasLiveProject` from `@fynix/db`, `ClientListing, type ListingNotice` from
-   `@/components/client-listing`, and `isPlacementField` from `@fynix/shared/lib/directory/placement-form`.
+1. Import `findListingPlacement, hasLiveProject` from `@brandbasket/db`, `ClientListing, type ListingNotice` from
+   `@/components/client-listing`, and `isPlacementField` from `@brandbasket/shared/lib/directory/placement-form`.
 2. Where the page reads its data in parallel, add `findListingPlacement(getStaffDb(), businessId)` and
    `hasLiveProject(getStaffDb(), businessId)`.
 3. Read the notice from the search params the page already receives:
@@ -2923,7 +2923,7 @@ is named differently from `firstParam`, use that name. Use the page's own names 
 
 - [ ] **Step 4: Typecheck and lint admin**
 
-Run: `pnpm --filter @fynix/admin exec tsc --noEmit && pnpm --filter @fynix/admin lint`
+Run: `pnpm --filter @brandbasket/admin exec tsc --noEmit && pnpm --filter @brandbasket/admin lint`
 Expected: no errors.
 
 ---

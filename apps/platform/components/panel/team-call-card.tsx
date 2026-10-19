@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState, type ReactElement } from "react";
 import { CallSlotPicker } from "@/components/panel/call-slot-picker";
-import { callInviteHref } from "@fynix/shared/lib/call-slots";
-import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { Button, ExternalButtonLink } from "@fynix/shared/ui/panel/button";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import { callInviteHref } from "@brandbasket/shared/lib/call-slots";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { Button, ExternalButtonLink } from "@brandbasket/shared/ui/panel/button";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 
 interface TeamCallCardProps {
   /** The booking page staff set in the console. */

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { LiveSpotRow } from "@fynix/db";
+import type { LiveSpotRow } from "@brandbasket/db";
 import { spotsNow } from "./advertise-spots-now";
 
 vi.mock("server-only", () => ({}));

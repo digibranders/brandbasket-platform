@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactElement } from "react";
-import { PAGE_TAB_LABEL_MAX_LENGTH, type RenamablePageTab } from "@fynix/shared/lib/directory/page-tabs";
+import { PAGE_TAB_LABEL_MAX_LENGTH, type RenamablePageTab } from "@brandbasket/shared/lib/directory/page-tabs";
 import { INPUT_CLASSES } from "@/components/panel/business/catalog-parts";
 import { pageTabLabelField } from "@/lib/contact-trust-form";
 

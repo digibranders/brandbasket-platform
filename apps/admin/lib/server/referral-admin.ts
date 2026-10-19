@@ -5,7 +5,7 @@ import {
   isChargeableDiscount,
   MAX_DISCOUNT_BASIS_POINTS,
   normaliseReferralCode,
-} from "@fynix/billing";
+} from "@brandbasket/billing";
 import {
   billingCurrency,
   createReferralCode,
@@ -19,9 +19,9 @@ import {
   type Plan,
   type ReferralCode,
   type ReferralDiscount,
-} from "@fynix/db";
-import { formatPercent, parsePercent } from "@fynix/shared/lib/billing/referral-value";
-import { formatMoney, parseMoney } from "@fynix/shared/lib/money";
+} from "@brandbasket/db";
+import { formatPercent, parsePercent } from "@brandbasket/shared/lib/billing/referral-value";
+import { formatMoney, parseMoney } from "@brandbasket/shared/lib/money";
 import { getStaffDb } from "./db";
 
 /**

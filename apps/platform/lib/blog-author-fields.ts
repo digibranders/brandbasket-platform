@@ -1,4 +1,4 @@
-import { cleanLine } from "@fynix/shared/lib/validation/text";
+import { cleanLine } from "@brandbasket/shared/lib/validation/text";
 import { AUTHOR_LINK_KINDS, AUTHOR_LINK_LABELS, parseAuthorLink, type AuthorLinkKind, type AuthorLinks } from "./author-links";
 
 /**

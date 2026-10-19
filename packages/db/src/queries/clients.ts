@@ -89,7 +89,7 @@ export interface ClientFirstPayment {
 export interface ClientBilling {
   /**
    * The newest subscription, whatever its status: one cancelled inside its paid period still grants access. Whether
-   * it does is decided by @fynix/billing.
+   * it does is decided by @brandbasket/billing.
    */
   readonly subscription: ClientSubscription | null;
   /** The first payment that bought something. A payment that could not be applied is not one. */

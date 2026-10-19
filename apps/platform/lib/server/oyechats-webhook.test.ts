@@ -1,4 +1,4 @@
-import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLead } from "@fynix/db";
+import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLead } from "@brandbasket/db";
 import { createHmac } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffDb } from "./db";
@@ -6,7 +6,7 @@ import { handleOyeChatsWebhook } from "./oyechats-webhook";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   applyChatbotQualification: vi.fn(),
   findChatbotWebhookTarget: vi.fn(),
   recordChatbotLead: vi.fn(),

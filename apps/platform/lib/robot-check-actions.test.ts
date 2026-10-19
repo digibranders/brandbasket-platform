@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { checkHuman } from "@fynix/shared/server/turnstile-request";
+import { checkHuman } from "@brandbasket/shared/server/turnstile-request";
 import { joinForListing, signInCustomer } from "@/app/app-host/login/actions";
 import { requestPasswordResetAction } from "@/app/app-host/forgot-password/actions";
 import { resetPasswordAction } from "@/app/app-host/reset-password/[token]/actions";
@@ -12,10 +12,10 @@ import { redeemSetupInvite } from "@/lib/server/setup";
 import { redeemAffiliateLogin } from "@/lib/server/affiliate-setup";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/shared/server/turnstile-request", () => ({ checkHuman: vi.fn() }));
+vi.mock("@brandbasket/shared/server/turnstile-request", () => ({ checkHuman: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn(() => { throw new Error("redirect"); }) }));
-vi.mock("@fynix/auth", () => ({ AccountAlreadyExistsError: class extends Error {} }));
-vi.mock("@fynix/db", () => ({ InviteNoLongerRedeemableError: class extends Error {} }));
+vi.mock("@brandbasket/auth", () => ({ AccountAlreadyExistsError: class extends Error {} }));
+vi.mock("@brandbasket/db", () => ({ InviteNoLongerRedeemableError: class extends Error {} }));
 vi.mock("@/lib/server/sign-in", () => ({ signInWithPassword: vi.fn() }));
 vi.mock("@/lib/server/affiliate-access", () => ({ landingForSignedInUser: vi.fn() }));
 vi.mock("@/lib/server/customer-access", () => ({ LISTING_PAGE_PATH: "/listing" }));

@@ -1,11 +1,11 @@
-import { ChatbotBotIdTakenError, listChatbotsForStaff, registerChatbot, removeChatbot, setChatbotOperatorKey, setChatbotStatus } from "@fynix/db";
+import { ChatbotBotIdTakenError, listChatbotsForStaff, registerChatbot, removeChatbot, setChatbotOperatorKey, setChatbotStatus } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { addClientChatbot, loadClientChatbots, removeClientChatbot, setClientChatbotOperatorKey, setClientChatbotStatus } from "./chatbots-admin";
 import { getStaffDb } from "./db";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("@fynix/db", () => {
+vi.mock("@brandbasket/db", () => {
   class MockChatbotBotIdTakenError extends Error {}
   return {
     ChatbotBotIdTakenError: MockChatbotBotIdTakenError,

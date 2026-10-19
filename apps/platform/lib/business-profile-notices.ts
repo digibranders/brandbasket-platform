@@ -1,5 +1,5 @@
-import type { PublishRefusal } from "@fynix/db";
-import type { PageTabLabels } from "@fynix/shared/lib/directory/page-tabs";
+import type { PublishRefusal } from "@brandbasket/db";
+import type { PageTabLabels } from "@brandbasket/shared/lib/directory/page-tabs";
 
 /*
  * What the Business profile says after an action (docs/superpowers/specs/2026-10-01-business-profile-design.md). Each

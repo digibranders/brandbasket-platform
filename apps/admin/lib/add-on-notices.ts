@@ -1,4 +1,4 @@
-import type { AddOnEndOutcome } from "@fynix/shared/server/add-on-ends";
+import type { AddOnEndOutcome } from "@brandbasket/shared/server/add-on-ends";
 
 /**
  * What the client page's Add-ons section says after staff pause, cancel or follow up a purchase, or set a press release's

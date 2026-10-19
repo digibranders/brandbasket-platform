@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useActionState, useId, useRef, type ReactElement } from "react";
-import type { AddOnId, AddOnPrice } from "@fynix/shared/lib/billing/add-ons";
-import { LIFETIME_OFFER_PERCENT } from "@fynix/shared/lib/billing/lifetime-offer";
-import type { AddOnCheckoutIntent } from "@fynix/shared/lib/billing/add-on-state";
-import { formatMoney } from "@fynix/shared/lib/money";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import type { AddOnId, AddOnPrice } from "@brandbasket/shared/lib/billing/add-ons";
+import { LIFETIME_OFFER_PERCENT } from "@brandbasket/shared/lib/billing/lifetime-offer";
+import type { AddOnCheckoutIntent } from "@brandbasket/shared/lib/billing/add-on-state";
+import { formatMoney } from "@brandbasket/shared/lib/money";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { BillingDetailsPrompt } from "@/components/panel/billing/billing-details-prompt";
 import { initialAddOnStartState, type AddOnInvoiceNote, type AddOnStartState } from "@/lib/billing/add-on-form";
 import { checkoutPendingLabel, type CheckoutCopy } from "@/lib/billing/add-on-copy";

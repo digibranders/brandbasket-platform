@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { readSetupCallUrl, SETUP_CALL_URL_FIELD } from "@fynix/shared/lib/setup-call-link";
+import { readSetupCallUrl, SETUP_CALL_URL_FIELD } from "@brandbasket/shared/lib/setup-call-link";
 import { settingsNoticeHref } from "@/lib/settings-notices";
 import { saveSetupCallUrl } from "@/lib/server/settings-admin";
 import { requireStaffAccess } from "@/lib/server/staff-access";

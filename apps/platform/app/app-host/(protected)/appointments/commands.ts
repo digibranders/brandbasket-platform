@@ -2,11 +2,11 @@
  * `"use server"` -- see actions.ts, whose job is only to check access, run the command against the tenant-scoped
  * transaction, and translate the outcome back into a form state. */
 import { z } from "zod";
-import type { AppointmentRow, AppointmentTransition, ReassignResult } from "@fynix/db";
-import { CANCEL_REASON_MAX_LENGTH } from "@fynix/shared/lib/appointments/limits";
-import { isAppointmentAction } from "@fynix/shared/lib/appointments/status";
-import { textField, type FormParseResult } from "@fynix/shared/lib/form-result";
-import { cleanLine } from "@fynix/shared/lib/validation/text";
+import type { AppointmentRow, AppointmentTransition, ReassignResult } from "@brandbasket/db";
+import { CANCEL_REASON_MAX_LENGTH } from "@brandbasket/shared/lib/appointments/limits";
+import { isAppointmentAction } from "@brandbasket/shared/lib/appointments/status";
+import { textField, type FormParseResult } from "@brandbasket/shared/lib/form-result";
+import { cleanLine } from "@brandbasket/shared/lib/validation/text";
 
 export interface TransitionCommand {
   readonly appointmentId: string;

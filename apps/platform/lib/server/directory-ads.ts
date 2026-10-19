@@ -37,8 +37,8 @@ import {
   type DirectoryAdWin,
   type DirectoryClaim,
   type DirectoryEventKind,
-} from "@fynix/db";
-import { AD_PLACEMENTS, AD_TAX_BASIS_POINTS, adChargeDescription, adChargedPaise, isSoldPlacement } from "@fynix/shared/lib/directory/ads";
+} from "@brandbasket/db";
+import { AD_PLACEMENTS, AD_TAX_BASIS_POINTS, adChargeDescription, adChargedPaise, isSoldPlacement } from "@brandbasket/shared/lib/directory/ads";
 import type { AdsResponse } from "@/lib/directory-api";
 import { buildAdResults, type AdResults } from "@/lib/advertise-results";
 import { placementHeldThrough } from "@/lib/advertise-booking";
@@ -47,7 +47,7 @@ import { adPictureLookup, adsWithPictures } from "@/lib/directory-pictures-feed"
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { directoryDay } from "./directory-signals";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 
 /*
  * The platform's side of the ad auction (docs/superpowers/specs/2026-09-30-directory-ads-auction-design.md). The

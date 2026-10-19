@@ -1,16 +1,16 @@
 import type { ReactElement, ReactNode } from "react";
-import { ChevronDownIcon } from "@fynix/shared/ui/icons";
-import type { MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
-import type { BundleLine } from "@fynix/shared/lib/billing/bundle";
-import { formatMoney } from "@fynix/shared/lib/money";
+import { ChevronDownIcon } from "@brandbasket/shared/ui/icons";
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import type { BundleLine } from "@brandbasket/shared/lib/billing/bundle";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import Link from "next/link";
 import { IncludedList } from "@/components/panel/membership/included-list";
 import { MembershipPayForm } from "@/components/panel/membership/membership-pay-form";
 import { MAINTENANCE_INCLUDED, WEBSITE_INCLUDED, type IncludedItem } from "@/lib/checkout-included";
 import { orderSummary, type MembershipTier } from "@/lib/membership";
 import type { MembershipCheckoutView } from "@/lib/server/membership-checkout";
-import { LIFETIME_OFFER_PERCENT } from "@fynix/shared/lib/billing/lifetime-offer";
-import { describeDiscountedPlanTerms } from "@fynix/shared/lib/billing/terms";
+import { LIFETIME_OFFER_PERCENT } from "@brandbasket/shared/lib/billing/lifetime-offer";
+import { describeDiscountedPlanTerms } from "@brandbasket/shared/lib/billing/terms";
 import { startMembership } from "@/app/app-host/(protected)/premium/actions";
 
 interface OrderSummaryProps {

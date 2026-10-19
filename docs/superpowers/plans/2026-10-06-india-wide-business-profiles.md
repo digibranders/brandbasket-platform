@@ -129,7 +129,7 @@ describe("india states", () => {
 
 - [ ] **Step 2: Run it and see it fail**
 
-Run: `pnpm --filter @fynix/shared test -- india-states`
+Run: `pnpm --filter @brandbasket/shared test -- india-states`
 Expected: FAIL, "Cannot find module './india-states'".
 
 - [ ] **Step 3: Implement**
@@ -220,12 +220,12 @@ export function stateName(code: string): string | null {
 
 - [ ] **Step 4: Run it and see it pass**
 
-Run: `pnpm --filter @fynix/shared test -- india-states`
+Run: `pnpm --filter @brandbasket/shared test -- india-states`
 Expected: PASS (13 tests).
 
 - [ ] **Step 5: Checkpoint**
 
-Run: `pnpm --filter @fynix/shared typecheck`. Expected: 0 errors. Don't commit.
+Run: `pnpm --filter @brandbasket/shared typecheck`. Expected: 0 errors. Don't commit.
 
 ---
 
@@ -321,13 +321,13 @@ describe("parseIndiaPostCsv", () => {
 
 - [ ] **Step 2: Run it and see it fail**
 
-Run: `pnpm --filter @fynix/db test -- india-post`
+Run: `pnpm --filter @brandbasket/db test -- india-post`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement**
 
 ```ts
-import { stateCodeOfIndiaPostName } from "@fynix/shared/lib/directory/india-states";
+import { stateCodeOfIndiaPostName } from "@brandbasket/shared/lib/directory/india-states";
 
 /*
  * India Post's "All India Pincode Directory" (data.gov.in, GODL-India) turned into one record per PIN code: its state,
@@ -467,16 +467,16 @@ export function parseIndiaPostCsv(text: string): IndiaPostParse {
 }
 ```
 
-`@fynix/db` must be able to import `@fynix/shared/lib/directory/india-states`. Check `packages/db/package.json` dependencies. If `@fynix/shared` is not a dependency there (adding it could create a cycle, since shared depends on db), move `india-states.ts` into `packages/db/src/india-states.ts`, export it as `@fynix/db/india-states`, and re-export it from `packages/shared/src/lib/directory/india-states.ts` the way `place-id.ts` is re-exported. Then update Task 1's import paths to match.
+`@brandbasket/db` must be able to import `@brandbasket/shared/lib/directory/india-states`. Check `packages/db/package.json` dependencies. If `@brandbasket/shared` is not a dependency there (adding it could create a cycle, since shared depends on db), move `india-states.ts` into `packages/db/src/india-states.ts`, export it as `@brandbasket/db/india-states`, and re-export it from `packages/shared/src/lib/directory/india-states.ts` the way `place-id.ts` is re-exported. Then update Task 1's import paths to match.
 
 - [ ] **Step 4: Run it and see it pass**
 
-Run: `pnpm --filter @fynix/db test -- india-post`
+Run: `pnpm --filter @brandbasket/db test -- india-post`
 Expected: PASS.
 
 - [ ] **Step 5: Checkpoint**
 
-Run: `pnpm --filter @fynix/db typecheck`. Expected: 0 errors.
+Run: `pnpm --filter @brandbasket/db typecheck`. Expected: 0 errors.
 
 ---
 
@@ -525,7 +525,7 @@ export const indiaPincodes = pgTable(
 
 - [ ] **Step 2: Generate the migration**
 
-Run: `pnpm --filter @fynix/db db:generate`
+Run: `pnpm --filter @brandbasket/db db:generate`
 Expected: a new `migrations/0084_*.sql` with `CREATE TABLE "india_pincodes"` and the four checks. Rename it to `0084_india_pincodes.sql`, and update the tag in `meta/_journal.json` to match, as earlier migrations do.
 
 - [ ] **Step 3: Grants (hand-written, same pattern as `0081`)**
@@ -593,7 +593,7 @@ describe("india_pincodes", () => {
 
 - [ ] **Step 5: Run it and see it fail**
 
-Run: `pnpm db:migrate:test && pnpm --filter @fynix/db test:integration -- india-pincodes`
+Run: `pnpm db:migrate:test && pnpm --filter @brandbasket/db test:integration -- india-pincodes`
 Expected: FAIL, `upsertPincodes` not found.
 
 - [ ] **Step 6: Implement the queries**
@@ -651,12 +651,12 @@ export async function upsertPincodes(db: Runner, records: readonly PincodeRecord
 
 - [ ] **Step 7: Run it and see it pass**
 
-Run: `pnpm --filter @fynix/db test:integration -- india-pincodes`
+Run: `pnpm --filter @brandbasket/db test:integration -- india-pincodes`
 Expected: PASS (3 tests).
 
 - [ ] **Step 8: Checkpoint**
 
-Run: `pnpm --filter @fynix/db typecheck`. Expected: 0 errors.
+Run: `pnpm --filter @brandbasket/db typecheck`. Expected: 0 errors.
 
 ---
 
@@ -712,13 +712,13 @@ Match the env variable name and the `createDatabase` return shape to `import-dir
 
 - [ ] **Step 2: Run against the local DB**
 
-Run: `pnpm db:migrate && pnpm --filter @fynix/db directory:import-pincodes ../../../local-directory-data/india/pincode-directory.csv`
+Run: `pnpm db:migrate && pnpm --filter @brandbasket/db directory:import-pincodes ../../../local-directory-data/india/pincode-directory.csv`
 Expected: `Wrote 19xxx PIN codes`, plus a few hundred "offices in 2 districts" lines.
 Spot check: `psql "$DATABASE_URL" -c "select district_slug, jsonb_array_length(localities) from india_pincodes where pincode in ('400601','700091','560001')"`. Expect thane, north-24-parganas and bengaluru (or bangalore).
 
 - [ ] **Step 3: Checkpoint**
 
-Run: `pnpm --filter @fynix/db typecheck && pnpm --filter @fynix/db test`. Expected: green.
+Run: `pnpm --filter @brandbasket/db typecheck && pnpm --filter @brandbasket/db test`. Expected: green.
 
 ---
 
@@ -781,8 +781,8 @@ Expected: FAIL, module not found.
 - [ ] **Step 3: Implement**
 
 ```ts
-import type { PincodeRecord } from "@fynix/db";
-import { stateName } from "@fynix/shared/lib/directory/india-states";
+import type { PincodeRecord } from "@brandbasket/db";
+import { stateName } from "@brandbasket/shared/lib/directory/india-states";
 import type { PickOption } from "@/lib/listing-address";
 
 /*
@@ -879,7 +879,7 @@ Add these to the table's checks:
     ),
 ```
 
-Run `pnpm --filter @fynix/db db:generate`, rename the output to `0086_claims_postal.sql` and fix the journal tag. No new grants are needed: the columns sit on an existing table.
+Run `pnpm --filter @brandbasket/db db:generate`, rename the output to `0086_claims_postal.sql` and fix the journal tag. No new grants are needed: the columns sit on an existing table.
 
 - [ ] **Step 2: Write the failing integration test.** Add it next to the existing `addBusinessListing` tests, reusing their fixture for a listing-kind business:
 
@@ -985,7 +985,7 @@ Left-join `directoryPlaces` on `directoryClaims.placeId`, and `indiaPincodes` on
 
 - [ ] **Step 4: Run the tests**
 
-Run: `pnpm db:migrate:test && pnpm --filter @fynix/db test:integration -- directory-ads && pnpm --filter @fynix/db typecheck`
+Run: `pnpm db:migrate:test && pnpm --filter @brandbasket/db test:integration -- directory-ads && pnpm --filter @brandbasket/db typecheck`
 Expected: PASS. Typecheck errors in callers (`business-profile.ts`) are fixed in Task 8. Only this package must be clean here.
 
 ---
@@ -1070,7 +1070,7 @@ it("a Thane business has no postal block and state mh", () => {
   };
 ```
 
-- [ ] **Step 4: Run** `pnpm --filter @fynix/shared test -- feed && pnpm --filter platform test -- directory-feed`. Expected: PASS. Fix `directory-feed.test.ts` fixtures by adding `stateCode`/`postal`.
+- [ ] **Step 4: Run** `pnpm --filter @brandbasket/shared test -- feed && pnpm --filter platform test -- directory-feed`. Expected: PASS. Fix `directory-feed.test.ts` fixtures by adding `stateCode`/`postal`.
 
 ---
 

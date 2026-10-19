@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
-import { ContourField } from "@fynix/shared/ui/contour-field";
-import { WordmarkLogo, type BrandLogo } from "@fynix/shared/ui/logo";
+import { ContourField } from "@brandbasket/shared/ui/contour-field";
+import { WordmarkLogo, type BrandLogo } from "@brandbasket/shared/ui/logo";
 import { siteConfig } from "../../lib/site-config";
 
 interface AuthScreenProps {

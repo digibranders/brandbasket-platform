@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent, type ReactElement } from "react";
-import { isValidGstin, normaliseGstin, stateCodeOfGstin } from "@fynix/billing/gstin";
-import { INDIA_STATES, stateName } from "@fynix/shared/lib/directory/india-states";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { FIELD_PATTERNS } from "@fynix/shared/lib/forms/input-rules";
+import { isValidGstin, normaliseGstin, stateCodeOfGstin } from "@brandbasket/billing/gstin";
+import { INDIA_STATES, stateName } from "@brandbasket/shared/lib/directory/india-states";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { FIELD_PATTERNS } from "@brandbasket/shared/lib/forms/input-rules";
 import { lookupBillingPincodeAction } from "@/app/app-host/(protected)/billing/actions";
 import {
   FIELD_CLASSES,

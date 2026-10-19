@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { CARE_PATH, MEMBER_HOME, MEMBERSHIP_PATH, UPGRADE_PATH, readMembershipCallbackTier, type MembershipFormState } from "@/lib/membership";
 import { offersChoice, sellsFreeListing } from "@/lib/brand";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
-import { readBundleSelection } from "@fynix/shared/lib/billing/bundle";
+import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 import { startMembershipCheckoutFor } from "@/lib/server/checkout";
 import { LISTING_PAGE_PATH, requireCustomerAccess, type CustomerAccessOptions } from "@/lib/server/customer-access";
 import { continueWithFreeListing } from "@/lib/server/membership";

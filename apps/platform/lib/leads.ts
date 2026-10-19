@@ -3,7 +3,7 @@
  * and the links on each one. A free listing has no limit on its leads, so the page shows every one, a page at a time.
  */
 
-import type { BusinessKind, DirectoryClaim, DirectoryRef } from "@fynix/db";
+import type { BusinessKind, DirectoryClaim, DirectoryRef } from "@brandbasket/db";
 
 /** Where an owner reads their leads, and where the enquiry email links to. */
 export const LEADS_PATH = "/leads";

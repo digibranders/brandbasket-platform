@@ -1,12 +1,12 @@
 "use client";
 
 import type { ReactElement } from "react";
-import type { AppointmentServiceRow } from "@fynix/db";
-import { SERVICE_NAME_MAX_LENGTH } from "@fynix/shared/lib/appointments/settings-form";
-import { cn } from "@fynix/shared/lib/cn";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import type { AppointmentServiceRow } from "@brandbasket/db";
+import { SERVICE_NAME_MAX_LENGTH } from "@brandbasket/shared/lib/appointments/settings-form";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 interface ServicesPanelProps {

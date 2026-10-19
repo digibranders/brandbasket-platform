@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { findAppointmentSettings, listAppointmentServices, withTenantScope } from "@fynix/db";
+import { findAppointmentSettings, listAppointmentServices, withTenantScope } from "@brandbasket/db";
 import { BookingSettingsPanel } from "@/components/panel/appointments/booking-settings-panel";
 import { ServicesPanel } from "@/components/panel/appointments/services-panel";
 import { SlotSettingsPanel } from "@/components/panel/appointments/slot-settings-panel";

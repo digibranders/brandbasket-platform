@@ -1,15 +1,15 @@
 import "server-only";
-import type { BusinessProfile, MediaAsset, PrimaryDomain, ProjectBrief, Service } from "@fynix/db";
+import type { BusinessProfile, MediaAsset, PrimaryDomain, ProjectBrief, Service } from "@brandbasket/db";
 
 import Link from "next/link";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import type { ReactElement, ReactNode } from "react";
 import { MediaThumbnail } from "@/components/panel/media-thumbnail";
-import { WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
-import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
-import { describeHours, type OpeningHours } from "@fynix/shared/lib/onboarding/hours";
-import { safeExternalHref } from "@fynix/shared/lib/safe-link";
-import { displayPhoneText } from "@fynix/shared/server/phone-display";
+import { WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
+import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
+import { describeHours, type OpeningHours } from "@brandbasket/shared/lib/onboarding/hours";
+import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
+import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
 
 const NOT_GIVEN = <span className="text-ink-soft">Not given</span>;
 

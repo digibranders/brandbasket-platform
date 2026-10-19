@@ -2,7 +2,7 @@
 
 import { useState, type ReactElement } from "react";
 
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import {
   STEP_FIELD_CLASSES,
   StepFormError,

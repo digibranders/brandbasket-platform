@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { SkeletonHeading, SkeletonLine } from "@fynix/shared/ui/panel/skeleton";
+import { SkeletonHeading, SkeletonLine } from "@brandbasket/shared/ui/panel/skeleton";
 
 /** Stands in for the Today/Week/Month/Custom segmented filter row. */
 function SkeletonFilterRow(): ReactElement {

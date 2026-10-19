@@ -1,9 +1,9 @@
 import type { ReactElement } from "react";
-import { TagIcon, TickIcon } from "@fynix/shared/ui/icons";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
-import { addOnPrice, ADD_ONS, type AddOn, type MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
-import { LIFETIME_OFFER_HEADLINE, LIFETIME_OFFER_NOTE, LIFETIME_OFFER_PERCENT } from "@fynix/shared/lib/billing/lifetime-offer";
-import { formatMoney, type MoneyCurrency } from "@fynix/shared/lib/money";
+import { TagIcon, TickIcon } from "@brandbasket/shared/ui/icons";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
+import { addOnPrice, ADD_ONS, type AddOn, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { LIFETIME_OFFER_HEADLINE, LIFETIME_OFFER_NOTE, LIFETIME_OFFER_PERCENT } from "@brandbasket/shared/lib/billing/lifetime-offer";
+import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { AddOnMark } from "@/components/panel/membership/offer-marks";
 
 interface OfferCardProps {

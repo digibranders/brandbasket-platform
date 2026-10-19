@@ -3,8 +3,8 @@
 import { useCallback, useState, type ReactElement } from "react";
 import { useBrand } from "@/components/panel/brand-provider";
 import { supportEmailOf } from "@/lib/brand";
-import type { BrandLogo } from "@fynix/shared/ui/logo";
-import { AuthScreen } from "@fynix/shared/ui/panel/auth-screen";
+import type { BrandLogo } from "@brandbasket/shared/ui/logo";
+import { AuthScreen } from "@brandbasket/shared/ui/panel/auth-screen";
 import {
   RazorpayCheckoutLauncher,
   type RazorpayCheckoutLauncherProps,

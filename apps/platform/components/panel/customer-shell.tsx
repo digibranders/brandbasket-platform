@@ -17,9 +17,9 @@ import {
   NavScrollTextIcon,
   NavStarIcon,
   NavStorefrontIcon,
-} from "@fynix/shared/ui/nav-icons";
-import { DocumentIcon, TagIcon, UserIcon } from "@fynix/shared/ui/icons";
-import { DashboardFrame, type DashboardPlanChip } from "@fynix/shared/ui/panel/dashboard-frame";
+} from "@brandbasket/shared/ui/nav-icons";
+import { DocumentIcon, TagIcon, UserIcon } from "@brandbasket/shared/ui/icons";
+import { DashboardFrame, type DashboardPlanChip } from "@brandbasket/shared/ui/panel/dashboard-frame";
 import { AppointmentsNavRefresh } from "@/components/panel/appointments/appointments-nav-refresh";
 import { ADD_ONS_PATH } from "@/lib/add-ons";
 import { CHATBOT_LEADS_PATH, CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
@@ -34,10 +34,10 @@ import { ADVERTISE_PATH, LISTING_PAGE_PATH } from "@/lib/server/customer-access"
 import { logoOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { signOut } from "@/lib/server/sign-out";
-import type { SidebarNavItem } from "@fynix/shared/ui/panel/sidebar-nav";
+import type { SidebarNavItem } from "@brandbasket/shared/ui/panel/sidebar-nav";
 import { getAccountPanel } from "@/lib/server/account-panel";
 import { getEnabledModules, getNewAppointmentCount } from "@/lib/server/business-modules";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { getClientListingState } from "@/lib/server/listing";
 import { getLiveWebsite, getProjectOverview } from "@/lib/server/onboarding";
 

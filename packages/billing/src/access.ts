@@ -1,4 +1,4 @@
-import type { SubscriptionStatus } from "@fynix/db";
+import type { SubscriptionStatus } from "@brandbasket/db";
 
 export interface BillingAccessInput {
   readonly status: SubscriptionStatus;

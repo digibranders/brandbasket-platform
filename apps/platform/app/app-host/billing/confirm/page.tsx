@@ -9,10 +9,10 @@ import {
   PAYMENT_RECEIVED_HREF,
   PAYMENT_STEP_HREF,
   reactivationReturnHref,
-} from "@fynix/shared/lib/billing/payment-step";
-import { chargedAmountCents } from "@fynix/billing";
-import { describeDiscountedPlanTerms } from "@fynix/shared/lib/billing/terms";
-import { formatMoney } from "@fynix/shared/lib/money";
+} from "@brandbasket/shared/lib/billing/payment-step";
+import { chargedAmountCents } from "@brandbasket/billing";
+import { describeDiscountedPlanTerms } from "@brandbasket/shared/lib/billing/terms";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
 import {
   MEMBERSHIP_NAMES,

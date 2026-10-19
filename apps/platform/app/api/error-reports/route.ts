@@ -1,5 +1,5 @@
-import { consumeRateLimit, recordErrorReport } from "@fynix/db";
-import { createErrorReportCollector } from "@fynix/shared/server/error-report";
+import { consumeRateLimit, recordErrorReport } from "@brandbasket/db";
+import { createErrorReportCollector } from "@brandbasket/shared/server/error-report";
 import { getStaffDb } from "@/lib/server/db";
 import { appOriginForHostHeader } from "@/lib/server/request-brand";
 import { getSessionUser } from "@/lib/server/session";

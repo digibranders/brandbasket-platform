@@ -1,7 +1,7 @@
-import { listExitFeedback, summariseExitFeedback, type ExitFeedbackRow } from "@fynix/db";
+import { listExitFeedback, summariseExitFeedback, type ExitFeedbackRow } from "@brandbasket/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { EXIT_REASON_OPTIONS } from "@fynix/shared/lib/account-exit";
+import { EXIT_REASON_OPTIONS } from "@brandbasket/shared/lib/account-exit";
 import { Figures } from "@/components/console/figures";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";

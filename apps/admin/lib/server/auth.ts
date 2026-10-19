@@ -1,5 +1,5 @@
 import "server-only";
-import { createAuth, STAFF_SESSION_LIFETIME_SECONDS, type Auth } from "@fynix/auth";
+import { createAuth, STAFF_SESSION_LIFETIME_SECONDS, type Auth } from "@brandbasket/auth";
 import { getStaffDb } from "./db";
 import { serverEnv } from "@/lib/server/env";
 

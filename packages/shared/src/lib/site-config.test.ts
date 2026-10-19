@@ -1,4 +1,4 @@
-import { isValidGstin, stateCodeOfGstin } from "@fynix/billing/gstin";
+import { isValidGstin, stateCodeOfGstin } from "@brandbasket/billing/gstin";
 import { describe, expect, it } from "vitest";
 import { businessDetails, siteConfig } from "./site-config";
 

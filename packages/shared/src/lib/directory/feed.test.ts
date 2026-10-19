@@ -1,4 +1,4 @@
-import type { DirectoryListingRow, SiteFacts } from "@fynix/db";
+import type { DirectoryListingRow, SiteFacts } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { buildAddedFeedListing, buildAddedProfile, buildFeedListing, FEED_POSTAL_NAME_MAX, socialsOf, type FeedPlace } from "./feed";
 

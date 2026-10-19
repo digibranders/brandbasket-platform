@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 
 /*
  * One table layout for every content list (posts, authors, categories), so they read as one system: fixed column

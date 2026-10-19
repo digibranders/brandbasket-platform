@@ -4,7 +4,7 @@ import {
   PLACE_URL_SLUG_MAX,
   type DirectoryPlace,
   type ListingPlacement,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import {
   DIRECTORY_AREAS,
   DIRECTORY_CATEGORIES,
@@ -12,12 +12,12 @@ import {
   DIRECTORY_ORIGIN,
   directoryCategoryPath,
   slugifyBusinessName,
-} from "@fynix/shared/lib/directory/places";
-import { PLACEMENT_FIELD_MESSAGES, type PlacementField } from "@fynix/shared/lib/directory/placement-form";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
+} from "@brandbasket/shared/lib/directory/places";
+import { PLACEMENT_FIELD_MESSAGES, type PlacementField } from "@brandbasket/shared/lib/directory/placement-form";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import { saveListingPlacementAction } from "@/app/(protected)/clients/[businessId]/actions";
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";

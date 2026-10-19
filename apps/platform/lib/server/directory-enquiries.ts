@@ -9,15 +9,15 @@ import {
   type DirectoryRef,
   type NewDirectoryEnquiry,
   type RateLimitRule,
-} from "@fynix/db";
-import { listingEnquiryEmail } from "@fynix/email";
-import { displayPhone } from "@fynix/shared/server/phone-display";
+} from "@brandbasket/db";
+import { listingEnquiryEmail } from "@brandbasket/email";
+import { displayPhone } from "@brandbasket/shared/server/phone-display";
 import { LEADS_PATH } from "@/lib/leads";
 import { getStaffDb } from "./db";
 import { customerEmailTransport } from "./email";
 import type { EnquiryInput } from "./directory-fields";
 import { serverEnv } from "./env";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { ipRateLimitKey } from "./ip-key";
 
 /**

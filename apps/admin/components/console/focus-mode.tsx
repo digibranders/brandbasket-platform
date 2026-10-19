@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactElement, type ReactNode } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 import type { AttentionKind } from "@/lib/pipeline";
 import { Avatar, ringFor } from "./avatar";
 import { AttentionReason } from "./attention-reason";

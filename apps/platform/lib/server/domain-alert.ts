@@ -1,5 +1,5 @@
 import "server-only";
-import { createAppEmailTransport, domainConnectedEmail, domainRequestedEmail, emailTeamInboxDefault } from "@fynix/email";
+import { createAppEmailTransport, domainConnectedEmail, domainRequestedEmail, emailTeamInboxDefault } from "@brandbasket/email";
 import { getStaffDb } from "./db";
 import { serverEnv } from "./env";
 

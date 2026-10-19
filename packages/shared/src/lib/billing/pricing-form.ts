@@ -1,4 +1,4 @@
-import type { BillingCurrency, PlanTier } from "@fynix/db";
+import type { BillingCurrency, PlanTier } from "@brandbasket/db";
 import { parseMoney } from "../money";
 
 export const PRICING_CURRENCY_FIELD = "currency";

@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useState, type ReactElement } from "react";
-import type { AppointmentSettingsRow } from "@fynix/db";
-import { HORIZON_DAYS_OPTIONS, MIN_NOTICE_MINUTES_OPTIONS, type HorizonDays, type MinNoticeMinutes } from "@fynix/shared/lib/appointments/settings-form";
-import { SLOT_MINUTE_OPTIONS } from "@fynix/shared/lib/appointments/slots";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { SelectField } from "@fynix/shared/ui/select-field";
+import type { AppointmentSettingsRow } from "@brandbasket/db";
+import { HORIZON_DAYS_OPTIONS, MIN_NOTICE_MINUTES_OPTIONS, type HorizonDays, type MinNoticeMinutes } from "@brandbasket/shared/lib/appointments/settings-form";
+import { SLOT_MINUTE_OPTIONS } from "@brandbasket/shared/lib/appointments/slots";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { SelectField } from "@brandbasket/shared/ui/select-field";
 import { PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 interface SlotSettingsPanelProps {

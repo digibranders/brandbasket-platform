@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
-import { formatMoney } from "@fynix/shared/lib/money";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { FreeListingButton } from "@/components/panel/membership/free-listing-button";
 import { OrderSummary } from "@/components/panel/membership/order-summary";
 import { OfferCard } from "@/components/panel/membership/offer-card";
@@ -23,8 +23,8 @@ import { getCustomerBusinessEntry, isAwaitingMembership, requireCustomerAccess }
 import { loadMembershipCheckout } from "@/lib/server/membership-checkout";
 import { requestBrand } from "@/lib/server/request-brand";
 import { chooseFreeListing, startMembership } from "@/app/app-host/(protected)/premium/actions";
-import type { MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
-import { bundleLines, readBundleSelection } from "@fynix/shared/lib/billing/bundle";
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { bundleLines, readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 
 interface MembershipPageProps {
   readonly tier: MembershipTier;

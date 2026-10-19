@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
-import type { DirectoryProfile } from "@fynix/db";
-import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import type { DirectoryProfile } from "@brandbasket/db";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import { INPUT_CLASSES } from "@/components/panel/business/catalog-parts";
 import { ItemForm } from "@/components/panel/business/item-form";
 import { LICENCE_MAX_LENGTH, LICENCES_MAX, PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from "@/lib/business-profile-fields";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DIRECTORY_AREAS, DIRECTORY_CATEGORIES, DIRECTORY_CITIES } from "@fynix/shared/lib/directory/places";
+import { DIRECTORY_AREAS, DIRECTORY_CATEGORIES, DIRECTORY_CITIES } from "@brandbasket/shared/lib/directory/places";
 import { areaOptions, categoryOptions, cityOptions, filterOptions, listingChangeRequestHref } from "./listing-address";
 
 describe("listingChangeRequestHref", () => {

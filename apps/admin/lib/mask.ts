@@ -1,4 +1,4 @@
-import { maskPhone } from "@fynix/shared/server/phone-display";
+import { maskPhone } from "@brandbasket/shared/server/phone-display";
 
 /**
  * What a staff list shows of someone's contact details: their name and a number with all but the last three digits hidden

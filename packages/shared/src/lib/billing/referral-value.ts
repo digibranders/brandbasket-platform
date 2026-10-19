@@ -1,5 +1,5 @@
-import type { Affiliate, ReferralDiscount, ReferralReward, ReferralValue } from "@fynix/db";
-import { formatMoney, type MoneyCurrency } from "@fynix/shared/lib/money";
+import type { Affiliate, ReferralDiscount, ReferralReward, ReferralValue } from "@brandbasket/db";
+import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 
 /**
  * How a referral code's discount and reward read, wherever they are shown: the staff console's list, detail page

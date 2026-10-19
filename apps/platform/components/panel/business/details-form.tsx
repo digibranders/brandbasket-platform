@@ -1,12 +1,12 @@
 "use client";
 
 import { startTransition, useActionState, useState, type FormEvent, type ReactElement, type ReactNode } from "react";
-import type { OpeningHours } from "@fynix/shared/lib/onboarding/hours";
-import { FIELD_PATTERNS } from "@fynix/shared/lib/forms/input-rules";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
+import type { OpeningHours } from "@brandbasket/shared/lib/onboarding/hours";
+import { FIELD_PATTERNS } from "@brandbasket/shared/lib/forms/input-rules";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import { HoursEditor } from "@/components/panel/hours-editor";
 import { BUSINESS_ADDRESS_MAX_LENGTH } from "@/lib/business-name";
 import {

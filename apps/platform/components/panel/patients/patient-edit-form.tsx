@@ -1,19 +1,19 @@
 "use client";
 
 import type { ReactElement } from "react";
-import type { PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
+import type { PhoneCountryOption } from "@brandbasket/shared/lib/phone/fields";
 import {
   ALT_PHONE_COUNTRY_FIELD,
   ALT_PHONE_FIELD,
   PATIENT_ID_FIELD,
   PATIENT_NAME_FIELD,
   PATIENT_TAGS_FIELD,
-} from "@fynix/shared/lib/patients/fields";
-import { PATIENT_NAME_MAX_LENGTH, PATIENT_TAG_MAX_LENGTH, PATIENT_TAGS_MAX } from "@fynix/shared/lib/patients/limits";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { PhoneField } from "@fynix/shared/ui/phone-field";
+} from "@brandbasket/shared/lib/patients/fields";
+import { PATIENT_NAME_MAX_LENGTH, PATIENT_TAG_MAX_LENGTH, PATIENT_TAGS_MAX } from "@brandbasket/shared/lib/patients/limits";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { PhoneField } from "@brandbasket/shared/ui/phone-field";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 /** Every tag, the commas between them, and a space after each: the most the tags input can usefully hold. */

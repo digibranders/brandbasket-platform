@@ -10,7 +10,7 @@ import {
   readDirectoryReviewHelpful,
   type Database,
   type DirectoryReviewOtpRow,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { getStaffDb } from "./db";
 import { accountCodeSecret } from "./env";
 import { hashOtpCode } from "./otp-crypto";
@@ -24,8 +24,8 @@ vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./directory-visitor", () => ({ startVisitorSession: vi.fn(async () => undefined) }));
 vi.mock("./visitor-consent", () => ({ recordContributionConsent: vi.fn() }));
 vi.mock("./env", () => ({ accountCodeSecret: vi.fn() }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     // Used by ./directory-signals (visitorHash's module) at import time.
     ...actual,

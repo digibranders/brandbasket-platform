@@ -1,8 +1,8 @@
 import "server-only";
-import { readBookingContext, readSiteFacts, type AppointmentSettingsRow, type BookingContext, type Database, type SiteFacts } from "@fynix/db";
-import { buildClinicWeek, freePractitionersAt, type ClinicWeek, type PractitionerCalendar } from "@fynix/shared/lib/appointments/clinic-availability";
-import { findSlot, type SiteSlotState } from "@fynix/shared/lib/appointments/slots";
-import { addDays, localDateIn, mondayOf, zonedTimeToUtc } from "@fynix/shared/lib/calendar/local-date";
+import { readBookingContext, readSiteFacts, type AppointmentSettingsRow, type BookingContext, type Database, type SiteFacts } from "@brandbasket/db";
+import { buildClinicWeek, freePractitionersAt, type ClinicWeek, type PractitionerCalendar } from "@brandbasket/shared/lib/appointments/clinic-availability";
+import { findSlot, type SiteSlotState } from "@brandbasket/shared/lib/appointments/slots";
+import { addDays, localDateIn, mondayOf, zonedTimeToUtc } from "@brandbasket/shared/lib/calendar/local-date";
 import { loadClinicCalendars } from "./clinic-calendars";
 import { getStaffDb } from "./db";
 import { nowMinutesIn } from "./local-time";

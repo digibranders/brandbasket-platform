@@ -1,7 +1,7 @@
 import "server-only";
-import { isRealDeployment } from "@fynix/billing";
+import { isRealDeployment } from "@brandbasket/billing";
 import { z } from "zod";
-import { isCalendlyUrl } from "@fynix/shared/lib/setup-call-link";
+import { isCalendlyUrl } from "@brandbasket/shared/lib/setup-call-link";
 
 /** Who is booking, as the booking service needs to know. */
 export interface CallInvitee {

@@ -1,5 +1,5 @@
-import { gstStateCodeOf } from "@fynix/billing/gst-states";
-import type { TaxInvoice } from "@fynix/db";
+import { gstStateCodeOf } from "@brandbasket/billing/gst-states";
+import type { TaxInvoice } from "@brandbasket/db";
 import { stateName } from "../directory/india-states";
 
 /**

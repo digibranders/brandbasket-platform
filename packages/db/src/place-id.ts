@@ -6,9 +6,9 @@ import { createHmac, randomBytes } from "node:crypto";
  * always with a digit, so it never spells a word. Open-data ids (issued by the dataset build from the row's
  * Overture/OSM id) start with a letter; ids made here start with a digit, so the two sources can never collide.
  *
- * Lives in @fynix/db rather than @fynix/shared because shared depends on db (not the other way round) and
+ * Lives in @brandbasket/db rather than @brandbasket/shared because shared depends on db (not the other way round) and
  * the registry queries in db need it. Apps and the website import it through
- * @fynix/shared/lib/directory/place-id, which re-exports this module via the @fynix/db/place-id subpath.
+ * @brandbasket/shared/lib/directory/place-id, which re-exports this module via the @brandbasket/db/place-id subpath.
  */
 export const PLACE_ID_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz";
 export const PLACE_ID_LENGTH = 7;

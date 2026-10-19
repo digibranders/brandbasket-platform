@@ -4,7 +4,7 @@
  * `transitionAppointment`'s `done` and `no_show` edges (packages/db/src/queries/appointments.ts) enforce the same
  * `starts_at <= now` condition at the database layer, so this is a UI-facing mirror of that rule, not the only
  * place it's held. */
-import type { AppointmentRow } from "@fynix/db";
+import type { AppointmentRow } from "@brandbasket/db";
 
 export function canRecordOutcome(appointment: Pick<AppointmentRow, "status" | "startsAt">, now: Date): boolean {
   return appointment.status === "booked" && appointment.startsAt.getTime() <= now.getTime();

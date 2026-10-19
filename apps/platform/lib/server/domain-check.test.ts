@@ -1,6 +1,6 @@
 import type { Resolver } from "node:dns/promises";
 import { describe, expect, it, vi } from "vitest";
-import { VERCEL_APEX_IP, VERCEL_CNAME_TARGET } from "@fynix/shared/lib/onboarding/domain-dns";
+import { VERCEL_APEX_IP, VERCEL_CNAME_TARGET } from "@brandbasket/shared/lib/onboarding/domain-dns";
 import { checkDomainDns } from "./domain-check";
 
 vi.mock("server-only", () => ({}));

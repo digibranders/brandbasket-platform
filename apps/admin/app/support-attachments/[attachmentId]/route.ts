@@ -1,9 +1,9 @@
-import { getSupportAttachmentForStaff } from "@fynix/db";
+import { getSupportAttachmentForStaff } from "@brandbasket/db";
 import {
   serveSupportAttachment,
   supportAttachmentUnavailable,
-} from "@fynix/shared/server/support-attachment-serving";
-import { getSupportStorage } from "@fynix/shared/server/support-storage";
+} from "@brandbasket/shared/server/support-attachment-serving";
+import { getSupportStorage } from "@brandbasket/shared/server/support-storage";
 import { getStaffDb } from "@/lib/server/db";
 import { getStaffAccess, requireStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess } from "@/lib/server/staff-access-log";

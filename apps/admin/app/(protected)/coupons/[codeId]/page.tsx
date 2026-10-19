@@ -4,15 +4,15 @@ import {
   findAffiliateById,
   findReferralCodeById,
   listReferralRedemptions,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
-import { BILLING_CURRENCY_LABELS } from "@fynix/shared/lib/currency";
-import { formatMoney } from "@fynix/shared/lib/money";
-import { describeReferralDiscount, formatPercent } from "@fynix/shared/lib/billing/referral-value";
+import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
+import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
+import { formatMoney } from "@brandbasket/shared/lib/money";
+import { describeReferralDiscount, formatPercent } from "@brandbasket/shared/lib/billing/referral-value";
 import { DeleteReferralCodeForm, RetireReferralCodeForm } from "@/components/referral-code-form";
 import { Figures } from "@/components/console/figures";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";

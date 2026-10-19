@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
-import { formatAdLastDay, formatAdDeadline, formatAdWeek, formatRupees } from "@fynix/shared/lib/directory/ads";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { formatAdLastDay, formatAdDeadline, formatAdWeek, formatRupees } from "@brandbasket/shared/lib/directory/ads";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import type { AdSpotNow } from "@/lib/advertise-spots-now";
 import { biddersLabel, SPOT_HINTS, SPOT_NAMES } from "@/lib/advertise-spots";
 import type { AdWeek } from "@/lib/server/directory-ads";

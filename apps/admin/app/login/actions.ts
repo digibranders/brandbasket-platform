@@ -1,9 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { typedSignInIdentifier, type SignInFormState } from "@fynix/shared/lib/sign-in-form";
+import { typedSignInIdentifier, type SignInFormState } from "@brandbasket/shared/lib/sign-in-form";
 import { signInWithPassword } from "@/lib/server/sign-in";
-import { checkHuman } from "@fynix/shared/server/turnstile-request";
+import { checkHuman } from "@brandbasket/shared/server/turnstile-request";
 
 export async function signInStaff(_previous: SignInFormState, formData: FormData): Promise<SignInFormState> {
   const human = await checkHuman(formData, "staff_sign_in");

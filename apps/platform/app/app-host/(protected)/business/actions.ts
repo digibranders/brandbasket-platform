@@ -10,17 +10,17 @@ import { isItemDeleteForm, parseFaqForm, parseProductForm, parseServiceForm, rea
 import { parseContactOptionsForm, parsePageTabsForm, parseTrustForm } from "@/lib/contact-trust-form";
 import type { ItemFormState } from "@/lib/item-form-state";
 import { ensureGeoCatalog } from "@/lib/server/geo-catalog";
-import { PICTURE_KINDS, type PictureKind } from "@fynix/shared/lib/directory/pictures";
+import { PICTURE_KINDS, type PictureKind } from "@brandbasket/shared/lib/directory/pictures";
 import { isPublished } from "@/lib/business-profile";
 import { profileHref, type ProfileNotice } from "@/lib/business-profile-notices";
 import { ownerFormCheck } from "@/lib/owner-form";
 import { parseYoutubeLink } from "@/lib/youtube-video";
 import { forgetGoogleImport } from "@/lib/server/google-import-cookie";
-import { getMediaStorage } from "@fynix/shared/server/media-storage";
+import { getMediaStorage } from "@brandbasket/shared/server/media-storage";
 import { getStaffDb } from "@/lib/server/db";
 import { removeListingPictures } from "@/lib/server/listing-pictures";
 import { listingVideoDeps, removeListingVideo, setFeaturedListingVideo } from "@/lib/server/listing-videos";
-import { parseVideoSlot } from "@fynix/shared/lib/directory/videos";
+import { parseVideoSlot } from "@brandbasket/shared/lib/directory/videos";
 import { LISTING_PAGE_PATH, requireCustomerAccess } from "@/lib/server/customer-access";
 import {
   getBusinessProfilePage,

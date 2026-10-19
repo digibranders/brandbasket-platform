@@ -1,4 +1,4 @@
-import type { BillingProviderName, SubscriptionStatus } from "@fynix/db";
+import type { BillingProviderName, SubscriptionStatus } from "@brandbasket/db";
 import { hasBillingAccess } from "./access";
 
 /** An unpaid checkout younger than this is picked up again rather than replaced. */

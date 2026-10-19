@@ -3,7 +3,7 @@ import { requestPasswordResetAction } from "@/app/app-host/forgot-password/actio
 import { requestPasswordReset } from "@/lib/server/account-recovery";
 
 vi.mock("@/lib/server/account-recovery", () => ({ requestPasswordReset: vi.fn() }));
-vi.mock("@fynix/shared/server/turnstile-request", () => ({ checkHuman: vi.fn(async () => ({ ok: true })) }));
+vi.mock("@brandbasket/shared/server/turnstile-request", () => ({ checkHuman: vi.fn(async () => ({ ok: true })) }));
 vi.mock("server-only", () => ({}));
 
 function form(entries: Record<string, string>): FormData {

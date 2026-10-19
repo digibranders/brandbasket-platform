@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { EmailUs } from "@/components/panel/email-us";
 import type { ReactElement } from "react";
-import { formatMoney } from "@fynix/shared/lib/money";
-import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
-import { renewalCharge } from "@fynix/shared/lib/billing/terms";
-import { nextBundledNetCents } from "@fynix/shared/lib/billing/bundle";
+import { formatMoney } from "@brandbasket/shared/lib/money";
+import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
+import { renewalCharge } from "@brandbasket/shared/lib/billing/terms";
+import { nextBundledNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import { BillingDetails } from "@/components/panel/billing/billing-details";
 import { PlanComparisonTable } from "@/components/panel/upgrade/plan-comparison-table";
 import { UpgradePayForm } from "@/components/panel/upgrade/upgrade-pay-form";

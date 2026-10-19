@@ -1,8 +1,8 @@
-import { FYNIX_SAC } from "@fynix/billing";
-import { BillingRangeError } from "@fynix/billing/billing-range-error";
-import { InvoiceAmountMismatchError } from "@fynix/billing/tax-invoice";
-import type { AddOnSubscription, NewTaxInvoice, Payment, ScopedTransaction, TaxInvoice } from "@fynix/db";
-import * as db from "@fynix/db";
+import { FYNIX_SAC } from "@brandbasket/billing";
+import { BillingRangeError } from "@brandbasket/billing/billing-range-error";
+import { InvoiceAmountMismatchError } from "@brandbasket/billing/tax-invoice";
+import type { AddOnSubscription, NewTaxInvoice, Payment, ScopedTransaction, TaxInvoice } from "@brandbasket/db";
+import * as db from "@brandbasket/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   InvalidServicePeriodError,
@@ -21,8 +21,8 @@ vi.mock("server-only", () => ({}));
 
 // Only the reads and writes an add-on invoice makes are faked; the rest of the package (isInvoiceablePayment, the types'
 // runtime) stays real. The invoice builder, the text rules and the GST sums all run for real.
-vi.mock("@fynix/db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@fynix/db")>()),
+vi.mock("@brandbasket/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@brandbasket/db")>()),
   findAddOnSubscriptionForPayment: vi.fn(),
   findBillingProfile: vi.fn(),
   findInvoiceFallbackRecipient: vi.fn(),

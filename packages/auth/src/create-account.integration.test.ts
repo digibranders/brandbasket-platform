@@ -1,5 +1,5 @@
-import { users } from "@fynix/db";
-import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@fynix/db/testing";
+import { users } from "@brandbasket/db";
+import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@brandbasket/db/testing";
 import { count, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AccountAlreadyExistsError, createAccountWithGrant } from "./create-account";

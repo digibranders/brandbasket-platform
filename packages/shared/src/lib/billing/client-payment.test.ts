@@ -1,4 +1,4 @@
-import type { ClientBilling, ClientFirstPayment, ClientSubscription } from "@fynix/db";
+import type { ClientBilling, ClientFirstPayment, ClientSubscription } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { clientPaymentState, countPayingClients } from "./client-payment";
 

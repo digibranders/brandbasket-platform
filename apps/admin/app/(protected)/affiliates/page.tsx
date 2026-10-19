@@ -1,9 +1,9 @@
-import { listAffiliates, type AffiliateTotals } from "@fynix/db";
+import { listAffiliates, type AffiliateTotals } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { LinkIcon } from "@fynix/shared/ui/icons";
-import { formatMoney } from "@fynix/shared/lib/money";
+import { LinkIcon } from "@brandbasket/shared/ui/icons";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { buttonPrimary } from "@/components/console/buttons";
 import { Figures } from "@/components/console/figures";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";

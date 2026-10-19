@@ -1,5 +1,5 @@
 import "server-only";
-import { isValidGstin, normaliseGstin, stateCodeOfGstin } from "@fynix/billing/gstin";
+import { isValidGstin, normaliseGstin, stateCodeOfGstin } from "@brandbasket/billing/gstin";
 import { isIndiaStateCode, stateName } from "../directory/india-states";
 import { optionalEmail } from "../validation/contact";
 import { parsePhoneEntry } from "../validation/phone";

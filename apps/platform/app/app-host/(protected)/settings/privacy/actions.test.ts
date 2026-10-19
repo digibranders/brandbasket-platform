@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { clearNominee, saveNominee, type Database } from "@fynix/db";
+import { clearNominee, saveNominee, type Database } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { clearNomineeAction, saveNomineeAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("@fynix/db", () => ({ saveNominee: vi.fn(async () => undefined), clearNominee: vi.fn(async () => true) }));
+vi.mock("@brandbasket/db", () => ({ saveNominee: vi.fn(async () => undefined), clearNominee: vi.fn(async () => true) }));
 vi.mock("@/lib/server/db", () => ({ getAppDb: vi.fn(() => ({}) as Database) }));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 

@@ -1,5 +1,5 @@
-import { hasBillingAccess } from "@fynix/billing";
-import type { BillingState, Plan, PlanTier, Subscription } from "@fynix/db";
+import { hasBillingAccess } from "@brandbasket/billing";
+import type { BillingState, Plan, PlanTier, Subscription } from "@brandbasket/db";
 
 /**
  * - `unpaid`: no payment has ever opened a subscription (none yet, a checkout that was never paid, or one that was

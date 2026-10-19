@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 
 interface CustomRangeFormProps {
   readonly from: string;
@@ -9,7 +9,7 @@ interface CustomRangeFormProps {
   readonly doctor: string | null;
 }
 
-/** The last calendar date @fynix/shared's isIsoDate accepts -- mirrors components/panel/form/panel-form.tsx's
+/** The last calendar date @brandbasket/shared's isIsoDate accepts -- mirrors components/panel/form/panel-form.tsx's
  * own MAX_DATE, kept as a local literal rather than imported: that module is a client component, and this form is
  * plain, server-rendered HTML (a GET form navigates on its own; no server action, no client JS needed here). */
 const MAX_DATE = "2100-12-31";

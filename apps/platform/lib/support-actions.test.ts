@@ -8,7 +8,7 @@ vi.mock("@/lib/server/support-access", () => ({ getSupportAccess: mocks.access }
 vi.mock("@/lib/server/db", () => ({ getAppDb: () => ({}), getStaffDb: () => ({}) }));
 vi.mock("@/lib/server/error-report", () => ({ reportServerError: vi.fn() }));
 vi.mock("@/lib/server/support-alerts", () => ({ sendSupportTicketAlert: mocks.ticketAlert, sendSupportReplyAlert: mocks.replyAlert }));
-vi.mock("@fynix/db", () => ({ createSupportTicketWithOutcome: mocks.create, appendSupportReplyWithOutcome: mocks.reply, markSupportTicketRead: mocks.read, consumeRateLimit: mocks.limit, getSupportUnreadCount: vi.fn(), listSupportTickets: vi.fn(), SupportQueryError: class extends Error {} }));
+vi.mock("@brandbasket/db", () => ({ createSupportTicketWithOutcome: mocks.create, appendSupportReplyWithOutcome: mocks.reply, markSupportTicketRead: mocks.read, consumeRateLimit: mocks.limit, getSupportUnreadCount: vi.fn(), listSupportTickets: vi.fn(), SupportQueryError: class extends Error {} }));
 import { acknowledgeSupportReplies, createSupportRequest, replyToSupportRequest } from "@/app/app-host/(support)/support/actions";
 import { INITIAL_SUPPORT_STATE } from "./support-form-state";
 

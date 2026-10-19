@@ -2,8 +2,8 @@
 
 import { useEffect, type ReactElement } from "react";
 import { reportBoundaryError } from "@/lib/report-boundary-error";
-import { isStaleDeployError } from "@fynix/shared/lib/stale-deploy";
-import { DeploymentUpdate } from "@fynix/shared/ui/panel/deployment-update";
+import { isStaleDeployError } from "@brandbasket/shared/lib/stale-deploy";
+import { DeploymentUpdate } from "@brandbasket/shared/ui/panel/deployment-update";
 
 export default function GlobalError({ error, reset }: { readonly error: Error & { readonly digest?: string }; readonly reset: () => void }): ReactElement {
   useEffect(() => {

@@ -1,9 +1,9 @@
 import type { ReactElement, ReactNode } from "react";
 import { requestBrand } from "@/lib/server/request-brand";
-import { LIFETIME_OFFER_PERCENT } from "@fynix/shared/lib/billing/lifetime-offer";
-import { PREMIUM_ADD_ON_DISCOUNT_PERCENT, type AddOn, type AddOnPrice } from "@fynix/shared/lib/billing/add-ons";
-import type { AddOnAction, AddOnCheckoutIntent } from "@fynix/shared/lib/billing/add-on-state";
-import { formatMoney } from "@fynix/shared/lib/money";
+import { LIFETIME_OFFER_PERCENT } from "@brandbasket/shared/lib/billing/lifetime-offer";
+import { PREMIUM_ADD_ON_DISCOUNT_PERCENT, type AddOn, type AddOnPrice } from "@brandbasket/shared/lib/billing/add-ons";
+import type { AddOnAction, AddOnCheckoutIntent } from "@brandbasket/shared/lib/billing/add-on-state";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { endAddOnAction, removeBundledAddOnAction, startAddOnAction } from "@/app/app-host/(protected)/add-ons/actions";
 import { BundledAddOnRemove } from "@/components/panel/add-ons/bundled-add-on-remove";
 import { AddOnCheckoutDialog } from "@/components/panel/add-ons/add-on-checkout-dialog";

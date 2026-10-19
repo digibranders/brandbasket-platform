@@ -1,7 +1,7 @@
 import "server-only";
-import { recordConsent, type Database } from "@fynix/db";
-import { LEGAL_TEXT_VERSION } from "@fynix/shared/lib/privacy/notice-version";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { recordConsent, type Database } from "@brandbasket/db";
+import { LEGAL_TEXT_VERSION } from "@brandbasket/shared/lib/privacy/notice-version";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 
 /**
  * Keeps proof that the owner of a new account agreed to the Terms and Privacy Notice (DPDP Act s.6, r.3), with the

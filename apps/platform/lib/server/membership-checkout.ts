@@ -1,6 +1,6 @@
 import "server-only";
-import { findBillingState, type Plan } from "@fynix/db";
-import { lifetimeOfferVisible } from "@fynix/shared/lib/billing/lifetime-offer";
+import { findBillingState, type Plan } from "@brandbasket/db";
+import { lifetimeOfferVisible } from "@brandbasket/shared/lib/billing/lifetime-offer";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import type { MembershipTier } from "@/lib/membership";
 import { loadBillingDetailsView } from "./billing-details";

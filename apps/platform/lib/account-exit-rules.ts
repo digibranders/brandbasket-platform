@@ -1,6 +1,6 @@
-import type { AccountExitReason, AddOnSubscription, Plan, Subscription } from "@fynix/db";
-import { ACCOUNT_CLOSURE_GRACE_DAYS } from "@fynix/db";
-import { retentionDiscountCentsFor, retentionOfferPercent } from "@fynix/shared/lib/account-exit";
+import type { AccountExitReason, AddOnSubscription, Plan, Subscription } from "@brandbasket/db";
+import { ACCOUNT_CLOSURE_GRACE_DAYS } from "@brandbasket/db";
+import { retentionDiscountCentsFor, retentionOfferPercent } from "@brandbasket/shared/lib/account-exit";
 
 /*
  * The decisions behind the Delete account page, free of the database and the provider so each can be tested alone:

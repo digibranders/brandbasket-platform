@@ -1,5 +1,5 @@
 import "server-only";
-import { findActiveStaffMember, type ActiveStaffMember, type Database } from "@fynix/db";
+import { findActiveStaffMember, type ActiveStaffMember, type Database } from "@brandbasket/db";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { decideStaffAccess, type SessionUser, type StaffAccess } from "../lib/access";

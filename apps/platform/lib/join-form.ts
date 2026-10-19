@@ -1,9 +1,9 @@
 import { z } from "zod";
 import type { OtpRetry } from "@/lib/auth-retry";
-import { OTP_LENGTH } from "@fynix/shared/lib/appointments/otp";
-import { HOME_COUNTRY, isCountryCode } from "@fynix/shared/lib/countries";
-import { isIndiaStateCode } from "@fynix/shared/lib/directory/india-states";
-import { cleanLine } from "@fynix/shared/lib/validation/text";
+import { OTP_LENGTH } from "@brandbasket/shared/lib/appointments/otp";
+import { HOME_COUNTRY, isCountryCode } from "@brandbasket/shared/lib/countries";
+import { isIndiaStateCode } from "@brandbasket/shared/lib/directory/india-states";
+import { cleanLine } from "@brandbasket/shared/lib/validation/text";
 import { newPasswordSchema } from "@/lib/setup-form";
 
 /*

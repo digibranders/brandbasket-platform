@@ -1,5 +1,5 @@
 {
-  "name": "@fynix/shared",
+  "name": "@brandbasket/shared",
   "version": "0.1.0",
   "private": true,
   "repository": {
@@ -21,8 +21,8 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1147.0",
-    "@fynix/billing": "workspace:*",
-    "@fynix/db": "workspace:*",
+    "@brandbasket/billing": "workspace:*",
+    "@brandbasket/db": "workspace:*",
     "@pdf-lib/fontkit": "1.1.1",
     "libphonenumber-js": "1.13.13",
     "pdf-lib": "1.17.1",

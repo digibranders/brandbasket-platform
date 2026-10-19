@@ -1,12 +1,12 @@
-import type { DirectoryAdPlacement } from "@fynix/db";
+import type { DirectoryAdPlacement } from "@brandbasket/db";
 // The subpaths, not the package indexes: this module reaches client components, and the indexes pull in the database.
-import { chargedAmountCents, GST_BASIS_POINTS } from "@fynix/billing/tax";
+import { chargedAmountCents, GST_BASIS_POINTS } from "@brandbasket/billing/tax";
 import { formatMoney, parseMoney } from "../money";
 import { areaName, categoryLabel, cityName } from "./places";
 
 /*
  * Ads on the local directory, as the advertiser's page and the staff console show them (docs/superpowers/specs/
- * 2026-09-30-directory-ads-auction-design.md). The auction's own rules (weeks, second price) live in @fynix/db's
+ * 2026-09-30-directory-ads-auction-design.md). The auction's own rules (weeks, second price) live in @brandbasket/db's
  * directory-ad-rules; this is wording, money and form parsing.
  */
 
@@ -46,7 +46,7 @@ export const AD_PLACEMENT_HINTS: Readonly<Record<DirectoryAdPlacement, string>> 
   profile: "A card on every business page in your category and area. One per page.",
 };
 
-/** The slug a home page auction keeps where a category and an area would be (HOME_AD_SCOPE_SLUG in @fynix/db). */
+/** The slug a home page auction keeps where a category and an area would be (HOME_AD_SCOPE_SLUG in @brandbasket/db). */
 const HOME_SCOPE_SLUG = "all";
 
 /** What a won spot is charged, GST included, from its net price. The one tax helper every charge uses. */

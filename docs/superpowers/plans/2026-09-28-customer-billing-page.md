@@ -7,12 +7,12 @@ payment-method card, receipts table with per-row and bulk PDF download), backed 
 
 **Architecture:** Card details come from Razorpay's own payment entity on the `subscription.charged` webhook and are
 stored on the `payments` row (new nullable columns, migration 0047); the page shows the latest one. The period bar and
-receipt numbering are pure functions in `@fynix/shared/lib/billing`. PDF receipts are built by a pure "document
+receipt numbering are pure functions in `@brandbasket/shared/lib/billing`. PDF receipts are built by a pure "document
 model" function (tested) and rendered with `pdf-lib` in a route handler on the app host, read through row-level
 security so a customer can only ever download their own.
 
 **Tech Stack:** Next.js 16 app router (route handlers + server components, one small client component), Drizzle +
-Postgres, zod, vitest, `pdf-lib` (new dependency of `@fynix/platform`).
+Postgres, zod, vitest, `pdf-lib` (new dependency of `@brandbasket/platform`).
 
 **Decisions (user, 2026-09-28):** real card from Razorpay, `Edit` = email us; PDF receipt per payment, "Download all"
 = one combined PDF (not a formal GST tax invoice, but it carries our GSTIN and the GST split); bar = days into the
@@ -61,7 +61,7 @@ export function billingPeriodProgress(
   End = commitmentEndsAt if in the future, else paidThroughAt (same rule as the page's `nextPaymentDate`, moved here and
   exported as `nextPaymentDate`). Start = activatedAt when end is the commitment end, else `addMonthsUtc(end, -1)` but
   never earlier than activatedAt. Days are whole UTC days (`Math.round(ms / 86_400_000)`), elapsed clamped to [0,total].
-- [ ] `pnpm --filter @fynix/shared test -- period` passes.
+- [ ] `pnpm --filter @brandbasket/shared test -- period` passes.
 
 ### Task 2: Receipt titles (pure)
 - [ ] Tests: `receiptNumber(7)` → `"#007"`, `receiptNumber(1234)` → `"#1234"`, non-positive/non-integer throws
@@ -70,7 +70,7 @@ export function billingPeriodProgress(
 
 ### Task 3: Payment method columns (db)
 - [ ] Migration `0047_payment_method_details.sql` (hand-written: `--> statement-breakpoint` between statements AND a
-  journal entry, idx 44; snapshot via `pnpm --filter @fynix/db db:generate` after the schema change, then replace
+  journal entry, idx 44; snapshot via `pnpm --filter @brandbasket/db db:generate` after the schema change, then replace
   the generated SQL with ours if it differs only in naming):
 ```sql
 ALTER TABLE "payments" ADD COLUMN "method" text;--> statement-breakpoint
@@ -121,7 +121,7 @@ ALTER TABLE "payments" ADD CONSTRAINT "payments_card_last4_check" CHECK ("paymen
 - [ ] Tests for the INR split (299900 + 53982 = 353882), USD, and title.
 
 ### Task 8: PDF renderer
-- [ ] `pnpm --filter @fynix/platform add pdf-lib`.
+- [ ] `pnpm --filter @brandbasket/platform add pdf-lib`.
 - [ ] `renderReceiptsPdf(docs: readonly ReceiptDocument[]): Promise<Uint8Array>` — A4, one page per receipt,
   Helvetica/Helvetica-Bold, text passed through `winAnsiSafe()` (characters the font can't encode → "?").
 - [ ] Test: output starts with `%PDF-`, `PDFDocument.load` reports N pages; a business name with Devanagari doesn't throw.

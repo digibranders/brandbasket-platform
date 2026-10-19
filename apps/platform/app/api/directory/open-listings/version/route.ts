@@ -1,4 +1,4 @@
-import { openListingsVersion } from "@fynix/db";
+import { openListingsVersion } from "@brandbasket/db";
 import { getStaffDb } from "@/lib/server/db";
 import { handleOpenListingsVersion } from "@/lib/server/open-listings-api";
 import { leadsApiToken } from "@/lib/server/website-api-auth";

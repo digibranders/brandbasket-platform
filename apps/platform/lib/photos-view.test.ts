@@ -1,4 +1,4 @@
-import type { DirectoryPicture, DirectoryPictureSlot, DirectoryPictureStatus } from "@fynix/db";
+import type { DirectoryPicture, DirectoryPictureSlot, DirectoryPictureStatus } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { hasAnyPicture, kindStatus, ownPictureHref, readPhotosNotice, shownPicture, slotPictures } from "./photos-view";
 

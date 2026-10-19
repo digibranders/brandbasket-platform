@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AccountAlreadyExistsError, createVerifiedEmailAccountWithGrant } from "@fynix/auth";
+import { AccountAlreadyExistsError, createVerifiedEmailAccountWithGrant } from "@brandbasket/auth";
 import {
   consumeRateLimit,
   createUnlistedAccountBusiness,
@@ -7,8 +7,8 @@ import {
   recordConsent,
   UserAlreadyHasBusinessError,
   type Database,
-} from "@fynix/db";
-import { LEGAL_TEXT_VERSION } from "@fynix/shared/lib/privacy/notice-version";
+} from "@brandbasket/db";
+import { LEGAL_TEXT_VERSION } from "@brandbasket/shared/lib/privacy/notice-version";
 import type { JoinInput } from "@/lib/join-form";
 import { confirmAccountEmailCode, requestAccountEmailCode } from "./account-email-code";
 import { getAuth } from "./auth";
@@ -30,12 +30,12 @@ vi.mock("./customer-sign-in", async () => {
   };
 });
 vi.mock("./account-email-code", () => ({ requestAccountEmailCode: vi.fn(), confirmAccountEmailCode: vi.fn() }));
-vi.mock("@fynix/auth", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/auth")>("@fynix/auth");
+vi.mock("@brandbasket/auth", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/auth")>("@brandbasket/auth");
   return { AccountAlreadyExistsError: actual.AccountAlreadyExistsError, createVerifiedEmailAccountWithGrant: vi.fn() };
 });
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     phoneAccountEmail: actual.phoneAccountEmail,
     isPhoneAccountEmail: actual.isPhoneAccountEmail,

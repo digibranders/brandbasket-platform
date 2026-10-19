@@ -1,7 +1,7 @@
 import { profileHref, type ProfileNotice } from "@/lib/business-profile-notices";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { googleBusinessCredentials } from "@/lib/server/env";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { exchangeGoogleCode, fetchGoogleLocations, GoogleBusinessError, toImportedLocation } from "@/lib/server/google-business";
 import { googleImportOrigin, rememberGoogleImport, takeGoogleState } from "@/lib/server/google-import-cookie";
 import { GOOGLE_CALLBACK_PATH } from "../paths";

@@ -4,7 +4,7 @@ A clinic that takes bookings through Fynix is the one that decides why a patient
 
 **On the client site**, above the booking button:
 
-1. Render `patientNotice(clinicName, language)` from `@fynix/shared/lib/privacy/patient-notice` (`en`, `hi` or `mr`). Show it as plain text, not behind a link or a tick box: the patient is not asked to agree, they are told.
+1. Render `patientNotice(clinicName, language)` from `@brandbasket/shared/lib/privacy/patient-notice` (`en`, `hi` or `mr`). Show it as plain text, not behind a link or a tick box: the patient is not asked to agree, they are told.
 2. Send `noticeVersion: PATIENT_NOTICE_VERSION` (from the same module) with the booking request's `fields` (`SiteBookingFields.noticeVersion` in `lib/site-bookings.ts`, the file client sites keep a copy of).
 
 **On the platform**, nothing else to do. The version is held with the pending booking, and once the code is confirmed and the slot is booked it is recorded in `consent_records` (purpose `patient_booking`, subject type `patient`, the patient's id). A request without it books as before and records nothing. An erased patient has no record to attach it to.

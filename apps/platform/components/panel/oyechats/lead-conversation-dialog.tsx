@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
-import { formatTimestamp } from "@fynix/shared/lib/format";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { formatTimestamp } from "@brandbasket/shared/lib/format";
 import { openLeadConversationAction, type OpenedConversation } from "@/app/app-host/(protected)/oyechats/actions";
 import { CONVERSATION_NOTICES, MESSAGE_AUTHOR_LABELS, messageCountLabel, type LeadTableRow } from "@/lib/chatbots-view";
 

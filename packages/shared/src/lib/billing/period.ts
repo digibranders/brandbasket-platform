@@ -1,4 +1,4 @@
-import type { Subscription } from "@fynix/db";
+import type { Subscription } from "@brandbasket/db";
 
 const MS_PER_DAY = 86_400_000;
 
@@ -21,7 +21,7 @@ export interface PeriodProgress {
 
 /**
  * `from` less one calendar month, in UTC, with the day clamped to the end of a shorter month: the start of a monthly
- * period that ends on `from`. The mirror of addMonthsUtc in @fynix/billing, which only counts forwards.
+ * period that ends on `from`. The mirror of addMonthsUtc in @brandbasket/billing, which only counts forwards.
  */
 function oneMonthBefore(from: Date): Date {
   const targetMonthIndex = from.getUTCMonth() - 1;

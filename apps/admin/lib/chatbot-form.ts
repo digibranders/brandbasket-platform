@@ -1,4 +1,4 @@
-import { chatbotStatus, type ChatbotStatus } from "@fynix/db";
+import { chatbotStatus, type ChatbotStatus } from "@brandbasket/db";
 
 /*
  * The client page's Chatbot section: what staff may type for a bot and the fixed words said back (`?chatbots=`). The address

@@ -3,8 +3,8 @@ import { activateFirstPayment, activateReactivationPayment, activateRenewalPayme
 
 vi.mock("server-only", () => ({}));
 
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     ...actual,
     recordPaymentAndActivate: vi.fn().mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } }),
@@ -16,7 +16,7 @@ vi.mock("@fynix/db", async () => {
 vi.mock("./affiliate-accrual", () => ({ accrueAffiliateEarning: vi.fn() }));
 vi.mock("./tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn() }));
 
-import { openMembershipForListingBusiness, recordPaymentAndActivate } from "@fynix/db";
+import { openMembershipForListingBusiness, recordPaymentAndActivate } from "@brandbasket/db";
 import { accrueAffiliateEarning } from "./affiliate-accrual";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 

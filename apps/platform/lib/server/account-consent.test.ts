@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { recordConsent, type Database } from "@fynix/db";
-import { LEGAL_TEXT_VERSION } from "@fynix/shared/lib/privacy/notice-version";
+import { recordConsent, type Database } from "@brandbasket/db";
+import { LEGAL_TEXT_VERSION } from "@brandbasket/shared/lib/privacy/notice-version";
 import { recordAccountTermsConsent } from "./account-consent";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({ recordConsent: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ recordConsent: vi.fn() }));
 
 const DB = {} as Database;
 

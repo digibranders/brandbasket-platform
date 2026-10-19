@@ -1,5 +1,5 @@
-import type { MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
-import type { AddOnView } from "@fynix/shared/lib/billing/add-on-state";
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import type { AddOnView } from "@brandbasket/shared/lib/billing/add-on-state";
 import type { AddOnPaymentNotice } from "./add-on-notices";
 
 /**

@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactElement } from "react";
-import { AuthScreen } from "@fynix/shared/ui/panel/auth-screen";
+import { AuthScreen } from "@brandbasket/shared/ui/panel/auth-screen";
 import { logoOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 

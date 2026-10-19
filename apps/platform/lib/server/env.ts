@@ -1,5 +1,5 @@
 import "server-only";
-import { isRealDeployment } from "@fynix/billing";
+import { isRealDeployment } from "@brandbasket/billing";
 import { z } from "zod";
 
 const POSTGRES_PROTOCOL = /^postgres(ql)?$/;

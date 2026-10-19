@@ -1,5 +1,5 @@
 {
-  "name": "@fynix/platform",
+  "name": "@brandbasket/platform",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -13,12 +13,12 @@
     "cms:migrate:status": "PAYLOAD_CONFIG_PATH=../../packages/cms/payload.config.ts payload migrate:status"
   },
   "dependencies": {
-    "@fynix/auth": "workspace:*",
-    "@fynix/billing": "workspace:*",
-    "@fynix/cms": "workspace:*",
-    "@fynix/db": "workspace:*",
-    "@fynix/email": "workspace:*",
-    "@fynix/shared": "workspace:*",
+    "@brandbasket/auth": "workspace:*",
+    "@brandbasket/billing": "workspace:*",
+    "@brandbasket/cms": "workspace:*",
+    "@brandbasket/db": "workspace:*",
+    "@brandbasket/email": "workspace:*",
+    "@brandbasket/shared": "workspace:*",
     "@lexical/link": "0.41.0",
     "@lexical/list": "0.41.0",
     "@lexical/react": "0.41.0",

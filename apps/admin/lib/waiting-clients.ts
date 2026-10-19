@@ -1,5 +1,5 @@
-import type { ClientSummary } from "@fynix/db";
-import { PROJECT_STATUSES_WAITING_ON_US } from "@fynix/shared/lib/project-status";
+import type { ClientSummary } from "@brandbasket/db";
+import { PROJECT_STATUSES_WAITING_ON_US } from "@brandbasket/shared/lib/project-status";
 
 export interface WaitingClient {
   readonly client: ClientSummary;

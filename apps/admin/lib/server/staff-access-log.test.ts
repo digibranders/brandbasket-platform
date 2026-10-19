@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { recordStaffAccess, type Database } from "@fynix/db";
+import { recordStaffAccess, type Database } from "@brandbasket/db";
 import { logStaffAccess, logStaffAccessOrThrow } from "./staff-access-log";
 
 vi.mock("server-only", () => ({}));
@@ -7,7 +7,7 @@ vi.mock("next/headers", () => ({
   headers: vi.fn(async () => new Headers({ "x-forwarded-for": "203.0.113.9, 10.0.0.1" })),
 }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({}) as Database) }));
-vi.mock("@fynix/db", () => ({ recordStaffAccess: vi.fn(async () => undefined) }));
+vi.mock("@brandbasket/db", () => ({ recordStaffAccess: vi.fn(async () => undefined) }));
 
 const BUSINESS = "0197c2a0-0000-7000-8000-000000000001";
 

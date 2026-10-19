@@ -1,5 +1,5 @@
 {
-  "name": "@fynix/auth",
+  "name": "@brandbasket/auth",
   "version": "0.1.0",
   "private": true,
   "repository": {
@@ -19,7 +19,7 @@
     "staff:create": "tsx scripts/create-staff.ts"
   },
   "dependencies": {
-    "@fynix/db": "workspace:*",
+    "@brandbasket/db": "workspace:*",
     "better-auth": "1.7.5",
     "drizzle-orm": "0.45.2",
     "zod": "^4.6.5"

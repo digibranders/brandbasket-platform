@@ -1,5 +1,5 @@
-import { OPTIONAL_PAGE_TABS, RENAMABLE_PAGE_TABS, checkPageTabLabel, type OptionalPageTab, type RenamablePageTab } from "@fynix/shared/lib/directory/page-tabs";
-import { cleanLine } from "@fynix/shared/lib/validation/text";
+import { OPTIONAL_PAGE_TABS, RENAMABLE_PAGE_TABS, checkPageTabLabel, type OptionalPageTab, type RenamablePageTab } from "@brandbasket/shared/lib/directory/page-tabs";
+import { cleanLine } from "@brandbasket/shared/lib/validation/text";
 import {
   CONTACT_OPTIONS,
   LICENCE_MAX_LENGTH,

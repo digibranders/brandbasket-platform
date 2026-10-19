@@ -202,7 +202,7 @@ export class UserAlreadyHasBusinessError extends Error {
 }
 
 interface NewListingAccountBase {
-  /** The account just created by @fynix/auth. */
+  /** The account just created by @brandbasket/auth. */
   readonly userId: string;
   /** The listing's name, from the website: the business's name too. */
   readonly businessName: string;
@@ -1727,7 +1727,7 @@ export async function listWinsForBusiness(db: Runner, businessId: string, fromWe
 /** What a won spot's charge looks like: supplied by the caller, which owns tax and wording. */
 export interface AdChargePricing {
   readonly taxRateBasisPoints: number;
-  /** The amount charged for `netPaise`, tax included (chargedAmountCents in @fynix/billing). */
+  /** The amount charged for `netPaise`, tax included (chargedAmountCents in @brandbasket/billing). */
   readonly chargedPaise: (netPaise: number) => number;
   /** The charge's description on Billing and the receipt. */
   readonly describe: (win: { readonly placement: DirectoryAdPlacement; readonly spot: number; readonly weekStart: string } & DirectoryAdMarket) => string;

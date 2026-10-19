@@ -96,7 +96,7 @@ packages/
 docs/         operations notes, and the platform specs and plans written while this was Fynix Digital's
 ```
 
-The package scope is still `@fynix/*`; renaming it is a later step.
+The package scope is still `@brandbasket/*`; renaming it is a later step.
 
 ## How access works
 

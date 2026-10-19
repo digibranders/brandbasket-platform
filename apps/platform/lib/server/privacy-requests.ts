@@ -14,11 +14,11 @@ import {
   type OwnDirectoryContributions,
   type PrivacyRequestOtpPayload,
   type RateLimitRule,
-} from "@fynix/db";
-import { EmailConfigurationError, privacyRequestCodeEmail } from "@fynix/email";
-import { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
-import { requestDeadlines, requestDeadlinesFor } from "@fynix/shared/lib/privacy-request-deadlines";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+} from "@brandbasket/db";
+import { EmailConfigurationError, privacyRequestCodeEmail } from "@brandbasket/email";
+import { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@brandbasket/shared/lib/appointments/otp";
+import { requestDeadlines, requestDeadlinesFor } from "@brandbasket/shared/lib/privacy-request-deadlines";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { emailHint } from "@/lib/email-hint";
 import { getStaffDb } from "./db";
 import { customerEmailTransport } from "./email";

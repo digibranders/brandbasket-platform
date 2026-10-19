@@ -1,5 +1,5 @@
 import "server-only";
-import { consumeRateLimit, findChatbotLeadForBusiness, findChatbotOperatorAccess, withTenantScope, type Chatbot } from "@fynix/db";
+import { consumeRateLimit, findChatbotLeadForBusiness, findChatbotOperatorAccess, withTenantScope, type Chatbot } from "@brandbasket/db";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { fetchConversation, fetchLeadActivity, type ConversationMessage, type LeadActivity } from "./oyechats-api";

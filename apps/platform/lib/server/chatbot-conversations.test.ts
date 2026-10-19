@@ -1,4 +1,4 @@
-import { consumeRateLimit, findChatbotLeadForBusiness, findChatbotOperatorAccess, withTenantScope } from "@fynix/db";
+import { consumeRateLimit, findChatbotLeadForBusiness, findChatbotOperatorAccess, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadBotActivity, loadLeadConversation } from "./chatbot-conversations";
 import { getAppDb, getStaffDb } from "./db";
@@ -7,7 +7,7 @@ import { fetchConversation, fetchLeadActivity } from "./oyechats-api";
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
 vi.mock("./oyechats-api", () => ({ fetchConversation: vi.fn(), fetchLeadActivity: vi.fn() }));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   consumeRateLimit: vi.fn(),
   findChatbotLeadForBusiness: vi.fn(),
   findChatbotOperatorAccess: vi.fn(),

@@ -13,7 +13,7 @@ import {
   resolveDirectoryNamedForRead,
   type Database,
   type DirectoryReviewOtpRow,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { getStaffDb } from "./db";
 import type { ReviewInput } from "./directory-fields";
 import { accountCodeSecret } from "./env";
@@ -27,8 +27,8 @@ vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./directory-visitor", () => ({ startVisitorSession: vi.fn(async () => undefined) }));
 vi.mock("./visitor-consent", () => ({ recordContributionConsent: vi.fn() }));
 vi.mock("./env", () => ({ accountCodeSecret: vi.fn() }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     answerByAsked: actual.answerByAsked,
     directoryLookupOf: actual.directoryLookupOf,

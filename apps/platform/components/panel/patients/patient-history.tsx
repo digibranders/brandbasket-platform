@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import type { AppointmentRow } from "@fynix/db";
-import { slotLabel } from "@fynix/shared/lib/appointments/slots";
-import { APPOINTMENT_STATUS_LABELS } from "@fynix/shared/lib/appointments/status";
+import type { AppointmentRow } from "@brandbasket/db";
+import { slotLabel } from "@brandbasket/shared/lib/appointments/slots";
+import { APPOINTMENT_STATUS_LABELS } from "@brandbasket/shared/lib/appointments/status";
 import { appointmentHref } from "@/app/app-host/(protected)/patients/view";
 import { formatLongDate } from "@/lib/appointments/date-format";
 import { StatusLabel } from "@/components/panel/appointments/status-label";

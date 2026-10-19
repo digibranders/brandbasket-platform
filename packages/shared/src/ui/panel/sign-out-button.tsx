@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { ArrowIcon, SignOutIcon } from "@fynix/shared/ui/icons";
+import { ArrowIcon, SignOutIcon } from "@brandbasket/shared/ui/icons";
 import { cn } from "../../lib/cn";
 
 interface SignOutButtonProps {

@@ -1,4 +1,4 @@
-import { addMonthsUtc, createFakeBillingProvider, FAKE_ADD_ON_CONFIRM_PATH, FAKE_PAYMENT_METHOD, type BillingProvider } from "@fynix/billing";
+import { addMonthsUtc, createFakeBillingProvider, FAKE_ADD_ON_CONFIRM_PATH, FAKE_PAYMENT_METHOD, type BillingProvider } from "@brandbasket/billing";
 import {
   cancelStaleAddOnCheckout,
   changeAddOnEndKind,
@@ -23,9 +23,9 @@ import {
   type AddOnSubscription,
   type Database,
   type ScopedTransaction,
-} from "@fynix/db";
-import { applyAddOnPayment } from "@fynix/shared/server/add-on-activation";
-import { ensureAddOnPlan } from "@fynix/shared/server/add-on-plans";
+} from "@brandbasket/db";
+import { applyAddOnPayment } from "@brandbasket/shared/server/add-on-activation";
+import { ensureAddOnPlan } from "@brandbasket/shared/server/add-on-plans";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
@@ -52,10 +52,10 @@ vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./charges", () => ({ startCustomerChargePayment: vi.fn() }));
 vi.mock("./customer-access", () => ({ getCustomerBusinessKind: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
-vi.mock("@fynix/shared/server/add-on-plans", () => ({ ensureAddOnPlan: vi.fn() }));
-vi.mock("@fynix/shared/server/add-on-activation", () => ({ applyAddOnPayment: vi.fn() }));
+vi.mock("@brandbasket/shared/server/add-on-plans", () => ({ ensureAddOnPlan: vi.fn() }));
+vi.mock("@brandbasket/shared/server/add-on-activation", () => ({ applyAddOnPayment: vi.fn() }));
 vi.mock("./discount-plans", () => ({ ensureDiscountPlan: vi.fn() }));
-vi.mock("@fynix/db", () => {
+vi.mock("@brandbasket/db", () => {
   return {
     bundledNetAfterRemoving: (rows: readonly { id: string; status: string; endRequestedAt: Date | null; netAmountCents: number }[], removing: { id: string }) =>
       rows.filter((row) => row.id !== removing.id && row.status === "active" && row.endRequestedAt === null).reduce((total, row) => total + row.netAmountCents, 0),

@@ -3,8 +3,8 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useSyncExternalStore, type ReactElement } from "react";
 import { createPortal } from "react-dom";
-import { CrownIcon, HeartIcon, TickIcon } from "@fynix/shared/ui/icons";
-import { Button } from "@fynix/shared/ui/panel/button";
+import { CrownIcon, HeartIcon, TickIcon } from "@brandbasket/shared/ui/icons";
+import { Button } from "@brandbasket/shared/ui/panel/button";
 import { useBrand } from "@/components/panel/brand-provider";
 import { firePoppers } from "@/components/panel/fire-poppers";
 import { wantsWelcome, withoutWelcome } from "@/lib/celebration";

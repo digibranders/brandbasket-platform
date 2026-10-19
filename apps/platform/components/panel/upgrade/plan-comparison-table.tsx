@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
-import { ChevronDownIcon, TickIcon } from "@fynix/shared/ui/icons";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { ChevronDownIcon, TickIcon } from "@brandbasket/shared/ui/icons";
 import { BRAND, sellsFreeListing, type Brand } from "@/lib/brand";
 import { cellWords, COMPARISON_COLUMNS, comparisonRowsFor, type ComparisonCell, type ComparisonColumnId } from "@/lib/plan-comparison";
 

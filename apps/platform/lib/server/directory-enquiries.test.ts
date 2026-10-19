@@ -8,7 +8,7 @@ import {
   resolveDirectoryNamed,
   type Database,
   type DirectoryRef,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { getStaffDb } from "./db";
 import type { EnquiryInput } from "./directory-fields";
 import { recordDirectoryEnquiry } from "./directory-enquiries";
@@ -16,7 +16,7 @@ import { recordDirectoryEnquiry } from "./directory-enquiries";
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./env", () => ({ serverEnv: () => ({ APP_ORIGIN: "https://app.example.com" }) }));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   consumeRateLimit: vi.fn(),
   findListingOwner: vi.fn(),
   insertDirectoryEnquiry: vi.fn(),

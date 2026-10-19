@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SUPPORT_CATEGORIES, SUPPORT_PRIORITIES, SUPPORT_STATUSES, type SupportCategory } from "@fynix/shared/lib/support";
+import { SUPPORT_CATEGORIES, SUPPORT_PRIORITIES, SUPPORT_STATUSES, type SupportCategory } from "@brandbasket/shared/lib/support";
 
 export interface StaffSupportActionState {
   readonly kind: "idle" | "saved" | "invalid" | "conflict" | "error";

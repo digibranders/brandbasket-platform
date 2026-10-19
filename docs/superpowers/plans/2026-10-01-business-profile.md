@@ -27,7 +27,7 @@ Spec: `docs/superpowers/specs/2026-10-01-business-profile-design.md`. The checko
 **DB**
 - Create `packages/db/src/schema/directory-business-profiles.ts`, the `directoryBusinessProfiles` table, and export it from `schema/index.ts`.
 - Modify `packages/db/src/schema/directory-ads.ts` to add `publishedAt` on `directoryClaims`.
-- Create `packages/db/migrations/0080_business_profiles.sql` (DDL) and `0081_business_profiles_grants.sql` (grants and RLS), plus their journal entries and snapshots via `pnpm --filter @fynix/db db:generate`, renamed.
+- Create `packages/db/migrations/0080_business_profiles.sql` (DDL) and `0081_business_profiles_grants.sql` (grants and RLS), plus their journal entries and snapshots via `pnpm --filter @brandbasket/db db:generate`, renamed.
 - Create `packages/db/src/queries/directory-business-profiles.ts`:
   - `findBusinessProfile`
   - `saveBusinessDetails` (profile upsert, plus mirroring to the claim and to `businesses.name`)
@@ -117,7 +117,7 @@ Spec: `docs/superpowers/specs/2026-10-01-business-profile-design.md`. The checko
   - pictures:
     - the `listing` slot records as approved and retires the old live one
     - an upload with no claim is allowed for a listing account
-- [ ] Implement, then run `pnpm --filter @fynix/db test:integration -- directory-business-profiles`.
+- [ ] Implement, then run `pnpm --filter @brandbasket/db test:integration -- directory-business-profiles`.
 
 ### Task 3: Pure platform libs (TDD, unit)
 

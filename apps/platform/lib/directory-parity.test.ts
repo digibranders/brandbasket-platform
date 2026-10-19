@@ -22,15 +22,15 @@ import {
   MAX_DIRECTORY_SIGNAL_KEYS,
   newPlatformPlaceId,
   PLACE_ID_ALPHABET,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
-import { DIRECTORY_HIGHLIGHT_LABELS, directoryHighlightLabel } from "@fynix/shared/lib/directory-highlights";
+import { DIRECTORY_HIGHLIGHT_LABELS, directoryHighlightLabel } from "@brandbasket/shared/lib/directory-highlights";
 import {
   PROMOTION_DAYS,
   PROMOTION_MARKER,
   PROMOTION_TAG_LABELS,
   PROMOTION_TAGS,
-} from "@fynix/shared/lib/directory/promotion";
+} from "@brandbasket/shared/lib/directory/promotion";
 import {
   COMMENTS_SHOWN_PER_REVIEW,
   DIRECTORY_AD_EVENT_KINDS,

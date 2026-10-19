@@ -8,10 +8,10 @@ import {
   listPractitionerLeave,
   listPractitioners,
   withTenantScope,
-} from "@fynix/db";
-import { upcomingClosures } from "@fynix/shared/lib/business-facts/closures";
-import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
-import { fromStoredHours, type OpeningHours } from "@fynix/shared/lib/onboarding/hours";
+} from "@brandbasket/db";
+import { upcomingClosures } from "@brandbasket/shared/lib/business-facts/closures";
+import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
+import { fromStoredHours, type OpeningHours } from "@brandbasket/shared/lib/onboarding/hours";
 import { DoctorEditor } from "@/components/panel/appointments/doctor-editor";
 import { DoctorsList, type DoctorSummary } from "@/components/panel/appointments/doctors-list";
 import { requireAppointmentsModule } from "@/lib/server/business-modules";

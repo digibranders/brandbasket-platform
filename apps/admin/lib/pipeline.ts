@@ -1,7 +1,7 @@
-import type { AddOnToContact, ClientSummary, Lead, LeadStatus, PaymentNeedingAttention, ProjectStatus } from "@fynix/db";
-import { addOnById, isAddOnId } from "@fynix/shared/lib/billing/add-ons";
-import { LEAD_STATUS_LABELS } from "@fynix/shared/lib/lead-status";
-import { PROJECT_STATUS_LABELS } from "@fynix/shared/lib/project-status";
+import type { AddOnToContact, ClientSummary, Lead, LeadStatus, PaymentNeedingAttention, ProjectStatus } from "@brandbasket/db";
+import { addOnById, isAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { LEAD_STATUS_LABELS } from "@brandbasket/shared/lib/lead-status";
+import { PROJECT_STATUS_LABELS } from "@brandbasket/shared/lib/project-status";
 import type { WaitingClient } from "./waiting-clients";
 
 /** The five places a business can be on its way from first enquiry to a live website. */

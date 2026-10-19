@@ -1,6 +1,6 @@
-import type { Plan } from "@fynix/db";
+import type { Plan } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
-import type { ChecklistItem } from "@fynix/shared/lib/onboarding/checklist";
+import type { ChecklistItem } from "@brandbasket/shared/lib/onboarding/checklist";
 import { afterPaymentHref, billingBanner, paymentStep, type BannerInput, type PaymentStepInput } from "./payment-step";
 
 const USD = {

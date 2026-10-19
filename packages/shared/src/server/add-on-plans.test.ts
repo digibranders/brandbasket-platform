@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { addOnById, addOnPrice } from "../lib/billing/add-ons";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({ findAddOnProviderPlan: vi.fn(), saveAddOnProviderPlan: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ findAddOnProviderPlan: vi.fn(), saveAddOnProviderPlan: vi.fn() }));
 
-import type { BillingProvider } from "@fynix/billing";
-import { findAddOnProviderPlan, saveAddOnProviderPlan } from "@fynix/db";
+import type { BillingProvider } from "@brandbasket/billing";
+import { findAddOnProviderPlan, saveAddOnProviderPlan } from "@brandbasket/db";
 import { ensureAddOnPlan } from "./add-on-plans";
 
 const staffDb = { name: "staff-db" } as never;

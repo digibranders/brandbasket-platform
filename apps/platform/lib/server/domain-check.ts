@@ -1,6 +1,6 @@
 import "server-only";
 import { Resolver } from "node:dns/promises";
-import { dnsRecordsFor, dnsRecordStatus, overallDnsStatus, type DnsLookup, type DnsRecord, type DnsStatus } from "@fynix/shared/lib/onboarding/domain-dns";
+import { dnsRecordsFor, dnsRecordStatus, overallDnsStatus, type DnsLookup, type DnsRecord, type DnsStatus } from "@brandbasket/shared/lib/onboarding/domain-dns";
 
 export interface DomainCheck {
   readonly overall: DnsStatus;

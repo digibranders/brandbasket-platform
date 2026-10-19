@@ -7,15 +7,15 @@ import {
   type Database,
   type Lead,
   type LeadStatus,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { applyLeadDetails, LeadStatusNotAllowedError } from "./lead-updates";
 
 // The database guard itself (a lead in a system status is never moved) is proven in packages/db's funnel
 // integration test. What is checked here is what the form may ask for.
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@fynix/db")>();
+vi.mock("@brandbasket/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@brandbasket/db")>();
   return {
     isSystemLeadStatus: actual.isSystemLeadStatus,
     LeadNotFoundError: actual.LeadNotFoundError,

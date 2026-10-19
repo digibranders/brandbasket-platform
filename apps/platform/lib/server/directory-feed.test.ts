@@ -18,11 +18,11 @@ import {
   type DirectoryListingRow,
   type DirectoryPlace,
   type SiteFacts,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { readDirectoryFeed } from "./directory-feed";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   findBillingState: vi.fn(),
   findDirectoryProfile: vi.fn(),
   findPlaces: vi.fn(),

@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
-import type { BusinessService } from "@fynix/db";
-import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import type { BusinessService } from "@brandbasket/db";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import { INPUT_CLASSES, ItemRow, Labelled, priceText, RemoveButton } from "@/components/panel/business/catalog-parts";
 import { ItemForm } from "@/components/panel/business/item-form";
 import {

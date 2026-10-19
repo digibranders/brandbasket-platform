@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 
 /*
  * Online vs added by the clinic: one bar split in two, with the counts and shares printed beside the key, since two

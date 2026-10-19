@@ -4,7 +4,7 @@
 
 **Goal:** A new customer who sets their password lands in their dashboard and can look around everything they are about to get, with a banner and a locked marker on each part explaining that the first payment brings it to life. Nothing that writes anything can run until the payment clears. A fake payment provider stands in for Razorpay so the whole flow runs locally.
 
-**Architecture:** Billing lives in its own workspace package (`@fynix/billing`) holding the provider interface, the Razorpay status mapping and the pure access rule, so none of that logic is tangled into Next.js. The database gains `plans`, `subscriptions` and `payments`. Website and dashboard visibility is *derived* from the subscription row at read time and never stored, so reactivation later writes one row and nothing else. The fake provider implements the same interface Razorpay will, and swapping it is one environment variable.
+**Architecture:** Billing lives in its own workspace package (`@brandbasket/billing`) holding the provider interface, the Razorpay status mapping and the pure access rule, so none of that logic is tangled into Next.js. The database gains `plans`, `subscriptions` and `payments`. Website and dashboard visibility is *derived* from the subscription row at read time and never stored, so reactivation later writes one row and nothing else. The fake provider implements the same interface Razorpay will, and swapping it is one environment variable.
 
 **Tech Stack:** pnpm workspace, Next.js 16 App Router (server actions, `proxy.ts`), drizzle-orm + PostgreSQL 14 with RLS, Better Auth, zod 4, Vitest.
 
@@ -85,7 +85,7 @@ live. The recommended flow, written from the customer's side:
 - **Money is integer cents (or paise), always.** No floats anywhere. The existing `formatPrice` in `apps/web/lib/pricing.ts` is for marketing copy only; dashboard amounts are formatted from the plan row.
 - **Do not commit.** The user keeps this repo uncommitted for now.
 - **Do not start a dev server.** The user runs their own on port 3000. A verification server exists on 3100 (`.claude/launch.json`, config `fynix-verify`), which needs `pnpm build` first.
-- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`. Database tasks also run `pnpm --filter @fynix/db test:integration`.
+- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`. Database tasks also run `pnpm --filter @brandbasket/db test:integration`.
 
 ---
 
@@ -122,7 +122,7 @@ Add the same column to `businesses` in `packages/db/src/schema/businesses.ts` (i
 - [ ] **Step 2: Generate and annotate the migration**
 
 ```bash
-pnpm --filter @fynix/db exec drizzle-kit generate --name billing_currency
+pnpm --filter @brandbasket/db exec drizzle-kit generate --name billing_currency
 ```
 
 Open the generated `packages/db/migrations/0008_billing_currency.sql` and add a comment at the top explaining that existing rows default to USD because every customer so far is outside India.
@@ -145,7 +145,7 @@ Also show the currency in the read-only `<dl>` at the top of the page.
 
 In `packages/db/src/funnel.integration.test.ts`, extend the redemption test to assert the business inherits the lead's currency, and add a case where the lead is INR.
 
-Run: `pnpm --filter @fynix/db test:integration`
+Run: `pnpm --filter @brandbasket/db test:integration`
 Expected: all pass.
 
 ---
@@ -274,7 +274,7 @@ Export everything from `packages/db/src/schema/index.ts`.
 - [ ] **Step 2: Generate the migration**
 
 ```bash
-pnpm --filter @fynix/db exec drizzle-kit generate --name billing
+pnpm --filter @brandbasket/db exec drizzle-kit generate --name billing
 ```
 
 - [ ] **Step 3: Seed the two plans in the same migration**
@@ -367,11 +367,11 @@ New file `packages/db/src/billing.integration.test.ts`, modelled on `funnel.inte
 - the app role can read its own subscription but **cannot** insert or update one (`captureErrorText` + `/permission denied/`)
 - the app role cannot read another tenant's subscription (set the tenant GUC to a different business and expect no rows)
 
-Run: `pnpm --filter @fynix/db test:integration`
+Run: `pnpm --filter @brandbasket/db test:integration`
 
 ---
 
-### Task 4: The `@fynix/billing` package
+### Task 4: The `@brandbasket/billing` package
 
 **Files:**
 - Create: `packages/billing/package.json`, `tsconfig.json`, `vitest.config.ts`, `src/index.ts`, `src/status.ts`, `src/access.ts`, `src/provider.ts`, `src/fake-provider.ts`
@@ -385,7 +385,7 @@ Copy `packages/email/package.json` and its tsconfig/vitest config as the templat
 `src/status.ts`:
 
 ```ts
-import type { SubscriptionStatus } from "@fynix/db";
+import type { SubscriptionStatus } from "@brandbasket/db";
 
 /**
  * Razorpay's vocabulary, mapped to ours. `pending` means Razorpay is still retrying a failed charge and
@@ -495,7 +495,7 @@ Tests: a token round-trips; a tampered amount is rejected; a token signed with a
 
 `getCustomerAccess` already resolves the user and their business. Extend its `granted` result with
 `billing: { hasAccess: boolean; subscription: Subscription | null; plan: Plan | null }`, read through the app
-(RLS-scoped) connection, using `hasBillingAccess` from `@fynix/billing`. The plan comes from the business's
+(RLS-scoped) connection, using `hasBillingAccess` from `@brandbasket/billing`. The plan comes from the business's
 currency, so every screen can name the real price without a second query.
 
 One query per request: the layout, the banner and the billing page all read the same result.
@@ -530,7 +530,7 @@ in preview, and a paid customer opening `/billing` sees their receipts.
 
 - [ ] **Step 4: Unit tests**
 
-Mock `@fynix/db` and `./auth` the way `apps/web/lib/server/sign-in.test.ts` does, and assert: no subscription
+Mock `@brandbasket/db` and `./auth` the way `apps/web/lib/server/sign-in.test.ts` does, and assert: no subscription
 → no access; `incomplete` → no access; active with a future `paidThroughAt` → access; and that
 `requireBillingAccess` throws for the first two and returns for the third.
 

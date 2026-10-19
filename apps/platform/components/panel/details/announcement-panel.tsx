@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, type ReactElement } from "react";
-import { ANNOUNCEMENT_MAX_LENGTH, type Announcement } from "@fynix/shared/lib/business-facts/announcement";
-import { formatStoredDate } from "@fynix/shared/lib/format";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { ANNOUNCEMENT_MAX_LENGTH, type Announcement } from "@brandbasket/shared/lib/business-facts/announcement";
+import { formatStoredDate } from "@brandbasket/shared/lib/format";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { FIELD_CLASSES, MAX_DATE, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 interface AnnouncementPanelProps {

@@ -1,4 +1,4 @@
-import type { SidebarNavItem } from "@fynix/shared/ui/panel/sidebar-nav";
+import type { SidebarNavItem } from "@brandbasket/shared/ui/panel/sidebar-nav";
 
 /**
  * Lays the sidebar's sections end to end: the first row of every section after the first gets a hairline above it

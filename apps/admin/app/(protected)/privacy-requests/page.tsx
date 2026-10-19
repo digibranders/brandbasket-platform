@@ -1,10 +1,10 @@
-import { listPrivacyRequests, type StoredPrivacyRequest } from "@fynix/db";
-import { daysUntilDue, requestUrgency, type RequestUrgency } from "@fynix/shared/lib/privacy-request-deadlines";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
-import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
+import { listPrivacyRequests, type StoredPrivacyRequest } from "@brandbasket/db";
+import { daysUntilDue, requestUrgency, type RequestUrgency } from "@brandbasket/shared/lib/privacy-request-deadlines";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { EmptyLine } from "@/components/console/hairline-list";

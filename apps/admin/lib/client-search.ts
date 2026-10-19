@@ -1,5 +1,5 @@
-import type { ClientSummary } from "@fynix/db";
-import { displayPhone } from "@fynix/shared/server/phone-display";
+import type { ClientSummary } from "@brandbasket/db";
+import { displayPhone } from "@brandbasket/shared/server/phone-display";
 
 /**
  * Whether a client matches what staff typed in the Clients search box: the business name, or the owner's name, email

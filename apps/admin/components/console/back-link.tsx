@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { ChevronRightIcon } from "@fynix/shared/ui/icons";
+import { ChevronRightIcon } from "@brandbasket/shared/ui/icons";
 
 export function BackLink({ href, label }: { readonly href: string; readonly label: string }): ReactElement {
   return (

@@ -1,6 +1,6 @@
 // Types only: this module reaches client components, and the package index pulls in the database.
-import type { DirectoryPicture, DirectoryPictureSlot } from "@fynix/db";
-import { PICTURE_KIND_SLOTS, PICTURE_SLOTS, type PictureKind } from "@fynix/shared/lib/directory/pictures";
+import type { DirectoryPicture, DirectoryPictureSlot } from "@brandbasket/db";
+import { PICTURE_KIND_SLOTS, PICTURE_SLOTS, type PictureKind } from "@brandbasket/shared/lib/directory/pictures";
 
 /*
  * What the Photos page says about a listing account's pictures, worked out from its rows and kept free of the

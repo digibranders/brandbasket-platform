@@ -1,10 +1,10 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import type { AppointmentRow } from "@fynix/db";
-import { slotLabel } from "@fynix/shared/lib/appointments/slots";
-import { APPOINTMENT_STATUS_LABELS } from "@fynix/shared/lib/appointments/status";
-import { cn } from "@fynix/shared/lib/cn";
-import { TickIcon } from "@fynix/shared/ui/icons";
+import type { AppointmentRow } from "@brandbasket/db";
+import { slotLabel } from "@brandbasket/shared/lib/appointments/slots";
+import { APPOINTMENT_STATUS_LABELS } from "@brandbasket/shared/lib/appointments/status";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { TickIcon } from "@brandbasket/shared/ui/icons";
 import { formatGridDayLabel, formatLongDate } from "@/lib/appointments/date-format";
 import { cellKey, firstName, type GridDay, type GridRow } from "@/lib/appointments/grid";
 import { PractitionerBadge } from "./practitioner-badge";

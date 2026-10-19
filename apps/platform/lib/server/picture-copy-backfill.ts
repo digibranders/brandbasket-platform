@@ -1,6 +1,6 @@
 import "server-only";
-import { pictureCopyKey } from "@fynix/shared/server/media-keys";
-import type { MediaStorage } from "@fynix/shared/server/media-storage";
+import { pictureCopyKey } from "@brandbasket/shared/server/media-keys";
+import type { MediaStorage } from "@brandbasket/shared/server/media-storage";
 import { makePictureCopies } from "./media-upload";
 
 /*

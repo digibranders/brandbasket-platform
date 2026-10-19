@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CustomerAccess, SessionUser } from "@fynix/shared/lib/access";
+import type { CustomerAccess, SessionUser } from "@brandbasket/shared/lib/access";
 import { supportAccessFrom } from "./support-access";
 
 const user: SessionUser = { id: "person", name: "Member", email: "internal@example.test", phone: "+919000000002", emailConfirmed: false };

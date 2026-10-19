@@ -1,4 +1,4 @@
-import type { AddOnToContact, ClientSummary, Lead, LeadStatus, ProjectStatus } from "@fynix/db";
+import type { AddOnToContact, ClientSummary, Lead, LeadStatus, ProjectStatus } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import {
   attentionBySubject,

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TenantContext } from "@fynix/shared/lib/access";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { ONBOARDING_LOCKED_MESSAGE } from "@/lib/onboarding/form-state";
 import { MAX_UPLOAD_BYTES } from "@/lib/uploads/limits";
 import type { UploadOutcome } from "./onboarding-media";

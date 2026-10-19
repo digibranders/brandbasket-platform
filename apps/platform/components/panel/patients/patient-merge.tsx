@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useRef, type ReactElement } from "react";
-import { MERGE_KEEP_ID_FIELD, MERGE_REMOVE_ID_FIELD, PATIENT_PHONE_FIELD } from "@fynix/shared/lib/patients/fields";
-import { PHONE_COUNTRY_FIELD, type PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { PhoneField } from "@fynix/shared/ui/phone-field";
+import { MERGE_KEEP_ID_FIELD, MERGE_REMOVE_ID_FIELD, PATIENT_PHONE_FIELD } from "@brandbasket/shared/lib/patients/fields";
+import { PHONE_COUNTRY_FIELD, type PhoneCountryOption } from "@brandbasket/shared/lib/phone/fields";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { PhoneField } from "@brandbasket/shared/ui/phone-field";
 import { PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 interface MergeLookupFormProps {

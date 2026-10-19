@@ -1,11 +1,11 @@
-import { findChargeForBusiness, withTenantScope } from "@fynix/db";
+import { findChargeForBusiness, withTenantScope } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactElement } from "react";
 import { BrandedAuthScreen } from "@/components/panel/branded-auth-screen";
-import { chargeLabel } from "@fynix/shared/lib/billing/charges";
-import { formatMoney } from "@fynix/shared/lib/money";
+import { chargeLabel } from "@brandbasket/shared/lib/billing/charges";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { TestCheckoutForm } from "@/components/panel/test-checkout-form";
 import { chargeReturnHref, type ChargeNotice } from "@/lib/billing/charge-notices";
 import { isFakeBillingProvider } from "@/lib/server/billing";

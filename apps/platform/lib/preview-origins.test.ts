@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contentSecurityPolicy } from "@fynix/shared/lib/security-headers";
+import { contentSecurityPolicy } from "@brandbasket/shared/lib/security-headers";
 import { previewOrigins } from "@/lib/preview-origins";
 
 describe("previewOrigins", () => {

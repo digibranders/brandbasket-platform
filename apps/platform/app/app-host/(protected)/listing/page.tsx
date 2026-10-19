@@ -17,17 +17,17 @@ import {
   placeUrlPath,
   resolveListingKey,
   withTenantScope,
-} from "@fynix/db";
-import { DEFAULT_BUSINESS_TIME_ZONE, addDays, localDateIn } from "@fynix/shared/lib/calendar/local-date";
-import type { ListingButton } from "@fynix/shared/lib/directory/listing-content";
-import { DIRECTORY_ORIGIN, areaName, categoryLabel, cityName, directoryCategoryPath } from "@fynix/shared/lib/directory/places";
-import { LISTING_STAGE_LABELS, listingStage, type ListingStage } from "@fynix/shared/lib/directory/stage";
-import { WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
-import { formatStoredDate } from "@fynix/shared/lib/format";
-import { describeHours, describeOpenStatus, describeStoredDay } from "@fynix/shared/lib/onboarding/hours";
-import { siteConfig } from "@fynix/shared/lib/site-config";
-import { displayPhoneText } from "@fynix/shared/server/phone-display";
-import { ArrowIcon } from "@fynix/shared/ui/icons";
+} from "@brandbasket/db";
+import { DEFAULT_BUSINESS_TIME_ZONE, addDays, localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
+import type { ListingButton } from "@brandbasket/shared/lib/directory/listing-content";
+import { DIRECTORY_ORIGIN, areaName, categoryLabel, cityName, directoryCategoryPath } from "@brandbasket/shared/lib/directory/places";
+import { LISTING_STAGE_LABELS, listingStage, type ListingStage } from "@brandbasket/shared/lib/directory/stage";
+import { WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
+import { formatStoredDate } from "@brandbasket/shared/lib/format";
+import { describeHours, describeOpenStatus, describeStoredDay } from "@brandbasket/shared/lib/onboarding/hours";
+import { siteConfig } from "@brandbasket/shared/lib/site-config";
+import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
 import {
   ListingDetails,
   type ListingAnnouncement,

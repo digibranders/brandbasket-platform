@@ -1,5 +1,5 @@
-import { listRecentEmails } from "@fynix/db";
-import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@fynix/db/testing";
+import { listRecentEmails } from "@brandbasket/db";
+import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@brandbasket/db/testing";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { BrevoDeliveryError, createAppEmailTransport, createDualTransport } from "./brevo";
 import { supportReplyAlertEmail } from "./templates/support-reply-alert";

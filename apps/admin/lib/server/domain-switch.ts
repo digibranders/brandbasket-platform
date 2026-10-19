@@ -1,6 +1,6 @@
 import "server-only";
-import { findClientDetail, switchToDomain, type Database } from "@fynix/db";
-import { domainMovedEmail } from "@fynix/email";
+import { findClientDetail, switchToDomain, type Database } from "@brandbasket/db";
+import { domainMovedEmail } from "@brandbasket/email";
 import { customerEmailTransport } from "./email";
 import type { OwnerNotification } from "./project-preview";
 

@@ -6,8 +6,8 @@ import {
   DIRECTORY_DEAL_TITLE_MAX,
   type CreateDirectoryDealOutcome,
   type DirectoryDealFields,
-} from "@fynix/db";
-import { addDays, isIsoDate } from "@fynix/shared/lib/calendar/local-date";
+} from "@brandbasket/db";
+import { addDays, isIsoDate } from "@brandbasket/shared/lib/calendar/local-date";
 
 /*
  * The Deals page's arithmetic (app/app-host/(protected)/deals/page.tsx): reading the form, the notices each action

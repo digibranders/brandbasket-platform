@@ -1,7 +1,7 @@
-import type { Plan, ReferralDiscount } from "@fynix/db";
+import type { Plan, ReferralDiscount } from "@brandbasket/db";
 // The subpath, not the package index: this module reaches client components, and the index pulls in the database.
-import { chargedAmountCents } from "@fynix/billing/tax";
-import { formatMoney, type MoneyCurrency } from "@fynix/shared/lib/money";
+import { chargedAmountCents } from "@brandbasket/billing/tax";
+import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { describeReferralDiscount } from "./referral-value";
 
 /**

@@ -1,8 +1,8 @@
 "use server";
 
-import { getConnectingDomain, ProjectNotAwaitingResponseError, recordDomainDnsCheck, withTenantScope } from "@fynix/db";
+import { getConnectingDomain, ProjectNotAwaitingResponseError, recordDomainDnsCheck, withTenantScope } from "@brandbasket/db";
 import { redirect } from "next/navigation";
-import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
+import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { CHECK_FAILED_MESSAGE, type ConnectDomainState } from "@/lib/connect-domain-state";
 import { projectResponseNoticeHref } from "@/lib/project-response-notices";
 import { requireCustomerAccess } from "@/lib/server/customer-access";

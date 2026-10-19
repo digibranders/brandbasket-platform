@@ -582,7 +582,7 @@ export interface RecordedActivation {
  * everything still commits or rolls back with the caller's transaction.
  *
  * This records the payment and nothing else: it issues no tax invoice. Application code calls the wrapped versions in
- * `@fynix/shared` (activateFirstPayment, activateRenewalPayment, activateReactivationPayment), which invoice the
+ * `@brandbasket/shared` (activateFirstPayment, activateRenewalPayment, activateReactivationPayment), which invoice the
  * payment in the same transaction. The raw function is for those wrappers and for tests.
  */
 export async function recordPaymentAndActivate(db: Runner, input: PaymentActivation): Promise<RecordedActivation> {

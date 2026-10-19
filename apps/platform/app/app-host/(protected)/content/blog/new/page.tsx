@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, type ReactElement } from "react";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { createBlogPostAction, type BlogFormResult } from "../actions";
 
 const initialState: BlogFormResult = { ok: true };

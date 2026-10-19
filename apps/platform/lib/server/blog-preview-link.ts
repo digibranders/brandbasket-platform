@@ -1,6 +1,6 @@
 import "server-only";
-import { findBusinessWebsiteUrl, withTenantScope } from "@fynix/db";
-import type { TenantContext } from "@fynix/shared/lib/access";
+import { findBusinessWebsiteUrl, withTenantScope } from "@brandbasket/db";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { signBlogPreviewToken } from "./blog-preview-token";
 import { getAppDb } from "./db";
 import { serverEnv } from "./env";

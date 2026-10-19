@@ -19,9 +19,9 @@ import {
   type PrimaryDomain,
   type Project,
   type ScopedTransaction,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TenantContext } from "@fynix/shared/lib/access";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { ONBOARDING_LOCKED_MESSAGE } from "@/lib/onboarding/form-state";
 import { readLiveWebsite, saveOnboardingStep, submitOnboardingFor } from "./onboarding";
 import { notifyTeamOnboardingSent } from "./onboarding-alert";
@@ -33,7 +33,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("./customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn() }));
 vi.mock("./onboarding-alert", () => ({ notifyTeamOnboardingSent: vi.fn() }));
-vi.mock("@fynix/db", () => {
+vi.mock("@brandbasket/db", () => {
   class MockOnboardingLockedError extends Error {}
   class MockProjectNotInOnboardingError extends Error {}
   return {

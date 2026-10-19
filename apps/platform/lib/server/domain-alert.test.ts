@@ -1,9 +1,9 @@
-import { createAppEmailTransport, domainConnectedEmail } from "@fynix/email";
+import { createAppEmailTransport, domainConnectedEmail } from "@brandbasket/email";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { notifyTeamDomainConnected } from "./domain-alert";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/email", () => ({
+vi.mock("@brandbasket/email", () => ({
   createAppEmailTransport: vi.fn(),
   domainConnectedEmail: vi.fn(),
   emailTeamInboxDefault: () => "hello@fynix.digital",

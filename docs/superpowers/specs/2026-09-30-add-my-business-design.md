@@ -22,7 +22,7 @@ on the local directory had no way in.
 
 ## Rules
 
-- Category, city and area must come from the directory's fixed lists (`@fynix/shared/lib/directory/places`);
+- Category, city and area must come from the directory's fixed lists (`@brandbasket/shared/lib/directory/places`);
   the area must belong to the chosen city.
 - The last part of the address is the business name as a slug (`slugifyBusinessName`). If another claim or a
   client's listing already holds that address, `-2`, `-3`… is added.

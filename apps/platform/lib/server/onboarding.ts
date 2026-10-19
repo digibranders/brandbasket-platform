@@ -18,10 +18,10 @@ import {
   type Project,
   type ProjectStatus,
   type ScopedTransaction,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { cache } from "react";
-import type { TenantContext } from "@fynix/shared/lib/access";
-import { firstMissing, onboardingChecklist, type ChecklistItem } from "@fynix/shared/lib/onboarding/checklist";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
+import { firstMissing, onboardingChecklist, type ChecklistItem } from "@brandbasket/shared/lib/onboarding/checklist";
 import { ONBOARDING_LOCKED_MESSAGE } from "@/lib/onboarding/form-state";
 import {
   checklistInputFrom,
@@ -30,7 +30,7 @@ import {
   openingHoursFromRows,
   type OnboardingSnapshot,
 } from "@/lib/onboarding/snapshot";
-import { onboardingStepHref, type OnboardingStepKey } from "@fynix/shared/lib/onboarding/steps";
+import { onboardingStepHref, type OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
 import { requireCustomerAccess } from "./customer-access";
 import { getAppDb } from "./db";
 import { notifyTeamOnboardingSent } from "./onboarding-alert";

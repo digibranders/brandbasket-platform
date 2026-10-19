@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { checkHuman } from "@fynix/shared/server/turnstile-request";
+import { checkHuman } from "@brandbasket/shared/server/turnstile-request";
 import { signInWithPassword } from "@/lib/server/sign-in";
 import { signInStaff } from "./actions";
 
-vi.mock("@fynix/shared/server/turnstile-request", () => ({ checkHuman: vi.fn() }));
+vi.mock("@brandbasket/shared/server/turnstile-request", () => ({ checkHuman: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn(() => { throw new Error("redirect"); }) }));
 vi.mock("@/lib/server/sign-in", () => ({ signInWithPassword: vi.fn() }));
 

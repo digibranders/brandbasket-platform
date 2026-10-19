@@ -1,4 +1,4 @@
-import { accounts, sessions, users, verifications, type Database } from "@fynix/db";
+import { accounts, sessions, users, verifications, type Database } from "@brandbasket/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";

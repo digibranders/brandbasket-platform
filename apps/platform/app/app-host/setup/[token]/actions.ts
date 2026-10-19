@@ -1,10 +1,10 @@
 "use server";
 
 
-import { AccountAlreadyExistsError } from "@fynix/auth";
-import { InviteNoLongerRedeemableError } from "@fynix/db";
+import { AccountAlreadyExistsError } from "@brandbasket/auth";
+import { InviteNoLongerRedeemableError } from "@brandbasket/db";
 import { redirect } from "next/navigation";
-import { checkHuman } from "@fynix/shared/server/turnstile-request";
+import { checkHuman } from "@brandbasket/shared/server/turnstile-request";
 import { parseSetupForm, SETUP_AGREE_MESSAGE, type SetupFormState } from "@/lib/setup-form";
 import { InviteNotUsableError, redeemSetupInvite, TermsNotAgreedError, TooManySetupAttemptsError } from "@/lib/server/setup";
 

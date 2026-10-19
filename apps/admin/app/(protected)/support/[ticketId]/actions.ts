@@ -1,6 +1,6 @@
 "use server";
 
-import { appendSupportMessageByStaff, linkSupportTicketError, unlinkSupportTicketError, updateSupportTicketByStaff } from "@fynix/db";
+import { appendSupportMessageByStaff, linkSupportTicketError, unlinkSupportTicketError, updateSupportTicketByStaff } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { getStaffDb } from "@/lib/server/db";
 import { reportServerError } from "@/lib/server/error-report";

@@ -7,8 +7,8 @@ import {
   readExportedAccount,
   readExportedBusiness,
   type Database,
-} from "@fynix/db";
-import { DATA_RECIPIENTS } from "@fynix/shared/lib/privacy/recipients";
+} from "@brandbasket/db";
+import { DATA_RECIPIENTS } from "@brandbasket/shared/lib/privacy/recipients";
 
 /**
  * The file an owner downloads from Settings, Privacy (DPDP Act s.11: a summary of the personal data held, and who it has

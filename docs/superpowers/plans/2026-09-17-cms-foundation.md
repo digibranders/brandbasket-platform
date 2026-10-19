@@ -22,7 +22,7 @@
   - Staff project management (build queue, assignment) — a separate, already-agreed next plan. This plan's release snapshot builder is a plain function any staff/system caller can invoke; wiring a "Build" button to it is that plan's job.
 - **Customers write through the app connection only**, per the onboarding tables' rule (`apps/platform/lib/server/db.ts`'s comment on `getStaffDb`). No new exception.
 - **Do not commit. Do not start a dev server.** Migrations only on the dev database — never delete or rewrite existing rows. The test database is yours.
-- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm --filter @fynix/db test:integration` for database tasks.
+- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm --filter @brandbasket/db test:integration` for database tasks.
 - Read `packages/db/migrations/meta/_journal.json` for the next free migration number before generating one.
 
 ---
@@ -561,7 +561,7 @@ This follows `packages/db/src/rls.integration.test.ts`'s exact setup/teardown pa
 - [x] **Step 2: Run it and confirm it fails**
 
 ```bash
-pnpm --filter @fynix/db test:integration -- website.integration
+pnpm --filter @brandbasket/db test:integration -- website.integration
 ```
 
 Expected: fails to resolve `./queries/website` (module does not exist yet).
@@ -739,7 +739,7 @@ export async function removeGalleryItem(tx: ScopedTransaction, itemId: string): 
 - [x] **Step 4: Run the tests and confirm they pass**
 
 ```bash
-pnpm --filter @fynix/db test:integration -- website.integration
+pnpm --filter @brandbasket/db test:integration -- website.integration
 ```
 
 Expected: all pass.
@@ -751,7 +751,7 @@ In `packages/db/src/index.ts`, add the new query module's exports next to the ot
 - [x] **Step 6: Checkpoint**
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @fynix/db test:integration
+pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @brandbasket/db test:integration
 ```
 
 ---
@@ -853,7 +853,7 @@ describe("blog queries", () => {
 - [x] **Step 2: Run it and confirm it fails**
 
 ```bash
-pnpm --filter @fynix/db test:integration -- blog.integration
+pnpm --filter @brandbasket/db test:integration -- blog.integration
 ```
 
 Expected: fails to resolve `./queries/blog`.
@@ -979,7 +979,7 @@ export async function softDeleteBlogPost(tx: ScopedTransaction, postId: string):
 - [x] **Step 4: Run the tests and confirm they pass**
 
 ```bash
-pnpm --filter @fynix/db test:integration -- blog.integration
+pnpm --filter @brandbasket/db test:integration -- blog.integration
 ```
 
 - [x] **Step 5: Export from the package and checkpoint**
@@ -987,7 +987,7 @@ pnpm --filter @fynix/db test:integration -- blog.integration
 Add `blog.ts`'s exports to `packages/db/src/index.ts` next to `website.ts`'s. Then:
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @fynix/db test:integration
+pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @brandbasket/db test:integration
 ```
 
 ---
@@ -1068,7 +1068,7 @@ describe("createSiteRelease", () => {
 - [x] **Step 2: Run it and confirm it fails**
 
 ```bash
-pnpm --filter @fynix/db test:integration -- site-releases.integration
+pnpm --filter @brandbasket/db test:integration -- site-releases.integration
 ```
 
 - [x] **Step 3: Implement it**
@@ -1194,7 +1194,7 @@ export async function createSiteRelease(db: Database, input: CreateSiteReleaseIn
 - [x] **Step 4: Run the tests and confirm they pass**
 
 ```bash
-pnpm --filter @fynix/db test:integration -- site-releases.integration
+pnpm --filter @brandbasket/db test:integration -- site-releases.integration
 ```
 
 - [x] **Step 5: Export from the package and checkpoint**
@@ -1202,7 +1202,7 @@ pnpm --filter @fynix/db test:integration -- site-releases.integration
 Add `site-releases.ts`'s exports to `packages/db/src/index.ts`, then:
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @fynix/db test:integration
+pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @brandbasket/db test:integration
 ```
 
 ---
@@ -1220,7 +1220,7 @@ A pure function, unit-tested — no database, no worker. `hasBillingAccess` alre
 
 ```ts
 import { describe, expect, it } from "vitest";
-import type { ProjectStatus } from "@fynix/db";
+import type { ProjectStatus } from "@brandbasket/db";
 import { deriveSiteStatus } from "./site-status";
 
 const NOW = new Date("2026-09-17T12:00:00Z");
@@ -1273,13 +1273,13 @@ describe("deriveSiteStatus", () => {
 - [x] **Step 2: Run it and confirm it fails**
 
 ```bash
-pnpm --filter @fynix/billing test -- site-status
+pnpm --filter @brandbasket/billing test -- site-status
 ```
 
 - [x] **Step 3: Implement it**
 
 ```ts
-import type { ProjectStatus } from "@fynix/db";
+import type { ProjectStatus } from "@brandbasket/db";
 import { hasBillingAccess, type BillingAccessInput } from "./access";
 
 export interface SiteStatusInput {
@@ -1311,7 +1311,7 @@ export function deriveSiteStatus(input: SiteStatusInput, now: Date): SiteStatus 
 - [x] **Step 4: Run the tests and confirm they pass**
 
 ```bash
-pnpm --filter @fynix/billing test -- site-status
+pnpm --filter @brandbasket/billing test -- site-status
 ```
 
 - [x] **Step 5: Export and checkpoint**
@@ -1398,7 +1398,7 @@ Add the needed imports (`websites`, `pages`, `pageSections`, `siteReleases`) to 
 - [x] **Step 2: Run it**
 
 ```bash
-pnpm --filter @fynix/db test:integration -- rls.integration
+pnpm --filter @brandbasket/db test:integration -- rls.integration
 ```
 
 Expected: all pass.

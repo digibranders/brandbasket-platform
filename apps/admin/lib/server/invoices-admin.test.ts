@@ -1,31 +1,31 @@
-import { InvalidGstinError, InvoiceAmountMismatchError, UnknownStateError, BillingRangeError } from "@fynix/billing";
+import { InvalidGstinError, InvoiceAmountMismatchError, UnknownStateError, BillingRangeError } from "@brandbasket/billing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return { ...actual, lockBusinessForBilling: vi.fn() };
 });
-vi.mock("@fynix/shared/server/tax-invoice-reissue", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/shared/server/tax-invoice-reissue")>("@fynix/shared/server/tax-invoice-reissue");
+vi.mock("@brandbasket/shared/server/tax-invoice-reissue", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/shared/server/tax-invoice-reissue")>("@brandbasket/shared/server/tax-invoice-reissue");
   return { ...actual, issueMissingTaxInvoice: vi.fn() };
 });
 vi.mock("./db", () => ({
   getStaffDb: () => ({ transaction: (fn: (tx: unknown) => unknown) => fn({ name: "staff-tx" }) }),
 }));
 
-import { lockBusinessForBilling } from "@fynix/db";
+import { lockBusinessForBilling } from "@brandbasket/db";
 import {
   InvoiceSourceMismatchError,
   issueMissingTaxInvoice,
   NoMissingInvoiceError,
   UnsupportedPaymentKindError,
-} from "@fynix/shared/server/tax-invoice-reissue";
+} from "@brandbasket/shared/server/tax-invoice-reissue";
 import {
   InvalidServicePeriodError,
   InvoiceDatedBeforePaymentError,
   UnprintableInvoiceTextError,
-} from "@fynix/shared/server/tax-invoicing";
+} from "@brandbasket/shared/server/tax-invoicing";
 import { issueClientMissingInvoice } from "./invoices-admin";
 
 const BUSINESS = "0192f3c4-1111-7000-8000-000000000001";

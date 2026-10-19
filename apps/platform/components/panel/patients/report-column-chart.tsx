@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 
 /*
  * The Reports page's column chart: one or two series of counts over a row of categories (months, weekdays, hours).

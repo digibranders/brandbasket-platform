@@ -1,5 +1,5 @@
 import "server-only";
-import { CheckoutVerificationError, type ConfirmedChargePayment } from "@fynix/billing";
+import { CheckoutVerificationError, type ConfirmedChargePayment } from "@brandbasket/billing";
 import {
   countPaidBlogBlocks,
   findChargeByProviderOrder,
@@ -13,11 +13,11 @@ import {
   type ChargePaymentOutcome,
   type PaymentMethodDetails,
   type Plan,
-} from "@fynix/db";
-import { blogAllowance, chargeAmountCents, chargeLabel, chargePricing } from "@fynix/shared/lib/billing/charges";
-import type { TenantContext } from "@fynix/shared/lib/access";
-import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
-import { recordChargePaymentWithInvoice } from "@fynix/shared/server/charge-payments";
+} from "@brandbasket/db";
+import { blogAllowance, chargeAmountCents, chargeLabel, chargePricing } from "@brandbasket/shared/lib/billing/charges";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
+import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
+import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";

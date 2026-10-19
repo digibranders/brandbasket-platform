@@ -1,5 +1,5 @@
 import "server-only";
-import { SupportQueryError, type AppendSupportMessageByStaffInput, type UpdateSupportTicketByStaffInput, type SupportTicketErrorLinkInput } from "@fynix/db";
+import { SupportQueryError, type AppendSupportMessageByStaffInput, type UpdateSupportTicketByStaffInput, type SupportTicketErrorLinkInput } from "@brandbasket/db";
 import { staffSupportLinkSchema, staffSupportMessageSchema, staffSupportUpdateSchema, type StaffSupportActionState } from "../support-admin-state";
 
 export interface StaffSupportActionDependencies {

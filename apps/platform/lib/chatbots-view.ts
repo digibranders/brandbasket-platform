@@ -1,4 +1,4 @@
-import type { ChatbotStatus } from "@fynix/db";
+import type { ChatbotStatus } from "@brandbasket/db";
 
 /*
  * The words on the OyeChats page: where a bot is, what a captured lead shows, and how warm OyeChats rates it. Pure and

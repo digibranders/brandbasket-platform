@@ -5,8 +5,8 @@ const mocks = vi.hoisted(() => ({
   budget: vi.fn(), changePassword: vi.fn(), revokeOtherSessions: vi.fn(), report: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/auth", () => ({ isWrongPasswordError: (error: unknown) => error instanceof Error && error.message === "wrong password" }));
-vi.mock("@fynix/db", () => ({ consumeRateLimit: mocks.budget }));
+vi.mock("@brandbasket/auth", () => ({ isWrongPasswordError: (error: unknown) => error instanceof Error && error.message === "wrong password" }));
+vi.mock("@brandbasket/db", () => ({ consumeRateLimit: mocks.budget }));
 vi.mock("next/headers", () => ({ headers: vi.fn(async () => new Headers({ cookie: "current-session" })) }));
 vi.mock("./auth", () => ({ getAuth: () => ({ api: { changePassword: mocks.changePassword, revokeOtherSessions: mocks.revokeOtherSessions } }) }));
 vi.mock("./db", () => ({ getAppDb: () => ({}) }));

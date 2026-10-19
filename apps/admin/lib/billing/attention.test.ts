@@ -1,4 +1,4 @@
-import { paymentAttentionReason } from "@fynix/db";
+import { paymentAttentionReason } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { PAYMENT_ATTENTION_LABELS } from "./attention";
 

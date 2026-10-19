@@ -1,4 +1,4 @@
-import type { TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
+import type { TaxInvoice, TaxInvoiceLineRecord } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { adjacentMonth, monthRange, registerCsv, RegisterInvoiceError, registerInvoiceOf, registerTotals, type RegisterInvoice } from "./invoice-register";
 

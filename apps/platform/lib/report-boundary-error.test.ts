@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const captureException = vi.fn();
 const reportBrowserError = vi.fn();
 vi.mock("@sentry/nextjs", () => ({ captureException }));
-vi.mock("@fynix/shared/lib/error-report", () => ({ reportBrowserError }));
+vi.mock("@brandbasket/shared/lib/error-report", () => ({ reportBrowserError }));
 
 const { reportBoundaryError } = await import("./report-boundary-error");
 

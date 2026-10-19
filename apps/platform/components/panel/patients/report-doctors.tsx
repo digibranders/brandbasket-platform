@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { PatientReportPractitioner } from "@fynix/db";
+import type { PatientReportPractitioner } from "@brandbasket/db";
 
 /** "By doctor": a plain hairline table, one row per doctor with bookings in the range or still active. */
 export function ReportDoctors({ doctors }: { readonly doctors: readonly PatientReportPractitioner[] }): ReactElement {

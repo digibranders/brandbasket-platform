@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 
 interface AddBookingDayPickerProps {
   /** The day on screen, YYYY-MM-DD. */

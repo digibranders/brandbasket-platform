@@ -1,4 +1,4 @@
-import { chargedAmountCents } from "@fynix/billing";
+import { chargedAmountCents } from "@brandbasket/billing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyRetentionDiscount,
@@ -19,8 +19,8 @@ import {
   type Plan,
   type ReferralDiscount,
   type ScopedTransaction,
-} from "@fynix/db";
-import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@fynix/db/testing";
+} from "@brandbasket/db";
+import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
 import { issueTaxInvoice, issueTaxInvoiceSafely, type InvoiceSource, type IssuedTaxInvoice } from "./server/tax-invoicing";
 
 // tax-invoicing is server-only in the app; there is no browser here to keep it out of.

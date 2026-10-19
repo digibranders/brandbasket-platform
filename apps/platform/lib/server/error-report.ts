@@ -1,5 +1,5 @@
 import "server-only";
-import { createDatabaseErrorReporter, type ServerErrorContext } from "@fynix/shared/server/error-report";
+import { createDatabaseErrorReporter, type ServerErrorContext } from "@brandbasket/shared/server/error-report";
 import { getStaffDb } from "./db";
 
 import { sendSystemErrorAlert } from "./support-alerts";

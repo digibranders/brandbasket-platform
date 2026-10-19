@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore, type ReactElement, type ReactNode } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { PUBLISH_STATE_LABELS, type BlogPublishState } from "@/lib/blog-publish-state";
 import { CaretGlyph } from "./icons";
 

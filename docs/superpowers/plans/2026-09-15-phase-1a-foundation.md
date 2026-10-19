@@ -6,8 +6,8 @@
 
 **Architecture:**
 - The existing Next.js 16 app moves to `apps/web`. Two workspace packages hold shared server code:
-  - `@fynix/db`: Drizzle schema, migrations, role setup, scoped transactions, rate limiting.
-  - `@fynix/auth`: a Better Auth factory plus an invite-only account-creation gate.
+  - `@brandbasket/db`: Drizzle schema, migrations, role setup, scoped transactions, rate limiting.
+  - `@brandbasket/auth`: a Better Auth factory plus an invite-only account-creation gate.
 - `apps/web/proxy.ts` maps each hostname to a route prefix (`/app-host`, `/admin-host`) and 404s direct access to those prefixes on the marketing host.
 - The app connects as `fynix_app`, which is subject to row-level security. Staff and system work connects as `fynix_staff`. Migrations run as the local superuser.
 
@@ -39,7 +39,7 @@
   .gitignore                        nested node_modules/.next
   README.md                         updated local-development guide
 apps/web/                           (existing marketing app, moved)
-  package.json                      @fynix/web
+  package.json                      @brandbasket/web
   next.config.ts                    + transpilePackages, allowedDevOrigins
   proxy.ts                          host → surface rewrite
   .env.example                      documents every variable
@@ -135,7 +135,7 @@ Expected: the root now contains only `README.md`, `apps`, `docs` and `.gitignore
 Replace `apps/web/package.json` with:
 ```json
 {
-  "name": "@fynix/web",
+  "name": "@brandbasket/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -186,9 +186,9 @@ Create `package.json`:
     "node": ">=24"
   },
   "scripts": {
-    "dev": "pnpm --filter @fynix/web dev",
-    "build": "pnpm --filter @fynix/web build",
-    "lint": "pnpm --filter @fynix/web lint",
+    "dev": "pnpm --filter @brandbasket/web dev",
+    "build": "pnpm --filter @brandbasket/web build",
+    "lint": "pnpm --filter @brandbasket/web lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test"
   }
@@ -423,7 +423,7 @@ Expected: all pass. The build route table still lists `/`, `/about`, `/case-stud
 
 ---
 
-### Task 3: Create `@fynix/db` with local environment tooling
+### Task 3: Create `@brandbasket/db` with local environment tooling
 
 **Files:**
 - Create: `tsconfig.base.json`
@@ -461,7 +461,7 @@ Create `tsconfig.base.json`:
 Create `packages/db/package.json`:
 ```json
 {
-  "name": "@fynix/db",
+  "name": "@brandbasket/db",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -630,7 +630,7 @@ describe("buildLocalEnvFile", () => {
 
 Run:
 ```bash
-pnpm install && pnpm --filter @fynix/db test
+pnpm install && pnpm --filter @brandbasket/db test
 ```
 Expected: FAIL. Vitest reports it cannot resolve `./local-env` and `./local-env-template`.
 
@@ -736,7 +736,7 @@ export function buildLocalEnvFile(secrets: LocalEnvSecrets): string {
 
 Run:
 ```bash
-pnpm --filter @fynix/db test
+pnpm --filter @brandbasket/db test
 ```
 Expected: PASS (7 tests).
 
@@ -781,17 +781,17 @@ Replace the root `package.json` with:
     "node": ">=24"
   },
   "scripts": {
-    "dev": "pnpm --filter @fynix/web dev",
-    "build": "pnpm --filter @fynix/web build",
-    "lint": "pnpm --filter @fynix/web lint",
+    "dev": "pnpm --filter @brandbasket/web dev",
+    "build": "pnpm --filter @brandbasket/web build",
+    "lint": "pnpm --filter @brandbasket/web lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:integration": "pnpm db:migrate:test && pnpm -r --workspace-concurrency=1 test:integration",
-    "env:init": "pnpm --filter @fynix/db env:init",
-    "db:roles": "pnpm --filter @fynix/db db:roles",
-    "db:migrate": "pnpm --filter @fynix/db db:migrate",
-    "db:migrate:test": "pnpm --filter @fynix/db db:migrate:test",
-    "staff:create": "pnpm --filter @fynix/auth staff:create"
+    "env:init": "pnpm --filter @brandbasket/db env:init",
+    "db:roles": "pnpm --filter @brandbasket/db db:roles",
+    "db:migrate": "pnpm --filter @brandbasket/db db:migrate",
+    "db:migrate:test": "pnpm --filter @brandbasket/db db:migrate:test",
+    "staff:create": "pnpm --filter @brandbasket/auth staff:create"
   }
 }
 ```
@@ -849,7 +849,7 @@ Expected: `Wrote /Users/siddiqueahmed/projects/fynix-platform/apps/web/.env.loca
 
 Run:
 ```bash
-pnpm --filter @fynix/db typecheck && pnpm --filter @fynix/db test
+pnpm --filter @brandbasket/db typecheck && pnpm --filter @brandbasket/db test
 ```
 Expected: `tsc` exits 0; 7 tests pass.
 
@@ -1120,7 +1120,7 @@ export default defineConfig({
 
 Run:
 ```bash
-pnpm --filter @fynix/db exec drizzle-kit generate --name init && ls packages/db/migrations
+pnpm --filter @brandbasket/db exec drizzle-kit generate --name init && ls packages/db/migrations
 ```
 Expected: drizzle-kit reports 8 tables. `migrations` contains `0000_init.sql` and `meta/`. Open `0000_init.sql` and confirm it has `CREATE TYPE` for `business_member_role` and `staff_role`, and `CREATE TABLE` for `users`, `sessions`, `accounts`, `verifications`, `businesses`, `business_members`, `staff_members` and `rate_limit_buckets`.
 
@@ -1128,7 +1128,7 @@ Expected: drizzle-kit reports 8 tables. `migrations` contains `0000_init.sql` an
 
 Run:
 ```bash
-pnpm --filter @fynix/db typecheck
+pnpm --filter @brandbasket/db typecheck
 ```
 Expected: exits 0.
 
@@ -1246,7 +1246,7 @@ try {
 
 Run:
 ```bash
-pnpm --filter @fynix/db exec drizzle-kit generate --custom --name rls_and_grants && ls packages/db/migrations
+pnpm --filter @brandbasket/db exec drizzle-kit generate --custom --name rls_and_grants && ls packages/db/migrations
 ```
 Expected: `0001_rls_and_grants.sql` now exists and contains only a placeholder comment.
 
@@ -1348,7 +1348,7 @@ Expected: first command prints `0`; second fails with `ERROR:  permission denied
 
 - [ ] **Step 9: Harden the public schema (added after security review)**
 
-PostgreSQL 14 lets every role create objects in `public`, so an application role could plant a function that owner-run code later executes. Run `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name harden_public_schema`, then replace the whole content of `packages/db/migrations/0002_harden_public_schema.sql` with:
+PostgreSQL 14 lets every role create objects in `public`, so an application role could plant a function that owner-run code later executes. Run `pnpm --filter @brandbasket/db exec drizzle-kit generate --custom --name harden_public_schema`, then replace the whole content of `packages/db/migrations/0002_harden_public_schema.sql` with:
 ```sql
 -- Security hardening after review of 0001.
 -- PostgreSQL 14 lets every role create objects in the public schema. The application roles must never be able
@@ -1644,7 +1644,7 @@ describe("staff queries", () => {
 
 Run:
 ```bash
-pnpm --filter @fynix/db test:integration
+pnpm --filter @brandbasket/db test:integration
 ```
 Expected: FAIL. Vitest cannot resolve `./scope`, `./queries/memberships` and `./queries/staff`.
 
@@ -1789,7 +1789,7 @@ export { withTenantScope, withUserScope, type ScopedTransaction, type TenantScop
 
 Run:
 ```bash
-pnpm --filter @fynix/db test:integration
+pnpm --filter @brandbasket/db test:integration
 ```
 Expected: PASS (13 tests).
 
@@ -1807,7 +1807,7 @@ Expected: PASS (13 tests).
 
 Run:
 ```bash
-pnpm --filter @fynix/db typecheck && pnpm --filter @fynix/db test
+pnpm --filter @brandbasket/db typecheck && pnpm --filter @brandbasket/db test
 ```
 Expected: `tsc` exits 0; unit tests pass.
 
@@ -1927,7 +1927,7 @@ describe("consumeRateLimit", () => {
 
 Run:
 ```bash
-pnpm --filter @fynix/db test; pnpm --filter @fynix/db test:integration
+pnpm --filter @brandbasket/db test; pnpm --filter @brandbasket/db test:integration
 ```
 Expected: both FAIL, unable to resolve `./rate-limit`.
 
@@ -2008,7 +2008,7 @@ export { assertValidRule, consumeRateLimit, windowStartFor, type RateLimitResult
 
 Run:
 ```bash
-pnpm --filter @fynix/db test && pnpm --filter @fynix/db test:integration
+pnpm --filter @brandbasket/db test && pnpm --filter @brandbasket/db test:integration
 ```
 Expected: unit PASS (15 tests: review fixes in Tasks 3 and 4 added 4 tests to the original 7, plus these 4); integration PASS (19 tests).
 
@@ -2016,13 +2016,13 @@ Expected: unit PASS (15 tests: review fixes in Tasks 3 and 4 added 4 tests to th
 
 Run:
 ```bash
-pnpm --filter @fynix/db typecheck
+pnpm --filter @brandbasket/db typecheck
 ```
 Expected: exits 0.
 
 ---
 
-### Task 8: `@fynix/auth`: Better Auth with an invite-only gate
+### Task 8: `@brandbasket/auth`: Better Auth with an invite-only gate
 
 Accounts may only be created by Fynix Digital's own server code: the staff CLI now, invite redemption in 1B. The gate is an `AsyncLocalStorage` grant that Better Auth's `user.create.before` hook checks. Phase 1 mounts no Better Auth HTTP route, so no public endpoint can create accounts either.
 
@@ -2036,7 +2036,7 @@ Accounts may only be created by Fynix Digital's own server code: the staff CLI n
 Create `packages/auth/package.json`:
 ```json
 {
-  "name": "@fynix/auth",
+  "name": "@brandbasket/auth",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -2050,7 +2050,7 @@ Create `packages/auth/package.json`:
     "staff:create": "tsx scripts/create-staff.ts"
   },
   "dependencies": {
-    "@fynix/db": "workspace:*",
+    "@brandbasket/db": "workspace:*",
     "better-auth": "1.7.5",
     "drizzle-orm": "0.45.2",
     "zod": "^4.6.5"
@@ -2089,7 +2089,7 @@ Create `packages/auth/vitest.integration.config.ts`:
 ```ts
 import { defineConfig } from "vitest/config";
 
-/** Shares the test database with @fynix/db, so files run one at a time. */
+/** Shares the test database with @brandbasket/db, so files run one at a time. */
 export default defineConfig({
   test: {
     environment: "node",
@@ -2105,7 +2105,7 @@ Run:
 ```bash
 pnpm install
 ```
-Expected: `better-auth` and the workspace link to `@fynix/db` install.
+Expected: `better-auth` and the workspace link to `@brandbasket/db` install.
 
 - [ ] **Step 2: Write the failing unit tests for the grant**
 
@@ -2152,7 +2152,7 @@ describe("account creation grants", () => {
 
 Run:
 ```bash
-pnpm --filter @fynix/auth test
+pnpm --filter @brandbasket/auth test
 ```
 Expected: FAIL, unable to resolve `./account-creation-grant`.
 
@@ -2187,7 +2187,7 @@ export function hasAccountCreationGrant(email: string): boolean {
 
 Run:
 ```bash
-pnpm --filter @fynix/auth test
+pnpm --filter @brandbasket/auth test
 ```
 Expected: PASS (5 tests).
 
@@ -2195,8 +2195,8 @@ Expected: PASS (5 tests).
 
 Create `packages/auth/src/create-auth.integration.test.ts`:
 ```ts
-import { users } from "@fynix/db";
-import { captureErrorText, openTestDatabases, resetTestDatabase, type TestDatabases } from "@fynix/db/testing";
+import { users } from "@brandbasket/db";
+import { captureErrorText, openTestDatabases, resetTestDatabase, type TestDatabases } from "@brandbasket/db/testing";
 import { count } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { withAccountCreationGrant } from "./account-creation-grant";
@@ -2280,7 +2280,7 @@ describe("sign in", () => {
 
 Run:
 ```bash
-pnpm --filter @fynix/auth test:integration
+pnpm --filter @brandbasket/auth test:integration
 ```
 Expected: FAIL, unable to resolve `./create-auth` and `./errors`.
 
@@ -2298,7 +2298,7 @@ export function isAuthApiError(error: unknown): error is APIError {
 
 Create `packages/auth/src/create-auth.ts`:
 ```ts
-import { accounts, sessions, users, verifications, type Database } from "@fynix/db";
+import { accounts, sessions, users, verifications, type Database } from "@brandbasket/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
@@ -2365,7 +2365,7 @@ export { isAuthApiError } from "./errors";
 
 Run:
 ```bash
-pnpm --filter @fynix/auth test:integration
+pnpm --filter @brandbasket/auth test:integration
 ```
 Expected: PASS (5 tests). Better Auth may log the refused creations to stderr; that's expected.
 
@@ -2382,7 +2382,7 @@ Expected: PASS (5 tests). Better Auth may log the refused creations to stderr; t
 
 Run:
 ```bash
-pnpm --filter @fynix/auth typecheck && pnpm --filter @fynix/auth test
+pnpm --filter @brandbasket/auth typecheck && pnpm --filter @brandbasket/auth test
 ```
 Expected: `tsc` exits 0; 5 unit tests pass.
 
@@ -2447,8 +2447,8 @@ export function promptHidden(question: string): Promise<string> {
 Create `packages/auth/scripts/create-staff.ts`:
 ```ts
 import { parseArgs } from "node:util";
-import { createDatabase, staffMembers, staffRole, users } from "@fynix/db";
-import { loadLocalEnv, requireEnv } from "@fynix/db/local-env";
+import { createDatabase, staffMembers, staffRole, users } from "@brandbasket/db";
+import { loadLocalEnv, requireEnv } from "@brandbasket/db/local-env";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { createAccountWithGrant, createAuth, PASSWORD_MIN_LENGTH } from "../src";
@@ -2552,7 +2552,7 @@ Expected: `already has an account; granting staff access to it.` with no passwor
 
 Run:
 ```bash
-pnpm --filter @fynix/auth typecheck
+pnpm --filter @brandbasket/auth typecheck
 ```
 Expected: exits 0.
 
@@ -2662,7 +2662,7 @@ describe("readOriginsFromEnv", () => {
 
 Run:
 ```bash
-pnpm --filter @fynix/web test
+pnpm --filter @brandbasket/web test
 ```
 Expected: FAIL, unable to resolve `./surfaces`.
 
@@ -2755,7 +2755,7 @@ export function readOriginsFromEnv(env: Readonly<Record<string, string | undefin
 
 Run:
 ```bash
-pnpm --filter @fynix/web test
+pnpm --filter @brandbasket/web test
 ```
 Expected: PASS, including the existing marketing tests.
 
@@ -2839,7 +2839,7 @@ Expected: `marketing /pricing: 200`, `marketing /app-host: 404`, `unknown host: 
 
 Run:
 ```bash
-pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test
+pnpm lint && pnpm --filter @brandbasket/web typecheck && pnpm --filter @brandbasket/web test
 ```
 Expected: all pass.
 
@@ -2856,9 +2856,9 @@ Expected: all pass.
 
 Run:
 ```bash
-pnpm --filter @fynix/web add @fynix/auth@workspace:* @fynix/db@workspace:* pg@8.23.0 server-only@0.0.1
+pnpm --filter @brandbasket/web add @brandbasket/auth@workspace:* @brandbasket/db@workspace:* pg@8.23.0 server-only@0.0.1
 ```
-Expected: `apps/web/package.json` `dependencies` now also lists `"@fynix/auth": "workspace:*"`, `"@fynix/db": "workspace:*"`, `"pg": "8.23.0"` and `"server-only": "0.0.1"`. `pg` is listed directly because Next.js loads it as an external package at runtime, resolved from `apps/web`.
+Expected: `apps/web/package.json` `dependencies` now also lists `"@brandbasket/auth": "workspace:*"`, `"@brandbasket/db": "workspace:*"`, `"pg": "8.23.0"` and `"server-only": "0.0.1"`. `pg` is listed directly because Next.js loads it as an external package at runtime, resolved from `apps/web`.
 
 In `apps/web/next.config.ts`, replace:
 ```ts
@@ -2868,7 +2868,7 @@ with:
 ```ts
   poweredByHeader: false,
   // Workspace packages ship TypeScript source.
-  transpilePackages: ["@fynix/auth", "@fynix/db"],
+  transpilePackages: ["@brandbasket/auth", "@brandbasket/db"],
 ```
 
 - [ ] **Step 2: Write the failing unit tests**
@@ -2947,7 +2947,7 @@ describe("parseSignInForm", () => {
 
 Create `apps/web/lib/access.test.ts`:
 ```ts
-import type { BusinessMembership } from "@fynix/db";
+import type { BusinessMembership } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { decideCustomerAccess, decideStaffAccess, type SessionUser } from "./access";
 
@@ -3059,7 +3059,7 @@ describe("retryMessage", () => {
 
 Run:
 ```bash
-pnpm --filter @fynix/web test
+pnpm --filter @brandbasket/web test
 ```
 Expected: FAIL, unable to resolve `./client-ip`, `./sign-in-form`, `./access`, `./names` and `./sign-in-limits`.
 
@@ -3130,7 +3130,7 @@ export function parseSignInForm(formData: FormData): SignInParseResult {
 
 Create `apps/web/lib/access.ts`:
 ```ts
-import type { ActiveStaffMember, BusinessMembership } from "@fynix/db";
+import type { ActiveStaffMember, BusinessMembership } from "@brandbasket/db";
 
 export interface SessionUser {
   readonly id: string;
@@ -3198,7 +3198,7 @@ export function firstName(fullName: string): string {
 
 Create `apps/web/lib/sign-in-limits.ts`:
 ```ts
-import type { RateLimitRule } from "@fynix/db";
+import type { RateLimitRule } from "@brandbasket/db";
 
 export type SignInSurface = "customer" | "staff";
 
@@ -3242,7 +3242,7 @@ export function retryMessage(retryAfterSeconds: number): string {
 
 Run:
 ```bash
-pnpm --filter @fynix/web test
+pnpm --filter @brandbasket/web test
 ```
 Expected: PASS.
 
@@ -3283,7 +3283,7 @@ export function serverEnv(): ServerEnv {
 Create `apps/web/lib/server/db.ts`:
 ```ts
 import "server-only";
-import { createDatabase, type Database } from "@fynix/db";
+import { createDatabase, type Database } from "@brandbasket/db";
 import { serverEnv } from "./env";
 
 // Kept on globalThis so hot reloads in development reuse pools instead of opening new ones.
@@ -3308,7 +3308,7 @@ export function getStaffDb(): Database {
 Create `apps/web/lib/server/auth.ts`:
 ```ts
 import "server-only";
-import { createAuth, type Auth } from "@fynix/auth";
+import { createAuth, type Auth } from "@brandbasket/auth";
 import { getAppDb } from "./db";
 import { serverEnv } from "./env";
 
@@ -3356,7 +3356,7 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
 Create `apps/web/lib/server/customer-access.ts`:
 ```ts
 import "server-only";
-import { listMembershipsForUser } from "@fynix/db";
+import { listMembershipsForUser } from "@brandbasket/db";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { decideCustomerAccess, type CustomerAccess, type SessionUser, type TenantContext } from "@/lib/access";
@@ -3388,7 +3388,7 @@ export async function requireCustomerAccess(): Promise<GrantedCustomer> {
 Create `apps/web/lib/server/staff-access.ts`:
 ```ts
 import "server-only";
-import { findActiveStaffMember, type ActiveStaffMember } from "@fynix/db";
+import { findActiveStaffMember, type ActiveStaffMember } from "@brandbasket/db";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { decideStaffAccess, type SessionUser, type StaffAccess } from "@/lib/access";
@@ -3419,8 +3419,8 @@ export async function requireStaffAccess(): Promise<GrantedStaff> {
 Create `apps/web/lib/server/sign-in.ts`:
 ```ts
 import "server-only";
-import { isInvalidCredentialsError } from "@fynix/auth";
-import { consumeRateLimit, type RateLimitResult } from "@fynix/db";
+import { isInvalidCredentialsError } from "@brandbasket/auth";
+import { consumeRateLimit, type RateLimitResult } from "@brandbasket/db";
 import { headers } from "next/headers";
 import { clientIpFrom } from "@/lib/client-ip";
 import { parseSignInForm, type SignInFormState } from "@/lib/sign-in-form";
@@ -3487,7 +3487,7 @@ export async function signOut(): Promise<void> {
 
 Run:
 ```bash
-pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test
+pnpm lint && pnpm --filter @brandbasket/web typecheck && pnpm --filter @brandbasket/web test
 ```
 Expected: all pass.
 
@@ -3700,7 +3700,7 @@ export function PanelNotFound(): ReactElement {
 
 Run:
 ```bash
-pnpm lint && pnpm --filter @fynix/web typecheck
+pnpm lint && pnpm --filter @brandbasket/web typecheck
 ```
 Expected: both pass.
 
@@ -3865,7 +3865,7 @@ export default async function AdminProtectedLayout({ children }: AdminProtectedL
 
 Create `apps/web/app/admin-host/(protected)/page.tsx`:
 ```tsx
-import { countPlatformRecords, type StaffRole } from "@fynix/db";
+import { countPlatformRecords, type StaffRole } from "@brandbasket/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { firstName } from "@/lib/names";
@@ -3917,7 +3917,7 @@ export default async function AdminOverviewPage(): Promise<ReactElement> {
 
 Run:
 ```bash
-pnpm lint && pnpm --filter @fynix/web typecheck
+pnpm lint && pnpm --filter @brandbasket/web typecheck
 ```
 Expected: both pass.
 
@@ -4089,7 +4089,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
 
 Run:
 ```bash
-pnpm lint && pnpm --filter @fynix/web typecheck && pnpm build
+pnpm lint && pnpm --filter @brandbasket/web typecheck && pnpm build
 ```
 Expected: all pass. The build route table now also lists `/admin-host`, `/admin-host/login`, `/admin-host/[...missing]`, `/app-host`, `/app-host/login` and `/app-host/[...missing]` as dynamic (ƒ) routes.
 
@@ -4169,7 +4169,7 @@ Run:
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration && pnpm build
 ```
-Expected: ESLint clean; `tsc` passes in `@fynix/web`, `@fynix/db` and `@fynix/auth`; unit tests pass in all three; integration tests pass (23 in db, 5 in auth; review fixes added tests beyond the counts stated in earlier tasks); the build succeeds.
+Expected: ESLint clean; `tsc` passes in `@brandbasket/web`, `@brandbasket/db` and `@brandbasket/auth`; unit tests pass in all three; integration tests pass (23 in db, 5 in auth; review fixes added tests beyond the counts stated in earlier tasks); the build succeeds.
 
 - [ ] **Step 3: Manual verification in the browser**
 

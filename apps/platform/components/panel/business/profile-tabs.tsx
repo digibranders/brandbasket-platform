@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { TickIcon } from "@fynix/shared/ui/icons";
+import { TickIcon } from "@brandbasket/shared/ui/icons";
 import { profileHref } from "@/lib/business-profile-notices";
 import type { ProfileTabId, ProfileTabView } from "@/lib/business-profile";
 

@@ -1,5 +1,5 @@
 import "server-only";
-import { consumeRateLimit, type Database, type RateLimitResult } from "@fynix/db";
+import { consumeRateLimit, type Database, type RateLimitResult } from "@brandbasket/db";
 import { signInRateLimitChecks } from "../lib/sign-in-limits";
 
 /**

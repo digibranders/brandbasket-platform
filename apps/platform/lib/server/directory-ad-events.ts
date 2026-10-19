@@ -5,12 +5,12 @@ import {
   incrementDirectoryAdDailyCount,
   purgeOldDirectoryAdDailyCounts,
   type Database,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import type { DirectoryAdEventRequest } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
 import { directoryDay, IP_HOURLY_RULE, ONCE_A_DAY_RULE, visitorHash } from "./directory-signals";
 import { accountCodeSecret } from "./env";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { ipRateLimitKey } from "./ip-key";
 
 /**

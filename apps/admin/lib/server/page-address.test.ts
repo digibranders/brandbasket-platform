@@ -1,11 +1,11 @@
-import { findPlaceByUrlCode, listLegacyKeysByPlace, type DirectoryPlace } from "@fynix/db";
+import { findPlaceByUrlCode, listLegacyKeysByPlace, type DirectoryPlace } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listingKeyForAddress, placeIdForAddress, placeOfBusinessAddress, resolveListingAddress } from "./page-address";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({})) }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return { ...actual, findPlaceByUrlCode: vi.fn(), listLegacyKeysByPlace: vi.fn() };
 });
 

@@ -1,6 +1,6 @@
-import { chargedAmountCents } from "@fynix/billing/tax";
-import type { UpgradeQuote } from "@fynix/shared/lib/billing/upgrade";
-import { formatMoney, type MoneyCurrency } from "@fynix/shared/lib/money";
+import { chargedAmountCents } from "@brandbasket/billing/tax";
+import type { UpgradeQuote } from "@brandbasket/shared/lib/billing/upgrade";
+import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 
 /*
  * The "You pay today" lines on the Upgrade page: the price, the GST on it and the total taken. Formatted here, on the

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { slotLabel } from "@fynix/shared/lib/appointments/slots";
-import { formatStoredDate } from "@fynix/shared/lib/format";
+import { slotLabel } from "@brandbasket/shared/lib/appointments/slots";
+import { formatStoredDate } from "@brandbasket/shared/lib/format";
 import type { PanelFormControls } from "@/components/panel/form/panel-form";
 import { leaveClashesOf } from "@/lib/appointments/leave-added-state";
 

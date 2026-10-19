@@ -1,5 +1,5 @@
 import "server-only";
-import type { TenantContext } from "@fynix/shared/lib/access";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { ONBOARDING_LOCKED_MESSAGE } from "@/lib/onboarding/form-state";
 import { BRAND } from "@/lib/brand";
 import { isAppOrigin, resolveSurface, type SurfaceOrigins } from "@/lib/surfaces";

@@ -2,7 +2,7 @@ import "server-only";
 import { getCustomerTenant } from "./customer-tenant";
 import { getAppDb, getStaffDb } from "./db";
 import { serverEnv } from "./env";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { checkVideoProgress, consumeVideoAllowance, listingVideoDeps, requestVideoUpload, videoUploadAccess } from "./listing-videos";
 import type { VideoRequestDeps } from "./listing-video-request";
 import { allowsAnyLocalHost } from "@/lib/surfaces";

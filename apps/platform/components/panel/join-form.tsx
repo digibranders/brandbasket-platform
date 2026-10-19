@@ -3,18 +3,18 @@
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, useSyncExternalStore, type ReactElement } from "react";
 import { createPortal } from "react-dom";
-import { HOME_COUNTRY, type CountryOption } from "@fynix/shared/lib/countries";
-import { INDIA_STATES } from "@fynix/shared/lib/directory/india-states";
-import { OTP_LENGTH } from "@fynix/shared/lib/appointments/otp";
-import { cn } from "@fynix/shared/lib/cn";
-import type { MoneyCurrency } from "@fynix/shared/lib/money";
-import { currencyForCountry } from "@fynix/shared/lib/pricing";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { TurnstileWidget } from "@fynix/shared/ui/turnstile";
-import { ArrowIcon, CrownIcon, EyeIcon, EyeOffIcon, HeartIcon, PinIcon } from "@fynix/shared/ui/icons";
+import { HOME_COUNTRY, type CountryOption } from "@brandbasket/shared/lib/countries";
+import { INDIA_STATES } from "@brandbasket/shared/lib/directory/india-states";
+import { OTP_LENGTH } from "@brandbasket/shared/lib/appointments/otp";
+import { cn } from "@brandbasket/shared/lib/cn";
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
+import { currencyForCountry } from "@brandbasket/shared/lib/pricing";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { TurnstileWidget } from "@brandbasket/shared/ui/turnstile";
+import { ArrowIcon, CrownIcon, EyeIcon, EyeOffIcon, HeartIcon, PinIcon } from "@brandbasket/shared/ui/icons";
 import { ENTRY_LEDE_SLOT_ID, ENTRY_PATH, entryHrefForPlan } from "@/lib/account-entry";
 import {
   AGREE_FIELD,
@@ -27,7 +27,7 @@ import {
   type JoinFormState,
 } from "@/lib/join-form";
 import type { LegalLinks } from "@/lib/legal-links";
-import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@fynix/auth/password-policy";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
 import { useOtpRetryCooldown } from "@/lib/use-otp-retry-cooldown";
 
 /** The two paid plans' price lines. */

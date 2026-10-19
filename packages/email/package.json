@@ -1,5 +1,5 @@
 {
-  "name": "@fynix/email",
+  "name": "@brandbasket/email",
   "version": "0.1.0",
   "private": true,
   "repository": {
@@ -17,7 +17,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
-    "@fynix/db": "workspace:*"
+    "@brandbasket/db": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.4",

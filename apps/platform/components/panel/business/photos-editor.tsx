@@ -3,9 +3,9 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactElement } from "react";
-import type { DirectoryPictureSlot } from "@fynix/db";
-import { minimumPictureSize, PICTURE_SHAPES, PICTURE_SLOT_LABELS } from "@fynix/shared/lib/directory/pictures";
-import { PlusIcon } from "@fynix/shared/ui/icons";
+import type { DirectoryPictureSlot } from "@brandbasket/db";
+import { minimumPictureSize, PICTURE_SHAPES, PICTURE_SLOT_LABELS } from "@brandbasket/shared/lib/directory/pictures";
+import { PlusIcon } from "@brandbasket/shared/ui/icons";
 import { ImageCropper, type CroppedPicture, type CropStep } from "@/components/panel/pictures/image-cropper";
 import { StatusLine } from "@/components/panel/status-line";
 import {

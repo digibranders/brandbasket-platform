@@ -1,4 +1,4 @@
-import { createLead } from "@fynix/db";
+import { createLead } from "@brandbasket/db";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffDb } from "@/lib/server/db";
@@ -7,8 +7,8 @@ import { createLeadAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return { ...actual, createLead: vi.fn() };
 });
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));

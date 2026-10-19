@@ -1,4 +1,4 @@
-import type { ActiveStaffMember, BusinessMembership, StaffRole } from "@fynix/db";
+import type { ActiveStaffMember, BusinessMembership, StaffRole } from "@brandbasket/db";
 
 export interface SessionUser {
   readonly id: string;

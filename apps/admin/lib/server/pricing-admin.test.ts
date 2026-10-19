@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     ...actual,
     attachProviderPlan: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock("@fynix/db", async () => {
 vi.mock("./db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 vi.mock("./billing-provider", () => ({ getBillingProvider: vi.fn() }));
 
-import { attachProviderPlan, findActivePlan, largestLiveReferralDiscount, replaceMonthlyPrice, updateExtraPrices } from "@fynix/db";
+import { attachProviderPlan, findActivePlan, largestLiveReferralDiscount, replaceMonthlyPrice, updateExtraPrices } from "@brandbasket/db";
 import { getBillingProvider } from "./billing-provider";
 import { providerPlanItemName, savePriceSheet } from "./pricing-admin";
 

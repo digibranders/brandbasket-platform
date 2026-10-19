@@ -1,9 +1,9 @@
 import type { ReactElement } from "react";
-import type { OwnerReview } from "@fynix/db";
-import { cn } from "@fynix/shared/lib/cn";
-import { StarIcon } from "@fynix/shared/ui/icons";
-import { displayPhone } from "@fynix/shared/server/phone-display";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import type { OwnerReview } from "@brandbasket/db";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { StarIcon } from "@brandbasket/shared/ui/icons";
+import { displayPhone } from "@brandbasket/shared/server/phone-display";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import type { PanelFormAction } from "@/components/panel/form/panel-form";
 import { OwnerReplyControls, OwnerTag, PostReplyForm } from "./reply-forms";
 

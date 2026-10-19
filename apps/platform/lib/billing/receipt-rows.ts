@@ -1,7 +1,7 @@
-import { isUnappliedReason, type Receipt } from "@fynix/db";
+import { isUnappliedReason, type Receipt } from "@brandbasket/db";
 import { BRAND, type Brand } from "@/lib/brand";
-import { addOnPaymentTitle, planLabel, receiptDescription, receiptTitle } from "@fynix/shared/lib/billing/receipt-title";
-import { formatMoney } from "@fynix/shared/lib/money";
+import { addOnPaymentTitle, planLabel, receiptDescription, receiptTitle } from "@brandbasket/shared/lib/billing/receipt-title";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { isDownloadableReceipt } from "./receipt-document";
 
 /** How a status pill is coloured: money in, money waiting on us, money given back, or nothing taken. */

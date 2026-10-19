@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { PanelNotFound } from "@fynix/shared/ui/panel/panel-not-found";
+import { PanelNotFound } from "@brandbasket/shared/ui/panel/panel-not-found";
 import { logoOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 

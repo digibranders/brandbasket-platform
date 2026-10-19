@@ -1,1 +1,1 @@
-export { deploymentIdOf } from "@fynix/shared/lib/deployment-id";
+export { deploymentIdOf } from "@brandbasket/shared/lib/deployment-id";

@@ -1,4 +1,4 @@
-import { chargedAmountCents, createFakeBillingProvider, type BillingProvider } from "@fynix/billing";
+import { chargedAmountCents, createFakeBillingProvider, type BillingProvider } from "@brandbasket/billing";
 import {
   consumeRateLimit,
   findActivePlan,
@@ -21,7 +21,7 @@ import {
   type ReferralCode,
   type ScopedTransaction,
   type Subscription,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import type { OnboardingSnapshot } from "@/lib/onboarding/snapshot";
 import { getBillingProvider } from "./billing";
@@ -46,7 +46,7 @@ vi.mock("./onboarding", () => ({
     fixHref: `/onboarding/${item.step}`,
   }),
 }));
-vi.mock("@fynix/db", () => {
+vi.mock("@brandbasket/db", () => {
   class MockBillingBusinessNotFoundError extends Error {}
   return {
     BillingBusinessNotFoundError: MockBillingBusinessNotFoundError,

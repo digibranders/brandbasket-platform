@@ -1,4 +1,4 @@
-import type { Database } from "@fynix/db";
+import type { Database } from "@brandbasket/db";
 import type { EmailMessage } from "./message";
 import { emailSenderDefaults } from "./brand";
 import { createOutboxTransport, OUTBOX_TRANSPORT_NAME, recordOutboxCopy, type EmailTransport } from "./outbox";

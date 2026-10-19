@@ -323,7 +323,7 @@ details, and UTGST.
 
 ## Testing
 
-- **Pure rules** (`@fynix/billing`, Vitest): state codes, GSTIN check characters (published vectors and our own
+- **Pure rules** (`@brandbasket/billing`, Vitest): state codes, GSTIN check characters (published vectors and our own
   GSTIN), the tax split (equal halves, the one-paisa case), numbering across the April turn in IST and the 16 character
   limit, amount in words in lakh and crore, the invoice builder (all three bases, round off, refusals).
 - **Database** (integration, real Postgres): numbering without gaps and under concurrency, every check constraint,

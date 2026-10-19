@@ -1,7 +1,7 @@
 import "server-only";
-import { recordStaffAccess, type StaffAccessEntry } from "@fynix/db";
-import { clientIpFrom } from "@fynix/shared/lib/client-ip";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { recordStaffAccess, type StaffAccessEntry } from "@brandbasket/db";
+import { clientIpFrom } from "@brandbasket/shared/lib/client-ip";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { headers } from "next/headers";
 import { getStaffDb } from "./db";
 

@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { BrandAbout } from "@/components/panel/membership/brand-about";
 import { legalLinksFor } from "@/lib/legal-links";
-import { SignOutButton } from "@fynix/shared/ui/panel/sign-out-button";
+import { SignOutButton } from "@brandbasket/shared/ui/panel/sign-out-button";
 import { logoOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { signOut } from "@/lib/server/sign-out";

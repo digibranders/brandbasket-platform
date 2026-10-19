@@ -1,6 +1,6 @@
 import "server-only";
-import { findClientDetail, recordProjectPreviewSent, type Database } from "@fynix/db";
-import { previewReadyEmail } from "@fynix/email";
+import { findClientDetail, recordProjectPreviewSent, type Database } from "@brandbasket/db";
+import { previewReadyEmail } from "@brandbasket/email";
 import { customerEmailTransport } from "./email";
 
 export class ProjectPreviewRecipientMissingError extends Error {

@@ -1,4 +1,4 @@
-import { resolveDirectoryNamedForRead, sameDirectoryBusiness } from "@fynix/db";
+import { resolveDirectoryNamedForRead, sameDirectoryBusiness } from "@brandbasket/db";
 import { getStaffDb } from "@/lib/server/db";
 import { getOwnedDirectoryBusiness } from "@/lib/server/owner-business";
 import { handleOwnerAccessRequest } from "@/lib/server/owner-reply-request";

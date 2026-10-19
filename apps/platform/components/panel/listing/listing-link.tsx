@@ -2,8 +2,8 @@
 
 import { useState, type ReactElement } from "react";
 
-import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { Button, ExternalButtonLink } from "@fynix/shared/ui/panel/button";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { Button, ExternalButtonLink } from "@brandbasket/shared/ui/panel/button";
 
 interface ListingLinkProps {
   readonly url: string;

@@ -1,13 +1,13 @@
 "use server";
 
-import { findBillingProfile, findPincode, hasPincodeDirectory, saveBillingProfile, withTenantScope } from "@fynix/db";
+import { findBillingProfile, findPincode, hasPincodeDirectory, saveBillingProfile, withTenantScope } from "@brandbasket/db";
 import {
   firstCustomerBillingProblem,
   parseCustomerBillingDetails,
   pincodeStateProblem,
-} from "@fynix/shared/lib/billing/billing-details-form";
-import { stateName } from "@fynix/shared/lib/directory/india-states";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+} from "@brandbasket/shared/lib/billing/billing-details-form";
+import { stateName } from "@brandbasket/shared/lib/directory/india-states";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { refresh } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";

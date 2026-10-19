@@ -8,22 +8,22 @@ import {
   updateOwnListingContent,
   withTenantScope,
   type ListingContentPatch,
-} from "@fynix/db";
-import type { FormParseResult } from "@fynix/shared/lib/form-result";
+} from "@brandbasket/db";
+import type { FormParseResult } from "@brandbasket/shared/lib/form-result";
 import {
   parseAboutForm,
   parseButtonsForm,
   parseTaglineForm,
   parseTagsForm,
   parseVisibleForm,
-} from "@fynix/shared/lib/directory/listing-content";
-import { parsePromotionTag } from "@fynix/shared/lib/directory/promotion";
+} from "@brandbasket/shared/lib/directory/listing-content";
+import { parsePromotionTag } from "@brandbasket/shared/lib/directory/promotion";
 import { promotionNoticeHref } from "@/lib/listing/promotion-notices";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
 import { redirectForChargePayment } from "@/lib/server/charge-redirect";
 import { getAppDb } from "@/lib/server/db";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { startListingPromotionPayment } from "@/lib/server/listing-promotion";
 import { paymentRequiredState, unexpectedErrorState } from "@/lib/server/panel-form-errors";
 import { listingMissingState } from "./errors";

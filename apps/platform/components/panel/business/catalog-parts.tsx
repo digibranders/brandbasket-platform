@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 
 export const INPUT_CLASSES =
   "mt-1 block w-full rounded-control border border-ink-soft/50 bg-white px-3 py-1.5 text-sm text-ink transition-colors duration-300 ease-calm placeholder:text-ink-soft/80 focus:border-accent";

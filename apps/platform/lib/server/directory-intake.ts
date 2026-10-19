@@ -1,9 +1,9 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import type { z } from "zod";
-import type { DirectoryAsk, DirectoryNamed } from "@fynix/db";
-import { OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
-import { isPictureCopyWidth, type PictureCopyWidth } from "@fynix/shared/server/media-keys";
+import type { DirectoryAsk, DirectoryNamed } from "@brandbasket/db";
+import { OTP_TTL_SECONDS } from "@brandbasket/shared/lib/appointments/otp";
+import { isPictureCopyWidth, type PictureCopyWidth } from "@brandbasket/shared/server/media-keys";
 import {
   adMarketSchema,
   commentOtpRequestSchema,
@@ -44,7 +44,7 @@ import type { CommentOtpOutcome, ReviewHelpfulOutcome } from "./directory-review
 import type { ReviewConfirmOutcome, ReviewOtpOutcome } from "./directory-reviews";
 import type { DirectoryAdEvent, DirectoryAdEventOutcome } from "./directory-ad-events";
 import type { DirectoryEvent, DirectoryEventOutcome } from "./directory-signals";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { BodyTooLargeError, readLimitedBody } from "./read-limited-body";
 import { hasValidWebsiteToken } from "./website-api-auth";
 

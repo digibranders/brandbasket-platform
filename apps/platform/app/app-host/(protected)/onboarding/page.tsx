@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { firstIncompleteStep, onboardingStepHref } from "@fynix/shared/lib/onboarding/steps";
+import { firstIncompleteStep, onboardingStepHref } from "@brandbasket/shared/lib/onboarding/steps";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
 

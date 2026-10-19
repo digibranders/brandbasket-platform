@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { geographyHref, type GeographyView } from "@/lib/geography-view";
 
 interface GeoPagerProps {

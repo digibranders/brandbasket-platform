@@ -1,12 +1,12 @@
-import { findClientDetail, markDomainReadyForDns, type Database } from "@fynix/db";
-import { domainReadyEmail } from "@fynix/email";
+import { findClientDetail, markDomainReadyForDns, type Database } from "@brandbasket/db";
+import { domainReadyEmail } from "@brandbasket/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { markDomainReady, DomainReadyRecipientMissingError } from "./domain-ready";
 import { customerEmailTransport } from "./email";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({ findClientDetail: vi.fn(), markDomainReadyForDns: vi.fn() }));
-vi.mock("@fynix/email", () => ({ domainReadyEmail: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ findClientDetail: vi.fn(), markDomainReadyForDns: vi.fn() }));
+vi.mock("@brandbasket/email", () => ({ domainReadyEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 vi.mock("./env", () => ({ serverEnv: () => ({ APP_ORIGIN: "https://app.example.test" }) }));
 

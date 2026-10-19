@@ -1,5 +1,5 @@
 import "server-only";
-import { AccountAlreadyExistsError, createVerifiedEmailAccountWithGrant } from "@fynix/auth";
+import { AccountAlreadyExistsError, createVerifiedEmailAccountWithGrant } from "@brandbasket/auth";
 import {
   consumeRateLimit,
   createUnlistedAccountBusiness,
@@ -7,11 +7,11 @@ import {
   isPhoneAccountEmail,
   recordSignupLead,
   UserAlreadyHasBusinessError,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { headers } from "next/headers";
-import { clientIpFrom } from "@fynix/shared/lib/client-ip";
-import { currencyForCountry } from "@fynix/shared/lib/pricing";
-import { retryMessage } from "@fynix/shared/lib/sign-in-limits";
+import { clientIpFrom } from "@brandbasket/shared/lib/client-ip";
+import { currencyForCountry } from "@brandbasket/shared/lib/pricing";
+import { retryMessage } from "@brandbasket/shared/lib/sign-in-limits";
 import type { JoinCodeStep, JoinInput } from "@/lib/join-form";
 import { membershipTierForChoice } from "@/lib/membership";
 import { recordAccountTermsConsent } from "./account-consent";

@@ -1,4 +1,4 @@
-import { isSystemLeadStatus, type LeadStatus, type StaffLeadStatus } from "@fynix/db";
+import { isSystemLeadStatus, type LeadStatus, type StaffLeadStatus } from "@brandbasket/db";
 
 /** Pipeline order, used for the filter bar. */
 export const LEAD_STATUS_ORDER = [

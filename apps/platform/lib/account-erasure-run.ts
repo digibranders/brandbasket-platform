@@ -1,4 +1,4 @@
-import type { DueClosure, ErasureOutcome, ErasureSkipReason } from "@fynix/db";
+import type { DueClosure, ErasureOutcome, ErasureSkipReason } from "@brandbasket/db";
 
 /*
  * One run of the 30-day erase, with everything it touches passed in so it can be tested without a database, a CMS or

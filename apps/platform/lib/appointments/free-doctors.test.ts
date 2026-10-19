@@ -1,5 +1,5 @@
-import type { PractitionerScheduleRow } from "@fynix/db";
-import type { WeekAvailabilityHoursRow } from "@fynix/shared/lib/appointments/slots";
+import type { PractitionerScheduleRow } from "@brandbasket/db";
+import type { WeekAvailabilityHoursRow } from "@brandbasket/shared/lib/appointments/slots";
 import { describe, expect, it } from "vitest";
 import { freeDoctorsForBooking, type FreeDoctorsInput } from "./free-doctors";
 

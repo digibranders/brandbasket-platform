@@ -1,4 +1,4 @@
-import type { AddOnSubscriptionForStaff, PressRelease } from "@fynix/db";
+import type { AddOnSubscriptionForStaff, PressRelease } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { clientAddOnRows, clientPressReleaseRows } from "./client-add-ons";
 

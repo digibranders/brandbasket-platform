@@ -1,4 +1,4 @@
-import type { Receipt } from "@fynix/db";
+import type { Receipt } from "@brandbasket/db";
 import { BRAND } from "@/lib/brand";
 import { describe, expect, it } from "vitest";
 import { isDownloadableReceipt, receiptDocument, splitTax } from "./receipt-document";

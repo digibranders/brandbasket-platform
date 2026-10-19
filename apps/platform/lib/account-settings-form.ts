@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { DELETE_CONFIRMATION_WORD, EXIT_COMMENT_MAX_LENGTH, isExitReason } from "@fynix/shared/lib/account-exit";
-import type { AccountExitReason } from "@fynix/db";
+import { DELETE_CONFIRMATION_WORD, EXIT_COMMENT_MAX_LENGTH, isExitReason } from "@brandbasket/shared/lib/account-exit";
+import type { AccountExitReason } from "@brandbasket/db";
 import { newPasswordSchema } from "@/lib/setup-form";
 
 /*

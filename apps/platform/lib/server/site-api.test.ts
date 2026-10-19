@@ -4,9 +4,9 @@ vi.mock("server-only", () => ({}));
 vi.mock("payload", () => ({ getPayload: vi.fn() }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({ name: "staff-db" })) }));
-vi.mock("@fynix/db", () => ({ findBillingState: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ findBillingState: vi.fn() }));
 
-import { findBillingState } from "@fynix/db";
+import { findBillingState } from "@brandbasket/db";
 import { siteHasAccess } from "./site-api";
 
 const NOW = new Date("2026-10-20T09:00:00.000Z");

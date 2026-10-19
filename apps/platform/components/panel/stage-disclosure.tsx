@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import { ChevronDownIcon } from "@fynix/shared/ui/icons";
+import { ChevronDownIcon } from "@brandbasket/shared/ui/icons";
 
 interface StageDisclosureProps {
   readonly summary: string;

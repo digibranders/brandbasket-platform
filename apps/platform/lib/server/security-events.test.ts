@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { consumeRateLimit, type Database } from "@fynix/db";
-import { createAppEmailTransport, type EmailMessage } from "@fynix/email";
+import { consumeRateLimit, type Database } from "@brandbasket/db";
+import { createAppEmailTransport, type EmailMessage } from "@brandbasket/email";
 import { noteSecurityEvent, SECURITY_EVENTS } from "./security-events";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({}) as Database) }));
 vi.mock("./env", () => ({ serverEnv: vi.fn(() => ({ ADMIN_ORIGIN: "https://console.fynix.digital" })) }));
-vi.mock("@fynix/db", () => ({ consumeRateLimit: vi.fn() }));
-vi.mock("@fynix/email", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/email")>("@fynix/email");
+vi.mock("@brandbasket/db", () => ({ consumeRateLimit: vi.fn() }));
+vi.mock("@brandbasket/email", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/email")>("@brandbasket/email");
   return { ...actual, createAppEmailTransport: vi.fn() };
 });
 

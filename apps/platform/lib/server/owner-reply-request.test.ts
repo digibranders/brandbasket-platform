@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DirectoryRef } from "@fynix/db";
+import type { DirectoryRef } from "@brandbasket/db";
 import { handleOwnerAccessRequest, handleOwnerReplyRequest, type OwnerAccessDeps, type OwnerReplyDeps } from "./owner-reply-request";
 import type { OwnedBusiness } from "./owner-business";
 

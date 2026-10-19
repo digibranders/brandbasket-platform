@@ -21,8 +21,8 @@ import {
   type DirectoryRatingSummary,
   type DirectoryReviewOtpPayload,
   type RateLimitRule,
-} from "@fynix/db";
-import { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
+} from "@brandbasket/db";
+import { OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@brandbasket/shared/lib/appointments/otp";
 import {
   REVIEW_HIGHLIGHTS,
   REVIEWS_PAGE_SIZE,
@@ -37,7 +37,7 @@ import { startVisitorSession, type ResolvedVisitor, type VisitorSession } from "
 import { recordContributionConsent } from "./visitor-consent";
 import type { ReviewInput } from "./directory-fields";
 import { accountCodeSecret } from "./env";
-import { errorLogInfo, type SafeErrorLog } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo, type SafeErrorLog } from "@brandbasket/shared/server/error-log-info";
 import { ipRateLimitKey } from "./ip-key";
 import { otpCodeMatches } from "./otp-crypto";
 

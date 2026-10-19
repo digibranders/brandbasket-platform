@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { parsePricingForm } from "@fynix/shared/lib/billing/pricing-form";
+import { parsePricingForm } from "@brandbasket/shared/lib/billing/pricing-form";
 import { pricingNoticeHref, type PricingNotice } from "@/lib/pricing-notices";
 import { savePriceSheet, type PriceUpdateOutcome } from "@/lib/server/pricing-admin";
 import { requireStaffCan } from "@/lib/server/staff-role";

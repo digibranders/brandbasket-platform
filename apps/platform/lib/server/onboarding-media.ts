@@ -12,12 +12,12 @@ import {
   type MediaAsset,
   type MediaAssetPurpose,
   type RateLimitRule,
-} from "@fynix/db";
-import type { TenantContext } from "@fynix/shared/lib/access";
+} from "@brandbasket/db";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { MAX_PHOTOS } from "@/lib/onboarding/brand-form";
 import { ONBOARDING_LOCKED_MESSAGE } from "@/lib/onboarding/form-state";
 import { isOnboardingLocked } from "@/lib/onboarding/snapshot";
-import { deleteMediaFiles, mediaStorageKey, type MediaStorage } from "@fynix/shared/server/media-storage";
+import { deleteMediaFiles, mediaStorageKey, type MediaStorage } from "@brandbasket/shared/server/media-storage";
 import { processUpload, UploadRejectedError, type ProcessedUpload, type UploadRejection } from "./media-upload";
 
 /** Uploads a business may make in an hour, whatever happens to them afterwards. */

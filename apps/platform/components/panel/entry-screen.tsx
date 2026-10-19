@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
-import { WordmarkLogo } from "@fynix/shared/ui/logo";
-import { siteConfig } from "@fynix/shared/lib/site-config";
+import { WordmarkLogo } from "@brandbasket/shared/ui/logo";
+import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import { logoOf, supportEmailOf, type Brand } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { ENTRY_LEDE_SLOT_ID } from "@/lib/account-entry";

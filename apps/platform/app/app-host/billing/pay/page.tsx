@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import type { ReactElement } from "react";
 import { RazorpayCheckoutScreen } from "@/components/panel/razorpay-checkout-screen";
-import { PAYMENT_STEP_HREF, REACTIVATE_HREF } from "@fynix/shared/lib/billing/payment-step";
+import { PAYMENT_STEP_HREF, REACTIVATE_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { payCallbackDestination, RETURN_PARAM, RETURN_TO_BILLING } from "@/lib/billing/pay-callback";
 import { MEMBERSHIP_CALLBACK_PARAM, membershipPathFor, type MembershipTier } from "@/lib/membership";
 import { getBillingProvider, razorpayKeyId } from "@/lib/server/billing";

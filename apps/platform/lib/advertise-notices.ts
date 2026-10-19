@@ -1,5 +1,5 @@
-import type { BidOutcome } from "@fynix/db";
-import { AD_MAX_RUPEES, AD_MIN_RUPEES, AD_TAGLINE_MAX_LENGTH } from "@fynix/shared/lib/directory/ads";
+import type { BidOutcome } from "@brandbasket/db";
+import { AD_MAX_RUPEES, AD_MIN_RUPEES, AD_TAGLINE_MAX_LENGTH } from "@brandbasket/shared/lib/directory/ads";
 
 /*
  * What the Advertise page says after a form post: each action redirects to `/advertise?notice=<code>`, and the page

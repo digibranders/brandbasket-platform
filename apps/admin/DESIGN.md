@@ -193,7 +193,7 @@ action top right, and header-owned children such as the stage track.
 
 ## Icons
 
-- `@fynix/shared/ui/icons`, stroke 1.5, `size-4` inline, `size-5` in the dock and icon discs; the Journey icon
+- `@brandbasket/shared/ui/icons`, stroke 1.5, `size-4` inline, `size-5` in the dock and icon discs; the Journey icon
   is local to the dock. Always `aria-hidden`; the link or button carries the name.
 
 ## Responsive

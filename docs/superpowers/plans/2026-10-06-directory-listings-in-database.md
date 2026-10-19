@@ -125,7 +125,7 @@ describe("isLedgerSourceRef", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @fynix/db test -- directory-place-ledger`
+Run: `pnpm --filter @brandbasket/db test -- directory-place-ledger`
 Expected: FAIL, "Failed to resolve import ./directory-place-ledger".
 
 - [ ] **Step 3: Write the module**
@@ -175,10 +175,10 @@ Survey businesses are registered as `open_data`. Their ids are letter-first like
 
 - [ ] **Step 5: Run the tests**
 
-Run: `pnpm --filter @fynix/db test -- directory-place-ledger`
+Run: `pnpm --filter @brandbasket/db test -- directory-place-ledger`
 Expected: PASS (3 tests).
 
-Run: `pnpm --filter @fynix/db typecheck`
+Run: `pnpm --filter @brandbasket/db typecheck`
 Expected: no errors.
 
 - [ ] **Step 6: Prove it loads the real ledger**
@@ -191,7 +191,7 @@ pnpm directory:import-places ../local-directory-data/thane/thane-place-ledger.js
 
 Expected: `Directory places: N created, M unchanged, from 39027 ledger rows.` and no `LedgerFormatError`.
 
-- [ ] **Step 7: Checkpoint.** Run `pnpm --filter @fynix/db test` and `pnpm --filter @fynix/db typecheck`. Both must pass. No commit.
+- [ ] **Step 7: Checkpoint.** Run `pnpm --filter @brandbasket/db test` and `pnpm --filter @brandbasket/db typecheck`. Both must pass. No commit.
 
 ---
 
@@ -207,7 +207,7 @@ Expected: `Directory places: N created, M unchanged, from 39027 ledger rows.` an
 
 - [ ] **Step 1: Empty custom migration for the extensions**
 
-Run: `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name=directory_search_extensions`
+Run: `pnpm --filter @brandbasket/db exec drizzle-kit generate --custom --name=directory_search_extensions`
 
 drizzle-kit numbers it after the last journal entry. Rename the file to `0088_directory_search_extensions.sql`, rename its snapshot to `0088_snapshot.json`, and set its journal `tag` to `0088_directory_search_extensions`. Fill it with:
 
@@ -323,7 +323,7 @@ export * from "./directory-open-listings";
 
 - [ ] **Step 3: Generate the table migration**
 
-Run: `pnpm --filter @fynix/db db:generate`
+Run: `pnpm --filter @brandbasket/db db:generate`
 
 Rename the output to `0089_directory_open_listings.sql` and its snapshot to `0089_snapshot.json`, and set the journal tag to `0089_directory_open_listings`. Add this header above the generated DDL:
 
@@ -342,7 +342,7 @@ If drizzle-kit wrote the trigram index without the operator class, fix that line
 
 - [ ] **Step 4: Grants migration**
 
-Run: `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name=directory_open_listings_grants`
+Run: `pnpm --filter @brandbasket/db exec drizzle-kit generate --custom --name=directory_open_listings_grants`
 
 Rename it to `0090_directory_open_listings_grants.sql` (snapshot `0090_snapshot.json`, tag `0090_directory_open_listings_grants`) and fill it with:
 
@@ -377,7 +377,7 @@ psql "$DATABASE_URL_OWNER" -c '\d directory_open_listings'
 
 Expected: the `search` column shows `generated always as (...) stored`, plus the three indexes.
 
-- [ ] **Step 6: Checkpoint.** Run `pnpm --filter @fynix/db typecheck` and `pnpm --filter @fynix/db test`. No commit.
+- [ ] **Step 6: Checkpoint.** Run `pnpm --filter @brandbasket/db typecheck` and `pnpm --filter @brandbasket/db test`. No commit.
 
 ---
 
@@ -470,7 +470,7 @@ describe("toListingInputs", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @fynix/db test -- directory-listing-file`
+Run: `pnpm --filter @brandbasket/db test -- directory-listing-file`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Write the module**
@@ -612,7 +612,7 @@ export function toListingInputs(
 
 - [ ] **Step 4: Run the tests**
 
-Run: `pnpm --filter @fynix/db test -- directory-listing-file`
+Run: `pnpm --filter @brandbasket/db test -- directory-listing-file`
 Expected: PASS (7 tests).
 
 - [ ] **Step 5: Check it against the real files**
@@ -620,12 +620,12 @@ Expected: PASS (7 tests).
 Today the website's `thane-site-phones.json` has numbers only for listed businesses (`build_site_phones.py` skips the rest), so `toListingInputs` must not throw. Run:
 
 ```bash
-pnpm --filter @fynix/db exec tsx -e 'import {readFileSync as r} from "node:fs";import {parseListingsFile as l,parsePhonesFile as p,toListingInputs as t} from "./src/directory-listing-file";const d="../../../website-listing/content/local/";const x=t(l(r(d+"thane-listings.json","utf8")),p(r(d+"thane-site-phones.json","utf8")));console.log(x.length, x.filter(i=>i.phone).length)'
+pnpm --filter @brandbasket/db exec tsx -e 'import {readFileSync as r} from "node:fs";import {parseListingsFile as l,parsePhonesFile as p,toListingInputs as t} from "./src/directory-listing-file";const d="../../../website-listing/content/local/";const x=t(l(r(d+"thane-listings.json","utf8")),p(r(d+"thane-site-phones.json","utf8")));console.log(x.length, x.filter(i=>i.phone).length)'
 ```
 
 Expected: `37324 3229` (or the current counts), and no error.
 
-- [ ] **Step 6: Checkpoint.** Run `pnpm --filter @fynix/db test` and `typecheck`. No commit.
+- [ ] **Step 6: Checkpoint.** Run `pnpm --filter @brandbasket/db test` and `typecheck`. No commit.
 
 ---
 
@@ -770,7 +770,7 @@ describe("row-level security", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @fynix/db test:integration -- directory-open-listings`
+Run: `pnpm --filter @brandbasket/db test:integration -- directory-open-listings`
 Expected: FAIL, `./queries/directory-listings` not found.
 
 - [ ] **Step 3: Write the queries**
@@ -1007,12 +1007,12 @@ export {
 
 - [ ] **Step 4: Run the tests**
 
-Run: `pnpm --filter @fynix/db test:integration -- directory-open-listings`
+Run: `pnpm --filter @brandbasket/db test:integration -- directory-open-listings`
 Expected: PASS (8 tests).
 
 If `${ids}::text[]` binds as a record rather than an array in this drizzle version, replace it with `sql\`not (${t.placeId} = any(${sql.param(ids)}::text[]))\`` and re-run.
 
-- [ ] **Step 5: Checkpoint.** Run `pnpm --filter @fynix/db test`, `pnpm --filter @fynix/db test:integration` and `pnpm --filter @fynix/db typecheck`. All must pass. No commit.
+- [ ] **Step 5: Checkpoint.** Run `pnpm --filter @brandbasket/db test`, `pnpm --filter @brandbasket/db test:integration` and `pnpm --filter @brandbasket/db typecheck`. All must pass. No commit.
 
 ---
 
@@ -1085,7 +1085,7 @@ In `packages/db/package.json` `"scripts"`, after `directory:backfill-places`:
 In the root `package.json` `"scripts"`, after `directory:backfill-places`:
 
 ```json
-    "directory:import-listings": "pnpm --filter @fynix/db directory:import-listings",
+    "directory:import-listings": "pnpm --filter @brandbasket/db directory:import-listings",
 ```
 
 - [ ] **Step 3: Run it locally twice**
@@ -1103,7 +1103,7 @@ Run the second command again. Expected: `0 created, 0 updated, 37324 unchanged, 
 
 Time it. Expected: under 30 s on the Mac.
 
-- [ ] **Step 4: Checkpoint.** Run `pnpm --filter @fynix/db typecheck`. No commit.
+- [ ] **Step 4: Checkpoint.** Run `pnpm --filter @brandbasket/db typecheck`. No commit.
 
 ---
 
@@ -1169,7 +1169,7 @@ export interface OpenListingsPage {
 }
 ```
 
-- [ ] **Step 2: Checkpoint.** Run `pnpm --filter @fynix/shared typecheck`. No commit.
+- [ ] **Step 2: Checkpoint.** Run `pnpm --filter @brandbasket/shared typecheck`. No commit.
 
 ---
 
@@ -1189,7 +1189,7 @@ Before writing route code, read `apps/platform/node_modules/next/dist/docs/` on 
 ```ts
 // apps/platform/lib/server/open-listings-api.test.ts
 import { describe, expect, it, vi } from "vitest";
-import type { VisibleOpenListing } from "@fynix/db";
+import type { VisibleOpenListing } from "@brandbasket/db";
 import { handleOpenListingsPage, handleOpenListingsVersion, toTuple } from "./open-listings-api";
 
 vi.mock("server-only", () => ({}));
@@ -1267,7 +1267,7 @@ describe("handleOpenListingsPage", () => {
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `pnpm --filter @fynix/platform test -- open-listings-api`
+Run: `pnpm --filter @brandbasket/platform test -- open-listings-api`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Write the handlers**
@@ -1275,15 +1275,15 @@ Expected: FAIL, module not found.
 ```ts
 // apps/platform/lib/server/open-listings-api.ts
 import "server-only";
-import type { VisibleOpenListing } from "@fynix/db";
-import { isPlaceId } from "@fynix/db/place-id";
+import type { VisibleOpenListing } from "@brandbasket/db";
+import { isPlaceId } from "@brandbasket/db/place-id";
 import {
   OPEN_LISTINGS_CONTRACT_VERSION,
   OPEN_LISTINGS_MAX_PAGE,
   type OpenListingTuple,
   type OpenListingsPage,
   type OpenListingsVersion,
-} from "@fynix/shared/lib/directory/open-listings-contract";
+} from "@brandbasket/shared/lib/directory/open-listings-contract";
 import { errorLogInfo } from "@/lib/server/error-log";
 import { hasValidWebsiteToken } from "@/lib/server/website-api-auth";
 
@@ -1364,13 +1364,13 @@ export async function handleOpenListingsPage(request: Request, deps: OpenListing
 }
 ```
 
-Check the import path of the shared module against how other platform files import from `@fynix/shared` (for example `grep -rn "@fynix/shared/lib/directory" apps/platform/lib | head -3`), and use the same form.
+Check the import path of the shared module against how other platform files import from `@brandbasket/shared` (for example `grep -rn "@brandbasket/shared/lib/directory" apps/platform/lib | head -3`), and use the same form.
 
 - [ ] **Step 4: The routes**
 
 ```ts
 // apps/platform/app/api/directory/open-listings/version/route.ts
-import { openListingsVersion } from "@fynix/db";
+import { openListingsVersion } from "@brandbasket/db";
 import { getStaffDb } from "@/lib/server/db";
 import { handleOpenListingsVersion } from "@/lib/server/open-listings-api";
 import { leadsApiToken } from "@/lib/server/website-api-auth";
@@ -1386,7 +1386,7 @@ export function GET(request: Request): Promise<Response> {
 
 ```ts
 // apps/platform/app/api/directory/open-listings/route.ts
-import { openListingsVersion, listVisibleOpenListings } from "@fynix/db";
+import { openListingsVersion, listVisibleOpenListings } from "@brandbasket/db";
 import { getStaffDb } from "@/lib/server/db";
 import { handleOpenListingsPage } from "@/lib/server/open-listings-api";
 import { leadsApiToken } from "@/lib/server/website-api-auth";
@@ -1405,7 +1405,7 @@ In `apps/platform/lib/server/db.ts`, extend the `getStaffDb` doc comment's list 
 
 - [ ] **Step 5: Run the tests**
 
-Run: `pnpm --filter @fynix/platform test -- open-listings-api`
+Run: `pnpm --filter @brandbasket/platform test -- open-listings-api`
 Expected: PASS (8 tests).
 
 - [ ] **Step 6: Try it end to end locally**

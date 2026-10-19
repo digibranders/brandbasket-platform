@@ -1,4 +1,4 @@
-import { chargedAmountCents, GST_BASIS_POINTS } from "@fynix/billing/tax";
+import { chargedAmountCents, GST_BASIS_POINTS } from "@brandbasket/billing/tax";
 import type { MoneyCurrency } from "../money";
 import { lifetimeOfferCentsFor } from "./lifetime-offer";
 

@@ -1,5 +1,5 @@
 import "server-only";
-import type { BillingProvider } from "@fynix/billing";
+import type { BillingProvider } from "@brandbasket/billing";
 import {
   changeAddOnEndKind,
   findAddOnSubscription,
@@ -10,7 +10,7 @@ import {
   type AddOnSubscription,
   type Database,
   type ScopedTransaction,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { addOnById, isMonthlyAddOnId, type MonthlyAddOnId } from "../lib/billing/add-ons";
 import type { AddOnEndKind } from "../lib/billing/add-on-state";
 import { formatCalendarDate } from "../lib/format";

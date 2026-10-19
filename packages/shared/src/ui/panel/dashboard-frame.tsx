@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
-import { WordmarkLogo, type BrandLogo } from "@fynix/shared/ui/logo";
-import { CrownIcon, HeartIcon } from "@fynix/shared/ui/icons";
+import { WordmarkLogo, type BrandLogo } from "@brandbasket/shared/ui/logo";
+import { CrownIcon, HeartIcon } from "@brandbasket/shared/ui/icons";
 import { AccountBar, type AccountBarAccount } from "./account-bar";
 import { SidebarNav, type SidebarNavItem } from "./sidebar-nav";
 import { cn } from "../../lib/cn";

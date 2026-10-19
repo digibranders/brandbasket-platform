@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
-import { CrownIcon, HeartIcon } from "@fynix/shared/ui/icons";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { CrownIcon, HeartIcon } from "@brandbasket/shared/ui/icons";
 import type { MembershipTier } from "@/lib/membership";
 
 /**

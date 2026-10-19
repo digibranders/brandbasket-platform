@@ -1,7 +1,7 @@
 import "server-only";
-import type { DirectoryPictureSlot } from "@fynix/db";
-import type { TenantContext } from "@fynix/shared/lib/access";
-import { parsePictureSlot } from "@fynix/shared/lib/directory/pictures";
+import type { DirectoryPictureSlot } from "@brandbasket/db";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
+import { parsePictureSlot } from "@brandbasket/shared/lib/directory/pictures";
 import { NO_LISTING_MESSAGE } from "@/lib/photos-view";
 import type { ListingPictureOutcome, ListingPictureRefusal, UploadedPicture } from "./listing-pictures";
 import type { UploadAllowance } from "./onboarding-media";

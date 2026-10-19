@@ -1,11 +1,11 @@
-import { listAddOnsToContact, listClients, listPaymentsNeedingAttention, type PlanTier } from "@fynix/db";
+import { listAddOnsToContact, listClients, listPaymentsNeedingAttention, type PlanTier } from "@brandbasket/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { clientPaymentState, type ClientPaymentState } from "@fynix/shared/lib/billing/client-payment";
-import { PLAN_TIER_LABELS, readPlanTier } from "@fynix/shared/lib/billing/plan-tier";
-import { BILLING_CURRENCY_LABELS } from "@fynix/shared/lib/currency";
-import { PROJECT_STATUS_LABELS } from "@fynix/shared/lib/project-status";
-import { SearchIcon } from "@fynix/shared/ui/icons";
+import { clientPaymentState, type ClientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
+import { PLAN_TIER_LABELS, readPlanTier } from "@brandbasket/shared/lib/billing/plan-tier";
+import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
+import { PROJECT_STATUS_LABELS } from "@brandbasket/shared/lib/project-status";
+import { SearchIcon } from "@brandbasket/shared/ui/icons";
 import { Avatar, ringFor } from "@/components/console/avatar";
 import { FilterPills } from "@/components/console/filter-pills";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";

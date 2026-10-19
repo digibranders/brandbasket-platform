@@ -1,4 +1,4 @@
-import { isRealDeployment } from "@fynix/billing";
+import { isRealDeployment } from "@brandbasket/billing";
 
 export class RuntimeEnvironmentError extends Error {
   constructor(message: string) {

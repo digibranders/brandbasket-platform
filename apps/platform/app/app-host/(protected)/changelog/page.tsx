@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { BuilderIllustration } from "@fynix/shared/ui/builder-illustration";
+import { BuilderIllustration } from "@brandbasket/shared/ui/builder-illustration";
 import { CHANGELOG_ENTRIES } from "@/lib/changelog";
 
 export const metadata: Metadata = { title: "Changelog" };

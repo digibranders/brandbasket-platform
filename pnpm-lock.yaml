@@ -16,22 +16,22 @@ importers:
 
   apps/admin:
     dependencies:
-      '@fynix/auth':
+      '@brandbasket/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@fynix/billing':
+      '@brandbasket/billing':
         specifier: workspace:*
         version: link:../../packages/billing
-      '@fynix/cms':
+      '@brandbasket/cms':
         specifier: workspace:*
         version: link:../../packages/cms
-      '@fynix/db':
+      '@brandbasket/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@fynix/email':
+      '@brandbasket/email':
         specifier: workspace:*
         version: link:../../packages/email
-      '@fynix/shared':
+      '@brandbasket/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@lexical/link':
@@ -122,22 +122,22 @@ importers:
 
   apps/platform:
     dependencies:
-      '@fynix/auth':
+      '@brandbasket/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@fynix/billing':
+      '@brandbasket/billing':
         specifier: workspace:*
         version: link:../../packages/billing
-      '@fynix/cms':
+      '@brandbasket/cms':
         specifier: workspace:*
         version: link:../../packages/cms
-      '@fynix/db':
+      '@brandbasket/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@fynix/email':
+      '@brandbasket/email':
         specifier: workspace:*
         version: link:../../packages/email
-      '@fynix/shared':
+      '@brandbasket/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@lexical/link':
@@ -237,7 +237,7 @@ importers:
 
   packages/auth:
     dependencies:
-      '@fynix/db':
+      '@brandbasket/db':
         specifier: workspace:*
         version: link:../db
       better-auth:
@@ -265,7 +265,7 @@ importers:
 
   packages/billing:
     dependencies:
-      '@fynix/db':
+      '@brandbasket/db':
         specifier: workspace:*
         version: link:../db
       razorpay:
@@ -346,7 +346,7 @@ importers:
 
   packages/email:
     dependencies:
-      '@fynix/db':
+      '@brandbasket/db':
         specifier: workspace:*
         version: link:../db
     devDependencies:
@@ -365,10 +365,10 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1147.0
         version: 3.1147.0
-      '@fynix/billing':
+      '@brandbasket/billing':
         specifier: workspace:*
         version: link:../billing
-      '@fynix/db':
+      '@brandbasket/db':
         specifier: workspace:*
         version: link:../db
       '@pdf-lib/fontkit':

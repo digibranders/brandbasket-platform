@@ -1,4 +1,4 @@
-import type { Plan, Subscription } from "@fynix/db";
+import type { Plan, Subscription } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { eraseAfterFor, hasRunningAddOns, planClosureFor, retentionOfferTerms } from "./account-exit-rules";
 

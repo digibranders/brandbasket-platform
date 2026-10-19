@@ -6,7 +6,7 @@ import type {
   DirectoryListingRow,
   DirectoryProfile,
   SiteFacts,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { safeExternalHref, safeWebsiteHref } from "../safe-link";
 import type {
   DirectoryFeedAddedListing,

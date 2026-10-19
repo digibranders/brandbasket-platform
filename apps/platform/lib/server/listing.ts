@@ -1,5 +1,5 @@
 import "server-only";
-import { findClaimForBusiness, findOwnListing, withTenantScope } from "@fynix/db";
+import { findClaimForBusiness, findOwnListing, withTenantScope } from "@brandbasket/db";
 import { cache } from "react";
 import type { ClientListingState } from "@/lib/listing-sections";
 import { getCustomerTenant } from "./customer-tenant";

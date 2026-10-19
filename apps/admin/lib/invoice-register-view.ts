@@ -1,8 +1,8 @@
-import { indianDate } from "@fynix/billing";
-import type { MissingTaxInvoice } from "@fynix/db";
-import { adjacentMonth, monthRange, type RegisterInvoice, type RegisterTotals } from "@fynix/shared/lib/billing/invoice-register";
-import { stateName } from "@fynix/shared/lib/directory/india-states";
-import { formatStoredDate } from "@fynix/shared/lib/format";
+import { indianDate } from "@brandbasket/billing";
+import type { MissingTaxInvoice } from "@brandbasket/db";
+import { adjacentMonth, monthRange, type RegisterInvoice, type RegisterTotals } from "@brandbasket/shared/lib/billing/invoice-register";
+import { stateName } from "@brandbasket/shared/lib/directory/india-states";
+import { formatStoredDate } from "@brandbasket/shared/lib/format";
 import { missingInvoiceRow } from "@/lib/tax-invoice-rows";
 
 /**

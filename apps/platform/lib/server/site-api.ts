@@ -1,8 +1,8 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { getPayload } from "payload";
-import { hasBillingAccess } from "@fynix/billing";
-import { findBillingState } from "@fynix/db";
+import { hasBillingAccess } from "@brandbasket/billing";
+import { findBillingState } from "@brandbasket/db";
 import config from "@/payload.config";
 import { getStaffDb } from "./db";
 import { toSitePost, type RawSitePost, type SitePost } from "@/lib/site-post";

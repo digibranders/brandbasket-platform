@@ -1,4 +1,4 @@
-import { homeMarket, type DirectoryAdPrice, type DirectoryAdSpotPrice } from "@fynix/db";
+import { homeMarket, type DirectoryAdPrice, type DirectoryAdSpotPrice } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { buildPriceBoard, HOME_PRICE_SCOPE, openCategoryCount } from "./ad-prices";
 

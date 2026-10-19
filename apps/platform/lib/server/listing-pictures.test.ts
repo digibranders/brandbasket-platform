@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Database } from "@fynix/db";
-import type { TenantContext } from "@fynix/shared/lib/access";
-import { createLocalMediaStorage, mediaStorageKey, type MediaStorage } from "@fynix/shared/server/media-storage";
+import type { Database } from "@brandbasket/db";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
+import { createLocalMediaStorage, mediaStorageKey, type MediaStorage } from "@brandbasket/shared/server/media-storage";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn() }));
@@ -14,7 +14,7 @@ const PICTURE_ID = "0192f3c4-4444-7000-8000-000000000004";
 const OLD_PICTURE_ID = "0192f3c4-5555-7000-8000-000000000005";
 
 const recordDirectoryPicture = vi.fn();
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   findBusinessKind: vi.fn(),
   findClaimForBusiness: vi.fn(),
   listDirectoryPictures: vi.fn(),

@@ -11,7 +11,7 @@
  * instants directly (an appointment's `createdAt` and the current moment), since "2 hours ago" doesn't depend on
  * any particular calendar day.
  */
-import { addDays, localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { addDays, localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -28,7 +28,7 @@ interface DateParts {
   readonly date: Date;
 }
 
-/** `value` must already be a real calendar date (YYYY-MM-DD, see @fynix/shared's isIsoDate); this does not
+/** `value` must already be a real calendar date (YYYY-MM-DD, see @brandbasket/shared's isIsoDate); this does not
  * validate it. */
 function parts(value: string): DateParts {
   const match = DATE_PATTERN.exec(value);
@@ -50,7 +50,7 @@ export function formatGridDayLabel(value: string): string {
  * `weekStart`'s Monday through the following Sunday, e.g. "28 Sep – 4 Oct 2026". Always carries a year -- unlike
  * formatLongDate below, this label has to read right on its own, with no "current year" for context, since it's
  * the one thing on the page that names the week being viewed. Both ends carry a year when the week crosses one,
- * e.g. "29 Dec 2026 – 4 Jan 2027". `weekStart` must already be a Monday (see @fynix/shared's mondayOf); this
+ * e.g. "29 Dec 2026 – 4 Jan 2027". `weekStart` must already be a Monday (see @brandbasket/shared's mondayOf); this
  * does not re-normalise it.
  */
 export function formatWeekRangeLabel(weekStart: string): string {

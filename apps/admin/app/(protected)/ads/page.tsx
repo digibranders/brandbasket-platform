@@ -24,7 +24,7 @@ import {
   type StaffDirectoryClaim,
   type StaffDirectoryPicture,
   type StaffDirectoryVideo,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -36,15 +36,15 @@ import {
   formatAdWeek,
   formatRupees,
   marketLabel,
-} from "@fynix/shared/lib/directory/ads";
-import { PICTURE_SHAPES, PICTURE_SLOT_LABELS } from "@fynix/shared/lib/directory/pictures";
-import { vimeoEmbedUrl } from "@fynix/shared/lib/directory/videos";
-import { displayPhone } from "@fynix/shared/server/phone-display";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
-import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
+} from "@brandbasket/shared/lib/directory/ads";
+import { PICTURE_SHAPES, PICTURE_SLOT_LABELS } from "@brandbasket/shared/lib/directory/pictures";
+import { vimeoEmbedUrl } from "@brandbasket/shared/lib/directory/videos";
+import { displayPhone } from "@brandbasket/shared/server/phone-display";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import { buttonDanger, buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
 import { Figures } from "@/components/console/figures";

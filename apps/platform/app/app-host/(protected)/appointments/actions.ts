@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { reportUnexpectedPanelError } from "@/lib/server/report-panel-error";
-import { findAppointment, listEnabledModules, reassignAppointment, transitionAppointment, withTenantScope } from "@fynix/db";
+import { findAppointment, listEnabledModules, reassignAppointment, transitionAppointment, withTenantScope } from "@brandbasket/db";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import { canRecordOutcome } from "@/lib/appointments/booking-actions";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
 import { getAppDb } from "@/lib/server/db";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { loadFreeDoctorIds } from "@/lib/server/free-doctors";
 import { paymentRequiredState, unexpectedErrorState } from "@/lib/server/panel-form-errors";
 import { parseReassignCommand, parseTransitionCommand, runReassignCommand } from "./commands";

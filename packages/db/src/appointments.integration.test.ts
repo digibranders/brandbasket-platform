@@ -51,7 +51,7 @@ import { withTenantScope, type ScopedTransaction, type TenantScope } from "./sco
 import { captureErrorText, openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
 /** Matches the constant the platform will pass as `maxAttempts` (packages/shared's OTP_MAX_ATTEMPTS); packages/db
- * does not depend on @fynix/shared, so it is written literally here as it is in that package. */
+ * does not depend on @brandbasket/shared, so it is written literally here as it is in that package. */
 const MAX_OTP_ATTEMPTS = 5;
 
 const OWNER_A = "owner-a";

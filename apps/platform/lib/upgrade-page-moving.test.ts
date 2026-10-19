@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Plan } from "@fynix/db";
+import type { Plan } from "@brandbasket/db";
 import { CareUpgrade } from "@/components/panel/upgrade/care-upgrade";
 import { BRAND } from "@/lib/brand";
 import type { GrantedCustomer } from "@/lib/server/customer-access";

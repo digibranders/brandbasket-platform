@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useActionState, useId, type FormEvent, type ReactElement, type ReactNode } from "react";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { initialItemFormState, type ItemFormState } from "@/lib/item-form-state";
 
 interface ItemFormProps {

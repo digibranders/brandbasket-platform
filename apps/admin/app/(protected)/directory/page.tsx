@@ -15,20 +15,20 @@ import {
   type StaffDirectoryReview,
   type StaffDirectoryVerification,
   type StaffDirectoryVisitor,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { directoryHighlightLabel } from "@fynix/shared/lib/directory-highlights";
-import { phoneCountryOptions } from "@fynix/shared/server/phone-countries";
-import { visitorPhoneCountry } from "@fynix/shared/server/phone-defaults";
-import { displayPhone, maskPhone } from "@fynix/shared/server/phone-display";
+import { directoryHighlightLabel } from "@brandbasket/shared/lib/directory-highlights";
+import { phoneCountryOptions } from "@brandbasket/shared/server/phone-countries";
+import { visitorPhoneCountry } from "@brandbasket/shared/server/phone-defaults";
+import { displayPhone, maskPhone } from "@brandbasket/shared/server/phone-display";
 import { MaskedPhone } from "@/components/masked-phone";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { SearchIcon } from "@fynix/shared/ui/icons";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { SearchIcon } from "@brandbasket/shared/ui/icons";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { buttonDanger, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses } from "@/components/console/field-styles";
 import { FilterPills } from "@/components/console/filter-pills";

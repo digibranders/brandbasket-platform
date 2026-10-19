@@ -161,7 +161,7 @@ describe("place ids", () => {
 
 - [ ] **Step 2: Run it and watch it fail**
 
-Run: `pnpm --filter @fynix/shared exec vitest run src/lib/directory/place-id.test.ts`
+Run: `pnpm --filter @brandbasket/shared exec vitest run src/lib/directory/place-id.test.ts`
 Expected: FAIL, "Cannot find module './place-id'".
 
 - [ ] **Step 3: Implement**
@@ -219,7 +219,7 @@ export function newPlatformPlaceId(): string {
 
 Export it from the package entry the same way `feed-contract` is exported. Check `packages/shared/package.json` `exports` and `src/index.ts`.
 
-- [ ] **Step 4: Run** the test: PASS (5 tests). Run `pnpm --filter @fynix/shared typecheck`.
+- [ ] **Step 4: Run** the test: PASS (5 tests). Run `pnpm --filter @brandbasket/shared typecheck`.
 - [ ] **Step 5: Commit** (only if the user asked): `git commit -m "Add the directory place id format"`
 
 ### Task 2: The dataset build issues open-data IDs and keeps a ledger
@@ -569,7 +569,7 @@ The `origin_id` CHECK encodes the rule: an `open_data` row has a letter-first ID
 
 Add `export * from "./directory-places";` to `schema/index.ts`.
 
-- [ ] **Step 2: Generate** with `pnpm --filter @fynix/db db:generate`. Rename the output to `0075_directory_places.sql`, fix the tag in `migrations/meta/_journal.json`, and add a header comment like 0056's.
+- [ ] **Step 2: Generate** with `pnpm --filter @brandbasket/db db:generate`. Rename the output to `0075_directory_places.sql`, fix the tag in `migrations/meta/_journal.json`, and add a header comment like 0056's.
 
 - [ ] **Step 3: Grants**
 
@@ -600,7 +600,7 @@ CREATE POLICY directory_place_url_changes_staff_all ON directory_place_url_chang
 
 Before writing it, run `grep -n "getStaffDb\|getAppDb\|withTenantScope" apps/platform/lib/server/listing-account.ts` and confirm the owner-side code runs on the staff connection. If it uses `fynix_app`, **stop and ask**: owner code must not get UPDATE on `directory_places`.
 
-- [ ] **Step 4: Run** `pnpm db:migrate:test && pnpm --filter @fynix/db typecheck`: clean.
+- [ ] **Step 4: Run** `pnpm db:migrate:test && pnpm --filter @brandbasket/db typecheck`: clean.
 - [ ] **Step 5: Commit** (only if the user asked).
 
 ### Task 4: Place queries
@@ -697,13 +697,13 @@ describe("changePlaceUrl", () => {
 
 Copy the test-DB handle names (`dbs.staff.db`, `dbs.close()`) and the minimal `users` row from `src/directory-listings.integration.test.ts`.
 
-- [ ] **Step 2: Run them and watch them fail**: `pnpm --filter @fynix/db test:integration -- directory-places`.
+- [ ] **Step 2: Run them and watch them fail**: `pnpm --filter @brandbasket/db test:integration -- directory-places`.
 
 - [ ] **Step 3: Implement**
 
 ```ts
 // packages/db/src/queries/directory-places.ts
-import { newPlatformPlaceId } from "@fynix/shared/directory/place-id";
+import { newPlatformPlaceId } from "@brandbasket/shared/directory/place-id";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { Database } from "../client";
 import { directoryPlaceLegacyKeys, directoryPlaces, directoryPlaceUrlChanges } from "../schema";
@@ -886,7 +886,7 @@ export async function changePlaceUrl(
 }
 ```
 
-Match the shared import path to how `@fynix/db` already imports from `@fynix/shared`. Run `grep -rn "@fynix/shared" packages/db/src | head -3`. If `@fynix/db` must not depend on `@fynix/shared` (check `packages/db/package.json`), move `place-id.ts` to `packages/db/src/place-id.ts` and have `shared` re-export it instead.
+Match the shared import path to how `@brandbasket/db` already imports from `@brandbasket/shared`. Run `grep -rn "@brandbasket/shared" packages/db/src | head -3`. If `@brandbasket/db` must not depend on `@brandbasket/shared` (check `packages/db/package.json`), move `place-id.ts` to `packages/db/src/place-id.ts` and have `shared` re-export it instead.
 
 Export the functions and errors from `packages/db/src/index.ts`.
 
@@ -895,7 +895,7 @@ Export the functions and errors from `packages/db/src/index.ts`.
 
 ### Task 5: Import script
 
-**Files:** create `packages/db/scripts/import-directory-places.ts`; add `"directory:import-places": "tsx scripts/import-directory-places.ts"` to `packages/db/package.json` and `"directory:import-places": "pnpm --filter @fynix/db directory:import-places"` to the root `package.json`.
+**Files:** create `packages/db/scripts/import-directory-places.ts`; add `"directory:import-places": "tsx scripts/import-directory-places.ts"` to `packages/db/package.json` and `"directory:import-places": "pnpm --filter @brandbasket/db directory:import-places"` to the root `package.json`.
 
 - [ ] **Step 1: Implement**
 
@@ -1028,7 +1028,7 @@ UPDATE directory_reviews t SET place_id = k.place_id FROM directory_place_legacy
      - the older same-phone review is hidden;
      - B is untouched;
      - running the backfill again changes nothing.
-- [ ] **Step 5: Run** `pnpm db:migrate:test && pnpm --filter @fynix/db test:integration`: all green.
+- [ ] **Step 5: Run** `pnpm db:migrate:test && pnpm --filter @brandbasket/db test:integration`: all green.
 - [ ] **Step 6: Commit** (only if the user asked).
 
 ### Task 7: The directory API accepts IDs (and keys, during the switch)
@@ -1107,7 +1107,7 @@ UPDATE directory_reviews t SET place_id = k.place_id FROM directory_place_legacy
 - [ ] **Step 2: Implement** the server action. Validate with zod: `urlSlug` must be a slug of at most 70 characters, `citySlug` must be one of the known cities, and `reason` must be 3–300 characters. Call `changePlaceUrl` on the staff DB and revalidate the page.
 
   UI: a "Web address" row shows the current full URL and a "Change web address" button. It opens a small form with the name part, the city and a required reason, plus this warning: "Old links keep working — they redirect here."
-- [ ] **Step 3: Run** `pnpm --filter @fynix/admin test && pnpm --filter @fynix/admin typecheck && pnpm --filter @fynix/admin lint`: green.
+- [ ] **Step 3: Run** `pnpm --filter @brandbasket/admin test && pnpm --filter @brandbasket/admin typecheck && pnpm --filter @brandbasket/admin lint`: green.
 - [ ] **Step 4: Verify in the browser** on the local admin. Change a test business's address, then `curl -sI` the old public URL and expect a `301` to the new one.
 - [ ] **Step 5: Commit** (only if the user asked).
 
@@ -1130,7 +1130,7 @@ UPDATE directory_reviews t SET place_id = k.place_id FROM directory_place_legacy
 ```
 
   Keep `address`, `previousAddresses` and `replacesSourcePath` until Phase 6, so a website not yet updated keeps working. Keep `version: 1`; the new fields are additive.
-- [ ] **Step 3: Run** `pnpm --filter @fynix/shared test && pnpm typecheck`: green.
+- [ ] **Step 3: Run** `pnpm --filter @brandbasket/shared test && pnpm typecheck`: green.
 - [ ] **Step 4: Commit** (only if the user asked).
 
 ### Task 11: Website URL helpers

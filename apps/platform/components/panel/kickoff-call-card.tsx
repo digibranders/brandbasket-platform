@@ -2,11 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactElement } from "react";
-import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { Button, ExternalButtonLink } from "@fynix/shared/ui/panel/button";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
-import { callInviteHref } from "@fynix/shared/lib/call-slots";
-import { isCalendlyUrl } from "@fynix/shared/lib/setup-call-link";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { Button, ExternalButtonLink } from "@brandbasket/shared/ui/panel/button";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { callInviteHref } from "@brandbasket/shared/lib/call-slots";
+import { isCalendlyUrl } from "@brandbasket/shared/lib/setup-call-link";
 import { recordSetupCallBooked } from "@/app/app-host/(protected)/setup-call-actions";
 import { CallSlotPicker } from "@/components/panel/call-slot-picker";
 import type { SetupCallBookingView } from "@/lib/server/setup-call";

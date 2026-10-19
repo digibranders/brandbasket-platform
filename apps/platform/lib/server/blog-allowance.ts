@@ -1,9 +1,9 @@
 import "server-only";
-import type { Plan } from "@fynix/db";
+import type { Plan } from "@brandbasket/db";
 import { getPayload } from "payload";
 import config from "@/payload.config";
-import { chargeAmountCents } from "@fynix/shared/lib/billing/charges";
-import { formatMoney } from "@fynix/shared/lib/money";
+import { chargeAmountCents } from "@brandbasket/shared/lib/billing/charges";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { customerBlogAllowance } from "./charges";
 import type { GrantedCustomer } from "./customer-access";
 

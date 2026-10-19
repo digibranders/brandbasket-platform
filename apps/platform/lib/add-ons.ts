@@ -10,4 +10,4 @@ export {
   addOnPrice,
   type AddOn,
   type AddOnId,
-} from "@fynix/shared/lib/billing/add-ons";
+} from "@brandbasket/shared/lib/billing/add-ons";

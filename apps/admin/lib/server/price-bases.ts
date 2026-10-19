@@ -1,5 +1,5 @@
 import "server-only";
-import { findActivePlan, type BillingCurrency } from "@fynix/db";
+import { findActivePlan, type BillingCurrency } from "@brandbasket/db";
 import type { PriceBasis } from "@/components/referral-code-form";
 import { getStaffDb } from "./db";
 

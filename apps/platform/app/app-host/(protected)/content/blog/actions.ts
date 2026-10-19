@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPayload, NotFound, type Payload } from "payload";
-import { cleanLine, cleanMultiline } from "@fynix/shared/lib/validation/text";
+import { cleanLine, cleanMultiline } from "@brandbasket/shared/lib/validation/text";
 import config from "@/payload.config";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
 import { getBlogUsage, isAtBlogLimit } from "@/lib/server/blog-allowance";
@@ -15,7 +15,7 @@ import {
   requireOwnedBlogPost,
   type OwnedBlogPost,
 } from "@/lib/server/blog";
-import { toRelationId } from "@fynix/cms";
+import { toRelationId } from "@brandbasket/cms";
 import {
   firstUnusedSlug,
   isSlugTaken,

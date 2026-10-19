@@ -1,6 +1,6 @@
 import "server-only";
-import { clearSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "@fynix/db";
-import { SETUP_CALL_URL_KEY } from "@fynix/shared/lib/setup-call-link";
+import { clearSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "@brandbasket/db";
+import { SETUP_CALL_URL_KEY } from "@brandbasket/shared/lib/setup-call-link";
 import { getStaffDb } from "./db";
 
 export interface SetupCallSetting {

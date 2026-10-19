@@ -6,8 +6,8 @@ import {
   resolveBillingProviderName,
   wrapRazorpaySdkClient,
   type BillingProvider,
-} from "@fynix/billing";
-import { findChargeByProviderOrder, findSubscriptionByProviderId } from "@fynix/db";
+} from "@brandbasket/billing";
+import { findChargeByProviderOrder, findSubscriptionByProviderId } from "@brandbasket/db";
 import { getStaffDb } from "./db";
 import { serverEnv } from "@/lib/server/env";
 

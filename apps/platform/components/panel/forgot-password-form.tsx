@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, type ReactElement } from "react";
-import { clientBrandName } from "@fynix/shared/lib/deployment-brand";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { TurnstileWidget } from "@fynix/shared/ui/turnstile";
+import { clientBrandName } from "@brandbasket/shared/lib/deployment-brand";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { TurnstileWidget } from "@brandbasket/shared/ui/turnstile";
 import { FORGOT_PASSWORD_PATH, initialForgotPasswordState, type ForgotPasswordFormState } from "@/lib/account-recovery-form";
 
 interface ForgotPasswordFormProps {

@@ -1,5 +1,5 @@
 import "server-only";
-import { findClaimForBusiness, readDirectoryStatuses, withTenantScope } from "@fynix/db";
+import { findClaimForBusiness, readDirectoryStatuses, withTenantScope } from "@brandbasket/db";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 

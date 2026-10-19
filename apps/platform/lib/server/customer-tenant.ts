@@ -1,7 +1,7 @@
 import "server-only";
-import { findOpenClosureForUser, listMembershipsForUser } from "@fynix/db";
+import { findOpenClosureForUser, listMembershipsForUser } from "@brandbasket/db";
 import { cache } from "react";
-import { decideCustomerAccess, type CustomerAccess, type TenantContext } from "@fynix/shared/lib/access";
+import { decideCustomerAccess, type CustomerAccess, type TenantContext } from "@brandbasket/shared/lib/access";
 import { getAppDb, getStaffDb } from "./db";
 import { getSessionUser } from "./session";
 

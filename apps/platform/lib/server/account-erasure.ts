@@ -6,12 +6,12 @@ import {
   findErasureBlock,
   listClosuresDueForErasure,
   markSupportAttachmentPurged,
-} from "@fynix/db";
-import { deleteMediaFilesReporting, getMediaStorage } from "@fynix/shared/server/media-storage";
-import { purgeSupportAttachments } from "@fynix/shared/server/support-attachment-maintenance";
-import { getSupportStorage } from "@fynix/shared/server/support-storage";
+} from "@brandbasket/db";
+import { deleteMediaFilesReporting, getMediaStorage } from "@brandbasket/shared/server/media-storage";
+import { purgeSupportAttachments } from "@brandbasket/shared/server/support-attachment-maintenance";
+import { getSupportStorage } from "@brandbasket/shared/server/support-storage";
 import { eraseAccountWithPrivateSupport } from "./support-account-erasure";
-import { getVimeoClient } from "@fynix/shared/server/vimeo";
+import { getVimeoClient } from "@brandbasket/shared/server/vimeo";
 import { getPayload } from "payload";
 import config from "@/payload.config";
 import type { ErasureDeps } from "@/lib/account-erasure-run";

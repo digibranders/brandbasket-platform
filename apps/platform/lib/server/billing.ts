@@ -7,7 +7,7 @@ import {
   wrapRazorpaySdkClient,
   type BillingProvider,
   type RazorpayBillingProvider,
-} from "@fynix/billing";
+} from "@brandbasket/billing";
 import {
   findActivePlan,
   findChargeByProviderOrder,
@@ -20,7 +20,7 @@ import {
   type Plan,
   type Receipt,
   type TaxInvoice,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { requireCustomerAccess, type GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { serverEnv } from "@/lib/server/env";

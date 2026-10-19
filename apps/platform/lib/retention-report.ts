@@ -1,4 +1,4 @@
-import type { RetentionCounts } from "@fynix/db";
+import type { RetentionCounts } from "@brandbasket/db";
 
 /** The one line the nightly run and `pnpm retention:run` print: counts only, never what was in the rows. */
 export function retentionReport(counts: RetentionCounts, dryRun: boolean): string {

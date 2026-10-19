@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { readBookingContext, readPractitionerSchedules, readSiteFacts } from "@fynix/db";
+import { readBookingContext, readPractitionerSchedules, readSiteFacts } from "@brandbasket/db";
 import { getStaffDb } from "@/lib/server/db";
 import { findTenantBySiteToken, siteHasAccess } from "@/lib/server/site-api";
 import { GET, OPTIONS } from "./route";
@@ -11,7 +11,7 @@ import { GET, OPTIONS } from "./route";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("@/lib/server/site-api", () => ({ findTenantBySiteToken: vi.fn(), siteHasAccess: vi.fn() }));
-vi.mock("@fynix/db", () => ({ readBookingContext: vi.fn(), readPractitionerSchedules: vi.fn(), readSiteFacts: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ readBookingContext: vi.fn(), readPractitionerSchedules: vi.fn(), readSiteFacts: vi.fn() }));
 
 const mockedGetStaffDb = vi.mocked(getStaffDb);
 const mockedFindTenant = vi.mocked(findTenantBySiteToken);

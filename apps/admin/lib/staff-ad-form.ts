@@ -3,11 +3,11 @@
  * (docs/superpowers/specs/2026-09-30-directory-ads-auction-design.md, "Staff-placed ads"). Staff choose the business,
  * and where and when its ad shows; nothing here limits the ad to the business's own category or area.
  */
-import { AD_ALL_SLUG, DIRECTORY_AD_SPOTS, homeMarket, MAX_STAFF_AD_WEEKS, marketOfListing, type DirectoryAdPlacement, type NewStaffAds } from "@fynix/db";
-import { AD_MAX_RUPEES, AD_PLACEMENT_LABELS, AD_PLACEMENTS, parseAdLink, parseAdTagline } from "@fynix/shared/lib/directory/ads";
-import { isAdCategory, isDirectoryArea, isDirectoryCity } from "@fynix/shared/lib/directory/places";
-import { parseMoney } from "@fynix/shared/lib/money";
-import { cleanLine } from "@fynix/shared/lib/validation/text";
+import { AD_ALL_SLUG, DIRECTORY_AD_SPOTS, homeMarket, MAX_STAFF_AD_WEEKS, marketOfListing, type DirectoryAdPlacement, type NewStaffAds } from "@brandbasket/db";
+import { AD_MAX_RUPEES, AD_PLACEMENT_LABELS, AD_PLACEMENTS, parseAdLink, parseAdTagline } from "@brandbasket/shared/lib/directory/ads";
+import { isAdCategory, isDirectoryArea, isDirectoryCity } from "@brandbasket/shared/lib/directory/places";
+import { parseMoney } from "@brandbasket/shared/lib/money";
+import { cleanLine } from "@brandbasket/shared/lib/validation/text";
 import { spotLabel } from "./ad-spot-label";
 import { listingKeyFromPageAddress } from "./directory-view";
 

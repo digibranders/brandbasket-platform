@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { PatientReport } from "@fynix/db";
+import type { PatientReport } from "@brandbasket/db";
 import { ReportColumnChart, type ReportColumn, type ReportSeries } from "./report-column-chart";
 
 /*

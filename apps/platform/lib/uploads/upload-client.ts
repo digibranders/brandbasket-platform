@@ -1,5 +1,5 @@
 // The type only: this module runs in the browser, and the package index pulls in the database.
-import type { DirectoryPictureSlot } from "@fynix/db";
+import type { DirectoryPictureSlot } from "@brandbasket/db";
 import { MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE, UPLOAD_FILE_NAME_HEADER, type UploadPurpose } from "./limits";
 import { prepareImageForUpload } from "./prepare-image";
 

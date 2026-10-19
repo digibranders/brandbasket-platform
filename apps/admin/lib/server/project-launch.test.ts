@@ -1,15 +1,15 @@
-import { findClientDetail, markProjectLive, setBusinessWebsiteUrl, type Database } from "@fynix/db";
-import { websiteLiveEmail } from "@fynix/email";
+import { findClientDetail, markProjectLive, setBusinessWebsiteUrl, type Database } from "@brandbasket/db";
+import { websiteLiveEmail } from "@brandbasket/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { customerEmailTransport } from "./email";
 import { ProjectLaunchDomainMissingError, ProjectLaunchRecipientMissingError, launchProject } from "./project-launch";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => {
+vi.mock("@brandbasket/db", () => {
   class MockInvalidWebsiteUrlError extends Error {}
   return { findClientDetail: vi.fn(), InvalidWebsiteUrlError: MockInvalidWebsiteUrlError, markProjectLive: vi.fn(), setBusinessWebsiteUrl: vi.fn() };
 });
-vi.mock("@fynix/email", () => ({ websiteLiveEmail: vi.fn() }));
+vi.mock("@brandbasket/email", () => ({ websiteLiveEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 
 const mockedMarkLive = vi.mocked(markProjectLive);

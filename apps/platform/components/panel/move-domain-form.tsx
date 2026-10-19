@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, type ReactElement } from "react";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { STEP_FIELD_CLASSES } from "@/components/panel/step-form";
 import { initialMoveDomainState, type MoveDomainState } from "@/lib/move-domain-state";
 

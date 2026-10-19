@@ -1,15 +1,15 @@
 "use client";
 
 import type { ReactElement } from "react";
-import type { DirectoryPaidTag } from "@fynix/db";
+import type { DirectoryPaidTag } from "@brandbasket/db";
 import {
   PROMOTION_DAYS,
   PROMOTION_TAGS,
   PROMOTION_TAG_LABELS,
-} from "@fynix/shared/lib/directory/promotion";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+} from "@brandbasket/shared/lib/directory/promotion";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 /** Written as escapes to keep the source plain text. */

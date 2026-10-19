@@ -23,18 +23,18 @@ Each app has its own `CLAUDE.md` (`apps/platform/`, `apps/admin/`) with app-spec
 
 | Package | Import | Holds |
 |---|---|---|
-| `packages/db` | `@fynix/db` | Schema (`src/schema/*.ts`), migrations (`migrations/`), scoped queries (`src/queries/`), scope helpers (`src/scope.ts`), rate limiting, env and role scripts |
-| `packages/shared` | `@fynix/shared/...` | UI (`src/ui`, `src/ui/panel`, `src/ui/forms`), helpers (`src/lib`: `cn`, `money`, `access`, calendar), server logic (`src/server`: charges, add-ons, plan upgrades, tax invoicing), theme CSS (`src/styles/theme.css`) |
-| `packages/auth` | `@fynix/auth` | Better Auth setup and the `staff:create` command |
-| `packages/billing` | `@fynix/billing` | Fake and Razorpay providers, Razorpay webhook verification, billing rules |
-| `packages/email` | `@fynix/email` | Templates, Brevo transport, the `email_messages` outbox |
-| `packages/cms` | `@fynix/cms` | Payload collections, config and migrations, in its own database `fynix_platform_payload` |
+| `packages/db` | `@brandbasket/db` | Schema (`src/schema/*.ts`), migrations (`migrations/`), scoped queries (`src/queries/`), scope helpers (`src/scope.ts`), rate limiting, env and role scripts |
+| `packages/shared` | `@brandbasket/shared/...` | UI (`src/ui`, `src/ui/panel`, `src/ui/forms`), helpers (`src/lib`: `cn`, `money`, `access`, calendar), server logic (`src/server`: charges, add-ons, plan upgrades, tax invoicing), theme CSS (`src/styles/theme.css`) |
+| `packages/auth` | `@brandbasket/auth` | Better Auth setup and the `staff:create` command |
+| `packages/billing` | `@brandbasket/billing` | Fake and Razorpay providers, Razorpay webhook verification, billing rules |
+| `packages/email` | `@brandbasket/email` | Templates, Brevo transport, the `email_messages` outbox |
+| `packages/cms` | `@brandbasket/cms` | Payload collections, config and migrations, in its own database `fynix_platform_payload` |
 
-The scope is still `@fynix/*`; renaming it is planned.
+The scope is still `@brandbasket/*`; renaming it is planned.
 
 ## Data access rules
 
-- Three database roles, three connections. The dashboard uses the app role for customer work (row-level security, scope every query with `withUserScope` or `withTenantScope` from `@fynix/db`), the public role only for lead intake, and the staff role for console and system work. The console has only the staff connection.
+- Three database roles, three connections. The dashboard uses the app role for customer work (row-level security, scope every query with `withUserScope` or `withTenantScope` from `@brandbasket/db`), the public role only for lead intake, and the staff role for console and system work. The console has only the staff connection.
 - Every page, route handler and server action checks access itself. Layouts are never the only guard.
 - Accounts are only created by server code: the email-confirmed sign-up and `pnpm staff:create`. There is no public account API.
 - Dashboard and console are separate origins with host-only session cookies. Never add a `Domain=.fynix.digital` cookie or Better Auth `crossSubDomainCookies` (`docs/STAFF-ACCESS.md`).
@@ -61,7 +61,7 @@ pnpm typecheck               # next typegen + tsc in every package
 pnpm test
 pnpm test:integration
 pnpm build
-pnpm --filter @fynix/db db:generate   # new migration from the schema
+pnpm --filter @brandbasket/db db:generate   # new migration from the schema
 pnpm db:migrate              # dev database; db:migrate:test for the test database
 pnpm cms:migrate             # Payload migrations; cms:migrate:create to add one
 pnpm staff:create --email you@example.com --name "Your Name" --role admin

@@ -1,6 +1,6 @@
-import type { Payment, TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
-import type { BillingDetailsStart, SavedBillingDetails } from "@fynix/shared/lib/billing/billing-details-start";
-import type { PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
+import type { Payment, TaxInvoice, TaxInvoiceLineRecord } from "@brandbasket/db";
+import type { BillingDetailsStart, SavedBillingDetails } from "@brandbasket/shared/lib/billing/billing-details-start";
+import type { PhoneCountryOption } from "@brandbasket/shared/lib/phone/fields";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";

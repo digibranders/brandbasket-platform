@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
-import { CalendarIcon } from "@fynix/shared/ui/icons";
-import { cn } from "@fynix/shared/lib/cn";
-import { placeDropdown, type DropdownPlacement } from "@fynix/shared/lib/dropdown-placement";
+import { CalendarIcon } from "@brandbasket/shared/ui/icons";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { placeDropdown, type DropdownPlacement } from "@brandbasket/shared/lib/dropdown-placement";
 import { CaretGlyph } from "./icons";
 
 interface DateTimePickerProps {

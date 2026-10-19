@@ -260,7 +260,7 @@ And add a third-test assertion:
 ```
 In `packages/db/scripts/init-local-env.ts`, add `publicPassword: randomBytes(24).toString("hex"),` to the secrets object.
 
-Run `pnpm --filter @fynix/db test`.
+Run `pnpm --filter @brandbasket/db test`.
 Expected: the template tests fail first (they assert values the template does not produce yet), then pass once the template is updated. Run them before and after the template edit to see both.
 
 - [ ] **Step 6: Document the variables**
@@ -284,13 +284,13 @@ NEXT_PUBLIC_CALENDLY_URL=
 
 Run:
 ```bash
-pnpm --filter @fynix/db exec drizzle-kit generate --name funnel && ls packages/db/migrations
+pnpm --filter @brandbasket/db exec drizzle-kit generate --name funnel && ls packages/db/migrations
 ```
 Expected: `0003_funnel.sql` exists and creates `leads`, `setup_invites` and `email_messages` plus the two new enums and the three indexes. Read it and confirm it contains no `DROP`.
 
 - [ ] **Step 8: Grants and row-level security for the new tables**
 
-Run `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name funnel_grants`, then replace the whole content of the generated `packages/db/migrations/0004_funnel_grants.sql` with:
+Run `pnpm --filter @brandbasket/db exec drizzle-kit generate --custom --name funnel_grants`, then replace the whole content of the generated `packages/db/migrations/0004_funnel_grants.sql` with:
 ```sql
 -- fynix_public is the marketing site's connection: it may only create leads.
 GRANT USAGE ON SCHEMA public TO fynix_public;
@@ -363,7 +363,7 @@ Expected: the first fails with `permission denied for table leads` (it has INSER
 
 - [ ] **Step 11: Checkpoint**
 
-Run `pnpm --filter @fynix/db typecheck && pnpm --filter @fynix/db test`.
+Run `pnpm --filter @brandbasket/db typecheck && pnpm --filter @brandbasket/db test`.
 Expected: typecheck clean; unit tests pass.
 
 ---
@@ -562,7 +562,7 @@ describe("email outbox", () => {
 
 - [ ] **Step 2: Run to see it fail**
 
-Run `pnpm --filter @fynix/db test:integration`.
+Run `pnpm --filter @brandbasket/db test:integration`.
 Expected: FAIL, unable to resolve `./queries/leads`, `./queries/invites` and `./queries/emails`.
 
 - [ ] **Step 3: Implement the lead queries**
@@ -800,7 +800,7 @@ export { createLead, findLead, listLeads, updateLead, type Lead, type LeadUpdate
 
 - [ ] **Step 6: Run to see it pass**
 
-Run `pnpm --filter @fynix/db test:integration`.
+Run `pnpm --filter @brandbasket/db test:integration`.
 Expected: PASS.
 
 > **Review fix applied after implementation:** `createLead` generates the id with `uuidv7()` and does not use
@@ -811,7 +811,7 @@ Expected: PASS.
 
 - [ ] **Step 7: Checkpoint**
 
-Run `pnpm --filter @fynix/db typecheck && pnpm --filter @fynix/db test`.
+Run `pnpm --filter @brandbasket/db typecheck && pnpm --filter @brandbasket/db test`.
 
 ---
 
@@ -854,7 +854,7 @@ describe("slugify", () => {
 
 - [ ] **Step 2: Run to see it fail**
 
-Run `pnpm --filter @fynix/db test`.
+Run `pnpm --filter @brandbasket/db test`.
 Expected: FAIL, unable to resolve `./slug`.
 
 - [ ] **Step 3: Implement the slug helper**
@@ -880,7 +880,7 @@ export function slugify(value: string): string {
 
 - [ ] **Step 4: Run to see it pass**
 
-Run `pnpm --filter @fynix/db test`.
+Run `pnpm --filter @brandbasket/db test`.
 Expected: PASS (5 new tests).
 
 - [ ] **Step 5: Write the failing redemption test**
@@ -964,7 +964,7 @@ describe("redeemInviteIntoBusiness", () => {
 
 - [ ] **Step 6: Run to see it fail**
 
-Run `pnpm --filter @fynix/db test:integration`.
+Run `pnpm --filter @brandbasket/db test:integration`.
 Expected: FAIL, unable to resolve `./queries/onboarding`.
 
 - [ ] **Step 7: Implement the redemption**
@@ -986,7 +986,7 @@ export interface InviteRedemption {
 
 /**
  * Creates the tenant for a redeemed invite: business, owner membership, closed invite and updated lead, all or
- * nothing. The account itself is created first by @fynix/auth, which owns the invite-only gate.
+ * nothing. The account itself is created first by @brandbasket/auth, which owns the invite-only gate.
  */
 export async function redeemInviteIntoBusiness(
   db: Database,
@@ -1028,12 +1028,12 @@ export { slugify } from "./slug";
 
 - [ ] **Step 8: Run to see it pass**
 
-Run `pnpm --filter @fynix/db test:integration && pnpm --filter @fynix/db test`.
+Run `pnpm --filter @brandbasket/db test:integration && pnpm --filter @brandbasket/db test`.
 Expected: both pass.
 
 ---
 
-### Task 4: `@fynix/email` templates and the outbox transport
+### Task 4: `@brandbasket/email` templates and the outbox transport
 
 **Files:**
 - Create: `packages/email/package.json`, `tsconfig.json`, `vitest.config.ts`
@@ -1045,7 +1045,7 @@ Expected: both pass.
 Create `packages/email/package.json`:
 ```json
 {
-  "name": "@fynix/email",
+  "name": "@brandbasket/email",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -1057,7 +1057,7 @@ Create `packages/email/package.json`:
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@fynix/db": "workspace:*"
+    "@brandbasket/db": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.4",
@@ -1162,7 +1162,7 @@ describe("setupLinkEmail", () => {
 
 - [ ] **Step 3: Run to see it fail**
 
-Run `pnpm --filter @fynix/email test`.
+Run `pnpm --filter @brandbasket/email test`.
 Expected: FAIL, unable to resolve `./lead-received` and `./setup-link`.
 
 - [ ] **Step 4: Implement the message helper**
@@ -1293,7 +1293,7 @@ export function setupLinkEmail(input: SetupLinkInput): EmailMessage {
 
 Create `packages/email/src/outbox.ts`:
 ```ts
-import { recordEmail, type Database } from "@fynix/db";
+import { recordEmail, type Database } from "@brandbasket/db";
 import type { EmailMessage } from "./message";
 
 export interface EmailTransport {
@@ -1332,7 +1332,7 @@ export { setupLinkEmail, type SetupLinkInput } from "./templates/setup-link";
 
 - [ ] **Step 7: Run to see it pass**
 
-Run `pnpm --filter @fynix/email test && pnpm --filter @fynix/email typecheck`.
+Run `pnpm --filter @brandbasket/email test && pnpm --filter @brandbasket/email typecheck`.
 Expected: PASS (7 tests) and a clean typecheck.
 
 ---
@@ -1407,7 +1407,7 @@ describe("parseLeadForm", () => {
 
 - [ ] **Step 2: Run to see it fail**
 
-Run `pnpm --filter @fynix/web test`.
+Run `pnpm --filter @brandbasket/web test`.
 Expected: FAIL, unable to resolve `./lead-form`.
 
 - [ ] **Step 3: Implement**
@@ -1481,7 +1481,7 @@ export function parseLeadForm(formData: FormData): LeadParseResult {
 
 - [ ] **Step 4: Run to see it pass**
 
-Run `pnpm --filter @fynix/web test`.
+Run `pnpm --filter @brandbasket/web test`.
 Expected: PASS.
 
 > **Review fix applied after implementation:** `lib/lead-form.ts` also strips control characters. `cleanLine` (name,
@@ -1494,7 +1494,7 @@ Expected: PASS.
 ### Task 6: The Get started page
 
 **Files:**
-- Modify: `apps/web/package.json` (add `@fynix/email`), `apps/web/next.config.ts` (transpile it), `apps/web/lib/site-config.ts`
+- Modify: `apps/web/package.json` (add `@brandbasket/email`), `apps/web/next.config.ts` (transpile it), `apps/web/lib/site-config.ts`
 - Create: `apps/web/lib/server/public-db.ts`, `apps/web/lib/server/leads.ts`
 - Create: `apps/web/components/calendly-embed.tsx`, `apps/web/components/lead-form.tsx`
 - Create: `apps/web/app/(marketing)/get-started/page.tsx`
@@ -1503,11 +1503,11 @@ Expected: PASS.
 
 Run:
 ```bash
-pnpm --filter @fynix/web add @fynix/email@workspace:*
+pnpm --filter @brandbasket/web add @brandbasket/email@workspace:*
 ```
 In `apps/web/next.config.ts`, change the transpile list to:
 ```ts
-  transpilePackages: ["@fynix/auth", "@fynix/db", "@fynix/email"],
+  transpilePackages: ["@brandbasket/auth", "@brandbasket/db", "@brandbasket/email"],
 ```
 
 In `apps/web/lib/site-config.ts`, add two variables to `publicEnvSchema`:
@@ -1538,7 +1538,7 @@ and to `siteConfig`:
 Create `apps/web/lib/server/public-db.ts`:
 ```ts
 import "server-only";
-import { createDatabase, type Database } from "@fynix/db";
+import { createDatabase, type Database } from "@brandbasket/db";
 import { z } from "zod";
 
 // Kept on globalThis so hot reloads reuse the pool instead of opening new ones.
@@ -1570,8 +1570,8 @@ Create `apps/web/lib/server/leads.ts`:
 ```ts
 "use server";
 
-import { createLead, consumeRateLimit, type RateLimitRule } from "@fynix/db";
-import { createOutboxTransport, leadReceivedEmail } from "@fynix/email";
+import { createLead, consumeRateLimit, type RateLimitRule } from "@brandbasket/db";
+import { createOutboxTransport, leadReceivedEmail } from "@brandbasket/email";
 import { headers } from "next/headers";
 import { clientIpFrom } from "@/lib/client-ip";
 import { parseLeadForm, type LeadFormState } from "@/lib/lead-form";
@@ -1889,7 +1889,7 @@ export default function GetStartedPage(): ReactElement {
 
 - [ ] **Step 7: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test && pnpm build`.
+Run `pnpm lint && pnpm --filter @brandbasket/web typecheck && pnpm --filter @brandbasket/web test && pnpm build`.
 Expected: all pass, and the build lists `/get-started`.
 
 ---
@@ -1960,7 +1960,7 @@ and delete the now-unused import.
 
 - [ ] **Step 5: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test && pnpm build`.
+Run `pnpm lint && pnpm --filter @brandbasket/web typecheck && pnpm --filter @brandbasket/web test && pnpm build`.
 Expected: all pass. The web unit test count drops by the preview-request tests and gains the lead-form tests.
 
 ---
@@ -2002,14 +2002,14 @@ describe("lead status", () => {
 
 - [ ] **Step 2: Run to see it fail**
 
-Run `pnpm --filter @fynix/web test`.
+Run `pnpm --filter @brandbasket/web test`.
 Expected: FAIL, unable to resolve `./lead-status`.
 
 - [ ] **Step 3: Implement**
 
 Create `apps/web/lib/lead-status.ts`:
 ```ts
-import type { LeadStatus } from "@fynix/db";
+import type { LeadStatus } from "@brandbasket/db";
 
 /** Pipeline order, used for the filter bar and the status picker. */
 export const LEAD_STATUS_ORDER = [
@@ -2041,7 +2041,7 @@ export function nextStatusOptions(current: LeadStatus): readonly LeadStatus[] {
 
 - [ ] **Step 4: Run to see it pass**
 
-Run `pnpm --filter @fynix/web test`.
+Run `pnpm --filter @brandbasket/web test`.
 
 - [ ] **Step 5: Panel navigation**
 
@@ -2087,7 +2087,7 @@ and `<PanelShell surfaceName="Staff console" userEmail={user.email} nav={STAFF_N
 
 Create `apps/web/app/admin-host/(protected)/leads/page.tsx`:
 ```tsx
-import { listLeads, type LeadStatus } from "@fynix/db";
+import { listLeads, type LeadStatus } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
@@ -2180,7 +2180,7 @@ and import `Link` from `next/link`.
 
 - [ ] **Step 8: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test && pnpm build`.
+Run `pnpm lint && pnpm --filter @brandbasket/web typecheck && pnpm --filter @brandbasket/web test && pnpm build`.
 Expected: all pass; the build lists `/admin-host/leads`.
 
 ---
@@ -2196,8 +2196,8 @@ Expected: all pass; the build lists `/admin-host/leads`.
 Create `apps/web/lib/server/invites.ts`:
 ```ts
 import "server-only";
-import { createSetupInvite, findLead, revokeOpenInvites, updateLead } from "@fynix/db";
-import { createOutboxTransport, setupLinkEmail } from "@fynix/email";
+import { createSetupInvite, findLead, revokeOpenInvites, updateLead } from "@brandbasket/db";
+import { createOutboxTransport, setupLinkEmail } from "@brandbasket/email";
 import { getStaffDb } from "./db";
 import { serverEnv } from "./env";
 
@@ -2247,7 +2247,7 @@ Create `apps/web/app/admin-host/(protected)/leads/[leadId]/actions.ts`:
 ```ts
 "use server";
 
-import { updateLead, type LeadStatus } from "@fynix/db";
+import { updateLead, type LeadStatus } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { LEAD_STATUS_ORDER } from "@/lib/lead-status";
 import { getStaffDb } from "@/lib/server/db";
@@ -2289,7 +2289,7 @@ export async function sendSetupLinkAction(formData: FormData): Promise<void> {
 
 Create `apps/web/app/admin-host/(protected)/leads/[leadId]/page.tsx`:
 ```tsx
-import { findLead } from "@fynix/db";
+import { findLead } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -2409,7 +2409,7 @@ export default async function LeadDetailPage({
 
 - [ ] **Step 4: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm build`.
+Run `pnpm lint && pnpm --filter @brandbasket/web typecheck && pnpm build`.
 Expected: all pass; the build lists `/admin-host/leads/[leadId]`.
 
 ---
@@ -2423,7 +2423,7 @@ Expected: all pass; the build lists `/admin-host/leads/[leadId]`.
 
 Create `apps/web/app/admin-host/(protected)/outbox/page.tsx`:
 ```tsx
-import { listRecentEmails } from "@fynix/db";
+import { listRecentEmails } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
@@ -2479,7 +2479,7 @@ export default async function OutboxPage(): Promise<ReactElement> {
 
 Create `apps/web/app/admin-host/(protected)/outbox/[emailId]/page.tsx`:
 ```tsx
-import { findEmail } from "@fynix/db";
+import { findEmail } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -2529,7 +2529,7 @@ export default async function OutboxMessagePage({
 
 - [ ] **Step 3: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm build`.
+Run `pnpm lint && pnpm --filter @brandbasket/web typecheck && pnpm build`.
 
 ---
 
@@ -2589,7 +2589,7 @@ describe("parseSetupForm", () => {
 
 - [ ] **Step 2: Run to see it fail**
 
-Run `pnpm --filter @fynix/web test`.
+Run `pnpm --filter @brandbasket/web test`.
 Expected: FAIL, unable to resolve `./setup-form`.
 
 - [ ] **Step 3: Implement**
@@ -2598,7 +2598,7 @@ Create `apps/web/lib/setup-form.ts`:
 ```ts
 import { z } from "zod";
 
-/** Matches PASSWORD_MIN_LENGTH in @fynix/auth; kept here so this module stays browser-safe. */
+/** Matches PASSWORD_MIN_LENGTH in @brandbasket/auth; kept here so this module stays browser-safe. */
 export const SETUP_PASSWORD_MIN_LENGTH = 10;
 const MAX_PASSWORD_LENGTH = 128;
 
@@ -2651,15 +2651,15 @@ export function parseSetupForm(formData: FormData): SetupParseResult {
 
 - [ ] **Step 4: Run to see it pass**
 
-Run `pnpm --filter @fynix/web test`.
+Run `pnpm --filter @brandbasket/web test`.
 
 - [ ] **Step 5: The redemption service**
 
 Create `apps/web/lib/server/setup.ts`:
 ```ts
 import "server-only";
-import { createAccountWithGrant } from "@fynix/auth";
-import { findRedeemableInvite, redeemInviteIntoBusiness, type SetupInvite } from "@fynix/db";
+import { createAccountWithGrant } from "@brandbasket/auth";
+import { findRedeemableInvite, redeemInviteIntoBusiness, type SetupInvite } from "@brandbasket/db";
 import { headers } from "next/headers";
 import { getAuth } from "./auth";
 import { getStaffDb } from "./db";
@@ -2715,7 +2715,7 @@ Create `apps/web/app/app-host/setup/[token]/actions.ts`:
 ```ts
 "use server";
 
-import { AccountAlreadyExistsError } from "@fynix/auth";
+import { AccountAlreadyExistsError } from "@brandbasket/auth";
 import { redirect } from "next/navigation";
 import { parseSetupForm, type SetupFormState } from "@/lib/setup-form";
 import { InviteNotUsableError, redeemSetupInvite } from "@/lib/server/setup";
@@ -2874,7 +2874,7 @@ export default async function SetupPage({
 
 - [ ] **Step 8: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test && pnpm build`.
+Run `pnpm lint && pnpm --filter @brandbasket/web typecheck && pnpm --filter @brandbasket/web test && pnpm build`.
 Expected: all pass; the build lists `/app-host/setup/[token]`.
 
 ---
@@ -3040,7 +3040,7 @@ Expected: no matches outside `content/legal.ts` (owned by another session; leave
 
 - [ ] **Step 7: Checkpoint**
 
-Run `pnpm lint && pnpm --filter @fynix/web typecheck && pnpm --filter @fynix/web test && pnpm build`.
+Run `pnpm lint && pnpm --filter @brandbasket/web typecheck && pnpm --filter @brandbasket/web test && pnpm build`.
 
 ---
 

@@ -1,4 +1,4 @@
-import { siteConfig } from "@fynix/shared/lib/site-config";
+import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import type { Brand } from "@/lib/brand";
 
 /** The Terms and the Privacy Notice live on the website. Browser-safe, so client forms can link to them. */

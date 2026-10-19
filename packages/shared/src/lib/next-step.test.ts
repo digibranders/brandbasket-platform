@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "@fynix/db";
+import type { ProjectStatus } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { nextStep } from "./next-step";
 

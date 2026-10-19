@@ -1,11 +1,11 @@
 import type { ReactElement } from "react";
-import type { AppointmentCounts } from "@fynix/db";
-import { BUSINESS_MODULE_NOTICES, type BusinessModuleNotice } from "@fynix/shared/lib/business-module-notices";
-import { BUSINESS_MODULE_LABELS, type BusinessModule } from "@fynix/shared/lib/business-modules";
-import { canonicalTimeZone, TIME_ZONE_OPTIONS } from "@fynix/shared/lib/calendar/local-date";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
+import type { AppointmentCounts } from "@brandbasket/db";
+import { BUSINESS_MODULE_NOTICES, type BusinessModuleNotice } from "@brandbasket/shared/lib/business-module-notices";
+import { BUSINESS_MODULE_LABELS, type BusinessModule } from "@brandbasket/shared/lib/business-modules";
+import { canonicalTimeZone, TIME_ZONE_OPTIONS } from "@brandbasket/shared/lib/calendar/local-date";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import { setModuleAction, setTimeZoneAction } from "@/app/(protected)/clients/[businessId]/actions";
 import { buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";

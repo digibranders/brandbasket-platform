@@ -1,5 +1,5 @@
-import type { CurrentPaymentMethod, Subscription } from "@fynix/db";
-import { paymentLabel } from "@fynix/shared/lib/billing/payment-method";
+import type { CurrentPaymentMethod, Subscription } from "@brandbasket/db";
+import { paymentLabel } from "@brandbasket/shared/lib/billing/payment-method";
 
 /**
  * What Billing's Payment method section says, worked out from the newest payment and the plan. Plain data and no

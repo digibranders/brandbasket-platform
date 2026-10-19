@@ -1,4 +1,4 @@
-import { DomainTakenError, getPrimaryDomain, requestDomainMove, withTenantScope } from "@fynix/db";
+import { DomainTakenError, getPrimaryDomain, requestDomainMove, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { notifyTeamDomainRequested } from "@/lib/server/domain-alert";
 import { getLiveWebsite } from "@/lib/server/onboarding";
@@ -6,7 +6,7 @@ import { requestOwnDomainAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("@fynix/db", () => {
+vi.mock("@brandbasket/db", () => {
   class MockDomainTakenError extends Error {}
   return { DomainTakenError: MockDomainTakenError, getPrimaryDomain: vi.fn(), requestDomainMove: vi.fn(), withTenantScope: vi.fn() };
 });

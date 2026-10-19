@@ -1,7 +1,7 @@
 /**
  * Failures specific to the "Your details" page. The generic pieces -- isCheckViolation, paymentRequiredState,
  * unexpectedErrorState -- live in lib/server/panel-form-errors.ts now that Appointments needs them too (and
- * errorLogInfo in @fynix/shared/server/error-log-info, shared more widely still); this file keeps only what's particular to
+ * errorLogInfo in @brandbasket/shared/server/error-log-info, shared more widely still); this file keeps only what's particular to
  * hours, closures and the announcement.
  */
 import { panelFormErrorState, type PanelFormState } from "@/lib/panel-form-state";

@@ -47,7 +47,7 @@ in the future (scheduled).
 
 ## Checks
 
-`pnpm --filter @fynix/platform test`, lint, typecheck, build; browser check on :3091 (list, editor, save,
+`pnpm --filter @brandbasket/platform test`, lint, typecheck, build; browser check on :3091 (list, editor, save,
 publish, schedule, duplicate, bulk actions, mobile width).
 
 Follow-up (not in this branch): the test client site template reading the new fields (alt text, canonical,

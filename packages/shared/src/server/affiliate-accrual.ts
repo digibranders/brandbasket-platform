@@ -1,11 +1,11 @@
 import "server-only";
-import { rewardCentsFor } from "@fynix/billing";
+import { rewardCentsFor } from "@brandbasket/billing";
 import {
   findAffiliateAccrualContext,
   insertAffiliateEarning,
   type PaymentKind,
   type ScopedTransaction,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { logBillingEvent } from "./billing-log";
 
 export interface AccruedPayment {

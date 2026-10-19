@@ -25,7 +25,7 @@ drizzle-kit 0.31, Postgres 14 with RLS, zod 4, Vitest.
 - Contract files (`apps/platform/lib/site-info.ts`, `apps/platform/lib/site-bookings.ts` and their copies in the client
   site `lib/`) are ADDITIVE ONLY and must stay byte-identical between the two repos.
 - Checks per task (platform): `pnpm --filter <pkg> exec vitest run <file>`; at the end `pnpm lint`, `pnpm typecheck`,
-  `pnpm test`, `pnpm --filter @fynix/db test:integration`, `pnpm build`. Client site: `npm run lint`,
+  `pnpm test`, `pnpm --filter @brandbasket/db test:integration`, `pnpm build`. Client site: `npm run lint`,
   `npx tsc --noEmit`, `npx vitest run`, `npm run build`.
 
 ---
@@ -112,7 +112,7 @@ export const practitioners = pgTable(
   plus `index("appointments_business_id_starts_at_idx").on(table.businessId, table.startsAt)` (non-unique, keeps the
   busy-interval scans on an index). Update the doc comment above the index.
 
-- [ ] **Step 2: Generate.** `pnpm --filter @fynix/db db:generate --name clinic_practitioners`. Expected: a new
+- [ ] **Step 2: Generate.** `pnpm --filter @brandbasket/db db:generate --name clinic_practitioners`. Expected: a new
   `0044_clinic_practitioners.sql` and `meta/0044_snapshot.json`.
 
 - [ ] **Step 3: Hand-edit the backfill into 0044.** drizzle-kit will emit `ADD COLUMN "practitioner_id" uuid NOT NULL`,
@@ -141,7 +141,7 @@ ALTER TABLE "appointments" ALTER COLUMN "practitioner_id" SET NOT NULL;
 ### Task 2: Grants and RLS (0045)
 
 **Files:** `packages/db/migrations/0045_clinic_practitioners_grants.sql` via
-`pnpm --filter @fynix/db db:generate --custom --name clinic_practitioners_grants`.
+`pnpm --filter @brandbasket/db db:generate --custom --name clinic_practitioners_grants`.
 
 - [ ] **Step 1: Write the integration test first** in `packages/db/src/appointments.integration.test.ts` (or a new
   `practitioners.integration.test.ts` using the same setup helpers): as tenant A with the module on, can insert/list/
@@ -202,7 +202,7 @@ function slotsInRange(range: OpenRange, slotMinutes: number): Array<{ startMinut
 ```
 
   Update the `buildWeekAvailability` doc comment's rules list with the alignment rule.
-- [ ] **Step 4: Run** `pnpm --filter @fynix/shared exec vitest run src/lib/appointments`: all PASS (fix any
+- [ ] **Step 4: Run** `pnpm --filter @brandbasket/shared exec vitest run src/lib/appointments`: all PASS (fix any
   existing test that asserted range-start alignment at an off-grid time, and say so in the summary).
 
 ### Task 5: Merge practitioner calendars (pure)
@@ -379,7 +379,7 @@ export interface SiteInfoPractitioner {
   - `booking-confirm.ts`: re-resolve, then `bookSlot(..., { ...newAppointmentFrom(payload), practitionerIds })`
     where `practitionerIds` is `freePractitionerIds` (already restricted when a doctor was chosen); empty → taken.
     Look up the booked practitioner's name for the response.
-- [ ] **Step 4: Run** `pnpm --filter @fynix/platform exec vitest run lib` and the shared tests: PASS. Update
+- [ ] **Step 4: Run** `pnpm --filter @brandbasket/platform exec vitest run lib` and the shared tests: PASS. Update
   `site-bookings.contract-check.test.ts` if it enumerates keys.
 
 ### Task 9: Clinic dashboard: Doctors page

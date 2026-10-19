@@ -1,7 +1,7 @@
 import "server-only";
 import { getStaffDb } from "@/lib/server/db";
 import { readDirectoryFeed } from "@/lib/server/directory-feed";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 
 /** Edits show on the directory within about a minute. */
 const CACHE_CONTROL = "public, max-age=60, s-maxage=60, stale-while-revalidate=300";

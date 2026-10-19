@@ -17,15 +17,15 @@ import {
   setDirectoryAdSpotPrice,
   takeDownDirectoryPicture,
   updateStaffAds,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { isAdCategory } from "@fynix/shared/lib/directory/places";
-import { formatAdWeek, parseAdRupees } from "@fynix/shared/lib/directory/ads";
-import { PICTURE_SHAPES } from "@fynix/shared/lib/directory/pictures";
-import { staffAdPictureKey } from "@fynix/shared/server/media-keys";
-import { deleteMediaFiles, getMediaStorage } from "@fynix/shared/server/media-storage";
+import { isAdCategory } from "@brandbasket/shared/lib/directory/places";
+import { formatAdWeek, parseAdRupees } from "@brandbasket/shared/lib/directory/ads";
+import { PICTURE_SHAPES } from "@brandbasket/shared/lib/directory/pictures";
+import { staffAdPictureKey } from "@brandbasket/shared/server/media-keys";
+import { deleteMediaFiles, getMediaStorage } from "@brandbasket/shared/server/media-storage";
 import { HOME_PRICE_SCOPE } from "@/lib/ad-prices";
 import { adsHref, parseAdsView, type AdsNotice, type AdsView } from "@/lib/ads-view";
 import { parseStaffAdEdit, parseStaffAdForm, staffAdEditValuesFrom, staffAdValuesFrom, type StaffAdEditFormState, type StaffAdFormState } from "@/lib/staff-ad-form";

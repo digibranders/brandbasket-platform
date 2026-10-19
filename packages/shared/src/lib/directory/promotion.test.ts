@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DirectoryPaidTag } from "@fynix/db";
+import type { DirectoryPaidTag } from "@brandbasket/db";
 import { formatMoney } from "../money";
 import {
   formatPromotionDay,

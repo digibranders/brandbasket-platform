@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
-import { AccountAlreadyExistsError, createAccountWithGrant } from "@fynix/auth";
-import { claimAffiliateLoginLink, findAffiliateLoginInvite, resetAffiliateCredentialPassword, type AffiliateLoginInvite, type Database } from "@fynix/db";
+import { AccountAlreadyExistsError, createAccountWithGrant } from "@brandbasket/auth";
+import { claimAffiliateLoginLink, findAffiliateLoginInvite, resetAffiliateCredentialPassword, type AffiliateLoginInvite, type Database } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AffiliateAccountTakenError, findAffiliateInviteForToken, redeemAffiliateLogin } from "./affiliate-setup";
 import { recordAccountTermsConsent } from "./account-consent";
@@ -13,7 +13,7 @@ import { assertWithinSetupRateLimit, TermsNotAgreedError, verifyExistingAccount,
 // real AccountAlreadyExistsError class because the recovery path turns on `instanceof`.
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
-vi.mock("@fynix/auth", () => ({
+vi.mock("@brandbasket/auth", () => ({
   AccountAlreadyExistsError: class AccountAlreadyExistsError extends Error {
     constructor(email: string) {
       super(`An account for ${email} already exists.`);
@@ -22,7 +22,7 @@ vi.mock("@fynix/auth", () => ({
   },
   createAccountWithGrant: vi.fn(),
 }));
-vi.mock("@fynix/db", () => ({ claimAffiliateLoginLink: vi.fn(), findAffiliateLoginInvite: vi.fn(), resetAffiliateCredentialPassword: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ claimAffiliateLoginLink: vi.fn(), findAffiliateLoginInvite: vi.fn(), resetAffiliateCredentialPassword: vi.fn() }));
 vi.mock("./auth", () => ({ getAuth: vi.fn(() => ({ $context: Promise.resolve({ password: { hash: vi.fn(async (password: string) => `hashed:${password}`) } }) })) }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./customer-sign-in", () => ({ signInCustomer: vi.fn() }));

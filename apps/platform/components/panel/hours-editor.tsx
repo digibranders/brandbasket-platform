@@ -1,8 +1,8 @@
 "use client";
 
 import { useId, useState, type ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
-import { dayModeField, WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { dayModeField, WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
 import {
   closesNextDay,
   DAY_MODE_LABELS,
@@ -11,9 +11,9 @@ import {
   NEXT_DAY_NOTE,
   type DayMode,
   type OpeningHours,
-} from "@fynix/shared/lib/onboarding/hours";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
+} from "@brandbasket/shared/lib/onboarding/hours";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 
 interface DayState {
   readonly mode: DayMode;

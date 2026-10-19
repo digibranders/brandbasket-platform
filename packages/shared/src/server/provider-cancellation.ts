@@ -1,6 +1,6 @@
 import "server-only";
-import type { BillingProvider } from "@fynix/billing";
-import type { BillingProviderName } from "@fynix/db";
+import type { BillingProvider } from "@brandbasket/billing";
+import type { BillingProviderName } from "@brandbasket/db";
 import { describeError, logBillingEvent } from "./billing-log";
 
 export interface ProviderSubscriptionToCancel {

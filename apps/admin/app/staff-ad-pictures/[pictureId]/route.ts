@@ -1,7 +1,7 @@
-import { findStaffAdPictureFileForStaff } from "@fynix/db";
+import { findStaffAdPictureFileForStaff } from "@brandbasket/db";
 import type { NextRequest } from "next/server";
-import { storedMediaResponse } from "@fynix/shared/server/media-serving";
-import { getMediaStorage } from "@fynix/shared/server/media-storage";
+import { storedMediaResponse } from "@brandbasket/shared/server/media-serving";
+import { getMediaStorage } from "@brandbasket/shared/server/media-storage";
 import { getStaffDb } from "@/lib/server/db";
 import { getStaffAccess } from "@/lib/server/staff-access";
 

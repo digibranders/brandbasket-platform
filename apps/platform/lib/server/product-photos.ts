@@ -1,8 +1,8 @@
 import "server-only";
-import { clearBusinessProductPhoto, newDirectoryPictureId, setBusinessProductPhoto, type Database } from "@fynix/db";
-import type { TenantContext } from "@fynix/shared/lib/access";
-import { PRODUCT_PHOTO_SIZE } from "@fynix/shared/lib/directory/pictures";
-import { deleteMediaFiles, mediaStorageKey, type MediaStorage } from "@fynix/shared/server/media-storage";
+import { clearBusinessProductPhoto, newDirectoryPictureId, setBusinessProductPhoto, type Database } from "@brandbasket/db";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
+import { PRODUCT_PHOTO_SIZE } from "@brandbasket/shared/lib/directory/pictures";
+import { deleteMediaFiles, mediaStorageKey, type MediaStorage } from "@brandbasket/shared/server/media-storage";
 import { storePictureCopies } from "./listing-pictures";
 import { processUpload, UploadRejectedError, type UploadRejection } from "./media-upload";
 

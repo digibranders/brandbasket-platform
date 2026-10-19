@@ -1,4 +1,4 @@
-import { DIRECTORY_AREAS, DIRECTORY_CATEGORIES, DIRECTORY_CITIES, DIRECTORY_ORIGIN } from "@fynix/shared/lib/directory/places";
+import { DIRECTORY_AREAS, DIRECTORY_CATEGORIES, DIRECTORY_CITIES, DIRECTORY_ORIGIN } from "@brandbasket/shared/lib/directory/places";
 
 /*
  * What the Business profile's listing pick lists offer, and the email asking us to change a fixed listing.

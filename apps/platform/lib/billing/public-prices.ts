@@ -1,4 +1,4 @@
-import type { Plan } from "@fynix/db";
+import type { Plan } from "@brandbasket/db";
 
 /** One currency's prices as the marketing website reads them: net of tax, in minor units. */
 export interface PublicPrices {

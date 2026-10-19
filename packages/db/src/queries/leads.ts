@@ -33,7 +33,7 @@ export interface NewLead {
   readonly businessType: string | null;
   /**
    * Required, so no path can create a lead without deciding: every lead used to default to USD, which asked Indian
-   * customers for $75. Callers derive it from the phone number when there is one (billingCurrencyForPhone in @fynix/shared).
+   * customers for $75. Callers derive it from the phone number when there is one (billingCurrencyForPhone in @brandbasket/shared).
    */
   readonly currency: BillingCurrency;
   readonly message: string | null;

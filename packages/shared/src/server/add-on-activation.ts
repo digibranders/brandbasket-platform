@@ -10,7 +10,7 @@ import {
   type AddOnPaymentRecord,
   type RecordedAddOnPayment,
   type ScopedTransaction,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 
 /**

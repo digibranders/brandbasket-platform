@@ -1,5 +1,5 @@
 import "server-only";
-import { findMediaAsset, findMediaForStaff, withTenantScope, type Database } from "@fynix/db";
+import { findMediaAsset, findMediaForStaff, withTenantScope, type Database } from "@brandbasket/db";
 import type { TenantContext } from "../lib/access";
 import { pictureCopyKey, type PictureCopyWidth } from "./media-keys";
 import type { MediaStorage } from "./media-storage";

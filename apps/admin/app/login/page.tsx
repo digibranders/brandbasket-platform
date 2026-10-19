@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
-import { SignInForm } from "@fynix/shared/ui/panel/sign-in-form";
-import { TurnstileScope } from "@fynix/shared/ui/turnstile-scope";
-import { SignOutButton } from "@fynix/shared/ui/panel/sign-out-button";
+import { SignInForm } from "@brandbasket/shared/ui/panel/sign-in-form";
+import { TurnstileScope } from "@brandbasket/shared/ui/turnstile-scope";
+import { SignOutButton } from "@brandbasket/shared/ui/panel/sign-out-button";
 import { QuietFrame } from "@/components/console/quiet-frame";
 import { signOut } from "@/lib/server/sign-out";
 import { getStaffAccess } from "@/lib/server/staff-access";

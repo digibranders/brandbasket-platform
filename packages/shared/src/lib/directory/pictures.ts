@@ -1,5 +1,5 @@
 // The type only: this module reaches client components, and the package index pulls in the database.
-import type { DirectoryPictureSlot } from "@fynix/db";
+import type { DirectoryPictureSlot } from "@brandbasket/db";
 
 /*
  * A listing owner's pictures on the local directory, as the Photos page, the crop window, the upload route and the staff

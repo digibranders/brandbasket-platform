@@ -1,8 +1,8 @@
 import type { ReactElement, ReactNode } from "react";
-import { TagIcon } from "@fynix/shared/ui/icons";
-import { AFFILIATE_PATH } from "@fynix/shared/lib/affiliate-links";
-import { DashboardFrame } from "@fynix/shared/ui/panel/dashboard-frame";
-import type { SidebarNavItem } from "@fynix/shared/ui/panel/sidebar-nav";
+import { TagIcon } from "@brandbasket/shared/ui/icons";
+import { AFFILIATE_PATH } from "@brandbasket/shared/lib/affiliate-links";
+import { DashboardFrame } from "@brandbasket/shared/ui/panel/dashboard-frame";
+import type { SidebarNavItem } from "@brandbasket/shared/ui/panel/sidebar-nav";
 
 import { logoOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";

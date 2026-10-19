@@ -20,14 +20,14 @@ import {
   type ClientHours,
   type Plan,
   type DomainStatus,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { TickIcon } from "@fynix/shared/ui/icons";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { TickIcon } from "@brandbasket/shared/ui/icons";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { clientListingKey, readClientTagNotice } from "@/lib/client-tags";
 import { ClientAddOns } from "@/components/client-add-ons";
 import { ClientChatbots } from "@/components/client-chatbots";
@@ -37,7 +37,7 @@ import { ClientListingTags } from "@/components/client-listing-tags";
 import { ClientBillingDetails, ClientTaxInvoices } from "@/components/client-invoicing";
 import { ClientFeatures } from "@/components/client-features";
 import { ClientListing, type ListingNotice } from "@/components/client-listing";
-import { readStaffChargeNotice } from "@fynix/shared/lib/billing/charge-notices";
+import { readStaffChargeNotice } from "@brandbasket/shared/lib/billing/charge-notices";
 import { loadClientAddOns } from "@/lib/server/add-ons-admin";
 import { serverEnv } from "@/lib/server/env";
 import { loadClientChatbots } from "@/lib/server/chatbots-admin";
@@ -45,41 +45,41 @@ import { readChatbotNotice } from "@/lib/chatbot-form";
 import { listClientCharges } from "@/lib/server/charges-admin";
 import { PaymentsNeedingAttention } from "@/components/payments-needing-attention";
 import { ReceivedDateInput } from "@/components/received-date-input";
-import { clientPaymentState, type ClientPaymentState } from "@fynix/shared/lib/billing/client-payment";
-import { readBusinessModuleNotice } from "@fynix/shared/lib/business-module-notices";
+import { clientPaymentState, type ClientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
+import { readBusinessModuleNotice } from "@brandbasket/shared/lib/business-module-notices";
 import {
   MANUAL_PAYMENT_CONFIRM_FIELD,
   MANUAL_PAYMENT_RECEIVED_ON_FIELD,
   MANUAL_PAYMENT_REFERENCE_FIELD,
   MAX_MANUAL_REFERENCE_LENGTH,
-} from "@fynix/shared/lib/billing/manual-payment-form";
-import { MANUAL_PAYMENT_NOTICES, readManualPaymentNotice } from "@fynix/shared/lib/billing/manual-payment-notices";
-import { firstPaymentAmount, initialTermPhrase, monthlyPaymentAmount } from "@fynix/shared/lib/billing/terms";
-import { BILLING_CURRENCY_LABELS } from "@fynix/shared/lib/currency";
-import { isPlacementField } from "@fynix/shared/lib/directory/placement-form";
-import { formatPromotionDay, promotionStatus, promotionTagDisplay } from "@fynix/shared/lib/directory/promotion";
-import { formatStoredDate } from "@fynix/shared/lib/format";
-import { WEEKDAYS } from "@fynix/shared/lib/onboarding/business-fields";
+} from "@brandbasket/shared/lib/billing/manual-payment-form";
+import { MANUAL_PAYMENT_NOTICES, readManualPaymentNotice } from "@brandbasket/shared/lib/billing/manual-payment-notices";
+import { firstPaymentAmount, initialTermPhrase, monthlyPaymentAmount } from "@brandbasket/shared/lib/billing/terms";
+import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
+import { isPlacementField } from "@brandbasket/shared/lib/directory/placement-form";
+import { formatPromotionDay, promotionStatus, promotionTagDisplay } from "@brandbasket/shared/lib/directory/promotion";
+import { formatStoredDate } from "@brandbasket/shared/lib/format";
+import { WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
 import { adminBrand } from "@/lib/brand";
-import { isTemporarySubdomain } from "@fynix/shared/lib/onboarding/domain-form";
+import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { getSiteApiToken } from "@/lib/server/site-token";
-import { describeStoredDay } from "@fynix/shared/lib/onboarding/hours";
-import { DOMAIN_CONNECT_NOTICES, readDomainConnectNotice } from "@fynix/shared/lib/domain-connect-notices";
-import { registrableDomain } from "@fynix/shared/lib/onboarding/domain-dns";
-import { PROJECT_LAUNCH_NOTICES, readProjectLaunchNotice } from "@fynix/shared/lib/project-launch-notices";
-import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@fynix/shared/lib/project-preview-notices";
-import { safeExternalHref } from "@fynix/shared/lib/safe-link";
-import { ANSWER_STEPS, stepInfo } from "@fynix/shared/lib/onboarding/steps";
+import { describeStoredDay } from "@brandbasket/shared/lib/onboarding/hours";
+import { DOMAIN_CONNECT_NOTICES, readDomainConnectNotice } from "@brandbasket/shared/lib/domain-connect-notices";
+import { registrableDomain } from "@brandbasket/shared/lib/onboarding/domain-dns";
+import { PROJECT_LAUNCH_NOTICES, readProjectLaunchNotice } from "@brandbasket/shared/lib/project-launch-notices";
+import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@brandbasket/shared/lib/project-preview-notices";
+import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
+import { ANSWER_STEPS, stepInfo } from "@brandbasket/shared/lib/onboarding/steps";
 import { getStaffDb } from "@/lib/server/db";
-import { displayPhoneText } from "@fynix/shared/server/phone-display";
+import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
-import { PROJECT_STATUS_LABELS, PROJECT_STATUSES_WAITING_ON_US } from "@fynix/shared/lib/project-status";
+import { PROJECT_STATUS_LABELS, PROJECT_STATUSES_WAITING_ON_US } from "@brandbasket/shared/lib/project-status";
 import { Avatar } from "@/components/console/avatar";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
-import { PLAN_TIER_LABELS } from "@fynix/shared/lib/billing/plan-tier";
+import { PLAN_TIER_LABELS } from "@brandbasket/shared/lib/billing/plan-tier";
 import { ClientPlan } from "@/components/client-plan";
 import { PageHeader } from "@/components/console/page-header";
 import { FactList, Quiet, Section, type Fact } from "@/components/console/section";

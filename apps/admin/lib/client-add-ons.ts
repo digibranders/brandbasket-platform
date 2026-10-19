@@ -1,9 +1,9 @@
-import type { AddOnSubscriptionForStaff, BillingCurrency, BundledAddOn, PressRelease } from "@fynix/db";
-import { addOnById, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
-import { addOnActions, addOnView, type AddOnView } from "@fynix/shared/lib/billing/add-on-state";
-import { addOnFactsOf, pickAddOnRows } from "@fynix/shared/lib/billing/add-on-rows";
-import { formatCalendarDate } from "@fynix/shared/lib/format";
-import { formatMoney } from "@fynix/shared/lib/money";
+import type { AddOnSubscriptionForStaff, BillingCurrency, BundledAddOn, PressRelease } from "@brandbasket/db";
+import { addOnById, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnActions, addOnView, type AddOnView } from "@brandbasket/shared/lib/billing/add-on-state";
+import { addOnFactsOf, pickAddOnRows } from "@brandbasket/shared/lib/billing/add-on-rows";
+import { formatCalendarDate } from "@brandbasket/shared/lib/format";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import type { StatusTone } from "@/components/console/status-dot";
 
 /**

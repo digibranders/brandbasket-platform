@@ -1,9 +1,9 @@
 import "server-only";
 import fontkit from "@pdf-lib/fontkit";
-import { amountInWords } from "@fynix/billing/amount-in-words";
-import { gstStateCodeOf } from "@fynix/billing/gst-states";
-import type { TaxInvoice, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@fynix/db";
-import { stateName } from "@fynix/db/india-states";
+import { amountInWords } from "@brandbasket/billing/amount-in-words";
+import { gstStateCodeOf } from "@brandbasket/billing/gst-states";
+import type { TaxInvoice, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@brandbasket/db";
+import { stateName } from "@brandbasket/db/india-states";
 import { PDFDocument, PDFString, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
 import { deploymentBrandName } from "../lib/deployment-brand";
 import { businessDetails } from "../lib/site-config";

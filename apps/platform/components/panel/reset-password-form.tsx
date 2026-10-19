@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, type ReactElement } from "react";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { TurnstileWidget } from "@fynix/shared/ui/turnstile";
-import { EyeIcon, EyeOffIcon } from "@fynix/shared/ui/icons";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { TurnstileWidget } from "@brandbasket/shared/ui/turnstile";
+import { EyeIcon, EyeOffIcon } from "@brandbasket/shared/ui/icons";
 import { FORGOT_PASSWORD_PATH, initialResetPasswordState, type ResetPasswordFormState } from "@/lib/account-recovery-form";
-import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@fynix/auth/password-policy";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
 
 interface ResetPasswordFormProps {
   readonly action: (state: ResetPasswordFormState, formData: FormData) => Promise<ResetPasswordFormState>;

@@ -1,6 +1,6 @@
-import type { Payment, TaxInvoice } from "@fynix/db";
-import { stateName } from "@fynix/shared/lib/directory/india-states";
-import { displayPhoneText } from "@fynix/shared/server/phone-display";
+import type { Payment, TaxInvoice } from "@brandbasket/db";
+import { stateName } from "@brandbasket/shared/lib/directory/india-states";
+import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
 import type { ReactElement } from "react";
 import { saveClientBillingDetailsAction, issueMissingInvoiceAction } from "@/app/(protected)/clients/[businessId]/invoice-actions";
 import { BillingDetailsForm } from "@/components/billing-details-form";

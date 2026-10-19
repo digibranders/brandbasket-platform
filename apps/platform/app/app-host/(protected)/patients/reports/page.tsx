@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
-import { findBusinessTimeZone, readPatientReport, withTenantScope } from "@fynix/db";
-import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
-import { cn } from "@fynix/shared/lib/cn";
+import { findBusinessTimeZone, readPatientReport, withTenantScope } from "@brandbasket/db";
+import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { ReportMonthChart, ReportHourChart, ReportWeekdayChart } from "@/components/panel/patients/report-charts";
 import { ReportDoctors } from "@/components/panel/patients/report-doctors";
 import { ReportNumbers } from "@/components/panel/patients/report-numbers";

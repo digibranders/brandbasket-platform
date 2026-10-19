@@ -20,7 +20,7 @@
 - **After submission the onboarding data is read-only for the customer.** Enforce it in the server actions, not just the UI.
 - **No invented timelines or claims.** The only promised duration anywhere is the spec's "first preview within 48 hours" after submission.
 - **Do not commit. Do not start a dev server** (the user runs one on port 3000 against the dev database). Migrations only on the dev database — never delete or rewrite existing rows. The test database is yours.
-- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm --filter @fynix/db test:integration` for database tasks.
+- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm --filter @brandbasket/db test:integration` for database tasks.
 - Read `packages/db/migrations/meta/_journal.json` for the next free migration number before generating one; the billing work may have added some.
 
 ---

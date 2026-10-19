@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
-import { chatbotStatus, type ChatbotForStaff } from "@fynix/db";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { chatbotStatus, type ChatbotForStaff } from "@brandbasket/db";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { buttonDanger, buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";

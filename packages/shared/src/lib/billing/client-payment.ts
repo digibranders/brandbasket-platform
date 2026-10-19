@@ -1,6 +1,6 @@
-import { hasBillingAccess } from "@fynix/billing";
-import type { ClientBilling, ClientManualPayment, ClientSummary } from "@fynix/db";
-import { formatMoney } from "@fynix/shared/lib/money";
+import { hasBillingAccess } from "@brandbasket/billing";
+import type { ClientBilling, ClientManualPayment, ClientSummary } from "@brandbasket/db";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 
 /** How the staff console describes a business's money. */
 export type ClientPaymentState =

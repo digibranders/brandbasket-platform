@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { PAYMENT_STEP_HREF, type BillingBannerModel } from "@fynix/shared/lib/billing/payment-step";
-import type { NextStep } from "@fynix/shared/lib/next-step";
+import { PAYMENT_STEP_HREF, type BillingBannerModel } from "@brandbasket/shared/lib/billing/payment-step";
+import type { NextStep } from "@brandbasket/shared/lib/next-step";
 import { actionableCount, noticesFrom, siteStatusLine } from "./account-panel";
 
 const NO_STEP: NextStep = { kind: "none" };

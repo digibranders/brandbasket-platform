@@ -1,4 +1,4 @@
-import type { DueClosure, ErasureOutcome } from "@fynix/db";
+import type { DueClosure, ErasureOutcome } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runAccountErasure, type ErasureDeps } from "./account-erasure-run";
 

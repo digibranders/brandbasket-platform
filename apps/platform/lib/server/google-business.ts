@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { OpeningHours } from "@fynix/shared/lib/onboarding/hours";
+import type { OpeningHours } from "@brandbasket/shared/lib/onboarding/hours";
 import { BUSINESS_ABOUT_MAX_LENGTH, BUSINESS_ABOUT_MAX_WORDS, limitWords } from "@/lib/business-details-fields";
 import type { ImportedLocation } from "./google-import-seal";
 

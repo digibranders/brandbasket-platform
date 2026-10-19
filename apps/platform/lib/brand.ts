@@ -1,4 +1,4 @@
-import type { BrandLogo } from "@fynix/shared/ui/logo";
+import type { BrandLogo } from "@brandbasket/shared/ui/logo";
 import type { JoinChoice } from "@/lib/join-form";
 
 /*

@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "@fynix/db";
+import type { ProjectStatus } from "@brandbasket/db";
 import type { TimelineStage } from "@/components/panel/project-timeline";
 
 export const PROJECT_STAGES: readonly TimelineStage[] = [

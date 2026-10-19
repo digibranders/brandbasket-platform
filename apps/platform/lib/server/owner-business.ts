@@ -1,6 +1,6 @@
 import "server-only";
-import { findClaimForBusiness, findOwnListing, withTenantScope, type DirectoryRef } from "@fynix/db";
-import type { SessionUser, TenantContext } from "@fynix/shared/lib/access";
+import { findClaimForBusiness, findOwnListing, withTenantScope, type DirectoryRef } from "@brandbasket/db";
+import type { SessionUser, TenantContext } from "@brandbasket/shared/lib/access";
 import { leadsSource } from "@/lib/leads";
 import { accessRedirect, getCustomerAccess, getCustomerBusinessEntry } from "./customer-access";
 import { getAppDb } from "./db";

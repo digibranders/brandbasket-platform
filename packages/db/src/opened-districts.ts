@@ -4,8 +4,8 @@ import { isIndiaStateCode } from "./india-states";
  * The districts the directory has opened: those with their own areas, category pages and ads (Thane so far). A
  * business in one is listed under one of its areas; anywhere else it gets its own page only, under its state, and its
  * listing key's city part is <state>-<district>, which no opened district's town can be. The implementation lives in
- * @fynix/db so the claim writes can check a listing against it (shared depends on db, so db cannot import it from
- * there); @fynix/shared re-exports it. Pure and browser-safe.
+ * @brandbasket/db so the claim writes can check a listing against it (shared depends on db, so db cannot import it from
+ * there); @brandbasket/shared re-exports it. Pure and browser-safe.
  */
 
 export interface OpenedDistrict {
@@ -15,7 +15,7 @@ export interface OpenedDistrict {
 
 /*
  * Districts with areas, category pages and ads. The list starts as Thane alone (the areas in places.json); when the
- * geography catalog is read from the database (GEO_CATALOG_SOURCE=db, @fynix/shared geo-catalog-source) it is
+ * geography catalog is read from the database (GEO_CATALOG_SOURCE=db, @brandbasket/shared geo-catalog-source) it is
  * replaced in place by the catalog's live districts. It lives on globalThis so every bundle's copy of this module
  * sees the one list.
  */

@@ -1,15 +1,15 @@
 import "server-only";
-import type { BillingProfile } from "@fynix/db";
+import type { BillingProfile } from "@brandbasket/db";
 import {
   billingDetailsStart,
   savedBillingDetails,
   type BillingDetailsStart,
   type OnboardingAddress,
   type SavedBillingDetails,
-} from "@fynix/shared/lib/billing/billing-details-start";
-import type { PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
-import { phoneCountryOptions } from "@fynix/shared/server/phone-countries";
-import { savedPhoneStart } from "@fynix/shared/server/phone-defaults";
+} from "@brandbasket/shared/lib/billing/billing-details-start";
+import type { PhoneCountryOption } from "@brandbasket/shared/lib/phone/fields";
+import { phoneCountryOptions } from "@brandbasket/shared/server/phone-countries";
+import { savedPhoneStart } from "@brandbasket/shared/server/phone-defaults";
 
 /** What the client page's Billing details section shows and starts its form with. */
 export interface ClientBillingDetails {

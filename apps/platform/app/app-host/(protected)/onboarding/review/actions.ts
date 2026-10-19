@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
 import { BillingRequiredError, requireBillingAccess } from "@/lib/server/billing";
 import { startCheckoutFor } from "@/lib/server/checkout";
-import { PAYMENT_STEP_HREF } from "@fynix/shared/lib/billing/payment-step";
+import { PAYMENT_STEP_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
 import { submitOnboardingFor } from "@/lib/server/onboarding";

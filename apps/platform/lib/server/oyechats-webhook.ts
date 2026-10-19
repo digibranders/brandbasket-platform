@@ -1,6 +1,6 @@
 import "server-only";
-import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLead } from "@fynix/db";
-import { parseOyeChatsEvent, readOyeChatsBotId, verifyOyeChatsSignature } from "@fynix/shared/server/oyechats-webhook";
+import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLead } from "@brandbasket/db";
+import { parseOyeChatsEvent, readOyeChatsBotId, verifyOyeChatsSignature } from "@brandbasket/shared/server/oyechats-webhook";
 import { getStaffDb } from "./db";
 
 /**

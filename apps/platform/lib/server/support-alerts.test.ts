@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Database } from "@fynix/db";
+import type { Database } from "@brandbasket/db";
 import { sendSupportReplyAlert, sendSupportTicketAlert, sendSystemErrorAlert } from "./support-alerts";
-import { createAppEmailTransport } from "@fynix/email";
-import { getSupportTicket } from "@fynix/db";
+import { createAppEmailTransport } from "@brandbasket/email";
+import { getSupportTicket } from "@brandbasket/db";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   getSupportTicket: vi.fn(),
 }));
-vi.mock("@fynix/email", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@fynix/email")>();
+vi.mock("@brandbasket/email", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@brandbasket/email")>();
   return {
     ...actual,
     createAppEmailTransport: vi.fn(),

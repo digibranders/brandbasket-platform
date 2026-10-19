@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
-import { MAX_SETUP_CALL_URL_LENGTH, SETUP_CALL_URL_FIELD } from "@fynix/shared/lib/setup-call-link";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { MAX_SETUP_CALL_URL_LENGTH, SETUP_CALL_URL_FIELD } from "@brandbasket/shared/lib/setup-call-link";
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";

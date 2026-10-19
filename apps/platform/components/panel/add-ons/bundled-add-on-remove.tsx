@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactElement } from "react";
-import { Button } from "@fynix/shared/ui/panel/button";
+import { Button } from "@brandbasket/shared/ui/panel/button";
 import { PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 interface BundledAddOnRemoveProps {

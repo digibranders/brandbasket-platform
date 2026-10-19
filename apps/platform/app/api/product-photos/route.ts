@@ -8,7 +8,7 @@ import { consumeUploadAllowance } from "@/lib/server/onboarding-media";
 import { handleProductPhotoRequest } from "@/lib/server/product-photo-request";
 import { storeProductPhoto } from "@/lib/server/product-photos";
 import { allowsAnyLocalHost } from "@/lib/surfaces";
-import { getMediaStorage } from "@fynix/shared/server/media-storage";
+import { getMediaStorage } from "@brandbasket/shared/server/media-storage";
 
 /**
  * A product's photo: `POST /api/product-photos?product=<id>`, the raw image bytes. Under /api/ for the same reasons as

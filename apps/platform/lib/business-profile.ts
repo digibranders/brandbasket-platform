@@ -5,7 +5,7 @@
  * on and decides whether Publish is open from what is saved.
  */
 
-import { pageTabLabel, type PageTabLabels } from "@fynix/shared/lib/directory/page-tabs";
+import { pageTabLabel, type PageTabLabels } from "@brandbasket/shared/lib/directory/page-tabs";
 
 export const PROFILE_TAB_IDS = [
   "details",

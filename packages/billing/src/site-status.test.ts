@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ProjectStatus } from "@fynix/db";
+import type { ProjectStatus } from "@brandbasket/db";
 import { deriveSiteStatus } from "./site-status";
 
 const NOW = new Date("2026-09-17T12:00:00Z");

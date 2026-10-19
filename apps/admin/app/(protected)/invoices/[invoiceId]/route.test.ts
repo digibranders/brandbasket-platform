@@ -1,5 +1,5 @@
-import type { TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
-import { findBusinessOwnerPhone, findTaxInvoiceById } from "@fynix/db";
+import type { TaxInvoice, TaxInvoiceLineRecord } from "@brandbasket/db";
+import { findBusinessOwnerPhone, findTaxInvoiceById } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess, logStaffAccessOrThrow } from "@/lib/server/staff-access-log";
@@ -9,8 +9,8 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/staff-access", () => ({ getStaffAccess: vi.fn() }));
 vi.mock("@/lib/server/staff-access-log", () => ({ logStaffAccess: vi.fn(), logStaffAccessOrThrow: vi.fn() }));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return { ...actual, findBusinessOwnerPhone: vi.fn(), findTaxInvoiceById: vi.fn() };
 });
 

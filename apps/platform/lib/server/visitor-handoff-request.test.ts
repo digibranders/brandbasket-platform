@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { SessionUser } from "@fynix/shared/lib/access";
+import type { SessionUser } from "@brandbasket/shared/lib/access";
 import { visitorHandoffResponseSchema } from "@/lib/directory-api";
 import { handleVisitorHandoffRequest, type VisitorHandoffDeps } from "./visitor-handoff-request";
 

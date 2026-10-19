@@ -1,9 +1,9 @@
-import { listDealsOnShowForStaff } from "@fynix/db";
+import { listDealsOnShowForStaff } from "@brandbasket/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
-import { DIRECTORY_DEALS_TIME_ZONE } from "@fynix/shared/lib/directory/deals-contract";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
+import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
+import { DIRECTORY_DEALS_TIME_ZONE } from "@brandbasket/shared/lib/directory/deals-contract";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { buttonDanger } from "@/components/console/buttons";
 import { Figures } from "@/components/console/figures";
 import { EmptyLine } from "@/components/console/hairline-list";

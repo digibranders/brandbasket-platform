@@ -1,8 +1,8 @@
-import { listMissingTaxInvoices, listTaxInvoicesIssuedBetween } from "@fynix/db";
-import { monthRange, registerInvoiceOf, registerTotals } from "@fynix/shared/lib/billing/invoice-register";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { ChevronRightIcon, DownloadIcon } from "@fynix/shared/ui/icons";
+import { listMissingTaxInvoices, listTaxInvoicesIssuedBetween } from "@brandbasket/db";
+import { monthRange, registerInvoiceOf, registerTotals } from "@brandbasket/shared/lib/billing/invoice-register";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { ChevronRightIcon, DownloadIcon } from "@brandbasket/shared/ui/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";

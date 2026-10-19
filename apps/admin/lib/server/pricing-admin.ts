@@ -10,10 +10,10 @@ import {
   updateExtraPrices,
   type Plan,
   type PriceChange,
-} from "@fynix/db";
-import type { PriceSheet } from "@fynix/shared/lib/billing/pricing-form";
-import { deploymentBrandShortName } from "@fynix/shared/lib/deployment-brand";
-import { describeError } from "@fynix/shared/server/billing-log";
+} from "@brandbasket/db";
+import type { PriceSheet } from "@brandbasket/shared/lib/billing/pricing-form";
+import { deploymentBrandShortName } from "@brandbasket/shared/lib/deployment-brand";
+import { describeError } from "@brandbasket/shared/server/billing-log";
 import { getBillingProvider } from "./billing-provider";
 import { getStaffDb } from "./db";
 

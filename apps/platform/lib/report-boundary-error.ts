@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import { reportBrowserError } from "@fynix/shared/lib/error-report";
+import { reportBrowserError } from "@brandbasket/shared/lib/error-report";
 
 const reported = new WeakSet<object>();
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AddOnView } from "@fynix/shared/lib/billing/add-on-state";
-import { addOnEndMessage } from "@fynix/shared/server/add-on-ends";
+import type { AddOnView } from "@brandbasket/shared/lib/billing/add-on-state";
+import { addOnEndMessage } from "@brandbasket/shared/server/add-on-ends";
 import {
   addOnActionLabel,
   addOnDate,

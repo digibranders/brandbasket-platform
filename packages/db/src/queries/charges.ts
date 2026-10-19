@@ -323,7 +323,7 @@ function flagFor(outcome: ChargePaymentOutcome): UnappliedPaymentReason | null {
  * Idempotent on `(provider, providerPaymentId)`, like recordPaymentAndActivate. Staff connection only.
  *
  * This records the payment and nothing else: it issues no tax invoice. Application code calls
- * `recordChargePaymentWithInvoice` in `@fynix/shared`, which invoices a charge this settled in the same transaction.
+ * `recordChargePaymentWithInvoice` in `@brandbasket/shared`, which invoices a charge this settled in the same transaction.
  * The raw function is for that wrapper and for tests.
  */
 export async function recordChargePayment(db: Runner, input: ChargePayment): Promise<RecordedChargePayment> {

@@ -284,7 +284,7 @@ export function placeBand<T>(items: readonly T[], band: number, bands: number, c
 
 - [ ] Run `pnpm --filter admin lint`, `pnpm --filter admin typecheck`, `pnpm --filter admin test` and
   `pnpm --filter admin build`. All must pass.
-- [ ] Run `pnpm --filter @fynix/shared test`, and typecheck the platform (for the theme token change). Both
+- [ ] Run `pnpm --filter @brandbasket/shared test`, and typecheck the platform (for the theme token change). Both
   must pass.
 - [ ] Browser: start `fynix-admin-dev`, sign in with a local staff account and visit every route. Screenshot
   each at 1440px and at 390px: Journey, Journey focus mode, a crowded band, Leads, a lead, add lead, Clients, a

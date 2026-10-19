@@ -1,14 +1,14 @@
-import type { Plan, Subscription } from "@fynix/db";
+import type { Plan, Subscription } from "@brandbasket/db";
 import { type Brand } from "@/lib/brand";
 import type { ReactElement, ReactNode } from "react";
-import { ChevronDownIcon, TickIcon } from "@fynix/shared/ui/icons";
-import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
-import { billingPeriodProgress, type PeriodProgress } from "@fynix/shared/lib/billing/period";
-import { changesNote, renewalCharge } from "@fynix/shared/lib/billing/terms";
-import { nextBundledNetCents } from "@fynix/shared/lib/billing/bundle";
-import { planLabel } from "@fynix/shared/lib/billing/receipt-title";
-import { formatMoney } from "@fynix/shared/lib/money";
-import { carePlan } from "@fynix/shared/lib/pricing";
+import { ChevronDownIcon, TickIcon } from "@brandbasket/shared/ui/icons";
+import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
+import { billingPeriodProgress, type PeriodProgress } from "@brandbasket/shared/lib/billing/period";
+import { changesNote, renewalCharge } from "@brandbasket/shared/lib/billing/terms";
+import { nextBundledNetCents } from "@brandbasket/shared/lib/billing/bundle";
+import { planLabel } from "@brandbasket/shared/lib/billing/receipt-title";
+import { formatMoney } from "@brandbasket/shared/lib/money";
+import { carePlan } from "@brandbasket/shared/lib/pricing";
 
 interface PlanSummaryProps {
   readonly plan: Plan;

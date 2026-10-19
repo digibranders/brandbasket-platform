@@ -1,4 +1,4 @@
-import { cleanMultiline } from "@fynix/shared/lib/validation/text";
+import { cleanMultiline } from "@brandbasket/shared/lib/validation/text";
 import { OWNER_REPLY_TEXT_MAX_LENGTH } from "@/lib/directory-api";
 
 /** The most an answer may be (lib/directory-api.ts); named here for the dashboard's own forms. */

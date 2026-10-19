@@ -1,7 +1,7 @@
-import { isUnappliedReason, type BillingCurrency, type Charge, type Receipt } from "@fynix/db";
+import { isUnappliedReason, type BillingCurrency, type Charge, type Receipt } from "@brandbasket/db";
 import { BRAND, type Brand } from "@/lib/brand";
-import { chargeLabel } from "@fynix/shared/lib/billing/charges";
-import { formatMoney } from "@fynix/shared/lib/money";
+import { chargeLabel } from "@brandbasket/shared/lib/billing/charges";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { receiptRows, type ReceiptRow } from "./receipt-rows";
 
 /** One line of a month's bill: a payment with its receipt, or an extra still to pay. */

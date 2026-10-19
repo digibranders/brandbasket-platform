@@ -13,7 +13,7 @@ import {
   type StepAction,
 } from "@/components/panel/step-form";
 import { MAX_REFERENCE_URLS, type ServiceInput } from "@/lib/onboarding/content-form";
-import type { MoneyCurrency } from "@fynix/shared/lib/money";
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 
 export interface SavedBrief {
   readonly notesForBuilder: string | null;

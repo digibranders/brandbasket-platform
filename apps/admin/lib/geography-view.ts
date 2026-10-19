@@ -1,4 +1,4 @@
-import type { GeoAdminArea, GeoAdminCategory, GeoAdminDistrict } from "@fynix/db";
+import type { GeoAdminArea, GeoAdminCategory, GeoAdminDistrict } from "@brandbasket/db";
 
 /*
  * The Geography page's tabs and filters, read from the address and applied to the catalog. Pure.

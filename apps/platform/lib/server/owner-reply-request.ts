@@ -1,4 +1,4 @@
-import type { DirectoryNamed, DirectoryRef } from "@fynix/db";
+import type { DirectoryNamed, DirectoryRef } from "@brandbasket/db";
 import { z } from "zod";
 import {
   listingKeySchema,

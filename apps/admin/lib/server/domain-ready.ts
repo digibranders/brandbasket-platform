@@ -1,6 +1,6 @@
 import "server-only";
-import { findClientDetail, markDomainReadyForDns, type Database } from "@fynix/db";
-import { domainReadyEmail } from "@fynix/email";
+import { findClientDetail, markDomainReadyForDns, type Database } from "@brandbasket/db";
+import { domainReadyEmail } from "@brandbasket/email";
 import { customerEmailTransport } from "./email";
 import { serverEnv } from "./env";
 import type { OwnerNotification } from "./project-preview";

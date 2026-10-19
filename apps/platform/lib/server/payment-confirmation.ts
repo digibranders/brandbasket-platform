@@ -1,5 +1,5 @@
 import "server-only";
-import { addMonthsUtc, chargedAmountCents, CheckoutVerificationError, hasBillingAccess, type ConfirmedPayment } from "@fynix/billing";
+import { addMonthsUtc, chargedAmountCents, CheckoutVerificationError, hasBillingAccess, type ConfirmedPayment } from "@brandbasket/billing";
 import {
   findBillingState,
   findOpenProject,
@@ -18,12 +18,12 @@ import {
   type ScopedTransaction,
   type Subscription,
   type UnappliedPaymentReason,
-} from "@fynix/db";
-import type { TenantContext } from "@fynix/shared/lib/access";
+} from "@brandbasket/db";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { isOnboardingLocked } from "@/lib/onboarding/snapshot";
 import { getBillingProvider } from "./billing";
-import { activateFirstPayment, activateReactivationPayment } from "@fynix/shared/server/billing-activation";
-import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
+import { activateFirstPayment, activateReactivationPayment } from "@brandbasket/shared/server/billing-activation";
+import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
 import { notifyTeamOnboardingSent } from "./onboarding-alert";

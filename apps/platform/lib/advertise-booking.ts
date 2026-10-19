@@ -1,4 +1,4 @@
-import { addWeeks, type DirectoryAdPlacement, type StaffHeldSpot } from "@fynix/db";
+import { addWeeks, type DirectoryAdPlacement, type StaffHeldSpot } from "@brandbasket/db";
 
 /*
  * How long a spot staff have booked stays closed to bidders: staff book a spot for weeks in a row (a month or two),

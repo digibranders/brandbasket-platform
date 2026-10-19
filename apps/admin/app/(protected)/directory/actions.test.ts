@@ -1,4 +1,4 @@
-import { setDirectoryTrusted, upsertDirectoryVerification } from "@fynix/db";
+import { setDirectoryTrusted, upsertDirectoryVerification } from "@brandbasket/db";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffDb } from "@/lib/server/db";
@@ -9,8 +9,8 @@ import { giveTrustedAction, removeTrustedAction, verifyBusinessAction } from "./
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return { ...actual, setDirectoryTrusted: vi.fn(), upsertDirectoryVerification: vi.fn() };
 });
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));

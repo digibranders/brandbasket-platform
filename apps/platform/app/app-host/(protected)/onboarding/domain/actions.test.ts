@@ -12,7 +12,7 @@ const hoisted = vi.hoisted(() => {
   class MockDomainTakenError extends Error {}
   return { MockDomainTakenError, origins: { APP_ORIGIN: "https://app.fynix.digital", ADMIN_ORIGIN: "https://console.fynix.digital" } };
 });
-vi.mock("@fynix/db", () => ({ DomainTakenError: hoisted.MockDomainTakenError, savePrimaryDomain: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ DomainTakenError: hoisted.MockDomainTakenError, savePrimaryDomain: vi.fn() }));
 vi.mock("@/lib/server/customer-access", () => ({
   requireCustomerAccess: vi.fn(async () => ({ tenant: { userId: "user-1", businessId: "biz-1", businessName: "Lotus Studio", role: "owner" } })),
 }));
@@ -31,7 +31,7 @@ vi.mock("@/lib/server/onboarding", () => ({
   }),
 }));
 
-import { savePrimaryDomain } from "@fynix/db";
+import { savePrimaryDomain } from "@brandbasket/db";
 // Aliased: a name that begins with "use" reads as a React hook to the lint rule, and this is a plain server action.
 import { useTemporarySubdomainAction as chooseFreeAddress } from "./actions";
 

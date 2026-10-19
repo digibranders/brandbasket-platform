@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { DirectoryLookup, LiveDirectoryPictures, LiveDirectoryVideo, ResolvedDirectoryAsk } from "@fynix/db";
+import type { DirectoryLookup, LiveDirectoryPictures, LiveDirectoryVideo, ResolvedDirectoryAsk } from "@brandbasket/db";
 import { galleryResponseSchema } from "@/lib/directory-api";
 import { galleryEntryOf, readGalleries, type GalleryDeps } from "./directory-gallery";
 

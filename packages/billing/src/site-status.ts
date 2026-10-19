@@ -1,4 +1,4 @@
-import type { ProjectStatus } from "@fynix/db";
+import type { ProjectStatus } from "@brandbasket/db";
 import { hasBillingAccess, type BillingAccessInput } from "./access";
 
 export interface SiteStatusInput {

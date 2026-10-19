@@ -1,13 +1,13 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { CheckCircleIcon } from "@fynix/shared/ui/icons";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { MAX_REFERRAL_CODE_LENGTH, MIN_REFERRAL_CODE_LENGTH } from "@fynix/billing/referral";
+import { CheckCircleIcon } from "@brandbasket/shared/ui/icons";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { MAX_REFERRAL_CODE_LENGTH, MIN_REFERRAL_CODE_LENGTH } from "@brandbasket/billing/referral";
 import { STEP_FIELD_CLASSES, STEP_FIELD_COMPACT_CLASSES, StepFormError, useStepForm, type StepAction } from "@/components/panel/step-form";
-import type { PlanDiscount } from "@fynix/shared/lib/billing/terms";
-import { describeDiscount } from "@fynix/shared/lib/billing/terms";
-import type { MoneyCurrency } from "@fynix/shared/lib/money";
+import type { PlanDiscount } from "@brandbasket/shared/lib/billing/terms";
+import { describeDiscount } from "@brandbasket/shared/lib/billing/terms";
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 
 interface ReferralCodeFormProps {
   readonly applyAction: StepAction;

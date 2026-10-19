@@ -1,4 +1,4 @@
-import type { AccountExitReason } from "@fynix/db";
+import type { AccountExitReason } from "@brandbasket/db";
 
 /*
  * The delete-account flow's words and its one piece of arithmetic. Pure and free of the database, so the page's client

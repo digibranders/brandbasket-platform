@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactElement, ReactNode } from "react";
-import { DashboardRoot, dashboardMetadataBase, dashboardViewport } from "@fynix/shared/ui/panel/dashboard-root";
+import { DashboardRoot, dashboardMetadataBase, dashboardViewport } from "@brandbasket/shared/ui/panel/dashboard-root";
 import { BrandProvider } from "@/components/panel/brand-provider";
 import { figtree } from "@/lib/fynix-font";
 import { requestBrand } from "@/lib/server/request-brand";

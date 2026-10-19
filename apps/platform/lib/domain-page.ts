@@ -1,4 +1,4 @@
-import type { DomainStatus, ProjectStatus } from "@fynix/db";
+import type { DomainStatus, ProjectStatus } from "@brandbasket/db";
 
 /**
  * What the "Your domain" page shows, from the stored domain, the domain the customer has asked to move to (if any), whether

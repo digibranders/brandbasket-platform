@@ -1,8 +1,8 @@
 import "server-only";
-import { createAppEmailTransport, emailTeamInboxDefault, supportReplyAlertEmail, supportTicketAlertEmail, systemErrorAlertEmail, type EmailTransport } from "@fynix/email";
-import { SUPPORT_CATEGORY_LABELS, SUPPORT_STATUS_LABELS, type SupportCategory } from "@fynix/shared/lib/support";
-import type { Database } from "@fynix/db";
-import { getSupportTicket } from "@fynix/db";
+import { createAppEmailTransport, emailTeamInboxDefault, supportReplyAlertEmail, supportTicketAlertEmail, systemErrorAlertEmail, type EmailTransport } from "@brandbasket/email";
+import { SUPPORT_CATEGORY_LABELS, SUPPORT_STATUS_LABELS, type SupportCategory } from "@brandbasket/shared/lib/support";
+import type { Database } from "@brandbasket/db";
+import { getSupportTicket } from "@brandbasket/db";
 import { serverEnv } from "@/lib/server/env";
 import { getStaffDb } from "./db";
 

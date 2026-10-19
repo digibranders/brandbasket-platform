@@ -7,12 +7,12 @@ import {
   readExportedAccount,
   readExportedBusiness,
   type Database,
-} from "@fynix/db";
-import { DATA_RECIPIENTS } from "@fynix/shared/lib/privacy/recipients";
+} from "@brandbasket/db";
+import { DATA_RECIPIENTS } from "@brandbasket/shared/lib/privacy/recipients";
 import { ACCOUNT_EXPORT_FORMAT, ACCOUNT_EXPORT_NOT_INCLUDED, accountExportFilename, buildAccountExport } from "./account-export";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   getSupportTicket: vi.fn(),
   listConsents: vi.fn(),
   listExportedSessions: vi.fn(),

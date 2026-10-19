@@ -234,16 +234,16 @@ npm run build
 npm run test
 ```
 
-Also run the repository's Next-aware type generation (`pnpm --filter @fynix/platform typecheck` and `pnpm --filter @fynix/admin typecheck`) so new route types exist. App builds consume the changed workspace packages, which do not have standalone lint/build scripts. Run their existing scoped checks from the monorepo root:
+Also run the repository's Next-aware type generation (`pnpm --filter @brandbasket/platform typecheck` and `pnpm --filter @brandbasket/admin typecheck`) so new route types exist. App builds consume the changed workspace packages, which do not have standalone lint/build scripts. Run their existing scoped checks from the monorepo root:
 
 ```bash
-pnpm --filter @fynix/shared typecheck
-pnpm --filter @fynix/shared test
-pnpm --filter @fynix/db typecheck
-pnpm --filter @fynix/db test
+pnpm --filter @brandbasket/shared typecheck
+pnpm --filter @brandbasket/shared test
+pnpm --filter @brandbasket/db typecheck
+pnpm --filter @brandbasket/db test
 pnpm db:migrate:test
-pnpm --filter @fynix/db test:integration
-pnpm --filter @fynix/shared test:integration
+pnpm --filter @brandbasket/db test:integration
+pnpm --filter @brandbasket/shared test:integration
 ```
 
 Read the installed Next.js guides under the app's resolved `node_modules/next/dist/docs/` before implementation, as required by the app AGENTS.md. Run DB integration only against the repository's explicitly validated `*_test` connections. Add support tables to the integration fixtures through the existing test infrastructure. Do not claim a mocked authorization test proves RLS.

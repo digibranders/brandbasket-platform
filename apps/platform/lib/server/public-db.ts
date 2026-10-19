@@ -1,5 +1,5 @@
 import "server-only";
-import { createDatabase, type Database } from "@fynix/db";
+import { createDatabase, type Database } from "@brandbasket/db";
 import { z } from "zod";
 
 // Kept on globalThis so hot reloads reuse the pool instead of opening new ones.

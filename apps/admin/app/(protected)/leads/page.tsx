@@ -1,11 +1,11 @@
-import { listLeads, type Lead, type LeadStatus } from "@fynix/db";
+import { listLeads, type Lead, type LeadStatus } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
-import { SearchIcon } from "@fynix/shared/ui/icons";
-import { LEAD_STATUS_LABELS, LEAD_STATUS_ORDER } from "@fynix/shared/lib/lead-status";
-import { displayPhone } from "@fynix/shared/server/phone-display";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { SearchIcon } from "@brandbasket/shared/ui/icons";
+import { LEAD_STATUS_LABELS, LEAD_STATUS_ORDER } from "@brandbasket/shared/lib/lead-status";
+import { displayPhone } from "@brandbasket/shared/server/phone-display";
 import { leadContactLine } from "@/lib/mask";
 import { Avatar } from "@/components/console/avatar";
 import { buttonPrimary } from "@/components/console/buttons";

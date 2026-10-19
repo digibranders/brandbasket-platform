@@ -1,6 +1,6 @@
 import "server-only";
-import { findPlaceByUrlCode, listLegacyKeysByPlace, type DirectoryPlace } from "@fynix/db";
-import { businessPagePathParts } from "@fynix/shared/lib/directory/place-id";
+import { findPlaceByUrlCode, listLegacyKeysByPlace, type DirectoryPlace } from "@brandbasket/db";
+import { businessPagePathParts } from "@brandbasket/shared/lib/directory/place-id";
 import { getStaffDb } from "./db";
 
 /*

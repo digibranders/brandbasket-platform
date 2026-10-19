@@ -1,4 +1,4 @@
-import type { Database } from "@fynix/db";
+import type { Database } from "@brandbasket/db";
 import { createAccountWithGrant, type CreatedAccount, type NewAccount } from "./create-account";
 import type { Auth } from "./create-auth";
 

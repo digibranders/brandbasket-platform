@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type ReactElement } from "react";
-import { SearchIcon, SettingsIcon, SignOutIcon } from "@fynix/shared/ui/icons";
+import { SearchIcon, SettingsIcon, SignOutIcon } from "@brandbasket/shared/ui/icons";
 import { avatarInitials } from "@/lib/avatar";
 
 interface TopPillProps {

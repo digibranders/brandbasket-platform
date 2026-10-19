@@ -1,7 +1,7 @@
-import type { ProjectStatus } from "@fynix/db";
-import type { SiteStatus } from "@fynix/billing";
-import { PAYMENT_STEP_HREF, type BillingBannerModel } from "@fynix/shared/lib/billing/payment-step";
-import type { NextStep } from "@fynix/shared/lib/next-step";
+import type { ProjectStatus } from "@brandbasket/db";
+import type { SiteStatus } from "@brandbasket/billing";
+import { PAYMENT_STEP_HREF, type BillingBannerModel } from "@brandbasket/shared/lib/billing/payment-step";
+import type { NextStep } from "@brandbasket/shared/lib/next-step";
 
 /**
  * One line in the bell's panel.

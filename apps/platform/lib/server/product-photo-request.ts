@@ -1,5 +1,5 @@
 import "server-only";
-import type { TenantContext } from "@fynix/shared/lib/access";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { NO_LISTING_MESSAGE } from "@/lib/photos-view";
 import type { UploadAllowance } from "./onboarding-media";
 import type { ProductPhotoOutcome, ProductPhotoRefusal } from "./product-photos";

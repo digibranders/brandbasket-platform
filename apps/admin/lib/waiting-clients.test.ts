@@ -1,4 +1,4 @@
-import type { ClientSummary, ProjectStatus } from "@fynix/db";
+import type { ClientSummary, ProjectStatus } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { clientsWaitingOnUs } from "./waiting-clients";
 

@@ -8,9 +8,9 @@ import {
   markAddOnContacted,
   markBundledAddOnContacted,
   setPressReleaseStatus,
-} from "@fynix/db";
-import { logBillingEvent } from "@fynix/shared/server/billing-log";
-import { scheduleAddOnEndFor, type AddOnEndOutcome, type AddOnEndRequest } from "@fynix/shared/server/add-on-ends";
+} from "@brandbasket/db";
+import { logBillingEvent } from "@brandbasket/shared/server/billing-log";
+import { scheduleAddOnEndFor, type AddOnEndOutcome, type AddOnEndRequest } from "@brandbasket/shared/server/add-on-ends";
 import {
   clientAddOnRows,
   clientBundledAddOnRows,

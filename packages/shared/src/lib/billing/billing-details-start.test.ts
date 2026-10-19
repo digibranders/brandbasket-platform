@@ -1,4 +1,4 @@
-import type { BillingProfileInput } from "@fynix/db";
+import type { BillingProfileInput } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { billingDetailsStart, savedBillingDetails } from "./billing-details-start";
 

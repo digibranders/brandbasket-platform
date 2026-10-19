@@ -13,11 +13,11 @@ import {
   markAppointmentSeen,
   withTenantScope,
   type AppointmentRow,
-} from "@fynix/db";
-import { slotLabel } from "@fynix/shared/lib/appointments/slots";
-import { addDays, localDateIn } from "@fynix/shared/lib/calendar/local-date";
-import { displayPhoneText } from "@fynix/shared/server/phone-display";
-import { cn } from "@fynix/shared/lib/cn";
+} from "@brandbasket/db";
+import { slotLabel } from "@brandbasket/shared/lib/appointments/slots";
+import { addDays, localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
+import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { AppointmentsDayColumns } from "@/components/panel/appointments/appointments-day-columns";
 import { AppointmentsGrid } from "@/components/panel/appointments/appointments-grid";
 import { AppointmentsList } from "@/components/panel/appointments/appointments-list";

@@ -1,5 +1,5 @@
 import "server-only";
-import { createDatabase, type Database } from "@fynix/db";
+import { createDatabase, type Database } from "@brandbasket/db";
 import { serverEnv } from "@/lib/server/env";
 
 // Kept on globalThis so hot reloads in development reuse pools instead of opening new ones.

@@ -12,10 +12,10 @@ import {
   type Plan,
   type ScopedTransaction,
   type Subscription,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { redirect } from "next/navigation";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BillingConfigurationError, CheckoutVerificationError } from "@fynix/billing";
+import { BillingConfigurationError, CheckoutVerificationError } from "@brandbasket/billing";
 import {
   BillingRequiredError,
   findCustomerPaymentMethod,
@@ -37,7 +37,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("./session", () => ({ getSessionUser: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
 vi.mock("@/lib/server/env", () => ({ serverEnv: () => ({ BETTER_AUTH_SECRET: "x".repeat(32) }) }));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   findBillingState: vi.fn(),
   findBusinessEntry: vi.fn(),
   findCurrentPaymentMethod: vi.fn(),

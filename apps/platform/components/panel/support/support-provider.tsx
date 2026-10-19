@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { SupportContext } from "@fynix/shared/ui/panel/support-context";
+import { SupportContext } from "@brandbasket/shared/ui/panel/support-context";
 import { readSupportUnreadCount } from "@/app/app-host/(support)/support/actions";
 
 const SupportDialog = dynamic(() => import("./support-dialog"), { ssr: false });

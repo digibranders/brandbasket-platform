@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactElement } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@fynix/shared/lib/cn";
-import { placeDropdown } from "@fynix/shared/lib/dropdown-placement";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { placeDropdown } from "@brandbasket/shared/lib/dropdown-placement";
 import { CaretGlyph, CheckGlyph } from "./icons";
 
 export interface DropdownOption {

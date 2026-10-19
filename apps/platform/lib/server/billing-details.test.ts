@@ -1,11 +1,11 @@
-import { findBillingProfile, findBusinessCurrency, getBusinessProfile } from "@fynix/db";
+import { findBillingProfile, findBusinessCurrency, getBusinessProfile } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadBillingDetailsView } from "./billing-details";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: () => ({ name: "app-db" }) }));
-vi.mock("@fynix/shared/server/phone-defaults", () => ({ savedPhoneStart: () => ({ country: null, number: "" }) }));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/shared/server/phone-defaults", () => ({ savedPhoneStart: () => ({ country: null, number: "" }) }));
+vi.mock("@brandbasket/db", () => ({
   findBillingProfile: vi.fn(),
   findBusinessCurrency: vi.fn(),
   getBusinessProfile: vi.fn(),

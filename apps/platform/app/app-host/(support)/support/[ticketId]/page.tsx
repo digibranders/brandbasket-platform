@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { requestBrand } from "@/lib/server/request-brand";
 import Link from "next/link";
-import { getSupportTicket } from "@fynix/db";
+import { getSupportTicket } from "@brandbasket/db";
 import { z } from "zod";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { TickIcon } from "@fynix/shared/ui/icons";
-import { SupportCategoryBadge, SupportStatusBadge } from "@fynix/shared/ui/panel/support-status-badge";
-import { SupportThread, type SupportThreadEntry } from "@fynix/shared/ui/panel/support-thread";
+import { TickIcon } from "@brandbasket/shared/ui/icons";
+import { SupportCategoryBadge, SupportStatusBadge } from "@brandbasket/shared/ui/panel/support-status-badge";
+import { SupportThread, type SupportThreadEntry } from "@brandbasket/shared/ui/panel/support-thread";
 import { getAppDb } from "@/lib/server/db";
 import { requireSupportAccess } from "@/lib/server/support-access";
 import { SupportReply } from "@/components/panel/support/support-reply";

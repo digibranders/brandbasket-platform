@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { conversationsAvailable, type LeadTableRow } from "@/lib/chatbots-view";
 import { LeadConversationDialog } from "./lead-conversation-dialog";
 

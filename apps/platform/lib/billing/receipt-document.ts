@@ -1,7 +1,7 @@
-import { isUnappliedReason, type Receipt } from "@fynix/db";
-import { planLabel, receiptDescription, receiptNumber } from "@fynix/shared/lib/billing/receipt-title";
-import type { MoneyCurrency } from "@fynix/shared/lib/money";
-import { businessDetails, siteConfig } from "@fynix/shared/lib/site-config";
+import { isUnappliedReason, type Receipt } from "@brandbasket/db";
+import { planLabel, receiptDescription, receiptNumber } from "@brandbasket/shared/lib/billing/receipt-title";
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
+import { businessDetails, siteConfig } from "@brandbasket/shared/lib/site-config";
 import { BRAND, type Brand } from "@/lib/brand";
 
 const BASIS_POINTS = 10_000;

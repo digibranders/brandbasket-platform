@@ -5,8 +5,8 @@
  * Also the pure half of the Verified tab's form: reading a business's page address on the website into its listing
  * key, and the name and phone into what is stored.
  */
-import { parsePhoneEntry } from "@fynix/shared/lib/validation/phone";
-import { cleanLine } from "@fynix/shared/lib/validation/text";
+import { parsePhoneEntry } from "@brandbasket/shared/lib/validation/phone";
+import { cleanLine } from "@brandbasket/shared/lib/validation/text";
 
 export const DIRECTORY_PAGE_SIZE = 25;
 

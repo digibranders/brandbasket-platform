@@ -4,8 +4,8 @@ import type {
   DirectoryFeedFaq,
   DirectoryFeedProduct,
   DirectoryFeedService,
-} from "@fynix/shared/lib/directory/feed-contract";
-import { RENAMABLE_PAGE_TABS, checkPageTabLabel, type RenamablePageTab } from "@fynix/shared/lib/directory/page-tabs";
+} from "@brandbasket/shared/lib/directory/feed-contract";
+import { RENAMABLE_PAGE_TABS, checkPageTabLabel, type RenamablePageTab } from "@brandbasket/shared/lib/directory/page-tabs";
 import { SERVICE_DEFAULT_CATEGORY } from "@/lib/business-profile-fields";
 
 /*

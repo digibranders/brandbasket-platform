@@ -1,8 +1,8 @@
 import "server-only";
-import { listActivePlans, type BillingCurrency } from "@fynix/db";
+import { listActivePlans, type BillingCurrency } from "@brandbasket/db";
 import { publicPrices, type PublicPrices } from "@/lib/billing/public-prices";
 import { getStaffDb } from "@/lib/server/db";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 
 /** How long the website and any cache in front of it may reuse an answer: prices show up within five minutes. */
 const CACHE_CONTROL = "public, max-age=60, s-maxage=300, stale-while-revalidate=600";

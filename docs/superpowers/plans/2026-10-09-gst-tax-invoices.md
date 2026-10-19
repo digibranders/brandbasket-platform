@@ -68,12 +68,12 @@ needs 16. Task 18 needs 12A, 13 and 16. Task 18A needs 12A and 18.
 (`FY/26-27/000001`), the customer's billing details, place of supply, CGST + SGST or IGST worked out per line, and a PDF in
 the approved design that customers download from Billing and staff download from the client page.
 
-**Architecture:** Pure GST rules live in `@fynix/billing` (state codes, GSTIN check, tax split, invoice numbering,
+**Architecture:** Pure GST rules live in `@brandbasket/billing` (state codes, GSTIN check, tax split, invoice numbering,
 amount in words, the invoice builder). The database has `billing_profiles` (what the customer tells us),
 `tax_invoice_series` (one counter row per prefix and financial year) and `tax_invoices` (a frozen snapshot of everything
 printed). An invoice is issued inside the same transaction that records the payment, in a savepoint and as the last step,
 so a fault in invoicing never loses a payment or blocks access: it is logged and staff issue the missing invoice. The
-PDF is drawn with pdf-lib in `@fynix/shared`, with Hanken Grotesk embedded from a generated module and the rupee sign
+PDF is drawn with pdf-lib in `@brandbasket/shared`, with Hanken Grotesk embedded from a generated module and the rupee sign
 drawn as a vector path, because Hanken Grotesk has no rupee glyph.
 
 **Tech Stack:** TypeScript, Next.js 16 route handlers and server actions, Drizzle on PostgreSQL 16 with row-level
@@ -101,7 +101,7 @@ These are settled. Do not reopen them in review without new facts.
 
 | # | Decision | Why |
 |---|---|---|
-| D1 | Invoices only for INR payments that were applied: captured, `paid_at` set, and no `attention_reason` or one not in `UNAPPLIED_PAYMENT_REASONS` (a reason raised after the money applied, such as `submission_failed`, still gets an invoice). `isInvoiceablePayment` in `@fynix/db` is the one definition, with `paymentWasApplied` as its SQL twin. USD keeps today's receipt. | Fynix sells in India only. GST does not apply to the dollar plans (`NO_TAX`). Unapplied money is refunded or applied by staff first. |
+| D1 | Invoices only for INR payments that were applied: captured, `paid_at` set, and no `attention_reason` or one not in `UNAPPLIED_PAYMENT_REASONS` (a reason raised after the money applied, such as `submission_failed`, still gets an invoice). `isInvoiceablePayment` in `@brandbasket/db` is the one definition, with `paymentWasApplied` as its SQL twin. USD keeps today's receipt. | Fynix sells in India only. GST does not apply to the dollar plans (`NO_TAX`). Unapplied money is refunded or applied by staff first. |
 | D2 | An invoice is a snapshot. Nothing on it is recomputed after issue. | Rule 46 content must not drift when a plan, coupon, address or our own details change later. |
 | D3 | Numbers are `FY/yy-yy>/<6 digits>`, one series per financial year (April to March, IST), from a counter row updated in the issuing transaction. Not a Postgres sequence. | GST needs a consecutive series of at most 16 characters per financial year. Sequences skip on rollback; a row counter under a row lock does not. |
 | D4 | Tax is worked out per line on the taxable value. Same state: CGST and SGST are each `round(taxable × rate / 2)`. Other state: IGST is `round(taxable × rate)`. Any difference from what was charged, at most 1 paisa per line, prints as a Round off row. | CGST must equal SGST. Razorpay charges `chargedAmountCents` (one rounding of 18%), which can differ from two roundings of 9% by a paisa. |
@@ -184,7 +184,7 @@ The code ships with the defaults in brackets. Change the named constant if the C
 | `apps/admin/app/(protected)/invoices/page.tsx`, `invoices/export/route.ts`, `apps/admin/components/console/dock.tsx` | Register page, CSV, dock entry | 18A |
 
 ---
-## Phase 1: GST rules (pure, `@fynix/billing`)
+## Phase 1: GST rules (pure, `@brandbasket/billing`)
 
 ### Task 1: GST state codes
 
@@ -195,7 +195,7 @@ The code ships with the defaults in brackets. Change the named constant if the C
 - [x] **Step 1: Write the test**
 
 ```ts
-import { INDIA_STATES } from "@fynix/db/india-states";
+import { INDIA_STATES } from "@brandbasket/db/india-states";
 import { describe, expect, it } from "vitest";
 import { gstStateCodeOf, stateCodeOfGstCode, UnknownStateError } from "./gst-states";
 
@@ -240,7 +240,7 @@ describe("GST state codes", () => {
 });
 ```
 
-- [x] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/gst-states.test.ts`. Expected: FAIL, module not found.
+- [x] **Step 2: Run** `pnpm --filter @brandbasket/billing exec vitest run src/gst-states.test.ts`. Expected: FAIL, module not found.
 
 - [x] **Step 3: Implement**
 
@@ -341,7 +341,7 @@ describe("GSTIN", () => {
 });
 ```
 
-- [x] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/gstin.test.ts`. Expected: FAIL, module not found.
+- [x] **Step 2: Run** `pnpm --filter @brandbasket/billing exec vitest run src/gstin.test.ts`. Expected: FAIL, module not found.
 
 - [x] **Step 3: Implement**
 
@@ -490,7 +490,7 @@ describe("supplyTypeOf", () => {
 });
 ```
 
-- [x] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/gst.test.ts`. Expected: FAIL, module not found.
+- [x] **Step 2: Run** `pnpm --filter @brandbasket/billing exec vitest run src/gst.test.ts`. Expected: FAIL, module not found.
 
 - [x] **Step 3: Implement**
 
@@ -499,7 +499,7 @@ describe("supplyTypeOf", () => {
  * GST on one invoice line. Within our own state the rate splits into CGST and SGST, each rounded on its own so the two
  * are always equal; across states it is one IGST figure. Rounding is half up, as in tax.ts. Pure and browser-safe.
  */
-import type { TaxInvoiceSupplyType } from "@fynix/db";
+import type { TaxInvoiceSupplyType } from "@brandbasket/db";
 import { BillingRangeError } from "./billing-range-error";
 import { gstStateCodeOf } from "./gst-states";
 
@@ -617,7 +617,7 @@ describe("formatInvoiceNumber", () => {
 });
 ```
 
-- [x] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/invoice-number.test.ts`. Expected: FAIL, module not found.
+- [x] **Step 2: Run** `pnpm --filter @brandbasket/billing exec vitest run src/invoice-number.test.ts`. Expected: FAIL, module not found.
 
 - [x] **Step 3: Implement**
 
@@ -735,7 +735,7 @@ describe("amountInWords", () => {
 });
 ```
 
-- [x] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/amount-in-words.test.ts`. Expected: FAIL, module not found.
+- [x] **Step 2: Run** `pnpm --filter @brandbasket/billing exec vitest run src/amount-in-words.test.ts`. Expected: FAIL, module not found.
 
 - [x] **Step 3: Implement**
 
@@ -798,7 +798,7 @@ export function amountInWords(paise: number): string {
 /**
  * A RangeError from the invoice maths: an amount, count, rate or date that cannot be invoiced. Its messages hold
  * numbers and fixed wording only, never text a person typed, so billing logs may print them (see describeError in
- * @fynix/shared). A subclass, so code that catches RangeError still catches it.
+ * @brandbasket/shared). A subclass, so code that catches RangeError still catches it.
  */
 export class BillingRangeError extends RangeError {
   constructor(message: string) {
@@ -818,7 +818,7 @@ export class BillingRangeError extends RangeError {
 `packages/billing/package.json`, `packages/billing/src/index.ts`
 
 The record types it returns (`TaxInvoiceLineRecord`, `TaxInvoicePartyRecord`, `PlaceOfSupplyBasis`, `TaxInvoiceSupplyType`)
-are defined with the schema in Task 7 (type-only imports from `@fynix/db`). `RecipientInput` has no email or phone:
+are defined with the schema in Task 7 (type-only imports from `@brandbasket/db`). `RecipientInput` has no email or phone:
 an invoice row is insert only, so contact details frozen into it could never be erased.
 
 - [x] **Step 1: Write the test**
@@ -1021,12 +1021,12 @@ describe("buildTaxInvoice", () => {
 });
 ```
 
-- [x] **Step 2: Run** `pnpm --filter @fynix/billing exec vitest run src/tax-invoice.test.ts`. Expected: FAIL.
+- [x] **Step 2: Run** `pnpm --filter @brandbasket/billing exec vitest run src/tax-invoice.test.ts`. Expected: FAIL.
 
 - [x] **Step 3: Implement**
 
 ```ts
-import type { PlaceOfSupplyBasis, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@fynix/db";
+import type { PlaceOfSupplyBasis, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@brandbasket/db";
 import { BillingRangeError } from "./billing-range-error";
 import { gstStateCodeOf } from "./gst-states";
 import { splitGst, supplyTypeOf, type SupplyType } from "./gst";
@@ -1211,7 +1211,7 @@ export {
 } from "./tax-invoice";
 ```
 
-- [x] **Step 5: Run** `pnpm --filter @fynix/billing test && pnpm --filter @fynix/billing typecheck`. Expected: PASS.
+- [x] **Step 5: Run** `pnpm --filter @brandbasket/billing test && pnpm --filter @brandbasket/billing typecheck`. Expected: PASS.
 
 - [x] **Step 6: Commit** "Build a GST tax invoice from what was sold and what was charged"
 
@@ -1436,9 +1436,9 @@ export type TaxInvoice = typeof taxInvoices.$inferSelect;
 ```
 
 - [x] **Step 2: Export it.** `export * from "./tax-invoices";` in `packages/db/src/schema/index.ts`, in alphabetical
-  position. `pnpm --filter @fynix/db typecheck`: PASS.
+  position. `pnpm --filter @brandbasket/db typecheck`: PASS.
 
-- [x] **Step 3: Generate** `pnpm --filter @fynix/db exec drizzle-kit generate --name tax_invoices` (journal idx 117),
+- [x] **Step 3: Generate** `pnpm --filter @brandbasket/db exec drizzle-kit generate --name tax_invoices` (journal idx 117),
   then `--name tax_invoice_guards` (idx 118) and `--name tax_invoice_recipient_guards` (idx 119) as the checks were
   added. Each was read end to end; none touches another table. The guards as generated:
 
@@ -1500,7 +1500,7 @@ ALTER TABLE "tax_invoices" ADD CONSTRAINT "tax_invoices_number_check" CHECK ("ta
 
 **Files:** Generate `packages/db/migrations/0122_tax_invoices_grants.sql` (journal idx 120)
 
-- [x] **Step 1: Generate an empty custom migration** `pnpm --filter @fynix/db exec drizzle-kit generate --custom --name tax_invoices_grants`
+- [x] **Step 1: Generate an empty custom migration** `pnpm --filter @brandbasket/db exec drizzle-kit generate --custom --name tax_invoices_grants`
   and replace its body with:
 
 ```sql
@@ -1614,7 +1614,7 @@ CREATE POLICY tax_invoice_series_staff_all ON tax_invoice_series FOR ALL TO fyni
     - locks a payment for its invoice, and refuses one that does not exist
     - reads a referral code's text and discount for the invoice note
 
-- [x] **Step 2: Run** `pnpm --filter @fynix/db exec vitest run --config vitest.integration.config.ts src/tax-invoices.integration.test.ts`.
+- [x] **Step 2: Run** `pnpm --filter @brandbasket/db exec vitest run --config vitest.integration.config.ts src/tax-invoices.integration.test.ts`.
   Expected: FAIL, functions not found.
 
 - [x] **Step 3: Implement** `packages/db/src/queries/tax-invoices.ts`:
@@ -1880,7 +1880,7 @@ export {
 } from "./queries/tax-invoices";
 ```
 
-- [x] **Step 4: Run** the integration test again. Expected: PASS. Then `pnpm --filter @fynix/db typecheck`.
+- [x] **Step 4: Run** the integration test again. Expected: PASS. Then `pnpm --filter @brandbasket/db typecheck`.
 
 - [x] **Step 5: Erasure.** In `eraseClosedAccount` (`packages/db/src/queries/account-erasure.ts`), after the
   `businessProfiles` delete:
@@ -1959,7 +1959,7 @@ export const businessDetails: BusinessDetails = {
 - [x] **Step 2:** `packages/shared/src/lib/site-config.test.ts` holds the GSTIN and the state code together:
 
 ```ts
-import { isValidGstin, stateCodeOfGstin } from "@fynix/billing/gstin";
+import { isValidGstin, stateCodeOfGstin } from "@brandbasket/billing/gstin";
 import { describe, expect, it } from "vitest";
 import { businessDetails } from "./site-config";
 
@@ -2077,7 +2077,7 @@ describe("paymentLabel", () => {
     - lets a lost connection through, since the payment's own transaction cannot commit either
     - logs any other failure and returns null
 
-- [x] **Step 3: Run** `pnpm --filter @fynix/shared exec vitest run src/server/tax-invoicing.test.ts src/lib/billing/payment-method.test.ts`.
+- [x] **Step 3: Run** `pnpm --filter @brandbasket/shared exec vitest run src/server/tax-invoicing.test.ts src/lib/billing/payment-method.test.ts`.
   Expected: FAIL.
 
 - [x] **Step 4: Implement** `packages/shared/src/lib/billing/payment-method.ts`:
@@ -2139,7 +2139,7 @@ import {
   INVOICE_PREFIX,
   type InvoiceLineInput,
   type RecipientInput,
-} from "@fynix/billing";
+} from "@brandbasket/billing";
 import {
   allocateInvoiceSerial,
   findBillingProfile,
@@ -2158,8 +2158,8 @@ import {
   type ScopedTransaction,
   type TaxInvoice,
   type TaxInvoicePartyRecord,
-} from "@fynix/db";
-import { stateCodeOfIndiaPostName } from "@fynix/db/india-states";
+} from "@brandbasket/db";
+import { stateCodeOfIndiaPostName } from "@brandbasket/db/india-states";
 import { paymentLabel } from "../lib/billing/payment-method";
 import { planLabel } from "../lib/billing/receipt-title";
 import { businessDetails } from "../lib/site-config";
@@ -2497,8 +2497,8 @@ export async function issueTaxInvoiceSafely(
     - logs a refused invoice and returns null, and the payment recorded beside it still commits
     - gives back a number taken before the insert failed, so the series keeps no gap
 
-- [x] **Step 6: Run** the unit tests, `pnpm --filter @fynix/shared exec vitest run --config vitest.integration.config.ts src/tax-invoicing.integration.test.ts`
-  and `pnpm --filter @fynix/shared typecheck`. Expected: PASS.
+- [x] **Step 6: Run** the unit tests, `pnpm --filter @brandbasket/shared exec vitest run --config vitest.integration.config.ts src/tax-invoicing.integration.test.ts`
+  and `pnpm --filter @brandbasket/shared typecheck`. Expected: PASS.
 
 - [x] **Step 7: Commit** "Issue a tax invoice for a recorded payment, without ever losing the payment over it"
 
@@ -2555,7 +2555,7 @@ touch only the business's own rows, which no other payment transaction can hold 
   });
 ```
 
-  Run `pnpm --filter @fynix/billing exec vitest run src/razorpay-webhook.test.ts`. Expected: FAIL (`currentStart` is
+  Run `pnpm --filter @brandbasket/billing exec vitest run src/razorpay-webhook.test.ts`. Expected: FAIL (`currentStart` is
   missing).
 
 - [ ] **Step 2: Parse it.** In `packages/billing/src/razorpay-webhook.ts`, the subscription entity of `chargedSchema`
@@ -2584,7 +2584,7 @@ touch only the business's own rows, which no other payment transaction can hold 
       currentStart: typeof subscription.entity.current_start === "number" ? new Date(subscription.entity.current_start * 1000) : null,
 ```
 
-  Run the test again. Expected: PASS. `pnpm --filter @fynix/billing typecheck`: PASS.
+  Run the test again. Expected: PASS. `pnpm --filter @brandbasket/billing typecheck`: PASS.
 
 - [ ] **Step 3: Activation tests first.** In `packages/shared/src/server/billing-activation.test.ts`:
   - after the `./affiliate-accrual` mock add
@@ -2678,7 +2678,7 @@ describe("the tax invoice", () => {
 });
 ```
 
-  Add `beforeEach` to the file's `vitest` import. Run `pnpm --filter @fynix/shared exec vitest run src/server/billing-activation.test.ts`. Expected: FAIL
+  Add `beforeEach` to the file's `vitest` import. Run `pnpm --filter @brandbasket/shared exec vitest run src/server/billing-activation.test.ts`. Expected: FAIL
   (the activation never calls `issueTaxInvoiceSafely`, and the new fields do not compile).
 
 - [ ] **Step 4: Issue the invoices in `packages/shared/src/server/billing-activation.ts`.** Add
@@ -2858,7 +2858,7 @@ export async function activateReactivationPayment(tx: ScopedTransaction, payment
   });
 ```
 
-  Run `pnpm --filter @fynix/platform exec vitest run lib/server/razorpay-webhook-handler.test.ts`. Expected: FAIL.
+  Run `pnpm --filter @brandbasket/platform exec vitest run lib/server/razorpay-webhook-handler.test.ts`. Expected: FAIL.
 
 - [ ] **Step 6: The webhook passes the price.** In `apps/platform/lib/server/razorpay-webhook-handler.ts`, in the
   renewal `else` branch, after the `commitmentEndsAt === null` check and before `activateRenewalPayment`:
@@ -2898,10 +2898,10 @@ export async function activateReactivationPayment(tx: ScopedTransaction, payment
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({ recordChargePayment: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ recordChargePayment: vi.fn() }));
 vi.mock("./tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn() }));
 
-import { recordChargePayment } from "@fynix/db";
+import { recordChargePayment } from "@brandbasket/db";
 import { recordChargePaymentWithInvoice } from "./charge-payments";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 
@@ -2945,13 +2945,13 @@ describe("recordChargePaymentWithInvoice", () => {
 });
 ```
 
-  Run `pnpm --filter @fynix/shared exec vitest run src/server/charge-payments.test.ts`. Expected: FAIL, module not found.
+  Run `pnpm --filter @brandbasket/shared exec vitest run src/server/charge-payments.test.ts`. Expected: FAIL, module not found.
 
 - [ ] **Step 8: Create `packages/shared/src/server/charge-payments.ts`:**
 
 ```ts
 import "server-only";
-import { recordChargePayment, type ChargePayment, type RecordedChargePayment, type ScopedTransaction } from "@fynix/db";
+import { recordChargePayment, type ChargePayment, type RecordedChargePayment, type ScopedTransaction } from "@brandbasket/db";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 
 /**
@@ -2971,17 +2971,17 @@ export async function recordChargePaymentWithInvoice(tx: ScopedTransaction, inpu
   Run the Step 7 test. Expected: PASS.
 
 - [ ] **Step 9: Use it in both apps.** In `apps/platform/lib/server/charges.ts` remove `recordChargePayment` from the
-  `@fynix/db` import, add `import { recordChargePaymentWithInvoice } from "@fynix/shared/server/charge-payments";`
+  `@brandbasket/db` import, add `import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";`
   and call `recordChargePaymentWithInvoice(tx, { ... })` in `recordVerifiedChargePayment` (same arguments). Do the same in
   `apps/admin/lib/server/charges-admin.ts` (`markClientChargePaid`). In `apps/platform/lib/server/charges.test.ts` and
-  `apps/admin/lib/server/charges-admin.test.ts`: remove `recordChargePayment` from the `@fynix/db` mock and import, add
-  `vi.mock("@fynix/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));` with
-  `import { recordChargePaymentWithInvoice } from "@fynix/shared/server/charge-payments";`, and rename every other
+  `apps/admin/lib/server/charges-admin.test.ts`: remove `recordChargePayment` from the `@brandbasket/db` mock and import, add
+  `vi.mock("@brandbasket/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));` with
+  `import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";`, and rename every other
   `recordChargePayment` in those two files to `recordChargePaymentWithInvoice` (the arguments are the same).
 
   `apps/admin/lib/server/billing-admin.test.ts` runs the real `activateFirstPayment` against a mocked database, and one of
   its tests reads the first `console.error` line; without a mock the invoice's own failure would be that line. Add, beside
-  its other mocks: `vi.mock("@fynix/shared/server/tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn(async () => null) }));`.
+  its other mocks: `vi.mock("@brandbasket/shared/server/tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn(async () => null) }));`.
 
 - [ ] **Step 10: Existing integration callers of `activateRenewalPayment`.** In
   `packages/shared/src/referral-checkout.integration.test.ts` (`payRenewal`) add, after `paidThroughAt`:
@@ -3009,7 +3009,7 @@ export async function recordChargePaymentWithInvoice(tx: ScopedTransaction, inpu
 - [ ] **Step 11: The end-to-end test.** Create `packages/shared/src/payment-invoicing.integration.test.ts`:
 
 ```ts
-import { chargedAmountCents } from "@fynix/billing";
+import { chargedAmountCents } from "@brandbasket/billing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   billingProfiles,
@@ -3023,8 +3023,8 @@ import {
   users,
   type Plan,
   type Subscription,
-} from "@fynix/db";
-import { openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@fynix/db/testing";
+} from "@brandbasket/db";
+import { openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
 import { chargeAmountCents } from "./lib/billing/charges";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "./server/billing-activation";
 import { recordChargePaymentWithInvoice } from "./server/charge-payments";
@@ -3251,7 +3251,7 @@ describe("invoicing every payment path", () => {
 });
 ```
 
-- [ ] **Step 12: Run** `pnpm --filter @fynix/billing test && pnpm --filter @fynix/shared test && pnpm --filter @fynix/platform test && pnpm --filter @fynix/admin test`,
+- [ ] **Step 12: Run** `pnpm --filter @brandbasket/billing test && pnpm --filter @brandbasket/shared test && pnpm --filter @brandbasket/platform test && pnpm --filter @brandbasket/admin test`,
   then `pnpm test:integration`, then `pnpm typecheck` and `pnpm lint`. Expected: all PASS.
 
 - [ ] **Step 13: Commit** "Issue a tax invoice with every first payment, renewal, reactivation and paid extra"
@@ -3269,7 +3269,7 @@ would list every INR payment since launch as "Invoice missing" (D17, Gate 4). `t
 (0119 to 0122 have not shipped), and the migration fills `paid_on` from the payment for any local rows.
 
 - [ ] **Step 1: Tests first.** In `packages/db/src/tax-invoices.integration.test.ts`: add `paidOn: "2026-10-09",` to
-  `sampleInvoice` after `issuedOn`; import `taxInvoicingStart` from `"./schema"` (or from `"@fynix/db"`, matching the
+  `sampleInvoice` after `issuedOn`; import `taxInvoicingStart` from `"./schema"` (or from `"@brandbasket/db"`, matching the
   file's imports); and add:
 
 ```ts
@@ -3330,7 +3330,7 @@ export const taxInvoicingStart = pgTable(
 );
 ```
 
-- [ ] **Step 3: Generate** `pnpm --filter @fynix/db exec drizzle-kit generate --name tax_invoice_paid_on`, then edit the
+- [ ] **Step 3: Generate** `pnpm --filter @brandbasket/db exec drizzle-kit generate --name tax_invoice_paid_on`, then edit the
   generated `0123_tax_invoice_paid_on.sql` (before committing; never after) so the column is filled before it is made
   required, and append the start row and its grant. The finished file:
 
@@ -3355,7 +3355,7 @@ CREATE POLICY tax_invoicing_start_staff_select ON tax_invoicing_start FOR SELECT
 ```
 
   Keep drizzle-kit's own statement order if it differs, as long as the column is filled before `SET NOT NULL`. Run
-  `pnpm db:migrate && pnpm db:migrate:test`. Expected: 0123 applies; `pnpm --filter @fynix/db exec drizzle-kit check`
+  `pnpm db:migrate && pnpm db:migrate:test`. Expected: 0123 applies; `pnpm --filter @brandbasket/db exec drizzle-kit check`
   reports no drift.
 
 - [ ] **Step 4: Queries.** In `packages/db/src/queries/tax-invoices.ts` import `taxInvoicingStart` from `"../schema"` and
@@ -3511,12 +3511,12 @@ describe("firstBillingDetailsProblem", () => {
 });
 ```
 
-- [ ] **Step 2: Run** `pnpm --filter @fynix/shared exec vitest run src/lib/billing/billing-details-form.test.ts`. Expected: FAIL, module not found.
+- [ ] **Step 2: Run** `pnpm --filter @brandbasket/shared exec vitest run src/lib/billing/billing-details-form.test.ts`. Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement**
 
 ```ts
-import { isValidGstin, normaliseGstin, stateCodeOfGstin } from "@fynix/billing/gstin";
+import { isValidGstin, normaliseGstin, stateCodeOfGstin } from "@brandbasket/billing/gstin";
 import { isIndiaStateCode, stateName } from "../directory/india-states";
 import { optionalEmail } from "../validation/contact";
 import { parsePhoneEntry } from "../validation/phone";
@@ -3635,7 +3635,7 @@ export function firstBillingDetailsProblem(errors: BillingDetailsErrors): { read
   `optionalEmail` (validation/contact.ts) trims, lower-cases and turns a blank into null, so `emailResult.data` is
   `string | null`.
 
-- [ ] **Step 4: Run** the test. Expected: PASS. `pnpm --filter @fynix/shared typecheck`: PASS.
+- [ ] **Step 4: Run** the test. Expected: PASS. `pnpm --filter @brandbasket/shared typecheck`: PASS.
 
 - [ ] **Step 5: Commit** "Check billing details the way the GST registration states them"
 
@@ -3651,8 +3651,8 @@ Before writing any markup, invoke the `design-taste-frontend` skill, read `apps/
 Accessibility checklist) and read `node_modules/next/dist/docs/01-app/02-guides/server-actions.md` and
 `03-api-reference/04-functions/refresh.md` in `apps/platform`. The project's design system wins: the panel form pattern
 (`usePanelForm`, `FIELD_CLASSES`, `PanelFormStatus` from `components/panel/form/panel-form.tsx`), `Surface` and
-`SectionHeading` from `@fynix/shared/ui/panel/surface`, `Button` from `@fynix/shared/ui/panel/button`, `PhoneField`
-from `@fynix/shared/ui/phone-field`, sentence-case labels, no uppercase kickers.
+`SectionHeading` from `@brandbasket/shared/ui/panel/surface`, `Button` from `@brandbasket/shared/ui/panel/button`, `PhoneField`
+from `@brandbasket/shared/ui/phone-field`, sentence-case labels, no uppercase kickers.
 
 Who can reach what: an account still buying its membership (`isAwaitingMembership`) can open only its plan's page, so
 `/billing` would bounce it back. That page therefore shows the form inline instead of a link, and the save action passes
@@ -3662,7 +3662,7 @@ than a signed-in member of the business: row-level security (`billing_profiles_t
 - [ ] **Step 1: The action, test first.** Create `apps/platform/app/app-host/(protected)/billing/actions.test.ts`:
 
 ```ts
-import { saveBillingProfile, withTenantScope } from "@fynix/db";
+import { saveBillingProfile, withTenantScope } from "@brandbasket/db";
 import { refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
@@ -3675,8 +3675,8 @@ vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() 
 vi.mock("@/lib/server/charges", () => ({ startCustomerChargePayment: vi.fn() }));
 vi.mock("@/lib/server/checkout", () => ({ startReactivationFor: vi.fn() }));
 vi.mock("@/lib/server/charge-redirect", () => ({ redirectForChargePayment: vi.fn() }));
-vi.mock("@fynix/db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@fynix/db")>()),
+vi.mock("@brandbasket/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@brandbasket/db")>()),
   saveBillingProfile: vi.fn(),
   withTenantScope: vi.fn((_db: unknown, _tenant: unknown, work: (tx: unknown) => unknown) => work({ name: "app-tx" })),
 }));
@@ -3716,14 +3716,14 @@ describe("saveBillingDetailsAction", () => {
 });
 ```
 
-  Run `pnpm --filter @fynix/platform exec vitest run "app/app-host/(protected)/billing/actions.test.ts"`. Expected: FAIL.
+  Run `pnpm --filter @brandbasket/platform exec vitest run "app/app-host/(protected)/billing/actions.test.ts"`. Expected: FAIL.
 
 - [ ] **Step 2: The action.** Add to `billing/actions.ts` (keep the existing actions; add these imports):
 
 ```ts
-import { saveBillingProfile, withTenantScope } from "@fynix/db";
-import { firstBillingDetailsProblem, parseBillingDetails } from "@fynix/shared/lib/billing/billing-details-form";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { saveBillingProfile, withTenantScope } from "@brandbasket/db";
+import { firstBillingDetailsProblem, parseBillingDetails } from "@brandbasket/shared/lib/billing/billing-details-form";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { refresh } from "next/cache";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import { getAppDb } from "@/lib/server/db";
@@ -3758,11 +3758,11 @@ export async function saveBillingDetailsAction(_previous: PanelFormState, formDa
 
 ```ts
 import "server-only";
-import { findBillingProfile, getBusinessProfile, withTenantScope } from "@fynix/db";
-import { stateCodeOfIndiaPostName } from "@fynix/db/india-states";
-import { FALLBACK_PHONE_COUNTRY, type PhoneCountryOption } from "@fynix/shared/lib/phone/fields";
-import { phoneCountryOptions } from "@fynix/shared/server/phone-countries";
-import { savedPhoneStart } from "@fynix/shared/server/phone-defaults";
+import { findBillingProfile, getBusinessProfile, withTenantScope } from "@brandbasket/db";
+import { stateCodeOfIndiaPostName } from "@brandbasket/db/india-states";
+import { FALLBACK_PHONE_COUNTRY, type PhoneCountryOption } from "@brandbasket/shared/lib/phone/fields";
+import { phoneCountryOptions } from "@brandbasket/shared/server/phone-countries";
+import { savedPhoneStart } from "@brandbasket/shared/server/phone-defaults";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb } from "./db";
 
@@ -3859,10 +3859,10 @@ export async function billingDetailsMissing(customer: Pick<GrantedCustomer, "ten
 "use client";
 
 import { useState, type ReactElement } from "react";
-import { INDIA_STATES } from "@fynix/shared/lib/directory/india-states";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { SectionHeading, Surface } from "@fynix/shared/ui/panel/surface";
-import { PhoneField } from "@fynix/shared/ui/phone-field";
+import { INDIA_STATES } from "@brandbasket/shared/lib/directory/india-states";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SectionHeading, Surface } from "@brandbasket/shared/ui/panel/surface";
+import { PhoneField } from "@brandbasket/shared/ui/phone-field";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 import type { BillingDetailsView } from "@/lib/server/billing-details";
 
@@ -4085,7 +4085,7 @@ export function BillingDetailsPrompt(): ReactElement {
   facts). Check the prompt on Check and send before details exist and gone after; the inline form on the Premium page for
   a listing account. Repeat at 375 px.
 
-- [ ] **Step 8: Run** `pnpm --filter @fynix/platform test && pnpm --filter @fynix/platform lint && pnpm --filter @fynix/platform typecheck`. Expected: PASS.
+- [ ] **Step 8: Run** `pnpm --filter @brandbasket/platform test && pnpm --filter @brandbasket/platform lint && pnpm --filter @brandbasket/platform typecheck`. Expected: PASS.
 
 - [ ] **Step 9: Commit** "Let customers give their billing details for GST invoices, from Billing and before they pay"
 
@@ -4145,10 +4145,10 @@ export async function findCurrentPaymentMethod(db: Runner, businessId: string): 
   `design-taste-frontend` and follow `apps/platform/DESIGN.md` first):
 
 ```tsx
-import type { CurrentPaymentMethod } from "@fynix/db";
+import type { CurrentPaymentMethod } from "@brandbasket/db";
 import type { ReactElement, ReactNode } from "react";
-import { paymentLabel } from "@fynix/shared/lib/billing/payment-method";
-import { SectionHeading, Surface } from "@fynix/shared/ui/panel/surface";
+import { paymentLabel } from "@brandbasket/shared/lib/billing/payment-method";
+import { SectionHeading, Surface } from "@brandbasket/shared/ui/panel/surface";
 
 interface PaymentMethodProps {
   readonly method: CurrentPaymentMethod;
@@ -4196,7 +4196,7 @@ export function PaymentMethod({ method, renews, emailUs }: PaymentMethodProps): 
   provider recorded (or nothing, if it records no method); after staff record a bank transfer it shows the transfer.
   Check 375 px width: the label wraps, nothing overflows.
 
-- [ ] **Step 6: Run** `pnpm --filter @fynix/platform lint && pnpm --filter @fynix/platform typecheck && pnpm --filter @fynix/db typecheck && pnpm test:integration`.
+- [ ] **Step 6: Run** `pnpm --filter @brandbasket/platform lint && pnpm --filter @brandbasket/platform typecheck && pnpm --filter @brandbasket/db typecheck && pnpm test:integration`.
   Expected: PASS.
 
 - [ ] **Step 7: Commit** "Show customers how they pay on Billing"
@@ -4218,8 +4218,8 @@ staff download route import that, so it lands in those two server chunks alone, 
 26 KB. Reading the TTFs from disk at runtime was rejected (it needs file tracing in two Next apps and behaves differently
 in Vitest); fetching them was rejected (a network dependency for a legal document).
 
-- [ ] **Step 1: Dependencies.** `pnpm --filter @fynix/shared add pdf-lib@1.17.1 @pdf-lib/fontkit@1.1.1` (pdf-lib at
-  the version the platform app already pins). Both apps already transpile `@fynix/shared`; pnpm resolves the new
+- [ ] **Step 1: Dependencies.** `pnpm --filter @brandbasket/shared add pdf-lib@1.17.1 @pdf-lib/fontkit@1.1.1` (pdf-lib at
+  the version the platform app already pins). Both apps already transpile `@brandbasket/shared`; pnpm resolves the new
   packages from `packages/shared`, so the apps need no change. If `next build` ever complains about `@pdf-lib/fontkit`,
   add it to `serverExternalPackages` in that app's `next.config.ts`.
 
@@ -4308,7 +4308,7 @@ fs.writeFileSync("packages/shared/src/server/tax-invoice-wordmark.ts", body);
 '
 ```
 
-- [ ] **Step 5: Run** `pnpm --filter @fynix/shared typecheck`. Expected: PASS.
+- [ ] **Step 5: Run** `pnpm --filter @brandbasket/shared typecheck`. Expected: PASS.
 
 - [ ] **Step 6: Commit** "Embed Hanken Grotesk and the rupee sign for invoice PDFs"
 
@@ -4340,7 +4340,7 @@ samples:
 ```ts
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it, vi } from "vitest";
-import type { TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
+import type { TaxInvoice, TaxInvoiceLineRecord } from "@brandbasket/db";
 import { renderTaxInvoicesPdf } from "./tax-invoice-pdf";
 
 vi.mock("server-only", () => ({}));
@@ -4455,17 +4455,17 @@ describe("renderTaxInvoicesPdf", () => {
 });
 ```
 
-- [ ] **Step 2: Run** `pnpm --filter @fynix/shared exec vitest run src/server/tax-invoice-pdf.test.ts`. Expected: FAIL, module not found.
+- [ ] **Step 2: Run** `pnpm --filter @brandbasket/shared exec vitest run src/server/tax-invoice-pdf.test.ts`. Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement** `packages/shared/src/server/tax-invoice-pdf.ts`:
 
 ```ts
 import "server-only";
 import fontkit from "@pdf-lib/fontkit";
-import { amountInWords } from "@fynix/billing/amount-in-words";
-import { gstStateCodeOf } from "@fynix/billing/gst-states";
-import type { TaxInvoice, TaxInvoiceLineRecord } from "@fynix/db";
-import { stateName } from "@fynix/db/india-states";
+import { amountInWords } from "@brandbasket/billing/amount-in-words";
+import { gstStateCodeOf } from "@brandbasket/billing/gst-states";
+import type { TaxInvoice, TaxInvoiceLineRecord } from "@brandbasket/db";
+import { stateName } from "@brandbasket/db/india-states";
 import { PDFDocument, PDFString, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
 import { businessDetails } from "../lib/site-config";
 import { HANKEN_BOLD, HANKEN_REGULAR, HANKEN_SEMIBOLD, RUPEE_ADVANCE, RUPEE_PATH, RUPEE_UNITS_PER_EM } from "./tax-invoice-fonts.generated";
@@ -4989,7 +4989,7 @@ export async function renderTaxInvoicesPdf(invoices: readonly TaxInvoice[]): Pro
   by the embed script) from the text baseline; `context.obj` turns plain strings into PDF names, so only the URI needs
   `PDFString.of`; `page.node.addAnnot` adds the link to the page's `Annots`.
 
-- [ ] **Step 4: Run** the test. Expected: PASS, 6 tests. `pnpm --filter @fynix/shared typecheck`: PASS.
+- [ ] **Step 4: Run** the test. Expected: PASS, 6 tests. `pnpm --filter @brandbasket/shared typecheck`: PASS.
 
 - [ ] **Step 5: Compare with the approved design.** Write a temporary test file (do not commit it)
   `packages/shared/src/server/tax-invoice-pdf.samples.test.ts` that renders the four CA samples (MH registered with the
@@ -5060,11 +5060,11 @@ Read `apps/platform/node_modules/next/dist/docs/01-app/01-getting-started/15-rou
     title: receipt.taxInvoiceNumber === null ? receiptTitle(receipt.sequence, receipt.paidAt) : `Tax invoice ${receipt.taxInvoiceNumber}`,
 ```
 
-  Run `pnpm --filter @fynix/platform exec vitest run lib/billing/receipt-rows.test.ts`. Expected: PASS (the existing
+  Run `pnpm --filter @brandbasket/platform exec vitest run lib/billing/receipt-rows.test.ts`. Expected: PASS (the existing
   test for an uninvoiced receipt keeps its title).
 
 - [ ] **Step 4: Read invoices for the customer.** In `apps/platform/lib/server/billing.ts`, beside `listCustomerReceipts`
-  (import `listTaxInvoicesForPayments` and `type TaxInvoice` from `@fynix/db`):
+  (import `listTaxInvoicesForPayments` and `type TaxInvoice` from `@brandbasket/db`):
 
 ```ts
 /** The tax invoices for some of the customer's payments, oldest first. Works through row-level security. */
@@ -5104,14 +5104,14 @@ export async function listCustomerTaxInvoices(customer: Pick<GrantedCustomer, "t
   });
 ```
 
-  Run `pnpm --filter @fynix/platform exec vitest run app/app-host/billing/receipts/route.test.ts`. Expected: FAIL.
+  Run `pnpm --filter @brandbasket/platform exec vitest run app/app-host/billing/receipts/route.test.ts`. Expected: FAIL.
 
 - [ ] **Step 6: The route.** Replace `apps/platform/app/app-host/billing/receipts/route.ts` with:
 
 ```ts
 import "server-only";
-import type { Receipt, TaxInvoice } from "@fynix/db";
-import { renderTaxInvoicesPdf } from "@fynix/shared/server/tax-invoice-pdf";
+import type { Receipt, TaxInvoice } from "@brandbasket/db";
+import { renderTaxInvoicesPdf } from "@brandbasket/shared/server/tax-invoice-pdf";
 import { PDFDocument } from "pdf-lib";
 import { isDownloadableReceipt, receiptDocument, type ReceiptCustomer } from "@/lib/billing/receipt-document";
 import { parseReceiptSelection } from "@/lib/billing/receipt-download";
@@ -5222,7 +5222,7 @@ export async function GET(request: Request): Promise<Response> {
 
   Run the Step 5 tests and the route's existing tests. Expected: PASS.
 
-- [ ] **Step 7: Run** `pnpm --filter @fynix/platform test && pnpm --filter @fynix/platform lint && pnpm --filter @fynix/platform typecheck && pnpm test:integration`.
+- [ ] **Step 7: Run** `pnpm --filter @brandbasket/platform test && pnpm --filter @brandbasket/platform lint && pnpm --filter @brandbasket/platform typecheck && pnpm test:integration`.
   Expected: PASS.
 
 - [ ] **Step 8: Commit** "Download tax invoices from Billing; older payments keep their receipts"
@@ -5287,7 +5287,7 @@ export async function findTaxInvoiceById(db: Runner, invoiceId: string): Promise
 
 ```ts
 import "server-only";
-import { addMonthsUtc, chargedAmountCents } from "@fynix/billing";
+import { addMonthsUtc, chargedAmountCents } from "@brandbasket/billing";
 import {
   findChargeByPaymentId,
   findPlanById,
@@ -5298,7 +5298,7 @@ import {
   type ScopedTransaction,
   type Subscription,
   type TaxInvoice,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { issueTaxInvoice, type InvoiceSource } from "./tax-invoicing";
 
 /** The payment is not one staff can invoice now: it has its invoice, gets none (D1), or is from before invoicing (D17). */
@@ -5414,7 +5414,7 @@ export function invoiceNoticeHref(businessId: string, notice: InvoiceNotice): st
   `apps/admin/lib/billing-details-form-state.ts`:
 
 ```ts
-import type { BillingDetailsField } from "@fynix/shared/lib/billing/billing-details-form";
+import type { BillingDetailsField } from "@brandbasket/shared/lib/billing/billing-details-form";
 
 /** The staff billing details form's state: one refusal at a time, with what was typed, as the console's forms do. */
 export type StaffBillingDetailsState =
@@ -5426,8 +5426,8 @@ export const INITIAL_STAFF_BILLING_DETAILS_STATE: StaffBillingDetailsState = { s
 ```
 
 - [ ] **Step 5: Issuing, test first.** `apps/admin/lib/server/invoices-admin.test.ts` mocks `./db`
-  (`getStaffDb: () => ({ transaction: (fn) => fn({ name: "staff-tx" }) })`), `@fynix/db` (`lockBusinessForBilling: vi.fn()`
-  over the real module) and `@fynix/shared/server/tax-invoice-reissue` (the real error classes, a mocked
+  (`getStaffDb: () => ({ transaction: (fn) => fn({ name: "staff-tx" }) })`), `@brandbasket/db` (`lockBusinessForBilling: vi.fn()`
+  over the real module) and `@brandbasket/shared/server/tax-invoice-reissue` (the real error classes, a mocked
   `issueMissingTaxInvoice`), and checks: the lock is taken before issuing; success maps to `"issued"`;
   `NoMissingInvoiceError` to `"not-missing"`; `InvoiceSourceMismatchError` and `InvoiceAmountMismatchError` to
   `"mismatch"`; `InvalidGstinError` and `UnknownStateError` to `"refused"` and log `tax-invoice-failed`; any other error
@@ -5435,10 +5435,10 @@ export const INITIAL_STAFF_BILLING_DETAILS_STATE: StaffBillingDetailsState = { s
 
 ```ts
 import "server-only";
-import { InvoiceAmountMismatchError, InvalidGstinError, UnknownStateError } from "@fynix/billing";
-import { lockBusinessForBilling } from "@fynix/db";
-import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
-import { InvoiceSourceMismatchError, issueMissingTaxInvoice, NoMissingInvoiceError } from "@fynix/shared/server/tax-invoice-reissue";
+import { InvoiceAmountMismatchError, InvalidGstinError, UnknownStateError } from "@brandbasket/billing";
+import { lockBusinessForBilling } from "@brandbasket/db";
+import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
+import { InvoiceSourceMismatchError, issueMissingTaxInvoice, NoMissingInvoiceError } from "@brandbasket/shared/server/tax-invoice-reissue";
 import type { InvoiceNotice } from "@/lib/invoice-notices";
 import { getStaffDb } from "./db";
 
@@ -5462,15 +5462,15 @@ export async function issueClientMissingInvoice(businessId: string, paymentId: s
 }
 ```
 
-  Run `pnpm --filter @fynix/admin exec vitest run lib/server/invoices-admin.test.ts`. Expected: PASS.
+  Run `pnpm --filter @brandbasket/admin exec vitest run lib/server/invoices-admin.test.ts`. Expected: PASS.
 
 - [ ] **Step 6: The actions** `apps/admin/app/(protected)/clients/[businessId]/invoice-actions.ts`:
 
 ```ts
 "use server";
 
-import { saveBillingProfile } from "@fynix/db";
-import { firstBillingDetailsProblem, parseBillingDetails } from "@fynix/shared/lib/billing/billing-details-form";
+import { saveBillingProfile } from "@brandbasket/db";
+import { firstBillingDetailsProblem, parseBillingDetails } from "@brandbasket/shared/lib/billing/billing-details-form";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -5544,14 +5544,14 @@ export async function saveClientBillingDetailsAction(_previous: StaffBillingDeta
   At 375 px the table becomes stacked rows, as the page's other tables do.
 
 - [ ] **Step 9: The download route, test first.** `apps/admin/app/(protected)/invoices/[invoiceId]/route.test.ts` mocks
-  `@/lib/server/staff-access` (`getStaffAccess`), `@/lib/server/db`, `@fynix/db` (`findTaxInvoiceById`) and checks: 401
+  `@/lib/server/staff-access` (`getStaffAccess`), `@/lib/server/db`, `@brandbasket/db` (`findTaxInvoiceById`) and checks: 401
   without access; 404 for an id that is not a UUID (and `findTaxInvoiceById` not called) and for an unknown one; 200 with
   `application/pdf`, `attachment; filename="fynix-invoice-FY-26-27-000001.pdf"`, `private, no-store` and `nosniff` for
   a known one (use Task 16's fixture). Then the route:
 
 ```ts
-import { findTaxInvoiceById } from "@fynix/db";
-import { renderTaxInvoicesPdf } from "@fynix/shared/server/tax-invoice-pdf";
+import { findTaxInvoiceById } from "@brandbasket/db";
+import { renderTaxInvoicesPdf } from "@brandbasket/shared/server/tax-invoice-pdf";
 import { z } from "zod";
 import { getStaffDb } from "@/lib/server/db";
 import { getStaffAccess } from "@/lib/server/staff-access";
@@ -5590,7 +5590,7 @@ export async function GET(_request: Request, context: RouteContext<"/invoices/[i
   with a bad-check GSTIN as in Task 12) shows "Invoice missing"; fix the GSTIN with the form; "Issue invoice" issues it,
   dated today, with the payment's own date in its Payment block; Download opens it.
 
-- [ ] **Step 11: Run** `pnpm --filter @fynix/admin test && pnpm --filter @fynix/admin lint && pnpm --filter @fynix/admin typecheck && pnpm test:integration`.
+- [ ] **Step 11: Run** `pnpm --filter @brandbasket/admin test && pnpm --filter @brandbasket/admin lint && pnpm --filter @brandbasket/admin typecheck && pnpm test:integration`.
   Expected: PASS.
 
 - [ ] **Step 12: Commit** "Show staff a client's billing details and invoices, let them correct the details and issue a missing invoice"
@@ -5641,7 +5641,7 @@ export async function listMissingTaxInvoices(db: Runner, limit: number): Promise
 }
 ```
 
-  Export both and `type MissingTaxInvoice` from `@fynix/db`. Run the file. Expected: PASS.
+  Export both and `type MissingTaxInvoice` from `@brandbasket/db`. Run the file. Expected: PASS.
 
 - [ ] **Step 2: Write the test** for the pure register:
 
@@ -5702,12 +5702,12 @@ describe("invoice register", () => {
 });
 ```
 
-- [ ] **Step 3: Run** `pnpm --filter @fynix/shared exec vitest run src/lib/billing/invoice-register.test.ts`. Expected: FAIL.
+- [ ] **Step 3: Run** `pnpm --filter @brandbasket/shared exec vitest run src/lib/billing/invoice-register.test.ts`. Expected: FAIL.
 
 - [ ] **Step 4: Implement** `packages/shared/src/lib/billing/invoice-register.ts`:
 
 ```ts
-import { gstStateCodeOf } from "@fynix/billing/gst-states";
+import { gstStateCodeOf } from "@brandbasket/billing/gst-states";
 import { stateName } from "../directory/india-states";
 
 /** One invoice as the register needs it: what GSTR-1 asks for, per invoice. Pure and browser-safe. */
@@ -5816,7 +5816,7 @@ export function registerCsv(invoices: readonly RegisterInvoice[]): string {
 }
 ```
 
-  And the mapper, in the same file (import `type TaxInvoice` from `@fynix/db`; type-only, so the module stays
+  And the mapper, in the same file (import `type TaxInvoice` from `@brandbasket/db`; type-only, so the module stays
   browser-safe):
 
 ```ts
@@ -5848,8 +5848,8 @@ export function registerInvoiceOf(invoice: TaxInvoice): RegisterInvoice {
   `"2026-10-01", "2026-11-01"`. Then the route:
 
 ```ts
-import { listTaxInvoicesIssuedBetween } from "@fynix/db";
-import { monthRange, registerCsv, registerInvoiceOf } from "@fynix/shared/lib/billing/invoice-register";
+import { listTaxInvoicesIssuedBetween } from "@brandbasket/db";
+import { monthRange, registerCsv, registerInvoiceOf } from "@brandbasket/shared/lib/billing/invoice-register";
 import { getStaffDb } from "@/lib/server/db";
 import { getStaffAccess } from "@/lib/server/staff-access";
 
@@ -5878,7 +5878,7 @@ export async function GET(request: Request): Promise<Response> {
 
 - [ ] **Step 7: The page** `apps/admin/app/(protected)/invoices/page.tsx`: `await requireStaffAccess()` as the other console
   pages; `?month=` read with `monthRange` (default the current Indian month, `indianDate(new Date()).slice(0, 7)` from
-  `@fynix/billing/invoice-number`; an invalid month is a `notFound()`); previous and next month links; a facts row from
+  `@brandbasket/billing/invoice-number`; an invalid month is a `notFound()`); previous and next month links; a facts row from
   `registerTotals` (invoices, taxable value, CGST, SGST, IGST, round off, total, then B2B and B2C count and tax); the
   month's invoices (number, date, customer, GSTIN or "Unregistered", place of supply, total, Download link to
   `/invoices/{id}`); a "Download CSV" link to `/invoices/export?month=...`; and above all of it, when
@@ -5888,9 +5888,9 @@ export async function GET(request: Request): Promise<Response> {
 
 - [ ] **Step 8: The dock.** In `apps/admin/components/console/dock.tsx` add
   `{ href: "/invoices", label: "Invoices", icon: <DocumentIcon className="size-5" /> }` after Pricing (`DocumentIcon` is in
-  `@fynix/shared/ui/icons`; the platform's monthly billing already uses it).
+  `@brandbasket/shared/ui/icons`; the platform's monthly billing already uses it).
 
-- [ ] **Step 9: Run** `pnpm --filter @fynix/shared test && pnpm --filter @fynix/admin test && pnpm --filter @fynix/admin lint && pnpm --filter @fynix/admin typecheck && pnpm test:integration`.
+- [ ] **Step 9: Run** `pnpm --filter @brandbasket/shared test && pnpm --filter @brandbasket/admin test && pnpm --filter @brandbasket/admin lint && pnpm --filter @brandbasket/admin typecheck && pnpm test:integration`.
   Expected: PASS. Open `/invoices` locally after the Task 19 walk-through and check the CSV opens in Excel or Numbers with
   the right figures.
 

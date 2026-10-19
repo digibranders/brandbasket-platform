@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { chargedAmountCents, discountCentsFor } from "@fynix/billing";
+import { chargedAmountCents, discountCentsFor } from "@brandbasket/billing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyRetentionDiscount,
@@ -19,8 +19,8 @@ import {
   users,
   type Plan,
   type Subscription,
-} from "@fynix/db";
-import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@fynix/db/testing";
+} from "@brandbasket/db";
+import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
 import { chargeAmountCents } from "./lib/billing/charges";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment, type RenewalInvoicedPrice } from "./server/billing-activation";
 import { recordChargePaymentWithInvoice } from "./server/charge-payments";

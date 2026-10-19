@@ -1,6 +1,6 @@
 import "server-only";
-import { approveProjectPreview, requestProjectRevisions, type Database } from "@fynix/db";
-import { createAppEmailTransport, previewApprovedEmail, previewRevisionsRequestedEmail } from "@fynix/email";
+import { approveProjectPreview, requestProjectRevisions, type Database } from "@brandbasket/db";
+import { createAppEmailTransport, previewApprovedEmail, previewRevisionsRequestedEmail } from "@brandbasket/email";
 import { serverEnv } from "./env";
 
 export type PreviewResponse = { readonly kind: "approve" } | { readonly kind: "revisions" };

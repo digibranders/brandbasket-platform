@@ -9,7 +9,7 @@ import {
   type Database,
   type DirectoryPlace,
   type ScopedTransaction,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WEB_ADDRESS_MESSAGES } from "../web-address-form";
 import { getStaffDb } from "./db";
@@ -17,8 +17,8 @@ import { changeWebAddress } from "./web-address";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return { ...actual, changePlaceUrl: vi.fn(), findPlaces: vi.fn() };
 });
 

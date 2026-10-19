@@ -1,9 +1,9 @@
 "use server";
 
 import type { ForgotPasswordFormState } from "@/lib/account-recovery-form";
-import { checkHuman } from "@fynix/shared/server/turnstile-request";
+import { checkHuman } from "@brandbasket/shared/server/turnstile-request";
 import { requestPasswordReset } from "@/lib/server/account-recovery";
-import { requiredEmail } from "@fynix/shared/lib/validation/contact";
+import { requiredEmail } from "@brandbasket/shared/lib/validation/contact";
 
 /**
  * /forgot-password. An email address is sent a one-time link to choose a new password; the form says the same thing

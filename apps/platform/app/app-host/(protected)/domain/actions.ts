@@ -1,9 +1,9 @@
 "use server";
 
-import { DomainTakenError, getPrimaryDomain, requestDomainMove, withTenantScope } from "@fynix/db";
+import { DomainTakenError, getPrimaryDomain, requestDomainMove, withTenantScope } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
-import { clientSiteBaseDomain, isTemporarySubdomain, parseDomainForm, reservedHostnamesFrom } from "@fynix/shared/lib/onboarding/domain-form";
-import { siteConfig } from "@fynix/shared/lib/site-config";
+import { clientSiteBaseDomain, isTemporarySubdomain, parseDomainForm, reservedHostnamesFrom } from "@brandbasket/shared/lib/onboarding/domain-form";
+import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import { MOVE_NOT_AVAILABLE_MESSAGE, MOVE_TAKEN_MESSAGE, type MoveDomainState } from "@/lib/move-domain-state";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";

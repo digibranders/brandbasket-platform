@@ -1,8 +1,8 @@
-import { PASSWORD_MAX_LENGTH, passwordPolicyProblem } from "@fynix/auth/password-policy";
+import { PASSWORD_MAX_LENGTH, passwordPolicyProblem } from "@brandbasket/auth/password-policy";
 import { z } from "zod";
 
 /**
- * A newly chosen password, held to the rule Better Auth also enforces on the server (@fynix/auth/password-policy,
+ * A newly chosen password, held to the rule Better Auth also enforces on the server (@brandbasket/auth/password-policy,
  * which is browser-safe). Every form that sets a password uses this, so they all say the same thing.
  */
 export const newPasswordSchema = z.string().superRefine((password, context) => {

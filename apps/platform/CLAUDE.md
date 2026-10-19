@@ -35,7 +35,7 @@ The app at app.fynix.digital: sign-up and sign-in, onboarding, the business dash
 
 ## UI
 
-- Tokens come from `packages/shared/src/styles/theme.css`. Shared pieces are in `@fynix/shared/ui/panel` and `@fynix/shared/ui/forms`; app-only pieces are in `components/panel/`.
+- Tokens come from `packages/shared/src/styles/theme.css`. Shared pieces are in `@brandbasket/shared/ui/panel` and `@brandbasket/shared/ui/forms`; app-only pieces are in `components/panel/`.
 - Follow `DESIGN.md`, including its "Not allowed" list.
 
 ## Commands (from this folder)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PASSWORD_MIN_LENGTH } from "@fynix/auth/password-policy";
+import { PASSWORD_MIN_LENGTH } from "@brandbasket/auth/password-policy";
 import { parseSetupForm } from "./setup-form";
 
 function form(entries: Record<string, string>): FormData {

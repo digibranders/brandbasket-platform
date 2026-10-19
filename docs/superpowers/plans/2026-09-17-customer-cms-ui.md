@@ -21,7 +21,7 @@
   - The $3-per-publish billing workflow. Every write in this plan (section edits, gallery changes, blog publish/unpublish) writes immediately; there is no `content_publish`/allowance gate yet, matching `packages/db/src/queries/blog.ts`'s existing comment that publishing is "free and unlimited" for now.
 - **Write actions require payment**, per the existing rule: call `requireBillingAccess()` (`apps/platform/lib/server/billing.ts`) at the top of every server action that writes. Reads stay open — the dashboard is readable before payment (existing pattern, see `BillingBanner`).
 - **Do not commit. Do not start a dev server.** The user runs their own on port 3000/3001 against the dev database.
-- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm --filter @fynix/db test:integration` for the Task 1 database work.
+- Checkpoint after every task: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm --filter @brandbasket/db test:integration` for the Task 1 database work.
 
 ---
 
@@ -84,7 +84,7 @@ Add `listGalleryItems` to the `./queries/website` import at the top of the test 
 - [x] **Step 2: Run it and confirm it fails**
 
 ```bash
-pnpm --filter @fynix/db test:integration -- website.integration
+pnpm --filter @brandbasket/db test:integration -- website.integration
 ```
 
 Expected: fails to resolve/export `listGalleryItems`.
@@ -138,7 +138,7 @@ export async function listGalleryItems(tx: ScopedTransaction): Promise<readonly 
 - [x] **Step 4: Run the test and confirm it passes**
 
 ```bash
-pnpm --filter @fynix/db test:integration -- website.integration
+pnpm --filter @brandbasket/db test:integration -- website.integration
 ```
 
 - [x] **Step 5: `launchWebsiteForBusiness` — write the failing test**
@@ -221,7 +221,7 @@ describe("launchWebsiteForBusiness", () => {
 - [x] **Step 6: Run it and confirm it fails**
 
 ```bash
-pnpm --filter @fynix/db test:integration -- launch.integration
+pnpm --filter @brandbasket/db test:integration -- launch.integration
 ```
 
 Expected: fails to resolve `./queries/launch`.
@@ -317,7 +317,7 @@ export async function launchWebsiteForBusiness(db: Database, input: LaunchWebsit
 - [x] **Step 8: Run the tests and confirm they pass**
 
 ```bash
-pnpm --filter @fynix/db test:integration -- launch.integration
+pnpm --filter @brandbasket/db test:integration -- launch.integration
 ```
 
 - [x] **Step 9: Export and checkpoint**
@@ -325,7 +325,7 @@ pnpm --filter @fynix/db test:integration -- launch.integration
 Add `listGalleryItems`/`GalleryPhoto`'s exports (they belong with `website.ts`'s existing export block) and a new export block for `launch.ts` (`launchWebsiteForBusiness`, `NoProjectError`, and its types) to `packages/db/src/index.ts`. Then:
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @fynix/db test:integration
+pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @brandbasket/db test:integration
 ```
 
 ---
@@ -341,7 +341,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @fynix/d
 Read `apps/platform/app/admin-host/(protected)/clients/[businessId]/actions.ts` first — follow its existing `"use server"`, `requireStaffAccess()`, `revalidatePath` pattern exactly (it already has `revalidateClient(businessId)` defined; reuse it). Add:
 
 ```ts
-import { launchWebsiteForBusiness, NoProjectError } from "@fynix/db";
+import { launchWebsiteForBusiness, NoProjectError } from "@brandbasket/db";
 // ... alongside the existing imports
 
 /** Stopgap for the missing staff project-management workflow — see packages/db/src/queries/launch.ts's doc comment. */
@@ -397,7 +397,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 
 - [x] **Step 1: Nav entries**
 
-In `customer-shell.tsx`, add to `CUSTOMER_NAV` (import `PaletteIcon` and `GaugeIcon` from `@fynix/shared/ui/icons`), placed after "Set up your website" and before "Billing":
+In `customer-shell.tsx`, add to `CUSTOMER_NAV` (import `PaletteIcon` and `GaugeIcon` from `@brandbasket/shared/ui/icons`), placed after "Set up your website" and before "Billing":
 
 ```ts
 { href: "/content", label: "Content", icon: <PaletteIcon className="size-5" /> },
@@ -409,7 +409,7 @@ In `customer-shell.tsx`, add to `CUSTOMER_NAV` (import `PaletteIcon` and `GaugeI
 ```tsx
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { deriveSiteStatus, type SiteStatus } from "@fynix/billing";
+import { deriveSiteStatus, type SiteStatus } from "@brandbasket/billing";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getProjectOverview } from "@/lib/server/onboarding";
 
@@ -493,7 +493,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 
 ```ts
 import "server-only";
-import { getWebsiteForBusiness, listGalleryItems, listMediaAssets, withTenantScope, type GalleryPhoto, type MediaAsset, type WebsiteDetail } from "@fynix/db";
+import { getWebsiteForBusiness, listGalleryItems, listMediaAssets, withTenantScope, type GalleryPhoto, type MediaAsset, type WebsiteDetail } from "@brandbasket/db";
 import { cache } from "react";
 import { requireCustomerAccess } from "./customer-access";
 import { getAppDb } from "./db";
@@ -518,7 +518,7 @@ export const getContentSnapshot = cache(async (): Promise<ContentSnapshot> => {
 });
 ```
 
-Check `MediaAsset` is actually exported from `@fynix/db` with this exact name (it is used already in `apps/platform/app/app-host/(protected)/onboarding/brand/page.tsx`) before assuming the import works as written.
+Check `MediaAsset` is actually exported from `@brandbasket/db` with this exact name (it is used already in `apps/platform/app/app-host/(protected)/onboarding/brand/page.tsx`) before assuming the import works as written.
 
 - [ ] **Step 2: Section edit form (client component)**
 
@@ -686,7 +686,7 @@ import {
   SectionNotEditableError,
   updateSectionContent,
   withTenantScope,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { refresh } from "next/cache";
 import { requireBillingAccess } from "@/lib/server/billing";
 import { getAppDb } from "@/lib/server/db";
@@ -855,7 +855,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 
 ```ts
 import "server-only";
-import { listBlogPosts, withTenantScope, type BlogPost } from "@fynix/db";
+import { listBlogPosts, withTenantScope, type BlogPost } from "@brandbasket/db";
 import { cache } from "react";
 import { requireCustomerAccess } from "./customer-access";
 import { getAppDb } from "./db";
@@ -879,7 +879,7 @@ import {
   unpublishBlogPost,
   updateBlogPost,
   withTenantScope,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireBillingAccess } from "@/lib/server/billing";
@@ -1040,7 +1040,7 @@ This is a client component because `useActionState` needs it, and `createBlogPos
 - [ ] **Step 5: The edit page**
 
 ```tsx
-import { listBlogPosts, withTenantScope } from "@fynix/db";
+import { listBlogPosts, withTenantScope } from "@brandbasket/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
@@ -1088,7 +1088,7 @@ There is no dedicated `getBlogPost(tx, postId)` query — this reads the full li
 "use client";
 
 import { useActionState, useState, type ReactElement } from "react";
-import type { BlogPost } from "@fynix/db";
+import type { BlogPost } from "@brandbasket/db";
 import type { BlogFormResult } from "@/app/app-host/(protected)/content/blog/actions";
 
 interface BlogPostEditFormProps {

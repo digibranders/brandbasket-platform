@@ -14,7 +14,7 @@ import {
   type DirectoryRef,
   type DirectorySignal,
   type ResolvedDirectoryAsk,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { signalsResponseSchema } from "@/lib/directory-api";
 import { getStaffDb } from "./db";
 import { accountCodeSecret } from "./env";
@@ -23,8 +23,8 @@ import { directoryDay, readSignals, recordDirectoryEvent, type DirectoryEvent } 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./env", () => ({ accountCodeSecret: vi.fn() }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     answerByAsked: actual.answerByAsked,
     directoryRefId: actual.directoryRefId,

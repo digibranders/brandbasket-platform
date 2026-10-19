@@ -1,14 +1,14 @@
 import "server-only";
-import type { VisibleOpenListing } from "@fynix/db";
-import { isPlaceId } from "@fynix/db/place-id";
+import type { VisibleOpenListing } from "@brandbasket/db";
+import { isPlaceId } from "@brandbasket/db/place-id";
 import {
   OPEN_LISTINGS_CONTRACT_VERSION,
   OPEN_LISTINGS_MAX_PAGE,
   type OpenListingTuple,
   type OpenListingsPage,
   type OpenListingsVersion,
-} from "@fynix/shared/lib/directory/open-listings-contract";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+} from "@brandbasket/shared/lib/directory/open-listings-contract";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { hasValidWebsiteToken } from "@/lib/server/website-api-auth";
 
 /*

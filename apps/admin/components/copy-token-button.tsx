@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactElement } from "react";
-import { CopyIcon, TickIcon } from "@fynix/shared/ui/icons";
+import { CopyIcon, TickIcon } from "@brandbasket/shared/ui/icons";
 
 interface CopyTokenButtonProps {
   /** What goes on the clipboard. Never spoken or shown by this button: it is a secret. */

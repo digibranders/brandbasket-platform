@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { WordmarkLogo, type BrandLogo } from "@fynix/shared/ui/logo";
+import { WordmarkLogo, type BrandLogo } from "@brandbasket/shared/ui/logo";
 
 interface PanelNotFoundProps {
   /** The logo to draw. */

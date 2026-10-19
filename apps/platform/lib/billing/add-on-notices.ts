@@ -1,4 +1,4 @@
-import { ADD_ONS_PATH, isMonthlyAddOnId, type MonthlyAddOnId } from "@fynix/shared/lib/billing/add-ons";
+import { ADD_ONS_PATH, isMonthlyAddOnId, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import type { AddOnConfirmation } from "@/lib/server/add-ons";
 
 /** What the Add-ons page says after a customer tried to pay for an add-on, keyed by `?payment=` in its address. */

@@ -1,4 +1,4 @@
-import type { PaymentAttentionReason } from "@fynix/db";
+import type { PaymentAttentionReason } from "@brandbasket/db";
 
 /** What each attention reason means for staff, and what to do about it. */
 export const PAYMENT_ATTENTION_LABELS: Readonly<

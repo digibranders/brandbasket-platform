@@ -1,4 +1,4 @@
-import type { SubscriptionStatus } from "@fynix/db";
+import type { SubscriptionStatus } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { hasBillingAccess } from "./access";
 

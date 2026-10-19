@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { CHATBOT_LEADS_PATH, pageRangeLabel, paginationItems } from "@/lib/chatbots-view";
 
 const BUTTON = "inline-flex h-9 min-w-9 items-center justify-center rounded-control px-3 text-sm transition-colors duration-200 ease-calm";

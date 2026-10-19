@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
-import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { ExternalButtonLink } from "@fynix/shared/ui/panel/button";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { ExternalButtonLink } from "@brandbasket/shared/ui/panel/button";
 
 interface SetupCallCardProps {
   /** Where the call is booked: opens in a new tab, so the setup the customer is in the middle of stays where it is. */

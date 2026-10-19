@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { BUSINESS_EXTRA_CATEGORIES_MAX, findBusinessTimeZone, findPlaces, listClosures, loadGeoCatalog, withTenantScope, marketOfListing, placeUrlPath, type DirectoryClaim, type DirectoryPlace, type DirectoryProfile } from "@fynix/db";
-import { areaName, categoryLabel, cityName, directoryCategoryPath } from "@fynix/shared/lib/directory/places";
-import { siteConfig } from "@fynix/shared/lib/site-config";
-import { displayPhone } from "@fynix/shared/server/phone-display";
-import { ArrowIcon } from "@fynix/shared/ui/icons";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
+import { BUSINESS_EXTRA_CATEGORIES_MAX, findBusinessTimeZone, findPlaces, listClosures, loadGeoCatalog, withTenantScope, marketOfListing, placeUrlPath, type DirectoryClaim, type DirectoryPlace, type DirectoryProfile } from "@brandbasket/db";
+import { areaName, categoryLabel, cityName, directoryCategoryPath } from "@brandbasket/shared/lib/directory/places";
+import { siteConfig } from "@brandbasket/shared/lib/site-config";
+import { displayPhone } from "@brandbasket/shared/server/phone-display";
+import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import { BusinessIdLine } from "@/components/panel/business/business-id-line";
 import { DetailsForm, type DetailsValues } from "@/components/panel/business/details-form";
 import { ClosuresPanel } from "@/components/panel/details/closures-panel";
@@ -37,8 +37,8 @@ import { pinPlaceName, type PinLookup } from "@/lib/listing-location";
 import { shownPicture } from "@/lib/photos-view";
 import { getOwnVideos } from "@/lib/server/listing-videos";
 import { videoAccessOf, videoTiles } from "@/lib/videos-view";
-import type { OptionalPageTab } from "@fynix/shared/lib/directory/page-tabs";
-import { GALLERY_SLOTS } from "@fynix/shared/lib/directory/pictures";
+import type { OptionalPageTab } from "@brandbasket/shared/lib/directory/page-tabs";
+import { GALLERY_SLOTS } from "@brandbasket/shared/lib/directory/pictures";
 import { getBusinessProfilePage, getOwnExtraCategories, lookupPincode, type BusinessProfilePage } from "@/lib/server/business-profile";
 import { verifiedSince } from "@/lib/server/business-verification";
 import { opensClaimPages } from "@/lib/listing-sections";
@@ -51,8 +51,8 @@ import { ensureGeoCatalog } from "@/lib/server/geo-catalog";
 import { livePreviewBase, livePreviewSource } from "@/lib/server/live-preview";
 import type { PreviewSection } from "@/lib/preview-draft";
 import { addClosureAction, deleteClosureAction } from "@/app/app-host/(protected)/details/actions";
-import { upcomingClosures } from "@fynix/shared/lib/business-facts/closures";
-import { DEFAULT_BUSINESS_TIME_ZONE, localDateIn } from "@fynix/shared/lib/calendar/local-date";
+import { upcomingClosures } from "@brandbasket/shared/lib/business-facts/closures";
+import { DEFAULT_BUSINESS_TIME_ZONE, localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import {
   publishAction,
   removeFaqAction,

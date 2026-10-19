@@ -4,10 +4,10 @@ import {
   PRIVACY_REQUEST_KIND_LABELS,
   type Database,
   type PrivacyRequestKind,
-} from "@fynix/db";
-import { emailTeamInboxDefault, privacyRequestAlertEmail, privacyRequestsDueEmail, type EmailTransport, type PrivacyRequestDueItem, type PrivacyRequestDueStage } from "@fynix/email";
-import { daysUntilDue } from "@fynix/shared/lib/privacy-request-deadlines";
-import { selectReminders } from "@fynix/shared/lib/privacy-request-reminders";
+} from "@brandbasket/db";
+import { emailTeamInboxDefault, privacyRequestAlertEmail, privacyRequestsDueEmail, type EmailTransport, type PrivacyRequestDueItem, type PrivacyRequestDueStage } from "@brandbasket/email";
+import { daysUntilDue } from "@brandbasket/shared/lib/privacy-request-deadlines";
+import { selectReminders } from "@brandbasket/shared/lib/privacy-request-reminders";
 
 /*
  * The emails that tell staff a privacy request needs them: one when a request is filed on the website, and one each night

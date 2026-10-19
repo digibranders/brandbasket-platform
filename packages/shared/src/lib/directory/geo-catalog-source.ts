@@ -1,4 +1,4 @@
-import { loadGeoCatalog, setOpenedDistricts, type Database, type GeoCatalogSnapshot } from "@fynix/db";
+import { loadGeoCatalog, setOpenedDistricts, type Database, type GeoCatalogSnapshot } from "@brandbasket/db";
 import { applyPlacesCatalog, DIRECTORY_DISTRICT, DIRECTORY_STATE } from "./places";
 
 /*

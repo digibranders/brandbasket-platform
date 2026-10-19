@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
-import type { AppointmentRow } from "@fynix/db";
-import { APPOINTMENT_STATUS_LABELS } from "@fynix/shared/lib/appointments/status";
-import { cn } from "@fynix/shared/lib/cn";
+import type { AppointmentRow } from "@brandbasket/db";
+import { APPOINTMENT_STATUS_LABELS } from "@brandbasket/shared/lib/appointments/status";
+import { cn } from "@brandbasket/shared/lib/cn";
 
 type Status = AppointmentRow["status"];
 

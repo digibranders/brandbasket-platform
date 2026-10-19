@@ -1,13 +1,13 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { TickIcon } from "@fynix/shared/ui/icons";
-import { cn } from "@fynix/shared/lib/cn";
+import { TickIcon } from "@brandbasket/shared/ui/icons";
+import { cn } from "@brandbasket/shared/lib/cn";
 import {
   ANSWER_STEPS,
   ONBOARDING_STEPS,
   onboardingStepHref,
   type OnboardingStepKey,
-} from "@fynix/shared/lib/onboarding/steps";
+} from "@brandbasket/shared/lib/onboarding/steps";
 
 interface PrepareChecklistProps {
   readonly completedSteps: readonly OnboardingStepKey[];

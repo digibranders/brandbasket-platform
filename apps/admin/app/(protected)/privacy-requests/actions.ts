@@ -1,6 +1,6 @@
 "use server";
 
-import { closePrivacyRequest, listPrivacyRequests, logPrivacyRequest, updatePrivacyRequest } from "@fynix/db";
+import { closePrivacyRequest, listPrivacyRequests, logPrivacyRequest, updatePrivacyRequest } from "@brandbasket/db";
 import { redirect } from "next/navigation";
 import { parsePrivacyRequestClose, parsePrivacyRequestForm, parsePrivacyRequestProgress } from "@/lib/privacy-request-form";
 import { getStaffDb } from "@/lib/server/db";

@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { reportUnexpectedPanelError } from "@/lib/server/report-panel-error";
 import { redirect } from "next/navigation";
-import { bookSlot, findPatient, listAppointmentServices, listEnabledModules, withTenantScope, type ScopedTransaction } from "@fynix/db";
-import { parseManualBooking, type ManualBookingCommand } from "@fynix/shared/lib/patients/patient-form";
+import { bookSlot, findPatient, listAppointmentServices, listEnabledModules, withTenantScope, type ScopedTransaction } from "@brandbasket/db";
+import { parseManualBooking, type ManualBookingCommand } from "@brandbasket/shared/lib/patients/patient-form";
 import { panelFormErrorState, type PanelFormState } from "@/lib/panel-form-state";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
 import { loadClinicSlot } from "@/lib/server/clinic-booking";
 import { getAppDb, getStaffDb } from "@/lib/server/db";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { paymentRequiredState, unexpectedErrorState } from "@/lib/server/panel-form-errors";
 import { bookedHref } from "./add-booking-params";
 import { addBookingRefusalState, runAddBooking, type AddBookingOutcome, type BookingPerson, type TenantCheck } from "./add-booking-outcome";

@@ -8,7 +8,7 @@ vi.mock("react", async (importOriginal) => ({
   ...await importOriginal<typeof import("react")>(),
   useEffect: vi.fn(),
 }));
-vi.mock("@fynix/shared/lib/error-report", () => ({ reportBrowserError: vi.fn() }));
+vi.mock("@brandbasket/shared/lib/error-report", () => ({ reportBrowserError: vi.fn() }));
 
 afterEach(() => {
   vi.clearAllMocks();

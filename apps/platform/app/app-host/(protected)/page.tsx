@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { isPhoneAccountEmail } from "@fynix/db";
+import { isPhoneAccountEmail } from "@brandbasket/db";
 import { BillingBanner } from "@/components/panel/billing-banner";
 import { KickoffCallCard } from "@/components/panel/kickoff-call-card";
 import { NextStepCard } from "@/components/panel/next-step-card";
 import { PaidBadge } from "@/components/panel/paid-badge";
 import { PrepareChecklist } from "@/components/panel/prepare-checklist";
 import { TeamCallCard } from "@/components/panel/team-call-card";
-import { firstName } from "@fynix/shared/lib/names";
-import { nextStep, type NextStep } from "@fynix/shared/lib/next-step";
+import { firstName } from "@brandbasket/shared/lib/names";
+import { nextStep, type NextStep } from "@brandbasket/shared/lib/next-step";
 import { projectStageIndex } from "@/lib/project-stages";
 import { getBillingBanner } from "@/lib/server/billing-banner";
 import { requireCustomerAccess } from "@/lib/server/customer-access";

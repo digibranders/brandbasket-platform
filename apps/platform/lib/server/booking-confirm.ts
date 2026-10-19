@@ -15,10 +15,10 @@ import {
   type BookingOtpPayload,
   type Database,
   type NewAppointment,
-} from "@fynix/db";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
-import { addDays, zonedTimeToUtc } from "@fynix/shared/lib/calendar/local-date";
-import { OTP_MAX_ATTEMPTS } from "@fynix/shared/lib/appointments/otp";
+} from "@brandbasket/db";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
+import { addDays, zonedTimeToUtc } from "@brandbasket/shared/lib/calendar/local-date";
+import { OTP_MAX_ATTEMPTS } from "@brandbasket/shared/lib/appointments/otp";
 import { DEFAULT_PAUSED_MESSAGE } from "./availability";
 import { loggableBookingError } from "./booking-log";
 import { getStaffDb } from "./db";

@@ -1,6 +1,6 @@
 "use server";
 
-import { isPhoneAccountEmail } from "@fynix/db";
+import { isPhoneAccountEmail } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { bookSetupCall, loadSetupCallSlots, markSetupCallBooked, type BookSetupCallResult, type SetupCallSlots } from "@/lib/server/setup-call";

@@ -16,14 +16,14 @@ import {
   updatePractitioner,
   withTenantScope,
   type ScopedTransaction,
-} from "@fynix/db";
-import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
+} from "@brandbasket/db";
+import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { leaveAddedState, type LeaveClash } from "@/lib/appointments/leave-added-state";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
 import type { GrantedCustomer } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { paymentRequiredState, unexpectedErrorState } from "@/lib/server/panel-form-errors";
 import { moduleOffState } from "../errors";
 import {

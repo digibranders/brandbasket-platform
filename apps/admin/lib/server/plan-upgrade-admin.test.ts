@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     ...actual,
     findChargeForBusiness: vi.fn(),
@@ -12,18 +12,18 @@ vi.mock("@fynix/db", async () => {
     resolvePaymentAttention: vi.fn(),
   };
 });
-vi.mock("@fynix/shared/server/plan-upgrade", () => ({
+vi.mock("@brandbasket/shared/server/plan-upgrade", () => ({
   assessUpgrade: vi.fn(),
   finishUpgradeAtProvider: vi.fn(),
   readAssessmentInput: vi.fn(),
   startUpgrade: vi.fn(),
 }));
-vi.mock("@fynix/shared/server/discount-plans", () => ({ ensureDiscountPlanFor: vi.fn() }));
+vi.mock("@brandbasket/shared/server/discount-plans", () => ({ ensureDiscountPlanFor: vi.fn() }));
 vi.mock("./billing-provider", () => ({ getBillingProvider: () => ({ name: "fake" }) }));
 vi.mock("./db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 
-import { findChargeForBusiness, findPlanUpgradeByCharge, findPlanUpgradeInFlight, listPlanUpgradesForBusiness, resolvePaymentAttention } from "@fynix/db";
-import { assessUpgrade, finishUpgradeAtProvider, readAssessmentInput, startUpgrade } from "@fynix/shared/server/plan-upgrade";
+import { findChargeForBusiness, findPlanUpgradeByCharge, findPlanUpgradeInFlight, listPlanUpgradesForBusiness, resolvePaymentAttention } from "@brandbasket/db";
+import { assessUpgrade, finishUpgradeAtProvider, readAssessmentInput, startUpgrade } from "@brandbasket/shared/server/plan-upgrade";
 import { finishClientUpgrade, finishUpgradeForChargeAfterManualPayment, moveClientToPremium, readClientUpgrade } from "./plan-upgrade-admin";
 
 const NOW = new Date("2026-10-10T09:00:00.000Z");

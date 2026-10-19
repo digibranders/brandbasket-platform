@@ -1,5 +1,5 @@
 {
-  "name": "@fynix/admin",
+  "name": "@brandbasket/admin",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,12 +12,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fynix/auth": "workspace:*",
-    "@fynix/billing": "workspace:*",
-    "@fynix/cms": "workspace:*",
-    "@fynix/db": "workspace:*",
-    "@fynix/email": "workspace:*",
-    "@fynix/shared": "workspace:*",
+    "@brandbasket/auth": "workspace:*",
+    "@brandbasket/billing": "workspace:*",
+    "@brandbasket/cms": "workspace:*",
+    "@brandbasket/db": "workspace:*",
+    "@brandbasket/email": "workspace:*",
+    "@brandbasket/shared": "workspace:*",
     "@lexical/link": "0.41.0",
     "@lexical/list": "0.41.0",
     "@lexical/react": "0.41.0",

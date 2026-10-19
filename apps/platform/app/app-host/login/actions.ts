@@ -2,7 +2,7 @@
 
 import { otpLimitMessage } from "@/lib/auth-retry";
 import { redirect } from "next/navigation";
-import { typedSignInIdentifier, type SignInFormState } from "@fynix/shared/lib/sign-in-form";
+import { typedSignInIdentifier, type SignInFormState } from "@brandbasket/shared/lib/sign-in-form";
 import { offersChoice } from "@/lib/brand";
 import { parseJoinForm, type JoinCodeStep, type JoinFormState } from "@/lib/join-form";
 import { membershipPathFor, membershipTierForChoice } from "@/lib/membership";
@@ -11,7 +11,7 @@ import { createListingAccount, requestJoinCode } from "@/lib/server/listing-acco
 import { landingForSignedInUser } from "@/lib/server/affiliate-access";
 import { requestBrand } from "@/lib/server/request-brand";
 import { signInWithPassword } from "@/lib/server/sign-in";
-import { checkHuman } from "@fynix/shared/server/turnstile-request";
+import { checkHuman } from "@brandbasket/shared/server/turnstile-request";
 
 export async function signInCustomer(_previous: SignInFormState, formData: FormData): Promise<SignInFormState> {
   const human = await checkHuman(formData, "sign_in");

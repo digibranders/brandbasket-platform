@@ -1,5 +1,5 @@
-import type { Receipt, TaxInvoice } from "@fynix/db";
-import { renderTaxInvoicesPdf } from "@fynix/shared/server/tax-invoice-pdf";
+import type { Receipt, TaxInvoice } from "@brandbasket/db";
+import { renderTaxInvoicesPdf } from "@brandbasket/shared/server/tax-invoice-pdf";
 import { PDFDict, PDFDocument, PDFName } from "pdf-lib";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listCustomerReceipts, listCustomerTaxInvoices } from "@/lib/server/billing";
@@ -8,8 +8,8 @@ import { GET } from "./route";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/customer-tenant", () => ({ getCustomerAccess: vi.fn() }));
-vi.mock("@fynix/shared/server/tax-invoice-pdf", async (importActual) => {
-  const actual = await importActual<typeof import("@fynix/shared/server/tax-invoice-pdf")>();
+vi.mock("@brandbasket/shared/server/tax-invoice-pdf", async (importActual) => {
+  const actual = await importActual<typeof import("@brandbasket/shared/server/tax-invoice-pdf")>();
   return { ...actual, renderTaxInvoicesPdf: vi.fn(actual.renderTaxInvoicesPdf) };
 });
 vi.mock("@/lib/server/billing", () => ({ listCustomerReceipts: vi.fn(), listCustomerTaxInvoices: vi.fn(async () => []) }));

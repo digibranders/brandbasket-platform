@@ -1,4 +1,4 @@
-import type { RateLimitRule } from "@fynix/db";
+import type { RateLimitRule } from "@brandbasket/db";
 
 export interface RateLimitCheck {
   readonly key: string;

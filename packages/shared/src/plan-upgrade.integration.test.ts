@@ -1,4 +1,4 @@
-import { createFakeBillingProvider, type BillingProvider } from "@fynix/billing";
+import { createFakeBillingProvider, type BillingProvider } from "@brandbasket/billing";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   businesses,
@@ -17,8 +17,8 @@ import {
   type Plan,
   type ReferralDiscount,
   type Subscription,
-} from "@fynix/db";
-import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@fynix/db/testing";
+} from "@brandbasket/db";
+import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
 import { activateRenewalPayment } from "./server/billing-activation";
 import { assessUpgrade, finishUpgradeAtProvider, readAssessmentInput, startUpgrade, type UpgradeAssessment } from "./server/plan-upgrade";
 

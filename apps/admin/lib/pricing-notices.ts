@@ -1,4 +1,4 @@
-import type { PricingFormProblem } from "@fynix/shared/lib/billing/pricing-form";
+import type { PricingFormProblem } from "@brandbasket/shared/lib/billing/pricing-form";
 
 /** What the pricing page says after a save. Fixed messages only: the query parameter picks one, nothing more. */
 export type PricingNotice =

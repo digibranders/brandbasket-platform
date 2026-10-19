@@ -1,5 +1,5 @@
-import { placeUrlPath } from "@fynix/shared/lib/directory/place-id";
-import { DIRECTORY_ORIGIN, directoryCategoryPath } from "@fynix/shared/lib/directory/places";
+import { placeUrlPath } from "@brandbasket/shared/lib/directory/place-id";
+import { DIRECTORY_ORIGIN, directoryCategoryPath } from "@brandbasket/shared/lib/directory/places";
 
 /*
  * A directory business's public address, as the staff console shows and links it. Server-only (place-id uses

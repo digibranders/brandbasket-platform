@@ -1,4 +1,4 @@
-import type { BusinessMembership } from "@fynix/db";
+import type { BusinessMembership } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { decideCustomerAccess, decideStaffAccess, STAFF_CAPABILITIES, staffCan, type SessionUser } from "./access";
 

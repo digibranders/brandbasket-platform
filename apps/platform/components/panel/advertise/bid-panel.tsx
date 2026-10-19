@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactElement } from "react";
-import type { DirectoryAdPlacement } from "@fynix/db";
+import type { DirectoryAdPlacement } from "@brandbasket/db";
 // The subpath, not the package index: the index pulls in the database.
-import { chargedAmountCents } from "@fynix/billing/tax";
-import { cn } from "@fynix/shared/lib/cn";
-import { formatMoney } from "@fynix/shared/lib/money";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { chargedAmountCents } from "@brandbasket/billing/tax";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { formatMoney } from "@brandbasket/shared/lib/money";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { useBrand } from "@/components/panel/brand-provider";
 
 import { biddersLabel, SPOT_HINTS, SPOT_NAMES } from "@/lib/advertise-spots";

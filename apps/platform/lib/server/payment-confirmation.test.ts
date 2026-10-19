@@ -1,4 +1,4 @@
-import { addMonthsUtc, createFakeBillingProvider, FAKE_PAYMENT_METHOD, type BillingProvider } from "@fynix/billing";
+import { addMonthsUtc, createFakeBillingProvider, FAKE_PAYMENT_METHOD, type BillingProvider } from "@brandbasket/billing";
 import {
   findBillingState,
   findOpenProject,
@@ -17,11 +17,11 @@ import {
   type Project,
   type ScopedTransaction,
   type Subscription,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
-import type { TenantContext } from "@fynix/shared/lib/access";
+import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { getBillingProvider } from "./billing";
-import { activateFirstPayment, activateReactivationPayment } from "@fynix/shared/server/billing-activation";
+import { activateFirstPayment, activateReactivationPayment } from "@brandbasket/shared/server/billing-activation";
 import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
 import { notifyTeamOnboardingSent } from "./onboarding-alert";
@@ -33,7 +33,7 @@ import { confirmFirstPayment, verifyCheckoutFor } from "./payment-confirmation";
 // one, so every token check here is the real check.
 vi.mock("server-only", () => ({}));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
-vi.mock("@fynix/shared/server/billing-activation", () => ({ activateFirstPayment: vi.fn(), activateReactivationPayment: vi.fn() }));
+vi.mock("@brandbasket/shared/server/billing-activation", () => ({ activateFirstPayment: vi.fn(), activateReactivationPayment: vi.fn() }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./onboarding-alert", () => ({ notifyTeamOnboardingSent: vi.fn() }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
@@ -41,8 +41,8 @@ vi.mock("./onboarding", () => {
   class MockStepRefusedError extends Error {}
   return { sendOnboardingWithin: vi.fn(), StepRefusedError: MockStepRefusedError };
 });
-vi.mock("@fynix/db", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@fynix/db")>();
+vi.mock("@brandbasket/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@brandbasket/db")>();
   class MockOnboardingLockedError extends Error {}
   class MockProjectNotInOnboardingError extends Error {}
   return {

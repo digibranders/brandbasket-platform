@@ -1,12 +1,12 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, type ReactElement } from "react";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { TurnstileWidget } from "@fynix/shared/ui/turnstile";
-import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@fynix/auth/password-policy";
-import { EyeIcon, EyeOffIcon } from "@fynix/shared/ui/icons";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { TurnstileWidget } from "@brandbasket/shared/ui/turnstile";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
+import { EyeIcon, EyeOffIcon } from "@brandbasket/shared/ui/icons";
 import { useBrand } from "@/components/panel/brand-provider";
 import { legalLinksFor } from "@/lib/legal-links";
 import { initialSetupFormState, SETUP_AGREE_FIELD, SETUP_AGREE_VALUE, type SetupFormState } from "@/lib/setup-form";

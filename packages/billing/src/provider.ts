@@ -1,4 +1,4 @@
-import type { BillingCurrency, BillingProviderName, PaymentMethodDetails, Plan } from "@fynix/db";
+import type { BillingCurrency, BillingProviderName, PaymentMethodDetails, Plan } from "@brandbasket/db";
 
 export interface StartCheckoutInput {
   readonly businessId: string;

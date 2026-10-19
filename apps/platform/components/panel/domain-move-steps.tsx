@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { TickIcon } from "@fynix/shared/ui/icons";
+import { TickIcon } from "@brandbasket/shared/ui/icons";
 import { MOVE_STEPS } from "@/lib/domain-page";
 
 /** The four steps of moving to a domain of your own, with the ones done ticked and the current one marked. */

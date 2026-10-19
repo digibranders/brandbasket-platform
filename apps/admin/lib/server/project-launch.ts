@@ -1,6 +1,6 @@
 import "server-only";
-import { findClientDetail, InvalidWebsiteUrlError, markProjectLive, setBusinessWebsiteUrl, type Database } from "@fynix/db";
-import { websiteLiveEmail } from "@fynix/email";
+import { findClientDetail, InvalidWebsiteUrlError, markProjectLive, setBusinessWebsiteUrl, type Database } from "@brandbasket/db";
+import { websiteLiveEmail } from "@brandbasket/email";
 import { customerEmailTransport } from "./email";
 import type { OwnerNotification } from "./project-preview";
 

@@ -1,4 +1,4 @@
-import { siteConfig } from "@fynix/shared/lib/site-config";
+import { siteConfig } from "@brandbasket/shared/lib/site-config";
 
 /**
  * What Checkout takes payment for: a subscription (the monthly plan, or an add-on with its own `description`), or a

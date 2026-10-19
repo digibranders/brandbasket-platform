@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getMediaStorage } from "@fynix/shared/server/media-storage";
+import { getMediaStorage } from "@brandbasket/shared/server/media-storage";
 import { deleteProductPhotoFiles, removeProductPhoto } from "./product-photos";
 import {
   addBusinessFaq,
@@ -44,15 +44,15 @@ import {
   type DirectoryProfile,
   type NewBusinessListing,
   type PublishRefusal,
-} from "@fynix/db";
-import { elsewhereCitySlug, isOpenedDistrict } from "@fynix/shared/lib/directory/opened-districts";
-import { DIRECTORY_STATE, slugifyBusinessName } from "@fynix/shared/lib/directory/places";
-import { fromStoredHours, toStoredHours, type OpeningHours } from "@fynix/shared/lib/onboarding/hours";
+} from "@brandbasket/db";
+import { elsewhereCitySlug, isOpenedDistrict } from "@brandbasket/shared/lib/directory/opened-districts";
+import { DIRECTORY_STATE, slugifyBusinessName } from "@brandbasket/shared/lib/directory/places";
+import { fromStoredHours, toStoredHours, type OpeningHours } from "@brandbasket/shared/lib/onboarding/hours";
 import type { BusinessDetailsInput } from "@/lib/business-details-form";
 import type { BusinessListingInput, ListingRefusalReason } from "@/lib/business-listing-form";
 import type { FaqInput, ProductInput, ServiceInput } from "@/lib/catalog-form";
 import type { PageTabsInput, TrustInput } from "@/lib/contact-trust-form";
-import { chosenPageTabLabels, type OptionalPageTab } from "@fynix/shared/lib/directory/page-tabs";
+import { chosenPageTabLabels, type OptionalPageTab } from "@brandbasket/shared/lib/directory/page-tabs";
 import type { ContactOption } from "@/lib/business-profile-fields";
 import type { ProfileState } from "@/lib/business-profile";
 import { normalisePincode, publicPinLookup, type PinLookup } from "@/lib/listing-location";

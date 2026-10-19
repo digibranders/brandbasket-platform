@@ -1,4 +1,4 @@
-import type { BrandLogo } from "@fynix/shared/ui/logo";
+import type { BrandLogo } from "@brandbasket/shared/ui/logo";
 
 /*
  * What the staff console wears: Fynix Digital's name and logo. Browser-safe and pure. The customer dashboard's richer

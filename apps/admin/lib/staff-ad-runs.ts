@@ -1,4 +1,4 @@
-import { addWeeks, type StaffAd } from "@fynix/db";
+import { addWeeks, type StaffAd } from "@brandbasket/db";
 
 /*
  * Staff book an ad for weeks in a row and the database keeps one row a week; the Ads page lists the booking as one

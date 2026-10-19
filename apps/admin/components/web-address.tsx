@@ -2,9 +2,9 @@
 
 import { useActionState, useEffect, useId, useRef, type ReactElement } from "react";
 import { changeWebAddressAction } from "@/app/(protected)/clients/[businessId]/actions";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";

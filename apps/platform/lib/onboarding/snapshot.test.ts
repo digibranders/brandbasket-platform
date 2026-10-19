@@ -1,6 +1,6 @@
-import type { BusinessProfile, MediaAsset, PrimaryDomain, Project, Service } from "@fynix/db";
+import type { BusinessProfile, MediaAsset, PrimaryDomain, Project, Service } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
-import { onboardingChecklist } from "@fynix/shared/lib/onboarding/checklist";
+import { onboardingChecklist } from "@brandbasket/shared/lib/onboarding/checklist";
 import {
   checklistInputFrom,
   completedStepKeys,

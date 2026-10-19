@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
-import { vercelProductionRequirements } from "@fynix/shared/lib/production-requirements";
+import { vercelProductionRequirements } from "@brandbasket/shared/lib/production-requirements";
 import { withPayload } from "@payloadcms/next/withPayload";
 import { withSentryConfig } from "@sentry/nextjs/config";
-import { securityHeaders, sentryIngestOrigin } from "@fynix/shared/lib/security-headers";
+import { securityHeaders, sentryIngestOrigin } from "@brandbasket/shared/lib/security-headers";
 import { deploymentIdOf } from "./lib/deployment-id";
 import { previewOrigins } from "./lib/preview-origins";
 
@@ -72,7 +72,7 @@ const nextConfig: NextConfig = {
   },
 
   // Workspace packages ship TypeScript source.
-  transpilePackages: ["@fynix/auth", "@fynix/billing", "@fynix/db", "@fynix/email", "@fynix/shared"],
+  transpilePackages: ["@brandbasket/auth", "@brandbasket/billing", "@brandbasket/db", "@brandbasket/email", "@brandbasket/shared"],
 };
 
 // Wires Payload's own webpack/Turbopack config (its admin UI, CSS, import maps) into Next's build. See

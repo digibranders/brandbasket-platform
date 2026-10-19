@@ -489,7 +489,7 @@ This task **replaces** the internals of `docs/superpowers/plans/2026-09-17-custo
 
 - [x] **Step 1: Read what already exists**
 
-Read the current `apps/platform/lib/server/content.ts`, `content/actions.ts`, `section-edit-form.tsx`, `gallery-manager.tsx` in full (these exist already from the foundation UI plan — some of Task 4 there may still be mid-fix; check the plan's checkboxes and this session's history for its actual current state before assuming it's finished). Note where each one currently imports from `@fynix/db` — every one of those imports needs to become a Payload Local API call instead.
+Read the current `apps/platform/lib/server/content.ts`, `content/actions.ts`, `section-edit-form.tsx`, `gallery-manager.tsx` in full (these exist already from the foundation UI plan — some of Task 4 there may still be mid-fix; check the plan's checkboxes and this session's history for its actual current state before assuming it's finished). Note where each one currently imports from `@brandbasket/db` — every one of those imports needs to become a Payload Local API call instead.
 
 - [x] **Step 2: Rewrite `getContentSnapshot`**
 
@@ -531,15 +531,15 @@ export async function getContentSnapshot(): Promise<ContentSnapshot> {
 
 - [x] **Step 3: Rewrite the actions**
 
-> Scope clarification (applied during implementation, 2026-09-18): only `saveSectionAction` was rewritten onto Payload in this task. `addToGalleryAction`/`removeFromGalleryAction`/`moveGalleryItemAction` are Task 6's job (gallery isn't in Task 5's file list above) and were deliberately left as-is, still `@fynix/db`-backed.
+> Scope clarification (applied during implementation, 2026-09-18): only `saveSectionAction` was rewritten onto Payload in this task. `addToGalleryAction`/`removeFromGalleryAction`/`moveGalleryItemAction` are Task 6's job (gallery isn't in Task 5's file list above) and were deliberately left as-is, still `@brandbasket/db`-backed.
 
-`saveSectionAction`, `addToGalleryAction`, `removeFromGalleryAction`, `moveGalleryItemAction` all currently call `@fynix/db` functions inside `withTenantScope`. Rewrite each to call Payload's Local API instead (`payload.update`, `payload.create`, `payload.delete`), with the same `requireBillingAccess()` guard at the top of every one (unchanged — this rule doesn't depend on which database backs the write) and the same explicit business-id check: **every one of these calls must include the `businessId` filter derived from `requireBillingAccess()`'s result, never from client-supplied data**, matching `getContentSnapshot`'s pattern.
+`saveSectionAction`, `addToGalleryAction`, `removeFromGalleryAction`, `moveGalleryItemAction` all currently call `@brandbasket/db` functions inside `withTenantScope`. Rewrite each to call Payload's Local API instead (`payload.update`, `payload.create`, `payload.delete`), with the same `requireBillingAccess()` guard at the top of every one (unchanged — this rule doesn't depend on which database backs the write) and the same explicit business-id check: **every one of these calls must include the `businessId` filter derived from `requireBillingAccess()`'s result, never from client-supplied data**, matching `getContentSnapshot`'s pattern.
 
 For `saveSectionAction` specifically: since a page's slots now live in a `fields` array rather than separate rows, updating one means reading the page, finding the right entry by its `key` (or Payload's own array-row `id`, whichever your reader exposed), **confirming that entry's `customerEditable` is `true` before touching it** (a customer save must be refused — same `SectionNotEditableError`-style behavior as before — if it isn't, exactly like the old `page_sections_customer_update` RLS policy used to enforce at the database level; here your own code is the only thing enforcing it, so this check cannot be skipped or assumed), replacing just that entry's `textValue`/`image`, and writing the whole `fields` array back — not a single-row `UPDATE`. Write this carefully and test it against a page with more than one field to make sure you're not accidentally reordering, dropping, or exposing a write path to a non-editable field.
 
 - [x] **Step 4: Tests**
 
-The old `@fynix/db` query functions had integration tests proving tenant isolation at the database level (Task 6 of the foundation plan). Those don't apply anymore — the isolation mechanism changed. Add tests at this layer instead: mock or use a real local Payload+Postgres instance (check whether a lighter-weight test setup is realistic here, e.g. Payload's own testing utilities, before assuming you need a full second test database wired into this repo's existing `pnpm test:integration` — this may be a case where a smaller, more contained test setup is the right call; use your judgment and explain your choice) and prove: a customer's `saveSectionAction` call cannot affect another tenant's page, even given that tenant's real block id.
+The old `@brandbasket/db` query functions had integration tests proving tenant isolation at the database level (Task 6 of the foundation plan). Those don't apply anymore — the isolation mechanism changed. Add tests at this layer instead: mock or use a real local Payload+Postgres instance (check whether a lighter-weight test setup is realistic here, e.g. Payload's own testing utilities, before assuming you need a full second test database wired into this repo's existing `pnpm test:integration` — this may be a case where a smaller, more contained test setup is the right call; use your judgment and explain your choice) and prove: a customer's `saveSectionAction` call cannot affect another tenant's page, even given that tenant's real block id.
 
 - [x] **Step 5: Checkpoint**
 
@@ -566,7 +566,7 @@ Then verify live in the browser: the Content page for a business built in Task 4
 - Create: `apps/platform/app/app-host/(protected)/content/blog/[postId]/page.tsx`
 - Create: `apps/platform/components/panel/blog-post-edit-form.tsx`
 
-Blog was never built in the old plan (its Task 5 wasn't reached before this migration decision). Build it now, directly against Payload, using `docs/superpowers/plans/2026-09-17-customer-cms-ui.md`'s Task 5 as a design reference for page structure and copy (list page, new-post form, edit form with Publish/Unpublish/Delete) — but its actions call Payload's Local API (`payload.find`/`create`/`update`/`delete` on the `blogPosts` collection, tenant-scoped exactly as Task 5 above) instead of `@fynix/db`'s blog query functions.
+Blog was never built in the old plan (its Task 5 wasn't reached before this migration decision). Build it now, directly against Payload, using `docs/superpowers/plans/2026-09-17-customer-cms-ui.md`'s Task 5 as a design reference for page structure and copy (list page, new-post form, edit form with Publish/Unpublish/Delete) — but its actions call Payload's Local API (`payload.find`/`create`/`update`/`delete` on the `blogPosts` collection, tenant-scoped exactly as Task 5 above) instead of `@brandbasket/db`'s blog query functions.
 
 **One real upgrade to make here, now that it's basically free:** the old plan's blog body was going to be plain text (`{ text: string }`) specifically because a rich-text editor was out of scope for a hand-built system. Payload's `richText` field (already used on `BlogPosts.body` in Task 3) gives you a real editor for free — use it. The edit form's body field should render Payload's own rich-text input, not a plain `<textarea>`; check Payload's current docs for the recommended way to embed one of its field editors inside a page that is otherwise not part of Payload's own admin UI (this may mean using Payload's admin components directly, or it may mean this one field is edited through Payload's admin panel rather than the custom dashboard — if the latter turns out to be the realistic answer, say so clearly rather than forcing an awkward custom integration; either is a legitimate outcome, decide based on what you find, not on what the plan assumed here).
 
@@ -613,7 +613,7 @@ Delete the files listed above. Remove their exports from `packages/db/src/schema
 - [x] **Step 4: Checkpoint**
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @fynix/db test:integration
+pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @brandbasket/db test:integration
 ```
 
 Confirm nothing else in the codebase still imports any of the deleted symbols — a lint/typecheck failure here means something was missed, not a false positive to silence.
@@ -630,7 +630,7 @@ Confirm nothing else in the codebase still imports any of the deleted symbols �
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
-Run 2026-09-18, all clean: lint (0 issues), typecheck (all 6 workspace projects), unit tests (937 passing across `packages/shared`, `packages/db`, `packages/billing`, `packages/email`, `packages/auth`, `apps/platform`), `next build` (production build succeeds, all routes compile), and `pnpm --filter @fynix/db test:integration` (162 passing, run separately since it needs a real Postgres connection).
+Run 2026-09-18, all clean: lint (0 issues), typecheck (all 6 workspace projects), unit tests (937 passing across `packages/shared`, `packages/db`, `packages/billing`, `packages/email`, `packages/auth`, `apps/platform`), `next build` (production build succeeds, all routes compile), and `pnpm --filter @brandbasket/db test:integration` (162 passing, run separately since it needs a real Postgres connection).
 
 - [x] **Step 2: Full manual walkthrough**
 

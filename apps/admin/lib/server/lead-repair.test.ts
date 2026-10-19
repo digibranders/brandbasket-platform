@@ -1,4 +1,4 @@
-import { attachAccountToNewBusiness, type Database } from "@fynix/db";
+import { attachAccountToNewBusiness, type Database } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { attachAccountAndSyncTenant } from "./lead-repair";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
@@ -7,7 +7,7 @@ import { syncTenantForBusiness } from "./payload-tenant-sync";
 // see setup.test.ts for the first (invite redemption). attachAccountToNewBusiness itself is already covered by
 // packages/db's own integration tests; this only proves the new tenant-sync wiring around it.
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({ attachAccountToNewBusiness: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ attachAccountToNewBusiness: vi.fn() }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 
 const mockedAttach = vi.mocked(attachAccountToNewBusiness);

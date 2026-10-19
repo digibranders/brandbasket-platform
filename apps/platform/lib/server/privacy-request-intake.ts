@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
+import { OTP_TTL_SECONDS } from "@brandbasket/shared/lib/appointments/otp";
 import { emailHint } from "@/lib/email-hint";
 import {
   contributionDeletionRequestSchema,

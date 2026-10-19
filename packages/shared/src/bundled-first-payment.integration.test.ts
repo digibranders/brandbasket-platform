@@ -1,4 +1,4 @@
-import { chargedAmountCents } from "@fynix/billing";
+import { chargedAmountCents } from "@brandbasket/billing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   businesses,
@@ -20,8 +20,8 @@ import {
   type NewBundledAddOn,
   type Plan,
   type Subscription,
-} from "@fynix/db";
-import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@fynix/db/testing";
+} from "@brandbasket/db";
+import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
 import { bundleLines } from "./lib/billing/bundle";
 import { activateFirstPayment, activateRenewalPayment } from "./server/billing-activation";
 

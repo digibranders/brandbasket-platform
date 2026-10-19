@@ -1,5 +1,5 @@
-import type { DirectoryPictureSlot } from "@fynix/db";
-import { minimumPictureSize, PICTURE_SHAPES } from "@fynix/shared/lib/directory/pictures";
+import type { DirectoryPictureSlot } from "@brandbasket/db";
+import { minimumPictureSize, PICTURE_SHAPES } from "@brandbasket/shared/lib/directory/pictures";
 import { ownPictureHref } from "@/lib/photos-view";
 import { cropBounds, cropRect, startView } from "./crop-geometry";
 import { cropToBlob, openPhoto } from "./crop-image";

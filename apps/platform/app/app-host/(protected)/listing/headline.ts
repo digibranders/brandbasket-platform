@@ -1,4 +1,4 @@
-import type { ListingStage } from "@fynix/shared/lib/directory/stage";
+import type { ListingStage } from "@brandbasket/shared/lib/directory/stage";
 
 export interface ListingHeadlineInput {
   readonly stage: ListingStage;

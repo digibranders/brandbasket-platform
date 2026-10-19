@@ -10,7 +10,7 @@ import {
   type Database,
   type Plan,
   type ReferralCode,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
@@ -26,9 +26,9 @@ import {
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
-vi.mock("@fynix/db", async () => ({
+vi.mock("@brandbasket/db", async () => ({
   // The real placeholder rule, so the self-referral check is tested against it.
-  isPhoneAccountEmail: (await vi.importActual<typeof import("@fynix/db")>("@fynix/db")).isPhoneAccountEmail,
+  isPhoneAccountEmail: (await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db")).isPhoneAccountEmail,
   consumeRateLimit: vi.fn(),
   findAffiliateById: vi.fn(),
   findBillingState: vi.fn(),

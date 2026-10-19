@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { addMonthsUtc, CHECKOUT_REUSE_WINDOW_MS, chargedAmountCents, CheckoutVerificationError, type BillingProvider, type ConfirmedAddOnPayment } from "@fynix/billing";
+import { addMonthsUtc, CHECKOUT_REUSE_WINDOW_MS, chargedAmountCents, CheckoutVerificationError, type BillingProvider, type ConfirmedAddOnPayment } from "@brandbasket/billing";
 import {
   bundledNetAfterRemoving,
   cancelStaleAddOnCheckout,
@@ -24,7 +24,7 @@ import {
   type RateLimitRule,
   type Database,
   type ScopedTransaction,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { BROKEN_ADD_ON_LINE, keepDateOf } from "@/lib/billing/add-on-copy";
 import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
 import {
@@ -35,8 +35,8 @@ import {
   type AddOnId,
   type AddOnPrice,
   type MonthlyAddOnId,
-} from "@fynix/shared/lib/billing/add-ons";
-import { addOnFactsOf, pickAddOnRows, type PickedAddOnRows } from "@fynix/shared/lib/billing/add-on-rows";
+} from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnFactsOf, pickAddOnRows, type PickedAddOnRows } from "@brandbasket/shared/lib/billing/add-on-rows";
 import {
   addOnActions,
   addOnView,
@@ -45,14 +45,14 @@ import {
   type AddOnCheckoutIntent,
   type AddOnEndKind,
   type AddOnView,
-} from "@fynix/shared/lib/billing/add-on-state";
-import { lifetimeOfferApplies } from "@fynix/shared/lib/billing/lifetime-offer";
-import { applyAddOnPayment, type ProviderSubscriptionRef } from "@fynix/shared/server/add-on-activation";
-import { addOnEndMessage, scheduleAddOnEndFor as scheduleEndWithProvider } from "@fynix/shared/server/add-on-ends";
-import { ensureAddOnPlan } from "@fynix/shared/server/add-on-plans";
-import { describeError, logBillingEvent } from "@fynix/shared/server/billing-log";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
-import { cancelAtProvider } from "@fynix/shared/server/provider-cancellation";
+} from "@brandbasket/shared/lib/billing/add-on-state";
+import { lifetimeOfferApplies } from "@brandbasket/shared/lib/billing/lifetime-offer";
+import { applyAddOnPayment, type ProviderSubscriptionRef } from "@brandbasket/shared/server/add-on-activation";
+import { addOnEndMessage, scheduleAddOnEndFor as scheduleEndWithProvider } from "@brandbasket/shared/server/add-on-ends";
+import { ensureAddOnPlan } from "@brandbasket/shared/server/add-on-plans";
+import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
+import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { getBillingProvider } from "./billing";
 import { getCustomerBusinessKind, type GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";

@@ -7,8 +7,8 @@ import {
   purgeExpiredAccountOtps,
   type AccountOtpAttempt,
   type Database,
-} from "@fynix/db";
-import { EmailConfigurationError, type EmailMessage } from "@fynix/email";
+} from "@brandbasket/db";
+import { EmailConfigurationError, type EmailMessage } from "@brandbasket/email";
 import { BRAND } from "@/lib/brand";
 import { confirmAccountEmailCode, requestAccountEmailCode } from "./account-email-code";
 import { getStaffDb } from "./db";
@@ -23,7 +23,7 @@ vi.mock("./public-db", () => ({ getPublicDb: vi.fn(() => ({})) }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 vi.mock("./request-brand", () => ({ currentBrand: vi.fn() }));
 vi.mock("./env", () => ({ accountCodeSecret: vi.fn(), emailCodeBypassed: vi.fn() }));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   claimAccountOtpAttempt: vi.fn(),
   consumeAccountOtp: vi.fn(),
   consumeRateLimit: vi.fn(),

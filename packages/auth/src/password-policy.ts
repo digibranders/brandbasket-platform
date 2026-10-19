@@ -1,6 +1,6 @@
 /**
  * The rule every new password must meet, for customers and staff alike. Dependency-free so browser forms can import
- * it (`@fynix/auth/password-policy`) and show the same rule the server enforces in create-auth.ts.
+ * it (`@brandbasket/auth/password-policy`) and show the same rule the server enforces in create-auth.ts.
  *
  * It applies only where a password is chosen: sign-up, setup, reset and change. Signing in, and confirming a current
  * password, accept whatever the account already has, so passwords set under the older length-only rule keep working.

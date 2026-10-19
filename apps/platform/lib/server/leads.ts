@@ -1,11 +1,11 @@
 import "server-only";
-import { consumeRateLimit, createLead, recordConsent, type RateLimitRule } from "@fynix/db";
-import { billingCurrencyForPhone } from "@fynix/shared/lib/billing/currency-for-phone";
-import { createAppEmailTransport, leadReceivedEmail } from "@fynix/email";
-import { businessTypeLabel } from "@fynix/shared/lib/business-types";
-import type { LeadInput } from "@fynix/shared/lib/lead-form";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
-import { displayPhone } from "@fynix/shared/server/phone-display";
+import { consumeRateLimit, createLead, recordConsent, type RateLimitRule } from "@brandbasket/db";
+import { billingCurrencyForPhone } from "@brandbasket/shared/lib/billing/currency-for-phone";
+import { createAppEmailTransport, leadReceivedEmail } from "@brandbasket/email";
+import { businessTypeLabel } from "@brandbasket/shared/lib/business-types";
+import type { LeadInput } from "@brandbasket/shared/lib/lead-form";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
+import { displayPhone } from "@brandbasket/shared/server/phone-display";
 import { serverEnv } from "./env";
 import type { LeadRecordOutcome } from "./lead-intake";
 import { getPublicDb } from "./public-db";

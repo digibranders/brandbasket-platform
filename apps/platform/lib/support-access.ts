@@ -1,4 +1,4 @@
-import type { CustomerAccess, SessionUser } from "@fynix/shared/lib/access";
+import type { CustomerAccess, SessionUser } from "@brandbasket/shared/lib/access";
 
 export interface SupportAccess {
   readonly user: SessionUser;

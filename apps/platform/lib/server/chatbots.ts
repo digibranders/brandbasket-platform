@@ -1,5 +1,5 @@
 import "server-only";
-import { countChatbotLeadsForBusiness, listChatbotLeadsForBusiness, listChatbotsForBusiness, renameChatbot, withTenantScope, type Chatbot, type ChatbotLead } from "@fynix/db";
+import { countChatbotLeadsForBusiness, listChatbotLeadsForBusiness, listChatbotsForBusiness, renameChatbot, withTenantScope, type Chatbot, type ChatbotLead } from "@brandbasket/db";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb } from "./db";
 

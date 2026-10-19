@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { applyPlacesCatalog, resetPlacesToBaseline } from "@fynix/shared/lib/directory/places";
+import { applyPlacesCatalog, resetPlacesToBaseline } from "@brandbasket/shared/lib/directory/places";
 import { adsPickLists } from "./ads-pick-lists";
 
 const CATALOG = {

@@ -1,14 +1,14 @@
 "use server";
 
-import { listMediaAssets, updateMediaAltText } from "@fynix/db";
+import { listMediaAssets, updateMediaAltText } from "@brandbasket/db";
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseBrandForm } from "@/lib/onboarding/brand-form";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
-import { hrefAfter } from "@fynix/shared/lib/onboarding/steps";
+import { hrefAfter } from "@brandbasket/shared/lib/onboarding/steps";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
-import { getMediaStorage } from "@fynix/shared/server/media-storage";
+import { getMediaStorage } from "@brandbasket/shared/server/media-storage";
 import { saveOnboardingStep } from "@/lib/server/onboarding";
 import { removeOnboardingImage, type MediaActionResult } from "@/lib/server/onboarding-media";
 

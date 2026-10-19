@@ -1,5 +1,5 @@
-import { securityTxt } from "@fynix/shared/lib/security-txt";
-import { siteConfig } from "@fynix/shared/lib/site-config";
+import { securityTxt } from "@brandbasket/shared/lib/security-txt";
+import { siteConfig } from "@brandbasket/shared/lib/site-config";
 
 /** Served on all three hosts: the proxy skips .txt paths, so every host reaches this handler directly. */
 export function GET(): Response {

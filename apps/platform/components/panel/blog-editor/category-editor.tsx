@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactElement } from "react";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { cn } from "@fynix/shared/lib/cn";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { cn } from "@brandbasket/shared/lib/cn";
 import type { CategoryFormResult } from "@/app/app-host/(protected)/content/categories/actions";
 import {
   CATEGORY_DESCRIPTION_MAX_LENGTH,

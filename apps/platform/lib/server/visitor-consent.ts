@@ -1,6 +1,6 @@
 import "server-only";
-import { recordConsent, type ConsentPurpose, type ContributionConsent, type Database } from "@fynix/db";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { recordConsent, type ConsentPurpose, type ContributionConsent, type Database } from "@brandbasket/db";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 
 /**
  * Keeps what a directory visitor agreed to when their review or comment was published (DPDP Act s.5, s.6, s.9, r.3):

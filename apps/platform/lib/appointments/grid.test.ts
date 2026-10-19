@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { WeekAvailabilityHoursRow } from "@fynix/shared/lib/appointments/slots";
+import type { WeekAvailabilityHoursRow } from "@brandbasket/shared/lib/appointments/slots";
 import { buildWeekGrid, cellKey, firstName } from "./grid";
 
 // Monday 2026-09-21 through Sunday 2026-09-27. Open Mon-Fri 09:00-11:00, closed Sat/Sun (no rows at all).

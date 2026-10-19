@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import { cn } from "@fynix/shared/lib/cn";
+import { cn } from "@brandbasket/shared/lib/cn";
 
 interface NoticeProps {
   /** "ok" confirms something worked; "problem" means it didn't and says what to do. */

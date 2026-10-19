@@ -1,27 +1,27 @@
 import { headers } from "next/headers";
-import type { Auth } from "@fynix/auth";
-import { isInvalidCredentialsError } from "@fynix/auth";
-import { consumeRateLimit, findUserByPhone, type Database, type RateLimitResult } from "@fynix/db";
+import type { Auth } from "@brandbasket/auth";
+import { isInvalidCredentialsError } from "@brandbasket/auth";
+import { consumeRateLimit, findUserByPhone, type Database, type RateLimitResult } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getAuth } from "./auth";
 import { getAppDb } from "./db";
 import { signInWithPassword } from "./sign-in";
 import { noteSecurityEvent } from "./security-events";
 
-// This module reaches a live database (via ./db and @fynix/db) and Better Auth (via ./auth), and
+// This module reaches a live database (via ./db and @brandbasket/db) and Better Auth (via ./auth), and
 // reads the incoming request (via next/headers). All of that is replaced with test doubles so
 // signInWithPassword's own decisions — parsing, rate-limit ordering, and error mapping — run in
 // isolation. `server-only` is mocked because ./auth and ./db import it; without a mock it throws
 // outside a genuine Next.js server context.
 //
-// `@fynix/auth` (rather than constructing a real `better-auth/api` APIError) is mocked here: it
+// `@brandbasket/auth` (rather than constructing a real `better-auth/api` APIError) is mocked here: it
 // is not a direct dependency of apps/platform, so pnpm's strict linking makes `better-auth/api`
-// unresolvable from this package, even though @fynix/auth re-exports from it transitively.
+// unresolvable from this package, even though @brandbasket/auth re-exports from it transitively.
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
-vi.mock("@fynix/auth", () => ({ isInvalidCredentialsError: vi.fn() }));
-vi.mock("@fynix/db", async () => {
-  const actual = await vi.importActual<typeof import("@fynix/db")>("@fynix/db");
+vi.mock("@brandbasket/auth", () => ({ isInvalidCredentialsError: vi.fn() }));
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     consumeRateLimit: vi.fn(),
     findUserByPhone: vi.fn(),

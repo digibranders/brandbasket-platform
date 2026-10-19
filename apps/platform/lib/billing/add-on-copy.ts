@@ -1,8 +1,8 @@
 import { type Brand } from "@/lib/brand";
-import type { AddOnId, AddOnPrice } from "@fynix/shared/lib/billing/add-ons";
-import type { AddOnAction, AddOnCheckoutIntent, AddOnEndKind, AddOnView } from "@fynix/shared/lib/billing/add-on-state";
-import { formatCalendarDate } from "@fynix/shared/lib/format";
-import { formatMoney } from "@fynix/shared/lib/money";
+import type { AddOnId, AddOnPrice } from "@brandbasket/shared/lib/billing/add-ons";
+import type { AddOnAction, AddOnCheckoutIntent, AddOnEndKind, AddOnView } from "@brandbasket/shared/lib/billing/add-on-state";
+import { formatCalendarDate } from "@brandbasket/shared/lib/format";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 
 /**
  * The words on the Add-ons page: what each state says, what each button is called, and what the purchase dialog tells

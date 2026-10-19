@@ -1,7 +1,7 @@
 import "server-only";
-import type { ContributionConsent, DirectoryNamed } from "@fynix/db";
-import { parsePhoneEntry, type PhoneEntry } from "@fynix/shared/lib/validation/phone";
-import { cleanLine, cleanMultiline } from "@fynix/shared/lib/validation/text";
+import type { ContributionConsent, DirectoryNamed } from "@brandbasket/db";
+import { parsePhoneEntry, type PhoneEntry } from "@brandbasket/shared/lib/validation/phone";
+import { cleanLine, cleanMultiline } from "@brandbasket/shared/lib/validation/text";
 import {
   COMMENT_TEXT_MAX_LENGTH,
   ENQUIRY_MESSAGE_MAX_LENGTH,

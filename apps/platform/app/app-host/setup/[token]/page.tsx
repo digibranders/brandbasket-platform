@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { TurnstileScope } from "@fynix/shared/ui/turnstile-scope";
+import { TurnstileScope } from "@brandbasket/shared/ui/turnstile-scope";
 import { requestBrand } from "@/lib/server/request-brand";
 import { EntryScreen } from "@/components/panel/entry-screen";
 import { SetupForm } from "@/components/panel/setup-form";

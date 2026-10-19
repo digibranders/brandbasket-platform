@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server";
 import { getCustomerTenant } from "@/lib/server/customer-tenant";
 import { getAppDb } from "@/lib/server/db";
-import { serveTenantMedia } from "@fynix/shared/server/media-serving";
-import { getMediaStorage } from "@fynix/shared/server/media-storage";
+import { serveTenantMedia } from "@brandbasket/shared/server/media-serving";
+import { getMediaStorage } from "@brandbasket/shared/server/media-storage";
 
 /**
  * A customer's own uploaded image, reached as `/media/{mediaId}` on the app host. Image requests cannot follow a

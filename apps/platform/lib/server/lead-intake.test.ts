@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { LeadInput } from "@fynix/shared/lib/lead-form";
+import type { LeadInput } from "@brandbasket/shared/lib/lead-form";
 import { handleLeadRequest, type LeadIntakeDeps, type LeadRecordOutcome } from "./lead-intake";
 
 vi.mock("server-only", () => ({}));

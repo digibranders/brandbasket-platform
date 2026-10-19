@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
-import { countExpiredRetention, createDatabase, purgeExpiredRetention } from "@fynix/db";
-import { loadLocalEnv, requireEnv } from "@fynix/db/local-env";
+import { countExpiredRetention, createDatabase, purgeExpiredRetention } from "@brandbasket/db";
+import { loadLocalEnv, requireEnv } from "@brandbasket/db/local-env";
 import { retentionReport } from "../lib/retention-report";
 
 /*

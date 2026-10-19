@@ -1,7 +1,7 @@
-import type { BookingContext, PractitionerScheduleRow, SiteFacts } from "@fynix/db";
-import { localDateIn } from "@fynix/shared/lib/calendar/local-date";
-import { activeAnnouncement } from "@fynix/shared/lib/business-facts/announcement";
-import { upcomingClosures } from "@fynix/shared/lib/business-facts/closures";
+import type { BookingContext, PractitionerScheduleRow, SiteFacts } from "@brandbasket/db";
+import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
+import { activeAnnouncement } from "@brandbasket/shared/lib/business-facts/announcement";
+import { upcomingClosures } from "@brandbasket/shared/lib/business-facts/closures";
 import type { SiteInfo, SiteInfoBooking, SiteInfoClosure, SiteInfoHours, SiteInfoPractitioner } from "@/lib/site-info";
 
 /**

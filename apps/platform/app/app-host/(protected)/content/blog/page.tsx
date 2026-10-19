@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { ButtonLink } from "@fynix/shared/ui/panel/button";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
+import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { BlogEmptyState } from "@/components/panel/blog-editor/blog-empty-state";
 import { BlogPostsTable } from "@/components/panel/blog-editor/blog-posts-table";
 import { getBlogPosts } from "@/lib/server/blog";

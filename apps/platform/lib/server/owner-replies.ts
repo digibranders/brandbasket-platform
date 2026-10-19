@@ -1,6 +1,6 @@
 import "server-only";
-import { consumeRateLimit, editOwnerReply, postOwnerReply, removeOwnerReply, type RateLimitRule } from "@fynix/db";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import { consumeRateLimit, editOwnerReply, postOwnerReply, removeOwnerReply, type RateLimitRule } from "@brandbasket/db";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { parseOwnerReplyText } from "@/lib/owner-replies";
 import { getStaffDb } from "./db";
 import type { OwnedBusiness } from "./owner-business";

@@ -8,12 +8,12 @@ import {
   CHARGE_QUANTITY_FIELD,
   MAX_CHARGE_DESCRIPTION_LENGTH,
   MAX_CHARGE_QUANTITY,
-} from "@fynix/shared/lib/billing/charge-form";
-import { FIELD_PATTERNS } from "@fynix/shared/lib/forms/input-rules";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { SelectField, type SelectOption } from "@fynix/shared/ui/select-field";
+} from "@brandbasket/shared/lib/billing/charge-form";
+import { FIELD_PATTERNS } from "@brandbasket/shared/lib/forms/input-rules";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import { buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 

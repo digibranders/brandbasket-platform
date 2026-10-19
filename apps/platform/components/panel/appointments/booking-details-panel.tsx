@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactElement } from "react";
-import type { AppointmentRow } from "@fynix/db";
-import { CANCEL_REASON_MAX_LENGTH } from "@fynix/shared/lib/appointments/limits";
-import { slotLabel } from "@fynix/shared/lib/appointments/slots";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { Button } from "@fynix/shared/ui/panel/button";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { SelectField } from "@fynix/shared/ui/select-field";
+import type { AppointmentRow } from "@brandbasket/db";
+import { CANCEL_REASON_MAX_LENGTH } from "@brandbasket/shared/lib/appointments/limits";
+import { slotLabel } from "@brandbasket/shared/lib/appointments/slots";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { SelectField } from "@brandbasket/shared/ui/select-field";
 import { FIELD_CLASSES, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 import { formatBookedAt, formatLongDate, formatRelativeTime } from "@/lib/appointments/date-format";
 import type { DoctorRef } from "@/lib/appointments/doctors-view";
@@ -18,7 +18,7 @@ import { StatusLabel } from "./status-label";
 interface BookingDetailsPanelProps {
   readonly appointment: AppointmentRow;
   /** The phone number laid out for reading, e.g. "+91 98200 11223" -- computed server-side (displayPhoneText,
-   * @fynix/shared/server/phone-display, is "server-only" and can't run in this client component). The `tel:`
+   * @brandbasket/shared/server/phone-display, is "server-only" and can't run in this client component). The `tel:`
    * link below still dials `appointment.phone` itself (E.164), never this. Null for an erased booking, which has no
    * phone at all: the Phone row is left out rather than shown empty. */
   readonly phoneText: string | null;

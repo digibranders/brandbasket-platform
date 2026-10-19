@@ -1,4 +1,4 @@
-import type { PlaceOfSupplyBasis, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@fynix/db";
+import type { PlaceOfSupplyBasis, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@brandbasket/db";
 import { BillingRangeError } from "./billing-range-error";
 import { gstStateCodeOf } from "./gst-states";
 import { splitGst, supplyTypeOf, type SupplyType } from "./gst";

@@ -1,7 +1,7 @@
 import "server-only";
-import type { GeoCatalogSnapshot } from "@fynix/db";
-import { GEO_CATALOG_CONTRACT_VERSION, type GeoCatalogResponse } from "@fynix/shared/lib/directory/geo-catalog-contract";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+import type { GeoCatalogSnapshot } from "@brandbasket/db";
+import { GEO_CATALOG_CONTRACT_VERSION, type GeoCatalogResponse } from "@brandbasket/shared/lib/directory/geo-catalog-contract";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { hasValidWebsiteToken } from "@/lib/server/website-api-auth";
 
 /** `GET /api/directory/catalog`: the geography and category catalog for the marketing website's server (see the contract). */

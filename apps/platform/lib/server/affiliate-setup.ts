@@ -1,9 +1,9 @@
 import "server-only";
-import { AccountAlreadyExistsError, createAccountWithGrant } from "@fynix/auth";
-import { passwordPolicyProblem } from "@fynix/auth/password-policy";
-import { claimAffiliateLoginLink, findAffiliateLoginInvite, resetAffiliateCredentialPassword, type AffiliateLoginInvite } from "@fynix/db";
+import { AccountAlreadyExistsError, createAccountWithGrant } from "@brandbasket/auth";
+import { passwordPolicyProblem } from "@brandbasket/auth/password-policy";
+import { claimAffiliateLoginLink, findAffiliateLoginInvite, resetAffiliateCredentialPassword, type AffiliateLoginInvite } from "@brandbasket/db";
 import { headers } from "next/headers";
-import { clientIpFrom } from "@fynix/shared/lib/client-ip";
+import { clientIpFrom } from "@brandbasket/shared/lib/client-ip";
 import { recordAccountTermsConsent } from "./account-consent";
 import { getAuth } from "./auth";
 import { getStaffDb } from "./db";

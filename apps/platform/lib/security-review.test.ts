@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { tallyStaffAccessSince, type Database, type StaffAccessTally } from "@fynix/db";
-import type { EmailMessage, EmailTransport } from "@fynix/email";
+import { tallyStaffAccessSince, type Database, type StaffAccessTally } from "@brandbasket/db";
+import type { EmailMessage, EmailTransport } from "@brandbasket/email";
 import { securityAlertRecipient, sendStaffAccessReview, staffAccessFindings } from "./security-review";
 
-vi.mock("@fynix/db", () => ({ tallyStaffAccessSince: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ tallyStaffAccessSince: vi.fn() }));
 
 const NOW = new Date("2026-11-01T22:00:00.000Z");
 const db = {} as Database;

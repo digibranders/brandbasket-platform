@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Database } from "@fynix/db";
+import type { Database } from "@brandbasket/db";
 import type { EmailMessage } from "./message";
 
-vi.mock("@fynix/db", () => ({ recordEmail: vi.fn(async () => undefined) }));
+vi.mock("@brandbasket/db", () => ({ recordEmail: vi.fn(async () => undefined) }));
 
-const { recordEmail } = await import("@fynix/db");
+const { recordEmail } = await import("@brandbasket/db");
 const { createOutboxTransport } = await import("./outbox");
 
 const db = {} as Database;

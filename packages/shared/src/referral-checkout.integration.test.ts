@@ -1,4 +1,4 @@
-import { chargedAmountCents, createFakeBillingProvider, decideCheckout, discountCentsFor, normaliseReferralCode } from "@fynix/billing";
+import { chargedAmountCents, createFakeBillingProvider, decideCheckout, discountCentsFor, normaliseReferralCode } from "@brandbasket/billing";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   businesses,
@@ -21,8 +21,8 @@ import {
   type ReferralDiscount,
   type ReferralReward,
   type Subscription,
-} from "@fynix/db";
-import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@fynix/db/testing";
+} from "@brandbasket/db";
+import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
 import { activateFirstPayment, activateRenewalPayment } from "./server/billing-activation";
 
 // billing-activation is server-only in the app; there is no browser here to keep it out of.

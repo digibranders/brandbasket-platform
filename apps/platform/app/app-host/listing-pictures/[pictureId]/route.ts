@@ -1,9 +1,9 @@
-import { findOwnDirectoryPictureFile, withTenantScope } from "@fynix/db";
+import { findOwnDirectoryPictureFile, withTenantScope } from "@brandbasket/db";
 import type { NextRequest } from "next/server";
 import { getCustomerTenant } from "@/lib/server/customer-tenant";
 import { getAppDb } from "@/lib/server/db";
-import { storedMediaResponse } from "@fynix/shared/server/media-serving";
-import { getMediaStorage } from "@fynix/shared/server/media-storage";
+import { storedMediaResponse } from "@brandbasket/shared/server/media-serving";
+import { getMediaStorage } from "@brandbasket/shared/server/media-storage";
 
 const BARE = { "Cache-Control": "no-store" } as const;
 

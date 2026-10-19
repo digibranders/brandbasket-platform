@@ -1,4 +1,4 @@
-import type { BillingProvider } from "@fynix/billing";
+import type { BillingProvider } from "@brandbasket/billing";
 import {
   changeAddOnEndKind,
   findAddOnSubscription,
@@ -9,7 +9,7 @@ import {
   type AddOnSubscription,
   type Database,
   type ScopedTransaction,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import {
   AddOnClosureChangedError,
@@ -22,7 +22,7 @@ import {
 } from "./add-on-ends";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({
+vi.mock("@brandbasket/db", () => ({
   changeAddOnEndKind: vi.fn(),
   findAddOnSubscription: vi.fn(),
   listAddOnSubscriptionsForBusiness: vi.fn(),

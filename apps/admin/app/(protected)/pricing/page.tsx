@@ -1,11 +1,11 @@
-import type { Plan, PlanPriceField, PriceChange } from "@fynix/db";
+import type { Plan, PlanPriceField, PriceChange } from "@brandbasket/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { RequiredMark } from "@fynix/shared/ui/forms/required-mark";
-import { RuleInput } from "@fynix/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@fynix/shared/ui/forms/submit-gate";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
-import { chargedAmountCents } from "@fynix/billing/tax";
+import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
+import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { chargedAmountCents } from "@brandbasket/billing/tax";
 import {
   formPriceValue,
   PRICING_CURRENCY_FIELD,
@@ -14,9 +14,9 @@ import {
   PRICING_EXTRA_PUBLISH_FIELD,
   PRICING_MONTHLY_FIELD,
   PRICING_TIER_FIELD,
-} from "@fynix/shared/lib/billing/pricing-form";
-import { BILLING_CURRENCY_LABELS } from "@fynix/shared/lib/currency";
-import { formatMoney } from "@fynix/shared/lib/money";
+} from "@brandbasket/shared/lib/billing/pricing-form";
+import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";

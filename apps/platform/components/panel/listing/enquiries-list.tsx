@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
-import type { ListingEnquiry } from "@fynix/db";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
-import { displayPhone } from "@fynix/shared/server/phone-display";
+import type { ListingEnquiry } from "@brandbasket/db";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { displayPhone } from "@brandbasket/shared/server/phone-display";
 
 interface EnquiriesListProps {
   /** Newest first. */

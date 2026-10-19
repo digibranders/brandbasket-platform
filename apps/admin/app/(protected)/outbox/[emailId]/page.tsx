@@ -1,8 +1,8 @@
-import { findEmail } from "@fynix/db";
+import { findEmail } from "@brandbasket/db";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { LocalDateTime } from "@fynix/shared/ui/panel/local-date-time";
+import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { PageHeader } from "@/components/console/page-header";
 import { Section } from "@/components/console/section";
 import { getStaffDb } from "@/lib/server/db";

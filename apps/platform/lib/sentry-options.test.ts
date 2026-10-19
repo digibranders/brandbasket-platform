@@ -3,7 +3,7 @@ import { sentryPrivacyOptions, sentryTracesSampleRate } from "./sentry-options";
 
 const init = vi.fn();
 vi.mock("@sentry/nextjs", () => ({ init, captureRouterTransitionStart: vi.fn(), replayIntegration: vi.fn() }));
-vi.mock("@fynix/shared/lib/error-report", () => ({ installBrowserErrorCapture: vi.fn() }));
+vi.mock("@brandbasket/shared/lib/error-report", () => ({ installBrowserErrorCapture: vi.fn() }));
 
 describe("sentry options", () => {
   beforeEach(() => {

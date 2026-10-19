@@ -1,6 +1,6 @@
 import "server-only";
-import type { SessionUser } from "@fynix/shared/lib/access";
-import { displayPhone } from "@fynix/shared/server/phone-display";
+import type { SessionUser } from "@brandbasket/shared/lib/access";
+import { displayPhone } from "@brandbasket/shared/server/phone-display";
 
 /**
  * What an account is known by on screen: the mobile number it signs in with, or its email. An account opened with a

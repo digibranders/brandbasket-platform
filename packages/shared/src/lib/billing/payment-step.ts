@@ -1,13 +1,13 @@
-import type { Plan } from "@fynix/db";
-import { formatCalendarDate } from "@fynix/shared/lib/format";
-import type { ChecklistItem } from "@fynix/shared/lib/onboarding/checklist";
+import type { Plan } from "@brandbasket/db";
+import { formatCalendarDate } from "@brandbasket/shared/lib/format";
+import type { ChecklistItem } from "@brandbasket/shared/lib/onboarding/checklist";
 import type { CustomerBillingStatus } from "./status";
 import {
   describeDiscountedPlanTerms,
   discountedFirstPaymentAmount,
   initialTermLabel,
   type PlanDiscount,
-} from "@fynix/shared/lib/billing/terms";
+} from "@brandbasket/shared/lib/billing/terms";
 
 /** Check and send, where payment happens. */
 export const PAYMENT_STEP_HREF = "/onboarding/review";

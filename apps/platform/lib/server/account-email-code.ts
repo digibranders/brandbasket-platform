@@ -7,10 +7,10 @@ import {
   createAccountOtp,
   purgeExpiredAccountOtps,
   type RateLimitRule,
-} from "@fynix/db";
-import { EmailConfigurationError, signupCodeEmail } from "@fynix/email";
-import { isOtpCode, OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@fynix/shared/lib/appointments/otp";
-import { errorLogInfo } from "@fynix/shared/server/error-log-info";
+} from "@brandbasket/db";
+import { EmailConfigurationError, signupCodeEmail } from "@brandbasket/email";
+import { isOtpCode, OTP_MAX_ATTEMPTS, OTP_TTL_SECONDS } from "@brandbasket/shared/lib/appointments/otp";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { emailHint } from "@/lib/email-hint";
 import { getStaffDb } from "./db";
 import { customerEmailTransport } from "./email";

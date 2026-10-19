@@ -1,4 +1,4 @@
-import type { Plan } from "@fynix/db";
+import type { Plan } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import {
   createFakeBillingProvider,

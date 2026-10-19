@@ -1,4 +1,4 @@
-import { createFakeBillingProvider, type BillingProvider } from "@fynix/billing";
+import { createFakeBillingProvider, type BillingProvider } from "@brandbasket/billing";
 import {
   findActivePlan,
   findBillingState,
@@ -17,10 +17,10 @@ import {
   type Plan,
   type ScopedTransaction,
   type Subscription,
-} from "@fynix/db";
+} from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { getBillingProvider } from "./billing-provider";
-import { activateFirstPayment } from "@fynix/shared/server/billing-activation";
+import { activateFirstPayment } from "@brandbasket/shared/server/billing-activation";
 import { recordManualFirstPayment, resolveFlaggedPayment, type ManualFirstPayment } from "./billing-admin";
 import { getStaffDb } from "./db";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
@@ -33,8 +33,8 @@ vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./billing-provider", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 // Invoicing is covered by the payment invoicing integration test; here an invoice failure must not be the logged error.
-vi.mock("@fynix/shared/server/tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn(async () => null) }));
-vi.mock("@fynix/db", () => {
+vi.mock("@brandbasket/shared/server/tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn(async () => null) }));
+vi.mock("@brandbasket/db", () => {
   class MockBillingBusinessNotFoundError extends Error {}
   return {
     BillingBusinessNotFoundError: MockBillingBusinessNotFoundError,

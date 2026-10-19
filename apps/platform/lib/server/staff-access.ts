@@ -1,5 +1,5 @@
 import "server-only";
-import { createStaffAccess, type GrantedStaff } from "@fynix/shared/server/staff-access";
+import { createStaffAccess, type GrantedStaff } from "@brandbasket/shared/server/staff-access";
 import { getStaffDb } from "./db";
 import { getSessionUser } from "./session";
 

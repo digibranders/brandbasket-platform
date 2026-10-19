@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@fynix/db", () => ({ findSiteSetting: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ findSiteSetting: vi.fn() }));
 vi.mock("./db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 
-import { findSiteSetting } from "@fynix/db";
+import { findSiteSetting } from "@brandbasket/db";
 import { getSetupCallUrl } from "./setup-call-link";
 
 beforeEach(() => {

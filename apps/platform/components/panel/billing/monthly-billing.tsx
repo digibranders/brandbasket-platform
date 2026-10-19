@@ -1,11 +1,11 @@
 "use client";
 
 import { Fragment, useState, type ReactElement } from "react";
-import { ArrowIcon, CardIcon, ChevronDownIcon, ClockIcon, DocumentIcon, DownloadIcon, TickIcon } from "@fynix/shared/ui/icons";
-import { EmptyState } from "@fynix/shared/ui/panel/empty-state";
-import { LocalDate } from "@fynix/shared/ui/panel/local-date-time";
-import { SubmitButton } from "@fynix/shared/ui/panel/submit-button";
-import { cn } from "@fynix/shared/lib/cn";
+import { ArrowIcon, CardIcon, ChevronDownIcon, ClockIcon, DocumentIcon, DownloadIcon, TickIcon } from "@brandbasket/shared/ui/icons";
+import { EmptyState } from "@brandbasket/shared/ui/panel/empty-state";
+import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
+import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { payChargeAction } from "@/app/app-host/(protected)/billing/actions";
 import type { BillingMonth, BillLine } from "@/lib/billing/billing-months";
 import { splitInvoiceNumber } from "@/lib/billing/invoice-title";

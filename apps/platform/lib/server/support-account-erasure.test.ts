@@ -1,4 +1,4 @@
-import type { DueClosure, ErasureOutcome } from "@fynix/db";
+import type { DueClosure, ErasureOutcome } from "@brandbasket/db";
 import { expect, it, vi } from "vitest";
 import { eraseAccountWithPrivateSupport } from "./support-account-erasure";
 vi.mock("server-only", () => ({}));

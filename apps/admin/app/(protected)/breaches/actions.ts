@@ -1,6 +1,6 @@
 "use server";
 
-import { listBreaches, logBreach, updateBreach } from "@fynix/db";
+import { listBreaches, logBreach, updateBreach } from "@brandbasket/db";
 import { redirect } from "next/navigation";
 import { parseBreachForm, parseBreachProgress } from "@/lib/breach-form";
 import { getStaffDb } from "@/lib/server/db";

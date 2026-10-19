@@ -1,12 +1,12 @@
 import { join } from "node:path";
-import { createDatabase, purgeExpiredRetention, purgeOldEmailMessages } from "@fynix/db";
+import { createDatabase, purgeExpiredRetention, purgeOldEmailMessages } from "@brandbasket/db";
 import {
   findWorkspaceRoot,
   loadLocalEnv,
   requireEnv,
-} from "@fynix/db/local-env";
-import { createAppEmailTransport } from "@fynix/email";
-import { getSupportStorage } from "@fynix/shared/server/support-storage";
+} from "@brandbasket/db/local-env";
+import { createAppEmailTransport } from "@brandbasket/email";
+import { getSupportStorage } from "@brandbasket/shared/server/support-storage";
 import { privacyAlertRecipient, sendPrivacyRequestReminders } from "../lib/privacy-request-alerts";
 import { securityAlertRecipient, sendStaffAccessReview } from "../lib/security-review";
 import { retentionReport } from "../lib/retention-report";

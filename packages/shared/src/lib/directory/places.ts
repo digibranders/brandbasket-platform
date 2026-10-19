@@ -81,7 +81,7 @@ export function resetPlacesToBaseline(): void {
   for (const category of PLACES.categories) store.labels.set(category.slug, category.label);
 }
 
-/** The part of the geography catalog this module needs (the shape @fynix/db's loadGeoCatalog returns). */
+/** The part of the geography catalog this module needs (the shape @brandbasket/db's loadGeoCatalog returns). */
 export interface PlacesCatalog {
   readonly districts: readonly { readonly stateCode: string; readonly slug: string; readonly status: "live" | "soon" | "off" }[];
   readonly areas: readonly {

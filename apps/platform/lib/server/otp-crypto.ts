@@ -1,6 +1,6 @@
 import "server-only";
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
-import { OTP_LENGTH } from "@fynix/shared/lib/appointments/otp";
+import { OTP_LENGTH } from "@brandbasket/shared/lib/appointments/otp";
 
 const OTP_CEILING = 10 ** OTP_LENGTH; // 1_000_000 for OTP_LENGTH = 6
 
