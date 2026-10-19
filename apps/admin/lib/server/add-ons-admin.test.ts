@@ -7,6 +7,8 @@ vi.mock("@brandbasket/db", async () => {
     ...actual,
     findAddOnSubscription: vi.fn(),
     findBusinessCurrency: vi.fn(),
+    findChargeForBusiness: vi.fn(),
+    findLatestSubscriptionForBusiness: vi.fn(),
     listAddOnSubscriptionsForStaff: vi.fn(),
     listBundledAddOnsForBusiness: vi.fn(async () => []),
     listPressReleasesForBusiness: vi.fn(),
@@ -21,11 +23,20 @@ vi.mock("@brandbasket/shared/server/billing-log", async () => {
   return { ...actual, logBillingEvent: vi.fn() };
 });
 vi.mock("./billing-provider", () => ({ getBillingProvider: () => ({ name: "razorpay" }) }));
+vi.mock("./basket-deps", () => ({ basketDeps: () => ({ name: "basket-deps" }) }));
+vi.mock("@brandbasket/shared/server/basket-change", () => ({
+  moveBasketAtProvider: vi.fn(),
+  readAddOnAssessment: vi.fn(),
+  removeBundledAddOn: vi.fn(),
+  startAddOn: vi.fn(),
+}));
 vi.mock("./db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 
 import {
   findAddOnSubscription,
   findBusinessCurrency,
+  findChargeForBusiness,
+  findLatestSubscriptionForBusiness,
   listAddOnSubscriptionsForStaff,
   listBundledAddOnsForBusiness,
   listPressReleasesForBusiness,
@@ -34,8 +45,18 @@ import {
   setPressReleaseStatus,
 } from "@brandbasket/db";
 import { scheduleAddOnEndFor } from "@brandbasket/shared/server/add-on-ends";
+import { moveBasketAtProvider, readAddOnAssessment, removeBundledAddOn, startAddOn } from "@brandbasket/shared/server/basket-change";
 import { logBillingEvent } from "@brandbasket/shared/server/billing-log";
-import { endClientAddOn, loadClientAddOns, markClientAddOnContacted, markClientBundledAddOnContacted, setClientPressReleaseStatus } from "./add-ons-admin";
+import {
+  addClientAddOn,
+  endClientAddOn,
+  loadClientAddOns,
+  markClientAddOnContacted,
+  markClientBundledAddOnContacted,
+  removeClientAddOn,
+  retryClientAddOnProvider,
+  setClientPressReleaseStatus,
+} from "./add-ons-admin";
 
 const BUSINESS = "0192f3c4-1111-7000-8000-000000000001";
 const OTHER_BUSINESS = "0192f3c4-1111-7000-8000-000000000002";
@@ -47,6 +68,9 @@ const NOW = new Date("2026-10-20T09:00:00.000Z");
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(findBusinessCurrency).mockResolvedValue("INR");
+  vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([]);
+  vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue(null);
+  vi.mocked(readAddOnAssessment).mockResolvedValue(null);
 });
 
 describe("endClientAddOn", () => {
@@ -214,6 +238,10 @@ describe("add-ons taken with the plan", () => {
     endRequestedAt: null,
     removedAt: null,
     contactedAt: null,
+    chargeId: null,
+    billedFrom: new Date("2026-10-09T09:00:00.000Z"),
+    providerScheduledAt: null,
+    createdAt: new Date("2026-10-09T09:00:00.000Z"),
     ...overrides,
   });
 
@@ -263,5 +291,53 @@ describe("add-ons taken with the plan", () => {
     vi.mocked(markBundledAddOnContacted).mockResolvedValue(false);
 
     expect(await markClientBundledAddOnContacted({ businessId: BUSINESS, bundledAddOnId: BUNDLED, staffUserId: STAFF }, NOW)).toBe("already");
+  });
+});
+
+describe("adding, removing and retrying an add-on for the client", () => {
+  const SUBSCRIPTION = "0192f3c4-5555-7000-8000-000000000001";
+
+  it("offers each add-on the assessment allows, with what it costs", async () => {
+    vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
+    vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
+    vi.mocked(readAddOnAssessment).mockImplementation(async (_db, input) =>
+      input.addOn === "digital-growth"
+        ? ({ kind: "offer", plan: { taxRateBasisPoints: 1_800 }, quote: { chargeCents: 826_000, nextRenewalCents: 1_179_882, daysLeft: 31 } } as never)
+        : { kind: "blocked", reason: "already-added" },
+    );
+
+    const loaded = await loadClientAddOns(BUSINESS, NOW);
+
+    expect(readAddOnAssessment).toHaveBeenCalledWith({ name: "staff-db" }, { businessId: BUSINESS, addOn: "digital-growth", providerName: "razorpay", now: NOW });
+    expect(loaded.options).toEqual([expect.objectContaining({ addOn: "digital-growth", kind: "add", costText: expect.stringContaining("₹8,260 now") })]);
+  });
+
+  it("shows the amount of an added add-on's open charge", async () => {
+    vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
+    vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
+    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, addOn: "local-seo-aeo", status: "pending", activatedAt: null, chargeId: "charge-1", contactedAt: null, createdAt: NOW, netAmountCents: 2_500_000, offerDiscountAmountCents: 0, taxRateBasisPoints: 1_800 }] as never);
+    vi.mocked(findChargeForBusiness).mockResolvedValue({ id: "charge-1", status: "open", amountCents: 1_332_258 } as never);
+
+    const loaded = await loadClientAddOns(BUSINESS, NOW);
+
+    expect(loaded.bundledAddOns[0]?.dateLine).toContain("the ₹13,322.58 charge");
+  });
+
+  it("adds for the client as the staff member, removes and retries through the shared basket change", async () => {
+    vi.mocked(startAddOn).mockResolvedValue({ kind: "pay", chargeId: "charge-1" });
+    vi.mocked(removeBundledAddOn).mockResolvedValue({ kind: "scheduled", endsOn: NOW });
+    vi.mocked(moveBasketAtProvider).mockResolvedValue({ kind: "scheduled" });
+    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, subscriptionId: SUBSCRIPTION }] as never);
+
+    expect(await addClientAddOn({ businessId: BUSINESS, addOn: "digital-growth", staffUserId: STAFF }, NOW)).toEqual({ kind: "pay", chargeId: "charge-1" });
+    expect(startAddOn).toHaveBeenCalledWith({ name: "basket-deps" }, { businessId: BUSINESS, addOn: "digital-growth", staffId: STAFF, now: NOW });
+    expect(await removeClientAddOn({ businessId: BUSINESS, addOn: "digital-growth" }, NOW)).toEqual({ kind: "scheduled", endsOn: NOW });
+    expect(await retryClientAddOnProvider({ businessId: BUSINESS, bundledAddOnId: ROW }, NOW)).toEqual({ kind: "scheduled" });
+    expect(moveBasketAtProvider).toHaveBeenCalledWith({ name: "basket-deps" }, SUBSCRIPTION, NOW);
+  });
+
+  it("retries nothing for an add-on that is not the client's", async () => {
+    expect(await retryClientAddOnProvider({ businessId: OTHER_BUSINESS, bundledAddOnId: ROW }, NOW)).toEqual({ kind: "nothing" });
+    expect(moveBasketAtProvider).not.toHaveBeenCalled();
   });
 });

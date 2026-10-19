@@ -26,6 +26,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { MONTHLY_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
 import { parseChargeForm } from "@brandbasket/shared/lib/billing/charge-form";
 import { staffChargeNoticeHref } from "@brandbasket/shared/lib/billing/charge-notices";
 import { parseManualPaymentForm } from "@brandbasket/shared/lib/billing/manual-payment-form";
@@ -42,7 +43,15 @@ import { chatbotNoticeHref, parseChatbotForm, parseOperatorKeyForm, readChatbotS
 import { addClientChatbot, removeClientChatbot, setClientChatbotOperatorKey, setClientChatbotStatus } from "@/lib/server/chatbots-admin";
 import { addOnNoticeHref, noticeForEndOutcome, type AddOnNotice } from "@/lib/add-on-notices";
 import { clientListingKey, clientTagsHref } from "@/lib/client-tags";
-import { endClientAddOn, markClientAddOnContacted, markClientBundledAddOnContacted, setClientPressReleaseStatus } from "@/lib/server/add-ons-admin";
+import {
+  addClientAddOn,
+  endClientAddOn,
+  markClientAddOnContacted,
+  markClientBundledAddOnContacted,
+  removeClientAddOn,
+  retryClientAddOnProvider,
+  setClientPressReleaseStatus,
+} from "@/lib/server/add-ons-admin";
 import { recordManualFirstPayment, resolveFlaggedPayment } from "@/lib/server/billing-admin";
 import { addClientCharge, markClientChargePaid, waiveClientCharge } from "@/lib/server/charges-admin";
 import { getStaffDb } from "@/lib/server/db";
@@ -419,6 +428,48 @@ export async function endAddOnAction(formData: FormData): Promise<void> {
   const outcome = await endClientAddOn({ businessId, addOnSubscriptionId, kind, staffUserId: user.id }, new Date());
   revalidateClient(businessId);
   redirect(addOnNoticeHref(businessId, noticeForEndOutcome(outcome)));
+}
+
+const monthlyAddOnSchema = z.enum(MONTHLY_ADD_ON_IDS);
+
+/**
+ * Adds an add-on for the client (a charge for the rest of the month, which they pay from Billing) or keeps one that is
+ * ending, after staff confirm they have told the customer. The price is worked out on the server, as for the customer.
+ */
+export async function addClientAddOnAction(formData: FormData): Promise<void> {
+  const { user } = await requireStaffCan("money");
+  const businessId = readId(formData.get("businessId"), "The add-on's business");
+  const addOn = monthlyAddOnSchema.parse(formData.get("addOn"));
+  if (formData.get("confirm") !== "yes") redirect(addOnNoticeHref(businessId, "unconfirmed"));
+
+  const started = await addClientAddOn({ businessId, addOn, staffUserId: user.id }, new Date());
+  revalidateClient(businessId);
+  const notice: AddOnNotice =
+    started.kind === "pay" ? "add-on-charge-opened" : started.kind === "added" ? "add-on-on" : started.kind === "kept" ? "add-on-kept" : "add-on-not-possible";
+  redirect(addOnNoticeHref(businessId, notice));
+}
+
+/** Takes an add-on out of the client's plan payment from the next billing date, after staff confirm they told the customer. */
+export async function removeClientAddOnAction(formData: FormData): Promise<void> {
+  await requireStaffCan("money");
+  const businessId = readId(formData.get("businessId"), "The add-on's business");
+  const addOn = monthlyAddOnSchema.parse(formData.get("addOn"));
+  if (formData.get("confirm") !== "yes") redirect(addOnNoticeHref(businessId, "unconfirmed"));
+
+  const removal = await removeClientAddOn({ businessId, addOn }, new Date());
+  revalidateClient(businessId);
+  redirect(addOnNoticeHref(businessId, removal.kind === "scheduled" ? "add-on-removal-scheduled" : "add-on-removal-failed"));
+}
+
+/** Tells the payment provider again to bill an added add-on from the next renewal. Safe to repeat. */
+export async function retryAddOnProviderAction(formData: FormData): Promise<void> {
+  await requireStaffCan("money");
+  const businessId = readId(formData.get("businessId"), "The add-on's business");
+  const bundledAddOnId = readId(formData.get("bundledAddOnId"), "The add-on");
+
+  const move = await retryClientAddOnProvider({ businessId, bundledAddOnId }, new Date());
+  revalidateClient(businessId);
+  redirect(addOnNoticeHref(businessId, move.kind === "scheduled" ? "provider-told" : move.kind === "failed" ? "provider-still-refusing" : "not-found"));
 }
 
 /** Records that the team has been in touch about a new purchase, which takes it off the Journey. Safe to repeat. */

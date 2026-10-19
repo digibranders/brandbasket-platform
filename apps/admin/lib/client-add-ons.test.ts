@@ -1,6 +1,7 @@
-import type { AddOnSubscriptionForStaff, PressRelease } from "@brandbasket/db";
+import type { AddOnAssessment } from "@brandbasket/shared/server/basket-change";
+import type { AddOnSubscriptionForStaff, BundledAddOn, PressRelease } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
-import { clientAddOnRows, clientPressReleaseRows } from "./client-add-ons";
+import { clientAddOnRows, clientPressReleaseRows, clientAddOnOption, clientBundledAddOnRows } from "./client-add-ons";
 
 const NOW = new Date("2026-10-20T09:00:00.000Z");
 const PERIOD_END = new Date("2026-11-12T09:00:00.000Z");
@@ -236,5 +237,103 @@ describe("clientPressReleaseRows", () => {
   it("falls back to the day the release was created when the charge has no payment time", () => {
     const [row] = clientPressReleaseRows([release({ id: "a", paidAt: null })]);
     expect(row?.boughtOn).toBe("12 October 2026");
+  });
+});
+
+describe("clientBundledAddOnRows", () => {
+  const SIGNED_UP = new Date("2026-10-19T00:00:00.000Z");
+  const ADDED = new Date("2026-11-05T06:00:00.000Z");
+  const NEXT_BILLING = new Date("2026-11-19T00:00:00.000Z");
+  const context = { nextBillingOn: NEXT_BILLING, openChargeCents: new Map([["charge-1", 373_032]]) };
+  const bundled = (overrides: Partial<BundledAddOn> = {}): BundledAddOn =>
+    ({
+      id: "row-1",
+      addOn: "digital-growth",
+      status: "active",
+      listAmountCents: 700_000,
+      offerDiscountAmountCents: 0,
+      netAmountCents: 700_000,
+      taxRateBasisPoints: 1_800,
+      activatedAt: SIGNED_UP,
+      billedFrom: SIGNED_UP,
+      providerScheduledAt: null,
+      endRequestedAt: null,
+      removedAt: null,
+      chargeId: null,
+      contactedAt: null,
+      createdAt: SIGNED_UP,
+      ...overrides,
+    }) as BundledAddOn;
+
+  it("shows one taken at sign-up as active, removable from the next billing date", () => {
+    expect(clientBundledAddOnRows([bundled({ offerDiscountAmountCents: 35_000, netAmountCents: 665_000 })], "INR", context)).toEqual([
+      expect.objectContaining({
+        state: { tone: "done", label: "Active" },
+        price: "₹6,650 + GST a month, 5% lifetime offer, billed with the plan",
+        dateLine: "Bought on 19 October 2026",
+        canRemove: true,
+        endsOnText: "19 November 2026",
+        canRetry: false,
+        needsContact: true,
+      }),
+    ]);
+  });
+
+  it("shows one added since, waiting for its charge, with the amount", () => {
+    expect(clientBundledAddOnRows([bundled({ status: "pending", activatedAt: null, billedFrom: null, chargeId: "charge-1", createdAt: ADDED })], "INR", context)).toEqual([
+      expect.objectContaining({
+        state: { tone: "waiting", label: "Waiting for payment" },
+        dateLine: "Added on 5 November 2026, waiting for the customer to pay the ₹3,730.32 charge for the rest of the month",
+        canRemove: false,
+        needsContact: false,
+      }),
+    ]);
+  });
+
+  it("says when a paid add joins the monthly payment, or that the provider still has to be told", () => {
+    const told = bundled({ activatedAt: ADDED, billedFrom: null, providerScheduledAt: ADDED });
+    expect(clientBundledAddOnRows([told], "INR", context)[0]).toMatchObject({
+      state: { tone: "done", label: "Active" },
+      dateLine: "Added on 5 November 2026; joins the monthly payment on 19 November 2026",
+      canRetry: false,
+    });
+    expect(clientBundledAddOnRows([{ ...told, providerScheduledAt: null }], "INR", context)[0]).toMatchObject({
+      state: { tone: "problem", label: "Provider not told" },
+      canRetry: true,
+    });
+  });
+
+  it("leaves out an unpaid first checkout's add-on", () => {
+    expect(clientBundledAddOnRows([bundled({ status: "pending", activatedAt: null, billedFrom: null })], "INR", context)).toEqual([]);
+  });
+
+  it("offers no Remove for one that is ending or removed", () => {
+    const rows = clientBundledAddOnRows([bundled({ endRequestedAt: ADDED }), bundled({ id: "row-2", status: "removed", removedAt: NEXT_BILLING })], "INR", context);
+    expect(rows.map((row) => [row.state.label, row.canRemove])).toEqual([
+      ["Ending", false],
+      ["Removed", false],
+    ]);
+  });
+});
+
+describe("clientAddOnOption", () => {
+  it("prices an add for the rest of the month and the new monthly payment", () => {
+    const assessment = {
+      kind: "offer",
+      plan: { taxRateBasisPoints: 1_800 },
+      quote: { kind: "quote", chargeCents: 826_000, nextRenewalCents: 1_179_882, daysLeft: 31 },
+    } as unknown as AddOnAssessment;
+    expect(clientAddOnOption("digital-growth", assessment, "INR")).toEqual({
+      addOn: "digital-growth",
+      title: "Digital Growth",
+      kind: "add",
+      costText: "₹8,260 now for the 31 days left, then ₹11,798.82 a month with GST. The customer pays the charge from Billing.",
+    });
+  });
+
+  it("keeps an ending one, and offers nothing that cannot be added", () => {
+    expect(clientAddOnOption("local-seo-aeo", { kind: "keep" } as unknown as AddOnAssessment, "INR")).toMatchObject({ kind: "keep", title: "Local SEO + AEO" });
+    expect(clientAddOnOption("local-seo-aeo", { kind: "blocked", reason: "manual-billing" }, "INR")).toBeNull();
+    expect(clientAddOnOption("local-seo-aeo", null, "INR")).toBeNull();
   });
 });

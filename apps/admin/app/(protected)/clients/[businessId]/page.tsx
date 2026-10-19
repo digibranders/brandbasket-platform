@@ -855,6 +855,7 @@ export default async function ClientPage({
           addOns={clientAddOns.addOns}
           bundledAddOns={clientAddOns.bundledAddOns}
           pressReleases={clientAddOns.pressReleases}
+          options={clientAddOns.options}
           notice={addOnNotice}
         />
 

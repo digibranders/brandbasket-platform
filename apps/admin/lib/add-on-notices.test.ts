@@ -22,7 +22,20 @@ describe("the client page's add-on notices", () => {
   it("calls only a change that happened a success", () => {
     const ok = Object.entries(ADD_ON_NOTICES).filter(([, notice]) => notice.ok).map(([key]) => key);
     expect(ok.sort()).toEqual(
-      ["cancel-scheduled", "contacted", "keep-undone-cancel", "keep-undone-pause", "pause-scheduled", "release-in-progress", "release-published"].sort(),
+      [
+        "add-on-charge-opened",
+        "add-on-kept",
+        "add-on-on",
+        "add-on-removal-scheduled",
+        "cancel-scheduled",
+        "contacted",
+        "keep-undone-cancel",
+        "keep-undone-pause",
+        "pause-scheduled",
+        "provider-told",
+        "release-in-progress",
+        "release-published",
+      ].sort(),
     );
   });
 

@@ -20,7 +20,15 @@ export type AddOnNotice =
   | "already-contacted"
   | "release-in-progress"
   | "release-published"
-  | "release-unchanged";
+  | "release-unchanged"
+  | "add-on-charge-opened"
+  | "add-on-on"
+  | "add-on-kept"
+  | "add-on-not-possible"
+  | "add-on-removal-scheduled"
+  | "add-on-removal-failed"
+  | "provider-told"
+  | "provider-still-refusing";
 
 export const ADD_ON_NOTICES: Readonly<Record<AddOnNotice, { readonly text: string; readonly ok: boolean }>> = {
   "cancel-scheduled": {
@@ -59,6 +67,20 @@ export const ADD_ON_NOTICES: Readonly<Record<AddOnNotice, { readonly text: strin
     text: "Nothing changed: that press release is already at this step or further on.",
     ok: false,
   },
+  "add-on-charge-opened": {
+    text: "Charge opened for the rest of the month. The customer pays it from Billing, and the add-on turns on when they do.",
+    ok: true,
+  },
+  "add-on-on": { text: "Added. It joins the monthly payment from the next billing date.", ok: true },
+  "add-on-kept": { text: "Kept. It no longer stops, and the monthly payment stays as it is.", ok: true },
+  "add-on-not-possible": { text: "Nothing changed: that add-on can’t be added for this client now. Check their plan and payments.", ok: false },
+  "add-on-removal-scheduled": { text: "Removal scheduled. It stops at the next billing date, and the monthly payment goes down.", ok: true },
+  "add-on-removal-failed": {
+    text: "Nothing changed: it isn’t in the plan payment, or the payment provider couldn’t be reached. Try again in a minute.",
+    ok: false,
+  },
+  "provider-told": { text: "The payment provider will bill the add-on from the next renewal.", ok: true },
+  "provider-still-refusing": { text: "The payment provider still refused. Try again later, or ask engineering to check it.", ok: false },
 };
 
 /** `#add-ons` scrolls the reader to the Add-ons section, since the notice renders inside it. */
