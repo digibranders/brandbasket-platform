@@ -7,7 +7,7 @@ export type BusinessModuleNotice =
   | "needs-zone"
   | "module-on"
   | "module-off"
-  | "module-premium-only"
+  | "module-not-offered"
   | "confirm-off";
 
 /** Fixed messages only: the query parameter picks one, and nothing from it is ever shown. */
@@ -22,7 +22,7 @@ export const BUSINESS_MODULE_NOTICES: Readonly<Record<BusinessModuleNotice, { re
     text: "Appointments are off. Their booking form stops taking requests; nothing was deleted.",
     ok: true,
   },
-  "module-premium-only": { text: "Appointments are part of Premium, and this client is on Care.", ok: false },
+  "module-not-offered": { text: "Appointments and patient records are not offered by Brandbasket yet, so they cannot be switched on.", ok: false },
   "confirm-off": { text: "Tick the box to confirm switching appointments off.", ok: false },
 };
 

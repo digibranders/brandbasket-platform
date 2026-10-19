@@ -263,22 +263,19 @@ export interface ReferralWorth {
   readonly taxRateBasisPoints: number;
 }
 
-/** The cheaper of the two plans on sale in a currency, or null when neither is. Care and Premium are the only two. */
+/** The plan on sale in a currency, or null when there is none: Managed Website is the only one. */
 async function cheapestActivePlan(db: Database, currency: BillingCurrency): Promise<Plan | null> {
-  const plans = (await Promise.all([findActivePlan(db, currency, "care"), findActivePlan(db, currency, "premium")])).filter(
-    (plan): plan is Plan => plan !== null,
-  );
-  return plans.reduce<Plan | null>((cheapest, plan) => (cheapest === null || plan.initialAmountCents < cheapest.initialAmountCents ? plan : cheapest), null);
+  return findActivePlan(db, currency, "managed");
 }
 
 /**
- * The code measured against the currency's **current** Premium plan, purely so the console can show what it means today.
+ * The code measured against the currency's **current** Managed Website plan, purely so the console can show what it means today.
  * Nothing is stored from this: a customer's own discount is frozen when they pay, and the reward is accrued per
  * payment. Null when there is no active plan, or when the plan's price has fallen to or below the code's discount
  * since it was made, which is a code that can no longer be charged and should be retired.
  */
 export async function referralWorth(code: ReferralCode): Promise<ReferralWorth | null> {
-  const plan = await findActivePlan(getStaffDb(), code.currency, "premium");
+  const plan = await findActivePlan(getStaffDb(), code.currency, "managed");
   if (plan === null) return null;
   const net = plan.initialAmountCents;
   const discountCents = code.discount === null ? 0 : discountCentsFor(code.discount, net);

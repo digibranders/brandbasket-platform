@@ -9,17 +9,19 @@ import {
   replaceMonthlyPrice,
   updateExtraPrices,
   type Plan,
+  type PlanTier,
   type PriceChange,
 } from "@brandbasket/db";
 import type { PriceSheet } from "@brandbasket/shared/lib/billing/pricing-form";
 import { deploymentBrandShortName } from "@brandbasket/shared/lib/deployment-brand";
+import { PLAN_TIER_LABELS } from "@brandbasket/shared/lib/billing/plan-tier";
 import { describeError } from "@brandbasket/shared/server/billing-log";
 import { getBillingProvider } from "./billing-provider";
 import { getStaffDb } from "./db";
 
-/** What the payment provider's checkout calls a plan, in this deployment's brand: "Brandbasket Care plan (INR)". */
-export function providerPlanItemName(tier: "care" | "premium", currency: string): string {
-  return `${deploymentBrandShortName()} ${tier === "care" ? "Care" : "Premium"} plan (${currency})`;
+/** What the payment provider's checkout calls a plan, in this deployment's brand: "Brandbasket Managed Website plan (INR)". */
+export function providerPlanItemName(tier: PlanTier, currency: string): string {
+  return `${deploymentBrandShortName()} ${PLAN_TIER_LABELS[tier]} plan (${currency})`;
 }
 
 /** How many past price changes the pricing page lists. */

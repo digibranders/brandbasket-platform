@@ -76,7 +76,7 @@ function PriceInput({ id, name, label, cents, plan, hint }: PriceInputProps): Re
   );
 }
 
-const TIER_LABELS: Readonly<Record<Plan["tier"], string>> = { care: "Care", premium: "Premium" };
+const TIER_LABELS: Readonly<Record<Plan["tier"], string>> = { managed: "Managed Website" };
 
 function PriceSheetForm({ plan }: { readonly plan: Plan }): ReactElement {
   const key = `${plan.tier}-${plan.currency.toLowerCase()}`;

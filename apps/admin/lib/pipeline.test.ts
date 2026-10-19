@@ -32,7 +32,7 @@ function client(id: string, status: ProjectStatus | null, createdAt = NOW): Clie
     businessId: id,
     businessName: `Business ${id}`,
     currency: "USD",
-    tier: "premium",
+    tier: "managed",
     createdAt,
     owner: null,
     project: status === null ? null : project(status),
@@ -175,7 +175,7 @@ describe("attentionItems", () => {
 });
 
 function toContact(overrides: Partial<AddOnToContact> & Pick<AddOnToContact, "id" | "businessId">): AddOnToContact {
-  return { kind: "subscription", businessName: `Business ${overrides.businessId}`, addOn: "social-media", at: NOW, ...overrides };
+  return { kind: "subscription", businessName: `Business ${overrides.businessId}`, addOn: "digital-growth", at: NOW, ...overrides };
 }
 
 describe("add-on purchases in attentionItems", () => {
@@ -183,14 +183,14 @@ describe("add-on purchases in attentionItems", () => {
     const items = attentionItems({
       ...noAttention(),
       addOns: [
-        toContact({ id: "s1", businessId: "oak", addOn: "social-media", at: new Date(NOW.getTime() - 3 * DAY) }),
-        toContact({ id: "s2", businessId: "kettle", addOn: "advertising", at: new Date(NOW.getTime() - 2 * DAY) }),
+        toContact({ id: "s1", businessId: "oak", addOn: "digital-growth", at: new Date(NOW.getTime() - 3 * DAY) }),
+        toContact({ id: "s2", businessId: "kettle", addOn: "local-seo-aeo", at: new Date(NOW.getTime() - 2 * DAY) }),
         toContact({ id: "r1", businessId: "nila", kind: "press-release", addOn: "press-release", at: new Date(NOW.getTime() - DAY) }),
       ],
     });
     expect(items.map((item) => item.reason)).toEqual([
-      "New add-on to set up: Social media",
-      "New add-on to set up: Paid advertising",
+      "New add-on to set up: Digital Growth",
+      "New add-on to set up: Local SEO + AEO",
       "Press release to start",
     ]);
   });

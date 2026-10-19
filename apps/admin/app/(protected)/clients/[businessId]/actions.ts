@@ -1,7 +1,6 @@
 "use server";
 
 import {
-  findBillingState,
   DomainNotReadyForDnsError,
   DomainSwitchNotReadyError,
   findClientDetail,
@@ -53,8 +52,6 @@ import { ProjectLaunchDomainMissingError, ProjectLaunchRecipientMissingError, la
 import { ProjectPreviewRecipientMissingError, sendProjectPreview, type OwnerNotification } from "@/lib/server/project-preview";
 import { rotateSiteApiToken } from "@/lib/server/site-token";
 import { placeIdForAddress } from "@/lib/server/page-address";
-import { planUpgradeNoticeHref } from "@/lib/plan-upgrade-notices";
-import { finishClientUpgrade, moveClientToPremium } from "@/lib/server/plan-upgrade-admin";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { changeWebAddress } from "@/lib/server/web-address";
@@ -287,10 +284,8 @@ export async function setModuleAction(formData: FormData): Promise<void> {
     redirect(businessModuleNoticeHref(businessId, "confirm-off"));
   }
 
-  // Appointments are Premium's: a Care client's menu has no such section to switch on (the console does not offer it).
-  if (enabled && (await findBillingState(getStaffDb(), businessId))?.tier === "care") {
-    redirect(businessModuleNoticeHref(businessId, "module-premium-only"));
-  }
+  // Appointments and patient records are out of scope for Brandbasket for now (owner, 2026-10-19): nothing switches them on.
+  if (enabled) redirect(businessModuleNoticeHref(businessId, "module-not-offered"));
 
   try {
     await setBusinessModule(getStaffDb(), { businessId, module: moduleRaw, enabled, staffUserId: user.id, now: new Date() });
@@ -406,30 +401,6 @@ export async function changeWebAddressAction(_previous: WebAddressFormState, for
     revalidatePath("/ads");
   }
   return outcome;
-}
-
-/**
- * Moves a Care client up to Premium with nothing to take: they paid offline, or it is a goodwill move, or they pay by
- * bank transfer and cannot move themselves. The superadmin must tick that they mean it; who did it is on the record.
- */
-export async function moveToPremiumAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffCan("money");
-  const businessId = readId(formData.get("businessId"), "The move's business");
-  if (formData.get("confirm") !== "yes") redirect(planUpgradeNoticeHref(businessId, "confirm"));
-
-  const outcome = await moveClientToPremium({ businessId, staffUserId: user.id }, new Date());
-  revalidateClient(businessId);
-  if (outcome.kind === "refused") redirect(planUpgradeNoticeHref(businessId, `refused-${outcome.why}`));
-  redirect(planUpgradeNoticeHref(businessId, outcome.finish.kind === "failed" ? "moved-provider-failed" : "moved"));
-}
-
-/** Tells the provider to bill Premium from the next renewal for a move whose last step failed after the client paid. */
-export async function finishUpgradeAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffCan("money");
-  const businessId = readId(formData.get("businessId"), "The move's business");
-  const finish = await finishClientUpgrade({ businessId, staffUserId: user.id }, new Date());
-  revalidateClient(businessId);
-  redirect(planUpgradeNoticeHref(businessId, finish.kind === "failed" ? "finish-failed" : finish.kind === "nothing" ? "nothing-to-finish" : "finished"));
 }
 
 /**

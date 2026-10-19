@@ -80,17 +80,14 @@ import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
 import { PLAN_TIER_LABELS } from "@brandbasket/shared/lib/billing/plan-tier";
-import { ClientPlan } from "@/components/client-plan";
 import { PageHeader } from "@/components/console/page-header";
 import { FactList, Quiet, Section, type Fact } from "@/components/console/section";
 import { StageTrack } from "@/components/console/stage-track";
 import { attentionSection } from "@/lib/client-attention";
 import { readAddOnNotice } from "@/lib/add-on-notices";
 import { readInvoiceNotice } from "@/lib/invoice-notices";
-import { readPlanUpgradeNotice } from "@/lib/plan-upgrade-notices";
 import { clientStage, lateReason } from "@/lib/pipeline";
 import { clientBillingDetails } from "@/lib/server/client-billing-details";
-import { readClientUpgrade } from "@/lib/server/plan-upgrade-admin";
 import {
   markDomainReadyAction,
   markLiveAction,
@@ -581,7 +578,6 @@ export default async function ClientPage({
     listingPlacement,
     listingLive,
     promotions,
-    clientUpgrade,
     billingProfile,
     taxInvoices,
     missingInvoices,
@@ -600,7 +596,6 @@ export default async function ClientPage({
     findListingPlacement(db, client.businessId),
     hasLiveProject(db, client.businessId),
     listUpcomingDirectoryPromotions(db, client.businessId, renderedAt),
-    readClientUpgrade(client.businessId, renderedAt),
     // Only payments in rupees get tax invoices (D1), so a dollar client has nothing to show or correct here.
     invoiced ? findBillingProfile(db, client.businessId) : Promise.resolve(null),
     invoiced ? listTaxInvoicesForBusiness(db, client.businessId) : Promise.resolve([]),
@@ -608,7 +603,6 @@ export default async function ClientPage({
     loadClientAddOns(client.businessId, renderedAt),
     loadClientChatbots(client.businessId),
   ]);
-  const planNotice = readPlanUpgradeNotice(sp.plan);
   const chargesNotice = readStaffChargeNotice(sp.charges);
   const websiteNotice = sp.website === "saved" || sp.website === "invalid" ? sp.website : null;
   const featuresNotice = readBusinessModuleNotice(sp.features);
@@ -849,10 +843,6 @@ export default async function ClientPage({
           </>
         ) : null}
 
-        {clientUpgrade === null ? null : (
-          <ClientPlan businessId={client.businessId} tier={client.tier} upgrade={clientUpgrade} notice={planNotice} />
-        )}
-
         <ClientCharges
           businessId={client.businessId}
           charges={charges}
@@ -979,20 +969,16 @@ export default async function ClientPage({
 
         {adminBrand().sellsDirectory ? (
           <Section title="Listing" id="listing" aside={adminBrand().directoryName}>
-            {client.tier === "care" ? (
-              <Quiet>The Care plan has no listing on {adminBrand().directoryName}. It comes with Premium.</Quiet>
-            ) : (
-              <ClientListing
-                businessId={client.businessId}
-                displayName={profile?.displayName ?? client.businessName}
-                placement={listingPlacement}
-                place={listingPlace}
-                live={listingLive}
-                promotion={listingPromotion}
-                notice={listingNotice}
-              />
-            )}
-            {client.tier === "care" || listingPlacement === null ? null : (
+            <ClientListing
+              businessId={client.businessId}
+              displayName={profile?.displayName ?? client.businessName}
+              placement={listingPlacement}
+              place={listingPlace}
+              live={listingLive}
+              promotion={listingPromotion}
+              notice={listingNotice}
+            />
+            {listingPlacement === null ? null : (
               <div className="mt-10">
                 <ClientListingTags
                   businessId={client.businessId}
@@ -1006,21 +992,14 @@ export default async function ClientPage({
           </Section>
         ) : null}
 
-        <Section title="Features" id="features" aside={client.tier === "care" ? "Care plan" : "Time zone and modules"}>
-          {client.tier === "care" ? (
-            <Quiet>
-              Care includes the website, its management, the OyeChats chatbot, and server and hosting. Appointments and the
-              rest are Premium&rsquo;s, so there is nothing to switch on here.
-            </Quiet>
-          ) : (
-            <ClientFeatures
-              businessId={client.businessId}
-              timeZone={timeZone}
-              enabledModules={enabledModules}
-              appointmentCounts={appointmentCounts}
-              notice={featuresNotice}
-            />
-          )}
+        <Section title="Features" id="features" aside="Time zone and modules">
+          <ClientFeatures
+            businessId={client.businessId}
+            timeZone={timeZone}
+            enabledModules={enabledModules}
+            appointmentCounts={appointmentCounts}
+            notice={featuresNotice}
+          />
         </Section>
 
         <Section title="Notes for the builder">

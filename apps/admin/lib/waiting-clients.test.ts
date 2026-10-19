@@ -9,7 +9,7 @@ function client(name: string, status: ProjectStatus | null, dueAt: string | null
     businessId: name,
     businessName: name,
     currency: "USD",
-    tier: "premium",
+    tier: "managed",
     createdAt: new Date(joined),
     owner: null,
     project:

@@ -22,6 +22,7 @@ import { providerPlanItemName, savePriceSheet } from "./pricing-admin";
 const NOW = new Date("2026-10-02T09:30:00.000Z");
 const INR_PLAN = {
   currency: "INR",
+  tier: "managed" as const,
   recurringAmountCents: 299_900,
   taxRateBasisPoints: 1800,
   extraHourAmountCents: 142_500,
@@ -30,7 +31,7 @@ const INR_PLAN = {
 };
 const SHEET = {
   currency: "INR" as const,
-  tier: "premium" as const,
+  tier: "managed" as const,
   monthlyCents: 299_900,
   extraHourCents: 142_500,
   extraPublishCents: 30_000,
@@ -49,13 +50,13 @@ beforeEach(() => {
 });
 
 describe("savePriceSheet", () => {
-  it("reprices the plan the sheet is for: Care's price is read, and its new version coded, as Care's", async () => {
-    vi.mocked(findActivePlan).mockResolvedValue({ ...INR_PLAN, tier: "care" } as never);
-    await savePriceSheet({ sheet: { ...SHEET, tier: "care", monthlyCents: 199_900 }, staffUserId: "staff-1" }, NOW);
+  it("reprices the plan the sheet is for: its price is read, and its new version coded, as Managed Website", async () => {
+    vi.mocked(findActivePlan).mockResolvedValue({ ...INR_PLAN, tier: "managed" } as never);
+    await savePriceSheet({ sheet: { ...SHEET, tier: "managed", monthlyCents: 199_900 }, staffUserId: "staff-1" }, NOW);
 
-    expect(findActivePlan).toHaveBeenCalledWith({ name: "staff-db" }, "INR", "care");
-    expect(createPlan).toHaveBeenCalledWith(expect.objectContaining({ code: "care-inr-20261002-093000", netMonthlyCents: 199_900 }));
-    expect(replaceMonthlyPrice).toHaveBeenCalledWith({ name: "staff-db" }, expect.objectContaining({ tier: "care", netMonthlyCents: 199_900 }));
+    expect(findActivePlan).toHaveBeenCalledWith({ name: "staff-db" }, "INR", "managed");
+    expect(createPlan).toHaveBeenCalledWith(expect.objectContaining({ code: "managed-inr-20261002-093000", netMonthlyCents: 199_900 }));
+    expect(replaceMonthlyPrice).toHaveBeenCalledWith({ name: "staff-db" }, expect.objectContaining({ tier: "managed", netMonthlyCents: 199_900 }));
   });
 
   it("creates the provider plan at the taxed price before putting the new version on sale", async () => {
@@ -66,12 +67,12 @@ describe("savePriceSheet", () => {
       currency: "INR",
       netMonthlyCents: 349_900,
       taxRateBasisPoints: 1800,
-      code: "premium-inr-20261002-093000",
-      itemName: "Brandbasket Premium plan (INR)",
+      code: "managed-inr-20261002-093000",
+      itemName: "Brandbasket Managed Website plan (INR)",
     });
     expect(replaceMonthlyPrice).toHaveBeenCalledWith(expect.anything(), {
       currency: "INR",
-      tier: "premium",
+      tier: "managed",
       netMonthlyCents: 349_900,
       providerPlanId: "plan_new",
       staffId: "staff-1",
@@ -122,7 +123,7 @@ describe("savePriceSheet", () => {
 
 describe("savePriceSheet on a price a migration put on sale", () => {
   // Care's and Premium's ₹6,999 start with no provider plan: saving the same price is how they get one.
-  const WITHOUT_PROVIDER_PLAN = { ...INR_PLAN, id: "plan-1", code: "premium-inr-2026-10", providerPlanId: null };
+  const WITHOUT_PROVIDER_PLAN = { ...INR_PLAN, id: "plan-1", code: "managed-inr-2026-10", providerPlanId: null };
 
   beforeEach(() => {
     vi.mocked(findActivePlan).mockResolvedValue(WITHOUT_PROVIDER_PLAN as never);
@@ -132,7 +133,7 @@ describe("savePriceSheet on a price a migration put on sale", () => {
   it("creates the provider plan for the plan as it stands and attaches it, without putting a new version on sale", async () => {
     const outcome = await savePriceSheet({ sheet: SHEET, staffUserId: "staff-1" }, NOW);
 
-    expect(createPlan).toHaveBeenCalledWith({ currency: "INR", netMonthlyCents: 299_900, taxRateBasisPoints: 1800, code: "premium-inr-2026-10", itemName: "Brandbasket Premium plan (INR)" });
+    expect(createPlan).toHaveBeenCalledWith({ currency: "INR", netMonthlyCents: 299_900, taxRateBasisPoints: 1800, code: "managed-inr-2026-10", itemName: "Brandbasket Managed Website plan (INR)" });
     expect(attachProviderPlan).toHaveBeenCalledWith({ name: "staff-db" }, { planId: "plan-1", providerPlanId: "plan_new" });
     expect(replaceMonthlyPrice).not.toHaveBeenCalled();
     expect(outcome).toEqual({ kind: "updated", monthlyChanged: true, extrasChanged: 0 });
@@ -165,8 +166,7 @@ describe("savePriceSheet on a price a migration put on sale", () => {
 
 describe("providerPlanItemName", () => {
   it("names the plan the way the payment provider's checkout shows it", () => {
-    expect(providerPlanItemName("care", "INR")).toBe("Brandbasket Care plan (INR)");
-    expect(providerPlanItemName("premium", "INR")).toBe("Brandbasket Premium plan (INR)");
-    expect(providerPlanItemName("care", "INR")).not.toMatch(/first\s?fold/i);
+    expect(providerPlanItemName("managed", "INR")).toBe("Brandbasket Managed Website plan (INR)");
+    expect(providerPlanItemName("managed", "USD")).toBe("Brandbasket Managed Website plan (USD)");
   });
 });

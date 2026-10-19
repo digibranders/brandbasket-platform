@@ -13,20 +13,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireStaffAccess, type GrantedStaff } from "@/lib/server/staff-access";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { changeWebAddress } from "@/lib/server/web-address";
-import { finishClientUpgrade, moveClientToPremium } from "@/lib/server/plan-upgrade-admin";
 import { endClientAddOn, markClientAddOnContacted, setClientPressReleaseStatus } from "@/lib/server/add-ons-admin";
 import { getStaffDb } from "@/lib/server/db";
 import {
   addChargeAction,
   changeWebAddressAction,
   endAddOnAction,
-  finishUpgradeAction,
   giveClientTrustedAction,
   giveClientVerifiedAction,
   removeClientTrustedAction,
   markAddOnContactedAction,
   markChargePaidAction,
-  moveToPremiumAction,
   recordManualPaymentAction,
   resolvePaymentAttentionAction,
   saveListingPlacementAction,
@@ -61,7 +58,6 @@ vi.mock("@/lib/server/add-ons-admin", () => ({
 vi.mock("@/lib/server/billing-admin", () => ({}));
 vi.mock("@/lib/server/charges-admin", () => ({}));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("@/lib/server/plan-upgrade-admin", () => ({ moveClientToPremium: vi.fn(), finishClientUpgrade: vi.fn() }));
 vi.mock("@/lib/server/project-launch", () => ({}));
 vi.mock("@/lib/server/project-preview", () => ({}));
 vi.mock("@/lib/server/site-token", () => ({}));
@@ -100,14 +96,10 @@ describe("the money actions", () => {
     ["markChargePaidAction", markChargePaidAction],
     ["waiveChargeAction", waiveChargeAction],
     ["resolvePaymentAttentionAction", resolvePaymentAttentionAction],
-    ["moveToPremiumAction", moveToPremiumAction],
-    ["finishUpgradeAction", finishUpgradeAction],
     ["endAddOnAction", endAddOnAction],
   ])("%s sends support staff to the no-access page and records the refusal", async (_name, action) => {
     await expect(action(form({}))).rejects.toThrow("redirect:/no-access");
     expect(logStaffAccess).toHaveBeenCalledWith({ staffUserId: "staff-2", action: "access.denied", targetType: "money", result: "denied" });
-    expect(moveClientToPremium).not.toHaveBeenCalled();
-    expect(finishClientUpgrade).not.toHaveBeenCalled();
     expect(endClientAddOn).not.toHaveBeenCalled();
   });
 
@@ -183,79 +175,6 @@ describe("saveListingPlacementAction", () => {
   });
 });
 
-describe("moveToPremiumAction", () => {
-  const PLAN = (notice: string): string => `redirect:/clients/${BUSINESS}?plan=${notice}#plan`;
-
-  beforeEach(() => {
-    // redirect() ends the action, as Next's does by throwing.
-    vi.mocked(redirect).mockImplementation((url: string) => {
-      throw new Error(`redirect:${url}`);
-    });
-  });
-
-  it("is refused for a session that is not staff's, before anything is moved", async () => {
-    vi.mocked(requireStaffAccess).mockRejectedValue(new Error("NEXT_REDIRECT"));
-    await expect(moveToPremiumAction(form({ businessId: BUSINESS, confirm: "yes" }))).rejects.toThrow("NEXT_REDIRECT");
-    expect(moveClientToPremium).not.toHaveBeenCalled();
-  });
-
-  it("moves nobody unless the box was ticked", async () => {
-    await expect(moveToPremiumAction(form({ businessId: BUSINESS }))).rejects.toThrow(PLAN("confirm"));
-    await expect(moveToPremiumAction(form({ businessId: BUSINESS, confirm: "on" }))).rejects.toThrow(PLAN("confirm"));
-    expect(moveClientToPremium).not.toHaveBeenCalled();
-  });
-
-  it("throws on a form that does not name the page's business", async () => {
-    await expect(moveToPremiumAction(form({ businessId: "nope", confirm: "yes" }))).rejects.toThrow("must be a valid id");
-    expect(moveClientToPremium).not.toHaveBeenCalled();
-  });
-
-  it("moves them as the signed-in staff member and says so", async () => {
-    vi.mocked(moveClientToPremium).mockResolvedValue({ kind: "moved", finish: { kind: "scheduled" } } as never);
-    await expect(moveToPremiumAction(form({ businessId: BUSINESS, confirm: "yes" }))).rejects.toThrow(PLAN("moved"));
-    expect(moveClientToPremium).toHaveBeenCalledWith({ businessId: BUSINESS, staffUserId: "staff-1" }, expect.any(Date));
-    expect(revalidatePath).toHaveBeenCalledWith(`/clients/${BUSINESS}`);
-  });
-
-  it("says when they have Premium but the provider did not take the change", async () => {
-    vi.mocked(moveClientToPremium).mockResolvedValue({ kind: "moved", finish: { kind: "failed" } } as never);
-    await expect(moveToPremiumAction(form({ businessId: BUSINESS, confirm: "yes" }))).rejects.toThrow(PLAN("moved-provider-failed"));
-  });
-
-  it.each(["blocked", "unavailable", "changed"] as const)("says why a move was refused (%s)", async (why) => {
-    vi.mocked(moveClientToPremium).mockResolvedValue({ kind: "refused", why });
-    await expect(moveToPremiumAction(form({ businessId: BUSINESS, confirm: "yes" }))).rejects.toThrow(PLAN(`refused-${why}`));
-  });
-});
-
-describe("finishUpgradeAction", () => {
-  const PLAN = (notice: string): string => `redirect:/clients/${BUSINESS}?plan=${notice}#plan`;
-
-  beforeEach(() => {
-    vi.mocked(redirect).mockImplementation((url: string) => {
-      throw new Error(`redirect:${url}`);
-    });
-  });
-
-  it("is refused for a session that is not staff's", async () => {
-    vi.mocked(requireStaffAccess).mockRejectedValue(new Error("NEXT_REDIRECT"));
-    await expect(finishUpgradeAction(form({ businessId: BUSINESS }))).rejects.toThrow("NEXT_REDIRECT");
-    expect(finishClientUpgrade).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    ["scheduled", "finished"],
-    ["completed", "finished"],
-    ["failed", "finish-failed"],
-    ["nothing", "nothing-to-finish"],
-  ] as const)("says what finishing the move came to (%s)", async (kind, notice) => {
-    vi.mocked(finishClientUpgrade).mockResolvedValue({ kind } as never);
-    await expect(finishUpgradeAction(form({ businessId: BUSINESS }))).rejects.toThrow(PLAN(notice));
-    expect(finishClientUpgrade).toHaveBeenCalledWith({ businessId: BUSINESS, staffUserId: "staff-1" }, expect.any(Date));
-    expect(revalidatePath).toHaveBeenCalledWith(`/clients/${BUSINESS}`);
-  });
-});
-
 describe("the add-on actions", () => {
   const ROW = "01a0f71b-8402-7d48-a90a-207e8c8a8800";
   const RELEASE = "01a0f71b-8402-7d48-a90a-207e8c8a8811";
@@ -289,7 +208,7 @@ describe("the add-on actions", () => {
     });
 
     it("pauses as the signed-in staff member and says so", async () => {
-      vi.mocked(endClientAddOn).mockResolvedValue({ kind: "scheduled", addOn: "social-media", endKind: "pause", endsOn: new Date() });
+      vi.mocked(endClientAddOn).mockResolvedValue({ kind: "scheduled", addOn: "digital-growth", endKind: "pause", endsOn: new Date() });
       await expect(endAddOnAction(form(END))).rejects.toThrow(NOTICE("pause-scheduled"));
       expect(endClientAddOn).toHaveBeenCalledWith(
         { businessId: BUSINESS, addOnSubscriptionId: ROW, kind: "pause", staffUserId: "staff-1" },
@@ -299,9 +218,9 @@ describe("the add-on actions", () => {
     });
 
     it("cancels, and says why when the provider could not be told", async () => {
-      vi.mocked(endClientAddOn).mockResolvedValue({ kind: "scheduled", addOn: "social-media", endKind: "cancel", endsOn: new Date() });
+      vi.mocked(endClientAddOn).mockResolvedValue({ kind: "scheduled", addOn: "digital-growth", endKind: "cancel", endsOn: new Date() });
       await expect(endAddOnAction(form({ ...END, kind: "cancel" }))).rejects.toThrow(NOTICE("cancel-scheduled"));
-      vi.mocked(endClientAddOn).mockResolvedValue({ kind: "refused", reason: "provider-unavailable", addOn: "social-media", endKind: null, endsOn: null });
+      vi.mocked(endClientAddOn).mockResolvedValue({ kind: "refused", reason: "provider-unavailable", addOn: "digital-growth", endKind: null, endsOn: null });
       await expect(endAddOnAction(form({ ...END, kind: "cancel" }))).rejects.toThrow(NOTICE("provider-unavailable"));
     });
   });

@@ -8,7 +8,7 @@ const PERIOD_END = new Date("2026-11-12T09:00:00.000Z");
 function row(overrides: Partial<AddOnSubscriptionForStaff> & Pick<AddOnSubscriptionForStaff, "id">): AddOnSubscriptionForStaff {
   return {
     businessId: "business-1",
-    addOn: "social-media",
+    addOn: "digital-growth",
     listAmountCents: 1_000_000,
     discountAmountCents: 0,
     offerDiscountAmountCents: 0,
@@ -45,7 +45,7 @@ describe("clientAddOnRows", () => {
     const [shown] = clientAddOnRows([row({ id: "a" })], NOW);
     expect(shown).toMatchObject({
       id: "a",
-      title: "Social media",
+      title: "Digital Growth",
       state: { tone: "done", label: "Active" },
       price: "₹10,000 + GST a month",
       dateLine: "Renews on 12 November 2026",
@@ -54,14 +54,6 @@ describe("clientAddOnRows", () => {
       endsOnText: "12 November 2026",
       needsContact: true,
     });
-  });
-
-  it("names the Premium price a member paid", () => {
-    const [shown] = clientAddOnRows(
-      [row({ id: "a", discountAmountCents: 100_000, netAmountCents: 900_000, chargedAmountCents: 1_062_000 })],
-      NOW,
-    );
-    expect(shown?.price).toBe("₹9,000 + GST a month, Premium price");
   });
 
   it("says who scheduled a pause and when, and gives no end buttons once it is set", () => {
@@ -165,7 +157,7 @@ describe("clientAddOnRows", () => {
           currentPeriodEnd: new Date("2026-09-12T09:00:00.000Z"),
           createdAt: new Date("2026-08-12T09:00:00.000Z"),
         }),
-        row({ id: "ads", addOn: "advertising", netAmountCents: 800_000, listAmountCents: 800_000 }),
+        row({ id: "ads", addOn: "local-seo-aeo", netAmountCents: 800_000, listAmountCents: 800_000 }),
       ],
       NOW,
     );
@@ -175,7 +167,7 @@ describe("clientAddOnRows", () => {
       ads: ["Active", true],
     });
     expect(shown.find((entry) => entry.id === "seo-old")?.dateLine).toBe("Ended on 12 September 2026");
-    expect(shown.find((entry) => entry.id === "ads")?.title).toBe("Paid advertising");
+    expect(shown.find((entry) => entry.id === "ads")?.title).toBe("Local SEO + AEO");
   });
 
   it("shows payment trouble in the words the customer sees, with no end buttons", () => {
@@ -201,7 +193,7 @@ describe("clientAddOnRows", () => {
     const shown = clientAddOnRows(
       [
         row({ id: "a", endKind: "pause", endRequestedAt: NOW, endRequestedByStaffId: "s", endRequestedByStaffName: "Priya" }),
-        row({ id: "b", addOn: "advertising", status: "halted", haltedAt: NOW }),
+        row({ id: "b", addOn: "local-seo-aeo", status: "halted", haltedAt: NOW }),
         row({ id: "c", status: "past_due" }),
       ],
       NOW,
