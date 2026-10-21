@@ -185,7 +185,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
                 We can’t take payment in your currency just yet. Email us at <EmailUs /> and we’ll sort it out.
               </p>
             ) : (
-              <p className="mt-4 text-sm leading-relaxed text-ink-soft">{describePlanTerms(billing.plan)}</p>
+              <p className="mt-4 text-sm leading-relaxed text-ink-soft">{describePlanTerms(billing.plan, websiteAloneNetCents(billing.plan.currency))}</p>
             )}
             <ButtonLink href={ready ? PAYMENT_STEP_HREF : onboardingStepHref(nextStep)} className="mt-6">
               {ready ? "Go to Check and send" : "Finish setup"}

@@ -123,8 +123,8 @@ export interface MembershipPricing {
  * The membership's price as people say it, before tax, with the tax named: "₹2,999 a month + 18% GST", or
  * "$69 a month" for a plan with none. The figure the Pay button shows is the charged one, tax included.
  */
-export function membershipPriceLine(plan: MembershipPricing): string {
-  const { amount, terms } = membershipPriceParts(plan);
+export function membershipPriceLine(plan: MembershipPricing, bundledAddOnNetCents = 0): string {
+  const { amount, terms } = membershipPriceParts(plan, 0, bundledAddOnNetCents);
   return `${amount} ${terms}`;
 }
 
@@ -135,13 +135,16 @@ export function membershipPriceLine(plan: MembershipPricing): string {
 export function membershipPriceParts(
   plan: MembershipPricing,
   discountCents = 0,
+  bundledAddOnNetCents = 0,
 ): { readonly amount: string; readonly terms: string; readonly was: string | null } {
-  const amount = formatMoney(plan.recurringAmountCents - discountCents, plan.currency);
+  // The plan row costs nothing: the services on the subscription's lines are the price.
+  const listCents = plan.recurringAmountCents + bundledAddOnNetCents;
+  const amount = formatMoney(listCents - discountCents, plan.currency);
   return {
     amount,
     terms: plan.taxRateBasisPoints === 0 ? "a month" : `a month + ${plan.taxRateBasisPoints / 100}% GST`,
     // The list price, shown struck through beside a discounted one.
-    was: discountCents > 0 ? formatMoney(plan.recurringAmountCents, plan.currency) : null,
+    was: discountCents > 0 ? formatMoney(listCents, plan.currency) : null,
   };
 }
 

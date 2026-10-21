@@ -3,21 +3,22 @@ import { describe, expect, it } from "vitest";
 import type { ChecklistItem } from "@brandbasket/shared/lib/onboarding/checklist";
 import { afterPaymentHref, billingBanner, paymentStep, type BannerInput, type PaymentStepInput } from "./payment-step";
 
+// The plan rows as migration 0184 leaves them: terms at a price of 0, the website being a line of the subscription.
 const USD = {
   id: "plan-usd",
   currency: "USD",
-  initialAmountCents: 7500,
+  initialAmountCents: 0,
   taxRateBasisPoints: 0,
   initialTermMonths: 1,
-  recurringAmountCents: 7500,
+  recurringAmountCents: 0,
 } as Plan;
 const INR = {
   id: "plan-inr",
   currency: "INR",
-  initialAmountCents: 350000,
-  taxRateBasisPoints: 0,
+  initialAmountCents: 0,
+  taxRateBasisPoints: 1800,
   initialTermMonths: 1,
-  recurringAmountCents: 350000,
+  recurringAmountCents: 0,
 } as Plan;
 const USD_TERMS = "$75 a month. Your first payment covers your first month, then it renews monthly.";
 const MISSING: ChecklistItem = { key: "domain", label: "Your domain, confirmed as yours", step: "domain", passed: false };
@@ -41,8 +42,8 @@ describe("paymentStep", () => {
       ready: true,
     });
     expect(paymentStep({ ...OPEN_UNPAID, plan: INR })).toMatchObject({
-      amount: "₹3,500",
-      terms: "₹3,500 a month. Your first payment covers your first month, then it renews monthly.",
+      amount: "₹3,540",
+      terms: "₹3,000 a month plus 18% GST, so ₹3,540 in all. Your first payment covers your first month, then it renews monthly.",
     });
   });
 
@@ -124,7 +125,7 @@ describe("billingBanner", () => {
 
   it("prices an Indian plan in rupees for its one-month start", () => {
     expect(billingBanner({ ...base, setupComplete: true, plan: INR })).toMatchObject({
-      price: { amount: "₹3,500", term: "First month" },
+      price: { amount: "₹3,540", term: "First month" },
     });
   });
 
@@ -191,27 +192,27 @@ describe("afterPaymentHref", () => {
 });
 
 describe("a referral discount", () => {
-  // 15% of the INR plan's 350,000 paise, frozen when the checkout opened.
-  const FIFTEEN_OFF = { code: "SAVE15", amountCents: 52_500, stated: { kind: "amount", amountCents: 52_500 } } as const;
+  // 15% of the website's 300,000 paise, frozen when the checkout opened.
+  const FIFTEEN_OFF = { code: "SAVE15", amountCents: 45_000, stated: { kind: "amount", amountCents: 45_000 } } as const;
 
   it("prices the button from the discount, so it matches what the checkout charges", () => {
     expect(paymentStep({ ...OPEN_UNPAID, plan: INR, discount: FIFTEEN_OFF })).toMatchObject({
       kind: "pay-and-send",
-      amount: "₹2,975",
+      amount: "₹3,009",
     });
   });
 
   it("quotes the discounted monthly price, because the discount runs for as long as the plan does", () => {
     const step = paymentStep({ ...OPEN_UNPAID, plan: INR, discount: FIFTEEN_OFF });
     expect(step).toMatchObject({
-      terms: "₹2,975 a month, instead of ₹3,500, for as long as your plan runs. Your first payment covers your first month, then it renews monthly.",
+      terms: "₹2,550 a month plus 18% GST, so ₹3,009 in all, instead of ₹3,000 before GST, for as long as your plan runs. Your first payment covers your first month, then it renews monthly.",
     });
   });
 
   it("discounts the pay-alone step too, for answers sent before payment was required", () => {
     expect(paymentStep({ ...OPEN_UNPAID, plan: INR, locked: true, discount: FIFTEEN_OFF })).toMatchObject({
       kind: "pay",
-      amount: "₹2,975",
+      amount: "₹3,009",
     });
   });
 
@@ -229,7 +230,7 @@ describe("a referral discount", () => {
     const step = paymentStep({ ...OPEN_UNPAID, plan: INR, discount: FIFTEEN_OFF });
     if (banner?.kind !== "pay" || step.kind !== "pay-and-send") throw new Error("expected a pay banner and step");
     expect(banner.price?.amount).toBe(step.amount);
-    expect(banner.price).toEqual({ amount: "₹2,975", term: "First month" });
+    expect(banner.price).toEqual({ amount: "₹3,009", term: "First month" });
   });
 
   it("changes nothing for a customer with no code applied", () => {

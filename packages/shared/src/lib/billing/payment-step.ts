@@ -2,6 +2,7 @@ import type { Plan } from "@brandbasket/db";
 import { formatCalendarDate } from "@brandbasket/shared/lib/format";
 import type { ChecklistItem } from "@brandbasket/shared/lib/onboarding/checklist";
 import type { CustomerBillingStatus } from "./status";
+import { websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import {
   describeDiscountedPlanTerms,
   discountedFirstPaymentAmount,
@@ -66,6 +67,10 @@ export interface PaymentStepInput {
   readonly discount: PlanDiscount | null;
 }
 
+/**
+ * What Check and send offers. It pays for the website alone, at list (startCheckoutFor), and the plan row itself costs
+ * nothing, so the amount is the website line plus the plan's GST, less any code against that line.
+ */
 export function paymentStep({
   status,
   plan,
@@ -84,8 +89,9 @@ export function paymentStep({
     case "unpaid": {
       if (paymentUnderReview) return { kind: "under-review" };
       if (plan === null) return { kind: "no-plan" };
-      const amount = discountedFirstPaymentAmount(plan, discount);
-      const terms = describeDiscountedPlanTerms(plan, discount);
+      const websiteCents = websiteAloneNetCents(plan.currency);
+      const amount = discountedFirstPaymentAmount(plan, discount, websiteCents);
+      const terms = describeDiscountedPlanTerms(plan, discount, websiteCents);
       return locked
         ? { kind: "pay", amount, terms }
         : { kind: "pay-and-send", amount, terms, ready: missing === null };
@@ -147,7 +153,10 @@ const PAY_TO_CARRY_ON = "Once it’s done, we’ll carry on building your websit
 function priceOf(plan: Plan | null, discount: PlanDiscount | null): BannerPrice | null {
   return plan === null
     ? null
-    : { amount: discountedFirstPaymentAmount(plan, discount), term: initialTermLabel(plan.initialTermMonths) };
+    : {
+        amount: discountedFirstPaymentAmount(plan, discount, websiteAloneNetCents(plan.currency)),
+        term: initialTermLabel(plan.initialTermMonths),
+      };
 }
 
 function payAction(plan: Plan | null): BannerAction {

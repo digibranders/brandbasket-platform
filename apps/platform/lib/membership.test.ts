@@ -32,6 +32,16 @@ describe("membershipPriceLine", () => {
   });
 });
 
+describe("membershipPriceLine on the plan row that costs nothing", () => {
+  it("names the website line's price, with GST for an Indian plan", () => {
+    const inr = { recurringAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800 } as const;
+    const usd = { recurringAmountCents: 0, currency: "USD", taxRateBasisPoints: 0 } as const;
+    expect(membershipPriceLine(inr, 300_000)).toBe("₹3,000 a month + 18% GST");
+    expect(membershipPriceLine(usd, 7_500)).toBe("$75 a month");
+    expect(membershipPriceParts(inr, 30_000, 300_000)).toEqual({ amount: "₹2,700", terms: "a month + 18% GST", was: "₹3,000" });
+  });
+});
+
 describe("readMembershipPaymentNotice", () => {
   it("reads the two notices the payment pages send back, and nothing else", () => {
     expect(readMembershipPaymentNotice({ payment: "received" })).toBe("received");

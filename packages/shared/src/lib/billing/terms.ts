@@ -87,14 +87,16 @@ function monthlyPriceWords(netCents: number, plan: Pick<Plan, "currency" | "taxR
 /**
  * The whole price in a sentence. A plan that starts at its monthly price reads "$69 a month. Your first payment
  * covers your first month, then it renews monthly."; a taxed one names the tax and the total. Any other start
- * names both amounts: "$225 covers your first 3 months, then it's $75 a month."
+ * names both amounts: "$225 covers your first 3 months, then it's $75 a month." `bundledAddOnNetCents` is the services
+ * billed as lines on top of the plan's own price, which is the whole price on the services plan (it costs 0 itself).
  */
-export function describePlanTerms(plan: TermedPlan): string {
+export function describePlanTerms(plan: TermedPlan, bundledAddOnNetCents = 0): string {
   const term = initialTermPhrase(plan.initialTermMonths);
+  const recurringCents = plan.recurringAmountCents + bundledAddOnNetCents;
   if (plan.initialTermMonths === 1 && plan.initialAmountCents === plan.recurringAmountCents) {
-    return `${monthlyPriceWords(plan.recurringAmountCents, plan)}. Your first payment covers ${term}, then it renews monthly.`;
+    return `${monthlyPriceWords(recurringCents, plan)}. Your first payment covers ${term}, then it renews monthly.`;
   }
-  return `${firstPaymentAmount(plan)} covers ${term}, then it’s ${monthlyPriceWords(plan.recurringAmountCents, plan)}.`;
+  return `${firstPaymentAmount(plan, bundledAddOnNetCents)} covers ${term}, then it’s ${monthlyPriceWords(recurringCents, plan)}.`;
 }
 
 type ChangePricing = Pick<
@@ -135,8 +137,12 @@ export interface PlanDiscount {
  * The first payment's amount with a referral discount taken off: "₹2,975". Passing null gives the plan's own
  * price, so callers need no branch of their own.
  */
-export function discountedFirstPaymentAmount(plan: PricedPlan, discount: Pick<PlanDiscount, "amountCents"> | null): string {
-  const charged = chargedAmountCents(plan.initialAmountCents, discount?.amountCents ?? 0, plan.taxRateBasisPoints);
+export function discountedFirstPaymentAmount(
+  plan: PricedPlan,
+  discount: Pick<PlanDiscount, "amountCents"> | null,
+  bundledAddOnNetCents = 0,
+): string {
+  const charged = chargedAmountCents(plan.initialAmountCents + bundledAddOnNetCents, discount?.amountCents ?? 0, plan.taxRateBasisPoints);
   return formatMoney(charged, plan.currency);
 }
 
@@ -145,11 +151,16 @@ export function discountedFirstPaymentAmount(plan: PricedPlan, discount: Pick<Pl
  * subscription does, so the monthly figure it quotes is the discounted one. Saying otherwise would promise a
  * price the customer is never charged.
  */
-export function describeDiscountedPlanTerms(plan: TermedPlan, discount: Pick<PlanDiscount, "amountCents"> | null): string {
-  if (discount === null || discount.amountCents === 0) return describePlanTerms(plan);
-  const full = formatMoney(plan.recurringAmountCents, plan.currency);
+export function describeDiscountedPlanTerms(
+  plan: TermedPlan,
+  discount: Pick<PlanDiscount, "amountCents"> | null,
+  bundledAddOnNetCents = 0,
+): string {
+  if (discount === null || discount.amountCents === 0) return describePlanTerms(plan, bundledAddOnNetCents);
+  const recurringCents = plan.recurringAmountCents + bundledAddOnNetCents;
+  const full = formatMoney(recurringCents, plan.currency);
   const term = initialTermPhrase(plan.initialTermMonths);
-  const discounted = monthlyPriceWords(plan.recurringAmountCents - discount.amountCents, plan);
+  const discounted = monthlyPriceWords(recurringCents - discount.amountCents, plan);
   // The list price is quoted net, like the discounted one, so a taxed plan says so rather than implying the totals.
   const was = plan.taxRateBasisPoints === 0 ? full : `${full} before GST`;
   return `${discounted}, instead of ${was}, for as long as your plan runs. Your first payment covers ${term}, then it renews monthly.`;

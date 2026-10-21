@@ -259,7 +259,7 @@ export interface ReferralWorth {
 }
 
 /** The lowest list price of any one service in a currency (add-ons.ts): the least a single-service code is used against. */
-function cheapestServiceListCents(currency: BillingCurrency): number {
+export function cheapestServiceListCents(currency: BillingCurrency): number {
   return Math.min(...ADD_ONS.map((service) => service.prices[currency]));
 }
 

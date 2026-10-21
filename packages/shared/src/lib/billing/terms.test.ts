@@ -218,5 +218,19 @@ describe("a plan that costs nothing, with its services as lines", () => {
   it("refuses to price a plan that costs nothing and has no services", () => {
     expect(() => firstPaymentAmount(SERVICES_PLAN)).toThrow(RangeError);
     expect(() => monthlyPaymentAmount(SERVICES_PLAN)).toThrow(RangeError);
+    expect(() => describePlanTerms(SERVICES_PLAN)).toThrow(RangeError);
+    expect(() => discountedFirstPaymentAmount(SERVICES_PLAN, null)).toThrow(RangeError);
+  });
+
+  it("words the terms from the services' net, with or without a code against that line", () => {
+    expect(describePlanTerms(SERVICES_PLAN, 300_000)).toBe(
+      "₹3,000 a month plus 18% GST, so ₹3,540 in all. Your first payment covers your first month, then it renews monthly.",
+    );
+    // ₹3,000 less a ₹300 code, plus 18% GST.
+    expect(discountedFirstPaymentAmount(SERVICES_PLAN, { amountCents: 30_000 }, 300_000)).toBe("₹3,186");
+    expect(describeDiscountedPlanTerms(SERVICES_PLAN, { amountCents: 30_000 }, 300_000)).toBe(
+      "₹2,700 a month plus 18% GST, so ₹3,186 in all, instead of ₹3,000 before GST, for as long as your plan runs. Your first payment covers your first month, then it renews monthly.",
+    );
+    expect(describeDiscountedPlanTerms(SERVICES_PLAN, null, 300_000)).toBe(describePlanTerms(SERVICES_PLAN, 300_000));
   });
 });

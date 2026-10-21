@@ -136,17 +136,17 @@ export default async function TestCheckoutPage({ searchParams }: ConfirmPageProp
 
   const amount = formatMoney(confirmed.amountCents, confirmed.currency);
   const plan = billing.plan;
-  // Describe the plan only when this checkout really is for it: the amount must be what the plan charges with the
-  // discount frozen on this subscription, tax included. A mismatch (a price changed mid-checkout, say) shows the
-  // amount alone rather than terms that would not describe what is being paid.
+  // Describe the plan only when this checkout really is for it: the amount must be what the subscription charges, the
+  // services on its lines (the plan row costs nothing) less the discount frozen on it, tax included. A mismatch (a price
+  // changed mid-checkout, say) shows the amount alone rather than terms that would not describe what is being paid.
   const discountAmountCents = billing.subscription?.discountAmountCents ?? 0;
+  const bundledAddOnNetCents = billing.subscription?.bundledAddOnNetCents ?? 0;
+  const netCents = plan === null ? 0 : plan.initialAmountCents + bundledAddOnNetCents;
   const expected =
-    plan === null || discountAmountCents >= plan.initialAmountCents
-      ? null
-      : chargedAmountCents(plan.initialAmountCents, discountAmountCents, plan.taxRateBasisPoints);
+    plan === null || discountAmountCents >= netCents ? null : chargedAmountCents(netCents, discountAmountCents, plan.taxRateBasisPoints);
   const terms =
     plan !== null && expected === confirmed.amountCents && plan.currency === confirmed.currency
-      ? describeDiscountedPlanTerms(plan, discountAmountCents === 0 ? null : { amountCents: discountAmountCents })
+      ? describeDiscountedPlanTerms(plan, discountAmountCents === 0 ? null : { amountCents: discountAmountCents }, bundledAddOnNetCents)
       : null;
 
   return (

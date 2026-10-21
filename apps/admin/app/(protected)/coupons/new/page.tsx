@@ -22,7 +22,7 @@ export default async function NewCouponPage(): Promise<ReactElement> {
         meta="Off every month, for as long as the membership runs."
       />
       <div className="mt-10 border-t border-line pt-10">
-        <NewReferralCodeForm action={createCouponAction} priceBases={await priceBases()} affiliate={null} />
+        <NewReferralCodeForm action={createCouponAction} priceBases={priceBases()} affiliate={null} />
       </div>
     </>
   );

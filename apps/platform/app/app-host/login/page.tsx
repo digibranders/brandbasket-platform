@@ -15,6 +15,7 @@ import { requestBrand } from "@/lib/server/request-brand";
 import { readEntryRequest } from "@/lib/account-entry";
 import { RESTORE_ACCOUNT_PATH } from "@/lib/account-settings-form";
 import { FORGOT_PASSWORD_PATH } from "@/lib/account-recovery-form";
+import { websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import { membershipPathFor, membershipPriceLine, membershipTierForChoice } from "@/lib/membership";
 import { AFFILIATE_PATH } from "@brandbasket/shared/lib/affiliate-links";
 import { accountLabel } from "@/lib/server/account-label";
@@ -121,7 +122,7 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
 
   // Both currencies: the form shows the one for the country the owner picks.
   const [india, us] = await Promise.all([getMembershipPlan("managed", "INR"), getMembershipPlan("managed", "USD")]);
-  const priceLine = (plan: Plan | null): string | null => (plan === null ? null : membershipPriceLine(plan));
+  const priceLine = (plan: Plan | null): string | null => (plan === null ? null : membershipPriceLine(plan, websiteAloneNetCents(plan.currency)));
   const prices: PlanPricesByCurrency = {
     INR: { managed: priceLine(india) },
     USD: { managed: priceLine(us) },

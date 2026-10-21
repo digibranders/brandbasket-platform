@@ -34,7 +34,7 @@ export default async function NewAffiliateCodePage({ params }: NewAffiliateCodeP
       <div className="mt-10 border-t border-line pt-10">
         <NewReferralCodeForm
           action={createAffiliateCodeAction.bind(null, affiliate.id)}
-          priceBases={await priceBases()}
+          priceBases={priceBases()}
           affiliate={{ name: affiliate.name, currency: affiliate.rewardCurrency }}
         />
       </div>

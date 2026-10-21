@@ -7,6 +7,7 @@ import { PaymentCelebration } from "@/components/panel/payment-celebration";
 import { ListingAccountShell } from "@/components/panel/listing-account-shell";
 import { MembershipGateShell } from "@/components/panel/membership-gate-shell";
 import { displayBusinessId } from "@/lib/business-profile";
+import { websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import { membershipPriceLine } from "@/lib/membership";
 import { accountLabel } from "@/lib/server/account-label";
 import { ensureGeoCatalog } from "@/lib/server/geo-catalog";
@@ -37,7 +38,7 @@ export default async function AppProtectedLayout({ children }: AppProtectedLayou
   const newLeadCount = entry.kind === "website" ? 0 : await readNewLeadCount(tenant);
   if (entry.kind === "listing") {
     // Premium is highlighted for an account that said it has no website (and for accounts older than the question).
-    const premiumOffer = entry.signupChoice === "own_website" || billing.plan === null ? null : membershipPriceLine(billing.plan);
+    const premiumOffer = entry.signupChoice === "own_website" || billing.plan === null ? null : membershipPriceLine(billing.plan, websiteAloneNetCents(billing.plan.currency));
     return (
       <ListingAccountShell
         userName={user.name}
