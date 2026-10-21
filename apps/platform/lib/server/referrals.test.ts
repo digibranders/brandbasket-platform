@@ -18,6 +18,7 @@ import {
   applyReferralCodeFor,
   codeBasisFor,
   discountFrom,
+  findCodeRefusedOnPackage,
   findLapsedAppliedCode,
   isOwnAffiliateCode,
   removeReferralCodeFor,
@@ -324,5 +325,29 @@ describe("findLapsedAppliedCode", () => {
     await expect(findLapsedAppliedCode(BUSINESS_ID, WEBSITE, NOW)).resolves.toBeNull();
     vi.mocked(findBusinessReferralCode).mockResolvedValue(null);
     await expect(findLapsedAppliedCode(BUSINESS_ID, WEBSITE, NOW)).resolves.toBeNull();
+  });
+});
+
+describe("findCodeRefusedOnPackage", () => {
+  const PACKAGE = ["managed-website", "digital-growth"] as const;
+
+  it("names the working code a business applied when the basket is a package, which never takes one", async () => {
+    vi.mocked(findBusinessReferralCode).mockResolvedValue(code());
+    await expect(findCodeRefusedOnPackage(BUSINESS_ID, PACKAGE, "INR", NOW)).resolves.toBe("SAVE15");
+    expect(findRedeemableReferralCode).toHaveBeenCalledWith({ name: "staff" }, { code: "SAVE15", currency: "INR", now: NOW });
+  });
+
+  it("is null for a single service, without looking the code up", async () => {
+    vi.mocked(findBusinessReferralCode).mockResolvedValue(code());
+    await expect(findCodeRefusedOnPackage(BUSINESS_ID, WEBSITE_ALONE, "INR", NOW)).resolves.toBeNull();
+    expect(findBusinessReferralCode).not.toHaveBeenCalled();
+  });
+
+  it("is null when no code is applied, and when the applied one no longer works", async () => {
+    vi.mocked(findBusinessReferralCode).mockResolvedValue(null);
+    await expect(findCodeRefusedOnPackage(BUSINESS_ID, PACKAGE, "INR", NOW)).resolves.toBeNull();
+    vi.mocked(findBusinessReferralCode).mockResolvedValue(code());
+    vi.mocked(findRedeemableReferralCode).mockResolvedValue(null);
+    await expect(findCodeRefusedOnPackage(BUSINESS_ID, PACKAGE, "INR", NOW)).resolves.toBeNull();
   });
 });

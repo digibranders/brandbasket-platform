@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BRAND, featureShownTo, BRANDBASKET_DEFAULT_CHOICE, isDirectoryOnlyPath, logoOf, offersChoice, sellsFreeListing, supportEmailOf } from "./brand";
-import { LISTING_BRAND } from "./testing/listing-brand";
+import { BRAND, BRANDBASKET_DEFAULT_CHOICE, isDirectoryOnlyPath, logoOf, offersChoice, sellsFreeListing, supportEmailOf } from "./brand";
 
 describe("the brand", () => {
   it("sells Managed Website only: no free listing", () => {
@@ -20,14 +19,6 @@ describe("the brand", () => {
   it("writes to hello@brandbasket.in and draws the Brandbasket logo", () => {
     expect(supportEmailOf(BRAND)).toBe("hello@brandbasket.in");
     expect(logoOf(BRAND)).toMatchObject({ name: "Brandbasket", siteUrl: "https://brandbasket.in", email: "hello@brandbasket.in", white: "/brand/brandbasket-logo-white.svg" });
-  });
-
-  it("leaves out the plan-table rows about the directory listing, which it does not sell", () => {
-    for (const id of ["listing", "images", "videos", "competitor-ads", "listing-management", "featured", "ranking"]) {
-      expect(featureShownTo(id, BRAND), id).toBe(false);
-      expect(featureShownTo(id, LISTING_BRAND), id).toBe(true);
-    }
-    expect(featureShownTo("website", BRAND)).toBe(true);
   });
 });
 

@@ -51,13 +51,18 @@ function ServiceRow({
       <div className="flex basis-full items-center justify-between gap-4 pl-[3.25rem] sm:basis-auto sm:justify-end sm:pl-0">
         <p className="text-left tabular-nums sm:text-right">
           <span className="block text-lg font-semibold leading-tight text-ink">
-            {netCents < listCents ? <s className="mr-2 text-xs font-normal text-ink-soft">{formatMoney(listCents, currency)}</s> : null}
+            {netCents < listCents ? (
+              <>
+                <span className="sr-only">was </span>
+                <s className="mr-2 text-xs font-normal text-ink-soft">{formatMoney(listCents, currency)}</s>
+              </>
+            ) : null}
             {formatMoney(netCents, currency)}
           </span>
           <span className="block text-xs text-ink-soft">{currency === "INR" ? "a month + GST" : "a month"}</span>
         </p>
         {added && isLast ? (
-          <Button type="button" size="sm" variant="secondary" disabled aria-label={`${addOn.title}, your only service`} className="min-w-[5.5rem] text-success">
+          <Button type="button" size="sm" variant="secondary" disabled aria-label={`${addOn.title}, added, your only service`} className="min-w-[5.5rem] text-success">
             <TickIcon className="size-4" />
             Added
           </Button>

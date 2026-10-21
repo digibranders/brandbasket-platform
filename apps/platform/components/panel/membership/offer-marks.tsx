@@ -11,11 +11,11 @@ export function AddOnMark({ addOn }: { readonly addOn: AddOnId }): ReactElement 
   switch (addOn) {
     case "managed-website":
       return (
-        <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-[0.8rem] bg-[#f6e7d8] sm:size-12 sm:rounded-[0.9rem]">
+        <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-[0.8rem] bg-accent-pale sm:size-12 sm:rounded-[0.9rem]">
           <svg viewBox="0 0 32 32" className="size-7">
-            <rect x="4.5" y="7" width="23" height="18" rx="3" fill="none" stroke="#c06a2b" strokeWidth="2.4" />
-            <path d="M4.5 12.5h23" stroke="#c06a2b" strokeWidth="2.4" />
-            <rect x="9" y="16.5" width="8" height="5" rx="1.2" fill="#d98a4a" />
+            <rect x="4.5" y="7" width="23" height="18" rx="3" fill="none" className="stroke-accent" strokeWidth="2.4" />
+            <path d="M4.5 12.5h23" className="stroke-accent" strokeWidth="2.4" />
+            <rect x="9" y="16.5" width="8" height="5" rx="1.2" className="fill-accent/60" />
           </svg>
         </span>
       );

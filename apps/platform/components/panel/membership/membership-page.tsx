@@ -78,7 +78,14 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   const pageHref = (selection: readonly MonthlyAddOnId[]): string => membershipHrefWithServices(tier, selection);
   const paying = payable
     ? orderSummary(
-        { services: selected, currency: plan.currency, taxRateBasisPoints: plan.taxRateBasisPoints, forfeited: view.forfeited, hasEverPaid: view.hasEverPaid },
+        {
+          planInitialAmountCents: plan.initialAmountCents,
+          services: selected,
+          currency: plan.currency,
+          taxRateBasisPoints: plan.taxRateBasisPoints,
+          forfeited: view.forfeited,
+          hasEverPaid: view.hasEverPaid,
+        },
         view.discount?.amountCents ?? 0,
       )
     : null;

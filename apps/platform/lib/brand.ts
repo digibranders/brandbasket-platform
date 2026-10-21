@@ -66,14 +66,6 @@ export function offersChoice(brand: Brand, choice: JoinChoice): boolean {
   return brand.joinChoices.includes(choice);
 }
 
-/** The plan-table rows that are about the directory listing: a brand that does not sell the listing leaves them out. */
-const LISTING_FEATURE_IDS: ReadonlySet<string> = new Set(["listing", "images", "videos", "competitor-ads", "listing-management", "featured", "ranking"]);
-
-/** Whether a plan-table row (lib/plan-features.ts id) is shown. */
-export function featureShownTo(id: string, brand: Brand): boolean {
-  return brand.showsListing || !LISTING_FEATURE_IDS.has(id);
-}
-
 /**
  * Dashboard pages that exist only for the directory listing and what it brings. The product has no listing to put on
  * them, so the proxy answers them with the dashboard's not-found screen: a customer who types one of the addresses

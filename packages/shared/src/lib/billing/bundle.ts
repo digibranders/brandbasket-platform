@@ -32,9 +32,12 @@ export function readBundleSelection(values: readonly string[]): readonly Monthly
 /** The basket a sign-up link or the plan's page sells when it names no service: the website alone. */
 export const WEBSITE_ALONE: readonly MonthlyAddOnId[] = ["managed-website"];
 
-/** The lines of a first-checkout bundle in the plan's currency, each with the package discount, in the catalogue's order. */
-export function bundleLines(selection: readonly MonthlyAddOnId[], currency: MoneyCurrency): readonly BundleLine[] {
-  return packageLines({ services: selection, forfeited: false }, currency).map((line) => ({
+/**
+ * The lines of a first-checkout bundle in the plan's currency, each with the package discount, in the catalogue's order.
+ * `forfeited` is a business that has given the package offer up for good: its lines are at list.
+ */
+export function bundleLines(selection: readonly MonthlyAddOnId[], currency: MoneyCurrency, forfeited = false): readonly BundleLine[] {
+  return packageLines({ services: selection, forfeited }, currency).map((line) => ({
     addOn: line.addOn,
     title: addOnById(line.addOn).title,
     listCents: line.listCents,
@@ -57,7 +60,7 @@ export function websiteAloneNetCents(currency: MoneyCurrency): number {
 }
 
 /**
- * What the add-ons cost a month from the next renewal: the amount after any the customer has asked to remove have stopped,
+ * What the services cost a month from the next renewal: the amount after any the customer has asked to remove have stopped,
  * or the current one when none are waiting. What the billing page says the next payment is, and what a plan change made now
  * must keep.
  */

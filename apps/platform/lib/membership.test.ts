@@ -1,13 +1,10 @@
 import { chargedAmountCents } from "@brandbasket/billing/tax";
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { describe, expect, it } from "vitest";
-import { BRAND } from "./brand";
-import { LISTING_BRAND } from "./testing/listing-brand";
 import {
   MEMBERSHIP_NAMES,
   MEMBERSHIP_PATH,
   isWaitingOnPayment,
-  groupedBenefits,
-  membershipBenefits,
   membershipPriceParts,
   orderSummary,
   servicesAfterToggle,
@@ -96,26 +93,6 @@ describe("the plan's page", () => {
     expect(readMembershipCallbackTier("gold")).toBeNull();
     expect(readMembershipCallbackTier(null)).toBeNull();
   });
-
-  it("lists what Managed Website includes, starting with the free website", () => {
-    const benefits = membershipBenefits(["managed-website"], LISTING_BRAND);
-    expect(benefits[0]).toBe("Your business website, built free");
-    expect(benefits).toContain("Hosting and SSL certificate");
-    expect(benefits).toContain("2 small content edits a month, up to 30 minutes each");
-    expect(benefits).toContain("OyeChats professional chatbot");
-  });
-});
-
-describe("groupedBenefits", () => {
-  it("puts everything the plan holds under one Website heading, in order, losing no line", () => {
-    const groups = groupedBenefits(["managed-website"], LISTING_BRAND);
-    expect(groups.map((group) => group.name)).toEqual(["Website"]);
-    expect(groups[0]?.items).toEqual(membershipBenefits(["managed-website"], LISTING_BRAND));
-  });
-
-  it("holds nothing when the managed-website line is not in the basket", () => {
-    expect(groupedBenefits(["digital-growth", "local-seo-aeo"], LISTING_BRAND)).toEqual([]);
-  });
 });
 
 describe("membershipPriceParts", () => {
@@ -134,8 +111,34 @@ describe("membershipPriceParts", () => {
 });
 
 describe("orderSummary", () => {
-  const inr = { currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false } as const;
-  const usd = { currency: "USD", taxRateBasisPoints: 0, forfeited: false, hasEverPaid: false } as const;
+  const inr = { planInitialAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false } as const;
+  const usd = { planInitialAmountCents: 0, currency: "USD", taxRateBasisPoints: 0, forfeited: false, hasEverPaid: false } as const;
+
+  // Every basket the page can sell, in both currencies: what Razorpay is asked for, the ad credit frozen and the offer named.
+  const BASKETS: readonly (readonly [string, readonly MonthlyAddOnId[], number, number, number, number, string | null])[] = [
+    ["Managed Website", ["managed-website"], 354_000, 0, 7_500, 0, null],
+    ["Social Media and Ads", ["digital-growth"], 1_180_000, 0, 7_500, 0, null],
+    ["Local SEO + AEO", ["local-seo-aeo"], 2_950_000, 0, 35_000, 0, null],
+    ["website and social", ["managed-website", "digital-growth"], 1_227_200, 200_000, 12_000, 2_500, "Package offer, 20% off"],
+    ["website and SEO", ["managed-website", "local-seo-aeo"], 2_643_200, 0, 34_000, 0, "Package offer, 20% off"],
+    ["social and SEO", ["digital-growth", "local-seo-aeo"], 2_891_000, 200_000, 29_750, 2_500, "Package offer, 30% off"],
+    ["all three", ["managed-website", "digital-growth", "local-seo-aeo"], 3_138_800, 500_000, 35_000, 6_000, "Package offer, 30% off"],
+  ];
+
+  it.each(BASKETS)("charges %s what the checkout charges, with its ad credit and offer", (_name, services, inrTotal, inrCredit, usdTotal, usdCredit, offerLabel) => {
+    const rupees = orderSummary({ ...inr, services }, 0);
+    const dollars = orderSummary({ ...usd, services }, 0);
+    expect([rupees.totalCents, rupees.adCredit?.cents ?? 0, rupees.offer?.label ?? null]).toEqual([inrTotal, inrCredit, offerLabel]);
+    expect([dollars.totalCents, dollars.adCredit?.cents ?? 0, dollars.offer?.label ?? null]).toEqual([usdTotal, usdCredit, offerLabel]);
+  });
+
+  it("adds the plan's own price to the lines, as checkout charges it, and changes nothing on the plan that costs nothing", () => {
+    const priced = orderSummary({ ...inr, planInitialAmountCents: 100_000, services: ["managed-website"] }, 0);
+    expect(priced).toMatchObject({ netCents: 400_000, gstCents: 72_000, totalCents: 472_000 });
+    expect(priced.totalCents).toBe(chargedAmountCents(400_000, 0, 1800));
+    expect(orderSummary({ ...inr, planInitialAmountCents: 100_000, services: ["managed-website"] }, 30_000).totalCents).toBe(chargedAmountCents(400_000, 30_000, 1800));
+    expect(orderSummary({ ...inr, services: ["managed-website"] }, 0).totalCents).toBe(354_000);
+  });
 
   it("is one line at list for the website alone: no offer, no ad credit, GST on top", () => {
     const summary = orderSummary({ ...inr, services: ["managed-website"] }, 0);
@@ -228,17 +231,6 @@ describe("isWaitingOnPayment", () => {
 
   it("does not wait once the first payment is recorded", () => {
     expect(isWaitingOnPayment({ ...unsettled, status: "active", activatedAt: new Date() }, "received")).toBe(false);
-  });
-});
-
-describe("the plan list under Brandbasket", () => {
-  it("is the same list for the product as for a brand that sells the listing, since none of it is about the listing", () => {
-    const brandbasket = membershipBenefits(["managed-website"], BRAND);
-    expect(brandbasket).toEqual(membershipBenefits(["managed-website"], LISTING_BRAND));
-    expect(brandbasket.join(" ").toLowerCase()).not.toContain("listing");
-    for (const line of [...brandbasket, ...groupedBenefits(["managed-website"], BRAND).flatMap((group) => group.items)]) {
-      expect(line).not.toMatch(/first\s?fold/i);
-    }
   });
 });
 

@@ -13,6 +13,13 @@ describe("readBundleSelection", () => {
 });
 
 describe("bundleLines", () => {
+  it("prices a package at list once the business has given the offer up", () => {
+    expect(bundleLines(["managed-website", "digital-growth"], "INR", true).map((line) => [line.offerCents, line.netCents])).toEqual([
+      [0, 300_000],
+      [0, 1_000_000],
+    ]);
+  });
+
   it("prices one service at its list price", () => {
     expect(bundleLines(["digital-growth"], "INR")).toEqual([
       { addOn: "digital-growth", title: "Social Media and Ads", listCents: 1_000_000, offerCents: 0, netCents: 1_000_000 },
