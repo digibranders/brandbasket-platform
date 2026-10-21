@@ -35,6 +35,7 @@ import { activateFirstPayment, activateRenewalPayment } from "./server/billing-a
 import {
   addOnChargeDescription,
   finishAddOnAfterPayment,
+  moveBasketAtProvider,
   readAddOnAssessment,
   removeBundledAddOn,
   startAddOn,
@@ -459,6 +460,17 @@ describe("the add-on flow, with the provider", () => {
     expect(await rowFor(subscription, "digital-growth")).toMatchObject({ status: "active", providerScheduledAt: null });
   });
 
+  it("flags the subscription's payment when the provider refuses an add too small to charge, since it has no payment of its own", async () => {
+    const subscription = await paidSubscription();
+    await open(addition(subscription, { netCents: 50, chargeCents: 0 }));
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const refusing = deps({ changeSubscriptionPlanAtPeriodEnd: async () => Promise.reject(new Error("Razorpay is down")) });
+    expect(await moveBasketAtProvider(refusing, subscription.id, FIFTH_NOV)).toEqual({ kind: "failed" });
+
+    expect((await findPaymentByProviderId(dbs.staff.db, "fake", "fake_pay_first"))?.attentionReason).toBe("add_on_provider_pending");
+  });
+
   it("waits for the renewal in the last hour of the month", async () => {
     const subscription = await paidSubscription();
     const lastHalfHour = new Date((subscription.paidThroughAt ?? PAID_AT).getTime() - 30 * 60 * 1000);
@@ -679,6 +691,39 @@ describe("adding a service moves the basket to the package price", () => {
         pendingBundledAddOnNetCents: 1_040_000,
       });
       expect(plansMade).toEqual([{ net: 1_040_000, discount: 0 }]);
+    });
+
+    async function codedWebsiteWithOffer(): Promise<Subscription> {
+      const subscription = await codedWebsite();
+      await dbs.owner.db.update(subscriptions).set({ retentionDiscountCents: 10_000 });
+      return subscription;
+    }
+
+    it("zeroes the frozen stay offer with the code's discount, so the renewal invoice has no discount to place", async () => {
+      const subscription = await codedWebsiteWithOffer();
+
+      await addAndPay("digital-growth");
+
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountAmountCents: 0, retentionDiscountCents: 0 });
+    });
+
+    it("leaves a second add alone once the discount is gone", async () => {
+      const subscription = await codedWebsiteWithOffer();
+      await addAndPay("digital-growth");
+
+      await addAndPay("local-seo-aeo");
+
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountAmountCents: 0, retentionDiscountCents: 0, pendingBundledAddOnNetCents: 2_660_000 });
+    });
+
+    it("counts only the lines that are staying: a service on its way out does not make a package", async () => {
+      const subscription = await codedWebsiteWithOffer();
+      // The first service is already ending when a second arrives, so only one line is staying.
+      await dbs.owner.db.update(bundledAddOns).set({ endRequestedAt: FIFTH_NOV });
+
+      await open(addition(subscription, { addOn: "local-seo-aeo", listAmountCents: 2_500_000, netCents: 50, chargeCents: 0 }));
+
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountAmountCents: 30_000, retentionDiscountCents: 10_000 });
     });
   });
 

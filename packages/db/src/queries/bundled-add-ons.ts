@@ -380,21 +380,23 @@ async function settlePendingNet(tx: ScopedTransaction, subscriptionId: string, n
 }
 
 /**
- * A package replaces a referral code: a subscription with more than one active service line carries no code discount (a
- * code is for a single service only, plan 16 Settled 2). Called whenever a line becomes active, so the next renewal, the
- * amount the provider is told and the invoice all see the discount gone. The code stays on the subscription for the record,
- * and a stay offer, which is not a code's, stays.
+ * A package replaces a referral code: a subscription with more than one service line staying carries no discount of its own
+ * (a code is for a single service only, plan 16 Settled 2). Counts the lines the package price counts, the active ones not
+ * asked to end. Called whenever a line becomes active, so the next renewal, the amount the provider is told and the invoice
+ * all see the discount gone. The code stays on the subscription for the record. A stay offer frozen on an old subscription
+ * goes with it (stay offers are removed in plan 16 phase 5): the renewal invoice puts a discount on a single service line
+ * only, so one left on a package would stop it being issued.
  */
 async function endCodeDiscountOfPackage(tx: ScopedTransaction, subscriptionId: string, now: Date): Promise<void> {
-  const active = await tx
+  const staying = await tx
     .select({ id: bundledAddOns.id })
     .from(bundledAddOns)
-    .where(and(eq(bundledAddOns.subscriptionId, subscriptionId), eq(bundledAddOns.status, "active")));
-  if (active.length < 2) return;
+    .where(and(eq(bundledAddOns.subscriptionId, subscriptionId), eq(bundledAddOns.status, "active"), isNull(bundledAddOns.endRequestedAt)));
+  if (staying.length < 2) return;
   await tx
     .update(subscriptions)
-    .set({ discountAmountCents: sql`${subscriptions.retentionDiscountCents}`, updatedAt: now })
-    .where(and(eq(subscriptions.id, subscriptionId), sql`${subscriptions.discountAmountCents} > ${subscriptions.retentionDiscountCents}`));
+    .set({ discountAmountCents: 0, retentionDiscountCents: 0, updatedAt: now })
+    .where(and(eq(subscriptions.id, subscriptionId), sql`(${subscriptions.discountAmountCents} > 0 or ${subscriptions.retentionDiscountCents} > 0)`));
 }
 
 /** Closes an add-on still waiting for its charge: the row stops and an open charge is waived, so it can no longer be paid. */

@@ -7,6 +7,7 @@ import {
   findBundledAddOnsForSubscription,
   findPlanById,
   findSubscriptionByProviderId,
+  flagPaymentForAttention,
   hasEverPaid,
   lockBusinessForBilling,
   recordUnappliedAddOnPayment,
@@ -311,11 +312,19 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           await completeBundledAddOnChanges(tx, { subscriptionId: subscription.id, now: event.paidAt });
         } else if (subscription.pendingBundledAddOnNetCents !== null && !renewal.alreadyRecorded && !renewalAtNewPrice) {
           // Renewed at the old amount while an add-on change was waiting: the provider has not moved the subscription.
+          // The customer paid the old amount for a basket that has changed (a service added, or one taken out that is still
+          // charged), so the payment is flagged for staff, who see it under payments needing attention.
           logBillingEvent("warn", "bundled-renewal-at-old-amount", {
             businessId: subscription.businessId,
             subscriptionId: subscription.id,
             provider: "razorpay",
             providerPaymentId: event.paymentId,
+          });
+          await flagPaymentForAttention(tx, {
+            paymentId: renewal.payment.id,
+            businessId: subscription.businessId,
+            reason: "add_on_provider_pending",
+            now: event.paidAt,
           });
         }
         if (renewalAtNewPrice && !renewal.alreadyRecorded) {

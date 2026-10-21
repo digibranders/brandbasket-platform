@@ -9,6 +9,7 @@ vi.mock("@brandbasket/db", async () => {
     ...actual,
     findSubscriptionByProviderId: vi.fn(),
     findBundledAddOnsForSubscription: vi.fn(async () => []),
+    flagPaymentForAttention: vi.fn(),
     findPlanById: vi.fn(),
     updateSubscriptionProviderStatus: vi.fn(),
     recordUnappliedPayment: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock("@brandbasket/db", async () => {
   };
 });
 vi.mock("@brandbasket/shared/server/billing-activation", () => ({
-  activateRenewalPayment: vi.fn(async () => ({ alreadyRecorded: false })),
+  activateRenewalPayment: vi.fn(async () => ({ alreadyRecorded: false, payment: { id: "pay_row_1" } })),
   // A client from a setup link, unless a test says otherwise: nothing to open.
   activateFirstPayment: vi.fn(async () => ({ openedMembership: null })),
   activateReactivationPayment: vi.fn(async () => ({ alreadyRecorded: false })),
@@ -51,6 +52,7 @@ import {
   findBundledAddOnsForSubscription,
   findPlanById,
   findSubscriptionByProviderId,
+  flagPaymentForAttention,
   hasEverPaid,
   lockBusinessForBilling,
   recordUnappliedAddOnPayment,
@@ -793,7 +795,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
       expect(recordUnappliedPayment).not.toHaveBeenCalled();
     });
 
-    it("still accepts the old amount if the provider had not moved yet, and says so, without finishing the removal", async () => {
+    it("still accepts the old amount if the provider had not moved yet, flags the payment for staff, without finishing the removal", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(WITH_REMOVAL as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
       vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("social-media", new Date("2026-10-02T00:00:00.000Z")), row("advertising", null)] as never);
@@ -802,6 +804,12 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
 
       expect(activateRenewalPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: OLD_TOTAL }));
       expect(completeBundledAddOnChanges).not.toHaveBeenCalled();
+      expect(flagPaymentForAttention).toHaveBeenCalledWith(expect.anything(), {
+        paymentId: "pay_row_1",
+        businessId: "biz_6",
+        reason: "add_on_provider_pending",
+        now: new Date("2026-10-14T12:00:00.000Z"),
+      });
     });
 
     it("refuses an amount that is neither", async () => {
@@ -861,6 +869,17 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
         expect.objectContaining({ amountCents: OLD_TOTAL, invoicedPrice: expect.objectContaining({ bundledAddOns: [] }) }),
       );
       expect(completeBundledAddOnChanges).not.toHaveBeenCalled();
+      expect(flagPaymentForAttention).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ paymentId: "pay_row_1", reason: "add_on_provider_pending" }));
+    });
+
+    it("flags nothing when the renewal arrives at the new amount", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue(ADDED as never);
+      vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("digital-growth", 700_000, null)] as never);
+
+      await handleRazorpayWebhookEvent(chargedAt(NEW_TOTAL));
+
+      expect(flagPaymentForAttention).not.toHaveBeenCalled();
     });
 
     it("finishes an add-on added and then taken out in the same month at the plan's own price", async () => {

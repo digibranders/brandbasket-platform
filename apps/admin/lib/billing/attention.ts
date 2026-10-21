@@ -29,8 +29,9 @@ export const PAYMENT_ATTENTION_LABELS: Readonly<
     action: "Nothing changed for the client: their month had renewed or their plan was ending. Refund it at the provider; they can add it again from Add-ons.",
   },
   add_on_provider_pending: {
-    title: "Added an add-on, but the provider wasn’t told",
-    action: "The add-on is on. Use Retry on their page to tell the provider to bill it from the next renewal.",
+    title: "A service change didn’t reach the provider",
+    action:
+      "A service was added or removed, but the provider wasn’t told the new monthly amount. For an add, the service is on: use Retry on their page, which also moves their other services to the package price from the next renewal. For a removal that still shows, press Remove again.",
   },
   submission_failed: {
     title: "Paid, but sending their answers failed",

@@ -305,12 +305,13 @@ export async function moveBasketAtProvider(deps: BasketDeps, subscriptionId: str
     logBillingEvent("error", "add-on-provider-failed", { ...fields, ...describeError(error) });
     if (error instanceof BasketChangedError) await putProviderOnDatabaseAmount(deps, subscriptionId, error.derivedNetCents);
     for (const row of waiting) {
-      if (row.chargeId === null) continue;
-      const charge = await findChargeForBusiness(staffDb, subscription.businessId, row.chargeId);
+      const charge = row.chargeId === null ? null : await findChargeForBusiness(staffDb, subscription.businessId, row.chargeId);
       if (charge?.paymentId != null) {
         await flagPaymentForAttention(staffDb, { paymentId: charge.paymentId, businessId: subscription.businessId, reason: "add_on_provider_pending", now });
       }
     }
+    // An add too small to charge (under ₹1) has no payment of its own to flag: the subscription's is flagged instead.
+    if (waiting.some((row) => row.chargeId === null)) await flagForStaff(deps, { businessId: subscription.businessId, subscriptionId }, now);
     return { kind: "failed" };
   }
 }
