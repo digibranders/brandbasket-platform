@@ -60,8 +60,8 @@ async function billedLines(tx: ScopedTransaction, subscriptionId: string): Promi
 
 /**
  * The one activation path for a first payment, however it arrived (the provider's checkout or an admin recording a
- * bank transfer). It records what was charged (the plan's initial amount less any referral discount, plus the
- * plan's tax), opens the subscription until
+ * bank transfer). It records what was charged (the services' nets, with the plan row's own initial amount if it has one,
+ * less any referral discount, plus the plan's tax), opens the subscription until
  * `plan.initialTermMonths` calendar months after payment (the paid-up-front term is also the commitment), and marks
  * the lead paid, all inside the caller's staff transaction. Idempotent on the provider payment id.
  *
@@ -71,7 +71,7 @@ async function billedLines(tx: ScopedTransaction, subscriptionId: string): Promi
  * The term is unaffected by a discount: a referral code lowers the price, never the length of what it buys.
  *
  * A payment on an affiliate code also writes what the affiliate earned from it, in the same transaction.
- * Issues the payment's tax invoice last, in a savepoint (D7).
+ * Issues the payment's tax invoice last, in a savepoint (D7), a line for each service as it was billed.
  */
 export async function activateFirstPayment(tx: ScopedTransaction, payment: FirstPayment): Promise<FirstPaymentActivation> {
   const termEnd = addMonthsUtc(payment.paidAt, payment.plan.initialTermMonths);
@@ -212,7 +212,7 @@ export interface ReactivationPayment {
 /**
  * The first payment on a new subscription for a business that paid before and lapsed (docs/superpowers/specs/2026-10-09-
  * reactivation-design.md). Missed months are not charged: it buys one month from the day it is paid, at the plan's
- * monthly price plus the services its checkout was opened with, with its tax and no coupon. It is not a first payment: no
+ * monthly price (0 for a services plan) plus the services its checkout was opened with, with its tax and no coupon. It is not a first payment: no
  * lead is marked paid, no membership opens (the business is already a client) and no affiliate earns on it. Idempotent on
  * the provider payment id. Issues the payment's tax invoice last, in a savepoint (D7).
  */

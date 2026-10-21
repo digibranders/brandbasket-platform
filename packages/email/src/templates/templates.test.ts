@@ -754,12 +754,12 @@ describe("paymentReceivedEmail", () => {
       ...base,
       lines: [
         { label: "Social media", amountCents: 199_900 },
-        { label: "Lifetime offer, 5% off", amountCents: -9_995 },
+        { label: "Package offer, 20% off", amountCents: -39_980 },
       ],
-      gstCents: 34_183,
-      totalCents: 224_088,
+      gstCents: 28_786,
+      totalCents: 188_706,
     });
-    expect(email.bodyText).toContain("Lifetime offer, 5% off: minus ₹99.95");
+    expect(email.bodyText).toContain("Package offer, 20% off: minus ₹399.80");
   });
 
   it("escapes what customers typed", () => {

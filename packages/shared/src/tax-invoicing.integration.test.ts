@@ -19,7 +19,7 @@ import {
   type ReferralDiscount,
   type ScopedTransaction,
 } from "@brandbasket/db";
-import { execSql, openTestDatabases, querySql, resetTestDatabase, seedManagedWebsitePlans, type TestDatabases } from "@brandbasket/db/testing";
+import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
 import { issueTaxInvoice, issueTaxInvoiceSafely, type InvoiceSource, type IssuedTaxInvoice } from "./server/tax-invoicing";
 
 // tax-invoicing is server-only in the app; there is no browser here to keep it out of.
@@ -33,14 +33,18 @@ vi.mock("server-only", () => ({}));
 const STAFF_USER = "staff-1";
 const PAID_AT = new Date("2026-10-09T09:00:00.000Z");
 const PERIOD_END = new Date("2026-11-09T09:00:00.000Z");
-/** Premium at ₹6,999 less a 20% coupon: ₹5,599.20 taxable, CGST and SGST ₹503.93 each, ₹6,607.06 charged. */
+/**
+ * A plan line at a price of its own, the way plans were sold before the services became lines (the plan row itself costs
+ * nothing now, so these amounts are the source's): ₹6,999 less a 20% coupon is ₹5,599.20 taxable, CGST and SGST ₹503.93 each,
+ * ₹6,607.06 charged.
+ */
 const NET_CENTS = 699_900;
 const DISCOUNT_CENTS = 139_980;
 const PLAN_CHARGED_CENTS = chargedAmountCents(NET_CENTS, DISCOUNT_CENTS, 1_800);
 
 let dbs: TestDatabases;
 let businessId = "";
-let premium: Plan;
+let servicesPlan: Plan;
 
 const MAHARASHTRA_DETAILS = {
   legalName: "QA Premium Business LLP",
@@ -126,7 +130,7 @@ async function seedCouponRenewal(providerPaymentId = "fake_pay_renewal", coupon:
   });
   const subscription = await insertSubscription(dbs.staff.db, {
     businessId,
-    planId: premium.id,
+    planId: servicesPlan.id,
     provider: "fake",
     providerSubscriptionId: `fake_sub_${"c".repeat(24)}`,
     referralCodeId: code.id,
@@ -147,10 +151,10 @@ async function seedCouponRenewal(providerPaymentId = "fake_pay_renewal", coupon:
 }
 
 /** The month a renewal paid for, at Premium's ₹6,999 less `discountAmountCents` (the 20% coupon unless given). */
-function planSource(discountAmountCents = DISCOUNT_CENTS, retentionDiscountCents = 0): InvoiceSource {
+function planSource(discountAmountCents = DISCOUNT_CENTS, retentionDiscountCents = 0): Extract<InvoiceSource, { kind: "plan" }> {
   return {
     kind: "plan",
-    plan: premium,
+    plan: servicesPlan,
     netAmountCents: NET_CENTS,
     discountAmountCents,
     retentionDiscountCents,
@@ -188,10 +192,10 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
-  await seedManagedWebsitePlans(dbs.owner);
+  await seedPlansFromMigrations(dbs.owner);
   const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
-  if (plan === null) throw new Error("No active INR Premium plan was seeded");
-  premium = plan;
+  if (plan === null) throw new Error("No active INR services plan was seeded");
+  servicesPlan = plan;
   await dbs.owner.db.insert(users).values({ id: STAFF_USER, name: "Superadmin", email: "admin@example.test", emailVerified: true });
   const rows = await dbs.owner.db
     .insert(businesses)
@@ -235,7 +239,7 @@ describe("issueTaxInvoice", () => {
     });
     expect(invoice?.lines).toEqual([
       {
-        description: "Brandbasket Managed Website plan",
+        description: "Brandbasket services plan",
         detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
         note: "Coupon GAURAV applied, 20% off",
         sac: "998361",
@@ -270,13 +274,47 @@ describe("issueTaxInvoice", () => {
     expect(console.info).toHaveBeenCalledWith(expect.stringContaining('"invoiceNumber":"FY/26-27/000001"'));
   });
 
+  it("invoices a package at the odd prices to the paisa, with the GST on the total shared over the lines and the lines kept beside the payment", async () => {
+    await saveDetails();
+    // ₹2,999 and ₹9,999 at 20% off, the total floored to the whole rupee: the dearest line carries 40 paise more of discount.
+    const bundledAddOns = [
+      { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 59_980, taxRateBasisPoints: 1_800 },
+      { addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 199_980 + 40, taxRateBasisPoints: 1_800 },
+    ];
+    const payment = await seedPayment(dbs.staff.db, "fake_pay_odd", { kind: "initial", amountCents: 1_226_964 });
+
+    const invoice = await issueSafely(payment, { ...planSource(0), netAmountCents: 0, bundledAddOns });
+
+    expect(invoice).toMatchObject({ taxableCents: 1_039_800, cgstCents: 93_582, sgstCents: 93_582, roundOffCents: 0, totalCents: 1_226_964 });
+    expect(invoice?.lines.map((line) => [line.taxableCents, line.cgstCents, line.sgstCents, line.taxCents])).toEqual([
+      [239_920, 21_593, 21_593, 43_186],
+      [799_880, 71_989, 71_989, 143_978],
+    ]);
+    const kept = await querySql<{ invoice_basis: unknown }>(dbs.owner, `select invoice_basis from payments where id = '${payment.id}'`);
+    expect(kept[0]?.invoice_basis).toEqual({ netAmountCents: 0, discountAmountCents: 0, retentionDiscountCents: 0, lines: bundledAddOns });
+  });
+
+  it("prints the one paisa that equal CGST and SGST cannot share as a round-off when the GST on the total is odd", async () => {
+    await saveDetails();
+    // ₹2,399.20 and ₹7,999.20: the GST on their total, 187,171.2, rounds to 187,171, and the two halves can only be even.
+    const bundledAddOns = [
+      { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 59_980, taxRateBasisPoints: 1_800 },
+      { addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 199_980, taxRateBasisPoints: 1_800 },
+    ];
+    const payment = await seedPayment(dbs.staff.db, "fake_pay_odd_gst", { kind: "initial", amountCents: 1_227_011 });
+
+    const invoice = await issueSafely(payment, { ...planSource(0), netAmountCents: 0, bundledAddOns });
+
+    expect(invoice).toMatchObject({ taxableCents: 1_039_840, cgstCents: 93_586, sgstCents: 93_586, roundOffCents: -1, totalCents: 1_227_011 });
+  });
+
   it("issues the invoice in the FY series, trading as Brandbasket", async () => {
     await saveDetails();
     const invoice = await issueSafely(await seedCouponRenewal("fake_pay_brandbasket"), planSource());
 
     expect(invoice).toMatchObject({ number: "FY/26-27/000001", prefix: "FY", serial: 1 });
     expect(invoice?.supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Brandbasket", email: "hello@brandbasket.in", gstin: "27AAICD9268J1Z0" });
-    expect(invoice?.lines[0]?.description).toBe("Brandbasket Managed Website plan");
+    expect(invoice?.lines[0]?.description).toBe("Brandbasket services plan");
   });
 
   it("returns the invoice already issued when asked again, takes no new number and logs the issue once", async () => {

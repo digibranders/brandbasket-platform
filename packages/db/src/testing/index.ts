@@ -110,8 +110,6 @@ export async function captureErrorText(operation: Promise<unknown>): Promise<str
 
 /** The migration that made the plan row the subscription's terms at a price of 0: the services are its lines. */
 const SERVICE_PLAN_MIGRATION = new URL("../../migrations/0184_service_packages.sql", import.meta.url);
-/** The migration before it, whose plan row was Managed Website at ₹2,999 ($75) a month. */
-const MANAGED_PLAN_MIGRATION = new URL("../../migrations/0180_managed_plan.sql", import.meta.url);
 
 /** One statement out of a migration file, found by what it contains, so tests run exactly what ships. */
 async function statementFrom(migrationUrl: URL, marker: string): Promise<string> {
@@ -124,16 +122,6 @@ async function statementFrom(migrationUrl: URL, marker: string): Promise<string>
 /** resetTestDatabase empties every table, the seeded plan included. This re-applies the services plan INSERT from 0184. */
 export async function seedPlansFromMigrations(owner: DatabaseHandle): Promise<void> {
   await owner.db.execute(sql.raw(await statementFrom(SERVICE_PLAN_MIGRATION, 'INSERT INTO "plans"')));
-}
-
-/**
- * Seeds the Managed Website plan of 0180 instead, priced on the plan row, for the suites that cover the plan-priced paths:
- * the plan line of an invoice, proration against the plan's price. Those paths still exist but sell nothing since 0184;
- * plan 16 moves each onto service lines (checkout and referrals moved in P3.2, add-ons P4.1, invoices P6), and its suite
- * onto seedPlansFromMigrations with it.
- */
-export async function seedManagedWebsitePlans(owner: DatabaseHandle): Promise<void> {
-  await owner.db.execute(sql.raw(await statementFrom(MANAGED_PLAN_MIGRATION, 'INSERT INTO "plans"')));
 }
 
 /**

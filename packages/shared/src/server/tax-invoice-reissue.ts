@@ -2,16 +2,13 @@ import "server-only";
 import { addMonthsUtc, chargedAmountCents } from "@brandbasket/billing";
 import {
   findAddOnSubscriptionForPayment,
-  findBundledAddOnsForSubscription,
   findChargeByPaymentId,
+  findPaymentInvoiceBasis,
   findPlanById,
   findSubscriptionById,
   listPaymentsWithoutTaxInvoice,
-  type BundledAddOn,
   type Payment,
-  type Plan,
   type ScopedTransaction,
-  type Subscription,
   type TaxInvoice,
 } from "@brandbasket/db";
 import { issueTaxInvoice, type InvoiceSource } from "./tax-invoicing";
@@ -24,7 +21,10 @@ export class NoMissingInvoiceError extends Error {
   }
 }
 
-/** No price this code knows explains what the payment took (a plan changed since, say). Engineering issues it by hand. */
+/**
+ * What the payment kept of its own billing does not explain what it took, or it kept none (it was recorded before the lines
+ * were kept). Engineering issues it by hand.
+ */
 export class InvoiceSourceMismatchError extends Error {
   constructor(kind: string) {
     super(`No price explains this ${kind} payment`);
@@ -40,65 +40,13 @@ export class UnsupportedPaymentKindError extends Error {
   }
 }
 
-/** One price a payment may have been charged at: what an InvoiceSource needs besides the plan and the period. */
-interface Price {
-  /** The add-ons billed inside the plan's charge, each a line of its own; empty for a plan alone. */
-  readonly bundledAddOns: readonly BundledAddOn[];
-  readonly netAmountCents: number;
-  readonly discountAmountCents: number;
-  readonly retentionDiscountCents: number;
-}
-
 /**
- * The prices a payment of this kind may have been charged at, most likely first. The payment row does not keep the
- * price it was charged at, and a subscription's discount can change after a payment (a stay offer is added), so a
- * payment is tried against what the subscription holds now and then against what it held before.
- */
-function candidatePrices(kind: Payment["kind"], plan: Plan, subscription: Subscription, bundled: readonly BundledAddOn[]): readonly Price[] {
-  const couponCents = subscription.discountAmountCents - subscription.retentionDiscountCents;
-  // A charge that took the add-ons too is tried first, then the plan alone (a payment from before they were bundled).
-  const withAddOns = (prices: readonly Omit<Price, "bundledAddOns">[]): readonly Price[] => [
-    ...(bundled.length === 0 ? [] : prices.map((price) => ({ ...price, bundledAddOns: bundled }))),
-    ...prices.map((price) => ({ ...price, bundledAddOns: [] })),
-  ];
-  switch (kind) {
-    case "initial":
-      return withAddOns([
-        { netAmountCents: plan.initialAmountCents, discountAmountCents: couponCents, retentionDiscountCents: 0 },
-        { netAmountCents: plan.initialAmountCents, discountAmountCents: 0, retentionDiscountCents: 0 },
-      ]);
-    case "renewal":
-      return withAddOns([
-        {
-          netAmountCents: plan.recurringAmountCents,
-          discountAmountCents: subscription.discountAmountCents,
-          retentionDiscountCents: subscription.retentionDiscountCents,
-        },
-        { netAmountCents: plan.recurringAmountCents, discountAmountCents: couponCents, retentionDiscountCents: 0 },
-        { netAmountCents: plan.recurringAmountCents, discountAmountCents: 0, retentionDiscountCents: 0 },
-      ]);
-    case "reactivation":
-      return [{ bundledAddOns: [], netAmountCents: plan.recurringAmountCents, discountAmountCents: 0, retentionDiscountCents: 0 }];
-    default:
-      return [];
-  }
-}
-
-/** The first price whose charged amount is exactly what the payment took. A discount that leaves nothing never matches. */
-function matching(payment: Payment, plan: Plan, prices: readonly Price[]): Price | null {
-  for (const price of prices) {
-    if (price.discountAmountCents >= price.netAmountCents) continue;
-    const net = price.netAmountCents + price.bundledAddOns.reduce((total, row) => total + row.netAmountCents, 0);
-    if (chargedAmountCents(net, price.discountAmountCents, plan.taxRateBasisPoints) === payment.amountCents) return price;
-  }
-  return null;
-}
-
-/**
- * What a recorded payment bought, rebuilt from the database for an invoice issued after the fact. The payment row
- * does not keep the price it was charged at, so the candidates are tried in order and only an exact match is used:
- * the invoice then explains the charge to the paisa, as buildTaxInvoice also checks. The period is the payment date
- * plus the plan's initial term (a first payment) or one month, since the provider's cycle dates are not kept.
+ * What a recorded payment bought, rebuilt from the database for an invoice issued after the fact. A plan payment is rebuilt
+ * from the lines it was billed at, which the payment path kept beside it (savePaymentInvoiceBasis), never from the
+ * subscription's rows as they stand now: a service dropped, the package offer forfeited or a code's discount ended since
+ * would otherwise print a different invoice from the one the payment path would have issued. The lines must come to exactly
+ * what the payment took, as buildTaxInvoice also checks, so the invoice explains the charge to the paisa. The period is the
+ * payment date plus the plan's initial term (a first payment) or one month, since the provider's cycle dates are not kept.
  */
 async function sourceFor(tx: ScopedTransaction, payment: Payment): Promise<InvoiceSource> {
   // Nothing records a payment of this kind today (the value is left from the first billing tables), so there is no
@@ -118,15 +66,21 @@ async function sourceFor(tx: ScopedTransaction, payment: Payment): Promise<Invoi
   }
   const subscription = payment.subscriptionId === null ? null : await findSubscriptionById(tx, payment.subscriptionId);
   const plan = subscription === null ? null : await findPlanById(tx, subscription.planId);
-  if (subscription === null || plan === null || payment.paidAt === null) throw new InvoiceSourceMismatchError(payment.kind);
-  const bundled = (await findBundledAddOnsForSubscription(tx, subscription.id)).filter((row) => row.activatedAt !== null);
-  const price = matching(payment, plan, candidatePrices(payment.kind, plan, subscription, bundled));
-  if (price === null) throw new InvoiceSourceMismatchError(payment.kind);
+  const basis = await findPaymentInvoiceBasis(tx, payment.id);
+  if (subscription === null || plan === null || basis === null || payment.paidAt === null) throw new InvoiceSourceMismatchError(payment.kind);
+  const net = basis.netAmountCents + basis.lines.reduce((total, line) => total + line.listAmountCents - line.offerDiscountAmountCents, 0);
+  // A discount that leaves nothing never matches (chargedAmountCents would refuse it).
+  if (basis.discountAmountCents >= net || chargedAmountCents(net, basis.discountAmountCents, plan.taxRateBasisPoints) !== payment.amountCents) {
+    throw new InvoiceSourceMismatchError(payment.kind);
+  }
   const initial = payment.kind === "initial";
   return {
     kind: "plan",
     plan,
-    ...price,
+    bundledAddOns: basis.lines,
+    netAmountCents: basis.netAmountCents,
+    discountAmountCents: basis.discountAmountCents,
+    retentionDiscountCents: basis.retentionDiscountCents,
     monthly: !initial || plan.initialTermMonths === 1,
     periodStart: payment.paidAt,
     periodEnd: addMonthsUtc(payment.paidAt, initial ? plan.initialTermMonths : 1),

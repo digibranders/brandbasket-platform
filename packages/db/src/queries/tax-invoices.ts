@@ -14,6 +14,7 @@ import {
   users,
   type BillingCurrency,
   type BillingProfile,
+  type PaymentInvoiceBasis,
   type ReferralValueKind,
   type TaxInvoice,
 } from "../schema";
@@ -133,6 +134,20 @@ export async function listPaymentsWithoutTaxInvoice(db: Runner, businessId: stri
     .from(payments)
     .where(and(eq(payments.businessId, businessId), missingTaxInvoice(db)))
     .orderBy(asc(payments.paidAt));
+}
+
+/**
+ * Keeps what a plan payment was billed as beside it (PaymentInvoiceBasis), for an invoice that has to be issued later. In the
+ * payment's own transaction, before its invoice is attempted, so a refused invoice leaves it behind. Staff connection.
+ */
+export async function savePaymentInvoiceBasis(db: ScopedTransaction, paymentId: string, basis: PaymentInvoiceBasis): Promise<void> {
+  await db.update(payments).set({ invoiceBasis: basis }).where(eq(payments.id, paymentId));
+}
+
+/** What a payment was billed as, or null when it was recorded without it (PaymentInvoiceBasis). Staff connection. */
+export async function findPaymentInvoiceBasis(db: Runner, paymentId: string): Promise<PaymentInvoiceBasis | null> {
+  const rows = await db.select({ basis: payments.invoiceBasis }).from(payments).where(eq(payments.id, paymentId)).limit(1);
+  return rows[0]?.basis ?? null;
 }
 
 /**

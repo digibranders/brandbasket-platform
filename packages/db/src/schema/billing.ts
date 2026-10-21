@@ -5,6 +5,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -296,6 +297,31 @@ export const providerBundlePlans = pgTable(
   ],
 );
 
+/**
+ * What a plan payment was billed as, kept beside the payment so an invoice issued after the fact (staff issue one when the
+ * payment path could not) is exactly the one the payment path would have issued, whatever has changed since: a service
+ * dropped, the package offer forfeited, a code's discount ended. The services are the lines of the subscription as that
+ * payment billed them; the plan row's own amounts are 0 for a services plan and kept so an older priced plan still explains
+ * its payments. Null for payments invoiced from another record (a charge, an add-on subscription) and for payments
+ * recorded before this was kept.
+ */
+export interface PaymentInvoiceBasis {
+  /** The plan row's price before discount: 0 for a services plan. */
+  readonly netAmountCents: number;
+  /** Everything taken off this payment: the referral code's share plus any stay offer. */
+  readonly discountAmountCents: number;
+  /** The stay offer's part of `discountAmountCents`, or 0. */
+  readonly retentionDiscountCents: number;
+  /** The services billed in the charge, in the order they were added. */
+  readonly lines: readonly {
+    readonly addOn: string;
+    readonly listAmountCents: number;
+    /** The package offer taken off the list price; 0 for a service at list. */
+    readonly offerDiscountAmountCents: number;
+    readonly taxRateBasisPoints: number;
+  }[];
+}
+
 export const payments = pgTable(
   "payments",
   {
@@ -338,6 +364,8 @@ export const payments = pgTable(
     cardType: text("card_type"),
     cardIssuer: text("card_issuer"),
     upiVpa: text("upi_vpa"),
+    /** What a plan payment was billed as (PaymentInvoiceBasis); see there. */
+    invoiceBasis: jsonb("invoice_basis").$type<PaymentInvoiceBasis>(),
     createdAt: createdAt(),
   },
   (table) => [

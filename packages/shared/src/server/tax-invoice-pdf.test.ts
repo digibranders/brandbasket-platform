@@ -116,6 +116,35 @@ describe("renderTaxInvoicesPdf", () => {
     expect(pdf.getPageCount()).toBe(1);
   });
 
+  it("draws a three service package invoice, a package note under each line, on one page", async () => {
+    const service = (description: string, unitAmountCents: number, discountAmountCents: number): TaxInvoiceLineRecord => {
+      const taxableCents = unitAmountCents - discountAmountCents;
+      return {
+        ...line,
+        description,
+        note: "Package offer, 30% off",
+        unitAmountCents,
+        grossAmountCents: unitAmountCents,
+        discountAmountCents,
+        taxableCents,
+        cgstCents: taxableCents * 0.09,
+        sgstCents: taxableCents * 0.09,
+        taxCents: taxableCents * 0.18,
+      };
+    };
+    const pdf = await pages([
+      {
+        ...invoice,
+        lines: [service("Managed Website", 300_000, 90_000), service("Social Media and Ads", 1_000_000, 300_000), service("Local SEO + AEO", 2_500_000, 750_000)],
+        taxableCents: 2_660_000,
+        cgstCents: 239_400,
+        sgstCents: 239_400,
+        totalCents: 3_138_800,
+      },
+    ]);
+    expect(pdf.getPageCount()).toBe(1);
+  });
+
   it("draws an other-state invoice with a round off row on one page", async () => {
     const pdf = await pages([
       {
