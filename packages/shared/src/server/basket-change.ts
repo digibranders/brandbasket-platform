@@ -242,6 +242,7 @@ export async function startAddOn(
         subscriptionId: subscription.id,
         addOn: input.addOn,
         listAmountCents: assessment.listCents,
+        offerDiscountAmountCents: 0,
         taxRateBasisPoints: plan.taxRateBasisPoints,
         currency: plan.currency,
         netCents: quote.netCents,

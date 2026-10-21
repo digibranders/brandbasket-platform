@@ -163,6 +163,8 @@ export interface Subscription {
   readonly bundledAddOnNetCents: number;
   /** What those add-ons cost once the ones the customer asked to remove have stopped, from the next renewal; null when none are waiting. */
   readonly pendingBundledAddOnNetCents: number | null;
+  /** Ad credit a month for a package bought together at the first checkout, frozen then; 0 for none. Never invoiced. */
+  readonly adCreditCents: number;
   readonly status: SubscriptionStatus;
   readonly activatedAt: Date | null;
   readonly commitmentEndsAt: Date | null;
@@ -188,6 +190,7 @@ const SUBSCRIPTION_COLUMNS = {
   pendingDiscountAmountCents: subscriptions.pendingDiscountAmountCents,
   bundledAddOnNetCents: subscriptions.bundledAddOnNetCents,
   pendingBundledAddOnNetCents: subscriptions.pendingBundledAddOnNetCents,
+  adCreditCents: subscriptions.adCreditCents,
   status: subscriptions.status,
   activatedAt: subscriptions.activatedAt,
   commitmentEndsAt: subscriptions.commitmentEndsAt,
@@ -351,6 +354,8 @@ export interface NewSubscription {
   readonly discountAmountCents?: number;
   /** What the add-ons taken at this checkout cost a month before GST: the sum of their net prices. Defaults to 0. */
   readonly bundledAddOnNetCents?: number;
+  /** Ad credit a month earned by the package bought at this checkout (adCreditCentsFor in @brandbasket/shared). Defaults to 0. */
+  readonly adCreditCents?: number;
 }
 
 /**
@@ -369,6 +374,7 @@ export async function insertSubscription(db: Runner, input: NewSubscription): Pr
       referralCodeId: input.referralCodeId ?? null,
       discountAmountCents: input.discountAmountCents ?? 0,
       bundledAddOnNetCents: input.bundledAddOnNetCents ?? 0,
+      adCreditCents: input.adCreditCents ?? 0,
       status: "incomplete",
     })
     .returning(SUBSCRIPTION_COLUMNS);
@@ -461,7 +467,10 @@ export interface CheckoutSubscription extends Omit<NewSubscription, "bundledAddO
   /** The unpaid subscription this one replaces, or null when the business has no live subscription. */
   readonly replacing: string | null;
   readonly now: Date;
-  /** The add-ons taken at this checkout, billed with the plan. Their net prices are summed onto the subscription. */
+  /**
+   * The services taken at this checkout, the website included, each at its package price: the plan row costs nothing, so
+   * these are what the provider bills. Their net prices are summed onto the subscription.
+   */
   readonly bundledAddOns?: readonly NewBundledAddOn[];
 }
 

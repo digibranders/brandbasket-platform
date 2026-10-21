@@ -3,6 +3,7 @@ import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import {
   bundledAddOns,
+  businesses,
   charges,
   providerBundlePlans,
   subscriptions,
@@ -15,12 +16,12 @@ import { isUuid } from "./tenant";
 /** Reads run both on their own and inside a tenant-scoped transaction, so they accept either runner. */
 type Runner = Database | ScopedTransaction;
 
-/** One add-on taken at the first checkout, priced as the checkout froze it. */
+/** One service taken at the first checkout, priced as the checkout froze it. */
 export interface NewBundledAddOn {
-  /** A monthly add-on id from the catalogue. */
+  /** A service id from the catalogue, the website included. */
   readonly addOn: string;
   readonly listAmountCents: number;
-  /** The 5% lifetime offer taken off the list price. */
+  /** The package offer taken off the list price; 0 for a service bought on its own. */
   readonly offerDiscountAmountCents: number;
   readonly netAmountCents: number;
   readonly taxRateBasisPoints: number;
@@ -179,12 +180,17 @@ export async function markBundledAddOnContacted(
   return rows.length > 0;
 }
 
+/** A line's net from the next renewal: list less the package offer it is moving to, or its own net when none is pending. */
+function nextNetCents(row: BundledAddOn): number {
+  return row.pendingOfferDiscountAmountCents === null ? row.netAmountCents : row.listAmountCents - row.pendingOfferDiscountAmountCents;
+}
+
 /**
  * What the monthly add-ons cost from the next renewal: the nets of the active add-ons that are not on their way out, those
- * added this month included. The figure the provider's plan is made at.
+ * added this month included, each at the package offer it is moving to. The figure the provider's plan is made at.
  */
 export function nextBundledNetCents(rows: readonly BundledAddOn[]): number {
-  return bundledNetCents(rows.filter((row) => row.status === "active" && row.endRequestedAt === null));
+  return rows.filter((row) => row.status === "active" && row.endRequestedAt === null).reduce((total, row) => total + nextNetCents(row), 0);
 }
 
 /** What the monthly add-ons cost once `removing` has stopped too. What `recordBundledAddOnRemoval` stores. */
@@ -228,8 +234,9 @@ export async function recordBundledAddOnRemoval(
 
 /**
  * The renewal at the new amount has been recorded: the add-ons the customer asked to remove stop (`removed`), the ones added
- * this month are billed from now, and the subscription's billed amount becomes the pending one. A no-op for a subscription
- * with no change waiting. Staff connection, in the transaction that records the renewal.
+ * this month are billed from now, a pending package offer becomes the line's own, and the subscription's billed amount becomes
+ * the pending one. A no-op for a subscription with no change waiting. Staff connection, in the transaction that records the
+ * renewal.
  */
 export async function completeBundledAddOnChanges(db: Runner, input: { readonly subscriptionId: string; readonly now: Date }): Promise<void> {
   if (!isUuid(input.subscriptionId)) return;
@@ -243,6 +250,21 @@ export async function completeBundledAddOnChanges(db: Runner, input: { readonly 
     .update(bundledAddOns)
     .set({ billedFrom: input.now, updatedAt: input.now })
     .where(and(eq(bundledAddOns.subscriptionId, input.subscriptionId), eq(bundledAddOns.status, "active"), isNull(bundledAddOns.billedFrom)));
+  await db
+    .update(bundledAddOns)
+    .set({
+      offerDiscountAmountCents: sql`${bundledAddOns.pendingOfferDiscountAmountCents}`,
+      netAmountCents: sql`${bundledAddOns.listAmountCents} - ${bundledAddOns.pendingOfferDiscountAmountCents}`,
+      pendingOfferDiscountAmountCents: null,
+      updatedAt: input.now,
+    })
+    .where(
+      and(
+        eq(bundledAddOns.subscriptionId, input.subscriptionId),
+        eq(bundledAddOns.status, "active"),
+        isNotNull(bundledAddOns.pendingOfferDiscountAmountCents),
+      ),
+    );
   await db
     .update(subscriptions)
     .set({ bundledAddOnNetCents: sql`${subscriptions.pendingBundledAddOnNetCents}`, pendingBundledAddOnNetCents: null, updatedAt: input.now })
@@ -264,11 +286,13 @@ export interface NewAddedAddOn {
   readonly subscriptionId: string;
   /** A monthly add-on id from the catalogue. */
   readonly addOn: string;
-  /** Its monthly list price, billed in full from the next renewal: an add-on added later has no offer. */
+  /** Its monthly list price. */
   readonly listAmountCents: number;
+  /** The package offer taken off it, at the basket's new package percentage (0 for none): billed from the next renewal. */
+  readonly offerDiscountAmountCents: number;
   readonly taxRateBasisPoints: number;
   readonly currency: BillingCurrency;
-  /** The share of the monthly price for the days left, before tax. */
+  /** The share of the monthly net price for the days left, before tax. */
   readonly netCents: number;
   /** What is taken now, tax included. Zero when the share is too small to charge: the add-on is on at once. */
   readonly chargeCents: number;
@@ -331,11 +355,12 @@ function stillQuotedFor(subscription: LockedSubscription, quotedPeriodEnd: Date)
 
 /**
  * Sets the amount the next renewal must arrive at from the subscription's add-ons as they now stand. Null when nothing is
- * changing (no add-on is ending or waiting to be billed), so the renewal is simply at the amount billed now.
+ * changing (no add-on is ending, waiting to be billed or moving to another package offer), so the renewal is simply at the
+ * amount billed now.
  */
 async function settlePendingNet(tx: ScopedTransaction, subscriptionId: string, now: Date): Promise<void> {
   const active = (await findBundledAddOnsForSubscription(tx, subscriptionId)).filter((row) => row.status === "active");
-  const changing = active.some((row) => row.endRequestedAt !== null || row.billedFrom === null);
+  const changing = active.some((row) => row.endRequestedAt !== null || row.billedFrom === null || row.pendingOfferDiscountAmountCents !== null);
   await tx
     .update(subscriptions)
     .set({ pendingBundledAddOnNetCents: changing ? nextBundledNetCents(active) : null, updatedAt: now })
@@ -383,8 +408,8 @@ export async function openBundledAddOn(tx: ScopedTransaction, input: NewAddedAdd
     subscriptionId: input.subscriptionId,
     addOn: input.addOn,
     listAmountCents: input.listAmountCents,
-    offerDiscountAmountCents: 0,
-    netAmountCents: input.listAmountCents,
+    offerDiscountAmountCents: input.offerDiscountAmountCents,
+    netAmountCents: input.listAmountCents - input.offerDiscountAmountCents,
     taxRateBasisPoints: input.taxRateBasisPoints,
     quotedPeriodEnd: input.quotedPeriodEnd,
     addedByStaffId: input.staffId,
@@ -512,4 +537,54 @@ export async function markBundledAddOnsScheduled(db: Runner, input: { readonly s
     )
     .returning({ id: bundledAddOns.id });
   return rows.length;
+}
+
+/** One line moving to another package offer from the next renewal. */
+export interface PendingOfferDiscount {
+  readonly id: string;
+  /** What the package offer will take off the line's list price: 0 for list price. */
+  readonly pendingOfferDiscountAmountCents: number;
+}
+
+/**
+ * Moves lines to another package offer from the next renewal, after the provider has been told to bill the new amount: a
+ * service was added (the basket's new percentage) or dropped (list price for good). Each line keeps its current price until
+ * that renewal, which completeBundledAddOnChanges records, and the subscription's pending amount is worked out again. Only
+ * the subscription's active lines that are staying are written. Inside the caller's transaction under its billing lock.
+ */
+export async function setPendingOfferDiscounts(
+  tx: ScopedTransaction,
+  input: { readonly subscriptionId: string; readonly lines: readonly PendingOfferDiscount[]; readonly now: Date },
+): Promise<void> {
+  if (!isUuid(input.subscriptionId)) return;
+  for (const line of input.lines) {
+    if (!isUuid(line.id)) continue;
+    await tx
+      .update(bundledAddOns)
+      .set({ pendingOfferDiscountAmountCents: line.pendingOfferDiscountAmountCents, updatedAt: input.now })
+      .where(
+        and(
+          eq(bundledAddOns.id, line.id),
+          eq(bundledAddOns.subscriptionId, input.subscriptionId),
+          eq(bundledAddOns.status, "active"),
+          isNull(bundledAddOns.endRequestedAt),
+        ),
+      );
+  }
+  await settlePendingNet(tx, input.subscriptionId, input.now);
+}
+
+/**
+ * Records that the business has dropped a service from a package: its package offer ends for good. The first time is kept,
+ * so a second call changes nothing. False when the business was already forfeited or does not exist. Staff connection, in
+ * the business's billing lock.
+ */
+export async function markPackageOfferForfeited(tx: ScopedTransaction, businessId: string, at: Date): Promise<boolean> {
+  if (!isUuid(businessId)) return false;
+  const rows = await tx
+    .update(businesses)
+    .set({ packageOfferForfeitedAt: at })
+    .where(and(eq(businesses.id, businessId), isNull(businesses.packageOfferForfeitedAt)))
+    .returning({ id: businesses.id });
+  return rows.length > 0;
 }

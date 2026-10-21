@@ -102,6 +102,7 @@ function addition(subscription: Subscription, overrides: Partial<NewAddedAddOn> 
     subscriptionId: subscription.id,
     addOn: "digital-growth",
     listAmountCents: 1_000_000,
+    offerDiscountAmountCents: 0,
     taxRateBasisPoints: 1_800,
     currency: "INR",
     netCents: 451_613,

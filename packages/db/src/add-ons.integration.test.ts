@@ -11,7 +11,6 @@ import {
   findAddOnSubscription,
   findAddOnSubscriptionByProviderId,
   findAddOnSubscriptionForPayment,
-  findLifetimeOfferStanding,
   insertAddOnSubscription,
   listAddOnSubscriptionsForBusiness,
   listAddOnSubscriptionsForStaff,
@@ -205,47 +204,6 @@ describe("add-on subscription rows", () => {
     await record(paymentFor(paid.id, "fake_pay_paid"));
     await dbs.staff.db.transaction((tx) => cancelStaleAddOnCheckout(tx, paid.id, LATER));
     expect(await findAddOnSubscription(dbs.staff.db, businessA, paid.id)).toMatchObject({ status: "active", endedAt: null });
-  });
-});
-
-describe("findLifetimeOfferStanding", () => {
-  /** A paid add-on row, with the offer in its price when `offerCents` is given. */
-  async function paidRow(businessId: string, addOn: "digital-growth" | "local-seo-aeo", offerCents: number, paymentId: string): Promise<void> {
-    const list = addOn === "digital-growth" ? 200_000 : 400_000;
-    const row = await insertAddOnSubscription(
-      dbs.staff.db,
-      addOnRow(businessId, {
-        addOn,
-        listAmountCents: list,
-        discountAmountCents: offerCents,
-        offerDiscountAmountCents: offerCents,
-        netAmountCents: list - offerCents,
-        chargedAmountCents: Math.round((list - offerCents) * 1.18),
-      }),
-    );
-    await record(paymentFor(row.id, paymentId, { amountCents: row.chargedAmountCents }));
-  }
-
-  it("claims an add-on only once its first payment is recorded with the offer in its price", async () => {
-    expect(await findLifetimeOfferStanding(dbs.staff.db, businessA)).toEqual({ claimed: [] });
-    // Unpaid: not yet claimed.
-    await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA, { offerDiscountAmountCents: 10_000, discountAmountCents: 10_000, netAmountCents: 990_000, chargedAmountCents: 1_168_200 }));
-    expect(await findLifetimeOfferStanding(dbs.staff.db, businessA)).toEqual({ claimed: [] });
-  });
-
-  it("claims each add-on on its own: one bought with the offer does not claim the one bought without it", async () => {
-    await paidRow(businessA, "digital-growth", 10_000, "fake_pay_offer_1");
-    await paidRow(businessA, "local-seo-aeo", 0, "fake_pay_offer_2");
-
-    expect(await findLifetimeOfferStanding(dbs.staff.db, businessA)).toEqual({ claimed: ["digital-growth"] });
-    expect(await findLifetimeOfferStanding(dbs.staff.db, businessB)).toEqual({ claimed: [] });
-    expect(await findLifetimeOfferStanding(dbs.staff.db, "not-a-uuid")).toEqual({ claimed: [] });
-  });
-
-  it("claims a cancelled add-on still: the discount is for life", async () => {
-    await paidRow(businessA, "local-seo-aeo", 20_000, "fake_pay_offer_3");
-    await dbs.staff.db.update(addOnSubscriptions).set({ status: "cancelled", endedAt: NOW }).where(eq(addOnSubscriptions.businessId, businessA));
-    expect(await findLifetimeOfferStanding(dbs.staff.db, businessA)).toEqual({ claimed: ["local-seo-aeo"] });
   });
 });
 

@@ -6,7 +6,6 @@ import {
   findActivePlan,
   findBundledAddOnsForSubscription,
   findLatestSubscriptionForBusiness,
-  findLifetimeOfferStanding,
   findPaymentByProviderId,
   findSubscriptionById,
   findTaxInvoiceByPaymentId,
@@ -136,12 +135,6 @@ describe("a first payment with add-ons", () => {
     expect(invoice?.cgstCents).toBe(invoice?.sgstCents);
   });
 
-  it("records the offer as claimed for each add-on taken, for good", async () => {
-    await payFirst(await openSubscription(bundleOf("digital-growth", "local-seo-aeo")));
-
-    expect([...(await findLifetimeOfferStanding(dbs.staff.db, businessId)).claimed].sort()).toEqual(["digital-growth", "local-seo-aeo"]);
-  });
-
   it("does nothing more when the same payment is delivered again", async () => {
     const subscription = await openSubscription(bundleOf("digital-growth"));
     await payFirst(subscription);
@@ -244,8 +237,6 @@ describe("a first payment with add-ons", () => {
         ["digital-growth", "removed"],
         ["local-seo-aeo", "active"],
       ]);
-      // The offer was earned, so it is still claimed for good.
-      expect([...(await findLifetimeOfferStanding(dbs.staff.db, businessId)).claimed].sort()).toEqual(["digital-growth", "local-seo-aeo"]);
     });
 
     it("takes the last add-on out to nothing", async () => {

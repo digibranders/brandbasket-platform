@@ -719,7 +719,6 @@ export {
   listAddOnSubscriptionsForBusiness,
   listAddOnSubscriptionsForStaff,
   listAddOnsToContact,
-  findLifetimeOfferStanding,
   listPressReleasesForBusiness,
   lockAddOnSubscription,
   markAddOnCancelled,
@@ -734,7 +733,6 @@ export {
   type AddOnProviderPlanKey,
   type AddOnSubscriptionForStaff,
   type AddOnToContact,
-  type LifetimeOfferStanding,
   type NewAddOnSubscription,
   type RecordedAddOnPayment,
 } from "./queries/add-ons";
@@ -760,12 +758,15 @@ export {
   insertBundledAddOns,
   listBundledAddOnsForBusiness,
   markBundledAddOnContacted,
+  markPackageOfferForfeited,
   removeBundledAddOnsOf,
   saveProviderBundlePlan,
+  setPendingOfferDiscounts,
   type BundlePlanKey,
   type NewAddedAddOn,
   type NewBundledAddOn,
   type OpenedBundledAddOn,
+  type PendingOfferDiscount,
 } from "./queries/bundled-add-ons";
 export {
   ChargeNotFoundError,
