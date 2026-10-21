@@ -12,8 +12,8 @@ import {
 import { isUuid } from "./tenant";
 
 /*
- * Leaving: the feedback an owner gives on the way out, the stay offer's discount, and the closure that locks an
- * account until its grace period ends. All of it runs on the staff connection, after the platform has checked the
+ * Leaving: the feedback an owner gives on the way out, and the closure that locks an account until its grace period
+ * ends. All of it runs on the staff connection, after the platform has checked the
  * signed-in customer: the customer's own database role has no grant on any of it.
  */
 
@@ -87,37 +87,6 @@ export async function restoreAccountClosure(db: Runner, input: { readonly userId
     .set({ restoredAt: input.now })
     .where(OPEN(input.userId))
     .returning({ id: accountClosures.id });
-  return rows.length > 0;
-}
-
-export interface RetentionDiscount {
-  readonly subscriptionId: string;
-  readonly businessId: string;
-  /** The stay offer's worth against the plan's net monthly price, in minor units. */
-  readonly retentionDiscountCents: number;
-}
-
-/**
- * Puts a stay offer on a subscription: its worth is added to whatever a referral code already takes off. An offer is
- * taken once, so the update matches only a subscription that has none. False when it matched nothing (the offer was
- * already taken, or the subscription is not that business's).
- */
-export async function applyRetentionDiscount(db: Runner, input: RetentionDiscount): Promise<boolean> {
-  if (!isUuid(input.subscriptionId) || !isUuid(input.businessId)) return false;
-  const rows = await db
-    .update(subscriptions)
-    .set({
-      retentionDiscountCents: input.retentionDiscountCents,
-      discountAmountCents: sql`${subscriptions.discountAmountCents} + ${input.retentionDiscountCents}`,
-    })
-    .where(
-      and(
-        eq(subscriptions.id, input.subscriptionId),
-        eq(subscriptions.businessId, input.businessId),
-        eq(subscriptions.retentionDiscountCents, 0),
-      ),
-    )
-    .returning({ id: subscriptions.id });
   return rows.length > 0;
 }
 

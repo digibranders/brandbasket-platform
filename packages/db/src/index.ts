@@ -1134,7 +1134,6 @@ export {
   type ErasureSkipReason,
 } from "./queries/account-erasure";
 export {
-  applyRetentionDiscount,
   findOpenClosureForUser,
   insertExitFeedback,
   listExitFeedback,
@@ -1147,7 +1146,6 @@ export {
   type ExitFeedbackSummary,
   type NewAccountClosure,
   type NewExitFeedback,
-  type RetentionDiscount,
 } from "./queries/account-closures";
 export {
   claimAccountOtpAttempt,

@@ -105,8 +105,7 @@ describe("auth form access", () => {
 
   it("focuses deletion confirmation then associates and focuses a password error", async () => {
     await render(createElement(DeleteAccountFlow, {
-      lookupOffer: async () => ({ status: "no-offer" } as const), claimOffer: async () => ({ status: "idle" } as const),
-      deleteAccount: async () => ({ status: "error", message: "Wrong password", field: "password" } as const), planEndsAt: null, addOnsRunning: false,
+      deleteAccount: async () => ({ status: "error", message: "Wrong password", field: "password" } as const), planEndsAt: null, addOnsRunning: false, packageEnds: [],
     }));
     const reason = input("reason");
     await act(async () => reason.click());
@@ -117,5 +116,25 @@ describe("auth form access", () => {
     await submit("Delete my account");
     expect(document.activeElement).toBe(input("password"));
     expect(input("password").getAttribute("aria-describedby")).toBe(container.querySelector('[role="alert"]')?.id);
+  });
+
+  it("goes from the reason straight to the confirmation, listing what a package loses and no stay offer", async () => {
+    const packageEnds = ["Your package price (30% off)", "\u20B95,000 a month of ad credit", "If you come back, every service is at its own price"];
+    await render(createElement(DeleteAccountFlow, {
+      deleteAccount: async () => ({ status: "idle" } as const), planEndsAt: null, addOnsRunning: false, packageEnds,
+    }));
+    await act(async () => input("reason").click());
+    await submit("Continue");
+    expect(container.textContent).not.toMatch(/Before you go|No thanks|\d+% off a month/);
+    expect([...container.querySelectorAll("li")].map((item) => item.textContent)).toEqual(expect.arrayContaining(packageEnds));
+  });
+
+  it("lists nothing extra on the confirmation for a single service", async () => {
+    await render(createElement(DeleteAccountFlow, {
+      deleteAccount: async () => ({ status: "idle" } as const), planEndsAt: null, addOnsRunning: false, packageEnds: [],
+    }));
+    await act(async () => input("reason").click());
+    await submit("Continue");
+    expect(container.textContent).not.toMatch(/package|ad credit|own price/i);
   });
 });

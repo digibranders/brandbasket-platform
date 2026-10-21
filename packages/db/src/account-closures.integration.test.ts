@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
-  applyRetentionDiscount,
   findOpenClosureForUser,
   insertExitFeedback,
   listExitFeedback,
@@ -154,7 +153,7 @@ describe("what staff read", () => {
   });
 });
 
-describe("the stay offer on a subscription", () => {
+describe("a subscription of a leaving business", () => {
   async function liveSubscription(): Promise<string> {
     const subscription = await insertSubscription(dbs.staff.db, {
       businessId,
@@ -167,38 +166,7 @@ describe("the stay offer on a subscription", () => {
     return subscription.id;
   }
 
-  it("adds the offer's worth to the discount, and records it as the offer's", async () => {
-    const subscriptionId = await liveSubscription();
-    const applied = await applyRetentionDiscount(dbs.staff.db, { subscriptionId, businessId, retentionDiscountCents: 90_000 });
-    expect(applied).toBe(true);
-    const subscription = await findLatestSubscriptionForBusiness(dbs.staff.db, businessId);
-    expect(subscription).toMatchObject({ discountAmountCents: 90_000, retentionDiscountCents: 90_000, referralCodeId: null });
-  });
-
-  it("is taken once", async () => {
-    const subscriptionId = await liveSubscription();
-    expect(await applyRetentionDiscount(dbs.staff.db, { subscriptionId, businessId, retentionDiscountCents: 90_000 })).toBe(true);
-    expect(await applyRetentionDiscount(dbs.staff.db, { subscriptionId, businessId, retentionDiscountCents: 90_000 })).toBe(false);
-    const subscription = await findLatestSubscriptionForBusiness(dbs.staff.db, businessId);
-    expect(subscription?.discountAmountCents).toBe(90_000);
-  });
-
-  it("only touches the business's own subscription", async () => {
-    const subscriptionId = await liveSubscription();
-    const other = await dbs.owner.db
-      .insert(businesses)
-      .values({ slug: "other", name: "Other", currency: "INR" })
-      .returning({ id: businesses.id });
-    const applied = await applyRetentionDiscount(dbs.staff.db, {
-      subscriptionId,
-      businessId: other[0]?.id ?? "",
-      retentionDiscountCents: 90_000,
-    });
-    expect(applied).toBe(false);
-  });
-
   it("refuses ids that are not UUIDs without touching the database", async () => {
-    expect(await applyRetentionDiscount(dbs.staff.db, { subscriptionId: "nope", businessId, retentionDiscountCents: 1 })).toBe(false);
     expect(await markCancelRequested(dbs.staff.db, { subscriptionId: "nope", businessId, now: NOW })).toBe(false);
   });
 

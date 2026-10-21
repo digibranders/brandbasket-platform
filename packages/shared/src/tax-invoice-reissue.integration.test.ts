@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { chargedAmountCents, discountCentsFor } from "@brandbasket/billing";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  applyRetentionDiscount,
   billingProfiles,
   businesses,
   charges,
@@ -219,7 +218,11 @@ describe("issueMissingTaxInvoice", () => {
   it("matches a renewal charged at the price with the stay offer, and one charged before the offer existed to the price without it", async () => {
     const opened = await openSubscription(premium);
     const stayOffer = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, premium.recurringAmountCents);
-    expect(await applyRetentionDiscount(dbs.staff.db, { subscriptionId: opened.id, businessId, retentionDiscountCents: stayOffer })).toBe(true);
+    // A stay offer taken before stay offers were removed: its worth sits on the subscription and in its discount.
+    await execSql(
+      dbs.owner,
+      `update subscriptions set retention_discount_cents = ${stayOffer}, discount_amount_cents = discount_amount_cents + ${stayOffer} where id = '${opened.id}'`,
+    );
     const withOffer = await seedPayment({
       providerPaymentId: "pay_renewal_with_offer",
       kind: "renewal",

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef, useState, type ReactElement } from "react";
+import { useActionState, useEffect, useRef, useState, type FormEvent, type ReactElement } from "react";
 import type { AccountExitReason } from "@brandbasket/db";
 import {
   DELETE_CONFIRMATION_WORD,
@@ -10,31 +10,22 @@ import {
 } from "@brandbasket/shared/lib/account-exit";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
-import { Button } from "@brandbasket/shared/ui/panel/button";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
-import {
-  initialClaimOfferState,
-  initialDeleteAccountState,
-  initialOfferLookupState,
-  type ClaimOfferState,
-  type DeleteAccountState,
-  type OfferLookupState,
-  type RetentionOfferView,
-} from "@/lib/account-settings-form";
+import { initialDeleteAccountState, type DeleteAccountState } from "@/lib/account-settings-form";
 import { ACCOUNT_CLOSURE_GRACE_DAYS } from "@/lib/account-closure-grace";
 
 interface DeleteAccountFlowProps {
-  readonly lookupOffer: (state: OfferLookupState, formData: FormData) => Promise<OfferLookupState>;
-  readonly claimOffer: (state: ClaimOfferState, formData: FormData) => Promise<ClaimOfferState>;
   readonly deleteAccount: (state: DeleteAccountState, formData: FormData) => Promise<DeleteAccountState>;
   /** When the paid plan ends (an ISO date), or null when there is no plan to end. */
   readonly planEndsAt: string | null;
   /** The business has an add-on running, which stops with the month it has paid for. */
   readonly addOnsRunning: boolean;
+  /** What cancelling ends for a business that holds a package (packageEndsFor); empty when there is no package. */
+  readonly packageEnds: readonly string[];
 }
 
-type Stage = "reason" | "offer" | "confirm";
+type Stage = "reason" | "confirm";
 
 const FIELD_CLASSES =
   "mt-2 block w-full rounded-control border border-ink-soft/65 bg-white px-4 py-3 text-base text-ink transition-colors duration-300 ease-calm focus:border-accent";
@@ -52,47 +43,12 @@ function CarriedDetails({ reason, comment }: { readonly reason: AccountExitReaso
   );
 }
 
-function OfferStep({
-  offer,
-  reason,
-  comment,
-  claim,
-  onDecline,
-}: {
-  readonly offer: RetentionOfferView;
-  readonly reason: AccountExitReason;
-  readonly comment: string;
-  readonly claim: (formData: FormData) => void;
-  readonly onDecline: () => void;
-}): ReactElement {
-  return (
-    <div className="max-w-md">
-      <p className="font-serif text-[2.75rem] leading-none tracking-tight">{offer.percent}% off</p>
-      <p className="mt-3 text-base text-ink-soft">
-        {offer.currentPrice === null ? null : (
-          <>
-            <span className="line-through">{offer.currentPrice}</span>{" "}
-          </>
-        )}
-        <span className="font-semibold text-ink">{offer.newPrice}</span> a month, from your next renewal and for as long as you stay.
-      </p>
-      <form action={claim} className="mt-8 flex flex-wrap items-center gap-4">
-        <CarriedDetails reason={reason} comment={comment} />
-        <Button type="submit">Keep my account</Button>
-        <Button type="button" variant="quiet" onClick={onDecline}>
-          No thanks, continue
-        </Button>
-      </form>
-    </div>
-  );
-}
-
 /**
- * Delete account, in three steps. 1: why (and, if they like, a few words). 2: a stay offer, shown only when there is
- * one to make this member. 3: what deleting does, the word DELETE and the password. The offer and every outcome are
- * decided on the server; this component only walks the person through, and holds what they said between steps.
+ * Delete account, in two steps. 1: why (and, if they like, a few words). 2: what deleting does, the word DELETE and the
+ * password. Every outcome is decided on the server; this component only walks the person through, and holds what they
+ * said between steps.
  */
-export function DeleteAccountFlow({ lookupOffer, claimOffer, deleteAccount, planEndsAt, addOnsRunning }: DeleteAccountFlowProps): ReactElement {
+export function DeleteAccountFlow({ deleteAccount, planEndsAt, addOnsRunning, packageEnds }: DeleteAccountFlowProps): ReactElement {
   const stageRef = useRef<HTMLParagraphElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -100,46 +56,26 @@ export function DeleteAccountFlow({ lookupOffer, claimOffer, deleteAccount, plan
   const [reason, setReason] = useState<AccountExitReason | null>(null);
   const [comment, setComment] = useState("");
 
-  const [lookup, lookupAction, lookupPending] = useActionState(
-    async (previous: OfferLookupState, formData: FormData): Promise<OfferLookupState> => {
-      const next = await lookupOffer(previous, formData);
-      if (next.status === "offer") setStage("offer");
-      if (next.status === "no-offer") setStage("confirm");
-      return next;
-    },
-    initialOfferLookupState,
-  );
-  const [claim, claimAction, claimPending] = useActionState(claimOffer, initialClaimOfferState);
   const [deletion, deleteAction, deletePending] = useActionState(deleteAccount, initialDeleteAccountState);
 
   useEffect(() => {
-    if (stage !== "reason" || claim.status === "kept") stageRef.current?.focus();
-  }, [stage, claim.status]);
+    if (stage === "confirm") stageRef.current?.focus();
+  }, [stage]);
 
   useEffect(() => {
-    if (deletePending || claimPending || lookupPending) return;
+    if (deletePending) return;
     if (deletion.status === "error" && deletion.field === "password") passwordRef.current?.focus();
-    else if (deletion.status === "error" || claim.status === "error" || lookup.status === "error") errorRef.current?.focus();
-  }, [deletion, claim, lookup, deletePending, claimPending, lookupPending]);
+    else if (deletion.status === "error") errorRef.current?.focus();
+  }, [deletion, deletePending]);
 
-  if (claim.status === "kept") {
-    return (
-      <div className="max-w-md" role="status">
-        <p ref={stageRef} tabIndex={-1} className="font-serif text-3xl leading-tight outline-none">Glad you’re staying.</p>
-        <p className="mt-3 text-base text-ink-soft">
-          Your plan is now <span className="font-semibold text-ink">{claim.newPrice}</span> a month, starting with your next renewal.
-        </p>
-        <Link href="/billing" className="link-underline mt-6 inline-block text-sm">
-          See your billing
-        </Link>
-      </div>
-    );
+  function continueToConfirm(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    setStage("confirm");
   }
 
   if (stage === "reason") {
-    const lookupError = lookup.status === "error" && !lookupPending ? lookup.message : null;
     return (
-      <form action={lookupAction} className="max-w-xl">
+      <form onSubmit={continueToConfirm} className="max-w-xl">
         <fieldset>
           <legend className="font-serif text-2xl leading-tight">
             Why are you leaving?
@@ -178,42 +114,13 @@ export function DeleteAccountFlow({ lookupOffer, claimOffer, deleteAccount, plan
           className={FIELD_CLASSES}
         />
         <p className="mt-2 text-sm text-ink-soft">We keep this without your name, to get better.</p>
-        {lookupError === null ? null : (
-          <p ref={errorRef} tabIndex={-1} role="alert" className={`mt-5 ${ERROR_CLASSES}`}>
-            {lookupError}
-          </p>
-        )}
         <div className="mt-7 flex flex-wrap items-center gap-4">
-          <SubmitButton disabled={lookupPending || reason === null}>{lookupPending ? "One moment…" : "Continue"}</SubmitButton>
+          <SubmitButton disabled={reason === null}>Continue</SubmitButton>
           <Link href="/settings" className="link-underline text-sm">
             Keep my account
           </Link>
         </div>
       </form>
-    );
-  }
-
-  if (stage === "offer" && lookup.status === "offer" && reason !== null) {
-    const claimError = claim.status === "error" && !claimPending ? claim.message : null;
-    return (
-      <div>
-        <p ref={stageRef} tabIndex={-1} className="font-serif text-2xl leading-tight outline-none">Before you go.</p>
-        <div className="mt-6">
-          <OfferStep
-            offer={lookup.offer}
-            reason={reason}
-            comment={comment}
-            claim={claimAction}
-            onDecline={() => setStage("confirm")}
-          />
-        </div>
-        {claimError === null ? null : (
-          <p ref={errorRef} tabIndex={-1} role="alert" className={`mt-5 max-w-md ${ERROR_CLASSES}`}>
-            {claimError}
-          </p>
-        )}
-        {claimPending ? <p className="mt-5 text-sm text-ink-soft">Applying your offer…</p> : null}
-      </div>
     );
   }
 
@@ -229,6 +136,9 @@ export function DeleteAccountFlow({ lookupOffer, claimOffer, deleteAccount, plan
             Your plan ends on <LocalDate iso={planEndsAt} />. You won’t be charged again.
           </li>
         )}
+        {packageEnds.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
         {addOnsRunning ? <li>Your add-ons stop at the end of the month you’ve paid for.</li> : null}
         <li>You’re signed out everywhere and your dashboard is locked.</li>
         <li>

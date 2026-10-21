@@ -1,7 +1,6 @@
 import { chargedAmountCents } from "@brandbasket/billing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  applyRetentionDiscount,
   billingProfiles,
   businesses,
   businessProfiles,
@@ -134,12 +133,11 @@ async function seedCouponRenewal(providerPaymentId = "fake_pay_renewal", coupon:
     discountAmountCents: coupon.discountAmountCents,
   });
   if (coupon.retentionDiscountCents > 0) {
-    const applied = await applyRetentionDiscount(dbs.staff.db, {
-      subscriptionId: subscription.id,
-      businessId,
-      retentionDiscountCents: coupon.retentionDiscountCents,
-    });
-    if (!applied) throw new Error("The stay offer was not applied");
+    // A stay offer taken before stay offers were removed: its worth sits on the subscription and in its discount.
+    await execSql(
+      dbs.owner,
+      `update subscriptions set retention_discount_cents = ${coupon.retentionDiscountCents}, discount_amount_cents = discount_amount_cents + ${coupon.retentionDiscountCents} where id = '${subscription.id}'`,
+    );
   }
   const discount = coupon.discountAmountCents + coupon.retentionDiscountCents;
   return seedPayment(dbs.staff.db, providerPaymentId, {

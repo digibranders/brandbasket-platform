@@ -1,9 +1,11 @@
 import "server-only";
 import {
-  applyRetentionDiscount,
   cancelStaleSubscription,
   consumeRateLimit,
+  findBusinessCurrency,
+  findLiveBundledAddOns,
   insertExitFeedback,
+  isPackageOfferForfeited,
   listAddOnSubscriptionsForBusiness,
   markCancelRequested,
   openAccountClosure,
@@ -11,8 +13,7 @@ import {
   withTenantScope,
   type RateLimitRule,
 } from "@brandbasket/db";
-import { renewalCharge } from "@brandbasket/shared/lib/billing/terms";
-import { nextBundledNetCents } from "@brandbasket/shared/lib/billing/bundle";
+import { isMonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import {
   AddOnClosureChangedError,
   planAddOnClosure,
@@ -21,53 +22,19 @@ import {
 } from "@brandbasket/shared/server/add-on-ends";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
-import type { ExitDetails, RetentionOfferView } from "@/lib/account-settings-form";
-import { eraseAfterFor, hasRunningAddOns, planClosureFor, retentionOfferTerms, type RetentionOfferTerms } from "@/lib/account-exit-rules";
+import type { ExitDetails } from "@/lib/account-settings-form";
+import { eraseAfterFor, hasRunningAddOns, packageEndsFor, planClosureFor } from "@/lib/account-exit-rules";
 import { getBillingProvider } from "./billing";
 import { checkPasswordFor } from "./account-security";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
-import { ensureDiscountPlan } from "./discount-plans";
 
-/** Each step of the flow is cheap to ask for and consequential to finish, so the budget is small but never a trap. */
+/** Closing an account is cheap to ask for and consequential to finish, so the budget is small but never a trap. */
 const EXIT_STEPS_PER_USER: RateLimitRule = { limit: 20, windowSeconds: 60 * 60 };
 
 const TOO_MANY_ATTEMPTS = "That’s a lot of attempts in a short time. Please wait a little and try again.";
-const OFFER_GONE = "That offer isn’t available any more.";
-const OFFER_FAILED = "We couldn’t apply the offer just now, so nothing has changed. Please try again in a moment, or email us.";
 const CLOSE_FAILED =
   "We couldn’t end your plan just now, so your account is untouched and you haven’t been charged anything new. Please try again in a moment, or email us.";
-
-/** The offer as the page shows it, with the numbers behind it for the claim. */
-interface ResolvedOffer {
-  readonly terms: RetentionOfferTerms;
-  readonly view: RetentionOfferView;
-}
-
-function resolveOffer(customer: GrantedCustomer, reason: ExitDetails["reason"]): ResolvedOffer | null {
-  const { billing } = customer;
-  const terms = retentionOfferTerms({
-    reason,
-    subscription: billing.subscription,
-    plan: billing.plan,
-    hasAccess: billing.hasAccess,
-    upgradePaid: billing.upgradePaid,
-  });
-  const plan = billing.plan;
-  const subscription = billing.subscription;
-  if (terms === null || plan === null || subscription === null) return null;
-  const newPrice = renewalCharge(plan, terms.totalDiscountCents, nextBundledNetCents(subscription));
-  if (newPrice === null) return null;
-  return {
-    terms,
-    view: { percent: terms.percent, currentPrice: renewalCharge(plan, subscription.discountAmountCents, nextBundledNetCents(subscription)), newPrice },
-  };
-}
-
-/** What a member who gave this reason is offered to stay, or null. Reads only; nothing changes. */
-export function findRetentionOfferView(customer: GrantedCustomer, reason: ExitDetails["reason"]): RetentionOfferView | null {
-  return resolveOffer(customer, reason)?.view ?? null;
-}
 
 /** Whether the business has an add-on running, for the Delete account page to say they stop with the paid month. */
 export async function hasRunningAddOnsFor(customer: GrantedCustomer): Promise<boolean> {
@@ -76,65 +43,29 @@ export async function hasRunningAddOnsFor(customer: GrantedCustomer): Promise<bo
   return hasRunningAddOns(rows);
 }
 
-export type RetentionClaimOutcome =
-  | { readonly kind: "claimed"; readonly newPrice: string }
-  | { readonly kind: "refused"; readonly message: string };
-
 /**
- * The member takes the stay offer. The provider is moved to the discounted plan from the next renewal first, and our
- * record follows: if the provider refuses, nothing here changes and the member is told so. If our record then cannot be
- * written, the provider is ahead of us; that is logged for staff, because the next renewal would arrive at a price we
- * do not expect. The offer is taken once (the update only matches a subscription that has none), so a double click
- * moves the provider to the same plan twice and records one offer.
+ * What cancelling ends for this business, as the lines the Delete account page lists before the customer confirms
+ * (packageEndsFor): empty unless closing will really end a paid plan that holds a package. The services that are staying,
+ * the forfeit and the currency are read through row-level security as the signed-in customer; the ad credit is the one
+ * frozen on their subscription.
  */
-export async function claimRetentionOfferFor(
-  customer: GrantedCustomer,
-  details: ExitDetails,
-): Promise<RetentionClaimOutcome> {
+export async function loadPackageEndsFor(customer: GrantedCustomer): Promise<string[]> {
+  const { subscription } = customer.billing;
+  const closure = planClosureFor(subscription);
+  if (subscription === null || (closure !== "end-with-period" && closure !== "note-only")) return [];
   const { userId, businessId } = customer.tenant;
-  const budget = await consumeRateLimit(getAppDb(), `account-exit:user:${userId}`, EXIT_STEPS_PER_USER);
-  if (!budget.allowed) return { kind: "refused", message: TOO_MANY_ATTEMPTS };
-
-  const offer = resolveOffer(customer, details.reason);
-  const { plan, subscription } = customer.billing;
-  if (offer === null || plan === null || subscription === null) return { kind: "refused", message: OFFER_GONE };
-
-  const provider = getBillingProvider();
-  const logFields = { businessId, subscriptionId: subscription.id, provider: subscription.provider };
-  try {
-    if (subscription.provider !== "manual") {
-      // A discount can only reach a subscription at the provider that holds it.
-      if (subscription.provider !== provider.name) throw new Error(`The subscription belongs to ${subscription.provider}.`);
-      const providerPlanId = await ensureDiscountPlan(provider, plan, offer.terms.totalDiscountCents, nextBundledNetCents(subscription));
-      if (providerPlanId !== undefined) {
-        await provider.changeSubscriptionPlanAtPeriodEnd(subscription.providerSubscriptionId, providerPlanId);
-      }
-    }
-  } catch (error) {
-    logBillingEvent("error", "retention-offer-failed", { ...logFields, ...describeError(error), stage: "provider" });
-    return { kind: "refused", message: OFFER_FAILED };
-  }
-
-  const staffDb = getStaffDb();
-  try {
-    const applied = await applyRetentionDiscount(staffDb, {
-      subscriptionId: subscription.id,
-      businessId,
-      retentionDiscountCents: offer.terms.discountCents,
-    });
-    if (!applied) return { kind: "refused", message: OFFER_GONE };
-    await insertExitFeedback(staffDb, {
-      reason: details.reason,
-      comment: details.comment,
-      planCode: plan.code,
-      offerPercent: offer.terms.percent,
-      outcome: "kept_with_offer",
-    });
-  } catch (error) {
-    logBillingEvent("error", "retention-offer-failed", { ...logFields, ...describeError(error), stage: "record" });
-    return { kind: "refused", message: OFFER_FAILED };
-  }
-  return { kind: "claimed", newPrice: offer.view.newPrice };
+  const { lines, forfeited, currency } = await withTenantScope(getAppDb(), { userId, businessId }, async (tx) => ({
+    lines: await findLiveBundledAddOns(tx, businessId),
+    forfeited: await isPackageOfferForfeited(tx, businessId),
+    currency: await findBusinessCurrency(tx, businessId),
+  }));
+  if (currency === null) throw new Error(`No business with id ${businessId} to price a package for`);
+  return packageEndsFor({
+    services: lines.filter((row) => row.status === "active" && row.endRequestedAt === null).map((row) => row.addOn).filter(isMonthlyAddOnId),
+    forfeited,
+    adCreditCents: subscription.adCreditCents,
+    currency,
+  });
 }
 
 export type CloseAccountOutcome =

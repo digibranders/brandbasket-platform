@@ -5,14 +5,11 @@ import {
   ACCOUNT_CLOSED_NOTICE,
   parseChangePasswordForm,
   parseDeleteForm,
-  parseExitDetails,
   type ChangePasswordFormState,
-  type ClaimOfferState,
   type DeleteAccountState,
-  type OfferLookupState,
   type RevokeOtherSessionsState,
 } from "@/lib/account-settings-form";
-import { claimRetentionOfferFor, closeAccountFor, findRetentionOfferView } from "@/lib/server/account-exit";
+import { closeAccountFor } from "@/lib/server/account-exit";
 import { changePasswordFor, revokeOtherSessionsFor } from "@/lib/server/account-security";
 import { getAuth } from "@/lib/server/auth";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
@@ -39,28 +36,6 @@ export async function revokeOtherSessionsAction(): Promise<RevokeOtherSessionsSt
   if (outcome === "limited") return { status: "error", message: "Too many tries. Please wait a while and try again." };
   if (outcome === "failed") return { status: "error", message: "Your other devices could not be signed out. Please try again." };
   return { status: "revoked" };
-}
-
-/**
- * The first step of deleting: what do you offer someone who is leaving for this reason? Reads only, so it is safe to
- * ask repeatedly; the offer is decided on the server from the reason and the subscription, never from the browser.
- */
-export async function lookupRetentionOfferAction(_previous: OfferLookupState, formData: FormData): Promise<OfferLookupState> {
-  const parsed = parseExitDetails(formData);
-  if (!parsed.success) return { status: "error", message: parsed.message };
-  const customer = await requireCustomerAccess(ANY_ACCOUNT);
-  const offer = findRetentionOfferView(customer, parsed.details.reason);
-  return offer === null ? { status: "no-offer" } : { status: "offer", offer };
-}
-
-/** Takes the stay offer. The account stays and the discount starts with the next renewal. */
-export async function claimRetentionOfferAction(_previous: ClaimOfferState, formData: FormData): Promise<ClaimOfferState> {
-  const parsed = parseExitDetails(formData);
-  if (!parsed.success) return { status: "error", message: parsed.message };
-  const customer = await requireCustomerAccess(ANY_ACCOUNT);
-  const outcome = await claimRetentionOfferFor(customer, parsed.details);
-  if (outcome.kind === "refused") return { status: "error", message: outcome.message };
-  return { status: "kept", newPrice: outcome.newPrice };
 }
 
 /**

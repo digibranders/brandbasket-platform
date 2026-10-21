@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { chargedAmountCents, discountCentsFor } from "@brandbasket/billing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  applyRetentionDiscount,
   billingProfiles,
   businesses,
   createReferralCode,
@@ -382,7 +381,11 @@ describe("what the invoice describes", () => {
     const opened = await findLatestSubscriptionForBusiness(dbs.staff.db, businessId);
     if (opened === null) throw new Error("The first payment did not open the subscription");
     const stayOffer = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, premium.recurringAmountCents);
-    expect(await applyRetentionDiscount(dbs.staff.db, { subscriptionId: opened.id, businessId, retentionDiscountCents: stayOffer })).toBe(true);
+    // A stay offer taken before stay offers were removed: its worth sits on the subscription and in its discount.
+    await execSql(
+      dbs.owner,
+      `update subscriptions set retention_discount_cents = ${stayOffer}, discount_amount_cents = discount_amount_cents + ${stayOffer} where id = '${opened.id}'`,
+    );
     // The same read the webhook handler does: what the subscription froze, never recomputed.
     const subscription = await findSubscriptionById(dbs.staff.db, opened.id);
     if (subscription === null) throw new Error("The subscription vanished");
