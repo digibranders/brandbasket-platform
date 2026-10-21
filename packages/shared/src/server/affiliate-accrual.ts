@@ -13,6 +13,12 @@ export interface AccruedPayment {
   readonly subscriptionId: string;
   /** A first payment is measured against the plan's initial price, a renewal against its recurring one. */
   readonly kind: PaymentKind;
+  /**
+   * What the payment was invoiced at, before GST, when the subscription's stored figures have not caught up with it yet: a
+   * renewal that completes a change to the services is recorded before the subscription takes the new amount. The earning
+   * is then worked out on this instead of on the plan and the stored services total.
+   */
+  readonly invoiced?: { readonly netCents: number; readonly discountCents: number };
 }
 
 export type AccrualOutcome =
@@ -56,8 +62,8 @@ export async function accrueAffiliateEarning(tx: ScopedTransaction, payment: Acc
     return { kind: "currency-mismatch" };
   }
 
-  const listPrice = (payment.kind === "initial" ? context.initialAmountCents : context.recurringAmountCents) + context.bundledAddOnNetCents;
-  const basisCents = Math.max(0, listPrice - context.discountAmountCents);
+  const listPrice = payment.invoiced?.netCents ?? (payment.kind === "initial" ? context.initialAmountCents : context.recurringAmountCents) + context.bundledAddOnNetCents;
+  const basisCents = Math.max(0, listPrice - (payment.invoiced?.discountCents ?? context.discountAmountCents));
   const amountCents = rewardCentsFor(context.reward, basisCents);
   if (amountCents === 0) return { kind: "none" };
 

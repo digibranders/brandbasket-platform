@@ -1,12 +1,14 @@
 import { createFakeBillingProvider, type BillingProvider } from "@brandbasket/billing";
 import {
   businesses,
+  createAffiliate,
   createReferralCode,
   findActivePlan,
   findBundledAddOnsForSubscription,
   findPaymentByProviderId,
   findSubscriptionById,
   findTaxInvoiceByPaymentId,
+  listAffiliateEarnings,
   openCheckoutSubscription,
   subscriptions,
   users,
@@ -254,5 +256,60 @@ describe("a renewal after a service was dropped from a package", () => {
     const { payment, invoice } = await renewalInvoice();
     expect(payment.attentionReason).toBe("add_on_provider_pending");
     expect(invoice.totalCents).toBe(3_138_446);
+  });
+});
+
+describe("the affiliate's earning on a renewal after a change to the services", () => {
+  /** An affiliate on 5% of what the member pays before GST, and a code of theirs that takes ₹300 off. */
+  async function seedAffiliateCode(): Promise<{ readonly affiliateId: string; readonly codeId: string }> {
+    await dbs().owner.db.insert(users).values({ id: "staff-code", name: "Staff", email: "staff-code@example.test", emailVerified: true });
+    const affiliate = await createAffiliate(dbs().staff.db, {
+      name: "Asha Nair",
+      email: "asha@example.com",
+      phone: null,
+      reward: { kind: "percent", basisPoints: 500 },
+      rewardCurrency: null,
+      rewardCycles: null,
+      notes: null,
+      createdByStaffId: "staff-code",
+    });
+    const code = await createReferralCode(dbs().staff.db, {
+      code: "ASHA",
+      currency: "INR",
+      affiliateId: affiliate.id,
+      discount: { kind: "amount", amountCents: 30_000 },
+      expiresAt: null,
+      maxRedemptions: null,
+      createdByStaffId: "staff-code",
+    });
+    return { affiliateId: affiliate.id, codeId: code.id };
+  }
+
+  it("is worked out on the package price the renewal charged when a service was added", async () => {
+    const { affiliateId, codeId } = await seedAffiliateCode();
+    await paidSubscription(linesOf("digital-growth"), { referralCodeId: codeId, discountAmountCents: 30_000 });
+    await addAndPay("local-seo-aeo");
+
+    await renew(2_890_764);
+
+    // 5% of Social + SEO at the package price, ₹24,498, not of the Social line the subscription held until this payment.
+    expect(await listAffiliateEarnings(dbs().staff.db, affiliateId, 10)).toMatchObject([
+      { paymentKind: "renewal", basisCents: 2_449_800, amountCents: 122_490 },
+      { paymentKind: "initial", basisCents: 969_900 },
+    ]);
+  });
+
+  it("is worked out on the list prices the renewal charged when a service was dropped from a package", async () => {
+    const { affiliateId, codeId } = await seedAffiliateCode();
+    await paidSubscription(linesOf("managed-website", "digital-growth", "local-seo-aeo"), { referralCodeId: codeId });
+    expect(await removeBundledAddOn(deps(), { businessId, addOn: "local-seo-aeo", now: FIFTH_NOV })).toMatchObject({ kind: "scheduled" });
+
+    await renew(1_533_764);
+
+    // 5% of Website + Social at list, ₹12,998, not of the three services the subscription held until this payment.
+    expect(await listAffiliateEarnings(dbs().staff.db, affiliateId, 10)).toMatchObject([
+      { paymentKind: "renewal", basisCents: 1_299_800, amountCents: 64_990 },
+      { paymentKind: "initial", basisCents: 2_659_700 },
+    ]);
   });
 });

@@ -181,7 +181,22 @@ export async function activateRenewalPayment(tx: ScopedTransaction, payment: Ren
     ...(payment.method === undefined ? {} : { method: payment.method }),
   });
   if (!activation.alreadyRecorded) {
-    await accrueAffiliateEarning(tx, { paymentId: activation.payment.id, subscriptionId: payment.subscriptionId, kind: "renewal" });
+    // The subscription still holds the amount it was billed before this payment when the renewal completes a change, so
+    // the earning is worked out on what the renewal was invoiced at.
+    const { bundledAddOns, netAmountCents, discountAmountCents } = payment.invoicedPrice;
+    await accrueAffiliateEarning(tx, {
+      paymentId: activation.payment.id,
+      subscriptionId: payment.subscriptionId,
+      kind: "renewal",
+      ...(bundledAddOns === undefined
+        ? {}
+        : {
+            invoiced: {
+              netCents: netAmountCents + bundledAddOns.reduce((total, line) => total + line.listAmountCents - line.offerDiscountAmountCents, 0),
+              discountCents: discountAmountCents,
+            },
+          }),
+    });
     await issueTaxInvoiceSafely(tx, activation.payment, {
       kind: "plan",
       ...payment.invoicedPrice,
