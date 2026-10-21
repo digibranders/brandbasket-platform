@@ -61,6 +61,13 @@ export function packageLines(input: PackageInput, currency: MoneyCurrency): Pack
   });
 }
 
+/** The line `service` would have once it joins the basket: priced at the percentage the enlarged set earns. */
+export function packageLineWith(input: PackageInput, service: MonthlyAddOnId, currency: MoneyCurrency): PackageLine {
+  const line = packageLines({ ...input, services: [...input.services, service] }, currency).find((candidate) => candidate.addOn === service);
+  if (line === undefined) throw new Error(`Service ${service} is not in the catalogue, so it has no line to price`);
+  return line;
+}
+
 /** Ad credit a month for services bought together at the first checkout. Never recomputed after it. */
 export function adCreditCentsFor(services: readonly MonthlyAddOnId[], currency: MoneyCurrency): number {
   return offerFor(services)?.adCreditCents[currency] ?? 0;

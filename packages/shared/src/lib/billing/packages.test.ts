@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adCreditCentsAtCheckout, adCreditCentsFor, packageBasisPointsFor, packageDiscountCentsFor, packageLines } from "./packages";
+import { adCreditCentsAtCheckout, adCreditCentsFor, packageBasisPointsFor, packageDiscountCentsFor, packageLines, packageLineWith } from "./packages";
 
 describe("package offers", () => {
   it.each([
@@ -55,5 +55,12 @@ describe("package offers", () => {
     expect(adCreditCentsAtCheckout({ services, forfeited: false, hasEverPaid: false }, "INR")).toBe(500000);
     expect(adCreditCentsAtCheckout({ services, forfeited: true, hasEverPaid: false }, "INR")).toBe(0);
     expect(adCreditCentsAtCheckout({ services, forfeited: false, hasEverPaid: true }, "INR")).toBe(0);
+  });
+
+  it("prices a service joining a basket at the percentage the enlarged set earns, and at list once the offer is given up", () => {
+    expect(packageLineWith({ services: ["managed-website"], forfeited: false }, "digital-growth", "INR")).toMatchObject({ addOn: "digital-growth", discountCents: 200000, netCents: 800000 });
+    expect(packageLineWith({ services: ["managed-website", "digital-growth"], forfeited: false }, "local-seo-aeo", "USD")).toMatchObject({ discountCents: 10500, netCents: 24500 });
+    expect(packageLineWith({ services: ["managed-website"], forfeited: true }, "digital-growth", "INR")).toMatchObject({ discountCents: 0, netCents: 1000000 });
+    expect(packageLineWith({ services: [], forfeited: false }, "managed-website", "INR")).toMatchObject({ discountCents: 0, netCents: 300000 });
   });
 });

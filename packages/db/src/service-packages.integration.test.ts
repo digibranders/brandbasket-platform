@@ -7,6 +7,7 @@ import {
   findBundledAddOnsForSubscription,
   isPackageOfferForfeited,
   markPackageOfferForfeited,
+  recordBundledAddOnRemoval,
   setPendingOfferDiscounts,
   type NewBundledAddOn,
 } from "./queries/bundled-add-ons";
@@ -178,5 +179,25 @@ describe("a line moving to another package offer", () => {
       bundledAddOnNetCents: 3_050_000,
       pendingBundledAddOnNetCents: null,
     });
+  });
+  it("refuses to move a line that is not an active line of the subscription staying in it, and writes none of the batch", async () => {
+    const subscription = await paidAllThree();
+    const [website, growth, seo] = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
+    if (website === undefined || growth === undefined || seo === undefined) throw new Error("The package lines were not written");
+    await recordBundledAddOnRemoval(dbs.staff.db, { id: seo.id, businessId, pendingBundledAddOnNetCents: 1_300_000, now: OPENED_AT });
+
+    const move = dbs.staff.db.transaction((tx) =>
+      setPendingOfferDiscounts(tx, {
+        subscriptionId: subscription.id,
+        lines: [
+          { id: website.id, pendingOfferDiscountAmountCents: 0 },
+          { id: seo.id, pendingOfferDiscountAmountCents: 0 },
+        ],
+        now: OPENED_AT,
+      }),
+    );
+
+    await expect(move).rejects.toThrow(/could not be moved/);
+    expect((await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).map((row) => row.pendingOfferDiscountAmountCents)).toEqual([null, null, null]);
   });
 });

@@ -733,7 +733,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     const WITH_REMOVAL = { ...BUNDLED, activatedAt: new Date("2026-09-01T00:00:00.000Z"), bundledAddOnNetCents: 189_905 + 569_905, pendingBundledAddOnNetCents: 569_905 };
     const LOWER_TOTAL = chargedAmountCents(299_900 + 569_905, 0, 1_800);
     const OLD_TOTAL = chargedAmountCents(299_900 + 189_905 + 569_905, 0, 1_800);
-    const row = (addOn: string, endRequestedAt: Date | null) => ({ addOn, status: "active", endRequestedAt, listAmountCents: 1, offerDiscountAmountCents: 0, netAmountCents: 1, taxRateBasisPoints: 1_800 });
+    const row = (addOn: string, endRequestedAt: Date | null) => ({ addOn, status: "active", endRequestedAt, listAmountCents: 1, offerDiscountAmountCents: 0, pendingOfferDiscountAmountCents: null, netAmountCents: 1, taxRateBasisPoints: 1_800 });
 
     it("accepts the renewal at the lower amount, invoices only what stays, and finishes the removal", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(WITH_REMOVAL as never);
@@ -786,6 +786,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
       endRequestedAt,
       listAmountCents: netAmountCents,
       offerDiscountAmountCents: 0,
+      pendingOfferDiscountAmountCents: null,
       netAmountCents,
       taxRateBasisPoints: 1_800,
     });
@@ -908,6 +909,80 @@ describe("a package on the services plan, which costs nothing itself", () => {
     await handleRazorpayWebhookEvent({ ...charged(4_484_000), paymentId: "pay_package_list" });
     expect(activateRenewalPayment).not.toHaveBeenCalled();
     expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: "amount_mismatch" }));
+  });
+});
+
+describe("the renewal after a service was added to a package", () => {
+  const SERVICES_PLAN = { id: "plan_services", currency: "INR", initialAmountCents: 0, recurringAmountCents: 0, initialTermMonths: 1, taxRateBasisPoints: 1_800 };
+  const BILLED_FROM = new Date("2026-10-21T09:00:00.000Z");
+  const line = (addOn: string, listAmountCents: number, offerDiscountAmountCents: number, pending: number | null, billedFrom: Date | null) => ({
+    addOn,
+    status: "active",
+    billedFrom,
+    endRequestedAt: null,
+    listAmountCents,
+    offerDiscountAmountCents,
+    pendingOfferDiscountAmountCents: pending,
+    netAmountCents: listAmountCents - offerDiscountAmountCents,
+    taxRateBasisPoints: 1_800,
+  });
+  const WEBSITE_MOVING = line("managed-website", 300_000, 0, 60_000, BILLED_FROM);
+  const SOCIAL_ADDED = line("digital-growth", 1_000_000, 200_000, null, null);
+  // The website was billed alone at ₹3,540; the next renewal is website 20% off plus Social 20% off: ₹10,400 and GST.
+  const SUBSCRIPTION = {
+    id: "sub_row_added",
+    businessId: "biz_added",
+    planId: "plan_services",
+    commitmentEndsAt: new Date("2026-11-21T00:00:00.000Z"),
+    activatedAt: BILLED_FROM,
+    discountAmountCents: 0,
+    retentionDiscountCents: 0,
+    bundledAddOnNetCents: 300_000,
+    pendingBundledAddOnNetCents: 1_040_000,
+  };
+  const charged = (amountCents: number) =>
+    ({
+      kind: "charged",
+      currentStart: null,
+      method: null,
+      subscriptionId: "sub_rzp_added",
+      currentEnd: new Date("2026-12-21T00:00:00.000Z"),
+      paidAt: new Date("2026-11-21T09:00:00.000Z"),
+      paymentId: "pay_added",
+      amountCents,
+      currency: "INR",
+    }) as const;
+
+  it("invoices each line at the offer it moved to, so the invoice adds up to the charge", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(SUBSCRIPTION as never);
+    vi.mocked(findPlanById).mockResolvedValue(SERVICES_PLAN as never);
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([WEBSITE_MOVING, SOCIAL_ADDED] as never);
+
+    await handleRazorpayWebhookEvent(charged(1_227_200));
+
+    const [, renewal] = vi.mocked(activateRenewalPayment).mock.calls[0] ?? [];
+    const invoiced = renewal?.invoicedPrice.bundledAddOns ?? [];
+    expect(invoiced.map((row) => [row.addOn, row.listAmountCents, row.offerDiscountAmountCents])).toEqual([
+      ["managed-website", 300_000, 60_000],
+      ["digital-growth", 1_000_000, 200_000],
+    ]);
+    const net = invoiced.reduce((total, row) => total + row.listAmountCents - row.offerDiscountAmountCents, 0);
+    expect(chargedAmountCents(net, 0, 1_800)).toBe(1_227_200);
+    expect(completeBundledAddOnChanges).toHaveBeenCalled();
+  });
+
+  it("invoices the website alone at its own offer when the provider had not moved, at the old amount", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(SUBSCRIPTION as never);
+    vi.mocked(findPlanById).mockResolvedValue(SERVICES_PLAN as never);
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([WEBSITE_MOVING, SOCIAL_ADDED] as never);
+
+    await handleRazorpayWebhookEvent(charged(354_000));
+
+    expect(activateRenewalPayment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ amountCents: 354_000, invoicedPrice: expect.objectContaining({ bundledAddOns: [WEBSITE_MOVING] }) }),
+    );
+    expect(completeBundledAddOnChanges).not.toHaveBeenCalled();
   });
 });
 

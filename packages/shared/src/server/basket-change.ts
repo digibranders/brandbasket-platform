@@ -15,17 +15,21 @@ import {
   lockBusinessForBilling,
   markBundledAddOnsScheduled,
   nextBundledNetCents,
+  isPackageOfferForfeited,
   openBundledAddOn,
   recordBundledAddOnRemoval,
+  setPendingOfferDiscounts,
   type BillingState,
   type BundledAddOn,
   type Database,
+  type PendingOfferDiscount,
   type Plan,
   type ScopedTransaction,
   type Subscription,
 } from "@brandbasket/db";
 import { addOnBlock, quoteAddOn, type AddOnBlock, type AddOnQuote } from "../lib/billing/add-on-proration";
-import { addOnById, type MonthlyAddOnId } from "../lib/billing/add-ons";
+import { addOnById, isMonthlyAddOnId, type MonthlyAddOnId } from "../lib/billing/add-ons";
+import { packageBasisPointsFor, packageDiscountCentsFor, packageLineWith, type PackageLine } from "../lib/billing/packages";
 import { billingPeriodProgress } from "../lib/billing/period";
 import { describeError, logBillingEvent } from "./billing-log";
 import { servicePeriod } from "./tax-invoicing";
@@ -62,6 +66,35 @@ async function moveProviderTo(deps: BasketDeps, subscription: Subscription, plan
   await provider.changeSubscriptionPlanAtPeriodEnd(subscription.providerSubscriptionId, providerPlanId ?? "");
 }
 
+/** The active lines that are staying in the basket: not asked to end. */
+function stayingLines(rows: readonly BundledAddOn[]): readonly BundledAddOn[] {
+  return rows.filter((row) => row.status === "active" && row.endRequestedAt === null);
+}
+
+function servicesOf(rows: readonly BundledAddOn[]): readonly MonthlyAddOnId[] {
+  return rows.map((row) => row.addOn).filter(isMonthlyAddOnId);
+}
+
+/** A line at the package offer a basket of `services` earns: its own list price, less that percentage of it. */
+interface RepricedLine {
+  readonly id: string;
+  readonly addOn: string;
+  readonly discountCents: number;
+  readonly netCents: number;
+}
+
+function repriced(rows: readonly BundledAddOn[], services: readonly MonthlyAddOnId[], forfeited: boolean): RepricedLine[] {
+  const basisPoints = packageBasisPointsFor({ services, forfeited });
+  return rows.map((row) => {
+    const discountCents = packageDiscountCentsFor(row.listAmountCents, basisPoints);
+    return { id: row.id, addOn: row.addOn, discountCents, netCents: row.listAmountCents - discountCents };
+  });
+}
+
+function totalNetCents(lines: readonly RepricedLine[]): number {
+  return lines.reduce((total, line) => total + line.netCents, 0);
+}
+
 /** What a business sees about adding one add-on, for the page and the staff console. */
 export type AddOnAssessment =
   /** It cannot add it on its own, and why. */
@@ -73,7 +106,8 @@ export type AddOnAssessment =
   | {
       readonly kind: "offer";
       readonly quote: AddOnQuote;
-      readonly listCents: number;
+      /** The service as a line of the basket once added: list, the package offer it earns, and the net it is billed at. */
+      readonly line: PackageLine;
       readonly periodStart: Date;
       readonly plan: Plan;
       readonly subscription: Subscription;
@@ -84,6 +118,8 @@ export interface AddOnAssessmentInput {
   /** The subscription's add-ons that are `pending` or `active`. */
   readonly live: readonly BundledAddOn[];
   readonly addOn: MonthlyAddOnId;
+  /** Whether the business has dropped a service from a package, which ends package prices for good. */
+  readonly forfeited: boolean;
   readonly providerName: BillingProvider["name"];
   readonly now: Date;
 }
@@ -114,17 +150,22 @@ export function assessAddOn(input: AddOnAssessmentInput): AddOnAssessment {
   const period = billingPeriodProgress(subscription, now);
   if (period === null) return { kind: "unavailable", reason: "renewal-due" };
   const plan = state.plan;
-  const listCents = addOnById(input.addOn).prices[plan.currency];
+  // The basket once it is added: the lines staying in it share one package percentage (none for a single service or once
+  // the offer is given up). The new line and every line already there move to it; a referral code's discount ends.
+  const staying = stayingLines(input.live);
+  const line = packageLineWith({ services: servicesOf(staying), forfeited: input.forfeited }, input.addOn, plan.currency);
+  const renewalNetCents =
+    plan.recurringAmountCents + line.netCents + totalNetCents(repriced(staying, [...servicesOf(staying), input.addOn], input.forfeited));
   const quote = quoteAddOn({
-    netCents: listCents,
+    netCents: line.netCents,
     taxRateBasisPoints: plan.taxRateBasisPoints,
-    renewalNetCents: plan.recurringAmountCents + nextBundledNetCents(input.live) + listCents,
-    renewalDiscountCents: subscription.discountAmountCents,
+    renewalNetCents,
+    renewalDiscountCents: staying.length === 0 ? subscription.discountAmountCents : 0,
     period: { start: period.start, end: subscription.paidThroughAt },
     now,
   });
   if (quote.kind === "refused") return { kind: "unavailable", reason: quote.reason };
-  return { kind: "offer", quote, listCents, periodStart: period.start, plan, subscription };
+  return { kind: "offer", quote, line, periodStart: period.start, plan, subscription };
 }
 
 /** The reads an assessment needs, on any connection that can see the business. Null when it is not visible. */
@@ -138,10 +179,11 @@ export async function readAddOnAssessment(
     state.subscription === null
       ? []
       : (await findBundledAddOnsForSubscription(db, state.subscription.id)).filter((row) => row.status !== "removed");
-  return assessAddOn({ state, live, addOn: input.addOn, providerName: input.providerName, now: input.now });
+  const forfeited = await isPackageOfferForfeited(db, input.businessId);
+  return assessAddOn({ state, live, addOn: input.addOn, forfeited, providerName: input.providerName, now: input.now });
 }
 
-/** "Digital Growth, 05 Nov to 18 Nov 2026": what the charge and its invoice line say. */
+/** "Social Media and Ads, 05 Nov to 18 Nov 2026": what the charge and its invoice line say. */
 export function addOnChargeDescription(addOn: MonthlyAddOnId, from: Date, periodEnd: Date): string {
   return `${addOnById(addOn).title}, ${servicePeriod(from, periodEnd)}`;
 }
@@ -177,8 +219,22 @@ export async function moveBasketAtProvider(deps: BasketDeps, subscriptionId: str
   try {
     const plan = await findPlanById(staffDb, subscription.planId);
     if (plan === null) throw new Error(`Subscription ${subscriptionId} has no plan to bill.`);
-    await moveProviderTo(deps, subscription, plan, subscription.pendingBundledAddOnNetCents);
-    await markBundledAddOnsScheduled(staffDb, { subscriptionId, now });
+    // The basket as it now stands is one package: every line that is staying moves to the percentage its set earns from the
+    // next bill, and the provider is told the sum of those nets. The lines are recorded after the provider has agreed, the
+    // way a removal is, so a provider that refuses leaves the lines as they were and this step can run again.
+    const staying = stayingLines(await findBundledAddOnsForSubscription(staffDb, subscriptionId));
+    const targets = repriced(staying, servicesOf(staying), await isPackageOfferForfeited(staffDb, subscription.businessId));
+    const moves = targets.flatMap((target): PendingOfferDiscount[] => {
+      const row = staying.find((candidate) => candidate.id === target.id);
+      const unchanged = row !== undefined && row.pendingOfferDiscountAmountCents === null && row.offerDiscountAmountCents === target.discountCents;
+      return unchanged ? [] : [{ id: target.id, pendingOfferDiscountAmountCents: target.discountCents }];
+    });
+    await moveProviderTo(deps, subscription, plan, totalNetCents(targets));
+    await staffDb.transaction(async (tx) => {
+      await lockBusinessForBilling(tx, subscription.businessId);
+      await setPendingOfferDiscounts(tx, { subscriptionId, lines: moves, now });
+      await markBundledAddOnsScheduled(tx, { subscriptionId, now });
+    });
     return { kind: "scheduled" };
   } catch (error) {
     logBillingEvent("error", "add-on-provider-failed", { ...fields, ...describeError(error) });
@@ -241,8 +297,8 @@ export async function startAddOn(
         businessId: input.businessId,
         subscriptionId: subscription.id,
         addOn: input.addOn,
-        listAmountCents: assessment.listCents,
-        offerDiscountAmountCents: 0,
+        listAmountCents: assessment.line.listCents,
+        offerDiscountAmountCents: assessment.line.discountCents,
         taxRateBasisPoints: plan.taxRateBasisPoints,
         currency: plan.currency,
         netCents: quote.netCents,

@@ -4,12 +4,14 @@ import {
   consumeRateLimit,
   findBusinessCurrency,
   findLiveBundledAddOns,
+  isPackageOfferForfeited,
   withTenantScope,
   type BundledAddOn,
   type RateLimitRule,
   type ScopedTransaction,
 } from "@brandbasket/db";
-import { addOnById, addOnPrice, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnById, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { packageLineWith } from "@brandbasket/shared/lib/billing/packages";
 import {
   readAddOnAssessment,
   removeBundledAddOn,
@@ -28,9 +30,6 @@ import { ensureDiscountPlan } from "./discount-plans";
  * here with a charge for the rest of the paid month, and taken out here from the next billing date. Fynix's separate add-on
  * subscriptions are not sold here.
  */
-
-// The website is still the plan itself, so this page offers only the other services.
-const PAGE_ADD_ON_IDS = MONTHLY_ADD_ON_IDS.filter((id) => id !== "managed-website");
 
 /** A stuck button or a script must not be able to change the plan at the provider without limit. */
 export const ADD_ON_CHECKOUT_RATE_LIMIT: RateLimitRule = { limit: 10, windowSeconds: 60 * 60 };
@@ -87,7 +86,7 @@ export type AddOnPageEntry =
       /** It is ending and adding it again keeps it, at no charge. */
       readonly keepable: boolean;
     }
-  /** Not in the plan's payment: today's list price, and the add or the way to ask for it. */
+  /** Not in the plan's payment: its price once added (the package price the basket would earn), and the add or the way to ask for it. */
   | { readonly kind: "available"; readonly addOn: MonthlyAddOnId; readonly price: AddOnPrice; readonly offer: AddOnOffer };
 
 export interface AddOnsPage {
@@ -124,22 +123,25 @@ function offerOf(assessment: AddOnAssessment | null, renewsOn: Date | null): Add
 export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Promise<AddOnsPage> {
   const { tenant } = customer;
   const providerName = getBillingProvider().name;
-  const { bundled, currency, assessments } = await withTenantScope(getAppDb(), tenant, async (tx) => {
+  const { bundled, currency, assessments, forfeited } = await withTenantScope(getAppDb(), tenant, async (tx) => {
     const assessed = new Map<MonthlyAddOnId, AddOnAssessment | null>();
-    for (const addOn of PAGE_ADD_ON_IDS) {
+    for (const addOn of MONTHLY_ADD_ON_IDS) {
       assessed.set(addOn, await readAddOnAssessment(tx, { businessId: tenant.businessId, addOn, providerName, now }));
     }
     return {
       bundled: await findLiveBundledAddOns(tx, tenant.businessId),
       currency: await billedCurrencyOf(tx, tenant.businessId),
       assessments: assessed,
+      forfeited: await isPackageOfferForfeited(tx, tenant.businessId),
     };
   });
+  const staying = bundled.filter((row) => row.status === "active" && row.endRequestedAt === null).map((row) => row.addOn).filter(isMonthlyAddOnId);
   const nextBillingOn = customer.billing.subscription?.paidThroughAt ?? null;
-  const addOns = PAGE_ADD_ON_IDS.map((addOn): AddOnPageEntry => {
+  const addOns = MONTHLY_ADD_ON_IDS.map((addOn): AddOnPageEntry => {
     const assessment = assessments.get(addOn) ?? null;
     const included = bundled.find((row) => row.addOn === addOn && row.status === "active");
-    if (included === undefined) return { kind: "available", addOn, price: addOnPrice(addOnById(addOn), currency), offer: offerOf(assessment, nextBillingOn) };
+    // What it costs once added: the package price the basket would earn, which is list for a service on its own.
+    if (included === undefined) return { kind: "available", addOn, price: packageLineWith({ services: staying, forfeited }, addOn, currency), offer: offerOf(assessment, nextBillingOn) };
     return {
       kind: "included",
       addOn,

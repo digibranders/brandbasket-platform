@@ -193,6 +193,23 @@ export function nextBundledNetCents(rows: readonly BundledAddOn[]): number {
   return rows.filter((row) => row.status === "active" && row.endRequestedAt === null).reduce((total, row) => total + nextNetCents(row), 0);
 }
 
+/**
+ * The lines a renewal invoices, priced to match what it was charged. At the pending amount (the renewal that completes a
+ * change) that is every active line that is staying, each at the package offer it is moving to, exactly as
+ * nextBundledNetCents sums them; at the amount billed now it is the lines that amount was made of, at their own offers.
+ */
+export function renewalBundledLines(rows: readonly BundledAddOn[], atPendingAmount: boolean): BundledAddOn[] {
+  const active = rows.filter((row) => row.status === "active");
+  if (!atPendingAmount) return active.filter((row) => row.billedFrom !== null);
+  return active
+    .filter((row) => row.endRequestedAt === null)
+    .map((row) =>
+      row.pendingOfferDiscountAmountCents === null
+        ? row
+        : { ...row, offerDiscountAmountCents: row.pendingOfferDiscountAmountCents, netAmountCents: nextNetCents(row) },
+    );
+}
+
 /** What the monthly add-ons cost once `removing` has stopped too. What `recordBundledAddOnRemoval` stores. */
 export function bundledNetAfterRemoving(rows: readonly BundledAddOn[], removing: Pick<BundledAddOn, "id">): number {
   return nextBundledNetCents(rows.filter((row) => row.id !== removing.id));
@@ -367,6 +384,24 @@ async function settlePendingNet(tx: ScopedTransaction, subscriptionId: string, n
     .where(eq(subscriptions.id, subscriptionId));
 }
 
+/**
+ * A package replaces a referral code: a subscription with more than one active service line carries no code discount (a
+ * code is for a single service only, plan 16 Settled 2). Called whenever a line becomes active, so the next renewal, the
+ * amount the provider is told and the invoice all see the discount gone. The code stays on the subscription for the record,
+ * and a stay offer, which is not a code's, stays.
+ */
+async function endCodeDiscountOfPackage(tx: ScopedTransaction, subscriptionId: string, now: Date): Promise<void> {
+  const active = await tx
+    .select({ id: bundledAddOns.id })
+    .from(bundledAddOns)
+    .where(and(eq(bundledAddOns.subscriptionId, subscriptionId), eq(bundledAddOns.status, "active")));
+  if (active.length < 2) return;
+  await tx
+    .update(subscriptions)
+    .set({ discountAmountCents: sql`${subscriptions.retentionDiscountCents}`, updatedAt: now })
+    .where(and(eq(subscriptions.id, subscriptionId), sql`${subscriptions.discountAmountCents} > ${subscriptions.retentionDiscountCents}`));
+}
+
 /** Closes an add-on still waiting for its charge: the row stops and an open charge is waived, so it can no longer be paid. */
 async function dropWaitingAddOn(tx: ScopedTransaction, row: Pick<BundledAddOn, "id" | "chargeId">, now: Date): Promise<void> {
   await tx.update(bundledAddOns).set({ status: "removed", removedAt: now, updatedAt: now }).where(eq(bundledAddOns.id, row.id));
@@ -441,6 +476,7 @@ export async function openBundledAddOn(tx: ScopedTransaction, input: NewAddedAdd
   const inserted = await tx.insert(bundledAddOns).values({ ...common, status: "active", activatedAt: input.now }).returning();
   const row = inserted[0];
   if (row === undefined) throw new Error("Inserting the added add-on returned no row");
+  await endCodeDiscountOfPackage(tx, input.subscriptionId, input.now);
   await settlePendingNet(tx, input.subscriptionId, input.now);
   return { row, chargeId: null };
 }
@@ -475,6 +511,7 @@ export async function applyPaidBundledAddOn(tx: ScopedTransaction, chargeId: str
     .returning();
   const row = activated[0];
   if (row === undefined) return null;
+  await endCodeDiscountOfPackage(tx, row.subscriptionId, paidAt);
   await settlePendingNet(tx, row.subscriptionId, paidAt);
   return row;
 }
@@ -550,16 +587,20 @@ export interface PendingOfferDiscount {
  * Moves lines to another package offer from the next renewal, after the provider has been told to bill the new amount: a
  * service was added (the basket's new percentage) or dropped (list price for good). Each line keeps its current price until
  * that renewal, which completeBundledAddOnChanges records, and the subscription's pending amount is worked out again. Only
- * the subscription's active lines that are staying are written. Inside the caller's transaction under its billing lock.
+ * the subscription's active lines that are staying can be moved: when any line given is not one, or is given twice, it
+ * throws and the caller's transaction writes nothing, so a half-moved basket is never recorded. Inside the caller's
+ * transaction under its billing lock.
  */
 export async function setPendingOfferDiscounts(
   tx: ScopedTransaction,
   input: { readonly subscriptionId: string; readonly lines: readonly PendingOfferDiscount[]; readonly now: Date },
 ): Promise<void> {
-  if (!isUuid(input.subscriptionId)) return;
+  const unmoved = (reason: string): Error => new Error(`The package offer of subscription ${input.subscriptionId} could not be moved: ${reason}.`);
+  if (!isUuid(input.subscriptionId)) throw unmoved("it is not a subscription id");
+  if (new Set(input.lines.map((line) => line.id)).size !== input.lines.length) throw unmoved("a line was given twice");
   for (const line of input.lines) {
-    if (!isUuid(line.id)) continue;
-    await tx
+    if (!isUuid(line.id)) throw unmoved(`${line.id} is not a line id`);
+    const moved = await tx
       .update(bundledAddOns)
       .set({ pendingOfferDiscountAmountCents: line.pendingOfferDiscountAmountCents, updatedAt: input.now })
       .where(
@@ -569,7 +610,9 @@ export async function setPendingOfferDiscounts(
           eq(bundledAddOns.status, "active"),
           isNull(bundledAddOns.endRequestedAt),
         ),
-      );
+      )
+      .returning({ id: bundledAddOns.id });
+    if (moved.length === 0) throw unmoved(`line ${line.id} is not an active line that is staying`);
   }
   await settlePendingNet(tx, input.subscriptionId, input.now);
 }

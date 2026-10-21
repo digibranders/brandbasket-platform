@@ -761,6 +761,7 @@ export {
   markPackageOfferForfeited,
   isPackageOfferForfeited,
   removeBundledAddOnsOf,
+  renewalBundledLines,
   saveProviderBundlePlan,
   setPendingOfferDiscounts,
   type BundlePlanKey,

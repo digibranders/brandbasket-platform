@@ -11,6 +11,7 @@ import {
   lockBusinessForBilling,
   recordUnappliedAddOnPayment,
   recordUnappliedPayment,
+  renewalBundledLines,
   updateAddOnStatus,
   updateSubscriptionProviderStatus,
   type AddOnSubscription,
@@ -278,12 +279,9 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         const renewedPlan = renewalAtNewPrice ? pendingPlan : plan;
         // The amount check above refused a renewal with no plan at either price, so this only guards the types.
         if (renewedPlan === null || renewedPlan === undefined) throw new Error(`Subscription ${subscription.id} renewed with no plan to invoice`);
-        const activeAddOns = (await findBundledAddOnsForSubscription(tx, subscription.id)).filter((row) => row.status === "active");
-        // At the new amount the charge covers the add-ons that are staying, those added this month included. At the amount
-        // billed now it covers what that amount was made of: not an add-on added this month and not billed yet.
-        const bundledAddOns = renewalAtPendingAddOns
-          ? activeAddOns.filter((row) => row.endRequestedAt === null)
-          : activeAddOns.filter((row) => row.billedFrom !== null);
+        // At the new amount the charge covers the lines that are staying, those added this month included, each at the
+        // package offer it moves to. At the amount billed now it covers what that amount was made of.
+        const bundledAddOns = renewalBundledLines(await findBundledAddOnsForSubscription(tx, subscription.id), renewalAtPendingAddOns);
         const invoicedPrice = {
           plan: renewedPlan,
           bundledAddOns,
