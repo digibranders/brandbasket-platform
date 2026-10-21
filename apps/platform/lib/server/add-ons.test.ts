@@ -202,8 +202,47 @@ describe("loadAddOnsPage", () => {
       nextBillingOn: PAID_THROUGH,
       joinsOn: null,
       keepable: false,
+      drop: null,
     });
     expect(page.addOns[2]).toMatchObject({ kind: "available", addOn: "local-seo-aeo" });
+  });
+
+  describe("what dropping a service leaves", () => {
+    const line = (addOn: string, listAmountCents: number, overrides: Partial<BundledAddOn> = {}) =>
+      includedRow({ addOn, listAmountCents, offerDiscountAmountCents: Math.round(listAmountCents * 0.3), netAmountCents: Math.round(listAmountCents * 0.7), ...overrides });
+    const all = () => [line("managed-website", 300_000), line("digital-growth", 1_000_000), line("local-seo-aeo", 2_500_000)];
+
+    it("shows, for each of three services, the others at list: dropping Local SEO + AEO leaves ₹15,340 a month with GST and ends the package", async () => {
+      vi.mocked(findLiveBundledAddOns).mockResolvedValue(all());
+
+      const { addOns } = await loadAddOnsPage(subscribed, NOW);
+
+      expect(addOns.map((entry) => (entry.kind === "included" ? [entry.addOn, entry.drop?.keeps, entry.drop?.newMonthlyCents, entry.drop?.endsPackage] : null))).toEqual([
+        ["managed-website", ["digital-growth", "local-seo-aeo"], 4_130_000, true],
+        ["digital-growth", ["managed-website", "local-seo-aeo"], 3_304_000, true],
+        ["local-seo-aeo", ["managed-website", "digital-growth"], 1_534_000, true],
+      ]);
+    });
+
+    it("says nothing is lost once the offer is already given up", async () => {
+      vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
+      vi.mocked(findLiveBundledAddOns).mockResolvedValue(all());
+
+      const { addOns } = await loadAddOnsPage(subscribed, NOW);
+
+      expect(addOns[2]).toMatchObject({ drop: { newMonthlyCents: 1_534_000, endsPackage: false } });
+    });
+
+    it("offers no drop for the only service, or for one that is already ending", async () => {
+      vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("digital-growth", 1_000_000)]);
+      expect((await loadAddOnsPage(subscribed, NOW)).addOns[1]).toMatchObject({ kind: "included", drop: null });
+
+      vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website", 300_000), line("digital-growth", 1_000_000, { endRequestedAt: PAID_AT })]);
+      const { addOns } = await loadAddOnsPage(subscribed, NOW);
+      expect(addOns[1]).toMatchObject({ kind: "included", drop: null });
+      // The one still staying is now the only service.
+      expect(addOns[0]).toMatchObject({ kind: "included", drop: null });
+    });
   });
 
   it("asks for each add-on's assessment through row-level security, at the time given", async () => {

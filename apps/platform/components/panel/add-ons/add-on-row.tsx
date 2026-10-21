@@ -6,6 +6,7 @@ import { addBundledAddOnAction, removeBundledAddOnAction } from "@/app/app-host/
 import { BundledAddOnAdd } from "@/components/panel/add-ons/bundled-add-on-add";
 import { BundledAddOnRemove } from "@/components/panel/add-ons/bundled-add-on-remove";
 import { addOnDate } from "@/lib/billing/add-on-copy";
+import { dropCopy } from "@/lib/billing/drop-service";
 import type { AddOnOffer, AddOnPageEntry } from "@/lib/server/add-ons";
 
 interface AddOnRowProps {
@@ -17,8 +18,8 @@ interface AddOnRowProps {
 
 /**
  * One service: what it is and where it runs on the left, its price and where it stands on the right. One in the plan's
- * payment can be taken out from the next billing date, and one that is ending kept; one that is not can be added for the
- * rest of the paid month, or says how to ask for it. The state line is a live
+ * payment can be taken out from the next billing date (never the last one: that is cancelling), and one that is ending
+ * kept; one that is not can be added for the rest of the paid month, or says how to ask for it. The state line is a live
  * region that is always in the page, so the change after Remove is announced.
  */
 export async function AddOnRow({ addOn, entry, canAdd }: AddOnRowProps): Promise<ReactElement> {
@@ -82,11 +83,12 @@ export async function AddOnRow({ addOn, entry, canAdd }: AddOnRowProps): Promise
               headingId={headingId}
               action={addBundledAddOnAction}
             />
-          ) : entry.endsOn === null && entry.nextBillingOn !== null ? (
+          ) : entry.endsOn === null && entry.nextBillingOn !== null && entry.drop !== null ? (
             <BundledAddOnRemove
               addOn={addOn.id}
               title={addOn.title}
               endsOn={addOnDate(entry.nextBillingOn)}
+              copy={dropCopy(entry.drop, addOnDate(entry.nextBillingOn))}
               headingId={headingId}
               action={removeBundledAddOnAction}
             />

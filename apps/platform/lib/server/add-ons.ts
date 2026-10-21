@@ -19,6 +19,7 @@ import {
   type AddOnAssessment,
   type BasketDeps,
 } from "@brandbasket/shared/server/basket-change";
+import { dropPreview, type DropPreview } from "@/lib/billing/drop-service";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
@@ -85,6 +86,8 @@ export type AddOnPageEntry =
       readonly joinsOn: Date | null;
       /** It is ending and adding it again keeps it, at no charge. */
       readonly keepable: boolean;
+      /** What taking it out would leave, shown before it is done. Null when it is ending or is the only service (that is cancelling). */
+      readonly drop: DropPreview | null;
     }
   /** Not in the plan's payment: its price once added (the package price the basket would earn), and the add or the way to ask for it. */
   | { readonly kind: "available"; readonly addOn: MonthlyAddOnId; readonly price: AddOnPrice; readonly offer: AddOnOffer };
@@ -135,7 +138,8 @@ export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Prom
       forfeited: await isPackageOfferForfeited(tx, tenant.businessId),
     };
   });
-  const staying = bundled.filter((row) => row.status === "active" && row.endRequestedAt === null).map((row) => row.addOn).filter(isMonthlyAddOnId);
+  const stayingLines = bundled.filter((row) => row.status === "active" && row.endRequestedAt === null);
+  const staying = stayingLines.map((row) => row.addOn).filter(isMonthlyAddOnId);
   const nextBillingOn = customer.billing.subscription?.paidThroughAt ?? null;
   const addOns = MONTHLY_ADD_ON_IDS.map((addOn): AddOnPageEntry => {
     const assessment = assessments.get(addOn) ?? null;
@@ -150,6 +154,7 @@ export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Prom
       nextBillingOn,
       joinsOn: included.billedFrom === null ? nextBillingOn : null,
       keepable: assessment?.kind === "keep",
+      drop: included.endRequestedAt === null ? dropPreview({ staying: stayingLines, dropping: addOn, forfeited, currency }) : null,
     };
   });
   return { addOns, currency };
