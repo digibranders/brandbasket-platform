@@ -6,6 +6,7 @@ import {
   completeBundledAddOnChanges,
   endPackageOffer,
   findBundledAddOnsForSubscription,
+  findPackageOfferForfeitedAt,
   isPackageOfferForfeited,
   markPackageOfferForfeited,
   recordBundledAddOnRemoval,
@@ -114,6 +115,7 @@ describe("markPackageOfferForfeited", () => {
     expect(await dbs.staff.db.transaction((tx) => markPackageOfferForfeited(tx, businessId, OPENED_AT))).toBe(true);
     expect(await forfeitedAt()).toEqual(OPENED_AT);
     expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(true);
+    expect(await findPackageOfferForfeitedAt(dbs.staff.db, businessId)).toEqual(OPENED_AT);
 
     expect(await dbs.staff.db.transaction((tx) => markPackageOfferForfeited(tx, businessId, RENEWED_AT))).toBe(false);
     expect(await forfeitedAt()).toEqual(OPENED_AT);

@@ -4,6 +4,7 @@ import {
   findBusinessCurrency,
   findChargeForBusiness,
   findLatestSubscriptionForBusiness,
+  findPackageOfferForfeitedAt,
   listAddOnSubscriptionsForStaff,
   listBundledAddOnsForBusiness,
   listPressReleasesForBusiness,
@@ -23,6 +24,7 @@ import {
   type BundledRemoval,
 } from "@brandbasket/shared/server/basket-change";
 import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { clientPackageFacts, type ClientPackageFacts } from "@/lib/client-package";
 import {
   clientAddOnOption,
   clientAddOnRows,
@@ -50,16 +52,19 @@ export interface ClientAddOns {
   readonly pressReleases: readonly ClientPressReleaseRow[];
   /** What staff can add (or keep) for the client now. */
   readonly options: readonly ClientAddOnOption[];
+  /** The package the client has, its ad credit and when the offer was given up. */
+  readonly package: ClientPackageFacts;
 }
 
 /** Everything the client page's Add-ons section shows for one business. */
 export async function loadClientAddOns(businessId: string, now: Date): Promise<ClientAddOns> {
   const db = getStaffDb();
-  const [rows, releases, bundled, currency] = await Promise.all([
+  const [rows, releases, bundled, currency, forfeitedAt] = await Promise.all([
     listAddOnSubscriptionsForStaff(db, businessId),
     listPressReleasesForBusiness(db, businessId),
     listBundledAddOnsForBusiness(db, businessId),
     findBusinessCurrency(db, businessId),
+    findPackageOfferForfeitedAt(db, businessId),
   ]);
   if (currency === null) throw new Error(`No business with id ${businessId} to list add-ons for`);
   const addOns = clientAddOnRows(rows, now);
@@ -89,6 +94,7 @@ export async function loadClientAddOns(businessId: string, now: Date): Promise<C
     }),
     pressReleases: clientPressReleaseRows(releases),
     options,
+    package: clientPackageFacts({ lines: bundled, subscription, currency, forfeitedAt }),
   };
 }
 

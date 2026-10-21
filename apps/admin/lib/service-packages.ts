@@ -10,7 +10,7 @@ const SHORT_NAMES: Readonly<Record<MonthlyAddOnId, string>> = {
 };
 
 /** The services as staff say them, in the catalogue's order: "Website + Social". */
-export function packageLabel(services: readonly MonthlyAddOnId[]): string {
+export function packageLabel(services: readonly string[]): string {
   return MONTHLY_ADD_ON_IDS.filter((id) => services.includes(id))
     .map((id) => SHORT_NAMES[id])
     .join(" + ");

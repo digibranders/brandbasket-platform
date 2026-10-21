@@ -38,6 +38,7 @@ import { ClientBillingDetails, ClientTaxInvoices } from "@/components/client-inv
 import { ClientFeatures } from "@/components/client-features";
 import { ClientListing, type ListingNotice } from "@/components/client-listing";
 import { readStaffChargeNotice } from "@brandbasket/shared/lib/billing/charge-notices";
+import type { ClientPackageFacts } from "@/lib/client-package";
 import { loadClientAddOns } from "@/lib/server/add-ons-admin";
 import { serverEnv } from "@/lib/server/env";
 import { loadClientChatbots } from "@/lib/server/chatbots-admin";
@@ -249,7 +250,15 @@ const PAYMENT_LABELS: Readonly<Record<ClientPaymentState["kind"], string>> = {
   "not-paid": "Not paid",
 };
 
-function BillingFacts({ client, state }: { readonly client: ClientDetail; readonly state: ClientPaymentState }): ReactElement {
+function BillingFacts({
+  client,
+  state,
+  packageFacts,
+}: {
+  readonly client: ClientDetail;
+  readonly state: ClientPaymentState;
+  readonly packageFacts: ClientPackageFacts;
+}): ReactElement {
   const subscription = client.billing.subscription;
   const hasPaid = state.kind === "paid" || state.kind === "lapsed";
   const manual = hasPaid ? state.manual : null;
@@ -280,6 +289,9 @@ function BillingFacts({ client, state }: { readonly client: ClientDetail; readon
           label: "First term ends",
           value: subscription?.commitmentEndsAt ? <When date={subscription.commitmentEndsAt} /> : null,
         },
+        { label: "Package", value: packageFacts.package },
+        { label: "Ad credit", value: packageFacts.adCredit },
+        ...(packageFacts.forfeitedOn === null ? [] : [{ label: "Package offer ended", value: packageFacts.forfeitedOn }]),
         ...(manual === null
           ? []
           : [
@@ -829,7 +841,7 @@ export default async function ClientPage({
         </Section>
 
         <Section title="Billing">
-          <BillingFacts client={client} state={paymentState} />
+          <BillingFacts client={client} state={paymentState} packageFacts={clientAddOns.package} />
           {canRecordPayment && plan !== null ? (
             <ManualPaymentForm businessId={client.businessId} plan={plan} netCents={manualNetCents} reactivating={paymentState.kind === "lapsed"} />
           ) : null}

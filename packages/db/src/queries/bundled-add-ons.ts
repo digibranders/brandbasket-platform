@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import {
@@ -651,15 +651,70 @@ export async function endPackageOffer(
 }
 
 /**
- * Whether the business has given its package offer up (markPackageOfferForfeited): from then on every service it takes is
- * priced at list. False for a business that does not exist. Staff connection.
+ * When the business gave its package offer up (markPackageOfferForfeited), or null if it has not. From then on every
+ * service it takes is priced at list. Null for a business that does not exist. Staff connection.
  */
-export async function isPackageOfferForfeited(db: Runner, businessId: string): Promise<boolean> {
-  if (!isUuid(businessId)) return false;
+export async function findPackageOfferForfeitedAt(db: Runner, businessId: string): Promise<Date | null> {
+  if (!isUuid(businessId)) return null;
   const rows = await db
     .select({ at: businesses.packageOfferForfeitedAt })
     .from(businesses)
     .where(eq(businesses.id, businessId))
     .limit(1);
-  return (rows[0]?.at ?? null) !== null;
+  return rows[0]?.at ?? null;
+}
+
+/** Whether the business has given its package offer up: false for a business that does not exist. Staff connection. */
+export async function isPackageOfferForfeited(db: Runner, businessId: string): Promise<boolean> {
+  return (await findPackageOfferForfeitedAt(db, businessId)) !== null;
+}
+
+/** One live, paid subscription that earns ad credit, for the console's "Ad credit due this month" list. */
+export interface AdCreditDue {
+  readonly subscriptionId: string;
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly currency: BillingCurrency;
+  /** The ad credit a month, in the subscription's minor units. */
+  readonly adCreditCents: number;
+  /** The end of the period the customer has paid for. */
+  readonly currentPeriodEnd: Date | null;
+  /** The service ids still billed on the subscription, in the order they were taken. */
+  readonly services: readonly string[];
+}
+
+/**
+ * The subscriptions that are owed ad credit this month: paid at least once (`activated_at`), still billing (active or past
+ * due; not stopped by the provider), not cancelled and not asked to close, with credit above zero. A cancelled row that never
+ * took a payment keeps the credit it was opened with, and a close request zeroes it from the request on, so neither is listed
+ * by the credit alone. By business name. Staff connection.
+ */
+export async function listAdCreditDue(db: Runner): Promise<readonly AdCreditDue[]> {
+  const due = await db
+    .select({
+      subscriptionId: subscriptions.id,
+      businessId: subscriptions.businessId,
+      businessName: businesses.name,
+      currency: businesses.currency,
+      adCreditCents: subscriptions.adCreditCents,
+      currentPeriodEnd: subscriptions.currentPeriodEnd,
+    })
+    .from(subscriptions)
+    .innerJoin(businesses, eq(businesses.id, subscriptions.businessId))
+    .where(
+      and(
+        gt(subscriptions.adCreditCents, 0),
+        isNotNull(subscriptions.activatedAt),
+        isNull(subscriptions.cancelRequestedAt),
+        inArray(subscriptions.status, ["active", "past_due"]),
+      ),
+    )
+    .orderBy(asc(businesses.name), asc(subscriptions.id));
+  if (due.length === 0) return [];
+  const lines = await db
+    .select({ subscriptionId: bundledAddOns.subscriptionId, addOn: bundledAddOns.addOn })
+    .from(bundledAddOns)
+    .where(and(inArray(bundledAddOns.subscriptionId, due.map((row) => row.subscriptionId)), eq(bundledAddOns.status, "active")))
+    .orderBy(asc(bundledAddOns.createdAt), asc(bundledAddOns.id));
+  return due.map((row) => ({ ...row, services: lines.filter((line) => line.subscriptionId === row.subscriptionId).map((line) => line.addOn) }));
 }

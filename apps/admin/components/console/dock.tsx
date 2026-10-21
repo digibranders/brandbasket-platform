@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import type { ReactElement, ReactNode } from "react";
-import { BriefcaseIcon, CardIcon, DocumentIcon, LinkIcon, MailIcon, MouseIcon, PercentIcon, PinIcon, PlusIcon, ShieldIcon, SignOutIcon, TagIcon, UsersIcon } from "@brandbasket/shared/ui/icons";
+import { BriefcaseIcon, CardIcon, DocumentIcon, GaugeIcon, LinkIcon, MailIcon, MouseIcon, PercentIcon, PinIcon, PlusIcon, ShieldIcon, SignOutIcon, TagIcon, UsersIcon } from "@brandbasket/shared/ui/icons";
 import { staffCan, type StaffCapability } from "@brandbasket/shared/lib/access";
 import { cn } from "@brandbasket/shared/lib/cn";
 import type { StaffRole } from "@brandbasket/db";
@@ -49,6 +49,7 @@ const ITEMS: readonly DockItem[] = [
   { href: "/coupons", label: "Coupons", icon: <TagIcon className="size-5" /> },
   { href: "/affiliates", label: "Affiliates", icon: <LinkIcon className="size-5" /> },
   { href: "/pricing", label: "Pricing", icon: <CardIcon className="size-5" />, needs: "money" },
+  { href: "/ad-credit", label: "Ad credit", icon: <GaugeIcon className="size-5" /> },
   { href: "/invoices", label: "Invoices", icon: <DocumentIcon className="size-5" />, needs: "money" },
   { href: "/directory", label: "Directory", icon: <PinIcon className="size-5" />, directory: true },
   { href: "/geography", label: "Places", icon: <GeographyIcon className="size-5" />, directory: true },
@@ -84,7 +85,7 @@ interface DockProps {
 
 /**
  * The console's navigation: a glass bar floating at the bottom of the screen, like the marketing site's navbar.
- * Adding a lead sits at the end in gold, because it is the one thing started from anywhere. Fifteen links do not fit
+ * Adding a lead sits at the end in gold, because it is the one thing started from anywhere. Sixteen links do not fit
  * a phone, so the bar scrolls sideways inside the screen and keeps the current page in view. From md the items are
  * 4rem wide (4.5rem from xl), which is the widest that still fits the whole bar, Add lead included, at 1024px.
  */
