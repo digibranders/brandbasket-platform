@@ -68,6 +68,9 @@ const customer: GrantedCustomer = {
 /** Social Media and Ads and Local SEO + AEO in rupees as frozen on their rows, before GST. */
 const DIGITAL_GROWTH_NET = 665_000;
 
+/** The discount frozen on each line of the three-service package: 30% of its list, the dearest line carrying the leftover. */
+const PACKAGE_DISCOUNTS: Readonly<Record<string, number>> = { "managed-website": 89_970, "digital-growth": 299_970, "local-seo-aeo": 750_060 };
+
 let provider: BillingProvider;
 let staffDb: Database;
 let logged: MockInstance<typeof console.error>;
@@ -159,24 +162,24 @@ describe("loadAddOnsPage", () => {
 
     expect(page.currency).toBe("INR");
     expect(page.addOns).toEqual([
-      { kind: "available", addOn: "managed-website", price: expect.objectContaining({ listCents: 300_000, discountCents: 0, netCents: 300_000, chargedCents: 354_000 }), offer: { kind: "write" } },
-      { kind: "available", addOn: "digital-growth", price: expect.objectContaining({ listCents: 1_000_000, discountCents: 0, netCents: 1_000_000, chargedCents: 1_180_000 }), offer: { kind: "write" } },
-      { kind: "available", addOn: "local-seo-aeo", price: expect.objectContaining({ listCents: 2_500_000, discountCents: 0, netCents: 2_500_000, chargedCents: 2_950_000 }), offer: { kind: "write" } },
+      { kind: "available", addOn: "managed-website", price: expect.objectContaining({ listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 353_882 }), offer: { kind: "write" } },
+      { kind: "available", addOn: "digital-growth", price: expect.objectContaining({ listCents: 999_900, discountCents: 0, netCents: 999_900, chargedCents: 1_179_882 }), offer: { kind: "write" } },
+      { kind: "available", addOn: "local-seo-aeo", price: expect.objectContaining({ listCents: 2_499_900, discountCents: 0, netCents: 2_499_900, chargedCents: 2_949_882 }), offer: { kind: "write" } },
     ]);
   });
 
   it("shows a service not yet added at the package price it would have, and at list once the offer is given up", async () => {
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([includedRow({ addOn: "managed-website", listAmountCents: 300_000, offerDiscountAmountCents: 0, netAmountCents: 300_000 })]);
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([includedRow({ addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 0, netAmountCents: 299_900 })]);
 
     const page = await loadAddOnsPage(subscribed, NOW);
     expect(page.addOns.find((entry) => entry.addOn === "digital-growth")).toMatchObject({
       kind: "available",
-      price: { listCents: 1_000_000, discountCents: 200_000, netCents: 800_000, chargedCents: 944_000 },
+      price: { listCents: 999_900, discountCents: 200_020, netCents: 799_880, chargedCents: 943_858 },
     });
 
     vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
     const forfeited = await loadAddOnsPage(subscribed, NOW);
-    expect(forfeited.addOns.find((entry) => entry.addOn === "digital-growth")).toMatchObject({ price: { discountCents: 0, netCents: 1_000_000 } });
+    expect(forfeited.addOns.find((entry) => entry.addOn === "digital-growth")).toMatchObject({ price: { discountCents: 0, netCents: 999_900 } });
   });
 
   it("prices a business billed in dollars in dollars, with no tax", async () => {
@@ -212,18 +215,18 @@ describe("loadAddOnsPage", () => {
 
   describe("what dropping a service leaves", () => {
     const line = (addOn: string, listAmountCents: number, overrides: Partial<BundledAddOn> = {}) =>
-      includedRow({ addOn, listAmountCents, offerDiscountAmountCents: Math.round(listAmountCents * 0.3), netAmountCents: Math.round(listAmountCents * 0.7), ...overrides });
-    const all = () => [line("managed-website", 300_000), line("digital-growth", 1_000_000), line("local-seo-aeo", 2_500_000)];
+      includedRow({ addOn, listAmountCents, offerDiscountAmountCents: PACKAGE_DISCOUNTS[addOn] ?? 0, netAmountCents: listAmountCents - (PACKAGE_DISCOUNTS[addOn] ?? 0), ...overrides });
+    const all = () => [line("managed-website", 299_900), line("digital-growth", 999_900), line("local-seo-aeo", 2_499_900)];
 
-    it("shows, for each of three services, the others at list: dropping Local SEO + AEO leaves ₹15,340 a month with GST and ends the package", async () => {
+    it("shows, for each of three services, the others at list: dropping Local SEO + AEO leaves ₹15,337.64 a month with GST and ends the package", async () => {
       vi.mocked(findLiveBundledAddOns).mockResolvedValue(all());
 
       const { addOns } = await loadAddOnsPage(subscribed, NOW);
 
       expect(addOns.map((entry) => (entry.kind === "included" ? [entry.addOn, entry.drop?.keeps, entry.drop?.newMonthlyCents, entry.drop?.endsPackage] : null))).toEqual([
-        ["managed-website", ["digital-growth", "local-seo-aeo"], 4_130_000, true],
-        ["digital-growth", ["managed-website", "local-seo-aeo"], 3_304_000, true],
-        ["local-seo-aeo", ["managed-website", "digital-growth"], 1_534_000, true],
+        ["managed-website", ["digital-growth", "local-seo-aeo"], 4_129_764, true],
+        ["digital-growth", ["managed-website", "local-seo-aeo"], 3_303_764, true],
+        ["local-seo-aeo", ["managed-website", "digital-growth"], 1_533_764, true],
       ]);
     });
 
@@ -233,7 +236,7 @@ describe("loadAddOnsPage", () => {
 
       const { addOns } = await loadAddOnsPage(subscribed, NOW);
 
-      expect(addOns[2]).toMatchObject({ drop: { newMonthlyCents: 1_534_000, endsPackage: false } });
+      expect(addOns[2]).toMatchObject({ drop: { newMonthlyCents: 1_533_764, endsPackage: false } });
     });
 
     it("offers no drop while the account has asked to close", async () => {
@@ -246,10 +249,10 @@ describe("loadAddOnsPage", () => {
     });
 
     it("offers no drop for the only service, or for one that is already ending", async () => {
-      vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("digital-growth", 1_000_000)]);
+      vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("digital-growth", 999_900)]);
       expect((await loadAddOnsPage(subscribed, NOW)).addOns[1]).toMatchObject({ kind: "included", drop: null });
 
-      vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website", 300_000), line("digital-growth", 1_000_000, { endRequestedAt: PAID_AT })]);
+      vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website", 299_900), line("digital-growth", 999_900, { endRequestedAt: PAID_AT })]);
       const { addOns } = await loadAddOnsPage(subscribed, NOW);
       expect(addOns[1]).toMatchObject({ kind: "included", drop: null });
       // The one still staying is now the only service.
@@ -325,8 +328,8 @@ describe("removeBundledAddOnFor", () => {
   const PROVIDER_SUBSCRIPTION = `fake_sub_${"a".repeat(24)}`;
   const PLAN = { id: "plan-managed", code: "managed-inr-2026-10", currency: "INR", providerPlanId: "plan_managed_rzp" };
   const IDS = { "managed-website": "000000000001", "digital-growth": "000000000002", "local-seo-aeo": "000000000003" } as const;
-  const LISTS = { "managed-website": 300_000, "digital-growth": 1_000_000, "local-seo-aeo": 2_500_000 } as const;
-  /** A line of the three-service package: 30% off every line, as frozen on it. */
+  const LISTS = { "managed-website": 299_900, "digital-growth": 999_900, "local-seo-aeo": 2_499_900 } as const;
+  /** A line of the three-service package as frozen on it: 30% off every line, and the dearest carries the 90 paise that round the total down to a whole rupee. */
   const bundledRow = (addOn: keyof typeof IDS, overrides: Record<string, unknown> = {}) => ({
     id: `0192f3c4-5555-7000-8000-${IDS[addOn]}`,
     businessId: BUSINESS_ID,
@@ -334,9 +337,9 @@ describe("removeBundledAddOnFor", () => {
     addOn,
     status: "active",
     listAmountCents: LISTS[addOn],
-    offerDiscountAmountCents: Math.round(LISTS[addOn] * 0.3),
+    offerDiscountAmountCents: PACKAGE_DISCOUNTS[addOn],
     pendingOfferDiscountAmountCents: null,
-    netAmountCents: Math.round(LISTS[addOn] * 0.7),
+    netAmountCents: LISTS[addOn] - PACKAGE_DISCOUNTS[addOn],
     endRequestedAt: null,
     ...overrides,
   });
@@ -377,12 +380,12 @@ describe("removeBundledAddOnFor", () => {
       endsOn: PAID_THROUGH,
       message: "Social Media and Ads stays until your next payment date, then it stops.",
     });
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 2_800_000);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 2_799_800);
     expect(changed).toHaveBeenCalledWith(PROVIDER_SUBSCRIPTION, "plan_lower");
     expect(recordBundledAddOnRemoval).toHaveBeenCalledWith(expect.anything(), {
       id: bundledRow("digital-growth").id,
       businessId: BUSINESS_ID,
-      pendingBundledAddOnNetCents: 2_800_000,
+      pendingBundledAddOnNetCents: 2_799_800,
       now: NOW,
     });
     expect(endPackageOffer).toHaveBeenCalledWith(expect.anything(), {
@@ -398,8 +401,8 @@ describe("removeBundledAddOnFor", () => {
   });
 
   it("moves nothing for a service that is already at list with no change waiting", async () => {
-    const website = bundledRow("managed-website", { offerDiscountAmountCents: 0, netAmountCents: 300_000 });
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([website, bundledRow("digital-growth", { offerDiscountAmountCents: 0, netAmountCents: 1_000_000 })] as never);
+    const website = bundledRow("managed-website", { offerDiscountAmountCents: 0, netAmountCents: 299_900 });
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([website, bundledRow("digital-growth", { offerDiscountAmountCents: 0, netAmountCents: 999_900 })] as never);
 
     await removeBundledAddOnFor(customer, "digital-growth", NOW);
 
@@ -415,11 +418,11 @@ describe("removeBundledAddOnFor", () => {
 
     await removeBundledAddOnFor(customer, "digital-growth", NOW);
 
-    expect(recordBundledAddOnRemoval).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ pendingBundledAddOnNetCents: 300_000 }));
+    expect(recordBundledAddOnRemoval).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ pendingBundledAddOnNetCents: 299_900 }));
   });
 
   it("refuses to remove the only service and sends the customer to delete the account, touching nothing", async () => {
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("digital-growth", { offerDiscountAmountCents: 0, netAmountCents: 1_000_000 })] as never);
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("digital-growth", { offerDiscountAmountCents: 0, netAmountCents: 999_900 })] as never);
 
     const result = await removeBundledAddOnFor(customer, "digital-growth", NOW);
 

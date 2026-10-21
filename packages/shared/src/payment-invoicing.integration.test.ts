@@ -170,8 +170,8 @@ function payRenewal(subscriptionId: string, invoicedPrice: RenewalInvoicedPrice,
 
 /**
  * Buys Social Media and Ads on a new add-on row and records its first payment, then invoices it in the same transaction, as the
- * add-on activation will: the invoice is the last write. The row is priced as a purchase freezes it: a round list price of
- * 10,000 rupees, less a discount of 50,000 paise when `discounted`.
+ * add-on activation will: the invoice is the last write. The row is priced as a purchase freezes it: its list price of
+ * 9,999 rupees, less a discount of 50,000 paise when `discounted`.
  */
 async function payAddOn(discounted: boolean, providerPaymentId: string) {
   const discountAmountCents = discounted ? 50_000 : 0;
@@ -179,12 +179,12 @@ async function payAddOn(discounted: boolean, providerPaymentId: string) {
     id: randomUUID(),
     businessId,
     addOn: "digital-growth",
-    listAmountCents: 1_000_000,
+    listAmountCents: 999_900,
     discountAmountCents,
     offerDiscountAmountCents: discountAmountCents,
-    netAmountCents: 1_000_000 - discountAmountCents,
+    netAmountCents: 999_900 - discountAmountCents,
     taxRateBasisPoints: 1_800,
-    chargedAmountCents: chargedAmountCents(1_000_000, discountAmountCents, 1_800),
+    chargedAmountCents: chargedAmountCents(999_900, discountAmountCents, 1_800),
     currency: "INR",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${randomUUID()}`,
@@ -257,7 +257,7 @@ describe("invoicing every payment path", () => {
     });
     expect(invoice?.cgstCents).toBe(invoice?.sgstCents);
     expect(invoice?.lines).toHaveLength(1);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Managed Website", quantity: 1, unitAmountCents: 300_000, discountAmountCents: 0, note: null });
+    expect(invoice?.lines[0]).toMatchObject({ description: "Managed Website", quantity: 1, unitAmountCents: 299_900, discountAmountCents: 0, note: null });
   });
 
   it("issues nothing more when the same payment is delivered again, and takes no number", async () => {
@@ -284,7 +284,7 @@ describe("invoicing every payment path", () => {
         commitmentEndsAt,
         provider: "fake",
         providerPaymentId: "fake_pay_renewal",
-        amountCents: chargedAmountCents(300_000, 0, services.taxRateBasisPoints),
+        amountCents: chargedAmountCents(299_900, 0, services.taxRateBasisPoints),
         currency: "INR",
         paidAt: NEXT_MONTH,
         paidThroughAt: MONTH_AFTER,
@@ -315,7 +315,7 @@ describe("invoicing every payment path", () => {
 
     expect((await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id))?.lines[0]).toMatchObject({
       description: "Managed Website",
-      unitAmountCents: 300_000,
+      unitAmountCents: 299_900,
       discountAmountCents: 0,
     });
   });
@@ -386,32 +386,32 @@ describe("invoicing every payment path", () => {
 describe("what the invoice describes", () => {
   it("describes a first payment of one service on a 20% referral code with the coupon note and the discount off the service price", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
-    const coupon = await percentCoupon("GAURAV", 2_000, 300_000);
+    const coupon = await percentCoupon("GAURAV", 2_000, 299_900);
     const subscription = await openSubscription(businessId, services, coupon);
 
     const activation = await payFirst(subscription, services, "fake_pay_first", coupon.discountAmountCents);
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
-    expect(coupon.discountAmountCents).toBe(60_000);
+    expect(coupon.discountAmountCents).toBe(59_980);
     expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({
       description: "Managed Website",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       note: "Coupon GAURAV applied, 20% off",
-      unitAmountCents: 300_000,
+      unitAmountCents: 299_900,
       discountAmountCents: coupon.discountAmountCents,
     });
-    expect(invoice?.taxableCents).toBe(300_000 - coupon.discountAmountCents);
+    expect(invoice?.taxableCents).toBe(299_900 - coupon.discountAmountCents);
     expect(invoice?.totalCents).toBe(activation.payment.amountCents);
   });
 
   it("describes a renewal with a coupon and a stay offer by both, with the whole discount in one column", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
-    const coupon = await percentCoupon("GAURAV", 2_000, 300_000);
+    const coupon = await percentCoupon("GAURAV", 2_000, 299_900);
     await payFirst(await openSubscription(businessId, services, coupon), services, "fake_pay_first", coupon.discountAmountCents);
     const opened = await findLatestSubscriptionForBusiness(dbs.staff.db, businessId);
     if (opened === null) throw new Error("The first payment did not open the subscription");
-    const stayOffer = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 300_000);
+    const stayOffer = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 299_900);
     // A stay offer taken before stay offers were removed: its worth sits on the subscription and in its discount.
     await execSql(
       dbs.owner,
@@ -435,10 +435,10 @@ describe("what the invoice describes", () => {
       description: "Managed Website",
       detail: "Monthly subscription, 09 Nov to 08 Dec 2026",
       note: "Coupon GAURAV applied, 20% off. Stay offer applied",
-      unitAmountCents: 300_000,
+      unitAmountCents: 299_900,
       discountAmountCents: coupon.discountAmountCents + stayOffer,
     });
-    expect(invoice?.taxableCents).toBe(300_000 - coupon.discountAmountCents - stayOffer);
+    expect(invoice?.taxableCents).toBe(299_900 - coupon.discountAmountCents - stayOffer);
     expect(invoice?.totalCents).toBe(renewal.payment.amountCents);
   });
 
@@ -455,13 +455,13 @@ describe("what the invoice describes", () => {
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       note: null,
       quantity: 1,
-      unitAmountCents: 1_000_000,
+      unitAmountCents: 999_900,
       discountAmountCents: 50_000,
       taxRateBasisPoints: 1_800,
     });
-    expect(invoice).toMatchObject({ taxableCents: 950_000, totalCents: 1_121_000 });
-    expect(invoice?.cgstCents).toBe(85_500);
-    expect(invoice?.sgstCents).toBe(85_500);
+    expect(invoice).toMatchObject({ taxableCents: 949_900, totalCents: 1_120_882 });
+    expect(invoice?.cgstCents).toBe(85_491);
+    expect(invoice?.sgstCents).toBe(85_491);
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
 
@@ -471,8 +471,8 @@ describe("what the invoice describes", () => {
     const { payment } = await payAddOn(false, "fake_pay_add_on_list");
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, unitAmountCents: 1_000_000, discountAmountCents: 0 });
-    expect(invoice).toMatchObject({ taxableCents: 1_000_000, totalCents: 1_180_000 });
+    expect(invoice?.lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, unitAmountCents: 999_900, discountAmountCents: 0 });
+    expect(invoice).toMatchObject({ taxableCents: 999_900, totalCents: 1_179_882 });
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
 
@@ -484,12 +484,12 @@ describe("what the invoice describes", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents, line.note])).toEqual([
-      ["Managed Website", 300_000, 90_000, "Package offer, 30% off"],
-      ["Social Media and Ads", 1_000_000, 300_000, "Package offer, 30% off"],
-      ["Local SEO + AEO", 2_500_000, 750_000, "Package offer, 30% off"],
+      ["Managed Website", 299_900, 89_970, "Package offer, 30% off"],
+      ["Social Media and Ads", 999_900, 299_970, "Package offer, 30% off"],
+      ["Local SEO + AEO", 2_499_900, 750_060, "Package offer, 30% off"],
     ]);
-    expect(invoice).toMatchObject({ taxableCents: 2_660_000, cgstCents: 239_400, sgstCents: 239_400, roundOffCents: 0, totalCents: 3_138_800 });
-    expect(activation.payment.amountCents).toBe(3_138_800);
+    expect(invoice).toMatchObject({ taxableCents: 2_659_700, cgstCents: 239_373, sgstCents: 239_373, roundOffCents: 0, totalCents: 3_138_446 });
+    expect(activation.payment.amountCents).toBe(3_138_446);
     expect(JSON.stringify(invoice?.lines)).not.toMatch(/credit/i);
   });
 
@@ -500,10 +500,10 @@ describe("what the invoice describes", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
-      ["Managed Website", 60_000, "Package offer, 20% off"],
-      ["Social Media and Ads", 200_000, "Package offer, 20% off"],
+      ["Managed Website", 59_980, "Package offer, 20% off"],
+      ["Social Media and Ads", 200_020, "Package offer, 20% off"],
     ]);
-    expect(invoice?.totalCents).toBe(1_227_200);
+    expect(invoice?.totalCents).toBe(1_226_964);
   });
 
   it("describes a first payment of one service with no discount and no note", async () => {
@@ -514,7 +514,7 @@ describe("what the invoice describes", () => {
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({ description: "Local SEO + AEO", discountAmountCents: 0, note: null });
-    expect(invoice?.totalCents).toBe(2_950_000);
+    expect(invoice?.totalCents).toBe(2_949_882);
   });
 
   it("calls a first payment that covers three months a subscription, not a monthly one", async () => {

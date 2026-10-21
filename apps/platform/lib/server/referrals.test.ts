@@ -63,8 +63,8 @@ const PLAN = {
   taxRateBasisPoints: 1_800,
 } as const satisfies Plan;
 
-/** What a code is priced against on a Managed Website subscription: the website's ₹3,000 list price. */
-const WEBSITE = { currency: "INR", listCents: 300_000 } as const;
+/** What a code is priced against on a Managed Website subscription: the website's ₹2,999 list price. */
+const WEBSITE = { currency: "INR", listCents: 299_900 } as const;
 const WEBSITE_ALONE = ["managed-website"] as const;
 
 function code(overrides: Partial<ReferralCode> = {}): ReferralCode {
@@ -131,12 +131,12 @@ describe("discountFrom", () => {
   });
 
   it("resolves a percentage code against the service's pre-tax list price, not the plan's 0", () => {
-    // 10% of ₹3,000 is ₹300; 12.5% is ₹375.
+    // 10% of ₹2,999 is ₹299.90; 12.5% is ₹374.88 (half a paisa up).
     const tenPercent = discountFrom(code({ discount: { kind: "percent", basisPoints: 1_000 } }), WEBSITE);
-    expect(tenPercent).toMatchObject({ amountCents: 30_000, stated: { kind: "percent", basisPoints: 1_000 } });
-    expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_250 } }), WEBSITE)?.amountCents).toBe(37_500);
-    // 10% of Local SEO + AEO's ₹25,000.
-    expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_000 } }), { currency: "INR", listCents: 2_500_000 })?.amountCents).toBe(250_000);
+    expect(tenPercent).toMatchObject({ amountCents: 29_990, stated: { kind: "percent", basisPoints: 1_000 } });
+    expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_250 } }), WEBSITE)?.amountCents).toBe(37_488);
+    // 10% of Local SEO + AEO's ₹24,999.
+    expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_000 } }), { currency: "INR", listCents: 2_499_900 })?.amountCents).toBe(249_990);
   });
 
   it("does not apply a code for another currency", () => {
@@ -153,7 +153,7 @@ describe("discountFrom", () => {
   });
 
   it("does not apply a discount worth as much as the service, which would leave nothing to charge", () => {
-    expect(discountFrom(code({ discount: { kind: "amount", amountCents: 300_000 } }), WEBSITE)).toBeNull();
+    expect(discountFrom(code({ discount: { kind: "amount", amountCents: 299_900 } }), WEBSITE)).toBeNull();
     expect(discountFrom(code({ discount: { kind: "amount", amountCents: 400_000 } }), WEBSITE)).toBeNull();
   });
 });
@@ -237,12 +237,12 @@ describe("applyReferralCodeFor", () => {
   it("prices a code on a single service against that service's list price", async () => {
     vi.mocked(findRedeemableReferralCode).mockResolvedValue(code({ discount: { kind: "percent", basisPoints: 1_000 } }));
     const outcome = await applyReferralCodeFor(customer, "SAVE15", ["digital-growth"], NOW);
-    // 10% of Social Media and Ads' ₹10,000.
-    expect(outcome).toMatchObject({ kind: "applied", discount: { amountCents: 100_000 } });
+    // 10% of Social Media and Ads' ₹9,999.
+    expect(outcome).toMatchObject({ kind: "applied", discount: { amountCents: 99_990 } });
   });
 
   it("refuses a code worth as much as the one service, which would leave nothing to charge", async () => {
-    vi.mocked(findRedeemableReferralCode).mockResolvedValue(code({ discount: { kind: "amount", amountCents: 300_000 } }));
+    vi.mocked(findRedeemableReferralCode).mockResolvedValue(code({ discount: { kind: "amount", amountCents: 299_900 } }));
     expect(refusalOf(await applyReferralCodeFor(customer, "SAVE15", WEBSITE_ALONE, NOW))).toContain("isn’t valid");
     expect(setBusinessReferralCode).not.toHaveBeenCalled();
   });

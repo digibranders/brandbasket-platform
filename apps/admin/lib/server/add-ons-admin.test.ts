@@ -161,7 +161,7 @@ describe("loadClientAddOns", () => {
         businessId: BUSINESS,
         addOn: "digital-growth",
         discountAmountCents: 0,
-        netAmountCents: 1_000_000,
+        netAmountCents: 999_900,
         currency: "INR",
         status: "active",
         endKind: null,
@@ -198,7 +198,7 @@ describe("loadClientAddOns", () => {
         businessId: BUSINESS,
         addOn: "digital-growth",
         discountAmountCents: 0,
-        netAmountCents: 1_000_000,
+        netAmountCents: 999_900,
         currency: "INR",
         status: "active",
         endKind: null,
@@ -315,7 +315,7 @@ describe("adding, removing and retrying an add-on for the client", () => {
   it("shows the amount of an added add-on's open charge", async () => {
     vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
     vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
-    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, addOn: "local-seo-aeo", status: "pending", activatedAt: null, chargeId: "charge-1", contactedAt: null, createdAt: NOW, netAmountCents: 2_500_000, offerDiscountAmountCents: 0, taxRateBasisPoints: 1_800 }] as never);
+    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, addOn: "local-seo-aeo", status: "pending", activatedAt: null, chargeId: "charge-1", contactedAt: null, createdAt: NOW, netAmountCents: 2_499_900, offerDiscountAmountCents: 0, taxRateBasisPoints: 1_800 }] as never);
     vi.mocked(findChargeForBusiness).mockResolvedValue({ id: "charge-1", status: "open", amountCents: 1_332_258 } as never);
 
     const loaded = await loadClientAddOns(BUSINESS, NOW);

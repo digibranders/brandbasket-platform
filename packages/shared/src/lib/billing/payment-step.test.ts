@@ -42,8 +42,8 @@ describe("paymentStep", () => {
       ready: true,
     });
     expect(paymentStep({ ...OPEN_UNPAID, plan: INR })).toMatchObject({
-      amount: "₹3,540",
-      terms: "₹3,000 a month plus 18% GST, so ₹3,540 in all. Your first payment covers your first month, then it renews monthly.",
+      amount: "₹3,538.82",
+      terms: "₹2,999 a month plus 18% GST, so ₹3,538.82 in all. Your first payment covers your first month, then it renews monthly.",
     });
   });
 
@@ -125,7 +125,7 @@ describe("billingBanner", () => {
 
   it("prices an Indian plan in rupees for its one-month start", () => {
     expect(billingBanner({ ...base, setupComplete: true, plan: INR })).toMatchObject({
-      price: { amount: "₹3,540", term: "First month" },
+      price: { amount: "₹3,538.82", term: "First month" },
     });
   });
 
@@ -192,27 +192,27 @@ describe("afterPaymentHref", () => {
 });
 
 describe("a referral discount", () => {
-  // 15% of the website's 300,000 paise, frozen when the checkout opened.
-  const FIFTEEN_OFF = { code: "SAVE15", amountCents: 45_000, stated: { kind: "amount", amountCents: 45_000 } } as const;
+  // 15% of the website's 299,900 paise (44,985 rounded half up), frozen when the checkout opened.
+  const FIFTEEN_OFF = { code: "SAVE15", amountCents: 44_985, stated: { kind: "amount", amountCents: 44_985 } } as const;
 
   it("prices the button from the discount, so it matches what the checkout charges", () => {
     expect(paymentStep({ ...OPEN_UNPAID, plan: INR, discount: FIFTEEN_OFF })).toMatchObject({
       kind: "pay-and-send",
-      amount: "₹3,009",
+      amount: "₹3,008",
     });
   });
 
   it("quotes the discounted monthly price, because the discount runs for as long as the plan does", () => {
     const step = paymentStep({ ...OPEN_UNPAID, plan: INR, discount: FIFTEEN_OFF });
     expect(step).toMatchObject({
-      terms: "₹2,550 a month plus 18% GST, so ₹3,009 in all, instead of ₹3,000 before GST, for as long as your plan runs. Your first payment covers your first month, then it renews monthly.",
+      terms: "₹2,549.15 a month plus 18% GST, so ₹3,008 in all, instead of ₹2,999 before GST, for as long as your plan runs. Your first payment covers your first month, then it renews monthly.",
     });
   });
 
   it("discounts the pay-alone step too, for answers sent before payment was required", () => {
     expect(paymentStep({ ...OPEN_UNPAID, plan: INR, locked: true, discount: FIFTEEN_OFF })).toMatchObject({
       kind: "pay",
-      amount: "₹3,009",
+      amount: "₹3,008",
     });
   });
 
@@ -230,7 +230,7 @@ describe("a referral discount", () => {
     const step = paymentStep({ ...OPEN_UNPAID, plan: INR, discount: FIFTEEN_OFF });
     if (banner?.kind !== "pay" || step.kind !== "pay-and-send") throw new Error("expected a pay banner and step");
     expect(banner.price?.amount).toBe(step.amount);
-    expect(banner.price).toEqual({ amount: "₹3,009", term: "First month" });
+    expect(banner.price).toEqual({ amount: "₹3,008", term: "First month" });
   });
 
   it("changes nothing for a customer with no code applied", () => {

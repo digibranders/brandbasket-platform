@@ -63,17 +63,17 @@ let dbs: TestDatabases;
 let businessA = "";
 let businessB = "";
 
-/** Social media at the list price, no Premium discount: 10,000 net, 18% GST, 11,800 charged. */
+/** Social media at the list price, no Premium discount: 9,999 net, 18% GST, 11,798.82 charged. */
 function addOnRow(businessId: string, overrides: Partial<NewAddOnSubscription> = {}): NewAddOnSubscription {
   return {
     id: uuidv7(),
     businessId,
     addOn: "digital-growth",
-    listAmountCents: 1_000_000,
+    listAmountCents: 999_900,
     discountAmountCents: 0,
-    netAmountCents: 1_000_000,
+    netAmountCents: 999_900,
     taxRateBasisPoints: 1_800,
-    chargedAmountCents: 1_180_000,
+    chargedAmountCents: 1_179_882,
     currency: "INR",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${uuidv7()}`,
@@ -86,7 +86,7 @@ function paymentFor(addOnSubscriptionId: string, providerPaymentId: string, over
     addOnSubscriptionId,
     provider: "fake",
     providerPaymentId,
-    amountCents: 1_180_000,
+    amountCents: 1_179_882,
     currency: "INR",
     paidAt: NOW,
     periodStart: NOW,
@@ -220,7 +220,7 @@ describe("recordAddOnPayment", () => {
       kind: "add_on",
       subscriptionId: null,
       status: "captured",
-      amountCents: 1_180_000,
+      amountCents: 1_179_882,
       attentionReason: null,
     });
     const links = await dbs.staff.db.select().from(addOnPayments).where(eq(addOnPayments.paymentId, first.payment.id));
@@ -258,7 +258,7 @@ describe("recordAddOnPayment", () => {
 
   it("refuses an amount that is not whole paise, and a row that does not exist", async () => {
     const row = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA));
-    await expect(record(paymentFor(row.id, "fake_pay_float", { amountCents: 1_180_000.5 }))).rejects.toThrow(/whole minor units/);
+    await expect(record(paymentFor(row.id, "fake_pay_float", { amountCents: 1_179_882.5 }))).rejects.toThrow(/whole minor units/);
     await expect(record(paymentFor(uuidv7(), "fake_pay_missing"))).rejects.toThrow(/No add-on subscription/);
   });
 
@@ -762,7 +762,7 @@ describe("finding the add-on a payment paid", () => {
 
 describe("Razorpay plans per add-on price", () => {
   it("stores one plan id per add-on and amount, and keeps the first when two are saved", async () => {
-    const key = { addOn: "digital-growth", netAmountCents: 1_000_000, taxRateBasisPoints: 1_800, currency: "INR" as const, provider: "razorpay" as const };
+    const key = { addOn: "digital-growth", netAmountCents: 999_900, taxRateBasisPoints: 1_800, currency: "INR" as const, provider: "razorpay" as const };
     expect(await findAddOnProviderPlan(dbs.staff.db, key)).toBeNull();
 
     expect(await saveAddOnProviderPlan(dbs.staff.db, { ...key, providerPlanId: "plan_first" })).toBe("plan_first");

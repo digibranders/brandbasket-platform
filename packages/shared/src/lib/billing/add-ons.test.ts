@@ -15,11 +15,11 @@ describe("services catalogue", () => {
     expect(isMonthlyAddOnId("constructor")).toBe(false);
   });
 
-  it("lists in minor units: 3,000, 10,000 and 25,000 rupees, 75, 75 and 350 dollars", () => {
+  it("lists in minor units: 2,999, 9,999 and 24,999 rupees, 75, 75 and 350 dollars", () => {
     expect(ADD_ONS.map((addOn) => [addOn.id, addOn.prices.INR, addOn.prices.USD])).toEqual([
-      ["managed-website", 300_000, 7_500],
-      ["digital-growth", 1_000_000, 7_500],
-      ["local-seo-aeo", 2_500_000, 35_000],
+      ["managed-website", 299_900, 7_500],
+      ["digital-growth", 999_900, 7_500],
+      ["local-seo-aeo", 2_499_900, 35_000],
     ]);
   });
 
@@ -31,11 +31,11 @@ describe("services catalogue", () => {
     expect(line).not.toMatch(/\d+ (designed )?posts/);
   });
 
-  it("charges the website at 3,540 rupees a month with 18% GST", () => {
+  it("charges the website at 3,538.82 rupees a month with 18% GST", () => {
     expect(addOnPrice(addOnById("managed-website"), "INR")).toEqual({
-      currency: "INR", listCents: 300_000, discountCents: 0, offerCents: 0, netCents: 300_000, taxRateBasisPoints: 1_800, chargedCents: 354_000,
+      currency: "INR", listCents: 299_900, discountCents: 0, offerCents: 0, netCents: 299_900, taxRateBasisPoints: 1_800, chargedCents: 353_882,
     });
-    expect(addOnPrice(addOnById("local-seo-aeo"), "INR").chargedCents).toBe(2_950_000);
+    expect(addOnPrice(addOnById("local-seo-aeo"), "INR").chargedCents).toBe(2_949_882);
   });
 
   it("prices in dollars with no tax", () => {
@@ -44,15 +44,15 @@ describe("services catalogue", () => {
   });
 
   it("takes the package discount it is given off the list price, before tax", () => {
-    expect(addOnPrice(addOnById("digital-growth"), "INR", 300_000)).toEqual({
-      currency: "INR", listCents: 1_000_000, discountCents: 300_000, offerCents: 300_000, netCents: 700_000, taxRateBasisPoints: 1_800, chargedCents: 826_000,
+    expect(addOnPrice(addOnById("digital-growth"), "INR", 299_970)).toEqual({
+      currency: "INR", listCents: 999_900, discountCents: 299_970, offerCents: 299_970, netCents: 699_930, taxRateBasisPoints: 1_800, chargedCents: 825_917,
     });
   });
 
   it("refuses a discount that is not whole minor units between nothing and the list price", () => {
     const website = addOnById("managed-website");
     expect(() => addOnPrice(website, "INR", -1)).toThrow(RangeError);
-    expect(() => addOnPrice(website, "INR", 300_001)).toThrow(RangeError);
+    expect(() => addOnPrice(website, "INR", 299_901)).toThrow(RangeError);
     expect(() => addOnPrice(website, "INR", 0.5)).toThrow(RangeError);
   });
 

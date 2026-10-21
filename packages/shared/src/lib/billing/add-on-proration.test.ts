@@ -41,7 +41,7 @@ describe("quoteAddOn", () => {
   });
 
   it("charges Local SEO + AEO and dollar add-ons the same way", () => {
-    expect(quoteAddOn(input({ netCents: 2_500_000 }))).toMatchObject({ netCents: 1_129_032, chargeCents: 1_332_258 });
+    expect(quoteAddOn(input({ netCents: 2_499_900 }))).toMatchObject({ netCents: 1_128_987, chargeCents: 1_332_205 });
     expect(quoteAddOn(input({ netCents: 7_500, taxRateBasisPoints: 0, renewalNetCents: 15_000 }))).toMatchObject({
       netCents: 3_387,
       chargeCents: 3_387,

@@ -42,7 +42,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Managed Website",
     line: "A professionally designed website of up to 5 pages, mobile-friendly, with enquiry forms, click-to-call, a local SEO foundation and the OyeChats professional chatbot.",
     billing: "monthly",
-    prices: { INR: 3_000 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
+    prices: { INR: 2_999 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
   },
   {
@@ -51,7 +51,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Social Media and Ads",
     line: "Instagram, Facebook and Google profile posts planned with you each month, review replies, and Meta ads managed for up to ₹10,000 a month of your budget.",
     billing: "monthly",
-    prices: { INR: 10_000 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
+    prices: { INR: 9_999 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
     extra: "+ your ad spend",
     platforms: ["Google Business Profile", "Facebook Ads", "Instagram Ads"],
@@ -61,7 +61,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Local SEO + AEO",
     line: "Local search and AI answer optimisation: keyword research, up to 5 pages optimised a month, schema, and ranking tracking.",
     billing: "monthly",
-    prices: { INR: 25_000 * MINOR_UNITS_PER_MAJOR, USD: 350 * MINOR_UNITS_PER_MAJOR },
+    prices: { INR: 24_999 * MINOR_UNITS_PER_MAJOR, USD: 350 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
   },
 ];
@@ -103,7 +103,7 @@ export function addOnTaxRateBasisPoints(currency: MoneyCurrency): number {
   return currency === "INR" ? GST_BASIS_POINTS : 0;
 }
 
-/** What one purchase costs: the list price, less the package discount worked out for it (packageDiscountCentsFor), if any. */
+/** What one purchase costs: the list price, less the package discount worked out for it (packageDiscountsFor), if any. */
 export function addOnPrice(addOn: AddOn, currency: MoneyCurrency, discountCents = 0): AddOnPrice {
   const listCents = addOn.prices[currency];
   if (!Number.isSafeInteger(discountCents) || discountCents < 0 || discountCents > listCents) {

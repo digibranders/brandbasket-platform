@@ -127,19 +127,19 @@ describe("renderTaxInvoicesPdf", () => {
         grossAmountCents: unitAmountCents,
         discountAmountCents,
         taxableCents,
-        cgstCents: taxableCents * 0.09,
-        sgstCents: taxableCents * 0.09,
-        taxCents: taxableCents * 0.18,
+        cgstCents: Math.round(taxableCents * 0.09),
+        sgstCents: Math.round(taxableCents * 0.09),
+        taxCents: Math.round(taxableCents * 0.18),
       };
     };
     const pdf = await pages([
       {
         ...invoice,
-        lines: [service("Managed Website", 300_000, 90_000), service("Social Media and Ads", 1_000_000, 300_000), service("Local SEO + AEO", 2_500_000, 750_000)],
-        taxableCents: 2_660_000,
-        cgstCents: 239_400,
-        sgstCents: 239_400,
-        totalCents: 3_138_800,
+        lines: [service("Managed Website", 299_900, 89_970), service("Social Media and Ads", 999_900, 299_970), service("Local SEO + AEO", 2_499_900, 750_060)],
+        taxableCents: 2_659_700,
+        cgstCents: 239_373,
+        sgstCents: 239_373,
+        totalCents: 3_138_446,
       },
     ]);
     expect(pdf.getPageCount()).toBe(1);

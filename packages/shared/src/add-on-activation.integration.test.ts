@@ -27,7 +27,7 @@ vi.mock("server-only", () => ({}));
 const PAID_AT = new Date("2026-10-09T09:00:00.000Z");
 const PERIOD_END = new Date("2026-11-09T09:00:00.000Z");
 const LATER = new Date("2026-10-20T09:00:00.000Z");
-const LIST_CENTS = 1_000_000;
+const LIST_CENTS = 999_900;
 const TAX_BASIS_POINTS = 1_800;
 
 let dbs: TestDatabases;

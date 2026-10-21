@@ -10,9 +10,9 @@ import { ensureAddOnPlan } from "./add-on-plans";
 
 const staffDb = { name: "staff-db" } as never;
 const DIGITAL_GROWTH = addOnById("digital-growth");
-// Social Media and Ads in a Website + Social package: 20% off its list price.
-const PACKAGE_PRICE = addOnPrice(DIGITAL_GROWTH, "INR", 200_000);
-const KEY = { addOn: "digital-growth", netAmountCents: 800_000, taxRateBasisPoints: 1_800, currency: "INR", provider: "razorpay" } as const;
+// Social Media and Ads in a Website + Social package: 20% off its list price, and the 40 paise that round the package down to a whole rupee.
+const PACKAGE_PRICE = addOnPrice(DIGITAL_GROWTH, "INR", 200_020);
+const KEY = { addOn: "digital-growth", netAmountCents: 799_880, taxRateBasisPoints: 1_800, currency: "INR", provider: "razorpay" } as const;
 
 function providerWith(createPlan: BillingProvider["createPlan"]): BillingProvider {
   return { name: "razorpay", createPlan } as unknown as BillingProvider;
@@ -43,9 +43,9 @@ describe("ensureAddOnPlan", () => {
 
     expect(createPlan).toHaveBeenCalledWith({
       currency: "INR",
-      netMonthlyCents: 800_000,
+      netMonthlyCents: 799_880,
       taxRateBasisPoints: 1_800,
-      code: "addon-digital-growth-800000",
+      code: "addon-digital-growth-799880",
       itemName: "Brandbasket Social Media and Ads",
     });
     expect(saveAddOnProviderPlan).toHaveBeenCalledWith(staffDb, { ...KEY, providerPlanId: "plan_mine" });

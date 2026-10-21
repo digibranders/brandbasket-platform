@@ -462,7 +462,7 @@ describe("confirmFirstPayment", () => {
   });
 
   it("reactivates a package at the price its lines were frozen at, and sets aside a payment at the website's price", async () => {
-    // The services plan costs nothing; the lines are the charge: all three at 30% off, ₹26,600 net + 18% GST = ₹31,388.
+    // The services plan costs nothing; the lines are the charge: all three at 30% off, ₹26,597 net + 18% GST = ₹31,384.46.
     const services = { ...PLAN, currency: "INR" as const, initialAmountCents: 0, initialTermMonths: 1, recurringAmountCents: 0, taxRateBasisPoints: 1_800 };
     vi.mocked(findPlanById).mockResolvedValue(services);
     vi.mocked(findBillingState).mockResolvedValue({
@@ -479,16 +479,16 @@ describe("confirmFirstPayment", () => {
     const asked = (bundledAddOnNetCents: number) => provider.startCheckout({ businessId: BUSINESS_ID, businessName: "Riverside", email: "ana@example.com", plan: services, bundledAddOnNetCents });
     const tokenOf = (checkoutUrl: string) => new URL(checkoutUrl, "http://app.localhost").searchParams.get("token");
 
-    const allThree = await asked(2_660_000);
-    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(allThree.providerSubscriptionId, { id: "sub-back", bundledAddOnNetCents: 2_660_000 }));
+    const allThree = await asked(2_659_700);
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(allThree.providerSubscriptionId, { id: "sub-back", bundledAddOnNetCents: 2_659_700 }));
     await expect(confirmFirstPayment(tenant, { token: tokenOf(allThree.checkoutUrl) }, NOW)).resolves.toEqual({ kind: "reactivated" });
 
     // The same subscription paid at the website's price alone is not the basket it was opened for.
-    const website = await asked(300_000);
-    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(website.providerSubscriptionId, { id: "sub-back-2", bundledAddOnNetCents: 2_660_000 }));
+    const website = await asked(299_900);
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(website.providerSubscriptionId, { id: "sub-back-2", bundledAddOnNetCents: 2_659_700 }));
     await expect(confirmFirstPayment(tenant, { token: tokenOf(website.checkoutUrl) }, NOW)).resolves.toEqual({ kind: "needs-attention" });
     expect(activateReactivationPayment).toHaveBeenCalledTimes(1);
-    expect(recordUnappliedPayment).toHaveBeenCalledWith(staffTx, expect.objectContaining({ reason: "amount_mismatch", amountCents: 354_000 }));
+    expect(recordUnappliedPayment).toHaveBeenCalledWith(staffTx, expect.objectContaining({ reason: "amount_mismatch", amountCents: 353_882 }));
   });
 
   it("activates an Indian first payment, which is the plan's net price plus 18% GST", async () => {
@@ -510,7 +510,7 @@ describe("confirmFirstPayment", () => {
   });
 
   it("activates a first payment for a package: the services plan's 0 plus the lines' nets, with 18% GST", async () => {
-    // All three services at 30% off, ₹26,600 a month before GST (docs/plans/16-platform-pricing-offers.md).
+    // All three services at 30% off, ₹26,597 a month before GST (docs/plans/16-platform-pricing-offers.md).
     const services = { ...PLAN, currency: "INR" as const, initialAmountCents: 0, recurringAmountCents: 0, taxRateBasisPoints: 1_800 };
     vi.mocked(findPlanById).mockResolvedValue(services);
     const started = await provider.startCheckout({
@@ -518,10 +518,10 @@ describe("confirmFirstPayment", () => {
       businessName: "Riverside",
       email: "ana@example.com",
       plan: services,
-      bundledAddOnNetCents: 2_660_000,
+      bundledAddOnNetCents: 2_659_700,
     });
     const token = new URL(started.checkoutUrl, "http://app.localhost").searchParams.get("token");
-    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(started.providerSubscriptionId, { bundledAddOnNetCents: 2_660_000 }));
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(started.providerSubscriptionId, { bundledAddOnNetCents: 2_659_700 }));
 
     await expect(confirmFirstPayment(tenant, { token }, NOW)).resolves.toMatchObject({ kind: "paid" });
     expect(recordUnappliedPayment).not.toHaveBeenCalled();

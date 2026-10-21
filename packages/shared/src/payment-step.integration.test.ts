@@ -47,8 +47,8 @@ describe("the payment step on the seeded services plan", () => {
     expect(paymentStep({ ...OPEN, status: "unpaid", plan: usd })).toMatchObject({ kind: "pay-and-send", amount: "$75" });
     expect(paymentStep({ ...OPEN, status: "unpaid", plan: inr })).toMatchObject({
       kind: "pay-and-send",
-      amount: "₹3,540",
-      terms: "₹3,000 a month plus 18% GST, so ₹3,540 in all. Your first payment covers your first month, then it renews monthly.",
+      amount: "₹3,538.82",
+      terms: "₹2,999 a month plus 18% GST, so ₹3,538.82 in all. Your first payment covers your first month, then it renews monthly.",
     });
     const banner = billingBanner({
       status: "unpaid",
@@ -60,19 +60,19 @@ describe("the payment step on the seeded services plan", () => {
       discount: null,
       renewalFailingUntil: null,
     });
-    expect(banner).toMatchObject({ kind: "pay", price: { amount: "₹3,540", term: "First month" } });
+    expect(banner).toMatchObject({ kind: "pay", price: { amount: "₹3,538.82", term: "First month" } });
   });
 
   it("takes a code off the website line before GST", () => {
     const code = { code: "SAVE", amountCents: 30_000, stated: { kind: "amount", amountCents: 30_000 } } as const;
-    expect(paymentStep({ ...OPEN, status: "unpaid", plan: inr, discount: code })).toMatchObject({ amount: "₹3,186" });
+    expect(paymentStep({ ...OPEN, status: "unpaid", plan: inr, discount: code })).toMatchObject({ amount: "₹3,184.82" });
   });
 
   it("words the plan's terms and the amounts a reactivation and a manual payment record from the same line", () => {
     const websiteCents = websiteAloneNetCents("INR");
-    expect(describePlanTerms(inr, websiteCents)).toContain("₹3,540 in all");
-    expect(firstPaymentAmount(inr, websiteCents)).toBe("₹3,540");
-    expect(monthlyPaymentAmount(inr, websiteCents)).toBe("₹3,540");
+    expect(describePlanTerms(inr, websiteCents)).toContain("₹3,538.82 in all");
+    expect(firstPaymentAmount(inr, websiteCents)).toBe("₹3,538.82");
+    expect(monthlyPaymentAmount(inr, websiteCents)).toBe("₹3,538.82");
     expect(monthlyPaymentAmount(usd, websiteAloneNetCents("USD"))).toBe("$75");
   });
 });

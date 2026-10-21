@@ -259,7 +259,7 @@ describe("issueTaxInvoice for an add-on payment", () => {
     };
   }
 
-  /** Social Media and Ads at a round list price of 10,000 rupees, with a discount when `discountAmountCents` is given. */
+  /** Social Media and Ads at its list price of 9,999 rupees, with a discount when `discountAmountCents` is given. */
   function addOnRow(overrides: Partial<AddOnSubscription> = {}): AddOnSubscription {
     const discountAmountCents = overrides.discountAmountCents ?? 0;
     return {
@@ -267,9 +267,9 @@ describe("issueTaxInvoice for an add-on payment", () => {
       id: "add-on-1",
       businessId: "business-1",
       addOn: "digital-growth",
-      listAmountCents: 1_000_000,
+      listAmountCents: 999_900,
       discountAmountCents,
-      netAmountCents: 1_000_000 - discountAmountCents,
+      netAmountCents: 999_900 - discountAmountCents,
       taxRateBasisPoints: 1_800,
       chargedAmountCents: 0,
       currency: "INR",
@@ -311,7 +311,7 @@ describe("issueTaxInvoice for an add-on payment", () => {
   it("gives a Social Media and Ads payment with a discount one line with the period and the discount, and no offer note", async () => {
     const { inserted } = arrange(addOnRow({ discountAmountCents: 50_000 }));
 
-    await issueTaxInvoice(tx, addOnPayment(1_121_000), source);
+    await issueTaxInvoice(tx, addOnPayment(1_120_882), source);
 
     expect(inserted().lines).toHaveLength(1);
     expect(inserted().lines[0]).toMatchObject({
@@ -320,21 +320,21 @@ describe("issueTaxInvoice for an add-on payment", () => {
       note: null,
       sac: BRANDBASKET_SAC,
       quantity: 1,
-      unitAmountCents: 1_000_000,
+      unitAmountCents: 999_900,
       discountAmountCents: 50_000,
       taxRateBasisPoints: 1_800,
     });
-    expect(inserted().taxableCents).toBe(950_000);
-    expect(inserted().totalCents).toBe(1_121_000);
+    expect(inserted().taxableCents).toBe(949_900);
+    expect(inserted().totalCents).toBe(1_120_882);
   });
 
   it("leaves the note off when there is no discount", async () => {
     const { inserted } = arrange(addOnRow());
 
-    await issueTaxInvoice(tx, addOnPayment(1_180_000), source);
+    await issueTaxInvoice(tx, addOnPayment(1_179_882), source);
 
     expect(inserted().lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, discountAmountCents: 0 });
-    expect(inserted().totalCents).toBe(1_180_000);
+    expect(inserted().totalCents).toBe(1_179_882);
   });
 
   it("names Local SEO + AEO by its catalogue title", async () => {
@@ -348,7 +348,7 @@ describe("issueTaxInvoice for an add-on payment", () => {
   it("refuses a payment that is not linked to an add-on, without issuing or taking a number", async () => {
     arrange(null);
 
-    await expect(issueTaxInvoice(tx, addOnPayment(1_180_000), source)).rejects.toThrow("not linked to an add-on subscription");
+    await expect(issueTaxInvoice(tx, addOnPayment(1_179_882), source)).rejects.toThrow("not linked to an add-on subscription");
     expect(db.allocateInvoiceSerial).not.toHaveBeenCalled();
     expect(db.insertTaxInvoice).not.toHaveBeenCalled();
   });
@@ -356,28 +356,28 @@ describe("issueTaxInvoice for an add-on payment", () => {
   it("refuses a payment linked to a different add-on than the source names", async () => {
     arrange(addOnRow({ id: "add-on-2" }));
 
-    await expect(issueTaxInvoice(tx, addOnPayment(1_180_000), source)).rejects.toThrow("not add-on subscription add-on-1");
+    await expect(issueTaxInvoice(tx, addOnPayment(1_179_882), source)).rejects.toThrow("not add-on subscription add-on-1");
     expect(db.insertTaxInvoice).not.toHaveBeenCalled();
   });
 
   it("refuses an add-on that is not in rupees", async () => {
     arrange(addOnRow({ currency: "USD" }));
 
-    await expect(issueTaxInvoice(tx, addOnPayment(1_180_000), source)).rejects.toThrow("not in rupees");
+    await expect(issueTaxInvoice(tx, addOnPayment(1_179_882), source)).rejects.toThrow("not in rupees");
     expect(db.insertTaxInvoice).not.toHaveBeenCalled();
   });
 
   it("refuses an add-on that is not a monthly catalogue add-on", async () => {
     arrange(addOnRow({ addOn: "press-release" }));
 
-    await expect(issueTaxInvoice(tx, addOnPayment(1_180_000), source)).rejects.toThrow("not a monthly add-on");
+    await expect(issueTaxInvoice(tx, addOnPayment(1_179_882), source)).rejects.toThrow("not a monthly add-on");
     expect(db.insertTaxInvoice).not.toHaveBeenCalled();
   });
 
   it("refuses a payment the add-on's price does not explain, so the invoice never disagrees with the charge", async () => {
     arrange(addOnRow({ discountAmountCents: 100_000 }));
 
-    await expect(issueTaxInvoice(tx, addOnPayment(1_180_000), source)).rejects.toBeInstanceOf(
+    await expect(issueTaxInvoice(tx, addOnPayment(1_179_882), source)).rejects.toBeInstanceOf(
       InvoiceAmountMismatchError,
     );
     expect(db.insertTaxInvoice).not.toHaveBeenCalled();
@@ -414,9 +414,9 @@ describe("issueTaxInvoice for a payment of services", () => {
     offerDiscountAmountCents,
     taxRateBasisPoints: 1_800,
   });
-  const WEBSITE = 300_000;
-  const SOCIAL = 1_000_000;
-  const SEO = 2_500_000;
+  const WEBSITE = 299_900;
+  const SOCIAL = 999_900;
+  const SEO = 2_499_900;
 
   const source = (bundledAddOns: readonly BundledInvoiceAddOn[], discountAmountCents = 0): InvoiceSource => ({
     kind: "plan",
@@ -437,21 +437,21 @@ describe("issueTaxInvoice for a payment of services", () => {
   it("gives all three services a line each with its package discount, and no line for the plan row that costs nothing", async () => {
     const { inserted } = arrangeInvoiceStore();
 
-    await issueTaxInvoice(tx, payment(3_138_800), source([line("managed-website", WEBSITE, 90_000), line("digital-growth", SOCIAL, 300_000), line("local-seo-aeo", SEO, 750_000)]));
+    await issueTaxInvoice(tx, payment(3_138_446), source([line("managed-website", WEBSITE, 89_970), line("digital-growth", SOCIAL, 299_970), line("local-seo-aeo", SEO, 750_060)]));
 
     expect(inserted().lines.map((l) => [l.description, l.unitAmountCents, l.discountAmountCents, l.note])).toEqual([
-      ["Managed Website", 300_000, 90_000, "Package offer, 30% off"],
-      ["Social Media and Ads", 1_000_000, 300_000, "Package offer, 30% off"],
-      ["Local SEO + AEO", 2_500_000, 750_000, "Package offer, 30% off"],
+      ["Managed Website", 299_900, 89_970, "Package offer, 30% off"],
+      ["Social Media and Ads", 999_900, 299_970, "Package offer, 30% off"],
+      ["Local SEO + AEO", 2_499_900, 750_060, "Package offer, 30% off"],
     ]);
-    expect(inserted()).toMatchObject({ taxableCents: 2_660_000, cgstCents: 239_400, sgstCents: 239_400, roundOffCents: 0, totalCents: 3_138_800 });
+    expect(inserted()).toMatchObject({ taxableCents: 2_659_700, cgstCents: 239_373, sgstCents: 239_373, roundOffCents: 0, totalCents: 3_138_446 });
     expect(inserted().lines.every((l) => l.detail === "Monthly subscription, 12 Oct to 11 Nov 2026")).toBe(true);
   });
 
   it("never mentions ad credit on the invoice", async () => {
     const { inserted } = arrangeInvoiceStore();
 
-    await issueTaxInvoice(tx, payment(3_138_800), source([line("managed-website", WEBSITE, 90_000), line("digital-growth", SOCIAL, 300_000), line("local-seo-aeo", SEO, 750_000)]));
+    await issueTaxInvoice(tx, payment(3_138_446), source([line("managed-website", WEBSITE, 89_970), line("digital-growth", SOCIAL, 299_970), line("local-seo-aeo", SEO, 750_060)]));
 
     expect(JSON.stringify(inserted().lines)).not.toMatch(/credit/i);
   });
@@ -471,17 +471,17 @@ describe("issueTaxInvoice for a payment of services", () => {
   it("gives a single service no discount and no note", async () => {
     const { inserted } = arrangeInvoiceStore();
 
-    await issueTaxInvoice(tx, payment(1_180_000), source([line("digital-growth", SOCIAL, 0)]));
+    await issueTaxInvoice(tx, payment(1_179_882), source([line("digital-growth", SOCIAL, 0)]));
 
     expect(inserted().lines).toHaveLength(1);
     expect(inserted().lines[0]).toMatchObject({ description: "Social Media and Ads", discountAmountCents: 0, note: null });
-    expect(inserted().totalCents).toBe(1_180_000);
+    expect(inserted().totalCents).toBe(1_179_882);
   });
 
   it("leaves a service whose package offer has ended at list, with no note", async () => {
     const { inserted } = arrangeInvoiceStore();
 
-    await issueTaxInvoice(tx, payment(1_534_000), source([line("managed-website", WEBSITE, 0), line("digital-growth", SOCIAL, 0)]));
+    await issueTaxInvoice(tx, payment(1_533_764), source([line("managed-website", WEBSITE, 0), line("digital-growth", SOCIAL, 0)]));
 
     expect(inserted().lines.map((l) => [l.discountAmountCents, l.note])).toEqual([
       [0, null],
@@ -492,13 +492,13 @@ describe("issueTaxInvoice for a payment of services", () => {
   it("refuses a package discount on a set of services that earns no package", async () => {
     arrangeInvoiceStore();
 
-    await expect(issueTaxInvoice(tx, payment(1_121_000), source([line("digital-growth", SOCIAL, 50_000)]))).rejects.toThrow(/earn no package offer/);
+    await expect(issueTaxInvoice(tx, payment(1_120_882), source([line("digital-growth", SOCIAL, 50_000)]))).rejects.toThrow(/earn no package offer/);
     expect(db.insertTaxInvoice).not.toHaveBeenCalled();
   });
 
   it("refuses a line that is not a catalogue service, as before", async () => {
     arrangeInvoiceStore();
 
-    await expect(issueTaxInvoice(tx, payment(1_180_000), source([line("press-release", SOCIAL, 0)]))).rejects.toThrow("not a monthly add-on");
+    await expect(issueTaxInvoice(tx, payment(1_179_882), source([line("press-release", SOCIAL, 0)]))).rejects.toThrow("not a monthly add-on");
   });
 });

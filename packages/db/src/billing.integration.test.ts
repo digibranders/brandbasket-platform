@@ -48,7 +48,7 @@ function addMonths(from: Date, months: number): Date {
 }
 
 /** What the website alone is charged, tax included: its line is the whole charge, since the plan row costs nothing. */
-const WEBSITE_CHARGED_CENTS = { USD: 7_500, INR: 354_000 } as const;
+const WEBSITE_CHARGED_CENTS = { USD: 7_500, INR: 353_882 } as const;
 
 async function requirePlan(currency: "USD" | "INR"): Promise<Plan> {
   const plan = await findActivePlan(dbs.staff.db, currency, "managed");
@@ -327,7 +327,7 @@ describe("recordPaymentAndActivate", () => {
 
     const oneMonthOn = new Date("2026-04-01T10:00:00.000Z");
     expect(plan.initialTermMonths).toBe(1);
-    expect(result.payment).toMatchObject({ amountCents: 354_000, currency: "INR", kind: "initial" });
+    expect(result.payment).toMatchObject({ amountCents: 353_882, currency: "INR", kind: "initial" });
     expect(await findLatestSubscriptionForBusiness(dbs.staff.db, businessB)).toMatchObject({
       status: "active",
       commitmentEndsAt: oneMonthOn,

@@ -165,8 +165,8 @@ describe("createReferralCodeFor", () => {
   });
 
   it("refuses a discount that leaves nothing to charge on the cheapest service, which a code may be used on", async () => {
-    // Managed Website is ₹3,000 a month; a ₹3,000 discount would leave a zero-amount subscription.
-    for (const discountValue of ["3000", "4000"]) {
+    // Managed Website is ₹2,999 a month; a ₹2,999 discount would leave a zero-amount subscription.
+    for (const discountValue of ["2999", "4000"]) {
       const refusal = refusalOf(
         await createReferralCodeFor({ formData: form({ discountValue }), staffUserId: STAFF_USER, affiliateId: null, now: NOW }),
       );
@@ -177,11 +177,11 @@ describe("createReferralCodeFor", () => {
   });
 
   it("accepts a discount just under the cheapest service's price, though the services plan itself costs nothing", async () => {
-    const outcome = await createReferralCodeFor({ formData: form({ discountValue: "2999.99" }), staffUserId: STAFF_USER, affiliateId: null, now: NOW });
+    const outcome = await createReferralCodeFor({ formData: form({ discountValue: "2998.99" }), staffUserId: STAFF_USER, affiliateId: null, now: NOW });
     expect(outcome.kind).toBe("created");
     expect(createReferralCode).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ discount: { kind: "amount", amountCents: 299_999 } }),
+      expect.objectContaining({ discount: { kind: "amount", amountCents: 299_899 } }),
     );
   });
 
@@ -387,11 +387,11 @@ describe("referralWorth", () => {
   }
 
   it("resolves a percentage discount against Managed Website's list price, the cheapest service", () => {
-    // 10% of ₹3,000 is ₹300: ₹2,700 plus 18% GST.
+    // 10% of ₹2,999 is ₹299.90: ₹2,699.10 plus 18% GST.
     expect(referralWorth(codeWith({ kind: "percent", basisPoints: 1_000 }))).toEqual({
-      serviceChargeCents: 354_000,
-      discountCents: 30_000,
-      customerPaysCents: 318_600,
+      serviceChargeCents: 353_882,
+      discountCents: 29_990,
+      customerPaysCents: 318_494,
       taxRateBasisPoints: 1_800,
     });
   });
@@ -399,15 +399,15 @@ describe("referralWorth", () => {
   it("keeps a flat code's figures as they were", () => {
     expect(referralWorth(codeWith({ kind: "amount", amountCents: 50_000 }))).toMatchObject({
       discountCents: 50_000,
-      customerPaysCents: 295_000,
+      customerPaysCents: 294_882,
     });
   });
 
   it("charges the full price on an affiliate code with no discount", () => {
-    expect(referralWorth(codeWith(null))).toMatchObject({ discountCents: 0, customerPaysCents: 354_000 });
+    expect(referralWorth(codeWith(null))).toMatchObject({ discountCents: 0, customerPaysCents: 353_882 });
   });
 
   it("is null for a code worth as much as the cheapest service", () => {
-    expect(referralWorth(codeWith({ kind: "amount", amountCents: 300_000 }))).toBeNull();
+    expect(referralWorth(codeWith({ kind: "amount", amountCents: 299_900 }))).toBeNull();
   });
 });

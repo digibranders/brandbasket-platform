@@ -3,8 +3,9 @@ import { addOnById, addOnPrice, MONTHLY_ADD_ON_IDS, type AddOnPrice, type Monthl
 
 /**
  * Package offers (owner decisions, 2026-10-21; docs/plans/16-platform-pricing-offers.md). Two or more services on one
- * subscription are priced off every line; a package bought together at the first checkout also earns monthly ad
- * credit. Pure and browser-safe. brandbasket-website holds the same numbers in lib/pricing.ts.
+ * subscription are priced off every line, and the package total is rounded down to a whole rupee or dollar (the floor rule
+ * in packageDiscountsFor); a package bought together at the first checkout also earns monthly ad credit. Pure and
+ * browser-safe. brandbasket-website holds the same numbers in lib/pricing.ts.
  */
 interface PackageOffer {
   readonly services: readonly MonthlyAddOnId[];
@@ -22,6 +23,8 @@ export interface PackageInput {
 export type PackageLine = AddOnPrice & { readonly addOn: MonthlyAddOnId };
 
 const BASIS_POINTS_DENOMINATOR = 10_000;
+/** A package is priced in whole rupees and whole dollars: its total is a multiple of this many minor units. */
+const PACKAGE_ROUNDING_CENTS = 100;
 
 export const PACKAGE_OFFERS: readonly PackageOffer[] = [
   { services: ["managed-website", "digital-growth"], basisPoints: 2000, adCreditCents: { INR: 200000, USD: 2500 } },
@@ -46,26 +49,63 @@ export function packageBasisPointsFor(input: PackageInput): number {
   return input.forfeited ? 0 : (offerFor(input.services)?.basisPoints ?? 0);
 }
 
-/** One line's discount: `basisPoints` of its list price, half a minor unit rounding up. */
+/** One line's share before the package is rounded down: `basisPoints` of its list price, half a minor unit rounding up. A package is priced only by packageDiscountsFor. */
 export function packageDiscountCentsFor(listCents: number, basisPoints: number): number {
   if (!Number.isSafeInteger(listCents) || listCents < 0) throw new RangeError(`A list price must be whole, non-negative minor units, received ${listCents}`);
   return Math.floor((listCents * basisPoints * 2 + BASIS_POINTS_DENOMINATOR) / (BASIS_POINTS_DENOMINATOR * 2));
 }
 
-/** Every line of the basket with its package discount, once each, in catalogue order. */
-export function packageLines(input: PackageInput, currency: MoneyCurrency): PackageLine[] {
-  const basisPoints = packageBasisPointsFor(input);
-  return distinctServices(input.services).map((id) => {
-    const addOn = addOnById(id);
-    return { addOn: id, ...addOnPrice(addOn, currency, packageDiscountCentsFor(addOn.prices[currency], basisPoints)) };
-  });
+/** A line of a basket as the package rule sees it: which service, at which list price (the catalogue's, or the one a row was sold at). */
+export interface PackageListLine {
+  readonly addOn: MonthlyAddOnId;
+  readonly listCents: number;
 }
 
-/** The line `service` would have once it joins the basket: priced at the percentage the enlarged set earns. */
-export function packageLineWith(input: PackageInput, service: MonthlyAddOnId, currency: MoneyCurrency): PackageLine {
-  const line = packageLines({ ...input, services: [...input.services, service] }, currency).find((candidate) => candidate.addOn === service);
-  if (line === undefined) throw new Error(`Service ${service} is not in the catalogue, so it has no line to price`);
-  return line;
+/**
+ * The discount on each line of a package, in the order the lines are given: every line takes `basisPoints` of its own list
+ * price (packageDiscountCentsFor), then the package total is rounded down to a whole rupee or dollar
+ * (PACKAGE_ROUNDING_CENTS) and the minor units that takes off are added to the discount of the most expensive line (the
+ * first in the catalogue's order among equals). So every line still has net = list - discount, a discount from 0 to its
+ * list price, and the nets add up to the package price to the minor unit. With no percentage at all (a single service, or
+ * the offer given up) there is no package, so no rounding: the lines stay at list.
+ *
+ * The one place a package is priced: the checkout, the quote for adding a service, the repricing when one is dropped,
+ * the order summary, the invoice and the console all take their discounts from here.
+ */
+export function packageDiscountsFor(lines: readonly PackageListLine[], basisPoints: number): number[] {
+  const discounts = lines.map((line) => packageDiscountCentsFor(line.listCents, basisPoints));
+  if (basisPoints === 0 || lines.length === 0) return discounts;
+  const netCents = lines.reduce((total, line, index) => total + line.listCents - (discounts[index] ?? 0), 0);
+  const leftoverCents = netCents % PACKAGE_ROUNDING_CENTS;
+  if (leftoverCents === 0) return discounts;
+  const catalogueRank = (line: PackageListLine): number => MONTHLY_ADD_ON_IDS.indexOf(line.addOn);
+  const dearest = lines.reduce((best, line, index) => {
+    const bestLine = lines[best];
+    if (bestLine === undefined) return index;
+    return line.listCents > bestLine.listCents || (line.listCents === bestLine.listCents && catalogueRank(line) < catalogueRank(bestLine)) ? index : best;
+  }, 0);
+  return discounts.map((discount, index) => (index === dearest ? discount + leftoverCents : discount));
+}
+
+/** Every line of the basket with its package discount, once each, in catalogue order. */
+export function packageLines(input: PackageInput, currency: MoneyCurrency): PackageLine[] {
+  const services = distinctServices(input.services);
+  const listed = services.map((id) => ({ addOn: id, listCents: addOnById(id).prices[currency] }));
+  const discounts = packageDiscountsFor(listed, packageBasisPointsFor(input));
+  return services.map((id, index) => ({ addOn: id, ...addOnPrice(addOnById(id), currency, discounts[index] ?? 0) }));
+}
+
+/**
+ * The line `service` would have once it joins the `held` lines of a basket: priced as part of the enlarged set, whose package
+ * percentage and whole-unit rounding it shares with every line already there (their new discounts are
+ * packageDiscountsFor over the same lines). A held line keeps the list price it was sold at; the new one has the catalogue's.
+ */
+export function packageLineWith(held: readonly PackageListLine[], forfeited: boolean, service: MonthlyAddOnId, currency: MoneyCurrency): PackageLine {
+  const addOn = addOnById(service);
+  const members: PackageListLine[] = [...held.filter((line) => line.addOn !== service), { addOn: service, listCents: addOn.prices[currency] }];
+  const basisPoints = packageBasisPointsFor({ services: members.map((line) => line.addOn), forfeited });
+  const discounts = packageDiscountsFor(members, basisPoints);
+  return { addOn: service, ...addOnPrice(addOn, currency, discounts[members.length - 1] ?? 0) };
 }
 
 /** The monthly list prices of these lines added up: what they cost together with no package offer. */

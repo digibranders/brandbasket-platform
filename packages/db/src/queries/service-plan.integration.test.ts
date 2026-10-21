@@ -91,7 +91,7 @@ describe("the columns a package needs", () => {
     await querySql(
       databases.owner,
       `insert into bundled_add_ons (id, business_id, subscription_id, add_on, list_amount_cents, net_amount_cents, tax_rate_basis_points)
-       values (gen_random_uuid(), '${businessId}', '${subscriptionId}', 'managed-website', 300000, 300000, 1800) returning id`,
+       values (gen_random_uuid(), '${businessId}', '${subscriptionId}', 'managed-website', 299900, 299900, 1800) returning id`,
     );
     const rows = await querySql<{ add_on: string }>(databases.owner, "select add_on from bundled_add_ons");
     expect(rows).toEqual([{ add_on: "managed-website" }]);
@@ -103,7 +103,7 @@ describe("the columns a package needs", () => {
       querySql(
         databases.owner,
         `insert into bundled_add_ons (id, business_id, subscription_id, add_on, list_amount_cents, net_amount_cents, tax_rate_basis_points, pending_offer_discount_amount_cents)
-         values (gen_random_uuid(), '${businessId}', '${subscriptionId}', 'managed-website', 300000, 300000, 1800, 300000) returning id`,
+         values (gen_random_uuid(), '${businessId}', '${subscriptionId}', 'managed-website', 299900, 299900, 1800, 299900) returning id`,
       ),
     );
     expect(error).toContain("bundled_add_ons_amounts_check");

@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { dropCopy, dropPreview, PACKAGE_ENDS } from "./drop-service";
 
-const WEBSITE = { addOn: "managed-website", listAmountCents: 300_000, taxRateBasisPoints: 1_800 } as const;
-const SOCIAL = { addOn: "digital-growth", listAmountCents: 1_000_000, taxRateBasisPoints: 1_800 } as const;
-const SEO = { addOn: "local-seo-aeo", listAmountCents: 2_500_000, taxRateBasisPoints: 1_800 } as const;
+const WEBSITE = { addOn: "managed-website", listAmountCents: 299_900, taxRateBasisPoints: 1_800 } as const;
+const SOCIAL = { addOn: "digital-growth", listAmountCents: 999_900, taxRateBasisPoints: 1_800 } as const;
+const SEO = { addOn: "local-seo-aeo", listAmountCents: 2_499_900, taxRateBasisPoints: 1_800 } as const;
 
 describe("dropPreview", () => {
-  it("dropping Local SEO + AEO from all three keeps the other two at list, ₹15,340 a month with GST, and says the package ends", () => {
+  it("dropping Local SEO + AEO from all three keeps the other two at list, ₹15,337.64 a month with GST, and says the package ends", () => {
     expect(dropPreview({ staying: [WEBSITE, SOCIAL, SEO], dropping: "local-seo-aeo", forfeited: false, currency: "INR" })).toEqual({
       keeps: ["managed-website", "digital-growth"],
-      newMonthlyCents: 1_534_000,
+      newMonthlyCents: 1_533_764,
       currency: "INR",
       taxRateBasisPoints: 1_800,
       endsPackage: true,
@@ -19,14 +19,14 @@ describe("dropPreview", () => {
   it("prices the website kept alone at its list price with GST", () => {
     expect(dropPreview({ staying: [WEBSITE, SOCIAL], dropping: "digital-growth", forfeited: false, currency: "INR" })).toMatchObject({
       keeps: ["managed-website"],
-      newMonthlyCents: 354_000,
+      newMonthlyCents: 353_882,
       endsPackage: true,
     });
   });
 
   it("prices from the list prices on the lines, not the package prices they are billed at now", () => {
-    const discounted = [{ ...WEBSITE, offerDiscountAmountCents: 90_000 }, { ...SOCIAL, offerDiscountAmountCents: 300_000 }, SEO];
-    expect(dropPreview({ staying: discounted, dropping: "local-seo-aeo", forfeited: false, currency: "INR" })?.newMonthlyCents).toBe(1_534_000);
+    const discounted = [{ ...WEBSITE, offerDiscountAmountCents: 89_970 }, { ...SOCIAL, offerDiscountAmountCents: 299_970 }, SEO];
+    expect(dropPreview({ staying: discounted, dropping: "local-seo-aeo", forfeited: false, currency: "INR" })?.newMonthlyCents).toBe(1_533_764);
   });
 
   it("adds no GST in dollars", () => {
@@ -42,7 +42,7 @@ describe("dropPreview", () => {
   it("has nothing to lose once the offer is already given up", () => {
     expect(dropPreview({ staying: [WEBSITE, SOCIAL, SEO], dropping: "managed-website", forfeited: true, currency: "INR" })).toMatchObject({
       keeps: ["digital-growth", "local-seo-aeo"],
-      newMonthlyCents: 4_130_000,
+      newMonthlyCents: 4_129_764,
       endsPackage: false,
     });
   });
@@ -59,7 +59,7 @@ describe("dropCopy", () => {
 
     expect(dropCopy(preview, "12 November 2026")).toEqual({
       keeps: "You keep Managed Website and Social Media and Ads.",
-      monthly: "From 12 November 2026 you pay ₹15,340 a month, GST included.",
+      monthly: "From 12 November 2026 you pay ₹15,337.64 a month, GST included.",
       packageEnds: "Your package price and ad credit end for good. Adding a service again later will be at its own price.",
     });
     expect(PACKAGE_ENDS).toBe(dropCopy(preview, "12 November 2026").packageEnds);

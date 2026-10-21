@@ -30,7 +30,7 @@ import {
 } from "@brandbasket/db";
 import { addOnBlock, quoteAddOn, type AddOnBlock, type AddOnQuote } from "../lib/billing/add-on-proration";
 import { addOnById, isMonthlyAddOnId, type MonthlyAddOnId } from "../lib/billing/add-ons";
-import { listTotalCents, packageBasisPointsFor, packageDiscountCentsFor, packageLineWith, type PackageLine } from "../lib/billing/packages";
+import { listTotalCents, packageBasisPointsFor, packageDiscountsFor, packageLineWith, type PackageLine, type PackageListLine } from "../lib/billing/packages";
 import { billingPeriodProgress } from "../lib/billing/period";
 import { describeError, logBillingEvent } from "./billing-log";
 import { servicePeriod } from "./tax-invoicing";
@@ -72,25 +72,34 @@ function stayingLines(rows: readonly BundledAddOn[]): readonly BundledAddOn[] {
   return rows.filter((row) => row.status === "active" && row.endRequestedAt === null);
 }
 
-/** The services of these lines. A line of anything else would be priced as no service at all, so it stops the change instead. */
-function servicesOf(rows: readonly BundledAddOn[]): readonly MonthlyAddOnId[] {
-  return rows.map((row) => {
-    if (!isMonthlyAddOnId(row.addOn)) throw new Error(`Bundled add-on ${row.addOn} on subscription ${row.subscriptionId} is not a monthly service`);
-    return row.addOn;
-  });
+/** The service of a line. A line of anything else would be priced as no service at all, so it stops the change instead. */
+function serviceOf(row: BundledAddOn): MonthlyAddOnId {
+  if (!isMonthlyAddOnId(row.addOn)) throw new Error(`Bundled add-on ${row.addOn} on subscription ${row.subscriptionId} is not a monthly service`);
+  return row.addOn;
 }
 
-/** A line at the package offer a basket of `services` earns: its own list price, less that percentage of it. */
+/** A line at the package offer its basket earns: its own list price, less its share of the package discount. */
 interface RepricedLine {
   readonly id: string;
   readonly discountCents: number;
   readonly netCents: number;
 }
 
-function repriced(rows: readonly BundledAddOn[], services: readonly MonthlyAddOnId[], forfeited: boolean): RepricedLine[] {
-  const basisPoints = packageBasisPointsFor({ services, forfeited });
-  return rows.map((row) => {
-    const discountCents = packageDiscountCentsFor(row.listAmountCents, basisPoints);
+/** Each line with the list price it was sold at, which a later change of the catalogue does not touch. */
+function listedOf(rows: readonly BundledAddOn[]): PackageListLine[] {
+  return rows.map((row) => ({ addOn: serviceOf(row), listCents: row.listAmountCents }));
+}
+
+/**
+ * The rows priced as one package with `joining` (a service about to be added) in the set, if any: packageDiscountsFor over the
+ * rows' own list prices and the joining service's, so the whole-unit rounding and the line that carries it are the ones
+ * the new line was quoted with (packageLineWith).
+ */
+function repriced(rows: readonly BundledAddOn[], forfeited: boolean, joining: PackageListLine | null = null): RepricedLine[] {
+  const members = joining === null ? listedOf(rows) : [...listedOf(rows), joining];
+  const discounts = packageDiscountsFor(members, packageBasisPointsFor({ services: members.map((line) => line.addOn), forfeited }));
+  return rows.map((row, index) => {
+    const discountCents = discounts[index] ?? 0;
     return { id: row.id, discountCents, netCents: row.listAmountCents - discountCents };
   });
 }
@@ -105,7 +114,7 @@ function totalNetCents(lines: readonly RepricedLine[]): number {
  */
 function packageMove(rows: readonly BundledAddOn[], forfeited: boolean): { readonly moves: readonly PendingOfferDiscount[]; readonly netCents: number; readonly staying: number } {
   const staying = stayingLines(rows);
-  const targets = repriced(staying, servicesOf(staying), forfeited);
+  const targets = repriced(staying, forfeited);
   const moves = targets.flatMap((target): PendingOfferDiscount[] => {
     const row = staying.find((candidate) => candidate.id === target.id);
     const unchanged = row !== undefined && row.pendingOfferDiscountAmountCents === null && row.offerDiscountAmountCents === target.discountCents;
@@ -216,9 +225,9 @@ export function assessAddOn(input: AddOnAssessmentInput): AddOnAssessment {
   // The basket once it is added: the lines staying in it share one package percentage (none for a single service or once
   // the offer is given up). The new line and every line already there move to it; a referral code's discount ends.
   const staying = stayingLines(input.live);
-  const line = packageLineWith({ services: servicesOf(staying), forfeited: input.forfeited }, input.addOn, plan.currency);
+  const line = packageLineWith(listedOf(staying), input.forfeited, input.addOn, plan.currency);
   const renewalNetCents =
-    plan.recurringAmountCents + line.netCents + totalNetCents(repriced(staying, [...servicesOf(staying), input.addOn], input.forfeited));
+    plan.recurringAmountCents + line.netCents + totalNetCents(repriced(staying, input.forfeited, { addOn: input.addOn, listCents: line.listCents }));
   const quote = quoteAddOn({
     netCents: line.netCents,
     taxRateBasisPoints: plan.taxRateBasisPoints,

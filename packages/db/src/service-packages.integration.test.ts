@@ -25,11 +25,11 @@ const OPENED_AT = new Date("2026-10-21T10:00:00.000Z");
 const PAID_THROUGH = new Date("2026-11-21T10:00:00.000Z");
 const RENEWED_AT = new Date("2026-11-21T10:05:00.000Z");
 
-/** All three services in rupees at the package's 30% off, as packageLines in @brandbasket/shared prices them. */
+/** All three services in rupees at the package's 30% off, the leftover that rounds it down to a whole rupee on the dearest line, as packageLines in @brandbasket/shared prices them. */
 const ALL_THREE_INR: readonly NewBundledAddOn[] = [
-  { addOn: "managed-website", listAmountCents: 300_000, offerDiscountAmountCents: 90_000, netAmountCents: 210_000, taxRateBasisPoints: 1800 },
-  { addOn: "digital-growth", listAmountCents: 1_000_000, offerDiscountAmountCents: 300_000, netAmountCents: 700_000, taxRateBasisPoints: 1800 },
-  { addOn: "local-seo-aeo", listAmountCents: 2_500_000, offerDiscountAmountCents: 750_000, netAmountCents: 1_750_000, taxRateBasisPoints: 1800 },
+  { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 89_970, netAmountCents: 209_930, taxRateBasisPoints: 1800 },
+  { addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 299_970, netAmountCents: 699_930, taxRateBasisPoints: 1800 },
+  { addOn: "local-seo-aeo", listAmountCents: 2_499_900, offerDiscountAmountCents: 750_060, netAmountCents: 1_749_840, taxRateBasisPoints: 1800 },
 ];
 
 let dbs: TestDatabases;
@@ -74,14 +74,14 @@ describe("opening a checkout for a package", () => {
   it("writes a line for each service, netting the package price, and freezes the ad credit", async () => {
     const subscription = await openAllThree(500_000);
 
-    expect(subscription).toMatchObject({ bundledAddOnNetCents: 2_660_000, adCreditCents: 500_000, status: "incomplete" });
+    expect(subscription).toMatchObject({ bundledAddOnNetCents: 2_659_700, adCreditCents: 500_000, status: "incomplete" });
     const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     expect(rows.map((row) => [row.addOn, row.listAmountCents, row.offerDiscountAmountCents, row.netAmountCents, row.status])).toEqual([
-      ["managed-website", 300_000, 90_000, 210_000, "pending"],
-      ["digital-growth", 1_000_000, 300_000, 700_000, "pending"],
-      ["local-seo-aeo", 2_500_000, 750_000, 1_750_000, "pending"],
+      ["managed-website", 299_900, 89_970, 209_930, "pending"],
+      ["digital-growth", 999_900, 299_970, 699_930, "pending"],
+      ["local-seo-aeo", 2_499_900, 750_060, 1_749_840, "pending"],
     ]);
-    expect(rows.reduce((total, row) => total + row.netAmountCents, 0)).toBe(2_660_000);
+    expect(rows.reduce((total, row) => total + row.netAmountCents, 0)).toBe(2_659_700);
   });
 
   it("gives a checkout opened without ad credit none", async () => {
@@ -94,7 +94,7 @@ describe("opening a checkout for a package", () => {
       replacing: null,
       now: OPENED_AT,
     });
-    expect(subscription).toMatchObject({ bundledAddOnNetCents: 300_000, adCreditCents: 0 });
+    expect(subscription).toMatchObject({ bundledAddOnNetCents: 299_900, adCreditCents: 0 });
   });
 });
 
@@ -133,7 +133,7 @@ describe("a line moving to another package offer", () => {
       provider: "fake",
       providerPaymentId: "fake_pay_package",
       kind: "initial",
-      amountCents: 3_138_800,
+      amountCents: 3_138_446,
       currency: "INR",
       paidAt: OPENED_AT,
       paidThroughAt: PAID_THROUGH,
@@ -161,23 +161,23 @@ describe("a line moving to another package offer", () => {
       }),
     );
     const pending = await findSubscriptionById(dbs.staff.db, subscription.id);
-    expect(pending).toMatchObject({ bundledAddOnNetCents: 2_660_000 });
+    expect(pending).toMatchObject({ bundledAddOnNetCents: 2_659_700 });
     // The SEO line is still billed until the renewal: it has not been asked to end in this test.
-    expect(pending?.pendingBundledAddOnNetCents).toBe(300_000 + 1_000_000 + 1_750_000);
+    expect(pending?.pendingBundledAddOnNetCents).toBe(299_900 + 999_900 + 1_749_840);
     expect((await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).map((row) => row.offerDiscountAmountCents)).toEqual([
-      90_000, 300_000, 750_000,
+      89_970, 299_970, 750_060,
     ]);
 
     await dbs.staff.db.transaction((tx) => completeBundledAddOnChanges(tx, { subscriptionId: subscription.id, now: RENEWED_AT }));
 
     const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     expect(rows.map((row) => [row.addOn, row.offerDiscountAmountCents, row.netAmountCents, row.pendingOfferDiscountAmountCents])).toEqual([
-      ["managed-website", 0, 300_000, null],
-      ["digital-growth", 0, 1_000_000, null],
-      ["local-seo-aeo", 750_000, 1_750_000, null],
+      ["managed-website", 0, 299_900, null],
+      ["digital-growth", 0, 999_900, null],
+      ["local-seo-aeo", 750_060, 1_749_840, null],
     ]);
     expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({
-      bundledAddOnNetCents: 3_050_000,
+      bundledAddOnNetCents: 3_049_640,
       pendingBundledAddOnNetCents: null,
     });
   });
@@ -201,7 +201,7 @@ describe("a line moving to another package offer", () => {
     const subscription = await paidAllThree();
     const [website, growth, seo] = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     if (website === undefined || growth === undefined || seo === undefined) throw new Error("The package lines were not written");
-    await recordBundledAddOnRemoval(dbs.staff.db, { id: seo.id, businessId, pendingBundledAddOnNetCents: 1_300_000, now: OPENED_AT });
+    await recordBundledAddOnRemoval(dbs.staff.db, { id: seo.id, businessId, pendingBundledAddOnNetCents: 1_299_800, now: OPENED_AT });
 
     const move = dbs.staff.db.transaction((tx) =>
       setPendingOfferDiscounts(tx, {

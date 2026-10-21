@@ -232,14 +232,14 @@ describe("findReactivationNetCents", () => {
 
   it("is the net of the basket the checkout will reopen, at the offer it earns", async () => {
     vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "digital-growth", "local-seo-aeo"));
-    await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }))).resolves.toBe(2_660_000);
+    await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }))).resolves.toBe(2_659_700);
     await expect(findReactivationNetCents(lapsedWith({ currency: "USD" }))).resolves.toBe(35_000);
   });
 
   it("is list for a business that gave the offer up", async () => {
     vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "local-seo-aeo"));
     vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
-    await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }))).resolves.toBe(2_800_000);
+    await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }))).resolves.toBe(2_799_800);
   });
 
   it("is nothing for a customer who has not lapsed", async () => {

@@ -9,7 +9,7 @@ describe("priceBases", () => {
   it("measures a code against the cheapest service, since the plan row costs nothing", () => {
     expect(priceBases()).toEqual({
       USD: { netAmountCents: 7_500, taxRateBasisPoints: 0 },
-      INR: { netAmountCents: 300_000, taxRateBasisPoints: 1_800 },
+      INR: { netAmountCents: 299_900, taxRateBasisPoints: 1_800 },
     });
   });
 

@@ -330,7 +330,7 @@ describe("handleRazorpayWebhookEvent", () => {
   describe("a reactivation of a package", () => {
     /** The services plan of migration 0184, in rupees: the lines are the whole price, 18% GST on top. */
     const SERVICES_INR = { ...PLAN, currency: "INR", recurringAmountCents: 0, initialAmountCents: 0, taxRateBasisPoints: 1_800 };
-    const ALL_THREE_NET_CENTS = 2_660_000;
+    const ALL_THREE_NET_CENTS = 2_659_700;
     const reopenedAllThree = () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue({
         id: "sub_back",
@@ -353,7 +353,7 @@ describe("handleRazorpayWebhookEvent", () => {
     it("accepts the package price the checkout was opened at, 30% off every line plus GST", async () => {
       reopenedAllThree();
 
-      await handleRazorpayWebhookEvent({ ...CHARGED, currency: "INR", amountCents: 3_138_800 });
+      await handleRazorpayWebhookEvent({ ...CHARGED, currency: "INR", amountCents: 3_138_446 });
 
       expect(recordUnappliedPayment).not.toHaveBeenCalled();
       expect(activateReactivationPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ subscriptionId: "sub_back", plan: SERVICES_INR }));
@@ -362,7 +362,7 @@ describe("handleRazorpayWebhookEvent", () => {
     it("sets aside a charge at the website's price: the basket was not the website alone", async () => {
       reopenedAllThree();
 
-      await handleRazorpayWebhookEvent({ ...CHARGED, currency: "INR", amountCents: 354_000 });
+      await handleRazorpayWebhookEvent({ ...CHARGED, currency: "INR", amountCents: 353_882 });
 
       expect(activateReactivationPayment).not.toHaveBeenCalled();
       expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: "amount_mismatch" }));
@@ -897,18 +897,18 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     });
 
     it("adds to an add-on taken at sign-up, which keeps its offer price", async () => {
-      // Digital Growth at ₹6,650 since sign-up, Local SEO + AEO added at ₹25,000.
-      vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ ...ADDED, bundledAddOnNetCents: 665_000, pendingBundledAddOnNetCents: 665_000 + 2_500_000 } as never);
+      // Digital Growth at ₹6,650 since sign-up, Local SEO + AEO added at ₹24,999.
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ ...ADDED, bundledAddOnNetCents: 665_000, pendingBundledAddOnNetCents: 665_000 + 2_499_900 } as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
       const growth = row("digital-growth", 665_000, SIGNED_UP);
-      const search = row("local-seo-aeo", 2_500_000, null);
+      const search = row("local-seo-aeo", 2_499_900, null);
       vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([growth, search] as never);
 
-      await handleRazorpayWebhookEvent(chargedAt(4_088_582));
+      await handleRazorpayWebhookEvent(chargedAt(4_088_464));
 
       expect(activateRenewalPayment).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ amountCents: 4_088_582, invoicedPrice: expect.objectContaining({ bundledAddOns: [growth, search] }) }),
+        expect.objectContaining({ amountCents: 4_088_464, invoicedPrice: expect.objectContaining({ bundledAddOns: [growth, search] }) }),
       );
       expect(completeBundledAddOnChanges).toHaveBeenCalled();
     });
@@ -919,7 +919,7 @@ describe("a package on the services plan, which costs nothing itself", () => {
   // Migration 0184's rupee plan: the terms at a price of 0, with 18% GST on the lines.
   const SERVICES_PLAN = { id: "plan_services", currency: "INR", initialAmountCents: 0, recurringAmountCents: 0, initialTermMonths: 1, taxRateBasisPoints: 1_800 };
 
-  /** All three services at 30% off: ₹26,600 a month before GST. */
+  /** All three services at 30% off, rounded down to the whole rupee: ₹26,597 a month before GST. */
   function allThree(activatedAt: Date | null) {
     return {
       id: "sub_row_package",
@@ -929,7 +929,7 @@ describe("a package on the services plan, which costs nothing itself", () => {
       activatedAt,
       discountAmountCents: 0,
       retentionDiscountCents: 0,
-      bundledAddOnNetCents: 2_660_000,
+      bundledAddOnNetCents: 2_659_700,
       pendingBundledAddOnNetCents: null,
     };
   }
@@ -948,26 +948,26 @@ describe("a package on the services plan, which costs nothing itself", () => {
     } as const;
   }
 
-  it("activates a first payment of the lines' nets with GST on top: ₹31,388", async () => {
+  it("activates a first payment of the lines' nets with GST on top: ₹31,384.46", async () => {
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue(allThree(null) as never);
     vi.mocked(findPlanById).mockResolvedValue(SERVICES_PLAN as never);
 
-    await handleRazorpayWebhookEvent(charged(3_138_800));
+    await handleRazorpayWebhookEvent(charged(3_138_446));
 
     expect(activateFirstPayment).toHaveBeenCalled();
     expect(recordUnappliedPayment).not.toHaveBeenCalled();
   });
 
-  it("renews at the same ₹31,388, and treats the lines at list as a mismatch", async () => {
+  it("renews at the same ₹31,384.46, and treats the lines at list as a mismatch", async () => {
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue(allThree(new Date("2026-10-21T09:00:00.000Z")) as never);
     vi.mocked(findPlanById).mockResolvedValue(SERVICES_PLAN as never);
 
-    await handleRazorpayWebhookEvent(charged(3_138_800));
-    expect(activateRenewalPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: 3_138_800 }));
+    await handleRazorpayWebhookEvent(charged(3_138_446));
+    expect(activateRenewalPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: 3_138_446 }));
 
     vi.mocked(activateRenewalPayment).mockClear();
-    // ₹38,000 at list plus GST is what the package price replaced.
-    await handleRazorpayWebhookEvent({ ...charged(4_484_000), paymentId: "pay_package_list" });
+    // ₹37,997 at list plus GST is what the package price replaced.
+    await handleRazorpayWebhookEvent({ ...charged(4_483_646), paymentId: "pay_package_list" });
     expect(activateRenewalPayment).not.toHaveBeenCalled();
     expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: "amount_mismatch" }));
   });
@@ -987,9 +987,10 @@ describe("the renewal after a service was added to a package", () => {
     netAmountCents: listAmountCents - offerDiscountAmountCents,
     taxRateBasisPoints: 1_800,
   });
-  const WEBSITE_MOVING = line("managed-website", 300_000, 0, 60_000, BILLED_FROM);
-  const SOCIAL_ADDED = line("digital-growth", 1_000_000, 200_000, null, null);
-  // The website was billed alone at ₹3,540; the next renewal is website 20% off plus Social 20% off: ₹10,400 and GST.
+  const WEBSITE_MOVING = line("managed-website", 299_900, 0, 59_980, BILLED_FROM);
+  // Social takes the 40 paise that round the package down to a whole rupee, being the dearest line.
+  const SOCIAL_ADDED = line("digital-growth", 999_900, 200_020, null, null);
+  // The website was billed alone at ₹3,538.82; the next renewal is website 20% off plus Social 20% off: ₹10,398 and GST.
   const SUBSCRIPTION = {
     id: "sub_row_added",
     businessId: "biz_added",
@@ -998,8 +999,8 @@ describe("the renewal after a service was added to a package", () => {
     activatedAt: BILLED_FROM,
     discountAmountCents: 0,
     retentionDiscountCents: 0,
-    bundledAddOnNetCents: 300_000,
-    pendingBundledAddOnNetCents: 1_040_000,
+    bundledAddOnNetCents: 299_900,
+    pendingBundledAddOnNetCents: 1_039_800,
   };
   const charged = (amountCents: number) =>
     ({
@@ -1019,17 +1020,37 @@ describe("the renewal after a service was added to a package", () => {
     vi.mocked(findPlanById).mockResolvedValue(SERVICES_PLAN as never);
     vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([WEBSITE_MOVING, SOCIAL_ADDED] as never);
 
-    await handleRazorpayWebhookEvent(charged(1_227_200));
+    await handleRazorpayWebhookEvent(charged(1_226_964));
 
     const [, renewal] = vi.mocked(activateRenewalPayment).mock.calls[0] ?? [];
     const invoiced = renewal?.invoicedPrice.bundledAddOns ?? [];
     expect(invoiced.map((row) => [row.addOn, row.listAmountCents, row.offerDiscountAmountCents])).toEqual([
-      ["managed-website", 300_000, 60_000],
-      ["digital-growth", 1_000_000, 200_000],
+      ["managed-website", 299_900, 59_980],
+      ["digital-growth", 999_900, 200_020],
     ]);
     const net = invoiced.reduce((total, row) => total + row.listAmountCents - row.offerDiscountAmountCents, 0);
-    expect(chargedAmountCents(net, 0, 1_800)).toBe(1_227_200);
+    expect(chargedAmountCents(net, 0, 1_800)).toBe(1_226_964);
     expect(completeBundledAddOnChanges).toHaveBeenCalled();
+  });
+
+  it("invoices the line that carries the leftover at the discount it moved to, so Website + SEO adds up to the paisa", async () => {
+    // SEO was billed alone at list; the website joins, and the 40 paise that round the package down land on SEO, the dearest line.
+    const seoMoving = line("local-seo-aeo", 2_499_900, 0, 500_020, BILLED_FROM);
+    const websiteAdded = line("managed-website", 299_900, 59_980, null, null);
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ ...SUBSCRIPTION, bundledAddOnNetCents: 2_499_900, pendingBundledAddOnNetCents: 2_239_800 } as never);
+    vi.mocked(findPlanById).mockResolvedValue(SERVICES_PLAN as never);
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([websiteAdded, seoMoving] as never);
+
+    await handleRazorpayWebhookEvent(charged(2_642_964));
+
+    const [, renewal] = vi.mocked(activateRenewalPayment).mock.calls[0] ?? [];
+    const invoiced = renewal?.invoicedPrice.bundledAddOns ?? [];
+    expect(invoiced.map((row) => [row.addOn, row.listAmountCents, row.offerDiscountAmountCents])).toEqual([
+      ["managed-website", 299_900, 59_980],
+      ["local-seo-aeo", 2_499_900, 500_020],
+    ]);
+    expect(completeBundledAddOnChanges).toHaveBeenCalled();
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
   });
 
   it("invoices the website alone at its own offer when the provider had not moved, at the old amount", async () => {
@@ -1037,11 +1058,11 @@ describe("the renewal after a service was added to a package", () => {
     vi.mocked(findPlanById).mockResolvedValue(SERVICES_PLAN as never);
     vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([WEBSITE_MOVING, SOCIAL_ADDED] as never);
 
-    await handleRazorpayWebhookEvent(charged(354_000));
+    await handleRazorpayWebhookEvent(charged(353_882));
 
     expect(activateRenewalPayment).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ amountCents: 354_000, invoicedPrice: expect.objectContaining({ bundledAddOns: [WEBSITE_MOVING] }) }),
+      expect.objectContaining({ amountCents: 353_882, invoicedPrice: expect.objectContaining({ bundledAddOns: [WEBSITE_MOVING] }) }),
     );
     expect(completeBundledAddOnChanges).not.toHaveBeenCalled();
   });
@@ -1251,7 +1272,7 @@ describe("an add-on subscription", () => {
   const PAID_AT = new Date("2026-10-09T10:00:00.000Z");
   const CYCLE_START = new Date("2026-10-09T00:00:00.000Z");
   const CYCLE_END = new Date("2026-11-09T00:00:00.000Z");
-  // Rs 3,000 net with 18% GST.
+  // Rs 2,999 net with 18% GST.
   const ROW = {
     id: "addon_row_1",
     businessId: "biz_addon",
@@ -1261,7 +1282,7 @@ describe("an add-on subscription", () => {
     startAt: null,
     haltedAt: null,
     currency: "INR",
-    chargedAmountCents: 354_000,
+    chargedAmountCents: 353_882,
   };
   const CHARGE = {
     kind: "charged",
@@ -1270,7 +1291,7 @@ describe("an add-on subscription", () => {
     currentEnd: CYCLE_END,
     paidAt: PAID_AT,
     paymentId: "pay_addon_1",
-    amountCents: 354_000,
+    amountCents: 353_882,
     currency: "INR",
     method: VISA,
   } as const;
@@ -1310,7 +1331,7 @@ describe("an add-on subscription", () => {
           addOnSubscriptionId: "addon_row_1",
           provider: "razorpay",
           providerPaymentId: "pay_addon_1",
-          amountCents: 354_000,
+          amountCents: 353_882,
           currency: "INR",
           paidAt: PAID_AT,
           periodStart: CYCLE_START,

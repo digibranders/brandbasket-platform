@@ -59,9 +59,9 @@ export function monthlyPaymentAmount(
 
 /**
  * What each renewal actually takes, formatted: the basket's lines (and the plan's own price, 0 for the services plan)
- * less the discount frozen onto the subscription, with the plan's tax on top ("₹31,388" for all three services at
- * ₹26,600 plus GST). A "next payment" figure must be this, not the bare net, or an Indian customer is told ₹26,600 and
- * charged ₹31,388. Null when the discount would leave nothing to charge.
+ * less the discount frozen onto the subscription, with the plan's tax on top ("₹31,384.46" for all three services at
+ * ₹26,597 plus GST). A "next payment" figure must be this, not the bare net, or an Indian customer is told ₹26,597 and
+ * charged ₹31,384.46. Null when the discount would leave nothing to charge.
  */
 export function renewalCharge(
   plan: Pick<Plan, "recurringAmountCents" | "currency" | "taxRateBasisPoints">,

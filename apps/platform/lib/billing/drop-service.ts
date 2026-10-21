@@ -50,7 +50,7 @@ export interface DropCopy {
   readonly packageEnds: string | null;
 }
 
-/** "You keep Managed Website and Social Media and Ads." / "From 12 November 2026 you pay ₹15,340 a month, GST included." */
+/** "You keep Managed Website and Social Media and Ads." / "From 12 November 2026 you pay ₹15,337.64 a month, GST included." */
 export function dropCopy(preview: DropPreview, nextBillingOn: string): DropCopy {
   const titles = preview.keeps.map((id) => addOnById(id).title);
   const tax = preview.taxRateBasisPoints > 0 ? ", GST included" : "";

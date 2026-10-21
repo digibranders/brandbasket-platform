@@ -24,21 +24,21 @@ describe("readBundleSelection", () => {
 describe("bundleLines", () => {
   it("prices a package at list once the business has given the offer up", () => {
     expect(bundleLines(["managed-website", "digital-growth"], "INR", true).map((line) => [line.offerCents, line.netCents])).toEqual([
-      [0, 300_000],
-      [0, 1_000_000],
+      [0, 299_900],
+      [0, 999_900],
     ]);
   });
 
   it("prices one service at its list price", () => {
     expect(bundleLines(["digital-growth"], "INR")).toEqual([
-      { addOn: "digital-growth", title: "Social Media and Ads", listCents: 1_000_000, offerCents: 0, netCents: 1_000_000 },
+      { addOn: "digital-growth", title: "Social Media and Ads", listCents: 999_900, offerCents: 0, netCents: 999_900 },
     ]);
   });
 
   it("takes the package discount off each service, to the paisa", () => {
     expect(bundleLines(["digital-growth", "local-seo-aeo"], "INR")).toEqual([
-      { addOn: "digital-growth", title: "Social Media and Ads", listCents: 1_000_000, offerCents: 300_000, netCents: 700_000 },
-      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 2_500_000, offerCents: 750_000, netCents: 1_750_000 },
+      { addOn: "digital-growth", title: "Social Media and Ads", listCents: 999_900, offerCents: 299_970, netCents: 699_930 },
+      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 2_499_900, offerCents: 750_030, netCents: 1_749_870 },
     ]);
   });
 
@@ -50,7 +50,7 @@ describe("bundleLines", () => {
   });
 
   it("adds the nets together, and is nothing for no services", () => {
-    expect(bundleNetCents(bundleLines(["managed-website", "digital-growth", "local-seo-aeo"], "INR"))).toBe(2_660_000);
+    expect(bundleNetCents(bundleLines(["managed-website", "digital-growth", "local-seo-aeo"], "INR"))).toBe(2_659_700);
     expect(bundleNetCents(bundleLines([], "INR"))).toBe(0);
   });
 });
@@ -65,7 +65,7 @@ describe("nextBundledNetCents", () => {
 
 describe("websiteAloneNetCents", () => {
   it("is the website's list price in each currency", () => {
-    expect(websiteAloneNetCents("INR")).toBe(300_000);
+    expect(websiteAloneNetCents("INR")).toBe(299_900);
     expect(websiteAloneNetCents("USD")).toBe(7_500);
   });
 });
@@ -84,7 +84,7 @@ describe("reactivationBasketOf", () => {
       adCreditCents: 500_000,
       cancelled: false,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(2_660_000);
+    expect(reactivationNetCents(basket, "INR")).toBe(2_659_700);
     expect(reactivationNetCents(basket, "USD")).toBe(35_000);
   });
 
@@ -94,19 +94,19 @@ describe("reactivationBasketOf", () => {
       lines: [line("managed-website"), line("digital-growth")],
       forfeited: false,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(1_040_000);
+    expect(reactivationNetCents(basket, "INR")).toBe(1_039_800);
     expect(basket.adCreditCents).toBe(200_000);
   });
 
   it("restores a single service at its list price", () => {
     const basket = reactivationBasketOf({ subscription: { ...LAPSED, adCreditCents: 0 }, lines: [line("local-seo-aeo")], forfeited: false });
-    expect(reactivationNetCents(basket, "INR")).toBe(2_500_000);
+    expect(reactivationNetCents(basket, "INR")).toBe(2_499_900);
   });
 
   it("restores a business that gave the offer up at list, with no ad credit", () => {
     const basket = reactivationBasketOf({ subscription: { ...LAPSED, adCreditCents: 0 }, lines: [line("managed-website"), line("local-seo-aeo")], forfeited: true });
     expect(basket).toMatchObject({ services: ["managed-website", "local-seo-aeo"], forfeited: true, adCreditCents: 0, cancelled: false });
-    expect(reactivationNetCents(basket, "INR")).toBe(2_800_000);
+    expect(reactivationNetCents(basket, "INR")).toBe(2_799_800);
   });
 
   it("leaves out a service on its way out, one that was never paid for, and one that has stopped", () => {
@@ -157,7 +157,7 @@ describe("reactivationBasketOf", () => {
       adCreditCents: 0,
       cancelled: true,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(3_800_000);
+    expect(reactivationNetCents(basket, "INR")).toBe(3_799_700);
   });
 
   it("falls back to the website alone, which earns no ad credit, when no service is left to restore", () => {

@@ -24,7 +24,7 @@ export interface ClientAddOnRow {
   readonly id: string;
   readonly title: string;
   readonly state: ClientAddOnState;
-  /** What the customer pays, before any GST, as it was fixed at purchase: "₹10,000 + GST a month", "$125 a month". */
+  /** What the customer pays, before any GST, as it was fixed at purchase: "₹9,999 + GST a month", "$125 a month". */
   readonly price: string;
   /** The next billing, end or pause date in words, or null when there is none to say. */
   readonly dateLine: string | null;

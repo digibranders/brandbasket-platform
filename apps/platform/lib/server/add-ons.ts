@@ -141,13 +141,13 @@ export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Prom
   });
   const closing = customer.billing.subscription?.cancelRequestedAt != null;
   const stayingLines = bundled.filter((row) => row.status === "active" && row.endRequestedAt === null);
-  const staying = stayingLines.map((row) => row.addOn).filter(isMonthlyAddOnId);
+  const listedLines = stayingLines.flatMap((row) => (isMonthlyAddOnId(row.addOn) ? [{ addOn: row.addOn, listCents: row.listAmountCents }] : []));
   const nextBillingOn = customer.billing.subscription?.paidThroughAt ?? null;
   const addOns = MONTHLY_ADD_ON_IDS.map((addOn): AddOnPageEntry => {
     const assessment = assessments.get(addOn) ?? null;
     const included = bundled.find((row) => row.addOn === addOn && row.status === "active");
     // What it costs once added: the package price the basket would earn, which is list for a service on its own.
-    if (included === undefined) return { kind: "available", addOn, price: packageLineWith({ services: staying, forfeited }, addOn, currency), offer: offerOf(assessment, nextBillingOn) };
+    if (included === undefined) return { kind: "available", addOn, price: packageLineWith(listedLines, forfeited, addOn, currency), offer: offerOf(assessment, nextBillingOn) };
     return {
       kind: "included",
       addOn,

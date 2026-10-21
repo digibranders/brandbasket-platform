@@ -83,12 +83,12 @@ describe("a payment for service lines on the services plan", () => {
       activateFirstPayment(tx, { businessId, subscriptionId: subscription.id, plan, provider: "fake", providerPaymentId: "fake_pay_lines", paidAt: PAID_AT }),
     );
 
-    expect(activation.payment.amountCents).toBe(1_227_200);
+    expect(activation.payment.amountCents).toBe(1_226_964);
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
-    expect(invoice?.totalCents).toBe(1_227_200);
+    expect(invoice?.totalCents).toBe(1_226_964);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
-      ["Managed Website", 300_000, 60_000],
-      ["Social Media and Ads", 1_000_000, 200_000],
+      ["Managed Website", 299_900, 59_980],
+      ["Social Media and Ads", 999_900, 200_020],
     ]);
   });
 
@@ -106,10 +106,10 @@ describe("a payment for service lines on the services plan", () => {
       }),
     );
 
-    expect(activation.payment).toMatchObject({ amountCents: 354_000, kind: "reactivation" });
+    expect(activation.payment).toMatchObject({ amountCents: 353_882, kind: "reactivation" });
     expect((await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).map((row) => row.status)).toEqual(["active"]);
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
-    expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents])).toEqual([["Managed Website", 300_000]]);
-    expect(invoice?.totalCents).toBe(354_000);
+    expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents])).toEqual([["Managed Website", 299_900]]);
+    expect(invoice?.totalCents).toBe(353_882);
   });
 });

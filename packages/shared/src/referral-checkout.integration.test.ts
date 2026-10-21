@@ -63,7 +63,7 @@ function lineOf(service: MonthlyAddOnId): NewBundledAddOn {
   return { addOn: service, listAmountCents, offerDiscountAmountCents: 0, netAmountCents: listAmountCents, taxRateBasisPoints: 1_800 };
 }
 
-/** Managed Website alone: ₹3,000 a month before GST, what these figures are built on. */
+/** Managed Website alone: ₹2,999 a month before GST, what these figures are built on. */
 const WEBSITE = lineOf("managed-website");
 
 function addMonths(from: Date, months: number): Date {
@@ -83,7 +83,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   // These check how a code's discount and an affiliate's reward are worked out, to the paisa, against Managed Website alone
-  // at ₹3,000 (the figures below are built on it), on the services plan that costs nothing itself.
+  // at ₹2,999 (the figures below are built on it), on the services plan that costs nothing itself.
   await seedPlansFromMigrations(dbs.owner);
   await dbs.owner.db
     .insert(users)
@@ -184,7 +184,7 @@ describe("a member paying with an affiliate code", () => {
   it("is charged the discounted amount, activated on it, and earns the affiliate a month", async () => {
     const staffDb = dbs.staff.db;
     const plan = await requirePlan();
-    // The services plan costs nothing; the website line is ₹3,000 a month, with 18% GST on top.
+    // The services plan costs nothing; the website line is ₹2,999 a month, with 18% GST on top.
     expect(plan).toMatchObject({ initialAmountCents: 0, taxRateBasisPoints: 1_800 });
 
     // 1. The superadmin creates an affiliate on ₹200 a month, and a ₹500 code for them.
@@ -234,12 +234,12 @@ describe("a member paying with an affiliate code", () => {
       replacing: null,
       now: NOW,
     });
-    expect(subscription).toMatchObject({ status: "incomplete", discountAmountCents: 50_000, bundledAddOnNetCents: 300_000 });
+    expect(subscription).toMatchObject({ status: "incomplete", discountAmountCents: 50_000, bundledAddOnNetCents: 299_900 });
 
-    // 4. The provider quotes the discount before GST: ₹3,000 − ₹500 = ₹2,500, plus 18% = ₹2,950.
+    // 4. The provider quotes the discount before GST: ₹2,999 − ₹500 = ₹2,499, plus 18% = ₹2,948.82.
     const token = new URL(started.checkoutUrl, "https://app.test").searchParams.get("token") ?? "";
     const confirmed = await provider.confirmCheckout({ token });
-    expect(confirmed.amountCents).toBe(295_000);
+    expect(confirmed.amountCents).toBe(294_882);
 
     // 5. The member pays, through the same activation the webhook uses.
     const pay = () =>
@@ -261,18 +261,18 @@ describe("a member paying with an affiliate code", () => {
     expect(activated?.paidThroughAt).toEqual(addMonths(NOW, plan.initialTermMonths));
     const recorded = await listPaymentsForBusiness(staffDb, businessId, 10);
     expect(recorded).toHaveLength(1);
-    expect(recorded[0]).toMatchObject({ amountCents: 295_000, kind: "initial", status: "captured" });
+    expect(recorded[0]).toMatchObject({ amountCents: 294_882, kind: "initial", status: "captured" });
 
     // The tax invoice takes the code off the website's line: the services plan has no line of its own.
     const invoice = await findTaxInvoiceByPaymentId(staffDb, recorded[0]?.id ?? "");
-    expect(invoice?.totalCents).toBe(295_000);
-    expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([["Managed Website", 300_000, 50_000]]);
+    expect(invoice?.totalCents).toBe(294_882);
+    expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([["Managed Website", 299_900, 50_000]]);
     expect(invoice?.lines[0]?.note).toContain("FRIEND15");
 
     // 6. The affiliate earned their ₹200 for this payment, owed until staff pay it out.
     const earnings = await listAffiliateEarnings(staffDb, affiliateId, 10);
     expect(earnings).toMatchObject([
-      { amountCents: 20_000, currency: "INR", basisCents: 250_000, status: "owed", code: "FRIEND15", paymentKind: "initial" },
+      { amountCents: 20_000, currency: "INR", basisCents: 249_900, status: "owed", code: "FRIEND15", paymentKind: "initial" },
     ]);
 
     // 7. The same payment delivered again (a webhook retry) earns nothing more.
@@ -290,13 +290,13 @@ describe("a member paying with an affiliate code", () => {
   it("earns a percentage of what the member pays before GST, after their discount", async () => {
     const affiliateId = await seedAffiliate({ kind: "percent", basisPoints: 500 });
     const codeId = await seedCode("TENPCT", affiliateId, { kind: "percent", basisPoints: 1_000 });
-    // 10% of the website's ₹3,000 is ₹300, worked out once at checkout and frozen.
+    // 10% of the website's ₹2,999 is ₹299.90, worked out once at checkout and frozen.
     const discountAmountCents = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, WEBSITE.listAmountCents);
-    expect(discountAmountCents).toBe(30_000);
+    expect(discountAmountCents).toBe(29_990);
     await payFirstMonth(codeId, discountAmountCents);
-    // 5% of ₹2,700 is ₹135.
+    // 5% of ₹2,699.10 is ₹134.955, taken down to ₹134.95.
     expect(await listAffiliateEarnings(dbs.staff.db, affiliateId, 10)).toMatchObject([
-      { amountCents: 13_500, basisCents: 270_000 },
+      { amountCents: 13_495, basisCents: 269_910 },
     ]);
   });
 
@@ -304,14 +304,14 @@ describe("a member paying with an affiliate code", () => {
     const affiliateId = await seedAffiliate({ kind: "percent", basisPoints: 500 });
     const codeId = await seedCode("TENPCT", affiliateId, { kind: "percent", basisPoints: 1_000 });
     const seo = lineOf("local-seo-aeo");
-    // 10% of Local SEO + AEO's ₹25,000 is ₹2,500.
+    // 10% of Local SEO + AEO's ₹24,999 is ₹2,499.90.
     const discountAmountCents = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, seo.listAmountCents);
-    expect(discountAmountCents).toBe(250_000);
+    expect(discountAmountCents).toBe(249_990);
     await payFirstMonth(codeId, discountAmountCents, seo);
 
-    // ₹22,500 plus 18% GST, and the affiliate's 5% of ₹22,500.
-    expect((await listPaymentsForBusiness(dbs.staff.db, businessId, 10))[0]).toMatchObject({ amountCents: 2_655_000 });
-    expect(await listAffiliateEarnings(dbs.staff.db, affiliateId, 10)).toMatchObject([{ amountCents: 112_500, basisCents: 2_250_000 }]);
+    // ₹22,499.10 plus 18% GST, and the affiliate's 5% of ₹22,499.10.
+    expect((await listPaymentsForBusiness(dbs.staff.db, businessId, 10))[0]).toMatchObject({ amountCents: 2_654_894 });
+    expect(await listAffiliateEarnings(dbs.staff.db, affiliateId, 10)).toMatchObject([{ amountCents: 112_495, basisCents: 2_249_910 }]);
   });
 
   it("charges the full price on an affiliate code that gives no discount, and still earns", async () => {
@@ -319,10 +319,10 @@ describe("a member paying with an affiliate code", () => {
     const codeId = await seedCode("PRIYA", affiliateId, null);
     await payFirstMonth(codeId, 0);
     const recorded = await listPaymentsForBusiness(dbs.staff.db, businessId, 10);
-    // ₹3,000 plus 18% GST.
-    expect(recorded[0]).toMatchObject({ amountCents: 354_000 });
+    // ₹2,999 plus 18% GST.
+    expect(recorded[0]).toMatchObject({ amountCents: 353_882 });
     expect(await listAffiliateEarnings(dbs.staff.db, affiliateId, 10)).toMatchObject([
-      { amountCents: 20_000, basisCents: 300_000 },
+      { amountCents: 20_000, basisCents: 299_900 },
     ]);
   });
 
@@ -344,9 +344,9 @@ describe("a member paying with an affiliate code", () => {
     });
     await payRenewal(subscription, "fake_pay_renewal_1");
 
-    // 7.5% of the website's ₹3,000 less the frozen ₹500: ₹187.50.
+    // 7.5% of the website's ₹2,999 less the frozen ₹500: ₹187.425, taken down to ₹187.42.
     const [renewal, first] = await listAffiliateEarnings(dbs.staff.db, affiliateId, 10);
-    expect(renewal).toMatchObject({ amountCents: 18_750, paymentKind: "renewal" });
+    expect(renewal).toMatchObject({ amountCents: 18_742, paymentKind: "renewal" });
     expect(first).toMatchObject({ amountCents: 20_000, paymentKind: "initial" });
     const still = await findLatestSubscriptionForBusiness(dbs.staff.db, businessId);
     expect(still?.discountAmountCents).toBe(50_000);
@@ -367,7 +367,7 @@ describe("an affiliate paid for a limited number of months", () => {
     // The member was charged the discounted price for all three months.
     const paid = await listPaymentsForBusiness(dbs.staff.db, businessId, 10);
     expect(paid).toHaveLength(3);
-    for (const payment of paid) expect(payment.amountCents).toBe(295_000);
+    for (const payment of paid) expect(payment.amountCents).toBe(294_882);
   });
 
   it("does not count a refunded month, whose earning staff cancelled, against the limit", async () => {
@@ -389,7 +389,7 @@ describe("a member paying with a coupon", () => {
     const codeId = await seedCode("LAUNCH500", null, { kind: "amount", amountCents: 50_000 });
     await payFirstMonth(codeId, 50_000);
     const recorded = await listPaymentsForBusiness(dbs.staff.db, businessId, 10);
-    expect(recorded[0]).toMatchObject({ amountCents: 295_000 });
+    expect(recorded[0]).toMatchObject({ amountCents: 294_882 });
     const affiliateId = await seedAffiliate();
     expect(await listAffiliateEarnings(dbs.staff.db, affiliateId, 10)).toEqual([]);
   });
@@ -405,8 +405,8 @@ describe("a member paying with a coupon", () => {
       bundledAddOnNetCents: WEBSITE.netAmountCents,
     });
     const token = new URL(started.checkoutUrl, "https://app.test").searchParams.get("token") ?? "";
-    // ₹3,000 plus 18% GST.
-    await expect(provider.confirmCheckout({ token })).resolves.toMatchObject({ amountCents: 354_000 });
+    // ₹2,999 plus 18% GST.
+    await expect(provider.confirmCheckout({ token })).resolves.toMatchObject({ amountCents: 353_882 });
   });
 
   it("stops discounting once the coupon is turned off, without touching anyone already paying on it", async () => {

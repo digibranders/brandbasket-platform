@@ -74,6 +74,6 @@ describe("loadMembershipCheckout", () => {
 
     await loadMembershipCheckout(customer, "managed", ["managed-website"], NOW);
 
-    expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", listCents: 300_000 }, NOW);
+    expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", listCents: 299_900 }, NOW);
   });
 });
