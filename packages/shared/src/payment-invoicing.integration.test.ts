@@ -20,7 +20,7 @@ import {
   type Plan,
   type Subscription,
 } from "@brandbasket/db";
-import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
+import { execSql, openTestDatabases, querySql, resetTestDatabase, seedManagedWebsitePlans, type TestDatabases } from "@brandbasket/db/testing";
 import { chargeAmountCents } from "./lib/billing/charges";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment, type RenewalInvoicedPrice } from "./server/billing-activation";
 import { recordChargePaymentWithInvoice } from "./server/charge-payments";
@@ -202,7 +202,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
-  await seedPlansFromMigrations(dbs.owner);
+  await seedManagedWebsitePlans(dbs.owner);
   const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (plan === null) throw new Error("No active INR Premium plan was seeded");
   premium = plan;

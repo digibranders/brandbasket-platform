@@ -20,7 +20,7 @@ import {
   type ReferralDiscount,
   type ScopedTransaction,
 } from "@brandbasket/db";
-import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
+import { execSql, openTestDatabases, querySql, resetTestDatabase, seedManagedWebsitePlans, type TestDatabases } from "@brandbasket/db/testing";
 import { issueTaxInvoice, issueTaxInvoiceSafely, type InvoiceSource, type IssuedTaxInvoice } from "./server/tax-invoicing";
 
 // tax-invoicing is server-only in the app; there is no browser here to keep it out of.
@@ -190,7 +190,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
-  await seedPlansFromMigrations(dbs.owner);
+  await seedManagedWebsitePlans(dbs.owner);
   const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (plan === null) throw new Error("No active INR Premium plan was seeded");
   premium = plan;

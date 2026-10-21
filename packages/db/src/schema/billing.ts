@@ -191,6 +191,11 @@ export const subscriptions = pgTable(
      * `bundled_add_on_net_cents`. Null when no removal is waiting.
      */
     pendingBundledAddOnNetCents: integer("pending_bundled_add_on_net_cents"),
+    /**
+     * Ad credit a month, in the plan's minor units, for a package bought together at the first checkout (adCreditCentsFor in
+     * @brandbasket/shared): frozen then and never grown. Never on an invoice. Zero once a service is dropped from the package.
+     */
+    adCreditCents: integer("ad_credit_cents").notNull().default(0),
     status: subscriptionStatus("status").notNull().default("incomplete"),
     /** When the first payment was confirmed. Null until then. */
     activatedAt: timestamp("activated_at", { withTimezone: true }),
@@ -221,6 +226,7 @@ export const subscriptions = pgTable(
       "subscriptions_bundled_check",
       sql`${table.bundledAddOnNetCents} >= 0 and (${table.pendingBundledAddOnNetCents} is null or ${table.pendingBundledAddOnNetCents} >= 0)`,
     ),
+    check("subscriptions_ad_credit_check", sql`${table.adCreditCents} >= 0`),
     check(
       "subscriptions_pending_check",
       sql`${table.pendingDiscountAmountCents} >= 0 and (${table.pendingDiscountAmountCents} = 0 or (${table.pendingPlanId} is not null and ${table.referralCodeId} is not null))`,

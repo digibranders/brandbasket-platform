@@ -12,6 +12,7 @@ import {
   openCheckoutSubscription,
   withTenantScope,
   type BillingState,
+  type BundledAddOn,
   type BusinessProfile,
   type Database,
   type MediaAsset,
@@ -74,6 +75,11 @@ const appTx = { name: "app-tx" } as unknown as ScopedTransaction;
 
 const PLAN = { id: "plan-usd", currency: "USD", initialAmountCents: 22500, initialTermMonths: 3, taxRateBasisPoints: 0 } as Plan;
 
+/** Every checkout bills the website as a line: here in dollars, at its list price with no tax of ours. */
+const WEBSITE_USD_LINE = { addOn: "managed-website", listAmountCents: 7_500, offerDiscountAmountCents: 0, netAmountCents: 7_500, taxRateBasisPoints: 0 };
+/** The website line an earlier checkout left waiting for its payment, so the same basket can be reused. */
+const PENDING_WEBSITE = { addOn: "managed-website", status: "pending" } as BundledAddOn;
+
 const customer: GrantedCustomer = {
   user: { id: "user-a", email: "ana@example.com", name: "Ana Diaz", emailConfirmed: true, phone: null },
   tenant: { userId: "user-a", businessId: BUSINESS_ID, businessName: "Riverside Plumbing", role: "owner" },
@@ -131,7 +137,7 @@ function newest(latest: Subscription | null, history: Partial<BillingState> = {}
 
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([]);
+  vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([PENDING_WEBSITE]);
   events = [];
   openTransactions = 0;
   transactionCount = 0;
@@ -218,7 +224,7 @@ describe("startCheckoutFor", () => {
         providerSubscriptionId: expect.stringMatching(/^fake_sub_[0-9a-f]{24}$/),
         referralCodeId: null,
         discountAmountCents: 0,
-        bundledAddOns: [],
+        bundledAddOns: [WEBSITE_USD_LINE],
         replacing: null,
         now: NOW,
       },
@@ -481,7 +487,8 @@ describe("startMembershipCheckoutFor", () => {
 
     redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed"));
 
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 50_000, 0);
+    // The website line in rupees, ₹3,000 a month before GST, is billed with the plan.
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 50_000, 300_000);
     expect(started).toHaveBeenCalledWith(expect.objectContaining({ providerPlanId: "plan_discounted", discountAmountCents: 50_000 }));
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },

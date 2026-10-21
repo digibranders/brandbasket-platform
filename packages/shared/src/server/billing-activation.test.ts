@@ -293,7 +293,7 @@ describe("the tax invoice", () => {
   it("is issued for a restart at the plan's monthly price with no discount", async () => {
     await activateReactivationPayment({} as never, { businessId: "biz_1", subscriptionId: "sub_1", plan, provider: "razorpay", providerPaymentId: "pay_2", paidAt, paidThroughAt });
     expect(vi.mocked(issueTaxInvoiceSafely).mock.calls[0]?.[2]).toEqual({
-      kind: "plan", plan, netAmountCents: 999_900, discountAmountCents: 0, retentionDiscountCents: 0, monthly: true, periodStart: paidAt, periodEnd: paidThroughAt,
+      kind: "plan", plan, bundledAddOns: [], netAmountCents: 999_900, discountAmountCents: 0, retentionDiscountCents: 0, monthly: true, periodStart: paidAt, periodEnd: paidThroughAt,
     });
   });
 });

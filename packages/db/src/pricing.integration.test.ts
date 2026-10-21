@@ -121,7 +121,7 @@ describe("replaceMonthlyPrice", () => {
     await replaceMonthlyPrice(dbs.staff.db, { currency: "USD", tier: "managed", netMonthlyCents: 7_900, providerPlanId: null, staffId: STAFF, now: NOW });
     expect((await listActivePlans(dbs.staff.db)).map((plan) => [plan.currency, plan.tier, plan.recurringAmountCents])).toEqual([
       ["USD", "managed", 7_900],
-      ["INR", "managed", 299_900],
+      ["INR", "managed", 0],
     ]);
   });
 
@@ -206,7 +206,7 @@ describe("largestLiveReferralDiscount", () => {
 
 describe("attachProviderPlan", () => {
   it("gives a plan with no provider plan its provider plan, and changes nothing else about it", async () => {
-    // The seeded Managed Website plan has no provider plan until staff save it in the console.
+    // The seeded services plan has no provider plan until staff save it in the console.
     const plan = await activeInr();
     expect(plan.providerPlanId).toBeNull();
 

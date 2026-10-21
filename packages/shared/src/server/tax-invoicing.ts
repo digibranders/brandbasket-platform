@@ -366,7 +366,8 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
       taxRateBasisPoints: bundled.taxRateBasisPoints,
     };
   });
-  return [planLine, ...addOnLines];
+  // The plan row costs nothing now that every service is a line: a plan line at 0 with nothing taken off says nothing.
+  return source.netAmountCents === 0 && source.discountAmountCents === 0 ? addOnLines : [planLine, ...addOnLines];
 }
 
 /** An invoice for a payment, and whether this call issued it (false when it had been issued before). */

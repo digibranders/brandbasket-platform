@@ -84,8 +84,9 @@ interface PlannedCheckout {
    */
   readonly discount: AppliedDiscount | null;
   /**
-   * The add-ons taken at this checkout, priced as a package when there are two or more (lib/billing/bundle.ts), billed in
-   * the plan's own charge. Empty for a business that has paid before and when none were chosen.
+   * The services taken at this checkout, the website always among them, priced as a package when there are two or more
+   * (lib/billing/bundle.ts). The plan row costs nothing, so these are the whole charge. A business that has paid before
+   * takes the website alone.
    */
   readonly bundle: readonly NewBundledAddOn[];
 }
@@ -310,16 +311,16 @@ async function openPlanCheckout(
         ? null
         : await findRedeemableReferralCode(tx, { code: applied.code, currency: state.currency, now });
     const discount = redeemable === null ? null : discountFrom(redeemable, plan);
-    // Add-ons join the plan's charge at the first checkout only: a business that has paid before takes none with its plan.
-    const bundle: readonly NewBundledAddOn[] = state.hasEverPaid
-      ? []
-      : bundleLines(addOns, plan.currency).map((line) => ({
-          addOn: line.addOn,
-          listAmountCents: line.listCents,
-          offerDiscountAmountCents: line.offerCents,
-          netAmountCents: line.netCents,
-          taxRateBasisPoints: plan.taxRateBasisPoints,
-        }));
+    // The plan row is the terms at a price of 0, so the website is a line like every service. Other services join at the
+    // first checkout only: a business that has paid before takes the website alone.
+    const services: readonly MonthlyAddOnId[] = state.hasEverPaid ? ["managed-website"] : ["managed-website", ...addOns];
+    const bundle: readonly NewBundledAddOn[] = bundleLines(services, plan.currency).map((line) => ({
+      addOn: line.addOn,
+      listAmountCents: line.listCents,
+      offerDiscountAmountCents: line.offerCents,
+      netAmountCents: line.netCents,
+      taxRateBasisPoints: plan.taxRateBasisPoints,
+    }));
     const latestBundleKey =
       state.subscription === null ? "" : bundleKey((await findBundledAddOnsForSubscription(tx, state.subscription.id)).filter((row) => row.status === "pending").map((row) => row.addOn));
     const decision = decideCheckout(

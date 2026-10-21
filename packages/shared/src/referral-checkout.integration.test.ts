@@ -22,7 +22,7 @@ import {
   type ReferralReward,
   type Subscription,
 } from "@brandbasket/db";
-import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
+import { openTestDatabases, resetTestDatabase, seedManagedWebsitePlans, type TestDatabases } from "@brandbasket/db/testing";
 import { activateFirstPayment, activateRenewalPayment } from "./server/billing-activation";
 
 // billing-activation is server-only in the app; there is no browser here to keep it out of.
@@ -69,7 +69,7 @@ beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   // These check how a code's discount and an affiliate's reward are worked out, to the paisa, against Managed Website at
   // ₹2,999 (the figures below are built on it).
-  await seedPlansFromMigrations(dbs.owner);
+  await seedManagedWebsitePlans(dbs.owner);
   await dbs.owner.db
     .insert(users)
     .values({ id: STAFF_USER, name: "Superadmin", email: "admin@example.test", emailVerified: true });

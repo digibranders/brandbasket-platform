@@ -99,7 +99,8 @@ async function activation(subscriptionId: string, providerPaymentId: string): Pr
     provider: "fake",
     providerPaymentId,
     kind: "initial",
-    amountCents: plan.initialAmountCents,
+    // The website alone, in dollars: its line is the whole charge, since the plan row costs nothing.
+    amountCents: 7500,
     currency: plan.currency,
     paidAt: PAID_AT,
     paidThroughAt: THREE_MONTHS_ON,
@@ -658,7 +659,7 @@ describe("findBillingState", () => {
     expect(own).toMatchObject({
       currency: "USD",
       subscription: { status: "incomplete", providerSubscriptionId: "fake_sub_a" },
-      plan: { code: "managed-usd-2026-10", initialAmountCents: 7500, initialTermMonths: 1 },
+      plan: { code: "services-usd-2026-10", initialAmountCents: 0, initialTermMonths: 1 },
     });
 
     const other = await withTenantScope(dbs.app.db, scopeA(), (tx) => findBillingState(tx, businessB));
@@ -672,7 +673,7 @@ describe("findBillingState", () => {
     expect(state).toMatchObject({
       currency: "INR",
       subscription: null,
-      plan: { code: "managed-inr-2026-10", initialAmountCents: 299900, taxRateBasisPoints: 1800, initialTermMonths: 1 },
+      plan: { code: "services-inr-2026-10", initialAmountCents: 0, taxRateBasisPoints: 1800, initialTermMonths: 1 },
     });
   });
 

@@ -187,14 +187,15 @@ async function applicability(
   const plan = await findPlanById(tx, subscription.planId);
   if (plan === null || plan.currency !== confirmed.currency) return { kind: "unapplied", reason: "amount_mismatch" };
   const reactivating = state?.hasEverPaid === true;
-  const expected = expectedFirstPaymentCents(plan, subscription.discountAmountCents, reactivating, reactivating ? 0 : subscription.bundledAddOnNetCents);
+  const expected = expectedFirstPaymentCents(plan, subscription.discountAmountCents, reactivating, subscription.bundledAddOnNetCents);
   if (expected !== confirmed.amountCents) return { kind: "unapplied", reason: "amount_mismatch" };
   return { kind: "applies", plan, reactivating };
 }
 
 /**
  * What the provider was asked to take for this checkout: the plan's first payment (its monthly price, for a
- * reactivation) less the subscription's referral discount, plus the plan's tax (₹2,999 + 18% GST is ₹3,538.82), plus any add-ons taken at the same checkout. The
+ * reactivation, both 0 now that every service is a line) plus the services taken at the checkout, less the subscription's
+ * referral discount, plus the plan's tax (₹3,000 + 18% GST is ₹3,540 for the website alone). The
  * same chargedAmountCents the checkout and the webhook use, so a payment is judged against exactly what was charged.
  * Null when the discount leaves nothing to charge, which no payment can match.
  */
@@ -206,7 +207,7 @@ function expectedFirstPaymentCents(
 ): number | null {
   const price = reactivating ? plan.recurringAmountCents : plan.initialAmountCents;
   try {
-    // The add-ons taken at this checkout are billed in the same charge.
+    // The services taken at this checkout, the website included, are the charge.
     return chargedAmountCents(price + bundledAddOnNetCents, discountAmountCents, plan.taxRateBasisPoints);
   } catch (error) {
     if (error instanceof RangeError) return null;

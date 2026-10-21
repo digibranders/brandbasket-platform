@@ -200,18 +200,19 @@ export interface ReactivationPayment {
 /**
  * The first payment on a new subscription for a business that paid before and lapsed (docs/superpowers/specs/2026-10-09-
  * reactivation-design.md). Missed months are not charged: it buys one month from the day it is paid, at the plan's
- * monthly price with its tax and no coupon. It is not a first payment: no lead is marked paid, no membership opens (the
- * business is already a client) and no affiliate earns on it. Idempotent on the provider payment id. Issues the payment's
- * tax invoice last, in a savepoint (D7).
+ * monthly price plus the services its checkout was opened with, with its tax and no coupon. It is not a first payment: no
+ * lead is marked paid, no membership opens (the business is already a client) and no affiliate earns on it. Idempotent on
+ * the provider payment id. Issues the payment's tax invoice last, in a savepoint (D7).
  */
 export async function activateReactivationPayment(tx: ScopedTransaction, payment: ReactivationPayment): Promise<RecordedActivation> {
+  const bundled = (await findBundledAddOnsForSubscription(tx, payment.subscriptionId)).filter((row) => row.status === "pending");
   const activation = await recordPaymentAndActivate(tx, {
     businessId: payment.businessId,
     subscriptionId: payment.subscriptionId,
     provider: payment.provider,
     providerPaymentId: payment.providerPaymentId,
     kind: "reactivation",
-    amountCents: chargedAmountCents(payment.plan.recurringAmountCents, 0, payment.plan.taxRateBasisPoints),
+    amountCents: chargedAmountCents(payment.plan.recurringAmountCents + bundledNetCents(bundled), 0, payment.plan.taxRateBasisPoints),
     currency: payment.plan.currency,
     paidAt: payment.paidAt,
     paidThroughAt: payment.paidThroughAt,
@@ -221,9 +222,11 @@ export async function activateReactivationPayment(tx: ScopedTransaction, payment
     ...(payment.method === undefined ? {} : { method: payment.method }),
   });
   if (!activation.alreadyRecorded) {
+    const activeBundle = await activateBundledAddOns(tx, { subscriptionId: payment.subscriptionId, now: payment.paidAt });
     await issueTaxInvoiceSafely(tx, activation.payment, {
       kind: "plan",
       plan: payment.plan,
+      bundledAddOns: activeBundle,
       netAmountCents: payment.plan.recurringAmountCents,
       discountAmountCents: 0,
       retentionDiscountCents: 0,

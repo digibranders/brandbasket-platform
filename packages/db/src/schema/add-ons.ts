@@ -123,11 +123,12 @@ export const addOnPayments = pgTable(
 export const bundledAddOnStatus = pgEnum("bundled_add_on_status", ["pending", "active", "removed"]);
 
 /**
- * An add-on billed inside the plan's own subscription: the one monthly charge is the plan plus these. Taken at the first
- * checkout, it is `pending` until the first payment is recorded and `active` after it. Added to a running plan, it is
- * `pending` with a charge for the rest of the paid month (`charge_id`), `active` once that is paid, and joins the monthly
- * amount at the next renewal (`billed_from`). `removed` once it has stopped being billed. The price is frozen here (list,
- * the 5% lifetime offer taken at the first checkout only, net) and summed onto `subscriptions.bundled_add_on_net_cents`.
+ * A service billed inside the subscription, the website included (docs/plans/16-platform-pricing-offers.md in the
+ * BrandBasket workspace): the plan row is the subscription's terms at a price of 0, so the one monthly charge is these
+ * lines. Taken at the first checkout, it is `pending` until the first payment is recorded and `active` after it. Added to
+ * a running plan, it is `pending` with a charge for the rest of the paid month (`charge_id`), `active` once that is paid,
+ * and joins the monthly amount at the next renewal (`billed_from`). `removed` once it has stopped being billed. The price
+ * is frozen here (list, package offer, net) and summed onto `subscriptions.bundled_add_on_net_cents`.
  * Rows are kept on erasure, like every record of what was sold.
  */
 export const bundledAddOns = pgTable(
@@ -138,8 +139,13 @@ export const bundledAddOns = pgTable(
     subscriptionId: uuid("subscription_id").notNull().references(() => subscriptions.id),
     addOn: text("add_on").notNull(),
     listAmountCents: integer("list_amount_cents").notNull(),
-    /** The first-checkout lifetime offer (5%) taken off the list price. */
+    /** The package offer taken off the list price (packages.ts in @brandbasket/shared); 0 for a service on its own. */
     offerDiscountAmountCents: integer("offer_discount_amount_cents").notNull().default(0),
+    /**
+     * The package offer this line moves to from the next renewal, when the basket has changed (a service added or dropped);
+     * null when it is not changing. Recording that renewal makes it `offerDiscountAmountCents`.
+     */
+    pendingOfferDiscountAmountCents: integer("pending_offer_discount_amount_cents"),
     netAmountCents: integer("net_amount_cents").notNull(),
     taxRateBasisPoints: integer("tax_rate_basis_points").notNull(),
     status: bundledAddOnStatus("status").notNull().default("pending"),
@@ -170,12 +176,14 @@ export const bundledAddOns = pgTable(
       .where(sql`${table.status} in ('pending', 'active')`),
     uniqueIndex("bundled_add_ons_charge_idx").on(table.chargeId).where(sql`${table.chargeId} is not null`),
     index("bundled_add_ons_business_idx").on(table.businessId, table.createdAt),
-    check("bundled_add_ons_add_on_check", sql`${table.addOn} in ('digital-growth', 'local-seo-aeo')`),
+    check("bundled_add_ons_add_on_check", sql`${table.addOn} in ('managed-website', 'digital-growth', 'local-seo-aeo')`),
     check(
       "bundled_add_ons_amounts_check",
       sql`${table.listAmountCents} > 0 and ${table.offerDiscountAmountCents} >= 0
         and ${table.netAmountCents} = ${table.listAmountCents} - ${table.offerDiscountAmountCents} and ${table.netAmountCents} > 0
-        and ${table.taxRateBasisPoints} between 0 and 10000`,
+        and ${table.taxRateBasisPoints} between 0 and 10000
+        and (${table.pendingOfferDiscountAmountCents} is null
+          or (${table.pendingOfferDiscountAmountCents} >= 0 and ${table.pendingOfferDiscountAmountCents} < ${table.listAmountCents}))`,
     ),
   ],
 );

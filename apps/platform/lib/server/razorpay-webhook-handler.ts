@@ -173,11 +173,11 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       // step even if the code is edited or retired afterwards. If the two ever disagree, the charge falls through to
       // amount_mismatch below and lands in the attention queue rather than activating anything.
       const basePrice = subscription.activatedAt === null && !reactivating ? plan?.initialAmountCents : plan?.recurringAmountCents;
-      // Add-ons taken at the first checkout are billed in the same charge, every month: their frozen total is part of the
-      // price. A reactivation is a fresh subscription at the plan's monthly price alone, so it carries none.
-      const bundledNetCents = reactivating ? 0 : subscription.bundledAddOnNetCents;
+      // The services are billed as lines, every month: their frozen total is the price (the plan row costs nothing). A
+      // reactivation is a fresh subscription with its own lines, frozen when its checkout opened.
+      const bundledNetCents = subscription.bundledAddOnNetCents;
       const expectedAmount =
-        plan === null || plan === undefined || basePrice === undefined || subscription.discountAmountCents >= basePrice
+        plan === null || plan === undefined || basePrice === undefined || subscription.discountAmountCents >= basePrice + bundledNetCents
           ? undefined
           : chargedAmountCents(basePrice + bundledNetCents, subscription.discountAmountCents, plan.taxRateBasisPoints);
       // A customer who paid to move up to Premium is billed Premium from the next renewal: the provider was told to move
@@ -191,7 +191,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       const renewalAtNewPrice =
         pendingPlan !== null &&
         pendingPlan.currency === event.currency &&
-        subscription.pendingDiscountAmountCents < pendingPlan.recurringAmountCents &&
+        subscription.pendingDiscountAmountCents < pendingPlan.recurringAmountCents + subscription.bundledAddOnNetCents &&
         chargedAmountCents(
           pendingPlan.recurringAmountCents + subscription.bundledAddOnNetCents,
           subscription.pendingDiscountAmountCents,
@@ -207,7 +207,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         subscription.activatedAt !== null &&
         subscription.pendingBundledAddOnNetCents !== null &&
         plan.currency === event.currency &&
-        subscription.discountAmountCents < plan.recurringAmountCents &&
+        subscription.discountAmountCents < plan.recurringAmountCents + subscription.pendingBundledAddOnNetCents &&
         chargedAmountCents(
           plan.recurringAmountCents + subscription.pendingBundledAddOnNetCents,
           subscription.discountAmountCents,

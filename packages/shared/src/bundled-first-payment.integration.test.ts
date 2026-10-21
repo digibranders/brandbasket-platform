@@ -21,7 +21,7 @@ import {
   type Plan,
   type Subscription,
 } from "@brandbasket/db";
-import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
+import { openTestDatabases, resetTestDatabase, seedManagedWebsitePlans, type TestDatabases } from "@brandbasket/db/testing";
 import { bundleLines } from "./lib/billing/bundle";
 import { activateFirstPayment, activateRenewalPayment } from "./server/billing-activation";
 
@@ -89,7 +89,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
-  await seedPlansFromMigrations(dbs.owner);
+  await seedManagedWebsitePlans(dbs.owner);
   const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (plan === null) throw new Error("No active INR Managed Website plan was seeded");
   care = plan;

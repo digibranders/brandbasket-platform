@@ -54,7 +54,8 @@ async function redeem(codeId: string, discountAmountCents: number, suffix: strin
     provider: "fake",
     providerPaymentId: `fake_pay_${suffix}`,
     kind: "initial",
-    amountCents: plan.initialAmountCents - discountAmountCents,
+    // The website alone in dollars ($75) less the code: its line is the whole charge, since the plan row costs nothing.
+    amountCents: 7500 - discountAmountCents,
     currency: plan.currency,
     paidAt: NOW,
     paidThroughAt: paidThrough,
