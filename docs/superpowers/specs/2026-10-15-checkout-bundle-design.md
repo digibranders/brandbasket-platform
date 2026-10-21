@@ -1,5 +1,7 @@
 # Add-ons taken at the first checkout are paid with the plan
 
+> **Superseded in part by plan 16 (2026-10-21)** (`docs/plans/16-platform-pricing-offers.md` in the BrandBasket workspace): the 5% lifetime offer on add-ons taken at the first checkout is gone; the website is one of the services bought in the basket, not a required plan; the subscription is a basket of services priced as a package (20% or 30% off every line, floored to the whole rupee), with monthly ad credit earned only when a package is bought together at the first purchase.
+
 2026-10-15. Replaces the offer card's separate checkout for each add-on.
 
 ## Why
