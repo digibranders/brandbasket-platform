@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createDatabase } from "./client";
 import { requireEnv } from "./local-env";
+import { isPackageOfferForfeited, markPackageOfferForfeited } from "./queries/bundled-add-ons";
 import { listMembershipsForUser } from "./queries/memberships";
 import { countPlatformRecords, findActiveStaffMember } from "./queries/staff";
 import { businesses, businessMembers, staffMembers, users } from "./schema";
@@ -86,6 +87,19 @@ describe("row-level security for bb_app", () => {
       withUserScope(dbs.app.db, USER_A, (tx) => tx.insert(businesses).values({ slug: "sneaky", name: "Sneaky" })),
     );
     expect(message).toMatch(/permission denied for table businesses/);
+  });
+
+  it("lets a member read whether their own business has given the package offer up, and no one else's, as the Add-ons page does", async () => {
+    await dbs.staff.db.transaction((tx) => markPackageOfferForfeited(tx, businessA, new Date("2026-10-21T10:00:00.000Z")));
+
+    const ownBusiness = await withTenantScope(dbs.app.db, { userId: USER_A, businessId: businessA }, (tx) => isPackageOfferForfeited(tx, businessA));
+    const otherBusiness = await withTenantScope(dbs.app.db, { userId: USER_B, businessId: businessB }, (tx) => isPackageOfferForfeited(tx, businessA));
+    const notForfeited = await withTenantScope(dbs.app.db, { userId: USER_B, businessId: businessB }, (tx) => isPackageOfferForfeited(tx, businessB));
+
+    expect(ownBusiness).toBe(true);
+    // Another business's row is invisible, so it reads as not given up; the page only ever asks about its own.
+    expect(otherBusiness).toBe(false);
+    expect(notForfeited).toBe(false);
   });
 
   it("denies the app role any access to staff_members", async () => {
