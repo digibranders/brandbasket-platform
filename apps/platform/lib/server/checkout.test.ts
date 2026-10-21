@@ -885,7 +885,57 @@ describe("startReactivationFor", () => {
           replacing: null,
         }),
       );
-      expect(markPackageOfferForfeited).toHaveBeenCalledWith({ name: "tx1" }, BUSINESS_ID, NOW);
+      // Written with the checkout it belongs to, under the second transaction's lock, not before the decision.
+      expect(markPackageOfferForfeited).toHaveBeenCalledWith({ name: "tx2" }, BUSINESS_ID, NOW);
+      expect(vi.mocked(markPackageOfferForfeited).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(openCheckoutSubscription).mock.invocationCallOrder[0] ?? 0);
+    });
+
+    it("does not end the package offer of a cancelled subscription when the checkout is not opened", async () => {
+      const gone = lapsedWith(["managed-website", "digital-growth"], { status: "cancelled", cancelRequestedAt: AGO, adCreditCents: 2_500 });
+      newest(gone, { hasEverPaid: true, paymentUnderReview: true });
+
+      await expect(startReactivationFor(lapsedCustomer, NOW)).resolves.toMatchObject({ kind: "refused" });
+
+      expect(markPackageOfferForfeited).not.toHaveBeenCalled();
+      expect(openCheckoutSubscription).not.toHaveBeenCalled();
+    });
+
+    describe("when the lapsed subscription changes between the two transactions", () => {
+      const THREE = ["managed-website", "digital-growth", "local-seo-aeo"];
+      /** What the second transaction reads of the lapsed subscription, against what the first read. */
+      const changesBy = (change: { readonly subscription?: Partial<Subscription>; readonly lines?: (addOn: string) => Partial<BundledAddOn> }): Subscription => {
+        const lapsed = lapsedWith(THREE, { adCreditCents: 6_000 });
+        const inSecond = (db: unknown): boolean => (db as { name: string }).name === "tx2";
+        vi.mocked(findLatestSubscriptionForBusiness).mockImplementation(async (db) => (inSecond(db) ? { ...lapsed, ...change.subscription } : lapsed));
+        vi.mocked(findBundledAddOnsForSubscription).mockImplementation(async (db) =>
+          THREE.map((addOn) => billedLine(addOn, inSecond(db) ? change.lines?.(addOn) : {})),
+        );
+        return lapsed;
+      };
+
+      it.each([
+        ["a cancel request", { subscription: { cancelRequestedAt: new Date(NOW.getTime() - HOUR_MS), adCreditCents: 0 } }],
+        ["a service asked to end", { lines: (addOn: string) => (addOn === "digital-growth" ? { endRequestedAt: new Date(NOW.getTime() - HOUR_MS) } : {}) }],
+      ] as const)("opens nothing and cancels the checkout it started at the provider: %s", async (_label, change) => {
+        changesBy(change);
+
+        await expect(startReactivationFor(lapsedCustomer, NOW)).resolves.toMatchObject({
+          kind: "refused",
+          problem: { message: "Something changed while we were setting up your payment. Please try again." },
+        });
+
+        expect(openCheckoutSubscription).not.toHaveBeenCalled();
+        expect(markPackageOfferForfeited).not.toHaveBeenCalled();
+        expect(cancelled).toHaveBeenCalledTimes(1);
+      });
+
+      it("records the checkout when nothing changed", async () => {
+        changesBy({});
+
+        redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+        expect(openCheckoutSubscription).toHaveBeenCalledTimes(1);
+      });
     });
 
     it("sends the customer back to a reactivation checkout left open for the same basket", async () => {
