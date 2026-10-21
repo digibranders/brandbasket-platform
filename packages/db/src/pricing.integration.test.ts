@@ -1,16 +1,8 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { findActivePlan, findPlanById, insertSubscription } from "./queries/billing";
-import {
-  attachProviderPlan,
-  InvalidPriceChangeError,
-  largestLiveReferralDiscount,
-  listActivePlans,
-  listPriceChanges,
-  replaceMonthlyPrice,
-  updateExtraPrices,
-} from "./queries/pricing";
-import { businesses, plans, referralCodes, users } from "./schema";
+import { findActivePlan } from "./queries/billing";
+import { InvalidPriceChangeError, listPriceChanges, NoActivePlanError, updateExtraPrices } from "./queries/pricing";
+import { businesses, plans, users } from "./schema";
 import { withTenantScope } from "./scope";
 import {
   captureErrorText,
@@ -22,7 +14,6 @@ import {
 
 const STAFF = "staff-1";
 const OWNER = "owner-1";
-const NOW = new Date("2026-10-02T09:30:00.000Z");
 
 let dbs: TestDatabases;
 let businessId = "";
@@ -55,87 +46,13 @@ async function activeInr() {
   return plan;
 }
 
-describe("replaceMonthlyPrice", () => {
-  it("puts a new version on sale, retires the old one, and leaves existing subscribers on their price", async () => {
-    const old = await activeInr();
-    const subscription = await insertSubscription(dbs.staff.db, {
-      businessId,
-      planId: old.id,
-      provider: "razorpay",
-      providerSubscriptionId: "sub_old_price",
-    });
-
-    const created = await replaceMonthlyPrice(dbs.staff.db, {
-      currency: "INR",
-      tier: "managed",
-      netMonthlyCents: 349_900,
-      providerPlanId: "plan_new_price",
-      staffId: STAFF,
-      now: NOW,
-    });
-
-    expect(created).toMatchObject({
-      code: "managed-inr-20261002-093000",
-      tier: "managed",
-      currency: "INR",
-      recurringAmountCents: 349_900,
-      initialAmountCents: 349_900,
-      providerPlanId: "plan_new_price",
-      taxRateBasisPoints: old.taxRateBasisPoints,
-      extraHourAmountCents: old.extraHourAmountCents,
-      includedBlogPosts: old.includedBlogPosts,
-    });
-    expect((await activeInr()).id).toBe(created.id);
-    expect(await findPlanById(dbs.staff.db, old.id)).toMatchObject({ recurringAmountCents: old.recurringAmountCents });
-    expect(subscription.planId).toBe(old.id);
-    expect(await listPriceChanges(dbs.staff.db, 10)).toEqual([
-      expect.objectContaining({
-        currency: "INR",
-        field: "monthly",
-        oldAmountCents: old.recurringAmountCents,
-        newAmountCents: 349_900,
-        changedByName: "Staff Person",
-      }),
-    ]);
-  });
-
-  it("refuses the same price, and a nonsense one, changing nothing", async () => {
-    const old = await activeInr();
-    await expect(
-      replaceMonthlyPrice(dbs.staff.db, {
-        currency: "INR",
-        tier: "managed",
-        netMonthlyCents: old.recurringAmountCents,
-        providerPlanId: null,
-        staffId: STAFF,
-        now: NOW,
-      }),
-    ).rejects.toThrow(InvalidPriceChangeError);
-    await expect(
-      replaceMonthlyPrice(dbs.staff.db, { currency: "INR", tier: "managed", netMonthlyCents: 0, providerPlanId: null, staffId: STAFF, now: NOW }),
-    ).rejects.toThrow(InvalidPriceChangeError);
-    expect((await activeInr()).id).toBe(old.id);
-  });
-
-  it("keeps exactly one plan on sale per currency and tier", async () => {
-    await replaceMonthlyPrice(dbs.staff.db, { currency: "USD", tier: "managed", netMonthlyCents: 7_900, providerPlanId: null, staffId: STAFF, now: NOW });
-    expect((await listActivePlans(dbs.staff.db)).map((plan) => [plan.currency, plan.tier, plan.recurringAmountCents])).toEqual([
-      ["USD", "managed", 7_900],
-      ["INR", "managed", 0],
-    ]);
-  });
-
-  it("says which tier has no plan when there is nothing to reprice", async () => {
-    await dbs.owner.db.update(plans).set({ active: false }).where(eq(plans.currency, "INR"));
-    await expect(
-      replaceMonthlyPrice(dbs.staff.db, { currency: "INR", tier: "managed", netMonthlyCents: 199_900, providerPlanId: null, staffId: STAFF, now: NOW }),
-    ).rejects.toThrow(/no active INR managed plan/);
-  });
-});
-
 describe("updateExtraPrices", () => {
   it("sets the extras on every plan in the currency, retired versions too, and logs each change", async () => {
-    await replaceMonthlyPrice(dbs.staff.db, { currency: "INR", tier: "managed", netMonthlyCents: 349_900, providerPlanId: null, staffId: STAFF, now: NOW });
+    // A retired version of the plan, as an older price change left behind.
+    const [current] = await dbs.owner.db.select().from(plans).where(eq(plans.currency, "INR"));
+    if (current === undefined) throw new Error("No INR plan seeded");
+    const { id: _id, ...rest } = current;
+    await dbs.owner.db.insert(plans).values({ ...rest, code: "managed-inr-retired", active: false });
 
     const changed = await updateExtraPrices(dbs.staff.db, {
       currency: "INR",
@@ -150,9 +67,7 @@ describe("updateExtraPrices", () => {
     expect(inrPlans.every((plan) => plan.extraHourAmountCents === 150_000 && plan.extraBlogPostsAmountCents === 50_000)).toBe(true);
     const usd = await findActivePlan(dbs.staff.db, "USD", "managed");
     expect(usd?.extraHourAmountCents).toBe(1_000);
-    expect((await listPriceChanges(dbs.staff.db, 10)).map((change) => change.field)).toEqual(
-      expect.arrayContaining(["extra_hour", "extra_blog_posts", "monthly"]),
-    );
+    expect((await listPriceChanges(dbs.staff.db, 10)).map((change) => change.field)).toEqual(expect.arrayContaining(["extra_hour", "extra_blog_posts"]));
   });
 
   it("changes and logs nothing when no price differs", async () => {
@@ -168,6 +83,18 @@ describe("updateExtraPrices", () => {
   });
 });
 
+describe("updateExtraPrices refusals", () => {
+  it("refuses a nonsense price, changing nothing", async () => {
+    await expect(updateExtraPrices(dbs.staff.db, { currency: "INR", prices: { extraHourAmountCents: 0 }, staffId: STAFF })).rejects.toThrow(InvalidPriceChangeError);
+    expect(await listPriceChanges(dbs.staff.db, 10)).toEqual([]);
+  });
+
+  it("says which currency has no plan when there is nothing to reprice", async () => {
+    await dbs.owner.db.update(plans).set({ active: false }).where(eq(plans.currency, "INR"));
+    await expect(updateExtraPrices(dbs.staff.db, { currency: "INR", prices: { extraHourAmountCents: 150_000 }, staffId: STAFF })).rejects.toThrow(NoActivePlanError);
+  });
+});
+
 describe("who may change prices", () => {
   it("never lets a customer's connection write a plan", async () => {
     const error = await captureErrorText(
@@ -176,66 +103,5 @@ describe("who may change prices", () => {
       ),
     );
     expect(error).toMatch(/permission denied/i);
-  });
-});
-
-describe("largestLiveReferralDiscount", () => {
-  it("is the biggest discount on a live code in the currency", async () => {
-    await dbs.staff.db.insert(referralCodes).values([
-      { code: "ASHA500", currency: "INR", discountAmountCents: 50_000, createdByStaffId: STAFF },
-      { code: "BIG900", currency: "INR", discountAmountCents: 90_000, createdByStaffId: STAFF, active: false },
-      { code: "OLD800", currency: "INR", discountAmountCents: 80_000, createdByStaffId: STAFF, expiresAt: new Date("2026-01-01T00:00:00Z") },
-      { code: "USD10", currency: "USD", discountAmountCents: 1_000, createdByStaffId: STAFF },
-    ]);
-    expect(await largestLiveReferralDiscount(dbs.staff.db, "INR", NOW)).toBe(50_000);
-    expect(await largestLiveReferralDiscount(dbs.staff.db, "USD", NOW)).toBe(1_000);
-  });
-
-  it("leaves out percentage codes, which scale with the price", async () => {
-    await dbs.staff.db.insert(referralCodes).values([
-      { code: "ASHA500", currency: "INR", discountAmountCents: 50_000, createdByStaffId: STAFF },
-      { code: "HALF", currency: "INR", discountKind: "percent", discountAmountCents: null, discountPercentBasisPoints: 5_000, createdByStaffId: STAFF },
-    ]);
-    expect(await largestLiveReferralDiscount(dbs.staff.db, "INR", NOW)).toBe(50_000);
-  });
-
-  it("is zero with no live code", async () => {
-    expect(await largestLiveReferralDiscount(dbs.staff.db, "INR", NOW)).toBe(0);
-  });
-});
-
-describe("attachProviderPlan", () => {
-  it("gives a plan with no provider plan its provider plan, and changes nothing else about it", async () => {
-    // The seeded services plan has no provider plan until staff save it in the console.
-    const plan = await activeInr();
-    expect(plan.providerPlanId).toBeNull();
-
-    expect(await attachProviderPlan(dbs.staff.db, { planId: plan.id, providerPlanId: "plan_razorpay_1" })).toBe(true);
-
-    expect(await findPlanById(dbs.staff.db, plan.id)).toMatchObject({
-      providerPlanId: "plan_razorpay_1",
-      recurringAmountCents: plan.recurringAmountCents,
-      initialAmountCents: plan.initialAmountCents,
-    });
-    expect((await activeInr()).id).toBe(plan.id);
-  });
-
-  it("never replaces a provider plan a plan already has, and says so", async () => {
-    const plan = await replaceMonthlyPrice(dbs.staff.db, {
-      currency: "INR",
-      tier: "managed",
-      netMonthlyCents: 399_900,
-      providerPlanId: "plan_first",
-      staffId: STAFF,
-      now: NOW,
-    });
-
-    expect(await attachProviderPlan(dbs.staff.db, { planId: plan.id, providerPlanId: "plan_second" })).toBe(false);
-
-    expect((await findPlanById(dbs.staff.db, plan.id))?.providerPlanId).toBe("plan_first");
-  });
-
-  it("answers false for a plan that does not exist", async () => {
-    expect(await attachProviderPlan(dbs.staff.db, { planId: "00000000-0000-4000-8000-000000000000", providerPlanId: "plan_x" })).toBe(false);
   });
 });

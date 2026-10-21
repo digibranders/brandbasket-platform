@@ -840,18 +840,13 @@ export {
   type PlanUpgrade,
 } from "./queries/plan-upgrades";
 export {
-  attachProviderPlan,
   InvalidPriceChangeError,
-  largestLiveReferralDiscount,
   listActivePlans,
   listPriceChanges,
   MAX_PRICE_CENTS,
   NoActivePlanError,
-  planVersionCode,
-  replaceMonthlyPrice,
   updateExtraPrices,
   type ExtraPrices,
-  type MonthlyPriceChange,
   type PriceChange,
 } from "./queries/pricing";
 export {

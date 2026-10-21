@@ -12,7 +12,6 @@ import {
   PRICING_EXTRA_BLOG_POSTS_FIELD,
   PRICING_EXTRA_HOUR_FIELD,
   PRICING_EXTRA_PUBLISH_FIELD,
-  PRICING_MONTHLY_FIELD,
   PRICING_TIER_FIELD,
 } from "@brandbasket/shared/lib/billing/pricing-form";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
@@ -23,6 +22,7 @@ import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
 import { Quiet, Section } from "@/components/console/section";
 import { PRICING_NOTICES, readPricingNotice } from "@/lib/pricing-notices";
+import { catalogueRows, packageRows } from "@/lib/service-packages";
 import { listPricingPlans, listRecentPriceChanges } from "@/lib/server/pricing-admin";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { savePricesAction } from "./actions";
@@ -76,46 +76,53 @@ function PriceInput({ id, name, label, cents, plan, hint }: PriceInputProps): Re
   );
 }
 
-const TIER_LABELS: Readonly<Record<Plan["tier"], string>> = { managed: "Managed Website" };
+/** The plan a logged monthly price change was made on: the plan rows no longer carry a price, but the history keeps its name. */
+const HISTORY_TIER_LABELS: Readonly<Record<Plan["tier"], string>> = { managed: "Managed Website" };
 
-function PriceSheetForm({ plan }: { readonly plan: Plan }): ReactElement {
+function ServicesCatalogue(): ReactElement {
+  return (
+    <Section title="Services" aside="Before GST. Set in code, not here.">
+      <ul aria-label="Services" className="max-w-3xl divide-y divide-line">
+        {catalogueRows().map((row) => (
+          <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-3 text-sm first:pt-0">
+            <span className="font-medium">{row.title}</span>
+            <span className="tabular-nums">
+              {row.inr} or {row.usd} a month
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
+function PackageOffers(): ReactElement {
+  return (
+    <Section title="Packages">
+      <ul aria-label="Packages" className="max-w-3xl divide-y divide-line">
+        {packageRows().map((row) => (
+          <li key={row.services} className="grid gap-x-6 gap-y-1 py-3 text-sm first:pt-0 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <span className="font-medium">{row.services}</span>
+            <span className="tabular-nums text-ink-soft sm:text-right">
+              {row.offer}
+              <span className="block">Ad credit: {row.adCredit}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
+function ExtrasForm({ plan }: { readonly plan: Plan }): ReactElement {
   const key = `${plan.tier}-${plan.currency.toLowerCase()}`;
   const tax = plan.taxRateBasisPoints > 0 ? `before ${plan.taxRateBasisPoints / 100}% GST` : "no tax";
   return (
-    <Section
-      title={`${TIER_LABELS[plan.tier]} · ${BILLING_CURRENCY_LABELS[plan.currency]}`}
-      aside={
-        <>
-          <span className="block">Prices {tax}.</span>
-          <span className="mt-1 block">
-            Plan <code className="break-all text-xs">{plan.code}</code>
-          </span>
-          {plan.providerPlanId === null ? (
-            // A price a migration put on sale has no Razorpay plan until it is saved here, and until then Razorpay
-            // refuses to charge it. Only said where Razorpay is the provider: the fake one has no plans to make.
-            process.env.BILLING_PROVIDER === "razorpay" ? (
-              <span className="mt-1 block font-medium text-accent">Not at Razorpay yet. Save to create it.</span>
-            ) : null
-          ) : (
-            <span className="mt-1 block">
-              Razorpay <code className="break-all text-xs">{plan.providerPlanId}</code>
-            </span>
-          )}
-        </>
-      }
-    >
+    <Section title={`Extras · ${BILLING_CURRENCY_LABELS[plan.currency]}`} aside={`Prices ${tax}.`}>
       <form action={savePricesAction} className="max-w-2xl">
         <input type="hidden" name={PRICING_CURRENCY_FIELD} value={plan.currency} />
         <input type="hidden" name={PRICING_TIER_FIELD} value={plan.tier} />
         <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-          <PriceInput
-            id={`${key}-monthly`}
-            name={PRICING_MONTHLY_FIELD}
-            label="Monthly price"
-            cents={plan.recurringAmountCents}
-            plan={plan}
-            hint="New sign-ups only"
-          />
           <PriceInput
             id={`${key}-hour`}
             name={PRICING_EXTRA_HOUR_FIELD}
@@ -142,11 +149,10 @@ function PriceSheetForm({ plan }: { readonly plan: Plan }): ReactElement {
           />
         </div>
         <p className="mt-6 max-w-2xl border-l-2 border-gold-deep py-1 pl-4 text-sm leading-relaxed">
-          A new monthly price creates a new Razorpay plan: customers who already subscribe keep paying their current
-          price. The extras apply to everyone from now on. Extras already added keep their price.
+          The extras apply to everyone from now on. Extras already added keep their price.
         </p>
         <GatedSubmitButton className={`${buttonPrimary} mt-6`} pendingLabel="Saving…">
-          Save {TIER_LABELS[plan.tier]} {plan.currency} prices
+          Save {plan.currency} extras
         </GatedSubmitButton>
       </form>
     </Section>
@@ -164,7 +170,7 @@ function PriceHistory({ changes }: { readonly changes: readonly PriceChange[] })
             <li key={change.id} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-3 text-sm first:pt-0">
               <span>
                 <span className="font-medium">
-                  {change.tier === null ? "" : `${TIER_LABELS[change.tier]} `}
+                  {change.tier === null ? "" : `${HISTORY_TIER_LABELS[change.tier]} `}
                   {change.tier === null ? FIELD_LABELS[change.field] : FIELD_LABELS[change.field].toLowerCase()} ({change.currency})
                 </span>
                 {": "}
@@ -196,7 +202,7 @@ export default async function PricingPage({
     <>
       <PageHeader
         title="Pricing"
-        meta="What new customers pay each month, and what extras cost. The website and checkout read these."
+        meta="What each service costs a month, the package offers, and what extras cost."
       />
       {notice === null ? null : (
         <Notice tone={PRICING_NOTICES[notice].ok ? "ok" : "problem"} className="mt-10">
@@ -204,8 +210,10 @@ export default async function PricingPage({
         </Notice>
       )}
       <div className="mt-12">
+        <ServicesCatalogue />
+        <PackageOffers />
         {plans.map((plan) => (
-          <PriceSheetForm key={plan.id} plan={plan} />
+          <ExtrasForm key={plan.id} plan={plan} />
         ))}
         <PriceHistory changes={changes} />
       </div>
