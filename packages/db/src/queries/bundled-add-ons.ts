@@ -310,7 +310,7 @@ export interface NewAddedAddOn {
   readonly chargeCents: number;
   /** The end of the paid month the quote was worked out for. */
   readonly quotedPeriodEnd: Date;
-  /** What the customer reads on Billing and the invoice: "Digital Growth, 05 Nov to 18 Nov 2026". */
+  /** What the customer reads on Billing and the invoice: "Social Media and Ads, 05 Nov to 18 Nov 2026". */
   readonly description: string;
   /** The staff member adding it for the client, or null when the client is. */
   readonly staffId: string | null;

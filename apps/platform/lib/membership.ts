@@ -8,8 +8,8 @@ import { MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
 export { MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
 
 /*
- * The plan bought from the account a sign-up opens, Managed Website (docs/plans/11-platform-plans.md in the BrandBasket
- * workspace): where its page is, and where the payment pages send someone who is buying it. Plain constants and small functions, so the server modules, the pages and the payment
+ * The services bought from the account a sign-up opens (docs/plans/11-platform-plans.md in the BrandBasket
+ * workspace): where the checkout page is, and where the payment pages send someone who is buying them. Plain constants and small functions, so the server modules, the pages and the payment
  * callback all name the same addresses.
  */
 
@@ -86,8 +86,8 @@ export function readMembershipCallbackTier(value: string | null): MembershipTier
   return MEMBERSHIP_TIERS.find((tier) => tier === value) ?? null;
 }
 
-/** The plan's name as the pages say it. */
-export const MEMBERSHIP_NAMES: Readonly<Record<MembershipTier, string>> = { managed: "Managed Website" };
+/** The checkout page's name as the pages say it. */
+export const MEMBERSHIP_NAMES: Readonly<Record<MembershipTier, string>> = { managed: "Checkout" };
 
 /** The part of a plan the price line is made from. */
 export interface MembershipPricing {

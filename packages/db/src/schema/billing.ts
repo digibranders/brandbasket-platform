@@ -83,8 +83,9 @@ export const UNAPPLIED_PAYMENT_REASONS = [
 ] as const satisfies readonly PaymentAttentionReason[];
 
 /**
- * The plan a business pays for. Brandbasket sells one, `managed`: Managed Website (docs/plans/11-platform-plans.md).
- * Digital Growth and Local SEO + AEO are add-ons billed inside its subscription, not tiers.
+ * The plan row a business subscribes under. Brandbasket has one, `managed`: the subscription's terms (currency, GST rate,
+ * allowances) at a price of 0. The services themselves, the website included, are the subscription's bundled_add_ons lines
+ * (docs/plans/16-platform-pricing-offers.md).
  */
 export const planTier = pgEnum("plan_tier", ["managed"]);
 export type PlanTier = (typeof planTier.enumValues)[number];
@@ -181,7 +182,7 @@ export const subscriptions = pgTable(
     /** What the discount that carries over takes off the pending plan's net price. Zero with no pending plan. */
     pendingDiscountAmountCents: integer("pending_discount_amount_cents").notNull().default(0),
     /**
-     * What the add-ons taken at the first checkout cost every month before GST, after their lifetime offer, in the plan's
+     * What the services cost every month before GST, after any package discount, in the plan's
      * minor units (bundled_add_ons, summed): frozen when the checkout opened. The provider bills one amount a month, the
      * plan's price plus this, so every amount check adds it to the plan's price. Zero for a subscription with no add-ons.
      */

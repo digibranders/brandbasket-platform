@@ -269,7 +269,7 @@ describe("clientBundledAddOnRows", () => {
     expect(clientBundledAddOnRows([bundled({ offerDiscountAmountCents: 35_000, netAmountCents: 665_000 })], "INR", context)).toEqual([
       expect.objectContaining({
         state: { tone: "done", label: "Active" },
-        price: "₹6,650 + GST a month, 5% lifetime offer, billed with the plan",
+        price: "₹6,650 + GST a month, package price, billed with the monthly payment",
         dateLine: "Bought on 19 October 2026",
         canRemove: true,
         endsOnText: "19 November 2026",
@@ -277,6 +277,10 @@ describe("clientBundledAddOnRows", () => {
         needsContact: true,
       }),
     ]);
+  });
+
+  it("names the price of a service with no package offer without any offer wording", () => {
+    expect(clientBundledAddOnRows([bundled()], "INR", context)[0]?.price).toBe("₹7,000 + GST a month, billed with the monthly payment");
   });
 
   it("offers no removal while the client has asked to close their account", () => {

@@ -174,7 +174,7 @@ export default async function TestCheckoutPage({ searchParams }: ConfirmPageProp
       {terms === null ? null : <p className="mt-4 text-sm leading-relaxed text-ink-soft">{terms}</p>}
       <p className="mt-4 text-sm leading-relaxed text-ink-soft">
         This page stands in for the payment provider while payments are simulated. Pay records the payment and{" "}
-        {membership === null ? "sends your answers to us" : `opens your ${MEMBERSHIP_NAMES[membership]}`}; Cancel takes you back with nothing recorded.
+        {membership === null ? "sends your answers to us" : `takes you back to ${MEMBERSHIP_NAMES[membership]}`}; Cancel takes you back with nothing recorded.
       </p>
       <div className="mt-6">
         <TestCheckoutForm action={pay} amount={amount} cancelHref={backHref} />

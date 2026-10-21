@@ -47,8 +47,7 @@ function day(date: Date): string {
 }
 
 function priceOf(row: AddOnSubscriptionForStaff): string {
-  const offer = row.offerDiscountAmountCents > 0 ? ", 5% lifetime offer" : "";
-  return `${formatMoney(row.netAmountCents, row.currency)}${row.taxRateBasisPoints > 0 ? " + GST" : ""} a month${offer}`;
+  return `${formatMoney(row.netAmountCents, row.currency)}${row.taxRateBasisPoints > 0 ? " + GST" : ""} a month`;
 }
 
 function endNoteOf(row: AddOnSubscriptionForStaff): string | null {
@@ -145,13 +144,13 @@ export function clientAddOnRows(rowsNewestFirst: readonly AddOnSubscriptionForSt
   });
 }
 
-/** An add-on billed in the plan's monthly charge: taken at the first checkout, or added to the running plan since. */
+/** A service billed in the subscription's monthly payment: taken at the first checkout, or added to the running subscription since. */
 export interface ClientBundledAddOnRow {
   readonly id: string;
   readonly addOn: MonthlyAddOnId;
   readonly title: string;
   readonly state: ClientAddOnState;
-  /** What it adds to the monthly payment, before GST: "₹6,650 + GST a month, 5% lifetime offer, billed with the plan". */
+  /** What it adds to the monthly payment, before GST: "₹6,650 + GST a month, package price, billed with the monthly payment". */
   readonly price: string;
   readonly dateLine: string | null;
   /** Paid, and nobody has marked the customer as contacted yet. */
@@ -196,7 +195,7 @@ function bundledState(row: BundledAddOn, currency: BillingCurrency, context: Bun
 }
 
 /**
- * The add-ons billed with the plan worth showing: paid ones, and ones added since sign-up that are waiting for their charge.
+ * The services billed in the monthly payment worth showing: paid ones, and ones added since sign-up that are waiting for their charge.
  * A pending one with no charge belongs to a first checkout that was never paid.
  */
 export function clientBundledAddOnRows(rows: readonly BundledAddOn[], currency: BillingCurrency, context: BundledRowContext): ClientBundledAddOnRow[] {
@@ -210,7 +209,7 @@ export function clientBundledAddOnRows(rows: readonly BundledAddOn[], currency: 
         addOn: row.addOn,
         title: addOnById(row.addOn).title,
         ...bundledState(row, currency, context),
-        price: `${formatMoney(row.netAmountCents, currency)}${row.taxRateBasisPoints > 0 ? " + GST" : ""} a month, ${row.offerDiscountAmountCents > 0 ? "5% lifetime offer, " : ""}billed with the plan`,
+        price: `${formatMoney(row.netAmountCents, currency)}${row.taxRateBasisPoints > 0 ? " + GST" : ""} a month, ${row.offerDiscountAmountCents > 0 ? "package price, " : ""}billed with the monthly payment`,
         needsContact: row.activatedAt !== null && row.contactedAt === null,
         contactedOn: row.contactedAt === null ? null : day(row.contactedAt),
         canRemove,

@@ -257,7 +257,7 @@ describe("add-ons taken with the plan", () => {
         id: BUNDLED,
         title: "Social Media and Ads",
         state: { tone: "done", label: "Active" },
-        price: "₹1,899.05 + GST a month, 5% lifetime offer, billed with the plan",
+        price: "₹1,899.05 + GST a month, package price, billed with the monthly payment",
         needsContact: true,
       }),
     ]);

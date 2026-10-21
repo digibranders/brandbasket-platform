@@ -227,8 +227,8 @@ function DiscountField({
             {choice === "none"
               ? "The member pays the full price. The code only records who brought them."
               : percent
-                ? "A share of the plan’s price before GST, off every month for as long as the plan runs. Up to 99%."
-                : "How much comes off every month, before GST, for as long as the plan runs. Less than the plan’s own price."}
+                ? "A share of the service’s price before GST, off every month for as long as it runs. Up to 99%."
+                : "How much comes off every month, before GST, for as long as the service runs. Less than the cheapest service’s price."}
           </span>
         </>
       }

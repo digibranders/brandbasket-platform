@@ -316,7 +316,7 @@ function ManualPaymentForm({ businessId, plan, netCents, reactivating }: ManualP
       {reactivating ? (
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
           For money that arrived outside the payment provider, such as a bank transfer. It records {amount}, one month
-          from today at today’s price with no coupon, ends their lapsed plan and brings their website back. Your name,
+          from today for the services they lapsed with, with no coupon, ends their lapsed plan and brings their website back. Your name,
           the reference and the date are kept with it.
         </p>
       ) : (
@@ -680,7 +680,7 @@ export default async function ClientPage({
         title={client.businessName}
         meta={
           <>
-            {client.owner?.name ?? "No owner"} · {PLAN_TIER_LABELS[client.tier]} plan ·{" "}
+            {client.owner?.name ?? "No owner"} · {PLAN_TIER_LABELS[client.tier]} ·{" "}
             {project === null ? "No project yet" : PROJECT_STATUS_LABELS[project.status]} · Billed in{" "}
             {BILLING_CURRENCY_LABELS[client.currency]}
           </>

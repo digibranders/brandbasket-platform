@@ -148,7 +148,7 @@ export const referralCodes = pgTable(
     index("referral_codes_affiliate_idx").on(table.affiliateId),
     check("referral_codes_code_format_check", sql`${table.code} ~ '^[A-Z0-9][A-Z0-9-]{2,23}$'`),
     // A discount always leaves something to charge: Razorpay cannot authorise a subscription for nothing. A flat
-    // amount's upper bound is the plan's own price, which this table cannot see, so the admin form enforces that
+    // amount's upper bound is the cheapest service's price, which this table cannot see, so the admin form enforces that
     // half; a percentage stops at 99%. Exactly one of the pair is set, for the kind chosen. The explicit
     // `is not null` matters: a comparison against null is unknown, and a check that evaluates to unknown passes,
     // so without it a row claiming a kind with no value at all would be accepted.

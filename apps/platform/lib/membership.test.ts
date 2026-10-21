@@ -69,10 +69,10 @@ describe("unsettledCheckout", () => {
 });
 
 describe("the plan's page", () => {
-  it("puts Managed Website on /plan, and sends its payment notices back to it", () => {
+  it("puts the checkout on /plan, and sends its payment notices back to it", () => {
     expect(membershipPathFor("managed")).toBe("/plan");
     expect(MEMBERSHIP_PATH).toBe("/plan");
-    expect(MEMBERSHIP_NAMES.managed).toBe("Managed Website");
+    expect(MEMBERSHIP_NAMES.managed).toBe("Checkout");
     expect(membershipReceivedHref("managed")).toBe("/plan?payment=received");
     expect(membershipFailedHref("managed")).toBe("/plan?payment=failed");
   });

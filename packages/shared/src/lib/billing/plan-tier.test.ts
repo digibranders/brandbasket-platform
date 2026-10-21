@@ -11,7 +11,7 @@ describe("readPlanTier", () => {
     expect(readPlanTier(undefined)).toBeNull();
   });
 
-  it("names the plan", () => {
-    expect(PLAN_TIER_LABELS).toEqual({ managed: "Managed Website" });
+  it("names the plan by what it holds, not by one service", () => {
+    expect(PLAN_TIER_LABELS).toEqual({ managed: "Monthly services" });
   });
 });
