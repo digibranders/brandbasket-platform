@@ -201,6 +201,17 @@ describe("a subscription of a leaving business", () => {
     expect(again?.at).toEqual(NOW);
   });
 
+  it("does nothing for another business's subscription", async () => {
+    const subscriptionId = await liveSubscription();
+    const [other] = await dbs.owner.db.insert(businesses).values({ slug: "other-physio", name: "Other Physio", currency: "INR" }).returning({ id: businesses.id });
+
+    expect(await markCancelRequested(dbs.staff.db, { subscriptionId, businessId: other?.id ?? "", now: NOW })).toBe(false);
+
+    expect((await findLatestSubscriptionForBusiness(dbs.staff.db, businessId))?.cancelRequestedAt).toBeNull();
+    expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(false);
+    expect(await isPackageOfferForfeited(dbs.staff.db, other?.id ?? "")).toBe(false);
+  });
+
   it("notes a cancel request once and keeps the first time", async () => {
     const subscriptionId = await liveSubscription();
     await markCancelRequested(dbs.staff.db, { subscriptionId, businessId, now: NOW });

@@ -17,8 +17,6 @@ export const BILLING_LOG_PREFIX = "[brandbasket:billing]";
  * - `webhook-processing-failed`: a webhook event's own processing failed for a reason unrelated to the data itself —
  *   typically a database or network error — and should be investigated; Razorpay will retry the delivery.
  * - `discount-plan-failed`: the provider would not create the discounted plan a code needs, so no checkout opened.
- * - `retention-offer-failed`: the provider would not move a subscription to the discounted plan a stay offer needs, or
- *   our record of the offer could not be written after it had. Either way staff should check the subscription.
  * - `bundled-add-on-removal-failed`: a customer asked to take an add-on out of the plan's payment and the provider would not
  *   move the subscription to the new amount, or our record of the request could not be written after it had. Either way
  *   staff should check the subscription before its next renewal.
@@ -56,7 +54,6 @@ export type BillingLogEvent =
   | "webhook-processing-failed"
   | "affiliate-currency-mismatch"
   | "discount-plan-failed"
-  | "retention-offer-failed"
   | "bundled-add-on-removal-failed"
   | "bundled-add-on-keep-failed"
   | "add-on-provider-failed"

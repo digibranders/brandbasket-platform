@@ -33,7 +33,6 @@ vi.mock("server-only", () => ({}));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./account-security", () => ({ checkPasswordFor: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
-vi.mock("./discount-plans", () => ({ ensureDiscountPlan: vi.fn() }));
 vi.mock("@brandbasket/db", () => ({
   ACCOUNT_CLOSURE_GRACE_DAYS: 30,
   cancelStaleSubscription: vi.fn(),
@@ -337,6 +336,21 @@ describe("loadPackageEndsFor", () => {
 
   it("does not count a service that is already ending", async () => {
     vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website"), line("digital-growth", { endRequestedAt: NOW }), line("local-seo-aeo")]);
+
+    await expect(loadPackageEndsFor(withCredit(0))).resolves.toEqual([
+      "Your package price (20% off)",
+      "If you come back, every service is at its own price",
+    ]);
+  });
+
+  it("lists the lines for a plan the team collects by hand and for one whose renewal is failing", async () => {
+    const lines = ["Your package price (30% off)", "\u20B95,000 a month of ad credit", "If you come back, every service is at its own price"];
+    await expect(loadPackageEndsFor(withCredit(500_000, { provider: "manual" }))).resolves.toEqual(lines);
+    await expect(loadPackageEndsFor(withCredit(500_000, { status: "past_due" }))).resolves.toEqual(lines);
+  });
+
+  it("does not count a service that is not yet paid for", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website"), line("digital-growth"), line("local-seo-aeo", { status: "pending" })]);
 
     await expect(loadPackageEndsFor(withCredit(0))).resolves.toEqual([
       "Your package price (20% off)",
