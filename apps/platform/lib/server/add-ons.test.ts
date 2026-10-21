@@ -236,6 +236,15 @@ describe("loadAddOnsPage", () => {
       expect(addOns[2]).toMatchObject({ drop: { newMonthlyCents: 1_534_000, endsPackage: false } });
     });
 
+    it("offers no drop while the account has asked to close", async () => {
+      vi.mocked(findLiveBundledAddOns).mockResolvedValue(all());
+      const closing: GrantedCustomer = { ...subscribed, billing: { ...subscribed.billing, subscription: { paidThroughAt: PAID_THROUGH, cancelRequestedAt: NOW } as never } };
+
+      const { addOns } = await loadAddOnsPage(closing, NOW);
+
+      expect(addOns.map((entry) => (entry.kind === "included" ? entry.drop : "available"))).toEqual([null, null, null]);
+    });
+
     it("offers no drop for the only service, or for one that is already ending", async () => {
       vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("digital-growth", 1_000_000)]);
       expect((await loadAddOnsPage(subscribed, NOW)).addOns[1]).toMatchObject({ kind: "included", drop: null });
@@ -340,6 +349,7 @@ describe("removeBundledAddOnFor", () => {
     status: "active",
     activatedAt: PAID_AT,
     paidThroughAt: PAID_THROUGH,
+    cancelRequestedAt: null,
     discountAmountCents: 0,
     ...overrides,
   });
@@ -416,6 +426,19 @@ describe("removeBundledAddOnFor", () => {
     expect(result).toEqual({
       kind: "refused",
       message: "That is your only service, so it can't be removed on its own. To stop paying, delete your account from Settings.",
+    });
+    expect(changed).not.toHaveBeenCalled();
+    expect(recordBundledAddOnRemoval).not.toHaveBeenCalled();
+    expect(endPackageOffer).not.toHaveBeenCalled();
+  });
+
+  it("refuses while the account has asked to close, saying so and touching nothing", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("digital-growth"), bundledRow("local-seo-aeo")] as never);
+    vi.mocked(findSubscriptionById).mockResolvedValue(subscription({ cancelRequestedAt: NOW }) as never);
+
+    expect(await removeBundledAddOnFor(customer, "digital-growth", NOW)).toEqual({
+      kind: "refused",
+      message: "Your account is set to close, so a service can't be removed on its own.",
     });
     expect(changed).not.toHaveBeenCalled();
     expect(recordBundledAddOnRemoval).not.toHaveBeenCalled();

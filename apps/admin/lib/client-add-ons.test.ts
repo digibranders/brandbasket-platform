@@ -244,7 +244,7 @@ describe("clientBundledAddOnRows", () => {
   const SIGNED_UP = new Date("2026-10-19T00:00:00.000Z");
   const ADDED = new Date("2026-11-05T06:00:00.000Z");
   const NEXT_BILLING = new Date("2026-11-19T00:00:00.000Z");
-  const context = { nextBillingOn: NEXT_BILLING, openChargeCents: new Map([["charge-1", 373_032]]) };
+  const context = { nextBillingOn: NEXT_BILLING, openChargeCents: new Map([["charge-1", 373_032]]), cancelRequested: false };
   const bundled = (overrides: Partial<BundledAddOn> = {}): BundledAddOn =>
     ({
       id: "row-1",
@@ -277,6 +277,10 @@ describe("clientBundledAddOnRows", () => {
         needsContact: true,
       }),
     ]);
+  });
+
+  it("offers no removal while the client has asked to close their account", () => {
+    expect(clientBundledAddOnRows([bundled()], "INR", { ...context, cancelRequested: true })[0]).toMatchObject({ canRemove: false, endsOnText: null });
   });
 
   it("shows one added since, waiting for its charge, with the amount", () => {

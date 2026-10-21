@@ -41,7 +41,7 @@ import { projectLaunchNoticeHref } from "@brandbasket/shared/lib/project-launch-
 import { projectPreviewNoticeHref } from "@brandbasket/shared/lib/project-preview-notices";
 import { chatbotNoticeHref, parseChatbotForm, parseOperatorKeyForm, readChatbotStatus } from "@/lib/chatbot-form";
 import { addClientChatbot, removeClientChatbot, setClientChatbotOperatorKey, setClientChatbotStatus } from "@/lib/server/chatbots-admin";
-import { addOnNoticeHref, noticeForEndOutcome, type AddOnNotice } from "@/lib/add-on-notices";
+import { addOnNoticeHref, noticeForEndOutcome, noticeForRemoval, type AddOnNotice } from "@/lib/add-on-notices";
 import { clientListingKey, clientTagsHref } from "@/lib/client-tags";
 import {
   addClientAddOn,
@@ -458,9 +458,7 @@ export async function removeClientAddOnAction(formData: FormData): Promise<void>
 
   const removal = await removeClientAddOn({ businessId, addOn }, new Date());
   revalidateClient(businessId);
-  const notice: AddOnNotice =
-    removal.kind === "scheduled" ? "add-on-removal-scheduled" : removal.kind === "last-service" ? "add-on-removal-last-service" : "add-on-removal-failed";
-  redirect(addOnNoticeHref(businessId, notice));
+  redirect(addOnNoticeHref(businessId, noticeForRemoval(removal)));
 }
 
 /** Tells the payment provider again to bill an added add-on from the next renewal. Safe to repeat. */

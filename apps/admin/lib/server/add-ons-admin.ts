@@ -82,7 +82,11 @@ export async function loadClientAddOns(businessId: string, now: Date): Promise<C
   }
   return {
     addOns,
-    bundledAddOns: clientBundledAddOnRows(bundled, currency, { nextBillingOn: subscription?.paidThroughAt ?? null, openChargeCents }),
+    bundledAddOns: clientBundledAddOnRows(bundled, currency, {
+      nextBillingOn: subscription?.paidThroughAt ?? null,
+      openChargeCents,
+      cancelRequested: subscription?.cancelRequestedAt != null,
+    }),
     pressReleases: clientPressReleaseRows(releases),
     options,
   };

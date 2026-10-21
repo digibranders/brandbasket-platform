@@ -86,7 +86,7 @@ export type AddOnPageEntry =
       readonly joinsOn: Date | null;
       /** It is ending and adding it again keeps it, at no charge. */
       readonly keepable: boolean;
-      /** What taking it out would leave, shown before it is done. Null when it is ending or is the only service (that is cancelling). */
+      /** What taking it out would leave, shown before it is done. Null when it is ending, is the only service (that is cancelling) or the account is closing. */
       readonly drop: DropPreview | null;
     }
   /** Not in the plan's payment: its price once added (the package price the basket would earn), and the add or the way to ask for it. */
@@ -138,6 +138,7 @@ export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Prom
       forfeited: await isPackageOfferForfeited(tx, tenant.businessId),
     };
   });
+  const closing = customer.billing.subscription?.cancelRequestedAt != null;
   const stayingLines = bundled.filter((row) => row.status === "active" && row.endRequestedAt === null);
   const staying = stayingLines.map((row) => row.addOn).filter(isMonthlyAddOnId);
   const nextBillingOn = customer.billing.subscription?.paidThroughAt ?? null;
@@ -154,7 +155,7 @@ export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Prom
       nextBillingOn,
       joinsOn: included.billedFrom === null ? nextBillingOn : null,
       keepable: assessment?.kind === "keep",
-      drop: included.endRequestedAt === null ? dropPreview({ staying: stayingLines, dropping: addOn, forfeited, currency }) : null,
+      drop: included.endRequestedAt === null && !closing ? dropPreview({ staying: stayingLines, dropping: addOn, forfeited, currency }) : null,
     };
   });
   return { addOns, currency };
@@ -199,6 +200,7 @@ export async function addBundledAddOnFor(customer: Pick<GrantedCustomer, "tenant
 
 const NOT_IN_PLAN = "That add-on isn't part of your plan payment any more. Reload the page to see where it stands.";
 const LAST_SERVICE = "That is your only service, so it can't be removed on its own. To stop paying, delete your account from Settings.";
+const CANCEL_REQUESTED = "Your account is set to close, so a service can't be removed on its own.";
 const CANNOT_REMOVE_NOW = "We couldn't remove that just now. Please try again in a minute.";
 
 /** What taking an add-on out of the plan's payment came to. */
@@ -233,6 +235,8 @@ export async function removeBundledAddOnFor(customer: Pick<GrantedCustomer, "ten
       return refused(NOT_IN_PLAN);
     case "last-service":
       return refused(LAST_SERVICE);
+    case "cancel-requested":
+      return refused(CANCEL_REQUESTED);
     case "failed":
       return refused(CANNOT_REMOVE_NOW);
     default: {

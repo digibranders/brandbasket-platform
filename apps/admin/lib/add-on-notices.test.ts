@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AddOnEndOutcome } from "@brandbasket/shared/server/add-on-ends";
-import { ADD_ON_NOTICES, addOnNoticeHref, noticeForEndOutcome, readAddOnNotice } from "./add-on-notices";
+import { ADD_ON_NOTICES, addOnNoticeHref, noticeForEndOutcome, noticeForRemoval, readAddOnNotice } from "./add-on-notices";
 
 const ENDS_ON = new Date("2026-11-12T09:00:00Z");
 
@@ -65,5 +65,15 @@ describe("the client page's add-on notices", () => {
     expect(noticeForEndOutcome(refused("already-ending"))).toBe("already-ending");
     expect(noticeForEndOutcome(refused("provider-unavailable"))).toBe("provider-unavailable");
     expect(noticeForEndOutcome(refused("changed-meanwhile"))).toBe("changed-meanwhile");
+  });
+});
+
+describe("the notice for taking a service out of the plan payment", () => {
+  it("names each result of a removal", () => {
+    expect(noticeForRemoval({ kind: "scheduled", endsOn: ENDS_ON })).toBe("add-on-removal-scheduled");
+    expect(noticeForRemoval({ kind: "last-service" })).toBe("add-on-removal-last-service");
+    expect(noticeForRemoval({ kind: "cancel-requested" })).toBe("add-on-removal-cancel-requested");
+    expect(noticeForRemoval({ kind: "not-in-plan" })).toBe("add-on-removal-failed");
+    expect(noticeForRemoval({ kind: "failed" })).toBe("add-on-removal-failed");
   });
 });

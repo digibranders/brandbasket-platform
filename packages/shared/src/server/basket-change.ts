@@ -453,6 +453,8 @@ export type BundledRemoval =
   | { readonly kind: "not-in-plan" }
   /** It is the only service the subscription has: stopping it is cancelling, which is the exit flow, not a removal. */
   | { readonly kind: "last-service" }
+  /** The account has asked to close: the services all stop at the next billing date anyway, so none is taken out on its own. */
+  | { readonly kind: "cancel-requested" }
   /** The provider refused, or the request could not be recorded. */
   | { readonly kind: "failed" };
 
@@ -460,7 +462,9 @@ export type BundledRemoval =
  * Drops a service from the plan's monthly payment from the next billing date. It stays active and paid for until then.
  * Dropping one while two or more are active ends the package offer for good (plan 16): every service that stays is priced
  * at list from the next bill, the business never earns a package price again, and the subscription's ad credit is 0 from the
- * moment the drop is recorded. Dropping the only service is refused: that is cancelling.
+ * moment the drop is recorded. Dropping the only service is refused: that is cancelling. So is dropping any while the account
+ * has asked to close (a cancel is requested): everything is going at the next billing date, and a drop would only change
+ * what the provider is told for a subscription that is ending.
  *
  * The provider is moved to a plan at the new amount first, for the cycle end, and our record follows in one transaction:
  * if the provider refuses nothing here changes. If our record cannot then be written the provider is ahead of us, which is
@@ -475,6 +479,7 @@ export async function removeBundledAddOn(deps: BasketDeps, input: { readonly bus
   const basket = await liveBasket(deps, businessId, (row) => row.addOn === addOn && row.endRequestedAt === null);
   if (basket === null) return { kind: "not-in-plan" };
   const { row, live, subscription, plan } = basket;
+  if (subscription.cancelRequestedAt !== null) return { kind: "cancel-requested" };
   const sent = removalOf(live, row.id);
   if (sent.kept.length === 0) return { kind: "last-service" };
   const fields = { businessId, subscriptionId: subscription.id, addOn };

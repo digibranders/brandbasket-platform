@@ -937,6 +937,18 @@ describe("dropping a service ends the package offer for good", () => {
     });
   });
 
+  it("is refused while the account has asked to close: nothing changes and the provider is not asked", async () => {
+    const subscription = await paidSubscription(bundleOf("managed-website", "digital-growth"), { adCreditCents: 200_000 });
+    await dbs.owner.db.update(subscriptions).set({ cancelRequestedAt: FIFTH_NOV });
+
+    expect(await removeBundledAddOn(deps(), { businessId, addOn: "digital-growth", now: FIFTH_NOV })).toEqual({ kind: "cancel-requested" });
+
+    expect(await forfeitedAt()).toBeNull();
+    expect(await linesOf(subscription)).toEqual({ "managed-website": [60_000, 240_000, null], "digital-growth": [200_000, 800_000, null] });
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ adCreditCents: 200_000, pendingBundledAddOnNetCents: null });
+    expect(moves).toEqual([]);
+  });
+
   it("changes nothing when the provider refuses: the offer, the ad credit and the lines stay", async () => {
     const subscription = await paidSubscription(bundleOf("managed-website", "digital-growth"), { adCreditCents: 200_000 });
 

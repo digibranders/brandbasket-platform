@@ -1,4 +1,5 @@
 import type { AddOnEndOutcome } from "@brandbasket/shared/server/add-on-ends";
+import type { BundledRemoval } from "@brandbasket/shared/server/basket-change";
 
 /**
  * What the client page's Add-ons section says after staff pause, cancel or follow up a purchase, or set a press release's
@@ -28,6 +29,7 @@ export type AddOnNotice =
   | "add-on-removal-scheduled"
   | "add-on-removal-failed"
   | "add-on-removal-last-service"
+  | "add-on-removal-cancel-requested"
   | "provider-told"
   | "provider-still-refusing";
 
@@ -84,6 +86,10 @@ export const ADD_ON_NOTICES: Readonly<Record<AddOnNotice, { readonly text: strin
     text: "Nothing changed: that is the client’s only service, so it can’t be removed on its own. Stopping it means cancelling their plan.",
     ok: false,
   },
+  "add-on-removal-cancel-requested": {
+    text: "Nothing changed: this client has asked to close their account, so a service can’t be removed on its own.",
+    ok: false,
+  },
   "provider-told": { text: "The payment provider will bill the add-on from the next renewal.", ok: true },
   "provider-still-refusing": { text: "The payment provider still refused. Try again later, or ask engineering to check it.", ok: false },
 };
@@ -109,6 +115,25 @@ export function noticeForEndOutcome(outcome: AddOnEndOutcome): AddOnNotice {
     default: {
       const unhandled: never = outcome;
       throw new Error(`Unhandled add-on end outcome ${JSON.stringify(unhandled)}`);
+    }
+  }
+}
+
+/** The notice for what taking a service out of the client's plan payment came to. */
+export function noticeForRemoval(removal: BundledRemoval): AddOnNotice {
+  switch (removal.kind) {
+    case "scheduled":
+      return "add-on-removal-scheduled";
+    case "last-service":
+      return "add-on-removal-last-service";
+    case "cancel-requested":
+      return "add-on-removal-cancel-requested";
+    case "not-in-plan":
+    case "failed":
+      return "add-on-removal-failed";
+    default: {
+      const unhandled: never = removal;
+      throw new Error(`Unhandled removal ${JSON.stringify(unhandled)}`);
     }
   }
 }

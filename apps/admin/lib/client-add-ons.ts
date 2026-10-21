@@ -170,6 +170,8 @@ export interface BundledRowContext {
   readonly nextBillingOn: Date | null;
   /** The amount of each add-on charge still waiting to be paid, by charge id. */
   readonly openChargeCents: ReadonlyMap<string, number>;
+  /** The account has asked to close: no service is taken out on its own, so none can be removed here. */
+  readonly cancelRequested: boolean;
 }
 
 function bundledState(row: BundledAddOn, currency: BillingCurrency, context: BundledRowContext): Pick<ClientBundledAddOnRow, "state" | "dateLine" | "canRetry"> {
@@ -201,7 +203,7 @@ export function clientBundledAddOnRows(rows: readonly BundledAddOn[], currency: 
   return rows.flatMap((row): ClientBundledAddOnRow[] => {
     if (!isMonthlyAddOnId(row.addOn)) return [];
     if (row.status === "pending" ? row.chargeId === null : row.activatedAt === null) return [];
-    const canRemove = row.status === "active" && row.endRequestedAt === null;
+    const canRemove = row.status === "active" && row.endRequestedAt === null && !context.cancelRequested;
     return [
       {
         id: row.id,
