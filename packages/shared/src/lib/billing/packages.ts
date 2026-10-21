@@ -68,6 +68,11 @@ export function packageLineWith(input: PackageInput, service: MonthlyAddOnId, cu
   return line;
 }
 
+/** The monthly list prices of these lines added up: what they cost together with no package offer. */
+export function listTotalCents(lines: readonly { readonly listAmountCents: number }[]): number {
+  return lines.reduce((total, line) => total + line.listAmountCents, 0);
+}
+
 /** Ad credit a month for services bought together at the first checkout. Never recomputed after it. */
 export function adCreditCentsFor(services: readonly MonthlyAddOnId[], currency: MoneyCurrency): number {
   return offerFor(services)?.adCreditCents[currency] ?? 0;

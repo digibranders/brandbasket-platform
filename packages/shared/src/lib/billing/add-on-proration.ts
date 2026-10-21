@@ -4,9 +4,10 @@ import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { PeriodProgress } from "./period";
 
 /*
- * Adding an add-on to a running Managed Website plan (docs/plans/13-platform-add-ons-after-signup.md in the BrandBasket
- * workspace): a charge now for the rest of the month already paid for, then the add-on joins the plan's monthly payment
- * from the next renewal. Pure, so the page, the server and the tests share one set of rules.
+ * Adding a service to a running subscription (docs/plans/13-platform-add-ons-after-signup.md and
+ * 16-platform-pricing-offers.md in the BrandBasket workspace): a charge now for the rest of the month already paid for, then
+ * the service joins the monthly payment from the next renewal, at the package price its basket earns. Pure, so the page, the
+ * server and the tests share one set of rules.
  */
 
 /** Less than this is left of the paid month: the renewal is about to be taken, so the add-on waits for it. */
@@ -57,11 +58,11 @@ export function addOnBlock(standing: AddOnStanding): AddOnBlock | null {
 }
 
 export interface AddOnQuoteInput {
-  /** The add-on's monthly net price, at list (an add-on added after the first payment has no offer). */
+  /** The service's monthly net price once added: its list price less the package offer its basket earns (list when it earns none). */
   readonly netCents: number;
   /** The plan's tax rate, which the add-on is charged at too. */
   readonly taxRateBasisPoints: number;
-  /** The plan's net monthly price plus every add-on billed from the renewal, this one included. */
+  /** The plan row's net monthly price (0: every service is a line) plus every service billed from the renewal, this one included. */
   readonly renewalNetCents: number;
   /** The discount frozen onto the subscription, taken off the plan's price at each renewal. */
   readonly renewalDiscountCents: number;

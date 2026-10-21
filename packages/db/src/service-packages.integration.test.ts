@@ -4,6 +4,7 @@ import { findActivePlan, findSubscriptionById, openCheckoutSubscription, recordP
 import {
   activateBundledAddOns,
   completeBundledAddOnChanges,
+  endPackageOffer,
   findBundledAddOnsForSubscription,
   isPackageOfferForfeited,
   markPackageOfferForfeited,
@@ -11,7 +12,7 @@ import {
   setPendingOfferDiscounts,
   type NewBundledAddOn,
 } from "./queries/bundled-add-ons";
-import { businesses } from "./schema";
+import { bundledAddOns, businesses, charges } from "./schema";
 import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
 
 /**
@@ -180,6 +181,22 @@ describe("a line moving to another package offer", () => {
       pendingBundledAddOnNetCents: null,
     });
   });
+
+  it("refuses a line given twice and a line id that is not an id, naming the reason and writing none of the batch", async () => {
+    const subscription = await paidAllThree();
+    const [website] = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
+    if (website === undefined) throw new Error("The package lines were not written");
+    const pendingDiscounts = async () => (await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).map((row) => row.pendingOfferDiscountAmountCents);
+    const move = (lines: readonly { readonly id: string; readonly pendingOfferDiscountAmountCents: number }[], subscriptionId = subscription.id) =>
+      dbs.staff.db.transaction((tx) => setPendingOfferDiscounts(tx, { subscriptionId, lines, now: OPENED_AT }));
+
+    await expect(move([{ id: website.id, pendingOfferDiscountAmountCents: 0 }, { id: website.id, pendingOfferDiscountAmountCents: 0 }])).rejects.toThrow(/a line was given twice/);
+    await expect(move([{ id: website.id, pendingOfferDiscountAmountCents: 0 }, { id: "not-a-uuid", pendingOfferDiscountAmountCents: 0 }])).rejects.toThrow(/not-a-uuid is not a line id/);
+    await expect(move([{ id: website.id, pendingOfferDiscountAmountCents: 0 }], "not-a-uuid")).rejects.toThrow(/it is not a subscription id/);
+
+    expect(await pendingDiscounts()).toEqual([null, null, null]);
+  });
+
   it("refuses to move a line that is not an active line of the subscription staying in it, and writes none of the batch", async () => {
     const subscription = await paidAllThree();
     const [website, growth, seo] = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
@@ -199,5 +216,46 @@ describe("a line moving to another package offer", () => {
 
     await expect(move).rejects.toThrow(/could not be moved/);
     expect((await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).map((row) => row.pendingOfferDiscountAmountCents)).toEqual([null, null, null]);
+  });
+});
+
+describe("ending the package offer", () => {
+  it("closes every service still waiting for its charge and waives each charge, however many", async () => {
+    const subscription = await openCheckoutSubscription(dbs.staff.db, {
+      businessId,
+      planId: plan.id,
+      provider: "fake",
+      providerSubscriptionId: "fake_sub_waiting",
+      bundledAddOns: ALL_THREE_INR.slice(0, 1).map((line) => ({ ...line, offerDiscountAmountCents: 0, netAmountCents: line.listAmountCents })),
+      replacing: null,
+      now: OPENED_AT,
+    });
+    await activateBundledAddOns(dbs.staff.db, { subscriptionId: subscription.id, now: OPENED_AT });
+    const waiting = [] as { readonly addOn: string; readonly chargeId: string }[];
+    for (const addOn of ["digital-growth", "local-seo-aeo"]) {
+      const inserted = await dbs.owner.db
+        .insert(charges)
+        .values({ businessId, kind: "add_on", description: addOn, quantity: 1, unitAmountCents: 100_000, taxRateBasisPoints: 1800, amountCents: 118_000, currency: "INR" })
+        .returning({ id: charges.id });
+      const chargeId = inserted[0]?.id ?? "";
+      await dbs.owner.db.insert(bundledAddOns).values({ businessId, subscriptionId: subscription.id, addOn, listAmountCents: 100_000, netAmountCents: 100_000, taxRateBasisPoints: 1800, status: "pending", chargeId });
+      waiting.push({ addOn, chargeId });
+    }
+    const [website] = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
+    if (website === undefined) throw new Error("The website line was not written");
+
+    await dbs.staff.db.transaction((tx) =>
+      endPackageOffer(tx, { businessId, subscriptionId: subscription.id, lines: [{ id: website.id, pendingOfferDiscountAmountCents: 0 }], now: RENEWED_AT }),
+    );
+
+    const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
+    expect(rows.map((row) => [row.addOn, row.status])).toEqual([
+      ["managed-website", "active"],
+      ["digital-growth", "removed"],
+      ["local-seo-aeo", "removed"],
+    ]);
+    const statuses = await dbs.owner.db.select({ id: charges.id, status: charges.status }).from(charges);
+    expect(waiting.map((entry) => statuses.find((charge) => charge.id === entry.chargeId)?.status)).toEqual(["waived", "waived"]);
+    expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(true);
   });
 });

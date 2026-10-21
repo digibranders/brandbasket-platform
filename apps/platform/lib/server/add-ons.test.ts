@@ -260,9 +260,9 @@ describe("loadAddOnsPage", () => {
   it("asks for each add-on's assessment through row-level security, at the time given", async () => {
     await loadAddOnsPage(customer, NOW);
 
-    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "managed-website", providerName: "fake", now: NOW });
-    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "digital-growth", providerName: "fake", now: NOW });
-    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "local-seo-aeo", providerName: "fake", now: NOW });
+    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "managed-website", providerName: "fake", now: NOW, forfeited: false });
+    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "digital-growth", providerName: "fake", now: NOW, forfeited: false });
+    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "local-seo-aeo", providerName: "fake", now: NOW, forfeited: false });
   });
 
   it("offers the add with its charge for the rest of the month and the new monthly payment", async () => {
@@ -375,7 +375,7 @@ describe("removeBundledAddOnFor", () => {
     expect(result).toEqual({
       kind: "scheduled",
       endsOn: PAID_THROUGH,
-      message: "Social Media and Ads stays until your next payment date, then it stops and your monthly payment goes down.",
+      message: "Social Media and Ads stays until your next payment date, then it stops.",
     });
     expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 2_800_000);
     expect(changed).toHaveBeenCalledWith(PROVIDER_SUBSCRIPTION, "plan_lower");

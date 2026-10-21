@@ -80,6 +80,6 @@ describe("dropCopy", () => {
   it("is written with no em or en dashes", () => {
     const preview = dropPreview({ staying: [WEBSITE, SOCIAL, SEO], dropping: "local-seo-aeo", forfeited: false, currency: "INR" });
     if (preview === null) throw new Error("Expected a preview");
-    expect(Object.values(dropCopy(preview, "12 November 2026")).join(" ")).not.toMatch(/[–—]/);
+    expect(Object.values(dropCopy(preview, "12 November 2026")).join(" ")).not.toMatch(/[\u2013\u2014]/);
   });
 });

@@ -1,6 +1,7 @@
 import { chargedAmountCents } from "@brandbasket/billing";
 import type { BundledAddOn } from "@brandbasket/db";
 import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { listTotalCents } from "@brandbasket/shared/lib/billing/packages";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 
 /** What the customer is shown before a service is dropped from the plan's payment. */
@@ -29,10 +30,9 @@ export function dropPreview(input: {
   const kept = input.staying.filter((line) => line.addOn !== input.dropping);
   const taxRateBasisPoints = kept[0]?.taxRateBasisPoints;
   if (taxRateBasisPoints === undefined) return null;
-  const listCents = kept.reduce((total, line) => total + line.listAmountCents, 0);
   return {
     keeps: MONTHLY_ADD_ON_IDS.filter((id) => kept.some((line) => line.addOn === id)),
-    newMonthlyCents: chargedAmountCents(listCents, 0, taxRateBasisPoints),
+    newMonthlyCents: chargedAmountCents(listTotalCents(kept), 0, taxRateBasisPoints),
     currency: input.currency,
     taxRateBasisPoints,
     endsPackage: !input.forfeited,

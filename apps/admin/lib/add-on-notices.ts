@@ -77,7 +77,7 @@ export const ADD_ON_NOTICES: Readonly<Record<AddOnNotice, { readonly text: strin
   "add-on-on": { text: "Added. It joins the monthly payment from the next billing date.", ok: true },
   "add-on-kept": { text: "Kept. It no longer stops, and the monthly payment stays as it is.", ok: true },
   "add-on-not-possible": { text: "Nothing changed: that add-on can’t be added for this client now. Check their plan and payments.", ok: false },
-  "add-on-removal-scheduled": { text: "Removal scheduled. It stops at the next billing date, and the monthly payment goes down.", ok: true },
+  "add-on-removal-scheduled": { text: "Removal scheduled. It stays until the next billing date, then it stops.", ok: true },
   "add-on-removal-failed": {
     text: "Nothing changed: it isn’t in the plan payment, or the payment provider couldn’t be reached. Try again in a minute.",
     ok: false,

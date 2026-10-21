@@ -212,7 +212,7 @@ export function renewalBundledLines(rows: readonly BundledAddOn[], atPendingAmou
 
 /**
  * Notes that the customer has asked to remove an add-on taken with the plan, after the provider has been told to move the
- * subscription to the lower amount at the cycle end: the add-on stays active and billed until then, and the subscription
+ * subscription to the new amount at the cycle end: the add-on stays active and billed until then, and the subscription
  * carries the amount its next renewal must arrive at. Only a live, unfinished request is written, so a double press changes
  * nothing. False when the add-on is not active or was already asked about. Staff connection, in the business's billing lock.
  */

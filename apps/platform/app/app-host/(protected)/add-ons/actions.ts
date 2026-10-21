@@ -16,7 +16,7 @@ const UNREADABLE_FORM = "We couldn't tell what you asked for. Reload the page an
 const addOnSchema = z.object({ addOn: z.enum(MONTHLY_ADD_ON_IDS) });
 
 /**
- * Remove on an add-on that was taken with the plan: it stops at the next billing date and the monthly payment goes down. The
+ * Remove on an add-on that was taken with the plan: it stops at the next billing date. The
  * form carries only which add-on; the row, the date and the new amount come from the server (removeBundledAddOnFor). The page
  * is refreshed whether or not it worked, because a refusal usually means it changed under the customer's feet.
  */

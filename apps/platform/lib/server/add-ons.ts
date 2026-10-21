@@ -127,15 +127,16 @@ export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Prom
   const { tenant } = customer;
   const providerName = getBillingProvider().name;
   const { bundled, currency, assessments, forfeited } = await withTenantScope(getAppDb(), tenant, async (tx) => {
+    const forfeited = await isPackageOfferForfeited(tx, tenant.businessId);
     const assessed = new Map<MonthlyAddOnId, AddOnAssessment | null>();
     for (const addOn of MONTHLY_ADD_ON_IDS) {
-      assessed.set(addOn, await readAddOnAssessment(tx, { businessId: tenant.businessId, addOn, providerName, now }));
+      assessed.set(addOn, await readAddOnAssessment(tx, { businessId: tenant.businessId, addOn, providerName, now, forfeited }));
     }
     return {
       bundled: await findLiveBundledAddOns(tx, tenant.businessId),
       currency: await billedCurrencyOf(tx, tenant.businessId),
       assessments: assessed,
-      forfeited: await isPackageOfferForfeited(tx, tenant.businessId),
+      forfeited,
     };
   });
   const closing = customer.billing.subscription?.cancelRequestedAt != null;
@@ -229,7 +230,7 @@ export async function removeBundledAddOnFor(customer: Pick<GrantedCustomer, "ten
       return {
         kind: "scheduled",
         endsOn: removal.endsOn,
-        message: `${addOnById(addOn).title} stays until your next payment date, then it stops and your monthly payment goes down.`,
+        message: `${addOnById(addOn).title} stays until your next payment date, then it stops.`,
       };
     case "not-in-plan":
       return refused(NOT_IN_PLAN);

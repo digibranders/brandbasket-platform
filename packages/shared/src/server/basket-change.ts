@@ -30,19 +30,19 @@ import {
 } from "@brandbasket/db";
 import { addOnBlock, quoteAddOn, type AddOnBlock, type AddOnQuote } from "../lib/billing/add-on-proration";
 import { addOnById, isMonthlyAddOnId, type MonthlyAddOnId } from "../lib/billing/add-ons";
-import { packageBasisPointsFor, packageDiscountCentsFor, packageLineWith, type PackageLine } from "../lib/billing/packages";
+import { listTotalCents, packageBasisPointsFor, packageDiscountCentsFor, packageLineWith, type PackageLine } from "../lib/billing/packages";
 import { billingPeriodProgress } from "../lib/billing/period";
 import { describeError, logBillingEvent } from "./billing-log";
 import { servicePeriod } from "./tax-invoicing";
 
 /*
- * Changing which add-ons ride in a running plan's monthly payment (docs/plans/13-platform-add-ons-after-signup.md in the
- * BrandBasket workspace), shared by the dashboard and the staff console so both quote, apply and finish a change the same
- * way. The database transitions are in @brandbasket/db (queries/bundled-add-ons.ts); this decides what to ask of them and
- * talks to the provider, always with no transaction open.
+ * Changing which services are in a running subscription's monthly payment (docs/plans/13-platform-add-ons-after-signup.md
+ * and 16-platform-pricing-offers.md in the BrandBasket workspace), shared by the dashboard and the staff console so both
+ * quote, apply and finish a change the same way. The database transitions are in @brandbasket/db
+ * (queries/bundled-add-ons.ts); this decides what to ask of them and talks to the provider, always with no transaction open.
  *
- * Adding takes the money first (a charge for the rest of the paid month), then moves the provider to the bigger amount
- * from the next renewal. Removing and keeping move the provider first, then record the change: there is no money to take,
+ * Adding takes the money first (a charge for the rest of the paid month), then moves the provider to the new amount, the
+ * whole basket at its package price, from the next renewal. Removing and keeping move the provider first, then record the change: there is no money to take,
  * and if the provider refuses nothing here changes.
  */
 
@@ -72,14 +72,17 @@ function stayingLines(rows: readonly BundledAddOn[]): readonly BundledAddOn[] {
   return rows.filter((row) => row.status === "active" && row.endRequestedAt === null);
 }
 
+/** The services of these lines. A line of anything else would be priced as no service at all, so it stops the change instead. */
 function servicesOf(rows: readonly BundledAddOn[]): readonly MonthlyAddOnId[] {
-  return rows.map((row) => row.addOn).filter(isMonthlyAddOnId);
+  return rows.map((row) => {
+    if (!isMonthlyAddOnId(row.addOn)) throw new Error(`Bundled add-on ${row.addOn} on subscription ${row.subscriptionId} is not a monthly service`);
+    return row.addOn;
+  });
 }
 
 /** A line at the package offer a basket of `services` earns: its own list price, less that percentage of it. */
 interface RepricedLine {
   readonly id: string;
-  readonly addOn: string;
   readonly discountCents: number;
   readonly netCents: number;
 }
@@ -88,17 +91,12 @@ function repriced(rows: readonly BundledAddOn[], services: readonly MonthlyAddOn
   const basisPoints = packageBasisPointsFor({ services, forfeited });
   return rows.map((row) => {
     const discountCents = packageDiscountCentsFor(row.listAmountCents, basisPoints);
-    return { id: row.id, addOn: row.addOn, discountCents, netCents: row.listAmountCents - discountCents };
+    return { id: row.id, discountCents, netCents: row.listAmountCents - discountCents };
   });
 }
 
 function totalNetCents(lines: readonly RepricedLine[]): number {
   return lines.reduce((total, line) => total + line.netCents, 0);
-}
-
-/** The monthly list prices of these lines added up: what they cost with no package offer. */
-function listTotalCents(rows: readonly BundledAddOn[]): number {
-  return rows.reduce((total, row) => total + row.listAmountCents, 0);
 }
 
 /**
@@ -236,7 +234,14 @@ export function assessAddOn(input: AddOnAssessmentInput): AddOnAssessment {
 /** The reads an assessment needs, on any connection that can see the business. Null when it is not visible. */
 export async function readAddOnAssessment(
   db: Database | ScopedTransaction,
-  input: { readonly businessId: string; readonly addOn: MonthlyAddOnId; readonly providerName: BillingProvider["name"]; readonly now: Date },
+  input: {
+    readonly businessId: string;
+    readonly addOn: MonthlyAddOnId;
+    readonly providerName: BillingProvider["name"];
+    readonly now: Date;
+    /** Whether the business has given the package offer up, when the caller has read it already (a page assessing every service reads it once). */
+    readonly forfeited?: boolean;
+  },
 ): Promise<AddOnAssessment | null> {
   const state = await findBillingState(db, input.businessId);
   if (state === null) return null;
@@ -244,7 +249,7 @@ export async function readAddOnAssessment(
     state.subscription === null
       ? []
       : (await findBundledAddOnsForSubscription(db, state.subscription.id)).filter((row) => row.status !== "removed");
-  const forfeited = await isPackageOfferForfeited(db, input.businessId);
+  const forfeited = input.forfeited ?? (await isPackageOfferForfeited(db, input.businessId));
   return assessAddOn({ state, live, addOn: input.addOn, forfeited, providerName: input.providerName, now: input.now });
 }
 

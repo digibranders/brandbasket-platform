@@ -20,7 +20,7 @@ export const BILLING_LOG_PREFIX = "[brandbasket:billing]";
  * - `retention-offer-failed`: the provider would not move a subscription to the discounted plan a stay offer needs, or
  *   our record of the offer could not be written after it had. Either way staff should check the subscription.
  * - `bundled-add-on-removal-failed`: a customer asked to take an add-on out of the plan's payment and the provider would not
- *   move the subscription to the lower amount, or our record of the request could not be written after it had. Either way
+ *   move the subscription to the new amount, or our record of the request could not be written after it had. Either way
  *   staff should check the subscription before its next renewal.
  * - `basket-provider-repair-failed`: a change to a subscription's services did not go through, and putting the provider back on
  *   the amount the database holds failed too. Staff should check the subscription's amount at the provider.
