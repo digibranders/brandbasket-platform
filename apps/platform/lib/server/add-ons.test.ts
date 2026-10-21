@@ -2,6 +2,7 @@ import { createFakeBillingProvider, type BillingProvider } from "@brandbasket/bi
 import {
   consumeRateLimit,
   endPackageOffer,
+  findBundledAddOnsForSubscription,
   findBusinessCurrency,
   findLiveBundledAddOns,
   findPlanById,
@@ -38,10 +39,12 @@ vi.mock("@brandbasket/db", () => {
   return {
     consumeRateLimit: vi.fn(),
     endPackageOffer: vi.fn(),
+    findBundledAddOnsForSubscription: vi.fn(),
     findBusinessCurrency: vi.fn(),
     findLiveBundledAddOns: vi.fn().mockResolvedValue([]),
     findPlanById: vi.fn(),
     findSubscriptionById: vi.fn(),
+    flagSubscriptionForAttention: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
     lockBusinessForBilling: vi.fn(),
     recordBundledAddOnRemoval: vi.fn(),
@@ -345,6 +348,8 @@ describe("removeBundledAddOnFor", () => {
   beforeEach(() => {
     changed = vi.spyOn(provider, "changeSubscriptionPlanAtPeriodEnd");
     vi.mocked(findSubscriptionById).mockResolvedValue(subscription() as never);
+    // The record transaction reads the subscription's lines again under the lock: the same lines the test gave.
+    vi.mocked(findBundledAddOnsForSubscription).mockImplementation((db) => findLiveBundledAddOns(db, BUSINESS_ID));
     vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
     vi.mocked(recordBundledAddOnRemoval).mockResolvedValue(true);
     vi.mocked(ensureDiscountPlan).mockResolvedValue("plan_lower");

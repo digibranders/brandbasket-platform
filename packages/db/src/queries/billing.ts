@@ -796,6 +796,29 @@ export async function flagPaymentForAttention(db: Runner, input: PaymentAttentio
   return rows.length > 0;
 }
 
+/**
+ * Flags a subscription for staff when a change to its monthly amount went wrong and no payment of that change exists to
+ * flag: a service dropped (no payment) or added for less than the smallest charge. The flag lands on the subscription's
+ * latest captured payment that carries none, so it shows in the console's list of payments needing attention with the same
+ * reason; one already flagged and not yet dealt with for the same reason is left as it is. Returns whether a flag was set.
+ * Staff connection only.
+ */
+export async function flagSubscriptionForAttention(
+  db: Runner,
+  input: { readonly subscriptionId: string; readonly businessId: string; readonly reason: PaymentAttentionFlag["reason"]; readonly now: Date },
+): Promise<boolean> {
+  if (!isUuid(input.subscriptionId) || !isUuid(input.businessId)) return false;
+  const captured = await db
+    .select({ id: payments.id, attentionReason: payments.attentionReason, attentionResolvedAt: payments.attentionResolvedAt })
+    .from(payments)
+    .where(and(eq(payments.subscriptionId, input.subscriptionId), eq(payments.businessId, input.businessId), eq(payments.status, "captured")))
+    .orderBy(desc(payments.createdAt), desc(payments.id));
+  if (captured.some((payment) => payment.attentionReason === input.reason && payment.attentionResolvedAt === null)) return false;
+  const target = captured.find((payment) => payment.attentionReason === null);
+  if (target === undefined) return false;
+  return flagPaymentForAttention(db, { paymentId: target.id, businessId: input.businessId, reason: input.reason, now: input.now });
+}
+
 export interface PaymentAttentionResolution {
   readonly paymentId: string;
   /** The business the payment must belong to; a payment of any other business is left alone. */

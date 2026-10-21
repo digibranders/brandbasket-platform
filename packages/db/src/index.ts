@@ -20,6 +20,7 @@ export {
   planTierForSignupChoice,
   findSubscriptionByProviderId,
   flagPaymentForAttention,
+  flagSubscriptionForAttention,
   insertSubscription,
   InvalidAmountError,
   InvalidManualPaymentError,

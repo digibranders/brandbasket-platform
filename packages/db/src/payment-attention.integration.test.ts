@@ -6,6 +6,7 @@ import {
   findFirstPayment,
   findLatestSubscriptionForBusiness,
   flagPaymentForAttention,
+  flagSubscriptionForAttention,
   insertSubscription,
   listPaymentsNeedingAttention,
   listReceiptsForBusiness,
@@ -273,6 +274,36 @@ describe("flagPaymentForAttention", () => {
       hasEverPaid: true,
       paymentUnderReview: false,
     });
+  });
+});
+
+describe("flagSubscriptionForAttention", () => {
+  it("flags the subscription's latest unflagged payment once, and leaves other subscriptions' payments alone", async () => {
+    const subscriptionId = await openCheckout(businessA, "fake_sub_a");
+    await recordPaymentAndActivate(dbs.staff.db, await activation(subscriptionId, "fake_pay_a"));
+    const later = await recordPaymentAndActivate(dbs.staff.db, { ...(await activation(subscriptionId, "fake_pay_b")), kind: "renewal" });
+    const flag = { subscriptionId, businessId: businessA, reason: "add_on_provider_pending", now: LATER } as const;
+
+    await expect(flagSubscriptionForAttention(dbs.staff.db, { ...flag, businessId: businessB })).resolves.toBe(false);
+    await expect(flagSubscriptionForAttention(dbs.staff.db, flag)).resolves.toBe(true);
+    // Still waiting for staff: a second failure adds nothing.
+    await expect(flagSubscriptionForAttention(dbs.staff.db, flag)).resolves.toBe(false);
+
+    const flagged = await listPaymentsNeedingAttention(dbs.staff.db, { businessId: businessA, limit: 10 });
+    expect(flagged.map((row) => [row.paymentId, row.reason])).toEqual([[later.payment.id, "add_on_provider_pending"]]);
+  });
+
+  it("flags the payment before when the latest one is already flagged for something else, and nothing when every payment is", async () => {
+    const subscriptionId = await openCheckout(businessA, "fake_sub_a");
+    const first = await recordPaymentAndActivate(dbs.staff.db, await activation(subscriptionId, "fake_pay_a"));
+    const second = await recordPaymentAndActivate(dbs.staff.db, { ...(await activation(subscriptionId, "fake_pay_b")), kind: "renewal" });
+    await flagPaymentForAttention(dbs.staff.db, { paymentId: second.payment.id, businessId: businessA, reason: "submission_failed", now: LATER });
+    const flag = { subscriptionId, businessId: businessA, reason: "add_on_provider_pending", now: LATER } as const;
+
+    await expect(flagSubscriptionForAttention(dbs.staff.db, flag)).resolves.toBe(true);
+    expect(await findFirstPayment(dbs.staff.db, businessA)).toMatchObject({ id: first.payment.id, attentionReason: "add_on_provider_pending" });
+    await resolvePaymentAttention(dbs.staff.db, { paymentId: first.payment.id, businessId: businessA, staffUserId: STAFF_USER, now: LATER });
+    await expect(flagSubscriptionForAttention(dbs.staff.db, flag)).resolves.toBe(false);
   });
 });
 
