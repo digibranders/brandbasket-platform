@@ -790,7 +790,7 @@ describe("startReactivationFor", () => {
     expect(events.indexOf("provider:cancel")).toBeGreaterThan(events.indexOf("tx2:commit"));
   });
 
-  it("takes no coupon: a returning customer pays today's full price", async () => {
+  it("takes no coupon: a returning customer's services come back with no code taken off", async () => {
     const lapsed = subscription({ status: "cancelled", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });
     newest(lapsed, { hasEverPaid: true });
     lapsedLines(lapsed, [billedLine("managed-website")]);
@@ -927,6 +927,18 @@ describe("startReactivationFor", () => {
         expect(openCheckoutSubscription).not.toHaveBeenCalled();
         expect(markPackageOfferForfeited).not.toHaveBeenCalled();
         expect(cancelled).toHaveBeenCalledTimes(1);
+      });
+
+      it("opens nothing when the lapsed subscription is paid in the meantime, and leaves that subscription alone", async () => {
+        const lapsed = changesBy({ subscription: { status: "active", paidThroughAt: new Date(NOW.getTime() + 30 * 24 * HOUR_MS) } });
+
+        await expect(startReactivationFor(lapsedCustomer, NOW)).resolves.toMatchObject({ kind: "refused" });
+
+        expect(openCheckoutSubscription).not.toHaveBeenCalled();
+        expect(markPackageOfferForfeited).not.toHaveBeenCalled();
+        // Only the checkout just opened is cancelled at the provider, never the subscription the late payment revived.
+        expect(cancelled).toHaveBeenCalledTimes(1);
+        expect(cancelled).not.toHaveBeenCalledWith(lapsed.providerSubscriptionId);
       });
 
       it("records the checkout when nothing changed", async () => {

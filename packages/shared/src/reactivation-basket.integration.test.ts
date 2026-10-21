@@ -4,6 +4,7 @@ import {
   cancelStaleSubscription,
   endPackageOffer,
   findActivePlan,
+  findChargeForBusiness,
   findBundledAddOnsForSubscription,
   findLatestSubscriptionForBusiness,
   findSubscriptionById,
@@ -11,8 +12,10 @@ import {
   isPackageOfferForfeited,
   markCancelRequested,
   markPackageOfferForfeited,
+  openBundledAddOn,
   openCheckoutSubscription,
   recordBundledAddOnRemoval,
+  setPendingOfferDiscounts,
   updateSubscriptionProviderStatus,
   type BillingCurrency,
   type NewBundledAddOn,
@@ -24,6 +27,7 @@ import type { MonthlyAddOnId } from "./lib/billing/add-ons";
 import { reactivationNetCents } from "./lib/billing/bundle";
 import { adCreditCentsFor, packageLines } from "./lib/billing/packages";
 import { activateFirstPayment, activateReactivationPayment } from "./server/billing-activation";
+import { recordChargePaymentWithInvoice } from "./server/charge-payments";
 import { loadReactivationBasket } from "./server/reactivation-basket";
 
 // The activation is server-only in the app; there is no browser here to keep it out of.
@@ -250,6 +254,90 @@ describe("a subscription that was cancelled", () => {
     expect(payment.chargedCents).toBe(4_484_000);
     // Every service is at its own price from now on, a service added later included.
     expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(true);
+  });
+});
+
+/** Local SEO + AEO added to the lapsed subscription in the last week of its paid month, at the package price of the three. */
+async function addSeoToPaidMonth(lapsed: Subscription, paid: boolean): Promise<void> {
+  const current = await findSubscriptionById(dbs.staff.db, lapsed.id);
+  if (current?.paidThroughAt == null) throw new Error("The lapsed subscription has no paid month");
+  const paidThroughAt = current.paidThroughAt;
+  const addedAt = new Date("2026-09-25T09:00:00.000Z");
+  const opened = await dbs.staff.db.transaction((tx) =>
+    openBundledAddOn(tx, {
+      businessId,
+      subscriptionId: lapsed.id,
+      addOn: "local-seo-aeo",
+      listAmountCents: 2_500_000,
+      offerDiscountAmountCents: 750_000,
+      taxRateBasisPoints: plan.taxRateBasisPoints,
+      currency: plan.currency,
+      netCents: 500_000,
+      chargeCents: 590_000,
+      quotedPeriodEnd: paidThroughAt,
+      description: "Local SEO + AEO, 25 Sep to 01 Oct 2026",
+      staffId: null,
+      now: addedAt,
+    }),
+  );
+  if (!paid) return;
+  if (opened.chargeId === null) throw new Error("The add had nothing to pay");
+  const chargeId = opened.chargeId;
+  const charge = await findChargeForBusiness(dbs.staff.db, businessId, chargeId);
+  if (charge === null) throw new Error(`No charge ${chargeId} to pay`);
+  await dbs.staff.db.transaction(async (tx) => {
+    await recordChargePaymentWithInvoice(tx, {
+      chargeId,
+      businessId,
+      provider: "fake",
+      providerPaymentId: `fake_pay_add_on_${chargeId}`,
+      amountCents: charge.amountCents,
+      currency: charge.currency,
+      paidAt: addedAt,
+      now: addedAt,
+    });
+    // The services already billed move to the three-service package from the next bill, which never came.
+    const lines = (await findBundledAddOnsForSubscription(tx, lapsed.id)).filter((row) => row.addOn !== "local-seo-aeo");
+    await setPendingOfferDiscounts(tx, {
+      subscriptionId: lapsed.id,
+      lines: lines.map((row) => ({ id: row.id, pendingOfferDiscountAmountCents: Math.round((row.listAmountCents * 3_000) / 10_000) })),
+      now: addedAt,
+    });
+  });
+}
+
+describe("a lapsed subscription with an add that was in flight", () => {
+  it("leaves out a service added but never paid for, and keeps the package of the services that were billed", async () => {
+    await setUp("INR");
+    const lapsed = await lapsedSubscription(["managed-website", "digital-growth"]);
+    await addSeoToPaidMonth(lapsed, false);
+
+    const basket = await loadReactivationBasket(dbs.staff.db, businessId);
+    expect(basket).toEqual({ services: ["managed-website", "digital-growth"], forfeited: false, adCreditCents: 200_000, cancelled: false });
+
+    const reopened = await openReactivation();
+    const payment = await pay(reopened);
+
+    expect(payment.chargedCents).toBe(1_227_200);
+    expect(reopened.adCreditCents).toBe(200_000);
+    expect((await findBundledAddOnsForSubscription(dbs.staff.db, reopened.id)).map((row) => row.addOn)).toEqual(["managed-website", "digital-growth"]);
+  });
+
+  it("takes a service that was paid for even though the other lines had not yet moved to its package price, and grows no ad credit", async () => {
+    await setUp("INR");
+    const lapsed = await lapsedSubscription(["managed-website", "digital-growth"]);
+    await addSeoToPaidMonth(lapsed, true);
+    // The lines still bill at the two-service offer: the renewal that would have moved them never happened.
+    const before = await findBundledAddOnsForSubscription(dbs.staff.db, lapsed.id);
+    expect(before.filter((row) => row.pendingOfferDiscountAmountCents !== null)).toHaveLength(2);
+
+    const reopened = await openReactivation();
+    const payment = await pay(reopened);
+
+    // All three at 30% off, priced from the set, not from what each line was last billed at.
+    expect(payment.chargedCents).toBe(3_138_800);
+    expect(reopened.adCreditCents).toBe(200_000);
+    expect((await findBundledAddOnsForSubscription(dbs.staff.db, reopened.id)).map((row) => row.addOn)).toEqual(["managed-website", "digital-growth", "local-seo-aeo"]);
   });
 });
 

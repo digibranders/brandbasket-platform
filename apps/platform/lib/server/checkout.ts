@@ -351,7 +351,7 @@ async function openPlanCheckout(
     // Re-validated here, under the lock, rather than trusted from when the customer pressed Apply: a code can be
     // deactivated, expire or hit its cap in between, and the amount frozen on the subscription must be the one
     // that was true at the moment the checkout opened. A business that has paid before is reactivating, which takes
-    // no code (docs/superpowers/specs/2026-10-09-reactivation-design.md): it pays today's full price.
+    // no code (docs/superpowers/specs/2026-10-09-reactivation-design.md): its services come back at the offer they earn.
     const applied = state.hasEverPaid ? null : await findBusinessReferralCode(tx, tenant.businessId);
     const redeemable =
       applied === null

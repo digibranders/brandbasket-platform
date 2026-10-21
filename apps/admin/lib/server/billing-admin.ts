@@ -102,7 +102,7 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
     const plan = await findActivePlan(tx, state.currency, state.tier);
     if (plan === null) return { outcome: { kind: "no-plan" }, replaced: null };
 
-    // A business that has paid before is reactivating, which takes no code: today's full price.
+    // A business that has paid before is reactivating, which takes no code: its services come back at the offer they earn.
     const applied = state.hasEverPaid ? null : await findBusinessReferralCode(tx, businessId);
     const redeemable =
       applied === null

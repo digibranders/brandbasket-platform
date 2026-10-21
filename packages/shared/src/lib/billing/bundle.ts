@@ -119,7 +119,8 @@ export function reactivationBasketOf(input: {
   return {
     services: services.length === 0 ? WEBSITE_ALONE : services,
     forfeited,
-    adCreditCents: forfeited || subscription === null ? 0 : subscription.adCreditCents,
+    // The website alone, when nothing is left to restore, is not the package the credit was earned by.
+    adCreditCents: forfeited || subscription === null || services.length === 0 ? 0 : subscription.adCreditCents,
     cancelled,
   };
 }

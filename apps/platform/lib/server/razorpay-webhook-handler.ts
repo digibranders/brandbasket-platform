@@ -165,8 +165,9 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         return null;
       }
 
-      // The first charge on a new subscription for a business that has paid before is a reactivation: one month at the
-      // plan's monthly price, with no coupon (docs/superpowers/specs/2026-10-09-reactivation-design.md).
+      // The first charge on a new subscription for a business that has paid before is a reactivation: one month of the
+      // services it lapsed with, the lines frozen on this subscription when its checkout opened, with no coupon
+      // (docs/superpowers/specs/2026-10-09-reactivation-design.md).
       const reactivating = subscription.activatedAt === null && (await hasEverPaid(tx, subscription.businessId));
       const plan = await findPlanById(tx, subscription.planId);
       // What Razorpay should have taken: the plan's net price less the discount frozen onto this subscription when

@@ -160,8 +160,13 @@ describe("reactivationBasketOf", () => {
     expect(reactivationNetCents(basket, "INR")).toBe(3_800_000);
   });
 
-  it("falls back to the website alone when no service is left to restore", () => {
-    expect(reactivationBasketOf({ subscription: LAPSED, lines: [], forfeited: false }).services).toEqual(["managed-website"]);
+  it("falls back to the website alone, which earns no ad credit, when no service is left to restore", () => {
+    expect(reactivationBasketOf({ subscription: LAPSED, lines: [], forfeited: false })).toEqual({
+      services: ["managed-website"],
+      forfeited: false,
+      adCreditCents: 0,
+      cancelled: false,
+    });
     expect(reactivationBasketOf({ subscription: null, lines: [], forfeited: false })).toEqual({
       services: ["managed-website"],
       forfeited: false,
