@@ -416,8 +416,8 @@ export interface OpenedBundledAddOn {
 
 /**
  * Opens the add, in the caller's transaction under its billing lock. The subscription must still be the paid month the
- * quote was for. An earlier open charge for the same add-on is replaced. With a charge, the row is `pending` until it is
- * paid; with nothing to take, it is `active` at once and the next renewal's amount is raised. Throws
+ * quote was for. Every earlier open charge of the subscription is waived and its row closed, for any service, since it was
+ * quoted for a basket that this add changes. With a charge, the row is `pending` until it is paid; with nothing to take, it is `active` at once and the next renewal's amount is raised. Throws
  * BundledAddOnNotPossibleError when the subscription has moved on, or the add-on is already active (an ending one is kept
  * with keepBundledAddOn instead).
  */
@@ -426,12 +426,11 @@ export async function openBundledAddOn(tx: ScopedTransaction, input: NewAddedAdd
   if (subscription === null || subscription.businessId !== input.businessId) throw new BundledAddOnNotPossibleError("no-subscription");
   if (!stillQuotedFor(subscription, input.quotedPeriodEnd)) throw new BundledAddOnNotPossibleError("not-live");
 
-  const live = (await findBundledAddOnsForSubscription(tx, input.subscriptionId)).filter(
-    (row) => row.addOn === input.addOn && row.status !== "removed",
-  );
-  if (live.some((row) => row.status === "active")) throw new BundledAddOnNotPossibleError("already-added");
-  // An earlier quote is replaced: its price was for a different moment, and only one add of an add-on is open at a time.
-  for (const row of live) await dropWaitingAddOn(tx, row, input.now);
+  const live = (await findBundledAddOnsForSubscription(tx, input.subscriptionId)).filter((row) => row.status !== "removed");
+  if (live.some((row) => row.addOn === input.addOn && row.status === "active")) throw new BundledAddOnNotPossibleError("already-added");
+  // Every earlier quote is replaced, whatever its service: its price was for a different moment (the basket it was quoted
+  // against has changed with this add), so paying it later must not turn it on at that price. Only one add is open at a time.
+  for (const row of live) if (row.status === "pending") await dropWaitingAddOn(tx, row, input.now);
 
   const common = {
     businessId: input.businessId,

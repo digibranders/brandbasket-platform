@@ -239,6 +239,19 @@ describe("adding an add-on to a running plan", () => {
     expect(await statusesOf(subscription)).toEqual(["removed", "pending"]);
   });
 
+  it("replaces an open charge for another add-on too, since its price was quoted for a basket that has changed", async () => {
+    const subscription = await paidSubscription();
+    const social = await open(addition(subscription));
+
+    const seo = await open(addition(subscription, { addOn: "local-seo-aeo", listAmountCents: 2_500_000, netCents: 1_129_032, chargeCents: 1_332_258 }));
+
+    expect(seo.chargeId).not.toBe(social.chargeId);
+    expect(await findChargeForBusiness(dbs.staff.db, businessId, social.chargeId ?? "")).toMatchObject({ status: "waived" });
+    expect(await findChargeForBusiness(dbs.staff.db, businessId, seo.chargeId ?? "")).toMatchObject({ status: "open" });
+    expect(await statusesOf(subscription, "digital-growth")).toEqual(["removed"]);
+    expect(await statusesOf(subscription, "local-seo-aeo")).toEqual(["pending"]);
+  });
+
   it("turns the add-on on when its charge is paid, invoices the charge, and carries the higher amount the renewal must arrive at", async () => {
     const subscription = await paidSubscription();
     const opened = await open(addition(subscription));
@@ -583,6 +596,22 @@ describe("adding a service moves the basket to the package price", () => {
     ]);
     expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 2_660_000, adCreditCents: 200_000 });
     expect(plansMade).toEqual([{ net: 2_660_000, discount: 0 }]);
+  });
+
+  it("cannot turn on a Social Media and Ads charge left unpaid while another service was added and paid: it was quoted for the old basket", async () => {
+    const subscription = await paidSubscription();
+    const abandoned = await startAddOn(deps(), { businessId, addOn: "digital-growth", staffId: null, now: FIFTH_NOV });
+    if (abandoned.kind !== "pay") throw new Error(`Expected a charge, got ${abandoned.kind}`);
+
+    await addAndPay("local-seo-aeo");
+    const late = await pay(abandoned.chargeId, "fake_pay_abandoned");
+
+    // The charge was waived when the other service was added, so the money is flagged for a refund and buys nothing.
+    expect(late.outcome).toBe("not-open");
+    expect(late.payment.attentionReason).toBe("already_paid");
+    expect(await statusesOf(subscription, "digital-growth")).toEqual(["removed"]);
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 2_240_000 });
+    expect(await lines(subscription)).toContainEqual(["local-seo-aeo", 500_000, 2_000_000, null]);
   });
 
   it("charges list to a business that has given the offer up, and moves nothing", async () => {
