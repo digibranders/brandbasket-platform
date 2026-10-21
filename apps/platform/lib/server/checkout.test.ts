@@ -7,6 +7,7 @@ import {
   findBusinessEntry,
   findBusinessReferralCode,
   findRedeemableReferralCode,
+  findLatestActivatedSubscriptionForBusiness,
   findLatestSubscriptionForBusiness,
   isPackageOfferForfeited,
   lockBusinessForBilling,
@@ -61,6 +62,7 @@ vi.mock("@brandbasket/db", () => {
     findBusinessEntry: vi.fn(),
     findBusinessReferralCode: vi.fn(),
     findRedeemableReferralCode: vi.fn(),
+    findLatestActivatedSubscriptionForBusiness: vi.fn(),
     findLatestSubscriptionForBusiness: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
     lockBusinessForBilling: vi.fn(),
@@ -137,10 +139,24 @@ function billingState(latest: Subscription | null, history: Partial<BillingState
   return { currency: "USD", tier: "managed", upgradePaid: false, subscription: latest, hasEverPaid: false, paymentUnderReview: false, plan: PLAN, ...history };
 }
 
-/** The same newest subscription seen by both transactions, unless a test says otherwise. */
+/** When the lapsed subscriptions of the reactivation tests were first paid. */
+const LONG_AGO = new Date(NOW.getTime() - 40 * 24 * HOUR_MS);
+
+/** A line the lapsed subscription billed: paid for and not asked to end. */
+function billedLine(addOn: string, overrides: Partial<BundledAddOn> = {}): BundledAddOn {
+  return { addOn, status: "active", activatedAt: LONG_AGO, endRequestedAt: null, ...overrides } as BundledAddOn;
+}
+
+/** The same newest subscription seen by both transactions, unless a test says otherwise. Paid before only when it was activated. */
 function newest(latest: Subscription | null, history: Partial<BillingState> = {}): void {
   vi.mocked(findBillingState).mockResolvedValue(billingState(latest, history));
   vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue(latest);
+  vi.mocked(findLatestActivatedSubscriptionForBusiness).mockResolvedValue(latest?.activatedAt != null ? latest : null);
+}
+
+/** What the lapsed subscription billed, the lines read for whichever subscription is asked about. */
+function lapsedLines(lapsed: Subscription, lines: readonly BundledAddOn[], others: readonly BundledAddOn[] = []): void {
+  vi.mocked(findBundledAddOnsForSubscription).mockImplementation(async (_db, subscriptionId) => (subscriptionId === lapsed.id ? lines : others));
 }
 
 beforeEach(() => {
@@ -378,10 +394,11 @@ describe("startCheckoutFor", () => {
   });
 
   it.each([
-    ["active and paid ahead", subscription({ status: "active", paidThroughAt: new Date(NOW.getTime() + 1000) })],
-    ["cancelled inside its paid period", subscription({ status: "cancelled", paidThroughAt: new Date(NOW.getTime() + 1000) })],
+    ["active and paid ahead", subscription({ status: "active", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() + 1000) })],
+    ["cancelled inside its paid period", subscription({ status: "cancelled", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() + 1000) })],
   ])("sends a customer whose subscription is %s back to Check and send", async (_label, paid) => {
     newest(paid, { hasEverPaid: true });
+    lapsedLines(paid, [billedLine("managed-website")]);
 
     await expect(startCheckoutFor(customer, NOW)).resolves.toEqual({ kind: "redirect", url: "/onboarding/review" });
     expect(events).toEqual(["tx1:begin", "tx1:commit"]);
@@ -600,7 +617,9 @@ describe("startMembershipCheckoutFor", () => {
   });
 
   it("gives no ad credit to a business that has paid before, which takes the website alone", async () => {
-    newest(subscription({ status: "cancelled", planId: "plan-inr", paidThroughAt: new Date(NOW.getTime() - 1000) }), { currency: "INR", plan: INR_PLAN, hasEverPaid: true });
+    const lapsed = subscription({ status: "cancelled", planId: "plan-inr", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });
+    newest(lapsed, { currency: "INR", plan: INR_PLAN, hasEverPaid: true });
+    lapsedLines(lapsed, [billedLine("managed-website")]);
 
     await startMembershipCheckoutFor(owner, NOW, "managed", ALL_THREE);
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
@@ -759,8 +778,9 @@ describe("startReactivationFor", () => {
   };
 
   it("replaces the lapsed subscription with a new checkout and cancels the old one at the provider after the commit", async () => {
-    const halted = subscription({ id: "sub-halted", status: "inactive", activatedAt: new Date(NOW.getTime() - 40 * 24 * HOUR_MS), paidThroughAt: new Date(NOW.getTime() - 1000) });
+    const halted = subscription({ id: "sub-halted", status: "inactive", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });
     newest(halted, { hasEverPaid: true });
+    lapsedLines(halted, [billedLine("managed-website")]);
 
     const url = redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
 
@@ -771,7 +791,9 @@ describe("startReactivationFor", () => {
   });
 
   it("takes no coupon: a returning customer pays today's full price", async () => {
-    newest(subscription({ status: "cancelled", paidThroughAt: new Date(NOW.getTime() - 1000) }), { hasEverPaid: true });
+    const lapsed = subscription({ status: "cancelled", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });
+    newest(lapsed, { hasEverPaid: true });
+    lapsedLines(lapsed, [billedLine("managed-website")]);
     vi.mocked(findBusinessReferralCode).mockResolvedValue(COUPON);
     vi.mocked(findRedeemableReferralCode).mockResolvedValue(COUPON);
     const started = vi.spyOn(provider, "startCheckout");
@@ -787,12 +809,12 @@ describe("startReactivationFor", () => {
   });
 
   describe("keeps the basket the business lapsed with", () => {
-    const AGO = new Date(NOW.getTime() - 40 * 24 * HOUR_MS);
+    const AGO = LONG_AGO;
     /** A package that ran out unpaid: billed from AGO, its lines still active, its ad credit as bought. */
     const lapsedWith = (addOns: readonly string[], overrides: Partial<Subscription> = {}) => {
       const sub = subscription({ id: "sub-lapsed", status: "past_due", activatedAt: AGO, paidThroughAt: new Date(NOW.getTime() - 1000), adCreditCents: 0, ...overrides });
       newest(sub, { hasEverPaid: true });
-      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(addOns.map((addOn) => ({ addOn, status: "active", endRequestedAt: null }) as BundledAddOn));
+      lapsedLines(sub, addOns.map((addOn) => billedLine(addOn)));
       return sub;
     };
     const usdLine = (addOn: string, listAmountCents: number, offerDiscountAmountCents: number) => ({
@@ -851,13 +873,7 @@ describe("startReactivationFor", () => {
     });
 
     it("starts a cancelled subscription fresh: every service at list, no ad credit, the package offer gone for good", async () => {
-      newest(
-        subscription({ id: "sub-gone", status: "cancelled", activatedAt: AGO, paidThroughAt: new Date(NOW.getTime() - 1000), cancelRequestedAt: AGO, adCreditCents: 6_000 }),
-        { hasEverPaid: true },
-      );
-      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(
-        ["managed-website", "digital-growth", "local-seo-aeo"].map((addOn) => ({ addOn, status: "active", endRequestedAt: null }) as BundledAddOn),
-      );
+      lapsedWith(["managed-website", "digital-growth", "local-seo-aeo"], { status: "cancelled", cancelRequestedAt: AGO, adCreditCents: 6_000 });
 
       redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
 
@@ -873,10 +889,15 @@ describe("startReactivationFor", () => {
     });
 
     it("sends the customer back to a reactivation checkout left open for the same basket", async () => {
+      const lapsed = subscription({ id: "sub-lapsed", status: "cancelled", activatedAt: AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });
       const open = subscription({ id: "sub-open", status: "incomplete", adCreditCents: 2_500, bundledAddOnNetCents: 12_000 });
       newest(open, { hasEverPaid: true });
-      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(
-        ["managed-website", "digital-growth"].map((addOn) => ({ addOn, status: "pending", endRequestedAt: null }) as BundledAddOn),
+      vi.mocked(findLatestActivatedSubscriptionForBusiness).mockResolvedValue(lapsed);
+      // The lapsed subscription's lines ended when the open checkout replaced it; they still say what it billed.
+      vi.mocked(findBundledAddOnsForSubscription).mockImplementation(async (_db, subscriptionId) =>
+        ["managed-website", "digital-growth"].map((addOn) =>
+          subscriptionId === lapsed.id ? billedLine(addOn, { status: "removed" }) : ({ addOn, status: "pending", activatedAt: null, endRequestedAt: null } as BundledAddOn),
+        ),
       );
 
       redirectUrl(await startReactivationFor(lapsedCustomer, NOW));

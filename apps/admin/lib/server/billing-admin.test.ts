@@ -4,6 +4,7 @@ import {
   findBillingState,
   findBundledAddOnsForSubscription,
   findBusinessReferralCode,
+  findLatestActivatedSubscriptionForBusiness,
   findLatestSubscriptionForBusiness,
   findRedeemableReferralCode,
   isPackageOfferForfeited,
@@ -50,6 +51,7 @@ vi.mock("@brandbasket/db", () => {
     findAffiliateAccrualContext: vi.fn(),
     findBillingState: vi.fn(),
     findBusinessReferralCode: vi.fn(),
+    findLatestActivatedSubscriptionForBusiness: vi.fn(),
     findLatestSubscriptionForBusiness: vi.fn(),
     findRedeemableReferralCode: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
@@ -431,8 +433,9 @@ describe("recordManualFirstPayment", () => {
       vi.mocked(findActivePlan).mockResolvedValue(SERVICES_USD);
       vi.mocked(findBillingState).mockResolvedValue(state(lapsed, { hasEverPaid: true, plan: SERVICES_USD }));
       vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue(lapsed);
+      vi.mocked(findLatestActivatedSubscriptionForBusiness).mockResolvedValue(lapsed.activatedAt === null ? null : lapsed);
       vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(
-        addOns.map(([addOn, netAmountCents]) => ({ addOn, netAmountCents, status: "active", endRequestedAt: null }) as BundledAddOn),
+        addOns.map(([addOn, netAmountCents]) => ({ addOn, netAmountCents, status: "active", activatedAt: AGO, endRequestedAt: null }) as BundledAddOn),
       );
     };
 
@@ -468,8 +471,16 @@ describe("recordManualFirstPayment", () => {
 
     it("is not held back by the unpaid reactivation checkout it replaces, which holds the same basket", async () => {
       lapse({ status: "incomplete", activatedAt: null, paidThroughAt: null, adCreditCents: 2_500 }, []);
-      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(
-        ["managed-website", "digital-growth"].map((addOn) => ({ addOn, netAmountCents: 6_000, status: "pending", endRequestedAt: null }) as BundledAddOn),
+      // The package was billed by the subscription before it; its lines ended when the unpaid one replaced it.
+      const billed = { id: "sub-billed", activatedAt: AGO, status: "cancelled", cancelRequestedAt: null, adCreditCents: 0 } as Subscription;
+      vi.mocked(findLatestActivatedSubscriptionForBusiness).mockResolvedValue(billed);
+      vi.mocked(findBundledAddOnsForSubscription).mockImplementation(async (_db, subscriptionId) =>
+        ["managed-website", "digital-growth"].map(
+          (addOn) =>
+            (subscriptionId === billed.id
+              ? { addOn, netAmountCents: 6_000, status: "removed", activatedAt: AGO, endRequestedAt: null }
+              : { addOn, netAmountCents: 6_000, status: "pending", activatedAt: null, endRequestedAt: null }) as BundledAddOn,
+        ),
       );
 
       await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });

@@ -337,6 +337,29 @@ export async function findLatestSubscriptionForBusiness(db: Runner, businessId: 
   return rows[0] ?? null;
 }
 
+/**
+ * The business's newest subscription that a payment ever activated, or null when none was. A reactivation checkout that was
+ * left unpaid or dropped is newer than the lapsed subscription it replaced but never billed anything, so this is the one that
+ * says what the business was paying for. Staff connection, or the owner's own scope.
+ */
+export async function findLatestActivatedSubscriptionForBusiness(db: Runner, businessId: string): Promise<Subscription | null> {
+  if (!isUuid(businessId)) return null;
+  const rows = await db
+    .select(SUBSCRIPTION_COLUMNS)
+    .from(subscriptions)
+    .where(and(eq(subscriptions.businessId, businessId), isNotNull(subscriptions.activatedAt)))
+    .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Ad credit that goes with a subscription that ends: zero for one a payment activated, which has been earning it, and untouched
+ * for one that never was activated. An unpaid reactivation checkout carries the lapsed subscription's credit forward, and
+ * dropping it must not lose that credit, so the next reactivation can still read it.
+ */
+const adCreditAfterEnding = sql`case when ${subscriptions.activatedAt} is not null then 0 else ${subscriptions.adCreditCents} end`;
+
 export interface NewSubscription {
   readonly businessId: string;
   readonly planId: string;
@@ -441,8 +464,9 @@ export interface StaleSubscriptionCancellation {
 export async function cancelStaleSubscription(db: Runner, input: StaleSubscriptionCancellation): Promise<void> {
   const rows = await db
     .update(subscriptions)
-    // The ad credit goes with it: a replacement is opened with the credit the caller read before this, and the ads team reads it from live rows.
-    .set({ status: "cancelled", cancelledAt: input.now, adCreditCents: 0 })
+    // The ad credit of a subscription that was paid goes with it: a replacement is opened with the credit the caller read
+    // before this, and the ads team reads it from live rows. An unpaid checkout never earned any and keeps what it carries.
+    .set({ status: "cancelled", cancelledAt: input.now, adCreditCents: adCreditAfterEnding })
     .where(
       and(
         eq(subscriptions.id, input.subscriptionId),
@@ -690,7 +714,7 @@ export async function updateSubscriptionProviderStatus(db: Runner, input: Subscr
       status: input.status,
       providerStatus: input.providerStatus,
       lastSyncedAt: input.now,
-      ...(input.status === "cancelled" ? { cancelledAt: sql`coalesce(${subscriptions.cancelledAt}, ${input.now})`, adCreditCents: 0 } : {}),
+      ...(input.status === "cancelled" ? { cancelledAt: sql`coalesce(${subscriptions.cancelledAt}, ${input.now})`, adCreditCents: adCreditAfterEnding } : {}),
     })
     .where(
       and(

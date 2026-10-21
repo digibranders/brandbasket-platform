@@ -13,6 +13,7 @@ export {
   findBillingState,
   hasEverPaid,
   findFirstPayment,
+  findLatestActivatedSubscriptionForBusiness,
   findLatestSubscriptionForBusiness,
   findPaymentByProviderId,
   findPlanById,

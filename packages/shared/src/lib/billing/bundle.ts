@@ -72,11 +72,11 @@ export function nextBundledNetCents(subscription: {
   return subscription.pendingBundledAddOnNetCents ?? subscription.bundledAddOnNetCents;
 }
 
-/** What a reactivation needs to know of the subscription the business lapsed on. */
+/** What a reactivation needs to know of the business's newest subscription. */
 export type LapsedSubscription = Pick<Subscription, "status" | "activatedAt" | "cancelRequestedAt" | "adCreditCents">;
 
-/** What a reactivation needs to know of one of that subscription's lines. */
-export type LapsedLine = Pick<BundledAddOn, "addOn" | "status" | "endRequestedAt">;
+/** What a reactivation needs to know of one of the lines of the subscription the business last paid for. */
+export type LapsedLine = Pick<BundledAddOn, "addOn" | "activatedAt" | "endRequestedAt">;
 
 /** The basket a reactivation restores. */
 export interface ReactivationBasket {
@@ -94,8 +94,13 @@ export interface ReactivationBasket {
  * The basket a reactivation restores (docs/plans/16-platform-pricing-offers.md): the services the lapsed subscription was
  * billing, at the offer they earn as a set, with the ad credit it kept. A failed payment loses none of that. A cancelled
  * subscription has no package left to restore: its services come back at list with no ad credit, as the exit flow warns.
- * The services are the lines that were staying (not on their way out, not still waiting for their payment); an unpaid
- * reactivation checkout, whose lines are all still waiting, restores all of them, so replacing it keeps the basket.
+ *
+ * Two subscriptions are read, because a reactivation checkout that was left unpaid or dropped sits between the business and the
+ * one it last paid for. `subscription` is the newest, which carries the ad credit forward and says whether the business
+ * cancelled: a checkout that never took a payment and was then cancelled (by the provider, or dropped when the account was
+ * deleted) is not a cancelled subscription. `lines` are those of the newest subscription a payment activated: the services it
+ * billed, each one that was paid for and never asked to end. They are still there after a reactivation replaced it, which
+ * ends the lines it holds but leaves when they were activated and asked to end.
  * With none, or no subscription, the website alone.
  *
  * The one place the checkout, the payment recorded by hand and the price on Billing take the basket from, so they agree.
@@ -107,9 +112,8 @@ export function reactivationBasketOf(input: {
   readonly forfeited: boolean;
 }): ReactivationBasket {
   const { subscription } = input;
-  const cancelled = subscription !== null && (subscription.status === "cancelled" || subscription.cancelRequestedAt !== null);
-  const billing = subscription === null || subscription.activatedAt !== null;
-  const staying = input.lines.filter((line) => line.endRequestedAt === null && (billing ? line.status === "active" : line.status === "pending"));
+  const cancelled = subscription !== null && (subscription.cancelRequestedAt !== null || (subscription.status === "cancelled" && subscription.activatedAt !== null));
+  const staying = input.lines.filter((line) => line.activatedAt !== null && line.endRequestedAt === null);
   const services = readBundleSelection(staying.map((line) => line.addOn));
   const forfeited = input.forfeited || cancelled;
   return {

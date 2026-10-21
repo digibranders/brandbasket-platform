@@ -222,7 +222,7 @@ describe("findCustomerPaymentMethod", () => {
 describe("findReactivationNetCents", () => {
   const tenant = { userId: USER.id, businessId: BUSINESS_ID, businessName: "Riverside Plumbing", role: "owner" };
   const lapsedWith = (plan: Pick<Plan, "currency">): never => ({ tenant, billing: { status: "lapsed", plan } }) as never;
-  const lines = (...addOns: string[]): BundledAddOn[] => addOns.map((addOn) => ({ addOn, status: "active", endRequestedAt: null }) as BundledAddOn);
+  const lines = (...addOns: string[]): BundledAddOn[] => addOns.map((addOn) => ({ addOn, status: "active", activatedAt: new Date("2026-09-01T00:00:00Z"), endRequestedAt: null }) as BundledAddOn);
 
   beforeEach(() => {
     vi.mocked(getStaffDb).mockReturnValue({ name: "staff-db" } as unknown as Database);

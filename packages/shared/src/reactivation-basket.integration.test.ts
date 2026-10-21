@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   businesses,
+  cancelStaleSubscription,
   endPackageOffer,
   findActivePlan,
   findBundledAddOnsForSubscription,
@@ -182,7 +183,8 @@ describe("a lapsed subscription that is reactivated", () => {
     expect(again.adCreditCents).toBe(500_000);
     expect(again.bundledAddOnNetCents).toBe(2_660_000);
     expect((await pay(again)).chargedCents).toBe(3_138_800);
-    expect(await findSubscriptionById(dbs.staff.db, abandoned.id)).toMatchObject({ status: "cancelled", adCreditCents: 0 });
+    // It never took a payment, so it earned no credit to take back.
+    expect(await findSubscriptionById(dbs.staff.db, abandoned.id)).toMatchObject({ status: "cancelled", activatedAt: null });
   });
 
   it("restores a business that gave the offer up at list with no ad credit, and leaves out the service it dropped", async () => {
@@ -248,5 +250,56 @@ describe("a subscription that was cancelled", () => {
     expect(payment.chargedCents).toBe(4_484_000);
     // Every service is at its own price from now on, a service added later included.
     expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(true);
+  });
+});
+
+describe("an unpaid reactivation that is dropped", () => {
+  it.each([
+    [
+      "ended by the provider",
+      async (subscription: Subscription) =>
+        updateSubscriptionProviderStatus(dbs.staff.db, {
+          provider: "fake",
+          providerSubscriptionId: subscription.providerSubscriptionId,
+          status: "cancelled",
+          providerStatus: "cancelled",
+          now: new Date("2026-10-22T09:00:00.000Z"),
+        }),
+    ],
+    [
+      "dropped when the account is deleted",
+      async (subscription: Subscription) => cancelStaleSubscription(dbs.staff.db, { subscriptionId: subscription.id, businessId, now: new Date("2026-10-22T09:00:00.000Z") }),
+    ],
+  ] as const)("is not a cancelled subscription: the package, the ad credit and the offer are kept: %s", async (_label, drop) => {
+    await setUp("INR");
+    await lapsedSubscription(["managed-website", "digital-growth", "local-seo-aeo"]);
+    const unpaid = await openReactivation();
+    await drop(unpaid);
+
+    const basket = await loadReactivationBasket(dbs.staff.db, businessId);
+    expect(basket).toEqual({
+      services: ["managed-website", "digital-growth", "local-seo-aeo"],
+      forfeited: false,
+      adCreditCents: 500_000,
+      cancelled: false,
+    });
+
+    const reopened = await openReactivation();
+    const payment = await pay(reopened);
+
+    expect(reopened.adCreditCents).toBe(500_000);
+    expect(payment.chargedCents).toBe(3_138_800);
+    expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(false);
+  });
+
+  it("keeps the lapsed subscription's own state out of it: only the unpaid row is cancelled, and a paid one still zeroes its credit", async () => {
+    await setUp("INR");
+    const lapsed = await lapsedSubscription(["managed-website", "digital-growth", "local-seo-aeo"]);
+    const unpaid = await openReactivation();
+
+    await cancelStaleSubscription(dbs.staff.db, { subscriptionId: unpaid.id, businessId, now: new Date("2026-10-22T09:00:00.000Z") });
+
+    expect(await findSubscriptionById(dbs.staff.db, unpaid.id)).toMatchObject({ status: "cancelled", activatedAt: null, adCreditCents: 500_000 });
+    expect(await findSubscriptionById(dbs.staff.db, lapsed.id)).toMatchObject({ status: "cancelled", adCreditCents: 0 });
   });
 });

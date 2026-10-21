@@ -71,8 +71,9 @@ describe("websiteAloneNetCents", () => {
 });
 
 describe("reactivationBasketOf", () => {
-  const LAPSED = { status: "active", activatedAt: new Date("2026-09-01T00:00:00Z"), cancelRequestedAt: null, adCreditCents: 500_000 } as const;
-  const line = (addOn: string, overrides: Partial<LapsedLine> = {}): LapsedLine => ({ addOn, status: "active", endRequestedAt: null, ...overrides });
+  const PAID = new Date("2026-09-01T00:00:00Z");
+  const LAPSED = { status: "active", activatedAt: PAID, cancelRequestedAt: null, adCreditCents: 500_000 } as const;
+  const line = (addOn: string, overrides: Partial<LapsedLine> = {}): LapsedLine => ({ addOn, activatedAt: PAID, endRequestedAt: null, ...overrides });
   const ALL_THREE = [line("managed-website"), line("digital-growth"), line("local-seo-aeo")];
 
   it("restores a lapsed package's own services at the package price, with its ad credit kept", () => {
@@ -108,27 +109,41 @@ describe("reactivationBasketOf", () => {
     expect(reactivationNetCents(basket, "INR")).toBe(2_800_000);
   });
 
-  it("leaves out a service on its way out, one still waiting for its payment, and one that has stopped", () => {
+  it("leaves out a service on its way out, one that was never paid for, and one that has stopped", () => {
     const basket = reactivationBasketOf({
       subscription: { ...LAPSED, adCreditCents: 0 },
       lines: [
         line("managed-website"),
         line("digital-growth", { endRequestedAt: new Date("2026-09-20T00:00:00Z") }),
-        line("local-seo-aeo", { status: "pending" }),
-        line("managed-website", { status: "removed" }),
+        line("local-seo-aeo", { activatedAt: null }),
       ],
       forfeited: true,
     });
     expect(basket.services).toEqual(["managed-website"]);
   });
 
-  it("takes every service of a reactivation checkout that was left unpaid, whose lines are all still pending", () => {
+  it("takes the services the lapsed subscription billed, and its credit from the unpaid checkout that replaced it", () => {
     const basket = reactivationBasketOf({
       subscription: { status: "incomplete", activatedAt: null, cancelRequestedAt: null, adCreditCents: 500_000 },
-      lines: ALL_THREE.map((row) => ({ ...row, status: "pending" as const })),
+      lines: ALL_THREE,
       forfeited: false,
     });
-    expect(basket).toMatchObject({ services: ["managed-website", "digital-growth", "local-seo-aeo"], adCreditCents: 500_000 });
+    expect(basket).toEqual({
+      services: ["managed-website", "digital-growth", "local-seo-aeo"],
+      forfeited: false,
+      adCreditCents: 500_000,
+      cancelled: false,
+    });
+  });
+
+  it("does not take an unpaid checkout that was cancelled for a cancelled subscription", () => {
+    const basket = reactivationBasketOf({
+      subscription: { status: "cancelled", activatedAt: null, cancelRequestedAt: null, adCreditCents: 500_000 },
+      lines: ALL_THREE,
+      forfeited: false,
+    });
+    expect(basket).toMatchObject({ forfeited: false, adCreditCents: 500_000, cancelled: false });
+    expect(basket.services).toHaveLength(3);
   });
 
   it.each([
