@@ -21,6 +21,8 @@ import {
   type Receipt,
   type TaxInvoice,
 } from "@brandbasket/db";
+import { reactivationNetCents } from "@brandbasket/shared/lib/billing/bundle";
+import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { requireCustomerAccess, type GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { serverEnv } from "@/lib/server/env";
@@ -195,4 +197,15 @@ export async function findReactivationPlan(customer: Pick<GrantedCustomer, "bill
   const { billing } = customer;
   if (billing.status !== "lapsed" || billing.plan === null) return null;
   return findActivePlan(getStaffDb(), billing.plan.currency, billing.tier);
+}
+
+/**
+ * What a month of the basket a lapsed customer reactivates costs before GST: the services they lapsed with at the offer
+ * they earn, from the same basket the checkout reopens (loadReactivationBasket), so the price on Billing is the one charged.
+ * Null for a customer who has not lapsed, or whose currency has no plan.
+ */
+export async function findReactivationNetCents(customer: Pick<GrantedCustomer, "tenant" | "billing">): Promise<number | null> {
+  const { billing, tenant } = customer;
+  if (billing.status !== "lapsed" || billing.plan === null) return null;
+  return reactivationNetCents(await loadReactivationBasket(getStaffDb(), tenant.businessId), billing.plan.currency);
 }

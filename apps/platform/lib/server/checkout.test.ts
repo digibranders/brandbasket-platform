@@ -10,6 +10,7 @@ import {
   findLatestSubscriptionForBusiness,
   isPackageOfferForfeited,
   lockBusinessForBilling,
+  markPackageOfferForfeited,
   openCheckoutSubscription,
   withTenantScope,
   type BillingState,
@@ -63,6 +64,7 @@ vi.mock("@brandbasket/db", () => {
     findLatestSubscriptionForBusiness: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
     lockBusinessForBilling: vi.fn(),
+    markPackageOfferForfeited: vi.fn(),
     openCheckoutSubscription: vi.fn(),
     withTenantScope: vi.fn(),
   };
@@ -124,6 +126,8 @@ function subscription(overrides: Partial<Subscription>): Subscription {
     referralCodeId: null,
     discountAmountCents: 0,
     bundledAddOnNetCents: 7_500,
+    adCreditCents: 0,
+    cancelRequestedAt: null,
     createdAt: new Date(NOW.getTime() - HOUR_MS),
     ...overrides,
   } as Subscription;
@@ -780,6 +784,105 @@ describe("startReactivationFor", () => {
       { name: "tx2" },
       expect.objectContaining({ referralCodeId: null, discountAmountCents: 0, replacing: null }),
     );
+  });
+
+  describe("keeps the basket the business lapsed with", () => {
+    const AGO = new Date(NOW.getTime() - 40 * 24 * HOUR_MS);
+    /** A package that ran out unpaid: billed from AGO, its lines still active, its ad credit as bought. */
+    const lapsedWith = (addOns: readonly string[], overrides: Partial<Subscription> = {}) => {
+      const sub = subscription({ id: "sub-lapsed", status: "past_due", activatedAt: AGO, paidThroughAt: new Date(NOW.getTime() - 1000), adCreditCents: 0, ...overrides });
+      newest(sub, { hasEverPaid: true });
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(addOns.map((addOn) => ({ addOn, status: "active", endRequestedAt: null }) as BundledAddOn));
+      return sub;
+    };
+    const usdLine = (addOn: string, listAmountCents: number, offerDiscountAmountCents: number) => ({
+      addOn,
+      listAmountCents,
+      offerDiscountAmountCents,
+      netAmountCents: listAmountCents - offerDiscountAmountCents,
+      taxRateBasisPoints: 0,
+    });
+
+    it("reopens an all-three package at 30% off with its ad credit kept, and asks the provider for the same total", async () => {
+      lapsedWith(["managed-website", "digital-growth", "local-seo-aeo"], { adCreditCents: 6_000 });
+      const started = vi.spyOn(provider, "startCheckout");
+
+      redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+      const lines = [usdLine("managed-website", 7_500, 2_250), usdLine("digital-growth", 7_500, 2_250), usdLine("local-seo-aeo", 35_000, 10_500)];
+      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ bundledAddOns: lines, adCreditCents: 6_000, replacing: "sub-lapsed", referralCodeId: null, discountAmountCents: 0 }));
+      expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 35_000, discountAmountCents: 0 }));
+      expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 35_000);
+      expect(markPackageOfferForfeited).not.toHaveBeenCalled();
+    });
+
+    it("prices the set of services that stay, not the percentage the lapsed lines were last billed at", async () => {
+      lapsedWith(["managed-website", "digital-growth"], { adCreditCents: 2_500 });
+
+      redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        { name: "tx2" },
+        expect.objectContaining({ bundledAddOns: [usdLine("managed-website", 7_500, 1_500), usdLine("digital-growth", 7_500, 1_500)], adCreditCents: 2_500 }),
+      );
+    });
+
+    it("reopens a single service at its list price, with no ad credit", async () => {
+      lapsedWith(["local-seo-aeo"]);
+
+      redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        { name: "tx2" },
+        expect.objectContaining({ bundledAddOns: [usdLine("local-seo-aeo", 35_000, 0)], adCreditCents: 0 }),
+      );
+    });
+
+    it("reopens a business that gave the offer up at list with no ad credit", async () => {
+      lapsedWith(["managed-website", "local-seo-aeo"]);
+      vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
+
+      redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        { name: "tx2" },
+        expect.objectContaining({ bundledAddOns: [usdLine("managed-website", 7_500, 0), usdLine("local-seo-aeo", 35_000, 0)], adCreditCents: 0 }),
+      );
+    });
+
+    it("starts a cancelled subscription fresh: every service at list, no ad credit, the package offer gone for good", async () => {
+      newest(
+        subscription({ id: "sub-gone", status: "cancelled", activatedAt: AGO, paidThroughAt: new Date(NOW.getTime() - 1000), cancelRequestedAt: AGO, adCreditCents: 6_000 }),
+        { hasEverPaid: true },
+      );
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(
+        ["managed-website", "digital-growth", "local-seo-aeo"].map((addOn) => ({ addOn, status: "active", endRequestedAt: null }) as BundledAddOn),
+      );
+
+      redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        { name: "tx2" },
+        expect.objectContaining({
+          bundledAddOns: [usdLine("managed-website", 7_500, 0), usdLine("digital-growth", 7_500, 0), usdLine("local-seo-aeo", 35_000, 0)],
+          adCreditCents: 0,
+          replacing: null,
+        }),
+      );
+      expect(markPackageOfferForfeited).toHaveBeenCalledWith({ name: "tx1" }, BUSINESS_ID, NOW);
+    });
+
+    it("sends the customer back to a reactivation checkout left open for the same basket", async () => {
+      const open = subscription({ id: "sub-open", status: "incomplete", adCreditCents: 2_500, bundledAddOnNetCents: 12_000 });
+      newest(open, { hasEverPaid: true });
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(
+        ["managed-website", "digital-growth"].map((addOn) => ({ addOn, status: "pending", endRequestedAt: null }) as BundledAddOn),
+      );
+
+      redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+      expect(openCheckoutSubscription).not.toHaveBeenCalled();
+    });
   });
 
   it("sends a paid-up customer to Billing, opening nothing", async () => {

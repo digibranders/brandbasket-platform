@@ -9,6 +9,7 @@ import {
   findBusinessReferralCode,
   findRedeemableReferralCode,
   lockBusinessForBilling,
+  markPackageOfferForfeited,
   openCheckoutSubscription,
   resolvePaymentAttention,
   type NewBundledAddOn,
@@ -18,6 +19,7 @@ import {
   type Subscription,
 } from "@brandbasket/db";
 import { addOnPrice, addOnById, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { packageLines } from "@brandbasket/shared/lib/billing/packages";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import type { ManualPaymentDetails } from "@brandbasket/shared/lib/billing/manual-payment-form";
 import { getBillingProvider } from "./billing-provider";
@@ -26,6 +28,7 @@ import { activateFirstPayment, activateReactivationPayment } from "@brandbasket/
 import { getStaffDb } from "./db";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
+import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 
 
 export interface ManualFirstPayment extends ManualPaymentDetails {
@@ -42,7 +45,7 @@ interface ManualPaymentStep {
   readonly openedMembership?: OpenedMembership | null;
 }
 
-/** What a payment recorded by hand buys: the website alone, a single service at its list price, as a line. */
+/** What a first payment recorded by hand buys: the website alone, a single service at its list price, as a line. */
 const MANUAL_SERVICE: MonthlyAddOnId = "managed-website";
 
 /**
@@ -74,7 +77,8 @@ function manualDiscount(code: ReferralCode | null, currency: MoneyCurrency, list
  * its list price, as a line (the plan row costs nothing), less any code applied, and goes through the same activation as
  * a checkout (activateFirstPayment): the lines' total, the plan's own term, the lead marked paid. For a business that
  * paid before and lapsed it is a reactivation instead (activateReactivationPayment): its lapsed plan is ended and it
- * gets one month at today's monthly price, with no coupon. It also stores who recorded it, the bank or payment
+ * gets one month of the basket it lapsed with (loadReactivationBasket), at the offer that basket earns and with its ad
+ * credit kept, with no coupon. It also stores who recorded it, the bank or payment
  * reference, and the date the money arrived. The paid term starts when it is recorded, which is when access opens, not
  * on the date the money arrived.
  *
@@ -104,15 +108,20 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
       applied === null
         ? null
         : await findRedeemableReferralCode(tx, { code: applied.code, currency: state.currency, now });
-    // The plan row costs nothing: the website is the line the payment is for, at its list price.
+    // The plan row costs nothing: the lines are the payment. A first payment buys the website at its list price; a
+    // reactivation buys the basket the business lapsed with, read before its lapsed plan is replaced and ends its lines.
     const website = addOnPrice(addOnById(MANUAL_SERVICE), plan.currency);
-    const line: NewBundledAddOn = {
-      addOn: MANUAL_SERVICE,
-      listAmountCents: website.listCents,
-      offerDiscountAmountCents: 0,
-      netAmountCents: website.netCents,
+    const reactivation = state.hasEverPaid ? await loadReactivationBasket(tx, businessId) : null;
+    const lines: readonly NewBundledAddOn[] = packageLines(
+      { services: reactivation?.services ?? [MANUAL_SERVICE], forfeited: reactivation?.forfeited ?? false },
+      plan.currency,
+    ).map((line) => ({
+      addOn: line.addOn,
+      listAmountCents: line.listCents,
+      offerDiscountAmountCents: line.offerCents,
+      netAmountCents: line.netCents,
       taxRateBasisPoints: plan.taxRateBasisPoints,
-    };
+    }));
     const discountAmountCents = manualDiscount(redeemable, plan.currency, website.listCents);
 
     const decision = decideCheckout(
@@ -143,11 +152,14 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
       }
     }
 
-    // The payment books the website alone, so an unpaid checkout that holds a package (or any other service, or ad credit)
-    // is not silently dropped: staff ask the client to finish that checkout, or contact the owner.
-    if (replaced !== null && replaced.status === "incomplete" && (await holdsMoreThanWebsite(tx, replaced))) {
+    // A first payment books the website alone, so an unpaid checkout that holds a package (or any other service, or ad
+    // credit) is not silently dropped: staff ask the client to finish that checkout, or contact the owner. A reactivation
+    // books the basket of the checkout it replaces, so nothing is lost.
+    if (!state.hasEverPaid && replaced !== null && replaced.status === "incomplete" && (await holdsMoreThanWebsite(tx, replaced))) {
       return { outcome: { kind: "package-open" }, replaced: null };
     }
+    // A cancelled subscription has given the package offer up for good, whatever ended it.
+    if (reactivation?.cancelled === true) await markPackageOfferForfeited(tx, businessId, now);
 
     const reference = randomUUID();
     const subscription = await openCheckoutSubscription(tx, {
@@ -157,13 +169,14 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
       providerSubscriptionId: `manual_sub_${reference}`,
       referralCodeId: discountAmountCents === null ? null : (redeemable?.id ?? null),
       discountAmountCents: discountAmountCents ?? 0,
-      bundledAddOns: [line],
+      bundledAddOns: lines,
+      ...(reactivation === null ? {} : { adCreditCents: reactivation.adCreditCents }),
       replacing: replaced?.id ?? null,
       now,
     });
     const manual = { recordedByStaffId: input.staffUserId, reference: input.reference, receivedOn: input.receivedOn };
     if (state.hasEverPaid) {
-      // Reactivation: one month from now at the plan's monthly price, like a reactivation paid online.
+      // Reactivation: one month from now of the lines it was opened with, like a reactivation paid online.
       await activateReactivationPayment(tx, {
         businessId,
         subscriptionId: subscription.id,

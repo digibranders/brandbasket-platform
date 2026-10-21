@@ -325,6 +325,48 @@ describe("handleRazorpayWebhookEvent", () => {
     expect(recordUnappliedPayment).not.toHaveBeenCalled();
   });
 
+  describe("a reactivation of a package", () => {
+    /** The services plan of migration 0184, in rupees: the lines are the whole price, 18% GST on top. */
+    const SERVICES_INR = { ...PLAN, currency: "INR", recurringAmountCents: 0, initialAmountCents: 0, taxRateBasisPoints: 1_800 };
+    const ALL_THREE_NET_CENTS = 2_660_000;
+    const reopenedAllThree = () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue({
+        id: "sub_back",
+        businessId: "biz_1",
+        planId: "plan_1",
+        status: "incomplete",
+        activatedAt: null,
+        commitmentEndsAt: null,
+        discountAmountCents: 0,
+        retentionDiscountCents: 0,
+        pendingPlanId: null,
+        pendingDiscountAmountCents: 0,
+        bundledAddOnNetCents: ALL_THREE_NET_CENTS,
+        pendingBundledAddOnNetCents: null,
+      } as never);
+      vi.mocked(findPlanById).mockResolvedValue(SERVICES_INR as never);
+      vi.mocked(hasEverPaid).mockResolvedValueOnce(true);
+    };
+
+    it("accepts the package price the checkout was opened at, 30% off every line plus GST", async () => {
+      reopenedAllThree();
+
+      await handleRazorpayWebhookEvent({ ...CHARGED, currency: "INR", amountCents: 3_138_800 });
+
+      expect(recordUnappliedPayment).not.toHaveBeenCalled();
+      expect(activateReactivationPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ subscriptionId: "sub_back", plan: SERVICES_INR }));
+    });
+
+    it("sets aside a charge at the website's price: the basket was not the website alone", async () => {
+      reopenedAllThree();
+
+      await handleRazorpayWebhookEvent({ ...CHARGED, currency: "INR", amountCents: 354_000 });
+
+      expect(activateReactivationPayment).not.toHaveBeenCalled();
+      expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: "amount_mismatch" }));
+    });
+  });
+
   it("does nothing (and does not throw) for an unknown subscription id", async () => {
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue(null);
     await handleRazorpayWebhookEvent({

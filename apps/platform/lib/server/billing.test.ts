@@ -1,13 +1,17 @@
 import { createHmac } from "node:crypto";
 import {
   findBillingState,
+  findBundledAddOnsForSubscription,
   findBusinessEntry,
   findCurrentPaymentMethod,
+  findLatestSubscriptionForBusiness,
   findOpenClosureForUser,
+  isPackageOfferForfeited,
   findSubscriptionByProviderId,
   listMembershipsForUser,
   withTenantScope,
   type BillingState,
+  type BundledAddOn,
   type Database,
   type Plan,
   type ScopedTransaction,
@@ -19,6 +23,7 @@ import { BillingConfigurationError, CheckoutVerificationError } from "@brandbask
 import {
   BillingRequiredError,
   findCustomerPaymentMethod,
+  findReactivationNetCents,
   getBillingProvider, getRazorpayProvider, razorpayKeyId, razorpayKeySecret,
   requireBillingAccess,
 } from "./billing";
@@ -39,9 +44,12 @@ vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
 vi.mock("@/lib/server/env", () => ({ serverEnv: () => ({ BETTER_AUTH_SECRET: "x".repeat(32) }) }));
 vi.mock("@brandbasket/db", () => ({
   findBillingState: vi.fn(),
+  findBundledAddOnsForSubscription: vi.fn(),
   findBusinessEntry: vi.fn(),
   findCurrentPaymentMethod: vi.fn(),
+  findLatestSubscriptionForBusiness: vi.fn(),
   findOpenClosureForUser: vi.fn(),
+  isPackageOfferForfeited: vi.fn(),
   findSubscriptionByProviderId: vi.fn(),
   listMembershipsForUser: vi.fn(),
   listReceiptsForBusiness: vi.fn(),
@@ -208,6 +216,35 @@ describe("findCustomerPaymentMethod", () => {
   ] as const)("looks at every payment for a plan that is %s", async (_name, status, provider) => {
     await findCustomerPaymentMethod(customerBilling(status, provider));
     expect(findCurrentPaymentMethod).toHaveBeenCalledWith(tx, BUSINESS_ID, { planOnly: false });
+  });
+});
+
+describe("findReactivationNetCents", () => {
+  const tenant = { userId: USER.id, businessId: BUSINESS_ID, businessName: "Riverside Plumbing", role: "owner" };
+  const lapsedWith = (plan: Pick<Plan, "currency">): never => ({ tenant, billing: { status: "lapsed", plan } }) as never;
+  const lines = (...addOns: string[]): BundledAddOn[] => addOns.map((addOn) => ({ addOn, status: "active", endRequestedAt: null }) as BundledAddOn);
+
+  beforeEach(() => {
+    vi.mocked(getStaffDb).mockReturnValue({ name: "staff-db" } as unknown as Database);
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "past_due", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 0 } as Subscription);
+    vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
+  });
+
+  it("is the net of the basket the checkout will reopen, at the offer it earns", async () => {
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "digital-growth", "local-seo-aeo"));
+    await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }))).resolves.toBe(2_660_000);
+    await expect(findReactivationNetCents(lapsedWith({ currency: "USD" }))).resolves.toBe(35_000);
+  });
+
+  it("is list for a business that gave the offer up", async () => {
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "local-seo-aeo"));
+    vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
+    await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }))).resolves.toBe(2_800_000);
+  });
+
+  it("is nothing for a customer who has not lapsed", async () => {
+    await expect(findReactivationNetCents({ tenant, billing: { status: "paid", plan: { currency: "INR" } } } as never)).resolves.toBeNull();
+    expect(findBundledAddOnsForSubscription).not.toHaveBeenCalled();
   });
 });
 

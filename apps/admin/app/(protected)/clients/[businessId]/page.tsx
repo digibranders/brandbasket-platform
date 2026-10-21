@@ -54,7 +54,8 @@ import {
   MAX_MANUAL_REFERENCE_LENGTH,
 } from "@brandbasket/shared/lib/billing/manual-payment-form";
 import { MANUAL_PAYMENT_NOTICES, readManualPaymentNotice } from "@brandbasket/shared/lib/billing/manual-payment-notices";
-import { websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
+import { reactivationNetCents, websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
+import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { firstPaymentAmount, initialTermPhrase, monthlyPaymentAmount } from "@brandbasket/shared/lib/billing/terms";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
 import { isPlacementField } from "@brandbasket/shared/lib/directory/placement-form";
@@ -300,14 +301,15 @@ function BillingFacts({ client, state }: { readonly client: ClientDetail; readon
 interface ManualPaymentFormProps {
   readonly businessId: string;
   readonly plan: Plan;
+  /** What the payment buys a month before GST: the website for a first payment, the basket they lapsed with for a reactivation. */
+  readonly netCents: number;
   /** The client paid before and lapsed: this payment reactivates their plan rather than being their first. */
   readonly reactivating: boolean;
 }
 
-function ManualPaymentForm({ businessId, plan, reactivating }: ManualPaymentFormProps): ReactElement {
+function ManualPaymentForm({ businessId, plan, netCents, reactivating }: ManualPaymentFormProps): ReactElement {
   // Exactly what recordManualFirstPayment records, so the box staff tick names the money that must have arrived.
-  const websiteCents = websiteAloneNetCents(plan.currency);
-  const amount = reactivating ? monthlyPaymentAmount(plan, websiteCents) : firstPaymentAmount(plan, websiteCents);
+  const amount = reactivating ? monthlyPaymentAmount(plan, netCents) : firstPaymentAmount(plan, netCents);
   return (
     <form action={recordManualPaymentAction} className="mt-8 border-t border-line pt-6">
       <h3 className="font-serif text-xl">{reactivating ? "Reactivate with a manual payment" : "Record a manual payment"}</h3>
@@ -605,6 +607,13 @@ export default async function ClientPage({
     loadClientAddOns(client.businessId, renderedAt),
     loadClientChatbots(client.businessId),
   ]);
+  // Exactly what recordManualFirstPayment books: the basket they lapsed with, else the website at list.
+  const manualNetCents =
+    plan === null
+      ? 0
+      : paymentState.kind === "lapsed"
+        ? reactivationNetCents(await loadReactivationBasket(db, client.businessId), plan.currency)
+        : websiteAloneNetCents(plan.currency);
   const chargesNotice = readStaffChargeNotice(sp.charges);
   const websiteNotice = sp.website === "saved" || sp.website === "invalid" ? sp.website : null;
   const featuresNotice = readBusinessModuleNotice(sp.features);
@@ -821,7 +830,9 @@ export default async function ClientPage({
 
         <Section title="Billing">
           <BillingFacts client={client} state={paymentState} />
-          {canRecordPayment && plan !== null ? <ManualPaymentForm businessId={client.businessId} plan={plan} reactivating={paymentState.kind === "lapsed"} /> : null}
+          {canRecordPayment && plan !== null ? (
+            <ManualPaymentForm businessId={client.businessId} plan={plan} netCents={manualNetCents} reactivating={paymentState.kind === "lapsed"} />
+          ) : null}
           {canRecordPayment && plan === null ? (
             <p className="mt-6 text-sm text-ink-soft">
               There is no active plan for {BILLING_CURRENCY_LABELS[client.currency]}, so no payment can be recorded.

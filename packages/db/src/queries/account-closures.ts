@@ -4,6 +4,7 @@ import type { ScopedTransaction } from "../scope";
 import {
   accountClosures,
   accountExitFeedback,
+  businesses,
   subscriptions,
   type AccountExitOutcome,
   type AccountExitReason,
@@ -123,18 +124,28 @@ export async function applyRetentionDiscount(db: Runner, input: RetentionDiscoun
 /**
  * Records that the customer asked for the plan to end with the period they have paid for. The provider does the
  * ending; this is our note of the request, so the billing page can say so before the provider's own event arrives.
+ * A cancelled subscription has no package left: the monthly ad credit goes to 0 and the business gives the package offer up
+ * for good, so a return is at list (docs/plans/16-platform-pricing-offers.md). Both are written in the same step as the
+ * note, and the first date of each is kept.
  */
 export async function markCancelRequested(
   db: Runner,
   input: { readonly subscriptionId: string; readonly businessId: string; readonly now: Date },
 ): Promise<boolean> {
   if (!isUuid(input.subscriptionId) || !isUuid(input.businessId)) return false;
-  const rows = await db
-    .update(subscriptions)
-    .set({ cancelRequestedAt: sql`coalesce(${subscriptions.cancelRequestedAt}, ${input.now})` })
-    .where(and(eq(subscriptions.id, input.subscriptionId), eq(subscriptions.businessId, input.businessId)))
-    .returning({ id: subscriptions.id });
-  return rows.length > 0;
+  return db.transaction(async (tx) => {
+    const rows = await tx
+      .update(subscriptions)
+      .set({ cancelRequestedAt: sql`coalesce(${subscriptions.cancelRequestedAt}, ${input.now})`, adCreditCents: 0 })
+      .where(and(eq(subscriptions.id, input.subscriptionId), eq(subscriptions.businessId, input.businessId)))
+      .returning({ id: subscriptions.id });
+    if (rows.length === 0) return false;
+    await tx
+      .update(businesses)
+      .set({ packageOfferForfeitedAt: sql`coalesce(${businesses.packageOfferForfeitedAt}, ${input.now})` })
+      .where(eq(businesses.id, input.businessId));
+    return true;
+  });
 }
 
 /**

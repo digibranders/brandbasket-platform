@@ -1,3 +1,4 @@
+import type { BundledAddOn, Subscription } from "@brandbasket/db";
 import type { MoneyCurrency } from "../money";
 import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "./add-ons";
 import { packageLines } from "./packages";
@@ -52,8 +53,8 @@ export function bundleNetCents(lines: readonly Pick<BundleLine, "netCents">[]): 
 }
 
 /**
- * What the website alone nets a month at list, before GST: what a reactivation or a payment recorded by hand charges, since
- * the plan row itself costs nothing.
+ * What the website alone nets a month at list, before GST: what Check and send and a payment recorded by hand for a first
+ * purchase charge, since the plan row itself costs nothing.
  */
 export function websiteAloneNetCents(currency: MoneyCurrency): number {
   return bundleNetCents(bundleLines(WEBSITE_ALONE, currency));
@@ -69,4 +70,57 @@ export function nextBundledNetCents(subscription: {
   readonly pendingBundledAddOnNetCents: number | null;
 }): number {
   return subscription.pendingBundledAddOnNetCents ?? subscription.bundledAddOnNetCents;
+}
+
+/** What a reactivation needs to know of the subscription the business lapsed on. */
+export type LapsedSubscription = Pick<Subscription, "status" | "activatedAt" | "cancelRequestedAt" | "adCreditCents">;
+
+/** What a reactivation needs to know of one of that subscription's lines. */
+export type LapsedLine = Pick<BundledAddOn, "addOn" | "status" | "endRequestedAt">;
+
+/** The basket a reactivation restores. */
+export interface ReactivationBasket {
+  /** The services to bill again, once each, in the catalogue's order. */
+  readonly services: readonly MonthlyAddOnId[];
+  /** Priced at list: the business gave the package offer up, or its subscription was cancelled. */
+  readonly forfeited: boolean;
+  /** The monthly ad credit the lapsed subscription kept, or 0 when the offer is gone. Never grows. */
+  readonly adCreditCents: number;
+  /** The subscription was cancelled (ended at the provider or asked to end), so its package offer ended with it. */
+  readonly cancelled: boolean;
+}
+
+/**
+ * The basket a reactivation restores (docs/plans/16-platform-pricing-offers.md): the services the lapsed subscription was
+ * billing, at the offer they earn as a set, with the ad credit it kept. A failed payment loses none of that. A cancelled
+ * subscription has no package left to restore: its services come back at list with no ad credit, as the exit flow warns.
+ * The services are the lines that were staying (not on their way out, not still waiting for their payment); an unpaid
+ * reactivation checkout, whose lines are all still waiting, restores all of them, so replacing it keeps the basket.
+ * With none, or no subscription, the website alone.
+ *
+ * The one place the checkout, the payment recorded by hand and the price on Billing take the basket from, so they agree.
+ */
+export function reactivationBasketOf(input: {
+  readonly subscription: LapsedSubscription | null;
+  readonly lines: readonly LapsedLine[];
+  /** The business has dropped a service from a package for good (isPackageOfferForfeited). */
+  readonly forfeited: boolean;
+}): ReactivationBasket {
+  const { subscription } = input;
+  const cancelled = subscription !== null && (subscription.status === "cancelled" || subscription.cancelRequestedAt !== null);
+  const billing = subscription === null || subscription.activatedAt !== null;
+  const staying = input.lines.filter((line) => line.endRequestedAt === null && (billing ? line.status === "active" : line.status === "pending"));
+  const services = readBundleSelection(staying.map((line) => line.addOn));
+  const forfeited = input.forfeited || cancelled;
+  return {
+    services: services.length === 0 ? WEBSITE_ALONE : services,
+    forfeited,
+    adCreditCents: forfeited || subscription === null ? 0 : subscription.adCreditCents,
+    cancelled,
+  };
+}
+
+/** What the basket nets a month before GST. */
+export function reactivationNetCents(basket: ReactivationBasket, currency: MoneyCurrency): number {
+  return bundleNetCents(bundleLines(basket.services, currency, basket.forfeited));
 }

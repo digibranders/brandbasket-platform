@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { bundleLines, bundleNetCents, nextBundledNetCents, readBundleSelection, websiteAloneNetCents } from "./bundle";
+import {
+  bundleLines,
+  bundleNetCents,
+  nextBundledNetCents,
+  reactivationBasketOf,
+  reactivationNetCents,
+  readBundleSelection,
+  websiteAloneNetCents,
+  type LapsedLine,
+} from "./bundle";
 
 describe("readBundleSelection", () => {
   it("keeps catalogue ids once each, in the catalogue's order", () => {
@@ -58,5 +67,91 @@ describe("websiteAloneNetCents", () => {
   it("is the website's list price in each currency", () => {
     expect(websiteAloneNetCents("INR")).toBe(300_000);
     expect(websiteAloneNetCents("USD")).toBe(7_500);
+  });
+});
+
+describe("reactivationBasketOf", () => {
+  const LAPSED = { status: "active", activatedAt: new Date("2026-09-01T00:00:00Z"), cancelRequestedAt: null, adCreditCents: 500_000 } as const;
+  const line = (addOn: string, overrides: Partial<LapsedLine> = {}): LapsedLine => ({ addOn, status: "active", endRequestedAt: null, ...overrides });
+  const ALL_THREE = [line("managed-website"), line("digital-growth"), line("local-seo-aeo")];
+
+  it("restores a lapsed package's own services at the package price, with its ad credit kept", () => {
+    const basket = reactivationBasketOf({ subscription: LAPSED, lines: ALL_THREE, forfeited: false });
+    expect(basket).toEqual({
+      services: ["managed-website", "digital-growth", "local-seo-aeo"],
+      forfeited: false,
+      adCreditCents: 500_000,
+      cancelled: false,
+    });
+    expect(reactivationNetCents(basket, "INR")).toBe(2_660_000);
+    expect(reactivationNetCents(basket, "USD")).toBe(35_000);
+  });
+
+  it("prices the set it restores, not the percentage the lapsed lines were last billed at", () => {
+    const basket = reactivationBasketOf({
+      subscription: { ...LAPSED, adCreditCents: 200_000 },
+      lines: [line("managed-website"), line("digital-growth")],
+      forfeited: false,
+    });
+    expect(reactivationNetCents(basket, "INR")).toBe(1_040_000);
+    expect(basket.adCreditCents).toBe(200_000);
+  });
+
+  it("restores a single service at its list price", () => {
+    const basket = reactivationBasketOf({ subscription: { ...LAPSED, adCreditCents: 0 }, lines: [line("local-seo-aeo")], forfeited: false });
+    expect(reactivationNetCents(basket, "INR")).toBe(2_500_000);
+  });
+
+  it("restores a business that gave the offer up at list, with no ad credit", () => {
+    const basket = reactivationBasketOf({ subscription: { ...LAPSED, adCreditCents: 0 }, lines: [line("managed-website"), line("local-seo-aeo")], forfeited: true });
+    expect(basket).toMatchObject({ services: ["managed-website", "local-seo-aeo"], forfeited: true, adCreditCents: 0, cancelled: false });
+    expect(reactivationNetCents(basket, "INR")).toBe(2_800_000);
+  });
+
+  it("leaves out a service on its way out, one still waiting for its payment, and one that has stopped", () => {
+    const basket = reactivationBasketOf({
+      subscription: { ...LAPSED, adCreditCents: 0 },
+      lines: [
+        line("managed-website"),
+        line("digital-growth", { endRequestedAt: new Date("2026-09-20T00:00:00Z") }),
+        line("local-seo-aeo", { status: "pending" }),
+        line("managed-website", { status: "removed" }),
+      ],
+      forfeited: true,
+    });
+    expect(basket.services).toEqual(["managed-website"]);
+  });
+
+  it("takes every service of a reactivation checkout that was left unpaid, whose lines are all still pending", () => {
+    const basket = reactivationBasketOf({
+      subscription: { status: "incomplete", activatedAt: null, cancelRequestedAt: null, adCreditCents: 500_000 },
+      lines: ALL_THREE.map((row) => ({ ...row, status: "pending" as const })),
+      forfeited: false,
+    });
+    expect(basket).toMatchObject({ services: ["managed-website", "digital-growth", "local-seo-aeo"], adCreditCents: 500_000 });
+  });
+
+  it.each([
+    ["ended at the provider", { ...LAPSED, status: "cancelled" }],
+    ["asked to end with its period", { ...LAPSED, cancelRequestedAt: new Date("2026-09-25T00:00:00Z") }],
+  ] as const)("starts a subscription %s at list with no ad credit, whatever it was stored with", (_label, subscription) => {
+    const basket = reactivationBasketOf({ subscription, lines: ALL_THREE, forfeited: false });
+    expect(basket).toEqual({
+      services: ["managed-website", "digital-growth", "local-seo-aeo"],
+      forfeited: true,
+      adCreditCents: 0,
+      cancelled: true,
+    });
+    expect(reactivationNetCents(basket, "INR")).toBe(3_800_000);
+  });
+
+  it("falls back to the website alone when no service is left to restore", () => {
+    expect(reactivationBasketOf({ subscription: LAPSED, lines: [], forfeited: false }).services).toEqual(["managed-website"]);
+    expect(reactivationBasketOf({ subscription: null, lines: [], forfeited: false })).toEqual({
+      services: ["managed-website"],
+      forfeited: false,
+      adCreditCents: 0,
+      cancelled: false,
+    });
   });
 });

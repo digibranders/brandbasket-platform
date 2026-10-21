@@ -10,6 +10,7 @@ import {
   restoreAccountClosure,
   summariseExitFeedback,
 } from "./queries/account-closures";
+import { isPackageOfferForfeited } from "./queries/bundled-add-ons";
 import { findActivePlan, findLatestSubscriptionForBusiness, insertSubscription, type Plan } from "./queries/billing";
 import { accountClosures, accountExitFeedback, businesses, users } from "./schema";
 import { captureErrorText, openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
@@ -207,6 +208,29 @@ describe("the stay offer on a subscription", () => {
       dbs.owner.db.execute(`update subscriptions set discount_amount_cents = 500 where id = '${subscriptionId}'`),
     );
     expect(text).toContain("subscriptions_discount_check");
+  });
+
+  it("ends the package offer and the ad credit when the cancel request is noted, for good", async () => {
+    const subscription = await insertSubscription(dbs.staff.db, {
+      businessId,
+      planId: plan.id,
+      provider: "fake",
+      providerSubscriptionId: "fake_sub_000000000000000000000002",
+      referralCodeId: null,
+      discountAmountCents: 0,
+      adCreditCents: 500_000,
+    });
+    expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(false);
+
+    await markCancelRequested(dbs.staff.db, { subscriptionId: subscription.id, businessId, now: NOW });
+
+    expect((await findLatestSubscriptionForBusiness(dbs.staff.db, businessId))?.adCreditCents).toBe(0);
+    const [business] = await dbs.owner.db.select({ at: businesses.packageOfferForfeitedAt }).from(businesses).where(eq(businesses.id, businessId));
+    expect(business?.at).toEqual(NOW);
+
+    await markCancelRequested(dbs.staff.db, { subscriptionId: subscription.id, businessId, now: new Date("2026-10-09T00:00:00.000Z") });
+    const [again] = await dbs.owner.db.select({ at: businesses.packageOfferForfeitedAt }).from(businesses).where(eq(businesses.id, businessId));
+    expect(again?.at).toEqual(NOW);
   });
 
   it("notes a cancel request once and keeps the first time", async () => {

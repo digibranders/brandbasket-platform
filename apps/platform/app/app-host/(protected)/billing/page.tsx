@@ -26,7 +26,7 @@ import { paymentMethodView, renewsAutomatically } from "@/lib/billing/payment-me
 import { CHARGE_NOTICES, readChargeNotice } from "@/lib/billing/charge-notices";
 import { billingMonths } from "@/lib/billing/billing-months";
 import { listOpenCustomerCharges } from "@/lib/server/charges";
-import { findCustomerPaymentMethod, findReactivationPlan, listCustomerReceipts } from "@/lib/server/billing";
+import { findCustomerPaymentMethod, findReactivationNetCents, findReactivationPlan, listCustomerReceipts } from "@/lib/server/billing";
 import { loadBillingDetailsView } from "@/lib/server/billing-details";
 import { reactivateAction } from "./actions";
 import { getCustomerBusinessKind, requireCustomerAccess } from "@/lib/server/customer-access";
@@ -200,10 +200,11 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
 
   const { plan, subscription } = billing;
   const lapsed = billing.status === "lapsed";
-  const [openCharges, params, reactivationPlan, paymentMethod] = await Promise.all([
+  const [openCharges, params, reactivationPlan, reactivationNet, paymentMethod] = await Promise.all([
     listOpenCustomerCharges(customer),
     searchParams,
     lapsed ? findReactivationPlan(customer) : Promise.resolve(null),
+    lapsed ? findReactivationNetCents(customer) : Promise.resolve(null),
     findCustomerPaymentMethod(customer),
   ]);
   // Razorpay's confirmation arrives separately from the customer's return, so a page drawn straight after paying waits for
@@ -244,11 +245,11 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
             delayedText="Confirming your payment is taking longer than usual."
             supportEmail={supportEmailOf(brand)}
           />
-        ) : lapsed && reactivationPlan !== null ? (
+        ) : lapsed && reactivationPlan !== null && reactivationNet !== null ? (
           <ReactivatePlan
             planName={planLabel(reactivationPlan.name)}
-            monthlyAmount={monthlyPaymentAmount(reactivationPlan, websiteAloneNetCents(reactivationPlan.currency))}
-            priceNote={priceNote(reactivationPlan, 0, websiteAloneNetCents(reactivationPlan.currency))}
+            monthlyAmount={monthlyPaymentAmount(reactivationPlan, reactivationNet)}
+            priceNote={priceNote(reactivationPlan, 0, reactivationNet)}
             action={reactivateAction}
           />
         ) : lapsed || plan === null || subscription === null ? (

@@ -9,6 +9,7 @@ import { DELETE_ACCOUNT_PATH } from "@/lib/account-settings-form";
 import { PRIVACY_SETTINGS_PATH } from "@/lib/privacy-settings-form";
 import { changePasswordAction, revokeOtherSessionsAction } from "./actions";
 import { SectionHeading, Surface, type SurfaceTone } from "@brandbasket/shared/ui/panel/surface";
+import { findReactivationNetCents } from "@/lib/server/billing";
 import { signOut } from "@/lib/server/sign-out";
 import type { Subscription } from "@brandbasket/db";
 import { nextBundledNetCents, websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
@@ -23,10 +24,17 @@ export const metadata: Metadata = { title: "Settings" };
 
 /**
  * What the plan's terms are read against, since the plan row itself costs nothing: a paying customer's services from the next
- * renewal, otherwise the website alone, which is what Check and send and a reactivation take.
+ * renewal, a lapsed customer's the basket a reactivation restores (`reactivationNetCents`), otherwise the website alone,
+ * which is what Check and send takes.
  */
-function serviceNetCents(status: CustomerBillingStatus, subscription: Subscription | null, currency: MoneyCurrency): number {
-  return status === "paid" && subscription !== null ? nextBundledNetCents(subscription) : websiteAloneNetCents(currency);
+function serviceNetCents(
+  status: CustomerBillingStatus,
+  subscription: Subscription | null,
+  currency: MoneyCurrency,
+  reactivationNetCents: number | null,
+): number {
+  if (status === "paid" && subscription !== null) return nextBundledNetCents(subscription);
+  return reactivationNetCents ?? websiteAloneNetCents(currency);
 }
 
 function Section({
@@ -68,6 +76,7 @@ function Facts({ items }: { readonly items: readonly { readonly label: string; r
 export default async function SettingsPage(): Promise<ReactElement> {
   const { user, tenant, billing } = await requireCustomerAccess({ listingAccount: "allow" });
   const listingAccount = (await getCustomerBusinessKind(tenant.userId, tenant.businessId)) === "listing";
+  const reactivationNetCents = await findReactivationNetCents({ tenant, billing });
 
   return (
     <>
@@ -104,7 +113,7 @@ export default async function SettingsPage(): Promise<ReactElement> {
                   label: "Billed in",
                   value: billing.plan === null ? "Not set yet" : BILLING_CURRENCY_LABELS[billing.plan.currency],
                 },
-                ...(billing.plan === null ? [] : [{ label: "Your plan", value: describePlanTerms(billing.plan, serviceNetCents(billing.status, billing.subscription, billing.plan.currency)) }]),
+                ...(billing.plan === null ? [] : [{ label: "Your plan", value: describePlanTerms(billing.plan, serviceNetCents(billing.status, billing.subscription, billing.plan.currency, reactivationNetCents)) }]),
               ]}
             />
           </Section>

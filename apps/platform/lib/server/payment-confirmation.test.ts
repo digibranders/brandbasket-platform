@@ -461,6 +461,36 @@ describe("confirmFirstPayment", () => {
     expect(calls).toEqual(["lock", "reactivate"]);
   });
 
+  it("reactivates a package at the price its lines were frozen at, and sets aside a payment at the website's price", async () => {
+    // The services plan costs nothing; the lines are the charge: all three at 30% off, ₹26,600 net + 18% GST = ₹31,388.
+    const services = { ...PLAN, currency: "INR" as const, initialAmountCents: 0, initialTermMonths: 1, recurringAmountCents: 0, taxRateBasisPoints: 1_800 };
+    vi.mocked(findPlanById).mockResolvedValue(services);
+    vi.mocked(findBillingState).mockResolvedValue({
+      ...NOT_PAID,
+      currency: "INR",
+      plan: services,
+      hasEverPaid: true,
+      subscription: unpaidSubscription("fake_sub_lapsed", { id: "sub-lapsed", status: "inactive" }),
+    });
+    vi.mocked(activateReactivationPayment).mockImplementation(async () => {
+      calls.push("reactivate");
+      return { payment: { id: "pay-1" } as Payment, alreadyRecorded: false, leadsMarkedPaid: 0 };
+    });
+    const asked = (bundledAddOnNetCents: number) => provider.startCheckout({ businessId: BUSINESS_ID, businessName: "Riverside", email: "ana@example.com", plan: services, bundledAddOnNetCents });
+    const tokenOf = (checkoutUrl: string) => new URL(checkoutUrl, "http://app.localhost").searchParams.get("token");
+
+    const allThree = await asked(2_660_000);
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(allThree.providerSubscriptionId, { id: "sub-back", bundledAddOnNetCents: 2_660_000 }));
+    await expect(confirmFirstPayment(tenant, { token: tokenOf(allThree.checkoutUrl) }, NOW)).resolves.toEqual({ kind: "reactivated" });
+
+    // The same subscription paid at the website's price alone is not the basket it was opened for.
+    const website = await asked(300_000);
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(website.providerSubscriptionId, { id: "sub-back-2", bundledAddOnNetCents: 2_660_000 }));
+    await expect(confirmFirstPayment(tenant, { token: tokenOf(website.checkoutUrl) }, NOW)).resolves.toEqual({ kind: "needs-attention" });
+    expect(activateReactivationPayment).toHaveBeenCalledTimes(1);
+    expect(recordUnappliedPayment).toHaveBeenCalledWith(staffTx, expect.objectContaining({ reason: "amount_mismatch", amountCents: 354_000 }));
+  });
+
   it("activates an Indian first payment, which is the plan's net price plus 18% GST", async () => {
     // ₹2,999 net + 18% GST = ₹3,538.82: what the provider charges and what production refused on 23 Sept.
     const inrPlan = { ...PLAN, currency: "INR" as const, initialAmountCents: 299_900, taxRateBasisPoints: 1_800 };

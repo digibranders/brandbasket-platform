@@ -436,12 +436,13 @@ export interface StaleSubscriptionCancellation {
  * Ends the subscription a new checkout replaces: an unpaid checkout, or a live one that no longer grants access (a
  * lapsed or halted plan, which reactivation replaces). The guard is in the UPDATE itself, so a payment that lands in
  * between, moving paid_through_at into the future, makes it match nothing and throw StaleSubscriptionChangedError.
- * Only the status and cancelledAt change: the old row's dates and payments stay as history.
+ * Only the status, cancelledAt and ad credit change: the old row's dates and payments stay as history.
  */
 export async function cancelStaleSubscription(db: Runner, input: StaleSubscriptionCancellation): Promise<void> {
   const rows = await db
     .update(subscriptions)
-    .set({ status: "cancelled", cancelledAt: input.now })
+    // The ad credit goes with it: a replacement is opened with the credit the caller read before this, and the ads team reads it from live rows.
+    .set({ status: "cancelled", cancelledAt: input.now, adCreditCents: 0 })
     .where(
       and(
         eq(subscriptions.id, input.subscriptionId),
@@ -458,8 +459,8 @@ export async function cancelStaleSubscription(db: Runner, input: StaleSubscripti
     )
     .returning({ id: subscriptions.id });
   if (rows.length === 0) throw new StaleSubscriptionChangedError(input.subscriptionId);
-  // The add-ons billed inside it end with it: a checkout never paid never bought them, and a lapsed plan's are not carried into
-  // the plan that replaces it (a reactivation is the plan alone).
+  // The lines billed inside it end with it. A reactivation restores them as new lines on the subscription that replaces it
+  // (reactivationBasketOf), read before this ran.
   await removeBundledAddOnsOf(db, { subscriptionId: input.subscriptionId, now: input.now });
 }
 
@@ -689,7 +690,7 @@ export async function updateSubscriptionProviderStatus(db: Runner, input: Subscr
       status: input.status,
       providerStatus: input.providerStatus,
       lastSyncedAt: input.now,
-      ...(input.status === "cancelled" ? { cancelledAt: sql`coalesce(${subscriptions.cancelledAt}, ${input.now})` } : {}),
+      ...(input.status === "cancelled" ? { cancelledAt: sql`coalesce(${subscriptions.cancelledAt}, ${input.now})`, adCreditCents: 0 } : {}),
     })
     .where(
       and(
