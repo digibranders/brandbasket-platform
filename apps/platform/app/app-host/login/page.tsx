@@ -39,7 +39,8 @@ interface AppLoginPageProps {
 /**
  * The one entry page. Everyone signs in here, and everyone creates their account here, choosing Managed Website.
  *
- * The website's buttons link to it with `plan=managed`, and `addons=` for the add-ons its basket chose. Someone already
+ * The website's buttons link to it with the services its basket chose (`plan=website,growth`); older links send
+ * `plan=managed` and `addons=` for the add-ons on top of the website. Someone already
  * signed in goes to their dashboard, or to the plan's page when that is what they came for.
  */
 export default async function AppLoginPage({ searchParams }: AppLoginPageProps): Promise<ReactElement> {
@@ -142,7 +143,7 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
         <JoinForm
           action={joinForListing}
           initialChoice={entry.choice}
-          addOns={entry.addOns}
+          services={entry.services}
           preselected={entry.preselected}
           choices={brand.joinChoices}
           legalLinks={legalLinks}

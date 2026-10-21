@@ -12,23 +12,23 @@ interface MembershipPayFormProps {
   readonly amount: string;
   /** The plan whose page this is, sent with the press: the server checks it and opens that plan's checkout. */
   readonly tier: MembershipTier;
-  /** The add-ons ticked on the page, paid in this same payment. */
-  readonly addOns?: readonly MonthlyAddOnId[];
+  /** The services on the page, the whole subscription this payment opens. */
+  readonly services: readonly MonthlyAddOnId[];
 }
 
 /**
  * A plan's one button. Disabled while the payment is being opened, so a double press opens one checkout. A
  * refusal is shown under it and announced again each time, because the alert unmounts while the action runs.
  */
-export function MembershipPayForm({ action, amount, tier, addOns = [] }: MembershipPayFormProps): ReactElement {
+export function MembershipPayForm({ action, amount, tier, services }: MembershipPayFormProps): ReactElement {
   const [state, formAction, isPending] = useActionState(action, initialMembershipFormState);
   const message = state.status === "error" && !isPending ? state.message : null;
 
   return (
     <form action={formAction}>
       <input type="hidden" name="tier" value={tier} />
-      {addOns.map((addOn) => (
-        <input key={addOn} type="hidden" name="addOn" value={addOn} />
+      {services.map((service) => (
+        <input key={service} type="hidden" name="service" value={service} />
       ))}
       <Button type="submit" disabled={isPending} aria-busy={isPending} aria-describedby={message === null ? undefined : "membership-error"} className="group w-full">
         {isPending ? "Opening payment…" : `Pay ${amount}`}

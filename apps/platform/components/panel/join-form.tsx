@@ -68,8 +68,8 @@ interface JoinFormProps {
   readonly action: (state: JoinFormState, formData: FormData) => Promise<JoinFormState>;
   /** A plan the link already chose (the website's plan buttons): the form opens on the details with it set. */
   readonly initialChoice: JoinChoice | null;
-  /** The add-ons the website's basket chose, sent with the form so the plan's page opens with them ticked. */
-  readonly addOns: readonly string[];
+  /** The services the website's basket chose, sent with the form so the plan's page opens on them. */
+  readonly services: readonly string[];
   /** The plan the plans open with already ticked, when the link chose none (Brandbasket: Care); null ticks none. */
   readonly preselected: JoinChoice | null;
   /** The plans this brand sells, in the order shown: the free listing is among them only on Brandbasket. */
@@ -192,7 +192,7 @@ const INPUT_CLASSES =
 export function JoinForm({
   action,
   initialChoice,
-  addOns,
+  services,
   preselected,
   choices,
   legalLinks,
@@ -261,7 +261,7 @@ export function JoinForm({
   const sentFields = (
     <>
       {choice === null ? null : <input type="hidden" name="choice" value={choice} />}
-      {addOns.length === 0 ? null : <input type="hidden" name="addons" value={addOns.join(",")} />}
+      {services.length === 0 ? null : <input type="hidden" name="services" value={services.join(",")} />}
     </>
   );
   const signInLine = (

@@ -20,13 +20,17 @@ export interface BundleLine {
 }
 
 /**
- * Which add-ons a posted or typed choice names: only catalogue ids, each once, in the catalogue's order. Anything else is
- * dropped, so a tampered form cannot name an add-on that does not exist or take one twice.
+ * Which services a posted or typed basket names: only catalogue ids, each once, in the catalogue's order. Anything else
+ * is dropped, so a tampered form cannot name a service that does not exist or take one twice. The basket is the whole
+ * subscription, the website included only when it is named.
  */
 export function readBundleSelection(values: readonly string[]): readonly MonthlyAddOnId[] {
   const chosen = new Set(values);
   return MONTHLY_ADD_ON_IDS.filter((id) => chosen.has(id));
 }
+
+/** The basket a sign-up link or the plan's page sells when it names no service: the website alone. */
+export const WEBSITE_ALONE: readonly MonthlyAddOnId[] = ["managed-website"];
 
 /** The lines of a first-checkout bundle in the plan's currency, each with the package discount, in the catalogue's order. */
 export function bundleLines(selection: readonly MonthlyAddOnId[], currency: MoneyCurrency): readonly BundleLine[] {

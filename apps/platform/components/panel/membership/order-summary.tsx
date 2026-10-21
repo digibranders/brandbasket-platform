@@ -110,7 +110,7 @@ export function OrderSummary({ tier, view, addOns, removeHref, children }: Order
       </dl>
 
       <div className="mt-4 hidden lg:block">
-        <MembershipPayForm action={startMembership} amount={money(parts.totalCents)} tier={tier} addOns={addOns.map((line) => line.addOn)} />
+        <MembershipPayForm action={startMembership} amount={money(parts.totalCents)} tier={tier} services={addOns.map((line) => line.addOn)} />
       </div>
       <p className="mt-3 text-xs leading-relaxed text-ink-soft">
         {addOns.length === 0

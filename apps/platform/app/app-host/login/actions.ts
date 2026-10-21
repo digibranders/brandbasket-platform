@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { typedSignInIdentifier, type SignInFormState } from "@brandbasket/shared/lib/sign-in-form";
 import { offersChoice } from "@/lib/brand";
 import { parseJoinForm, type JoinCodeStep, type JoinFormState } from "@/lib/join-form";
-import { membershipHrefWithAddOns, membershipTierForChoice } from "@/lib/membership";
+import { membershipHrefWithServices, membershipTierForChoice } from "@/lib/membership";
 import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 import { LISTING_PAGE_PATH } from "@/lib/server/customer-access";
 import { createListingAccount, requestJoinCode } from "@/lib/server/listing-account";
@@ -28,8 +28,8 @@ export async function signInCustomer(_previous: SignInFormState, formData: FormD
  * address and the form moves to its code step. Then with the code: the account is opened and the owner is in. "Send a
  * new code" is the first send again.
  *
- * Where they land depends on what they chose: an owner who chose Managed Website goes to the plan's payment page, with
- * any add-ons the website's basket named already ticked, and is held there until they pay.
+ * Where they land depends on what they chose: an owner who chose Managed Website goes to the plan's payment page, opened
+ * on the services the website's basket named, and is held there until they pay.
  */
 export async function joinForListing(previous: JoinFormState, formData: FormData): Promise<JoinFormState> {
   // Where the form was: on its code step (a code is out) or still on the details.
@@ -74,8 +74,8 @@ export async function joinForListing(previous: JoinFormState, formData: FormData
   if (outcome.kind === "wrong-code") return { status: "error", message: outcome.message, otp: current };
   if (outcome.kind === "refused") return { status: "error", message: outcome.message, otp: null };
   const paid = membershipTierForChoice(parsed.data.choice);
-  // The website's basket rides along so the plan's page opens with those add-ons ticked; only catalogue ids survive.
-  const addOns = readBundleSelection(String(formData.get("addons") ?? "").split(","));
-  if (paid !== null) redirect(membershipHrefWithAddOns(paid, addOns));
+  // The website's basket rides along so the plan's page opens on those services; only catalogue ids survive.
+  const services = readBundleSelection(String(formData.get("services") ?? "").split(","));
+  if (paid !== null) redirect(membershipHrefWithServices(paid, services));
   redirect(LISTING_PAGE_PATH);
 }

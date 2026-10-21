@@ -23,9 +23,15 @@ export function membershipPathFor(tier: MembershipTier): string {
   return MEMBERSHIP_PATHS[tier];
 }
 
-/** The plan's page with add-ons already ticked (`?addons=digital-growth,local-seo-aeo`): what the website's basket links to. */
-export function membershipHrefWithAddOns(tier: MembershipTier, addOns: readonly MonthlyAddOnId[]): string {
-  return addOns.length === 0 ? membershipPathFor(tier) : `${membershipPathFor(tier)}?addons=${addOns.join(",")}`;
+/** The plan page's parameter naming its basket of services, comma separated. */
+export const MEMBERSHIP_SERVICES_PARAM = "services";
+
+/**
+ * The plan's page opened on a basket of services (`?services=managed-website,digital-growth`): what the website's basket
+ * links to. The basket is the whole subscription; with none named the page sells the website alone.
+ */
+export function membershipHrefWithServices(tier: MembershipTier, services: readonly MonthlyAddOnId[]): string {
+  return services.length === 0 ? membershipPathFor(tier) : `${membershipPathFor(tier)}?${MEMBERSHIP_SERVICES_PARAM}=${services.join(",")}`;
 }
 
 /** The plan's page. */

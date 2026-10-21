@@ -1,7 +1,7 @@
 import { BRANDBASKET_DEFAULT_CHOICE, offersChoice, type Brand } from "@/lib/brand";
 import { readJoinChoice, type JoinChoice } from "@/lib/join-form";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
+import { readBundleSelection, WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
 
 /*
  * The one entry page (/login): everyone signs in and everyone creates their account here (docs/superpowers/specs/
@@ -19,10 +19,19 @@ export const ENTRY_LEDE_SLOT_ID = "entry-lede-action";
 
 /** Opens the page on its Create account view. */
 const NEW_PARAM = "new";
-/** The add-ons the website's basket chose, comma separated: `digital-growth,local-seo-aeo`. */
+/** The older links' add-ons on top of the website, comma separated: `plan=managed&addons=digital-growth,local-seo-aeo`. */
 const ADDONS_PARAM = "addons";
-/** Opens the Create account view with a plan already chosen: the website links to `managed`. */
+/**
+ * Opens the Create account view with a plan already chosen: brandbasket-website's `signupHref` names the services in its
+ * basket (`plan=website,growth`), older links name `managed`.
+ */
 const PLAN_PARAM = "plan";
+/** What brandbasket-website calls each service in its links (its lib/pricing.ts), and the catalogue id it is here. */
+const WEBSITE_SERVICE_IDS: ReadonlyMap<string, MonthlyAddOnId> = new Map([
+  ["website", "managed-website"],
+  ["growth", "digital-growth"],
+  ["search", "local-seo-aeo"],
+]);
 /** What the address calls each plan: the database's `listing_only` is `free` here, so the link reads as the owner thinks of it. */
 const PLAN_PARAM_VALUES: Readonly<Record<JoinChoice, string>> = { listing_only: "free", managed: "managed" };
 
@@ -38,8 +47,11 @@ export interface EntryRequest {
   readonly choice: JoinChoice | null;
   /** The plan the question opens with already ticked, for a brand that has a default (Brandbasket: Managed Website); null ticks none. */
   readonly preselected: JoinChoice | null;
-  /** The add-ons the website's basket chose (`?addons=`), catalogue ids only: ticked on the plan's page after sign-up. */
-  readonly addOns: readonly MonthlyAddOnId[];
+  /**
+   * The services the website's basket chose, catalogue ids only, never empty: the whole subscription the plan's page opens
+   * on after sign-up. The website alone when the link names none.
+   */
+  readonly services: readonly MonthlyAddOnId[];
 }
 
 /**
@@ -61,24 +73,45 @@ export function readEntryRequest(params: SearchParams, brand: Brand): EntryReque
     view: asksToCreate ? "create" : "sign-in",
     choice,
     preselected: sellsFree ? null : BRANDBASKET_DEFAULT_CHOICE,
-    addOns: readBundleSelection([params[ADDONS_PARAM] ?? ""].flat().join(",").split(",")),
+    services: readLinkServices(params),
   };
 }
 
-/** The plan an address names (`free`, `care` or `premium`; the database's `listing_only` is read too), or null for anything else. */
+/** The services a plan parameter names in the website's words (`website,growth`), or none. */
+function namedServices(plan: string): readonly MonthlyAddOnId[] {
+  return readBundleSelection(plan.split(",").flatMap((id) => WEBSITE_SERVICE_IDS.get(id) ?? []));
+}
+
+/**
+ * The basket a sign-up link carries: the services its plan names, or for an older link the website plus the add-ons
+ * `addons=` lists. A link that names nothing known sells the website alone.
+ */
+function readLinkServices(params: SearchParams): readonly MonthlyAddOnId[] {
+  const named = namedServices(single(params[PLAN_PARAM]));
+  if (named.length > 0) return named;
+  const extras = [params[ADDONS_PARAM] ?? ""].flat().join(",").split(",");
+  return readBundleSelection([...WEBSITE_ALONE, ...extras]);
+}
+
+/**
+ * The plan an address names (`free` or `managed`; the database's `listing_only` is read too), or null for anything else.
+ * A list of the website's services is Managed Website: every service is bought on it.
+ */
 export function readPlanParam(value: string): JoinChoice | null {
   const named = (Object.keys(PLAN_PARAM_VALUES) as JoinChoice[]).find((choice) => PLAN_PARAM_VALUES[choice] === value);
-  return named ?? readJoinChoice(value);
+  if (named !== undefined) return named;
+  return namedServices(value).length > 0 ? "managed" : readJoinChoice(value);
 }
 
 /**
  * The entry page's address once the owner has continued with a plan: Create account plus the plan. With no plan (they went back to the plans) it is the Create account address again.
+ * A plan that names the website's services is kept for Managed Website, so a reload still carries the basket.
  */
 export function entryHrefForPlan(search: string, choice: JoinChoice | null): string {
   const query = new URLSearchParams(search);
   query.set(NEW_PARAM, "1");
   if (choice === null) query.delete(PLAN_PARAM);
-  else query.set(PLAN_PARAM, PLAN_PARAM_VALUES[choice]);
+  else if (choice !== "managed" || namedServices(query.get(PLAN_PARAM) ?? "").length === 0) query.set(PLAN_PARAM, PLAN_PARAM_VALUES[choice]);
   return `${ENTRY_PATH}?${query.toString()}`;
 }
 

@@ -24,7 +24,7 @@ const UNKNOWN_PLAN_MESSAGE = "We couldn't tell which plan that was. Reload the p
 
 /**
  * Buy Managed Website: starts its first payment. What is read from the posted form is which plan's page the
- * button was on, and which add-ons were ticked to go in the same payment; both are checked here; whether this business may pay, and what for, is decided on the server
+ * button was on, and which services the payment is for; both are checked here; whether this business may pay, and what for, is decided on the server
  * in startMembershipCheckoutFor. On success the owner is sent to the provider's checkout, and the payment's
  * confirmation opens the membership.
  */
@@ -33,10 +33,10 @@ export async function startMembership(_previous: MembershipFormState, formData: 
   if (tier === null) return { status: "error", message: UNKNOWN_PLAN_MESSAGE };
   if (!offersChoice(await requestBrand(), tier)) return { status: "error", message: UNKNOWN_PLAN_MESSAGE };
   const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
-  // The add-ons ticked on the page are paid in this same payment. Only catalogue ids survive the read; what each costs,
-  // and whether the offer still stands, is decided on the server in startMembershipCheckoutFor.
-  const addOns = readBundleSelection(formData.getAll("addOn").filter((value): value is string => typeof value === "string"));
-  const outcome = await startMembershipCheckoutFor(customer, new Date(), tier, addOns);
+  // The services on the page are the whole subscription. Only catalogue ids survive the read; what each costs, and whether
+  // they are a package, is decided on the server in startMembershipCheckoutFor.
+  const services = readBundleSelection(formData.getAll("service").filter((value): value is string => typeof value === "string"));
+  const outcome = await startMembershipCheckoutFor(customer, new Date(), tier, services);
   if (outcome.kind === "refused") return { status: "error", message: outcome.problem.message };
   redirect(outcome.url);
 }

@@ -12,7 +12,7 @@ import {
   membershipPriceParts,
   orderSummary,
   membershipFailedHref,
-  membershipHrefWithAddOns,
+  membershipHrefWithServices,
   membershipPathFor,
   membershipPriceLine,
   membershipReceivedHref,
@@ -189,9 +189,9 @@ describe("the plan list under Brandbasket", () => {
   });
 });
 
-describe("membershipHrefWithAddOns", () => {
-  it("is the plan's page, carrying the add-ons chosen on the website when there are any", () => {
-    expect(membershipHrefWithAddOns("managed", [])).toBe("/plan");
-    expect(membershipHrefWithAddOns("managed", ["digital-growth", "local-seo-aeo"])).toBe("/plan?addons=digital-growth,local-seo-aeo");
+describe("membershipHrefWithServices", () => {
+  it("is the plan's page, carrying the services chosen on the website when there are any", () => {
+    expect(membershipHrefWithServices("managed", [])).toBe("/plan");
+    expect(membershipHrefWithServices("managed", ["digital-growth", "local-seo-aeo"])).toBe("/plan?services=digital-growth,local-seo-aeo");
   });
 });

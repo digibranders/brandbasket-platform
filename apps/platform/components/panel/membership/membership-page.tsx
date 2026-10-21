@@ -11,7 +11,8 @@ import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
 import {
   MEMBER_HOME,
   isWaitingOnPayment,
-  membershipHrefWithAddOns,
+  MEMBERSHIP_SERVICES_PARAM,
+  membershipHrefWithServices,
   orderSummary,
   readMembershipPaymentNotice,
   type MembershipTier,
@@ -21,18 +22,22 @@ import { loadMembershipCheckout } from "@/lib/server/membership-checkout";
 import { requestBrand } from "@/lib/server/request-brand";
 import { chooseFreeListing, startMembership } from "@/app/app-host/(protected)/plan/actions";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { bundleLines, readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
+import { bundleLines, readBundleSelection, WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
 
 interface MembershipPageProps {
   readonly tier: MembershipTier;
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;
 }
 
-/** The add-ons named in the address (`?addons=digital-growth,local-seo-aeo`), as catalogue ids only. */
-function readSelectedAddOns(params: Readonly<Record<string, string | string[] | undefined>>): readonly MonthlyAddOnId[] {
-  const raw = params.addons;
+/**
+ * The services named in the address (`?services=managed-website,digital-growth`), as catalogue ids only: the whole
+ * subscription being bought. The website alone when it names none.
+ */
+function readSelectedServices(params: Readonly<Record<string, string | string[] | undefined>>): readonly MonthlyAddOnId[] {
+  const raw = params[MEMBERSHIP_SERVICES_PARAM];
   const text = Array.isArray(raw) ? raw.join(",") : (raw ?? "");
-  return readBundleSelection(text.split(","));
+  const named = readBundleSelection(text.split(","));
+  return named.length === 0 ? WEBSITE_ALONE : named;
 }
 
 /**
@@ -67,10 +72,10 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   // Only an account with something to pay is shown the summary and the Pay button: one whose payment is on its way, or under
   // review, is told so by the checkout instead.
   const payable = plan !== null && !waiting && !billing.paymentUnderReview;
-  // The add-ons are ticked in the address, so they survive applying a code and a reload, and are paid with the plan. Only
-  // while the offer stands: the same rule the server applies when the payment opens.
-  const selected = view.offer.kind === "available" ? readSelectedAddOns(params) : [];
-  const pageHref = (selection: readonly MonthlyAddOnId[]): string => membershipHrefWithAddOns(tier, selection);
+  // The services are named in the address, so they survive applying a code and a reload, and are paid together. A business
+  // that has paid before takes the website alone: the same rule the server applies when the payment opens.
+  const selected = view.offer.kind === "available" ? readSelectedServices(params) : WEBSITE_ALONE;
+  const pageHref = (selection: readonly MonthlyAddOnId[]): string => membershipHrefWithServices(tier, selection);
   const lines = plan === null ? [] : bundleLines(selected, plan.currency);
   const paying = payable ? orderSummary(plan, view.discount?.amountCents ?? 0, lines) : null;
 
@@ -113,7 +118,7 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
       {paying === null ? null : (
         <div className="pointer-events-none sticky bottom-0 z-10 pb-4 lg:hidden">
           <div className="pointer-events-auto [&_button]:shadow-[0_10px_28px_-10px_rgb(20_20_30/0.55)]">
-            <MembershipPayForm action={startMembership} amount={formatMoney(paying.totalCents, plan?.currency ?? "INR")} tier={tier} addOns={selected} />
+            <MembershipPayForm action={startMembership} amount={formatMoney(paying.totalCents, plan?.currency ?? "INR")} tier={tier} services={selected} />
           </div>
         </div>
       )}
