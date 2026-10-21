@@ -65,3 +65,11 @@ export function packageLines(input: PackageInput, currency: MoneyCurrency): Pack
 export function adCreditCentsFor(services: readonly MonthlyAddOnId[], currency: MoneyCurrency): number {
   return offerFor(services)?.adCreditCents[currency] ?? 0;
 }
+
+/**
+ * The ad credit a checkout freezes onto the subscription: the package's own credit for a business that has never paid and
+ * has not given the offer up, otherwise 0. The one rule the checkout and the page that quotes it both read.
+ */
+export function adCreditCentsAtCheckout(input: PackageInput & { readonly hasEverPaid: boolean }, currency: MoneyCurrency): number {
+  return input.hasEverPaid || input.forfeited ? 0 : adCreditCentsFor(input.services, currency);
+}

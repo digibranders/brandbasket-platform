@@ -9,6 +9,7 @@ import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import { SectionHeading, Surface } from "@brandbasket/shared/ui/panel/surface";
 import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { paymentReturnView, readPaymentReturn } from "@brandbasket/shared/lib/billing/payment-return";
+import { websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import { planLabel } from "@brandbasket/shared/lib/billing/receipt-title";
 import { describePlanTerms, monthlyPaymentAmount } from "@brandbasket/shared/lib/billing/terms";
 import { firstIncompleteStep, onboardingStepHref } from "@brandbasket/shared/lib/onboarding/steps";
@@ -246,8 +247,8 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
         ) : lapsed && reactivationPlan !== null ? (
           <ReactivatePlan
             planName={planLabel(reactivationPlan.name)}
-            monthlyAmount={monthlyPaymentAmount(reactivationPlan)}
-            priceNote={priceNote(reactivationPlan, 0)}
+            monthlyAmount={monthlyPaymentAmount(reactivationPlan, websiteAloneNetCents(reactivationPlan.currency))}
+            priceNote={priceNote(reactivationPlan, 0, websiteAloneNetCents(reactivationPlan.currency))}
             action={reactivateAction}
           />
         ) : lapsed || plan === null || subscription === null ? (

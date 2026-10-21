@@ -54,6 +54,7 @@ import {
   MAX_MANUAL_REFERENCE_LENGTH,
 } from "@brandbasket/shared/lib/billing/manual-payment-form";
 import { MANUAL_PAYMENT_NOTICES, readManualPaymentNotice } from "@brandbasket/shared/lib/billing/manual-payment-notices";
+import { websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import { firstPaymentAmount, initialTermPhrase, monthlyPaymentAmount } from "@brandbasket/shared/lib/billing/terms";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
 import { isPlacementField } from "@brandbasket/shared/lib/directory/placement-form";
@@ -305,7 +306,8 @@ interface ManualPaymentFormProps {
 
 function ManualPaymentForm({ businessId, plan, reactivating }: ManualPaymentFormProps): ReactElement {
   // Exactly what recordManualFirstPayment records, so the box staff tick names the money that must have arrived.
-  const amount = reactivating ? monthlyPaymentAmount(plan) : firstPaymentAmount(plan);
+  const websiteCents = websiteAloneNetCents(plan.currency);
+  const amount = reactivating ? monthlyPaymentAmount(plan, websiteCents) : firstPaymentAmount(plan, websiteCents);
   return (
     <form action={recordManualPaymentAction} className="mt-8 border-t border-line pt-6">
       <h3 className="font-serif text-xl">{reactivating ? "Reactivate with a manual payment" : "Record a manual payment"}</h3>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bundleLines, bundleNetCents, nextBundledNetCents, readBundleSelection } from "./bundle";
+import { bundleLines, bundleNetCents, nextBundledNetCents, readBundleSelection, websiteAloneNetCents } from "./bundle";
 
 describe("readBundleSelection", () => {
   it("keeps catalogue ids once each, in the catalogue's order", () => {
@@ -44,5 +44,12 @@ describe("nextBundledNetCents", () => {
     expect(nextBundledNetCents({ bundledAddOnNetCents: 759_810, pendingBundledAddOnNetCents: 569_905 })).toBe(569_905);
     expect(nextBundledNetCents({ bundledAddOnNetCents: 759_810, pendingBundledAddOnNetCents: null })).toBe(759_810);
     expect(nextBundledNetCents({ bundledAddOnNetCents: 189_905, pendingBundledAddOnNetCents: 0 })).toBe(0);
+  });
+});
+
+describe("websiteAloneNetCents", () => {
+  it("is the website's list price in each currency", () => {
+    expect(websiteAloneNetCents("INR")).toBe(300_000);
+    expect(websiteAloneNetCents("USD")).toBe(7_500);
   });
 });

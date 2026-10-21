@@ -147,6 +147,25 @@ export async function findLapsedAppliedCode(businessId: string, basis: CodeBasis
 }
 
 /**
+ * The code a business applied that still works but is on a package, which never takes one: the checkout refuses to open
+ * (PACKAGE_TAKES_NO_CODE), so the page shows the code with a way to remove it. Null when none is applied, when it no longer
+ * works anyway, or when the basket is not a package.
+ */
+export async function findCodeRefusedOnPackage(
+  businessId: string,
+  services: readonly MonthlyAddOnId[],
+  currency: MoneyCurrency,
+  now: Date,
+): Promise<string | null> {
+  if (services.length < 2) return null;
+  const staffDb = getStaffDb();
+  const applied = await findBusinessReferralCode(staffDb, businessId);
+  if (applied === null) return null;
+  const redeemable = await findRedeemableReferralCode(staffDb, { code: applied.code, currency, now });
+  return redeemable === null ? null : applied.code;
+}
+
+/**
  * Applies a code the customer typed on Check and send or on the plan's page, for the basket of services it would pay for.
  * Refused once the business has paid: from then on the subscription's own frozen discount decides the money, and
  * changing it here would only mislead. Refused on a package of two or more services, which never takes a code.

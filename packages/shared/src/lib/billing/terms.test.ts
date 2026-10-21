@@ -205,3 +205,18 @@ describe("monthlyPaymentAmount", () => {
     expect(monthlyPaymentAmount({ recurringAmountCents: 6_900, currency: "USD", taxRateBasisPoints: 0 })).toBe("$69");
   });
 });
+
+describe("a plan that costs nothing, with its services as lines", () => {
+  const SERVICES_PLAN: PlanTerms = { ...INR, initialAmountCents: 0, recurringAmountCents: 0 };
+
+  it("charges the first payment and a month from the services' net, with the plan's GST", () => {
+    // The website at ₹3,000 plus 18% GST.
+    expect(firstPaymentAmount(SERVICES_PLAN, 300_000)).toBe("₹3,540");
+    expect(monthlyPaymentAmount(SERVICES_PLAN, 300_000)).toBe("₹3,540");
+  });
+
+  it("refuses to price a plan that costs nothing and has no services", () => {
+    expect(() => firstPaymentAmount(SERVICES_PLAN)).toThrow(RangeError);
+    expect(() => monthlyPaymentAmount(SERVICES_PLAN)).toThrow(RangeError);
+  });
+});

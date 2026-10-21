@@ -1,6 +1,7 @@
 import { chargedAmountCents } from "@brandbasket/billing/tax";
-import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { bundleNetCents, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
+import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import type { BundleLine } from "@brandbasket/shared/lib/billing/bundle";
+import { adCreditCentsAtCheckout, packageBasisPointsFor, packageLines } from "@brandbasket/shared/lib/billing/packages";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { BRAND, featureShownTo, type Brand } from "@/lib/brand";
 import { featuresOf, MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
@@ -32,6 +33,15 @@ export const MEMBERSHIP_SERVICES_PARAM = "services";
  */
 export function membershipHrefWithServices(tier: MembershipTier, services: readonly MonthlyAddOnId[]): string {
   return services.length === 0 ? membershipPathFor(tier) : `${membershipPathFor(tier)}?${MEMBERSHIP_SERVICES_PARAM}=${services.join(",")}`;
+}
+
+/**
+ * The basket after a service is ticked or taken out, in the catalogue's order. The last service stays: a subscription is
+ * never empty, so taking it out changes nothing.
+ */
+export function servicesAfterToggle(selected: readonly MonthlyAddOnId[], service: MonthlyAddOnId): readonly MonthlyAddOnId[] {
+  const next = MONTHLY_ADD_ON_IDS.filter((id) => (id === service ? !selected.includes(id) : selected.includes(id)));
+  return next.length === 0 ? selected : next;
 }
 
 /** The plan's page. */
@@ -81,11 +91,11 @@ export function readMembershipCallbackTier(value: string | null): MembershipTier
 export const MEMBERSHIP_NAMES: Readonly<Record<MembershipTier, string>> = { managed: "Managed Website" };
 
 /**
- * What a plan includes, in the order the website's comparison table lists it (lib/plan-features.ts). Short lines: the
- * page shows them as a list, and the dashboard has no room for paragraphs.
+ * What the managed-website line includes, in the order the website's comparison table lists it (lib/plan-features.ts).
+ * Short lines: the page shows them as a list, and the dashboard has no room for paragraphs.
  */
-export function membershipBenefits(tier: MembershipTier, brand: Brand = BRAND): readonly string[] {
-  return featuresOf(tier).filter((feature) => featureShownTo(feature.id, brand)).map((feature) => feature.label);
+export function membershipBenefits(services: readonly MonthlyAddOnId[], brand: Brand = BRAND): readonly string[] {
+  return featuresOf(services).filter((feature) => featureShownTo(feature.id, brand)).map((feature) => feature.label);
 }
 
 /** The heading the payment page sorts what the plan holds under. */
@@ -96,9 +106,9 @@ export interface BenefitGroup {
   readonly items: readonly string[];
 }
 
-/** What the plan includes, under its one heading. */
-export function groupedBenefits(tier: MembershipTier, brand: Brand = BRAND): readonly BenefitGroup[] {
-  const items = membershipBenefits(tier, brand);
+/** What the basket's website allowances include, under its one heading; none without the managed-website line. */
+export function groupedBenefits(services: readonly MonthlyAddOnId[], brand: Brand = BRAND): readonly BenefitGroup[] {
+  const items = membershipBenefits(services, brand);
   return items.length === 0 ? [] : [{ name: "Website", items }];
 }
 
@@ -135,43 +145,77 @@ export function membershipPriceParts(
   };
 }
 
+/** The package offer on the basket, named for the summary: "Package offer, 30% off", and what it takes off before GST. */
+export interface PackageOfferRow {
+  readonly label: string;
+  readonly discountCents: number;
+}
+
+/** The ad credit the checkout would freeze, as the summary words it: "We add ₹5,000 a month to your ads". */
+export interface AdCreditRow {
+  readonly cents: number;
+  readonly label: string;
+}
+
 /** What today's payment is made of, in the plan's minor units, for the order summary beside the Pay button. */
 export interface OrderSummary {
-  /** The plan's price before any code. */
-  readonly listCents: number;
-  /** What the applied code takes off the plan, or 0. */
+  /** One line per service, each with its list price, its package discount and its net, in the catalogue's order. */
+  readonly lines: readonly BundleLine[];
+  /** The package offer taken off the lines, or null when there is none (one service, or the offer given up). */
+  readonly offer: PackageOfferRow | null;
+  /** What the applied code takes off the one service, or 0. A package never has one. */
   readonly discountCents: number;
-  /** The plan's price less the code: the plan's own taxable line. */
-  readonly planNetCents: number;
-  /** The add-ons taken at this checkout, with any package discount, billed in this same payment. */
-  readonly addOns: readonly BundleLine[];
-  /** The taxable amount of the whole payment: the plan less the code, plus the add-ons. */
+  /** The taxable amount of the whole payment: the lines' nets less the code. */
   readonly netCents: number;
   readonly gstCents: number;
   /** What the provider takes today: the same figure the Pay button shows and the checkout freezes. */
   readonly totalCents: number;
+  /** The monthly ad credit this checkout would freeze, or null when it freezes none. */
+  readonly adCredit: AdCreditRow | null;
+}
+
+/** The basket and the business facts the checkout prices it with: the same inputs, so the page quotes what Razorpay will charge. */
+export interface OrderSummaryInput {
+  readonly services: readonly MonthlyAddOnId[];
+  readonly currency: MoneyCurrency;
+  readonly taxRateBasisPoints: number;
+  /** The business has given the package offer up for good (businesses.package_offer_forfeited_at). */
+  readonly forfeited: boolean;
+  /** The business has paid before: it earns no ad credit. */
+  readonly hasEverPaid: boolean;
 }
 
 /**
- * The first payment broken into its parts: the plan, a code, the add-ons taken with it, the GST and the total. The total
- * comes from chargedAmountCents, the one place the charge is worked out, over the plan's price plus the add-ons' nets.
+ * The first payment broken into its parts, worked out with the functions checkout uses: the lines and the package offer
+ * from packageLines, the ad credit from adCreditCentsAtCheckout and the total from chargedAmountCents over the lines'
+ * nets less the code. The plan row itself costs nothing, so the lines are the whole charge. Throws on an empty basket and
+ * on a code with a package, which checkout refuses too.
  */
-export function orderSummary(
-  plan: { readonly initialAmountCents: number; readonly taxRateBasisPoints: number },
-  discountCents: number,
-  addOns: readonly BundleLine[] = [],
-): OrderSummary {
-  const bundledCents = bundleNetCents(addOns);
-  const netCents = plan.initialAmountCents + bundledCents - discountCents;
-  const totalCents = chargedAmountCents(plan.initialAmountCents + bundledCents, discountCents, plan.taxRateBasisPoints);
+export function orderSummary(input: OrderSummaryInput, discountCents: number): OrderSummary {
+  const { services, currency, taxRateBasisPoints, forfeited, hasEverPaid } = input;
+  const priced = packageLines({ services, forfeited }, currency);
+  if (priced.length === 0) throw new RangeError("An order needs at least one service");
+  if (discountCents > 0 && priced.length > 1) throw new RangeError("A code applies to one service, never to a package");
+  const lines: readonly BundleLine[] = priced.map((line) => ({
+    addOn: line.addOn,
+    title: addOnById(line.addOn).title,
+    listCents: line.listCents,
+    offerCents: line.offerCents,
+    netCents: line.netCents,
+  }));
+  const bundledCents = lines.reduce((total, line) => total + line.netCents, 0);
+  const totalCents = chargedAmountCents(bundledCents, discountCents, taxRateBasisPoints);
+  const netCents = bundledCents - discountCents;
+  const basisPoints = packageBasisPointsFor({ services, forfeited });
+  const adCreditCents = adCreditCentsAtCheckout({ services, forfeited, hasEverPaid }, currency);
   return {
-    listCents: plan.initialAmountCents,
+    lines,
+    offer: basisPoints === 0 ? null : { label: `Package offer, ${basisPoints / 100}% off`, discountCents: lines.reduce((total, line) => total + line.offerCents, 0) },
     discountCents,
-    planNetCents: plan.initialAmountCents - discountCents,
-    addOns,
     netCents,
     gstCents: totalCents - netCents,
     totalCents,
+    adCredit: adCreditCents === 0 ? null : { cents: adCreditCents, label: `We add ${formatMoney(adCreditCents, currency)} a month to your ads` },
   };
 }
 

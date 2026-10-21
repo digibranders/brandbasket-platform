@@ -1,5 +1,4 @@
 import { chargedAmountCents } from "@brandbasket/billing/tax";
-import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
 import { describe, expect, it } from "vitest";
 import { BRAND } from "./brand";
 import { LISTING_BRAND } from "./testing/listing-brand";
@@ -11,6 +10,7 @@ import {
   membershipBenefits,
   membershipPriceParts,
   orderSummary,
+  servicesAfterToggle,
   membershipFailedHref,
   membershipHrefWithServices,
   membershipPathFor,
@@ -88,7 +88,7 @@ describe("the plan's page", () => {
   });
 
   it("lists what Managed Website includes, starting with the free website", () => {
-    const benefits = membershipBenefits("managed", LISTING_BRAND);
+    const benefits = membershipBenefits(["managed-website"], LISTING_BRAND);
     expect(benefits[0]).toBe("Your business website, built free");
     expect(benefits).toContain("Hosting and SSL certificate");
     expect(benefits).toContain("2 small content edits a month, up to 30 minutes each");
@@ -98,9 +98,13 @@ describe("the plan's page", () => {
 
 describe("groupedBenefits", () => {
   it("puts everything the plan holds under one Website heading, in order, losing no line", () => {
-    const groups = groupedBenefits("managed", LISTING_BRAND);
+    const groups = groupedBenefits(["managed-website"], LISTING_BRAND);
     expect(groups.map((group) => group.name)).toEqual(["Website"]);
-    expect(groups[0]?.items).toEqual(membershipBenefits("managed", LISTING_BRAND));
+    expect(groups[0]?.items).toEqual(membershipBenefits(["managed-website"], LISTING_BRAND));
+  });
+
+  it("holds nothing when the managed-website line is not in the basket", () => {
+    expect(groupedBenefits(["digital-growth", "local-seo-aeo"], LISTING_BRAND)).toEqual([]);
   });
 });
 
@@ -120,37 +124,76 @@ describe("membershipPriceParts", () => {
 });
 
 describe("orderSummary", () => {
-  const managed = { initialAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
+  const inr = { currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false } as const;
+  const usd = { currency: "USD", taxRateBasisPoints: 0, forfeited: false, hasEverPaid: false } as const;
 
-  it("works out today's payment: the price, any code, the GST and the total the provider takes", () => {
-    expect(orderSummary(managed, 0)).toEqual({ listCents: 299_900, discountCents: 0, planNetCents: 299_900, addOns: [], netCents: 299_900, gstCents: 53_982, totalCents: 353_882 });
-    expect(orderSummary(managed, 30_000)).toEqual({ listCents: 299_900, discountCents: 30_000, planNetCents: 269_900, addOns: [], netCents: 269_900, gstCents: 48_582, totalCents: 318_482 });
+  it("is one line at list for the website alone: no offer, no ad credit, GST on top", () => {
+    const summary = orderSummary({ ...inr, services: ["managed-website"] }, 0);
+    expect(summary.lines).toEqual([{ addOn: "managed-website", title: "Managed Website", listCents: 300_000, offerCents: 0, netCents: 300_000 }]);
+    expect(summary).toMatchObject({ offer: null, adCredit: null, discountCents: 0, netCents: 300_000, gstCents: 54_000, totalCents: 354_000 });
   });
 
-  it("charges no tax on a plan that carries none", () => {
-    expect(orderSummary({ ...managed, taxRateBasisPoints: 0 }, 0)).toMatchObject({ gstCents: 0, totalCents: 299_900 });
+  it("lists a line for each service with its list price, then the package offer and the net", () => {
+    const summary = orderSummary({ ...inr, services: ["managed-website", "digital-growth"] }, 0);
+    expect(summary.lines.map((line) => [line.addOn, line.title, line.listCents, line.netCents])).toEqual([
+      ["managed-website", "Managed Website", 300_000, 240_000],
+      ["digital-growth", "Social Media and Ads", 1_000_000, 800_000],
+    ]);
+    expect(summary.offer).toEqual({ label: "Package offer, 20% off", discountCents: 260_000 });
+    expect(summary).toMatchObject({ netCents: 1_040_000, gstCents: 187_200, totalCents: 1_227_200 });
   });
 
-  it("adds the add-ons taken at this checkout to the one payment, with the GST on all of it", () => {
-    const summary = orderSummary(managed, 0, bundleLines(["digital-growth"], "INR"));
-    expect(summary.addOns.map((line) => line.addOn)).toEqual(["digital-growth"]);
-    expect(summary.addOns[0]).toMatchObject({ listCents: 1_000_000, offerCents: 0, netCents: 1_000_000 });
-    expect(summary.netCents).toBe(299_900 + 1_000_000);
-    expect(summary.totalCents).toBe(chargedAmountCents(299_900 + 1_000_000, 0, 1800));
-    expect(summary.gstCents).toBe(summary.totalCents - summary.netCents);
-    expect(summary.planNetCents).toBe(299_900);
+  it("names 30% off for three services, and the total is the sum of the lines' nets with GST", () => {
+    const summary = orderSummary({ ...inr, services: ["local-seo-aeo", "managed-website", "digital-growth"] }, 0);
+    expect(summary.lines.map((line) => line.addOn)).toEqual(["managed-website", "digital-growth", "local-seo-aeo"]);
+    expect(summary.offer?.label).toBe("Package offer, 30% off");
+    expect(summary.totalCents).toBe(chargedAmountCents(summary.lines.reduce((sum, line) => sum + line.netCents, 0), 0, 1800));
+    expect(summary.totalCents).toBe(3_138_800);
   });
 
-  it("prices a dollar plan with dollar add-ons and no tax: $75 and $75", () => {
-    const usd = { initialAmountCents: 7_500, currency: "USD", taxRateBasisPoints: 0 } as const;
-    const summary = orderSummary(usd, 0, bundleLines(["digital-growth"], "USD"));
-    expect(summary).toMatchObject({ planNetCents: 7_500, netCents: 7_500 + 7_500, gstCents: 0, totalCents: 15_000 });
+  it("shows the ad credit only when the basket earns one and the checkout would freeze it", () => {
+    const all = ["managed-website", "digital-growth", "local-seo-aeo"] as const;
+    expect(orderSummary({ ...inr, services: all }, 0).adCredit).toEqual({ cents: 500_000, label: "We add ₹5,000 a month to your ads" });
+    expect(orderSummary({ ...inr, services: ["managed-website", "digital-growth"] }, 0).adCredit?.label).toBe("We add ₹2,000 a month to your ads");
+    expect(orderSummary({ ...inr, services: ["managed-website", "local-seo-aeo"] }, 0).adCredit).toBeNull();
+    expect(orderSummary({ ...inr, services: ["digital-growth"] }, 0).adCredit).toBeNull();
+    expect(orderSummary({ ...inr, services: all, hasEverPaid: true }, 0).adCredit).toBeNull();
+    expect(orderSummary({ ...inr, services: all, forfeited: true }, 0).adCredit).toBeNull();
   });
 
-  it("takes a code off the plan only, never off the add-ons", () => {
-    const summary = orderSummary(managed, 30_000, bundleLines(["local-seo-aeo"], "INR"));
-    expect(summary.netCents).toBe(299_900 - 30_000 + 2_500_000);
-    expect(summary.planNetCents).toBe(269_900);
+  it("charges list prices and names no offer once the business has given the package offer up", () => {
+    const summary = orderSummary({ ...inr, services: ["managed-website", "digital-growth"], forfeited: true }, 0);
+    expect(summary.offer).toBeNull();
+    expect(summary.lines.map((line) => line.netCents)).toEqual([300_000, 1_000_000]);
+    expect(summary.totalCents).toBe(chargedAmountCents(1_300_000, 0, 1800));
+  });
+
+  it("prices dollars the same way, with no GST: $350 for all three", () => {
+    const summary = orderSummary({ ...usd, services: ["managed-website", "digital-growth", "local-seo-aeo"] }, 0);
+    expect(summary.offer).toEqual({ label: "Package offer, 30% off", discountCents: 15_000 });
+    expect(summary).toMatchObject({ netCents: 35_000, gstCents: 0, totalCents: 35_000 });
+    expect(summary.adCredit?.label).toBe("We add $60 a month to your ads");
+  });
+
+  it("takes a code off the one service before GST", () => {
+    const summary = orderSummary({ ...inr, services: ["managed-website"] }, 30_000);
+    expect(summary).toMatchObject({ discountCents: 30_000, netCents: 270_000, totalCents: chargedAmountCents(300_000, 30_000, 1800) });
+  });
+
+  it("refuses a code on a package, and a basket of no service", () => {
+    expect(() => orderSummary({ ...inr, services: ["managed-website", "digital-growth"] }, 30_000)).toThrow(RangeError);
+    expect(() => orderSummary({ ...inr, services: [] }, 0)).toThrow(RangeError);
+  });
+});
+
+describe("servicesAfterToggle", () => {
+  it("adds a service that is not in the basket and takes out one that is, in the catalogue's order", () => {
+    expect(servicesAfterToggle(["digital-growth"], "managed-website")).toEqual(["managed-website", "digital-growth"]);
+    expect(servicesAfterToggle(["managed-website", "digital-growth"], "managed-website")).toEqual(["digital-growth"]);
+  });
+
+  it("never empties the basket: the last service stays", () => {
+    expect(servicesAfterToggle(["local-seo-aeo"], "local-seo-aeo")).toEqual(["local-seo-aeo"]);
   });
 });
 
@@ -180,10 +223,10 @@ describe("isWaitingOnPayment", () => {
 
 describe("the plan list under Brandbasket", () => {
   it("is the same list for the product as for a brand that sells the listing, since none of it is about the listing", () => {
-    const brandbasket = membershipBenefits("managed", BRAND);
-    expect(brandbasket).toEqual(membershipBenefits("managed", LISTING_BRAND));
+    const brandbasket = membershipBenefits(["managed-website"], BRAND);
+    expect(brandbasket).toEqual(membershipBenefits(["managed-website"], LISTING_BRAND));
     expect(brandbasket.join(" ").toLowerCase()).not.toContain("listing");
-    for (const line of [...brandbasket, ...groupedBenefits("managed", BRAND).flatMap((group) => group.items)]) {
+    for (const line of [...brandbasket, ...groupedBenefits(["managed-website"], BRAND).flatMap((group) => group.items)]) {
       expect(line).not.toMatch(/first\s?fold/i);
     }
   });

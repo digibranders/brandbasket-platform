@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAINTENANCE_INCLUDED, WEBSITE_INCLUDED } from "./checkout-included";
+import { MAINTENANCE_INCLUDED, MANAGED_WEBSITE_INCLUDED, WEBSITE_INCLUDED } from "./checkout-included";
 
 describe("what the checkout lists as included", () => {
   it("lists the website's six points and the maintenance's five, each with its own icon", () => {
@@ -20,6 +20,10 @@ describe("what the checkout lists as included", () => {
     ]);
     const icons = [...WEBSITE_INCLUDED, ...MAINTENANCE_INCLUDED].map((item) => item.icon);
     expect(new Set(icons).size).toBe(icons.length);
+  });
+
+  it("lists the Managed Website line's inclusions as the website's points then the maintenance's", () => {
+    expect(MANAGED_WEBSITE_INCLUDED).toEqual([...WEBSITE_INCLUDED, ...MAINTENANCE_INCLUDED]);
   });
 
   it("uses no dashes as punctuation and no exclamation marks", () => {

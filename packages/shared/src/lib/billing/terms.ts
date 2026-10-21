@@ -40,17 +40,21 @@ function taxRateLabel(taxRateBasisPoints: number): string {
 /**
  * What the first payment actually takes, tax included, formatted in the plan's currency: "$69", or "₹3,538.82"
  * for ₹2,999 plus GST. This is the figure a Pay button must show, because it is the figure the provider charges.
+ * `bundledAddOnNetCents` is the services billed as lines on top of the plan's own price (0 for the services plan).
  */
-export function firstPaymentAmount(plan: PricedPlan): string {
-  return formatMoney(chargedAmountCents(plan.initialAmountCents, 0, plan.taxRateBasisPoints), plan.currency);
+export function firstPaymentAmount(plan: PricedPlan, bundledAddOnNetCents = 0): string {
+  return formatMoney(chargedAmountCents(plan.initialAmountCents + bundledAddOnNetCents, 0, plan.taxRateBasisPoints), plan.currency);
 }
 
 /**
  * What a month at the plan's price takes, tax included and with no discount, formatted: what a reactivation records
  * (docs/superpowers/specs/2026-10-09-reactivation-design.md). "₹11,798.82" for ₹9,999 plus GST.
  */
-export function monthlyPaymentAmount(plan: Pick<Plan, "recurringAmountCents" | "currency" | "taxRateBasisPoints">): string {
-  return formatMoney(chargedAmountCents(plan.recurringAmountCents, 0, plan.taxRateBasisPoints), plan.currency);
+export function monthlyPaymentAmount(
+  plan: Pick<Plan, "recurringAmountCents" | "currency" | "taxRateBasisPoints">,
+  bundledAddOnNetCents = 0,
+): string {
+  return formatMoney(chargedAmountCents(plan.recurringAmountCents + bundledAddOnNetCents, 0, plan.taxRateBasisPoints), plan.currency);
 }
 
 /**

@@ -25,7 +25,7 @@ import {
 import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
-import { adCreditCentsFor, packageLines } from "@brandbasket/shared/lib/billing/packages";
+import { adCreditCentsAtCheckout, packageLines } from "@brandbasket/shared/lib/billing/packages";
 import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF, REACTIVATE_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { firstMissing, onboardingChecklist } from "@brandbasket/shared/lib/onboarding/checklist";
 import { MEMBER_HOME } from "@/lib/membership";
@@ -93,7 +93,7 @@ interface PlannedCheckout {
    */
   readonly bundle: readonly NewBundledAddOn[];
   /**
-   * Ad credit a month for a package bought together at the business's first paid checkout (adCreditCentsFor), frozen onto
+   * Ad credit a month for a package bought together at the business's first paid checkout (adCreditCentsAtCheckout), frozen onto
    * the subscription; 0 for anyone who has paid before or given the offer up.
    */
   readonly adCreditCents: number;
@@ -341,7 +341,7 @@ async function openPlanCheckout(
       taxRateBasisPoints: plan.taxRateBasisPoints,
     }));
     // Ad credit is for services bought together at the first purchase: never for a business that has paid before.
-    const adCreditCents = state.hasEverPaid || forfeited ? 0 : adCreditCentsFor(services, plan.currency);
+    const adCreditCents = adCreditCentsAtCheckout({ services, forfeited, hasEverPaid: state.hasEverPaid }, plan.currency);
     const latestBundleKey =
       state.subscription === null ? "" : bundleKey((await findBundledAddOnsForSubscription(tx, state.subscription.id)).filter((row) => row.status === "pending").map((row) => row.addOn));
     const decision = decideCheckout(

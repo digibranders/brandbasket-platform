@@ -23,10 +23,9 @@ interface PlanSummaryProps {
 /** Under the plan's name: the net price and its tax for a taxed plan, otherwise what the plan is. */
 export function priceNote(plan: Plan, discountAmountCents: number, bundledAddOnNetCents = 0): string {
   const discounted = discountAmountCents > 0 ? " Includes your discount." : "";
-  const addOns = bundledAddOnNetCents > 0 ? " Includes your add-ons." : "";
-  if (plan.taxRateBasisPoints === 0) return `Design, hosting and care for your website.${discounted}${addOns}`;
+  if (plan.taxRateBasisPoints === 0) return `Design, hosting and care for your website.${discounted}`;
   const net = formatMoney(plan.recurringAmountCents + bundledAddOnNetCents - discountAmountCents, plan.currency);
-  return `${net} a month plus ${plan.taxRateBasisPoints / 100}% GST.${discounted}${addOns}`;
+  return `${net} a month plus ${plan.taxRateBasisPoints / 100}% GST.${discounted}`;
 }
 
 /** What the bar's caption says about the next payment, which depends on how the plan is paid and whether it ends. */

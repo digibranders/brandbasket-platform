@@ -49,7 +49,7 @@ export const ADD_ONS: readonly AddOn[] = [
     // The id predates the name: database checks, existing rows and links use it.
     id: "digital-growth",
     title: "Social Media and Ads",
-    line: "Instagram and Facebook run for you with 12 designed posts a month, captions and scheduling; your Google Business Profile kept active with 8 posts a month and review replies; and Meta ads managed for up to ₹10,000 a month of your budget.",
+    line: "Instagram, Facebook and Google profile posts planned with you each month, review replies, and Meta ads managed for up to ₹10,000 a month of your budget.",
     billing: "monthly",
     prices: { INR: 10_000 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",

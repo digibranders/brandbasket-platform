@@ -1,6 +1,6 @@
 /**
- * What each part of the Managed Website payment includes, as the order summary's two "What's included" dropdowns list it:
- * the website (built free) and the monthly management (what the plan's price pays for). Each line has the icon drawn beside it
+ * What the Managed Website line includes, as the order summary's "What's included" dropdown lists it: the website (built
+ * free) and the monthly management (what the line's price pays for). Each item has the icon drawn beside it
  * (components/panel/membership/included-list.tsx).
  */
 
@@ -38,3 +38,6 @@ export const MAINTENANCE_INCLUDED: readonly IncludedItem[] = [
   { icon: "updates", text: "2 small content edits a month" },
   { icon: "report", text: "Monthly health report" },
 ];
+
+/** Everything the Managed Website line pays for, the website's points then the monthly management's. */
+export const MANAGED_WEBSITE_INCLUDED: readonly IncludedItem[] = [...WEBSITE_INCLUDED, ...MAINTENANCE_INCLUDED];

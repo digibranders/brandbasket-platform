@@ -1,3 +1,5 @@
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+
 /*
  * What Managed Website includes, from the plans document's Plan A (docs/plans/11-platform-plans.md in the BrandBasket
  * workspace): the one list the payment page and the client's Home read. Browser-safe and pure.
@@ -29,8 +31,10 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
   { id: "chatbot", label: "OyeChats professional chatbot" },
 ];
 
-/** What a plan includes, in order. One plan, so this is the whole list. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- one plan today; callers name it so a second plan needs no call changes
-export function featuresOf(_tier: MembershipTier): readonly PlanFeature[] {
-  return PLAN_FEATURES;
+/**
+ * What the website allowances are for a basket of services: the whole list when the basket holds the managed-website line,
+ * nothing when it does not. They follow the line, not the tier, since every service is a line on the subscription.
+ */
+export function featuresOf(services: readonly MonthlyAddOnId[]): readonly PlanFeature[] {
+  return services.includes("managed-website") ? PLAN_FEATURES : [];
 }

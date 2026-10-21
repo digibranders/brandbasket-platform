@@ -23,15 +23,12 @@ describe("services catalogue", () => {
     ]);
   });
 
-  it("says what Social Media and Ads does: Instagram and Facebook posts, the Google Business Profile and Meta ads", () => {
+  it("says what Social Media and Ads does: posts planned with the client, review replies and Meta ads, with no fixed post counts", () => {
     const { line } = addOnById("digital-growth");
-    expect(line).toContain("Instagram and Facebook");
-    expect(line).toContain("12 designed posts a month");
-    expect(line).toContain("captions and scheduling");
-    expect(line).toContain("Google Business Profile");
-    expect(line).toContain("8 posts a month and review replies");
-    expect(line).toContain("Meta ads");
-    expect(line).toContain("₹10,000 a month of your budget");
+    expect(line).toContain("Instagram, Facebook and Google profile posts planned with you each month");
+    expect(line).toContain("review replies");
+    expect(line).toContain("Meta ads managed for up to ₹10,000 a month of your budget");
+    expect(line).not.toMatch(/\d+ (designed )?posts/);
   });
 
   it("charges the website at 3,540 rupees a month with 18% GST", () => {

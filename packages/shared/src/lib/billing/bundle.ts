@@ -49,6 +49,14 @@ export function bundleNetCents(lines: readonly Pick<BundleLine, "netCents">[]): 
 }
 
 /**
+ * What the website alone nets a month at list, before GST: what a reactivation or a payment recorded by hand charges, since
+ * the plan row itself costs nothing.
+ */
+export function websiteAloneNetCents(currency: MoneyCurrency): number {
+  return bundleNetCents(bundleLines(WEBSITE_ALONE, currency));
+}
+
+/**
  * What the add-ons cost a month from the next renewal: the amount after any the customer has asked to remove have stopped,
  * or the current one when none are waiting. What the billing page says the next payment is, and what a plan change made now
  * must keep.

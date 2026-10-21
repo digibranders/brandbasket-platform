@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adCreditCentsFor, packageBasisPointsFor, packageDiscountCentsFor, packageLines } from "./packages";
+import { adCreditCentsAtCheckout, adCreditCentsFor, packageBasisPointsFor, packageDiscountCentsFor, packageLines } from "./packages";
 
 describe("package offers", () => {
   it.each([
@@ -48,5 +48,12 @@ describe("package offers", () => {
     [["managed-website", "local-seo-aeo"], "USD", 0],
   ] as const)("earns %o bought together ad credit in %s of %i a month", (services, currency, cents) => {
     expect(adCreditCentsFor(services, currency)).toBe(cents);
+  });
+
+  it("earns ad credit at checkout only for a business that has never paid and has not given the offer up", () => {
+    const services = ["managed-website", "digital-growth", "local-seo-aeo"] as const;
+    expect(adCreditCentsAtCheckout({ services, forfeited: false, hasEverPaid: false }, "INR")).toBe(500000);
+    expect(adCreditCentsAtCheckout({ services, forfeited: true, hasEverPaid: false }, "INR")).toBe(0);
+    expect(adCreditCentsAtCheckout({ services, forfeited: false, hasEverPaid: true }, "INR")).toBe(0);
   });
 });

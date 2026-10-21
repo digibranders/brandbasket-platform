@@ -2,13 +2,23 @@ import type { ReactElement } from "react";
 import type { AddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 
 /*
- * The offer card's pictures, drawn here so no image file or icon font is needed: each add-on's own mark. Decorative: hidden
+ * The package card's pictures, drawn here so no image file or icon font is needed: each service's own mark. Decorative: hidden
  * from screen readers, the words say the same thing.
  */
 
-/** Each add-on's own mark inside its soft tile. The website is the plan on this card, so it has none. */
-export function AddOnMark({ addOn }: { readonly addOn: Exclude<AddOnId, "managed-website"> }): ReactElement {
+/** Each service's own mark inside its soft tile. */
+export function AddOnMark({ addOn }: { readonly addOn: AddOnId }): ReactElement {
   switch (addOn) {
+    case "managed-website":
+      return (
+        <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-[0.8rem] bg-[#f6e7d8] sm:size-12 sm:rounded-[0.9rem]">
+          <svg viewBox="0 0 32 32" className="size-7">
+            <rect x="4.5" y="7" width="23" height="18" rx="3" fill="none" stroke="#c06a2b" strokeWidth="2.4" />
+            <path d="M4.5 12.5h23" stroke="#c06a2b" strokeWidth="2.4" />
+            <rect x="9" y="16.5" width="8" height="5" rx="1.2" fill="#d98a4a" />
+          </svg>
+        </span>
+      );
     case "digital-growth":
       return (
         <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-[0.8rem] bg-[#e1f0e3] sm:size-12 sm:rounded-[0.9rem]">
