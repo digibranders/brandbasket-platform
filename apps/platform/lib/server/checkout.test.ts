@@ -605,6 +605,61 @@ describe("startMembershipCheckoutFor", () => {
     );
   });
 
+  it("reads the basket as the catalogue does: each service once, in its order", async () => {
+    await startMembershipCheckoutFor(owner, NOW, "managed", ["local-seo-aeo", "managed-website", "local-seo-aeo"]);
+
+    expect(openCheckoutSubscription).toHaveBeenCalledWith(
+      { name: "tx2" },
+      expect.objectContaining({ bundledAddOns: [inrLine("managed-website", 300_000, 60_000), inrLine("local-seo-aeo", 2_500_000, 500_000)] }),
+    );
+  });
+
+  it("does not count a service named twice as a package, so a code still applies to it", async () => {
+    const code = coupon({ kind: "amount", amountCents: 50_000 });
+    vi.mocked(findBusinessReferralCode).mockResolvedValue(code);
+    vi.mocked(findRedeemableReferralCode).mockResolvedValue(code);
+
+    const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "managed-website"]));
+
+    // The website at list less the ₹500 code, plus 18% GST: no package offer, no refusal.
+    expect(charged).toBe(295_000);
+    expect(openCheckoutSubscription).toHaveBeenCalledWith(
+      { name: "tx2" },
+      expect.objectContaining({ bundledAddOns: [inrLine("managed-website", 300_000, 0)], referralCodeId: code.id, discountAmountCents: 50_000 }),
+    );
+  });
+
+  it("replaces an abandoned package checkout when the owner comes back for the website alone, with no ad credit", async () => {
+    const abandoned = subscription({ planId: "plan-inr", bundledAddOnNetCents: 2_660_000, adCreditCents: 500_000 });
+    newest(abandoned, { currency: "INR", plan: INR_PLAN });
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(ALL_THREE.map((addOn) => ({ addOn, status: "pending" }) as BundledAddOn));
+
+    const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE));
+
+    expect(charged).toBe(354_000);
+    expect(openCheckoutSubscription).toHaveBeenCalledWith(
+      { name: "tx2" },
+      expect.objectContaining({ replacing: "sub-old", bundledAddOns: [inrLine("managed-website", 300_000, 0)], adCreditCents: 0 }),
+    );
+    expect(cancelled).toHaveBeenCalledWith(abandoned.providerSubscriptionId);
+  });
+
+  it("sends an owner back to the abandoned package checkout when they ask for the same basket again", async () => {
+    const real = createFakeBillingProvider({ secret: SECRET, now: () => NOW });
+    const opened = await real.startCheckout({ businessId: BUSINESS_ID, businessName: "Smile Dental", email: owner.user.email, plan: INR_PLAN, discountAmountCents: 0, bundledAddOnNetCents: 2_660_000 });
+    newest(subscription({ planId: "plan-inr", providerSubscriptionId: opened.providerSubscriptionId, bundledAddOnNetCents: 2_660_000, adCreditCents: 500_000 }), {
+      currency: "INR",
+      plan: INR_PLAN,
+    });
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(ALL_THREE.map((addOn) => ({ addOn, status: "pending" }) as BundledAddOn));
+
+    const url = redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed", [...ALL_THREE].reverse()));
+
+    expect(url.pathname).toBe("/billing/confirm");
+    expect(openCheckoutSubscription).not.toHaveBeenCalled();
+    expect(cancelled).not.toHaveBeenCalled();
+  });
+
   it("refuses a checkout with no services, opening nothing", async () => {
     await expect(startMembershipCheckoutFor(owner, NOW, "managed", [])).resolves.toEqual({
       kind: "refused",

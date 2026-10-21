@@ -656,7 +656,7 @@ describe("a subscription carrying a referral discount", () => {
 });
 
 describe("a subscription with add-ons billed in the plan's charge", () => {
-  // ₹2,999 plan + ₹1,899.05 Social media (after its 5% offer) = ₹4,898.05 net, with 18% GST on all of it: ₹5,779.70.
+  // ₹2,999 plan + ₹1,899.05 Social media (after its package offer) = ₹4,898.05 net, with 18% GST on all of it: ₹5,779.70.
   const BUNDLED = {
     id: "sub_row_6",
     businessId: "biz_6",

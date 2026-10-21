@@ -8,6 +8,7 @@ import {
   type Affiliate,
   type ReferralCode,
 } from "@brandbasket/db";
+import type { AddOn } from "@brandbasket/shared/lib/billing/add-ons";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffDb } from "./db";
 import {
@@ -18,8 +19,20 @@ import {
   type ReferralAdminOutcome,
 } from "./referral-admin";
 
+/** Lets one test put a different catalogue under the console, to price a code against a service the real prices never make. */
+const catalogue = vi.hoisted(() => ({ override: null as readonly AddOn[] | null }));
+
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
+vi.mock("@brandbasket/shared/lib/billing/add-ons", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/shared/lib/billing/add-ons")>("@brandbasket/shared/lib/billing/add-ons");
+  return {
+    ...actual,
+    get ADD_ONS(): readonly AddOn[] {
+      return catalogue.override ?? actual.ADD_ONS;
+    },
+  };
+});
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
@@ -57,6 +70,7 @@ function refusalOf(outcome: ReferralAdminOutcome): { message: string; field: str
 
 beforeEach(() => {
   vi.resetAllMocks();
+  catalogue.override = null;
   vi.mocked(getStaffDb).mockReturnValue({ name: "staff" } as unknown as Database);
   vi.mocked(createReferralCode).mockImplementation(
     async (_db, input) => ({ id: "code-1", active: true, createdAt: new Date("2026-09-22T12:00:00.000Z"), ...input }) as ReferralCode,
@@ -123,6 +137,23 @@ describe("createReferralCodeFor", () => {
       );
       expect(refusal.field).toBe("discountValue");
     }
+    expect(createReferralCode).not.toHaveBeenCalled();
+  });
+
+  it("refuses a percentage that rounds to nothing against the cheapest service", async () => {
+    const [first] = (await vi.importActual<typeof import("@brandbasket/shared/lib/billing/add-ons")>("@brandbasket/shared/lib/billing/add-ons")).ADD_ONS;
+    if (first === undefined) throw new Error("The catalogue has no service");
+    // 0.01% of 49 paise is under half a paisa, which rounds to nothing.
+    catalogue.override = [{ ...first, prices: { INR: 49, USD: 49 } }];
+    const refusal = refusalOf(
+      await createReferralCodeFor({
+        formData: form({ discountKind: "percent", discountValue: "0.01" }),
+        staffUserId: STAFF_USER,
+        affiliateId: null,
+        now: NOW,
+      }),
+    );
+    expect(refusal.field).toBe("discountValue");
     expect(createReferralCode).not.toHaveBeenCalled();
   });
 
@@ -358,7 +389,7 @@ describe("referralWorth", () => {
   it("resolves a percentage discount against Managed Website's list price, the cheapest service", () => {
     // 10% of ₹3,000 is ₹300: ₹2,700 plus 18% GST.
     expect(referralWorth(codeWith({ kind: "percent", basisPoints: 1_000 }))).toEqual({
-      planChargeCents: 354_000,
+      serviceChargeCents: 354_000,
       discountCents: 30_000,
       customerPaysCents: 318_600,
       taxRateBasisPoints: 1_800,

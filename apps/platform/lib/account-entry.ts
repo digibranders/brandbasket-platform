@@ -77,9 +77,9 @@ export function readEntryRequest(params: SearchParams, brand: Brand): EntryReque
   };
 }
 
-/** The services a plan parameter names in the website's words (`website,growth`), or none. */
+/** The services a plan parameter names in the website's words (`website,growth`), or none. Spaces and capitals around a word are ignored. */
 function namedServices(plan: string): readonly MonthlyAddOnId[] {
-  return readBundleSelection(plan.split(",").flatMap((id) => WEBSITE_SERVICE_IDS.get(id) ?? []));
+  return readBundleSelection(plan.split(",").flatMap((id) => WEBSITE_SERVICE_IDS.get(id.trim().toLowerCase()) ?? []));
 }
 
 /**

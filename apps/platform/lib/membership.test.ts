@@ -126,7 +126,7 @@ describe("membershipPriceParts", () => {
     expect(membershipPriceParts({ ...plan, taxRateBasisPoints: 0 }).terms).toBe("a month");
   });
 
-  it("shows the discounted figure once a code or the lifetime offer is on, with the list price as was", () => {
+  it("shows the discounted figure once a code or the package offer is on, with the list price as was", () => {
     const managed = { recurringAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
     expect(membershipPriceParts(managed, 50_000)).toEqual({ amount: "₹2,499", terms: "a month + 18% GST", was: "₹2,999" });
     expect(membershipPriceParts(managed, 14_995).amount).toBe("₹2,849.05");

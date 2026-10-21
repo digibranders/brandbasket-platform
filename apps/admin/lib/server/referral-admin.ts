@@ -249,7 +249,7 @@ export async function retireReferralCodeFor(input: ReferralRetirementInput): Pro
 /** What a code means in money against today's cheapest service, for the console's summary. */
 export interface ReferralWorth {
   /** What the cheapest service charges each month without the code, tax included. */
-  readonly planChargeCents: number;
+  readonly serviceChargeCents: number;
   /** What the code takes off each month before tax: a flat amount, a percentage resolved against the service, or 0. */
   readonly discountCents: number;
   /** What the customer is charged each month with it, tax included. */
@@ -275,7 +275,7 @@ export function referralWorth(code: ReferralCode): ReferralWorth | null {
   if (code.discount !== null && !isChargeableDiscount(net, discountCents)) return null;
   const tax = addOnTaxRateBasisPoints(code.currency);
   return {
-    planChargeCents: chargedAmountCents(net, 0, tax),
+    serviceChargeCents: chargedAmountCents(net, 0, tax),
     discountCents,
     customerPaysCents: chargedAmountCents(net, discountCents, tax),
     taxRateBasisPoints: tax,

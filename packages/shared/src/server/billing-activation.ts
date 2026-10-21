@@ -29,8 +29,8 @@ export interface FirstPayment {
   readonly paidAt: Date;
   /**
    * What a referral code took off this subscription's first payment, in the plan's minor units, as frozen on the
-   * subscription. Defaults to 0. The payment is recorded at `plan.initialAmountCents` minus this, because the
-   * payments table must say what was actually taken, not what the plan lists.
+   * subscription. Defaults to 0. The payment is recorded at the lines' total minus this, because the
+   * payments table must say what was actually taken, not what the lines list.
    */
   readonly discountAmountCents?: number;
   /** The audit trail, for a payment an admin recorded by hand (provider `manual`). */
@@ -77,7 +77,8 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   const termEnd = addMonthsUtc(payment.paidAt, payment.plan.initialTermMonths);
   // What was actually taken: net price less discount, with the plan's tax on top. chargedAmountCents throws for a
   // discount that would leave nothing, so a nonsense figure is never recorded as a payment.
-  // The add-ons taken at this checkout are billed in the same charge: the plan's price plus theirs, less the discount.
+  // The services taken at this checkout are lines of the subscription, billed in the same charge: their nets (the plan row
+  // itself costs nothing), less the discount.
   const bundled = await billedLines(tx, payment.subscriptionId);
   const amountCents = chargedAmountCents(
     payment.plan.initialAmountCents + bundledNetCents(bundled),
@@ -124,7 +125,7 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
 /** What a renewal was charged at, exactly as the caller's amount check accepted it, for its tax invoice. */
 export interface RenewalInvoicedPrice {
   readonly plan: Plan;
-  /** The add-ons billed inside the plan's charge, each a line of the invoice. Empty for a plan alone. */
+  /** The services billed inside the plan's charge, each a line of the invoice. Empty only for a subscription from before services were lines. */
   readonly bundledAddOns?: readonly BundledInvoiceAddOn[];
   /** The plan's recurring price before any discount. */
   readonly netAmountCents: number;

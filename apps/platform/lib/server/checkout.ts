@@ -24,7 +24,7 @@ import {
 } from "@brandbasket/db";
 import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
+import { readBundleSelection, WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
 import { adCreditCentsAtCheckout, packageLines } from "@brandbasket/shared/lib/billing/packages";
 import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF, REACTIVATE_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { firstMissing, onboardingChecklist } from "@brandbasket/shared/lib/onboarding/checklist";
@@ -247,7 +247,8 @@ export async function startCheckoutFor(customer: GrantedCustomer, now: Date): Pr
  *
  * `tier` is the plan whose page the owner pressed Pay on: a free account may buy either, whichever it chose at sign-up.
  * A later checkout of the same account replaces an unpaid one of the other plan, as it replaces any stale one.
- * `services` is the basket the page named, the whole subscription; an empty one is refused.
+ * `services` is the basket the page named, the whole subscription, read the way every basket is (each service once, in the
+ * catalogue's order); an empty one is refused.
  *
  * The kind is read before the lock rather than under it. A payment landing in between has made the business a client
  * with a paid subscription, which the decision under the lock then sees and answers by sending it to its dashboard.
@@ -267,7 +268,7 @@ export async function startMembershipCheckoutFor(
   const entry = await withTenantScope(appDb, tenant, (tx) => findBusinessEntry(tx, tenant.businessId));
   if (entry?.kind !== "listing") return refused(ALREADY_A_MEMBER);
 
-  return openPlanCheckout(customer, now, MEMBER_HOME, tier, services);
+  return openPlanCheckout(customer, now, MEMBER_HOME, tier, readBundleSelection(services));
 }
 
 /**

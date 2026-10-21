@@ -112,6 +112,12 @@ describe("the basket the website's link carries", () => {
     expect(readFor({ plan: "growth,search,website" }, BRAND).services).toEqual(["managed-website", "digital-growth", "local-seo-aeo"]);
   });
 
+  it("ignores spaces and capitals around each service the link names", () => {
+    expect(readFor({ plan: "website, growth" }, BRAND).services).toEqual(["managed-website", "digital-growth"]);
+    expect(readFor({ plan: " Search ,GROWTH " }, BRAND).services).toEqual(["digital-growth", "local-seo-aeo"]);
+    expect(readFor({ plan: "website, growth" }, BRAND)).toMatchObject({ view: "create", choice: "managed" });
+  });
+
   it("opens Create account on Managed Website for a link that names services, as it does for plan=managed", () => {
     expect(readFor({ plan: "growth,search" }, BRAND)).toEqual({
       view: "create",
