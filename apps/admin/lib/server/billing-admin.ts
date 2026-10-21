@@ -5,12 +5,14 @@ import {
   BillingBusinessNotFoundError,
   findActivePlan,
   findBillingState,
+  findBundledAddOnsForSubscription,
   findBusinessReferralCode,
   findRedeemableReferralCode,
   lockBusinessForBilling,
   openCheckoutSubscription,
   resolvePaymentAttention,
   type NewBundledAddOn,
+  type ScopedTransaction,
   type OpenedMembership,
   type ReferralCode,
   type Subscription,
@@ -44,6 +46,16 @@ interface ManualPaymentStep {
 const MANUAL_SERVICE: MonthlyAddOnId = "managed-website";
 
 /**
+ * Whether an unpaid checkout holds more than the website alone: another service, or ad credit. A manual payment books the
+ * website alone, so replacing such a checkout would silently drop what the client chose.
+ */
+async function holdsMoreThanWebsite(tx: ScopedTransaction, checkout: Subscription): Promise<boolean> {
+  if (checkout.adCreditCents > 0) return true;
+  const lines = await findBundledAddOnsForSubscription(tx, checkout.id);
+  return lines.some((line) => line.addOn !== MANUAL_SERVICE);
+}
+
+/**
  * What a code the business applied is worth against the one service a manual payment buys (a percentage resolved to
  * money against its list price, never the plan's 0), or null when none applies. A bank transfer is discounted the same
  * way a checkout is, so the amount recorded matches what the customer was actually asked to send, and a discounted
@@ -68,7 +80,8 @@ function manualDiscount(code: ReferralCode | null, currency: MoneyCurrency, list
  *
  * An unpaid checkout the customer left open is cancelled and replaced by a `manual` subscription, so the business
  * never holds two live ones; once the database has committed, that checkout is cancelled at the provider too, so it
- * can no longer take a second payment. A payment waiting for staff on this business does not block recording: this
+ * can no longer take a second payment. One that holds more than the website (a package, another service, ad credit) is
+ * not replaced: nothing is recorded, because the manual subscription would drop what the client chose. A payment waiting for staff on this business does not block recording: this
  * is one of the ways staff apply it.
  *
  * It does not send the customer's onboarding: they still check their answers and press Send on Check and send,
@@ -103,8 +116,8 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
     const discountAmountCents = manualDiscount(redeemable, plan.currency, website.listCents);
 
     const decision = decideCheckout(
-      // A payment recorded by hand never reuses a checkout: reuse and replace both end the unpaid one below.
-      state.subscription === null ? null : { ...state.subscription, bundleKey: state.subscription.bundledAddOnNetCents > 0 ? "with-add-ons" : "" },
+      // A payment recorded by hand never reuses a checkout (it is opened at another provider): reuse and replace both end the unpaid one below.
+      state.subscription === null ? null : { ...state.subscription, bundleKey: "" },
       { planId: plan.id, provider: "manual", referralCodeId: discountAmountCents === null ? null : redeemable?.id ?? null, bundleKey: "" },
       now,
       { paymentUnderReview: false },
@@ -128,6 +141,12 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
         const unhandled: never = decision;
         throw new Error(`Unhandled checkout decision: ${JSON.stringify(unhandled)}`);
       }
+    }
+
+    // The payment books the website alone, so an unpaid checkout that holds a package (or any other service, or ad credit)
+    // is not silently dropped: staff ask the client to finish that checkout, or contact the owner.
+    if (replaced !== null && replaced.status === "incomplete" && (await holdsMoreThanWebsite(tx, replaced))) {
+      return { outcome: { kind: "package-open" }, replaced: null };
     }
 
     const reference = randomUUID();

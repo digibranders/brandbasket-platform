@@ -8,7 +8,9 @@ export type ManualPaymentOutcome =
   /** The business is already inside a paid period: there is nothing to record. */
   | { readonly kind: "already-paid" }
   /** The business's currency has no active plan, so there is no price to record. */
-  | { readonly kind: "no-plan" };
+  | { readonly kind: "no-plan" }
+  /** The business has an unpaid checkout for more than the website, which a payment recorded by hand would drop. */
+  | { readonly kind: "package-open" };
 import type { ManualPaymentFormProblem } from "./manual-payment-form";
 
 /** What the client page says after an admin records a manual payment or resolves a flagged one. */
@@ -23,6 +25,10 @@ export const MANUAL_PAYMENT_NOTICES: Readonly<Record<ManualPaymentNotice, { read
   recorded: { text: "Payment recorded.", ok: true },
   "already-paid": { text: "Nothing recorded: this business has already paid.", ok: false },
   "no-plan": { text: "Nothing recorded: there is no active plan for this business’s currency.", ok: false },
+  "package-open": {
+    text: "Nothing recorded: this client has an unfinished checkout for more than the website, and a transfer would drop the rest. Ask them to finish checkout, or contact the owner.",
+    ok: false,
+  },
   unconfirmed: { text: "Nothing recorded: tick the box to confirm the money has arrived.", ok: false },
   "missing-reference": {
     text: "Nothing recorded: give the bank or payment reference (up to 100 characters).",

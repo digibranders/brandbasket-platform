@@ -258,6 +258,41 @@ describe("recordManualFirstPayment", () => {
     },
   );
 
+  describe("an unpaid checkout that holds more than the website", () => {
+    const open = {
+      id: "sub-open",
+      planId: USD.id,
+      provider: "fake",
+      providerSubscriptionId: `fake_sub_${"c".repeat(24)}`,
+      status: "incomplete",
+      adCreditCents: 0,
+      createdAt: new Date(NOW.getTime() - 60_000),
+    } as Subscription;
+    const SOCIAL_LINE = { addOn: "digital-growth", listAmountCents: 7_500, offerDiscountAmountCents: 1_500, netAmountCents: 6_000, taxRateBasisPoints: 0 };
+
+    it.each([
+      ["a second service", [{ ...WEBSITE_USD_LINE, status: "pending" }, { ...SOCIAL_LINE, status: "pending" }], 0],
+      ["a service other than the website", [{ ...SOCIAL_LINE, status: "pending" }], 0],
+      ["ad credit on the website alone", [{ ...WEBSITE_USD_LINE, status: "pending" }], 2_500],
+    ])("is not replaced when it holds %s: nothing is recorded, opened or cancelled", async (_label, lines, adCreditCents) => {
+      vi.mocked(findBillingState).mockResolvedValue(state({ ...open, adCreditCents } as Subscription));
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines as BundledAddOn[]);
+
+      await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "package-open" });
+
+      expect(openCheckoutSubscription).not.toHaveBeenCalled();
+      expect(recordPaymentAndActivate).not.toHaveBeenCalled();
+      expect(cancelled).not.toHaveBeenCalled();
+    });
+
+    it("is replaced as before when it holds the website alone", async () => {
+      vi.mocked(findBillingState).mockResolvedValue(state(open));
+
+      await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(tx, expect.objectContaining({ replacing: "sub-open", bundledAddOns: [WEBSITE_USD_LINE] }));
+    });
+  });
+
   it("keeps the recorded payment and logs when the provider will not cancel the replaced checkout", async () => {
     const open = {
       id: "sub-open",
