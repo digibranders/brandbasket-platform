@@ -43,12 +43,14 @@ export async function startMembership(_previous: MembershipFormState, formData: 
 
 /**
  * Applies a coupon or an affiliate code before paying, so the Pay button can show the price the member will be
- * charged. Everything is checked again in applyReferralCodeFor, and again under the lock when the checkout opens.
+ * charged. Bound by the page to its basket of services: a code is priced against the one service, and a package refuses
+ * one. The basket comes from the browser, so only catalogue ids survive; everything is checked again in
+ * applyReferralCodeFor, and again under the lock when the checkout opens.
  */
-export async function applyMembershipCode(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
+export async function applyMembershipCode(services: readonly string[], _previous: StepFormState, formData: FormData): Promise<StepFormState> {
   const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
   const typed = formData.get("referralCode");
-  const outcome = await applyReferralCodeFor(customer, typeof typed === "string" ? typed : "", new Date());
+  const outcome = await applyReferralCodeFor(customer, typeof typed === "string" ? typed : "", readBundleSelection(services), new Date());
   if (outcome.kind === "refused") return refusedStepState(outcome.problem, formData);
   revalidatePlanPages();
   return { status: "idle" };

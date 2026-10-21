@@ -759,6 +759,7 @@ export {
   listBundledAddOnsForBusiness,
   markBundledAddOnContacted,
   markPackageOfferForfeited,
+  isPackageOfferForfeited,
   removeBundledAddOnsOf,
   saveProviderBundlePlan,
   setPendingOfferDiscounts,

@@ -366,8 +366,26 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
       taxRateBasisPoints: bundled.taxRateBasisPoints,
     };
   });
+  if (source.netAmountCents !== 0) return [planLine, ...addOnLines];
   // The plan row costs nothing now that every service is a line: a plan line at 0 with nothing taken off says nothing.
-  return source.netAmountCents === 0 && source.discountAmountCents === 0 ? addOnLines : [planLine, ...addOnLines];
+  if (source.discountAmountCents === 0) return addOnLines;
+  // A code is taken on a single-service subscription only (plan 16 Settled 2), so its discount comes off that one line.
+  const [only, ...others] = addOnLines;
+  if (only === undefined || others.length > 0) {
+    throw new Error(`A discount of ${source.discountAmountCents} on payment ${payment.id} needs exactly one service line to come off`);
+  }
+  return [
+    {
+      ...only,
+      note: planLineNote({
+        coupon,
+        netAmountCents: only.unitAmountCents,
+        discountAmountCents: source.discountAmountCents,
+        retentionDiscountCents: source.retentionDiscountCents,
+      }),
+      discountAmountCents: only.discountAmountCents + source.discountAmountCents,
+    },
+  ];
 }
 
 /** An invoice for a payment, and whether this call issued it (false when it had been issued before). */

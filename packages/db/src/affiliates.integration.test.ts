@@ -181,6 +181,7 @@ describe("accrual context and earnings", () => {
       rewardCycles: null,
       planCurrency: "INR",
       initialAmountCents: plan.initialAmountCents,
+      bundledAddOnNetCents: 0,
       discountAmountCents: 50_000,
     });
   });

@@ -187,6 +187,15 @@ describe("renewalCharge", () => {
   it("is null when a discount would leave nothing to charge", () => {
     expect(renewalCharge(USD, 6_900)).toBeNull();
   });
+
+  it("charges the basket's lines on the services plan, which costs nothing itself", () => {
+    const SERVICES: PlanTerms = { initialAmountCents: 0, initialTermMonths: 1, recurringAmountCents: 0, currency: "INR", taxRateBasisPoints: 1_800 };
+    // All three services at the package price: ₹26,600 plus 18% GST.
+    expect(renewalCharge(SERVICES, 0, 2_660_000)).toBe("₹31,388");
+    // The website alone less a ₹300 code: ₹2,700 plus 18% GST.
+    expect(renewalCharge(SERVICES, 30_000, 300_000)).toBe("₹3,186");
+    expect(renewalCharge(SERVICES, 300_000, 300_000)).toBeNull();
+  });
 });
 
 describe("monthlyPaymentAmount", () => {

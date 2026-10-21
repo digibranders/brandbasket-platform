@@ -5,6 +5,7 @@ import {
   activateBundledAddOns,
   completeBundledAddOnChanges,
   findBundledAddOnsForSubscription,
+  isPackageOfferForfeited,
   markPackageOfferForfeited,
   setPendingOfferDiscounts,
   type NewBundledAddOn,
@@ -106,9 +107,11 @@ describe("markPackageOfferForfeited", () => {
 
   it("sets the time once, and a second call keeps the first", async () => {
     expect(await forfeitedAt()).toBeNull();
+    expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(false);
 
     expect(await dbs.staff.db.transaction((tx) => markPackageOfferForfeited(tx, businessId, OPENED_AT))).toBe(true);
     expect(await forfeitedAt()).toEqual(OPENED_AT);
+    expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(true);
 
     expect(await dbs.staff.db.transaction((tx) => markPackageOfferForfeited(tx, businessId, RENEWED_AT))).toBe(false);
     expect(await forfeitedAt()).toEqual(OPENED_AT);

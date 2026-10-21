@@ -65,16 +65,14 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
 
   const held = isAwaitingMembership(entry);
   const waiting = isWaitingOnPayment(billing.subscription, notice);
-  const view = await loadMembershipCheckout({ tenant, billing }, tier, new Date());
-  const { plan } = view;
+  // The services are named in the address, so they survive applying a code and a reload, and are paid together.
+  const view = await loadMembershipCheckout({ tenant, billing }, tier, readSelectedServices(params), new Date());
+  const { plan, services: selected } = view;
   const brand = await requestBrand();
 
   // Only an account with something to pay is shown the summary and the Pay button: one whose payment is on its way, or under
   // review, is told so by the checkout instead.
   const payable = plan !== null && !waiting && !billing.paymentUnderReview;
-  // The services are named in the address, so they survive applying a code and a reload, and are paid together. A business
-  // that has paid before takes the website alone: the same rule the server applies when the payment opens.
-  const selected = view.offer.kind === "available" ? readSelectedServices(params) : WEBSITE_ALONE;
   const pageHref = (selection: readonly MonthlyAddOnId[]): string => membershipHrefWithServices(tier, selection);
   const lines = plan === null ? [] : bundleLines(selected, plan.currency);
   const paying = payable ? orderSummary(plan, view.discount?.amountCents ?? 0, lines) : null;

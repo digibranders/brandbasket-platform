@@ -10,6 +10,7 @@ import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
 import { submitOnboardingFor } from "@/lib/server/onboarding";
 import { applyReferralCodeFor, removeReferralCodeFor } from "@/lib/server/referrals";
+import { WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
 
 const PAYMENT_NEEDED = "Make your payment to send this to us. Use the Pay button on this page.";
 
@@ -50,7 +51,8 @@ export async function submitOnboarding(_previous: StepFormState, formData: FormD
 export async function applyReferralCode(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
   const customer = await requireCustomerAccess();
   const typed = formData.get("referralCode");
-  const outcome = await applyReferralCodeFor(customer, typeof typed === "string" ? typed : "", new Date());
+  // Check and send pays for the website alone (startCheckoutFor), so the code is priced against it.
+  const outcome = await applyReferralCodeFor(customer, typeof typed === "string" ? typed : "", WEBSITE_ALONE, new Date());
   if (outcome.kind === "refused") return refusedStepState(outcome.problem, formData);
   revalidatePath(PAYMENT_STEP_HREF);
   return { status: "idle" };

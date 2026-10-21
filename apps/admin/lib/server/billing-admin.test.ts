@@ -2,6 +2,7 @@ import { createFakeBillingProvider, type BillingProvider } from "@brandbasket/bi
 import {
   findActivePlan,
   findBillingState,
+  findBundledAddOnsForSubscription,
   findBusinessReferralCode,
   findRedeemableReferralCode,
   lockBusinessForBilling,
@@ -11,6 +12,7 @@ import {
   recordPaymentAndActivate,
   resolvePaymentAttention,
   type BillingState,
+  type BundledAddOn,
   type ReferralCode,
   type Database,
   type Payment,
@@ -74,6 +76,11 @@ const INR = {
   initialTermMonths: 1,
   recurringAmountCents: 350000,
 } as Plan;
+
+/** The services plan of migration 0184: the subscription's terms at a price of 0, every service a line. */
+const SERVICES_USD = { ...USD, initialAmountCents: 0, recurringAmountCents: 0 } as Plan;
+/** The website line a manual payment buys: $75 a month, no tax of ours. */
+const WEBSITE_USD_LINE = { addOn: "managed-website", listAmountCents: 7_500, offerDiscountAmountCents: 0, netAmountCents: 7_500, taxRateBasisPoints: 0 };
 
 let outcome: "committed" | "rolled back" | null;
 let events: string[];
@@ -190,7 +197,14 @@ describe("activateFirstPayment", () => {
 });
 
 describe("recordManualFirstPayment", () => {
-  it("opens a manual subscription and activates it with its audit trail", async () => {
+  beforeEach(() => {
+    vi.mocked(findActivePlan).mockResolvedValue(SERVICES_USD);
+    vi.mocked(findBillingState).mockResolvedValue(state(null, { plan: SERVICES_USD }));
+    // The website line the manual subscription was opened with, waiting for this payment.
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([{ ...WEBSITE_USD_LINE, status: "pending" } as BundledAddOn]);
+  });
+
+  it("opens a manual subscription for the website and activates it with its audit trail", async () => {
     await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
 
     expect(lockBusinessForBilling).toHaveBeenCalledWith(tx, BUSINESS_ID);
@@ -201,6 +215,7 @@ describe("recordManualFirstPayment", () => {
       providerSubscriptionId: expect.stringMatching(/^manual_sub_[0-9a-f-]{36}$/),
       referralCodeId: null,
       discountAmountCents: 0,
+      bundledAddOns: [WEBSITE_USD_LINE],
       replacing: null,
       now: NOW,
     });
@@ -384,7 +399,7 @@ describe("resolveFlaggedPayment", () => {
 });
 
 describe("a manual payment on a business that applied a referral code", () => {
-  // 15% of the USD plan's 7,500 cents.
+  // 15% of the website's 7,500 cents.
   const CODE = {
     id: "code-1",
     code: "SAVE15",
@@ -398,6 +413,9 @@ describe("a manual payment on a business that applied a referral code", () => {
   } as ReferralCode;
 
   beforeEach(() => {
+    vi.mocked(findActivePlan).mockResolvedValue(SERVICES_USD);
+    vi.mocked(findBillingState).mockResolvedValue(state(null, { plan: SERVICES_USD }));
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([{ ...WEBSITE_USD_LINE, status: "pending" } as BundledAddOn]);
     vi.mocked(findBusinessReferralCode).mockResolvedValue(CODE);
     vi.mocked(findRedeemableReferralCode).mockResolvedValue(CODE);
   });
@@ -434,7 +452,7 @@ describe("a manual payment on a business that applied a referral code", () => {
     expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ amountCents: 7_500 }));
   });
 
-  it("resolves a percentage code against the plan and freezes the money it comes to", async () => {
+  it("resolves a percentage code against the website's list price, not the plan's 0, and freezes the money it comes to", async () => {
     const percent = { ...CODE, discount: { kind: "percent", basisPoints: 1_500 } } as ReferralCode;
     vi.mocked(findBusinessReferralCode).mockResolvedValue(percent);
     vi.mocked(findRedeemableReferralCode).mockResolvedValue(percent);

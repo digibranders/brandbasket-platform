@@ -1,10 +1,11 @@
-import { chargedAmountCents } from "@brandbasket/billing";
+import { chargedAmountCents, createFakeBillingProvider, type BillingProvider } from "@brandbasket/billing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   businesses,
   users,
   findActivePlan,
   findBundledAddOnsForSubscription,
+  findProviderBundlePlan,
   findLatestSubscriptionForBusiness,
   findPaymentByProviderId,
   findSubscriptionById,
@@ -20,16 +21,20 @@ import {
   type Plan,
   type Subscription,
 } from "@brandbasket/db";
-import { openTestDatabases, resetTestDatabase, seedManagedWebsitePlans, type TestDatabases } from "@brandbasket/db/testing";
+import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
+import type { MonthlyAddOnId } from "./lib/billing/add-ons";
 import { bundleLines } from "./lib/billing/bundle";
+import { adCreditCentsFor, packageLines } from "./lib/billing/packages";
 import { activateFirstPayment, activateRenewalPayment } from "./server/billing-activation";
+import { ensureDiscountPlanFor } from "./server/discount-plans";
 
 // The activation is server-only in the app; there is no browser here to keep it out of.
 vi.mock("server-only", () => ({}));
 
 /**
- * The add-ons taken at the first checkout are billed in the plan's own charge, against a real database: one payment for
- * all of it, the add-ons turned on by it, an invoice with a line for each, and the same combined amount every month after.
+ * The services taken at the first checkout are the whole charge, against a real database: the services plan costs
+ * nothing, two or more are priced as a package, the provider runs one plan for the lines' total, a package bought together
+ * freezes its ad credit, and one payment turns the lines on, is invoiced with a line for each and is taken every month after.
  */
 
 const PAID_AT = new Date("2026-10-09T09:00:00.000Z");
@@ -38,30 +43,64 @@ const MONTH_AFTER = new Date("2026-12-09T09:00:00.000Z");
 
 let dbs: TestDatabases;
 let businessId = "";
-let care: Plan;
+let plan: Plan;
 
 function bundleOf(...ids: Parameters<typeof bundleLines>[0]): readonly NewBundledAddOn[] {
-  return bundleLines(ids, care.currency).map((line) => ({
+  return bundleLines(ids, plan.currency).map((line) => ({
     addOn: line.addOn,
     listAmountCents: line.listCents,
     offerDiscountAmountCents: line.offerCents,
     netAmountCents: line.netCents,
-    taxRateBasisPoints: care.taxRateBasisPoints,
+    taxRateBasisPoints: plan.taxRateBasisPoints,
   }));
 }
 
-function openSubscription(bundledAddOns: readonly NewBundledAddOn[], replacing: string | null = null, providerSubscriptionId = `fake_sub_${"b".repeat(24)}`): Promise<Subscription> {
+function openSubscription(
+  bundledAddOns: readonly NewBundledAddOn[],
+  replacing: string | null = null,
+  providerSubscriptionId = `fake_sub_${"b".repeat(24)}`,
+  adCreditCents = 0,
+): Promise<Subscription> {
   return openCheckoutSubscription(dbs.staff.db, {
     businessId,
-    planId: care.id,
+    planId: plan.id,
     provider: "fake",
     providerSubscriptionId,
     referralCodeId: null,
     discountAmountCents: 0,
     bundledAddOns,
+    adCreditCents,
     replacing,
     now: PAID_AT,
   });
+}
+
+/** The fake provider, but one that names the plans it makes, as Razorpay does, so the bundle plan row is saved. */
+function namingProvider(): BillingProvider {
+  const fake = createFakeBillingProvider({ secret: "a-test-secret-that-is-long-enough-000", now: () => PAID_AT });
+  return { ...fake, createPlan: async (input) => ({ providerPlanId: `plan_test_${input.netMonthlyCents}` }) };
+}
+
+/**
+ * A first checkout as the app opens it (apps/platform lib/server/checkout.ts): the basket priced with packageLines, the
+ * provider plan for the lines' total, the ad credit for services bought together, and what the provider asks for.
+ */
+async function firstCheckout(services: readonly MonthlyAddOnId[]) {
+  const provider = namingProvider();
+  const lines = packageLines({ services, forfeited: false }, plan.currency).map((line) => ({
+    addOn: line.addOn,
+    listAmountCents: line.listCents,
+    offerDiscountAmountCents: line.offerCents,
+    netAmountCents: line.netCents,
+    taxRateBasisPoints: plan.taxRateBasisPoints,
+  }));
+  const bundledAddOnNetCents = lines.reduce((total, line) => total + line.netAmountCents, 0);
+  const providerPlanId = await ensureDiscountPlanFor(dbs.staff.db, provider, plan, 0, bundledAddOnNetCents);
+  const started = await provider.startCheckout({ businessId, businessName: "QA Bundle Business", email: "owner@bundle.test", plan, bundledAddOnNetCents });
+  const token = new URL(started.checkoutUrl, "https://app.test").searchParams.get("token") ?? "";
+  const asked = (await provider.confirmCheckout({ token })).amountCents;
+  const subscription = await openSubscription(lines, null, started.providerSubscriptionId, adCreditCentsFor(services, plan.currency));
+  return { providerPlanId, bundledAddOnNetCents, asked, subscription };
 }
 
 function payFirst(subscription: Subscription, providerPaymentId = "fake_pay_bundle") {
@@ -69,7 +108,7 @@ function payFirst(subscription: Subscription, providerPaymentId = "fake_pay_bund
     activateFirstPayment(tx, {
       businessId,
       subscriptionId: subscription.id,
-      plan: care,
+      plan,
       provider: "fake",
       providerPaymentId,
       paidAt: PAID_AT,
@@ -88,10 +127,10 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
-  await seedManagedWebsitePlans(dbs.owner);
-  const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
-  if (plan === null) throw new Error("No active INR Managed Website plan was seeded");
-  care = plan;
+  await seedPlansFromMigrations(dbs.owner);
+  const found = await findActivePlan(dbs.staff.db, "INR", "managed");
+  if (found === null) throw new Error("No active INR services plan was seeded");
+  plan = found;
   const rows = await dbs.owner.db.insert(businesses).values({ slug: "qa-bundle", name: "QA Bundle Business", currency: "INR" }).returning({ id: businesses.id });
   businessId = rows[0]?.id ?? "";
   vi.spyOn(console, "info").mockImplementation(() => undefined);
@@ -102,7 +141,37 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("a first payment with add-ons", () => {
+describe("a first checkout of a package", () => {
+  it("charges all three at 30% off on one provider plan for their total, and freezes ₹5,000 of ad credit", async () => {
+    const { providerPlanId, bundledAddOnNetCents, asked, subscription } = await firstCheckout(["managed-website", "digital-growth", "local-seo-aeo"]);
+
+    expect(bundledAddOnNetCents).toBe(2_660_000);
+    expect(providerPlanId).toBe("plan_test_2660000");
+    expect(await findProviderBundlePlan(dbs.staff.db, { planId: plan.id, netMonthlyCents: 2_660_000, provider: "fake" })).toBe("plan_test_2660000");
+    expect(asked).toBe(3_138_800);
+    expect(subscription).toMatchObject({ bundledAddOnNetCents: 2_660_000, adCreditCents: 500_000 });
+
+    const activation = await payFirst(subscription);
+    expect(activation.payment.amountCents).toBe(3_138_800);
+  });
+
+  it("charges Website + SEO at 20% off, which earns no ad credit", async () => {
+    const { asked, subscription } = await firstCheckout(["managed-website", "local-seo-aeo"]);
+
+    expect(asked).toBe(2_643_200);
+    expect(subscription.adCreditCents).toBe(0);
+    expect((await payFirst(subscription)).payment.amountCents).toBe(2_643_200);
+  });
+
+  it("charges one service its list price plus GST, with no package and no ad credit", async () => {
+    const { asked, subscription } = await firstCheckout(["digital-growth"]);
+
+    expect(asked).toBe(1_180_000);
+    expect(subscription).toMatchObject({ bundledAddOnNetCents: 1_000_000, adCreditCents: 0 });
+  });
+});
+
+describe("a first payment with services", () => {
   it("freezes the add-ons on the subscription, as pending until it is paid", async () => {
     const subscription = await openSubscription(bundleOf("digital-growth", "local-seo-aeo"));
 
@@ -114,24 +183,22 @@ describe("a first payment with add-ons", () => {
     ]);
   });
 
-  it("takes one payment for the plan and the add-ons, turns them on, and invoices a line for each", async () => {
+  it("takes one payment for the services, turns them on, and invoices a line for each", async () => {
     const subscription = await openSubscription(bundleOf("digital-growth", "local-seo-aeo"));
     const activation = await payFirst(subscription);
 
-    const expected = chargedAmountCents(care.initialAmountCents + 700_000 + 1_750_000, 0, care.taxRateBasisPoints);
-    expect(activation.payment.amountCents).toBe(expected);
+    // Social + SEO at 30% off: ₹24,500 plus 18% GST.
+    expect(activation.payment.amountCents).toBe(2_891_000);
 
     const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     expect(rows.every((row) => row.status === "active" && row.activatedAt !== null)).toBe(true);
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
-    expect(invoice?.totalCents).toBe(expected);
+    expect(invoice?.totalCents).toBe(2_891_000);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
-      [expect.stringContaining("Brandbasket"), care.initialAmountCents, 0],
       ["Social Media and Ads", 1_000_000, 300_000],
       ["Local SEO + AEO", 2_500_000, 750_000],
     ]);
-    expect(invoice?.lines[1]?.note).toBe("Lifetime offer applied, 5% off");
     expect(invoice?.cgstCents).toBe(invoice?.sgstCents);
   });
 
@@ -142,7 +209,7 @@ describe("a first payment with add-ons", () => {
 
     expect(again.alreadyRecorded).toBe(true);
     expect((await findPaymentByProviderId(dbs.staff.db, "fake", "fake_pay_bundle"))?.amountCents).toBe(
-      chargedAmountCents(care.initialAmountCents + 1_000_000, 0, care.taxRateBasisPoints),
+      chargedAmountCents(plan.initialAmountCents + 1_000_000, 0, plan.taxRateBasisPoints),
     );
   });
 
@@ -155,14 +222,14 @@ describe("a first payment with add-ons", () => {
     expect((await findSubscriptionById(dbs.staff.db, second.id))?.bundledAddOnNetCents).toBe(2_500_000);
   });
 
-  it("invoices the renewal with the same add-on lines, at the same combined amount", async () => {
+  it("invoices the renewal with the same service lines, at the same amount", async () => {
     const subscription = await openSubscription(bundleOf("digital-growth"));
     await payFirst(subscription);
     const open = await findLatestSubscriptionForBusiness(dbs.staff.db, businessId);
     if (open?.commitmentEndsAt == null) throw new Error("The first payment did not open the subscription");
     const active = (await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).filter((row) => row.status === "active");
 
-    const amountCents = chargedAmountCents(care.recurringAmountCents + 1_000_000, 0, care.taxRateBasisPoints);
+    const amountCents = chargedAmountCents(plan.recurringAmountCents + 1_000_000, 0, plan.taxRateBasisPoints);
     const renewal = await dbs.staff.db.transaction((tx) =>
       activateRenewalPayment(tx, {
         businessId,
@@ -175,13 +242,13 @@ describe("a first payment with add-ons", () => {
         paidAt: NEXT_MONTH,
         paidThroughAt: MONTH_AFTER,
         periodStart: NEXT_MONTH,
-        invoicedPrice: { plan: care, bundledAddOns: active, netAmountCents: care.recurringAmountCents, discountAmountCents: 0, retentionDiscountCents: 0 },
+        invoicedPrice: { plan, bundledAddOns: active, netAmountCents: plan.recurringAmountCents, discountAmountCents: 0, retentionDiscountCents: 0 },
       }),
     );
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id);
     expect(invoice?.totalCents).toBe(amountCents);
-    expect(invoice?.lines.map((line) => line.description)).toEqual([expect.stringContaining("Brandbasket"), "Social Media and Ads"]);
+    expect(invoice?.lines.map((line) => line.description)).toEqual(["Social Media and Ads"]);
   });
 
   describe("taking an add-on out afterwards", () => {

@@ -10,17 +10,15 @@ import {
   billingCurrency,
   createReferralCode,
   deleteReferralCode,
-  findActivePlan,
   findAffiliateById,
   findReferralCodeById,
   updateReferralCode,
   type BillingCurrency,
-  type Database,
-  type Plan,
   type ReferralCode,
   type ReferralDiscount,
 } from "@brandbasket/db";
 import { formatPercent, parsePercent } from "@brandbasket/shared/lib/billing/referral-value";
+import { ADD_ONS, addOnTaxRateBasisPoints } from "@brandbasket/shared/lib/billing/add-ons";
 import { formatMoney, parseMoney } from "@brandbasket/shared/lib/money";
 import { getStaffDb } from "./db";
 
@@ -133,10 +131,11 @@ export interface NewReferralCodeInput {
 }
 
 /**
- * Creates a coupon, or a code for an affiliate, from the console's form. The discount is checked against the
- * currency's **active plan**: a code worth as much as the plan would leave nothing for Razorpay to authorise, and that
- * would only be discovered at the worst possible moment, while a member is paying. A percentage is resolved to money
- * first, the same way checkout will resolve it, so a share that rounds to nothing is refused here too.
+ * Creates a coupon, or a code for an affiliate, from the console's form. A code is used on a single service, never on a
+ * package (plan 16 Settled 2), so the discount is checked against the currency's **cheapest service**: a code worth as
+ * much as that service would leave nothing for Razorpay to authorise, and that would only be discovered at the worst
+ * possible moment, while a member is paying. A percentage is resolved to money first, the same way checkout will resolve
+ * it, so a share that rounds to nothing is refused here too.
  *
  * An affiliate on a flat reward is paid in one currency, so their codes must be in it: a payment in another currency
  * could not earn them anything.
@@ -171,15 +170,11 @@ export async function createReferralCodeFor(input: NewReferralCodeInput): Promis
   if (!discountRead.ok) return discountRead.refusal;
   const discount = discountRead.value;
 
-  // A code may be used on either plan, so it is held to the cheaper one: it must leave something to charge on both.
-  const plan = await cheapestActivePlan(staffDb, currency);
-  if (plan === null) return refused(`There is no active ${currency} plan to discount.`, "currency");
-  if (
-    discount !== null &&
-    !isChargeableDiscount(plan.initialAmountCents, discountCentsFor(discount, plan.initialAmountCents))
-  ) {
+  // A code may be used on any one service, so it is held to the cheapest: it must leave something to charge on each.
+  const cheapest = cheapestServiceListCents(currency);
+  if (discount !== null && !isChargeableDiscount(cheapest, discountCentsFor(discount, cheapest))) {
     return refused(
-      `The discount has to be more than nothing and less than the ${currency} plan's ${formatMoney(plan.initialAmountCents, currency)} a month, or there is nothing left to charge.`,
+      `The discount has to be more than nothing and less than ${formatMoney(cheapest, currency)} a month, the price of the cheapest service, or there is nothing left to charge.`,
       "discountValue",
     );
   }
@@ -251,36 +246,34 @@ export async function retireReferralCodeFor(input: ReferralRetirementInput): Pro
   return { kind: "updated", code: updated };
 }
 
-/** What a code means in money against today's plan, for the console's summary. */
+/** What a code means in money against today's cheapest service, for the console's summary. */
 export interface ReferralWorth {
-  /** What the plan charges each month without the code, tax included. */
+  /** What the cheapest service charges each month without the code, tax included. */
   readonly planChargeCents: number;
-  /** What the code takes off each month before tax: a flat amount, a percentage resolved against the plan, or 0. */
+  /** What the code takes off each month before tax: a flat amount, a percentage resolved against the service, or 0. */
   readonly discountCents: number;
   /** What the customer is charged each month with it, tax included. */
   readonly customerPaysCents: number;
-  /** The plan's tax rate, so the console can say whether these figures include GST. */
+  /** The service's tax rate, so the console can say whether these figures include GST. */
   readonly taxRateBasisPoints: number;
 }
 
-/** The plan on sale in a currency, or null when there is none: Managed Website is the only one. */
-async function cheapestActivePlan(db: Database, currency: BillingCurrency): Promise<Plan | null> {
-  return findActivePlan(db, currency, "managed");
+/** The lowest list price of any one service in a currency (add-ons.ts): the least a single-service code is used against. */
+function cheapestServiceListCents(currency: BillingCurrency): number {
+  return Math.min(...ADD_ONS.map((service) => service.prices[currency]));
 }
 
 /**
- * The code measured against the currency's **current** Managed Website plan, purely so the console can show what it means today.
- * Nothing is stored from this: a customer's own discount is frozen when they pay, and the reward is accrued per
- * payment. Null when there is no active plan, or when the plan's price has fallen to or below the code's discount
- * since it was made, which is a code that can no longer be charged and should be retired.
+ * The code measured against the currency's **current** cheapest service, purely so the console can
+ * show what it means today. Nothing is stored from this: a customer's own discount is frozen when they pay, and the
+ * reward is accrued per payment. Null when the service's price has fallen to or below the code's discount since it was
+ * made, which is a code that can no longer be charged on it and should be retired.
  */
-export async function referralWorth(code: ReferralCode): Promise<ReferralWorth | null> {
-  const plan = await findActivePlan(getStaffDb(), code.currency, "managed");
-  if (plan === null) return null;
-  const net = plan.initialAmountCents;
+export function referralWorth(code: ReferralCode): ReferralWorth | null {
+  const net = cheapestServiceListCents(code.currency);
   const discountCents = code.discount === null ? 0 : discountCentsFor(code.discount, net);
   if (code.discount !== null && !isChargeableDiscount(net, discountCents)) return null;
-  const tax = plan.taxRateBasisPoints;
+  const tax = addOnTaxRateBasisPoints(code.currency);
   return {
     planChargeCents: chargedAmountCents(net, 0, tax),
     discountCents,

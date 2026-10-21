@@ -128,9 +128,9 @@ export async function seedPlansFromMigrations(owner: DatabaseHandle): Promise<vo
 
 /**
  * Seeds the Managed Website plan of 0180 instead, priced on the plan row, for the suites that cover the plan-priced paths:
- * the plan line of an invoice, a referral code's discount against the plan, proration against the plan's price. Those
- * paths still exist but sell nothing since 0184; plan 16 moves each onto service lines (checkout and referrals P3.2,
- * add-ons P4.1, invoices P6), and its suite onto seedPlansFromMigrations with it.
+ * the plan line of an invoice, proration against the plan's price. Those paths still exist but sell nothing since 0184;
+ * plan 16 moves each onto service lines (checkout and referrals moved in P3.2, add-ons P4.1, invoices P6), and its suite
+ * onto seedPlansFromMigrations with it.
  */
 export async function seedManagedWebsitePlans(owner: DatabaseHandle): Promise<void> {
   await owner.db.execute(sql.raw(await statementFrom(MANAGED_PLAN_MIGRATION, 'INSERT INTO "plans"')));

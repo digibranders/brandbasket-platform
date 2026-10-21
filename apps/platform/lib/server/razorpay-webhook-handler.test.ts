@@ -853,6 +853,64 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
   });
 });
 
+describe("a package on the services plan, which costs nothing itself", () => {
+  // Migration 0184's rupee plan: the terms at a price of 0, with 18% GST on the lines.
+  const SERVICES_PLAN = { id: "plan_services", currency: "INR", initialAmountCents: 0, recurringAmountCents: 0, initialTermMonths: 1, taxRateBasisPoints: 1_800 };
+
+  /** All three services at 30% off: ₹26,600 a month before GST. */
+  function allThree(activatedAt: Date | null) {
+    return {
+      id: "sub_row_package",
+      businessId: "biz_package",
+      planId: "plan_services",
+      commitmentEndsAt: new Date("2026-11-21T00:00:00.000Z"),
+      activatedAt,
+      discountAmountCents: 0,
+      retentionDiscountCents: 0,
+      bundledAddOnNetCents: 2_660_000,
+      pendingBundledAddOnNetCents: null,
+    };
+  }
+
+  function charged(amountCents: number) {
+    return {
+      kind: "charged",
+      currentStart: null,
+      method: null,
+      subscriptionId: "sub_rzp_package",
+      currentEnd: new Date("2026-12-21T00:00:00.000Z"),
+      paidAt: new Date("2026-11-21T09:00:00.000Z"),
+      paymentId: "pay_package",
+      amountCents,
+      currency: "INR",
+    } as const;
+  }
+
+  it("activates a first payment of the lines' nets with GST on top: ₹31,388", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(allThree(null) as never);
+    vi.mocked(findPlanById).mockResolvedValue(SERVICES_PLAN as never);
+
+    await handleRazorpayWebhookEvent(charged(3_138_800));
+
+    expect(activateFirstPayment).toHaveBeenCalled();
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
+  });
+
+  it("renews at the same ₹31,388, and treats the lines at list as a mismatch", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(allThree(new Date("2026-10-21T09:00:00.000Z")) as never);
+    vi.mocked(findPlanById).mockResolvedValue(SERVICES_PLAN as never);
+
+    await handleRazorpayWebhookEvent(charged(3_138_800));
+    expect(activateRenewalPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: 3_138_800 }));
+
+    vi.mocked(activateRenewalPayment).mockClear();
+    // ₹38,000 at list plus GST is what the package price replaced.
+    await handleRazorpayWebhookEvent({ ...charged(4_484_000), paymentId: "pay_package_list" });
+    expect(activateRenewalPayment).not.toHaveBeenCalled();
+    expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: "amount_mismatch" }));
+  });
+});
+
 describe("a plan with GST on top", () => {
   // ₹2,999 net with 18% GST, as migration 0039 prices it. The Razorpay plan is created at ₹3,538.82.
   const GST_PLAN = {

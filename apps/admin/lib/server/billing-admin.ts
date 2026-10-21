@@ -10,11 +10,13 @@ import {
   lockBusinessForBilling,
   openCheckoutSubscription,
   resolvePaymentAttention,
+  type NewBundledAddOn,
   type OpenedMembership,
-  type Plan,
   type ReferralCode,
   type Subscription,
 } from "@brandbasket/db";
+import { addOnPrice, addOnById, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import type { ManualPaymentDetails } from "@brandbasket/shared/lib/billing/manual-payment-form";
 import { getBillingProvider } from "./billing-provider";
 import { type ManualPaymentOutcome } from "@brandbasket/shared/lib/billing/manual-payment-notices";
@@ -38,25 +40,31 @@ interface ManualPaymentStep {
   readonly openedMembership?: OpenedMembership | null;
 }
 
+/** What a payment recorded by hand buys: the website alone, a single service at its list price, as a line. */
+const MANUAL_SERVICE: MonthlyAddOnId = "managed-website";
+
 /**
- * What a code the business applied is worth against its plan (a percentage resolved to money), or null when none
- * applies. A bank transfer is discounted the same way a checkout is, so the amount recorded matches what the customer
- * was actually asked to send, and a discounted transfer does not look like an underpayment. An affiliate code that
- * gives no discount is worth 0 and still applies, so the payment earns its affiliate.
+ * What a code the business applied is worth against the one service a manual payment buys (a percentage resolved to
+ * money against its list price, never the plan's 0), or null when none applies. A bank transfer is discounted the same
+ * way a checkout is, so the amount recorded matches what the customer was actually asked to send, and a discounted
+ * transfer does not look like an underpayment. An affiliate code that gives no discount is worth 0 and still applies,
+ * so the payment earns its affiliate.
  */
-function manualDiscount(code: ReferralCode | null, plan: Plan): number | null {
-  if (code === null || code.currency !== plan.currency) return null;
+function manualDiscount(code: ReferralCode | null, currency: MoneyCurrency, listCents: number): number | null {
+  if (code === null || code.currency !== currency) return null;
   if (code.discount === null) return 0;
-  const discountCents = discountCentsFor(code.discount, plan.initialAmountCents);
-  return isChargeableDiscount(plan.initialAmountCents, discountCents) ? discountCents : null;
+  const discountCents = discountCentsFor(code.discount, listCents);
+  return isChargeableDiscount(listCents, discountCents) ? discountCents : null;
 }
 
 /**
- * Records a first payment the team received outside any provider, such as a bank transfer. It goes through the same
- * activation as a checkout (activateFirstPayment): the plan's initial amount, the plan's own term, the lead marked
- * paid. For a business that paid before and lapsed it is a reactivation instead (activateReactivationPayment): its
- * lapsed plan is ended and it gets one month at today's monthly price, with no coupon. It also stores who recorded it, the bank or payment reference, and the date the money arrived. The paid
- * term starts when it is recorded, which is when access opens, not on the date the money arrived.
+ * Records a first payment the team received outside any provider, such as a bank transfer. It buys the website alone at
+ * its list price, as a line (the plan row costs nothing), less any code applied, and goes through the same activation as
+ * a checkout (activateFirstPayment): the lines' total, the plan's own term, the lead marked paid. For a business that
+ * paid before and lapsed it is a reactivation instead (activateReactivationPayment): its lapsed plan is ended and it
+ * gets one month at today's monthly price, with no coupon. It also stores who recorded it, the bank or payment
+ * reference, and the date the money arrived. The paid term starts when it is recorded, which is when access opens, not
+ * on the date the money arrived.
  *
  * An unpaid checkout the customer left open is cancelled and replaced by a `manual` subscription, so the business
  * never holds two live ones; once the database has committed, that checkout is cancelled at the provider too, so it
@@ -83,10 +91,19 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
       applied === null
         ? null
         : await findRedeemableReferralCode(tx, { code: applied.code, currency: state.currency, now });
-    const discountAmountCents = manualDiscount(redeemable, plan);
+    // The plan row costs nothing: the website is the line the payment is for, at its list price.
+    const website = addOnPrice(addOnById(MANUAL_SERVICE), plan.currency);
+    const line: NewBundledAddOn = {
+      addOn: MANUAL_SERVICE,
+      listAmountCents: website.listCents,
+      offerDiscountAmountCents: 0,
+      netAmountCents: website.netCents,
+      taxRateBasisPoints: plan.taxRateBasisPoints,
+    };
+    const discountAmountCents = manualDiscount(redeemable, plan.currency, website.listCents);
 
     const decision = decideCheckout(
-      // A payment recorded by hand carries no add-ons, so it never reuses a checkout opened with some.
+      // A payment recorded by hand never reuses a checkout: reuse and replace both end the unpaid one below.
       state.subscription === null ? null : { ...state.subscription, bundleKey: state.subscription.bundledAddOnNetCents > 0 ? "with-add-ons" : "" },
       { planId: plan.id, provider: "manual", referralCodeId: discountAmountCents === null ? null : redeemable?.id ?? null, bundleKey: "" },
       now,
@@ -121,6 +138,7 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
       providerSubscriptionId: `manual_sub_${reference}`,
       referralCodeId: discountAmountCents === null ? null : (redeemable?.id ?? null),
       discountAmountCents: discountAmountCents ?? 0,
+      bundledAddOns: [line],
       replacing: replaced?.id ?? null,
       now,
     });

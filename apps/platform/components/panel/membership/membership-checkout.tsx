@@ -3,7 +3,6 @@ import { supportEmailOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { EmailUs } from "@/components/panel/email-us";
 import { PAYMENT_RECEIVED_MESSAGE } from "@brandbasket/shared/lib/billing/payment-step";
-import { WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
 import { describeDiscountedPlanTerms, discountedFirstPaymentAmount } from "@brandbasket/shared/lib/billing/terms";
 import { BillingDetails } from "@/components/panel/billing/billing-details";
 import { MembershipPayForm } from "@/components/panel/membership/membership-pay-form";
@@ -71,7 +70,7 @@ export async function MembershipCheckout({ tier, view, notice, billing, includeP
           </p>
         ) : null}
         <ReferralCodeForm
-          applyAction={applyMembershipCode}
+          applyAction={applyMembershipCode.bind(null, view.services)}
           removeAction={removeMembershipCode}
           discount={discount}
           currency={plan.currency}
@@ -85,7 +84,7 @@ export async function MembershipCheckout({ tier, view, notice, billing, includeP
       {includePay ? (
         <div className="pointer-events-none sticky bottom-0 z-10 pb-4 pt-3">
           <div className="pointer-events-auto [&_button]:shadow-[0_10px_28px_-10px_rgb(20_20_30/0.55)]">
-            <MembershipPayForm action={startMembership} amount={discountedFirstPaymentAmount(plan, discount)} tier={tier} services={WEBSITE_ALONE} />
+            <MembershipPayForm action={startMembership} amount={discountedFirstPaymentAmount(plan, discount)} tier={tier} services={view.services} />
           </div>
         </div>
       ) : null}

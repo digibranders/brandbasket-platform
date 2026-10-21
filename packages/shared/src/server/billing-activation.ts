@@ -8,6 +8,7 @@ import {
   recordPaymentAndActivate,
   type BillingCurrency,
   type BillingProviderName,
+  type BundledAddOn,
   type ManualPaymentRecord,
   type OpenedMembership,
   type PaymentMethodDetails,
@@ -48,6 +49,16 @@ export interface FirstPaymentActivation extends RecordedActivation {
 }
 
 /**
+ * The lines a first payment or a reactivation is for: `pending` until it is recorded, `active` once a first delivery
+ * has turned them on. Counting both keeps a repeated delivery of the same payment (the webhook and the return page, or a
+ * retry) at a real amount, which recordPaymentAndActivate then answers with the payment already recorded; with the
+ * services plan costing nothing, the pending lines alone would come to 0 and refuse.
+ */
+async function billedLines(tx: ScopedTransaction, subscriptionId: string): Promise<readonly BundledAddOn[]> {
+  return (await findBundledAddOnsForSubscription(tx, subscriptionId)).filter((row) => row.status !== "removed");
+}
+
+/**
  * The one activation path for a first payment, however it arrived (the provider's checkout or an admin recording a
  * bank transfer). It records what was charged (the plan's initial amount less any referral discount, plus the
  * plan's tax), opens the subscription until
@@ -67,7 +78,7 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   // What was actually taken: net price less discount, with the plan's tax on top. chargedAmountCents throws for a
   // discount that would leave nothing, so a nonsense figure is never recorded as a payment.
   // The add-ons taken at this checkout are billed in the same charge: the plan's price plus theirs, less the discount.
-  const bundled = (await findBundledAddOnsForSubscription(tx, payment.subscriptionId)).filter((row) => row.status === "pending");
+  const bundled = await billedLines(tx, payment.subscriptionId);
   const amountCents = chargedAmountCents(
     payment.plan.initialAmountCents + bundledNetCents(bundled),
     payment.discountAmountCents ?? 0,
@@ -205,7 +216,7 @@ export interface ReactivationPayment {
  * the provider payment id. Issues the payment's tax invoice last, in a savepoint (D7).
  */
 export async function activateReactivationPayment(tx: ScopedTransaction, payment: ReactivationPayment): Promise<RecordedActivation> {
-  const bundled = (await findBundledAddOnsForSubscription(tx, payment.subscriptionId)).filter((row) => row.status === "pending");
+  const bundled = await billedLines(tx, payment.subscriptionId);
   const activation = await recordPaymentAndActivate(tx, {
     businessId: payment.businessId,
     subscriptionId: payment.subscriptionId,

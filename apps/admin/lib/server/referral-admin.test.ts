@@ -1,13 +1,11 @@
 import {
   createReferralCode,
   deleteReferralCode,
-  findActivePlan,
   findAffiliateById,
   findReferralCodeById,
   updateReferralCode,
   type Database,
   type Affiliate,
-  type Plan,
   type ReferralCode,
 } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -28,7 +26,6 @@ vi.mock("@brandbasket/db", async () => {
     ...actual,
     createReferralCode: vi.fn(),
     deleteReferralCode: vi.fn(),
-    findActivePlan: vi.fn(),
     findAffiliateById: vi.fn(),
     findReferralCodeById: vi.fn(),
     updateReferralCode: vi.fn(),
@@ -37,8 +34,6 @@ vi.mock("@brandbasket/db", async () => {
 
 const STAFF_USER = "staff-1";
 const NOW = new Date("2026-09-22T12:00:00.000Z");
-
-const INR_PLAN = { id: "plan-inr", currency: "INR", initialAmountCents: 350_000 } as Plan;
 
 function form(overrides: Record<string, string> = {}): FormData {
   const data = new FormData();
@@ -63,7 +58,6 @@ function refusalOf(outcome: ReferralAdminOutcome): { message: string; field: str
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(getStaffDb).mockReturnValue({ name: "staff" } as unknown as Database);
-  vi.mocked(findActivePlan).mockResolvedValue(INR_PLAN);
   vi.mocked(createReferralCode).mockImplementation(
     async (_db, input) => ({ id: "code-1", active: true, createdAt: new Date("2026-09-22T12:00:00.000Z"), ...input }) as ReferralCode,
   );
@@ -132,20 +126,6 @@ describe("createReferralCodeFor", () => {
     expect(createReferralCode).not.toHaveBeenCalled();
   });
 
-  it("refuses a percentage that rounds to nothing against the plan", async () => {
-    vi.mocked(findActivePlan).mockResolvedValue({ ...INR_PLAN, initialAmountCents: 49 } as Plan);
-    const refusal = refusalOf(
-      await createReferralCodeFor({
-        formData: form({ discountKind: "percent", discountValue: "0.01" }),
-        staffUserId: STAFF_USER,
-        affiliateId: null,
-        now: NOW,
-      }),
-    );
-    expect(refusal.field).toBe("discountValue");
-    expect(createReferralCode).not.toHaveBeenCalled();
-  });
-
   it("refuses a discount kind it does not know", async () => {
     const refusal = refusalOf(
       await createReferralCodeFor({ formData: form({ discountKind: "free" }), staffUserId: STAFF_USER, affiliateId: null, now: NOW }),
@@ -153,9 +133,9 @@ describe("createReferralCodeFor", () => {
     expect(refusal.field).toBe("discountKind");
   });
 
-  it("refuses a discount that leaves nothing for the provider to charge", async () => {
-    // The INR plan is ₹3,500 a month; a ₹3,500 discount would leave a zero-amount subscription.
-    for (const discountValue of ["3500", "4000"]) {
+  it("refuses a discount that leaves nothing to charge on the cheapest service, which a code may be used on", async () => {
+    // Managed Website is ₹3,000 a month; a ₹3,000 discount would leave a zero-amount subscription.
+    for (const discountValue of ["3000", "4000"]) {
       const refusal = refusalOf(
         await createReferralCodeFor({ formData: form({ discountValue }), staffUserId: STAFF_USER, affiliateId: null, now: NOW }),
       );
@@ -165,12 +145,12 @@ describe("createReferralCodeFor", () => {
     expect(createReferralCode).not.toHaveBeenCalled();
   });
 
-  it("accepts a discount just under the plan's price", async () => {
-    const outcome = await createReferralCodeFor({ formData: form({ discountValue: "3499.99" }), staffUserId: STAFF_USER, affiliateId: null, now: NOW });
+  it("accepts a discount just under the cheapest service's price, though the services plan itself costs nothing", async () => {
+    const outcome = await createReferralCodeFor({ formData: form({ discountValue: "2999.99" }), staffUserId: STAFF_USER, affiliateId: null, now: NOW });
     expect(outcome.kind).toBe("created");
     expect(createReferralCode).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ discount: { kind: "amount", amountCents: 349_999 } }),
+      expect.objectContaining({ discount: { kind: "amount", amountCents: 299_999 } }),
     );
   });
 
@@ -201,11 +181,6 @@ describe("createReferralCodeFor", () => {
       const outcome = await createReferralCodeFor({ formData: form({ maxRedemptions }), staffUserId: STAFF_USER, affiliateId: null, now: NOW });
       expect(refusalOf(outcome).field).toBe("maxRedemptions");
     }
-  });
-
-  it("refuses a currency with no active plan to discount", async () => {
-    vi.mocked(findActivePlan).mockResolvedValue(null);
-    expect(refusalOf(await createReferralCodeFor({ formData: form(), staffUserId: STAFF_USER, affiliateId: null, now: NOW })).field).toBe("currency");
   });
 
   it("explains a duplicate code rather than throwing the database error at the staff member", async () => {
@@ -376,33 +351,32 @@ describe("deleteReferralCodeFor", () => {
 });
 
 describe("referralWorth", () => {
-  const TAXED_PLAN = { id: "plan-inr", currency: "INR", initialAmountCents: 299_900, taxRateBasisPoints: 1_800 } as Plan;
-
   function codeWith(discount: ReferralCode["discount"]): ReferralCode {
     return { id: "code-1", code: "TENPCT", currency: "INR", affiliateId: null, discount } as ReferralCode;
   }
 
-  beforeEach(() => {
-    vi.mocked(findActivePlan).mockResolvedValue(TAXED_PLAN);
-  });
-
-  it("resolves a percentage discount against today's plan", async () => {
-    expect(await referralWorth(codeWith({ kind: "percent", basisPoints: 1_000 }))).toEqual({
-      planChargeCents: 353_882,
-      discountCents: 29_990,
-      customerPaysCents: 318_494,
+  it("resolves a percentage discount against Managed Website's list price, the cheapest service", () => {
+    // 10% of ₹3,000 is ₹300: ₹2,700 plus 18% GST.
+    expect(referralWorth(codeWith({ kind: "percent", basisPoints: 1_000 }))).toEqual({
+      planChargeCents: 354_000,
+      discountCents: 30_000,
+      customerPaysCents: 318_600,
       taxRateBasisPoints: 1_800,
     });
   });
 
-  it("keeps a flat code's figures as they were", async () => {
-    expect(await referralWorth(codeWith({ kind: "amount", amountCents: 50_000 }))).toMatchObject({
+  it("keeps a flat code's figures as they were", () => {
+    expect(referralWorth(codeWith({ kind: "amount", amountCents: 50_000 }))).toMatchObject({
       discountCents: 50_000,
-      customerPaysCents: 294_882,
+      customerPaysCents: 295_000,
     });
   });
 
-  it("charges the full price on an affiliate code with no discount", async () => {
-    expect(await referralWorth(codeWith(null))).toMatchObject({ discountCents: 0, customerPaysCents: 353_882 });
+  it("charges the full price on an affiliate code with no discount", () => {
+    expect(referralWorth(codeWith(null))).toMatchObject({ discountCents: 0, customerPaysCents: 354_000 });
+  });
+
+  it("is null for a code worth as much as the cheapest service", () => {
+    expect(referralWorth(codeWith({ kind: "amount", amountCents: 300_000 }))).toBeNull();
   });
 });

@@ -12,6 +12,7 @@ import {
   findBusinessReferralCode,
   findLatestSubscriptionForBusiness,
   findRedeemableReferralCode,
+  isPackageOfferForfeited,
   lockBusinessForBilling,
   openCheckoutSubscription,
   withTenantScope,
@@ -23,7 +24,8 @@ import {
 } from "@brandbasket/db";
 import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
+import { WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
+import { adCreditCentsFor, packageLines } from "@brandbasket/shared/lib/billing/packages";
 import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF, REACTIVATE_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { firstMissing, onboardingChecklist } from "@brandbasket/shared/lib/onboarding/checklist";
 import { MEMBER_HOME } from "@/lib/membership";
@@ -35,7 +37,7 @@ import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { missingProblem, readOnboardingSnapshot, type StepProblem } from "./onboarding";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
-import { discountFrom, type AppliedDiscount } from "./referrals";
+import { codeBasisFor, discountFrom, PACKAGE_TAKES_NO_CODE, type AppliedDiscount } from "./referrals";
 import { ensureDiscountPlan } from "./discount-plans";
 
 /** A stuck button or a script must not be able to open subscriptions at the provider without limit. */
@@ -71,6 +73,7 @@ const NO_PLAN = `We can’t take payment in your currency just yet. Email us at 
 const CHANGED_MEANWHILE = "Something changed while we were setting up your payment. Please try again.";
 const ALREADY_A_MEMBER = "You’ve already paid for Managed Website. Open your dashboard to carry on.";
 const PAYMENT_UNAVAILABLE = "We couldn’t open your payment just now. Please try again in a minute.";
+const NO_SERVICES = "Choose at least one service to continue.";
 
 /** What was decided under the lock, carried past its commit. */
 interface PlannedCheckout {
@@ -84,14 +87,22 @@ interface PlannedCheckout {
    */
   readonly discount: AppliedDiscount | null;
   /**
-   * The services taken at this checkout, the website always among them, priced as a package when there are two or more
-   * (lib/billing/bundle.ts). The plan row costs nothing, so these are the whole charge. A business that has paid before
+   * The services taken at this checkout, priced as a package when there are two or more (packages.ts) unless the business
+   * has given the offer up. The plan row costs nothing, so these are the whole charge. A business that has paid before
    * takes the website alone.
    */
   readonly bundle: readonly NewBundledAddOn[];
+  /**
+   * Ad credit a month for a package bought together at the business's first paid checkout (adCreditCentsFor), frozen onto
+   * the subscription; 0 for anyone who has paid before or given the offer up.
+   */
+  readonly adCreditCents: number;
 }
 
-type DecisionStep = { readonly kind: "planned"; readonly planned: PlannedCheckout } | { readonly kind: "no-plan" };
+type DecisionStep =
+  | { readonly kind: "planned"; readonly planned: PlannedCheckout }
+  | { readonly kind: "no-plan" }
+  | { readonly kind: "code-on-package" };
 
 function sameSubscriptionState(seen: Subscription | null, now: Subscription | null): boolean {
   if (seen === null || now === null) return seen === now;
@@ -169,6 +180,7 @@ async function openNewCheckout(
         referralCodeId: discount?.codeId ?? null,
         discountAmountCents: discount?.amountCents ?? 0,
         bundledAddOns: planned.bundle,
+        adCreditCents: planned.adCreditCents,
         replacing: replacing?.id ?? null,
         now,
       });
@@ -223,7 +235,7 @@ export async function startCheckoutFor(customer: GrantedCustomer, now: Date): Pr
     if (missing !== null) return { kind: "refused", problem: missingProblem(missing) };
   }
 
-  return openPlanCheckout(customer, now, PAYMENT_STEP_HREF, null);
+  return openPlanCheckout(customer, now, PAYMENT_STEP_HREF, null, WEBSITE_ALONE);
 }
 
 /**
@@ -235,6 +247,7 @@ export async function startCheckoutFor(customer: GrantedCustomer, now: Date): Pr
  *
  * `tier` is the plan whose page the owner pressed Pay on: a free account may buy either, whichever it chose at sign-up.
  * A later checkout of the same account replaces an unpaid one of the other plan, as it replaces any stale one.
+ * `services` is the basket the page named, the whole subscription; an empty one is refused.
  *
  * The kind is read before the lock rather than under it. A payment landing in between has made the business a client
  * with a paid subscription, which the decision under the lock then sees and answers by sending it to its dashboard.
@@ -243,7 +256,7 @@ export async function startMembershipCheckoutFor(
   customer: GrantedCustomer,
   now: Date,
   tier: PlanTier,
-  addOns: readonly MonthlyAddOnId[] = [],
+  services: readonly MonthlyAddOnId[],
 ): Promise<CheckoutOutcome> {
   const { tenant } = customer;
   const appDb = getAppDb();
@@ -254,7 +267,7 @@ export async function startMembershipCheckoutFor(
   const entry = await withTenantScope(appDb, tenant, (tx) => findBusinessEntry(tx, tenant.businessId));
   if (entry?.kind !== "listing") return refused(ALREADY_A_MEMBER);
 
-  return openPlanCheckout(customer, now, MEMBER_HOME, tier, addOns);
+  return openPlanCheckout(customer, now, MEMBER_HOME, tier, services);
 }
 
 /**
@@ -270,7 +283,7 @@ export async function startReactivationFor(customer: GrantedCustomer, now: Date)
   if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
   if (billing.status === "paid") return { kind: "redirect", url: REACTIVATE_HREF };
   if (billing.status !== "lapsed") return refused(NOTHING_TO_PAY_FOR);
-  return openPlanCheckout(customer, now, REACTIVATE_HREF, null);
+  return openPlanCheckout(customer, now, REACTIVATE_HREF, null, WEBSITE_ALONE);
 }
 
 /**
@@ -283,15 +296,18 @@ export async function startReactivationFor(customer: GrantedCustomer, now: Date)
  * 2. with the lock released, the provider is called, and a new subscription is recorded (see openNewCheckout).
  *
  * `tier` is the plan being bought, or null for a business that is already on one (a website client paying on Check and
- * send), which pays for the plan its billing state names.
+ * send), which pays for the plan its billing state names. `chosen` is the basket bought, never empty: a checkout for
+ * nothing is refused before anything is read. A code is priced against the one service it is used on; a package of two or
+ * more refuses one (owner, plan 16 Settled 2).
  */
 async function openPlanCheckout(
   customer: GrantedCustomer,
   now: Date,
   paidHref: string,
   tier: PlanTier | null,
-  addOns: readonly MonthlyAddOnId[] = [],
+  chosen: readonly MonthlyAddOnId[],
 ): Promise<CheckoutOutcome> {
+  if (chosen.length === 0) return refused(NO_SERVICES);
   const { tenant } = customer;
   const provider = getBillingProvider();
   const first = await getStaffDb().transaction(async (tx): Promise<DecisionStep> => {
@@ -310,17 +326,22 @@ async function openPlanCheckout(
       applied === null
         ? null
         : await findRedeemableReferralCode(tx, { code: applied.code, currency: state.currency, now });
-    const discount = redeemable === null ? null : discountFrom(redeemable, plan);
-    // The plan row is the terms at a price of 0, so the website is a line like every service. Other services join at the
-    // first checkout only: a business that has paid before takes the website alone.
-    const services: readonly MonthlyAddOnId[] = state.hasEverPaid ? ["managed-website"] : ["managed-website", ...addOns];
-    const bundle: readonly NewBundledAddOn[] = bundleLines(services, plan.currency).map((line) => ({
+    // The plan row is the terms at a price of 0: every service, the website included, is a line. A business that has paid
+    // before takes the website alone.
+    const services = state.hasEverPaid ? WEBSITE_ALONE : chosen;
+    if (redeemable !== null && services.length > 1) return { kind: "code-on-package" };
+    const basis = codeBasisFor(services, plan.currency);
+    const discount = redeemable === null || basis === null ? null : discountFrom(redeemable, basis);
+    const forfeited = await isPackageOfferForfeited(tx, tenant.businessId);
+    const bundle: readonly NewBundledAddOn[] = packageLines({ services, forfeited }, plan.currency).map((line) => ({
       addOn: line.addOn,
       listAmountCents: line.listCents,
       offerDiscountAmountCents: line.offerCents,
       netAmountCents: line.netCents,
       taxRateBasisPoints: plan.taxRateBasisPoints,
     }));
+    // Ad credit is for services bought together at the first purchase: never for a business that has paid before.
+    const adCreditCents = state.hasEverPaid || forfeited ? 0 : adCreditCentsFor(services, plan.currency);
     const latestBundleKey =
       state.subscription === null ? "" : bundleKey((await findBundledAddOnsForSubscription(tx, state.subscription.id)).filter((row) => row.status === "pending").map((row) => row.addOn));
     const decision = decideCheckout(
@@ -329,9 +350,10 @@ async function openPlanCheckout(
       now,
       state,
     );
-    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle } };
+    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle, adCreditCents } };
   });
   if (first.kind === "no-plan") return refused(NO_PLAN);
+  if (first.kind === "code-on-package") return refused(PACKAGE_TAKES_NO_CODE);
 
   const { planned } = first;
   const { decision } = planned;

@@ -588,3 +588,17 @@ export async function markPackageOfferForfeited(tx: ScopedTransaction, businessI
     .returning({ id: businesses.id });
   return rows.length > 0;
 }
+
+/**
+ * Whether the business has given its package offer up (markPackageOfferForfeited): from then on every service it takes is
+ * priced at list. False for a business that does not exist. Staff connection.
+ */
+export async function isPackageOfferForfeited(db: Runner, businessId: string): Promise<boolean> {
+  if (!isUuid(businessId)) return false;
+  const rows = await db
+    .select({ at: businesses.packageOfferForfeitedAt })
+    .from(businesses)
+    .where(eq(businesses.id, businessId))
+    .limit(1);
+  return (rows[0]?.at ?? null) !== null;
+}

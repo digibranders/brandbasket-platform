@@ -122,6 +122,14 @@ describe("createFakeBillingProvider", () => {
     });
   });
 
+  it("charges a basket of services on the plan that costs nothing: the lines' nets with the plan's tax on top", async () => {
+    // All three services in rupees at the package price, ₹26,600 a month before 18% GST (docs/plans/16-platform-pricing-offers.md).
+    const services: Plan = { ...USD_PLAN, code: "services-inr-2026-10", currency: "INR", initialAmountCents: 0, recurringAmountCents: 0, taxRateBasisPoints: 1_800 };
+    const fake = provider();
+    const started = await fake.startCheckout({ ...CHECKOUT, plan: services, bundledAddOnNetCents: 2_660_000 });
+    expect(await fake.confirmCheckout({ token: tokenFrom(started.checkoutUrl) })).toMatchObject({ amountCents: 3_138_800, currency: "INR" });
+  });
+
   it("rejects a token whose amount was edited", async () => {
     const fake = provider();
     const token = tokenFrom((await fake.startCheckout(CHECKOUT)).checkoutUrl);

@@ -479,6 +479,24 @@ describe("confirmFirstPayment", () => {
     expect(recordUnappliedPayment).not.toHaveBeenCalled();
   });
 
+  it("activates a first payment for a package: the services plan's 0 plus the lines' nets, with 18% GST", async () => {
+    // All three services at 30% off, ₹26,600 a month before GST (docs/plans/16-platform-pricing-offers.md).
+    const services = { ...PLAN, currency: "INR" as const, initialAmountCents: 0, recurringAmountCents: 0, taxRateBasisPoints: 1_800 };
+    vi.mocked(findPlanById).mockResolvedValue(services);
+    const started = await provider.startCheckout({
+      businessId: BUSINESS_ID,
+      businessName: "Riverside",
+      email: "ana@example.com",
+      plan: services,
+      bundledAddOnNetCents: 2_660_000,
+    });
+    const token = new URL(started.checkoutUrl, "http://app.localhost").searchParams.get("token");
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(started.providerSubscriptionId, { bundledAddOnNetCents: 2_660_000 }));
+
+    await expect(confirmFirstPayment(tenant, { token }, NOW)).resolves.toMatchObject({ kind: "paid" });
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
+  });
+
   it("activates a first payment that had a referral discount taken off", async () => {
     vi.mocked(findPlanById).mockResolvedValue(PLAN);
     const started = await provider.startCheckout({
