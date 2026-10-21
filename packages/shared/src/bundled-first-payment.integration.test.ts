@@ -10,7 +10,6 @@ import {
   findPaymentByProviderId,
   findSubscriptionById,
   findTaxInvoiceByPaymentId,
-  bundledNetAfterRemoving,
   completeBundledAddOnChanges,
   listAddOnsToContact,
   listBundledAddOnsForBusiness,
@@ -260,11 +259,6 @@ describe("a first payment with services", () => {
       if (growth === undefined) throw new Error("Social Media and Ads was not bundled");
       return { subscription, rows, growth };
     }
-
-    it("works out what is left from the other add-ons that are not already going", async () => {
-      const { rows, growth } = await paidWithTwo();
-      expect(bundledNetAfterRemoving(rows, growth)).toBe(1_750_000);
-    });
 
     it("keeps the add-on billed and active until the renewal, and carries the lower amount the renewal must arrive at", async () => {
       const { subscription, growth } = await paidWithTwo();

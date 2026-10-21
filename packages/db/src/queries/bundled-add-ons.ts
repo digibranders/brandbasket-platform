@@ -210,11 +210,6 @@ export function renewalBundledLines(rows: readonly BundledAddOn[], atPendingAmou
     );
 }
 
-/** What the monthly add-ons cost once `removing` has stopped too. What `recordBundledAddOnRemoval` stores. */
-export function bundledNetAfterRemoving(rows: readonly BundledAddOn[], removing: Pick<BundledAddOn, "id">): number {
-  return nextBundledNetCents(rows.filter((row) => row.id !== removing.id));
-}
-
 /**
  * Notes that the customer has asked to remove an add-on taken with the plan, after the provider has been told to move the
  * subscription to the lower amount at the cycle end: the add-on stays active and billed until then, and the subscription
@@ -630,6 +625,28 @@ export async function markPackageOfferForfeited(tx: ScopedTransaction, businessI
     .where(and(eq(businesses.id, businessId), isNull(businesses.packageOfferForfeitedAt)))
     .returning({ id: businesses.id });
   return rows.length > 0;
+}
+
+/**
+ * A service has been dropped from a package, after its removal was recorded: the package offer ends for good. The lines
+ * that stay move to `lines` (list price) from the next renewal, the business is marked as having given the offer up, the
+ * subscription's monthly ad credit goes to 0 and any service still waiting for its charge is dropped, since the price
+ * it was quoted at is gone. Ad credit stops when the drop is recorded, not at the next bill, because it is a monthly
+ * amount the ads team reads from the subscription. Throws, so the caller's transaction writes nothing, when a line given
+ * cannot be moved (setPendingOfferDiscounts). Inside the caller's transaction under its billing lock.
+ */
+export async function endPackageOffer(
+  tx: ScopedTransaction,
+  input: { readonly businessId: string; readonly subscriptionId: string; readonly lines: readonly PendingOfferDiscount[]; readonly now: Date },
+): Promise<void> {
+  await setPendingOfferDiscounts(tx, { subscriptionId: input.subscriptionId, lines: input.lines, now: input.now });
+  await markPackageOfferForfeited(tx, input.businessId, input.now);
+  await tx.update(subscriptions).set({ adCreditCents: 0, updatedAt: input.now }).where(eq(subscriptions.id, input.subscriptionId));
+  const waiting = await tx
+    .select({ id: bundledAddOns.id, chargeId: bundledAddOns.chargeId })
+    .from(bundledAddOns)
+    .where(and(eq(bundledAddOns.subscriptionId, input.subscriptionId), eq(bundledAddOns.status, "pending")));
+  for (const row of waiting) await dropWaitingAddOn(tx, row, input.now);
 }
 
 /**

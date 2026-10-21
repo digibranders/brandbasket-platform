@@ -193,6 +193,7 @@ export async function addBundledAddOnFor(customer: Pick<GrantedCustomer, "tenant
 }
 
 const NOT_IN_PLAN = "That add-on isn't part of your plan payment any more. Reload the page to see where it stands.";
+const LAST_SERVICE = "That is your only service, so it can't be removed on its own. To stop paying, delete your account from Settings.";
 const CANNOT_REMOVE_NOW = "We couldn't remove that just now. Please try again in a minute.";
 
 /** What taking an add-on out of the plan's payment came to. */
@@ -225,6 +226,8 @@ export async function removeBundledAddOnFor(customer: Pick<GrantedCustomer, "ten
       };
     case "not-in-plan":
       return refused(NOT_IN_PLAN);
+    case "last-service":
+      return refused(LAST_SERVICE);
     case "failed":
       return refused(CANNOT_REMOVE_NOW);
     default: {

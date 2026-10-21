@@ -3,7 +3,6 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import {
   BundledAddOnNotPossibleError,
   bundledAddOns,
-  bundledNetAfterRemoving,
   businesses,
   completeBundledAddOnChanges,
   createReferralCode,
@@ -312,15 +311,6 @@ describe("adding an add-on to a running plan", () => {
     expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 1_000_000, pendingBundledAddOnNetCents: 2_500_000 });
   });
 
-  it("counts an added add-on in what is left when another is taken out", async () => {
-    const subscription = await paidSubscription(bundleOf("digital-growth"));
-    const opened = await open(addition(subscription, { addOn: "local-seo-aeo", listAmountCents: 2_500_000, netCents: 1_129_032, chargeCents: 1_332_258 }));
-    await pay(opened.chargeId ?? "", "fake_pay_seo");
-
-    const rows = await rowsOf(subscription);
-    expect(bundledNetAfterRemoving(rows, await rowFor(subscription, "digital-growth"))).toBe(2_500_000);
-  });
-
   describe("keeping an add-on that was asked to stop", () => {
     it("clears the request, and the amount goes back to what is billed now", async () => {
       const subscription = await paidSubscription(bundleOf("digital-growth"));
@@ -470,15 +460,19 @@ describe("the add-on flow, with the provider", () => {
     });
   });
 
-  it("keeps an add-on that is ending at no charge, moving the provider back to the amount with it", async () => {
-    const subscription = await paidSubscription(bundleOf("digital-growth"));
+  it("keeps an add-on that is ending at no charge and at list, since the package offer is gone, moving the provider back to the amount with it", async () => {
+    const subscription = await paidSubscription(bundleOf("managed-website", "digital-growth"), { adCreditCents: 200_000 });
     expect(await removeBundledAddOn(deps(), { businessId, addOn: "digital-growth", now: FIFTH_NOV })).toMatchObject({ kind: "scheduled" });
 
     expect(await startAddOn(deps(), { businessId, addOn: "digital-growth", staffId: null, now: FIFTH_NOV })).toEqual({ kind: "kept" });
 
     expect(moves).toEqual([subscription.providerSubscriptionId, subscription.providerSubscriptionId]);
-    expect(await rowFor(subscription, "digital-growth")).toMatchObject({ status: "active", endRequestedAt: null });
-    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 1_000_000, pendingBundledAddOnNetCents: null });
+    expect(await rowFor(subscription, "digital-growth")).toMatchObject({ status: "active", endRequestedAt: null, pendingOfferDiscountAmountCents: 0 });
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({
+      bundledAddOnNetCents: 1_040_000,
+      pendingBundledAddOnNetCents: 1_300_000,
+      adCreditCents: 0,
+    });
   });
 
   it("refuses an add-on already in the plan payment", async () => {
@@ -700,5 +694,222 @@ describe("adding a service moves the basket to the package price", () => {
 
       expect(renewalBundledLines(await rowsOf(subscription), false).map((row) => [row.addOn, row.offerDiscountAmountCents])).toEqual([["managed-website", 0]]);
     });
+  });
+});
+
+describe("dropping a service ends the package offer for good", () => {
+  let moves: string[];
+  let plansMade: { readonly net: number; readonly discount: number }[];
+  let provider: BillingProvider;
+
+  function deps(overrides: Partial<BillingProvider> = {}): BasketDeps {
+    return {
+      staffDb: dbs.staff.db,
+      provider: { ...provider, ...overrides },
+      ensureDiscountPlan: (p, plan, discount, net) => {
+        plansMade.push({ net, discount });
+        return ensureDiscountPlanFor(dbs.staff.db, p, plan, discount, net);
+      },
+    };
+  }
+
+  /** Each line as [offer discount, net, pending discount], by service. */
+  async function linesOf(subscription: Subscription) {
+    return Object.fromEntries(
+      (await rowsOf(subscription))
+        .filter((row) => row.status !== "removed")
+        .map((row) => [row.addOn, [row.offerDiscountAmountCents, row.netAmountCents, row.pendingOfferDiscountAmountCents]]),
+    );
+  }
+
+  async function forfeitedAt(): Promise<Date | null> {
+    // Each test's database holds one business.
+    const rows = await dbs.owner.db.select({ at: businesses.packageOfferForfeitedAt }).from(businesses);
+    return rows[0]?.at ?? null;
+  }
+
+  beforeEach(() => {
+    moves = [];
+    plansMade = [];
+    const real = createFakeBillingProvider({ secret: "a-test-secret-that-is-long-enough-000", now: () => FIFTH_NOV });
+    provider = {
+      ...real,
+      changeSubscriptionPlanAtPeriodEnd: async (id) => {
+        moves.push(id);
+      },
+    };
+  });
+
+  describe("from all three services", () => {
+    async function allThree(): Promise<Subscription> {
+      return paidSubscription(bundleOf("managed-website", "digital-growth", "local-seo-aeo"), { adCreditCents: 500_000 });
+    }
+
+    it("forfeits the business, ends the ad credit, puts the services kept at list from the next bill and tells the provider that amount", async () => {
+      const subscription = await allThree();
+
+      const removal = await removeBundledAddOn(deps(), { businessId, addOn: "local-seo-aeo", now: FIFTH_NOV });
+
+      expect(removal).toEqual({ kind: "scheduled", endsOn: subscription.paidThroughAt });
+      expect(await forfeitedAt()).toEqual(FIFTH_NOV);
+      expect(await linesOf(subscription)).toEqual({
+        "managed-website": [90_000, 210_000, 0],
+        "digital-growth": [300_000, 700_000, 0],
+        "local-seo-aeo": [750_000, 1_750_000, null],
+      });
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({
+        bundledAddOnNetCents: 2_660_000,
+        pendingBundledAddOnNetCents: 1_300_000,
+        adCreditCents: 0,
+      });
+      expect(plansMade).toEqual([{ net: 1_300_000, discount: 0 }]);
+      expect(moves).toEqual([subscription.providerSubscriptionId]);
+    });
+
+    it("renews at 1534000, invoiced line by line at list, and then the dropped line is gone", async () => {
+      const subscription = await allThree();
+      await removeBundledAddOn(deps(), { businessId, addOn: "local-seo-aeo", now: FIFTH_NOV });
+      const renewedAt = subscription.paidThroughAt ?? PAID_AT;
+      const charged = chargedAmountCents(1_300_000, 0, 1_800);
+      const current = (await findSubscriptionById(dbs.staff.db, subscription.id)) ?? subscription;
+
+      const renewal = await dbs.staff.db.transaction(async (tx) => {
+        const recorded = await activateRenewalPayment(tx, {
+          businessId,
+          subscriptionId: subscription.id,
+          commitmentEndsAt: current.commitmentEndsAt ?? renewedAt,
+          provider: "fake",
+          providerPaymentId: "fake_pay_renewal",
+          amountCents: charged,
+          currency: "INR",
+          paidAt: renewedAt,
+          paidThroughAt: new Date("2026-12-19T00:00:00.000Z"),
+          periodStart: renewedAt,
+          invoicedPrice: {
+            plan: managed,
+            bundledAddOns: renewalBundledLines(await rowsOf(subscription), true),
+            netAmountCents: managed.recurringAmountCents,
+            discountAmountCents: 0,
+            retentionDiscountCents: 0,
+          },
+        });
+        await completeBundledAddOnChanges(tx, { subscriptionId: subscription.id, now: renewedAt });
+        return recorded;
+      });
+
+      const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id);
+      expect(charged).toBe(1_534_000);
+      expect(invoice?.totalCents).toBe(charged);
+      expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
+        ["Managed Website", 300_000, 0],
+        ["Social Media and Ads", 1_000_000, 0],
+      ]);
+      expect(await linesOf(subscription)).toEqual({ "managed-website": [0, 300_000, null], "digital-growth": [0, 1_000_000, null] });
+      expect(await statusesOf(subscription, "local-seo-aeo")).toEqual(["removed"]);
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 1_300_000, pendingBundledAddOnNetCents: null });
+    });
+  });
+
+  it("waives a charge for a service that was still waiting to be paid, so it cannot arrive at a price the offer no longer gives", async () => {
+    const subscription = await paidSubscription(bundleOf("managed-website", "digital-growth"), { adCreditCents: 200_000 });
+    const started = await startAddOn(deps(), { businessId, addOn: "local-seo-aeo", staffId: null, now: FIFTH_NOV });
+    if (started.kind !== "pay") throw new Error(`Expected a charge, got ${started.kind}`);
+
+    await removeBundledAddOn(deps(), { businessId, addOn: "digital-growth", now: FIFTH_NOV });
+
+    expect(await statusesOf(subscription, "local-seo-aeo")).toEqual(["removed"]);
+    expect(await findChargeForBusiness(dbs.staff.db, businessId, started.chargeId)).toMatchObject({ status: "waived" });
+  });
+
+  it("lets the website go while another service stays: the one kept is at list from the next bill", async () => {
+    const subscription = await paidSubscription(bundleOf("managed-website", "digital-growth"), { adCreditCents: 200_000 });
+
+    expect(await removeBundledAddOn(deps(), { businessId, addOn: "managed-website", now: FIFTH_NOV })).toMatchObject({ kind: "scheduled" });
+
+    expect(await linesOf(subscription)).toEqual({ "managed-website": [60_000, 240_000, null], "digital-growth": [200_000, 800_000, 0] });
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 1_000_000, adCreditCents: 0 });
+    expect(await forfeitedAt()).toEqual(FIFTH_NOV);
+    expect(plansMade).toEqual([{ net: 1_000_000, discount: 0 }]);
+  });
+
+  it("leaves a two-service package with the website at list, the offer gone and no ad credit", async () => {
+    const subscription = await paidSubscription(bundleOf("managed-website", "digital-growth"), { adCreditCents: 200_000 });
+
+    await removeBundledAddOn(deps(), { businessId, addOn: "digital-growth", now: FIFTH_NOV });
+
+    expect(await linesOf(subscription)).toMatchObject({ "managed-website": [60_000, 240_000, 0] });
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 300_000, adCreditCents: 0 });
+    expect(await forfeitedAt()).toEqual(FIFTH_NOV);
+    expect(plansMade).toEqual([{ net: 300_000, discount: 0 }]);
+  });
+
+  it("does the same in dollars", async () => {
+    const usd = await findActivePlan(dbs.staff.db, "USD", "managed");
+    if (usd === null) throw new Error("No active USD services plan was seeded");
+    managed = usd;
+    await dbs.owner.db.update(businesses).set({ currency: "USD" });
+    const subscription = await paidSubscription(bundleOf("managed-website", "digital-growth"), { adCreditCents: 2_500 });
+
+    await removeBundledAddOn(deps(), { businessId, addOn: "digital-growth", now: FIFTH_NOV });
+
+    expect(await linesOf(subscription)).toMatchObject({ "managed-website": [1_500, 6_000, 0] });
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 7_500, adCreditCents: 0 });
+  });
+
+  it("changes nothing more for a business that had already given the offer up", async () => {
+    const lines = bundleLines(["managed-website", "digital-growth", "local-seo-aeo"], managed.currency, true).map((line) => ({
+      addOn: line.addOn,
+      listAmountCents: line.listCents,
+      offerDiscountAmountCents: line.offerCents,
+      netAmountCents: line.netCents,
+      taxRateBasisPoints: managed.taxRateBasisPoints,
+    }));
+    const subscription = await paidSubscription(lines);
+    const EARLIER = new Date("2026-10-25T00:00:00.000Z");
+    await dbs.staff.db.transaction((tx) => markPackageOfferForfeited(tx, businessId, EARLIER));
+
+    expect(await removeBundledAddOn(deps(), { businessId, addOn: "local-seo-aeo", now: FIFTH_NOV })).toMatchObject({ kind: "scheduled" });
+
+    expect(await forfeitedAt()).toEqual(EARLIER);
+    expect(await linesOf(subscription)).toMatchObject({ "managed-website": [0, 300_000, null], "digital-growth": [0, 1_000_000, null] });
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 1_300_000, adCreditCents: 0 });
+  });
+
+  describe("from a single service", () => {
+    it("is refused, and nothing changes: no ad credit lost, no offer forfeited, the provider not asked", async () => {
+      const subscription = await paidSubscription(bundleOf("digital-growth"), { adCreditCents: 200_000 });
+
+      expect(await removeBundledAddOn(deps(), { businessId, addOn: "digital-growth", now: FIFTH_NOV })).toEqual({ kind: "last-service" });
+
+      expect(await forfeitedAt()).toBeNull();
+      expect(await rowFor(subscription, "digital-growth")).toMatchObject({ status: "active", endRequestedAt: null, pendingOfferDiscountAmountCents: null });
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ adCreditCents: 200_000, pendingBundledAddOnNetCents: null });
+      expect(moves).toEqual([]);
+    });
+
+    it("is refused for the website too", async () => {
+      await paidSubscription();
+
+      expect(await removeBundledAddOn(deps(), { businessId, addOn: "managed-website", now: FIFTH_NOV })).toEqual({ kind: "last-service" });
+    });
+
+    it("is refused when the other service is already on its way out", async () => {
+      const subscription = await paidSubscription(bundleOf("managed-website", "digital-growth"));
+      await removeBundledAddOn(deps(), { businessId, addOn: "digital-growth", now: FIFTH_NOV });
+
+      expect(await removeBundledAddOn(deps(), { businessId, addOn: "managed-website", now: FIFTH_NOV })).toEqual({ kind: "last-service" });
+      expect(await rowFor(subscription, "managed-website")).toMatchObject({ endRequestedAt: null });
+    });
+  });
+
+  it("changes nothing when the provider refuses: the offer, the ad credit and the lines stay", async () => {
+    const subscription = await paidSubscription(bundleOf("managed-website", "digital-growth"), { adCreditCents: 200_000 });
+
+    const refusing = deps({ changeSubscriptionPlanAtPeriodEnd: async () => Promise.reject(new Error("Razorpay is down")) });
+    expect(await removeBundledAddOn(refusing, { businessId, addOn: "digital-growth", now: FIFTH_NOV })).toEqual({ kind: "failed" });
+
+    expect(await forfeitedAt()).toBeNull();
+    expect(await linesOf(subscription)).toEqual({ "managed-website": [60_000, 240_000, null], "digital-growth": [200_000, 800_000, null] });
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ adCreditCents: 200_000, pendingBundledAddOnNetCents: null });
   });
 });

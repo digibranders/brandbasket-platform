@@ -458,7 +458,9 @@ export async function removeClientAddOnAction(formData: FormData): Promise<void>
 
   const removal = await removeClientAddOn({ businessId, addOn }, new Date());
   revalidateClient(businessId);
-  redirect(addOnNoticeHref(businessId, removal.kind === "scheduled" ? "add-on-removal-scheduled" : "add-on-removal-failed"));
+  const notice: AddOnNotice =
+    removal.kind === "scheduled" ? "add-on-removal-scheduled" : removal.kind === "last-service" ? "add-on-removal-last-service" : "add-on-removal-failed";
+  redirect(addOnNoticeHref(businessId, notice));
 }
 
 /** Tells the payment provider again to bill an added add-on from the next renewal. Safe to repeat. */

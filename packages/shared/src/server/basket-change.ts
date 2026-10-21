@@ -2,7 +2,7 @@ import "server-only";
 import { hasBillingAccess, type BillingProvider } from "@brandbasket/billing";
 import {
   BundledAddOnNotPossibleError,
-  bundledNetAfterRemoving,
+  endPackageOffer,
   findBillingState,
   findBundledAddOnByCharge,
   findBundledAddOnsForSubscription,
@@ -338,12 +338,18 @@ async function liveBasket(
   });
 }
 
-/** Keeps an ending add-on: the provider is moved back to the amount with it, then the request to stop is cleared. */
+/**
+ * Keeps an ending add-on: the provider is moved back to the amount with it, then the request to stop is cleared. An ending
+ * add-on means a service was dropped, which ended the package offer for good, so the kept one goes to list from the next bill
+ * like the others.
+ */
 async function keepBundledAddOnFor(deps: BasketDeps, businessId: string, ending: BundledAddOn, now: Date): Promise<boolean> {
   const basket = await liveBasket(deps, businessId, (row) => row.id === ending.id && row.endRequestedAt !== null);
   if (basket === null) return false;
   const { row, live, subscription, plan } = basket;
-  const keptNetCents = nextBundledNetCents(live.map((candidate) => (candidate.id === row.id ? { ...candidate, endRequestedAt: null } : candidate)));
+  const keptNetCents = nextBundledNetCents(
+    live.map((candidate) => (candidate.id === row.id ? { ...candidate, endRequestedAt: null, pendingOfferDiscountAmountCents: 0 } : candidate)),
+  );
   const fields = { businessId, subscriptionId: subscription.id, addOn: row.addOn };
   try {
     if (subscription.provider !== "manual") await moveProviderTo(deps, subscription, plan, keptNetCents);
@@ -354,7 +360,9 @@ async function keepBundledAddOnFor(deps: BasketDeps, businessId: string, ending:
   try {
     return await deps.staffDb.transaction(async (tx) => {
       await lockBusinessForBilling(tx, businessId);
-      return keepBundledAddOn(tx, { id: row.id, businessId, now });
+      const kept = await keepBundledAddOn(tx, { id: row.id, businessId, now });
+      if (kept) await setPendingOfferDiscounts(tx, { subscriptionId: subscription.id, lines: [{ id: row.id, pendingOfferDiscountAmountCents: 0 }], now });
+      return kept;
     });
   } catch (error) {
     logBillingEvent("error", "bundled-add-on-keep-failed", { ...fields, stage: "record", ...describeError(error) });
@@ -367,22 +375,33 @@ export type BundledRemoval =
   | { readonly kind: "scheduled"; readonly endsOn: Date }
   /** It is not in the plan's payment (any more), or is already going. */
   | { readonly kind: "not-in-plan" }
+  /** It is the only service the subscription has: stopping it is cancelling, which is the exit flow, not a removal. */
+  | { readonly kind: "last-service" }
   /** The provider refused, or the request could not be recorded. */
   | { readonly kind: "failed" };
 
 /**
- * Takes an add-on out of the plan's monthly payment from the next billing date. It stays active and paid for until then.
- * The provider is moved to a plan at the lower amount first, for the cycle end, and our record follows: if the provider
- * refuses nothing here changes. If our record cannot then be written the provider is ahead of us, which is logged for staff
- * because the next renewal would arrive at an amount we do not expect. Everything comes from the database, under the
- * business's lock; the caller names only the add-on.
+ * Drops a service from the plan's monthly payment from the next billing date. It stays active and paid for until then.
+ * Dropping one while two or more are active ends the package offer for good (plan 16): every service that stays is priced
+ * at list from the next bill, the business never earns a package price again, and the subscription's ad credit is 0 from the
+ * moment the drop is recorded. Dropping the only service is refused: that is cancelling.
+ *
+ * The provider is moved to a plan at the new amount first, for the cycle end, and our record follows in one transaction:
+ * if the provider refuses nothing here changes. If our record cannot then be written the provider is ahead of us, which is
+ * logged for staff because the next renewal would arrive at an amount we do not expect. Everything comes from the database,
+ * under the business's lock; the caller names only the service.
  */
 export async function removeBundledAddOn(deps: BasketDeps, input: { readonly businessId: string; readonly addOn: MonthlyAddOnId; readonly now: Date }): Promise<BundledRemoval> {
   const { businessId, addOn, now } = input;
   const basket = await liveBasket(deps, businessId, (row) => row.addOn === addOn && row.endRequestedAt === null);
   if (basket === null) return { kind: "not-in-plan" };
   const { row, live, subscription, plan } = basket;
-  const remainingNetCents = bundledNetAfterRemoving(live, row);
+  const kept = stayingLines(live).filter((candidate) => candidate.id !== row.id);
+  if (kept.length === 0) return { kind: "last-service" };
+  // Every line that stays is at list from the next bill: the offer is gone for good, so this is the sum of their list prices.
+  const remainingNetCents = kept.reduce((total, line) => total + line.listAmountCents, 0);
+  // A line already at list with nothing pending (a business that had given the offer up) has nothing to move.
+  const toList = kept.filter((line) => line.pendingOfferDiscountAmountCents !== null || line.offerDiscountAmountCents !== 0).map((line) => ({ id: line.id, pendingOfferDiscountAmountCents: 0 }));
   const fields = { businessId, subscriptionId: subscription.id, addOn };
 
   try {
@@ -395,7 +414,9 @@ export async function removeBundledAddOn(deps: BasketDeps, input: { readonly bus
   try {
     const recorded = await deps.staffDb.transaction(async (tx) => {
       await lockBusinessForBilling(tx, businessId);
-      return recordBundledAddOnRemoval(tx, { id: row.id, businessId, pendingBundledAddOnNetCents: remainingNetCents, now });
+      const removed = await recordBundledAddOnRemoval(tx, { id: row.id, businessId, pendingBundledAddOnNetCents: remainingNetCents, now });
+      if (removed) await endPackageOffer(tx, { businessId, subscriptionId: subscription.id, lines: toList, now });
+      return removed;
     });
     if (!recorded) return { kind: "not-in-plan" };
   } catch (error) {

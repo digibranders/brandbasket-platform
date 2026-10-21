@@ -1,6 +1,7 @@
 import { createFakeBillingProvider, type BillingProvider } from "@brandbasket/billing";
 import {
   consumeRateLimit,
+  endPackageOffer,
   findBusinessCurrency,
   findLiveBundledAddOns,
   findPlanById,
@@ -35,9 +36,8 @@ vi.mock("@brandbasket/shared/server/basket-change", async (importOriginal) => ({
 }));
 vi.mock("@brandbasket/db", () => {
   return {
-    bundledNetAfterRemoving: (rows: readonly { id: string; status: string; endRequestedAt: Date | null; netAmountCents: number }[], removing: { id: string }) =>
-      rows.filter((row) => row.id !== removing.id && row.status === "active" && row.endRequestedAt === null).reduce((total, row) => total + row.netAmountCents, 0),
     consumeRateLimit: vi.fn(),
+    endPackageOffer: vi.fn(),
     findBusinessCurrency: vi.fn(),
     findLiveBundledAddOns: vi.fn().mockResolvedValue([]),
     findPlanById: vi.fn(),
@@ -64,7 +64,6 @@ const customer: GrantedCustomer = {
 
 /** Social Media and Ads and Local SEO + AEO in rupees as frozen on their rows, before GST. */
 const DIGITAL_GROWTH_NET = 665_000;
-const LOCAL_SEO_AEO_NET = 2_375_000;
 
 let provider: BillingProvider;
 let staffDb: Database;
@@ -274,13 +273,19 @@ describe("removeBundledAddOnFor", () => {
   const PAID_THROUGH = new Date("2026-11-09T09:00:00.000Z");
   const PROVIDER_SUBSCRIPTION = `fake_sub_${"a".repeat(24)}`;
   const PLAN = { id: "plan-managed", code: "managed-inr-2026-10", currency: "INR", providerPlanId: "plan_managed_rzp" };
-  const bundledRow = (addOn: string, netAmountCents: number, overrides: Record<string, unknown> = {}) => ({
-    id: `0192f3c4-5555-7000-8000-${addOn === "digital-growth" ? "000000000001" : "000000000002"}`,
+  const IDS = { "managed-website": "000000000001", "digital-growth": "000000000002", "local-seo-aeo": "000000000003" } as const;
+  const LISTS = { "managed-website": 300_000, "digital-growth": 1_000_000, "local-seo-aeo": 2_500_000 } as const;
+  /** A line of the three-service package: 30% off every line, as frozen on it. */
+  const bundledRow = (addOn: keyof typeof IDS, overrides: Record<string, unknown> = {}) => ({
+    id: `0192f3c4-5555-7000-8000-${IDS[addOn]}`,
     businessId: BUSINESS_ID,
     subscriptionId: "sub-1",
     addOn,
     status: "active",
-    netAmountCents,
+    listAmountCents: LISTS[addOn],
+    offerDiscountAmountCents: Math.round(LISTS[addOn] * 0.3),
+    pendingOfferDiscountAmountCents: null,
+    netAmountCents: Math.round(LISTS[addOn] * 0.7),
     endRequestedAt: null,
     ...overrides,
   });
@@ -306,10 +311,10 @@ describe("removeBundledAddOnFor", () => {
     vi.mocked(ensureDiscountPlan).mockResolvedValue("plan_lower");
   });
 
-  it("moves the provider to a plan at what is left, then records the request, and says when it stops", async () => {
-    const digitalGrowth = bundledRow("digital-growth", DIGITAL_GROWTH_NET);
-    const localSeo = bundledRow("local-seo-aeo", LOCAL_SEO_AEO_NET);
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([digitalGrowth, localSeo] as never);
+  it("moves the provider to a plan at the other services' list prices, then records the request and the end of the offer, and says when it stops", async () => {
+    const seo = bundledRow("local-seo-aeo");
+    const website = bundledRow("managed-website");
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([website, bundledRow("digital-growth"), seo] as never);
 
     const result = await removeBundledAddOnFor(customer, "digital-growth", NOW);
 
@@ -318,35 +323,63 @@ describe("removeBundledAddOnFor", () => {
       endsOn: PAID_THROUGH,
       message: "Social Media and Ads stays until your next payment date, then it stops and your monthly payment goes down.",
     });
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, LOCAL_SEO_AEO_NET);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 2_800_000);
     expect(changed).toHaveBeenCalledWith(PROVIDER_SUBSCRIPTION, "plan_lower");
-    expect(recordBundledAddOnRemoval).toHaveBeenCalledWith(expect.anything(), { id: digitalGrowth.id, businessId: BUSINESS_ID, pendingBundledAddOnNetCents: LOCAL_SEO_AEO_NET, now: NOW });
+    expect(recordBundledAddOnRemoval).toHaveBeenCalledWith(expect.anything(), {
+      id: bundledRow("digital-growth").id,
+      businessId: BUSINESS_ID,
+      pendingBundledAddOnNetCents: 2_800_000,
+      now: NOW,
+    });
+    expect(endPackageOffer).toHaveBeenCalledWith(expect.anything(), {
+      businessId: BUSINESS_ID,
+      subscriptionId: "sub-1",
+      lines: [
+        { id: website.id, pendingOfferDiscountAmountCents: 0 },
+        { id: seo.id, pendingOfferDiscountAmountCents: 0 },
+      ],
+      now: NOW,
+    });
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:change-plan", "tx2:begin", "tx2:commit"]);
   });
 
-  it("moves back to the plan's own provider plan when nothing is left to add", async () => {
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("digital-growth", DIGITAL_GROWTH_NET)] as never);
+  it("moves nothing for a service that is already at list with no change waiting", async () => {
+    const website = bundledRow("managed-website", { offerDiscountAmountCents: 0, netAmountCents: 300_000 });
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([website, bundledRow("digital-growth", { offerDiscountAmountCents: 0, netAmountCents: 1_000_000 })] as never);
 
     await removeBundledAddOnFor(customer, "digital-growth", NOW);
 
-    expect(ensureDiscountPlan).not.toHaveBeenCalled();
-    expect(changed).toHaveBeenCalledWith(PROVIDER_SUBSCRIPTION, "plan_managed_rzp");
-    expect(recordBundledAddOnRemoval).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ pendingBundledAddOnNetCents: 0 }));
+    expect(endPackageOffer).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ lines: [] }));
   });
 
-  it("does not count an add-on that is already on its way out toward what is left", async () => {
+  it("does not count a service that is already on its way out among those that stay", async () => {
     vi.mocked(findLiveBundledAddOns).mockResolvedValue([
-      bundledRow("digital-growth", DIGITAL_GROWTH_NET),
-      bundledRow("local-seo-aeo", LOCAL_SEO_AEO_NET, { endRequestedAt: new Date("2026-10-15T09:00:00.000Z") }),
+      bundledRow("managed-website"),
+      bundledRow("digital-growth"),
+      bundledRow("local-seo-aeo", { endRequestedAt: new Date("2026-10-15T09:00:00.000Z") }),
     ] as never);
 
     await removeBundledAddOnFor(customer, "digital-growth", NOW);
 
-    expect(recordBundledAddOnRemoval).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ pendingBundledAddOnNetCents: 0 }));
+    expect(recordBundledAddOnRemoval).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ pendingBundledAddOnNetCents: 300_000 }));
+  });
+
+  it("refuses to remove the only service and sends the customer to delete the account, touching nothing", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("digital-growth", { offerDiscountAmountCents: 0, netAmountCents: 1_000_000 })] as never);
+
+    const result = await removeBundledAddOnFor(customer, "digital-growth", NOW);
+
+    expect(result).toEqual({
+      kind: "refused",
+      message: "That is your only service, so it can't be removed on its own. To stop paying, delete your account from Settings.",
+    });
+    expect(changed).not.toHaveBeenCalled();
+    expect(recordBundledAddOnRemoval).not.toHaveBeenCalled();
+    expect(endPackageOffer).not.toHaveBeenCalled();
   });
 
   it("refuses an add-on that is not part of the plan payment, or is already going, touching nothing", async () => {
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("local-seo-aeo", LOCAL_SEO_AEO_NET, { endRequestedAt: NOW })] as never);
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("local-seo-aeo", { endRequestedAt: NOW })] as never);
 
     expect(await removeBundledAddOnFor(customer, "digital-growth", NOW)).toMatchObject({ kind: "refused" });
     expect(await removeBundledAddOnFor(customer, "local-seo-aeo", NOW)).toMatchObject({ kind: "refused" });
@@ -355,20 +388,22 @@ describe("removeBundledAddOnFor", () => {
   });
 
   it("changes nothing when the provider refuses", async () => {
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("digital-growth", DIGITAL_GROWTH_NET), bundledRow("local-seo-aeo", LOCAL_SEO_AEO_NET)] as never);
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("digital-growth"), bundledRow("local-seo-aeo")] as never);
     changed.mockRejectedValue(new Error("provider unreachable"));
 
     const result = await removeBundledAddOnFor(customer, "digital-growth", NOW);
 
     expect(result).toMatchObject({ kind: "refused" });
     expect(recordBundledAddOnRemoval).not.toHaveBeenCalled();
+    expect(endPackageOffer).not.toHaveBeenCalled();
   });
 
-  it("says so when it was already asked about by the time it is recorded", async () => {
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("digital-growth", DIGITAL_GROWTH_NET)] as never);
+  it("says so when it was already asked about by the time it is recorded, and ends no offer", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("digital-growth"), bundledRow("local-seo-aeo")] as never);
     vi.mocked(recordBundledAddOnRemoval).mockResolvedValue(false);
 
     expect(await removeBundledAddOnFor(customer, "digital-growth", NOW)).toMatchObject({ kind: "refused" });
+    expect(endPackageOffer).not.toHaveBeenCalled();
   });
 
   it("stops at the rate limit", async () => {

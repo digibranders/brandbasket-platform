@@ -186,7 +186,7 @@ function BundledAddOnRow({ businessId, row }: { readonly businessId: string; rea
               action={removeClientAddOnAction}
               fields={{ businessId, addOn: row.addOn }}
               confirm={`I’ve told the customer. ${row.title} will stop on ${row.endsOnText}.`}
-              hint="It stays until the next billing date, then the monthly payment goes down, the same as when the customer removes it."
+              hint="It stays until the next billing date. Then the other services go to list price and package prices end for good, the same as when the customer removes it."
               submit={`Remove ${row.title}`}
               danger
             />

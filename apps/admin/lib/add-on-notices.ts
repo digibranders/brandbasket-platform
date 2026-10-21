@@ -27,6 +27,7 @@ export type AddOnNotice =
   | "add-on-not-possible"
   | "add-on-removal-scheduled"
   | "add-on-removal-failed"
+  | "add-on-removal-last-service"
   | "provider-told"
   | "provider-still-refusing";
 
@@ -77,6 +78,10 @@ export const ADD_ON_NOTICES: Readonly<Record<AddOnNotice, { readonly text: strin
   "add-on-removal-scheduled": { text: "Removal scheduled. It stops at the next billing date, and the monthly payment goes down.", ok: true },
   "add-on-removal-failed": {
     text: "Nothing changed: it isn’t in the plan payment, or the payment provider couldn’t be reached. Try again in a minute.",
+    ok: false,
+  },
+  "add-on-removal-last-service": {
+    text: "Nothing changed: that is the client’s only service, so it can’t be removed on its own. Stopping it means cancelling their plan.",
     ok: false,
   },
   "provider-told": { text: "The payment provider will bill the add-on from the next renewal.", ok: true },
