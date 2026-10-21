@@ -185,7 +185,7 @@ describe("loadClientAddOns", () => {
 
     expect(listAddOnSubscriptionsForStaff).toHaveBeenCalledWith({ name: "staff-db" }, BUSINESS);
     expect(loaded.addOns).toHaveLength(1);
-    expect(loaded.addOns[0]).toMatchObject({ id: ROW, title: "Digital Growth", canEnd: true });
+    expect(loaded.addOns[0]).toMatchObject({ id: ROW, title: "Social Media and Ads", canEnd: true });
     expect(loaded.pressReleases).toHaveLength(1);
     expect(loaded.pressReleases[0]).toMatchObject({ id: RELEASE, nextSteps: ["in_progress", "published"] });
     expect(logBillingEvent).not.toHaveBeenCalled();
@@ -255,7 +255,7 @@ describe("add-ons taken with the plan", () => {
     expect(loaded.bundledAddOns).toEqual([
       expect.objectContaining({
         id: BUNDLED,
-        title: "Digital Growth",
+        title: "Social Media and Ads",
         state: { tone: "done", label: "Active" },
         price: "₹1,899.05 + GST a month, 5% lifetime offer, billed with the plan",
         needsContact: true,

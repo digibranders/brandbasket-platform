@@ -46,7 +46,7 @@ describe("clientAddOnRows", () => {
     const [shown] = clientAddOnRows([row({ id: "a" })], NOW);
     expect(shown).toMatchObject({
       id: "a",
-      title: "Digital Growth",
+      title: "Social Media and Ads",
       state: { tone: "done", label: "Active" },
       price: "₹10,000 + GST a month",
       dateLine: "Renews on 12 November 2026",
@@ -325,7 +325,7 @@ describe("clientAddOnOption", () => {
     } as unknown as AddOnAssessment;
     expect(clientAddOnOption("digital-growth", assessment, "INR")).toEqual({
       addOn: "digital-growth",
-      title: "Digital Growth",
+      title: "Social Media and Ads",
       kind: "add",
       costText: "₹8,260 now for the 31 days left, then ₹11,798.82 a month with GST. The customer pays the charge from Billing.",
     });

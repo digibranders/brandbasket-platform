@@ -1,6 +1,5 @@
 import "server-only";
 import { findBillingState, type Plan } from "@brandbasket/db";
-import { lifetimeOfferVisible } from "@brandbasket/shared/lib/billing/lifetime-offer";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import type { MembershipTier } from "@/lib/membership";
 import { loadBillingDetailsView } from "./billing-details";
@@ -20,9 +19,8 @@ export interface MembershipCheckoutView {
   /** The invoice details form's state: an account buying its membership cannot open Billing, so the form is offered here. */
   readonly billingDetails: BillingDetailsView | null;
   /**
-   * The first-checkout lifetime offer (lib/billing/lifetime-offer.ts): `available` to show the card before the first plan
-   * payment, none after. The add-ons it offers are taken with the plan in the same payment (lib/billing/bundle.ts); it never
-   * changes the plan's own price.
+   * The add-ons offered with the plan: `available` to show the card before the first plan payment, none after. They are
+   * taken with the plan in the same payment (lib/billing/bundle.ts); they never change the plan's own price.
    */
   readonly offer: MembershipOffer;
 }
@@ -52,10 +50,7 @@ export async function loadMembershipCheckout(
     loadBillingDetailsView(customer),
   ]);
   const hasEverPaid = state?.hasEverPaid ?? true;
-  let offer: MembershipOffer = { kind: "none" };
-  if (!hasEverPaid && plan !== null) {
-    if (lifetimeOfferVisible({ hasEverPaid })) offer = { kind: "available" };
-  }
+  const offer: MembershipOffer = !hasEverPaid && plan !== null ? { kind: "available" } : { kind: "none" };
   // A code that still works is not lapsed, whatever the second read says.
   return { plan, discount, lapsedCode: discount === null ? lapsedCode : null, billingDetails, offer };
 }

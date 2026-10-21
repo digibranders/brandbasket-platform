@@ -1,43 +1,67 @@
 import { describe, expect, it } from "vitest";
 import { ADD_ONS, addOnById, addOnPrice, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS } from "./add-ons";
 
-describe("add-on catalogue", () => {
-  it("sells Digital Growth and Local SEO + AEO, monthly, in the order the website lists them", () => {
+describe("services catalogue", () => {
+  it("sells Managed Website, Social Media and Ads and Local SEO + AEO, monthly, in the order the website lists them", () => {
     expect(ADD_ONS.map((addOn) => [addOn.id, addOn.title, addOn.billing])).toEqual([
-      ["digital-growth", "Digital Growth", "monthly"],
+      ["managed-website", "Managed Website", "monthly"],
+      ["digital-growth", "Social Media and Ads", "monthly"],
       ["local-seo-aeo", "Local SEO + AEO", "monthly"],
     ]);
-    expect(MONTHLY_ADD_ON_IDS).toEqual(["digital-growth", "local-seo-aeo"]);
+    expect(MONTHLY_ADD_ON_IDS).toEqual(["managed-website", "digital-growth", "local-seo-aeo"]);
+    expect(isMonthlyAddOnId("managed-website")).toBe(true);
     expect(isMonthlyAddOnId("social-media")).toBe(false);
     expect(isMonthlyAddOnId("local-seo")).toBe(false);
     expect(isMonthlyAddOnId("constructor")).toBe(false);
   });
 
-  it("prices at 7,000 and 25,000 rupees a month plus 18% GST", () => {
-    expect(addOnById("digital-growth").prices.INR).toBe(700_000);
-    expect(addOnById("local-seo-aeo").prices.INR).toBe(2_500_000);
-    expect(addOnPrice(addOnById("digital-growth"), "INR")).toEqual({
-      currency: "INR", listCents: 700_000, discountCents: 0, offerCents: 0, netCents: 700_000, taxRateBasisPoints: 1_800, chargedCents: 826_000,
+  it("lists in minor units: 3,000, 10,000 and 25,000 rupees, 75, 75 and 350 dollars", () => {
+    expect(ADD_ONS.map((addOn) => [addOn.id, addOn.prices.INR, addOn.prices.USD])).toEqual([
+      ["managed-website", 300_000, 7_500],
+      ["digital-growth", 1_000_000, 7_500],
+      ["local-seo-aeo", 2_500_000, 35_000],
+    ]);
+  });
+
+  it("says what Social Media and Ads does: Instagram and Facebook posts, the Google Business Profile and Meta ads", () => {
+    const { line } = addOnById("digital-growth");
+    expect(line).toContain("Instagram and Facebook");
+    expect(line).toContain("12 designed posts a month");
+    expect(line).toContain("captions and scheduling");
+    expect(line).toContain("Google Business Profile");
+    expect(line).toContain("8 posts a month and review replies");
+    expect(line).toContain("Meta ads");
+    expect(line).toContain("₹10,000 a month of your budget");
+  });
+
+  it("charges the website at 3,540 rupees a month with 18% GST", () => {
+    expect(addOnPrice(addOnById("managed-website"), "INR")).toEqual({
+      currency: "INR", listCents: 300_000, discountCents: 0, offerCents: 0, netCents: 300_000, taxRateBasisPoints: 1_800, chargedCents: 354_000,
     });
     expect(addOnPrice(addOnById("local-seo-aeo"), "INR").chargedCents).toBe(2_950_000);
   });
 
-  it("prices at 75 and 350 dollars a month with no tax", () => {
+  it("prices in dollars with no tax", () => {
     expect(addOnPrice(addOnById("digital-growth"), "USD")).toMatchObject({ listCents: 7_500, taxRateBasisPoints: 0, chargedCents: 7_500 });
     expect(addOnPrice(addOnById("local-seo-aeo"), "USD")).toMatchObject({ listCents: 35_000, taxRateBasisPoints: 0, chargedCents: 35_000 });
   });
 
-  it("takes the 5% sign-up offer off the list price, before tax: 6,650 and 23,750 rupees, 71.25 and 332.50 dollars", () => {
-    expect(addOnPrice(addOnById("digital-growth"), "INR", true)).toEqual({
-      currency: "INR", listCents: 700_000, discountCents: 35_000, offerCents: 35_000, netCents: 665_000, taxRateBasisPoints: 1_800, chargedCents: 784_700,
+  it("takes the package discount it is given off the list price, before tax", () => {
+    expect(addOnPrice(addOnById("digital-growth"), "INR", 300_000)).toEqual({
+      currency: "INR", listCents: 1_000_000, discountCents: 300_000, offerCents: 300_000, netCents: 700_000, taxRateBasisPoints: 1_800, chargedCents: 826_000,
     });
-    expect(addOnPrice(addOnById("local-seo-aeo"), "INR", true).netCents).toBe(2_375_000);
-    expect(addOnPrice(addOnById("digital-growth"), "USD", true).netCents).toBe(7_125);
-    expect(addOnPrice(addOnById("local-seo-aeo"), "USD", true).netCents).toBe(33_250);
   });
 
-  it("says that ad spend is paid to Meta on top of Digital Growth, and nothing extra for Local SEO + AEO", () => {
+  it("refuses a discount that is not whole minor units between nothing and the list price", () => {
+    const website = addOnById("managed-website");
+    expect(() => addOnPrice(website, "INR", -1)).toThrow(RangeError);
+    expect(() => addOnPrice(website, "INR", 300_001)).toThrow(RangeError);
+    expect(() => addOnPrice(website, "INR", 0.5)).toThrow(RangeError);
+  });
+
+  it("says that ad spend is paid to Meta on top of Social Media and Ads, and nothing extra for the others", () => {
     expect(addOnById("digital-growth").extra).toBe("+ your ad spend");
+    expect(addOnById("managed-website").extra).toBeUndefined();
     expect(addOnById("local-seo-aeo").extra).toBeUndefined();
   });
 });

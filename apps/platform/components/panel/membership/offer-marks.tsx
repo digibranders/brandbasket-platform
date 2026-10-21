@@ -6,8 +6,8 @@ import type { AddOnId } from "@brandbasket/shared/lib/billing/add-ons";
  * from screen readers, the words say the same thing.
  */
 
-/** Each add-on's own mark inside its soft tile. */
-export function AddOnMark({ addOn }: { readonly addOn: AddOnId }): ReactElement {
+/** Each add-on's own mark inside its soft tile. The website is the plan on this card, so it has none. */
+export function AddOnMark({ addOn }: { readonly addOn: Exclude<AddOnId, "managed-website"> }): ReactElement {
   switch (addOn) {
     case "digital-growth":
       return (

@@ -119,7 +119,7 @@ describe("scheduleAddOnEndFor", () => {
 
     const outcome = await scheduleAddOnEndFor(dbs.staff.db, provider, { businessId, addOnSubscriptionId: row.id, kind: "cancel", staffUserId: null }, NOW);
 
-    expect(addOnEndMessage(outcome)).toBe("Digital Growth will stop on 12 November 2026. You won't be charged again.");
+    expect(addOnEndMessage(outcome)).toBe("Social Media and Ads will stop on 12 November 2026. You won't be charged again.");
     expect(await findAddOnSubscription(dbs.staff.db, businessId, row.id)).toMatchObject({
       status: "active",
       endKind: "cancel",
@@ -174,7 +174,7 @@ describe("scheduleAddOnEndFor", () => {
 
     const outcome = await scheduleAddOnEndFor(dbs.staff.db, provider, { businessId, addOnSubscriptionId: kept.id, kind: "pause", staffUserId: null }, NOW);
 
-    expect(addOnEndMessage(outcome)).toBe("Digital Growth will pause on 12 November 2026.");
+    expect(addOnEndMessage(outcome)).toBe("Social Media and Ads will pause on 12 November 2026.");
     expect(await findAddOnSubscription(dbs.staff.db, businessId, kept.id)).toMatchObject({ status: "cancelled" });
     expect(await findAddOnSubscription(dbs.staff.db, businessId, ending.id)).toMatchObject({ status: "active", endKind: "pause", currentPeriodEnd: PERIOD_END });
     expect(await viewNow()).toEqual({ state: "pausing", pausesOn: PERIOD_END });
@@ -189,7 +189,7 @@ describe("scheduleAddOnEndFor", () => {
 
     const outcome = await scheduleAddOnEndFor(dbs.staff.db, provider, { businessId, addOnSubscriptionId: kept.id, kind: "cancel", staffUserId: "staff-ends" }, NOW);
 
-    expect(addOnEndMessage(outcome)).toBe("Digital Growth will stop on 12 November 2026. You won't be charged again.");
+    expect(addOnEndMessage(outcome)).toBe("Social Media and Ads will stop on 12 November 2026. You won't be charged again.");
     expect(await findAddOnSubscription(dbs.staff.db, businessId, ending.id)).toMatchObject({ endKind: "cancel", endRequestedByStaffId: "staff-ends" });
     expect(await viewNow()).toEqual({ state: "ending", endsOn: PERIOD_END });
   });

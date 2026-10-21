@@ -60,7 +60,7 @@ const customer: GrantedCustomer = {
   billing: { status: "paid", hasAccess: true, subscription: null, tier: "managed", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
 };
 
-/** Digital Growth and Local SEO + AEO in rupees, each less the 5% first-checkout offer, before GST. */
+/** Social Media and Ads and Local SEO + AEO in rupees as frozen on their rows, before GST. */
 const DIGITAL_GROWTH_NET = 665_000;
 const LOCAL_SEO_AEO_NET = 2_375_000;
 
@@ -154,7 +154,7 @@ describe("loadAddOnsPage", () => {
 
     expect(page.currency).toBe("INR");
     expect(page.addOns).toEqual([
-      { kind: "available", addOn: "digital-growth", price: expect.objectContaining({ listCents: 700_000, discountCents: 0, netCents: 700_000, chargedCents: 826_000 }), offer: { kind: "write" } },
+      { kind: "available", addOn: "digital-growth", price: expect.objectContaining({ listCents: 1_000_000, discountCents: 0, netCents: 1_000_000, chargedCents: 1_180_000 }), offer: { kind: "write" } },
       { kind: "available", addOn: "local-seo-aeo", price: expect.objectContaining({ listCents: 2_500_000, discountCents: 0, netCents: 2_500_000, chargedCents: 2_950_000 }), offer: { kind: "write" } },
     ]);
   });
@@ -296,7 +296,7 @@ describe("removeBundledAddOnFor", () => {
     expect(result).toEqual({
       kind: "scheduled",
       endsOn: PAID_THROUGH,
-      message: "Digital Growth stays until your next payment date, then it stops and your monthly payment goes down.",
+      message: "Social Media and Ads stays until your next payment date, then it stops and your monthly payment goes down.",
     });
     expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, LOCAL_SEO_AEO_NET);
     expect(changed).toHaveBeenCalledWith(PROVIDER_SUBSCRIPTION, "plan_lower");

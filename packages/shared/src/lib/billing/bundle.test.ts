@@ -3,32 +3,38 @@ import { bundleLines, bundleNetCents, nextBundledNetCents, readBundleSelection }
 
 describe("readBundleSelection", () => {
   it("keeps catalogue ids once each, in the catalogue's order", () => {
-    expect(readBundleSelection(["local-seo-aeo", "digital-growth", "digital-growth"])).toEqual(["digital-growth", "local-seo-aeo"]);
+    expect(readBundleSelection(["local-seo-aeo", "digital-growth", "digital-growth", "managed-website"])).toEqual(["managed-website", "digital-growth", "local-seo-aeo"]);
   });
 
-  it("drops anything that is not a monthly add-on", () => {
+  it("drops anything that is not a service", () => {
     expect(readBundleSelection(["press-release", "local-seo", "social-media", "", "local-seo-aeo"])).toEqual(["local-seo-aeo"]);
     expect(readBundleSelection([])).toEqual([]);
   });
 });
 
 describe("bundleLines", () => {
-  it("takes the 5% sign-up offer off each add-on, to the paisa", () => {
+  it("prices one service at its list price", () => {
+    expect(bundleLines(["digital-growth"], "INR")).toEqual([
+      { addOn: "digital-growth", title: "Social Media and Ads", listCents: 1_000_000, offerCents: 0, netCents: 1_000_000 },
+    ]);
+  });
+
+  it("takes the package discount off each service, to the paisa", () => {
     expect(bundleLines(["digital-growth", "local-seo-aeo"], "INR")).toEqual([
-      { addOn: "digital-growth", title: "Digital Growth", listCents: 700_000, offerCents: 35_000, netCents: 665_000 },
-      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 2_500_000, offerCents: 125_000, netCents: 2_375_000 },
+      { addOn: "digital-growth", title: "Social Media and Ads", listCents: 1_000_000, offerCents: 300_000, netCents: 700_000 },
+      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 2_500_000, offerCents: 750_000, netCents: 1_750_000 },
     ]);
   });
 
-  it("prices a dollar plan's bundle in cents", () => {
-    expect(bundleLines(["local-seo-aeo", "digital-growth"], "USD")).toEqual([
-      { addOn: "digital-growth", title: "Digital Growth", listCents: 7_500, offerCents: 375, netCents: 7_125 },
-      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 35_000, offerCents: 1_750, netCents: 33_250 },
+  it("prices a dollar package in cents, in the catalogue's order", () => {
+    expect(bundleLines(["local-seo-aeo", "managed-website"], "USD")).toEqual([
+      { addOn: "managed-website", title: "Managed Website", listCents: 7_500, offerCents: 1_500, netCents: 6_000 },
+      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 35_000, offerCents: 7_000, netCents: 28_000 },
     ]);
   });
 
-  it("adds the nets together, and is nothing for no add-ons", () => {
-    expect(bundleNetCents(bundleLines(["digital-growth", "local-seo-aeo"], "INR"))).toBe(665_000 + 2_375_000);
+  it("adds the nets together, and is nothing for no services", () => {
+    expect(bundleNetCents(bundleLines(["managed-website", "digital-growth", "local-seo-aeo"], "INR"))).toBe(2_660_000);
     expect(bundleNetCents(bundleLines([], "INR"))).toBe(0);
   });
 });

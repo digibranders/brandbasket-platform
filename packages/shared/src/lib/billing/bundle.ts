@@ -1,20 +1,21 @@
 import type { MoneyCurrency } from "../money";
-import { addOnById, addOnPrice, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "./add-ons";
+import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "./add-ons";
+import { packageLines } from "./packages";
 
 /**
- * The add-ons taken at the first checkout are billed inside the plan's own subscription: one payment now, and one every
- * month for the plan and these together (docs/superpowers/specs/2026-10-15-checkout-bundle-design.md). Each carries the 5%
- * lifetime offer. Pure and browser-safe, so the page, the server and the invoice all price a bundle the same way.
+ * The services taken at the first checkout are billed inside one subscription: one payment now, and one every month for
+ * them together (docs/superpowers/specs/2026-10-15-checkout-bundle-design.md). Two or more are priced as a package
+ * (packages.ts). Pure and browser-safe, so the page, the server and the invoice all price a bundle the same way.
  */
 
-/** One bundled add-on as the checkout freezes it. All amounts in minor units of the plan's currency, before any tax. */
+/** One bundled service as the checkout freezes it. All amounts in minor units of the plan's currency, before any tax. */
 export interface BundleLine {
   readonly addOn: MonthlyAddOnId;
   readonly title: string;
   readonly listCents: number;
-  /** The lifetime offer taken off the list price. */
+  /** The package discount taken off the list price, or 0 for a service bought alone. */
   readonly offerCents: number;
-  /** List less the offer: what is added to the plan's net price each month. */
+  /** List less the discount: what is added to the subscription's net price each month. */
   readonly netCents: number;
 }
 
@@ -27,12 +28,15 @@ export function readBundleSelection(values: readonly string[]): readonly Monthly
   return MONTHLY_ADD_ON_IDS.filter((id) => chosen.has(id));
 }
 
-/** The lines of a bundle in the plan's currency, each with the lifetime offer, in the catalogue's order. */
+/** The lines of a first-checkout bundle in the plan's currency, each with the package discount, in the catalogue's order. */
 export function bundleLines(selection: readonly MonthlyAddOnId[], currency: MoneyCurrency): readonly BundleLine[] {
-  return readBundleSelection(selection).map((id) => {
-    const price = addOnPrice(addOnById(id), currency, true);
-    return { addOn: id, title: addOnById(id).title, listCents: price.listCents, offerCents: price.offerCents, netCents: price.netCents };
-  });
+  return packageLines({ services: selection, forfeited: false }, currency).map((line) => ({
+    addOn: line.addOn,
+    title: addOnById(line.addOn).title,
+    listCents: line.listCents,
+    offerCents: line.offerCents,
+    netCents: line.netCents,
+  }));
 }
 
 /** What a bundle adds to the plan's net monthly price, before GST. */

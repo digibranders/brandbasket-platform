@@ -143,7 +143,7 @@ function payRenewal(subscriptionId: string, invoicedPrice: RenewalInvoicedPrice,
 }
 
 /**
- * Buys Digital Growth on a new add-on row and records its first payment, then invoices it in the same transaction, as the
+ * Buys Social Media and Ads on a new add-on row and records its first payment, then invoices it in the same transaction, as the
  * add-on activation will: the invoice is the last write. The row is priced as a purchase freezes it, so a Premium member
  * has 10% of the list price taken off before GST.
  */
@@ -405,7 +405,7 @@ describe("what the invoice describes", () => {
     expect(invoice?.totalCents).toBe(renewal.payment.amountCents);
   });
 
-  it("describes a Digital Growth payment with the sign-up offer by the add-on, the month and the discount, adding up to the payment", async () => {
+  it("describes a Social Media and Ads payment with the sign-up offer by the add-on, the month and the discount, adding up to the payment", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
     const { payment, issued } = await payAddOn(true, "fake_pay_add_on_offer");
@@ -414,7 +414,7 @@ describe("what the invoice describes", () => {
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
     expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({
-      description: "Digital Growth",
+      description: "Social Media and Ads",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       note: LIFETIME_OFFER_INVOICE_NOTE,
       quantity: 1,
@@ -428,13 +428,13 @@ describe("what the invoice describes", () => {
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
 
-  it("describes a Digital Growth payment with no discount without a note, at the full price", async () => {
+  it("describes a Social Media and Ads payment with no discount without a note, at the full price", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
     const { payment } = await payAddOn(false, "fake_pay_add_on_list");
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Digital Growth", note: null, unitAmountCents: 1_000_000, discountAmountCents: 0 });
+    expect(invoice?.lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, unitAmountCents: 1_000_000, discountAmountCents: 0 });
     expect(invoice).toMatchObject({ taxableCents: 1_000_000, totalCents: 1_180_000 });
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });

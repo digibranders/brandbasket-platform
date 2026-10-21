@@ -84,8 +84,8 @@ interface PlannedCheckout {
    */
   readonly discount: AppliedDiscount | null;
   /**
-   * The add-ons taken at this checkout, each with its lifetime offer, billed in the plan's own charge. Empty for a business
-   * that has paid before (the offer is for the first checkout only) and when none were chosen.
+   * The add-ons taken at this checkout, priced as a package when there are two or more (lib/billing/bundle.ts), billed in
+   * the plan's own charge. Empty for a business that has paid before and when none were chosen.
    */
   readonly bundle: readonly NewBundledAddOn[];
 }
@@ -310,7 +310,7 @@ async function openPlanCheckout(
         ? null
         : await findRedeemableReferralCode(tx, { code: applied.code, currency: state.currency, now });
     const discount = redeemable === null ? null : discountFrom(redeemable, plan);
-    // The lifetime offer is for the first checkout: a business that has paid before takes no add-ons with its plan.
+    // Add-ons join the plan's charge at the first checkout only: a business that has paid before takes none with its plan.
     const bundle: readonly NewBundledAddOn[] = state.hasEverPaid
       ? []
       : bundleLines(addOns, plan.currency).map((line) => ({

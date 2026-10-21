@@ -92,11 +92,11 @@ async function seedPayment(overrides: Partial<typeof payments.$inferInsert> & { 
 }
 
 /**
- * An add-on payment recorded without an invoice, through the same recorder the webhook uses: Digital Growth at the list price,
+ * An add-on payment recorded without an invoice, through the same recorder the webhook uses: Social Media and Ads at the list price,
  * with the Premium 10% off when `premiumMember`. Returns the payment and the add-on row it paid for.
  */
 async function seedAddOnPayment(signupOffer: boolean, providerPaymentId: string): Promise<{ readonly payment: Payment; readonly addOnSubscriptionId: string }> {
-  // Digital Growth at ₹7,000, with the 5% sign-up offer (₹350) when it was chosen with the first checkout.
+  // Social Media and Ads at ₹7,000, with the 5% sign-up offer (₹350) when it was chosen with the first checkout.
   const discountAmountCents = signupOffer ? 35_000 : 0;
   const row = await insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
@@ -429,7 +429,7 @@ describe("issueMissingTaxInvoice", () => {
 
     expect(invoice).toMatchObject({ issuedOn: "2026-11-15", paidOn: "2026-10-09", paymentId: payment.id, totalCents: 784_700 });
     expect(invoice.lines[0]).toMatchObject({
-      description: "Digital Growth",
+      description: "Social Media and Ads",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       note: LIFETIME_OFFER_INVOICE_NOTE,
       unitAmountCents: 700_000,
@@ -443,7 +443,7 @@ describe("issueMissingTaxInvoice", () => {
     const invoice = await issue(payment.id);
 
     expect(invoice.totalCents).toBe(826_000);
-    expect(invoice.lines[0]).toMatchObject({ description: "Digital Growth", note: null, discountAmountCents: 0 });
+    expect(invoice.lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, discountAmountCents: 0 });
   });
 
   it("says no price explains an add-on payment that is not linked to an add-on, and takes no number", async () => {

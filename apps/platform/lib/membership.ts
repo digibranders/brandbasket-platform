@@ -114,7 +114,7 @@ export function membershipPriceLine(plan: MembershipPricing): string {
 
 /**
  * The same price in two parts, for a page that sets the figure large: "₹9,999" and "a month + 18% GST". With a discount
- * (a code, the lifetime offer) the figure is the discounted price and `was` the list price.
+ * (a code, the package offer) the figure is the discounted price and `was` the list price.
  */
 export function membershipPriceParts(
   plan: MembershipPricing,
@@ -137,7 +137,7 @@ export interface OrderSummary {
   readonly discountCents: number;
   /** The plan's price less the code: the plan's own taxable line. */
   readonly planNetCents: number;
-  /** The add-ons taken at this checkout, each with its lifetime offer, billed in this same payment. */
+  /** The add-ons taken at this checkout, with any package discount, billed in this same payment. */
   readonly addOns: readonly BundleLine[];
   /** The taxable amount of the whole payment: the plan less the code, plus the add-ons. */
   readonly netCents: number;

@@ -1,10 +1,10 @@
 import { chargedAmountCents, GST_BASIS_POINTS } from "@brandbasket/billing/tax";
 import type { MoneyCurrency } from "../money";
-import { lifetimeOfferCentsFor } from "./lifetime-offer";
 
 /**
- * The services a business adds to Managed Website: Digital Growth and Local SEO + AEO (docs/plans/11-platform-plans.md in
- * the BrandBasket workspace), and what each costs in each currency a business is billed in. Rupee prices are net of GST,
+ * The services Brandbasket sells: Managed Website, Social Media and Ads and Local SEO + AEO, each on its own or two or more
+ * together as a package priced in packages.ts (docs/plans/16-platform-pricing-offers.md in the BrandBasket workspace), and
+ * what each lists at in each currency a business is billed in. Rupee prices are net of GST,
  * in paise; dollar prices are in cents with no tax. They match the website's pricing page: change both together. A price
  * here only affects new purchases; what a business pays for an existing subscription is stored on it. Pure and
  * browser-safe.
@@ -17,7 +17,7 @@ export const ADD_ON_GRACE_DAYS = 7;
 
 const MINOR_UNITS_PER_MAJOR = 100;
 
-export type AddOnId = "digital-growth" | "local-seo-aeo";
+export type AddOnId = "managed-website" | "digital-growth" | "local-seo-aeo";
 export type MonthlyAddOnId = AddOnId;
 
 export interface AddOn {
@@ -38,11 +38,20 @@ export interface AddOn {
 /** The services, in the order the website's pricing page lists them. */
 export const ADD_ONS: readonly AddOn[] = [
   {
-    id: "digital-growth",
-    title: "Digital Growth",
-    line: "Your Google Business Profile kept active, with up to 8 posts a month and review replies, and your Facebook and Instagram ads run for you.",
+    id: "managed-website",
+    title: "Managed Website",
+    line: "A professionally designed website of up to 5 pages, mobile-friendly, with enquiry forms, click-to-call, a local SEO foundation and the OyeChats professional chatbot.",
     billing: "monthly",
-    prices: { INR: 7_000 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
+    prices: { INR: 3_000 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
+    unit: "a month",
+  },
+  {
+    // The id predates the name: database checks, existing rows and links use it.
+    id: "digital-growth",
+    title: "Social Media and Ads",
+    line: "Instagram and Facebook run for you with 12 designed posts a month, captions and scheduling; your Google Business Profile kept active with 8 posts a month and review replies; and Meta ads managed for up to ₹10,000 a month of your budget.",
+    billing: "monthly",
+    prices: { INR: 10_000 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
     extra: "+ your ad spend",
     platforms: ["Google Business Profile", "Facebook Ads", "Instagram Ads"],
@@ -57,7 +66,7 @@ export const ADD_ONS: readonly AddOn[] = [
   },
 ];
 
-export const MONTHLY_ADD_ON_IDS: readonly MonthlyAddOnId[] = ["digital-growth", "local-seo-aeo"];
+export const MONTHLY_ADD_ON_IDS: readonly MonthlyAddOnId[] = ["managed-website", "digital-growth", "local-seo-aeo"];
 
 const BY_ID: ReadonlyMap<string, AddOn> = new Map(ADD_ONS.map((addOn) => [addOn.id, addOn]));
 
@@ -80,7 +89,7 @@ export interface AddOnPrice {
   readonly currency: MoneyCurrency;
   readonly listCents: number;
   readonly discountCents: number;
-  /** The part of `discountCents` that is the first-checkout lifetime offer (lifetime-offer.ts), or 0. */
+  /** The part of `discountCents` that is the package offer (packages.ts), or 0. */
   readonly offerCents: number;
   /** List less discount: the taxable value. */
   readonly netCents: number;
@@ -94,11 +103,13 @@ export function addOnTaxRateBasisPoints(currency: MoneyCurrency): number {
   return currency === "INR" ? GST_BASIS_POINTS : 0;
 }
 
-/** What one purchase costs: the list price, less the 5% sign-up offer when the add-on is taken with the first checkout. */
-export function addOnPrice(addOn: AddOn, currency: MoneyCurrency, lifetimeOffer = false): AddOnPrice {
+/** What one purchase costs: the list price, less the package discount worked out for it (packageDiscountCentsFor), if any. */
+export function addOnPrice(addOn: AddOn, currency: MoneyCurrency, discountCents = 0): AddOnPrice {
   const listCents = addOn.prices[currency];
-  const offerCents = lifetimeOffer ? lifetimeOfferCentsFor(listCents) : 0;
-  const discountCents = offerCents;
+  if (!Number.isSafeInteger(discountCents) || discountCents < 0 || discountCents > listCents) {
+    throw new RangeError(`A discount on ${addOn.title} must be whole minor units from 0 to ${listCents}, received ${discountCents}`);
+  }
+  const offerCents = discountCents;
   const taxRateBasisPoints = addOnTaxRateBasisPoints(currency);
   return {
     currency,

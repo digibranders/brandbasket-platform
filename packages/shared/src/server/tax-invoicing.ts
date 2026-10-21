@@ -33,7 +33,6 @@ import {
 } from "@brandbasket/db";
 import { stateCodeOfIndiaPostName } from "@brandbasket/db/india-states";
 import { addOnById, isMonthlyAddOnId } from "../lib/billing/add-ons";
-import { LIFETIME_OFFER_PERCENT } from "../lib/billing/lifetime-offer";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "../lib/billing/invoice-text";
 import { paymentLabel } from "../lib/billing/payment-method";
 import { planLabel } from "../lib/billing/receipt-title";
@@ -194,7 +193,7 @@ export interface PlanLineNoteInput {
 }
 
 /** What the lifetime offer is called on an add-on invoice line. */
-export const LIFETIME_OFFER_INVOICE_NOTE = `Lifetime offer applied, ${LIFETIME_OFFER_PERCENT}% off`;
+export const LIFETIME_OFFER_INVOICE_NOTE = "Lifetime offer applied, 5% off";
 
 /**
  * What the discount on a plan line was, in words, or null for none: "Coupon GAURAV applied, 20% off. Stay offer

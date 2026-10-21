@@ -189,7 +189,7 @@ describe("add-on purchases in attentionItems", () => {
       ],
     });
     expect(items.map((item) => item.reason)).toEqual([
-      "New add-on to set up: Digital Growth",
+      "New add-on to set up: Social Media and Ads",
       "New add-on to set up: Local SEO + AEO",
       "Press release to start",
     ]);

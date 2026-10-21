@@ -95,19 +95,19 @@ async function paidSubscription(bundled: readonly NewBundledAddOn[] = []): Promi
   return paid;
 }
 
-/** Digital Growth added on 5 Nov at the worked example's quote, unless told otherwise. */
+/** Social Media and Ads added on 5 Nov at the worked example's quote, unless told otherwise. */
 function addition(subscription: Subscription, overrides: Partial<NewAddedAddOn> = {}): NewAddedAddOn {
   return {
     businessId,
     subscriptionId: subscription.id,
     addOn: "digital-growth",
-    listAmountCents: 700_000,
+    listAmountCents: 1_000_000,
     taxRateBasisPoints: 1_800,
     currency: "INR",
-    netCents: 316_129,
-    chargeCents: 373_032,
+    netCents: 451_613,
+    chargeCents: 532_903,
     quotedPeriodEnd: subscription.paidThroughAt ?? PAID_AT,
-    description: "Digital Growth, 05 Nov to 18 Nov 2026",
+    description: "Social Media and Ads, 05 Nov to 18 Nov 2026",
     staffId: null,
     now: FIFTH_NOV,
     ...overrides,
@@ -118,7 +118,7 @@ function open(input: NewAddedAddOn) {
   return dbs.staff.db.transaction((tx) => openBundledAddOn(tx, input));
 }
 
-function pay(chargeId: string, providerPaymentId = "fake_pay_add_on", amountCents = 373_032) {
+function pay(chargeId: string, providerPaymentId = "fake_pay_add_on", amountCents = 532_903) {
   return dbs.staff.db.transaction((tx) =>
     recordChargePaymentWithInvoice(tx, {
       chargeId,
@@ -179,7 +179,7 @@ describe("the add-on rows", () => {
   it("lets a subscription take an add-on again after an earlier one stopped, but never hold two live at once", async () => {
     const subscription = await paidSubscription(bundleOf("digital-growth"));
     await dbs.owner.db.update(bundledAddOns).set({ status: "removed", removedAt: FIFTH_NOV });
-    const again = { businessId, subscriptionId: subscription.id, addOn: "digital-growth", listAmountCents: 700_000, netAmountCents: 700_000, taxRateBasisPoints: 1_800 };
+    const again = { businessId, subscriptionId: subscription.id, addOn: "digital-growth", listAmountCents: 1_000_000, netAmountCents: 1_000_000, taxRateBasisPoints: 1_800 };
 
     await dbs.owner.db.insert(bundledAddOns).values({ ...again, status: "active" });
 
@@ -195,13 +195,13 @@ describe("adding an add-on to a running plan", () => {
 
     expect(opened.chargeId).not.toBeNull();
     const charge = await findChargeForBusiness(dbs.staff.db, businessId, opened.chargeId ?? "");
-    expect(charge).toMatchObject({ kind: "add_on", status: "open", unitAmountCents: 316_129, amountCents: 373_032, quantity: 1, description: "Digital Growth, 05 Nov to 18 Nov 2026" });
+    expect(charge).toMatchObject({ kind: "add_on", status: "open", unitAmountCents: 451_613, amountCents: 532_903, quantity: 1, description: "Social Media and Ads, 05 Nov to 18 Nov 2026" });
     expect(await rowFor(subscription, "digital-growth")).toMatchObject({
       status: "pending",
       chargeId: opened.chargeId,
-      listAmountCents: 700_000,
+      listAmountCents: 1_000_000,
       offerDiscountAmountCents: 0,
-      netAmountCents: 700_000,
+      netAmountCents: 1_000_000,
       quotedPeriodEnd: subscription.paidThroughAt,
       billedFrom: null,
     });
@@ -227,10 +227,10 @@ describe("adding an add-on to a running plan", () => {
 
     expect(recorded.outcome).toBe("paid");
     expect(await rowFor(subscription, "digital-growth")).toMatchObject({ status: "active", activatedAt: FIFTH_NOV, billedFrom: null });
-    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 0, pendingBundledAddOnNetCents: 700_000 });
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 0, pendingBundledAddOnNetCents: 1_000_000 });
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, recorded.payment.id);
-    expect(invoice?.totalCents).toBe(373_032);
-    expect(invoice?.lines.map((line) => line.description)).toEqual(["Digital Growth, 05 Nov to 18 Nov 2026"]);
+    expect(invoice?.totalCents).toBe(532_903);
+    expect(invoice?.lines.map((line) => line.description)).toEqual(["Social Media and Ads, 05 Nov to 18 Nov 2026"]);
   });
 
   it("applies nothing for a charge paid after the month renewed, and keeps the money for a refund", async () => {
@@ -264,7 +264,7 @@ describe("adding an add-on to a running plan", () => {
 
     expect(opened.chargeId).toBeNull();
     expect(await rowFor(subscription, "digital-growth")).toMatchObject({ status: "active", activatedAt: FIFTH_NOV, chargeId: null, billedFrom: null });
-    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 700_000 });
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 1_000_000 });
   });
 
   it("refuses an add-on already in the plan payment", async () => {
@@ -294,7 +294,7 @@ describe("adding an add-on to a running plan", () => {
     const opened = await open(addition(subscription, { addOn: "local-seo-aeo", listAmountCents: 2_500_000, netCents: 1_129_032, chargeCents: 1_332_258 }));
     await pay(opened.chargeId ?? "", "fake_pay_seo", 1_332_258);
 
-    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 665_000, pendingBundledAddOnNetCents: 2_500_000 });
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 1_000_000, pendingBundledAddOnNetCents: 2_500_000 });
   });
 
   it("counts an added add-on in what is left when another is taken out", async () => {
@@ -315,7 +315,7 @@ describe("adding an add-on to a running plan", () => {
       expect(await dbs.staff.db.transaction((tx) => keepBundledAddOn(tx, { id: growth.id, businessId, now: FIFTH_NOV }))).toBe(true);
 
       expect(await rowFor(subscription, "digital-growth")).toMatchObject({ status: "active", endRequestedAt: null });
-      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 665_000, pendingBundledAddOnNetCents: null });
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 1_000_000, pendingBundledAddOnNetCents: null });
     });
 
     it("keeps the higher amount waiting when another add-on was added this month", async () => {
@@ -327,7 +327,7 @@ describe("adding an add-on to a running plan", () => {
 
       await dbs.staff.db.transaction((tx) => keepBundledAddOn(tx, { id: growth.id, businessId, now: FIFTH_NOV }));
 
-      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 665_000 + 2_500_000 });
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 1_000_000 + 2_500_000 });
     });
 
     it("does nothing for an add-on that is not ending, or is another business's", async () => {
@@ -364,7 +364,7 @@ describe("adding an add-on to a running plan", () => {
     await dbs.staff.db.transaction((tx) => completeBundledAddOnChanges(tx, { subscriptionId: subscription.id, now: renewedAt }));
 
     expect(await rowFor(subscription, "digital-growth")).toMatchObject({ status: "active", billedFrom: renewedAt });
-    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 700_000, pendingBundledAddOnNetCents: null });
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 1_000_000, pendingBundledAddOnNetCents: null });
   });
 });
 
@@ -396,8 +396,8 @@ describe("the add-on flow, with the provider", () => {
 
     const assessment = await readAddOnAssessment(dbs.staff.db, { businessId, addOn: "digital-growth", providerName: "fake", now: FIFTH_NOV });
 
-    expect(assessment).toMatchObject({ kind: "offer", listCents: 700_000, quote: { daysLeft: 14, periodDays: 31, netCents: 316_129, chargeCents: 373_032, nextRenewalCents: 1_179_882 } });
-    expect(addOnChargeDescription("digital-growth", FIFTH_NOV, new Date("2026-11-19T00:00:00.000Z"))).toBe("Digital Growth, 05 Nov to 18 Nov 2026");
+    expect(assessment).toMatchObject({ kind: "offer", listCents: 1_000_000, quote: { daysLeft: 14, periodDays: 31, netCents: 451_613, chargeCents: 532_903, nextRenewalCents: 1_533_882 } });
+    expect(addOnChargeDescription("digital-growth", FIFTH_NOV, new Date("2026-11-19T00:00:00.000Z"))).toBe("Social Media and Ads, 05 Nov to 18 Nov 2026");
   });
 
   it("opens one charge however often Add is pressed, and tells the provider once it is paid, once", async () => {
@@ -406,7 +406,7 @@ describe("the add-on flow, with the provider", () => {
     const again = await startAddOn(deps(), { businessId, addOn: "digital-growth", staffId: null, now: FIFTH_NOV });
     if (first.kind !== "pay") throw new Error(`Expected a charge, got ${first.kind}`);
     expect(again).toEqual(first);
-    expect(await findChargeForBusiness(dbs.staff.db, businessId, first.chargeId)).toMatchObject({ amountCents: 373_032, description: "Digital Growth, 05 Nov to 18 Nov 2026" });
+    expect(await findChargeForBusiness(dbs.staff.db, businessId, first.chargeId)).toMatchObject({ amountCents: 532_903, description: "Social Media and Ads, 05 Nov to 18 Nov 2026" });
     expect(moves).toEqual([]);
 
     await pay(first.chargeId);
@@ -459,7 +459,7 @@ describe("the add-on flow, with the provider", () => {
 
     expect(moves).toEqual([subscription.providerSubscriptionId, subscription.providerSubscriptionId]);
     expect(await rowFor(subscription, "digital-growth")).toMatchObject({ status: "active", endRequestedAt: null });
-    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 665_000, pendingBundledAddOnNetCents: null });
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 1_000_000, pendingBundledAddOnNetCents: null });
   });
 
   it("refuses an add-on already in the plan payment", async () => {

@@ -170,7 +170,7 @@ describe("receiptDocument for an add-on payment", () => {
       CUSTOMER,
     );
     expect(doc.lines).toEqual([
-      { label: "Digital Growth, monthly", amount: "INR 9,000.00" },
+      { label: "Social Media and Ads, monthly", amount: "INR 9,000.00" },
       { label: "GST 18%", amount: "INR 1,620.00" },
     ]);
     expect(doc.total.amount).toBe("INR 10,620.00");

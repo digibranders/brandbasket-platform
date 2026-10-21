@@ -55,7 +55,7 @@ describe("receiptDescription", () => {
   const plain = { initialTermMonths: null, chargeKind: null, chargeDescription: null, chargeQuantity: null, addOnId: null } as const;
 
   it("names an add-on payment by the add-on and how it is billed", () => {
-    expect(receiptDescription({ ...plain, kind: "add_on", addOnId: "digital-growth" })).toBe("Digital Growth, monthly");
+    expect(receiptDescription({ ...plain, kind: "add_on", addOnId: "digital-growth" })).toBe("Social Media and Ads, monthly");
     expect(receiptDescription({ ...plain, kind: "add_on", addOnId: "local-seo-aeo" })).toBe("Local SEO + AEO, monthly");
   });
 

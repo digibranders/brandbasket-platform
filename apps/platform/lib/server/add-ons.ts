@@ -29,6 +29,9 @@ import { ensureDiscountPlan } from "./discount-plans";
  * subscriptions are not sold here.
  */
 
+// The website is still the plan itself, so this page offers only the other services.
+const PAGE_ADD_ON_IDS = MONTHLY_ADD_ON_IDS.filter((id) => id !== "managed-website");
+
 /** A stuck button or a script must not be able to change the plan at the provider without limit. */
 export const ADD_ON_CHECKOUT_RATE_LIMIT: RateLimitRule = { limit: 10, windowSeconds: 60 * 60 };
 
@@ -123,7 +126,7 @@ export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Prom
   const providerName = getBillingProvider().name;
   const { bundled, currency, assessments } = await withTenantScope(getAppDb(), tenant, async (tx) => {
     const assessed = new Map<MonthlyAddOnId, AddOnAssessment | null>();
-    for (const addOn of MONTHLY_ADD_ON_IDS) {
+    for (const addOn of PAGE_ADD_ON_IDS) {
       assessed.set(addOn, await readAddOnAssessment(tx, { businessId: tenant.businessId, addOn, providerName, now }));
     }
     return {
@@ -133,7 +136,7 @@ export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Prom
     };
   });
   const nextBillingOn = customer.billing.subscription?.paidThroughAt ?? null;
-  const addOns = MONTHLY_ADD_ON_IDS.map((addOn): AddOnPageEntry => {
+  const addOns = PAGE_ADD_ON_IDS.map((addOn): AddOnPageEntry => {
     const assessment = assessments.get(addOn) ?? null;
     const included = bundled.find((row) => row.addOn === addOn && row.status === "active");
     if (included === undefined) return { kind: "available", addOn, price: addOnPrice(addOnById(addOn), currency), offer: offerOf(assessment, nextBillingOn) };

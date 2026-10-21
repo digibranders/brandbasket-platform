@@ -55,7 +55,7 @@ async function seedBusiness(): Promise<string> {
   return id;
 }
 
-/** A Digital Growth row at the list price, as a purchase freezes it, with its own provider subscription id. */
+/** A Social Media and Ads row at the list price, as a purchase freezes it, with its own provider subscription id. */
 function addRow(continuesId: string | null = null): Promise<AddOnSubscription> {
   return insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
@@ -147,7 +147,7 @@ describe("activateAddOnPayment", () => {
     });
     expect(await invoiceCount()).toBe(1);
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, recorded.payment.id);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Digital Growth", unitAmountCents: LIST_CENTS });
+    expect(invoice?.lines[0]).toMatchObject({ description: "Social Media and Ads", unitAmountCents: LIST_CENTS });
     expect(invoice?.totalCents).toBe(recorded.payment.amountCents);
   });
 
@@ -303,7 +303,7 @@ describe("applyAddOnPayment", () => {
 
 describe("ensureAddOnPlan", () => {
   const localSeo = addOnById("digital-growth");
-  const memberPrice = addOnPrice(localSeo, "INR", true);
+  const memberPrice = addOnPrice(localSeo, "INR", 200_000);
 
   it("makes a plan once and reuses it for the same add-on and amount", async () => {
     const { provider, calls } = providerMakingPlans(() => "plan_fixed");
@@ -321,7 +321,7 @@ describe("ensureAddOnPlan", () => {
     const { provider, calls } = providerMakingPlans((call) => `plan_${call}`);
 
     const member = await ensureAddOnPlan(dbs.staff.db, provider, { addOn: localSeo, price: memberPrice });
-    const list = await ensureAddOnPlan(dbs.staff.db, provider, { addOn: localSeo, price: addOnPrice(localSeo, "INR", false) });
+    const list = await ensureAddOnPlan(dbs.staff.db, provider, { addOn: localSeo, price: addOnPrice(localSeo, "INR") });
 
     expect([member, list]).toEqual(["plan_1", "plan_2"]);
     expect(calls()).toBe(2);

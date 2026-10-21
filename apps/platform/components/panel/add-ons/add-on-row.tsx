@@ -1,6 +1,5 @@
 import type { ReactElement } from "react";
 import { requestBrand } from "@/lib/server/request-brand";
-import { LIFETIME_OFFER_PERCENT } from "@brandbasket/shared/lib/billing/lifetime-offer";
 import type { AddOn } from "@brandbasket/shared/lib/billing/add-ons";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { addBundledAddOnAction, removeBundledAddOnAction } from "@/app/app-host/(protected)/add-ons/actions";
@@ -69,7 +68,6 @@ export async function AddOnRow({ addOn, entry, canAdd }: AddOnRowProps): Promise
             ) : null}
             <p className="text-2xl font-semibold tabular-nums">{formatMoney(price.netCents, price.currency)}</p>
             <p className="mt-0.5 text-sm text-ink-soft">{addOn.extra === undefined ? addOn.unit : `${addOn.unit} ${addOn.extra}`}</p>
-            {price.offerCents > 0 ? <p className="mt-1 text-sm text-accent-deep">{LIFETIME_OFFER_PERCENT}% lifetime discount</p> : null}
           </div>
           <p role="status" className="text-sm tabular-nums text-ink-soft empty:hidden">
             {stateLine}

@@ -10,8 +10,9 @@ import { ensureAddOnPlan } from "./add-on-plans";
 
 const staffDb = { name: "staff-db" } as never;
 const DIGITAL_GROWTH = addOnById("digital-growth");
-const OFFER_PRICE = addOnPrice(DIGITAL_GROWTH, "INR", true);
-const KEY = { addOn: "digital-growth", netAmountCents: 665_000, taxRateBasisPoints: 1_800, currency: "INR", provider: "razorpay" } as const;
+// Social Media and Ads in a Website + Social package: 20% off its list price.
+const PACKAGE_PRICE = addOnPrice(DIGITAL_GROWTH, "INR", 200_000);
+const KEY = { addOn: "digital-growth", netAmountCents: 800_000, taxRateBasisPoints: 1_800, currency: "INR", provider: "razorpay" } as const;
 
 function providerWith(createPlan: BillingProvider["createPlan"]): BillingProvider {
   return { name: "razorpay", createPlan } as unknown as BillingProvider;
@@ -26,7 +27,7 @@ describe("ensureAddOnPlan", () => {
     vi.mocked(findAddOnProviderPlan).mockResolvedValue("plan_stored");
     const createPlan = vi.fn();
 
-    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: DIGITAL_GROWTH, price: OFFER_PRICE })).resolves.toBe("plan_stored");
+    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: DIGITAL_GROWTH, price: PACKAGE_PRICE })).resolves.toBe("plan_stored");
 
     expect(findAddOnProviderPlan).toHaveBeenCalledWith(staffDb, KEY);
     expect(createPlan).not.toHaveBeenCalled();
@@ -38,14 +39,14 @@ describe("ensureAddOnPlan", () => {
     vi.mocked(saveAddOnProviderPlan).mockResolvedValue("plan_winner");
     const createPlan = vi.fn().mockResolvedValue({ providerPlanId: "plan_mine" });
 
-    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: DIGITAL_GROWTH, price: OFFER_PRICE })).resolves.toBe("plan_winner");
+    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: DIGITAL_GROWTH, price: PACKAGE_PRICE })).resolves.toBe("plan_winner");
 
     expect(createPlan).toHaveBeenCalledWith({
       currency: "INR",
-      netMonthlyCents: 665_000,
+      netMonthlyCents: 800_000,
       taxRateBasisPoints: 1_800,
-      code: "addon-digital-growth-665000",
-      itemName: "Brandbasket Digital Growth",
+      code: "addon-digital-growth-800000",
+      itemName: "Brandbasket Social Media and Ads",
     });
     expect(saveAddOnProviderPlan).toHaveBeenCalledWith(staffDb, { ...KEY, providerPlanId: "plan_mine" });
   });
@@ -67,7 +68,7 @@ describe("ensureAddOnPlan", () => {
     vi.mocked(findAddOnProviderPlan).mockResolvedValue(null);
     const createPlan = vi.fn().mockResolvedValue({ providerPlanId: null });
 
-    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: DIGITAL_GROWTH, price: OFFER_PRICE })).resolves.toBeNull();
+    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: DIGITAL_GROWTH, price: PACKAGE_PRICE })).resolves.toBeNull();
 
     expect(saveAddOnProviderPlan).not.toHaveBeenCalled();
   });

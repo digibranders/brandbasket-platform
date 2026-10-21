@@ -225,7 +225,7 @@ describe("issueTaxInvoice for an add-on payment", () => {
     };
   }
 
-  /** Digital Growth at a round list price of 10,000 rupees, with the 5% sign-up offer when `discountAmountCents` is given. */
+  /** Social Media and Ads at a round list price of 10,000 rupees, with the 5% sign-up offer when `discountAmountCents` is given. */
   function addOnRow(overrides: Partial<AddOnSubscription> = {}): AddOnSubscription {
     const discountAmountCents = overrides.discountAmountCents ?? 0;
     return {
@@ -300,14 +300,14 @@ describe("issueTaxInvoice for an add-on payment", () => {
     vi.resetAllMocks();
   });
 
-  it("gives a Digital Growth payment with the sign-up offer one line with the period, the discount and its note", async () => {
+  it("gives a Social Media and Ads payment with the sign-up offer one line with the period, the discount and its note", async () => {
     const { inserted } = arrange(addOnRow({ discountAmountCents: 50_000 }));
 
     await issueTaxInvoice(tx, addOnPayment(1_121_000), source);
 
     expect(inserted().lines).toHaveLength(1);
     expect(inserted().lines[0]).toMatchObject({
-      description: "Digital Growth",
+      description: "Social Media and Ads",
       detail: "Monthly subscription, 12 Oct to 11 Nov 2026",
       note: LIFETIME_OFFER_INVOICE_NOTE,
       sac: BRANDBASKET_SAC,
@@ -325,7 +325,7 @@ describe("issueTaxInvoice for an add-on payment", () => {
 
     await issueTaxInvoice(tx, addOnPayment(1_180_000), source);
 
-    expect(inserted().lines[0]).toMatchObject({ description: "Digital Growth", note: null, discountAmountCents: 0 });
+    expect(inserted().lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, discountAmountCents: 0 });
     expect(inserted().totalCents).toBe(1_180_000);
   });
 

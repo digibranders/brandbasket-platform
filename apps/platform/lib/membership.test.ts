@@ -131,25 +131,25 @@ describe("orderSummary", () => {
     expect(orderSummary({ ...managed, taxRateBasisPoints: 0 }, 0)).toMatchObject({ gstCents: 0, totalCents: 299_900 });
   });
 
-  it("adds the add-ons taken at this checkout to the one payment, with their offer and the GST on all of it", () => {
+  it("adds the add-ons taken at this checkout to the one payment, with the GST on all of it", () => {
     const summary = orderSummary(managed, 0, bundleLines(["digital-growth"], "INR"));
     expect(summary.addOns.map((line) => line.addOn)).toEqual(["digital-growth"]);
-    expect(summary.addOns[0]).toMatchObject({ listCents: 700_000, offerCents: 35_000, netCents: 665_000 });
-    expect(summary.netCents).toBe(299_900 + 665_000);
-    expect(summary.totalCents).toBe(chargedAmountCents(299_900 + 665_000, 0, 1800));
+    expect(summary.addOns[0]).toMatchObject({ listCents: 1_000_000, offerCents: 0, netCents: 1_000_000 });
+    expect(summary.netCents).toBe(299_900 + 1_000_000);
+    expect(summary.totalCents).toBe(chargedAmountCents(299_900 + 1_000_000, 0, 1800));
     expect(summary.gstCents).toBe(summary.totalCents - summary.netCents);
     expect(summary.planNetCents).toBe(299_900);
   });
 
-  it("prices a dollar plan with dollar add-ons and no tax: $75 and $75 less the 5% offer", () => {
+  it("prices a dollar plan with dollar add-ons and no tax: $75 and $75", () => {
     const usd = { initialAmountCents: 7_500, currency: "USD", taxRateBasisPoints: 0 } as const;
     const summary = orderSummary(usd, 0, bundleLines(["digital-growth"], "USD"));
-    expect(summary).toMatchObject({ planNetCents: 7_500, netCents: 7_500 + 7_125, gstCents: 0, totalCents: 14_625 });
+    expect(summary).toMatchObject({ planNetCents: 7_500, netCents: 7_500 + 7_500, gstCents: 0, totalCents: 15_000 });
   });
 
   it("takes a code off the plan only, never off the add-ons", () => {
     const summary = orderSummary(managed, 30_000, bundleLines(["local-seo-aeo"], "INR"));
-    expect(summary.netCents).toBe(299_900 - 30_000 + 2_375_000);
+    expect(summary.netCents).toBe(299_900 - 30_000 + 2_500_000);
     expect(summary.planNetCents).toBe(269_900);
   });
 });

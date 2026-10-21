@@ -9,7 +9,6 @@ import { MembershipPayForm } from "@/components/panel/membership/membership-pay-
 import { MAINTENANCE_INCLUDED, WEBSITE_INCLUDED, type IncludedItem } from "@/lib/checkout-included";
 import { orderSummary, type MembershipTier } from "@/lib/membership";
 import type { MembershipCheckoutView } from "@/lib/server/membership-checkout";
-import { LIFETIME_OFFER_PERCENT } from "@brandbasket/shared/lib/billing/lifetime-offer";
 import { describeDiscountedPlanTerms } from "@brandbasket/shared/lib/billing/terms";
 import { startMembership } from "@/app/app-host/(protected)/plan/actions";
 
@@ -86,12 +85,12 @@ export function OrderSummary({ tier, view, addOns, removeHref, children }: Order
             <div className="flex items-baseline justify-between gap-4 text-sm">
               <dt className="text-ink">{line.title}</dt>
               <dd className="tabular-nums text-ink">
-                <s className="mr-2 text-xs text-ink-soft">{money(line.listCents)}</s>
+                {line.offerCents > 0 ? <s className="mr-2 text-xs text-ink-soft">{money(line.listCents)}</s> : null}
                 <span className="font-semibold text-success">{money(line.netCents)}</span>
               </dd>
             </div>
             <p className="mt-0.5 flex items-baseline justify-between gap-4 text-xs text-ink-soft">
-              <span className="whitespace-nowrap">{LIFETIME_OFFER_PERCENT}% lifetime discount, billed monthly</span>
+              <span className="whitespace-nowrap">Billed monthly</span>
               <Link href={removeHref(line.addOn)} replace scroll={false} prefetch={false} aria-label={`Remove ${line.title}`} className="shrink-0 underline underline-offset-2 hover:text-ink">
                 Remove
               </Link>

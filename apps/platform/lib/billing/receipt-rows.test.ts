@@ -95,7 +95,7 @@ describe("receiptRows", () => {
     const [row] = receiptRows([
       receipt({ kind: "add_on", subscriptionId: null, planName: null, addOnId: "digital-growth", amountCents: 1_062_000 }),
     ]);
-    expect(row).toMatchObject({ description: "Digital Growth, monthly", plan: "Digital Growth", amount: "₹10,620" });
+    expect(row).toMatchObject({ description: "Social Media and Ads, monthly", plan: "Social Media and Ads", amount: "₹10,620" });
   });
 
   it("calls a payment for an add-on no longer sold just an add-on", () => {

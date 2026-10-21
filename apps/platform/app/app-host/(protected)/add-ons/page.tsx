@@ -18,7 +18,7 @@ interface AddOnsPageProps {
 }
 
 /**
- * Digital Growth and Local SEO + AEO (lib/add-ons.ts), each billed inside the plan's monthly payment: added here for the rest
+ * Social Media and Ads and Local SEO + AEO (lib/add-ons.ts), each billed inside the plan's monthly payment: added here for the rest
  * of the paid month, or taken out from the next billing date. Paying for one returns here with `?charge=`: a paid one shows
  * as on in its row, so only a problem gets a notice, and while Razorpay's confirmation is still on its way the page waits for
  * it and offers no Add, so nobody pays twice.

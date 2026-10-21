@@ -166,7 +166,7 @@ describe("scheduleAddOnEndFor", () => {
     const outcome = await scheduleAddOnEndFor(staffDb, provider, REQUEST, NOW);
 
     expect(outcome).toMatchObject({ kind: "refused", reason: "not-running", addOn: "digital-growth" });
-    expect(addOnEndMessage(outcome)).toBe("Digital Growth isn't running, so it can't be paused or cancelled.");
+    expect(addOnEndMessage(outcome)).toBe("Social Media and Ads isn't running, so it can't be paused or cancelled.");
     expect(atPeriodEnd).not.toHaveBeenCalled();
     expect(cancelNow).not.toHaveBeenCalled();
   });
@@ -177,7 +177,7 @@ describe("scheduleAddOnEndFor", () => {
     const outcome = await scheduleAddOnEndFor(staffDb, provider, REQUEST, NOW);
 
     expect(outcome).toMatchObject({ kind: "refused", reason: "already-ending", endKind: "pause", endsOn: PERIOD_END });
-    expect(addOnEndMessage(outcome)).toBe("Digital Growth is already set to pause on 12 November 2026.");
+    expect(addOnEndMessage(outcome)).toBe("Social Media and Ads is already set to pause on 12 November 2026.");
     expect(atPeriodEnd).not.toHaveBeenCalled();
   });
 
@@ -224,7 +224,7 @@ describe("scheduleAddOnEndFor", () => {
       const outcome = await scheduleAddOnEndFor(staffDb, provider, REQUEST, NOW);
 
       expect(outcome).toEqual({ kind: "keep-undone", addOn: "digital-growth", endKind: "cancel", endsOn: PERIOD_END });
-      expect(addOnEndMessage(outcome)).toBe("Digital Growth will stop on 12 November 2026. You won't be charged again.");
+      expect(addOnEndMessage(outcome)).toBe("Social Media and Ads will stop on 12 November 2026. You won't be charged again.");
       expect(cancelNow).toHaveBeenCalledWith(kept.providerSubscriptionId);
       expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:cancel", "tx2:begin", "tx2:commit"]);
       expect(markAddOnCancelled).toHaveBeenCalledWith({ name: "tx2" }, ROW_ID, NOW);
@@ -245,7 +245,7 @@ describe("scheduleAddOnEndFor", () => {
       const outcome = await scheduleAddOnEndFor(staffDb, provider, { ...REQUEST, kind: "cancel", staffUserId: "staff-1" }, NOW);
 
       expect(outcome).toEqual({ kind: "keep-undone", addOn: "digital-growth", endKind: "cancel", endsOn: PERIOD_END });
-      expect(addOnEndMessage(outcome)).toBe("Digital Growth will stop on 12 November 2026. You won't be charged again.");
+      expect(addOnEndMessage(outcome)).toBe("Social Media and Ads will stop on 12 November 2026. You won't be charged again.");
       expect(changeAddOnEndKind).toHaveBeenCalledWith({ name: "tx2" }, { id: OLD_ID, kind: "cancel", now: NOW, staffUserId: "staff-1" });
       expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:cancel", "tx2:begin", "tx2:commit"]);
     });
@@ -256,7 +256,7 @@ describe("scheduleAddOnEndFor", () => {
       const outcome = await scheduleAddOnEndFor(staffDb, provider, { ...REQUEST, kind: "pause" }, NOW);
 
       expect(outcome).toEqual({ kind: "keep-undone", addOn: "digital-growth", endKind: "pause", endsOn: PERIOD_END });
-      expect(addOnEndMessage(outcome)).toBe("Digital Growth will pause on 12 November 2026.");
+      expect(addOnEndMessage(outcome)).toBe("Social Media and Ads will pause on 12 November 2026.");
       expect(changeAddOnEndKind).toHaveBeenCalledWith({ name: "tx2" }, { id: OLD_ID, kind: "pause", now: NOW, staffUserId: null });
       expect(markAddOnCancelled).toHaveBeenCalledWith({ name: "tx2" }, ROW_ID, NOW);
     });
@@ -322,7 +322,7 @@ describe("addOnEndMessage", () => {
 
   it("says the change that was in progress could not be finished, for a row that moved on", () => {
     expect(addOnEndMessage({ kind: "refused", reason: "changed-meanwhile", addOn: "digital-growth", endKind: null, endsOn: null })).toBe(
-      "Something changed while we were updating Digital Growth. Please check the page and try again.",
+      "Something changed while we were updating Social Media and Ads. Please check the page and try again.",
     );
   });
 });
