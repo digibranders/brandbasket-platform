@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BillingRangeError } from "./billing-range-error";
-import { splitGst, supplyTypeOf } from "./gst";
+import { splitGst, splitGstAcross, supplyTypeOf } from "./gst";
 import { UnknownStateError } from "./gst-states";
 import { GST_BASIS_POINTS } from "./tax";
 
@@ -54,6 +54,42 @@ describe("splitGst", () => {
     expect(() => splitGst(10_000, -1, "inter_state")).toThrow(RangeError);
     expect(() => splitGst(10_000, Number.NaN, "inter_state")).toThrow(RangeError);
     expect(() => splitGst(10_000, 1_800.5, "inter_state")).toThrow(RangeError);
+  });
+});
+
+describe("splitGstAcross", () => {
+  const line = (taxableCents: number, rateBasisPoints = GST_BASIS_POINTS) => ({ taxableCents, rateBasisPoints });
+
+  it("spreads the GST on the total over the lines, so they add up to it where rounding each line would not", () => {
+    // 239,920 + 799,920 at 18% is 43,185.6 + 143,985.6: each rounds up to 187,172 together, the total (187,171.2) rounds down to 187,171.
+    const lines = splitGstAcross([line(239_920), line(799_920)], "inter_state");
+    expect(lines.map((tax) => tax.igstCents)).toEqual([43_186, 143_985]);
+    expect(lines.reduce((total, tax) => total + tax.taxCents, 0)).toBe(splitGst(1_039_840, GST_BASIS_POINTS, "inter_state").taxCents);
+  });
+
+  it("gives each line equal CGST and SGST that add up to the halves of the total", () => {
+    const lines = splitGstAcross([line(239_920), line(799_920)], "intra_state");
+    const total = splitGst(1_039_840, GST_BASIS_POINTS, "intra_state");
+    expect(lines.every((tax) => tax.cgstCents === tax.sgstCents && tax.igstCents === 0 && tax.taxCents === 2 * tax.cgstCents)).toBe(true);
+    expect(lines.reduce((sum, tax) => sum + tax.cgstCents, 0)).toBe(total.cgstCents);
+    expect(lines.reduce((sum, tax) => sum + tax.sgstCents, 0)).toBe(total.sgstCents);
+  });
+
+  it("hands the spare paisa to the line with the largest remainder, and to the earlier line on a tie", () => {
+    // 25 paise at 18% is 4.5: two lines floor to 4 + 4 and the total, 9, needs one more.
+    expect(splitGstAcross([line(25), line(25)], "inter_state").map((tax) => tax.igstCents)).toEqual([5, 4]);
+    // 10 paise is 1.8 and 20 paise is 3.6: the total 5.4 rounds to 5, the floors give 1 + 3, and 10 paise has the larger remainder.
+    expect(splitGstAcross([line(10), line(20)], "inter_state").map((tax) => tax.igstCents)).toEqual([2, 3]);
+  });
+
+  it("works each rate on its own", () => {
+    const lines = splitGstAcross([line(10_000), line(10_000, 500), line(10_000, 0)], "intra_state");
+    expect(lines.map((tax) => tax.taxCents)).toEqual([1_800, 500, 0]);
+  });
+
+  it("gives no line a negative amount, and refuses a line that is not whole paise", () => {
+    expect(splitGstAcross([line(1), line(1), line(1)], "inter_state").every((tax) => tax.igstCents >= 0)).toBe(true);
+    expect(() => splitGstAcross([line(-1)], "inter_state")).toThrow(RangeError);
   });
 });
 

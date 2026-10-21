@@ -193,3 +193,89 @@ describe("buildTaxInvoice", () => {
     expect(() => placeOfSupply("mh", { ...recipient, gstin: "27aapfu0939f1zv" })).toThrow(InvalidGstinError);
   });
 });
+
+/**
+ * The seven baskets of the three services at the coming odd list prices (₹2,999, ₹9,999 and ₹24,999), built by hand
+ * the way the package rule works: each line loses its percentage of its list, half a paisa up, then the package total is
+ * floored to the whole rupee and the leftover is added to the discount of the dearest line (the earlier one on a tie).
+ */
+const LIST_PRICES = { website: 299_900, social: 999_900, seo: 2_499_900 } as const;
+type Service = keyof typeof LIST_PRICES;
+const BASKETS: readonly { readonly services: readonly Service[]; readonly basisPoints: number }[] = [
+  { services: ["website"], basisPoints: 0 },
+  { services: ["social"], basisPoints: 0 },
+  { services: ["seo"], basisPoints: 0 },
+  { services: ["website", "social"], basisPoints: 2_000 },
+  { services: ["website", "seo"], basisPoints: 2_000 },
+  { services: ["social", "seo"], basisPoints: 3_000 },
+  { services: ["website", "social", "seo"], basisPoints: 3_000 },
+];
+
+function basketLines(services: readonly Service[], basisPoints: number, floorToRupee: boolean): InvoiceLineInput[] {
+  const discounts = services.map((service) => Math.floor((LIST_PRICES[service] * basisPoints * 2 + 10_000) / 20_000));
+  if (floorToRupee) {
+    const net = services.reduce((total, service, index) => total + LIST_PRICES[service] - (discounts[index] ?? 0), 0);
+    const dearest = services.reduce((best, service, index) => (LIST_PRICES[service] > LIST_PRICES[services[best] ?? service] ? index : best), 0);
+    discounts[dearest] = (discounts[dearest] ?? 0) + (net % 100);
+  }
+  return services.map((service, index) => plan({ description: service, unitAmountCents: LIST_PRICES[service], discountAmountCents: discounts[index] ?? 0 }));
+}
+
+describe("buildTaxInvoice over every basket at odd list prices", () => {
+  const cases = BASKETS.flatMap((basket) =>
+    [true, false].flatMap((floorToRupee) =>
+      (["intra_state", "inter_state"] as const).map((supplyType) => ({ ...basket, floorToRupee, supplyType })),
+    ),
+  );
+
+  it.each(cases)("adds up to the charge to the paisa: $services at $basisPoints bp, floored $floorToRupee, $supplyType", ({ services, basisPoints, floorToRupee, supplyType }) => {
+    const lines = basketLines(services, basisPoints, floorToRupee);
+    const net = lines.reduce((total, line) => total + line.unitAmountCents - line.discountAmountCents, 0);
+    const charged = chargedAmountCents(net, 0, GST_BASIS_POINTS);
+    const gst = charged - net;
+    if (floorToRupee) expect(net % 100).toBe(0);
+
+    const invoice = buildTaxInvoice({
+      supplierStateCode: "mh",
+      recipient: { ...recipient, stateCode: supplyType === "intra_state" ? "mh" : "ka" },
+      lines,
+      amountChargedCents: charged,
+    });
+
+    expect(invoice.supplyType).toBe(supplyType);
+    expect(invoice.lines.reduce((total, line) => total + line.taxableCents, 0)).toBe(net);
+    expect(invoice.taxableCents).toBe(net);
+    expect(invoice.totalCents).toBe(charged);
+    expect(invoice.lines.every((line) => line.taxableCents > 0 && line.taxCents >= 0 && line.cgstCents >= 0 && line.igstCents >= 0)).toBe(true);
+    const lineTax = invoice.lines.reduce((total, line) => total + line.taxCents, 0);
+    expect(invoice.taxableCents + invoice.cgstCents + invoice.sgstCents + invoice.igstCents + invoice.roundOffCents).toBe(charged);
+    expect(lineTax).toBe(invoice.cgstCents + invoice.sgstCents + invoice.igstCents);
+    if (supplyType === "inter_state") {
+      // One rounding of 18% on the total, shared out across the lines: no round-off at all.
+      expect(lineTax).toBe(gst);
+      expect(invoice.roundOffCents).toBe(0);
+    } else {
+      // CGST and SGST stay equal, so only an odd total GST leaves its one paisa to the round-off line.
+      expect(invoice.cgstCents).toBe(invoice.sgstCents);
+      expect(Math.abs(gst - lineTax)).toBe(gst % 2);
+      expect(invoice.roundOffCents).toBe(gst - lineTax);
+    }
+    if (floorToRupee) expect(invoice.roundOffCents).toBe(0);
+    // Each line is within a paisa of its own exact share of 18% (two within a state, where each half is shared on its own).
+    for (const line of invoice.lines) {
+      expect(Math.abs(line.taxCents - (line.taxableCents * GST_BASIS_POINTS) / 10_000)).toBeLessThanOrEqual(supplyType === "inter_state" ? 1 : 2);
+    }
+  });
+
+  it("charges the 239,920 + 799,920 pair, whose lines would add to a paisa more than GST on the total, without a round-off", () => {
+    const lines = [plan({ unitAmountCents: 299_900, discountAmountCents: 59_980 }), plan({ unitAmountCents: 999_900, discountAmountCents: 199_980 })];
+    const invoice = buildTaxInvoice({
+      supplierStateCode: "mh",
+      recipient: { ...recipient, stateCode: "ka" },
+      lines,
+      amountChargedCents: chargedAmountCents(1_039_840, 0, GST_BASIS_POINTS),
+    });
+    expect(invoice).toMatchObject({ taxableCents: 1_039_840, igstCents: 187_171, roundOffCents: 0, totalCents: 1_227_011 });
+    expect(invoice.lines.map((line) => line.taxCents)).toEqual([43_186, 143_985]);
+  });
+});
