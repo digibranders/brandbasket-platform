@@ -11,6 +11,11 @@ After=postgresql.service
 Type=oneshot
 ExecStart=/usr/local/sbin/brandbasket-backup --apply
 TimeoutStartSec=2h
+# Caps, so the nightly dump and upload never starve the live apps or Firstfold's sites: low CPU and disk weight, idle disk
+# class, 1 GB for the processes started here (pg_dump, tar, age, rclone; Postgres itself is its own service).
 Nice=10
+CPUWeight=20
+IOWeight=20
 IOSchedulingClass=idle
+MemoryMax=1G
 SyslogIdentifier=brandbasket-backup

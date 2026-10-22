@@ -9,5 +9,9 @@ After=postgresql.service
 Type=oneshot
 ExecStart=/usr/local/sbin/brandbasket-restore-test --apply
 TimeoutStartSec=1h
+# Caps, as for the backup (pg_restore and the checks run here; the restore itself is work for the Postgres service).
 Nice=10
+CPUWeight=20
+IOWeight=20
+MemoryMax=1G
 SyslogIdentifier=brandbasket-restore-test
