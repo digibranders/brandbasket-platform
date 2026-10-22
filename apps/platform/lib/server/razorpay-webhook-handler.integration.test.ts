@@ -10,7 +10,9 @@ import {
   findTaxInvoiceByPaymentId,
   listAffiliateEarnings,
   openCheckoutSubscription,
+  payments,
   subscriptions,
+  taxInvoices,
   users,
   type NewBundledAddOn,
   type Plan,
@@ -205,6 +207,27 @@ describe("a renewal after a service was added", () => {
       ["Social Media and Ads", 999_900, 200_020],
     ]);
     expect(await findSubscriptionById(dbs().staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 1_039_800, pendingBundledAddOnNetCents: null, paidThroughAt: NEXT_RENEWAL });
+  });
+
+  it("promotes the services once, records one payment and issues one invoice when the same renewal is delivered twice", async () => {
+    const subscription = await paidSubscription(linesOf("managed-website"));
+    await addAndPay("digital-growth");
+
+    await renew(1_226_964);
+    await renew(1_226_964);
+
+    const recorded = (await dbs().owner.db.select().from(payments)).filter((payment) => payment.providerPaymentId === "pay_renewal");
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]).toMatchObject({ amountCents: 1_226_964, attentionReason: null });
+    expect((await dbs().owner.db.select().from(taxInvoices)).filter((row) => row.paymentId === recorded[0]?.id)).toHaveLength(1);
+    const { invoice } = await renewalInvoice();
+    expect(invoice.totalCents).toBe(recorded[0]?.amountCents);
+    expect(await findSubscriptionById(dbs().staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 1_039_800, pendingBundledAddOnNetCents: null, paidThroughAt: NEXT_RENEWAL });
+    const rows = await findBundledAddOnsForSubscription(dbs().staff.db, subscription.id);
+    expect(rows.map((row) => [row.addOn, row.status])).toEqual([
+      ["managed-website", "active"],
+      ["digital-growth", "active"],
+    ]);
   });
 
   it("issues its invoice for a service that took over from a referral code and a stay offer, which had been frozen on the subscription", async () => {
