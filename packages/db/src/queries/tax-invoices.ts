@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull, lt, notExists, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, notExists, sql, type SQL } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import {
@@ -138,10 +138,14 @@ export async function listPaymentsWithoutTaxInvoice(db: Runner, businessId: stri
 
 /**
  * Keeps what a plan payment was billed as beside it (PaymentInvoiceBasis), for an invoice that has to be issued later. In the
- * payment's own transaction, before its invoice is attempted, so a refused invoice leaves it behind. Staff connection.
+ * payment's own transaction, before its invoice is attempted, so a refused invoice leaves it behind. Written once: a payment
+ * that already has its basis keeps it, since a later reading of the subscription describes a later month. Staff connection.
  */
 export async function savePaymentInvoiceBasis(db: ScopedTransaction, paymentId: string, basis: PaymentInvoiceBasis): Promise<void> {
-  await db.update(payments).set({ invoiceBasis: basis }).where(eq(payments.id, paymentId));
+  await db
+    .update(payments)
+    .set({ invoiceBasis: basis })
+    .where(and(eq(payments.id, paymentId), isNull(payments.invoiceBasis)));
 }
 
 /** What a payment was billed as, or null when it was recorded without it (PaymentInvoiceBasis). Staff connection. */

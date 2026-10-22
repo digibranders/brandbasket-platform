@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { MEMBER_HOME, MEMBERSHIP_PATH, readMembershipCallbackTier, type MembershipFormState } from "@/lib/membership";
 import { offersChoice, sellsFreeListing } from "@/lib/brand";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
@@ -41,16 +42,19 @@ export async function startMembership(_previous: MembershipFormState, formData: 
   redirect(outcome.url);
 }
 
+/** The basket the page bound to the action: at most the catalogue's services, as short strings. Anything else reads as no basket. */
+const BoundServices = z.array(z.string().max(40)).max(10).catch([]);
+
 /**
  * Applies a coupon or an affiliate code before paying, so the Pay button can show the price the member will be
  * charged. Bound by the page to its basket of services: a code is priced against the one service, and a package refuses
- * one. The basket comes from the browser, so only catalogue ids survive; everything is checked again in
- * applyReferralCodeFor, and again under the lock when the checkout opens.
+ * one. The basket comes from the browser, so it is read as an array of short strings and only catalogue ids survive;
+ * everything is checked again in applyReferralCodeFor, and again under the lock when the checkout opens.
  */
 export async function applyMembershipCode(services: readonly string[], _previous: StepFormState, formData: FormData): Promise<StepFormState> {
   const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
   const typed = formData.get("referralCode");
-  const outcome = await applyReferralCodeFor(customer, typeof typed === "string" ? typed : "", readBundleSelection(services), new Date());
+  const outcome = await applyReferralCodeFor(customer, typeof typed === "string" ? typed : "", readBundleSelection(BoundServices.parse(services)), new Date());
   if (outcome.kind === "refused") return refusedStepState(outcome.problem, formData);
   revalidatePlanPages();
   return { status: "idle" };

@@ -7,6 +7,7 @@ import {
   insertExitFeedback,
   isPackageOfferForfeited,
   listAddOnSubscriptionsForBusiness,
+  lockBusinessForBilling,
   markCancelRequested,
   openAccountClosure,
   restoreAccountClosure,
@@ -146,6 +147,8 @@ export async function closeAccountFor(
 
   try {
     await staffDb.transaction(async (tx) => {
+      // First, so a payment or a change to the services lands wholly before or wholly after the closure.
+      await lockBusinessForBilling(tx, businessId);
       if (subscription !== null && (closure === "end-with-period" || closure === "note-only")) {
         await markCancelRequested(tx, { subscriptionId: subscription.id, businessId, now });
       }

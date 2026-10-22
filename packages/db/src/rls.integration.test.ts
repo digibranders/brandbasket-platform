@@ -102,6 +102,18 @@ describe("row-level security for bb_app", () => {
     expect(notForfeited).toBe(false);
   });
 
+  it.each([
+    ["subscriptions", "ad_credit_cents", "0"],
+    ["businesses", "package_offer_forfeited_at", "now()"],
+    ["payments", "invoice_basis", "null"],
+    ["bundled_add_ons", "pending_offer_discount_amount_cents", "0"],
+  ] as const)("denies the app role an update to %s.%s, which only billing code under the staff role sets", async (table, column, value) => {
+    const message = await captureErrorText(
+      withTenantScope(dbs.app.db, { userId: USER_A, businessId: businessA }, (tx) => tx.execute(sql.raw(`update ${table} set ${column} = ${value} where false`))),
+    );
+    expect(message).toMatch(new RegExp(`permission denied for table ${table}`));
+  });
+
   it("denies the app role any access to staff_members", async () => {
     const message = await captureErrorText(dbs.app.db.select().from(staffMembers));
     expect(message).toMatch(/permission denied for table staff_members/);

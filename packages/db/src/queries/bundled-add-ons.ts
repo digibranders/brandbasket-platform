@@ -140,12 +140,6 @@ export async function saveProviderBundlePlan(db: Runner, key: BundlePlanKey & { 
   return saved;
 }
 
-/** Whether a subscription's add-on rows are `pending` or `active`, as ids: used to tell whether a checkout still fits the choice. */
-export function bundledAddOnIds(items: readonly Pick<BundledAddOn, "addOn">[]): readonly string[] {
-  return items.map((item) => item.addOn).sort();
-}
-
-
 /** Every add-on the business took with its plan, newest subscription first, whatever its status. Staff connection. */
 export async function listBundledAddOnsForBusiness(db: Runner, businessId: string): Promise<readonly BundledAddOn[]> {
   if (!isUuid(businessId)) return [];
@@ -642,7 +636,10 @@ export async function endPackageOffer(
 ): Promise<void> {
   await setPendingOfferDiscounts(tx, { subscriptionId: input.subscriptionId, lines: input.lines, now: input.now });
   await markPackageOfferForfeited(tx, input.businessId, input.now);
-  await tx.update(subscriptions).set({ adCreditCents: 0, updatedAt: input.now }).where(eq(subscriptions.id, input.subscriptionId));
+  await tx
+    .update(subscriptions)
+    .set({ adCreditCents: 0, updatedAt: input.now })
+    .where(and(eq(subscriptions.id, input.subscriptionId), eq(subscriptions.businessId, input.businessId)));
   const waiting = await tx
     .select({ id: bundledAddOns.id, chargeId: bundledAddOns.chargeId })
     .from(bundledAddOns)

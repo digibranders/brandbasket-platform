@@ -23,6 +23,11 @@ export function getAppDb(): Database {
  *   customer's own business. Customers may never write billing rows through their own connection; these take the
  *   business id only from the session, never from the request, and the confirmation sends onboarding back under the
  *   customer's role (withCustomerRole) so row-level security still applies to it.
+ * - lib/server/membership-checkout.ts and lib/server/billing.ts, which read billing rows for the signed-in customer's own
+ *   business to price the plan page and Billing: the billing state, the plan on sale, the services a lapsed plan reactivates
+ *   with and whether the package offer is given up. They write nothing. The business id comes only from the session; the
+ *   provider callbacks in billing.ts look a subscription or charge up by the provider's own id, to tell whose webhook or
+ *   confirmation it is.
  * - app/api/site/info/route.ts, app/api/site/availability/route.ts, lib/server/booking-otp.ts (POST
  *   /api/site/bookings/otp) and lib/server/booking-confirm.ts (POST /api/site/bookings/confirm), because the site
  *   token has already proven the business, so there is no customer session to scope a connection under -- and the

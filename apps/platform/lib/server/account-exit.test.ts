@@ -253,6 +253,17 @@ describe("closeAccountFor with add-ons", () => {
     expect(markAddOnCancelled).toHaveBeenCalledWith(expect.anything(), row.id, NOW);
   });
 
+  it("takes the business's billing lock before it marks the plan as cancel requested", async () => {
+    withRows();
+
+    await expect(closeAccountFor(customer(PLAN_SUBSCRIPTION), DETAILS, NOW)).resolves.toEqual({ kind: "closed" });
+
+    const [lockedAt] = vi.mocked(lockBusinessForBilling).mock.invocationCallOrder;
+    const [markedAt] = vi.mocked(markCancelRequested).mock.invocationCallOrder;
+    expect(lockBusinessForBilling).toHaveBeenCalledWith(expect.anything(), BUSINESS_ID);
+    expect(lockedAt).toBeLessThan(markedAt ?? 0);
+  });
+
   it("rolls the closure back and refuses when an add-on still needs ending under the lock", async () => {
     // A payment landed after the rows were read: the check under the lock finds a row nobody told the provider about.
     vi.mocked(listAddOnSubscriptionsForBusiness)

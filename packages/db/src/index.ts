@@ -743,7 +743,6 @@ export { findSetupCallBooking, recordSetupCallBooking } from "./queries/setup-ca
 export {
   activateBundledAddOns,
   BundledAddOnNotPossibleError,
-  bundledAddOnIds,
   bundledAddOnStillApplies,
   completeBundledAddOnChanges,
   endPackageOffer,

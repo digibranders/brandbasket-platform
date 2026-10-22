@@ -16,6 +16,7 @@ import {
   payments,
   recordAddOnPayment,
   recordChargePayment,
+  savePaymentInvoiceBasis,
   taxInvoicingStart,
   users,
   type NewBundledAddOn,
@@ -419,6 +420,36 @@ describe("issueMissingTaxInvoice", () => {
 
     expect(await invoiceCount()).toBe(0);
     expect(await nextSerial()).toBeNull();
+  });
+
+  it("refuses a payment whose kept basis is not the shape that was written, leaving no invoice and spending no number", async () => {
+    const lines = linesOf("managed-website");
+    const subscription = await openSubscription(lines);
+    const payment = await seedPayment({
+      providerPaymentId: "pay_bad_basis",
+      subscriptionId: subscription.id,
+      amountCents: chargedFor(lines),
+      invoiceBasis: { ...basisOf(lines), lines: [{ addOn: "managed-website", listAmountCents: "299900" }] } as never,
+    });
+
+    await expect(issue(payment.id)).rejects.toBeInstanceOf(InvoiceSourceMismatchError);
+
+    expect(await invoiceCount()).toBe(0);
+    expect(await nextSerial()).toBeNull();
+  });
+
+  it("keeps the basis a payment was first recorded with when another is saved for it", async () => {
+    const first = linesOf("managed-website");
+    const subscription = await openSubscription(first);
+    const payment = await seedPayment({ providerPaymentId: "pay_basis_once", subscriptionId: subscription.id, amountCents: chargedFor(first) });
+
+    await dbs.staff.db.transaction(async (tx) => {
+      await savePaymentInvoiceBasis(tx, payment.id, basisOf(first));
+      await savePaymentInvoiceBasis(tx, payment.id, basisOf(linesOf("managed-website", "digital-growth")));
+    });
+
+    const kept = await querySql<{ invoice_basis: PaymentInvoiceBasis }>(dbs.owner, `select invoice_basis from payments where id = '${payment.id}'`);
+    expect(kept[0]?.invoice_basis).toEqual(basisOf(first));
   });
 
   it("refuses a payment whose kept lines do not come to what it took, leaving no invoice and spending no number", async () => {

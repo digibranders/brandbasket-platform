@@ -683,6 +683,19 @@ describe("startMembershipCheckoutFor", () => {
     expect(cancelled).not.toHaveBeenCalled();
   });
 
+  it("replaces an abandoned package checkout for the same services once the business has given the offer up", async () => {
+    const abandoned = subscription({ planId: "plan-inr", bundledAddOnNetCents: 1_039_800, adCreditCents: 200_000 });
+    newest(abandoned, { currency: "INR", plan: INR_PLAN });
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(["managed-website", "digital-growth"].map((addOn) => ({ addOn, status: "pending" }) as BundledAddOn));
+    vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
+
+    const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "digital-growth"]));
+
+    expect(charged).toBe(1_533_764);
+    expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ replacing: "sub-old", adCreditCents: 0 }));
+    expect(cancelled).toHaveBeenCalledWith(abandoned.providerSubscriptionId);
+  });
+
   it("refuses a checkout with no services, opening nothing", async () => {
     await expect(startMembershipCheckoutFor(owner, NOW, "managed", [])).resolves.toEqual({
       kind: "refused",

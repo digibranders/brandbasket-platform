@@ -11,7 +11,23 @@ import {
   type ScopedTransaction,
   type TaxInvoice,
 } from "@brandbasket/db";
+import { z } from "zod";
 import { issueTaxInvoice, type InvoiceSource } from "./tax-invoicing";
+
+/** The jsonb a payment kept as its basis (PaymentInvoiceBasis), read as data: a row edited by hand or written by older code is refused, not trusted. */
+const InvoiceBasisSchema = z.object({
+  netAmountCents: z.number().int().nonnegative(),
+  discountAmountCents: z.number().int().nonnegative(),
+  retentionDiscountCents: z.number().int().nonnegative(),
+  lines: z.array(
+    z.object({
+      addOn: z.string().min(1),
+      listAmountCents: z.number().int().nonnegative(),
+      offerDiscountAmountCents: z.number().int().nonnegative(),
+      taxRateBasisPoints: z.number().int().nonnegative(),
+    }),
+  ),
+});
 
 /** The payment is not one staff can invoice now: it has its invoice, gets none (D1), or is from before invoicing (D17). */
 export class NoMissingInvoiceError extends Error {
@@ -66,8 +82,10 @@ async function sourceFor(tx: ScopedTransaction, payment: Payment): Promise<Invoi
   }
   const subscription = payment.subscriptionId === null ? null : await findSubscriptionById(tx, payment.subscriptionId);
   const plan = subscription === null ? null : await findPlanById(tx, subscription.planId);
-  const basis = await findPaymentInvoiceBasis(tx, payment.id);
-  if (subscription === null || plan === null || basis === null || payment.paidAt === null) throw new InvoiceSourceMismatchError(payment.kind);
+  const kept = await findPaymentInvoiceBasis(tx, payment.id);
+  const parsed = InvoiceBasisSchema.safeParse(kept);
+  if (subscription === null || plan === null || !parsed.success || payment.paidAt === null) throw new InvoiceSourceMismatchError(payment.kind);
+  const basis = parsed.data;
   const net = basis.netAmountCents + basis.lines.reduce((total, line) => total + line.listAmountCents - line.offerDiscountAmountCents, 0);
   // A discount that leaves nothing never matches (chargedAmountCents would refuse it).
   if (basis.discountAmountCents >= net || chargedAmountCents(net, basis.discountAmountCents, plan.taxRateBasisPoints) !== payment.amountCents) {

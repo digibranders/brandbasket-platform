@@ -317,6 +317,14 @@ export async function startReactivationFor(customer: GrantedCustomer, now: Date)
 }
 
 /**
+ * What a checkout was opened for: the services, what they add up to and the ad credit it grants. The same services at another
+ * price (the package offer given up since, an ad credit that no longer applies) are another checkout, never the old one reused.
+ */
+function basketKey(addOnIds: readonly string[], netCents: number, adCreditCents: number): string {
+  return `${bundleKey(addOnIds)}|${netCents}|${adCreditCents}`;
+}
+
+/**
  * Opens the plan's checkout for a business its caller has already cleared to pay:
  *
  * 1. under a per-business lock on the staff connection (customers never write billing rows), the billing package
@@ -375,11 +383,17 @@ async function openPlanCheckout(
     // Ad credit is for services bought together at the first purchase. A reactivation grants none and keeps what the lapsed
     // subscription had.
     const adCreditCents = reactivation?.adCreditCents ?? adCreditCentsAtCheckout({ services, forfeited, hasEverPaid: false }, plan.currency);
-    const latestBundleKey =
-      state.subscription === null ? "" : bundleKey((await findBundledAddOnsForSubscription(tx, state.subscription.id)).filter((row) => row.status === "pending").map((row) => row.addOn));
+    const latestPending = state.subscription === null ? [] : (await findBundledAddOnsForSubscription(tx, state.subscription.id)).filter((row) => row.status === "pending");
     const decision = decideCheckout(
-      state.subscription === null ? null : { ...state.subscription, bundleKey: latestBundleKey },
-      { planId: plan.id, provider: provider.name, referralCodeId: discount?.codeId ?? null, bundleKey: bundleKey(bundle.map((item) => item.addOn)) },
+      state.subscription === null
+        ? null
+        : { ...state.subscription, bundleKey: basketKey(latestPending.map((row) => row.addOn), state.subscription.bundledAddOnNetCents, state.subscription.adCreditCents) },
+      {
+        planId: plan.id,
+        provider: provider.name,
+        referralCodeId: discount?.codeId ?? null,
+        bundleKey: basketKey(bundle.map((item) => item.addOn), bundle.reduce((total, item) => total + item.netAmountCents, 0), adCreditCents),
+      },
       now,
       state,
     );
