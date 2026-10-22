@@ -69,7 +69,7 @@ export { deriveSiteStatus, type SiteStatus, type SiteStatusInput } from "./site-
 export { addMonthsUtc } from "./term";
 export { BillingRangeError } from "./billing-range-error";
 export { amountInWords } from "./amount-in-words";
-export { splitGst, supplyTypeOf, type GstAmounts, type SupplyType } from "./gst";
+export { splitGst, splitGstAcross, supplyTypeOf, type GstAmounts, type SupplyType, type TaxableLine } from "./gst";
 export { gstStateCodeOf, stateCodeOfGstCode, UnknownStateError } from "./gst-states";
 export { gstinCheckCharacter, InvalidGstinError, isValidGstin, normaliseGstin, stateCodeOfGstin } from "./gstin";
 export { financialYearOf, formatInvoiceNumber, indianDate, INVOICE_PREFIX, invoicePrefix, MAX_INVOICE_SERIAL } from "./invoice-number";

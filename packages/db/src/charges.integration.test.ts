@@ -359,7 +359,7 @@ describe("blog post unlocks", () => {
 
 describe("plan payments are unaffected", () => {
   it("still numbers a charge receipt after the plan's own", async () => {
-    const plan = await findActivePlan(dbs.staff.db, "INR", "premium");
+    const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
     if (plan === null) throw new Error("No INR plan seeded");
     const subscription = await insertSubscription(dbs.staff.db, {
       businessId: businessA,

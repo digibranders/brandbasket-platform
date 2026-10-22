@@ -2,11 +2,10 @@ import "server-only";
 import { findBillingState, findBusinessEntry, withTenantScope, type BusinessEntry, type BusinessKind } from "@brandbasket/db";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import type { PlanTier } from "@brandbasket/db";
 import type { SessionUser, TenantContext } from "@brandbasket/shared/lib/access";
 import { summariseBilling, type CustomerBilling } from "@brandbasket/shared/lib/billing/status";
 import { RESTORE_ACCOUNT_PATH } from "@/lib/account-settings-form";
-import { MEMBER_HOME, membershipPathFor, membershipTierForChoice, type MembershipTier } from "@/lib/membership";
+import { membershipPathFor, membershipTierForChoice, type MembershipTier } from "@/lib/membership";
 import { getCustomerAccess } from "./customer-tenant";
 import { getAppDb } from "./db";
 
@@ -95,23 +94,13 @@ export interface CustomerAccessOptions {
    * Only that page, its actions, the layout around it and the payment pages pass this.
    */
   readonly membershipCheckout?: "allow";
-  /**
-   * `premium` closes the page to a client on the Care plan, who is sent Home: Appointments, Patients and the directory
-   * pages (Listing, Leads, Photos, Advertise) are Premium's (docs/superpowers/specs/2026-10-07-care-plan-design.md).
-   * Not a thing a free listing account is asked: its own pages are not tiered.
-   */
-  readonly plan?: "premium";
 }
 
-/**
- * Where the business is sent instead of the page it asked for, or null when the page is its to open. `tier` is the
- * plan a website client is on (CustomerBilling.tier); it only matters to a page that asks for `plan: "premium"`.
- */
-export function accessRedirect(entry: BusinessEntry, options: CustomerAccessOptions, tier: PlanTier = "premium"): string | null {
+/** Where the business is sent instead of the page it asked for, or null when the page is its to open. */
+export function accessRedirect(entry: BusinessEntry, options: CustomerAccessOptions): string | null {
   const awaited = awaitedMembershipTier(entry);
   if (awaited !== null) return options.membershipCheckout === "allow" ? null : membershipPathFor(awaited);
   if (entry.kind === "listing" && options.listingAccount !== "allow") return LISTING_ACCOUNT_HOME;
-  if (entry.kind === "website" && options.plan === "premium" && tier === "care") return MEMBER_HOME;
   return null;
 }
 
@@ -124,12 +113,9 @@ export async function requireCustomerAccess(options: CustomerAccessOptions = {})
   if (access.kind === "closing") redirect(RESTORE_ACCOUNT_PATH);
   if (access.kind !== "granted") redirect("/login");
   const entry = await getCustomerBusinessEntry(access.tenant.userId, access.tenant.businessId);
-  // Nothing about money is read for an account that is sent away whatever its plan.
-  const early = accessRedirect(entry, options);
-  if (early !== null) redirect(early);
-  const billing = await getCustomerBilling(access.tenant.userId, access.tenant.businessId);
-  // Only now is the plan known: a Care client is turned away from a page that is Premium's.
-  const elsewhere = accessRedirect(entry, options, billing.tier);
+  // Nothing about money is read for an account that is sent away.
+  const elsewhere = accessRedirect(entry, options);
   if (elsewhere !== null) redirect(elsewhere);
+  const billing = await getCustomerBilling(access.tenant.userId, access.tenant.businessId);
   return { user: access.user, tenant: access.tenant, billing };
 }

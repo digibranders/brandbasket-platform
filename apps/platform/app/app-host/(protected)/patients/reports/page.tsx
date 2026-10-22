@@ -49,7 +49,7 @@ function ReportSection({ title, children }: { readonly title: string; readonly c
 
 export default async function PatientReportsPage({ searchParams }: ReportsPageProps): Promise<ReactElement> {
   await requireAppointmentsModule();
-  const { tenant } = await requireCustomerAccess({ plan: "premium" });
+  const { tenant } = await requireCustomerAccess();
   const sp = await searchParams;
   const now = new Date();
 

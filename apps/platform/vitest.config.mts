@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 
@@ -10,5 +10,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["*.test.ts", "lib/**/*.test.ts", "content/**/*.test.ts", "app/**/*.test.ts"],
+    // Database-backed tests need a migrated test database; they run under vitest.integration.config.mts.
+    exclude: [...configDefaults.exclude, "**/*.integration.test.ts"],
   },
 });

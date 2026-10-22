@@ -15,7 +15,7 @@ function subscription(status: SubscriptionStatus, paidThroughAt: Date | null): S
 function state(sub: Subscription | null, history: Partial<BillingState> = {}): BillingState {
   return {
     currency: "USD",
-    tier: "premium",
+    tier: "managed",
     upgradePaid: false,
     subscription: sub,
     // A subscription with a paid-through date was activated by a payment.
@@ -32,7 +32,7 @@ describe("summariseBilling", () => {
       status: "unpaid",
       hasAccess: false,
       subscription: null,
-      tier: "premium",
+      tier: "managed",
       upgradePaid: false,
       plan: PLAN,
       paymentUnderReview: false,
@@ -41,11 +41,11 @@ describe("summariseBilling", () => {
   });
 
   it("says when a move up to Premium has been paid for and is waiting for the renewal", () => {
-    expect(summariseBilling(state(null, { upgradePaid: true, tier: "premium" }), NOW)).toMatchObject({ upgradePaid: true, tier: "premium" });
+    expect(summariseBilling(state(null, { upgradePaid: true, tier: "managed" }), NOW)).toMatchObject({ upgradePaid: true, tier: "managed" });
   });
 
   it("carries the tier the business is on, so a Care client's dashboard can tell", () => {
-    expect(summariseBilling(state(null, { tier: "care" }), NOW)).toMatchObject({ tier: "care" });
+    expect(summariseBilling(state(null, { tier: "managed" }), NOW)).toMatchObject({ tier: "managed" });
   });
 
   it("is unpaid while a checkout is open", () => {

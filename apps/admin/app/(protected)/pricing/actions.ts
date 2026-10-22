@@ -10,11 +10,9 @@ import { requireStaffCan } from "@/lib/server/staff-role";
 function noticeFor(outcome: PriceUpdateOutcome): PricingNotice {
   switch (outcome.kind) {
     case "updated":
-      return outcome.monthlyChanged ? "monthly-updated" : "extras-updated";
+      return "extras-updated";
     case "unchanged":
     case "no-plan":
-    case "below-referral":
-    case "provider-failed":
       return outcome.kind;
     default: {
       const unhandled: never = outcome;
@@ -23,12 +21,12 @@ function noticeFor(outcome: PriceUpdateOutcome): PricingNotice {
   }
 }
 
-/** Saves one currency's prices. Only the superadmin reaches this: every staff account is one. */
+/** Saves one currency's extra prices. Only the superadmin reaches this: every staff account is one. */
 export async function savePricesAction(formData: FormData): Promise<void> {
   const { user } = await requireStaffCan("money");
   const form = parsePricingForm(formData);
   if (!form.ok) redirect(pricingNoticeHref(form.problem));
-  const outcome = await savePriceSheet({ sheet: form.sheet, staffUserId: user.id }, new Date());
+  const outcome = await savePriceSheet({ sheet: form.sheet, staffUserId: user.id });
   revalidatePath("/pricing");
   redirect(pricingNoticeHref(noticeFor(outcome)));
 }

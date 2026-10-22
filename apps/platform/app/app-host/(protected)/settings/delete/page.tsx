@@ -3,9 +3,9 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { DeleteAccountFlow } from "@/components/panel/delete-account-flow";
 import { planClosureFor } from "@/lib/account-exit-rules";
-import { hasRunningAddOnsFor } from "@/lib/server/account-exit";
+import { hasRunningAddOnsFor, loadPackageEndsFor } from "@/lib/server/account-exit";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
-import { claimRetentionOfferAction, deleteAccountAction, lookupRetentionOfferAction } from "../actions";
+import { deleteAccountAction } from "../actions";
 
 export const metadata: Metadata = { title: "Delete account" };
 
@@ -20,7 +20,7 @@ function planEndsAt(subscription: Awaited<ReturnType<typeof requireCustomerAcces
 export default async function DeleteAccountPage(): Promise<ReactElement> {
   const customer = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
   const { billing } = customer;
-  const addOnsRunning = await hasRunningAddOnsFor(customer);
+  const [addOnsRunning, packageEnds] = await Promise.all([hasRunningAddOnsFor(customer), loadPackageEndsFor(customer)]);
 
   return (
     <>
@@ -30,11 +30,10 @@ export default async function DeleteAccountPage(): Promise<ReactElement> {
       <h1 className="panel-title mt-4">Delete account</h1>
       <div className="mt-10">
         <DeleteAccountFlow
-          lookupOffer={lookupRetentionOfferAction}
-          claimOffer={claimRetentionOfferAction}
           deleteAccount={deleteAccountAction}
           planEndsAt={planEndsAt(billing.subscription, new Date())}
           addOnsRunning={addOnsRunning}
+          packageEnds={packageEnds}
         />
       </div>
     </>

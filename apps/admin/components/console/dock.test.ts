@@ -16,9 +16,10 @@ beforeEach(() => {
 });
 
 describe("the console dock", () => {
-  it("links the 13 sections and Add lead", () => {
+  it("links the 15 sections and Add lead", () => {
     const html = render("/clients");
-    expect(html.match(/<a /g)).toHaveLength(15);
+    expect(html.match(/<a /g)).toHaveLength(16);
+    expect(html).toContain('href="/ad-credit"');
     expect(html).toContain('href="/invoices"');
     expect(html).toContain('href="/leads/new"');
   });
@@ -33,14 +34,15 @@ describe("the console dock", () => {
 
   it("shows support staff only what their role can open: no Pricing, Invoices or Access log", () => {
     const html = render("/clients", false, "support");
-    expect(html.match(/<a /g)).toHaveLength(12);
+    expect(html.match(/<a /g)).toHaveLength(13);
     for (const href of ["/pricing", "/invoices", "/access-log"]) expect(html).not.toContain(`href="${href}"`);
     expect(html).toContain('href="/leads"');
+    expect(html).toContain('href="/ad-credit"');
   });
 
   it("shows finance staff the money pages but not the access log", () => {
     const html = render("/clients", false, "finance");
-    expect(html.match(/<a /g)).toHaveLength(14);
+    expect(html.match(/<a /g)).toHaveLength(15);
     expect(html).toContain('href="/pricing"');
     expect(html).toContain('href="/invoices"');
     expect(html).not.toContain('href="/access-log"');
@@ -56,24 +58,26 @@ describe("the console dock", () => {
 
   it("never shrinks an item below a tap target, on a phone", () => {
     const links = render("/").match(/<a [^>]*>/g) ?? [];
-    expect(links).toHaveLength(15);
+    expect(links).toHaveLength(16);
     for (const link of links) {
       expect(link).toContain("shrink-0");
       expect(link).toContain("min-w-[3.75rem]");
     }
   });
 
-  it("fits all fourteen items and Add lead in the bar at 1024px, by narrowing them from md until xl", () => {
-    // 1024px less the bar's 1.5rem of margin is 1000px. Fourteen items of 4rem, the divider, the bar's padding and its
-    // fourteen gaps come to 969px; at 4.5rem they came to 1081px and pushed the gold Add lead out of sight.
-    const links = render("/").match(/<a [^>]*>/g) ?? [];
-    expect(links).toHaveLength(15);
+  it("fits every item and Add lead in Brandbasket's bar at 1024px, by narrowing them from md until xl", () => {
+    // 1024px less the bar's 1.5rem of margin is 1000px. Each section is 4rem wide with a 4px gap, plus the divider and the
+    // bar's padding; at 4.5rem each the bar of the directory brands came to 1081px and pushed the gold Add lead out of
+    // sight. Brandbasket has no directory, so its bar is the shorter one. The longer bar scrolls sideways instead.
+    const links = render("/", false, "admin", false).match(/<a [^>]*>/g) ?? [];
+    expect(links).toHaveLength(12);
     for (const link of links) {
       expect(link).toContain("md:w-16");
       expect(link).toContain("xl:w-[4.5rem]");
       expect(link).not.toMatch(/(^|\s)md:w-\[4\.5rem\]/);
     }
-    const bar = 14 * 64 + 5 + 12 + 14 * 4;
+    const sections = links.length - 1;
+    const bar = sections * 64 + 5 + 12 + sections * 4;
     expect(bar).toBeLessThanOrEqual(1024 - 24);
   });
 

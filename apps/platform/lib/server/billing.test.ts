@@ -1,13 +1,17 @@
 import { createHmac } from "node:crypto";
 import {
   findBillingState,
+  findBundledAddOnsForSubscription,
   findBusinessEntry,
   findCurrentPaymentMethod,
+  findLatestSubscriptionForBusiness,
   findOpenClosureForUser,
+  isPackageOfferForfeited,
   findSubscriptionByProviderId,
   listMembershipsForUser,
   withTenantScope,
   type BillingState,
+  type BundledAddOn,
   type Database,
   type Plan,
   type ScopedTransaction,
@@ -19,6 +23,7 @@ import { BillingConfigurationError, CheckoutVerificationError } from "@brandbask
 import {
   BillingRequiredError,
   findCustomerPaymentMethod,
+  findReactivationNetCents,
   getBillingProvider, getRazorpayProvider, razorpayKeyId, razorpayKeySecret,
   requireBillingAccess,
 } from "./billing";
@@ -39,9 +44,12 @@ vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
 vi.mock("@/lib/server/env", () => ({ serverEnv: () => ({ BETTER_AUTH_SECRET: "x".repeat(32) }) }));
 vi.mock("@brandbasket/db", () => ({
   findBillingState: vi.fn(),
+  findBundledAddOnsForSubscription: vi.fn(),
   findBusinessEntry: vi.fn(),
   findCurrentPaymentMethod: vi.fn(),
+  findLatestSubscriptionForBusiness: vi.fn(),
   findOpenClosureForUser: vi.fn(),
+  isPackageOfferForfeited: vi.fn(),
   findSubscriptionByProviderId: vi.fn(),
   listMembershipsForUser: vi.fn(),
   listReceiptsForBusiness: vi.fn(),
@@ -73,7 +81,7 @@ function subscription(status: Subscription["status"], paidThroughAt: Date | null
 function billingState(sub: Subscription | null, overrides: Partial<BillingState> = {}): BillingState {
   return {
     currency: "USD",
-    tier: "premium",
+    tier: "managed",
     upgradePaid: false,
     subscription: sub,
     hasEverPaid: sub !== null && sub.status !== "incomplete",
@@ -117,57 +125,27 @@ describe("requireCustomerAccess for free listing accounts", () => {
   });
 });
 
-describe("requireCustomerAccess for an account that chose Premium and has not paid", () => {
+describe("requireCustomerAccess for an account that chose Managed Website and has not paid", () => {
   beforeEach(() => {
-    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "premium" });
+    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "managed" });
     vi.mocked(findBillingState).mockResolvedValue(billingState(null));
   });
 
-  it("holds it on the membership page, from a website client's page and from a listing page alike", async () => {
-    await expect(requireCustomerAccess()).rejects.toThrow("redirect:/premium");
-    await expect(requireCustomerAccess({ listingAccount: "allow" })).rejects.toThrow("redirect:/premium");
+  it("holds it on the plan page, from a website client's page and from a listing page alike", async () => {
+    await expect(requireCustomerAccess()).rejects.toThrow("redirect:/plan");
+    await expect(requireCustomerAccess({ listingAccount: "allow" })).rejects.toThrow("redirect:/plan");
     expect(findBillingState).not.toHaveBeenCalled();
   });
 
   it("lets it into the membership page and the payment pages, which say so", async () => {
     const access = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
     expect(access.tenant.businessId).toBe(BUSINESS_ID);
+    expect(access.billing.tier).toBe("managed");
   });
 
   it("opens the client's dashboard once the payment has made it a website client", async () => {
-    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: "premium" });
+    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: "managed" });
     expect((await requireCustomerAccess()).tenant.businessId).toBe(BUSINESS_ID);
-  });
-});
-
-describe("requireCustomerAccess for an account that chose Care and has not paid", () => {
-  beforeEach(() => {
-    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "care" });
-    vi.mocked(findBillingState).mockResolvedValue(billingState(null, { tier: "care" }));
-  });
-
-  it("holds it on the Care page, from a website client's page and from a listing page alike", async () => {
-    await expect(requireCustomerAccess()).rejects.toThrow("redirect:/care");
-    await expect(requireCustomerAccess({ listingAccount: "allow" })).rejects.toThrow("redirect:/care");
-    expect(findBillingState).not.toHaveBeenCalled();
-  });
-
-  it("lets it into the plan pages and the payment pages, which say so", async () => {
-    const access = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
-    expect(access.billing.tier).toBe("care");
-  });
-});
-
-describe("requireCustomerAccess for pages that are Premium's", () => {
-  it("sends a Care client Home from a Premium page, and lets a Premium client in", async () => {
-    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: "care" });
-    vi.mocked(findBillingState).mockResolvedValue(billingState(null, { tier: "care" }));
-    await expect(requireCustomerAccess({ plan: "premium" })).rejects.toThrow("redirect:/");
-    // The same client reaches a page that is not Premium's.
-    expect((await requireCustomerAccess()).billing.tier).toBe("care");
-
-    vi.mocked(findBillingState).mockResolvedValue(billingState(null, { tier: "premium" }));
-    expect((await requireCustomerAccess({ plan: "premium" })).billing.tier).toBe("premium");
   });
 });
 
@@ -238,6 +216,35 @@ describe("findCustomerPaymentMethod", () => {
   ] as const)("looks at every payment for a plan that is %s", async (_name, status, provider) => {
     await findCustomerPaymentMethod(customerBilling(status, provider));
     expect(findCurrentPaymentMethod).toHaveBeenCalledWith(tx, BUSINESS_ID, { planOnly: false });
+  });
+});
+
+describe("findReactivationNetCents", () => {
+  const tenant = { userId: USER.id, businessId: BUSINESS_ID, businessName: "Riverside Plumbing", role: "owner" };
+  const lapsedWith = (plan: Pick<Plan, "currency">): never => ({ tenant, billing: { status: "lapsed", plan } }) as never;
+  const lines = (...addOns: string[]): BundledAddOn[] => addOns.map((addOn) => ({ addOn, status: "active", activatedAt: new Date("2026-09-01T00:00:00Z"), endRequestedAt: null }) as BundledAddOn);
+
+  beforeEach(() => {
+    vi.mocked(getStaffDb).mockReturnValue({ name: "staff-db" } as unknown as Database);
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "past_due", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 0 } as Subscription);
+    vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
+  });
+
+  it("is the net of the basket the checkout will reopen, at the offer it earns", async () => {
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "digital-growth", "local-seo-aeo"));
+    await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }))).resolves.toBe(2_659_700);
+    await expect(findReactivationNetCents(lapsedWith({ currency: "USD" }))).resolves.toBe(35_000);
+  });
+
+  it("is list for a business that gave the offer up", async () => {
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "local-seo-aeo"));
+    vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
+    await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }))).resolves.toBe(2_799_800);
+  });
+
+  it("is nothing for a customer who has not lapsed", async () => {
+    await expect(findReactivationNetCents({ tenant, billing: { status: "paid", plan: { currency: "INR" } } } as never)).resolves.toBeNull();
+    expect(findBundledAddOnsForSubscription).not.toHaveBeenCalled();
   });
 });
 

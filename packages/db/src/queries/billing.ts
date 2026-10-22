@@ -163,6 +163,8 @@ export interface Subscription {
   readonly bundledAddOnNetCents: number;
   /** What those add-ons cost once the ones the customer asked to remove have stopped, from the next renewal; null when none are waiting. */
   readonly pendingBundledAddOnNetCents: number | null;
+  /** Ad credit a month for a package bought together at the first checkout, frozen then; 0 for none. Never invoiced. */
+  readonly adCreditCents: number;
   readonly status: SubscriptionStatus;
   readonly activatedAt: Date | null;
   readonly commitmentEndsAt: Date | null;
@@ -188,6 +190,7 @@ const SUBSCRIPTION_COLUMNS = {
   pendingDiscountAmountCents: subscriptions.pendingDiscountAmountCents,
   bundledAddOnNetCents: subscriptions.bundledAddOnNetCents,
   pendingBundledAddOnNetCents: subscriptions.pendingBundledAddOnNetCents,
+  adCreditCents: subscriptions.adCreditCents,
   status: subscriptions.status,
   activatedAt: subscriptions.activatedAt,
   commitmentEndsAt: subscriptions.commitmentEndsAt,
@@ -287,12 +290,11 @@ export function paymentWasApplied(): SQL {
 }
 
 /**
- * The plan a sign-up choice buys: Care for an owner who chose it, Premium for everyone else. A business that chose
- * neither (a free listing, an account from before the choice was asked, one made from a setup link) is priced as
- * Premium, the plan every client had before Care existed.
+ * The plan a sign-up choice buys. Brandbasket sells one plan, so every choice (Managed Website, a free listing, an
+ * account from a setup link) is priced as Managed Website. The choice stays a parameter so callers read the same.
  */
-export function planTierForSignupChoice(choice: SignupChoice | null): PlanTier {
-  return choice === "care" ? "care" : "premium";
+export function planTierForSignupChoice(_choice: SignupChoice | null): PlanTier {
+  return "managed";
 }
 
 /**
@@ -335,6 +337,29 @@ export async function findLatestSubscriptionForBusiness(db: Runner, businessId: 
   return rows[0] ?? null;
 }
 
+/**
+ * The business's newest subscription that a payment ever activated, or null when none was. A reactivation checkout that was
+ * left unpaid or dropped is newer than the lapsed subscription it replaced but never billed anything, so this is the one that
+ * says what the business was paying for. Staff connection, or the owner's own scope.
+ */
+export async function findLatestActivatedSubscriptionForBusiness(db: Runner, businessId: string): Promise<Subscription | null> {
+  if (!isUuid(businessId)) return null;
+  const rows = await db
+    .select(SUBSCRIPTION_COLUMNS)
+    .from(subscriptions)
+    .where(and(eq(subscriptions.businessId, businessId), isNotNull(subscriptions.activatedAt)))
+    .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Ad credit that goes with a subscription that ends: zero for one a payment activated, which has been earning it, and untouched
+ * for one that never was activated. An unpaid reactivation checkout carries the lapsed subscription's credit forward, and
+ * dropping it must not lose that credit, so the next reactivation can still read it.
+ */
+const adCreditAfterEnding = sql`case when ${subscriptions.activatedAt} is not null then 0 else ${subscriptions.adCreditCents} end`;
+
 export interface NewSubscription {
   readonly businessId: string;
   readonly planId: string;
@@ -352,6 +377,8 @@ export interface NewSubscription {
   readonly discountAmountCents?: number;
   /** What the add-ons taken at this checkout cost a month before GST: the sum of their net prices. Defaults to 0. */
   readonly bundledAddOnNetCents?: number;
+  /** Ad credit a month earned by the package bought at this checkout (adCreditCentsFor in @brandbasket/shared). Defaults to 0. */
+  readonly adCreditCents?: number;
 }
 
 /**
@@ -370,6 +397,7 @@ export async function insertSubscription(db: Runner, input: NewSubscription): Pr
       referralCodeId: input.referralCodeId ?? null,
       discountAmountCents: input.discountAmountCents ?? 0,
       bundledAddOnNetCents: input.bundledAddOnNetCents ?? 0,
+      adCreditCents: input.adCreditCents ?? 0,
       status: "incomplete",
     })
     .returning(SUBSCRIPTION_COLUMNS);
@@ -431,12 +459,14 @@ export interface StaleSubscriptionCancellation {
  * Ends the subscription a new checkout replaces: an unpaid checkout, or a live one that no longer grants access (a
  * lapsed or halted plan, which reactivation replaces). The guard is in the UPDATE itself, so a payment that lands in
  * between, moving paid_through_at into the future, makes it match nothing and throw StaleSubscriptionChangedError.
- * Only the status and cancelledAt change: the old row's dates and payments stay as history.
+ * Only the status, cancelledAt and ad credit change: the old row's dates and payments stay as history.
  */
 export async function cancelStaleSubscription(db: Runner, input: StaleSubscriptionCancellation): Promise<void> {
   const rows = await db
     .update(subscriptions)
-    .set({ status: "cancelled", cancelledAt: input.now })
+    // The ad credit of a subscription that was paid goes with it: a replacement is opened with the credit the caller read
+    // before this, and the ads team reads it from live rows. An unpaid checkout never earned any and keeps what it carries.
+    .set({ status: "cancelled", cancelledAt: input.now, adCreditCents: adCreditAfterEnding })
     .where(
       and(
         eq(subscriptions.id, input.subscriptionId),
@@ -453,8 +483,8 @@ export async function cancelStaleSubscription(db: Runner, input: StaleSubscripti
     )
     .returning({ id: subscriptions.id });
   if (rows.length === 0) throw new StaleSubscriptionChangedError(input.subscriptionId);
-  // The add-ons billed inside it end with it: a checkout never paid never bought them, and a lapsed plan's are not carried into
-  // the plan that replaces it (a reactivation is the plan alone).
+  // The lines billed inside it end with it. A reactivation restores them as new lines on the subscription that replaces it
+  // (reactivationBasketOf), read before this ran.
   await removeBundledAddOnsOf(db, { subscriptionId: input.subscriptionId, now: input.now });
 }
 
@@ -462,7 +492,10 @@ export interface CheckoutSubscription extends Omit<NewSubscription, "bundledAddO
   /** The unpaid subscription this one replaces, or null when the business has no live subscription. */
   readonly replacing: string | null;
   readonly now: Date;
-  /** The add-ons taken at this checkout, billed with the plan. Their net prices are summed onto the subscription. */
+  /**
+   * The services taken at this checkout, the website included, each at its package price: the plan row costs nothing, so
+   * these are what the provider bills. Their net prices are summed onto the subscription.
+   */
   readonly bundledAddOns?: readonly NewBundledAddOn[];
 }
 
@@ -681,7 +714,7 @@ export async function updateSubscriptionProviderStatus(db: Runner, input: Subscr
       status: input.status,
       providerStatus: input.providerStatus,
       lastSyncedAt: input.now,
-      ...(input.status === "cancelled" ? { cancelledAt: sql`coalesce(${subscriptions.cancelledAt}, ${input.now})` } : {}),
+      ...(input.status === "cancelled" ? { cancelledAt: sql`coalesce(${subscriptions.cancelledAt}, ${input.now})`, adCreditCents: adCreditAfterEnding } : {}),
     })
     .where(
       and(
@@ -760,10 +793,10 @@ export interface PaymentAttentionFlag {
   readonly paymentId: string;
   readonly businessId: string;
   /**
-   * Only the reasons of a payment that did apply: `submission_failed` and `upgrade_provider_pending`. An unapplied
-   * payment is flagged when it is recorded, by recordUnappliedPayment.
+   * Only the reasons of a payment that did apply: `submission_failed`, `upgrade_provider_pending` and
+   * `add_on_provider_pending`. An unapplied payment is flagged when it is recorded, by recordUnappliedPayment.
    */
-  readonly reason: Extract<PaymentAttentionReason, "submission_failed" | "upgrade_provider_pending">;
+  readonly reason: Extract<PaymentAttentionReason, "submission_failed" | "upgrade_provider_pending" | "add_on_provider_pending">;
   readonly now: Date;
 }
 
@@ -785,6 +818,29 @@ export async function flagPaymentForAttention(db: Runner, input: PaymentAttentio
     )
     .returning({ id: payments.id });
   return rows.length > 0;
+}
+
+/**
+ * Flags a subscription for staff when a change to its monthly amount went wrong and no payment of that change exists to
+ * flag: a service dropped (no payment) or added for less than the smallest charge. The flag lands on the subscription's
+ * latest captured payment that carries none, so it shows in the console's list of payments needing attention with the same
+ * reason; one already flagged and not yet dealt with for the same reason is left as it is. Returns whether a flag was set.
+ * Staff connection only.
+ */
+export async function flagSubscriptionForAttention(
+  db: Runner,
+  input: { readonly subscriptionId: string; readonly businessId: string; readonly reason: PaymentAttentionFlag["reason"]; readonly now: Date },
+): Promise<boolean> {
+  if (!isUuid(input.subscriptionId) || !isUuid(input.businessId)) return false;
+  const captured = await db
+    .select({ id: payments.id, attentionReason: payments.attentionReason, attentionResolvedAt: payments.attentionResolvedAt })
+    .from(payments)
+    .where(and(eq(payments.subscriptionId, input.subscriptionId), eq(payments.businessId, input.businessId), eq(payments.status, "captured")))
+    .orderBy(desc(payments.createdAt), desc(payments.id));
+  if (captured.some((payment) => payment.attentionReason === input.reason && payment.attentionResolvedAt === null)) return false;
+  const target = captured.find((payment) => payment.attentionReason === null);
+  if (target === undefined) return false;
+  return flagPaymentForAttention(db, { paymentId: target.id, businessId: input.businessId, reason: input.reason, now: input.now });
 }
 
 export interface PaymentAttentionResolution {
@@ -909,7 +965,7 @@ export interface Receipt extends Payment {
   /** The payment's tax invoice, when it has one. Its number replaces the receipt's title on the bill. */
   readonly taxInvoiceId: string | null;
   readonly taxInvoiceNumber: string | null;
-  /** For an add-on payment, the catalogue id of what was bought ("social-media"). Null for everything else. */
+  /** For an add-on payment, the catalogue id of what was bought ("digital-growth"). Null for everything else. */
   readonly addOnId: string | null;
 }
 

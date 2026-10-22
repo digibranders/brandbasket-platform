@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, pgEnum, pgTable, primaryKey, text, uuid } from "drizzle-orm/pg-core";
+import { check, index, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 import { users } from "./auth";
 import { createdAt } from "./columns";
@@ -26,7 +26,7 @@ export type BusinessKind = (typeof businessKind.enumValues)[number];
  * longer offered, but accounts opened that way keep it. A `listing` business that chose `care` or `premium` is held
  * on that plan's payment page until it pays, or changes its mind to `listing_only`.
  */
-export const signupChoice = pgEnum("signup_choice", ["own_website", "listing_only", "premium", "care"]);
+export const signupChoice = pgEnum("signup_choice", ["own_website", "listing_only", "managed"]);
 export type SignupChoice = (typeof signupChoice.enumValues)[number];
 
 /** A business is the tenant: the isolation, billing and hosting boundary. */
@@ -68,6 +68,11 @@ export const businesses = pgTable("businesses", {
    * invoice when the customer has given no billing details.
    */
   stateCode: text("state_code"),
+  /**
+   * When the business dropped a service from a package (docs/plans/16-platform-pricing-offers.md in the BrandBasket
+   * workspace): from then on every service is at its list price, for good. Null while the package offer stands.
+   */
+  packageOfferForfeitedAt: timestamp("package_offer_forfeited_at", { withTimezone: true }),
   createdAt: createdAt(),
 }, (table) => [
   check("businesses_country_code_check", sql`${table.countryCode} is null or ${table.countryCode} ~ '^[A-Z]{2}$'`),

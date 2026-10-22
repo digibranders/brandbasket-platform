@@ -19,7 +19,7 @@ import { ADD_ONS_PATH } from "@/lib/add-ons";
 import { DEALS_PATH } from "@/lib/deals";
 import { LEADS_PATH } from "@/lib/leads";
 import { REVIEWS_PATH } from "@/lib/owner-replies";
-import { CARE_PATH, MEMBERSHIP_PATH, UPGRADE_PATH } from "@/lib/membership";
+import { MEMBERSHIP_PATH } from "@/lib/membership";
 import { ADVERTISE_PATH, LISTING_PAGE_PATH } from "@/lib/server/customer-access";
 import { logoOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
@@ -59,12 +59,12 @@ function listingAccountNav(newLeadCount: number): readonly SidebarNavItem[] {
       { href: ADD_ONS_PATH, label: "Add-ons", icon: <NavCirclePlusIcon className="size-5" /> },
       { href: "/billing", label: "Billing", icon: <NavScrollTextIcon className="size-5" /> },
     ],
-    [{ href: UPGRADE_PATH, label: "Upgrade", icon: <NavCircleArrowUpIcon className="size-5" /> }],
+    [{ href: MEMBERSHIP_PATH, label: "Managed Website", icon: <NavCircleArrowUpIcon className="size-5" /> }],
   ]);
 }
 
 /** The plan pages say all of this themselves, so the line is left off them. */
-const PAGES_WITHOUT_THE_OFFER = [UPGRADE_PATH, MEMBERSHIP_PATH, CARE_PATH] as const;
+const PAGES_WITHOUT_THE_OFFER = [MEMBERSHIP_PATH] as const;
 
 /**
  * The dashboard for a free listing account (docs/superpowers/specs/2026-09-30-directory-ads-auction-design.md). It has
@@ -96,11 +96,11 @@ export async function ListingAccountShell({
           {premiumOffer === null ? null : (
             <HiddenOnPaths paths={PAGES_WITHOUT_THE_OFFER}>
               <Link
-                href={UPGRADE_PATH}
+                href={MEMBERSHIP_PATH}
                 className="group ml-auto inline-flex items-center gap-2.5 rounded-full bg-accent-pale px-4 py-2 text-sm font-semibold text-accent-deep transition-colors duration-300 ease-calm hover:bg-accent hover:text-paper"
               >
                 <StarIcon className="size-4 shrink-0" />
-                Go Premium
+                Get Managed Website
                 <span className="hidden font-normal tabular-nums sm:inline">{premiumOffer}</span>
                 <ArrowIcon className="size-4 shrink-0 transition-transform duration-300 ease-calm group-hover:translate-x-1" />
               </Link>

@@ -9,9 +9,10 @@ import { findAddOnProviderPlan, saveAddOnProviderPlan } from "@brandbasket/db";
 import { ensureAddOnPlan } from "./add-on-plans";
 
 const staffDb = { name: "staff-db" } as never;
-const SOCIAL_MEDIA = addOnById("social-media");
-const MEMBER_PRICE = addOnPrice(SOCIAL_MEDIA, "INR", true);
-const KEY = { addOn: "social-media", netAmountCents: 179_910, taxRateBasisPoints: 1_800, currency: "INR", provider: "razorpay" } as const;
+const DIGITAL_GROWTH = addOnById("digital-growth");
+// Social Media and Ads in a Website + Social package: 20% off its list price, and the 40 paise that round the package down to a whole rupee.
+const PACKAGE_PRICE = addOnPrice(DIGITAL_GROWTH, "INR", 200_020);
+const KEY = { addOn: "digital-growth", netAmountCents: 799_880, taxRateBasisPoints: 1_800, currency: "INR", provider: "razorpay" } as const;
 
 function providerWith(createPlan: BillingProvider["createPlan"]): BillingProvider {
   return { name: "razorpay", createPlan } as unknown as BillingProvider;
@@ -26,7 +27,7 @@ describe("ensureAddOnPlan", () => {
     vi.mocked(findAddOnProviderPlan).mockResolvedValue("plan_stored");
     const createPlan = vi.fn();
 
-    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: SOCIAL_MEDIA, price: MEMBER_PRICE })).resolves.toBe("plan_stored");
+    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: DIGITAL_GROWTH, price: PACKAGE_PRICE })).resolves.toBe("plan_stored");
 
     expect(findAddOnProviderPlan).toHaveBeenCalledWith(staffDb, KEY);
     expect(createPlan).not.toHaveBeenCalled();
@@ -38,14 +39,14 @@ describe("ensureAddOnPlan", () => {
     vi.mocked(saveAddOnProviderPlan).mockResolvedValue("plan_winner");
     const createPlan = vi.fn().mockResolvedValue({ providerPlanId: "plan_mine" });
 
-    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: SOCIAL_MEDIA, price: MEMBER_PRICE })).resolves.toBe("plan_winner");
+    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: DIGITAL_GROWTH, price: PACKAGE_PRICE })).resolves.toBe("plan_winner");
 
     expect(createPlan).toHaveBeenCalledWith({
       currency: "INR",
-      netMonthlyCents: 179_910,
+      netMonthlyCents: 799_880,
       taxRateBasisPoints: 1_800,
-      code: "addon-social-media-179910",
-      itemName: "Brandbasket Social media",
+      code: "addon-digital-growth-799880",
+      itemName: "Brandbasket Social Media and Ads",
     });
     expect(saveAddOnProviderPlan).toHaveBeenCalledWith(staffDb, { ...KEY, providerPlanId: "plan_mine" });
   });
@@ -55,11 +56,11 @@ describe("ensureAddOnPlan", () => {
     vi.mocked(saveAddOnProviderPlan).mockResolvedValue("plan_usd");
     const createPlan = vi.fn().mockResolvedValue({ providerPlanId: "plan_usd" });
 
-    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: SOCIAL_MEDIA, price: addOnPrice(SOCIAL_MEDIA, "USD", false) })).resolves.toBe("plan_usd");
+    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: DIGITAL_GROWTH, price: addOnPrice(DIGITAL_GROWTH, "USD") })).resolves.toBe("plan_usd");
 
-    const key = { addOn: "social-media", netAmountCents: 10_000, taxRateBasisPoints: 0, currency: "USD", provider: "razorpay" } as const;
+    const key = { addOn: "digital-growth", netAmountCents: 7_500, taxRateBasisPoints: 0, currency: "USD", provider: "razorpay" } as const;
     expect(findAddOnProviderPlan).toHaveBeenCalledWith(staffDb, key);
-    expect(createPlan).toHaveBeenCalledWith(expect.objectContaining({ currency: "USD", netMonthlyCents: 10_000, taxRateBasisPoints: 0 }));
+    expect(createPlan).toHaveBeenCalledWith(expect.objectContaining({ currency: "USD", netMonthlyCents: 7_500, taxRateBasisPoints: 0 }));
     expect(saveAddOnProviderPlan).toHaveBeenCalledWith(staffDb, { ...key, providerPlanId: "plan_usd" });
   });
 
@@ -67,7 +68,7 @@ describe("ensureAddOnPlan", () => {
     vi.mocked(findAddOnProviderPlan).mockResolvedValue(null);
     const createPlan = vi.fn().mockResolvedValue({ providerPlanId: null });
 
-    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: SOCIAL_MEDIA, price: MEMBER_PRICE })).resolves.toBeNull();
+    await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: DIGITAL_GROWTH, price: PACKAGE_PRICE })).resolves.toBeNull();
 
     expect(saveAddOnProviderPlan).not.toHaveBeenCalled();
   });

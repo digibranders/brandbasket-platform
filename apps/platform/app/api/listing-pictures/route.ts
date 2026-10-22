@@ -1,4 +1,4 @@
-import { getCustomerBilling, getCustomerBusinessEntry, isAwaitingMembership } from "@/lib/server/customer-access";
+import { getCustomerBusinessEntry, isAwaitingMembership } from "@/lib/server/customer-access";
 import { getCustomerTenant } from "@/lib/server/customer-tenant";
 import { getAppDb, getStaffDb } from "@/lib/server/db";
 import { serverEnv } from "@/lib/server/env";
@@ -20,11 +20,9 @@ export async function POST(request: Request): Promise<Response> {
     getTenant: getCustomerTenant,
     appOrigin: serverEnv().APP_ORIGIN,
     anyLocalHost: allowsAnyLocalHost(process.env),
-    // An owner who chose a plan and has not paid has no Photos page yet (requireCustomerAccess), so no upload either;
-    // and pictures for the listing are not part of the Care plan.
+    // An owner who chose a plan and has not paid has no Photos page yet (requireCustomerAccess), so no upload either.
     canAddPictures: async (tenant) =>
       !isAwaitingMembership(await getCustomerBusinessEntry(tenant.userId, tenant.businessId)) &&
-      (await getCustomerBilling(tenant.userId, tenant.businessId)).tier !== "care" &&
       (await canAddListingPictures(getAppDb(), tenant)),
     decodeBusy: () =>
       hasDecodeCapacity() ? null : { message: BUSY_MESSAGE, retryAfterSeconds: BUSY_RETRY_AFTER_SECONDS },

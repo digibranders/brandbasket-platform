@@ -15,7 +15,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * nothing. The layout is drawn again so the sidebar's count follows.
  */
 export async function setLeadRepliedAction(formData: FormData): Promise<void> {
-  const { tenant } = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const { tenant } = await requireCustomerAccess({ listingAccount: "allow" });
   const id = formData.get("leadId");
   const replied = formData.get("replied") === "true";
   if (typeof id !== "string" || !UUID.test(id)) return;

@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
-  applyRetentionDiscount,
   findOpenClosureForUser,
   insertExitFeedback,
   listExitFeedback,
@@ -10,6 +9,7 @@ import {
   restoreAccountClosure,
   summariseExitFeedback,
 } from "./queries/account-closures";
+import { isPackageOfferForfeited } from "./queries/bundled-add-ons";
 import { findActivePlan, findLatestSubscriptionForBusiness, insertSubscription, type Plan } from "./queries/billing";
 import { accountClosures, accountExitFeedback, businesses, users } from "./schema";
 import { captureErrorText, openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
@@ -39,7 +39,7 @@ beforeEach(async () => {
     .values({ slug: "aster-physio", name: "Aster Physio", currency: "INR" })
     .returning({ id: businesses.id });
   businessId = rows[0]?.id ?? "";
-  const active = await findActivePlan(dbs.staff.db, "INR", "premium");
+  const active = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (active === null) throw new Error("No active INR plan was seeded");
   plan = active;
 });
@@ -153,7 +153,7 @@ describe("what staff read", () => {
   });
 });
 
-describe("the stay offer on a subscription", () => {
+describe("a subscription of a leaving business", () => {
   async function liveSubscription(): Promise<string> {
     const subscription = await insertSubscription(dbs.staff.db, {
       businessId,
@@ -166,38 +166,7 @@ describe("the stay offer on a subscription", () => {
     return subscription.id;
   }
 
-  it("adds the offer's worth to the discount, and records it as the offer's", async () => {
-    const subscriptionId = await liveSubscription();
-    const applied = await applyRetentionDiscount(dbs.staff.db, { subscriptionId, businessId, retentionDiscountCents: 90_000 });
-    expect(applied).toBe(true);
-    const subscription = await findLatestSubscriptionForBusiness(dbs.staff.db, businessId);
-    expect(subscription).toMatchObject({ discountAmountCents: 90_000, retentionDiscountCents: 90_000, referralCodeId: null });
-  });
-
-  it("is taken once", async () => {
-    const subscriptionId = await liveSubscription();
-    expect(await applyRetentionDiscount(dbs.staff.db, { subscriptionId, businessId, retentionDiscountCents: 90_000 })).toBe(true);
-    expect(await applyRetentionDiscount(dbs.staff.db, { subscriptionId, businessId, retentionDiscountCents: 90_000 })).toBe(false);
-    const subscription = await findLatestSubscriptionForBusiness(dbs.staff.db, businessId);
-    expect(subscription?.discountAmountCents).toBe(90_000);
-  });
-
-  it("only touches the business's own subscription", async () => {
-    const subscriptionId = await liveSubscription();
-    const other = await dbs.owner.db
-      .insert(businesses)
-      .values({ slug: "other", name: "Other", currency: "INR" })
-      .returning({ id: businesses.id });
-    const applied = await applyRetentionDiscount(dbs.staff.db, {
-      subscriptionId,
-      businessId: other[0]?.id ?? "",
-      retentionDiscountCents: 90_000,
-    });
-    expect(applied).toBe(false);
-  });
-
   it("refuses ids that are not UUIDs without touching the database", async () => {
-    expect(await applyRetentionDiscount(dbs.staff.db, { subscriptionId: "nope", businessId, retentionDiscountCents: 1 })).toBe(false);
     expect(await markCancelRequested(dbs.staff.db, { subscriptionId: "nope", businessId, now: NOW })).toBe(false);
   });
 
@@ -207,6 +176,40 @@ describe("the stay offer on a subscription", () => {
       dbs.owner.db.execute(`update subscriptions set discount_amount_cents = 500 where id = '${subscriptionId}'`),
     );
     expect(text).toContain("subscriptions_discount_check");
+  });
+
+  it("ends the package offer and the ad credit when the cancel request is noted, for good", async () => {
+    const subscription = await insertSubscription(dbs.staff.db, {
+      businessId,
+      planId: plan.id,
+      provider: "fake",
+      providerSubscriptionId: "fake_sub_000000000000000000000002",
+      referralCodeId: null,
+      discountAmountCents: 0,
+      adCreditCents: 500_000,
+    });
+    expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(false);
+
+    await markCancelRequested(dbs.staff.db, { subscriptionId: subscription.id, businessId, now: NOW });
+
+    expect((await findLatestSubscriptionForBusiness(dbs.staff.db, businessId))?.adCreditCents).toBe(0);
+    const [business] = await dbs.owner.db.select({ at: businesses.packageOfferForfeitedAt }).from(businesses).where(eq(businesses.id, businessId));
+    expect(business?.at).toEqual(NOW);
+
+    await markCancelRequested(dbs.staff.db, { subscriptionId: subscription.id, businessId, now: new Date("2026-10-09T00:00:00.000Z") });
+    const [again] = await dbs.owner.db.select({ at: businesses.packageOfferForfeitedAt }).from(businesses).where(eq(businesses.id, businessId));
+    expect(again?.at).toEqual(NOW);
+  });
+
+  it("does nothing for another business's subscription", async () => {
+    const subscriptionId = await liveSubscription();
+    const [other] = await dbs.owner.db.insert(businesses).values({ slug: "other-physio", name: "Other Physio", currency: "INR" }).returning({ id: businesses.id });
+
+    expect(await markCancelRequested(dbs.staff.db, { subscriptionId, businessId: other?.id ?? "", now: NOW })).toBe(false);
+
+    expect((await findLatestSubscriptionForBusiness(dbs.staff.db, businessId))?.cancelRequestedAt).toBeNull();
+    expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(false);
+    expect(await isPackageOfferForfeited(dbs.staff.db, other?.id ?? "")).toBe(false);
   });
 
   it("notes a cancel request once and keeps the first time", async () => {

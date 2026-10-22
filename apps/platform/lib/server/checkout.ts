@@ -12,7 +12,9 @@ import {
   findBusinessReferralCode,
   findLatestSubscriptionForBusiness,
   findRedeemableReferralCode,
+  isPackageOfferForfeited,
   lockBusinessForBilling,
+  markPackageOfferForfeited,
   openCheckoutSubscription,
   withTenantScope,
   type NewBundledAddOn,
@@ -23,7 +25,8 @@ import {
 } from "@brandbasket/db";
 import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
+import { readBundleSelection, WEBSITE_ALONE, type ReactivationBasket } from "@brandbasket/shared/lib/billing/bundle";
+import { adCreditCentsAtCheckout, packageLines } from "@brandbasket/shared/lib/billing/packages";
 import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF, REACTIVATE_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { firstMissing, onboardingChecklist } from "@brandbasket/shared/lib/onboarding/checklist";
 import { MEMBER_HOME } from "@/lib/membership";
@@ -35,7 +38,8 @@ import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { missingProblem, readOnboardingSnapshot, type StepProblem } from "./onboarding";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
-import { discountFrom, type AppliedDiscount } from "./referrals";
+import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
+import { codeBasisFor, discountFrom, PACKAGE_TAKES_NO_CODE, type AppliedDiscount } from "./referrals";
 import { ensureDiscountPlan } from "./discount-plans";
 
 /** A stuck button or a script must not be able to open subscriptions at the provider without limit. */
@@ -69,8 +73,9 @@ const TOO_MANY_ATTEMPTS = "That’s a lot of attempts in a short time. Please wa
 const NOTHING_TO_PAY_FOR = `There’s nothing to pay for right now. If you think that’s wrong, email us at ${businessDetails.email}.`;
 const NO_PLAN = `We can’t take payment in your currency just yet. Email us at ${businessDetails.email} and we’ll sort it out.`;
 const CHANGED_MEANWHILE = "Something changed while we were setting up your payment. Please try again.";
-const ALREADY_A_MEMBER = "You’re already a Premium member. Open your dashboard to carry on.";
+const ALREADY_A_MEMBER = "You’ve already paid for Managed Website. Open your dashboard to carry on.";
 const PAYMENT_UNAVAILABLE = "We couldn’t open your payment just now. Please try again in a minute.";
+const NO_SERVICES = "Choose at least one service to continue.";
 
 /** What was decided under the lock, carried past its commit. */
 interface PlannedCheckout {
@@ -84,17 +89,43 @@ interface PlannedCheckout {
    */
   readonly discount: AppliedDiscount | null;
   /**
-   * The add-ons taken at this checkout, each with its lifetime offer, billed in the plan's own charge. Empty for a business
-   * that has paid before (the offer is for the first checkout only) and when none were chosen.
+   * The services taken at this checkout, priced as a package when there are two or more (packages.ts) unless the business
+   * has given the offer up. The plan row costs nothing, so these are the whole charge. A business that has paid before
+   * takes the basket it lapsed with (loadReactivationBasket).
    */
   readonly bundle: readonly NewBundledAddOn[];
+  /**
+   * Ad credit a month for a package bought together at the business's first paid checkout (adCreditCentsAtCheckout), frozen onto
+   * the subscription; 0 for anyone who gave the offer up. A reactivation carries over what the lapsed subscription kept and
+   * grants none of its own.
+   */
+  readonly adCreditCents: number;
+  /**
+   * The basket this checkout was priced from when the business has paid before, or null. The second transaction reads it again
+   * under its lock and opens nothing if it moved, so what is recorded is what was priced.
+   */
+  readonly reactivation: ReactivationBasket | null;
 }
 
-type DecisionStep = { readonly kind: "planned"; readonly planned: PlannedCheckout } | { readonly kind: "no-plan" };
+type DecisionStep =
+  | { readonly kind: "planned"; readonly planned: PlannedCheckout }
+  | { readonly kind: "no-plan" }
+  | { readonly kind: "code-on-package" };
 
 function sameSubscriptionState(seen: Subscription | null, now: Subscription | null): boolean {
   if (seen === null || now === null) return seen === now;
   return seen.id === now.id && seen.status === now.status;
+}
+
+/** Whether a basket read again is the one the checkout was priced from: the same services, offer, credit and cancellation. */
+function sameBasket(priced: ReactivationBasket, now: ReactivationBasket): boolean {
+  return (
+    priced.forfeited === now.forfeited &&
+    priced.cancelled === now.cancelled &&
+    priced.adCreditCents === now.adCreditCents &&
+    priced.services.length === now.services.length &&
+    priced.services.every((service, index) => service === now.services[index])
+  );
 }
 
 function checkedUrl(started: StartedCheckout): string {
@@ -160,6 +191,15 @@ async function openNewCheckout(
       await lockBusinessForBilling(tx, tenant.businessId);
       const latest = await findLatestSubscriptionForBusiness(tx, tenant.businessId);
       if (!sameSubscriptionState(planned.latest, latest)) return false;
+      if (planned.reactivation !== null) {
+        // The first transaction priced the basket before the provider was called. A cancel request, or a service asked to end,
+        // can land in between without moving the subscription's id or status, so read it again here and price nothing else.
+        const basket = await loadReactivationBasket(tx, tenant.businessId);
+        if (!sameBasket(planned.reactivation, basket)) return false;
+        // A cancelled subscription has given the package offer up for good, whatever ended it: written with the checkout it
+        // belongs to, not before the decision to open one.
+        if (basket.cancelled) await markPackageOfferForfeited(tx, tenant.businessId, now);
+      }
       await openCheckoutSubscription(tx, {
         businessId: tenant.businessId,
         planId: planned.plan.id,
@@ -168,6 +208,7 @@ async function openNewCheckout(
         referralCodeId: discount?.codeId ?? null,
         discountAmountCents: discount?.amountCents ?? 0,
         bundledAddOns: planned.bundle,
+        adCreditCents: planned.adCreditCents,
         replacing: replacing?.id ?? null,
         now,
       });
@@ -222,18 +263,20 @@ export async function startCheckoutFor(customer: GrantedCustomer, now: Date): Pr
     if (missing !== null) return { kind: "refused", problem: missingProblem(missing) };
   }
 
-  return openPlanCheckout(customer, now, PAYMENT_STEP_HREF, null);
+  return openPlanCheckout(customer, now, PAYMENT_STEP_HREF, null, WEBSITE_ALONE);
 }
 
 /**
- * Starts the first payment for the plan a free listing account is buying, Care or Premium, from that account (docs/superpowers/specs/2026-09-30-
- * single-entry-premium-design.md). These members pay before there is a project or a single answer, so neither is
+ * Starts the first payment for Managed Website from the account a sign-up opened (docs/plans/11-platform-plans.md in the
+ * BrandBasket workspace). These members pay before there is a project or a single answer, so neither is
  * asked for: the payment itself opens the project (activateFirstPayment). Checked on the server, whatever the page
  * showed: the same rate limit as any checkout, and that the business really is a free listing account, since a
  * website client pays on Check and send, where its answers are checked first.
  *
  * `tier` is the plan whose page the owner pressed Pay on: a free account may buy either, whichever it chose at sign-up.
  * A later checkout of the same account replaces an unpaid one of the other plan, as it replaces any stale one.
+ * `services` is the basket the page named, the whole subscription, read the way every basket is (each service once, in the
+ * catalogue's order); an empty one is refused.
  *
  * The kind is read before the lock rather than under it. A payment landing in between has made the business a client
  * with a paid subscription, which the decision under the lock then sees and answers by sending it to its dashboard.
@@ -242,7 +285,7 @@ export async function startMembershipCheckoutFor(
   customer: GrantedCustomer,
   now: Date,
   tier: PlanTier,
-  addOns: readonly MonthlyAddOnId[] = [],
+  services: readonly MonthlyAddOnId[],
 ): Promise<CheckoutOutcome> {
   const { tenant } = customer;
   const appDb = getAppDb();
@@ -253,12 +296,13 @@ export async function startMembershipCheckoutFor(
   const entry = await withTenantScope(appDb, tenant, (tx) => findBusinessEntry(tx, tenant.businessId));
   if (entry?.kind !== "listing") return refused(ALREADY_A_MEMBER);
 
-  return openPlanCheckout(customer, now, MEMBER_HOME, tier, addOns);
+  return openPlanCheckout(customer, now, MEMBER_HOME, tier, readBundleSelection(services));
 }
 
 /**
  * Reactivate on Billing (docs/superpowers/specs/2026-10-09-reactivation-design.md): a business that paid before and has
- * lapsed opens a checkout for its own tier at today's price, with no coupon, and its lapsed subscription is replaced.
+ * lapsed opens a checkout for the basket it lapsed with (loadReactivationBasket), with no coupon, and its lapsed
+ * subscription is replaced.
  * Checked on the server, whatever the page showed: the same rate limit as any checkout, then that the business really
  * has lapsed. A paid-up one is sent to Billing, and one that never paid has nothing to restart. Its project is live,
  * so there is no onboarding to check.
@@ -269,7 +313,15 @@ export async function startReactivationFor(customer: GrantedCustomer, now: Date)
   if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
   if (billing.status === "paid") return { kind: "redirect", url: REACTIVATE_HREF };
   if (billing.status !== "lapsed") return refused(NOTHING_TO_PAY_FOR);
-  return openPlanCheckout(customer, now, REACTIVATE_HREF, null);
+  return openPlanCheckout(customer, now, REACTIVATE_HREF, null, WEBSITE_ALONE);
+}
+
+/**
+ * What a checkout was opened for: the services, what they add up to and the ad credit it grants. The same services at another
+ * price (the package offer given up since, an ad credit that no longer applies) are another checkout, never the old one reused.
+ */
+function basketKey(addOnIds: readonly string[], netCents: number, adCreditCents: number): string {
+  return `${bundleKey(addOnIds)}|${netCents}|${adCreditCents}`;
 }
 
 /**
@@ -282,55 +334,73 @@ export async function startReactivationFor(customer: GrantedCustomer, now: Date)
  * 2. with the lock released, the provider is called, and a new subscription is recorded (see openNewCheckout).
  *
  * `tier` is the plan being bought, or null for a business that is already on one (a website client paying on Check and
- * send), which pays for the plan its billing state names.
+ * send), which pays for the plan its billing state names. `chosen` is the basket bought, never empty: a checkout for
+ * nothing is refused before anything is read. A business that has paid before is reactivating and buys the basket it
+ * lapsed with instead (loadReactivationBasket), whatever `chosen` says. A code is priced against the one service it is
+ * used on; a package of two or more refuses one (owner, plan 16 Settled 2).
  */
 async function openPlanCheckout(
   customer: GrantedCustomer,
   now: Date,
   paidHref: string,
   tier: PlanTier | null,
-  addOns: readonly MonthlyAddOnId[] = [],
+  chosen: readonly MonthlyAddOnId[],
 ): Promise<CheckoutOutcome> {
+  if (chosen.length === 0) return refused(NO_SERVICES);
   const { tenant } = customer;
   const provider = getBillingProvider();
   const first = await getStaffDb().transaction(async (tx): Promise<DecisionStep> => {
     await lockBusinessForBilling(tx, tenant.businessId);
     const state = await findBillingState(tx, tenant.businessId);
     if (state === null) throw new BillingBusinessNotFoundError(tenant.businessId);
-    // The plan the business is on or chose: a Care client is never quoted Premium's price, or the other way round.
+    // The plan the business is on or chose: Managed Website, in the business's currency.
     const plan = await findActivePlan(tx, state.currency, tier ?? state.tier);
     if (plan === null) return { kind: "no-plan" };
     // Re-validated here, under the lock, rather than trusted from when the customer pressed Apply: a code can be
     // deactivated, expire or hit its cap in between, and the amount frozen on the subscription must be the one
     // that was true at the moment the checkout opened. A business that has paid before is reactivating, which takes
-    // no code (docs/superpowers/specs/2026-10-09-reactivation-design.md): it pays today's full price.
+    // no code (docs/superpowers/specs/2026-10-09-reactivation-design.md): its services come back at the offer they earn.
     const applied = state.hasEverPaid ? null : await findBusinessReferralCode(tx, tenant.businessId);
     const redeemable =
       applied === null
         ? null
         : await findRedeemableReferralCode(tx, { code: applied.code, currency: state.currency, now });
-    const discount = redeemable === null ? null : discountFrom(redeemable, plan);
-    // The lifetime offer is for the first checkout: a business that has paid before takes no add-ons with its plan.
-    const bundle: readonly NewBundledAddOn[] = state.hasEverPaid
-      ? []
-      : bundleLines(addOns, plan.currency).map((line) => ({
-          addOn: line.addOn,
-          listAmountCents: line.listCents,
-          offerDiscountAmountCents: line.offerCents,
-          netAmountCents: line.netCents,
-          taxRateBasisPoints: plan.taxRateBasisPoints,
-        }));
-    const latestBundleKey =
-      state.subscription === null ? "" : bundleKey((await findBundledAddOnsForSubscription(tx, state.subscription.id)).filter((row) => row.status === "pending").map((row) => row.addOn));
+    // The plan row is the terms at a price of 0: every service, the website included, is a line. A business that has paid
+    // before is reactivating: the basket it lapsed with, read before the lapsed subscription is replaced and ends its lines.
+    const reactivation = state.hasEverPaid ? await loadReactivationBasket(tx, tenant.businessId) : null;
+    const services = reactivation?.services ?? chosen;
+    if (redeemable !== null && services.length > 1) return { kind: "code-on-package" };
+    const basis = codeBasisFor(services, plan.currency);
+    const discount = redeemable === null || basis === null ? null : discountFrom(redeemable, basis);
+    const forfeited = reactivation?.forfeited ?? (await isPackageOfferForfeited(tx, tenant.businessId));
+    const bundle: readonly NewBundledAddOn[] = packageLines({ services, forfeited }, plan.currency).map((line) => ({
+      addOn: line.addOn,
+      listAmountCents: line.listCents,
+      offerDiscountAmountCents: line.offerCents,
+      netAmountCents: line.netCents,
+      taxRateBasisPoints: plan.taxRateBasisPoints,
+    }));
+    // Ad credit is for services bought together at the first purchase. A reactivation grants none and keeps what the lapsed
+    // subscription had.
+    const adCreditCents = reactivation?.adCreditCents ?? adCreditCentsAtCheckout({ services, forfeited, hasEverPaid: false }, plan.currency);
+    const latestPending = state.subscription === null ? [] : (await findBundledAddOnsForSubscription(tx, state.subscription.id)).filter((row) => row.status === "pending");
     const decision = decideCheckout(
-      state.subscription === null ? null : { ...state.subscription, bundleKey: latestBundleKey },
-      { planId: plan.id, provider: provider.name, referralCodeId: discount?.codeId ?? null, bundleKey: bundleKey(bundle.map((item) => item.addOn)) },
+      state.subscription === null
+        ? null
+        : { ...state.subscription, bundleKey: basketKey(latestPending.map((row) => row.addOn), state.subscription.bundledAddOnNetCents, state.subscription.adCreditCents) },
+      {
+        planId: plan.id,
+        provider: provider.name,
+        referralCodeId: discount?.codeId ?? null,
+        bundleKey: basketKey(bundle.map((item) => item.addOn), bundle.reduce((total, item) => total + item.netAmountCents, 0), adCreditCents),
+      },
       now,
       state,
     );
-    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle } };
+    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle, adCreditCents, reactivation } };
   });
   if (first.kind === "no-plan") return refused(NO_PLAN);
+  if (first.kind === "code-on-package") return refused(PACKAGE_TAKES_NO_CODE);
 
   const { planned } = first;
   const { decision } = planned;

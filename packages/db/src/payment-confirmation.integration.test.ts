@@ -75,7 +75,7 @@ function idForSlug(rows: readonly { id: string; slug: string }[], slug: string):
 }
 
 async function usdPlan(): Promise<Plan> {
-  const plan = await findActivePlan(dbs.staff.db, "USD", "premium");
+  const plan = await findActivePlan(dbs.staff.db, "USD", "managed");
   if (plan === null) throw new Error("No USD plan was seeded");
   return plan;
 }
@@ -99,7 +99,8 @@ async function activation(subscriptionId: string, providerPaymentId: string): Pr
     provider: "fake",
     providerPaymentId,
     kind: "initial",
-    amountCents: plan.initialAmountCents,
+    // The website alone, in dollars: its line is the whole charge, since the plan row costs nothing.
+    amountCents: 7500,
     currency: plan.currency,
     paidAt: PAID_AT,
     paidThroughAt: THREE_MONTHS_ON,
@@ -589,7 +590,7 @@ describe("openCheckoutSubscription", () => {
 
     expect(await findFirstPayment(dbs.staff.db, businessA)).toMatchObject({
       provider: "manual",
-      amountCents: 6900,
+      amountCents: 7500,
       paidAt: PAID_AT,
     });
     const stored = await dbs.staff.db
@@ -658,7 +659,7 @@ describe("findBillingState", () => {
     expect(own).toMatchObject({
       currency: "USD",
       subscription: { status: "incomplete", providerSubscriptionId: "fake_sub_a" },
-      plan: { code: "care-usd-2026-09", initialAmountCents: 6900, initialTermMonths: 1 },
+      plan: { code: "services-usd-2026-10", initialAmountCents: 0, initialTermMonths: 1 },
     });
 
     const other = await withTenantScope(dbs.app.db, scopeA(), (tx) => findBillingState(tx, businessB));
@@ -672,7 +673,7 @@ describe("findBillingState", () => {
     expect(state).toMatchObject({
       currency: "INR",
       subscription: null,
-      plan: { code: "premium-inr-2026-10-9999", initialAmountCents: 999900, taxRateBasisPoints: 1800, initialTermMonths: 1 },
+      plan: { code: "services-inr-2026-10", initialAmountCents: 0, taxRateBasisPoints: 1800, initialTermMonths: 1 },
     });
   });
 
@@ -714,7 +715,7 @@ describe("listClients billing", () => {
         paidThroughAt: THREE_MONTHS_ON,
         commitmentEndsAt: THREE_MONTHS_ON,
       },
-      firstPayment: { amountCents: 6900, currency: "USD", provider: "fake", paidAt: PAID_AT, manual: null },
+      firstPayment: { amountCents: 7500, currency: "USD", provider: "fake", paidAt: PAID_AT, manual: null },
     });
     // Opening a checkout does not make a client; paying does.
     expect(unpaid).toBeUndefined();

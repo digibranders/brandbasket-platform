@@ -72,7 +72,7 @@ function hasText(value: string | null | undefined): value is string {
  * the listing, which is also when Listing appears in the nav.
  */
 export default async function ListingPage(): Promise<ReactElement> {
-  const { tenant, billing } = await requireCustomerAccess({ plan: "premium" });
+  const { tenant, billing } = await requireCustomerAccess();
   const now = new Date();
 
   const [data, modules] = await Promise.all([

@@ -42,7 +42,7 @@ async function type(name: string, value: string): Promise<void> {
   });
 }
 
-const JOIN_PROPS = { initialChoice: "care", preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { INR: { care: null, premium: null }, USD: { care: null, premium: null } }, confirmsCodes: true, countries: [{ code: "IN", name: "India" }, { code: "AE", name: "United Arab Emirates" }] } as const;
+const JOIN_PROPS = { initialChoice: "managed", services: ["managed-website"], preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { INR: { managed: null }, USD: { managed: null } }, confirmsCodes: true, countries: [{ code: "IN", name: "India" }, { code: "AE", name: "United Arab Emirates" }] } as const;
 const codeStep = { otpId: "challenge", emailHint: "o•••@example.test", confirmRequired: true };
 
 /** Picks a state the way a person does: India is the country already chosen, and the state is never filled in for them. */
@@ -56,7 +56,7 @@ async function pickState(code = "mh"): Promise<void> {
   });
 }
 
-/** Fills the details a Care sign-up asks for and asks for the code. */
+/** Fills the details a Managed Website sign-up asks for and asks for the code. */
 async function askForCode(): Promise<void> {
   await type("businessName", "Smile Dental");
   await type("name", "Owner");
@@ -178,4 +178,11 @@ it("locks the details while a code is being sent", async () => {
     expect(container.querySelector<HTMLInputElement>(`input[name="${name}"]`)?.readOnly, name).toBe(true);
   }
   await act(async () => release?.({ status: "code", otp: codeStep }));
+});
+
+it("sends the services the website's basket chose with the sign-up details, so the plan's page opens on them", async () => {
+  await render(createElement(JoinForm, {
+    ...JOIN_PROPS, services: ["digital-growth", "local-seo-aeo"], action: async (): Promise<JoinFormState> => ({ status: "idle" }),
+  }));
+  expect(container.querySelector<HTMLInputElement>('input[type="hidden"][name="services"]')?.value).toBe("digital-growth,local-seo-aeo");
 });

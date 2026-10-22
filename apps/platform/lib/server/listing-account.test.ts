@@ -52,7 +52,7 @@ const OTP_ID = "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
 const EMAIL = "meera.shah@example.test";
 const signInEmail = vi.fn();
 
-const FIRST: JoinInput = { choice: "care", businessName: "Smile Dental", name: "Meera Shah", email: EMAIL, password: "correct-horse-battery", country: "IN", stateCode: "mh", agreed: true, code: null };
+const FIRST: JoinInput = { choice: "managed", businessName: "Smile Dental", name: "Meera Shah", email: EMAIL, password: "correct-horse-battery", country: "IN", stateCode: "mh", agreed: true, code: null };
 const WITH_CODE: JoinInput = { ...FIRST, code: { otpId: OTP_ID, code: "123456" } };
 
 beforeEach(() => {
@@ -113,7 +113,7 @@ describe("createListingAccount", () => {
     expect(await createListingAccount(WITH_CODE)).toEqual({ kind: "created" });
     expect(confirmAccountEmailCode).toHaveBeenCalledWith({ otpId: OTP_ID, code: "123456", email: EMAIL }, "203.0.113.9", expect.any(Date));
     expect(createVerifiedEmailAccountWithGrant).toHaveBeenCalledWith(expect.anything(), DB, { email: EMAIL, name: "Meera Shah", password: "correct-horse-battery" });
-    expect(createUnlistedAccountBusiness).toHaveBeenCalledWith(DB, { userId: "user-2", businessName: "Smile Dental", signupChoice: "care", countryCode: "IN", stateCode: "mh", currency: "INR" });
+    expect(createUnlistedAccountBusiness).toHaveBeenCalledWith(DB, { userId: "user-2", businessName: "Smile Dental", signupChoice: "managed", countryCode: "IN", stateCode: "mh", currency: "INR" });
     expect(signInEmail).toHaveBeenCalledWith(expect.objectContaining({ body: { email: EMAIL, password: "correct-horse-battery" } }));
   });
 
@@ -124,7 +124,7 @@ describe("createListingAccount", () => {
 
   it("bills a plan in dollars outside India, but keeps a free listing in rupees", async () => {
     expect(await createListingAccount({ ...WITH_CODE, country: "US", stateCode: null })).toEqual({ kind: "created" });
-    expect(createUnlistedAccountBusiness).toHaveBeenCalledWith(DB, expect.objectContaining({ signupChoice: "care", currency: "USD" }));
+    expect(createUnlistedAccountBusiness).toHaveBeenCalledWith(DB, expect.objectContaining({ signupChoice: "managed", currency: "USD" }));
     expect(await createListingAccount({ ...WITH_CODE, choice: "listing_only", country: "US", stateCode: null })).toEqual({ kind: "created" });
     expect(createUnlistedAccountBusiness).toHaveBeenLastCalledWith(DB, expect.objectContaining({ signupChoice: "listing_only", currency: "INR" }));
   });
@@ -135,8 +135,8 @@ describe("createListingAccount", () => {
   });
 
   it("keeps an owner's choice of the Premium membership on the business it opens", async () => {
-    expect(await createListingAccount({ ...WITH_CODE, choice: "premium" })).toEqual({ kind: "created" });
-    expect(createUnlistedAccountBusiness).toHaveBeenCalledWith(DB, { userId: "user-2", businessName: "Smile Dental", signupChoice: "premium", countryCode: "IN", stateCode: "mh", currency: "INR" });
+    expect(await createListingAccount({ ...WITH_CODE, choice: "managed" })).toEqual({ kind: "created" });
+    expect(createUnlistedAccountBusiness).toHaveBeenCalledWith(DB, { userId: "user-2", businessName: "Smile Dental", signupChoice: "managed", countryCode: "IN", stateCode: "mh", currency: "INR" });
   });
 
   it("keeps proof that the owner agreed to the Terms and Privacy Notice, with the version they saw", async () => {

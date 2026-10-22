@@ -94,7 +94,7 @@ interface DoctorContext {
  * for a new booking; the count above is how a clinic notices one arrived. */
 export default async function AppointmentsPage({ searchParams }: AppointmentsPageProps): Promise<ReactElement> {
   await requireAppointmentsModule();
-  const { tenant } = await requireCustomerAccess({ plan: "premium" });
+  const { tenant } = await requireCustomerAccess();
 
   const sp = await searchParams;
   const rawBooking = typeof sp.booking === "string" ? sp.booking : undefined;

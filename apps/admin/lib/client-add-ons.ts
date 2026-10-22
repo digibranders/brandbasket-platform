@@ -4,6 +4,7 @@ import { addOnActions, addOnView, type AddOnView } from "@brandbasket/shared/lib
 import { addOnFactsOf, pickAddOnRows } from "@brandbasket/shared/lib/billing/add-on-rows";
 import { formatCalendarDate } from "@brandbasket/shared/lib/format";
 import { formatMoney } from "@brandbasket/shared/lib/money";
+import type { AddOnAssessment } from "@brandbasket/shared/server/basket-change";
 import type { StatusTone } from "@/components/console/status-dot";
 
 /**
@@ -23,7 +24,7 @@ export interface ClientAddOnRow {
   readonly id: string;
   readonly title: string;
   readonly state: ClientAddOnState;
-  /** What the customer pays, before any GST, as it was fixed at purchase: "₹10,000 + GST a month", "$125 a month". */
+  /** What the customer pays, before any GST, as it was fixed at purchase: "₹9,999 + GST a month", "$125 a month". */
   readonly price: string;
   /** The next billing, end or pause date in words, or null when there is none to say. */
   readonly dateLine: string | null;
@@ -46,9 +47,7 @@ function day(date: Date): string {
 }
 
 function priceOf(row: AddOnSubscriptionForStaff): string {
-  const premium = row.discountAmountCents - row.offerDiscountAmountCents > 0 ? ", Premium price" : "";
-  const offer = row.offerDiscountAmountCents > 0 ? ", 5% lifetime offer" : "";
-  return `${formatMoney(row.netAmountCents, row.currency)}${row.taxRateBasisPoints > 0 ? " + GST" : ""} a month${premium}${offer}`;
+  return `${formatMoney(row.netAmountCents, row.currency)}${row.taxRateBasisPoints > 0 ? " + GST" : ""} a month`;
 }
 
 function endNoteOf(row: AddOnSubscriptionForStaff): string | null {
@@ -145,41 +144,104 @@ export function clientAddOnRows(rowsNewestFirst: readonly AddOnSubscriptionForSt
   });
 }
 
-/** An add-on the customer took with the plan at the first checkout, billed in the plan's monthly charge. */
+/** A service billed in the subscription's monthly payment: taken at the first checkout, or added to the running subscription since. */
 export interface ClientBundledAddOnRow {
   readonly id: string;
+  readonly addOn: MonthlyAddOnId;
   readonly title: string;
   readonly state: ClientAddOnState;
-  /** What it adds to the monthly payment, before GST: "₹1,899.05 + GST a month, 5% lifetime offer, billed with the plan". */
+  /** What it adds to the monthly payment, before GST: "₹6,650 + GST a month, package price, billed with the monthly payment". */
   readonly price: string;
   readonly dateLine: string | null;
   /** Paid, and nobody has marked the customer as contacted yet. */
   readonly needsContact: boolean;
   readonly contactedOn: string | null;
+  /** Active and not ending: staff can take it out from the next billing date, given as `endsOnText`. */
+  readonly canRemove: boolean;
+  readonly endsOnText: string | null;
+  /** Added and paid, but the provider was never told to bill it from the next renewal: staff can retry that. */
+  readonly canRetry: boolean;
 }
 
-/** The add-ons taken with the plan worth showing: the ones paid for. A pending one belongs to a checkout that was never paid. */
-export function clientBundledAddOnRows(rows: readonly BundledAddOn[], currency: BillingCurrency): ClientBundledAddOnRow[] {
+/** What the rows need besides the add-on rows themselves. */
+export interface BundledRowContext {
+  /** The next billing date of the plan the add-ons ride on, or null with none. */
+  readonly nextBillingOn: Date | null;
+  /** The amount of each add-on charge still waiting to be paid, by charge id. */
+  readonly openChargeCents: ReadonlyMap<string, number>;
+  /** The account has asked to close: no service is taken out on its own, so none can be removed here. */
+  readonly cancelRequested: boolean;
+}
+
+function bundledState(row: BundledAddOn, currency: BillingCurrency, context: BundledRowContext): Pick<ClientBundledAddOnRow, "state" | "dateLine" | "canRetry"> {
+  if (row.status === "removed") {
+    return { state: { tone: "quiet", label: "Removed" }, dateLine: row.removedAt === null ? null : `Removed on ${day(row.removedAt)}`, canRetry: false };
+  }
+  if (row.status === "pending") {
+    const cents = row.chargeId === null ? undefined : context.openChargeCents.get(row.chargeId);
+    const amount = cents === undefined ? "its charge" : `the ${formatMoney(cents, currency)} charge`;
+    return { state: { tone: "waiting", label: "Waiting for payment" }, dateLine: `Added on ${day(row.createdAt)}, waiting for the customer to pay ${amount} for the rest of the month`, canRetry: false };
+  }
+  const activatedAt = row.activatedAt ?? row.createdAt;
+  if (row.endRequestedAt !== null) {
+    return { state: { tone: "waiting", label: "Ending" }, dateLine: `Customer asked to remove it on ${day(row.endRequestedAt)}; it stops at the next billing date`, canRetry: false };
+  }
+  if (row.billedFrom !== null) return { state: { tone: "done", label: "Active" }, dateLine: `Bought on ${day(activatedAt)}`, canRetry: false };
+  const joins = context.nextBillingOn === null ? "the next billing date" : day(context.nextBillingOn);
+  if (row.providerScheduledAt === null) {
+    return { state: { tone: "problem", label: "Provider not told" }, dateLine: `Added on ${day(activatedAt)}. Retry so the provider bills it from ${joins}`, canRetry: true };
+  }
+  return { state: { tone: "done", label: "Active" }, dateLine: `Added on ${day(activatedAt)}; joins the monthly payment on ${joins}`, canRetry: false };
+}
+
+/**
+ * The services billed in the monthly payment worth showing: paid ones, and ones added since sign-up that are waiting for their charge.
+ * A pending one with no charge belongs to a first checkout that was never paid.
+ */
+export function clientBundledAddOnRows(rows: readonly BundledAddOn[], currency: BillingCurrency, context: BundledRowContext): ClientBundledAddOnRow[] {
   return rows.flatMap((row): ClientBundledAddOnRow[] => {
-    if (row.status === "pending" || row.activatedAt === null || !isMonthlyAddOnId(row.addOn)) return [];
-    const removed = row.status === "removed";
-    const ending = !removed && row.endRequestedAt !== null;
+    if (!isMonthlyAddOnId(row.addOn)) return [];
+    if (row.status === "pending" ? row.chargeId === null : row.activatedAt === null) return [];
+    const canRemove = row.status === "active" && row.endRequestedAt === null && !context.cancelRequested;
     return [
       {
         id: row.id,
+        addOn: row.addOn,
         title: addOnById(row.addOn).title,
-        state: removed ? { tone: "quiet", label: "Removed" } : ending ? { tone: "waiting", label: "Ending" } : { tone: "done", label: "Active" },
-        price: `${formatMoney(row.netAmountCents, currency)}${row.taxRateBasisPoints > 0 ? " + GST" : ""} a month, ${row.offerDiscountAmountCents > 0 ? "5% lifetime offer, " : ""}billed with the plan`,
-        dateLine: removed
-          ? row.removedAt === null ? null : `Removed on ${day(row.removedAt)}`
-          : ending
-            ? `Customer asked to remove it on ${day(row.endRequestedAt ?? row.activatedAt)}; it stops at the next billing date`
-            : `Bought on ${day(row.activatedAt)}`,
-        needsContact: row.contactedAt === null,
+        ...bundledState(row, currency, context),
+        price: `${formatMoney(row.netAmountCents, currency)}${row.taxRateBasisPoints > 0 ? " + GST" : ""} a month, ${row.offerDiscountAmountCents > 0 ? "package price, " : ""}billed with the monthly payment`,
+        needsContact: row.activatedAt !== null && row.contactedAt === null,
         contactedOn: row.contactedAt === null ? null : day(row.contactedAt),
+        canRemove,
+        endsOnText: canRemove && context.nextBillingOn !== null ? day(context.nextBillingOn) : null,
       },
     ];
   });
+}
+
+/** An add-on staff can add for the client now, or keep when it is ending, with what it costs in words. */
+export interface ClientAddOnOption {
+  readonly addOn: MonthlyAddOnId;
+  readonly title: string;
+  readonly kind: "add" | "keep";
+  /** "₹8,260 now for the 31 days left, then ₹11,798.82 a month with GST", or what keeping it means. */
+  readonly costText: string;
+}
+
+/** The option for one add-on from its assessment, or null when it cannot be added or kept here. */
+export function clientAddOnOption(addOn: MonthlyAddOnId, assessment: AddOnAssessment | null, currency: BillingCurrency): ClientAddOnOption | null {
+  const title = addOnById(addOn).title;
+  if (assessment?.kind === "keep") return { addOn, title, kind: "keep", costText: "It is ending: this keeps it, at no charge, and the monthly payment stays as it is." };
+  if (assessment?.kind !== "offer") return null;
+  const { quote } = assessment;
+  const days = quote.daysLeft === 1 ? "the 1 day left" : `the ${quote.daysLeft} days left`;
+  const tax = assessment.plan.taxRateBasisPoints > 0 ? " with GST" : "";
+  return {
+    addOn,
+    title,
+    kind: "add",
+    costText: `${formatMoney(quote.chargeCents, currency)} now for ${days}, then ${formatMoney(quote.nextRenewalCents, currency)} a month${tax}. The customer pays the charge from Billing.`,
+  };
 }
 
 export type PressReleaseStatus = PressRelease["status"];

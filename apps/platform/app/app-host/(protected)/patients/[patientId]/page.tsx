@@ -64,7 +64,7 @@ function Figure({ label, children }: { readonly label: string; readonly children
  */
 export default async function PatientPage({ params, searchParams }: PatientPageProps): Promise<ReactElement> {
   await requireAppointmentsModule();
-  const { tenant } = await requireCustomerAccess({ plan: "premium" });
+  const { tenant } = await requireCustomerAccess();
 
   const { patientId } = await params;
   const sp = await searchParams;

@@ -70,47 +70,11 @@ beforeEach(async () => {
 });
 
 describe("a client's plan", () => {
-  async function planId(code: string): Promise<string> {
-    const [row] = await dbs.owner.db.select({ id: plans.id }).from(plans).where(eq(plans.code, code));
-    if (row === undefined) throw new Error(`No plan ${code}`);
-    return row.id;
-  }
-
-  async function seedPlans(): Promise<void> {
-    const base = {
-      name: "Plan",
-      currency: "INR" as const,
-      initialAmountCents: 299_900,
-      initialTermMonths: 1,
-      recurringAmountCents: 299_900,
-      includedPublishesPerMonth: 3,
-      extraPublishAmountCents: 300,
-      taxRateBasisPoints: 1800,
-    };
-    await dbs.owner.db.insert(plans).values([
-      { ...base, code: "t-care", tier: "care" },
-      { ...base, code: "t-premium", tier: "premium" },
-    ]);
-  }
-
-  it("is Premium for a business that has not subscribed and chose nothing, and Care when it chose Care", async () => {
-    expect((await listClients(dbs.staff.db))[0]?.tier).toBe("premium");
-    await dbs.owner.db.update(businesses).set({ signupChoice: "care" }).where(eq(businesses.id, businessId));
-    expect((await listClients(dbs.staff.db))[0]?.tier).toBe("care");
-    expect((await findClientDetail(dbs.staff.db, businessId))?.tier).toBe("care");
-  });
-
-  it("follows the newest subscription's plan over what the business chose", async () => {
-    await seedPlans();
-    await dbs.owner.db.update(businesses).set({ signupChoice: "care" }).where(eq(businesses.id, businessId));
-    await insertSubscription(dbs.staff.db, {
-      businessId,
-      planId: await planId("t-premium"),
-      provider: "manual",
-      providerSubscriptionId: "sub_tier_list",
-    });
-    expect((await listClients(dbs.staff.db))[0]?.tier).toBe("premium");
-    expect((await findClientDetail(dbs.staff.db, businessId))?.tier).toBe("premium");
+  it("is Managed Website for a business that has not subscribed, whatever it chose", async () => {
+    expect((await listClients(dbs.staff.db))[0]?.tier).toBe("managed");
+    await dbs.owner.db.update(businesses).set({ signupChoice: "listing_only" }).where(eq(businesses.id, businessId));
+    expect((await listClients(dbs.staff.db))[0]?.tier).toBe("managed");
+    expect((await findClientDetail(dbs.staff.db, businessId))?.tier).toBe("managed");
   });
 });
 
@@ -137,7 +101,7 @@ describe("listClients", () => {
     });
     const [member] = await dbs.staff.db
       .insert(businesses)
-      .values({ slug: "smile-dental", name: "Smile Dental", currency: "INR", signupChoice: "premium" })
+      .values({ slug: "smile-dental", name: "Smile Dental", currency: "INR", signupChoice: "managed" })
       .returning({ id: businesses.id });
     if (member === undefined) throw new Error("Seed business was not inserted");
     await dbs.staff.db.insert(businessMembers).values({ businessId: member.id, userId: "phone-owner", role: "owner" });

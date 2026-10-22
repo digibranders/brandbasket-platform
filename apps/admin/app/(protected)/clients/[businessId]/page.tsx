@@ -38,6 +38,7 @@ import { ClientBillingDetails, ClientTaxInvoices } from "@/components/client-inv
 import { ClientFeatures } from "@/components/client-features";
 import { ClientListing, type ListingNotice } from "@/components/client-listing";
 import { readStaffChargeNotice } from "@brandbasket/shared/lib/billing/charge-notices";
+import type { ClientPackageFacts } from "@/lib/client-package";
 import { loadClientAddOns } from "@/lib/server/add-ons-admin";
 import { serverEnv } from "@/lib/server/env";
 import { loadClientChatbots } from "@/lib/server/chatbots-admin";
@@ -54,6 +55,8 @@ import {
   MAX_MANUAL_REFERENCE_LENGTH,
 } from "@brandbasket/shared/lib/billing/manual-payment-form";
 import { MANUAL_PAYMENT_NOTICES, readManualPaymentNotice } from "@brandbasket/shared/lib/billing/manual-payment-notices";
+import { reactivationNetCents, websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
+import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { firstPaymentAmount, initialTermPhrase, monthlyPaymentAmount } from "@brandbasket/shared/lib/billing/terms";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
 import { isPlacementField } from "@brandbasket/shared/lib/directory/placement-form";
@@ -80,17 +83,14 @@ import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
 import { PLAN_TIER_LABELS } from "@brandbasket/shared/lib/billing/plan-tier";
-import { ClientPlan } from "@/components/client-plan";
 import { PageHeader } from "@/components/console/page-header";
 import { FactList, Quiet, Section, type Fact } from "@/components/console/section";
 import { StageTrack } from "@/components/console/stage-track";
 import { attentionSection } from "@/lib/client-attention";
 import { readAddOnNotice } from "@/lib/add-on-notices";
 import { readInvoiceNotice } from "@/lib/invoice-notices";
-import { readPlanUpgradeNotice } from "@/lib/plan-upgrade-notices";
 import { clientStage, lateReason } from "@/lib/pipeline";
 import { clientBillingDetails } from "@/lib/server/client-billing-details";
-import { readClientUpgrade } from "@/lib/server/plan-upgrade-admin";
 import {
   markDomainReadyAction,
   markLiveAction,
@@ -127,7 +127,7 @@ function SiteApiTokenBlock({ businessId, token }: { readonly businessId: string;
       {token === null ? (
         <Quiet>
           No token yet. This is what their website uses to read their blog, opening hours and announcement, and to
-          send booking requests — generate one when their website is ready.
+          send booking requests. Generate one when their website is ready.
         </Quiet>
       ) : (
         <div className="flex items-start gap-2 rounded-2xl bg-paper-deep py-2 pl-4 pr-2">
@@ -250,7 +250,15 @@ const PAYMENT_LABELS: Readonly<Record<ClientPaymentState["kind"], string>> = {
   "not-paid": "Not paid",
 };
 
-function BillingFacts({ client, state }: { readonly client: ClientDetail; readonly state: ClientPaymentState }): ReactElement {
+function BillingFacts({
+  client,
+  state,
+  packageFacts,
+}: {
+  readonly client: ClientDetail;
+  readonly state: ClientPaymentState;
+  readonly packageFacts: ClientPackageFacts;
+}): ReactElement {
   const subscription = client.billing.subscription;
   const hasPaid = state.kind === "paid" || state.kind === "lapsed";
   const manual = hasPaid ? state.manual : null;
@@ -281,6 +289,9 @@ function BillingFacts({ client, state }: { readonly client: ClientDetail; readon
           label: "First term ends",
           value: subscription?.commitmentEndsAt ? <When date={subscription.commitmentEndsAt} /> : null,
         },
+        { label: "Package", value: packageFacts.package },
+        { label: "Ad credit", value: packageFacts.adCredit },
+        ...(packageFacts.forfeitedOn === null ? [] : [{ label: "Package offer ended", value: packageFacts.forfeitedOn }]),
         ...(manual === null
           ? []
           : [
@@ -302,20 +313,22 @@ function BillingFacts({ client, state }: { readonly client: ClientDetail; readon
 interface ManualPaymentFormProps {
   readonly businessId: string;
   readonly plan: Plan;
+  /** What the payment buys a month before GST: the website for a first payment, the basket they lapsed with for a reactivation. */
+  readonly netCents: number;
   /** The client paid before and lapsed: this payment reactivates their plan rather than being their first. */
   readonly reactivating: boolean;
 }
 
-function ManualPaymentForm({ businessId, plan, reactivating }: ManualPaymentFormProps): ReactElement {
+function ManualPaymentForm({ businessId, plan, netCents, reactivating }: ManualPaymentFormProps): ReactElement {
   // Exactly what recordManualFirstPayment records, so the box staff tick names the money that must have arrived.
-  const amount = reactivating ? monthlyPaymentAmount(plan) : firstPaymentAmount(plan);
+  const amount = reactivating ? monthlyPaymentAmount(plan, netCents) : firstPaymentAmount(plan, netCents);
   return (
     <form action={recordManualPaymentAction} className="mt-8 border-t border-line pt-6">
       <h3 className="font-serif text-xl">{reactivating ? "Reactivate with a manual payment" : "Record a manual payment"}</h3>
       {reactivating ? (
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
           For money that arrived outside the payment provider, such as a bank transfer. It records {amount}, one month
-          from today at today’s price with no coupon, ends their lapsed plan and brings their website back. Your name,
+          from today for the services they lapsed with, with no coupon, ends their lapsed plan and brings their website back. Your name,
           the reference and the date are kept with it.
         </p>
       ) : (
@@ -581,7 +594,6 @@ export default async function ClientPage({
     listingPlacement,
     listingLive,
     promotions,
-    clientUpgrade,
     billingProfile,
     taxInvoices,
     missingInvoices,
@@ -600,7 +612,6 @@ export default async function ClientPage({
     findListingPlacement(db, client.businessId),
     hasLiveProject(db, client.businessId),
     listUpcomingDirectoryPromotions(db, client.businessId, renderedAt),
-    readClientUpgrade(client.businessId, renderedAt),
     // Only payments in rupees get tax invoices (D1), so a dollar client has nothing to show or correct here.
     invoiced ? findBillingProfile(db, client.businessId) : Promise.resolve(null),
     invoiced ? listTaxInvoicesForBusiness(db, client.businessId) : Promise.resolve([]),
@@ -608,7 +619,13 @@ export default async function ClientPage({
     loadClientAddOns(client.businessId, renderedAt),
     loadClientChatbots(client.businessId),
   ]);
-  const planNotice = readPlanUpgradeNotice(sp.plan);
+  // Exactly what recordManualFirstPayment books: the basket they lapsed with, else the website at list.
+  const manualNetCents =
+    plan === null
+      ? 0
+      : paymentState.kind === "lapsed"
+        ? reactivationNetCents(await loadReactivationBasket(db, client.businessId), plan.currency)
+        : websiteAloneNetCents(plan.currency);
   const chargesNotice = readStaffChargeNotice(sp.charges);
   const websiteNotice = sp.website === "saved" || sp.website === "invalid" ? sp.website : null;
   const featuresNotice = readBusinessModuleNotice(sp.features);
@@ -675,7 +692,7 @@ export default async function ClientPage({
         title={client.businessName}
         meta={
           <>
-            {client.owner?.name ?? "No owner"} · {PLAN_TIER_LABELS[client.tier]} plan ·{" "}
+            {client.owner?.name ?? "No owner"} · {PLAN_TIER_LABELS[client.tier]} ·{" "}
             {project === null ? "No project yet" : PROJECT_STATUS_LABELS[project.status]} · Billed in{" "}
             {BILLING_CURRENCY_LABELS[client.currency]}
           </>
@@ -824,8 +841,10 @@ export default async function ClientPage({
         </Section>
 
         <Section title="Billing">
-          <BillingFacts client={client} state={paymentState} />
-          {canRecordPayment && plan !== null ? <ManualPaymentForm businessId={client.businessId} plan={plan} reactivating={paymentState.kind === "lapsed"} /> : null}
+          <BillingFacts client={client} state={paymentState} packageFacts={clientAddOns.package} />
+          {canRecordPayment && plan !== null ? (
+            <ManualPaymentForm businessId={client.businessId} plan={plan} netCents={manualNetCents} reactivating={paymentState.kind === "lapsed"} />
+          ) : null}
           {canRecordPayment && plan === null ? (
             <p className="mt-6 text-sm text-ink-soft">
               There is no active plan for {BILLING_CURRENCY_LABELS[client.currency]}, so no payment can be recorded.
@@ -849,10 +868,6 @@ export default async function ClientPage({
           </>
         ) : null}
 
-        {clientUpgrade === null ? null : (
-          <ClientPlan businessId={client.businessId} tier={client.tier} upgrade={clientUpgrade} notice={planNotice} />
-        )}
-
         <ClientCharges
           businessId={client.businessId}
           charges={charges}
@@ -865,6 +880,7 @@ export default async function ClientPage({
           addOns={clientAddOns.addOns}
           bundledAddOns={clientAddOns.bundledAddOns}
           pressReleases={clientAddOns.pressReleases}
+          options={clientAddOns.options}
           notice={addOnNotice}
         />
 
@@ -979,20 +995,16 @@ export default async function ClientPage({
 
         {adminBrand().sellsDirectory ? (
           <Section title="Listing" id="listing" aside={adminBrand().directoryName}>
-            {client.tier === "care" ? (
-              <Quiet>The Care plan has no listing on {adminBrand().directoryName}. It comes with Premium.</Quiet>
-            ) : (
-              <ClientListing
-                businessId={client.businessId}
-                displayName={profile?.displayName ?? client.businessName}
-                placement={listingPlacement}
-                place={listingPlace}
-                live={listingLive}
-                promotion={listingPromotion}
-                notice={listingNotice}
-              />
-            )}
-            {client.tier === "care" || listingPlacement === null ? null : (
+            <ClientListing
+              businessId={client.businessId}
+              displayName={profile?.displayName ?? client.businessName}
+              placement={listingPlacement}
+              place={listingPlace}
+              live={listingLive}
+              promotion={listingPromotion}
+              notice={listingNotice}
+            />
+            {listingPlacement === null ? null : (
               <div className="mt-10">
                 <ClientListingTags
                   businessId={client.businessId}
@@ -1006,21 +1018,14 @@ export default async function ClientPage({
           </Section>
         ) : null}
 
-        <Section title="Features" id="features" aside={client.tier === "care" ? "Care plan" : "Time zone and modules"}>
-          {client.tier === "care" ? (
-            <Quiet>
-              Care includes the website, its management, the OyeChats chatbot, and server and hosting. Appointments and the
-              rest are Premium&rsquo;s, so there is nothing to switch on here.
-            </Quiet>
-          ) : (
-            <ClientFeatures
-              businessId={client.businessId}
-              timeZone={timeZone}
-              enabledModules={enabledModules}
-              appointmentCounts={appointmentCounts}
-              notice={featuresNotice}
-            />
-          )}
+        <Section title="Features" id="features" aside="Time zone and modules">
+          <ClientFeatures
+            businessId={client.businessId}
+            timeZone={timeZone}
+            enabledModules={enabledModules}
+            appointmentCounts={appointmentCounts}
+            notice={featuresNotice}
+          />
         </Section>
 
         <Section title="Notes for the builder">

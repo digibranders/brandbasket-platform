@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Appointments settings" };
 
 export default async function AppointmentsSettingsPage(): Promise<ReactElement> {
   await requireAppointmentsModule();
-  const { tenant } = await requireCustomerAccess({ plan: "premium" });
+  const { tenant } = await requireCustomerAccess();
 
   const { settings, services } = await withTenantScope(getAppDb(), tenant, async (tx) => ({
     settings: await findAppointmentSettings(tx),

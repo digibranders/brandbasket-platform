@@ -24,7 +24,9 @@ import {
   insertTaxInvoice,
   isInvoiceablePayment,
   lockPaymentForInvoice,
+  savePaymentInvoiceBasis,
   type Payment,
+  type PaymentInvoiceBasis,
   type Plan,
   type ReferralCodeForInvoice,
   type ScopedTransaction,
@@ -32,9 +34,9 @@ import {
   type TaxInvoicePartyRecord,
 } from "@brandbasket/db";
 import { stateCodeOfIndiaPostName } from "@brandbasket/db/india-states";
-import { addOnById, isMonthlyAddOnId, PREMIUM_ADD_ON_DISCOUNT_PERCENT } from "../lib/billing/add-ons";
-import { LIFETIME_OFFER_PERCENT } from "../lib/billing/lifetime-offer";
+import { addOnById, isMonthlyAddOnId } from "../lib/billing/add-ons";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "../lib/billing/invoice-text";
+import { packageBasisPointsFor } from "../lib/billing/packages";
 import { paymentLabel } from "../lib/billing/payment-method";
 import { planLabel } from "../lib/billing/receipt-title";
 import { PRODUCT_SHORT_NAME } from "../lib/deployment-brand";
@@ -42,26 +44,26 @@ import { businessDetails } from "../lib/site-config";
 import { describeError, logBillingEvent } from "./billing-log";
 import { isConnectionFailure } from "./error-log-info";
 
-/**
- * What a payment bought, as the code that recorded it knows it. The caller passes what the payment was charged for,
- * not what the subscription says today, since a stay offer or a price can change after a payment.
- */
-/** An add-on billed inside the plan's subscription, as one more line on the plan's invoice. */
+/** A service billed inside the subscription's charge, as one line of the invoice. */
 export interface BundledInvoiceAddOn {
   readonly addOn: string;
   readonly listAmountCents: number;
-  /** The lifetime offer taken off the list price. */
+  /** The package offer taken off the list price; 0 for a service at list. */
   readonly offerDiscountAmountCents: number;
   readonly taxRateBasisPoints: number;
 }
 
+/**
+ * What a payment bought, as the code that recorded it knows it. The caller passes what the payment was charged for,
+ * not what the subscription says today, since a price or an offer can change after a payment.
+ */
 export type InvoiceSource =
   | {
       readonly kind: "plan";
       readonly plan: Plan;
-      /** The add-ons taken at the first checkout and billed with the plan, each a line of its own. Absent for a plan alone. */
+      /** The services billed in this payment, each a line of its own. */
       readonly bundledAddOns?: readonly BundledInvoiceAddOn[];
-      /** The price before discount: the plan's initial or recurring amount, whichever this payment was charged at. */
+      /** The plan row's own price before discount: its initial or recurring amount, whichever this payment was charged at. 0 for a services plan. */
       readonly netAmountCents: number;
       /** Everything taken off this payment: the referral code's share plus any stay offer. */
       readonly discountAmountCents: number;
@@ -193,8 +195,14 @@ export interface PlanLineNoteInput {
   readonly retentionDiscountCents: number;
 }
 
-/** What the lifetime offer is called on an add-on invoice line. */
-export const LIFETIME_OFFER_INVOICE_NOTE = `Lifetime offer applied, ${LIFETIME_OFFER_PERCENT}% off`;
+/**
+ * What a service line's package discount is called: "Package offer, 30% off". The percentage is the package's own, never the
+ * line's discount over its list, because a package total floored to the whole rupee moves a few paise of discount onto its
+ * dearest line and that line must not read 29.99%.
+ */
+export function packageOfferNote(basisPoints: number): string {
+  return `Package offer, ${percentOf(basisPoints)}% off`;
+}
 
 /**
  * What the discount on a plan line was, in words, or null for none: "Coupon GAURAV applied, 20% off. Stay offer
@@ -283,15 +291,33 @@ function printedLine(line: InvoiceLineInput): InvoiceLineInput {
   };
 }
 
-/** What an add-on line's discount was: the Premium member's 10%, the lifetime offer's 5%, or both. Null for none. */
-export function addOnLineNote(discountAmountCents: number, offerDiscountAmountCents: number): string | null {
-  if (offerDiscountAmountCents < 0 || offerDiscountAmountCents > discountAmountCents) {
-    throw new BillingRangeError(`A lifetime offer of ${offerDiscountAmountCents} cannot be part of a discount of ${discountAmountCents}`);
-  }
-  const notes: string[] = [];
-  if (discountAmountCents - offerDiscountAmountCents > 0) notes.push(`Premium member, ${PREMIUM_ADD_ON_DISCOUNT_PERCENT}% off`);
-  if (offerDiscountAmountCents > 0) notes.push(LIFETIME_OFFER_INVOICE_NOTE);
-  return notes.length === 0 ? null : notes.join(". ");
+/**
+ * The service lines of a plan payment, each with its package discount and the package's note. The percentage comes from the
+ * set of services on the invoice (packageBasisPointsFor), so every discounted line names the package it belongs to. A
+ * discount on a set of services that earns no package is something this code cannot explain, and nothing is issued.
+ */
+function serviceLinesFor(source: Extract<InvoiceSource, { kind: "plan" }>): InvoiceLineInput[] {
+  const bundled = (source.bundledAddOns ?? []).map((line) => {
+    if (!isMonthlyAddOnId(line.addOn)) throw new Error(`Bundled add-on ${line.addOn} is not a monthly add-on`);
+    return { ...line, service: line.addOn };
+  });
+  const services = bundled.map((line) => line.service);
+  const basisPoints = packageBasisPointsFor({ services, forfeited: false });
+  return bundled.map((line) => {
+    if (line.offerDiscountAmountCents > 0 && basisPoints === 0) {
+      throw new BillingRangeError(`${line.service} carries a package discount of ${line.offerDiscountAmountCents}, but ${services.join(", ")} earn no package offer`);
+    }
+    return {
+      description: addOnById(line.service).title,
+      detail: planLineDetail(source.monthly, source.periodStart, source.periodEnd),
+      note: line.offerDiscountAmountCents > 0 ? packageOfferNote(basisPoints) : null,
+      sac: BRANDBASKET_SAC,
+      quantity: 1,
+      unitAmountCents: line.listAmountCents,
+      discountAmountCents: line.offerDiscountAmountCents,
+      taxRateBasisPoints: line.taxRateBasisPoints,
+    };
+  });
 }
 
 async function linesFor(tx: ScopedTransaction, payment: Payment, source: InvoiceSource): Promise<InvoiceLineInput[]> {
@@ -329,7 +355,8 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
       {
         description: addOnById(row.addOn).title,
         detail: planLineDetail(true, source.periodStart, source.periodEnd),
-        note: addOnLineNote(row.discountAmountCents, row.offerDiscountAmountCents),
+        // Standalone add-on subscriptions are no longer opened and earn no offer: whatever discount an older row holds is shown in its column.
+        note: null,
         sac: BRANDBASKET_SAC,
         quantity: 1,
         unitAmountCents: row.listAmountCents,
@@ -357,20 +384,27 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
     discountAmountCents: source.discountAmountCents,
     taxRateBasisPoints: source.plan.taxRateBasisPoints,
   };
-  const addOnLines = (source.bundledAddOns ?? []).map((bundled): InvoiceLineInput => {
-    if (!isMonthlyAddOnId(bundled.addOn)) throw new Error(`Bundled add-on ${bundled.addOn} is not a monthly add-on`);
-    return {
-      description: addOnById(bundled.addOn).title,
-      detail: planLineDetail(source.monthly, source.periodStart, source.periodEnd),
-      note: addOnLineNote(bundled.offerDiscountAmountCents, bundled.offerDiscountAmountCents),
-      sac: BRANDBASKET_SAC,
-      quantity: 1,
-      unitAmountCents: bundled.listAmountCents,
-      discountAmountCents: bundled.offerDiscountAmountCents,
-      taxRateBasisPoints: bundled.taxRateBasisPoints,
-    };
-  });
-  return [planLine, ...addOnLines];
+  const addOnLines = serviceLinesFor(source);
+  if (source.netAmountCents !== 0) return [planLine, ...addOnLines];
+  // The plan row costs nothing now that every service is a line: a plan line at 0 says nothing, so it is not printed.
+  if (source.discountAmountCents === 0) return addOnLines;
+  // A code is taken on a single-service subscription only (plan 16 Settled 2), so its discount comes off that one line.
+  const [only, ...others] = addOnLines;
+  if (only === undefined || others.length > 0) {
+    throw new Error(`A discount of ${source.discountAmountCents} on payment ${payment.id} needs exactly one service line to come off`);
+  }
+  return [
+    {
+      ...only,
+      note: planLineNote({
+        coupon,
+        netAmountCents: only.unitAmountCents,
+        discountAmountCents: source.discountAmountCents,
+        retentionDiscountCents: source.retentionDiscountCents,
+      }),
+      discountAmountCents: only.discountAmountCents + source.discountAmountCents,
+    },
+  ];
 }
 
 /** An invoice for a payment, and whether this call issued it (false when it had been issued before). */
@@ -450,12 +484,30 @@ export async function issueTaxInvoice(
   return { invoice, issued: true };
 }
 
+/** What a plan payment was billed as, in the form kept beside the payment (PaymentInvoiceBasis). */
+function invoiceBasisOf(source: Extract<InvoiceSource, { kind: "plan" }>): PaymentInvoiceBasis {
+  return {
+    netAmountCents: source.netAmountCents,
+    discountAmountCents: source.discountAmountCents,
+    retentionDiscountCents: source.retentionDiscountCents,
+    lines: (source.bundledAddOns ?? []).map(({ addOn, listAmountCents, offerDiscountAmountCents, taxRateBasisPoints }) => ({
+      addOn,
+      listAmountCents,
+      offerDiscountAmountCents,
+      taxRateBasisPoints,
+    })),
+  };
+}
+
 /**
  * issueTaxInvoice in a savepoint (D7): a failure rolls back the invoice and its serial only, is logged as
  * `tax-invoice-failed`, and returns null, so the payment the caller recorded still commits. Staff issue the missing
  * invoice from the client page. Returns the payment's invoice whether issued now or before; only a new one is logged
  * as `tax-invoice-issued`. A lost database connection is not an invoicing fault: the payment's own transaction cannot
  * commit either, so it is rethrown for the payment path to handle as it handles any other.
+ *
+ * A plan payment's lines are kept beside it first, outside the savepoint, so that when the invoice is refused the one staff
+ * issue later (issueMissingTaxInvoice) is built from what this payment billed, not from what the subscription holds by then.
  */
 export async function issueTaxInvoiceSafely(
   tx: ScopedTransaction,
@@ -470,6 +522,7 @@ export async function issueTaxInvoiceSafely(
     provider: payment.provider,
     providerPaymentId: payment.providerPaymentId,
   };
+  if (source.kind === "plan" && isInvoiceablePayment(payment)) await savePaymentInvoiceBasis(tx, payment.id, invoiceBasisOf(source));
   try {
     const result = await tx.transaction((savepoint) => issueTaxInvoice(savepoint, payment, source, options));
     if (result === null) return null;

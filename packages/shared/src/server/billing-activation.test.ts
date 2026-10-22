@@ -258,6 +258,16 @@ describe("the tax invoice", () => {
     });
   });
 
+  it("earns the affiliate on the price the renewal was invoiced at, not on the services the subscription still holds", async () => {
+    vi.mocked(accrueAffiliateEarning).mockClear();
+    const lines = [
+      { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 59_980, taxRateBasisPoints: 1_800 },
+      { addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 200_020, taxRateBasisPoints: 1_800 },
+    ];
+    await activateRenewalPayment({} as never, { ...renewal, invoicedPrice: { plan, bundledAddOns: lines, netAmountCents: 0, discountAmountCents: 0, retentionDiscountCents: 0 } });
+    expect(accrueAffiliateEarning).toHaveBeenCalledWith({}, { paymentId: "payment_1", subscriptionId: "sub_1", kind: "renewal", invoiced: { netCents: 1_039_800, discountCents: 0 } });
+  });
+
   it("is not issued again for a payment recorded before", async () => {
     vi.mocked(recordPaymentAndActivate).mockResolvedValueOnce({ alreadyRecorded: true, payment: { id: "payment_1" } } as never);
     await activateRenewalPayment({} as never, renewal);
@@ -293,7 +303,7 @@ describe("the tax invoice", () => {
   it("is issued for a restart at the plan's monthly price with no discount", async () => {
     await activateReactivationPayment({} as never, { businessId: "biz_1", subscriptionId: "sub_1", plan, provider: "razorpay", providerPaymentId: "pay_2", paidAt, paidThroughAt });
     expect(vi.mocked(issueTaxInvoiceSafely).mock.calls[0]?.[2]).toEqual({
-      kind: "plan", plan, netAmountCents: 999_900, discountAmountCents: 0, retentionDiscountCents: 0, monthly: true, periodStart: paidAt, periodEnd: paidThroughAt,
+      kind: "plan", plan, bundledAddOns: [], netAmountCents: 999_900, discountAmountCents: 0, retentionDiscountCents: 0, monthly: true, periodStart: paidAt, periodEnd: paidThroughAt,
     });
   });
 });

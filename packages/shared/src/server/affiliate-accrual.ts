@@ -13,6 +13,12 @@ export interface AccruedPayment {
   readonly subscriptionId: string;
   /** A first payment is measured against the plan's initial price, a renewal against its recurring one. */
   readonly kind: PaymentKind;
+  /**
+   * What the payment was invoiced at, before GST, when the subscription's stored figures have not caught up with it yet: a
+   * renewal that completes a change to the services is recorded before the subscription takes the new amount. The earning
+   * is then worked out on this instead of on the plan and the stored services total.
+   */
+  readonly invoiced?: { readonly netCents: number; readonly discountCents: number };
 }
 
 export type AccrualOutcome =
@@ -34,8 +40,9 @@ export type AccrualOutcome =
  *
  * Only the first `rewardCycles` of the member's paid months earn, when the affiliate has a limit; the member's
  * discount is not affected by it. The earning is the affiliate's reward as it stands now, applied to what the member
- * paid before GST and after their frozen discount: the plan's initial price for a first payment, its recurring price
- * for a renewal. Worked out from the plan rather than read back off the taxed payment, so no tax rounding is undone.
+ * paid before GST and after their frozen discount: the subscription's service lines on top of the plan's own price (its
+ * initial price for a first payment, its recurring one for a renewal; both 0 for the services plan). Worked out from the
+ * prices rather than read back off the taxed payment, so no tax rounding is undone.
  */
 export async function accrueAffiliateEarning(tx: ScopedTransaction, payment: AccruedPayment): Promise<AccrualOutcome> {
   const context = await findAffiliateAccrualContext(tx, payment.subscriptionId, payment.paymentId);
@@ -55,8 +62,8 @@ export async function accrueAffiliateEarning(tx: ScopedTransaction, payment: Acc
     return { kind: "currency-mismatch" };
   }
 
-  const listPrice = payment.kind === "initial" ? context.initialAmountCents : context.recurringAmountCents;
-  const basisCents = Math.max(0, listPrice - context.discountAmountCents);
+  const listPrice = payment.invoiced?.netCents ?? (payment.kind === "initial" ? context.initialAmountCents : context.recurringAmountCents) + context.bundledAddOnNetCents;
+  const basisCents = Math.max(0, listPrice - (payment.invoiced?.discountCents ?? context.discountAmountCents));
   const amountCents = rewardCentsFor(context.reward, basisCents);
   if (amountCents === 0) return { kind: "none" };
 

@@ -15,7 +15,8 @@ import {
 } from "./queries/referrals";
 import { createAffiliate, updateAffiliate } from "./queries/affiliates";
 import { businesses, referralCodes, users } from "./schema";
-import { captureErrorText, openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
+import { captureErrorText, openTestDatabases, resetTestDatabase,
+  seedPlansFromMigrations, type TestDatabases } from "./testing";
 
 const STAFF_USER = "staff-user";
 const NOW = new Date("2026-09-22T12:00:00.000Z");
@@ -24,7 +25,7 @@ let dbs: TestDatabases;
 let businessId = "";
 
 async function requirePlan(currency: "USD" | "INR"): Promise<Plan> {
-  const plan = await findActivePlan(dbs.staff.db, currency, "premium");
+  const plan = await findActivePlan(dbs.staff.db, currency, "managed");
   if (plan === null) throw new Error(`No active ${currency} plan was seeded`);
   return plan;
 }
@@ -53,7 +54,8 @@ async function redeem(codeId: string, discountAmountCents: number, suffix: strin
     provider: "fake",
     providerPaymentId: `fake_pay_${suffix}`,
     kind: "initial",
-    amountCents: plan.initialAmountCents - discountAmountCents,
+    // The website alone in dollars ($75) less the code: its line is the whole charge, since the plan row costs nothing.
+    amountCents: 7500 - discountAmountCents,
     currency: plan.currency,
     paidAt: NOW,
     paidThroughAt: paidThrough,

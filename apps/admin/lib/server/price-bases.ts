@@ -1,16 +1,16 @@
-import "server-only";
-import { findActivePlan, type BillingCurrency } from "@brandbasket/db";
+import type { BillingCurrency } from "@brandbasket/db";
+import { addOnTaxRateBasisPoints } from "@brandbasket/shared/lib/billing/add-ons";
 import type { PriceBasis } from "@/components/referral-code-form";
-import { getStaffDb } from "./db";
+import { cheapestServiceListCents } from "./referral-admin";
 
-/** Today's Premium price for a currency, reduced to what a code's discount is measured against. Null with no active plan. */
-async function priceBasis(currency: BillingCurrency): Promise<PriceBasis | null> {
-  const plan = await findActivePlan(getStaffDb(), currency, "premium");
-  return plan === null ? null : { netAmountCents: plan.initialAmountCents, taxRateBasisPoints: plan.taxRateBasisPoints };
-}
-
-/** Both currencies' prices, for a code form that shows what the member will pay. */
-export async function priceBases(): Promise<Readonly<Record<BillingCurrency, PriceBasis | null>>> {
-  const [usd, inr] = await Promise.all([priceBasis("USD"), priceBasis("INR")]);
-  return { USD: usd, INR: inr };
+/**
+ * Both currencies' cheapest single service, reduced to what a code's discount is measured against: a code is used on one
+ * service, never a package, and the plan row itself costs nothing. The same basis createReferralCodeFor checks a code by.
+ */
+export function priceBases(): Readonly<Record<BillingCurrency, PriceBasis>> {
+  const basis = (currency: BillingCurrency): PriceBasis => ({
+    netAmountCents: cheapestServiceListCents(currency),
+    taxRateBasisPoints: addOnTaxRateBasisPoints(currency),
+  });
+  return { USD: basis("USD"), INR: basis("INR") };
 }

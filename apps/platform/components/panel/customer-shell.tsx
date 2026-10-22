@@ -3,7 +3,6 @@ import { unstable_rethrow } from "next/navigation";
 import {
   NavCalendarCheckIcon,
   NavCirclePlusIcon,
-  NavCircleArrowUpIcon,
   NavListChecksIcon,
   NavBriefcaseIcon,
   NavHandHeartIcon,
@@ -19,7 +18,7 @@ import {
   NavStorefrontIcon,
 } from "@brandbasket/shared/ui/nav-icons";
 import { DocumentIcon, TagIcon, UserIcon } from "@brandbasket/shared/ui/icons";
-import { DashboardFrame, type DashboardPlanChip } from "@brandbasket/shared/ui/panel/dashboard-frame";
+import { DashboardFrame } from "@brandbasket/shared/ui/panel/dashboard-frame";
 import { AppointmentsNavRefresh } from "@/components/panel/appointments/appointments-nav-refresh";
 import { ADD_ONS_PATH } from "@/lib/add-ons";
 import { CHATBOT_LEADS_PATH, CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
@@ -27,9 +26,7 @@ import { DEALS_PATH } from "@/lib/deals";
 import { LEADS_PATH } from "@/lib/leads";
 import { REVIEWS_PATH } from "@/lib/owner-replies";
 import { joinSections } from "@/lib/sidebar-sections";
-import { clientListingSections, type ClientListingSection, type ClientListingState } from "@/lib/listing-sections";
-import { BRAND, offersChoice } from "@/lib/brand";
-import { UPGRADE_PATH, type MembershipTier } from "@/lib/membership";
+import type { ClientListingSection, ClientListingState } from "@/lib/listing-sections";
 import { ADVERTISE_PATH, LISTING_PAGE_PATH } from "@/lib/server/customer-access";
 import { logoOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
@@ -46,15 +43,9 @@ interface CustomerShellProps {
   readonly userEmail: string;
   /** The Business ID of a listing the member claimed while free, for the account menu; null when there is none. */
   readonly businessId: string | null;
-  /** The plan the client is on: a Care client has none of Premium's sections (docs/superpowers/specs/2026-10-07-care-plan-design.md). */
-  readonly tier: MembershipTier;
-  /** Enquiries the owner has not replied to, the pill on Leads. */
-  readonly newLeadCount: number;
   readonly children: ReactNode;
 }
 
-/** The plan chip under the wordmark. Only Premium has one: the Care plan is the ordinary case and is not labelled. */
-const PREMIUM_CHIP: DashboardPlanChip = { label: "Premium member", mark: "crown" };
 
 /** The directory sections' menu items: the placed listing's tab, or the free listing's own pages a member kept. */
 const LISTING_NAV: Readonly<Record<ClientListingSection, SidebarNavItem>> = {
@@ -79,29 +70,19 @@ const LISTING_NAV: Readonly<Record<ClientListingSection, SidebarNavItem>> = {
  * for them, right after Home so a clinic sees new bookings before anything else. The unseen-booking count is the
  * row's `count`, a small pill that is left off at zero and hidden while the customer is already on the page.
  * Patients, the clinic's register built from those bookings, comes and goes with the same module, right after it.
- * The directory sections follow (lib/listing-sections.ts): Listing and Leads once staff have created the business's
- * Featured listing on the local directory, and, for a Premium member that started as a free listing, everything that free
- * listing had: its Listing page, Leads, Photos and Advertise.
- *
- * A Care client has the website's sections only: Appointments, Patients and the directory sections are Premium's, so
- * they are left out here, and their pages send a Care client Home (`plan: "premium"`, lib/server/customer-access.ts).
- * Deals and Reviews are the exceptions: any business with a claimed listing posts deals and answers its reviews, so a
- * Care client with a claim keeps both.
+ * A Managed Website client has the website's sections; the directory is off (BRAND.showsListing). Deals and Reviews are
+ * the exception: any business with a claimed listing posts deals and answers its reviews, so a client with a claim keeps
+ * both.
  *
  * The rows come in sections with a hairline between them: the business's day-to-day (Home, bookings), its directory
- * pages, its website (setup, project, domain, content), its account (add-ons, billing), and last the way up to a bigger
- * plan, which a Premium member does not have.
+ * pages, its website (setup, project, domain, content), and its account (add-ons, billing).
  */
 function customerNav({
   setupDone,
   appointmentsEnabled,
   newAppointmentCount,
   listing,
-  tier,
-  newLeadCount,
 }: {
-  readonly tier: MembershipTier;
-  readonly newLeadCount: number;
   readonly setupDone: boolean;
   readonly appointmentsEnabled: boolean;
   readonly newAppointmentCount: number;
@@ -122,13 +103,7 @@ function customerNav({
             { href: "/patients", label: "Patients", icon: <NavHandHeartIcon className="size-5" /> },
           ]),
     ],
-    tier === "care"
-      ? listing.claim
-        ? [LISTING_NAV.reviews, LISTING_NAV.deals]
-        : []
-      : clientListingSections(listing).map((section) =>
-          section === "leads" ? { ...LISTING_NAV.leads, count: newLeadCount } : LISTING_NAV[section],
-        ),
+    listing.claim ? [LISTING_NAV.reviews, LISTING_NAV.deals] : [],
     [
       ...(setupDone
         ? []
@@ -164,8 +139,6 @@ function customerNav({
       { href: ADD_ONS_PATH, label: "Add-ons", icon: <NavCirclePlusIcon className="size-5" /> },
       { href: "/billing", label: "Billing", icon: <NavScrollTextIcon className="size-5" /> },
     ],
-    // Care is the website only: the way up to the rest is in the menu, where Premium's own sections would be.
-    tier === "care" && offersChoice(BRAND, "premium") ? [{ href: UPGRADE_PATH, label: "Upgrade", icon: <NavCircleArrowUpIcon className="size-5" /> }] : [],
   ]);
 }
 
@@ -206,7 +179,7 @@ async function readListingNav(): Promise<ClientListingState> {
 }
 
 /** The customer dashboard: their sections down the side, and their name in the account chip. */
-export async function CustomerShell({ userName, userEmail, businessId, tier, newLeadCount, children }: CustomerShellProps): Promise<ReactElement> {
+export async function CustomerShell({ userName, userEmail, businessId, children }: CustomerShellProps): Promise<ReactElement> {
   const [brand, panel, overview, liveWebsite, appointmentsNav, listing] = await Promise.all([
     requestBrand(),
     getAccountPanel(),
@@ -215,8 +188,8 @@ export async function CustomerShell({ userName, userEmail, businessId, tier, new
     readAppointmentsNav(),
     readListingNav(),
   ]);
-  // Appointments are Premium's: a Care client has none, whatever the module says.
-  const appointmentsEnabled = tier === "premium" && appointmentsNav.enabled;
+  // Appointments are out of scope for Brandbasket for now (owner, 2026-10-19): the module is never switched on, so this is off.
+  const appointmentsEnabled = appointmentsNav.enabled;
   const newAppointmentCount = appointmentsNav.newCount;
   // Setup is over once it has been sent to us, whether or not the site has launched yet.
   const setupDone = liveWebsite !== null || overview.project?.onboardingSubmittedAt != null;
@@ -224,15 +197,14 @@ export async function CustomerShell({ userName, userEmail, businessId, tier, new
   return (
     <DashboardFrame
       signOut={signOut}
-      nav={customerNav({ setupDone, appointmentsEnabled, newAppointmentCount, listing, tier, newLeadCount })}
+      nav={customerNav({ setupDone, appointmentsEnabled, newAppointmentCount, listing })}
       account={{ name: userName, email: userEmail, href: "/settings", ...(businessId === null ? {} : { businessId }) }}
       panel={panel}
       variant="dark"
       brand={logoOf(brand)}
-      {...(tier === "premium" ? { plan: PREMIUM_CHIP } : {})}
       topBar={
         <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-ink-soft">
-          Your {brand.shortName} dashboard{tier === "care" ? " · Care" : ""}
+          Your {brand.shortName} dashboard
         </p>
       }
     >

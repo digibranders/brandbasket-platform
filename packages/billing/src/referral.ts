@@ -86,8 +86,8 @@ export function discountCentsFor(discount: ReferralDiscount, planAmountCents: nu
 }
 
 /**
- * Our code for the provider plan a discount runs on: the base plan's code and the discount, "care-inr-2026-09-less-
- * 50000". Recorded on the Razorpay plan, so anyone looking at it there can trace it back.
+ * Our code for the provider plan a discount runs on: the base plan's code and the discount, "managed-inr-2026-10-less-
+ * 29990". Recorded on the Razorpay plan, so anyone looking at it there can trace it back.
  */
 export function discountPlanCode(basePlanCode: string, discountAmountCents: number): string {
   assertWholeNonNegative(discountAmountCents, "A discount");

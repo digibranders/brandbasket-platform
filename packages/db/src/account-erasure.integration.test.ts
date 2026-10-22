@@ -166,7 +166,7 @@ beforeEach(async () => {
   await seedPlansFromMigrations(dbs.owner);
   await dbs.owner.db.insert(users).values({ id: STAFF_ID, name: "Staff", email: "staff@example.com", emailVerified: true });
   await dbs.owner.db.insert(staffMembers).values({ userId: STAFF_ID });
-  const active = await findActivePlan(dbs.staff.db, "INR", "premium");
+  const active = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (active === null) throw new Error("No active INR plan was seeded");
   plan = active;
 });
@@ -290,12 +290,12 @@ describe("eraseClosedAccount", () => {
     async function seedAddOn(overrides: AddOnRowInput = {}): Promise<void> {
       await dbs.owner.db.insert(addOnSubscriptions).values({
         businessId,
-        addOn: "social-media",
-        listAmountCents: 1_000_000,
+        addOn: "digital-growth",
+        listAmountCents: 999_900,
         discountAmountCents: 0,
-        netAmountCents: 1_000_000,
+        netAmountCents: 999_900,
         taxRateBasisPoints: 1_800,
-        chargedAmountCents: 1_180_000,
+        chargedAmountCents: 1_179_882,
         currency: "INR",
         provider: "fake",
         providerSubscriptionId: `fake_sub_${"a".repeat(24)}`,
@@ -384,7 +384,7 @@ describe("eraseClosedAccount", () => {
     it("erases when the add-ons are cancelled or were never paid for", async () => {
       const { closureId } = await seedClosedAccount();
       await seedAddOn({ status: "cancelled", endedAt: CLOSED_AT, providerSubscriptionId: `fake_sub_${"b".repeat(24)}` });
-      await seedAddOn({ status: "incomplete", addOn: "advertising", activatedAt: null, currentPeriodStart: null, currentPeriodEnd: null, providerSubscriptionId: `fake_sub_${"c".repeat(24)}` });
+      await seedAddOn({ status: "incomplete", addOn: "local-seo-aeo", activatedAt: null, currentPeriodStart: null, currentPeriodEnd: null, providerSubscriptionId: `fake_sub_${"c".repeat(24)}` });
       expect((await eraseClosedAccount(dbs.staff.db, { closureId, now: NOW })).kind).toBe("erased");
     });
   });

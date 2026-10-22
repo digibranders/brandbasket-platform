@@ -187,6 +187,15 @@ describe("renewalCharge", () => {
   it("is null when a discount would leave nothing to charge", () => {
     expect(renewalCharge(USD, 6_900)).toBeNull();
   });
+
+  it("charges the basket's lines on the services plan, which costs nothing itself", () => {
+    const SERVICES: PlanTerms = { initialAmountCents: 0, initialTermMonths: 1, recurringAmountCents: 0, currency: "INR", taxRateBasisPoints: 1_800 };
+    // All three services at the package price: ₹26,597 plus 18% GST.
+    expect(renewalCharge(SERVICES, 0, 2_659_700)).toBe("₹31,384.46");
+    // The website alone less a ₹300 code: ₹2,699 plus 18% GST.
+    expect(renewalCharge(SERVICES, 30_000, 299_900)).toBe("₹3,184.82");
+    expect(renewalCharge(SERVICES, 299_900, 299_900)).toBeNull();
+  });
 });
 
 describe("monthlyPaymentAmount", () => {
@@ -194,5 +203,34 @@ describe("monthlyPaymentAmount", () => {
     const premium = { recurringAmountCents: 999_900, initialAmountCents: 1_999_800, currency: "INR" as const, taxRateBasisPoints: 1_800 };
     expect(monthlyPaymentAmount(premium)).toBe("₹11,798.82");
     expect(monthlyPaymentAmount({ recurringAmountCents: 6_900, currency: "USD", taxRateBasisPoints: 0 })).toBe("$69");
+  });
+});
+
+describe("a plan that costs nothing, with its services as lines", () => {
+  const SERVICES_PLAN: PlanTerms = { ...INR, initialAmountCents: 0, recurringAmountCents: 0 };
+
+  it("charges the first payment and a month from the services' net, with the plan's GST", () => {
+    // The website at ₹2,999 plus 18% GST.
+    expect(firstPaymentAmount(SERVICES_PLAN, 299_900)).toBe("₹3,538.82");
+    expect(monthlyPaymentAmount(SERVICES_PLAN, 299_900)).toBe("₹3,538.82");
+  });
+
+  it("refuses to price a plan that costs nothing and has no services", () => {
+    expect(() => firstPaymentAmount(SERVICES_PLAN)).toThrow(RangeError);
+    expect(() => monthlyPaymentAmount(SERVICES_PLAN)).toThrow(RangeError);
+    expect(() => describePlanTerms(SERVICES_PLAN)).toThrow(RangeError);
+    expect(() => discountedFirstPaymentAmount(SERVICES_PLAN, null)).toThrow(RangeError);
+  });
+
+  it("words the terms from the services' net, with or without a code against that line", () => {
+    expect(describePlanTerms(SERVICES_PLAN, 299_900)).toBe(
+      "₹2,999 a month plus 18% GST, so ₹3,538.82 in all. Your first payment covers your first month, then it renews monthly.",
+    );
+    // ₹2,999 less a ₹300 code, plus 18% GST.
+    expect(discountedFirstPaymentAmount(SERVICES_PLAN, { amountCents: 30_000 }, 299_900)).toBe("₹3,184.82");
+    expect(describeDiscountedPlanTerms(SERVICES_PLAN, { amountCents: 30_000 }, 299_900)).toBe(
+      "₹2,699 a month plus 18% GST, so ₹3,184.82 in all, instead of ₹2,999 before GST, for as long as your plan runs. Your first payment covers your first month, then it renews monthly.",
+    );
+    expect(describeDiscountedPlanTerms(SERVICES_PLAN, null, 299_900)).toBe(describePlanTerms(SERVICES_PLAN, 299_900));
   });
 });

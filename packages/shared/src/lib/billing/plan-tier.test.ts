@@ -2,15 +2,16 @@ import { describe, expect, it } from "vitest";
 import { PLAN_TIER_LABELS, readPlanTier } from "./plan-tier";
 
 describe("readPlanTier", () => {
-  it("reads the two plans and nothing else", () => {
-    expect(readPlanTier("care")).toBe("care");
-    expect(readPlanTier("premium")).toBe("premium");
-    expect(readPlanTier("Care")).toBeNull();
-    expect(readPlanTier(["care"])).toBeNull();
+  it("reads Managed Website and nothing else, Fynix's old tiers included", () => {
+    expect(readPlanTier("managed")).toBe("managed");
+    expect(readPlanTier("care")).toBeNull();
+    expect(readPlanTier("premium")).toBeNull();
+    expect(readPlanTier("Managed")).toBeNull();
+    expect(readPlanTier(["managed"])).toBeNull();
     expect(readPlanTier(undefined)).toBeNull();
   });
 
-  it("names both plans", () => {
-    expect(PLAN_TIER_LABELS).toEqual({ care: "Care", premium: "Premium" });
+  it("names the plan by what it holds, not by one service", () => {
+    expect(PLAN_TIER_LABELS).toEqual({ managed: "Monthly services" });
   });
 });

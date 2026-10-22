@@ -4,6 +4,7 @@ import type { ScopedTransaction } from "../scope";
 import {
   accountClosures,
   accountExitFeedback,
+  businesses,
   subscriptions,
   type AccountExitOutcome,
   type AccountExitReason,
@@ -11,8 +12,8 @@ import {
 import { isUuid } from "./tenant";
 
 /*
- * Leaving: the feedback an owner gives on the way out, the stay offer's discount, and the closure that locks an
- * account until its grace period ends. All of it runs on the staff connection, after the platform has checked the
+ * Leaving: the feedback an owner gives on the way out, and the closure that locks an account until its grace period
+ * ends. All of it runs on the staff connection, after the platform has checked the
  * signed-in customer: the customer's own database role has no grant on any of it.
  */
 
@@ -89,52 +90,31 @@ export async function restoreAccountClosure(db: Runner, input: { readonly userId
   return rows.length > 0;
 }
 
-export interface RetentionDiscount {
-  readonly subscriptionId: string;
-  readonly businessId: string;
-  /** The stay offer's worth against the plan's net monthly price, in minor units. */
-  readonly retentionDiscountCents: number;
-}
-
-/**
- * Puts a stay offer on a subscription: its worth is added to whatever a referral code already takes off. An offer is
- * taken once, so the update matches only a subscription that has none. False when it matched nothing (the offer was
- * already taken, or the subscription is not that business's).
- */
-export async function applyRetentionDiscount(db: Runner, input: RetentionDiscount): Promise<boolean> {
-  if (!isUuid(input.subscriptionId) || !isUuid(input.businessId)) return false;
-  const rows = await db
-    .update(subscriptions)
-    .set({
-      retentionDiscountCents: input.retentionDiscountCents,
-      discountAmountCents: sql`${subscriptions.discountAmountCents} + ${input.retentionDiscountCents}`,
-    })
-    .where(
-      and(
-        eq(subscriptions.id, input.subscriptionId),
-        eq(subscriptions.businessId, input.businessId),
-        eq(subscriptions.retentionDiscountCents, 0),
-      ),
-    )
-    .returning({ id: subscriptions.id });
-  return rows.length > 0;
-}
-
 /**
  * Records that the customer asked for the plan to end with the period they have paid for. The provider does the
  * ending; this is our note of the request, so the billing page can say so before the provider's own event arrives.
+ * A cancelled subscription has no package left: the monthly ad credit goes to 0 and the business gives the package offer up
+ * for good, so a return is at list (docs/plans/16-platform-pricing-offers.md). Both are written in the same step as the
+ * note, and the first date of each is kept.
  */
 export async function markCancelRequested(
   db: Runner,
   input: { readonly subscriptionId: string; readonly businessId: string; readonly now: Date },
 ): Promise<boolean> {
   if (!isUuid(input.subscriptionId) || !isUuid(input.businessId)) return false;
-  const rows = await db
-    .update(subscriptions)
-    .set({ cancelRequestedAt: sql`coalesce(${subscriptions.cancelRequestedAt}, ${input.now})` })
-    .where(and(eq(subscriptions.id, input.subscriptionId), eq(subscriptions.businessId, input.businessId)))
-    .returning({ id: subscriptions.id });
-  return rows.length > 0;
+  return db.transaction(async (tx) => {
+    const rows = await tx
+      .update(subscriptions)
+      .set({ cancelRequestedAt: sql`coalesce(${subscriptions.cancelRequestedAt}, ${input.now})`, adCreditCents: 0 })
+      .where(and(eq(subscriptions.id, input.subscriptionId), eq(subscriptions.businessId, input.businessId)))
+      .returning({ id: subscriptions.id });
+    if (rows.length === 0) return false;
+    await tx
+      .update(businesses)
+      .set({ packageOfferForfeitedAt: sql`coalesce(${businesses.packageOfferForfeitedAt}, ${input.now})` })
+      .where(eq(businesses.id, input.businessId));
+    return true;
+  });
 }
 
 /**

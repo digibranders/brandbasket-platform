@@ -24,6 +24,15 @@ export const PAYMENT_ATTENTION_LABELS: Readonly<
     title: "Moved up to Premium, but the provider wasn’t told",
     action: "They have Premium. Use Finish the move on their page to tell the provider to bill Premium from the next renewal.",
   },
+  add_on_not_applied: {
+    title: "Paid for an add-on that no longer applied",
+    action: "Nothing changed for the client: their month had renewed or their plan was ending. Refund it at the provider; they can add it again from Add-ons.",
+  },
+  add_on_provider_pending: {
+    title: "A service change didn’t reach the provider",
+    action:
+      "A service was added or removed, but the provider wasn’t told the new monthly amount. For an add, the service is on: use Retry on their page, which also moves their other services to the package price from the next renewal. For a removal that still shows, press Remove again.",
+  },
   submission_failed: {
     title: "Paid, but sending their answers failed",
     action: "Their plan is active. Check their setup reached us; they can also send it again from Check and send.",

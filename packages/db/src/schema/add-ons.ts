@@ -27,12 +27,12 @@ export const addOnSubscriptions = pgTable(
   {
     id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
     businessId: uuid("business_id").notNull().references(() => businesses.id),
-    /** A monthly id from the catalogue (packages/shared/src/lib/billing/add-ons.ts). The two earlier ids stay allowed for old rows. */
+    /** A monthly id from the catalogue (packages/shared/src/lib/billing/add-ons.ts): Social Media and Ads or Local SEO + AEO. */
     addOn: text("add_on").notNull(),
     /** The price fixed at purchase, in paise: list, Premium discount, list less discount, GST rate, what Razorpay takes. */
     listAmountCents: integer("list_amount_cents").notNull(),
     discountAmountCents: integer("discount_amount_cents").notNull().default(0),
-    /** The part of `discountAmountCents` that is the first-checkout lifetime offer (5%); the rest is the Premium discount. */
+    /** The part of `discountAmountCents` that is the 5% first-checkout offer these old rows were sold with (plan 16 removed it); the rest is the Premium discount. */
     offerDiscountAmountCents: integer("offer_discount_amount_cents").notNull().default(0),
     netAmountCents: integer("net_amount_cents").notNull(),
     taxRateBasisPoints: integer("tax_rate_basis_points").notNull(),
@@ -73,7 +73,7 @@ export const addOnSubscriptions = pgTable(
       .on(table.businessId, table.addOn)
       .where(sql`${table.status} = 'incomplete'`),
     index("add_on_subscriptions_business_idx").on(table.businessId, table.createdAt),
-    check("add_on_subscriptions_add_on_check", sql`${table.addOn} in ('social-media', 'lead-generation', 'advertising', 'local-seo', 'performance-marketing')`),
+    check("add_on_subscriptions_add_on_check", sql`${table.addOn} in ('digital-growth', 'local-seo-aeo')`),
     check(
       "add_on_subscriptions_offer_check",
       sql`${table.offerDiscountAmountCents} >= 0 and ${table.offerDiscountAmountCents} <= ${table.discountAmountCents}`,
@@ -123,10 +123,13 @@ export const addOnPayments = pgTable(
 export const bundledAddOnStatus = pgEnum("bundled_add_on_status", ["pending", "active", "removed"]);
 
 /**
- * An add-on taken at the first checkout, billed inside the plan's own subscription: the one monthly charge is the plan
- * plus these. `pending` until the first payment is recorded, `active` after it, `removed` once it has stopped being
- * billed. The price is frozen here at the checkout (list, the 5% lifetime offer, net) and summed onto
- * `subscriptions.bundled_add_on_net_cents`. Rows are kept on erasure, like every record of what was sold.
+ * A service billed inside the subscription, the website included (docs/plans/16-platform-pricing-offers.md in the
+ * BrandBasket workspace): the plan row is the subscription's terms at a price of 0, so the one monthly charge is these
+ * lines. Taken at the first checkout, it is `pending` until the first payment is recorded and `active` after it. Added to
+ * a running plan, it is `pending` with a charge for the rest of the paid month (`charge_id`), `active` once that is paid,
+ * and joins the monthly amount at the next renewal (`billed_from`). `removed` once it has stopped being billed. The price
+ * is frozen here (list, package offer, net) and summed onto `subscriptions.bundled_add_on_net_cents`.
+ * Rows are kept on erasure, like every record of what was sold.
  */
 export const bundledAddOns = pgTable(
   "bundled_add_ons",
@@ -136,8 +139,13 @@ export const bundledAddOns = pgTable(
     subscriptionId: uuid("subscription_id").notNull().references(() => subscriptions.id),
     addOn: text("add_on").notNull(),
     listAmountCents: integer("list_amount_cents").notNull(),
-    /** The first-checkout lifetime offer (5%) taken off the list price. */
+    /** The package offer taken off the list price (packages.ts in @brandbasket/shared); 0 for a service on its own. */
     offerDiscountAmountCents: integer("offer_discount_amount_cents").notNull().default(0),
+    /**
+     * The package offer this line moves to from the next renewal, when the basket has changed (a service added or dropped);
+     * null when it is not changing. Recording that renewal makes it `offerDiscountAmountCents`.
+     */
+    pendingOfferDiscountAmountCents: integer("pending_offer_discount_amount_cents"),
     netAmountCents: integer("net_amount_cents").notNull(),
     taxRateBasisPoints: integer("tax_rate_basis_points").notNull(),
     status: bundledAddOnStatus("status").notNull().default("pending"),
@@ -145,6 +153,16 @@ export const bundledAddOns = pgTable(
     /** The customer asked to remove it: it stays billed, and active, until the next billing date, then it is `removed`. */
     endRequestedAt: timestamp("end_requested_at", { withTimezone: true }),
     removedAt: timestamp("removed_at", { withTimezone: true }),
+    /** The charge for the rest of the paid month, for an add-on added to a running plan; null for one taken at sign-up. */
+    chargeId: uuid("charge_id").references(() => charges.id),
+    /** The end of the paid month that charge was worked out for: paying it after a renewal buys nothing. */
+    quotedPeriodEnd: timestamp("quoted_period_end", { withTimezone: true }),
+    /** When its net became part of `subscriptions.bundled_add_on_net_cents`: the first payment, or the renewal after it was added. */
+    billedFrom: timestamp("billed_from", { withTimezone: true }),
+    /** When the provider was told to bill the new monthly amount from the next renewal. */
+    providerScheduledAt: timestamp("provider_scheduled_at", { withTimezone: true }),
+    /** The staff member who added it for the client, or null when the client did. */
+    addedByStaffId: text("added_by_staff_id").references(() => users.id),
     /** When staff got in touch about this purchase, as for add_on_subscriptions; null until then. */
     contactedAt: timestamp("contacted_at", { withTimezone: true }),
     contactedByStaffId: text("contacted_by_staff_id").references(() => users.id),
@@ -152,14 +170,20 @@ export const bundledAddOns = pgTable(
     updatedAt: updatedAt(),
   },
   (table) => [
-    uniqueIndex("bundled_add_ons_subscription_add_on_idx").on(table.subscriptionId, table.addOn),
+    // One live row per add-on: it can be taken again after an earlier one has stopped.
+    uniqueIndex("bundled_add_ons_subscription_add_on_idx")
+      .on(table.subscriptionId, table.addOn)
+      .where(sql`${table.status} in ('pending', 'active')`),
+    uniqueIndex("bundled_add_ons_charge_idx").on(table.chargeId).where(sql`${table.chargeId} is not null`),
     index("bundled_add_ons_business_idx").on(table.businessId, table.createdAt),
-    check("bundled_add_ons_add_on_check", sql`${table.addOn} in ('social-media', 'lead-generation', 'advertising')`),
+    check("bundled_add_ons_add_on_check", sql`${table.addOn} in ('managed-website', 'digital-growth', 'local-seo-aeo')`),
     check(
       "bundled_add_ons_amounts_check",
       sql`${table.listAmountCents} > 0 and ${table.offerDiscountAmountCents} >= 0
         and ${table.netAmountCents} = ${table.listAmountCents} - ${table.offerDiscountAmountCents} and ${table.netAmountCents} > 0
-        and ${table.taxRateBasisPoints} between 0 and 10000`,
+        and ${table.taxRateBasisPoints} between 0 and 10000
+        and (${table.pendingOfferDiscountAmountCents} is null
+          or (${table.pendingOfferDiscountAmountCents} >= 0 and ${table.pendingOfferDiscountAmountCents} < ${table.listAmountCents}))`,
     ),
   ],
 );

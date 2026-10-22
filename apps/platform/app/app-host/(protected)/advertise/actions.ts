@@ -22,7 +22,7 @@ function back(notice: AdvertiseNotice, week?: string, placement?: string): never
  * checked again in the database transaction; this only reads the form.
  */
 export async function saveBidAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const placement = parseAdPlacement(formData.get("placement"));
   const week = weekSchema.safeParse(formData.get("week"));
   if (placement === null || !week.success) back("invalid");
@@ -37,7 +37,7 @@ export async function saveBidAction(formData: FormData): Promise<void> {
 
 /** Saves the ad's one line for staff to approve; an empty line removes it. */
 export async function saveTaglineAction(formData: FormData): Promise<void> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const parsed = parseAdTagline(formData.get("tagline"));
   if (!parsed.ok) redirect("/advertise?notice=tagline-invalid#your-ad");
   const saved = await saveCustomerTagline(customer, parsed.tagline);

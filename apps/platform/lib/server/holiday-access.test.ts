@@ -22,7 +22,7 @@ describe("holidayAccessOrNull", () => {
     vi.mocked(getCustomerBusinessKind).mockResolvedValue("listing");
     vi.mocked(requireCustomerAccess).mockResolvedValue(GRANTED);
     expect(await holidayAccessOrNull()).toBe(GRANTED);
-    expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow", plan: "premium" });
+    expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow" });
     expect(paidCustomerOrNull).not.toHaveBeenCalled();
   });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AddOnEndOutcome } from "@brandbasket/shared/server/add-on-ends";
-import { ADD_ON_NOTICES, addOnNoticeHref, noticeForEndOutcome, readAddOnNotice } from "./add-on-notices";
+import { ADD_ON_NOTICES, addOnNoticeHref, noticeForEndOutcome, noticeForRemoval, readAddOnNotice } from "./add-on-notices";
 
 const ENDS_ON = new Date("2026-11-12T09:00:00Z");
 
@@ -8,7 +8,7 @@ describe("the client page's add-on notices", () => {
   it("reads the notices an address names, and nothing else", () => {
     for (const key of Object.keys(ADD_ON_NOTICES)) expect(readAddOnNotice(key)).toBe(key);
     expect(readAddOnNotice("<script>alert(1)</script>")).toBeNull();
-    expect(readAddOnNotice("Social media was cancelled")).toBeNull();
+    expect(readAddOnNotice("Social Media and Ads was cancelled")).toBeNull();
     expect(readAddOnNotice(["cancel-scheduled"])).toBeNull();
     expect(readAddOnNotice("toString")).toBeNull();
     expect(readAddOnNotice("__proto__")).toBeNull();
@@ -22,7 +22,20 @@ describe("the client page's add-on notices", () => {
   it("calls only a change that happened a success", () => {
     const ok = Object.entries(ADD_ON_NOTICES).filter(([, notice]) => notice.ok).map(([key]) => key);
     expect(ok.sort()).toEqual(
-      ["cancel-scheduled", "contacted", "keep-undone-cancel", "keep-undone-pause", "pause-scheduled", "release-in-progress", "release-published"].sort(),
+      [
+        "add-on-charge-opened",
+        "add-on-kept",
+        "add-on-on",
+        "add-on-removal-scheduled",
+        "cancel-scheduled",
+        "contacted",
+        "keep-undone-cancel",
+        "keep-undone-pause",
+        "pause-scheduled",
+        "provider-told",
+        "release-in-progress",
+        "release-published",
+      ].sort(),
     );
   });
 
@@ -34,12 +47,12 @@ describe("the client page's add-on notices", () => {
   });
 
   it("turns each result of an end into its own fixed notice", () => {
-    const scheduled = (endKind: "cancel" | "pause"): AddOnEndOutcome => ({ kind: "scheduled", addOn: "social-media", endKind, endsOn: ENDS_ON });
-    const undone = (endKind: "cancel" | "pause"): AddOnEndOutcome => ({ kind: "keep-undone", addOn: "social-media", endKind, endsOn: ENDS_ON });
+    const scheduled = (endKind: "cancel" | "pause"): AddOnEndOutcome => ({ kind: "scheduled", addOn: "digital-growth", endKind, endsOn: ENDS_ON });
+    const undone = (endKind: "cancel" | "pause"): AddOnEndOutcome => ({ kind: "keep-undone", addOn: "digital-growth", endKind, endsOn: ENDS_ON });
     const refused = (reason: Extract<AddOnEndOutcome, { kind: "refused" }>["reason"]): AddOnEndOutcome => ({
       kind: "refused",
       reason,
-      addOn: "social-media",
+      addOn: "digital-growth",
       endKind: null,
       endsOn: null,
     });
@@ -52,5 +65,15 @@ describe("the client page's add-on notices", () => {
     expect(noticeForEndOutcome(refused("already-ending"))).toBe("already-ending");
     expect(noticeForEndOutcome(refused("provider-unavailable"))).toBe("provider-unavailable");
     expect(noticeForEndOutcome(refused("changed-meanwhile"))).toBe("changed-meanwhile");
+  });
+});
+
+describe("the notice for taking a service out of the plan payment", () => {
+  it("names each result of a removal", () => {
+    expect(noticeForRemoval({ kind: "scheduled", endsOn: ENDS_ON })).toBe("add-on-removal-scheduled");
+    expect(noticeForRemoval({ kind: "last-service" })).toBe("add-on-removal-last-service");
+    expect(noticeForRemoval({ kind: "cancel-requested" })).toBe("add-on-removal-cancel-requested");
+    expect(noticeForRemoval({ kind: "not-in-plan" })).toBe("add-on-removal-failed");
+    expect(noticeForRemoval({ kind: "failed" })).toBe("add-on-removal-failed");
   });
 });

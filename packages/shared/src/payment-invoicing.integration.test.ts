@@ -2,11 +2,11 @@ import { randomUUID } from "node:crypto";
 import { chargedAmountCents, discountCentsFor } from "@brandbasket/billing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  applyRetentionDiscount,
   billingProfiles,
   businesses,
   createReferralCode,
   findActivePlan,
+  findBundledAddOnsForSubscription,
   findLatestSubscriptionForBusiness,
   findPaymentByProviderId,
   findSubscriptionById,
@@ -17,14 +17,16 @@ import {
   recordAddOnPayment,
   recordUnappliedPayment,
   users,
+  type NewBundledAddOn,
   type Plan,
   type Subscription,
 } from "@brandbasket/db";
 import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
+import type { MonthlyAddOnId } from "./lib/billing/add-ons";
 import { chargeAmountCents } from "./lib/billing/charges";
+import { packageLines } from "./lib/billing/packages";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment, type RenewalInvoicedPrice } from "./server/billing-activation";
 import { recordChargePaymentWithInvoice } from "./server/charge-payments";
-import { startUpgrade } from "./server/plan-upgrade";
 import { issueTaxInvoice } from "./server/tax-invoicing";
 
 // The activation is server-only in the app; there is no browser here to keep it out of.
@@ -39,7 +41,8 @@ const MONTH_AFTER = new Date("2026-12-09T09:00:00.000Z");
 
 let dbs: TestDatabases;
 let businessId = "";
-let premium: Plan;
+/** The services plan: the subscription's terms at a price of 0, so what a payment takes is the sum of its service lines. */
+let services: Plan;
 
 async function addBusiness(currency: "INR" | "USD", slug: string): Promise<string> {
   const rows = await dbs.owner.db.insert(businesses).values({ slug, name: "QA Premium Business", currency }).returning({ id: businesses.id });
@@ -77,7 +80,24 @@ async function saveKarnatakaDetails(): Promise<void> {
   });
 }
 
-function openSubscription(forBusiness: string, plan: Plan, referral: { readonly referralCodeId: string; readonly discountAmountCents: number } | null = null): Promise<Subscription> {
+/** The services as a checkout freezes them: each with the package discount the set earns. */
+function linesOf(plan: Plan, ...ids: MonthlyAddOnId[]): readonly NewBundledAddOn[] {
+  return packageLines({ services: ids, forfeited: false }, plan.currency).map((line) => ({
+    addOn: line.addOn,
+    listAmountCents: line.listCents,
+    offerDiscountAmountCents: line.offerCents,
+    netAmountCents: line.netCents,
+    taxRateBasisPoints: plan.taxRateBasisPoints,
+  }));
+}
+
+/** A checkout on the services plan; the website alone unless other services are given. */
+function openSubscription(
+  forBusiness: string,
+  plan: Plan,
+  referral: { readonly referralCodeId: string; readonly discountAmountCents: number } | null = null,
+  bundledAddOns: readonly NewBundledAddOn[] = linesOf(plan, "managed-website"),
+): Promise<Subscription> {
   return openCheckoutSubscription(dbs.staff.db, {
     businessId: forBusiness,
     planId: plan.id,
@@ -85,6 +105,7 @@ function openSubscription(forBusiness: string, plan: Plan, referral: { readonly 
     providerSubscriptionId: `fake_sub_${"d".repeat(24)}`,
     referralCodeId: referral?.referralCodeId ?? null,
     discountAmountCents: referral?.discountAmountCents ?? 0,
+    bundledAddOns,
     replacing: null,
     now: PAID_AT,
   });
@@ -133,7 +154,11 @@ function payRenewal(subscriptionId: string, invoicedPrice: RenewalInvoicedPrice,
       commitmentEndsAt: subscription.commitmentEndsAt,
       provider: "fake",
       providerPaymentId,
-      amountCents: chargedAmountCents(invoicedPrice.netAmountCents, invoicedPrice.discountAmountCents, invoicedPrice.plan.taxRateBasisPoints),
+      amountCents: chargedAmountCents(
+        invoicedPrice.netAmountCents + (invoicedPrice.bundledAddOns ?? []).reduce((total, line) => total + line.listAmountCents - line.offerDiscountAmountCents, 0),
+        invoicedPrice.discountAmountCents,
+        invoicedPrice.plan.taxRateBasisPoints,
+      ),
       currency: "INR",
       paidAt: NEXT_MONTH,
       paidThroughAt: MONTH_AFTER,
@@ -144,21 +169,22 @@ function payRenewal(subscriptionId: string, invoicedPrice: RenewalInvoicedPrice,
 }
 
 /**
- * Buys Social media on a new add-on row and records its first payment, then invoices it in the same transaction, as the
- * add-on activation will: the invoice is the last write. The row is priced as a purchase freezes it, so a Premium member
- * has 10% of the list price taken off before GST.
+ * Buys Social Media and Ads on a new add-on row and records its first payment, then invoices it in the same transaction, as the
+ * add-on activation will: the invoice is the last write. The row is priced as a purchase freezes it: its list price of
+ * 9,999 rupees, less a discount of 50,000 paise when `discounted`.
  */
-async function payAddOn(premiumMember: boolean, providerPaymentId: string) {
-  const discountAmountCents = premiumMember ? 100_000 : 0;
+async function payAddOn(discounted: boolean, providerPaymentId: string) {
+  const discountAmountCents = discounted ? 50_000 : 0;
   const row = await insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
     businessId,
-    addOn: "social-media",
-    listAmountCents: 1_000_000,
+    addOn: "digital-growth",
+    listAmountCents: 999_900,
     discountAmountCents,
-    netAmountCents: 1_000_000 - discountAmountCents,
+    offerDiscountAmountCents: discountAmountCents,
+    netAmountCents: 999_900 - discountAmountCents,
     taxRateBasisPoints: 1_800,
-    chargedAmountCents: chargedAmountCents(1_000_000, discountAmountCents, 1_800),
+    chargedAmountCents: chargedAmountCents(999_900, discountAmountCents, 1_800),
     currency: "INR",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${randomUUID()}`,
@@ -202,9 +228,9 @@ afterAll(async () => {
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await seedPlansFromMigrations(dbs.owner);
-  const plan = await findActivePlan(dbs.staff.db, "INR", "premium");
-  if (plan === null) throw new Error("No active INR Premium plan was seeded");
-  premium = plan;
+  const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
+  if (plan === null) throw new Error("No active INR services plan was seeded");
+  services = plan;
   await dbs.owner.db.insert(users).values({ id: STAFF_USER, name: "Superadmin", email: "admin@example.test", emailVerified: true });
   businessId = await addBusiness("INR", "qa-premium");
   vi.spyOn(console, "info").mockImplementation(() => undefined);
@@ -218,7 +244,7 @@ afterEach(() => {
 describe("invoicing every payment path", () => {
   it("invoices a first payment, first in the year, with CGST and SGST that add up to the payment", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
-    const activation = await payFirst(await openSubscription(businessId, premium), premium);
+    const activation = await payFirst(await openSubscription(businessId, services), services);
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice).toMatchObject({
@@ -230,13 +256,14 @@ describe("invoicing every payment path", () => {
       totalCents: activation.payment.amountCents,
     });
     expect(invoice?.cgstCents).toBe(invoice?.sgstCents);
-    expect(invoice?.lines[0]).toMatchObject({ quantity: 1, unitAmountCents: premium.initialAmountCents, discountAmountCents: 0 });
+    expect(invoice?.lines).toHaveLength(1);
+    expect(invoice?.lines[0]).toMatchObject({ description: "Managed Website", quantity: 1, unitAmountCents: 299_900, discountAmountCents: 0, note: null });
   });
 
   it("issues nothing more when the same payment is delivered again, and takes no number", async () => {
-    const subscription = await openSubscription(businessId, premium);
-    await payFirst(subscription, premium);
-    const again = await payFirst(subscription, premium);
+    const subscription = await openSubscription(businessId, services);
+    await payFirst(subscription, services);
+    const again = await payFirst(subscription, services);
 
     expect(again.alreadyRecorded).toBe(true);
     expect(await invoiceCount()).toBe(1);
@@ -244,10 +271,11 @@ describe("invoicing every payment path", () => {
   });
 
   it("invoices a renewal for the provider's cycle at the verified price, next in the series", async () => {
-    await payFirst(await openSubscription(businessId, premium), premium);
+    await payFirst(await openSubscription(businessId, services), services);
     const subscription = await findLatestSubscriptionForBusiness(dbs.staff.db, businessId);
     const commitmentEndsAt = subscription?.commitmentEndsAt ?? null;
     if (subscription === null || commitmentEndsAt === null) throw new Error("The first payment did not open the subscription");
+    const active = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
 
     const renewal = await dbs.staff.db.transaction((tx) =>
       activateRenewalPayment(tx, {
@@ -256,12 +284,12 @@ describe("invoicing every payment path", () => {
         commitmentEndsAt,
         provider: "fake",
         providerPaymentId: "fake_pay_renewal",
-        amountCents: chargedAmountCents(premium.recurringAmountCents, 0, premium.taxRateBasisPoints),
+        amountCents: chargedAmountCents(299_900, 0, services.taxRateBasisPoints),
         currency: "INR",
         paidAt: NEXT_MONTH,
         paidThroughAt: MONTH_AFTER,
         periodStart: NEXT_MONTH,
-        invoicedPrice: { plan: premium, netAmountCents: premium.recurringAmountCents, discountAmountCents: 0, retentionDiscountCents: 0},
+        invoicedPrice: { plan: services, bundledAddOns: active, netAmountCents: 0, discountAmountCents: 0, retentionDiscountCents: 0 },
       }),
     );
 
@@ -271,13 +299,13 @@ describe("invoicing every payment path", () => {
     });
   });
 
-  it("invoices a restart at the plan's monthly price with no discount", async () => {
-    const subscription = await openSubscription(businessId, premium);
+  it("invoices a restart at the services it was opened with, with no coupon", async () => {
+    const subscription = await openSubscription(businessId, services);
     const activation = await dbs.staff.db.transaction((tx) =>
       activateReactivationPayment(tx, {
         businessId,
         subscriptionId: subscription.id,
-        plan: premium,
+        plan: services,
         provider: "fake",
         providerPaymentId: "fake_pay_restart",
         paidAt: PAID_AT,
@@ -286,7 +314,8 @@ describe("invoicing every payment path", () => {
     );
 
     expect((await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id))?.lines[0]).toMatchObject({
-      unitAmountCents: premium.recurringAmountCents,
+      description: "Managed Website",
+      unitAmountCents: 299_900,
       discountAmountCents: 0,
     });
   });
@@ -298,8 +327,8 @@ describe("invoicing every payment path", () => {
       description: "Extra change hours",
       quantity: 2,
       unitAmountCents: 142_500,
-      taxRateBasisPoints: premium.taxRateBasisPoints,
-      amountCents: chargeAmountCents(142_500, 2, premium.taxRateBasisPoints),
+      taxRateBasisPoints: services.taxRateBasisPoints,
+      amountCents: chargeAmountCents(142_500, 2, services.taxRateBasisPoints),
       currency: "INR",
       createdByStaffId: STAFF_USER,
     });
@@ -324,45 +353,9 @@ describe("invoicing every payment path", () => {
     });
   });
 
-  it("invoices a Care customer's paid move up to Premium at once, with the dot of its description printed as a comma", async () => {
-    await saveMaharashtraDetails("27AAPFU0939F1ZV");
-    const care = await findActivePlan(dbs.staff.db, "INR", "care");
-    if (care === null) throw new Error("No active INR Care plan was seeded");
-    await payFirst(await openSubscription(businessId, care), care);
-    // Five days into the paid month, through the code the Upgrade button runs.
-    const now = new Date(PAID_AT.getTime() + 5 * 86_400_000);
-    const started = await startUpgrade(dbs.staff.db, { businessId, source: "customer", staffId: null, providerName: "fake", now });
-    if (started.kind !== "pay") throw new Error(`Expected a charge to pay, got ${started.kind}`);
-    const stored = await querySql<{ description: string; amount_cents: number }>(dbs.owner, `select description, amount_cents from charges where id = '${started.chargeId}'`);
-    const charge = stored[0];
-    if (charge === undefined) throw new Error("The upgrade's charge was not stored");
-    // The app keeps showing the dot; only the invoice changes it.
-    expect(charge.description).toMatch(/^Upgrade to Premium \u00B7 \d+ days left$/);
-
-    const recorded = await dbs.staff.db.transaction((tx) =>
-      recordChargePaymentWithInvoice(tx, {
-        chargeId: started.chargeId,
-        businessId,
-        provider: "fake",
-        providerPaymentId: "fake_pay_upgrade",
-        amountCents: charge.amount_cents,
-        currency: "INR",
-        paidAt: now,
-        now,
-      }),
-    );
-
-    expect(recorded.outcome).toBe("paid");
-    const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, recorded.payment.id);
-    expect(invoice).toMatchObject({ number: "FY/26-27/000002", totalCents: recorded.payment.amountCents });
-    expect(invoice?.lines[0]?.description).toMatch(/^Upgrade to Premium, \d+ days left$/);
-    expect(invoice?.lines[0]?.description).toBe(charge.description.replace(" \u00B7 ", ", "));
-    expect(vi.mocked(console.error)).not.toHaveBeenCalled();
-  });
-
   it("issues nothing for a dollar payment", async () => {
-    const usd = await findActivePlan(dbs.staff.db, "USD", "premium");
-    if (usd === null) throw new Error("No active USD Premium plan was seeded");
+    const usd = await findActivePlan(dbs.staff.db, "USD", "managed");
+    if (usd === null) throw new Error("No active USD services plan was seeded");
     const dollarBusiness = await addBusiness("USD", "qa-dollar");
 
     await payFirst(await openSubscription(dollarBusiness, usd), usd, "fake_pay_usd");
@@ -375,7 +368,7 @@ describe("invoicing every payment path", () => {
     // Right shape, wrong check character: the database takes it, the invoice builder refuses it.
     await saveMaharashtraDetails("27AAPFU0939F1ZA");
 
-    const activation = await payFirst(await openSubscription(businessId, premium), premium);
+    const activation = await payFirst(await openSubscription(businessId, services), services);
 
     expect(await findPaymentByProviderId(dbs.staff.db, "fake", "fake_pay_first")).not.toBeNull();
     expect((await findLatestSubscriptionForBusiness(dbs.staff.db, businessId))?.activatedAt).not.toBeNull();
@@ -391,129 +384,143 @@ describe("invoicing every payment path", () => {
  * payment.
  */
 describe("what the invoice describes", () => {
-  it("describes a first payment on a 20% referral code with the coupon note and the discount off the net price", async () => {
+  it("describes a first payment of one service on a 20% referral code with the coupon note and the discount off the service price", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
-    const coupon = await percentCoupon("GAURAV", 2_000, premium.initialAmountCents);
-    const subscription = await openSubscription(businessId, premium, coupon);
+    const coupon = await percentCoupon("GAURAV", 2_000, 299_900);
+    const subscription = await openSubscription(businessId, services, coupon);
 
-    const activation = await payFirst(subscription, premium, "fake_pay_first", coupon.discountAmountCents);
+    const activation = await payFirst(subscription, services, "fake_pay_first", coupon.discountAmountCents);
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
-    expect(coupon.discountAmountCents).toBe(Math.round(premium.initialAmountCents * 0.2));
+    expect(coupon.discountAmountCents).toBe(59_980);
+    expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({
+      description: "Managed Website",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       note: "Coupon GAURAV applied, 20% off",
-      unitAmountCents: premium.initialAmountCents,
+      unitAmountCents: 299_900,
       discountAmountCents: coupon.discountAmountCents,
     });
-    expect(invoice?.taxableCents).toBe(premium.initialAmountCents - coupon.discountAmountCents);
+    expect(invoice?.taxableCents).toBe(299_900 - coupon.discountAmountCents);
     expect(invoice?.totalCents).toBe(activation.payment.amountCents);
   });
 
   it("describes a renewal with a coupon and a stay offer by both, with the whole discount in one column", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
-    const coupon = await percentCoupon("GAURAV", 2_000, premium.recurringAmountCents);
-    await payFirst(await openSubscription(businessId, premium, coupon), premium, "fake_pay_first", coupon.discountAmountCents);
+    const coupon = await percentCoupon("GAURAV", 2_000, 299_900);
+    await payFirst(await openSubscription(businessId, services, coupon), services, "fake_pay_first", coupon.discountAmountCents);
     const opened = await findLatestSubscriptionForBusiness(dbs.staff.db, businessId);
     if (opened === null) throw new Error("The first payment did not open the subscription");
-    const stayOffer = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, premium.recurringAmountCents);
-    expect(await applyRetentionDiscount(dbs.staff.db, { subscriptionId: opened.id, businessId, retentionDiscountCents: stayOffer })).toBe(true);
+    const stayOffer = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 299_900);
+    // A stay offer taken before stay offers were removed: its worth sits on the subscription and in its discount.
+    await execSql(
+      dbs.owner,
+      `update subscriptions set retention_discount_cents = ${stayOffer}, discount_amount_cents = discount_amount_cents + ${stayOffer} where id = '${opened.id}'`,
+    );
     // The same read the webhook handler does: what the subscription froze, never recomputed.
     const subscription = await findSubscriptionById(dbs.staff.db, opened.id);
     if (subscription === null) throw new Error("The subscription vanished");
 
     const renewal = await payRenewal(subscription.id, {
-      plan: premium,
-      netAmountCents: premium.recurringAmountCents,
+      plan: services,
+      bundledAddOns: await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id),
+      netAmountCents: 0,
       discountAmountCents: subscription.discountAmountCents,
       retentionDiscountCents: subscription.retentionDiscountCents,
     });
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id);
+    expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({
+      description: "Managed Website",
       detail: "Monthly subscription, 09 Nov to 08 Dec 2026",
       note: "Coupon GAURAV applied, 20% off. Stay offer applied",
-      unitAmountCents: premium.recurringAmountCents,
+      unitAmountCents: 299_900,
       discountAmountCents: coupon.discountAmountCents + stayOffer,
     });
-    expect(invoice?.taxableCents).toBe(premium.recurringAmountCents - coupon.discountAmountCents - stayOffer);
+    expect(invoice?.taxableCents).toBe(299_900 - coupon.discountAmountCents - stayOffer);
     expect(invoice?.totalCents).toBe(renewal.payment.amountCents);
   });
 
-  it("describes the renewal that completes a paid move up at the new plan's price and its pending discount", async () => {
-    // Driven through activateRenewalPayment with the invoicedPrice the webhook handler builds for this case (the handler
-    // lives in the platform app, which this package cannot import); the handler's own branch is covered by its unit tests.
-    await saveMaharashtraDetails("27AAPFU0939F1ZV");
-    const care = await findActivePlan(dbs.staff.db, "INR", "care");
-    if (care === null) throw new Error("No active INR Care plan was seeded");
-    expect(care.recurringAmountCents).not.toBe(premium.recurringAmountCents);
-    const coupon = await percentCoupon("GAURAV", 2_000, care.initialAmountCents);
-    const opened = await openSubscription(businessId, care, coupon);
-    await payFirst(opened, care, "fake_pay_first", coupon.discountAmountCents);
-    const pendingDiscountCents = discountCentsFor({ kind: "percent", basisPoints: 2_000 }, premium.recurringAmountCents);
-    await execSql(
-      dbs.owner,
-      `update subscriptions set pending_plan_id = '${premium.id}', pending_discount_amount_cents = ${pendingDiscountCents} where id = '${opened.id}'`,
-    );
-    const subscription = await findSubscriptionById(dbs.staff.db, opened.id);
-    if (subscription === null || subscription.pendingPlanId !== premium.id) throw new Error("The move up was not recorded");
-
-    const renewal = await payRenewal(subscription.id, {
-      plan: premium,
-      netAmountCents: premium.recurringAmountCents,
-      discountAmountCents: subscription.pendingDiscountAmountCents,
-      retentionDiscountCents: 0,
-    });
-
-    const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id);
-    expect(invoice?.lines[0]).toMatchObject({
-      description: "Brandbasket Premium plan",
-      unitAmountCents: premium.recurringAmountCents,
-      discountAmountCents: pendingDiscountCents,
-      note: "Coupon GAURAV applied, 20% off",
-    });
-    expect(invoice?.taxableCents).toBe(premium.recurringAmountCents - pendingDiscountCents);
-    expect(invoice?.totalCents).toBe(renewal.payment.amountCents);
-  });
-
-  it("describes a Premium member's Social media payment by the add-on, the month and the discount, adding up to the payment", async () => {
+  it("describes a Social Media and Ads payment with a discount by the add-on, the month and the discount, adding up to the payment", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
-    const { payment, issued } = await payAddOn(true, "fake_pay_add_on_premium");
+    const { payment, issued } = await payAddOn(true, "fake_pay_add_on_offer");
 
     expect(issued?.issued).toBe(true);
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
     expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({
-      description: "Social media",
+      description: "Social Media and Ads",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
-      note: "Premium member, 10% off",
+      note: null,
       quantity: 1,
-      unitAmountCents: 1_000_000,
-      discountAmountCents: 100_000,
+      unitAmountCents: 999_900,
+      discountAmountCents: 50_000,
       taxRateBasisPoints: 1_800,
     });
-    expect(invoice).toMatchObject({ taxableCents: 900_000, totalCents: 1_062_000 });
-    expect(invoice?.cgstCents).toBe(81_000);
-    expect(invoice?.sgstCents).toBe(81_000);
+    expect(invoice).toMatchObject({ taxableCents: 949_900, totalCents: 1_120_882 });
+    expect(invoice?.cgstCents).toBe(85_491);
+    expect(invoice?.sgstCents).toBe(85_491);
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
 
-  it("describes a Social media payment with no discount without a note, at the full price", async () => {
+  it("describes a Social Media and Ads payment with no discount without a note, at the full price", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
     const { payment } = await payAddOn(false, "fake_pay_add_on_list");
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Social media", note: null, unitAmountCents: 1_000_000, discountAmountCents: 0 });
-    expect(invoice).toMatchObject({ taxableCents: 1_000_000, totalCents: 1_180_000 });
+    expect(invoice?.lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, unitAmountCents: 999_900, discountAmountCents: 0 });
+    expect(invoice).toMatchObject({ taxableCents: 999_900, totalCents: 1_179_882 });
     expect(invoice?.totalCents).toBe(payment.amountCents);
+  });
+
+  it("describes a first payment of all three services by a line each at its list price less 30%, with no line for the plan row and nothing about ad credit", async () => {
+    await saveMaharashtraDetails("27AAPFU0939F1ZV");
+    const lines = linesOf(services, "managed-website", "digital-growth", "local-seo-aeo");
+
+    const activation = await payFirst(await openSubscription(businessId, services, null, lines), services);
+
+    const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
+    expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents, line.note])).toEqual([
+      ["Managed Website", 299_900, 89_970, "Package offer, 30% off"],
+      ["Social Media and Ads", 999_900, 299_970, "Package offer, 30% off"],
+      ["Local SEO + AEO", 2_499_900, 750_060, "Package offer, 30% off"],
+    ]);
+    expect(invoice).toMatchObject({ taxableCents: 2_659_700, cgstCents: 239_373, sgstCents: 239_373, roundOffCents: 0, totalCents: 3_138_446 });
+    expect(activation.payment.amountCents).toBe(3_138_446);
+    expect(JSON.stringify(invoice?.lines)).not.toMatch(/credit/i);
+  });
+
+  it("describes a first payment of Website and Social at 20% by a line each", async () => {
+    await saveMaharashtraDetails("27AAPFU0939F1ZV");
+
+    const activation = await payFirst(await openSubscription(businessId, services, null, linesOf(services, "managed-website", "digital-growth")), services);
+
+    const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
+    expect(invoice?.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
+      ["Managed Website", 59_980, "Package offer, 20% off"],
+      ["Social Media and Ads", 200_020, "Package offer, 20% off"],
+    ]);
+    expect(invoice?.totalCents).toBe(1_226_964);
+  });
+
+  it("describes a first payment of one service with no discount and no note", async () => {
+    await saveMaharashtraDetails("27AAPFU0939F1ZV");
+
+    const activation = await payFirst(await openSubscription(businessId, services, null, linesOf(services, "local-seo-aeo")), services);
+
+    const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
+    expect(invoice?.lines).toHaveLength(1);
+    expect(invoice?.lines[0]).toMatchObject({ description: "Local SEO + AEO", discountAmountCents: 0, note: null });
+    expect(invoice?.totalCents).toBe(2_949_882);
   });
 
   it("calls a first payment that covers three months a subscription, not a monthly one", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
-    await execSql(dbs.owner, `update plans set initial_term_months = 3 where id = '${premium.id}'`);
-    const threeMonths = await findActivePlan(dbs.staff.db, "INR", "premium");
+    await execSql(dbs.owner, `update plans set initial_term_months = 3 where id = '${services.id}'`);
+    const threeMonths = await findActivePlan(dbs.staff.db, "INR", "managed");
     if (threeMonths === null || threeMonths.initialTermMonths !== 3) throw new Error("The plan did not take a three month term");
 
     const activation = await payFirst(await openSubscription(businessId, threeMonths), threeMonths);
@@ -526,7 +533,7 @@ describe("what the invoice describes", () => {
   it("charges a Karnataka customer IGST alone, never CGST or SGST", async () => {
     await saveKarnatakaDetails();
 
-    const activation = await payFirst(await openSubscription(businessId, premium), premium);
+    const activation = await payFirst(await openSubscription(businessId, services), services);
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice).toMatchObject({ supplyType: "inter_state", placeOfSupplyStateCode: "ka", placeOfSupplyBasis: "billing_address", cgstCents: 0, sgstCents: 0 });
@@ -536,7 +543,7 @@ describe("what the invoice describes", () => {
   });
 
   it("gives a payment that bought nothing no invoice and takes no number", async () => {
-    const subscription = await openSubscription(businessId, premium);
+    const subscription = await openSubscription(businessId, services);
 
     const recorded = await recordUnappliedPayment(dbs.staff.db, {
       businessId,
@@ -563,8 +570,8 @@ describe("what the invoice describes", () => {
       description: "Extra change hours",
       quantity: 1,
       unitAmountCents: 142_500,
-      taxRateBasisPoints: premium.taxRateBasisPoints,
-      amountCents: chargeAmountCents(142_500, 1, premium.taxRateBasisPoints),
+      taxRateBasisPoints: services.taxRateBasisPoints,
+      amountCents: chargeAmountCents(142_500, 1, services.taxRateBasisPoints),
       currency: "INR",
       createdByStaffId: STAFF_USER,
     });

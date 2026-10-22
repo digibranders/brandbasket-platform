@@ -17,11 +17,12 @@ export const BILLING_LOG_PREFIX = "[brandbasket:billing]";
  * - `webhook-processing-failed`: a webhook event's own processing failed for a reason unrelated to the data itself —
  *   typically a database or network error — and should be investigated; Razorpay will retry the delivery.
  * - `discount-plan-failed`: the provider would not create the discounted plan a code needs, so no checkout opened.
- * - `retention-offer-failed`: the provider would not move a subscription to the discounted plan a stay offer needs, or
- *   our record of the offer could not be written after it had. Either way staff should check the subscription.
  * - `bundled-add-on-removal-failed`: a customer asked to take an add-on out of the plan's payment and the provider would not
- *   move the subscription to the lower amount, or our record of the request could not be written after it had. Either way
+ *   move the subscription to the new amount, or our record of the request could not be written after it had. Either way
  *   staff should check the subscription before its next renewal.
+ * - `basket-provider-repair-failed`: a change to a subscription's services did not go through, and putting the provider back on
+ *   the amount the database holds failed too. Staff should check the subscription's amount at the provider.
+ * - `basket-flag-failed`: a change to a subscription's services did not go through and flagging it for staff failed as well.
  * - `bundled-renewal-at-old-amount`: a renewal arrived at the old amount while a removal of add-ons was waiting: the provider
  *   has not moved the subscription, so the customer was charged for an add-on they asked to remove. Staff should refund it.
  * - `upgrade-provider-failed`: a customer paid to move up to Premium and the provider would not (or could not) move
@@ -53,8 +54,11 @@ export type BillingLogEvent =
   | "webhook-processing-failed"
   | "affiliate-currency-mismatch"
   | "discount-plan-failed"
-  | "retention-offer-failed"
   | "bundled-add-on-removal-failed"
+  | "bundled-add-on-keep-failed"
+  | "add-on-provider-failed"
+  | "basket-provider-repair-failed"
+  | "basket-flag-failed"
   | "bundled-renewal-at-old-amount"
   | "upgrade-provider-failed"
   | "upgrade-renewal-at-old-price"

@@ -11,7 +11,6 @@ import {
   findAddOnSubscription,
   findAddOnSubscriptionByProviderId,
   findAddOnSubscriptionForPayment,
-  findLifetimeOfferStanding,
   insertAddOnSubscription,
   listAddOnSubscriptionsForBusiness,
   listAddOnSubscriptionsForStaff,
@@ -64,17 +63,17 @@ let dbs: TestDatabases;
 let businessA = "";
 let businessB = "";
 
-/** Social media at the list price, no Premium discount: 10,000 net, 18% GST, 11,800 charged. */
+/** Social media at the list price, no Premium discount: 9,999 net, 18% GST, 11,798.82 charged. */
 function addOnRow(businessId: string, overrides: Partial<NewAddOnSubscription> = {}): NewAddOnSubscription {
   return {
     id: uuidv7(),
     businessId,
-    addOn: "social-media",
-    listAmountCents: 1_000_000,
+    addOn: "digital-growth",
+    listAmountCents: 999_900,
     discountAmountCents: 0,
-    netAmountCents: 1_000_000,
+    netAmountCents: 999_900,
     taxRateBasisPoints: 1_800,
-    chargedAmountCents: 1_180_000,
+    chargedAmountCents: 1_179_882,
     currency: "INR",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${uuidv7()}`,
@@ -87,7 +86,7 @@ function paymentFor(addOnSubscriptionId: string, providerPaymentId: string, over
     addOnSubscriptionId,
     provider: "fake",
     providerPaymentId,
-    amountCents: 1_180_000,
+    amountCents: 1_179_882,
     currency: "INR",
     paidAt: NOW,
     periodStart: NOW,
@@ -124,7 +123,7 @@ async function pressReleaseFor(businessId: string, createdAt: Date): Promise<str
 
 /** A plan payment for the business, so tests can tell it apart from an add-on payment. */
 async function payForPlan(businessId: string, providerSubscriptionId: string, paidAt: Date): Promise<string> {
-  const plan = await findActivePlan(dbs.staff.db, "INR", "premium");
+  const plan = await findActivePlan(dbs.staff.db, "INR", "managed");
   if (plan === null) throw new Error("No INR plan seeded");
   const subscription = await insertSubscription(dbs.staff.db, { businessId, planId: plan.id, provider: "fake", providerSubscriptionId });
   const { payment } = await recordPaymentAndActivate(dbs.staff.db, {
@@ -179,7 +178,7 @@ describe("add-on subscription rows", () => {
     const row = addOnRow(businessA, { providerSubscriptionId: "fake_sub_one" });
     const inserted = await insertAddOnSubscription(dbs.staff.db, row);
 
-    expect(inserted).toMatchObject({ id: row.id, businessId: businessA, addOn: "social-media", status: "incomplete", activatedAt: null });
+    expect(inserted).toMatchObject({ id: row.id, businessId: businessA, addOn: "digital-growth", status: "incomplete", activatedAt: null });
     expect(await findAddOnSubscriptionByProviderId(dbs.staff.db, "fake", "fake_sub_one")).toMatchObject({ id: row.id });
     expect(await findAddOnSubscriptionByProviderId(dbs.staff.db, "fake", "fake_sub_nope")).toBeNull();
     expect(await findAddOnSubscription(dbs.staff.db, businessA, row.id)).toMatchObject({ id: row.id });
@@ -189,10 +188,10 @@ describe("add-on subscription rows", () => {
     const error = await captureErrorText(insertAddOnSubscription(dbs.staff.db, addOnRow(businessA)));
     expect(error).toMatch(/add_on_subscriptions_one_checkout_idx/);
 
-    await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA, { addOn: "advertising" }));
+    await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA, { addOn: "local-seo-aeo" }));
     expect((await listAddOnSubscriptionsForBusiness(dbs.staff.db, businessA)).map((found) => found.addOn)).toEqual([
-      "advertising",
-      "social-media",
+      "local-seo-aeo",
+      "digital-growth",
     ]);
   });
 
@@ -205,47 +204,6 @@ describe("add-on subscription rows", () => {
     await record(paymentFor(paid.id, "fake_pay_paid"));
     await dbs.staff.db.transaction((tx) => cancelStaleAddOnCheckout(tx, paid.id, LATER));
     expect(await findAddOnSubscription(dbs.staff.db, businessA, paid.id)).toMatchObject({ status: "active", endedAt: null });
-  });
-});
-
-describe("findLifetimeOfferStanding", () => {
-  /** A paid add-on row, with the offer in its price when `offerCents` is given. */
-  async function paidRow(businessId: string, addOn: "social-media" | "advertising", offerCents: number, paymentId: string): Promise<void> {
-    const list = addOn === "social-media" ? 200_000 : 400_000;
-    const row = await insertAddOnSubscription(
-      dbs.staff.db,
-      addOnRow(businessId, {
-        addOn,
-        listAmountCents: list,
-        discountAmountCents: offerCents,
-        offerDiscountAmountCents: offerCents,
-        netAmountCents: list - offerCents,
-        chargedAmountCents: Math.round((list - offerCents) * 1.18),
-      }),
-    );
-    await record(paymentFor(row.id, paymentId, { amountCents: row.chargedAmountCents }));
-  }
-
-  it("claims an add-on only once its first payment is recorded with the offer in its price", async () => {
-    expect(await findLifetimeOfferStanding(dbs.staff.db, businessA)).toEqual({ claimed: [] });
-    // Unpaid: not yet claimed.
-    await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA, { offerDiscountAmountCents: 10_000, discountAmountCents: 10_000, netAmountCents: 990_000, chargedAmountCents: 1_168_200 }));
-    expect(await findLifetimeOfferStanding(dbs.staff.db, businessA)).toEqual({ claimed: [] });
-  });
-
-  it("claims each add-on on its own: one bought with the offer does not claim the one bought without it", async () => {
-    await paidRow(businessA, "social-media", 10_000, "fake_pay_offer_1");
-    await paidRow(businessA, "advertising", 0, "fake_pay_offer_2");
-
-    expect(await findLifetimeOfferStanding(dbs.staff.db, businessA)).toEqual({ claimed: ["social-media"] });
-    expect(await findLifetimeOfferStanding(dbs.staff.db, businessB)).toEqual({ claimed: [] });
-    expect(await findLifetimeOfferStanding(dbs.staff.db, "not-a-uuid")).toEqual({ claimed: [] });
-  });
-
-  it("claims a cancelled add-on still: the discount is for life", async () => {
-    await paidRow(businessA, "advertising", 20_000, "fake_pay_offer_3");
-    await dbs.staff.db.update(addOnSubscriptions).set({ status: "cancelled", endedAt: NOW }).where(eq(addOnSubscriptions.businessId, businessA));
-    expect(await findLifetimeOfferStanding(dbs.staff.db, businessA)).toEqual({ claimed: ["advertising"] });
   });
 });
 
@@ -262,7 +220,7 @@ describe("recordAddOnPayment", () => {
       kind: "add_on",
       subscriptionId: null,
       status: "captured",
-      amountCents: 1_180_000,
+      amountCents: 1_179_882,
       attentionReason: null,
     });
     const links = await dbs.staff.db.select().from(addOnPayments).where(eq(addOnPayments.paymentId, first.payment.id));
@@ -300,7 +258,7 @@ describe("recordAddOnPayment", () => {
 
   it("refuses an amount that is not whole paise, and a row that does not exist", async () => {
     const row = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA));
-    await expect(record(paymentFor(row.id, "fake_pay_float", { amountCents: 1_180_000.5 }))).rejects.toThrow(/whole minor units/);
+    await expect(record(paymentFor(row.id, "fake_pay_float", { amountCents: 1_179_882.5 }))).rejects.toThrow(/whole minor units/);
     await expect(record(paymentFor(uuidv7(), "fake_pay_missing"))).rejects.toThrow(/No add-on subscription/);
   });
 
@@ -350,7 +308,7 @@ describe("buying again after a halted add-on", () => {
   });
 
   it("leaves halted rows of another add-on or another business alone", async () => {
-    const otherAddOn = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA, { addOn: "advertising" }));
+    const otherAddOn = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA, { addOn: "local-seo-aeo" }));
     await record(paymentFor(otherAddOn.id, "fake_pay_pm"));
     await updateAddOnStatus(dbs.staff.db, { id: otherAddOn.id, status: "halted", providerStatus: "halted", haltedAt: NOW, now: NOW });
     const otherBusiness = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessB));
@@ -529,7 +487,7 @@ describe("changing the kind of an end", () => {
     await record(paymentFor(running.id, "fake_pay_running"));
     const ended = await endingRow("cancel", businessB);
     await updateAddOnStatus(dbs.staff.db, { id: ended, status: "cancelled", providerStatus: "cancelled", endedAt: LATER, now: LATER });
-    const unpaid = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA, { addOn: "advertising" }));
+    const unpaid = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA, { addOn: "local-seo-aeo" }));
 
     expect(await change(running.id, "pause", null)).toBe("not-ending");
     expect(await change(ended, "pause", null)).toBe("not-ending");
@@ -668,7 +626,7 @@ describe("row-level security", () => {
     const release = await pressReleaseFor(businessA, NOW);
     const denied = /permission denied/i;
 
-    expect(await captureErrorText(asOwner(businessA, OWNER_A, (tx) => tx.insert(addOnSubscriptions).values(addOnRow(businessA, { addOn: "advertising" }))))).toMatch(denied);
+    expect(await captureErrorText(asOwner(businessA, OWNER_A, (tx) => tx.insert(addOnSubscriptions).values(addOnRow(businessA, { addOn: "local-seo-aeo" }))))).toMatch(denied);
     expect(await captureErrorText(asOwner(businessA, OWNER_A, (tx) => tx.update(addOnSubscriptions).set({ status: "cancelled" }).where(eq(addOnSubscriptions.id, row.id))))).toMatch(denied);
     expect(await captureErrorText(asOwner(businessA, OWNER_A, (tx) => tx.insert(addOnPayments).values({ paymentId: payment.id, addOnSubscriptionId: row.id, businessId: businessA })))).toMatch(denied);
     expect(await captureErrorText(asOwner(businessA, OWNER_A, (tx) => tx.update(addOnPayments).set({ businessId: businessB })))).toMatch(denied);
@@ -690,7 +648,7 @@ describe("what staff need to contact", () => {
   it("lists paid purchases not yet contacted and press releases still waiting, oldest first", async () => {
     const paidA = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA));
     await record(paymentFor(paidA.id, "fake_pay_a")); // activated 2026-10-02
-    await insertAddOnSubscription(dbs.staff.db, addOnRow(businessB, { addOn: "advertising" })); // never paid
+    await insertAddOnSubscription(dbs.staff.db, addOnRow(businessB, { addOn: "local-seo-aeo" })); // never paid
     const paidB = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessB));
     await record(paymentFor(paidB.id, "fake_pay_b", { paidAt: new Date("2026-10-03T09:00:00.000Z") }));
     const waiting = await pressReleaseFor(businessB, new Date("2026-10-01T09:00:00.000Z"));
@@ -701,8 +659,8 @@ describe("what staff need to contact", () => {
 
     expect(list).toEqual([
       { kind: "press-release", id: waiting, businessId: businessB, businessName: "Riverside", addOn: "press-release", at: new Date("2026-10-01T09:00:00.000Z") },
-      { kind: "subscription", id: paidA.id, businessId: businessA, businessName: "Chennai Cafe", addOn: "social-media", at: NOW },
-      { kind: "subscription", id: paidB.id, businessId: businessB, businessName: "Riverside", addOn: "social-media", at: new Date("2026-10-03T09:00:00.000Z") },
+      { kind: "subscription", id: paidA.id, businessId: businessA, businessName: "Chennai Cafe", addOn: "digital-growth", at: NOW },
+      { kind: "subscription", id: paidB.id, businessId: businessB, businessName: "Riverside", addOn: "digital-growth", at: new Date("2026-10-03T09:00:00.000Z") },
     ]);
     expect(await listAddOnsToContact(dbs.staff.db, 2)).toHaveLength(2);
 
@@ -776,7 +734,7 @@ describe("add-on rows for staff", () => {
     const byStaff = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA));
     await record(paymentFor(byStaff.id, "fake_pay_staff"));
     await dbs.staff.db.transaction((tx) => scheduleAddOnEnd(tx, { id: byStaff.id, kind: "pause", now: LATER, staffUserId: STAFF }));
-    const byCustomer = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA, { addOn: "advertising" }));
+    const byCustomer = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA, { addOn: "local-seo-aeo" }));
     await record(paymentFor(byCustomer.id, "fake_pay_customer"));
     await dbs.staff.db.transaction((tx) => scheduleAddOnEnd(tx, { id: byCustomer.id, kind: "cancel", now: LATER, staffUserId: null }));
     await insertAddOnSubscription(dbs.staff.db, addOnRow(businessB));
@@ -804,7 +762,7 @@ describe("finding the add-on a payment paid", () => {
 
 describe("Razorpay plans per add-on price", () => {
   it("stores one plan id per add-on and amount, and keeps the first when two are saved", async () => {
-    const key = { addOn: "social-media", netAmountCents: 1_000_000, taxRateBasisPoints: 1_800, currency: "INR" as const, provider: "razorpay" as const };
+    const key = { addOn: "digital-growth", netAmountCents: 999_900, taxRateBasisPoints: 1_800, currency: "INR" as const, provider: "razorpay" as const };
     expect(await findAddOnProviderPlan(dbs.staff.db, key)).toBeNull();
 
     expect(await saveAddOnProviderPlan(dbs.staff.db, { ...key, providerPlanId: "plan_first" })).toBe("plan_first");
@@ -841,12 +799,12 @@ describe("the plan's own checks ignore add-on payments", () => {
 describe("receipts", () => {
   it("name the add-on an add-on payment paid for, and nothing for other payments", async () => {
     const planPaymentId = await payForPlan(businessA, "fake_sub_plan", NOW);
-    const row = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA, { addOn: "advertising" }));
+    const row = await insertAddOnSubscription(dbs.staff.db, addOnRow(businessA, { addOn: "local-seo-aeo" }));
     const { payment } = await record(paymentFor(row.id, "fake_pay_addon", { paidAt: LATER }));
 
     const receipts = await asOwner(businessA, OWNER_A, (tx) => listReceiptsForBusiness(tx, businessA, 10));
 
-    expect(receipts.find((receipt) => receipt.id === payment.id)).toMatchObject({ kind: "add_on", addOnId: "advertising", planName: null, chargeDescription: null, taxRateBasisPoints: 1_800 });
+    expect(receipts.find((receipt) => receipt.id === payment.id)).toMatchObject({ kind: "add_on", addOnId: "local-seo-aeo", planName: null, chargeDescription: null, taxRateBasisPoints: 1_800 });
     expect(receipts.find((receipt) => receipt.id === planPaymentId)).toMatchObject({ addOnId: null });
   });
 });

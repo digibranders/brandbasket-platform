@@ -14,7 +14,7 @@ import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
 import { TurnstileWidget } from "@brandbasket/shared/ui/turnstile";
-import { ArrowIcon, CrownIcon, EyeIcon, EyeOffIcon, HeartIcon, PinIcon } from "@brandbasket/shared/ui/icons";
+import { ArrowIcon, EyeIcon, EyeOffIcon, HeartIcon, PinIcon } from "@brandbasket/shared/ui/icons";
 import { ENTRY_LEDE_SLOT_ID, ENTRY_PATH, entryHrefForPlan } from "@/lib/account-entry";
 import {
   AGREE_FIELD,
@@ -30,10 +30,9 @@ import type { LegalLinks } from "@/lib/legal-links";
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
 import { useOtpRetryCooldown } from "@/lib/use-otp-retry-cooldown";
 
-/** The two paid plans' price lines. */
+/** The paid plan's price line. */
 export interface PlanPrices {
-  readonly care: string | null;
-  readonly premium: string | null;
+  readonly managed: string | null;
 }
 
 /** The paid plans' price lines in each currency: the form shows the one for the country the owner picks. */
@@ -46,7 +45,7 @@ const PLAN_OPTIONS: readonly {
   readonly line: string;
   /** The same line for a brand that does not sell the free listing (Brandbasket), so the cards never mention one. */
   readonly lineWithoutFree: string;
-  /** The plan's mark, the same one its dashboard carries: a pin, a heart (Care), a crown (Premium). */
+  /** The plan's mark, the same one its dashboard carries: a pin for the free listing, a heart for Managed Website. */
   readonly icon: (selected: boolean) => ReactElement;
 }[] = [
   {
@@ -57,19 +56,11 @@ const PLAN_OPTIONS: readonly {
     icon: (selected) => <PinIcon className={cn("size-6 shrink-0 transition-colors duration-300 ease-calm", selected ? "text-accent" : "text-ink-soft")} />,
   },
   {
-    choice: "care",
-    name: "Care",
+    choice: "managed",
+    name: "Managed Website",
     line: "Free listing + website",
-    lineWithoutFree: "Website + chatbot + hosting",
+    lineWithoutFree: "Your website built free, then looked after every month",
     icon: (selected) => <HeartIcon className={cn("size-6 shrink-0 transition-colors duration-300 ease-calm", selected ? "text-accent" : "text-ink-soft")} />,
-  },
-  {
-    choice: "premium",
-    name: "Premium",
-    line: "Free listing + website + social media",
-    lineWithoutFree: "Website + appointments + social media",
-    // Gold either way: it is the crown's own colour, and the card's border and corner already say it is chosen.
-    icon: () => <CrownIcon className="size-6 shrink-0 fill-gold/45 text-gold-deep" />,
   },
 ];
 
@@ -77,6 +68,8 @@ interface JoinFormProps {
   readonly action: (state: JoinFormState, formData: FormData) => Promise<JoinFormState>;
   /** A plan the link already chose (the website's plan buttons): the form opens on the details with it set. */
   readonly initialChoice: JoinChoice | null;
+  /** The services the website's basket chose, sent with the form so the plan's page opens on them. */
+  readonly services: readonly string[];
   /** The plan the plans open with already ticked, when the link chose none (Brandbasket: Care); null ticks none. */
   readonly preselected: JoinChoice | null;
   /** The plans this brand sells, in the order shown: the free listing is among them only on Brandbasket. */
@@ -199,6 +192,7 @@ const INPUT_CLASSES =
 export function JoinForm({
   action,
   initialChoice,
+  services,
   preselected,
   choices,
   legalLinks,
@@ -220,7 +214,7 @@ export function JoinForm({
   /** True once the owner has pressed Continue on the plans (or a link picked one for them). */
   const [choiceMade, setChoiceMade] = useState(initialChoice !== null);
   const [name, setName] = useState("");
-  /** Asked only of a Care or Premium sign-up. */
+  /** Asked only of a Managed Website sign-up. */
   const [newBusinessName, setNewBusinessName] = useState("");
   const [email, setEmail] = useState("");
   /** India first: the product is sold there. The state is never filled in for the owner; they pick it. */
@@ -267,6 +261,7 @@ export function JoinForm({
   const sentFields = (
     <>
       {choice === null ? null : <input type="hidden" name="choice" value={choice} />}
+      {services.length === 0 ? null : <input type="hidden" name="services" value={services.join(",")} />}
     </>
   );
   const signInLine = (
@@ -296,7 +291,7 @@ export function JoinForm({
           <div className="mt-3 space-y-3">
             {PLAN_OPTIONS.filter((option) => choices.includes(option.choice)).map((option) => {
               const price = option.choice === "listing_only" ? "₹0" : planPrices[option.choice];
-              const tone = option.choice === "premium" ? OPTION_TONES.gold : OPTION_TONES.accent;
+              const tone = OPTION_TONES.accent;
               return (
                 <label key={option.choice} className={OPTION_CLASSES}>
                   <span className={cn(CARD_CLASSES, tone.card, choice === option.choice ? CARD_CUT : CARD_WHOLE)}>

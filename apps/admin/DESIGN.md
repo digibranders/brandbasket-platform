@@ -253,8 +253,8 @@ action top right, and header-owned children such as the stage track.
 - **Add-ons:** the section (`#add-ons`, which every notice and Journey item links to) sits after Extras. Its aside reads
   "Bought by the customer", or "N to follow up" when paid purchases are waiting. A notice (fixed words, `?addOns=`)
   shows first. Then hairline rows, one per add-on the customer actually bought, newest first (an unpaid checkout and
-  a row cancelled before it was ever paid are left out): name, price before GST ("₹10,000 + GST a month", with
-  ", Premium price" when discounted), a date line (Renews on, Ends on, Pauses on, Paused since, Starting on, or
+  a row cancelled before it was ever paid are left out): name, price before GST ("₹9,999 + GST a month", with
+  ", package price" when discounted), a date line (Renews on, Ends on, Pauses on, Paused since, Starting on, or
   "Customer can pay until …"), who scheduled an end and when, and a `StatusDot` (Active done; Ending, Pausing and
   Starting waiting; Payment failing and Payment failed problem; Paused and Ended quiet). A row replaced by a newer one
   reads "Earlier" with no buttons. Buttons are secondary, small: **Mark contacted** for a paid purchase nobody has

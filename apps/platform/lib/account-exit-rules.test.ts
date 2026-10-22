@@ -1,26 +1,6 @@
-import type { Plan, Subscription } from "@brandbasket/db";
+import type { Subscription } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
-import { eraseAfterFor, hasRunningAddOns, planClosureFor, retentionOfferTerms } from "./account-exit-rules";
-
-const PLAN: Plan = {
-  id: "plan-1",
-  code: "premium-inr",
-  name: "Premium",
-  tier: "premium",
-  currency: "INR",
-  initialAmountCents: 999_900,
-  initialTermMonths: 1,
-  recurringAmountCents: 999_900,
-  includedPublishesPerMonth: 0,
-  extraPublishAmountCents: 0,
-  includedChangeHours: 1,
-  extraHourAmountCents: 142_500,
-  includedBlogPosts: 100,
-  blogPostBlockSize: 100,
-  extraBlogPostsAmountCents: 47_500,
-  providerPlanId: "plan_base",
-  taxRateBasisPoints: 1800,
-};
+import { eraseAfterFor, hasRunningAddOns, packageEndsFor, planClosureFor } from "./account-exit-rules";
 
 const NOW = new Date("2026-10-06T10:00:00Z");
 
@@ -39,6 +19,7 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
     pendingDiscountAmountCents: 0,
     bundledAddOnNetCents: 0,
     pendingBundledAddOnNetCents: null,
+    adCreditCents: 0,
     status: "active",
     activatedAt: new Date("2026-09-20T10:00:00Z"),
     commitmentEndsAt: null,
@@ -51,47 +32,43 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
   };
 }
 
-describe("retentionOfferTerms", () => {
-  const open = { reason: "too_expensive" as const, subscription: subscription(), plan: PLAN, hasAccess: true };
+describe("packageEndsFor", () => {
+  const ALL_THREE = ["managed-website", "digital-growth", "local-seo-aeo"] as const;
+  const BASKET = { services: ALL_THREE, forfeited: false, adCreditCents: 500_000, currency: "INR" } as const;
 
-  it("offers a paying member the reason's percentage off the net monthly price", () => {
-    expect(retentionOfferTerms(open)).toEqual({ percent: 30, discountCents: 299_970, totalDiscountCents: 299_970 });
+  it("lists the package price, the ad credit and the full price on return for an all-three client", () => {
+    expect(packageEndsFor(BASKET)).toEqual([
+      "Your package price (30% off)",
+      "\u20B95,000 a month of ad credit",
+      "If you come back, every service is at its own price",
+    ]);
   });
 
-  it("adds to a discount a code already gives", () => {
-    const terms = retentionOfferTerms({ ...open, subscription: subscription({ referralCodeId: "code-1", discountAmountCents: 100_000 }) });
-    expect(terms).toEqual({ percent: 30, discountCents: 299_970, totalDiscountCents: 399_970 });
+  it("takes the percentage from the services that are staying", () => {
+    expect(packageEndsFor({ ...BASKET, services: ["managed-website", "digital-growth"], adCreditCents: 200_000 })).toEqual([
+      "Your package price (20% off)",
+      "\u20B92,000 a month of ad credit",
+      "If you come back, every service is at its own price",
+    ]);
   });
 
-  it("offers nothing to someone closing the business", () => {
-    expect(retentionOfferTerms({ ...open, reason: "closing_business" })).toBeNull();
-    expect(retentionOfferTerms({ ...open, reason: "other" })).toBeNull();
+  it("leaves the ad credit line out when the package has none", () => {
+    expect(packageEndsFor({ ...BASKET, services: ["managed-website", "local-seo-aeo"], adCreditCents: 0 })).toEqual([
+      "Your package price (20% off)",
+      "If you come back, every service is at its own price",
+    ]);
   });
 
-  it("offers nothing without a paid, running subscription", () => {
-    expect(retentionOfferTerms({ ...open, subscription: null })).toBeNull();
-    expect(retentionOfferTerms({ ...open, plan: null })).toBeNull();
-    expect(retentionOfferTerms({ ...open, hasAccess: false })).toBeNull();
-    expect(retentionOfferTerms({ ...open, upgradePaid: true })).toBeNull();
-    expect(retentionOfferTerms({ ...open, subscription: subscription({ status: "incomplete" }) })).toBeNull();
-    expect(retentionOfferTerms({ ...open, subscription: subscription({ status: "past_due" }) })).toBeNull();
-    expect(retentionOfferTerms({ ...open, subscription: subscription({ status: "cancelled" }) })).toBeNull();
+  it("writes a dollar ad credit in dollars", () => {
+    expect(packageEndsFor({ ...BASKET, currency: "USD", adCreditCents: 6_000 })[1]).toBe("$60 a month of ad credit");
   });
 
-  it("offers nothing to a plan already set to end, or that already took an offer", () => {
-    expect(retentionOfferTerms({ ...open, subscription: subscription({ cancelRequestedAt: NOW }) })).toBeNull();
-    expect(
-      retentionOfferTerms({ ...open, subscription: subscription({ referralCodeId: "c", discountAmountCents: 1, retentionDiscountCents: 1 }) }),
-    ).toBeNull();
+  it("lists nothing for a single service", () => {
+    expect(packageEndsFor({ ...BASKET, services: ["managed-website"], adCreditCents: 0 })).toEqual([]);
   });
 
-  it("offers nothing on a plan whose first payment differs from its monthly price", () => {
-    expect(retentionOfferTerms({ ...open, plan: { ...PLAN, initialAmountCents: 300_000 } })).toBeNull();
-  });
-
-  it("offers nothing when a code already takes the most", () => {
-    const sub = subscription({ referralCodeId: "code-1", discountAmountCents: 900_000 });
-    expect(retentionOfferTerms({ ...open, subscription: sub })).toBeNull();
+  it("lists nothing once the business has given the package offer up", () => {
+    expect(packageEndsFor({ ...BASKET, forfeited: true, adCreditCents: 0 })).toEqual([]);
   });
 });
 

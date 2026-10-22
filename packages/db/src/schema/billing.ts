@@ -5,6 +5,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -52,10 +53,13 @@ export type PaymentStatus = (typeof paymentStatus.enumValues)[number];
  * - `amount_mismatch`: the provider took an amount or currency that is not the plan's first payment.
  * - `upgrade_not_applied`: it paid a move up to Premium whose quote no longer stood (the month had renewed, or the
  *   subscription was no longer live), so nothing changed and it is a payment to refund.
- * The last two are payments that did apply, where something after them went wrong:
+ * - `add_on_not_applied`: it paid the rest-of-month charge for an add-on whose quote no longer stood, likewise.
+ * The rest are payments that did apply, where something after them went wrong:
  * - `submission_failed`: the payment activated the subscription, but sending the customer's answers failed.
  * - `upgrade_provider_pending`: the payment moved the customer up to Premium, but the provider has not yet been told
  *   to bill Premium from the next renewal. Staff finish it from the client page.
+ * - `add_on_provider_pending`: the payment turned an add-on on, but the provider has not yet been told to bill it from
+ *   the next renewal. Staff retry it from the client page.
  */
 export const paymentAttentionReason = pgEnum("payment_attention_reason", [
   "checkout_replaced",
@@ -64,6 +68,8 @@ export const paymentAttentionReason = pgEnum("payment_attention_reason", [
   "submission_failed",
   "upgrade_not_applied",
   "upgrade_provider_pending",
+  "add_on_not_applied",
+  "add_on_provider_pending",
 ]);
 export type PaymentAttentionReason = (typeof paymentAttentionReason.enumValues)[number];
 
@@ -73,14 +79,15 @@ export const UNAPPLIED_PAYMENT_REASONS = [
   "already_paid",
   "amount_mismatch",
   "upgrade_not_applied",
+  "add_on_not_applied",
 ] as const satisfies readonly PaymentAttentionReason[];
 
 /**
- * What a plan includes (docs/superpowers/specs/2026-10-07-care-plan-design.md). `care` is the website only: the
- * website, its management, the chatbot, the server and hosting. `premium` is everything in Care plus the Brandbasket
- * listing, videos, appointments, better ranking and the social and Google profile management.
+ * The plan row a business subscribes under. Brandbasket has one, `managed`: the subscription's terms (currency, GST rate,
+ * allowances) at a price of 0. The services themselves, the website included, are the subscription's bundled_add_ons lines
+ * (docs/plans/16-platform-pricing-offers.md).
  */
-export const planTier = pgEnum("plan_tier", ["care", "premium"]);
+export const planTier = pgEnum("plan_tier", ["managed"]);
 export type PlanTier = (typeof planTier.enumValues)[number];
 
 /** One row per currency and tier. The price the customer sees and is charged comes from here, never from copy. */
@@ -93,8 +100,8 @@ export const plans = pgTable(
     code: text("code").notNull().unique(),
     name: text("name").notNull(),
     currency: billingCurrency("currency").notNull(),
-    /** Which of the two plans this price is for. Rows from before the Care plan existed are all Premium's. */
-    tier: planTier("tier").notNull().default("premium"),
+    /** Which plan this price is for: always `managed`. */
+    tier: planTier("tier").notNull().default("managed"),
     /** Paid up front, covering the first `initialTermMonths` months of subscription. */
     initialAmountCents: integer("initial_amount_cents").notNull(),
     initialTermMonths: integer("initial_term_months").notNull(),
@@ -175,7 +182,7 @@ export const subscriptions = pgTable(
     /** What the discount that carries over takes off the pending plan's net price. Zero with no pending plan. */
     pendingDiscountAmountCents: integer("pending_discount_amount_cents").notNull().default(0),
     /**
-     * What the add-ons taken at the first checkout cost every month before GST, after their lifetime offer, in the plan's
+     * What the services cost every month before GST, after any package discount, in the plan's
      * minor units (bundled_add_ons, summed): frozen when the checkout opened. The provider bills one amount a month, the
      * plan's price plus this, so every amount check adds it to the plan's price. Zero for a subscription with no add-ons.
      */
@@ -186,6 +193,11 @@ export const subscriptions = pgTable(
      * `bundled_add_on_net_cents`. Null when no removal is waiting.
      */
     pendingBundledAddOnNetCents: integer("pending_bundled_add_on_net_cents"),
+    /**
+     * Ad credit a month, in the plan's minor units, for a package bought together at the first checkout (adCreditCentsFor in
+     * @brandbasket/shared): frozen then and never grown. Never on an invoice. Zero once a service is dropped from the package.
+     */
+    adCreditCents: integer("ad_credit_cents").notNull().default(0),
     status: subscriptionStatus("status").notNull().default("incomplete"),
     /** When the first payment was confirmed. Null until then. */
     activatedAt: timestamp("activated_at", { withTimezone: true }),
@@ -214,8 +226,9 @@ export const subscriptions = pgTable(
     // discount, is a bug rather than a state to handle.
     check(
       "subscriptions_bundled_check",
-      sql`${table.bundledAddOnNetCents} >= 0 and (${table.pendingBundledAddOnNetCents} is null or (${table.pendingBundledAddOnNetCents} >= 0 and ${table.pendingBundledAddOnNetCents} < ${table.bundledAddOnNetCents}))`,
+      sql`${table.bundledAddOnNetCents} >= 0 and (${table.pendingBundledAddOnNetCents} is null or ${table.pendingBundledAddOnNetCents} >= 0)`,
     ),
+    check("subscriptions_ad_credit_check", sql`${table.adCreditCents} >= 0`),
     check(
       "subscriptions_pending_check",
       sql`${table.pendingDiscountAmountCents} >= 0 and (${table.pendingDiscountAmountCents} = 0 or (${table.pendingPlanId} is not null and ${table.referralCodeId} is not null))`,
@@ -285,6 +298,31 @@ export const providerBundlePlans = pgTable(
   ],
 );
 
+/**
+ * What a plan payment was billed as, kept beside the payment so an invoice issued after the fact (staff issue one when the
+ * payment path could not) is exactly the one the payment path would have issued, whatever has changed since: a service
+ * dropped, the package offer forfeited, a code's discount ended. The services are the lines of the subscription as that
+ * payment billed them; the plan row's own amounts are 0 for a services plan and kept so an older priced plan still explains
+ * its payments. Null for payments invoiced from another record (a charge, an add-on subscription) and for payments
+ * recorded before this was kept.
+ */
+export interface PaymentInvoiceBasis {
+  /** The plan row's price before discount: 0 for a services plan. */
+  readonly netAmountCents: number;
+  /** Everything taken off this payment: the referral code's share plus any stay offer. */
+  readonly discountAmountCents: number;
+  /** The stay offer's part of `discountAmountCents`, or 0. */
+  readonly retentionDiscountCents: number;
+  /** The services billed in the charge, in the order they were added. */
+  readonly lines: readonly {
+    readonly addOn: string;
+    readonly listAmountCents: number;
+    /** The package offer taken off the list price; 0 for a service at list. */
+    readonly offerDiscountAmountCents: number;
+    readonly taxRateBasisPoints: number;
+  }[];
+}
+
 export const payments = pgTable(
   "payments",
   {
@@ -327,6 +365,8 @@ export const payments = pgTable(
     cardType: text("card_type"),
     cardIssuer: text("card_issuer"),
     upiVpa: text("upi_vpa"),
+    /** What a plan payment was billed as (PaymentInvoiceBasis); see there. */
+    invoiceBasis: jsonb("invoice_basis").$type<PaymentInvoiceBasis>(),
     createdAt: createdAt(),
   },
   (table) => [
@@ -379,6 +419,7 @@ export const chargeKind = pgEnum("charge_kind", [
   "directory_ad",
   "plan_upgrade",
   "press_release",
+  "add_on",
 ]);
 export type ChargeKind = (typeof chargeKind.enumValues)[number];
 
@@ -473,7 +514,7 @@ export const charges = pgTable(
       sql`case ${table.status}
         when 'open' then ${table.paymentId} is null and ${table.paidAt} is null and ${table.waivedAt} is null
         when 'paid' then ${table.paymentId} is not null and ${table.paidAt} is not null and ${table.waivedAt} is null
-        else ${table.paymentId} is null and ${table.paidAt} is null and ${table.waivedAt} is not null and (${table.waivedByStaffId} is not null or ${table.kind} in ('directory_ad', 'plan_upgrade'))
+        else ${table.paymentId} is null and ${table.paidAt} is null and ${table.waivedAt} is not null and (${table.waivedByStaffId} is not null or ${table.kind} in ('directory_ad', 'plan_upgrade', 'add_on'))
       end`,
     ),
   ],

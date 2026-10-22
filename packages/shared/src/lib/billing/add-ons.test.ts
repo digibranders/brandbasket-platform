@@ -1,48 +1,64 @@
 import { describe, expect, it } from "vitest";
 import { ADD_ONS, addOnById, addOnPrice, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS } from "./add-ons";
 
-describe("add-on catalogue", () => {
-  it("sells three monthly services, in the order the website lists them", () => {
+describe("services catalogue", () => {
+  it("sells Managed Website, Social Media and Ads and Local SEO + AEO, monthly, in the order the website lists them", () => {
     expect(ADD_ONS.map((addOn) => [addOn.id, addOn.title, addOn.billing])).toEqual([
-      ["social-media", "Social media", "monthly"],
-      ["lead-generation", "Outreach and lead generation", "monthly"],
-      ["advertising", "Paid advertising", "monthly"],
+      ["managed-website", "Managed Website", "monthly"],
+      ["digital-growth", "Social Media and Ads", "monthly"],
+      ["local-seo-aeo", "Local SEO + AEO", "monthly"],
     ]);
-    expect(MONTHLY_ADD_ON_IDS).toEqual(["social-media", "lead-generation", "advertising"]);
-    expect(isMonthlyAddOnId("press-release")).toBe(false);
+    expect(MONTHLY_ADD_ON_IDS).toEqual(["managed-website", "digital-growth", "local-seo-aeo"]);
+    expect(isMonthlyAddOnId("managed-website")).toBe(true);
+    expect(isMonthlyAddOnId("social-media")).toBe(false);
+    expect(isMonthlyAddOnId("local-seo")).toBe(false);
     expect(isMonthlyAddOnId("constructor")).toBe(false);
   });
 
-  it("prices at 1,999, 4,999 and 5,999 rupees a month plus 18% GST", () => {
-    expect(addOnById("social-media").prices.INR).toBe(199_900);
-    expect(addOnById("lead-generation").prices.INR).toBe(499_900);
-    expect(addOnById("advertising").prices.INR).toBe(599_900);
-    expect(addOnPrice(addOnById("social-media"), "INR", false)).toEqual({
-      currency: "INR", listCents: 199_900, discountCents: 0, offerCents: 0, netCents: 199_900, taxRateBasisPoints: 1_800, chargedCents: 235_882,
-    });
-    expect(addOnPrice(addOnById("lead-generation"), "INR", false).chargedCents).toBe(589_882);
-    expect(addOnPrice(addOnById("advertising"), "INR", false).chargedCents).toBe(707_882);
+  it("lists in minor units: 2,999, 9,999 and 24,999 rupees, 75, 75 and 350 dollars", () => {
+    expect(ADD_ONS.map((addOn) => [addOn.id, addOn.prices.INR, addOn.prices.USD])).toEqual([
+      ["managed-website", 299_900, 7_500],
+      ["digital-growth", 999_900, 7_500],
+      ["local-seo-aeo", 2_499_900, 35_000],
+    ]);
   });
 
-  it("prices at 100, 125 and 125 dollars a month with no tax", () => {
-    expect(addOnPrice(addOnById("social-media"), "USD", false)).toEqual({
-      currency: "USD", listCents: 10_000, discountCents: 0, offerCents: 0, netCents: 10_000, taxRateBasisPoints: 0, chargedCents: 10_000,
-    });
-    expect(addOnPrice(addOnById("lead-generation"), "USD", false).chargedCents).toBe(12_500);
-    expect(addOnPrice(addOnById("advertising"), "USD", false).chargedCents).toBe(12_500);
-    expect(addOnPrice(addOnById("social-media"), "USD", false, true)).toMatchObject({ offerCents: 500, netCents: 9_500, chargedCents: 9_500 });
+  it("says what Social Media and Ads does: posts planned with the client, review replies and Meta ads, with no fixed post counts", () => {
+    const { line } = addOnById("digital-growth");
+    expect(line).toContain("Instagram, Facebook and Google profile posts planned with you each month");
+    expect(line).toContain("review replies");
+    expect(line).toContain("Meta ads managed for up to ₹10,000 a month of your budget");
+    expect(line).not.toMatch(/\d+ (designed )?posts/);
   });
 
-  it("takes 10% off for a Premium member, before tax", () => {
-    expect(addOnPrice(addOnById("social-media"), "INR", true)).toMatchObject({ discountCents: 19_990, offerCents: 0, netCents: 179_910 });
+  it("charges the website at 3,538.82 rupees a month with 18% GST", () => {
+    expect(addOnPrice(addOnById("managed-website"), "INR")).toEqual({
+      currency: "INR", listCents: 299_900, discountCents: 0, offerCents: 0, netCents: 299_900, taxRateBasisPoints: 1_800, chargedCents: 353_882,
+    });
+    expect(addOnPrice(addOnById("local-seo-aeo"), "INR").chargedCents).toBe(2_949_882);
   });
 
-  it("takes the 5% lifetime offer off the list price, before tax: 99.95, 249.95 and 299.95 rupees", () => {
-    expect(addOnPrice(addOnById("social-media"), "INR", false, true)).toEqual({
-      currency: "INR", listCents: 199_900, discountCents: 9_995, offerCents: 9_995, netCents: 189_905, taxRateBasisPoints: 1_800, chargedCents: 224_088,
+  it("prices in dollars with no tax", () => {
+    expect(addOnPrice(addOnById("digital-growth"), "USD")).toMatchObject({ listCents: 7_500, taxRateBasisPoints: 0, chargedCents: 7_500 });
+    expect(addOnPrice(addOnById("local-seo-aeo"), "USD")).toMatchObject({ listCents: 35_000, taxRateBasisPoints: 0, chargedCents: 35_000 });
+  });
+
+  it("takes the package discount it is given off the list price, before tax", () => {
+    expect(addOnPrice(addOnById("digital-growth"), "INR", 299_970)).toEqual({
+      currency: "INR", listCents: 999_900, discountCents: 299_970, offerCents: 299_970, netCents: 699_930, taxRateBasisPoints: 1_800, chargedCents: 825_917,
     });
-    expect(addOnPrice(addOnById("lead-generation"), "INR", false, true)).toMatchObject({ offerCents: 24_995, netCents: 474_905 });
-    expect(addOnPrice(addOnById("advertising"), "INR", false, true)).toMatchObject({ offerCents: 29_995, netCents: 569_905 });
-    expect(addOnPrice(addOnById("advertising"), "INR", true, true)).toMatchObject({ discountCents: 89_985, offerCents: 29_995, netCents: 509_915 });
+  });
+
+  it("refuses a discount that is not whole minor units between nothing and the list price", () => {
+    const website = addOnById("managed-website");
+    expect(() => addOnPrice(website, "INR", -1)).toThrow(RangeError);
+    expect(() => addOnPrice(website, "INR", 299_901)).toThrow(RangeError);
+    expect(() => addOnPrice(website, "INR", 0.5)).toThrow(RangeError);
+  });
+
+  it("says that ad spend is paid to Meta on top of Social Media and Ads, and nothing extra for the others", () => {
+    expect(addOnById("digital-growth").extra).toBe("+ your ad spend");
+    expect(addOnById("managed-website").extra).toBeUndefined();
+    expect(addOnById("local-seo-aeo").extra).toBeUndefined();
   });
 });

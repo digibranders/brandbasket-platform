@@ -22,7 +22,7 @@ export const metadata: Metadata = { title: "Redirecting to payment" };
  * group has no shared layout of its own — so, like that page, it checks access itself and builds its own full-page
  * shell with AuthScreen rather than assuming one exists above it.
  *
- * Open to a free listing account too: it pays for the Care plan or the Premium membership here, before it has a
+ * Open to the account a sign-up opened too: it pays for Managed Website here, before it has a
  * project. With nothing to pay it goes back to that plan's page, and its callback is marked with the plan so
  * Razorpay's return lands there as well.
  */

@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
     "cms:migrate": "PAYLOAD_CONFIG_PATH=../../packages/cms/payload.config.ts payload migrate",
     "cms:migrate:status": "PAYLOAD_CONFIG_PATH=../../packages/cms/payload.config.ts payload migrate:status"
   },

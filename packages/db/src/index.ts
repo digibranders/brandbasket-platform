@@ -13,6 +13,7 @@ export {
   findBillingState,
   hasEverPaid,
   findFirstPayment,
+  findLatestActivatedSubscriptionForBusiness,
   findLatestSubscriptionForBusiness,
   findPaymentByProviderId,
   findPlanById,
@@ -20,6 +21,7 @@ export {
   planTierForSignupChoice,
   findSubscriptionByProviderId,
   flagPaymentForAttention,
+  flagSubscriptionForAttention,
   insertSubscription,
   InvalidAmountError,
   InvalidManualPaymentError,
@@ -719,7 +721,6 @@ export {
   listAddOnSubscriptionsForBusiness,
   listAddOnSubscriptionsForStaff,
   listAddOnsToContact,
-  findLifetimeOfferStanding,
   listPressReleasesForBusiness,
   lockAddOnSubscription,
   markAddOnCancelled,
@@ -734,7 +735,6 @@ export {
   type AddOnProviderPlanKey,
   type AddOnSubscriptionForStaff,
   type AddOnToContact,
-  type LifetimeOfferStanding,
   type NewAddOnSubscription,
   type RecordedAddOnPayment,
 } from "./queries/add-ons";
@@ -742,9 +742,15 @@ export { clearSiteSetting, findSiteSetting, findSiteSettingWithEditor, saveSiteS
 export { findSetupCallBooking, recordSetupCallBooking } from "./queries/setup-calls";
 export {
   activateBundledAddOns,
-  bundledAddOnIds,
-  bundledNetAfterRemoving,
-  completeBundledAddOnRemovals,
+  BundledAddOnNotPossibleError,
+  bundledAddOnStillApplies,
+  completeBundledAddOnChanges,
+  endPackageOffer,
+  findBundledAddOnByCharge,
+  keepBundledAddOn,
+  markBundledAddOnsScheduled,
+  nextBundledNetCents,
+  openBundledAddOn,
   recordBundledAddOnRemoval,
   bundledNetCents,
   findBundledAddOnsForSubscription,
@@ -753,10 +759,20 @@ export {
   insertBundledAddOns,
   listBundledAddOnsForBusiness,
   markBundledAddOnContacted,
+  markPackageOfferForfeited,
+  isPackageOfferForfeited,
+  findPackageOfferForfeitedAt,
+  listAdCreditDue,
   removeBundledAddOnsOf,
+  renewalBundledLines,
   saveProviderBundlePlan,
+  setPendingOfferDiscounts,
+  type AdCreditDue,
   type BundlePlanKey,
+  type NewAddedAddOn,
   type NewBundledAddOn,
+  type OpenedBundledAddOn,
+  type PendingOfferDiscount,
 } from "./queries/bundled-add-ons";
 export {
   ChargeNotFoundError,
@@ -785,6 +801,7 @@ export {
   findBusinessOwnerPhone,
   findInvoiceFallbackRecipient,
   findPaymentForInvoice,
+  findPaymentInvoiceBasis,
   findReferralCodeForInvoice,
   findTaxInvoiceById,
   findTaxInvoiceByPaymentId,
@@ -798,6 +815,7 @@ export {
   listTaxInvoicesIssuedBetween,
   lockPaymentForInvoice,
   saveBillingProfile,
+  savePaymentInvoiceBasis,
   type BillingProfileInput,
   type InvoiceFallbackRecipient,
   type MissingTaxInvoice,
@@ -824,18 +842,13 @@ export {
   type PlanUpgrade,
 } from "./queries/plan-upgrades";
 export {
-  attachProviderPlan,
   InvalidPriceChangeError,
-  largestLiveReferralDiscount,
   listActivePlans,
   listPriceChanges,
   MAX_PRICE_CENTS,
   NoActivePlanError,
-  planVersionCode,
-  replaceMonthlyPrice,
   updateExtraPrices,
   type ExtraPrices,
-  type MonthlyPriceChange,
   type PriceChange,
 } from "./queries/pricing";
 export {
@@ -1120,7 +1133,6 @@ export {
   type ErasureSkipReason,
 } from "./queries/account-erasure";
 export {
-  applyRetentionDiscount,
   findOpenClosureForUser,
   insertExitFeedback,
   listExitFeedback,
@@ -1133,7 +1145,6 @@ export {
   type ExitFeedbackSummary,
   type NewAccountClosure,
   type NewExitFeedback,
-  type RetentionDiscount,
 } from "./queries/account-closures";
 export {
   claimAccountOtpAttempt,

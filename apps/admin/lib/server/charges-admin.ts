@@ -14,9 +14,10 @@ import {
 import { chargeAmountCents, chargePricing } from "@brandbasket/shared/lib/billing/charges";
 import type { ChargeRequest } from "@brandbasket/shared/lib/billing/charge-form";
 import type { ManualPaymentDetails } from "@brandbasket/shared/lib/billing/manual-payment-form";
+import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-change";
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
+import { basketDeps } from "./basket-deps";
 import { getStaffDb } from "./db";
-import { finishUpgradeForChargeAfterManualPayment } from "./plan-upgrade-admin";
 
 /** How many charges one client page lists. */
 const CHARGES_SHOWN = 50;
@@ -98,9 +99,8 @@ export async function markClientChargePaid(
     });
     return recorded.outcome;
   });
-  // A bank transfer that pays for a move up: the client has Premium (the payment's transaction set it); the provider is
-  // told now, after that has committed. Does nothing for any other charge.
-  if (outcome === "paid") await finishUpgradeForChargeAfterManualPayment(input.chargeId, now);
+  // A paid add-on is on; the provider is told to bill it from the next renewal, with the payment's transaction committed.
+  if (outcome === "paid") await finishAddOnAfterPayment(basketDeps(), { businessId: input.businessId, chargeId: input.chargeId, now });
   return outcome;
 }
 

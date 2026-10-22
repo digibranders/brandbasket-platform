@@ -24,13 +24,12 @@ const NOTICE_AFTER: Readonly<Record<ChargeConfirmation, ChargeNotice>> = {
   "not-open": "duplicate",
   "amount-mismatch": "review",
   "upgrade-not-applied": "stale",
+  "add-on-not-applied": "stale",
   invalid: "failed",
 };
 
 /** Where Cancel goes for the kinds of charge that have a page of their own; any other goes to Billing. */
 const CANCEL_HREF: Readonly<Partial<Record<string, string>>> = {
-  plan_upgrade: "/upgrade",
-  press_release: "/add-ons",
 };
 
 interface ChargeConfirmPageProps {

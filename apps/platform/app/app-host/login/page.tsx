@@ -15,6 +15,7 @@ import { requestBrand } from "@/lib/server/request-brand";
 import { readEntryRequest } from "@/lib/account-entry";
 import { RESTORE_ACCOUNT_PATH } from "@/lib/account-settings-form";
 import { FORGOT_PASSWORD_PATH } from "@/lib/account-recovery-form";
+import { websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import { membershipPathFor, membershipPriceLine, membershipTierForChoice } from "@/lib/membership";
 import { AFFILIATE_PATH } from "@brandbasket/shared/lib/affiliate-links";
 import { accountLabel } from "@/lib/server/account-label";
@@ -37,12 +38,11 @@ interface AppLoginPageProps {
 }
 
 /**
- * The one entry page (docs/superpowers/specs/2026-09-30-single-entry-premium-design.md). Everyone signs in here, and
- * everyone creates their account here, choosing the Care plan or the Premium membership
- * (docs/superpowers/specs/2026-10-07-care-plan-design.md).
+ * The one entry page. Everyone signs in here, and everyone creates their account here, choosing Managed Website.
  *
- * The website's plan buttons link to it with `plan=care` or `plan=premium`. Someone already signed in goes to their
- * dashboard, or to the plan's page when that is what they came for.
+ * The website's buttons link to it with the services its basket chose (`plan=website,growth`); older links send
+ * `plan=managed` and `addons=` for the add-ons on top of the website. Someone already
+ * signed in goes to their dashboard, or to the plan's page when that is what they came for.
  */
 export default async function AppLoginPage({ searchParams }: AppLoginPageProps): Promise<ReactElement> {
   const params = await searchParams;
@@ -121,16 +121,11 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
   }
 
   // Both currencies: the form shows the one for the country the owner picks.
-  const [indiaCare, indiaPremium, usCare, usPremium] = await Promise.all([
-    getMembershipPlan("care", "INR"),
-    getMembershipPlan("premium", "INR"),
-    getMembershipPlan("care", "USD"),
-    getMembershipPlan("premium", "USD"),
-  ]);
-  const priceLine = (plan: Plan | null): string | null => (plan === null ? null : membershipPriceLine(plan));
+  const [india, us] = await Promise.all([getMembershipPlan("managed", "INR"), getMembershipPlan("managed", "USD")]);
+  const priceLine = (plan: Plan | null): string | null => (plan === null ? null : membershipPriceLine(plan, websiteAloneNetCents(plan.currency)));
   const prices: PlanPricesByCurrency = {
-    INR: { care: priceLine(indiaCare), premium: priceLine(indiaPremium) },
-    USD: { care: priceLine(usCare), premium: priceLine(usPremium) },
+    INR: { managed: priceLine(india) },
+    USD: { managed: priceLine(us) },
   };
   // With the local bypass on (EMAIL_CODE_BYPASS) any six digits are accepted, so the form must not promise a real check.
   const confirmsCodes = !emailCodeBypassed();
@@ -149,6 +144,7 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
         <JoinForm
           action={joinForListing}
           initialChoice={entry.choice}
+          services={entry.services}
           preselected={entry.preselected}
           choices={brand.joinChoices}
           legalLinks={legalLinks}

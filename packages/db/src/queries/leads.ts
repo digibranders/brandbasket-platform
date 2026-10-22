@@ -92,10 +92,10 @@ export interface SignupLead {
   /** The business their account opened. */
   readonly businessId: string;
   /** The plan they chose on the sign-up form, for the note staff read. */
-  readonly plan: "care" | "premium" | null;
+  readonly plan: "managed" | null;
 }
 
-const SIGNUP_PLAN_LABEL = { care: "Care", premium: "Premium" } as const;
+const SIGNUP_PLAN_LABEL = { managed: "Managed Website" } as const;
 
 /**
  * Puts a customer who opened an account on their own on the leads list, so staff can follow up one who never pays.

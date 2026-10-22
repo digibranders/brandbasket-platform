@@ -1,7 +1,7 @@
 import type { PlaceOfSupplyBasis, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@brandbasket/db";
 import { BillingRangeError } from "./billing-range-error";
 import { gstStateCodeOf } from "./gst-states";
-import { splitGst, supplyTypeOf, type SupplyType } from "./gst";
+import { splitGstAcross, supplyTypeOf, type SupplyType } from "./gst";
 import { normaliseGstin, stateCodeOfGstin } from "./gstin";
 
 /** SAC for the managed website subscription and its extras. The owner confirmed 998361. */
@@ -65,34 +65,21 @@ export function placeOfSupply(supplierStateCode: string, recipient: RecipientInp
   return { stateCode: supplierStateCode, basis: "supplier_location" };
 }
 
-function lineRecord(line: InvoiceLineInput, supplyType: SupplyType): TaxInvoiceLineRecord {
+/** A line's gross and taxable value, refusing a quantity that is not whole or a discount that leaves nothing to invoice. */
+function priced(line: InvoiceLineInput): { readonly line: InvoiceLineInput; readonly grossAmountCents: number; readonly taxableCents: number } {
   if (!Number.isSafeInteger(line.quantity) || line.quantity < 1) throw new BillingRangeError(`A quantity must be a whole number from 1, received ${line.quantity}`);
   const grossAmountCents = line.unitAmountCents * line.quantity;
   const taxableCents = grossAmountCents - line.discountAmountCents;
   if (line.discountAmountCents < 0 || taxableCents <= 0) throw new BillingRangeError(`A discount of ${line.discountAmountCents} leaves nothing to invoice on ${grossAmountCents}`);
-  const gst = splitGst(taxableCents, line.taxRateBasisPoints, supplyType);
-  return {
-    description: line.description,
-    detail: line.detail,
-    note: line.note,
-    sac: line.sac,
-    quantity: line.quantity,
-    unitAmountCents: line.unitAmountCents,
-    grossAmountCents,
-    discountAmountCents: line.discountAmountCents,
-    taxableCents,
-    taxRateBasisPoints: line.taxRateBasisPoints,
-    cgstCents: gst.cgstCents,
-    sgstCents: gst.sgstCents,
-    igstCents: gst.igstCents,
-    taxCents: gst.taxCents,
-  };
+  return { line, grossAmountCents, taxableCents };
 }
 
 /**
  * Everything printed on an invoice except the parties' fixed details and the number, from what was sold and what was
- * charged. The charged amount is the authority: the lines must come within one paisa per line of it (D4), and that
- * paisa prints as a round-off. Anything further off means the lines do not describe the payment, and nothing is issued.
+ * charged. The charged amount is the authority: its GST is one rounding on the invoice's total, shared over the lines
+ * (splitGstAcross), so across states the lines add up to it exactly. Within a state CGST and SGST are equal, so an odd
+ * paisa of GST prints as a round-off. The lines must come within one paisa per line of the charge (D4); anything further
+ * off means the lines do not describe the payment, and nothing is issued.
  */
 export function buildTaxInvoice(input: {
   readonly supplierStateCode: string;
@@ -111,7 +98,29 @@ export function buildTaxInvoice(input: {
   const gstin = input.recipient.gstin === null ? null : normaliseGstin(input.recipient.gstin);
   const place = placeOfSupply(input.supplierStateCode, { ...input.recipient, gstin });
   const supplyType = supplyTypeOf(input.supplierStateCode, place.stateCode);
-  const lines = input.lines.map((line) => lineRecord(line, supplyType));
+  // The tax is worked out on the invoice's total and shared back over the lines, so the lines add up to the GST the customer
+  // was charged to the paisa, whatever the lines' own fractions.
+  const lines = splitGstAcross(
+    input.lines.map(priced).map((value) => ({ ...value, rateBasisPoints: value.line.taxRateBasisPoints })),
+    supplyType,
+  ).map(
+    ({ line, grossAmountCents, taxableCents, cgstCents, sgstCents, igstCents, taxCents }): TaxInvoiceLineRecord => ({
+      description: line.description,
+      detail: line.detail,
+      note: line.note,
+      sac: line.sac,
+      quantity: line.quantity,
+      unitAmountCents: line.unitAmountCents,
+      grossAmountCents,
+      discountAmountCents: line.discountAmountCents,
+      taxableCents,
+      taxRateBasisPoints: line.taxRateBasisPoints,
+      cgstCents,
+      sgstCents,
+      igstCents,
+      taxCents,
+    }),
+  );
   const sum = (pick: (line: TaxInvoiceLineRecord) => number) => lines.reduce((total, line) => total + pick(line), 0);
   const taxableCents = sum((line) => line.taxableCents);
   const cgstCents = sum((line) => line.cgstCents);

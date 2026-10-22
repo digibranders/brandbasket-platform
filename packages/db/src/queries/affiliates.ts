@@ -370,6 +370,8 @@ export interface AffiliateAccrualContext {
   readonly planCurrency: BillingCurrency;
   readonly initialAmountCents: number;
   readonly recurringAmountCents: number;
+  /** The subscription's service lines a month, net of any package offer: what the member pays for, the plan costing 0. */
+  readonly bundledAddOnNetCents: number;
   /** Frozen on the subscription when its checkout opened. */
   readonly discountAmountCents: number;
 }
@@ -402,6 +404,7 @@ export async function findAffiliateAccrualContext(
       planCurrency: plans.currency,
       initialAmountCents: plans.initialAmountCents,
       recurringAmountCents: plans.recurringAmountCents,
+      bundledAddOnNetCents: subscriptions.bundledAddOnNetCents,
       discountAmountCents: subscriptions.discountAmountCents,
     })
     .from(subscriptions)

@@ -23,10 +23,11 @@ export const JOIN_NAME_MAX_LENGTH = 60;
 export const JOIN_BUSINESS_NAME_MAX_LENGTH = 200;
 
 /**
- * What the owner wants from the account, in the database's words (`signup_choice`): only the free listing, the Care
- * plan, or the Premium membership. The database also holds `own_website`, from the old question; it is never offered.
+ * What the owner wants from the account, in the database's words (`signup_choice`): Managed Website, or the free listing
+ * a brand with the directory sells (Brandbasket does not). The database also holds `own_website`, from an old question;
+ * it is never offered.
  */
-export const JOIN_CHOICES = ["listing_only", "care", "premium"] as const;
+export const JOIN_CHOICES = ["listing_only", "managed"] as const;
 export type JoinChoice = (typeof JOIN_CHOICES)[number];
 const CHOICE_MESSAGE = "Choose a plan to continue.";
 

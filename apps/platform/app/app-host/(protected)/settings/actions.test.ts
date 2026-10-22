@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as actions from "./actions";
 import { changePasswordAction, revokeOtherSessionsAction } from "./actions";
 const mocks = vi.hoisted(() => ({ change: vi.fn(), revoke: vi.fn(), access: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/lib/server/account-security", () => ({ changePasswordFor: mocks.change, revokeOtherSessionsFor: mocks.revoke }));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: mocks.access }));
-vi.mock("@/lib/server/account-exit", () => ({ claimRetentionOfferFor: vi.fn(), closeAccountFor: vi.fn(), findRetentionOfferView: vi.fn() }));
+vi.mock("@/lib/server/account-exit", () => ({ closeAccountFor: vi.fn() }));
 vi.mock("@/lib/server/auth", () => ({ getAuth: vi.fn() }));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
 beforeEach(() => { vi.resetAllMocks(); mocks.access.mockResolvedValue({ user: { id: "session-user" } }); });
@@ -29,5 +30,12 @@ describe("password settings actions", () => {
   it.each(["limited", "failed"])("keeps retry errors truthful for %s revocation", async (outcome) => {
     mocks.revoke.mockResolvedValue(outcome);
     expect(await revokeOtherSessionsAction()).toMatchObject({ status: "error", message: expect.any(String) });
+  });
+});
+describe("the delete account actions", () => {
+  it("has no stay offer to look up or claim: leaving goes from the reason straight to the confirmation", () => {
+    expect(actions).not.toHaveProperty("lookupRetentionOfferAction");
+    expect(actions).not.toHaveProperty("claimRetentionOfferAction");
+    expect(actions).toHaveProperty("deleteAccountAction");
   });
 });

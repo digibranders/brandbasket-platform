@@ -38,7 +38,7 @@ describe("receiptRows", () => {
     expect(receiptRows([receipt()])).toEqual([
       {
         id: "0192f3c4-0000-7000-8000-000000000001",
-        title: "Receipt #007 – Sep 2026",
+        title: "Receipt #007, Sep 2026",
         description: "Monthly payment",
         paidAtIso: "2026-09-12T10:00:00.000Z",
         status: "Paid",
@@ -93,9 +93,16 @@ describe("receiptRows", () => {
 
   it("names an add-on payment by the add-on in both columns", () => {
     const [row] = receiptRows([
+      receipt({ kind: "add_on", subscriptionId: null, planName: null, addOnId: "digital-growth", amountCents: 1_062_000 }),
+    ]);
+    expect(row).toMatchObject({ description: "Social Media and Ads, monthly", plan: "Social Media and Ads", amount: "₹10,620" });
+  });
+
+  it("calls a payment for an add-on no longer sold just an add-on", () => {
+    const [row] = receiptRows([
       receipt({ kind: "add_on", subscriptionId: null, planName: null, addOnId: "social-media", amountCents: 1_062_000 }),
     ]);
-    expect(row).toMatchObject({ description: "Social media, monthly", plan: "Social media", amount: "₹10,620" });
+    expect(row).toMatchObject({ description: "Add-on", plan: "Add-on", amount: "₹10,620" });
   });
 
   it("falls back to the general add-on wording when the add-on is not in the catalogue", () => {

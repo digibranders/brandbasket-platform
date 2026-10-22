@@ -2,15 +2,21 @@ import { createFakeBillingProvider, type BillingProvider } from "@brandbasket/bi
 import {
   findActivePlan,
   findBillingState,
+  findBundledAddOnsForSubscription,
   findBusinessReferralCode,
+  findLatestActivatedSubscriptionForBusiness,
+  findLatestSubscriptionForBusiness,
   findRedeemableReferralCode,
+  isPackageOfferForfeited,
   lockBusinessForBilling,
+  markPackageOfferForfeited,
   openCheckoutSubscription,
   openMembershipForListingBusiness,
   findAffiliateAccrualContext,
   recordPaymentAndActivate,
   resolvePaymentAttention,
   type BillingState,
+  type BundledAddOn,
   type ReferralCode,
   type Database,
   type Payment,
@@ -45,8 +51,12 @@ vi.mock("@brandbasket/db", () => {
     findAffiliateAccrualContext: vi.fn(),
     findBillingState: vi.fn(),
     findBusinessReferralCode: vi.fn(),
+    findLatestActivatedSubscriptionForBusiness: vi.fn(),
+    findLatestSubscriptionForBusiness: vi.fn(),
     findRedeemableReferralCode: vi.fn(),
+    isPackageOfferForfeited: vi.fn(),
     lockBusinessForBilling: vi.fn(),
+    markPackageOfferForfeited: vi.fn(),
     openCheckoutSubscription: vi.fn(),
     openMembershipForListingBusiness: vi.fn(),
     recordPaymentAndActivate: vi.fn(),
@@ -75,6 +85,11 @@ const INR = {
   recurringAmountCents: 350000,
 } as Plan;
 
+/** The services plan of migration 0184: the subscription's terms at a price of 0, every service a line. */
+const SERVICES_USD = { ...USD, initialAmountCents: 0, recurringAmountCents: 0 } as Plan;
+/** The website line a manual payment buys: $75 a month, no tax of ours. */
+const WEBSITE_USD_LINE = { addOn: "managed-website", listAmountCents: 7_500, offerDiscountAmountCents: 0, netAmountCents: 7_500, taxRateBasisPoints: 0 };
+
 let outcome: "committed" | "rolled back" | null;
 let events: string[];
 let provider: BillingProvider;
@@ -89,7 +104,7 @@ const MANUAL: ManualFirstPayment = {
 };
 
 function state(subscription: Subscription | null, history: Partial<BillingState> = {}): BillingState {
-  return { currency: "USD", tier: "premium", upgradePaid: false, subscription, hasEverPaid: false, paymentUnderReview: false, plan: USD, ...history };
+  return { currency: "USD", tier: "managed", upgradePaid: false, subscription, hasEverPaid: false, paymentUnderReview: false, plan: USD, ...history };
 }
 
 beforeEach(() => {
@@ -129,6 +144,9 @@ beforeEach(() => {
   // No referral code applied, unless a test says otherwise.
   vi.mocked(findBusinessReferralCode).mockResolvedValue(null);
   vi.mocked(findRedeemableReferralCode).mockResolvedValue(null);
+  // No lapsed subscription to read a basket from, and the package offer still open, unless a test says otherwise.
+  vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue(null);
+  vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
   vi.mocked(openCheckoutSubscription).mockImplementation(
     async (_tx, input) => ({ id: "sub-manual", ...input }) as unknown as Subscription,
   );
@@ -190,7 +208,14 @@ describe("activateFirstPayment", () => {
 });
 
 describe("recordManualFirstPayment", () => {
-  it("opens a manual subscription and activates it with its audit trail", async () => {
+  beforeEach(() => {
+    vi.mocked(findActivePlan).mockResolvedValue(SERVICES_USD);
+    vi.mocked(findBillingState).mockResolvedValue(state(null, { plan: SERVICES_USD }));
+    // The website line the manual subscription was opened with, waiting for this payment.
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([{ ...WEBSITE_USD_LINE, status: "pending" } as BundledAddOn]);
+  });
+
+  it("opens a manual subscription for the website and activates it with its audit trail", async () => {
     await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
 
     expect(lockBusinessForBilling).toHaveBeenCalledWith(tx, BUSINESS_ID);
@@ -201,6 +226,7 @@ describe("recordManualFirstPayment", () => {
       providerSubscriptionId: expect.stringMatching(/^manual_sub_[0-9a-f-]{36}$/),
       referralCodeId: null,
       discountAmountCents: 0,
+      bundledAddOns: [WEBSITE_USD_LINE],
       replacing: null,
       now: NOW,
     });
@@ -242,6 +268,41 @@ describe("recordManualFirstPayment", () => {
       expect(events).toEqual(["commit", "provider:cancel"]);
     },
   );
+
+  describe("an unpaid checkout that holds more than the website", () => {
+    const open = {
+      id: "sub-open",
+      planId: USD.id,
+      provider: "fake",
+      providerSubscriptionId: `fake_sub_${"c".repeat(24)}`,
+      status: "incomplete",
+      adCreditCents: 0,
+      createdAt: new Date(NOW.getTime() - 60_000),
+    } as Subscription;
+    const SOCIAL_LINE = { addOn: "digital-growth", listAmountCents: 7_500, offerDiscountAmountCents: 1_500, netAmountCents: 6_000, taxRateBasisPoints: 0 };
+
+    it.each([
+      ["a second service", [{ ...WEBSITE_USD_LINE, status: "pending" }, { ...SOCIAL_LINE, status: "pending" }], 0],
+      ["a service other than the website", [{ ...SOCIAL_LINE, status: "pending" }], 0],
+      ["ad credit on the website alone", [{ ...WEBSITE_USD_LINE, status: "pending" }], 2_500],
+    ])("is not replaced when it holds %s: nothing is recorded, opened or cancelled", async (_label, lines, adCreditCents) => {
+      vi.mocked(findBillingState).mockResolvedValue(state({ ...open, adCreditCents } as Subscription));
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines as BundledAddOn[]);
+
+      await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "package-open" });
+
+      expect(openCheckoutSubscription).not.toHaveBeenCalled();
+      expect(recordPaymentAndActivate).not.toHaveBeenCalled();
+      expect(cancelled).not.toHaveBeenCalled();
+    });
+
+    it("is replaced as before when it holds the website alone", async () => {
+      vi.mocked(findBillingState).mockResolvedValue(state(open));
+
+      await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(tx, expect.objectContaining({ replacing: "sub-open", bundledAddOns: [WEBSITE_USD_LINE] }));
+    });
+  });
 
   it("keeps the recorded payment and logs when the provider will not cancel the replaced checkout", async () => {
     const open = {
@@ -296,7 +357,7 @@ describe("recordManualFirstPayment", () => {
     expect(recordPaymentAndActivate).not.toHaveBeenCalled();
   });
 
-  it("reactivates a lapsed business: ends its old plan and records a month at today's monthly price", async () => {
+  it("reactivates a lapsed business: ends its old plan and records a month of the website it lapsed with", async () => {
     const lapsed = {
       id: "sub-lapsed",
       planId: "plan-old",
@@ -308,12 +369,15 @@ describe("recordManualFirstPayment", () => {
       createdAt: new Date(NOW.getTime() - 60 * 24 * 60 * 60 * 1000),
     } as Subscription;
     vi.mocked(findBillingState).mockResolvedValue(state(lapsed, { hasEverPaid: true }));
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ ...lapsed, cancelRequestedAt: null, adCreditCents: 0 });
+    vi.mocked(findLatestActivatedSubscriptionForBusiness).mockResolvedValue(lapsed);
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([{ ...WEBSITE_USD_LINE, status: "active", activatedAt: lapsed.activatedAt, endRequestedAt: null } as BundledAddOn]);
 
     await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
 
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       tx,
-      expect.objectContaining({ planId: USD.id, provider: "manual", replacing: "sub-lapsed", referralCodeId: null, discountAmountCents: 0 }),
+      expect.objectContaining({ planId: USD.id, provider: "manual", replacing: "sub-lapsed", referralCodeId: null, discountAmountCents: 0, bundledAddOns: [WEBSITE_USD_LINE] }),
     );
     expect(recordPaymentAndActivate).toHaveBeenCalledWith(
       tx,
@@ -330,9 +394,11 @@ describe("recordManualFirstPayment", () => {
   });
 
   it("reactivates beside a cancelled plan that ran out, replacing nothing, and takes no coupon", async () => {
-    vi.mocked(findBillingState).mockResolvedValue(
-      state({ id: "sub-ended", status: "cancelled", paidThroughAt: new Date(NOW.getTime() - 1000) } as Subscription, { hasEverPaid: true }),
-    );
+    const ended = { id: "sub-ended", status: "cancelled", activatedAt: new Date(NOW.getTime() - 60 * 24 * 60 * 60 * 1000), paidThroughAt: new Date(NOW.getTime() - 1000) } as Subscription;
+    vi.mocked(findBillingState).mockResolvedValue(state(ended, { hasEverPaid: true }));
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ ...ended, cancelRequestedAt: null, adCreditCents: 0 });
+    vi.mocked(findLatestActivatedSubscriptionForBusiness).mockResolvedValue(ended);
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([{ ...WEBSITE_USD_LINE, status: "active", activatedAt: ended.activatedAt, endRequestedAt: null } as BundledAddOn]);
     vi.mocked(findBusinessReferralCode).mockResolvedValue({ id: "code-1", code: "SAVE5", currency: "USD" } as ReferralCode);
 
     await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
@@ -340,6 +406,94 @@ describe("recordManualFirstPayment", () => {
     expect(findBusinessReferralCode).not.toHaveBeenCalled();
     expect(openCheckoutSubscription).toHaveBeenCalledWith(tx, expect.objectContaining({ replacing: null, referralCodeId: null }));
     expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ kind: "reactivation" }));
+  });
+
+  describe("reactivating the basket the business lapsed with", () => {
+    const AGO = new Date(NOW.getTime() - 40 * 24 * 60 * 60 * 1000);
+    const usdLine = (addOn: string, listAmountCents: number, offerDiscountAmountCents: number) => ({
+      addOn,
+      listAmountCents,
+      offerDiscountAmountCents,
+      netAmountCents: listAmountCents - offerDiscountAmountCents,
+      taxRateBasisPoints: 0,
+    });
+    /**
+     * The lapsed subscription and its lines. The double answers every read of a subscription's lines with them, the new
+     * subscription's included, so each carries the net the payment will be recorded at.
+     */
+    const lapse = (overrides: Partial<Subscription>, addOns: readonly (readonly [string, number])[]): void => {
+      const lapsed = {
+        id: "sub-lapsed",
+        planId: "plan-old",
+        provider: "fake",
+        providerSubscriptionId: `fake_sub_${"d".repeat(24)}`,
+        status: "active",
+        activatedAt: AGO,
+        paidThroughAt: new Date(NOW.getTime() - 1000),
+        createdAt: AGO,
+        cancelRequestedAt: null,
+        adCreditCents: 0,
+        ...overrides,
+      } as Subscription;
+      vi.mocked(findActivePlan).mockResolvedValue(SERVICES_USD);
+      vi.mocked(findBillingState).mockResolvedValue(state(lapsed, { hasEverPaid: true, plan: SERVICES_USD }));
+      vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue(lapsed);
+      vi.mocked(findLatestActivatedSubscriptionForBusiness).mockResolvedValue(lapsed.activatedAt === null ? null : lapsed);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(
+        addOns.map(([addOn, netAmountCents]) => ({ addOn, netAmountCents, status: "active", activatedAt: AGO, endRequestedAt: null }) as BundledAddOn),
+      );
+    };
+
+    it("books every service it had at the package price with its ad credit, not the website alone", async () => {
+      lapse({ adCreditCents: 6_000 }, [["managed-website", 5_250], ["digital-growth", 5_250], ["local-seo-aeo", 24_500]]);
+
+      await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
+
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({
+          replacing: "sub-lapsed",
+          adCreditCents: 6_000,
+          referralCodeId: null,
+          bundledAddOns: [usdLine("managed-website", 7_500, 2_250), usdLine("digital-growth", 7_500, 2_250), usdLine("local-seo-aeo", 35_000, 10_500)],
+        }),
+      );
+      expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ kind: "reactivation", amountCents: 35_000 }));
+      expect(markPackageOfferForfeited).not.toHaveBeenCalled();
+    });
+
+    it("books a cancelled subscription's services at list with no ad credit, and ends the package offer for good", async () => {
+      lapse({ status: "cancelled", cancelRequestedAt: AGO, adCreditCents: 6_000 }, [["managed-website", 7_500], ["digital-growth", 7_500]]);
+
+      await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
+
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({ replacing: null, adCreditCents: 0, bundledAddOns: [usdLine("managed-website", 7_500, 0), usdLine("digital-growth", 7_500, 0)] }),
+      );
+      expect(markPackageOfferForfeited).toHaveBeenCalledWith(tx, BUSINESS_ID, NOW);
+    });
+
+    it("is not held back by the unpaid reactivation checkout it replaces, which holds the same basket", async () => {
+      lapse({ status: "incomplete", activatedAt: null, paidThroughAt: null, adCreditCents: 2_500 }, []);
+      // The package was billed by the subscription before it; its lines ended when the unpaid one replaced it.
+      const billed = { id: "sub-billed", activatedAt: AGO, status: "cancelled", cancelRequestedAt: null, adCreditCents: 0 } as Subscription;
+      vi.mocked(findLatestActivatedSubscriptionForBusiness).mockResolvedValue(billed);
+      vi.mocked(findBundledAddOnsForSubscription).mockImplementation(async (_db, subscriptionId) =>
+        ["managed-website", "digital-growth"].map(
+          (addOn) =>
+            (subscriptionId === billed.id
+              ? { addOn, netAmountCents: 6_000, status: "removed", activatedAt: AGO, endRequestedAt: null }
+              : { addOn, netAmountCents: 6_000, status: "pending", activatedAt: null, endRequestedAt: null }) as BundledAddOn,
+        ),
+      );
+
+      await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({ replacing: "sub-lapsed", adCreditCents: 2_500, bundledAddOns: [usdLine("managed-website", 7_500, 1_500), usdLine("digital-growth", 7_500, 1_500)] }),
+      );
+    });
   });
 
   it("gives a free listing account that paid by transfer its Payload tenant, once the payment has committed", async () => {
@@ -384,7 +538,7 @@ describe("resolveFlaggedPayment", () => {
 });
 
 describe("a manual payment on a business that applied a referral code", () => {
-  // 15% of the USD plan's 7,500 cents.
+  // 15% of the website's 7,500 cents.
   const CODE = {
     id: "code-1",
     code: "SAVE15",
@@ -398,6 +552,9 @@ describe("a manual payment on a business that applied a referral code", () => {
   } as ReferralCode;
 
   beforeEach(() => {
+    vi.mocked(findActivePlan).mockResolvedValue(SERVICES_USD);
+    vi.mocked(findBillingState).mockResolvedValue(state(null, { plan: SERVICES_USD }));
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([{ ...WEBSITE_USD_LINE, status: "pending" } as BundledAddOn]);
     vi.mocked(findBusinessReferralCode).mockResolvedValue(CODE);
     vi.mocked(findRedeemableReferralCode).mockResolvedValue(CODE);
   });
@@ -434,7 +591,7 @@ describe("a manual payment on a business that applied a referral code", () => {
     expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ amountCents: 7_500 }));
   });
 
-  it("resolves a percentage code against the plan and freezes the money it comes to", async () => {
+  it("resolves a percentage code against the website's list price, not the plan's 0, and freezes the money it comes to", async () => {
     const percent = { ...CODE, discount: { kind: "percent", basisPoints: 1_500 } } as ReferralCode;
     vi.mocked(findBusinessReferralCode).mockResolvedValue(percent);
     vi.mocked(findRedeemableReferralCode).mockResolvedValue(percent);

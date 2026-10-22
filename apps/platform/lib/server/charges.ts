@@ -17,11 +17,12 @@ import {
 import { blogAllowance, chargeAmountCents, chargeLabel, chargePricing } from "@brandbasket/shared/lib/billing/charges";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
+import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-change";
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
+import { basketDeps } from "./add-ons";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
-import { finishUpgradeForCharge } from "./plan-upgrade-finish";
 
 /** How many open charges the Billing page lists. More than this many unpaid extras at once is not a real case. */
 const OPEN_CHARGES_SHOWN = 20;
@@ -119,14 +120,15 @@ async function recordVerifiedChargePayment({ confirmed, method, now }: RecordInp
             ? "charge-not-open"
             : recorded.outcome === "upgrade-not-applied"
               ? "upgrade-quote-stale"
-              : "charge-amount-mismatch",
+              : recorded.outcome === "add-on-not-applied"
+                ? "add-on-quote-stale"
+                : "charge-amount-mismatch",
       });
     }
     return recorded.outcome;
   });
-  // A paid move up to Premium: the client has Premium already (the payment's transaction set it); the provider is told
-  // now, after that has committed. Harmless for any other charge, and safe to repeat for a redelivered payment.
-  if (outcome === "paid") await finishUpgradeForCharge(confirmed.chargeId, now);
+  // A paid add-on is on; the provider is told to bill it from the next renewal, with the payment's transaction committed.
+  if (outcome === "paid") await finishAddOnAfterPayment(basketDeps(), { businessId: confirmed.businessId, chargeId: confirmed.chargeId, now });
   return outcome;
 }
 

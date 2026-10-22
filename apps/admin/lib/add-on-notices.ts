@@ -1,4 +1,5 @@
 import type { AddOnEndOutcome } from "@brandbasket/shared/server/add-on-ends";
+import type { BundledRemoval } from "@brandbasket/shared/server/basket-change";
 
 /**
  * What the client page's Add-ons section says after staff pause, cancel or follow up a purchase, or set a press release's
@@ -20,7 +21,17 @@ export type AddOnNotice =
   | "already-contacted"
   | "release-in-progress"
   | "release-published"
-  | "release-unchanged";
+  | "release-unchanged"
+  | "add-on-charge-opened"
+  | "add-on-on"
+  | "add-on-kept"
+  | "add-on-not-possible"
+  | "add-on-removal-scheduled"
+  | "add-on-removal-failed"
+  | "add-on-removal-last-service"
+  | "add-on-removal-cancel-requested"
+  | "provider-told"
+  | "provider-still-refusing";
 
 export const ADD_ON_NOTICES: Readonly<Record<AddOnNotice, { readonly text: string; readonly ok: boolean }>> = {
   "cancel-scheduled": {
@@ -59,6 +70,28 @@ export const ADD_ON_NOTICES: Readonly<Record<AddOnNotice, { readonly text: strin
     text: "Nothing changed: that press release is already at this step or further on.",
     ok: false,
   },
+  "add-on-charge-opened": {
+    text: "Charge opened for the rest of the month. The customer pays it from Billing, and the add-on turns on when they do.",
+    ok: true,
+  },
+  "add-on-on": { text: "Added. It joins the monthly payment from the next billing date.", ok: true },
+  "add-on-kept": { text: "Kept. It no longer stops, and the monthly payment stays as it is.", ok: true },
+  "add-on-not-possible": { text: "Nothing changed: that add-on can’t be added for this client now. Check their plan and payments.", ok: false },
+  "add-on-removal-scheduled": { text: "Removal scheduled. It stays until the next billing date, then it stops.", ok: true },
+  "add-on-removal-failed": {
+    text: "Nothing changed: it isn’t in the plan payment, or the payment provider couldn’t be reached. Try again in a minute.",
+    ok: false,
+  },
+  "add-on-removal-last-service": {
+    text: "Nothing changed: that is the client’s only service, so it can’t be removed on its own. Stopping it means cancelling their plan.",
+    ok: false,
+  },
+  "add-on-removal-cancel-requested": {
+    text: "Nothing changed: this client has asked to close their account, so a service can’t be removed on its own.",
+    ok: false,
+  },
+  "provider-told": { text: "The payment provider will bill the add-on from the next renewal.", ok: true },
+  "provider-still-refusing": { text: "The payment provider still refused. Try again later, or ask engineering to check it.", ok: false },
 };
 
 /** `#add-ons` scrolls the reader to the Add-ons section, since the notice renders inside it. */
@@ -82,6 +115,25 @@ export function noticeForEndOutcome(outcome: AddOnEndOutcome): AddOnNotice {
     default: {
       const unhandled: never = outcome;
       throw new Error(`Unhandled add-on end outcome ${JSON.stringify(unhandled)}`);
+    }
+  }
+}
+
+/** The notice for what taking a service out of the client's plan payment came to. */
+export function noticeForRemoval(removal: BundledRemoval): AddOnNotice {
+  switch (removal.kind) {
+    case "scheduled":
+      return "add-on-removal-scheduled";
+    case "last-service":
+      return "add-on-removal-last-service";
+    case "cancel-requested":
+      return "add-on-removal-cancel-requested";
+    case "not-in-plan":
+    case "failed":
+      return "add-on-removal-failed";
+    default: {
+      const unhandled: never = removal;
+      throw new Error(`Unhandled removal ${JSON.stringify(unhandled)}`);
     }
   }
 }

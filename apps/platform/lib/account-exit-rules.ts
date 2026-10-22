@@ -1,52 +1,38 @@
-import type { AccountExitReason, AddOnSubscription, Plan, Subscription } from "@brandbasket/db";
+import type { AddOnSubscription, Subscription } from "@brandbasket/db";
 import { ACCOUNT_CLOSURE_GRACE_DAYS } from "@brandbasket/db";
-import { retentionDiscountCentsFor, retentionOfferPercent } from "@brandbasket/shared/lib/account-exit";
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
+import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 
 /*
  * The decisions behind the Delete account page, free of the database and the provider so each can be tested alone:
- * whether a stay offer is open to a member, and what leaving does to the plan and to the erase date.
+ * what leaving ends, what it does to the plan and when the data is erased.
  */
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-export interface RetentionOfferTerms {
-  readonly percent: number;
-  /** What the offer takes off the net monthly price, in minor units. */
-  readonly discountCents: number;
-  /** Everything the subscription would then take off each month: a code's discount and this one. */
-  readonly totalDiscountCents: number;
-}
+const BASIS_POINTS_PER_PERCENT = 100;
 
 /**
- * The stay offer open to a member who gave `reason`, or null. It is open only to a member who is paying and staying: a
- * running subscription inside a paid period that nobody has already asked to end, which has not taken an offer before,
- * on a plan whose monthly price is the same as its first (a provider plan charges one amount every cycle, so a plan
- * that does not could not take the discount). A reason that is "I'm closing the business" is offered nothing. A
- * member who has paid to move up to Premium is offered nothing either: the discount would be worked against a plan the
- * provider is not yet billing, and the move's own price is the one they have just agreed.
+ * What cancelling takes from a business that holds a package, as the lines the Delete account page lists before the
+ * customer confirms: the package price, the monthly ad credit when it has one, and the full price on a return. Cancelling
+ * gives the package offer up for good (markCancelRequested in @brandbasket/db), so these are exactly what is lost.
+ * Empty for one service and for a business that has already forfeited, which has no package to lose.
  */
-export function retentionOfferTerms(input: {
-  readonly reason: AccountExitReason;
-  readonly subscription: Subscription | null;
-  readonly plan: Plan | null;
-  readonly hasAccess: boolean;
-  /** A move up to Premium has been paid for and has not renewed yet. */
-  readonly upgradePaid?: boolean;
-}): RetentionOfferTerms | null {
-  const { subscription, plan } = input;
-  if (subscription === null || plan === null || !input.hasAccess || input.upgradePaid === true) return null;
-  if (subscription.status !== "active") return null;
-  if (subscription.cancelRequestedAt !== null || subscription.retentionDiscountCents > 0) return null;
-  if (plan.initialAmountCents !== plan.recurringAmountCents) return null;
-  const percent = retentionOfferPercent(input.reason);
-  if (percent === null) return null;
-  const discountCents = retentionDiscountCentsFor({
-    recurringAmountCents: plan.recurringAmountCents,
-    currentDiscountCents: subscription.discountAmountCents,
-    percent,
-  });
-  if (discountCents === null) return null;
-  return { percent, discountCents, totalDiscountCents: subscription.discountAmountCents + discountCents };
+export function packageEndsFor(input: {
+  /** The services that are staying, not ones already set to end. */
+  readonly services: readonly MonthlyAddOnId[];
+  readonly forfeited: boolean;
+  /** The ad credit a month frozen on the subscription, in minor units. */
+  readonly adCreditCents: number;
+  readonly currency: MoneyCurrency;
+}): string[] {
+  const basisPoints = packageBasisPointsFor({ services: input.services, forfeited: input.forfeited });
+  if (basisPoints === 0) return [];
+  return [
+    `Your package price (${basisPoints / BASIS_POINTS_PER_PERCENT}% off)`,
+    ...(input.adCreditCents > 0 ? [`${formatMoney(input.adCreditCents, input.currency)} a month of ad credit`] : []),
+    "If you come back, every service is at its own price",
+  ];
 }
 
 /**

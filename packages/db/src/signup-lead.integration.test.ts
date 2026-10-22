@@ -30,7 +30,7 @@ async function allLeads(): Promise<(typeof leads.$inferSelect)[]> {
 describe("recordSignupLead", () => {
   it("lists a customer who signed up on their own as a lead with an account and no payment", async () => {
     const businessId = await addBusiness("glow-dental");
-    await recordSignupLead(dbs.staff.db, { name: "Rohan Mehta", businessName: "Glow Dental", email: "Rohan@Example.test", businessId, plan: "care" });
+    await recordSignupLead(dbs.staff.db, { name: "Rohan Mehta", businessName: "Glow Dental", email: "Rohan@Example.test", businessId, plan: "managed" });
 
     const rows = await allLeads();
     expect(rows).toHaveLength(1);
@@ -43,12 +43,12 @@ describe("recordSignupLead", () => {
       currency: "INR",
       phone: null,
     });
-    expect(rows[0]?.notes).toContain("Care");
+    expect(rows[0]?.notes).toContain("Managed Website");
   });
 
   it("becomes paid when the first payment is confirmed, the same way a staff-made lead does", async () => {
     const businessId = await addBusiness("glow-dental");
-    await recordSignupLead(dbs.staff.db, { name: "Rohan", businessName: "Glow", email: "r@example.test", businessId, plan: "premium" });
+    await recordSignupLead(dbs.staff.db, { name: "Rohan", businessName: "Glow", email: "r@example.test", businessId, plan: "managed" });
     expect(await markLeadPaidForBusiness(dbs.staff.db, businessId)).toBe(1);
     expect((await allLeads())[0]?.status).toBe("paid");
   });
@@ -64,7 +64,7 @@ describe("recordSignupLead", () => {
       message: "Please call me",
     });
     const businessId = await addBusiness("glow-dental");
-    await recordSignupLead(dbs.staff.db, { name: "Rohan Mehta", businessName: "Glow Dental", email: "R@example.test", businessId, plan: "care" });
+    await recordSignupLead(dbs.staff.db, { name: "Rohan Mehta", businessName: "Glow Dental", email: "R@example.test", businessId, plan: "managed" });
 
     const rows = await allLeads();
     expect(rows).toHaveLength(1);
@@ -73,9 +73,9 @@ describe("recordSignupLead", () => {
 
   it("does not take a lead from a different customer whose account already exists", async () => {
     const first = await addBusiness("first-business");
-    await recordSignupLead(dbs.staff.db, { name: "A", businessName: "First", email: "same@example.test", businessId: first, plan: "care" });
+    await recordSignupLead(dbs.staff.db, { name: "A", businessName: "First", email: "same@example.test", businessId: first, plan: "managed" });
     const second = await addBusiness("second-business");
-    await recordSignupLead(dbs.staff.db, { name: "B", businessName: "Second", email: "same@example.test", businessId: second, plan: "care" });
+    await recordSignupLead(dbs.staff.db, { name: "B", businessName: "Second", email: "same@example.test", businessId: second, plan: "managed" });
 
     const rows = await allLeads();
     expect(rows.map((row) => row.businessId).sort()).toEqual([first, second].sort());
@@ -83,7 +83,7 @@ describe("recordSignupLead", () => {
 
   it("is a no-op the second time for the same business", async () => {
     const businessId = await addBusiness("glow-dental");
-    const lead = { name: "Rohan", businessName: "Glow", email: "r@example.test", businessId, plan: "care" as const };
+    const lead = { name: "Rohan", businessName: "Glow", email: "r@example.test", businessId, plan: "managed" as const };
     await recordSignupLead(dbs.staff.db, lead);
     await recordSignupLead(dbs.staff.db, lead);
     expect(await allLeads()).toHaveLength(1);

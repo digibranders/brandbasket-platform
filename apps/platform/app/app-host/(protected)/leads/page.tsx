@@ -156,7 +156,7 @@ function Pager({ paging, category, tab }: { readonly paging: LeadsPaging; readon
  * business isn't confirmed yet is told where it stands.
  */
 export default async function LeadsPage({ searchParams }: LeadsPageProps): Promise<ReactElement> {
-  const { tenant } = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const { tenant } = await requireCustomerAccess({ listingAccount: "allow" });
   const { source, hasClaim } = await resolveLeadsSource(tenant);
   if (source.state === "none") notFound();
 

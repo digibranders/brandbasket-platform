@@ -1,33 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { BRAND, featureShownTo, BRANDBASKET_DEFAULT_CHOICE, isDirectoryOnlyPath, logoOf, offersChoice, sellsFreeListing, supportEmailOf } from "./brand";
-import { LISTING_BRAND } from "./testing/listing-brand";
+import { BRAND, BRANDBASKET_DEFAULT_CHOICE, isDirectoryOnlyPath, logoOf, offersChoice, sellsFreeListing, supportEmailOf } from "./brand";
 
 describe("the brand", () => {
-  it("sells Care only: no Premium, no free listing", () => {
-    expect(BRAND.joinChoices).toEqual(["care"]);
+  it("sells Managed Website only: no free listing", () => {
+    expect(BRAND.joinChoices).toEqual(["managed"]);
     expect(sellsFreeListing(BRAND)).toBe(false);
     expect(offersChoice(BRAND, "listing_only")).toBe(false);
-    expect(offersChoice(BRAND, "care")).toBe(true);
-    expect(offersChoice(BRAND, "premium")).toBe(false);
+    expect(offersChoice(BRAND, "managed")).toBe(true);
     expect(BRAND.name).toBe("Brandbasket");
     expect(BRAND.shortName).toBe("Brandbasket");
   });
 
   it("opens a sign-up on a plan it sells", () => {
+    expect(BRANDBASKET_DEFAULT_CHOICE).toBe("managed");
     expect(offersChoice(BRAND, BRANDBASKET_DEFAULT_CHOICE)).toBe(true);
   });
 
   it("writes to hello@brandbasket.in and draws the Brandbasket logo", () => {
     expect(supportEmailOf(BRAND)).toBe("hello@brandbasket.in");
     expect(logoOf(BRAND)).toMatchObject({ name: "Brandbasket", siteUrl: "https://brandbasket.in", email: "hello@brandbasket.in", white: "/brand/brandbasket-logo-white.svg" });
-  });
-
-  it("leaves out the plan-table rows about the directory listing, which it does not sell", () => {
-    for (const id of ["listing", "images", "videos", "competitor-ads", "listing-management", "featured", "ranking"]) {
-      expect(featureShownTo(id, BRAND), id).toBe(false);
-      expect(featureShownTo(id, LISTING_BRAND), id).toBe(true);
-    }
-    expect(featureShownTo("website", BRAND)).toBe(true);
   });
 });
 

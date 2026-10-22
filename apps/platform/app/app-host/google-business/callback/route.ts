@@ -13,7 +13,7 @@ import { GOOGLE_CALLBACK_PATH } from "../paths";
  * the owner presses Save. Every failure lands on the Details tab with a notice, never an error page.
  */
 export async function GET(request: Request): Promise<Response> {
-  const { tenant } = await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  const { tenant } = await requireCustomerAccess({ listingAccount: "allow" });
   const origin = googleImportOrigin(request);
   const back = (notice: ProfileNotice): Response => Response.redirect(new URL(profileHref("details", notice), origin), 303);
 

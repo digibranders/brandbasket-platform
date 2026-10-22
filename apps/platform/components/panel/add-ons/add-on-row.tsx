@@ -1,104 +1,48 @@
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement } from "react";
 import { requestBrand } from "@/lib/server/request-brand";
-import { LIFETIME_OFFER_PERCENT } from "@brandbasket/shared/lib/billing/lifetime-offer";
-import { PREMIUM_ADD_ON_DISCOUNT_PERCENT, type AddOn, type AddOnPrice } from "@brandbasket/shared/lib/billing/add-ons";
-import type { AddOnAction, AddOnCheckoutIntent } from "@brandbasket/shared/lib/billing/add-on-state";
+import type { AddOn } from "@brandbasket/shared/lib/billing/add-ons";
 import { formatMoney } from "@brandbasket/shared/lib/money";
-import { endAddOnAction, removeBundledAddOnAction, startAddOnAction } from "@/app/app-host/(protected)/add-ons/actions";
+import { addBundledAddOnAction, removeBundledAddOnAction } from "@/app/app-host/(protected)/add-ons/actions";
+import { BundledAddOnAdd } from "@/components/panel/add-ons/bundled-add-on-add";
 import { BundledAddOnRemove } from "@/components/panel/add-ons/bundled-add-on-remove";
-import { AddOnCheckoutDialog } from "@/components/panel/add-ons/add-on-checkout-dialog";
-import { AddOnEndConfirm } from "@/components/panel/add-ons/add-on-end-confirm";
-import {
-  addOnActionLabel,
-  addOnDate,
-  addOnStateLine,
-  BROKEN_ADD_ON_LINE,
-  checkoutCopy,
-  dayOfMonthLabel,
-  keepDateOf,
-} from "@/lib/billing/add-on-copy";
-import type { AddOnInvoiceNote } from "@/lib/billing/add-on-form";
-import type { AddOnPageEntry } from "@/lib/server/add-ons";
+import { addOnDate } from "@/lib/billing/add-on-copy";
+import { dropCopy } from "@/lib/billing/drop-service";
+import type { AddOnOffer, AddOnPageEntry } from "@/lib/server/add-ons";
 
 interface AddOnRowProps {
   readonly addOn: AddOn;
-  /** The add-on's state from the server, or null when there is none to show (it is then just "Get it"). */
-  readonly entry: AddOnPageEntry | null;
-  /** What it costs this business: the stored price while it is in force, else today's. */
-  readonly price: AddOnPrice;
-  readonly now: Date;
-  readonly invoice: AddOnInvoiceNote;
-  /** Anything that belongs under the row. */
-  readonly children?: ReactNode;
-}
-
-const CHECKOUT_ACTIONS: readonly AddOnAction[] = ["buy", "resume", "pay-now", "keep"];
-
-function isCheckoutIntent(action: AddOnAction): action is AddOnCheckoutIntent {
-  return CHECKOUT_ACTIONS.includes(action);
+  readonly entry: AddOnPageEntry;
+  /** False while a payment for an add-on is being confirmed: no second Add until it is. */
+  readonly canAdd: boolean;
 }
 
 /**
- * One service: what it is and where it runs on the left, its price, what it is doing now and the buttons on the right.
- * The state line is a live region that is always in the page, so a change after Pause or Cancel is announced. Pause and
- * Cancel confirm in place; every other action opens the purchase dialog.
+ * One service: what it is and where it runs on the left, its price and where it stands on the right. One in the plan's
+ * payment can be taken out from the next billing date (never the last one: that is cancelling), and one that is ending
+ * kept; one that is not can be added for the rest of the paid month, or says how to ask for it. The state line is a live
+ * region that is always in the page, so the change after Remove is announced.
  */
-export async function AddOnRow({ addOn, entry, price, now, invoice, children }: AddOnRowProps): Promise<ReactElement> {
+export async function AddOnRow({ addOn, entry, canAdd }: AddOnRowProps): Promise<ReactElement> {
   const brand = await requestBrand();
   const headingId = `add-on-${addOn.id}-heading`;
-  const monthly = addOn.billing === "monthly";
-  const ready = entry !== null && entry.kind === "ready" ? entry : null;
-  const view = ready === null ? null : ready.view;
-  // A Keep it with no old billing date to charge on cannot be shown. The server already treats that row as broken and
-  // logs it; this keeps the row from throwing if one ever gets here anyway.
-  const keepsWithoutDate = ready !== null && ready.actions.includes("keep") && keepDateOf(ready.view) === null;
-  const broken = (entry !== null && entry.kind === "broken") || keepsWithoutDate;
-  const included = entry !== null && entry.kind === "included";
-  const actions: readonly AddOnAction[] = broken || included ? [] : ready === null ? ["buy"] : ready.actions;
-  const includedEntry = entry !== null && entry.kind === "included" ? entry : null;
-  const stateLine = broken
-    ? BROKEN_ADD_ON_LINE
-    : includedEntry !== null
-      ? includedEntry.endsOn === null
-        ? "Included in your monthly plan payment."
-        : `Stops on ${addOnDate(includedEntry.endsOn)}. You won't be charged for it after that.`
-      : view === null
-        ? null
-        : addOnStateLine(view, price);
-  const checkoutAction = actions.find(isCheckoutIntent);
-  // Pause and Cancel are only offered on a running add-on, and act on the row the server names.
-  const endTargetId = ready !== null && view !== null && view.state === "active" ? ready.endTargetId : null;
-  // The state line is said in a warning colour only for a payment that is not going through, or a row that is broken.
-  const warning = broken || (view !== null && (view.state === "failing" || view.state === "failed"));
-
-  let dialog: ReactElement | null = null;
-  if (checkoutAction !== undefined) {
-    const date = checkoutAction === "keep" && view !== null ? keepDateOf(view) : null;
-    const label = addOnActionLabel(checkoutAction, addOn.title);
-    dialog = (
-      <AddOnCheckoutDialog
-        addOnId={addOn.id}
-        title={addOn.title}
-        line={addOn.line}
-        intent={checkoutAction}
-        triggerText={label.text}
-        triggerLabel={label.ariaLabel}
-        price={price}
-        discountPercent={PREMIUM_ADD_ON_DISCOUNT_PERCENT}
-        copy={checkoutCopy({
-          intent: checkoutAction,
-          addOnId: addOn.id,
-          title: addOn.title,
-          monthly,
-          chargeDate: date === null ? null : addOnDate(date),
-          renewDay: monthly ? dayOfMonthLabel(date ?? now) : null,
-          brand,
-        })}
-        invoice={invoice}
-        action={startAddOnAction}
-      />
-    );
-  }
+  const { price } = entry;
+  const stateLine =
+    entry.kind === "available"
+      ? null
+      : entry.endsOn !== null
+        ? `Stops on ${addOnDate(entry.endsOn)}. You won't be charged for it after that.`
+        : entry.joinsOn !== null
+          ? `${addOn.title} is on. It joins your monthly payment from ${addOnDate(entry.joinsOn)}.`
+          : "Included in your monthly plan payment.";
+  const writeToUs = (
+    <p className="text-sm text-ink-soft">
+      To add it to your monthly payment, write to us at{" "}
+      <a href={`mailto:${brand.contactEmail}?subject=${encodeURIComponent(`Add ${addOn.title}`)}`} className="link-underline text-ink">
+        {brand.contactEmail}
+      </a>
+      .
+    </p>
+  );
 
   return (
     <li className="py-8">
@@ -125,38 +69,92 @@ export async function AddOnRow({ addOn, entry, price, now, invoice, children }: 
             ) : null}
             <p className="text-2xl font-semibold tabular-nums">{formatMoney(price.netCents, price.currency)}</p>
             <p className="mt-0.5 text-sm text-ink-soft">{addOn.extra === undefined ? addOn.unit : `${addOn.unit} ${addOn.extra}`}</p>
-            {price.offerCents > 0 ? (
-              <p className="mt-1 text-sm text-accent-deep">{LIFETIME_OFFER_PERCENT}% lifetime discount</p>
-            ) : null}
           </div>
-          <p
-            role="status"
-            className={`text-sm tabular-nums empty:hidden ${warning ? "text-accent-deep" : "text-ink-soft"}`}
-          >
+          <p role="status" className="text-sm tabular-nums text-ink-soft empty:hidden">
             {stateLine}
           </p>
-          {dialog}
-          {includedEntry !== null && includedEntry.endsOn === null && includedEntry.nextBillingOn !== null ? (
+          {entry.kind === "available" ? (
+            <AvailableAddOn addOn={addOn} entry={entry} canAdd={canAdd} headingId={headingId} contactEmail={brand.contactEmail} writeToUs={writeToUs} />
+          ) : entry.endsOn !== null && entry.keepable && canAdd ? (
+            <BundledAddOnAdd
+              addOn={addOn.id}
+              title={addOn.title}
+              savedText={`${addOn.title} stays. Your monthly payment does not change.`}
+              headingId={headingId}
+              action={addBundledAddOnAction}
+            />
+          ) : entry.endsOn === null && entry.nextBillingOn !== null && entry.drop !== null ? (
             <BundledAddOnRemove
               addOn={addOn.id}
               title={addOn.title}
-              endsOn={addOnDate(includedEntry.nextBillingOn)}
+              endsOn={addOnDate(entry.nextBillingOn)}
+              copy={dropCopy(entry.drop, addOnDate(entry.nextBillingOn))}
               headingId={headingId}
               action={removeBundledAddOnAction}
             />
           ) : null}
-          {endTargetId !== null && view !== null && view.state === "active" ? (
-            <AddOnEndConfirm
-              addOnSubscriptionId={endTargetId}
-              title={addOn.title}
-              endsOn={addOnDate(view.renewsOn)}
-              headingId={headingId}
-              action={endAddOnAction}
-            />
-          ) : null}
         </div>
       </div>
-      {children === undefined ? null : <div className="mt-6">{children}</div>}
     </li>
   );
+}
+
+interface AvailableAddOnProps {
+  readonly addOn: AddOn;
+  readonly entry: Extract<AddOnPageEntry, { kind: "available" }>;
+  readonly canAdd: boolean;
+  readonly headingId: string;
+  readonly contactEmail: string;
+  readonly writeToUs: ReactElement;
+}
+
+/** "₹3,730.32 today for the 14 days left this month, then ₹11,798.82 a month from 19 November 2026, GST included." */
+function quoteLine(offer: Extract<AddOnOffer, { kind: "quote" }>, price: AddOnPageEntry["price"]): string {
+  const days = offer.daysLeft === 1 ? "the 1 day left" : `the ${offer.daysLeft} days left`;
+  const tax = price.taxRateBasisPoints > 0 ? ", GST included" : "";
+  return `${formatMoney(offer.chargeCents, price.currency)} today for ${days} this month, then ${formatMoney(offer.nextRenewalCents, price.currency)} a month from ${addOnDate(offer.renewsOn)}${tax}.`;
+}
+
+/** An add-on not in the plan's payment: Add with what it costs, or why it cannot be added here and what to do instead. */
+function AvailableAddOn({ addOn, entry, canAdd, headingId, contactEmail, writeToUs }: AvailableAddOnProps): ReactElement {
+  const { offer } = entry;
+  switch (offer.kind) {
+    case "quote":
+      return (
+        <div className="space-y-3 sm:text-right">
+          {canAdd ? (
+            <BundledAddOnAdd
+            addOn={addOn.id}
+            title={addOn.title}
+            savedText={`${addOn.title} is on. It joins your monthly payment from ${addOnDate(offer.renewsOn)}.`}
+            headingId={headingId}
+              action={addBundledAddOnAction}
+            />
+          ) : null}
+          <p className="max-w-xs text-sm tabular-nums text-ink-soft">{quoteLine(offer, entry.price)}</p>
+        </div>
+      );
+    case "renewal-due":
+      return offer.renewsOn === null ? (
+        writeToUs
+      ) : (
+        <p className="text-sm text-ink-soft">Your payment is due within the hour. Add it after {addOnDate(offer.renewsOn)}.</p>
+      );
+    case "manual":
+      return (
+        <p className="text-sm text-ink-soft">
+          You pay us by bank transfer, so write to{" "}
+          <a href={`mailto:${contactEmail}?subject=${encodeURIComponent(`Add ${addOn.title}`)}`} className="link-underline text-ink">
+            {contactEmail}
+          </a>{" "}
+          and we&apos;ll add it.
+        </p>
+      );
+    case "write":
+      return writeToUs;
+    default: {
+      const unhandled: never = offer;
+      throw new Error(`Unhandled add-on offer: ${JSON.stringify(unhandled)}`);
+    }
+  }
 }

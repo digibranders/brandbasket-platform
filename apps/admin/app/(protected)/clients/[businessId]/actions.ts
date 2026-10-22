@@ -1,7 +1,6 @@
 "use server";
 
 import {
-  findBillingState,
   DomainNotReadyForDnsError,
   DomainSwitchNotReadyError,
   findClientDetail,
@@ -27,6 +26,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { MONTHLY_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
 import { parseChargeForm } from "@brandbasket/shared/lib/billing/charge-form";
 import { staffChargeNoticeHref } from "@brandbasket/shared/lib/billing/charge-notices";
 import { parseManualPaymentForm } from "@brandbasket/shared/lib/billing/manual-payment-form";
@@ -41,9 +41,17 @@ import { projectLaunchNoticeHref } from "@brandbasket/shared/lib/project-launch-
 import { projectPreviewNoticeHref } from "@brandbasket/shared/lib/project-preview-notices";
 import { chatbotNoticeHref, parseChatbotForm, parseOperatorKeyForm, readChatbotStatus } from "@/lib/chatbot-form";
 import { addClientChatbot, removeClientChatbot, setClientChatbotOperatorKey, setClientChatbotStatus } from "@/lib/server/chatbots-admin";
-import { addOnNoticeHref, noticeForEndOutcome, type AddOnNotice } from "@/lib/add-on-notices";
+import { addOnNoticeHref, noticeForEndOutcome, noticeForRemoval, type AddOnNotice } from "@/lib/add-on-notices";
 import { clientListingKey, clientTagsHref } from "@/lib/client-tags";
-import { endClientAddOn, markClientAddOnContacted, markClientBundledAddOnContacted, setClientPressReleaseStatus } from "@/lib/server/add-ons-admin";
+import {
+  addClientAddOn,
+  endClientAddOn,
+  markClientAddOnContacted,
+  markClientBundledAddOnContacted,
+  removeClientAddOn,
+  retryClientAddOnProvider,
+  setClientPressReleaseStatus,
+} from "@/lib/server/add-ons-admin";
 import { recordManualFirstPayment, resolveFlaggedPayment } from "@/lib/server/billing-admin";
 import { addClientCharge, markClientChargePaid, waiveClientCharge } from "@/lib/server/charges-admin";
 import { getStaffDb } from "@/lib/server/db";
@@ -53,8 +61,6 @@ import { ProjectLaunchDomainMissingError, ProjectLaunchRecipientMissingError, la
 import { ProjectPreviewRecipientMissingError, sendProjectPreview, type OwnerNotification } from "@/lib/server/project-preview";
 import { rotateSiteApiToken } from "@/lib/server/site-token";
 import { placeIdForAddress } from "@/lib/server/page-address";
-import { planUpgradeNoticeHref } from "@/lib/plan-upgrade-notices";
-import { finishClientUpgrade, moveClientToPremium } from "@/lib/server/plan-upgrade-admin";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { changeWebAddress } from "@/lib/server/web-address";
@@ -128,6 +134,7 @@ export async function markChargePaidAction(formData: FormData): Promise<void> {
       redirect(staffChargeNoticeHref(businessId, "not-open"));
     case "amount-mismatch":
     case "upgrade-not-applied":
+    case "add-on-not-applied":
       redirect(staffChargeNoticeHref(businessId, "payment-kept"));
     default: {
       const unhandled: never = outcome;
@@ -287,10 +294,8 @@ export async function setModuleAction(formData: FormData): Promise<void> {
     redirect(businessModuleNoticeHref(businessId, "confirm-off"));
   }
 
-  // Appointments are Premium's: a Care client's menu has no such section to switch on (the console does not offer it).
-  if (enabled && (await findBillingState(getStaffDb(), businessId))?.tier === "care") {
-    redirect(businessModuleNoticeHref(businessId, "module-premium-only"));
-  }
+  // Appointments and patient records are out of scope for Brandbasket for now (owner, 2026-10-19): nothing switches them on.
+  if (enabled) redirect(businessModuleNoticeHref(businessId, "module-not-offered"));
 
   try {
     await setBusinessModule(getStaffDb(), { businessId, module: moduleRaw, enabled, staffUserId: user.id, now: new Date() });
@@ -409,30 +414,6 @@ export async function changeWebAddressAction(_previous: WebAddressFormState, for
 }
 
 /**
- * Moves a Care client up to Premium with nothing to take: they paid offline, or it is a goodwill move, or they pay by
- * bank transfer and cannot move themselves. The superadmin must tick that they mean it; who did it is on the record.
- */
-export async function moveToPremiumAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffCan("money");
-  const businessId = readId(formData.get("businessId"), "The move's business");
-  if (formData.get("confirm") !== "yes") redirect(planUpgradeNoticeHref(businessId, "confirm"));
-
-  const outcome = await moveClientToPremium({ businessId, staffUserId: user.id }, new Date());
-  revalidateClient(businessId);
-  if (outcome.kind === "refused") redirect(planUpgradeNoticeHref(businessId, `refused-${outcome.why}`));
-  redirect(planUpgradeNoticeHref(businessId, outcome.finish.kind === "failed" ? "moved-provider-failed" : "moved"));
-}
-
-/** Tells the provider to bill Premium from the next renewal for a move whose last step failed after the client paid. */
-export async function finishUpgradeAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffCan("money");
-  const businessId = readId(formData.get("businessId"), "The move's business");
-  const finish = await finishClientUpgrade({ businessId, staffUserId: user.id }, new Date());
-  revalidateClient(businessId);
-  redirect(planUpgradeNoticeHref(businessId, finish.kind === "failed" ? "finish-failed" : finish.kind === "nothing" ? "nothing-to-finish" : "finished"));
-}
-
-/**
  * Pauses or cancels an add-on for the customer. The staff member must tick that they have told the customer, and who did it
  * is recorded on the row. It takes effect at the next billing date, exactly as the customer's own button does (one shared
  * function does both), so nothing here works out a date.
@@ -447,6 +428,48 @@ export async function endAddOnAction(formData: FormData): Promise<void> {
   const outcome = await endClientAddOn({ businessId, addOnSubscriptionId, kind, staffUserId: user.id }, new Date());
   revalidateClient(businessId);
   redirect(addOnNoticeHref(businessId, noticeForEndOutcome(outcome)));
+}
+
+const monthlyAddOnSchema = z.enum(MONTHLY_ADD_ON_IDS);
+
+/**
+ * Adds an add-on for the client (a charge for the rest of the month, which they pay from Billing) or keeps one that is
+ * ending, after staff confirm they have told the customer. The price is worked out on the server, as for the customer.
+ */
+export async function addClientAddOnAction(formData: FormData): Promise<void> {
+  const { user } = await requireStaffCan("money");
+  const businessId = readId(formData.get("businessId"), "The add-on's business");
+  const addOn = monthlyAddOnSchema.parse(formData.get("addOn"));
+  if (formData.get("confirm") !== "yes") redirect(addOnNoticeHref(businessId, "unconfirmed"));
+
+  const started = await addClientAddOn({ businessId, addOn, staffUserId: user.id }, new Date());
+  revalidateClient(businessId);
+  const notice: AddOnNotice =
+    started.kind === "pay" ? "add-on-charge-opened" : started.kind === "added" ? "add-on-on" : started.kind === "kept" ? "add-on-kept" : "add-on-not-possible";
+  redirect(addOnNoticeHref(businessId, notice));
+}
+
+/** Takes an add-on out of the client's plan payment from the next billing date, after staff confirm they told the customer. */
+export async function removeClientAddOnAction(formData: FormData): Promise<void> {
+  await requireStaffCan("money");
+  const businessId = readId(formData.get("businessId"), "The add-on's business");
+  const addOn = monthlyAddOnSchema.parse(formData.get("addOn"));
+  if (formData.get("confirm") !== "yes") redirect(addOnNoticeHref(businessId, "unconfirmed"));
+
+  const removal = await removeClientAddOn({ businessId, addOn }, new Date());
+  revalidateClient(businessId);
+  redirect(addOnNoticeHref(businessId, noticeForRemoval(removal)));
+}
+
+/** Tells the payment provider again to bill an added add-on from the next renewal. Safe to repeat. */
+export async function retryAddOnProviderAction(formData: FormData): Promise<void> {
+  await requireStaffCan("money");
+  const businessId = readId(formData.get("businessId"), "The add-on's business");
+  const bundledAddOnId = readId(formData.get("bundledAddOnId"), "The add-on");
+
+  const move = await retryClientAddOnProvider({ businessId, bundledAddOnId }, new Date());
+  revalidateClient(businessId);
+  redirect(addOnNoticeHref(businessId, move.kind === "scheduled" ? "provider-told" : move.kind === "failed" ? "provider-still-refusing" : "not-found"));
 }
 
 /** Records that the team has been in touch about a new purchase, which takes it off the Journey. Safe to repeat. */

@@ -8,8 +8,8 @@ describe("payCallbackDestination", () => {
   });
 
   it("returns a free listing account to the plan page it paid on", () => {
-    expect(payCallbackDestination({ failed: false, membership: "premium", returnTo: null })).toBe("/premium?payment=received");
-    expect(payCallbackDestination({ failed: true, membership: "care", returnTo: null })).toBe("/care?payment=failed");
+    expect(payCallbackDestination({ failed: false, membership: "managed", returnTo: null })).toBe("/plan?payment=received");
+    expect(payCallbackDestination({ failed: true, membership: "managed", returnTo: null })).toBe("/plan?payment=failed");
   });
 
   it("returns a reactivation to Billing", () => {

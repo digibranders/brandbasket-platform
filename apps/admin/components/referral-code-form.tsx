@@ -78,7 +78,7 @@ function Field({
   );
 }
 
-/** Today's price for one currency: what a discount is measured against. Null when there is no active plan. */
+/** The cheapest single service for one currency, the price a discount is measured against, or null to show no summary. */
 export interface PriceBasis {
   readonly netAmountCents: number;
   readonly taxRateBasisPoints: number;
@@ -115,7 +115,7 @@ interface ReferralPreview {
 }
 
 /**
- * What the code typed so far means against today's plan, or null until there is enough to say. Worked out with the
+ * What the code typed so far means against the cheapest service, or null until there is enough to say. Worked out with the
  * same functions checkout and the webhook use (discountCentsFor, chargedAmountCents), so it can never disagree with
  * what is charged.
  */
@@ -227,8 +227,8 @@ function DiscountField({
             {choice === "none"
               ? "The member pays the full price. The code only records who brought them."
               : percent
-                ? "A share of the plan’s price before GST, off every month for as long as the plan runs. Up to 99%."
-                : "How much comes off every month, before GST, for as long as the plan runs. Less than the plan’s own price."}
+                ? "A share of the service’s price before GST, off every month for as long as it runs. Up to 99%."
+                : "How much comes off every month, before GST, for as long as the service runs. Less than the cheapest service’s price."}
           </span>
         </>
       }
@@ -283,7 +283,7 @@ export function NewReferralCodeForm({
   affiliate,
 }: {
   readonly action: ReferralAction;
-  /** Today's active plan per currency, so the form can say what the member will pay. */
+  /** The cheapest service per currency, so the form can say what the member will pay. */
   readonly priceBases: Readonly<Record<BillingCurrency, PriceBasis | null>>;
   /** Null for a coupon. */
   readonly affiliate: CodeAffiliate | null;

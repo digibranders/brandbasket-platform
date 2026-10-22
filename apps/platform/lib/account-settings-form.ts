@@ -106,32 +106,6 @@ export function parseDeleteForm(formData: FormData): DeleteParseResult {
   return { success: true, details: details.details, password };
 }
 
-/** The stay offer as the page shows it, resolved on the server for a reason. */
-export interface RetentionOfferView {
-  readonly percent: number;
-  /** What each month costs now, tax included, formatted; null when the plan has no price to show. */
-  readonly currentPrice: string | null;
-  /** What each month costs after the offer, tax included, formatted. */
-  readonly newPrice: string;
-}
-
-/** The server's answer to "what do you offer someone leaving for this reason?". */
-export type OfferLookupState =
-  | { readonly status: "idle" }
-  | { readonly status: "error"; readonly message: string }
-  | { readonly status: "offer"; readonly offer: RetentionOfferView }
-  | { readonly status: "no-offer" };
-
-export const initialOfferLookupState: OfferLookupState = { status: "idle" };
-
-/** Taking the stay offer: it ends the flow on this page with the account kept, or says why it could not. */
-export type ClaimOfferState =
-  | { readonly status: "idle" }
-  | { readonly status: "error"; readonly message: string }
-  | { readonly status: "kept"; readonly newPrice: string };
-
-export const initialClaimOfferState: ClaimOfferState = { status: "idle" };
-
 /** The last step: only an error comes back, because success signs the person out and sends them away. */
 export type DeleteAccountState =
   | { readonly status: "idle" }

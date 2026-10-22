@@ -3,7 +3,7 @@ import type { JoinChoice } from "@/lib/join-form";
 
 /*
  * The name and look of this dashboard: Brandbasket. One product, one brand, so there is one constant. It says the name and
- * logo shown and which plans are offered at sign-up (Care only; Premium is no longer sold). An account is opened with an email
+ * logo shown and which plan is offered at sign-up (Managed Website). An account is opened with an email
  * address and the code emailed to it.
  * Browser-safe and pure.
  */
@@ -22,7 +22,7 @@ export interface Brand {
   readonly siteUrl: string;
   /** The logo, in white and dark, with its size. */
   readonly logo: { readonly white: string; readonly dark: string; readonly width: number; readonly height: number };
-  /** The plans offered at sign-up and on the Upgrade page, in the order they are shown. */
+  /** The plans offered at sign-up, in the order they are shown. */
   readonly joinChoices: readonly JoinChoice[];
   /** Whether the plans are sold with the directory listing and what comes with it: they are websites, so no. */
   readonly showsListing: boolean;
@@ -38,13 +38,13 @@ export const BRAND: Brand = {
   privacyEmail: "privacy@brandbasket.in",
   siteUrl: "https://brandbasket.in",
   logo: { white: "/brand/brandbasket-logo-white.svg", dark: "/brand/brandbasket-logo-dark.svg", width: 182, height: 32 },
-  joinChoices: ["care"],
+  joinChoices: ["managed"],
   showsListing: false,
   about: "We build your business website and look after it every month: design, hosting and care, with marketing services you can add as you grow.",
 };
 
 /** The plan a sign-up opens with when its address names none, or names one it does not sell (`free`, a typo). */
-export const BRANDBASKET_DEFAULT_CHOICE: JoinChoice = "care";
+export const BRANDBASKET_DEFAULT_CHOICE: JoinChoice = "managed";
 
 /** Where a person writes for help. */
 export function supportEmailOf(brand: Brand): string {
@@ -64,14 +64,6 @@ export function sellsFreeListing(brand: Brand): boolean {
 /** Whether a sign-up choice may be made. The server refuses any other, whatever the form sent. */
 export function offersChoice(brand: Brand, choice: JoinChoice): boolean {
   return brand.joinChoices.includes(choice);
-}
-
-/** The plan-table rows that are about the directory listing: a brand that does not sell the listing leaves them out. */
-const LISTING_FEATURE_IDS: ReadonlySet<string> = new Set(["listing", "images", "videos", "competitor-ads", "listing-management", "featured", "ranking"]);
-
-/** Whether a plan-table row (lib/plan-features.ts id) is shown. */
-export function featureShownTo(id: string, brand: Brand): boolean {
-  return brand.showsListing || !LISTING_FEATURE_IDS.has(id);
 }
 
 /**

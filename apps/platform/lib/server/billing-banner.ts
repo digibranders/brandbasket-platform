@@ -5,7 +5,8 @@ import { isOnboardingLocked } from "@/lib/onboarding/snapshot";
 import { firstIncompleteStep, onboardingStepHref } from "@brandbasket/shared/lib/onboarding/steps";
 import { requireCustomerAccess } from "./customer-access";
 import { getProjectOverview } from "./onboarding";
-import { resolveAppliedDiscount } from "./referrals";
+import { WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
+import { codeBasisFor, resolveAppliedDiscount } from "./referrals";
 
 /**
  * The payment banner for the signed-in customer, or null. Read once per request: the layout shows it on every page
@@ -31,9 +32,10 @@ export const getBillingBanner = cache(async (): Promise<BillingBannerModel | nul
     });
   }
   const { project, completed } = await getProjectOverview();
-  // The same computation Check and send uses, so the banner's price and the Pay button's can never disagree.
-  const discount =
-    billing.plan === null ? null : await resolveAppliedDiscount(tenant.businessId, billing.plan, new Date());
+  // The same computation Check and send uses, so the banner's price and the Pay button's can never disagree: it pays for
+  // the website alone.
+  const basis = billing.plan === null ? null : codeBasisFor(WEBSITE_ALONE, billing.plan.currency);
+  const discount = basis === null ? null : await resolveAppliedDiscount(tenant.businessId, basis, new Date());
   // Answers sent before payment was required: the build is waiting only on the payment.
   const locked = project !== null && isOnboardingLocked(project);
   const nextStep = firstIncompleteStep(new Set(completed));

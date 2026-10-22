@@ -27,7 +27,7 @@ vi.mock("server-only", () => ({}));
 const PAID_AT = new Date("2026-10-09T09:00:00.000Z");
 const PERIOD_END = new Date("2026-11-09T09:00:00.000Z");
 const LATER = new Date("2026-10-20T09:00:00.000Z");
-const LIST_CENTS = 1_000_000;
+const LIST_CENTS = 999_900;
 const TAX_BASIS_POINTS = 1_800;
 
 let dbs: TestDatabases;
@@ -55,12 +55,12 @@ async function seedBusiness(): Promise<string> {
   return id;
 }
 
-/** A Social media row at the list price, as a purchase freezes it, with its own provider subscription id. */
+/** A Social Media and Ads row at the list price, as a purchase freezes it, with its own provider subscription id. */
 function addRow(continuesId: string | null = null): Promise<AddOnSubscription> {
   return insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
     businessId,
-    addOn: "social-media",
+    addOn: "digital-growth",
     listAmountCents: LIST_CENTS,
     discountAmountCents: 0,
     netAmountCents: LIST_CENTS,
@@ -147,7 +147,7 @@ describe("activateAddOnPayment", () => {
     });
     expect(await invoiceCount()).toBe(1);
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, recorded.payment.id);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Social media", unitAmountCents: LIST_CENTS });
+    expect(invoice?.lines[0]).toMatchObject({ description: "Social Media and Ads", unitAmountCents: LIST_CENTS });
     expect(invoice?.totalCents).toBe(recorded.payment.amountCents);
   });
 
@@ -302,8 +302,8 @@ describe("applyAddOnPayment", () => {
 });
 
 describe("ensureAddOnPlan", () => {
-  const localSeo = addOnById("social-media");
-  const memberPrice = addOnPrice(localSeo, "INR", true);
+  const localSeo = addOnById("digital-growth");
+  const memberPrice = addOnPrice(localSeo, "INR", 200_000);
 
   it("makes a plan once and reuses it for the same add-on and amount", async () => {
     const { provider, calls } = providerMakingPlans(() => "plan_fixed");
@@ -321,7 +321,7 @@ describe("ensureAddOnPlan", () => {
     const { provider, calls } = providerMakingPlans((call) => `plan_${call}`);
 
     const member = await ensureAddOnPlan(dbs.staff.db, provider, { addOn: localSeo, price: memberPrice });
-    const list = await ensureAddOnPlan(dbs.staff.db, provider, { addOn: localSeo, price: addOnPrice(localSeo, "INR", false) });
+    const list = await ensureAddOnPlan(dbs.staff.db, provider, { addOn: localSeo, price: addOnPrice(localSeo, "INR") });
 
     expect([member, list]).toEqual(["plan_1", "plan_2"]);
     expect(calls()).toBe(2);

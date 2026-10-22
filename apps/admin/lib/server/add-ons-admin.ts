@@ -2,6 +2,9 @@ import "server-only";
 import {
   findAddOnSubscription,
   findBusinessCurrency,
+  findChargeForBusiness,
+  findLatestSubscriptionForBusiness,
+  findPackageOfferForfeitedAt,
   listAddOnSubscriptionsForStaff,
   listBundledAddOnsForBusiness,
   listPressReleasesForBusiness,
@@ -12,14 +15,28 @@ import {
 import { logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { scheduleAddOnEndFor, type AddOnEndOutcome, type AddOnEndRequest } from "@brandbasket/shared/server/add-on-ends";
 import {
+  moveBasketAtProvider,
+  readAddOnAssessment,
+  removeBundledAddOn,
+  startAddOn,
+  type AddOnStart,
+  type BasketMove,
+  type BundledRemoval,
+} from "@brandbasket/shared/server/basket-change";
+import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { clientPackageFacts, type ClientPackageFacts } from "@/lib/client-package";
+import {
+  clientAddOnOption,
   clientAddOnRows,
   clientBundledAddOnRows,
+  type ClientAddOnOption,
   clientPressReleaseRows,
   type ClientAddOnRow,
   type ClientBundledAddOnRow,
   type ClientPressReleaseRow,
   type PressReleaseStatus,
 } from "@/lib/client-add-ons";
+import { basketDeps } from "./basket-deps";
 import { getBillingProvider } from "./billing-provider";
 import { getStaffDb } from "./db";
 
@@ -33,16 +50,21 @@ export interface ClientAddOns {
   readonly addOns: readonly ClientAddOnRow[];
   readonly bundledAddOns: readonly ClientBundledAddOnRow[];
   readonly pressReleases: readonly ClientPressReleaseRow[];
+  /** What staff can add (or keep) for the client now. */
+  readonly options: readonly ClientAddOnOption[];
+  /** The package the client has, its ad credit and when the offer was given up. */
+  readonly package: ClientPackageFacts;
 }
 
 /** Everything the client page's Add-ons section shows for one business. */
 export async function loadClientAddOns(businessId: string, now: Date): Promise<ClientAddOns> {
   const db = getStaffDb();
-  const [rows, releases, bundled, currency] = await Promise.all([
+  const [rows, releases, bundled, currency, forfeitedAt] = await Promise.all([
     listAddOnSubscriptionsForStaff(db, businessId),
     listPressReleasesForBusiness(db, businessId),
     listBundledAddOnsForBusiness(db, businessId),
     findBusinessCurrency(db, businessId),
+    findPackageOfferForfeitedAt(db, businessId),
   ]);
   if (currency === null) throw new Error(`No business with id ${businessId} to list add-ons for`);
   const addOns = clientAddOnRows(rows, now);
@@ -50,7 +72,50 @@ export async function loadClientAddOns(businessId: string, now: Date): Promise<C
     // Ids only: the row holds the customer's price and dates, none of which belong in a log.
     if (row.broken) logBillingEvent("error", "add-on-view-failed", { businessId, addOnSubscriptionId: row.id });
   }
-  return { addOns, bundledAddOns: clientBundledAddOnRows(bundled, currency), pressReleases: clientPressReleaseRows(releases) };
+  const subscription = await findLatestSubscriptionForBusiness(db, businessId);
+  const openChargeCents = new Map<string, number>();
+  for (const row of bundled) {
+    if (row.status !== "pending" || row.chargeId === null) continue;
+    const charge = await findChargeForBusiness(db, businessId, row.chargeId);
+    if (charge?.status === "open") openChargeCents.set(charge.id, charge.amountCents);
+  }
+  const providerName = getBillingProvider().name;
+  const options: ClientAddOnOption[] = [];
+  for (const addOn of MONTHLY_ADD_ON_IDS) {
+    const option = clientAddOnOption(addOn, await readAddOnAssessment(db, { businessId, addOn, providerName, now }), currency);
+    if (option !== null) options.push(option);
+  }
+  return {
+    addOns,
+    bundledAddOns: clientBundledAddOnRows(bundled, currency, {
+      nextBillingOn: subscription?.paidThroughAt ?? null,
+      openChargeCents,
+      cancelRequested: subscription?.cancelRequestedAt != null,
+    }),
+    pressReleases: clientPressReleaseRows(releases),
+    options,
+    package: clientPackageFacts({ lines: bundled, subscription, currency, forfeitedAt }),
+  };
+}
+
+/**
+ * Adds an add-on for the client, or keeps one that is ending: the same rules and price as the customer's own Add
+ * (startAddOn). An add opens a charge the customer pays from Billing; the staff member is recorded on the add-on.
+ */
+export async function addClientAddOn(input: { readonly businessId: string; readonly addOn: MonthlyAddOnId; readonly staffUserId: string }, now: Date): Promise<AddOnStart> {
+  return startAddOn(basketDeps(), { businessId: input.businessId, addOn: input.addOn, staffId: input.staffUserId, now });
+}
+
+/** Takes an add-on out of the client's plan payment from the next billing date, as the customer's own Remove does. */
+export async function removeClientAddOn(input: { readonly businessId: string; readonly addOn: MonthlyAddOnId }, now: Date): Promise<BundledRemoval> {
+  return removeBundledAddOn(basketDeps(), { businessId: input.businessId, addOn: input.addOn, now });
+}
+
+/** Tells the provider again to bill the client's added add-ons from the next renewal, after it refused the first time. */
+export async function retryClientAddOnProvider(input: { readonly businessId: string; readonly bundledAddOnId: string }, now: Date): Promise<BasketMove> {
+  const row = (await listBundledAddOnsForBusiness(getStaffDb(), input.businessId)).find((candidate) => candidate.id === input.bundledAddOnId);
+  if (row === undefined) return { kind: "nothing" };
+  return moveBasketAtProvider(basketDeps(), row.subscriptionId, now);
 }
 
 /**

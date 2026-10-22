@@ -33,7 +33,8 @@ import { loadBillingDetailsView } from "@/lib/server/billing-details";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
 import { ReferralCodeForm } from "@/components/panel/referral-code-form";
-import { findLapsedAppliedCode, resolveAppliedDiscount } from "@/lib/server/referrals";
+import { codeBasisFor, findLapsedAppliedCode, resolveAppliedDiscount } from "@/lib/server/referrals";
+import { WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
 import type { PlanDiscount } from "@brandbasket/shared/lib/billing/terms";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { applyReferralCode, removeReferralCode, startCheckout, submitOnboarding } from "./actions";
@@ -252,14 +253,10 @@ export default async function ReviewStepPage({ searchParams }: ReviewStepPagePro
   const checklist = onboardingChecklist(checklistInputFrom(snapshot));
   // Re-validated on every render, so a code retired since it was applied quietly stops discounting rather than
   // showing a price the checkout would refuse to honour.
-  const discount =
-    billing.plan === null || billing.status !== "unpaid"
-      ? null
-      : await resolveAppliedDiscount(tenant.businessId, billing.plan, new Date());
-  const lapsedCode =
-    billing.plan === null || billing.status !== "unpaid" || discount !== null
-      ? null
-      : await findLapsedAppliedCode(tenant.businessId, billing.plan, new Date());
+  // Check and send pays for the website alone (startCheckoutFor), so a code is priced against it.
+  const basis = billing.plan === null || billing.status !== "unpaid" ? null : codeBasisFor(WEBSITE_ALONE, billing.plan.currency);
+  const discount = basis === null ? null : await resolveAppliedDiscount(tenant.businessId, basis, new Date());
+  const lapsedCode = basis === null || discount !== null ? null : await findLapsedAppliedCode(tenant.businessId, basis, new Date());
   const step = paymentStep({
     status: billing.status,
     plan: billing.plan,

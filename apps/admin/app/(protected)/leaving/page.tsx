@@ -36,7 +36,7 @@ export default async function LeavingPage(): Promise<ReactElement> {
 
   return (
     <>
-      <PageHeader title="Leaving" meta="What people told us on the way out, and whether the stay offer kept them." />
+      <PageHeader title="Leaving" meta="What people told us on the way out." />
 
       <Figures
         items={[

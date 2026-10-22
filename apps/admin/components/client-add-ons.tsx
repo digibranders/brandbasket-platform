@@ -7,8 +7,16 @@ import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
 import { StatusDot } from "@/components/console/status-dot";
 import { ADD_ON_NOTICES, type AddOnNotice } from "@/lib/add-on-notices";
-import type { ClientAddOnRow, ClientBundledAddOnRow, ClientPressReleaseRow, PressReleaseStatus } from "@/lib/client-add-ons";
-import { endAddOnAction, markAddOnContactedAction, markBundledAddOnContactedAction, setPressReleaseStatusAction } from "@/app/(protected)/clients/[businessId]/actions";
+import type { ClientAddOnOption, ClientAddOnRow, ClientBundledAddOnRow, ClientPressReleaseRow, PressReleaseStatus } from "@/lib/client-add-ons";
+import {
+  addClientAddOnAction,
+  endAddOnAction,
+  markAddOnContactedAction,
+  markBundledAddOnContactedAction,
+  removeClientAddOnAction,
+  retryAddOnProviderAction,
+  setPressReleaseStatusAction,
+} from "@/app/(protected)/clients/[businessId]/actions";
 
 const STEP_BUTTONS: Readonly<Record<Exclude<PressReleaseStatus, "waiting">, string>> = {
   in_progress: "Mark in progress",
@@ -101,7 +109,43 @@ function AddOnRow({ businessId, row }: { readonly businessId: string; readonly r
   );
 }
 
-/** An add-on the customer took with the plan: billed in the plan's payment, so there is nothing to pause or cancel here. */
+interface ConfirmFormProps {
+  readonly opener: string;
+  readonly action: (formData: FormData) => Promise<void>;
+  readonly fields: Readonly<Record<string, string>>;
+  readonly confirm: string;
+  readonly hint: string;
+  readonly submit: string;
+  readonly danger: boolean;
+}
+
+/** A change behind the console's confirm rule, as Pause and Cancel are: a required first-person box, then a button named for it. */
+function ConfirmForm({ opener, action, fields, confirm, hint, submit, danger }: ConfirmFormProps): ReactElement {
+  return (
+    <details className="group open:basis-full">
+      <summary className={`${buttonSecondary} ${ROW_BUTTON} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
+        <span className="group-open:hidden">{opener}</span>
+        <span className="hidden group-open:inline">Never mind</span>
+      </summary>
+      <form action={action} className="mt-4 max-w-md space-y-3">
+        {Object.entries(fields).map(([name, value]) => (
+          <input key={name} type="hidden" name={name} value={value} />
+        ))}
+        <label className="flex items-start gap-3 text-sm font-medium">
+          <input type="checkbox" name="confirm" value="yes" required className={checkboxClasses} />
+          <span>
+            {confirm}
+            <RequiredMark />
+          </span>
+        </label>
+        <p className={hintClasses}>{hint}</p>
+        <GatedSubmitButton className={`${danger ? buttonDanger : buttonSecondary} ${ROW_BUTTON}`}>{submit}</GatedSubmitButton>
+      </form>
+    </details>
+  );
+}
+
+/** An add-on billed in the plan's payment: taken out from the next billing date, never paused or cancelled on its own. */
 function BundledAddOnRow({ businessId, row }: { readonly businessId: string; readonly row: ClientBundledAddOnRow }): ReactElement {
   return (
     <li className="py-4 first:pt-0">
@@ -114,19 +158,66 @@ function BundledAddOnRow({ businessId, row }: { readonly businessId: string; rea
         </div>
         <StatusDot tone={row.state.tone} label={row.state.label} />
       </div>
-      {row.needsContact ? (
+      {row.needsContact || row.canRetry || (row.canRemove && row.endsOnText !== null) ? (
         <div className="mt-4 flex flex-wrap items-start gap-3">
-          <form action={markBundledAddOnContactedAction}>
-            <input type="hidden" name="businessId" value={businessId} />
-            <input type="hidden" name="bundledAddOnId" value={row.id} />
-            <button type="submit" className={`${buttonSecondary} ${ROW_BUTTON}`}>
-              Mark contacted
-              <span className="sr-only"> for {row.title}</span>
-            </button>
-          </form>
+          {row.needsContact ? (
+            <form action={markBundledAddOnContactedAction}>
+              <input type="hidden" name="businessId" value={businessId} />
+              <input type="hidden" name="bundledAddOnId" value={row.id} />
+              <button type="submit" className={`${buttonSecondary} ${ROW_BUTTON}`}>
+                Mark contacted
+                <span className="sr-only"> for {row.title}</span>
+              </button>
+            </form>
+          ) : null}
+          {row.canRetry ? (
+            <form action={retryAddOnProviderAction}>
+              <input type="hidden" name="businessId" value={businessId} />
+              <input type="hidden" name="bundledAddOnId" value={row.id} />
+              <button type="submit" className={`${buttonSecondary} ${ROW_BUTTON}`}>
+                Retry the provider
+                <span className="sr-only"> for {row.title}</span>
+              </button>
+            </form>
+          ) : null}
+          {row.canRemove && row.endsOnText !== null ? (
+            <ConfirmForm
+              opener={`Remove ${row.title}`}
+              action={removeClientAddOnAction}
+              fields={{ businessId, addOn: row.addOn }}
+              confirm={`I’ve told the customer. ${row.title} will stop on ${row.endsOnText}.`}
+              hint="It stays until the next billing date. Then the other services go to list price and package prices end for good, the same as when the customer removes it."
+              submit={`Remove ${row.title}`}
+              danger
+            />
+          ) : null}
         </div>
       ) : null}
     </li>
+  );
+}
+
+/** Add (or keep) an add-on for the client, with what it costs. The customer pays the charge themselves, from Billing. */
+function AddOnOptions({ businessId, options }: { readonly businessId: string; readonly options: readonly ClientAddOnOption[] }): ReactElement {
+  return (
+    <div className="mt-6 flex flex-wrap items-start gap-3">
+      {options.map((option) => (
+        <ConfirmForm
+          key={option.addOn}
+          opener={`${option.kind === "keep" ? "Keep" : "Add"} ${option.title}`}
+          action={addClientAddOnAction}
+          fields={{ businessId, addOn: option.addOn }}
+          confirm={
+            option.kind === "keep"
+              ? `I’ve told the customer. ${option.title} stays in their plan payment.`
+              : `I’ve told the customer. They pay for ${option.title} from Billing, and it turns on when they do.`
+          }
+          hint={option.costText}
+          submit={`${option.kind === "keep" ? "Keep" : "Add"} ${option.title}`}
+          danger={false}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -164,6 +255,7 @@ interface ClientAddOnsProps {
   readonly addOns: readonly ClientAddOnRow[];
   readonly bundledAddOns: readonly ClientBundledAddOnRow[];
   readonly pressReleases: readonly ClientPressReleaseRow[];
+  readonly options: readonly ClientAddOnOption[];
   readonly notice: AddOnNotice | null;
 }
 
@@ -172,7 +264,7 @@ interface ClientAddOnsProps {
  * date, who scheduled an end) and each press release with its status. Staff follow up a new purchase, pause or cancel
  * for the customer, and move a press release on. The id lets the Journey and every notice link land here.
  */
-export function ClientAddOns({ businessId, addOns, bundledAddOns, pressReleases, notice }: ClientAddOnsProps): ReactElement {
+export function ClientAddOns({ businessId, addOns, bundledAddOns, pressReleases, options, notice }: ClientAddOnsProps): ReactElement {
   const toFollowUp =
     addOns.filter((row) => row.needsContact).length + bundledAddOns.filter((row) => row.needsContact).length + pressReleases.filter((release) => release.status === "waiting").length;
   return (
@@ -183,7 +275,7 @@ export function ClientAddOns({ businessId, addOns, bundledAddOns, pressReleases,
         </Notice>
       )}
       {addOns.length === 0 && bundledAddOns.length === 0 && pressReleases.length === 0 ? (
-        <Quiet>Nothing bought yet. Social media, Outreach and lead generation and Paid advertising appear here when the customer buys one.</Quiet>
+        <Quiet>Nothing bought yet. Services appear here when the customer takes one.</Quiet>
       ) : (
         <ul className="max-w-3xl divide-y divide-line">
           {addOns.map((row) => (
@@ -197,6 +289,7 @@ export function ClientAddOns({ businessId, addOns, bundledAddOns, pressReleases,
           ))}
         </ul>
       )}
+      {options.length === 0 ? null : <AddOnOptions businessId={businessId} options={options} />}
     </Section>
   );
 }

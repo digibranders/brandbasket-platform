@@ -11,7 +11,7 @@ import { GOOGLE_CALLBACK_PATH } from "../paths";
  * set up, it goes back to the Details tab saying so.
  */
 export async function GET(request: Request): Promise<Response> {
-  await requireCustomerAccess({ listingAccount: "allow", plan: "premium" });
+  await requireCustomerAccess({ listingAccount: "allow" });
   const origin = googleImportOrigin(request);
   const credentials = googleBusinessCredentials();
   if (credentials === null) return Response.redirect(new URL(profileHref("details", "google-off"), origin), 303);

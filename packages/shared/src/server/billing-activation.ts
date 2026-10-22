@@ -8,6 +8,7 @@ import {
   recordPaymentAndActivate,
   type BillingCurrency,
   type BillingProviderName,
+  type BundledAddOn,
   type ManualPaymentRecord,
   type OpenedMembership,
   type PaymentMethodDetails,
@@ -28,8 +29,8 @@ export interface FirstPayment {
   readonly paidAt: Date;
   /**
    * What a referral code took off this subscription's first payment, in the plan's minor units, as frozen on the
-   * subscription. Defaults to 0. The payment is recorded at `plan.initialAmountCents` minus this, because the
-   * payments table must say what was actually taken, not what the plan lists.
+   * subscription. Defaults to 0. The payment is recorded at the lines' total minus this, because the
+   * payments table must say what was actually taken, not what the lines list.
    */
   readonly discountAmountCents?: number;
   /** The audit trail, for a payment an admin recorded by hand (provider `manual`). */
@@ -48,9 +49,19 @@ export interface FirstPaymentActivation extends RecordedActivation {
 }
 
 /**
+ * The lines a first payment or a reactivation is for: `pending` until it is recorded, `active` once a first delivery
+ * has turned them on. Counting both keeps a repeated delivery of the same payment (the webhook and the return page, or a
+ * retry) at a real amount, which recordPaymentAndActivate then answers with the payment already recorded; with the
+ * services plan costing nothing, the pending lines alone would come to 0 and refuse.
+ */
+async function billedLines(tx: ScopedTransaction, subscriptionId: string): Promise<readonly BundledAddOn[]> {
+  return (await findBundledAddOnsForSubscription(tx, subscriptionId)).filter((row) => row.status !== "removed");
+}
+
+/**
  * The one activation path for a first payment, however it arrived (the provider's checkout or an admin recording a
- * bank transfer). It records what was charged (the plan's initial amount less any referral discount, plus the
- * plan's tax), opens the subscription until
+ * bank transfer). It records what was charged (the services' nets, with the plan row's own initial amount if it has one,
+ * less any referral discount, plus the plan's tax), opens the subscription until
  * `plan.initialTermMonths` calendar months after payment (the paid-up-front term is also the commitment), and marks
  * the lead paid, all inside the caller's staff transaction. Idempotent on the provider payment id.
  *
@@ -60,14 +71,15 @@ export interface FirstPaymentActivation extends RecordedActivation {
  * The term is unaffected by a discount: a referral code lowers the price, never the length of what it buys.
  *
  * A payment on an affiliate code also writes what the affiliate earned from it, in the same transaction.
- * Issues the payment's tax invoice last, in a savepoint (D7).
+ * Issues the payment's tax invoice last, in a savepoint (D7), a line for each service as it was billed.
  */
 export async function activateFirstPayment(tx: ScopedTransaction, payment: FirstPayment): Promise<FirstPaymentActivation> {
   const termEnd = addMonthsUtc(payment.paidAt, payment.plan.initialTermMonths);
   // What was actually taken: net price less discount, with the plan's tax on top. chargedAmountCents throws for a
   // discount that would leave nothing, so a nonsense figure is never recorded as a payment.
-  // The add-ons taken at this checkout are billed in the same charge: the plan's price plus theirs, less the discount.
-  const bundled = (await findBundledAddOnsForSubscription(tx, payment.subscriptionId)).filter((row) => row.status === "pending");
+  // The services taken at this checkout are lines of the subscription, billed in the same charge: their nets (the plan row
+  // itself costs nothing), less the discount.
+  const bundled = await billedLines(tx, payment.subscriptionId);
   const amountCents = chargedAmountCents(
     payment.plan.initialAmountCents + bundledNetCents(bundled),
     payment.discountAmountCents ?? 0,
@@ -113,7 +125,7 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
 /** What a renewal was charged at, exactly as the caller's amount check accepted it, for its tax invoice. */
 export interface RenewalInvoicedPrice {
   readonly plan: Plan;
-  /** The add-ons billed inside the plan's charge, each a line of the invoice. Empty for a plan alone. */
+  /** The services billed inside the plan's charge, each a line of the invoice. Empty only for a subscription from before services were lines. */
   readonly bundledAddOns?: readonly BundledInvoiceAddOn[];
   /** The plan's recurring price before any discount. */
   readonly netAmountCents: number;
@@ -169,7 +181,22 @@ export async function activateRenewalPayment(tx: ScopedTransaction, payment: Ren
     ...(payment.method === undefined ? {} : { method: payment.method }),
   });
   if (!activation.alreadyRecorded) {
-    await accrueAffiliateEarning(tx, { paymentId: activation.payment.id, subscriptionId: payment.subscriptionId, kind: "renewal" });
+    // The subscription still holds the amount it was billed before this payment when the renewal completes a change, so
+    // the earning is worked out on what the renewal was invoiced at.
+    const { bundledAddOns, netAmountCents, discountAmountCents } = payment.invoicedPrice;
+    await accrueAffiliateEarning(tx, {
+      paymentId: activation.payment.id,
+      subscriptionId: payment.subscriptionId,
+      kind: "renewal",
+      ...(bundledAddOns === undefined
+        ? {}
+        : {
+            invoiced: {
+              netCents: netAmountCents + bundledAddOns.reduce((total, line) => total + line.listAmountCents - line.offerDiscountAmountCents, 0),
+              discountCents: discountAmountCents,
+            },
+          }),
+    });
     await issueTaxInvoiceSafely(tx, activation.payment, {
       kind: "plan",
       ...payment.invoicedPrice,
@@ -200,18 +227,19 @@ export interface ReactivationPayment {
 /**
  * The first payment on a new subscription for a business that paid before and lapsed (docs/superpowers/specs/2026-10-09-
  * reactivation-design.md). Missed months are not charged: it buys one month from the day it is paid, at the plan's
- * monthly price with its tax and no coupon. It is not a first payment: no lead is marked paid, no membership opens (the
- * business is already a client) and no affiliate earns on it. Idempotent on the provider payment id. Issues the payment's
- * tax invoice last, in a savepoint (D7).
+ * monthly price (0 for a services plan) plus the services its checkout was opened with, with its tax and no coupon. It is not a first payment: no
+ * lead is marked paid, no membership opens (the business is already a client) and no affiliate earns on it. Idempotent on
+ * the provider payment id. Issues the payment's tax invoice last, in a savepoint (D7).
  */
 export async function activateReactivationPayment(tx: ScopedTransaction, payment: ReactivationPayment): Promise<RecordedActivation> {
+  const bundled = await billedLines(tx, payment.subscriptionId);
   const activation = await recordPaymentAndActivate(tx, {
     businessId: payment.businessId,
     subscriptionId: payment.subscriptionId,
     provider: payment.provider,
     providerPaymentId: payment.providerPaymentId,
     kind: "reactivation",
-    amountCents: chargedAmountCents(payment.plan.recurringAmountCents, 0, payment.plan.taxRateBasisPoints),
+    amountCents: chargedAmountCents(payment.plan.recurringAmountCents + bundledNetCents(bundled), 0, payment.plan.taxRateBasisPoints),
     currency: payment.plan.currency,
     paidAt: payment.paidAt,
     paidThroughAt: payment.paidThroughAt,
@@ -221,9 +249,11 @@ export async function activateReactivationPayment(tx: ScopedTransaction, payment
     ...(payment.method === undefined ? {} : { method: payment.method }),
   });
   if (!activation.alreadyRecorded) {
+    const activeBundle = await activateBundledAddOns(tx, { subscriptionId: payment.subscriptionId, now: payment.paidAt });
     await issueTaxInvoiceSafely(tx, activation.payment, {
       kind: "plan",
       plan: payment.plan,
+      bundledAddOns: activeBundle,
       netAmountCents: payment.plan.recurringAmountCents,
       discountAmountCents: 0,
       retentionDiscountCents: 0,

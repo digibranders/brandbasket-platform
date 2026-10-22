@@ -17,10 +17,10 @@ const PAID_AT = new Date("2026-09-16T12:00:00.000Z");
 
 const USD_PLAN: Plan = {
   id: "0192f3c4-3333-7000-8000-000000000003",
-  code: "care-usd",
-  name: "Brandbasket care plan",
+  code: "managed-usd-2026-10",
+  name: "Managed Website",
   currency: "USD",
-  tier: "premium",
+  tier: "managed",
   initialAmountCents: 22500,
   initialTermMonths: 3,
   recurringAmountCents: 7500,
@@ -120,6 +120,14 @@ describe("createFakeBillingProvider", () => {
       amountCents: 350000,
       currency: "INR",
     });
+  });
+
+  it("charges a basket of services on the plan that costs nothing: the lines' nets with the plan's tax on top", async () => {
+    // All three services in rupees at the package price, ₹26,597 a month before 18% GST (docs/plans/16-platform-pricing-offers.md).
+    const services: Plan = { ...USD_PLAN, code: "services-inr-2026-10", currency: "INR", initialAmountCents: 0, recurringAmountCents: 0, taxRateBasisPoints: 1_800 };
+    const fake = provider();
+    const started = await fake.startCheckout({ ...CHECKOUT, plan: services, bundledAddOnNetCents: 2_659_700 });
+    expect(await fake.confirmCheckout({ token: tokenFrom(started.checkoutUrl) })).toMatchObject({ amountCents: 3_138_446, currency: "INR" });
   });
 
   it("rejects a token whose amount was edited", async () => {
@@ -339,10 +347,10 @@ describe("createFakeBillingProvider", () => {
 describe("a referral discount", () => {
   const PLAN = {
     id: "plan-row-id",
-    code: "care-usd",
-    name: "Brandbasket care plan",
+    code: "managed-usd-2026-10",
+    name: "Managed Website",
     currency: "USD",
-    tier: "premium",
+    tier: "managed",
     initialAmountCents: 7_500,
     initialTermMonths: 1,
     recurringAmountCents: 7_500,

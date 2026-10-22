@@ -2,7 +2,10 @@ import type { BillingProvider } from "@brandbasket/billing";
 import {
   changeAddOnEndKind,
   consumeRateLimit,
+  findBusinessCurrency,
+  findLiveBundledAddOns,
   insertExitFeedback,
+  isPackageOfferForfeited,
   listAddOnSubscriptionsForBusiness,
   lockBusinessForBilling,
   markAddOnCancelled,
@@ -11,12 +14,13 @@ import {
   scheduleAddOnEnd,
   withTenantScope,
   type AddOnSubscription,
+  type BundledAddOn,
   type Database,
   type ScopedTransaction,
   type Subscription,
 } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
-import { closeAccountFor, hasRunningAddOnsFor } from "./account-exit";
+import { closeAccountFor, hasRunningAddOnsFor, loadPackageEndsFor } from "./account-exit";
 import { checkPasswordFor } from "./account-security";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
@@ -29,15 +33,16 @@ vi.mock("server-only", () => ({}));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./account-security", () => ({ checkPasswordFor: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
-vi.mock("./discount-plans", () => ({ ensureDiscountPlan: vi.fn() }));
 vi.mock("@brandbasket/db", () => ({
   ACCOUNT_CLOSURE_GRACE_DAYS: 30,
-  applyRetentionDiscount: vi.fn(),
   cancelStaleSubscription: vi.fn(),
   changeAddOnEndKind: vi.fn(),
   consumeRateLimit: vi.fn(),
   findAddOnSubscription: vi.fn(),
+  findBusinessCurrency: vi.fn(),
+  findLiveBundledAddOns: vi.fn(),
   insertExitFeedback: vi.fn(),
+  isPackageOfferForfeited: vi.fn(),
   listAddOnSubscriptionsForBusiness: vi.fn(),
   lockBusinessForBilling: vi.fn(),
   markAddOnCancelled: vi.fn(),
@@ -59,7 +64,7 @@ const customer = (subscription: Subscription | null): GrantedCustomer =>
   ({
     user: { id: USER_ID, email: "ana@example.com", name: "Ana Diaz", emailConfirmed: true, phone: null },
     tenant: { userId: USER_ID, businessId: BUSINESS_ID, businessName: "Riverside Dental", role: "owner" },
-    billing: { status: "paid", hasAccess: true, subscription, tier: "care", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
+    billing: { status: "paid", hasAccess: true, subscription, tier: "managed", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
   }) as GrantedCustomer;
 
 /** A paid plan at the fake provider that has not been asked to end. */
@@ -79,7 +84,7 @@ function addOnRow(overrides: Partial<AddOnSubscription> = {}): AddOnSubscription
   return {
     id: `0192f3c4-2222-7000-8000-${nextRow.toString(16).padStart(12, "0")}`,
     businessId: BUSINESS_ID,
-    addOn: "social-media",
+    addOn: "digital-growth",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${nextRow.toString(16).padStart(24, "0")}`,
     status: "active",
@@ -248,6 +253,17 @@ describe("closeAccountFor with add-ons", () => {
     expect(markAddOnCancelled).toHaveBeenCalledWith(expect.anything(), row.id, NOW);
   });
 
+  it("takes the business's billing lock before it marks the plan as cancel requested", async () => {
+    withRows();
+
+    await expect(closeAccountFor(customer(PLAN_SUBSCRIPTION), DETAILS, NOW)).resolves.toEqual({ kind: "closed" });
+
+    const [lockedAt] = vi.mocked(lockBusinessForBilling).mock.invocationCallOrder;
+    const [markedAt] = vi.mocked(markCancelRequested).mock.invocationCallOrder;
+    expect(lockBusinessForBilling).toHaveBeenCalledWith(expect.anything(), BUSINESS_ID);
+    expect(lockedAt).toBeLessThan(markedAt ?? 0);
+  });
+
   it("rolls the closure back and refuses when an add-on still needs ending under the lock", async () => {
     // A payment landed after the rows were read: the check under the lock finds a row nobody told the provider about.
     vi.mocked(listAddOnSubscriptionsForBusiness)
@@ -301,5 +317,71 @@ describe("hasRunningAddOnsFor", () => {
     vi.mocked(listAddOnSubscriptionsForBusiness).mockResolvedValue([addOnRow({ status: "cancelled" })]);
 
     await expect(hasRunningAddOnsFor(customer(null))).resolves.toBe(false);
+  });
+});
+
+describe("loadPackageEndsFor", () => {
+  const tenantTx = { name: "tenant-tx" } as unknown as ScopedTransaction;
+  const line = (addOn: BundledAddOn["addOn"], overrides: Partial<BundledAddOn> = {}): BundledAddOn =>
+    ({ addOn, status: "active", endRequestedAt: null, ...overrides }) as BundledAddOn;
+  const staying = [line("managed-website"), line("digital-growth"), line("local-seo-aeo")];
+  const withCredit = (adCreditCents: number, overrides: Partial<Subscription> = {}): GrantedCustomer =>
+    customer({ ...PLAN_SUBSCRIPTION, adCreditCents, ...overrides } as Subscription);
+
+  beforeEach(() => {
+    vi.mocked(withTenantScope).mockImplementation((async (_db: unknown, _scope: unknown, work: (tx: ScopedTransaction) => Promise<unknown>) => work(tenantTx)) as unknown as typeof withTenantScope);
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue(staying);
+    vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
+    vi.mocked(findBusinessCurrency).mockResolvedValue("INR");
+  });
+
+  it("reads the client's own basket, forfeit and ad credit, and says what cancelling ends", async () => {
+    await expect(loadPackageEndsFor(withCredit(500_000))).resolves.toEqual([
+      "Your package price (30% off)",
+      "\u20B95,000 a month of ad credit",
+      "If you come back, every service is at its own price",
+    ]);
+    expect(withTenantScope).toHaveBeenCalledWith(expect.anything(), { userId: USER_ID, businessId: BUSINESS_ID }, expect.any(Function));
+    expect(findLiveBundledAddOns).toHaveBeenCalledWith(tenantTx, BUSINESS_ID);
+  });
+
+  it("does not count a service that is already ending", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website"), line("digital-growth", { endRequestedAt: NOW }), line("local-seo-aeo")]);
+
+    await expect(loadPackageEndsFor(withCredit(0))).resolves.toEqual([
+      "Your package price (20% off)",
+      "If you come back, every service is at its own price",
+    ]);
+  });
+
+  it("lists the lines for a plan the team collects by hand and for one whose renewal is failing", async () => {
+    const lines = ["Your package price (30% off)", "\u20B95,000 a month of ad credit", "If you come back, every service is at its own price"];
+    await expect(loadPackageEndsFor(withCredit(500_000, { provider: "manual" }))).resolves.toEqual(lines);
+    await expect(loadPackageEndsFor(withCredit(500_000, { status: "past_due" }))).resolves.toEqual(lines);
+  });
+
+  it("does not count a service that is not yet paid for", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website"), line("digital-growth"), line("local-seo-aeo", { status: "pending" })]);
+
+    await expect(loadPackageEndsFor(withCredit(0))).resolves.toEqual([
+      "Your package price (20% off)",
+      "If you come back, every service is at its own price",
+    ]);
+  });
+
+  it("lists nothing for a forfeited business or a single service", async () => {
+    vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
+    await expect(loadPackageEndsFor(withCredit(0))).resolves.toEqual([]);
+
+    vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website")]);
+    await expect(loadPackageEndsFor(withCredit(0))).resolves.toEqual([]);
+  });
+
+  it("lists nothing when closing does not end a paid plan, and reads nothing", async () => {
+    await expect(loadPackageEndsFor(customer(null))).resolves.toEqual([]);
+    await expect(loadPackageEndsFor(withCredit(500_000, { cancelRequestedAt: NOW }))).resolves.toEqual([]);
+    await expect(loadPackageEndsFor(withCredit(500_000, { status: "incomplete" }))).resolves.toEqual([]);
+    expect(withTenantScope).not.toHaveBeenCalled();
   });
 });

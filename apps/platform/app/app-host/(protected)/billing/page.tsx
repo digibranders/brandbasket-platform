@@ -1,21 +1,22 @@
 import type { CurrentPaymentMethod } from "@brandbasket/db";
-import { offersChoice, supportEmailOf } from "@/lib/brand";
+import { supportEmailOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { EmailUs } from "@/components/panel/email-us";
 import type { Metadata } from "next";
-import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 import { ArrowIcon } from "@brandbasket/shared/ui/icons";
 import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import { SectionHeading, Surface } from "@brandbasket/shared/ui/panel/surface";
 import { PAYMENT_RECEIVED_MESSAGE, PAYMENT_STEP_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { paymentReturnView, readPaymentReturn } from "@brandbasket/shared/lib/billing/payment-return";
+import { websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import { planLabel } from "@brandbasket/shared/lib/billing/receipt-title";
 import { describePlanTerms, monthlyPaymentAmount } from "@brandbasket/shared/lib/billing/terms";
 import { firstIncompleteStep, onboardingStepHref } from "@brandbasket/shared/lib/onboarding/steps";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { BillingDetails } from "@/components/panel/billing/billing-details";
 import { MonthlyBilling } from "@/components/panel/billing/monthly-billing";
+import { NoticeBanner } from "@/components/panel/notice-banner";
 import { PaymentWaiting } from "@/components/panel/payment-waiting";
 import { PaymentMethod } from "@/components/panel/billing/payment-method";
 import { PlanSummary, priceNote } from "@/components/panel/billing/plan-summary";
@@ -23,10 +24,9 @@ import { ReactivatePlan } from "@/components/panel/billing/reactivate-plan";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import { paymentMethodView, renewsAutomatically } from "@/lib/billing/payment-method-view";
 import { CHARGE_NOTICES, readChargeNotice } from "@/lib/billing/charge-notices";
-import { UPGRADE_PATH } from "@/lib/membership";
 import { billingMonths } from "@/lib/billing/billing-months";
 import { listOpenCustomerCharges } from "@/lib/server/charges";
-import { findCustomerPaymentMethod, findReactivationPlan, listCustomerReceipts } from "@/lib/server/billing";
+import { findCustomerPaymentMethod, findReactivationNetCents, findReactivationPlan, listCustomerReceipts } from "@/lib/server/billing";
 import { loadBillingDetailsView } from "@/lib/server/billing-details";
 import { reactivateAction } from "./actions";
 import { getCustomerBusinessKind, requireCustomerAccess } from "@/lib/server/customer-access";
@@ -109,17 +109,6 @@ function RenewalFailingCard({ until }: { readonly until: Date }): ReactElement {
   );
 }
 
-function NoticeBanner({ ok, text }: { readonly ok: boolean; readonly text: string }): ReactElement {
-  return (
-    <p
-      role="status"
-      className={`mt-6 rounded-control px-4 py-3 text-sm ${ok ? "bg-paper-deep text-ink" : "bg-accent-pale text-accent-deep"}`}
-    >
-      {text}
-    </p>
-  );
-}
-
 interface BillingPageProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
@@ -196,7 +185,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
                 We can’t take payment in your currency just yet. Email us at <EmailUs /> and we’ll sort it out.
               </p>
             ) : (
-              <p className="mt-4 text-sm leading-relaxed text-ink-soft">{describePlanTerms(billing.plan)}</p>
+              <p className="mt-4 text-sm leading-relaxed text-ink-soft">{describePlanTerms(billing.plan, websiteAloneNetCents(billing.plan.currency))}</p>
             )}
             <ButtonLink href={ready ? PAYMENT_STEP_HREF : onboardingStepHref(nextStep)} className="mt-6">
               {ready ? "Go to Check and send" : "Finish setup"}
@@ -211,10 +200,11 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
 
   const { plan, subscription } = billing;
   const lapsed = billing.status === "lapsed";
-  const [openCharges, params, reactivationPlan, paymentMethod] = await Promise.all([
+  const [openCharges, params, reactivationPlan, reactivationNet, paymentMethod] = await Promise.all([
     listOpenCustomerCharges(customer),
     searchParams,
     lapsed ? findReactivationPlan(customer) : Promise.resolve(null),
+    lapsed ? findReactivationNetCents(customer) : Promise.resolve(null),
     findCustomerPaymentMethod(customer),
   ]);
   // Razorpay's confirmation arrives separately from the customer's return, so a page drawn straight after paying waits for
@@ -255,11 +245,11 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
             delayedText="Confirming your payment is taking longer than usual."
             supportEmail={supportEmailOf(brand)}
           />
-        ) : lapsed && reactivationPlan !== null ? (
+        ) : lapsed && reactivationPlan !== null && reactivationNet !== null ? (
           <ReactivatePlan
             planName={planLabel(reactivationPlan.name)}
-            monthlyAmount={monthlyPaymentAmount(reactivationPlan)}
-            priceNote={priceNote(reactivationPlan, 0)}
+            monthlyAmount={monthlyPaymentAmount(reactivationPlan, reactivationNet)}
+            priceNote={priceNote(reactivationPlan, 0, reactivationNet)}
             action={reactivateAction}
           />
         ) : lapsed || plan === null || subscription === null ? (
@@ -271,20 +261,6 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
         ) : (
           <PlanSummary plan={plan} subscription={subscription} now={new Date()} brand={brand} />
         )}
-        {billing.upgradePaid && subscription?.paidThroughAt != null ? (
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft">
-            You’ve moved up to Premium. Your month is paid, and it’s Premium’s price from{" "}
-            <LocalDate iso={subscription.paidThroughAt.toISOString()} />.
-          </p>
-        ) : billing.tier === "care" && billing.status === "paid" && offersChoice(brand, "premium") ? (
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft">
-            Want appointments and marketing too?{" "}
-            <Link href={UPGRADE_PATH} className="link-underline text-ink">
-              Move up to Premium
-            </Link>
-            .
-          </p>
-        ) : null}
       </div>
       <PaymentMethodSection method={paymentMethod} renews={renewsAutomatically(billing)} />
       <BillingDetailsSection view={billingDetails} />

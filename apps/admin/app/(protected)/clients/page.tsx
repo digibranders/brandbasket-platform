@@ -1,8 +1,8 @@
-import { listAddOnsToContact, listClients, listPaymentsNeedingAttention, type PlanTier } from "@brandbasket/db";
+import { listAddOnsToContact, listClients, listPaymentsNeedingAttention } from "@brandbasket/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { clientPaymentState, type ClientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
-import { PLAN_TIER_LABELS, readPlanTier } from "@brandbasket/shared/lib/billing/plan-tier";
+import { PLAN_TIER_LABELS } from "@brandbasket/shared/lib/billing/plan-tier";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
 import { PROJECT_STATUS_LABELS } from "@brandbasket/shared/lib/project-status";
 import { SearchIcon } from "@brandbasket/shared/ui/icons";
@@ -30,10 +30,9 @@ function readStage(value: string | string[] | undefined): ClientStage | null {
 }
 
 /** An address that keeps the filters and the search already chosen when it changes one of them. */
-function clientsHref(stage: ClientStage | null, plan: PlanTier | null, search: string): string {
+function clientsHref(stage: ClientStage | null, search: string): string {
   const query = new URLSearchParams();
   if (stage !== null) query.set("stage", stage);
-  if (plan !== null) query.set("plan", plan);
   if (search !== "") query.set("q", search);
   const text = query.toString();
   return text === "" ? "/clients" : `/clients?${text}`;
@@ -64,7 +63,6 @@ export default async function ClientsPage({
   await requireStaffAccess();
   const params = await searchParams;
   const stage = readStage(params.stage);
-  const plan = readPlanTier(Array.isArray(params.plan) ? params.plan[0] : params.plan);
   const rawSearch = (Array.isArray(params.q) ? params.q[0] : params.q)?.trim() ?? "";
   const search = rawSearch.toLowerCase();
   const db = getStaffDb();
@@ -79,10 +77,8 @@ export default async function ClientsPage({
   );
 
   const found = clients.filter((client) => matchesClientSearch(client, search));
-  const onPlan = plan === null ? found : found.filter((client) => client.tier === plan);
-  const visible = stage === null ? onPlan : onPlan.filter((client) => clientStage(client) === stage);
-  const countOf = (option: ClientStage): number => onPlan.filter((client) => clientStage(client) === option).length;
-  const countOnPlan = (option: PlanTier): number => found.filter((client) => client.tier === option).length;
+  const visible = stage === null ? found : found.filter((client) => clientStage(client) === stage);
+  const countOf = (option: ClientStage): number => found.filter((client) => clientStage(client) === option).length;
 
   return (
     <>
@@ -91,7 +87,6 @@ export default async function ClientsPage({
       <div className="mt-10 space-y-4">
         <form action="/clients" role="search" className="w-full sm:w-80">
           {stage === null ? null : <input type="hidden" name="stage" value={stage} />}
-          {plan === null ? null : <input type="hidden" name="plan" value={plan} />}
           <label htmlFor="clients-search" className="sr-only">
             Search clients
           </label>
@@ -108,23 +103,11 @@ export default async function ClientsPage({
           </div>
         </form>
         <FilterPills
-          label="Filter by plan"
-          options={[
-            { href: clientsHref(stage, null, rawSearch), label: "All plans", count: found.length, current: plan === null },
-            ...(["care", "premium"] as const).map((option) => ({
-              href: clientsHref(stage, option, rawSearch),
-              label: PLAN_TIER_LABELS[option],
-              count: countOnPlan(option),
-              current: plan === option,
-            })),
-          ]}
-        />
-        <FilterPills
           label="Filter by stage"
           options={[
-            { href: clientsHref(null, plan, rawSearch), label: "All", count: onPlan.length, current: stage === null },
+            { href: clientsHref(null, rawSearch), label: "All", count: found.length, current: stage === null },
             ...CLIENT_STAGES.map((option) => ({
-              href: clientsHref(option, plan, rawSearch),
+              href: clientsHref(option, rawSearch),
               label: stageLabel(option),
               count: countOf(option),
               current: stage === option,

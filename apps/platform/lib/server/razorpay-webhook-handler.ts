@@ -1,16 +1,20 @@
 import "server-only";
 import { chargedAmountCents, mapRazorpayStatus, type RazorpayWebhookEvent } from "@brandbasket/billing";
 import {
-  completeBundledAddOnRemovals,
+  completeBundledAddOnChanges,
   completePlanUpgradeAtRenewal,
   findAddOnSubscriptionByProviderId,
   findBundledAddOnsForSubscription,
   findPlanById,
   findSubscriptionByProviderId,
+  flagPaymentForAttention,
   hasEverPaid,
+  isPackageOfferForfeited,
   lockBusinessForBilling,
   recordUnappliedAddOnPayment,
   recordUnappliedPayment,
+  renewalBundledLines,
+  setPendingOfferDiscounts,
   updateAddOnStatus,
   updateSubscriptionProviderStatus,
   type AddOnSubscription,
@@ -19,6 +23,7 @@ import {
 } from "@brandbasket/db";
 import { nextAddOnStatus } from "@brandbasket/shared/lib/billing/add-on-state";
 import { applyAddOnPayment, type ProviderSubscriptionRef } from "@brandbasket/shared/server/add-on-activation";
+import { packageMove } from "@brandbasket/shared/server/basket-change";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "@brandbasket/shared/server/billing-activation";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
@@ -163,8 +168,9 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         return null;
       }
 
-      // The first charge on a new subscription for a business that has paid before is a reactivation: one month at the
-      // plan's monthly price, with no coupon (docs/superpowers/specs/2026-10-09-reactivation-design.md).
+      // The first charge on a new subscription for a business that has paid before is a reactivation: one month of the
+      // services it lapsed with, the lines frozen on this subscription when its checkout opened, with no coupon
+      // (docs/superpowers/specs/2026-10-09-reactivation-design.md).
       const reactivating = subscription.activatedAt === null && (await hasEverPaid(tx, subscription.businessId));
       const plan = await findPlanById(tx, subscription.planId);
       // What Razorpay should have taken: the plan's net price less the discount frozen onto this subscription when
@@ -173,11 +179,11 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       // step even if the code is edited or retired afterwards. If the two ever disagree, the charge falls through to
       // amount_mismatch below and lands in the attention queue rather than activating anything.
       const basePrice = subscription.activatedAt === null && !reactivating ? plan?.initialAmountCents : plan?.recurringAmountCents;
-      // Add-ons taken at the first checkout are billed in the same charge, every month: their frozen total is part of the
-      // price. A reactivation is a fresh subscription at the plan's monthly price alone, so it carries none.
-      const bundledNetCents = reactivating ? 0 : subscription.bundledAddOnNetCents;
+      // The services are billed as lines, every month: their frozen total is the price (the plan row costs nothing). A
+      // reactivation is a fresh subscription with its own lines, frozen when its checkout opened.
+      const bundledNetCents = subscription.bundledAddOnNetCents;
       const expectedAmount =
-        plan === null || plan === undefined || basePrice === undefined || subscription.discountAmountCents >= basePrice
+        plan === null || plan === undefined || basePrice === undefined || subscription.discountAmountCents >= basePrice + bundledNetCents
           ? undefined
           : chargedAmountCents(basePrice + bundledNetCents, subscription.discountAmountCents, plan.taxRateBasisPoints);
       // A customer who paid to move up to Premium is billed Premium from the next renewal: the provider was told to move
@@ -191,29 +197,46 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       const renewalAtNewPrice =
         pendingPlan !== null &&
         pendingPlan.currency === event.currency &&
-        subscription.pendingDiscountAmountCents < pendingPlan.recurringAmountCents &&
+        subscription.pendingDiscountAmountCents < pendingPlan.recurringAmountCents + subscription.bundledAddOnNetCents &&
         chargedAmountCents(
           pendingPlan.recurringAmountCents + subscription.bundledAddOnNetCents,
           subscription.pendingDiscountAmountCents,
           pendingPlan.taxRateBasisPoints,
         ) === event.amountCents;
-      // A customer who took add-ons out of the plan's payment is billed the lower amount from the next renewal: the provider
-      // was told to move the subscription at the cycle end. `pendingBundledAddOnNetCents` is the only thing that makes this
-      // amount acceptable, so a renewal at a made-up lower price is still refused.
-      const renewalAtLowerAddOns =
+      // A customer who added an add-on to the plan's payment, or took one out, is billed the new amount from the next renewal:
+      // the provider was told to move the subscription at the cycle end. `pendingBundledAddOnNetCents` is the only thing that
+      // makes this amount acceptable, so a renewal at a made-up price is still refused.
+      const changeWaiting =
         !renewalAtNewPrice &&
         plan !== null &&
         plan !== undefined &&
         subscription.activatedAt !== null &&
         subscription.pendingBundledAddOnNetCents !== null &&
-        plan.currency === event.currency &&
-        subscription.discountAmountCents < plan.recurringAmountCents &&
+        plan.currency === event.currency;
+      const renewalAtStoredPendingAmount =
+        changeWaiting &&
+        subscription.discountAmountCents < plan.recurringAmountCents + subscription.pendingBundledAddOnNetCents &&
         chargedAmountCents(
           plan.recurringAmountCents + subscription.pendingBundledAddOnNetCents,
           subscription.discountAmountCents,
           plan.taxRateBasisPoints,
         ) === event.amountCents;
-      if (!renewalAtNewPrice && !renewalAtLowerAddOns && (plan === null || plan === undefined || expectedAmount !== event.amountCents || plan.currency !== event.currency)) {
+      // The provider is moved before the lines are recorded, so a failure in between leaves it on the package price while the
+      // stored pending amount is the one worked out when the service was paid for. While a change is waiting, the amount the
+      // provider would have been told for the basket as it stands (what moveBasketAtProvider sends) is accepted too.
+      const sentMove =
+        changeWaiting && !renewalAtStoredPendingAmount
+          ? packageMove(await findBundledAddOnsForSubscription(tx, subscription.id), await isPackageOfferForfeited(tx, subscription.businessId))
+          : null;
+      const renewalAtSentAmount =
+        sentMove !== null &&
+        plan !== null &&
+        plan !== undefined &&
+        sentMove.staying > 0 &&
+        subscription.discountAmountCents < plan.recurringAmountCents + sentMove.netCents &&
+        chargedAmountCents(plan.recurringAmountCents + sentMove.netCents, subscription.discountAmountCents, plan.taxRateBasisPoints) === event.amountCents;
+      const renewalAtPendingAddOns = renewalAtStoredPendingAmount || renewalAtSentAmount;
+      if (!renewalAtNewPrice && !renewalAtPendingAddOns && (plan === null || plan === undefined || expectedAmount !== event.amountCents || plan.currency !== event.currency)) {
         await recordUnappliedPayment(tx, {
           businessId: subscription.businessId,
           subscriptionId: subscription.id,
@@ -278,9 +301,14 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         const renewedPlan = renewalAtNewPrice ? pendingPlan : plan;
         // The amount check above refused a renewal with no plan at either price, so this only guards the types.
         if (renewedPlan === null || renewedPlan === undefined) throw new Error(`Subscription ${subscription.id} renewed with no plan to invoice`);
-        const activeAddOns = (await findBundledAddOnsForSubscription(tx, subscription.id)).filter((row) => row.status === "active");
-        // This charge no longer includes the add-ons the customer asked to remove, so its invoice does not either.
-        const bundledAddOns = renewalAtLowerAddOns ? activeAddOns.filter((row) => row.endRequestedAt === null) : activeAddOns;
+        // The lines the provider was told about were never recorded as moving: record them now, so the invoice below and the
+        // promotion after it see the basket the charge was made of.
+        if (renewalAtSentAmount && sentMove !== null) {
+          await setPendingOfferDiscounts(tx, { subscriptionId: subscription.id, lines: sentMove.moves, now: event.paidAt });
+        }
+        // At the new amount the charge covers the lines that are staying, those added this month included, each at the
+        // package offer it moves to. At the amount billed now it covers what that amount was made of.
+        const bundledAddOns = renewalBundledLines(await findBundledAddOnsForSubscription(tx, subscription.id), renewalAtPendingAddOns);
         const invoicedPrice = {
           plan: renewedPlan,
           bundledAddOns,
@@ -306,15 +334,23 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         });
         // The first renewal at Premium's price is the move completing: the subscription now names Premium. A redelivery
         // of the same payment recorded nothing new and leaves the subscription as the first delivery left it.
-        if (renewalAtLowerAddOns && !renewal.alreadyRecorded) {
-          await completeBundledAddOnRemovals(tx, { subscriptionId: subscription.id, now: event.paidAt });
+        if (renewalAtPendingAddOns && !renewal.alreadyRecorded) {
+          await completeBundledAddOnChanges(tx, { subscriptionId: subscription.id, now: event.paidAt });
         } else if (subscription.pendingBundledAddOnNetCents !== null && !renewal.alreadyRecorded && !renewalAtNewPrice) {
-          // Renewed at the old amount while a removal was waiting: the provider has not moved the subscription.
+          // Renewed at the old amount while an add-on change was waiting: the provider has not moved the subscription.
+          // The customer paid the old amount for a basket that has changed (a service added, or one taken out that is still
+          // charged), so the payment is flagged for staff, who see it under payments needing attention.
           logBillingEvent("warn", "bundled-renewal-at-old-amount", {
             businessId: subscription.businessId,
             subscriptionId: subscription.id,
             provider: "razorpay",
             providerPaymentId: event.paymentId,
+          });
+          await flagPaymentForAttention(tx, {
+            paymentId: renewal.payment.id,
+            businessId: subscription.businessId,
+            reason: "add_on_provider_pending",
+            now: event.paidAt,
           });
         }
         if (renewalAtNewPrice && !renewal.alreadyRecorded) {

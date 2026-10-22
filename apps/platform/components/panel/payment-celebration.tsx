@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useSyncExternalStore, type ReactElement } from "react";
 import { createPortal } from "react-dom";
-import { CrownIcon, HeartIcon, TickIcon } from "@brandbasket/shared/ui/icons";
+import { HeartIcon, TickIcon } from "@brandbasket/shared/ui/icons";
 import { Button } from "@brandbasket/shared/ui/panel/button";
 import { useBrand } from "@/components/panel/brand-provider";
 import { firePoppers } from "@/components/panel/fire-poppers";
@@ -16,8 +16,7 @@ interface PaymentCelebrationProps {
 
 /** What each plan holds, in the order the sign-up page lists it: the list the pop-up ticks off. */
 const HOLDS: Readonly<Record<MembershipTier, readonly string[]>> = {
-  care: ["Free listing", "Website", "Hosting and upkeep", "OyeChats chatbot"],
-  premium: ["Free listing", "Website", "Hosting and upkeep", "OyeChats chatbot", "Appointments", "Social media and ads"],
+  managed: ["Free listing", "Website", "Hosting and upkeep", "Monthly health report", "OyeChats chatbot"],
 };
 
 /** What a plan holds under a brand: without "Free listing" where the brand does not sell the listing. */
@@ -112,7 +111,7 @@ export function PaymentCelebration({ tier }: PaymentCelebrationProps): ReactElem
             className="fy-anim bg-dark-surface px-8 py-8 text-center text-paper"
             style={{ animation: `fy-unfold 0.7s ${EASE} both`, transformOrigin: "top" }}
           >
-            {tier === "premium" ? <CrownIcon className="mx-auto size-8 fill-gold/40 text-gold" /> : <HeartIcon className="mx-auto size-8 text-paper" />}
+            <HeartIcon className="mx-auto size-8 text-paper" />
             <h2 id="payment-celebration-title" className="heading-display mt-3 text-4xl [&_em]:text-amber">
               Welcome to <em>{brand.shortName}.</em>
             </h2>

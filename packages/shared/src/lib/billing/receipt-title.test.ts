@@ -20,8 +20,8 @@ describe("receiptNumber", () => {
 
 describe("receiptTitle", () => {
   it("names the receipt by its number and the month it was paid, in UTC", () => {
-    expect(receiptTitle(7, new Date("2026-09-12T10:00:00Z"))).toBe("Receipt #007 – Sep 2026");
-    expect(receiptTitle(3, new Date("2026-12-31T23:30:00Z"))).toBe("Receipt #003 – Dec 2026");
+    expect(receiptTitle(7, new Date("2026-09-12T10:00:00Z"))).toBe("Receipt #007, Sep 2026");
+    expect(receiptTitle(3, new Date("2026-12-31T23:30:00Z"))).toBe("Receipt #003, Dec 2026");
   });
 
   it("leaves the month off when the payment date was not recorded", () => {
@@ -55,8 +55,8 @@ describe("receiptDescription", () => {
   const plain = { initialTermMonths: null, chargeKind: null, chargeDescription: null, chargeQuantity: null, addOnId: null } as const;
 
   it("names an add-on payment by the add-on and how it is billed", () => {
-    expect(receiptDescription({ ...plain, kind: "add_on", addOnId: "social-media" })).toBe("Social media, monthly");
-    expect(receiptDescription({ ...plain, kind: "add_on", addOnId: "advertising" })).toBe("Paid advertising, monthly");
+    expect(receiptDescription({ ...plain, kind: "add_on", addOnId: "digital-growth" })).toBe("Social Media and Ads, monthly");
+    expect(receiptDescription({ ...plain, kind: "add_on", addOnId: "local-seo-aeo" })).toBe("Local SEO + AEO, monthly");
   });
 
   it("keeps the general wording for an add-on payment it cannot name", () => {
