@@ -12,6 +12,7 @@ import { membershipPriceLine } from "@/lib/membership";
 import { accountLabel } from "@/lib/server/account-label";
 import { ensureGeoCatalog } from "@/lib/server/geo-catalog";
 import { getBillingBanner } from "@/lib/server/billing-banner";
+import { loadWelcomeServices } from "@/lib/server/add-ons";
 import { getOwnPlaceId } from "@/lib/server/business-profile";
 import { getCustomerBusinessEntry, isAwaitingMembership, requireCustomerAccess } from "@/lib/server/customer-access";
 import { readNewLeadCount } from "@/lib/server/leads-owner";
@@ -56,11 +57,13 @@ export default async function AppProtectedLayout({ children }: AppProtectedLayou
     );
   }
   const banner = await getBillingBanner();
+  // What the welcome after a payment lists: the services that payment opened.
+  const welcomeServices = billing.hasAccess ? await loadWelcomeServices(tenant) : [];
 
   return (
     <CustomerShell userName={user.name} userEmail={accountLabel(user)} businessId={businessId}>
       {/* Goes off once, when a payment has just opened the plan (the address says so; see lib/celebration.ts). */}
-      <PaymentCelebration tier={billing.tier} />
+      <PaymentCelebration services={welcomeServices} />
       {banner === null ? null : (
         <HiddenOnPaths paths={PAGES_WITH_THEIR_OWN_BANNER}>
           <BillingBanner banner={banner} className="mb-8" />

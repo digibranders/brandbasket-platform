@@ -20,6 +20,7 @@ import {
   type BasketDeps,
 } from "@brandbasket/shared/server/basket-change";
 import { dropPreview, type DropPreview } from "@/lib/billing/drop-service";
+import { welcomeServices } from "@/lib/celebration";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
@@ -120,6 +121,12 @@ function offerOf(assessment: AddOnAssessment | null, renewsOn: Date | null): Add
       throw new Error(`Unhandled add-on assessment: ${JSON.stringify(unhandled)}`);
     }
   }
+}
+
+/** The services the account's payment has opened, by name, for the welcome after a payment; read as the customer. */
+export async function loadWelcomeServices(tenant: GrantedCustomer["tenant"]): Promise<readonly string[]> {
+  const lines = await withTenantScope(getAppDb(), tenant, (tx) => findLiveBundledAddOns(tx, tenant.businessId));
+  return welcomeServices(lines);
 }
 
 /** Everything the Add-ons page shows, read through row-level security as the signed-in customer. */

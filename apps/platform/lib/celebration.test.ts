@@ -1,15 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  CONFETTI_COLOURS,
-  createPieces,
-  FADE_FRAMES,
-  LIFETIME_FRAMES,
-  opacityAt,
-  PIECES_PER_CANNON,
-  stepPieces,
-  wantsWelcome,
-  withoutWelcome,
-} from "./celebration";
+import { CONFETTI_COLOURS, FADE_FRAMES, LIFETIME_FRAMES, PIECES_PER_CANNON, createPieces, opacityAt, stepPieces, wantsWelcome, welcomeServices, withoutWelcome } from "./celebration";
 
 /** A repeatable stand-in for Math.random. */
 function sequence(): () => number {
@@ -78,5 +68,27 @@ describe("opacityAt", () => {
     expect(opacityAt(LIFETIME_FRAMES - FADE_FRAMES / 2)).toBeCloseTo(0.5, 5);
     expect(opacityAt(LIFETIME_FRAMES)).toBe(0);
     expect(opacityAt(LIFETIME_FRAMES + 50)).toBe(0);
+  });
+});
+
+describe("welcomeServices", () => {
+  const line = (addOn: string, status = "active", endRequestedAt: Date | null = null) => ({ addOn, status, endRequestedAt });
+
+  it("names every service the payment opened, in catalogue order", () => {
+    expect(welcomeServices([line("local-seo-aeo"), line("managed-website"), line("digital-growth")])).toEqual([
+      "Managed Website",
+      "Social Media and Ads",
+      "Local SEO + AEO",
+    ]);
+  });
+
+  it("names one service alone", () => {
+    expect(welcomeServices([line("digital-growth")])).toEqual(["Social Media and Ads"]);
+  });
+
+  it("leaves out a service not yet paid for, one on its way out, and an unknown id", () => {
+    expect(
+      welcomeServices([line("managed-website"), line("digital-growth", "pending"), line("local-seo-aeo", "active", new Date()), line("old-thing")]),
+    ).toEqual(["Managed Website"]);
   });
 });
