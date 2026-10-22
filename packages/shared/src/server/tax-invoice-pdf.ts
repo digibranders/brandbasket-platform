@@ -345,7 +345,7 @@ interface Column {
   readonly value: (line: TaxInvoiceLineRecord) => string;
 }
 
-/** The line items' columns. Discount only when a line has one, as in the approved samples. */
+/** The line items' columns. Discount only when a line has one, as in the approved samples. The rate is printed once, in the CGST, SGST or IGST rows of the totals. */
 function columnsFor(invoice: TaxInvoice): { readonly columns: readonly Column[]; readonly descriptionWidth: number } {
   const showDiscount = invoice.lines.some((line) => line.discountAmountCents > 0);
   const columns: Column[] = [
@@ -356,7 +356,6 @@ function columnsFor(invoice: TaxInvoice): { readonly columns: readonly Column[];
       ? [{ head: "Discount", width: 20 * MM, numeric: true, bold: false, value: (line: TaxInvoiceLineRecord) => money(line.discountAmountCents) }]
       : []),
     { head: "Taxable value", width: 23 * MM, numeric: true, bold: true, value: (line) => money(line.taxableCents) },
-    { head: "GST", width: 11 * MM, numeric: true, bold: false, value: (line) => `${percent(line.taxRateBasisPoints)}%` },
     { head: "Tax", width: 20 * MM, numeric: true, bold: false, value: (line) => money(line.taxCents) },
   ];
   return { columns, descriptionWidth: RIGHT - LEFT - columns.reduce((sum, column) => sum + column.width, 0) };

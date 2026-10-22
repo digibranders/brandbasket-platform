@@ -311,7 +311,7 @@ Against what the PDF prints. "Confirm with CA" marks a point we believe is met b
 | (i) | Quantity | Qty column | Met |
 | (j) | Total value of supply | Rate × Qty and the line's taxable value; gross per line is not printed separately | Confirm with CA |
 | (k) | Taxable value, taking discount into account | Discount and Taxable value columns, Taxable value total | Met |
-| (l) | Rate of tax (central, state, integrated) | GST % per line; CGST @ 9% and SGST @ 9%, or IGST @ 18%, in the totals | Met; per-line split shown only in totals, confirm with CA |
+| (l) | Rate of tax (central, state, integrated) | CGST @ 9% and SGST @ 9%, or IGST @ 18%, in the totals; no per-line rate column (owner, 2026-10-22), as every line is 18% | Met; rate shown only in totals, confirm with CA |
 | (m) | Amount of tax charged (central, state, integrated) | Tax per line; CGST, SGST or IGST in the totals | Met |
 | (n) | Place of supply with the state's name, for inter-state supply | "Place of supply: Karnataka (29)" on every invoice | Met |
 | (o) | Delivery address, where different from place of supply | Not applicable to a service delivered online | Not applicable |
