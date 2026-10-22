@@ -41,7 +41,8 @@ describe("google import seal", () => {
     expect(openGoogleImport(SECRET, { sealed: value, businessId: OTHER, now: NOW })).toBeNull();
     expect(openGoogleImport(SECRET, { sealed: value, businessId: BUSINESS, now: new Date(NOW.getTime() + IMPORT_LIFETIME_MS) })).toBeNull();
     expect(openGoogleImport("another-secret-that-is-at-least-32-characters", { sealed: value, businessId: BUSINESS, now: NOW })).toBeNull();
-    const flipped = `${value.slice(0, -2)}${value.endsWith("A") ? "B" : "A"}${value.slice(-1)}`;
+    // Replace the character being tampered with by a different one, whatever it was.
+    const flipped = `${value.slice(0, -2)}${value.at(-2) === "A" ? "B" : "A"}${value.slice(-1)}`;
     expect(openGoogleImport(SECRET, { sealed: flipped, businessId: BUSINESS, now: NOW })).toBeNull();
     expect(openGoogleImport(SECRET, { sealed: "not-a-seal", businessId: BUSINESS, now: NOW })).toBeNull();
   });

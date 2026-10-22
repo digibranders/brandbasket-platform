@@ -5,6 +5,7 @@ import {
   FAKE_ADD_ON_CONFIRM_PATH,
   FAKE_CHARGE_CONFIRM_PATH,
   FAKE_CONFIRM_PATH,
+  FAKE_KEEP_CONFIRM_PATH,
   FAKE_PAYMENT_METHOD,
 } from "./fake-provider";
 import { CheckoutVerificationError, type StartCheckoutInput } from "./provider";
@@ -91,6 +92,16 @@ describe("createFakeBillingProvider", () => {
       paidAt: PAID_AT,
       method: FAKE_PAYMENT_METHOD,
     });
+  });
+
+  it("sends a kept plan's checkout to the restore-account page with the same signed token and amount, nothing taken until the start day", async () => {
+    const fake = provider();
+    const started = await fake.startCheckout({ ...CHECKOUT, startAt: new Date("2026-12-01T00:00:00.000Z") });
+
+    const url = new URL(started.checkoutUrl, "http://localhost");
+    expect(url.pathname).toBe(FAKE_KEEP_CONFIRM_PATH);
+    const confirmed = await fake.confirmCheckout({ token: url.searchParams.get("token") });
+    expect(confirmed).toMatchObject({ providerSubscriptionId: started.providerSubscriptionId, businessId: BUSINESS_ID, amountCents: 22500 });
   });
 
   it("mints a new subscription id for each checkout", async () => {

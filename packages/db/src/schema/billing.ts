@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -222,15 +223,25 @@ export const subscriptions = pgTable(
     cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    /** Keep my plan: the subscription this one carries on from, which was cancelled at the provider at the client's request. */
+    continuesId: uuid("continues_id"),
+    /** Keep my plan: the day the new mandate is first charged, the old one's `paid_through_at`. Null for any other subscription. */
+    startAt: timestamp("start_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
+    foreignKey({ columns: [table.continuesId], foreignColumns: [table.id], name: "subscriptions_continues_id_fk" }),
     uniqueIndex("subscriptions_provider_id_idx").on(table.provider, table.providerSubscriptionId),
-    // A business may have many cancelled subscriptions over time, but only ever one live one.
+    // A business may have many cancelled subscriptions over time, but only ever one live one. A kept plan's successor
+    // waits beside the subscription it continues, so it is counted by its own index below.
     uniqueIndex("subscriptions_one_live_per_business_idx")
       .on(table.businessId)
+      .where(sql`${table.status} <> 'cancelled' and ${table.continuesId} is null`),
+    uniqueIndex("subscriptions_one_successor_idx")
+      .on(table.continuesId)
       .where(sql`${table.status} <> 'cancelled'`),
+    check("subscriptions_keep_check", sql`(${table.continuesId} is null) = (${table.startAt} is null)`),
     index("subscriptions_business_id_idx").on(table.businessId),
     // A discount that is neither a referral code's nor a stay offer's, or an offer that is more than the whole
     // discount, is a bug rather than a state to handle.

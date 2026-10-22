@@ -9,6 +9,8 @@ vi.mock("@brandbasket/db", async () => {
     ...actual,
     findSubscriptionByProviderId: vi.fn(),
     findBundledAddOnsForSubscription: vi.fn(async () => []),
+    activateBundledAddOns: vi.fn(async () => []),
+    removeBundledAddOnsOf: vi.fn(),
     flagPaymentForAttention: vi.fn(),
     findPlanById: vi.fn(),
     updateSubscriptionProviderStatus: vi.fn(),
@@ -39,6 +41,7 @@ vi.mock("@brandbasket/shared/server/basket-change", async (importOriginal) => ({
 }));
 vi.mock("./add-ons", () => ({ basketDeps: vi.fn(() => ({ deps: true })) }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
+vi.mock("./keep-plan", () => ({ restoreKeptPlan: vi.fn(async () => true) }));
 vi.mock("./charges", () => ({ recordRazorpayChargePayment: vi.fn() }));
 // A transaction that is also its own savepoint: both run the callback straight away.
 vi.mock("./db", () => {
@@ -51,6 +54,7 @@ vi.mock("./billing", () => ({ getRazorpayProvider: () => razorpay }));
 
 import {
   AddOnPaymentConflictError,
+  activateBundledAddOns,
   completeBundledAddOnChanges,
   completePlanUpgradeAtRenewal,
   findAddOnSubscriptionByProviderId,
@@ -62,6 +66,7 @@ import {
   lockBusinessForBilling,
   recordUnappliedAddOnPayment,
   recordUnappliedPayment,
+  removeBundledAddOnsOf,
   updateAddOnStatus,
   updateSubscriptionProviderStatus,
 } from "@brandbasket/db";
@@ -70,6 +75,7 @@ import { moveProviderAfterDiscountEnds } from "@brandbasket/shared/server/basket
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "@brandbasket/shared/server/billing-activation";
 import { recordRazorpayChargePayment } from "./charges";
+import { restoreKeptPlan } from "./keep-plan";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { handleRazorpayWebhookEvent } from "./razorpay-webhook-handler";
 
@@ -118,6 +124,7 @@ describe("handleRazorpayWebhookEvent", () => {
       planId: "plan_1",
       commitmentEndsAt: new Date("2026-10-01T00:00:00.000Z"),
       activatedAt: new Date("2026-09-01T00:00:00.000Z"),
+      continuesId: null,
       discountAmountCents: 0,
       retentionDiscountCents: 0,
       pendingPlanId: null,
@@ -165,6 +172,7 @@ describe("handleRazorpayWebhookEvent", () => {
       planId: "plan_1",
       commitmentEndsAt: new Date("2026-10-01T00:00:00.000Z"),
       activatedAt: new Date("2026-09-01T00:00:00.000Z"),
+      continuesId: null,
       discountAmountCents: 1_500,
       retentionDiscountCents: 1_500,
       pendingPlanId: null,
@@ -205,6 +213,7 @@ describe("handleRazorpayWebhookEvent", () => {
       planId: "plan_1",
       commitmentEndsAt: new Date("2026-10-01T00:00:00.000Z"),
       activatedAt: new Date("2026-09-01T00:00:00.000Z"),
+      continuesId: null,
       discountAmountCents: 0,
       retentionDiscountCents: 0,
       pendingPlanId: "plan_2",
@@ -257,6 +266,7 @@ describe("handleRazorpayWebhookEvent", () => {
       planId: "plan_1",
       status: "cancelled",
       activatedAt: new Date("2026-08-01T00:00:00.000Z"),
+      continuesId: null,
       commitmentEndsAt: new Date("2026-09-01T00:00:00.000Z"),
       discountAmountCents: 0,
       retentionDiscountCents: 0,
@@ -287,6 +297,7 @@ describe("handleRazorpayWebhookEvent", () => {
       planId: "plan_1",
       status: "incomplete",
       activatedAt: null,
+      continuesId: null,
       commitmentEndsAt: null,
       discountAmountCents: 0,
       retentionDiscountCents: 0,
@@ -319,6 +330,76 @@ describe("handleRazorpayWebhookEvent", () => {
     expect(syncTenantForBusiness).not.toHaveBeenCalled();
   });
 
+  describe("a plan kept after the client's own cancel", () => {
+    const KEPT = {
+      id: "sub_kept",
+      businessId: "biz_1",
+      planId: "plan_1",
+      status: "active",
+      activatedAt: null,
+      continuesId: "sub_old",
+      commitmentEndsAt: new Date("2026-12-09T10:00:00.000Z"),
+      discountAmountCents: 0,
+      retentionDiscountCents: 0,
+      pendingPlanId: null,
+      pendingDiscountAmountCents: 0,
+      bundledAddOnNetCents: 0,
+      pendingBundledAddOnNetCents: null,
+    } as never;
+
+    it("records its first charge as a renewal of the old plan, never a first payment or a reactivation, with the old commitment", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue(KEPT);
+      vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
+
+      await handleRazorpayWebhookEvent(CHARGED);
+
+      expect(activateRenewalPayment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          subscriptionId: "sub_kept",
+          commitmentEndsAt: new Date("2026-12-09T10:00:00.000Z"),
+          paidThroughAt: CHARGED.currentEnd,
+          amountCents: 7_500,
+        }),
+      );
+      expect(activateReactivationPayment).not.toHaveBeenCalled();
+      expect(activateFirstPayment).not.toHaveBeenCalled();
+      expect(restoreKeptPlan).toHaveBeenCalledWith(expect.anything(), "sub_kept", CHARGED.paidAt);
+      expect(activateBundledAddOns).toHaveBeenCalledWith(expect.anything(), { subscriptionId: "sub_kept", now: CHARGED.paidAt });
+      expect(removeBundledAddOnsOf).toHaveBeenCalledWith(expect.anything(), { subscriptionId: "sub_old", now: CHARGED.paidAt });
+    });
+
+    it("keeps a charge at another amount for staff and starts nothing", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue(KEPT);
+      vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
+
+      await handleRazorpayWebhookEvent({ ...CHARGED, amountCents: 7_400 });
+
+      expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: "amount_mismatch" }));
+      expect(activateRenewalPayment).not.toHaveBeenCalled();
+      expect(restoreKeptPlan).not.toHaveBeenCalled();
+    });
+
+    it("lifts the closure when Razorpay reports the new mandate authenticated, and not for any other subscription", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue(KEPT);
+      fetchSubscriptionStatus.mockResolvedValue("authenticated");
+      await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "authenticated" });
+      expect(restoreKeptPlan).toHaveBeenCalledWith(expect.anything(), "sub_kept", expect.any(Date));
+
+      vi.mocked(restoreKeptPlan).mockClear();
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null } as never);
+      await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "authenticated" });
+      expect(restoreKeptPlan).not.toHaveBeenCalled();
+    });
+
+    it("waits for the mandate to be authorised: a failed or pending status lifts nothing", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue(KEPT);
+      fetchSubscriptionStatus.mockResolvedValue("halted");
+      await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "halted" });
+      expect(restoreKeptPlan).not.toHaveBeenCalled();
+    });
+  });
+
   it("judges a reactivation against the monthly price, not the first payment's", async () => {
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue({
       id: "sub_back",
@@ -326,6 +407,7 @@ describe("handleRazorpayWebhookEvent", () => {
       planId: "plan_1",
       status: "incomplete",
       activatedAt: null,
+      continuesId: null,
       commitmentEndsAt: null,
       discountAmountCents: 0,
       retentionDiscountCents: 0,
@@ -356,6 +438,7 @@ describe("handleRazorpayWebhookEvent", () => {
         planId: "plan_1",
         status: "incomplete",
         activatedAt: null,
+        continuesId: null,
         commitmentEndsAt: null,
         discountAmountCents: 0,
         retentionDiscountCents: 0,
@@ -406,7 +489,7 @@ describe("handleRazorpayWebhookEvent", () => {
   });
 
   it("syncs status for a status event", async () => {
-    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1" } as never);
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null } as never);
     fetchSubscriptionStatus.mockResolvedValue("halted");
     await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "halted" });
     expect(updateSubscriptionProviderStatus).toHaveBeenCalledWith(
@@ -416,7 +499,7 @@ describe("handleRazorpayWebhookEvent", () => {
   });
 
   it("stores the status Razorpay holds now, not a late event's: a halt delivered after the renewal leaves access alone", async () => {
-    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1" } as never);
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null } as never);
     fetchSubscriptionStatus.mockResolvedValue("active");
     await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "halted" });
     expect(fetchSubscriptionStatus).toHaveBeenCalledWith("sub_rzp_1");
@@ -434,7 +517,7 @@ describe("handleRazorpayWebhookEvent", () => {
   });
 
   it("fails, so Razorpay delivers it again, when the current status cannot be read", async () => {
-    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1" } as never);
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null } as never);
     fetchSubscriptionStatus.mockRejectedValue(new Error("Razorpay is down"));
     await expect(
       handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "halted" }),
@@ -464,6 +547,7 @@ describe("handleRazorpayWebhookEvent", () => {
       planId: "plan_1",
       commitmentEndsAt: null,
       activatedAt: null,
+      continuesId: null,
       discountAmountCents: 0,
       retentionDiscountCents: 0,
       pendingPlanId: null,
@@ -516,6 +600,7 @@ describe("handleRazorpayWebhookEvent", () => {
       planId: "plan_1",
       commitmentEndsAt: null,
       activatedAt: null,
+      continuesId: null,
       discountAmountCents: 0,
       retentionDiscountCents: 0,
       pendingPlanId: null,
@@ -550,6 +635,7 @@ describe("handleRazorpayWebhookEvent", () => {
       planId: "plan_1",
       commitmentEndsAt: new Date("2026-10-01T00:00:00.000Z"),
       activatedAt: new Date("2026-09-01T00:00:00.000Z"),
+      continuesId: null,
       discountAmountCents: 0,
       retentionDiscountCents: 0,
       pendingPlanId: null,
@@ -603,6 +689,7 @@ describe("handleRazorpayWebhookEvent", () => {
         planId: "plan_1",
         commitmentEndsAt: null,
         activatedAt: null, // stale pre-lock snapshot: looks like a first payment
+        continuesId: null,
         discountAmountCents: 0,
         retentionDiscountCents: 0,
         bundledAddOnNetCents: 0,
@@ -616,6 +703,7 @@ describe("handleRazorpayWebhookEvent", () => {
         planId: "plan_1",
         commitmentEndsAt: new Date("2026-10-01T00:00:00.000Z"),
         activatedAt: new Date("2026-09-01T00:00:00.000Z"), // post-lock truth: already activated by a concurrent tx
+        continuesId: null,
         discountAmountCents: 0,
         retentionDiscountCents: 0,
         bundledAddOnNetCents: 0,
@@ -657,6 +745,7 @@ describe("a subscription carrying a referral discount", () => {
     planId: "plan_1",
     commitmentEndsAt: new Date("2026-10-01T00:00:00.000Z"),
     activatedAt: null,
+    continuesId: null,
     // 15% of the INR plan's 350,000 paise, frozen when the checkout opened.
     discountAmountCents: 52_500,
     retentionDiscountCents: 0,
@@ -718,6 +807,7 @@ describe("a subscription carrying a referral discount", () => {
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue({
       ...DISCOUNTED,
       activatedAt: new Date("2026-09-01T00:00:00.000Z"),
+      continuesId: null,
     } as never);
     vi.mocked(findPlanById).mockResolvedValue(INR_PLAN as never);
 
@@ -739,6 +829,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     planId: "plan_gst",
     commitmentEndsAt: new Date("2026-10-01T00:00:00.000Z"),
     activatedAt: null,
+    continuesId: null,
     discountAmountCents: 0,
     retentionDiscountCents: 0,
     bundledAddOnNetCents: 189_905,
@@ -962,6 +1053,7 @@ describe("a code with a length in months", () => {
     planId: "plan_services",
     commitmentEndsAt: new Date("2026-11-01T00:00:00.000Z"),
     activatedAt: new Date("2026-09-01T00:00:00.000Z"),
+    continuesId: null,
     referralCodeId: "0192f3c4-9999-7000-8000-000000000001",
     discountAmountCents: 100_000,
     retentionDiscountCents: 0,
@@ -1078,6 +1170,7 @@ describe("a package on the services plan, which costs nothing itself", () => {
       planId: "plan_services",
       commitmentEndsAt: new Date("2026-11-21T00:00:00.000Z"),
       activatedAt,
+      continuesId: null,
       discountAmountCents: 0,
       retentionDiscountCents: 0,
       bundledAddOnNetCents: 2_659_700,
@@ -1150,6 +1243,7 @@ describe("the renewal after a service was added to a package", () => {
     planId: "plan_services",
     commitmentEndsAt: new Date("2026-11-21T00:00:00.000Z"),
     activatedAt: BILLED_FROM,
+    continuesId: null,
     discountAmountCents: 0,
     retentionDiscountCents: 0,
     bundledAddOnNetCents: 299_900,
@@ -1241,6 +1335,7 @@ describe("a plan with GST on top", () => {
       planId: "plan_gst",
       commitmentEndsAt: new Date("2026-10-01T00:00:00.000Z"),
       activatedAt,
+      continuesId: null,
       discountAmountCents,
       retentionDiscountCents: 0,
       bundledAddOnNetCents: 0,
@@ -1338,6 +1433,7 @@ describe("a plan with GST on top", () => {
         planId: "plan_care",
         commitmentEndsAt: new Date("2026-10-30T00:00:00.000Z"),
         activatedAt: new Date("2026-09-30T00:00:00.000Z"),
+        continuesId: null,
         discountAmountCents: 0,
         retentionDiscountCents: 0,
         pendingPlanId: "plan_premium",

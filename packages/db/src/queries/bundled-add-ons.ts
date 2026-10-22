@@ -66,14 +66,21 @@ export async function findBundledAddOnsForSubscription(db: Runner, subscriptionI
 
 /**
  * The business's bundled add-ons that are being billed or about to be (`pending` or `active`), newest subscription
- * last. Staff connection, or the owner's own scope.
+ * last, without those of a kept plan's successor that has not been charged yet. Staff connection, or the owner's own scope.
  */
 export async function findLiveBundledAddOns(db: Runner, businessId: string): Promise<readonly BundledAddOn[]> {
   if (!isUuid(businessId)) return [];
   return db
     .select()
     .from(bundledAddOns)
-    .where(and(eq(bundledAddOns.businessId, businessId), inArray(bundledAddOns.status, ["pending", "active"])))
+    .where(
+      and(
+        eq(bundledAddOns.businessId, businessId),
+        inArray(bundledAddOns.status, ["pending", "active"]),
+        // The lines of a kept plan's successor are the ones of the subscription it continues until it has been charged.
+        sql`not exists (select 1 from ${subscriptions} where ${subscriptions.id} = ${bundledAddOns.subscriptionId} and ${subscriptions.continuesId} is not null and ${subscriptions.activatedAt} is null)`,
+      ),
+    )
     .orderBy(asc(bundledAddOns.createdAt), asc(bundledAddOns.id));
 }
 

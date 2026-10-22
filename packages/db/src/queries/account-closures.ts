@@ -90,6 +90,16 @@ export async function restoreAccountClosure(db: Runner, input: { readonly userId
   return rows.length > 0;
 }
 
+/** Cancels the business's open closure, for the provider's confirmation of a kept plan, which has no signed-in user. False when there was none. */
+export async function restoreAccountClosureForBusiness(db: Runner, input: { readonly businessId: string; readonly now: Date }): Promise<boolean> {
+  const rows = await db
+    .update(accountClosures)
+    .set({ restoredAt: input.now })
+    .where(and(eq(accountClosures.businessId, input.businessId), isNull(accountClosures.restoredAt), isNull(accountClosures.erasedAt)))
+    .returning({ id: accountClosures.id });
+  return rows.length > 0;
+}
+
 /**
  * Records that the customer asked for the plan to end with the period they have paid for. The provider does the
  * ending; this is our note of the request, so the billing page can say so before the provider's own event arrives.

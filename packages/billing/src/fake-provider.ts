@@ -30,6 +30,9 @@ export interface FakeBillingProviderOptions {
 /** Where the fake checkout sends the customer: the dashboard's own confirm page, which stands in for Razorpay's. */
 export const FAKE_CONFIRM_PATH = "/billing/confirm";
 
+/** Where the fake checkout of a kept plan sends the customer: its account is closing, so it cannot use FAKE_CONFIRM_PATH. */
+export const FAKE_KEEP_CONFIRM_PATH = "/restore-account/keep-plan";
+
 /** Where the fake payment for a charge sends the customer: the dashboard's stand-in for Razorpay's payment window. */
 export const FAKE_CHARGE_CONFIRM_PATH = "/billing/charges/confirm";
 
@@ -212,7 +215,7 @@ export function createFakeBillingProvider(options: FakeBillingProviderOptions): 
       });
       return {
         providerSubscriptionId,
-        checkoutUrl: `${FAKE_CONFIRM_PATH}?${new URLSearchParams({ token }).toString()}`,
+        checkoutUrl: `${input.startAt === undefined ? FAKE_CONFIRM_PATH : FAKE_KEEP_CONFIRM_PATH}?${new URLSearchParams({ token }).toString()}`,
       };
     },
 
