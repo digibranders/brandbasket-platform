@@ -38,7 +38,7 @@ import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { missingProblem, readOnboardingSnapshot, type StepProblem } from "./onboarding";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
-import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
+import { loadCarriedCode, loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { discountFrom, type AppliedDiscount } from "./referrals";
 import { ensureDiscountPlan } from "./discount-plans";
 
@@ -302,10 +302,11 @@ export async function startMembershipCheckoutFor(
 
 /**
  * Reactivate on Billing (docs/superpowers/specs/2026-10-09-reactivation-design.md): a business that paid before and has
- * lapsed opens a checkout, with no coupon, and its lapsed subscription is replaced. A lapse (a failed payment, a revoked
- * mandate) reopens the basket it lapsed with (loadReactivationBasket) and ignores `chosen`. A customer who cancelled the plan
- * themselves chooses their services again: `chosen`, every one at its own price (docs/plans/18-platform-owner-decisions.md,
- * decision 6); an empty or unknown set is refused.
+ * lapsed opens a checkout, and its lapsed subscription is replaced. A lapse (a failed payment, a revoked mandate) reopens the
+ * basket it lapsed with (loadReactivationBasket) and ignores `chosen`; it keeps its code, repriced on that basket, for the months
+ * the code has left (loadCarriedCode). A customer who cancelled the plan themselves chooses their services again: `chosen`, every
+ * one at its own price and with nothing carried (docs/plans/18-platform-owner-decisions.md, decisions 4 and 6); an empty or
+ * unknown set is refused.
  * Checked on the server, whatever the page showed: the same rate limit as any checkout, then that the business really
  * has lapsed. A paid-up one is sent to Billing, and one that never paid has nothing to restart. Its project is live,
  * so there is no onboarding to check.
@@ -362,8 +363,8 @@ async function openPlanCheckout(
     if (plan === null) return { kind: "no-plan" };
     // Re-validated here, under the lock, rather than trusted from when the customer pressed Apply: a code can be
     // deactivated, expire or hit its cap in between, and the amount frozen on the subscription must be the one
-    // that was true at the moment the checkout opened. A business that has paid before is reactivating, which takes
-    // no code (docs/superpowers/specs/2026-10-09-reactivation-design.md): its services come back at the offer they earn.
+    // that was true at the moment the checkout opened. A business that has paid before is reactivating, which takes no
+    // code of its own (docs/superpowers/specs/2026-10-09-reactivation-design.md): a lapse keeps the code it had instead.
     const applied = state.hasEverPaid ? null : await findBusinessReferralCode(tx, tenant.businessId);
     const redeemable =
       applied === null
@@ -372,6 +373,8 @@ async function openPlanCheckout(
     // The plan row is the terms at a price of 0: every service, the website included, is a line. A business that has paid
     // before is reactivating: the basket it lapsed with, read before the lapsed subscription is replaced and ends its lines.
     const reactivation = state.hasEverPaid ? await loadReactivationBasket(tx, tenant.businessId) : null;
+    // A lapse (not the client's own cancel) keeps its code with the months it has left, even if the code was retired since.
+    const carried = reactivation === null ? null : await loadCarriedCode(tx, tenant.businessId, reactivation);
     // The client's own cancel ended the package: they chose their services again. A lapse comes back as it was.
     const services = reactivation === null || reactivation.cancelled ? chosen : reactivation.services;
     if (services.length === 0) return { kind: "no-services" };
@@ -384,7 +387,9 @@ async function openPlanCheckout(
       taxRateBasisPoints: plan.taxRateBasisPoints,
     }));
     // The code comes off the basket's package net, once: the lines just priced, less their package discount.
-    const discount = redeemable === null ? null : discountFrom(redeemable, { currency: plan.currency, netCents: bundledNetCents(bundle) });
+    const code = redeemable ?? carried?.code ?? null;
+    const priced = code === null ? null : discountFrom(code, { currency: plan.currency, netCents: bundledNetCents(bundle) });
+    const discount = priced !== null && carried !== null ? { ...priced, months: carried.monthsLeft } : priced;
     // Ad credit is for services bought together at the first purchase. A reactivation grants none and keeps what the lapsed
     // subscription had.
     const adCreditCents = reactivation?.adCreditCents ?? adCreditCentsAtCheckout({ services, forfeited, hasEverPaid: false }, plan.currency);

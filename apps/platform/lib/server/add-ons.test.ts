@@ -6,9 +6,11 @@ import {
   findBusinessCurrency,
   findLiveBundledAddOns,
   findPlanById,
+  findReferralCodeById,
   findSubscriptionById,
   isPackageOfferForfeited,
   recordBundledAddOnRemoval,
+  setNextDiscount,
   withTenantScope,
   type BundledAddOn,
   type Database,
@@ -43,11 +45,13 @@ vi.mock("@brandbasket/db", () => {
     findBusinessCurrency: vi.fn(),
     findLiveBundledAddOns: vi.fn().mockResolvedValue([]),
     findPlanById: vi.fn(),
+    findReferralCodeById: vi.fn(),
     findSubscriptionById: vi.fn(),
     flagSubscriptionForAttention: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
     lockBusinessForBilling: vi.fn(),
     recordBundledAddOnRemoval: vi.fn(),
+    setNextDiscount: vi.fn(),
     withTenantScope: vi.fn(),
   };
 });
@@ -353,7 +357,10 @@ describe("removeBundledAddOnFor", () => {
     activatedAt: PAID_AT,
     paidThroughAt: PAID_THROUGH,
     cancelRequestedAt: null,
+    referralCodeId: null,
     discountAmountCents: 0,
+    discountMonthsLeft: null,
+    nextDiscountAmountCents: null,
     ...overrides,
   });
   let changed: MockInstance<BillingProvider["changeSubscriptionPlanAtPeriodEnd"]>;
@@ -398,6 +405,39 @@ describe("removeBundledAddOnFor", () => {
       now: NOW,
     });
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:change-plan", "tx2:begin", "tx2:commit"]);
+  });
+
+  it("keeps an amount code through a drop: the provider is told the new net less the same amount, and it is recorded as unchanged", async () => {
+    vi.mocked(findSubscriptionById).mockResolvedValue(subscription({ referralCodeId: "code-1", discountAmountCents: 50_000, discountMonthsLeft: 4 }) as never);
+    vi.mocked(findReferralCodeById).mockResolvedValue({ discount: { kind: "amount", amountCents: 50_000 } } as never);
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("managed-website"), bundledRow("digital-growth"), bundledRow("local-seo-aeo")] as never);
+
+    await removeBundledAddOnFor(customer, "digital-growth", NOW);
+
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 50_000, 2_799_800);
+    expect(setNextDiscount).toHaveBeenCalledWith(expect.anything(), { subscriptionId: "sub-1", discountCents: 50_000, now: NOW });
+  });
+
+  it("reprices a percentage code on what is left after a drop, and records it for the next renewal", async () => {
+    vi.mocked(findSubscriptionById).mockResolvedValue(subscription({ referralCodeId: "code-1", discountAmountCents: 1_039_800, discountMonthsLeft: null }) as never);
+    vi.mocked(findReferralCodeById).mockResolvedValue({ discount: { kind: "percent", basisPoints: 1_000 } } as never);
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("managed-website"), bundledRow("digital-growth"), bundledRow("local-seo-aeo")] as never);
+
+    await removeBundledAddOnFor(customer, "digital-growth", NOW);
+
+    // 10% of the 27,998 (website and SEO at list) that stays.
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 279_980, 2_799_800);
+    expect(setNextDiscount).toHaveBeenCalledWith(expect.anything(), { subscriptionId: "sub-1", discountCents: 279_980, now: NOW });
+  });
+
+  it("takes nothing off once the code's months have run out", async () => {
+    vi.mocked(findSubscriptionById).mockResolvedValue(subscription({ referralCodeId: "code-1", discountAmountCents: 50_000, discountMonthsLeft: 0, nextDiscountAmountCents: 0 }) as never);
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("managed-website"), bundledRow("digital-growth"), bundledRow("local-seo-aeo")] as never);
+
+    await removeBundledAddOnFor(customer, "digital-growth", NOW);
+
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 2_799_800);
+    expect(setNextDiscount).toHaveBeenCalledWith(expect.anything(), { subscriptionId: "sub-1", discountCents: 0, now: NOW });
   });
 
   it("moves nothing for a service that is already at list with no change waiting", async () => {

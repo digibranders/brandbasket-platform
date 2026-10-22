@@ -12,6 +12,7 @@ export { createBillingProvider, type BillingProviderSecrets } from "./factory";
 export {
   BASIS_POINTS_PER_WHOLE,
   discountCentsFor,
+  discountForChangedBasket,
   discountPlanCode,
   isChargeableDiscount,
   MAX_DISCOUNT_BASIS_POINTS,

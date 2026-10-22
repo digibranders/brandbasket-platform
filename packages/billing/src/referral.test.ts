@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   discountCentsFor,
+  discountForChangedBasket,
   isChargeableDiscount,
   MAX_REFERRAL_CODE_LENGTH,
   MIN_DISCOUNT_AMOUNT_CENTS,
@@ -152,5 +153,30 @@ describe("rewardCentsFor", () => {
   it("refuses a payment or a percentage it cannot work with", () => {
     expect(() => rewardCentsFor({ kind: "percent", basisPoints: 500 }, -1)).toThrow(RangeError);
     expect(() => rewardCentsFor({ kind: "percent", basisPoints: 10_001 }, 5_400)).toThrow(RangeError);
+  });
+});
+
+describe("discountForChangedBasket", () => {
+  const percent = { kind: "percent", basisPoints: 1_000 } as const;
+  const amount = { kind: "amount", amountCents: 50_000 } as const;
+
+  it("reprices a percentage code on the new basket's net", () => {
+    expect(discountForChangedBasket({ monthsLeft: 3, heldCents: 30_000, discount: percent, netCents: 900_000 })).toBe(90_000);
+    expect(discountForChangedBasket({ monthsLeft: null, heldCents: 90_000, discount: percent, netCents: 299_900 })).toBe(29_990);
+  });
+
+  it("keeps an amount code's amount on any basket it still fits", () => {
+    expect(discountForChangedBasket({ monthsLeft: 2, heldCents: 50_000, discount: amount, netCents: 299_900 })).toBe(50_000);
+    expect(discountForChangedBasket({ monthsLeft: 2, heldCents: 50_000, discount: amount, netCents: 1_200_000 })).toBe(50_000);
+  });
+
+  it("takes nothing once the months have run out, and when the code no longer fits the basket", () => {
+    expect(discountForChangedBasket({ monthsLeft: 0, heldCents: 0, discount: percent, netCents: 900_000 })).toBe(0);
+    expect(discountForChangedBasket({ monthsLeft: 4, heldCents: 50_000, discount: amount, netCents: 50_000 })).toBe(0);
+  });
+
+  it("carries on what the subscription holds when there is no discount to reprice", () => {
+    expect(discountForChangedBasket({ monthsLeft: null, heldCents: 0, discount: null, netCents: 900_000 })).toBe(0);
+    expect(discountForChangedBasket({ monthsLeft: null, heldCents: 7_000, discount: null, netCents: 900_000 })).toBe(7_000);
   });
 });

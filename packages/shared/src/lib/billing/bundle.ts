@@ -72,6 +72,14 @@ export function nextBundledNetCents(subscription: {
   return subscription.pendingBundledAddOnNetCents ?? subscription.bundledAddOnNetCents;
 }
 
+/**
+ * What the code takes off from the next renewal: the amount waiting (0 once the code's months have run out, or a percentage code
+ * repriced after the basket changed) when there is one, else the amount it takes now. Pairs with `nextBundledNetCents`.
+ */
+export function nextDiscountCents(subscription: Pick<Subscription, "discountAmountCents" | "nextDiscountAmountCents">): number {
+  return subscription.nextDiscountAmountCents ?? subscription.discountAmountCents;
+}
+
 /** What a reactivation needs to know of the business's newest subscription. */
 export type LapsedSubscription = Pick<Subscription, "status" | "activatedAt" | "cancelRequestedAt" | "adCreditCents">;
 

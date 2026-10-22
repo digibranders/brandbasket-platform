@@ -21,6 +21,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { getBillingProvider } from "./billing";
+import { moveProviderAfterDiscountEnds } from "@brandbasket/shared/server/basket-change";
 import { activateFirstPayment, activateReactivationPayment } from "@brandbasket/shared/server/billing-activation";
 import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
@@ -33,6 +34,8 @@ import { confirmFirstPayment, verifyCheckoutFor } from "./payment-confirmation";
 // one, so every token check here is the real check.
 vi.mock("server-only", () => ({}));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
+vi.mock("./add-ons", () => ({ basketDeps: vi.fn(() => ({ deps: true })) }));
+vi.mock("@brandbasket/shared/server/basket-change", () => ({ moveProviderAfterDiscountEnds: vi.fn() }));
 vi.mock("@brandbasket/shared/server/billing-activation", () => ({ activateFirstPayment: vi.fn(), activateReactivationPayment: vi.fn() }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./onboarding-alert", () => ({ notifyTeamOnboardingSent: vi.fn() }));
@@ -169,7 +172,7 @@ beforeEach(() => {
   vi.mocked(withCustomerRole).mockImplementation(async (_tx, _scope, work) => work(customerTx));
   vi.mocked(activateFirstPayment).mockImplementation(async () => {
     calls.push("activate");
-    return { payment: { id: "pay-1" } as Payment, alreadyRecorded: false, leadsMarkedPaid: 1, openedMembership: null };
+    return { payment: { id: "pay-1" } as Payment, alreadyRecorded: false, leadsMarkedPaid: 1, openedMembership: null, discountEnded: false };
   });
   vi.mocked(syncTenantForBusiness).mockImplementation(async () => {
     calls.push("tenant-sync");
@@ -257,7 +260,7 @@ describe("confirmFirstPayment for the Premium membership", () => {
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(providerSubscriptionId));
     vi.mocked(activateFirstPayment).mockImplementation(async () => {
       calls.push("activate");
-      return { payment: { id: "pay-1" } as Payment, alreadyRecorded: false, leadsMarkedPaid: 0, openedMembership: { businessName: tenant.businessName } };
+      return { payment: { id: "pay-1" } as Payment, alreadyRecorded: false, leadsMarkedPaid: 0, openedMembership: { businessName: tenant.businessName }, discountEnded: false };
     });
 
     await expect(confirmFirstPayment(tenant, { token }, NOW)).resolves.toEqual({ kind: "membership-opened" });
@@ -304,6 +307,32 @@ describe("confirmFirstPayment", () => {
     expect(sendOnboardingWithin).toHaveBeenCalledWith(customerTx, NOW);
     expect(outcome).toBe("committed");
     expect(notifyTeamOnboardingSent).toHaveBeenCalledWith(BUSINESS_ID, tenant.businessName);
+  });
+
+  it("moves the provider to the amount without the discount once the payment that used its last month has committed", async () => {
+    const { token, providerSubscriptionId } = await checkoutToken();
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(providerSubscriptionId));
+    vi.mocked(activateFirstPayment).mockImplementation(async () => {
+      calls.push("activate");
+      return { payment: { id: "pay-1" } as Payment, alreadyRecorded: false, leadsMarkedPaid: 1, openedMembership: null, discountEnded: true };
+    });
+    vi.mocked(moveProviderAfterDiscountEnds).mockImplementation(async () => {
+      expect(outcome).toBe("committed");
+      return { kind: "scheduled" };
+    });
+
+    await confirmFirstPayment(tenant, { token }, NOW);
+
+    expect(moveProviderAfterDiscountEnds).toHaveBeenCalledWith({ deps: true }, "sub-1", NOW);
+  });
+
+  it("moves nothing when the payment left the discount months to run", async () => {
+    const { token, providerSubscriptionId } = await checkoutToken();
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(providerSubscriptionId));
+
+    await confirmFirstPayment(tenant, { token }, NOW);
+
+    expect(moveProviderAfterDiscountEnds).not.toHaveBeenCalled();
   });
 
   it("writes nothing and opens no transaction for a token that does not verify", async () => {
@@ -448,7 +477,7 @@ describe("confirmFirstPayment", () => {
     });
     vi.mocked(activateReactivationPayment).mockImplementation(async () => {
       calls.push("reactivate");
-      return { payment: { id: "pay-1" } as Payment, alreadyRecorded: false, leadsMarkedPaid: 0 };
+      return { payment: { id: "pay-1" } as Payment, alreadyRecorded: false, leadsMarkedPaid: 0, discountEnded: false };
     });
     const started = await provider.startCheckout({ businessId: BUSINESS_ID, businessName: "Riverside", email: "ana@example.com", plan: premium });
     const token = new URL(started.checkoutUrl, "http://app.localhost").searchParams.get("token");
@@ -478,7 +507,7 @@ describe("confirmFirstPayment", () => {
     });
     vi.mocked(activateReactivationPayment).mockImplementation(async () => {
       calls.push("reactivate");
-      return { payment: { id: "pay-1" } as Payment, alreadyRecorded: false, leadsMarkedPaid: 0 };
+      return { payment: { id: "pay-1" } as Payment, alreadyRecorded: false, leadsMarkedPaid: 0, discountEnded: false };
     });
     const asked = (bundledAddOnNetCents: number) => provider.startCheckout({ businessId: BUSINESS_ID, businessName: "Riverside", email: "ana@example.com", plan: services, bundledAddOnNetCents });
     const tokenOf = (checkoutUrl: string) => new URL(checkoutUrl, "http://app.localhost").searchParams.get("token");

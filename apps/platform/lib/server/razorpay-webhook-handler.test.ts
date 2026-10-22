@@ -24,15 +24,20 @@ vi.mock("@brandbasket/db", async () => {
   };
 });
 vi.mock("@brandbasket/shared/server/billing-activation", () => ({
-  activateRenewalPayment: vi.fn(async () => ({ alreadyRecorded: false, payment: { id: "pay_row_1" } })),
+  activateRenewalPayment: vi.fn(async () => ({ alreadyRecorded: false, payment: { id: "pay_row_1" }, discountEnded: false })),
   // A client from a setup link, unless a test says otherwise: nothing to open.
-  activateFirstPayment: vi.fn(async () => ({ openedMembership: null })),
-  activateReactivationPayment: vi.fn(async () => ({ alreadyRecorded: false })),
+  activateFirstPayment: vi.fn(async () => ({ openedMembership: null, discountEnded: false })),
+  activateReactivationPayment: vi.fn(async () => ({ alreadyRecorded: false, discountEnded: false })),
 }));
 vi.mock("@brandbasket/shared/server/add-on-activation", () => ({
   applyAddOnPayment: vi.fn(async () => ({ kind: "applied", cancelAtProvider: [] })),
 }));
 vi.mock("@brandbasket/shared/server/provider-cancellation", () => ({ cancelAtProvider: vi.fn(async () => undefined) }));
+vi.mock("@brandbasket/shared/server/basket-change", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@brandbasket/shared/server/basket-change")>()),
+  moveProviderAfterDiscountEnds: vi.fn(async () => ({ kind: "scheduled" })),
+}));
+vi.mock("./add-ons", () => ({ basketDeps: vi.fn(() => ({ deps: true })) }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 vi.mock("./charges", () => ({ recordRazorpayChargePayment: vi.fn() }));
 // A transaction that is also its own savepoint: both run the callback straight away.
@@ -61,6 +66,7 @@ import {
   updateSubscriptionProviderStatus,
 } from "@brandbasket/db";
 import { applyAddOnPayment } from "@brandbasket/shared/server/add-on-activation";
+import { moveProviderAfterDiscountEnds } from "@brandbasket/shared/server/basket-change";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "@brandbasket/shared/server/billing-activation";
 import { recordRazorpayChargePayment } from "./charges";
@@ -118,6 +124,8 @@ describe("handleRazorpayWebhookEvent", () => {
       pendingDiscountAmountCents: 0,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
+      nextDiscountAmountCents: null,
+      discountMonthsLeft: null,
     } as never);
     vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
 
@@ -163,6 +171,8 @@ describe("handleRazorpayWebhookEvent", () => {
       pendingDiscountAmountCents: 0,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
+      nextDiscountAmountCents: null,
+      discountMonthsLeft: null,
     } as never);
     vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
 
@@ -201,6 +211,8 @@ describe("handleRazorpayWebhookEvent", () => {
       pendingDiscountAmountCents: 0,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
+      nextDiscountAmountCents: null,
+      discountMonthsLeft: null,
     } as never);
     vi.mocked(findPlanById).mockResolvedValueOnce(PLAN as never).mockResolvedValueOnce(PREMIUM as never);
     const paidAt = new Date("2026-10-14T12:00:00.000Z");
@@ -252,6 +264,8 @@ describe("handleRazorpayWebhookEvent", () => {
       pendingDiscountAmountCents: 0,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
+      nextDiscountAmountCents: null,
+      discountMonthsLeft: null,
     } as never);
     vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
 
@@ -280,6 +294,8 @@ describe("handleRazorpayWebhookEvent", () => {
       pendingDiscountAmountCents: 0,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
+      nextDiscountAmountCents: null,
+      discountMonthsLeft: null,
     } as never);
     vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
     vi.mocked(hasEverPaid).mockResolvedValueOnce(true);
@@ -317,6 +333,8 @@ describe("handleRazorpayWebhookEvent", () => {
       pendingDiscountAmountCents: 0,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
+      nextDiscountAmountCents: null,
+      discountMonthsLeft: null,
     } as never);
     vi.mocked(findPlanById).mockResolvedValue({ ...PLAN, initialAmountCents: 15_000, initialTermMonths: 2 } as never);
     vi.mocked(hasEverPaid).mockResolvedValueOnce(true);
@@ -345,6 +363,8 @@ describe("handleRazorpayWebhookEvent", () => {
         pendingDiscountAmountCents: 0,
         bundledAddOnNetCents: ALL_THREE_NET_CENTS,
         pendingBundledAddOnNetCents: null,
+        nextDiscountAmountCents: null,
+        discountMonthsLeft: null,
       } as never);
       vi.mocked(findPlanById).mockResolvedValue(SERVICES_INR as never);
       vi.mocked(hasEverPaid).mockResolvedValueOnce(true);
@@ -450,6 +470,8 @@ describe("handleRazorpayWebhookEvent", () => {
       pendingDiscountAmountCents: 0,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
+      nextDiscountAmountCents: null,
+      discountMonthsLeft: null,
     } as never);
     vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
 
@@ -500,6 +522,8 @@ describe("handleRazorpayWebhookEvent", () => {
       pendingDiscountAmountCents: 0,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
+      nextDiscountAmountCents: null,
+      discountMonthsLeft: null,
     } as never);
     vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
     vi.mocked(activateFirstPayment).mockResolvedValueOnce({ openedMembership: { businessName: "Smile Dental" } } as never);
@@ -532,6 +556,8 @@ describe("handleRazorpayWebhookEvent", () => {
       pendingDiscountAmountCents: 0,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
+      nextDiscountAmountCents: null,
+      discountMonthsLeft: null,
     } as never);
     vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
 
@@ -581,6 +607,8 @@ describe("handleRazorpayWebhookEvent", () => {
         retentionDiscountCents: 0,
         bundledAddOnNetCents: 0,
         pendingBundledAddOnNetCents: null,
+        nextDiscountAmountCents: null,
+        discountMonthsLeft: null,
       } as never)
       .mockResolvedValueOnce({
         id: "sub_row_4",
@@ -592,6 +620,8 @@ describe("handleRazorpayWebhookEvent", () => {
         retentionDiscountCents: 0,
         bundledAddOnNetCents: 0,
         pendingBundledAddOnNetCents: null,
+        nextDiscountAmountCents: null,
+        discountMonthsLeft: null,
       } as never);
     vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
 
@@ -632,6 +662,8 @@ describe("a subscription carrying a referral discount", () => {
     retentionDiscountCents: 0,
     bundledAddOnNetCents: 0,
     pendingBundledAddOnNetCents: null,
+    nextDiscountAmountCents: null,
+    discountMonthsLeft: null,
   };
   const INR_PLAN = {
     id: "plan_1",
@@ -711,6 +743,8 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     retentionDiscountCents: 0,
     bundledAddOnNetCents: 189_905,
     pendingBundledAddOnNetCents: null,
+    nextDiscountAmountCents: null,
+    discountMonthsLeft: null,
   };
   const GST_PLAN = {
     id: "plan_gst",
@@ -916,6 +950,122 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
   });
 });
 
+describe("a code with a length in months", () => {
+  // The services plan costs nothing; one service at ₹10,000 a month with ₹1,000 off from the code, 18% GST on what is left.
+  const SERVICES_PLAN = { id: "plan_services", currency: "INR", initialAmountCents: 0, recurringAmountCents: 0, initialTermMonths: 1, taxRateBasisPoints: 1_800 };
+  const PAID_AT = new Date("2026-10-14T12:00:00.000Z");
+  const DISCOUNTED_TOTAL = chargedAmountCents(1_000_000, 100_000, 1_800);
+  const LIST_TOTAL = chargedAmountCents(1_000_000, 0, 1_800);
+  const held = (overrides: Record<string, unknown> = {}) => ({
+    id: "sub_row_months",
+    businessId: "biz_months",
+    planId: "plan_services",
+    commitmentEndsAt: new Date("2026-11-01T00:00:00.000Z"),
+    activatedAt: new Date("2026-09-01T00:00:00.000Z"),
+    referralCodeId: "0192f3c4-9999-7000-8000-000000000001",
+    discountAmountCents: 100_000,
+    retentionDiscountCents: 0,
+    discountMonthsLeft: 1,
+    nextDiscountAmountCents: null,
+    pendingPlanId: null,
+    pendingDiscountAmountCents: 0,
+    bundledAddOnNetCents: 1_000_000,
+    pendingBundledAddOnNetCents: null,
+    ...overrides,
+  });
+  const charged = (amountCents: number) => ({
+    kind: "charged",
+    currentStart: null,
+    method: null,
+    subscriptionId: "sub_rzp_months",
+    currentEnd: new Date("2026-11-14T12:00:00.000Z"),
+    paidAt: PAID_AT,
+    paymentId: "pay_months",
+    amountCents,
+    currency: "INR",
+  }) as const;
+
+  beforeEach(() => {
+    vi.mocked(findPlanById).mockResolvedValue(SERVICES_PLAN as never);
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([]);
+  });
+
+  it("takes the last discounted month at the discounted amount, then moves the provider once it is recorded", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(held() as never);
+    vi.mocked(activateRenewalPayment).mockResolvedValueOnce({ alreadyRecorded: false, payment: { id: "pay_row_1" }, discountEnded: true } as never);
+
+    await handleRazorpayWebhookEvent(charged(DISCOUNTED_TOTAL));
+
+    expect(activateRenewalPayment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ amountCents: DISCOUNTED_TOTAL, atNewDiscount: false, invoicedPrice: expect.objectContaining({ discountAmountCents: 100_000 }) }),
+    );
+    expect(moveProviderAfterDiscountEnds).toHaveBeenCalledWith({ deps: true }, "sub_row_months", expect.any(Date));
+    expect(flagPaymentForAttention).not.toHaveBeenCalled();
+  });
+
+  it("moves nothing while the discount still has months to run", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(held({ discountMonthsLeft: 3 }) as never);
+
+    await handleRazorpayWebhookEvent(charged(DISCOUNTED_TOTAL));
+
+    expect(activateRenewalPayment).toHaveBeenCalled();
+    expect(moveProviderAfterDiscountEnds).not.toHaveBeenCalled();
+  });
+
+  it("accepts the next renewal at the list amount, makes it the subscription's own, and invoices no discount", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(held({ discountMonthsLeft: 0, nextDiscountAmountCents: 0 }) as never);
+
+    await handleRazorpayWebhookEvent(charged(LIST_TOTAL));
+
+    expect(activateRenewalPayment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ amountCents: LIST_TOTAL, atNewDiscount: true, invoicedPrice: expect.objectContaining({ discountAmountCents: 0, retentionDiscountCents: 0 }) }),
+    );
+    expect(flagPaymentForAttention).not.toHaveBeenCalled();
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
+  });
+
+  it("records a renewal at the old discounted amount, as the provider did not move, and flags it for staff", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(held({ discountMonthsLeft: 0, nextDiscountAmountCents: 0 }) as never);
+
+    await handleRazorpayWebhookEvent(charged(DISCOUNTED_TOTAL));
+
+    expect(activateRenewalPayment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ amountCents: DISCOUNTED_TOTAL, atNewDiscount: false, invoicedPrice: expect.objectContaining({ discountAmountCents: 100_000 }) }),
+    );
+    expect(flagPaymentForAttention).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ paymentId: "pay_row_1", reason: "add_on_provider_pending" }));
+  });
+
+  it("accepts a repriced percentage code together with the basket change that caused it", async () => {
+    // A second service was added: the basket is ₹15,000 and the code now takes ₹1,500.
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(held({ discountMonthsLeft: null, nextDiscountAmountCents: 150_000, pendingBundledAddOnNetCents: 1_500_000 }) as never);
+    const total = chargedAmountCents(1_500_000, 150_000, 1_800);
+
+    await handleRazorpayWebhookEvent(charged(total));
+
+    expect(activateRenewalPayment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ amountCents: total, atNewDiscount: true, invoicedPrice: expect.objectContaining({ discountAmountCents: 150_000 }) }),
+    );
+    expect(completeBundledAddOnChanges).toHaveBeenCalled();
+    expect(flagPaymentForAttention).not.toHaveBeenCalled();
+  });
+
+  it("takes a reactivation at the discount a lapse carried, and moves the provider if that was the last month", async () => {
+    vi.mocked(hasEverPaid).mockResolvedValueOnce(true);
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(held({ activatedAt: null, discountMonthsLeft: 1 }) as never);
+    vi.mocked(activateReactivationPayment).mockResolvedValueOnce({ alreadyRecorded: false, discountEnded: true } as never);
+
+    await handleRazorpayWebhookEvent(charged(DISCOUNTED_TOTAL));
+
+    expect(activateReactivationPayment).toHaveBeenCalled();
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
+    expect(moveProviderAfterDiscountEnds).toHaveBeenCalledWith({ deps: true }, "sub_row_months", expect.any(Date));
+  });
+});
+
 describe("a package on the services plan, which costs nothing itself", () => {
   // Migration 0184's rupee plan: the terms at a price of 0, with 18% GST on the lines.
   const SERVICES_PLAN = { id: "plan_services", currency: "INR", initialAmountCents: 0, recurringAmountCents: 0, initialTermMonths: 1, taxRateBasisPoints: 1_800 };
@@ -932,6 +1082,8 @@ describe("a package on the services plan, which costs nothing itself", () => {
       retentionDiscountCents: 0,
       bundledAddOnNetCents: 2_659_700,
       pendingBundledAddOnNetCents: null,
+      nextDiscountAmountCents: null,
+      discountMonthsLeft: null,
     };
   }
 
@@ -1002,6 +1154,8 @@ describe("the renewal after a service was added to a package", () => {
     retentionDiscountCents: 0,
     bundledAddOnNetCents: 299_900,
     pendingBundledAddOnNetCents: 1_039_800,
+    nextDiscountAmountCents: null,
+    discountMonthsLeft: null,
   };
   const charged = (amountCents: number) =>
     ({
@@ -1091,6 +1245,8 @@ describe("a plan with GST on top", () => {
       retentionDiscountCents: 0,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
+      nextDiscountAmountCents: null,
+      discountMonthsLeft: null,
     };
   }
 
@@ -1188,6 +1344,8 @@ describe("a plan with GST on top", () => {
         pendingDiscountAmountCents: 0,
         bundledAddOnNetCents: 0,
         pendingBundledAddOnNetCents: null,
+        nextDiscountAmountCents: null,
+        discountMonthsLeft: null,
         ...overrides,
       } as never);
       vi.mocked(findPlanById).mockImplementation(async (_db, id) => ({ plan_care: CARE, plan_premium: PREMIUM })[id as "plan_care"] as never);

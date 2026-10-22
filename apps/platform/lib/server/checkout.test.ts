@@ -7,6 +7,7 @@ import {
   findBusinessEntry,
   findBusinessReferralCode,
   findRedeemableReferralCode,
+  findReferralCodeById,
   findLatestActivatedSubscriptionForBusiness,
   findLatestSubscriptionForBusiness,
   isPackageOfferForfeited,
@@ -62,6 +63,7 @@ vi.mock("@brandbasket/db", () => {
     findBusinessEntry: vi.fn(),
     findBusinessReferralCode: vi.fn(),
     findRedeemableReferralCode: vi.fn(),
+    findReferralCodeById: vi.fn(),
     findLatestActivatedSubscriptionForBusiness: vi.fn(),
     findLatestSubscriptionForBusiness: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
@@ -826,7 +828,7 @@ describe("startReactivationFor", () => {
     expect(events.indexOf("provider:cancel")).toBeGreaterThan(events.indexOf("tx2:commit"));
   });
 
-  it("takes no coupon: a returning customer's services come back with no code taken off", async () => {
+  it("applies no code of its own: a returning customer's services come back with no code unless the lapsed subscription had one", async () => {
     const lapsed = subscription({ status: "cancelled", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });
     newest(lapsed, { hasEverPaid: true });
     lapsedLines(lapsed, [billedLine("managed-website")]);
@@ -919,6 +921,82 @@ describe("startReactivationFor", () => {
         { name: "tx2" },
         expect.objectContaining({ bundledAddOns: [usdLine("managed-website", 7_500, 0), usdLine("local-seo-aeo", 35_000, 0)], adCreditCents: 0 }),
       );
+    });
+
+    describe("with the code it lapsed on", () => {
+      // Retired since the client paid on it: the code is theirs already, so it still carries.
+      const CODE: ReferralCode = { ...COUPON, id: "01a0e81e-89b6-704e-a3c2-702156218f38", code: "TENOFF", discount: { kind: "percent", basisPoints: 1_000 }, discountMonths: 6, active: false };
+      const allThree = ["managed-website", "digital-growth", "local-seo-aeo"];
+      /** The 10% the code took off the website alone; the package it comes back as nets more. */
+      const lapsedOn = (overrides: Partial<Subscription>) => lapsedWith(allThree, { adCreditCents: 6_000, referralCodeId: CODE.id, discountAmountCents: 750, ...overrides });
+
+      beforeEach(() => {
+        vi.mocked(findReferralCodeById).mockResolvedValue(CODE);
+      });
+
+      it("keeps the code for the months it has left, repriced as a percentage of the basket's package net", async () => {
+        lapsedOn({ discountMonthsLeft: 2 });
+        const started = vi.spyOn(provider, "startCheckout");
+
+        redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+        // 10% of the 35,000 the package nets.
+        expect(openCheckoutSubscription).toHaveBeenCalledWith(
+          { name: "tx2" },
+          expect.objectContaining({ referralCodeId: CODE.id, discountAmountCents: 3_500, discountMonthsLeft: 2, adCreditCents: 6_000, replacing: "sub-lapsed" }),
+        );
+        expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 35_000, discountAmountCents: 3_500 }));
+        expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 3_500, 35_000);
+        // The client has the code already: it need not still be redeemable, and the redemption cap is not used again.
+        expect(findRedeemableReferralCode).not.toHaveBeenCalled();
+        expect(findBusinessReferralCode).not.toHaveBeenCalled();
+      });
+
+      it("keeps a code with no limit with no months to count", async () => {
+        lapsedOn({ discountMonthsLeft: null });
+
+        redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ referralCodeId: CODE.id, discountMonthsLeft: null }));
+      });
+
+      it("keeps a flat code at its amount", async () => {
+        vi.mocked(findReferralCodeById).mockResolvedValue({ ...CODE, discount: { kind: "amount", amountCents: 500 } });
+        lapsedOn({ discountMonthsLeft: 1 });
+
+        redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ discountAmountCents: 500, discountMonthsLeft: 1 }));
+      });
+
+      it("carries nothing once the months have run out", async () => {
+        lapsedOn({ discountMonthsLeft: 0, discountAmountCents: 0 });
+
+        redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ referralCodeId: null, discountAmountCents: 0, discountMonthsLeft: null }));
+      });
+
+      it("carries nothing after the client's own cancel", async () => {
+        lapsedOn({ status: "cancelled", cancelRequestedAt: AGO, discountMonthsLeft: 2 });
+
+        redirectUrl(await startReactivationFor(lapsedCustomer, NOW, ["managed-website", "digital-growth"]));
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ referralCodeId: null, discountAmountCents: 0, discountMonthsLeft: null }));
+      });
+
+      it("carries the code a reactivation checkout left unpaid carried from the subscription that was last paid", async () => {
+        // The newest subscription is an unpaid reactivation checkout; the months are those of the one a payment last activated.
+        const billed = subscription({ id: "sub-billed", status: "cancelled", activatedAt: AGO, referralCodeId: CODE.id, discountMonthsLeft: 3, adCreditCents: 6_000 });
+        const unpaid = subscription({ id: "sub-unpaid", status: "incomplete", referralCodeId: CODE.id, discountMonthsLeft: 3, adCreditCents: 6_000 });
+        newest(unpaid, { hasEverPaid: true });
+        vi.mocked(findLatestActivatedSubscriptionForBusiness).mockResolvedValue(billed);
+        lapsedLines(billed, allThree.map((addOn) => billedLine(addOn)), []);
+
+        redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ referralCodeId: CODE.id, discountMonthsLeft: 3 }));
+      });
     });
 
     it("lets a customer who cancelled choose their services again: only those, each at list, no ad credit, the package offer gone for good", async () => {

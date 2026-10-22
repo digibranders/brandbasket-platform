@@ -5,7 +5,7 @@ import { ChevronDownIcon, TickIcon } from "@brandbasket/shared/ui/icons";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { billingPeriodProgress, type PeriodProgress } from "@brandbasket/shared/lib/billing/period";
 import { changesNote, renewalCharge } from "@brandbasket/shared/lib/billing/terms";
-import { nextBundledNetCents } from "@brandbasket/shared/lib/billing/bundle";
+import { nextBundledNetCents, nextDiscountCents } from "@brandbasket/shared/lib/billing/bundle";
 import { planLabel } from "@brandbasket/shared/lib/billing/receipt-title";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { carePlan } from "@brandbasket/shared/lib/pricing";
@@ -47,7 +47,7 @@ function NextPaymentCaption({
     return <>No more payments. Your plan ends on {end}.</>;
   }
   if (subscription.provider === "manual") return <>We’ll arrange your next payment with you directly.</>;
-  const amount = renewalCharge(plan, subscription.discountAmountCents, nextBundledNetCents(subscription));
+  const amount = renewalCharge(plan, nextDiscountCents(subscription), nextBundledNetCents(subscription));
   if (amount === null) return <>Your next period starts on {end}.</>;
   return (
     <>
@@ -80,7 +80,7 @@ function PeriodBar({ progress, children }: { readonly progress: PeriodProgress; 
 
 /** The plan card: name, price per month, how far through the paid period the customer is, how they pay, and what it includes. */
 export function PlanSummary({ plan, subscription, now, hasWebsite, paymentMethod }: PlanSummaryProps): ReactElement {
-  const price = renewalCharge(plan, subscription.discountAmountCents, nextBundledNetCents(subscription));
+  const price = renewalCharge(plan, nextDiscountCents(subscription), nextBundledNetCents(subscription));
   const progress = billingPeriodProgress(subscription, now);
 
   return (
@@ -97,7 +97,7 @@ export function PlanSummary({ plan, subscription, now, hasWebsite, paymentMethod
                   Monthly
                 </span>
               </div>
-              <p className="mt-1 text-xs text-ink-soft">{priceNote(plan, subscription.discountAmountCents, nextBundledNetCents(subscription))}</p>
+              <p className="mt-1 text-xs text-ink-soft">{priceNote(plan, nextDiscountCents(subscription), nextBundledNetCents(subscription))}</p>
             </div>
             {price === null ? null : (
               <p className="flex items-baseline gap-1.5">

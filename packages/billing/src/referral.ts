@@ -89,6 +89,25 @@ export function discountCentsFor(discount: ReferralDiscount, basketNetCents: num
 }
 
 /**
+ * What a code takes off the next renewal once the basket has changed (a service added or dropped), on a basket whose package
+ * net is `netCents`. An amount code keeps its amount and a percentage code is repriced on the new net (discountCentsFor); a code
+ * whose months have run out takes nothing, and a code that can no longer be charged against the basket stops applying, as at
+ * checkout (isChargeableDiscount). With no discount to reprice (`discount` null: no code, or an affiliate code that gives none)
+ * the amount the subscription already holds, `heldCents`, carries on.
+ */
+export function discountForChangedBasket(input: {
+  readonly monthsLeft: number | null;
+  readonly heldCents: number;
+  readonly discount: ReferralDiscount | null;
+  readonly netCents: number;
+}): number {
+  if (input.monthsLeft === 0) return 0;
+  if (input.discount === null) return input.heldCents;
+  const discountCents = discountCentsFor(input.discount, input.netCents);
+  return isChargeableDiscount(input.netCents, discountCents) ? discountCents : 0;
+}
+
+/**
  * Our code for the provider plan a discount runs on: the base plan's code and the discount, "managed-inr-2026-10-less-
  * 29990". Recorded on the Razorpay plan, so anyone looking at it there can trace it back.
  */

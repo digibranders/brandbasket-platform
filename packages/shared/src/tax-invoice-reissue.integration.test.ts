@@ -299,7 +299,7 @@ describe("issueMissingTaxInvoice", () => {
     expect(invoice.lines[0]).toMatchObject({ description: "Social Media and Ads", discountAmountCents: 0, note: null });
   });
 
-  it("names the coupon on a single service, though the code's discount ended when a second service was added", async () => {
+  it("names the coupon on a single service from what the payment kept, though the subscription's discount has ended since (its months ran out)", async () => {
     const discount = { kind: "percent", basisPoints: 2_000 } as const;
     const created = await createReferralCode(dbs.staff.db, {
       code: "GAURAV",
@@ -313,7 +313,8 @@ describe("issueMissingTaxInvoice", () => {
     const discountAmountCents = discountCentsFor(discount, 299_900);
     const subscription = await openSubscription(linesOf("managed-website"), { referralCodeId: created.id, discountAmountCents });
     const payment = await payFirstWithoutPrintableInvoice(subscription, discountAmountCents);
-    await execSql(dbs.owner, `update subscriptions set discount_amount_cents = 0 where id = '${subscription.id}'`);
+    // The code's months run out after the payment: the subscription now takes nothing off, but the payment was billed with it.
+    await execSql(dbs.owner, `update subscriptions set discount_amount_cents = 0, discount_months_left = 0 where id = '${subscription.id}'`);
 
     const invoice = await issue(payment.id);
 
@@ -343,7 +344,7 @@ describe("issueMissingTaxInvoice", () => {
     const subscription = await openSubscription(lines, { referralCodeId: created.id, discountAmountCents });
     const payment = await payFirstWithoutPrintableInvoice(subscription, discountAmountCents);
     // The services, the offer or the code may change after the payment; the invoice is built from what the payment kept.
-    await execSql(dbs.owner, `update subscriptions set discount_amount_cents = 0 where id = '${subscription.id}'`);
+    await execSql(dbs.owner, `update subscriptions set discount_amount_cents = 0, discount_months_left = 0 where id = '${subscription.id}'`);
 
     const invoice = await issue(payment.id);
 
