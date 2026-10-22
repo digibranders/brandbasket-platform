@@ -98,7 +98,9 @@ subscription's retry lands in the seconds before Razorpay cancels it, and staff 
 `recordManualFirstPayment` follows the new decision: a lapsed client's bank transfer ends the lapsed row, opens a
 `manual` subscription on the tier's current plan, and records it with `activateReactivationPayment`. The
 `needs-reactivation` notice in `packages/shared/src/lib/billing/manual-payment-notices.ts` goes. The amount shown on
-the form is the amount recorded.
+the form is the amount recorded. A lapsed client keeps their code here as on the dashboard (`loadManualCarriedCode`, over
+`loadCarriedCode`): the discount is repriced on the basket, the months are copied across and the payment counts one down.
+The form's amount and hint show the discounted amount and name the code with the months it has left.
 
 ### Screens (`apps/platform`)
 
@@ -139,4 +141,4 @@ the form is the amount recorded.
 
 ## Out of scope
 
-Choosing a different tier on return, grandfathered prices, a new coupon on reactivation, refunds through the API, USD. A bank transfer recorded in the console for a lapsed client does not carry the code yet.
+Choosing a different tier on return, grandfathered prices, a new coupon on reactivation, refunds through the API, USD.
