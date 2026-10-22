@@ -38,6 +38,12 @@ export interface PlanPrices {
 /** The paid plans' price lines in each currency: the form shows the one for the country the owner picks. */
 export type PlanPricesByCurrency = Readonly<Record<MoneyCurrency, PlanPrices>>;
 
+/** The services the link chose ("Managed Website and Social Media and Ads") and their package price in each currency. */
+export interface JoinBasket {
+  readonly name: string;
+  readonly prices: Readonly<Record<MoneyCurrency, string | null>>;
+}
+
 /** What each plan is, in a line, for the choice's cards. The page's own copy: the full lists are on each plan's page. */
 const PLAN_OPTIONS: readonly {
   readonly choice: JoinChoice;
@@ -70,6 +76,8 @@ interface JoinFormProps {
   readonly initialChoice: JoinChoice | null;
   /** The services the website's basket chose, sent with the form so the plan's page opens on them. */
   readonly services: readonly string[];
+  /** Those services named and priced, for the line above the details. */
+  readonly basket: JoinBasket;
   /** The plan the plans open with already ticked, when the link chose none (Brandbasket: Care); null ticks none. */
   readonly preselected: JoinChoice | null;
   /** The plans this brand sells, in the order shown: the free listing is among them only on Brandbasket. */
@@ -193,6 +201,7 @@ export function JoinForm({
   action,
   initialChoice,
   services,
+  basket,
   preselected,
   choices,
   legalLinks,
@@ -419,9 +428,9 @@ export function JoinForm({
       <GoBack onBack={() => settleChoice(false)} disabled={isPending} />
       {choice !== "listing_only" ? (
         <p className="text-sm text-ink-soft">
-          Signing up for the <span className="font-medium text-ink">{PLAN_OPTIONS.find((option) => option.choice === choice)?.name}</span> plan
+          Signing up for <span className="font-medium text-ink">{basket.name}</span>
           {" · "}
-          <span className="tabular-nums">{planPrices[choice]}</span>
+          <span className="tabular-nums">{basket.prices[currencyForCountry(country)]}</span>
         </p>
       ) : null}
       {asksBusinessName ? (

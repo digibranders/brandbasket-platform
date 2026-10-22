@@ -9,14 +9,14 @@ import type { Plan } from "@brandbasket/db";
 import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import { EntrySwitch } from "@/components/panel/entry-switch";
 import { countryOptions } from "@brandbasket/shared/lib/countries";
-import { JoinForm, type PlanPricesByCurrency } from "@/components/panel/join-form";
+import { JoinForm, type JoinBasket, type PlanPricesByCurrency } from "@/components/panel/join-form";
 import { loginNotice } from "@/lib/login-notice";
 import { requestBrand } from "@/lib/server/request-brand";
 import { readEntryRequest } from "@/lib/account-entry";
 import { RESTORE_ACCOUNT_PATH } from "@/lib/account-settings-form";
 import { FORGOT_PASSWORD_PATH } from "@/lib/account-recovery-form";
 import { websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
-import { membershipPathFor, membershipPriceLine, membershipTierForChoice } from "@/lib/membership";
+import { basketNetCents, membershipPathFor, membershipPriceLine, membershipTierForChoice, servicesPhrase } from "@/lib/membership";
 import { AFFILIATE_PATH } from "@brandbasket/shared/lib/affiliate-links";
 import { accountLabel } from "@/lib/server/account-label";
 import { getAffiliateAccess } from "@/lib/server/affiliate-access";
@@ -127,6 +127,10 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
     INR: { managed: priceLine(india) },
     USD: { managed: priceLine(us) },
   };
+  // The basket the link chose, priced as the checkout will price it, for the line above the details.
+  const basketLine = (plan: Plan | null): string | null =>
+    plan === null ? null : membershipPriceLine(plan, basketNetCents(entry.services, plan.currency));
+  const basket: JoinBasket = { name: servicesPhrase(entry.services), prices: { INR: basketLine(india), USD: basketLine(us) } };
   // With the local bypass on (EMAIL_CODE_BYPASS) any six digits are accepted, so the form must not promise a real check.
   const confirmsCodes = !emailCodeBypassed();
 
@@ -145,6 +149,7 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
           action={joinForListing}
           initialChoice={entry.choice}
           services={entry.services}
+          basket={basket}
           preselected={entry.preselected}
           choices={brand.joinChoices}
           legalLinks={legalLinks}
