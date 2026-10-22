@@ -236,4 +236,11 @@ describe("renderTaxInvoicesPdf with a letterhead and contact line of its own", (
   it("refuses a letterhead colour that is not #rrggbb", async () => {
     await expect(renderTaxInvoicesPdf([invoice], { letterhead: { ...letterhead, colorHex: "navy" } })).rejects.toThrow(RangeError);
   });
+
+  it("fills a path with its own colour, and refuses one that is not #rrggbb", async () => {
+    const twoColour = { ...letterhead, paths: [{ d: "M0 0L5 0L5 5Z", colorHex: "#B0743A" }, "M5 5L10 5L10 10Z"] };
+    expect((await PDFDocument.load(await renderTaxInvoicesPdf([invoice], { letterhead: twoColour }))).getPageCount()).toBe(1);
+    const badPath = { ...letterhead, paths: [{ d: "M0 0L5 0L5 5Z", colorHex: "rattan" }] };
+    await expect(renderTaxInvoicesPdf([invoice], { letterhead: badPath })).rejects.toThrow(RangeError);
+  });
 });
