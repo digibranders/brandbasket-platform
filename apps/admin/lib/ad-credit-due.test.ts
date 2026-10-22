@@ -8,7 +8,7 @@ const base: AdCreditDue = {
   businessName: "Asha Cafe",
   currency: "INR",
   adCreditCents: 200_000,
-  currentPeriodEnd: new Date("2026-11-21T10:00:00.000Z"),
+  paidThroughAt: new Date("2026-11-21T10:00:00.000Z"),
   services: ["managed-website", "digital-growth"],
 };
 
@@ -27,6 +27,6 @@ describe("adCreditDueRows", () => {
   });
 
   it("says so when no paid-through date is known", () => {
-    expect(adCreditDueRows([{ ...base, currentPeriodEnd: null }])[0]?.paidThrough).toBe("No paid-through date");
+    expect(adCreditDueRows([{ ...base, paidThroughAt: null }])[0]?.paidThrough).toBe("No paid-through date");
   });
 });

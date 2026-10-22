@@ -12,6 +12,7 @@ import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type Tes
 
 const OPENED_AT = new Date("2026-10-21T10:00:00.000Z");
 const PAID_THROUGH = new Date("2026-11-21T10:00:00.000Z");
+const NOW = new Date("2026-10-25T10:00:00.000Z");
 
 const WEBSITE_AND_SOCIAL: readonly NewBundledAddOn[] = [
   { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 59_980, netAmountCents: 239_920, taxRateBasisPoints: 1800 },
@@ -77,38 +78,50 @@ describe("listAdCreditDue", () => {
     await business("Zed Studio", { paid: true, adCreditCents: 200_000 });
     await business("Asha Cafe", { paid: true, adCreditCents: 200_000 });
 
-    expect(await listAdCreditDue(dbs.staff.db)).toEqual([
-      expect.objectContaining({ businessName: "Asha Cafe", currency: "INR", adCreditCents: 200_000, currentPeriodEnd: PAID_THROUGH, services: ["managed-website", "digital-growth"] }),
-      expect.objectContaining({ businessName: "Zed Studio", currency: "INR", adCreditCents: 200_000, currentPeriodEnd: PAID_THROUGH, services: ["managed-website", "digital-growth"] }),
+    expect(await listAdCreditDue(dbs.staff.db, NOW)).toEqual([
+      expect.objectContaining({ businessName: "Asha Cafe", currency: "INR", adCreditCents: 200_000, paidThroughAt: PAID_THROUGH, services: ["managed-website", "digital-growth"] }),
+      expect.objectContaining({ businessName: "Zed Studio", currency: "INR", adCreditCents: 200_000, paidThroughAt: PAID_THROUGH, services: ["managed-website", "digital-growth"] }),
     ]);
   });
 
   it("leaves out a subscription with no credit", async () => {
     await business("No Credit", { paid: true, adCreditCents: 0 });
-    expect(await listAdCreditDue(dbs.staff.db)).toEqual([]);
+    expect(await listAdCreditDue(dbs.staff.db, NOW)).toEqual([]);
   });
 
   it("leaves out a checkout that never took a payment, though it carries credit", async () => {
     await business("Unpaid", { paid: false, adCreditCents: 200_000 });
-    expect(await listAdCreditDue(dbs.staff.db)).toEqual([]);
+    expect(await listAdCreditDue(dbs.staff.db, NOW)).toEqual([]);
   });
 
   it("leaves out a cancelled subscription that carries credit", async () => {
     const { subscriptionId } = await business("Cancelled", { paid: true, adCreditCents: 200_000 });
     await dbs.owner.db.update(subscriptions).set({ status: "cancelled", cancelledAt: OPENED_AT }).where(eq(subscriptions.id, subscriptionId));
-    expect(await listAdCreditDue(dbs.staff.db)).toEqual([]);
+    expect(await listAdCreditDue(dbs.staff.db, NOW)).toEqual([]);
   });
 
   it("leaves out an account that has asked to close, though it may still carry credit", async () => {
     const { subscriptionId } = await business("Closing", { paid: true, adCreditCents: 200_000 });
     await dbs.owner.db.update(subscriptions).set({ cancelRequestedAt: OPENED_AT }).where(eq(subscriptions.id, subscriptionId));
-    expect(await listAdCreditDue(dbs.staff.db)).toEqual([]);
+    expect(await listAdCreditDue(dbs.staff.db, NOW)).toEqual([]);
+  });
+
+  it("leaves out a past due subscription whose paid period has run out, and lists one still inside it", async () => {
+    const lapsed = await business("Lapsed", { paid: true, adCreditCents: 200_000 });
+    const inside = await business("Inside", { paid: true, adCreditCents: 200_000 });
+    await dbs.owner.db.update(subscriptions).set({ status: "past_due", paidThroughAt: new Date("2026-10-24T10:00:00.000Z") }).where(eq(subscriptions.id, lapsed.subscriptionId));
+    await dbs.owner.db.update(subscriptions).set({ status: "past_due", paidThroughAt: new Date("2026-10-26T10:00:00.000Z") }).where(eq(subscriptions.id, inside.subscriptionId));
+
+    const listed = await listAdCreditDue(dbs.staff.db, NOW);
+
+    expect(listed.map((row) => row.businessName)).toEqual(["Inside"]);
+    expect(listed[0]?.paidThroughAt).toEqual(new Date("2026-10-26T10:00:00.000Z"));
   });
 
   it("leaves out a subscription the provider has stopped billing", async () => {
     const { subscriptionId } = await business("Halted", { paid: true, adCreditCents: 200_000 });
     await dbs.owner.db.update(subscriptions).set({ status: "inactive" }).where(eq(subscriptions.id, subscriptionId));
-    expect(await listAdCreditDue(dbs.staff.db)).toEqual([]);
+    expect(await listAdCreditDue(dbs.staff.db, NOW)).toEqual([]);
   });
 
   it("names only the services still billed", async () => {
@@ -117,7 +130,7 @@ describe("listAdCreditDue", () => {
       .update(bundledAddOns)
       .set({ status: "removed", removedAt: OPENED_AT })
       .where(eq(bundledAddOns.subscriptionId, subscriptionId));
-    const [row] = await listAdCreditDue(dbs.staff.db);
+    const [row] = await listAdCreditDue(dbs.staff.db, NOW);
     expect(row?.services).toEqual([]);
   });
 });

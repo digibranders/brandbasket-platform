@@ -674,19 +674,20 @@ export interface AdCreditDue {
   readonly currency: BillingCurrency;
   /** The ad credit a month, in the subscription's minor units. */
   readonly adCreditCents: number;
-  /** The end of the period the customer has paid for. */
-  readonly currentPeriodEnd: Date | null;
+  /** The end of the period the customer has paid for (after `now`, or the row is not listed). */
+  readonly paidThroughAt: Date | null;
   /** The service ids still billed on the subscription, in the order they were taken. */
   readonly services: readonly string[];
 }
 
 /**
- * The subscriptions that are owed ad credit this month: paid at least once (`activated_at`), still billing (active or past
- * due; not stopped by the provider), not cancelled and not asked to close, with credit above zero. A cancelled row that never
+ * The subscriptions that are owed ad credit this month: paid at least once (`activated_at`), paid through past `now` (a past
+ * due subscription whose paid period has run out is owed nothing, as access.ts has it), still billing (active or past due; not
+ * stopped by the provider), not cancelled and not asked to close, with credit above zero. A cancelled row that never
  * took a payment keeps the credit it was opened with, and a close request zeroes it from the request on, so neither is listed
  * by the credit alone. By business name. Staff connection.
  */
-export async function listAdCreditDue(db: Runner): Promise<readonly AdCreditDue[]> {
+export async function listAdCreditDue(db: Runner, now: Date): Promise<readonly AdCreditDue[]> {
   const due = await db
     .select({
       subscriptionId: subscriptions.id,
@@ -694,7 +695,7 @@ export async function listAdCreditDue(db: Runner): Promise<readonly AdCreditDue[
       businessName: businesses.name,
       currency: businesses.currency,
       adCreditCents: subscriptions.adCreditCents,
-      currentPeriodEnd: subscriptions.currentPeriodEnd,
+      paidThroughAt: subscriptions.paidThroughAt,
     })
     .from(subscriptions)
     .innerJoin(businesses, eq(businesses.id, subscriptions.businessId))
@@ -702,6 +703,7 @@ export async function listAdCreditDue(db: Runner): Promise<readonly AdCreditDue[
       and(
         gt(subscriptions.adCreditCents, 0),
         isNotNull(subscriptions.activatedAt),
+        gt(subscriptions.paidThroughAt, now),
         isNull(subscriptions.cancelRequestedAt),
         inArray(subscriptions.status, ["active", "past_due"]),
       ),

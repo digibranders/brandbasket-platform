@@ -24,6 +24,6 @@ export function adCreditDueRows(due: readonly AdCreditDue[]): AdCreditDueRow[] {
     businessName: row.businessName,
     package: packageLabel(row.services),
     amount: `${formatMoney(row.adCreditCents, row.currency)} a month`,
-    paidThrough: row.currentPeriodEnd === null ? "No paid-through date" : `Paid through ${formatCalendarDate(row.currentPeriodEnd, INDIA_TIME)}`,
+    paidThrough: row.paidThroughAt === null ? "No paid-through date" : `Paid through ${formatCalendarDate(row.paidThroughAt, INDIA_TIME)}`,
   }));
 }

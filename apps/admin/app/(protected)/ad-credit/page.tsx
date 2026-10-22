@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Ad credit due" };
  */
 export default async function AdCreditDuePage(): Promise<ReactElement> {
   await requireStaffAccess();
-  const rows = adCreditDueRows(await listAdCreditDue(getStaffDb()));
+  const rows = adCreditDueRows(await listAdCreditDue(getStaffDb(), new Date()));
 
   return (
     <>
