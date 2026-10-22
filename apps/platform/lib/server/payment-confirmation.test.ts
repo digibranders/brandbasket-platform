@@ -222,7 +222,10 @@ describe("verifyCheckoutFor", () => {
 
   it("refuses a tampered, missing or expired token", async () => {
     const { token } = await checkoutToken();
-    await expect(verifyCheckoutFor(tenant, { token: `${token.slice(0, -2)}AA` })).resolves.toBeNull();
+    // A whole character inside the signature: the last base64url character carries padding bits, so changing it can decode to the same bytes.
+    const at = token.length - 10;
+    const tampered = `${token.slice(0, at)}${token[at] === "A" ? "B" : "A"}${token.slice(at + 1)}`;
+    await expect(verifyCheckoutFor(tenant, { token: tampered })).resolves.toBeNull();
     await expect(verifyCheckoutFor(tenant, {})).resolves.toBeNull();
     // A bad signature is not a refusal worth logging: anyone can send one.
     expect(warned).not.toHaveBeenCalled();
