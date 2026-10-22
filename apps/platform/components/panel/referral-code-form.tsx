@@ -23,11 +23,6 @@ interface ReferralCodeFormProps {
    * says why the discount went instead of letting it disappear. Ignored while a discount is in force.
    */
   readonly lapsedCode?: string | null;
-  /**
-   * A code that works but sits on a package, which takes none and so cannot be paid with it: shown with the Remove control
-   * and the reason, in place of the Apply field. Ignored while a discount is in force.
-   */
-  readonly refusedCode?: { readonly code: string; readonly reason: string } | null;
   /** A shorter field and button, for a page where the code is a side matter next to the price (the plan pages). */
   readonly compact?: boolean;
 }
@@ -55,16 +50,8 @@ export function ReferralCodeForm({
   currency,
   label = "Have a referral code?",
   lapsedCode = null,
-  refusedCode = null,
   compact = false,
 }: ReferralCodeFormProps): ReactElement {
-  if (discount === null && refusedCode !== null) {
-    return (
-      <RemovableCode action={removeAction} tone="notice">
-        Code <span className="font-semibold tracking-[0.08em]">{refusedCode.code}</span>. {refusedCode.reason}
-      </RemovableCode>
-    );
-  }
   const worth = discount === null ? null : describeDiscount(discount, currency);
   return discount === null ? (
     <div className="space-y-3">
@@ -77,7 +64,7 @@ export function ReferralCodeForm({
       <ApplyForm action={applyAction} label={label} compact={compact} />
     </div>
   ) : (
-    <RemovableCode action={removeAction} tone="applied">
+    <RemovableCode action={removeAction}>
       Code <span className="font-semibold tracking-[0.08em]">{discount.code}</span> applied
       {worth === null ? "." : <>. {worth}.</>}
     </RemovableCode>
@@ -121,26 +108,14 @@ function ApplyForm({ action, label, compact }: { readonly action: StepAction; re
   );
 }
 
-/** A code with the control that takes it off again: green when it is giving a discount, plain when it is only in the way. */
-function RemovableCode({
-  action,
-  tone,
-  children,
-}: {
-  readonly action: StepAction;
-  readonly tone: "applied" | "notice";
-  readonly children: ReactNode;
-}): ReactElement {
+/** A code in force, with the control that takes it off again. */
+function RemovableCode({ action, children }: { readonly action: StepAction; readonly children: ReactNode }): ReactElement {
   const { formRef, errorRef, formAction, controls } = useStepForm(action);
   return (
     <form ref={formRef} action={formAction} className="space-y-3">
       <StepFormError controls={controls} errorRef={errorRef} />
-      <div
-        className={`flex flex-wrap items-center gap-3 rounded-control px-4 py-3 ${
-          tone === "applied" ? "bg-success-pale text-success-deep ring-1 ring-inset ring-success/25" : "bg-paper-deep text-ink"
-        }`}
-      >
-        {tone === "applied" ? <CheckCircleIcon className="size-5 shrink-0 text-success" /> : null}
+      <div className="flex flex-wrap items-center gap-3 rounded-control bg-success-pale px-4 py-3 text-success-deep ring-1 ring-inset ring-success/25">
+        <CheckCircleIcon className="size-5 shrink-0 text-success" />
         <p className="flex-1 text-sm">{children}</p>
         <button
           type="submit"

@@ -12,7 +12,7 @@ import type { ReactElement } from "react";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
 import { formatMoney } from "@brandbasket/shared/lib/money";
-import { describeReferralDiscount, formatPercent } from "@brandbasket/shared/lib/billing/referral-value";
+import { describeDiscountMonths, describeReferralDiscount, formatPercent } from "@brandbasket/shared/lib/billing/referral-value";
 import { DeleteReferralCodeForm, RetireReferralCodeForm } from "@/components/referral-code-form";
 import { Figures } from "@/components/console/figures";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
@@ -98,6 +98,7 @@ export default async function CodePage({ params }: CodePageProps): Promise<React
                   ? "full price"
                   : `${formatMoney(worth.discountCents, code.currency)} off${gst ? " before GST" : ""}`,
             },
+            ...(code.discount === null ? [] : [{ value: describeDiscountMonths(code.discountMonths), label: "Discount length" }]),
             {
               value: `${redemptions}${code.maxRedemptions === null ? "" : ` / ${code.maxRedemptions}`}`,
               label: "Members",

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  describeDiscountMonths,
   describeReferralDiscount,
   describeReferralReward,
   formatPercent,
@@ -26,6 +27,15 @@ describe("describeReferralDiscount", () => {
   it("names a percentage as a percentage", () => {
     expect(describeReferralDiscount({ kind: "percent", basisPoints: 1_000 }, "INR")).toBe("10% off");
     expect(describeReferralDiscount({ kind: "percent", basisPoints: 1_250 }, "USD")).toBe("12.5% off");
+  });
+});
+
+describe("describeDiscountMonths", () => {
+  it("reads the length of a discount, and no limit when it has none", () => {
+    expect(describeDiscountMonths(3)).toBe("3 months");
+    expect(describeDiscountMonths(1)).toBe("1 month");
+    expect(describeDiscountMonths(120)).toBe("120 months");
+    expect(describeDiscountMonths(null)).toBe("No limit");
   });
 });
 

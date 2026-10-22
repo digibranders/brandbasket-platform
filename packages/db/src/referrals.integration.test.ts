@@ -14,7 +14,7 @@ import {
   updateReferralCode,
 } from "./queries/referrals";
 import { createAffiliate, updateAffiliate } from "./queries/affiliates";
-import { businesses, referralCodes, users } from "./schema";
+import { businesses, referralCodes, subscriptions, users } from "./schema";
 import { captureErrorText, openTestDatabases, resetTestDatabase,
   seedPlansFromMigrations, type TestDatabases } from "./testing";
 
@@ -184,6 +184,25 @@ describe("createReferralCode", () => {
     }
   });
 
+  it("stores how many months the discount runs for, and null for no limit", async () => {
+    const limited = await seedCode({ code: "THREEMO", discountMonths: 3 });
+    const open = await seedCode({ code: "FOREVER" });
+    expect((await findReferralCodeById(dbs.staff.db, limited))?.discountMonths).toBe(3);
+    expect((await findReferralCodeById(dbs.staff.db, open))?.discountMonths).toBeNull();
+    expect((await listReferralCodes(dbs.staff.db, "coupon", 10)).map((row) => [row.code, row.discountMonths])).toEqual([
+      ["FOREVER", null],
+      ["THREEMO", 3],
+    ]);
+  });
+
+  it("refuses a length outside 1 to 120 months at the database", async () => {
+    for (const discountMonths of [0, -1, 121]) {
+      const message = await captureErrorText(seedCode({ code: `MO${Math.abs(discountMonths)}X${discountMonths < 0 ? "N" : "P"}`, discountMonths }));
+      expect(message).toContain("referral_codes_discount_months_check");
+    }
+    for (const discountMonths of [1, 120]) await seedCode({ code: `OK${discountMonths}`, discountMonths });
+  });
+
   it("refuses a code that is not in the stored shape", async () => {
     const message = await captureErrorText(seedCode({ code: "no" }));
     expect(message).toContain("referral_codes_code_format_check");
@@ -223,6 +242,50 @@ describe("findRedeemableReferralCode", () => {
     await redeem(id, 1_125, "a");
     expect(await findRedeemableReferralCode(dbs.staff.db, { code: "SAVE15", currency: "USD", now: NOW })).toBeNull();
     expect(await countReferralRedemptions(dbs.staff.db, id)).toBe(1);
+  });
+
+  it("counts businesses, not subscriptions: a business that came back on the same code uses the cap once", async () => {
+    const id = await seedCode({ maxRedemptions: 2 });
+    await redeem(id, 1_125, "a");
+    // The first subscription ended and the same business paid again on the code (a reactivation carrying it).
+    await dbs.owner.db.update(subscriptions).set({ status: "cancelled" }).where(eq(subscriptions.businessId, businessId));
+    await redeem(id, 1_125, "b");
+
+    expect(await countReferralRedemptions(dbs.staff.db, id)).toBe(1);
+    expect((await listReferralCodes(dbs.staff.db, "coupon", 10))[0]?.redemptions).toBe(1);
+    expect(await findRedeemableReferralCode(dbs.staff.db, { code: "SAVE15", currency: "USD", now: NOW })).not.toBeNull();
+  });
+
+  it("counts a second business as a second redemption", async () => {
+    const id = await seedCode({ maxRedemptions: 2 });
+    await redeem(id, 1_125, "a");
+    const other = await dbs.owner.db.insert(businesses).values({ slug: "dosa-house", name: "Dosa House", currency: "USD" }).returning({ id: businesses.id });
+    const plan = await requirePlan("USD");
+    const paidThrough = addMonths(NOW, plan.initialTermMonths);
+    const subscription = await insertSubscription(dbs.staff.db, {
+      businessId: other[0]?.id ?? "",
+      planId: plan.id,
+      provider: "fake",
+      providerSubscriptionId: "fake_sub_other",
+      referralCodeId: id,
+      discountAmountCents: 1_125,
+    });
+    await recordPaymentAndActivate(dbs.staff.db, {
+      businessId: other[0]?.id ?? "",
+      subscriptionId: subscription.id,
+      provider: "fake",
+      providerPaymentId: "fake_pay_other",
+      kind: "initial",
+      amountCents: 7500 - 1_125,
+      currency: plan.currency,
+      paidAt: NOW,
+      paidThroughAt: paidThrough,
+      commitmentEndsAt: paidThrough,
+      currentPeriodEnd: paidThrough,
+    });
+
+    expect(await countReferralRedemptions(dbs.staff.db, id)).toBe(2);
+    expect(await findRedeemableReferralCode(dbs.staff.db, { code: "SAVE15", currency: "USD", now: NOW })).toBeNull();
   });
 
   it("does not find a code whose affiliate has been turned off", async () => {

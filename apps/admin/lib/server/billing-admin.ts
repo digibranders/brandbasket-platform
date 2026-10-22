@@ -169,6 +169,7 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
       providerSubscriptionId: `manual_sub_${reference}`,
       referralCodeId: discountAmountCents === null ? null : (redeemable?.id ?? null),
       discountAmountCents: discountAmountCents ?? 0,
+      discountMonthsLeft: discountAmountCents === null ? null : (redeemable?.discountMonths ?? null),
       bundledAddOns: lines,
       ...(reactivation === null ? {} : { adCreditCents: reactivation.adCreditCents }),
       replacing: replaced?.id ?? null,

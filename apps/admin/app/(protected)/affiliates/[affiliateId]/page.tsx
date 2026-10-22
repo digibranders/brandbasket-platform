@@ -13,7 +13,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { describeReferralDiscount, formatPercent } from "@brandbasket/shared/lib/billing/referral-value";
+import { describeDiscountMonths, describeReferralDiscount, formatPercent } from "@brandbasket/shared/lib/billing/referral-value";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { TagIcon } from "@brandbasket/shared/ui/icons";
 import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
@@ -146,7 +146,7 @@ export default async function AffiliatePage({ params }: AffiliatePageProps): Pro
                     </span>
                   }
                   title={<span className="tracking-[0.06em]">{code.code}</span>}
-                  sub={`${code.discount === null ? "No discount" : describeReferralDiscount(code.discount, code.currency)} · ${code.currency}`}
+                  sub={`${code.discount === null ? "No discount" : `${describeReferralDiscount(code.discount, code.currency)} · ${describeDiscountMonths(code.discountMonths)}`} · ${code.currency}`}
                   meta={
                     <StatusDot
                       tone={code.active && affiliate.active ? "done" : "quiet"}

@@ -64,7 +64,7 @@ describe("the payment step on the seeded services plan", () => {
   });
 
   it("takes a code off the website line before GST", () => {
-    const code = { code: "SAVE", amountCents: 30_000, stated: { kind: "amount", amountCents: 30_000 } } as const;
+    const code = { code: "SAVE", amountCents: 30_000, months: null, stated: { kind: "amount", amountCents: 30_000 } } as const;
     expect(paymentStep({ ...OPEN, status: "unpaid", plan: inr, discount: code })).toMatchObject({ amount: "₹3,184.82" });
   });
 

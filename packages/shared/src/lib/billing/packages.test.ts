@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { MonthlyAddOnId } from "./add-ons";
-import { adCreditCentsAtCheckout, adCreditCentsFor, packageBasisPointsFor, packageDiscountCentsFor, packageDiscountsFor, packageLines, packageLineWith } from "./packages";
+import { adCreditCentsAtCheckout, adCreditCentsFor, packageBasisPointsFor, packageDiscountCentsFor, packageDiscountsFor, packageLines, packageLineWith, shareDiscountAcrossLines } from "./packages";
 
 describe("package offers", () => {
   it.each([
@@ -173,5 +173,35 @@ describe("package prices", () => {
     ] as const;
     // 20% of 100050 is 20010 each, so the net is 160080: 80 over a whole 100, which goes to the website, first in the catalogue.
     expect(packageDiscountsFor(equal, 2000)).toEqual([20010, 20090]);
+  });
+});
+
+describe("shareDiscountAcrossLines", () => {
+  it("shares in proportion to the nets, the leftover on the largest line, to the minor unit", () => {
+    // ₹1,500 over ₹2,399.20 and ₹7,998.80.
+    expect(shareDiscountAcrossLines([239_920, 799_880], 150_000)).toEqual([34_610, 115_390]);
+    // ₹1,000 over the three services at 30% off.
+    expect(shareDiscountAcrossLines([209_930, 699_930, 1_749_840], 100_000)).toEqual([7_892, 26_316, 65_792]);
+  });
+
+  it("always adds up to the whole discount", () => {
+    for (const total of [1, 2, 3, 99, 12_345, 2_659_699]) {
+      expect(shareDiscountAcrossLines([209_930, 699_930, 1_749_840], total).reduce((sum, share) => sum + share, 0)).toBe(total);
+    }
+  });
+
+  it("gives the first of equal lines the leftover", () => {
+    expect(shareDiscountAcrossLines([100, 100, 100], 100)).toEqual([34, 33, 33]);
+  });
+
+  it("gives a single line the whole discount, and nothing to share when there is no discount or no net", () => {
+    expect(shareDiscountAcrossLines([299_900], 50_000)).toEqual([50_000]);
+    expect(shareDiscountAcrossLines([100, 200], 0)).toEqual([0, 0]);
+    expect(shareDiscountAcrossLines([0, 0], 5)).toEqual([0, 0]);
+  });
+
+  it("refuses a discount that is not whole minor units", () => {
+    expect(() => shareDiscountAcrossLines([100], 1.5)).toThrow(RangeError);
+    expect(() => shareDiscountAcrossLines([100], -1)).toThrow(RangeError);
   });
 });

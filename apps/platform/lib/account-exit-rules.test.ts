@@ -14,6 +14,8 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
     providerStatus: "active",
     referralCodeId: null,
     discountAmountCents: 0,
+    discountMonthsLeft: null,
+    nextDiscountAmountCents: null,
     retentionDiscountCents: 0,
     pendingPlanId: null,
     pendingDiscountAmountCents: 0,

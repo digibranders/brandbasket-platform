@@ -14,8 +14,9 @@ import {
   type ReferralDiscount,
 } from "@brandbasket/db";
 import type { SessionUser } from "@brandbasket/shared/lib/access";
-import { addOnById, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
+import { basketNetCents } from "@/lib/membership";
 import type { StepProblem } from "./onboarding";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
@@ -37,8 +38,6 @@ const NOT_VALID = "That code isn’t valid. Check it with whoever gave it to you
 const TOO_MANY_ATTEMPTS = "That’s a lot of attempts in a short time. Please wait a little and try again.";
 const ALREADY_PAID = "Your payment is already made, so a code can’t be added now. Email us and we’ll look into it.";
 const NOTHING_TO_APPLY_TO = "There’s nothing to apply a code to right now.";
-/** A package is priced 20% or 30% off every line already, and never takes a code as well (owner, plan 16 Settled 2). */
-export const PACKAGE_TAKES_NO_CODE = "A code can only be used on a single service, not on a package.";
 /** Only the affiliate ever sees this: it names their own code back to them, so it gives nothing away. */
 const OWN_CODE = "That’s your own affiliate code, so it can’t be used on your own membership.";
 
@@ -48,9 +47,11 @@ export interface AppliedDiscount {
   readonly code: string;
   /**
    * What the code takes off, in the plan's minor units: a flat code's own amount, or a percentage resolved against
-   * the one service's pre-tax list price by discountCentsFor. This is the figure checkout freezes onto the subscription.
+   * the basket's package net by discountCentsFor. This is the figure checkout freezes onto the subscription.
    */
   readonly amountCents: number;
+  /** How many paid months the discount runs for, or null for no limit: checkout copies it onto the subscription. */
+  readonly months: number | null;
   /**
    * The discount as the code states it, for the words beside the price. Never used for money. Null for an affiliate
    * code that gives no discount: it is still applied, so the member's payments earn its affiliate.
@@ -70,36 +71,35 @@ function refused(message: string, field: string | null = REFERRAL_FIELD): Referr
 }
 
 /**
- * What a code is priced against: the list price of the one service a subscription is for, in its currency. The plan row
- * costs nothing since every service became a line, so a code is never measured against it.
+ * What a code is priced against: the basket's package net, in its currency. That is every service's list price less the
+ * package discount, added up, so a code comes off once, after the package offer. The plan row costs nothing since every
+ * service became a line, so a code is never measured against it.
  */
 export interface CodeBasis {
   readonly currency: MoneyCurrency;
-  readonly listCents: number;
+  readonly netCents: number;
 }
 
 /**
- * The basis a code is priced against for a basket of services, or null when the basket is not exactly one service: a
- * package never takes a code (owner, plan 16 Settled 2).
+ * The basis a code is priced against for a basket of services, or null for an empty basket. A code is only ever applied
+ * before a business has paid, so the package offer is never forfeited here.
  */
 export function codeBasisFor(services: readonly MonthlyAddOnId[], currency: MoneyCurrency): CodeBasis | null {
-  const [only, ...others] = services;
-  if (only === undefined || others.length > 0) return null;
-  return { currency, listCents: addOnById(only).prices[currency] };
+  return services.length === 0 ? null : { currency, netCents: basketNetCents(services, currency) };
 }
 
 /**
- * What a code is worth against one service, or null when it cannot be charged there. A code for another currency, or
- * one whose amount has since grown to meet or exceed the service's price (or whose percentage rounds to nothing),
+ * What a code is worth against a basket, or null when it cannot be charged there. A code for another currency, or
+ * one whose amount has since grown to meet or exceed the basket's net (or whose percentage rounds to nothing),
  * simply stops applying rather than crashing a customer's page or opening a checkout for nothing. An affiliate code
  * that gives no discount is worth 0 and still applies: the table only allows that shape on an affiliate code.
  */
 export function discountFrom(code: ReferralCode, basis: CodeBasis): AppliedDiscount | null {
   if (code.currency !== basis.currency) return null;
-  if (code.discount === null) return { codeId: code.id, code: code.code, amountCents: 0, stated: null };
-  const amountCents = discountCentsFor(code.discount, basis.listCents);
-  if (!isChargeableDiscount(basis.listCents, amountCents)) return null;
-  return { codeId: code.id, code: code.code, amountCents, stated: code.discount };
+  if (code.discount === null) return { codeId: code.id, code: code.code, amountCents: 0, months: code.discountMonths, stated: null };
+  const amountCents = discountCentsFor(code.discount, basis.netCents);
+  if (!isChargeableDiscount(basis.netCents, amountCents)) return null;
+  return { codeId: code.id, code: code.code, amountCents, months: code.discountMonths, stated: code.discount };
 }
 
 /**
@@ -147,28 +147,9 @@ export async function findLapsedAppliedCode(businessId: string, basis: CodeBasis
 }
 
 /**
- * The code a business applied that still works but is on a package, which never takes one: the checkout refuses to open
- * (PACKAGE_TAKES_NO_CODE), so the page shows the code with a way to remove it. Null when none is applied, when it no longer
- * works anyway, or when the basket is not a package.
- */
-export async function findCodeRefusedOnPackage(
-  businessId: string,
-  services: readonly MonthlyAddOnId[],
-  currency: MoneyCurrency,
-  now: Date,
-): Promise<string | null> {
-  if (services.length < 2) return null;
-  const staffDb = getStaffDb();
-  const applied = await findBusinessReferralCode(staffDb, businessId);
-  if (applied === null) return null;
-  const redeemable = await findRedeemableReferralCode(staffDb, { code: applied.code, currency, now });
-  return redeemable === null ? null : applied.code;
-}
-
-/**
  * Applies a code the customer typed on Check and send or on the plan's page, for the basket of services it would pay for.
  * Refused once the business has paid: from then on the subscription's own frozen discount decides the money, and
- * changing it here would only mislead. Refused on a package of two or more services, which never takes a code.
+ * changing it here would only mislead.
  */
 export async function applyReferralCodeFor(
   customer: GrantedCustomer,
@@ -191,7 +172,6 @@ export async function applyReferralCodeFor(
   // after which the frozen discount on that subscription, not this column, decides the money.
   if (state.hasEverPaid) return refused(ALREADY_PAID, null);
   if (state.plan === null) return refused(NOTHING_TO_APPLY_TO, null);
-  if (services.length > 1) return refused(PACKAGE_TAKES_NO_CODE);
   const basis = codeBasisFor(services, state.currency);
   if (basis === null) return refused(NOTHING_TO_APPLY_TO, null);
 

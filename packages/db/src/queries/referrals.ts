@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gt, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { affiliates, businesses, referralCodes, subscriptions, type BillingCurrency, type ReferralValueKind } from "../schema";
@@ -48,6 +48,8 @@ export interface ReferralCode {
   readonly affiliateId: string | null;
   /** What it takes off every month, or null for an affiliate code that gives no discount. A coupon always has one. */
   readonly discount: ReferralDiscount | null;
+  /** How many paid months the discount runs for, or null for no limit. Fixed for the code's life, like the discount. */
+  readonly discountMonths: number | null;
   readonly active: boolean;
   readonly expiresAt: Date | null;
   readonly maxRedemptions: number | null;
@@ -62,6 +64,7 @@ const REFERRAL_CODE_COLUMNS = {
   discountKind: referralCodes.discountKind,
   discountAmountCents: referralCodes.discountAmountCents,
   discountPercentBasisPoints: referralCodes.discountPercentBasisPoints,
+  discountMonths: referralCodes.discountMonths,
   active: referralCodes.active,
   expiresAt: referralCodes.expiresAt,
   maxRedemptions: referralCodes.maxRedemptions,
@@ -77,6 +80,7 @@ interface ReferralCodeRow {
   readonly discountKind: ReferralValueKind | null;
   readonly discountAmountCents: number | null;
   readonly discountPercentBasisPoints: number | null;
+  readonly discountMonths: number | null;
   readonly active: boolean;
   readonly expiresAt: Date | null;
   readonly maxRedemptions: number | null;
@@ -110,6 +114,7 @@ function toReferralCode(row: ReferralCodeRow): ReferralCode {
       row.discountKind === null
         ? null
         : referralValueOf("discount", row.id, row.discountKind, row.discountAmountCents, row.discountPercentBasisPoints),
+    discountMonths: row.discountMonths,
     active: row.active,
     expiresAt: row.expiresAt,
     maxRedemptions: row.maxRedemptions,
@@ -134,8 +139,9 @@ function discountColumns(discount: ReferralDiscount | null): DiscountColumns {
 }
 
 /**
- * A redemption is a subscription that was activated carrying the code. An unpaid checkout is not one: it may be
- * replaced or abandoned, and counting it would let a customer who never pays consume a cap.
+ * A redemption is a subscription that was activated carrying the code, counted once per business (countDistinct on the
+ * business): a reactivation that carries the code onto a new subscription does not use the cap up again. An unpaid
+ * checkout is not one: it may be replaced or abandoned, and counting it would let a customer who never pays consume a cap.
  */
 function redeemedSubscriptions(codeId: string) {
   return and(eq(subscriptions.referralCodeId, codeId), isNotNull(subscriptions.activatedAt));
@@ -149,6 +155,8 @@ export interface NewReferralCode {
   readonly affiliateId: string | null;
   /** Null only for an affiliate code; the table refuses a coupon without a discount. */
   readonly discount: ReferralDiscount | null;
+  /** Paid months the discount runs for, 1 to 120; null or absent for no limit. */
+  readonly discountMonths?: number | null;
   readonly expiresAt: Date | null;
   readonly maxRedemptions: number | null;
   readonly createdByStaffId: string;
@@ -242,7 +250,7 @@ export async function findRedeemableReferralCode(db: Runner, lookup: ReferralCod
 /** How many businesses have ever paid on this code. */
 export async function countReferralRedemptions(db: Runner, codeId: string): Promise<number> {
   if (!isUuid(codeId)) return 0;
-  const rows = await db.select({ total: count() }).from(subscriptions).where(redeemedSubscriptions(codeId));
+  const rows = await db.select({ total: countDistinct(subscriptions.businessId) }).from(subscriptions).where(redeemedSubscriptions(codeId));
   return rows[0]?.total ?? 0;
 }
 
@@ -273,7 +281,7 @@ export async function listReferralCodes(
 ): Promise<ListedReferralCode[]> {
   if (typeof filter !== "string" && !isUuid(filter.affiliateId)) return [];
   const redemptions = db
-    .select({ codeId: subscriptions.referralCodeId, total: count().as("total") })
+    .select({ codeId: subscriptions.referralCodeId, total: countDistinct(subscriptions.businessId).as("total") })
     .from(subscriptions)
     .where(isNotNull(subscriptions.activatedAt))
     .groupBy(subscriptions.referralCodeId)

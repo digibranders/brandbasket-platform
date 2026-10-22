@@ -202,7 +202,7 @@ function cents(amount: string): number {
 /** A services payment as the payment path records it: the package priced by packageDiscountsFor, a code taken off the net. */
 function servicesPayment(
   services: readonly MonthlyAddOnId[],
-  extras: { readonly codeCents?: number; readonly retentionCents?: number } = {},
+  extras: { readonly codeCents?: number; readonly retentionCents?: number; readonly code?: string } = {},
 ): Receipt {
   const basisPoints = packageBasisPointsFor({ services, forfeited: false });
   const lists = services.map((addOn) => ({ addOn, listCents: addOnById(addOn).prices.INR }));
@@ -212,6 +212,7 @@ function servicesPayment(
     netAmountCents: 0,
     discountAmountCents,
     retentionDiscountCents: extras.retentionCents ?? 0,
+    ...(extras.code === undefined ? {} : { code: extras.code }),
     lines: lists.map((line, index) => ({
       addOn: line.addOn,
       listAmountCents: line.listCents,
@@ -293,6 +294,17 @@ describe("receiptDocument for services", () => {
     const stayDoc = receiptDocument(withStay, CUSTOMER);
     expect(stayDoc.lines.map((line) => line.label)).toContain("Stay offer");
     rowsAddUp(stayDoc, withStay.amountCents);
+  });
+
+  it("names the code on its row when the payment kept it, over a package or a single service", () => {
+    const onPackage = servicesPayment(["managed-website", "digital-growth"], { codeCents: 103_980, code: "SAVE10" });
+    const packageDoc = receiptDocument(onPackage, CUSTOMER);
+    expect(packageDoc.lines.map((line) => line.label)).toEqual(["Managed Website", "Social Media and Ads", "Package offer, 20% off", "Code SAVE10", "GST 18%"]);
+    expect(packageDoc.lines[3]?.amount).toBe("-INR 1,039.80");
+    rowsAddUp(packageDoc, onPackage.amountCents);
+
+    const alone = servicesPayment(["managed-website"], { codeCents: 30_000, code: "SAVE10" });
+    expect(receiptDocument(alone, CUSTOMER).lines.map((line) => line.label)).toEqual(["Managed Website", "Code SAVE10", "GST 18%"]);
   });
 
   it("keeps today's single line when the basis does not describe the payment", () => {

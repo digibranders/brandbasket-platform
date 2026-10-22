@@ -39,7 +39,7 @@ import { getAppDb, getStaffDb } from "./db";
 import { missingProblem, readOnboardingSnapshot, type StepProblem } from "./onboarding";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
-import { codeBasisFor, discountFrom, PACKAGE_TAKES_NO_CODE, type AppliedDiscount } from "./referrals";
+import { discountFrom, type AppliedDiscount } from "./referrals";
 import { ensureDiscountPlan } from "./discount-plans";
 
 /** A stuck button or a script must not be able to open subscriptions at the provider without limit. */
@@ -107,10 +107,7 @@ interface PlannedCheckout {
   readonly reactivation: ReactivationBasket | null;
 }
 
-type DecisionStep =
-  | { readonly kind: "planned"; readonly planned: PlannedCheckout }
-  | { readonly kind: "no-plan" }
-  | { readonly kind: "code-on-package" };
+type DecisionStep = { readonly kind: "planned"; readonly planned: PlannedCheckout } | { readonly kind: "no-plan" };
 
 function sameSubscriptionState(seen: Subscription | null, now: Subscription | null): boolean {
   if (seen === null || now === null) return seen === now;
@@ -207,6 +204,7 @@ async function openNewCheckout(
         providerSubscriptionId: started.providerSubscriptionId,
         referralCodeId: discount?.codeId ?? null,
         discountAmountCents: discount?.amountCents ?? 0,
+        discountMonthsLeft: discount?.months ?? null,
         bundledAddOns: planned.bundle,
         adCreditCents: planned.adCreditCents,
         replacing: replacing?.id ?? null,
@@ -336,8 +334,8 @@ function basketKey(addOnIds: readonly string[], netCents: number, adCreditCents:
  * `tier` is the plan being bought, or null for a business that is already on one (a website client paying on Check and
  * send), which pays for the plan its billing state names. `chosen` is the basket bought, never empty: a checkout for
  * nothing is refused before anything is read. A business that has paid before is reactivating and buys the basket it
- * lapsed with instead (loadReactivationBasket), whatever `chosen` says. A code is priced against the one service it is
- * used on; a package of two or more refuses one (owner, plan 16 Settled 2).
+ * lapsed with instead (loadReactivationBasket), whatever `chosen` says. A code is priced against the basket's package net,
+ * so it comes off once, after the package offer.
  */
 async function openPlanCheckout(
   customer: GrantedCustomer,
@@ -369,9 +367,6 @@ async function openPlanCheckout(
     // before is reactivating: the basket it lapsed with, read before the lapsed subscription is replaced and ends its lines.
     const reactivation = state.hasEverPaid ? await loadReactivationBasket(tx, tenant.businessId) : null;
     const services = reactivation?.services ?? chosen;
-    if (redeemable !== null && services.length > 1) return { kind: "code-on-package" };
-    const basis = codeBasisFor(services, plan.currency);
-    const discount = redeemable === null || basis === null ? null : discountFrom(redeemable, basis);
     const forfeited = reactivation?.forfeited ?? (await isPackageOfferForfeited(tx, tenant.businessId));
     const bundle: readonly NewBundledAddOn[] = packageLines({ services, forfeited }, plan.currency).map((line) => ({
       addOn: line.addOn,
@@ -380,6 +375,8 @@ async function openPlanCheckout(
       netAmountCents: line.netCents,
       taxRateBasisPoints: plan.taxRateBasisPoints,
     }));
+    // The code comes off the basket's package net, once: the lines just priced, less their package discount.
+    const discount = redeemable === null ? null : discountFrom(redeemable, { currency: plan.currency, netCents: bundledNetCents(bundle) });
     // Ad credit is for services bought together at the first purchase. A reactivation grants none and keeps what the lapsed
     // subscription had.
     const adCreditCents = reactivation?.adCreditCents ?? adCreditCentsAtCheckout({ services, forfeited, hasEverPaid: false }, plan.currency);
@@ -400,7 +397,6 @@ async function openPlanCheckout(
     return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle, adCreditCents, reactivation } };
   });
   if (first.kind === "no-plan") return refused(NO_PLAN);
-  if (first.kind === "code-on-package") return refused(PACKAGE_TAKES_NO_CODE);
 
   const { planned } = first;
   const { decision } = planned;

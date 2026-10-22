@@ -2,7 +2,7 @@ import type { Plan, ReferralDiscount } from "@brandbasket/db";
 // The subpath, not the package index: this module reaches client components, and the index pulls in the database.
 import { chargedAmountCents } from "@brandbasket/billing/tax";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
-import { describeReferralDiscount } from "./referral-value";
+import { describeDiscountMonths, describeReferralDiscount } from "./referral-value";
 
 /**
  * What the first payment covers: "your first month" for a one-month start, "your first 3 months" otherwise. Staff
@@ -125,6 +125,8 @@ export interface PlanDiscount {
   readonly code: string;
   /** What it takes off, in the plan's minor units. Frozen at checkout, never re-derived. */
   readonly amountCents: number;
+  /** How many paid months it takes that off, or null for no limit. */
+  readonly months: number | null;
   /**
    * The discount as the code states it, a flat amount or a percentage, purely for the words beside it. Every figure
    * of money comes from `amountCents`, which a percentage has already been resolved to against this plan. Null for
@@ -147,13 +149,13 @@ export function discountedFirstPaymentAmount(
 }
 
 /**
- * The whole price with a referral discount applied, in a sentence. The discount runs for as long as the
- * subscription does, so the monthly figure it quotes is the discounted one. Saying otherwise would promise a
- * price the customer is never charged.
+ * The whole price with a referral discount applied, in a sentence. The monthly figure it quotes is the discounted one,
+ * and the sentence says for how long: "for 3 months", or "for as long as your plan runs" when the code has no limit.
+ * Saying otherwise would promise a price the customer is never charged.
  */
 export function describeDiscountedPlanTerms(
   plan: TermedPlan,
-  discount: Pick<PlanDiscount, "amountCents"> | null,
+  discount: Pick<PlanDiscount, "amountCents" | "months"> | null,
   bundledAddOnNetCents = 0,
 ): string {
   if (discount === null || discount.amountCents === 0) return describePlanTerms(plan, bundledAddOnNetCents);
@@ -163,17 +165,19 @@ export function describeDiscountedPlanTerms(
   const discounted = monthlyPriceWords(recurringCents - discount.amountCents, plan);
   // The list price is quoted net, like the discounted one, so a taxed plan says so rather than implying the totals.
   const was = plan.taxRateBasisPoints === 0 ? full : `${full} before GST`;
-  return `${discounted}, instead of ${was}, for as long as your plan runs. Your first payment covers ${term}, then it renews monthly.`;
+  const howLong = discount.months === null ? "for as long as your plan runs" : `for ${describeDiscountMonths(discount.months)}`;
+  return `${discounted}, instead of ${was}, ${howLong}. Your first payment covers ${term}, then it renews monthly.`;
 }
 
 /**
  * How a discount is described beside the code that earned it: "₹500 off, every month", or for a percentage code
- * "10% off (₹299.90), every month", naming the money it came to so the customer can check the price beside it.
+ * "10% off (₹299.90), every month", naming the money it came to so the customer can check the price beside it. A code
+ * with a length says so instead: "₹500 off a month for 3 months".
  * Null for an affiliate code that gives no discount: there is nothing to describe.
  */
 export function describeDiscount(discount: PlanDiscount, currency: MoneyCurrency): string | null {
   if (discount.stated === null) return null;
-  const stated = describeReferralDiscount(discount.stated, currency);
-  if (discount.stated.kind === "amount") return `${stated}, every month`;
-  return `${stated} (${formatMoney(discount.amountCents, currency)}), every month`;
+  const off = describeReferralDiscount(discount.stated, currency);
+  const stated = discount.stated.kind === "amount" ? off : `${off} (${formatMoney(discount.amountCents, currency)})`;
+  return discount.months === null ? `${stated}, every month` : `${stated} a month for ${describeDiscountMonths(discount.months)}`;
 }

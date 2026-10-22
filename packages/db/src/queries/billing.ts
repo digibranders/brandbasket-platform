@@ -156,6 +156,10 @@ export interface Subscription {
   readonly referralCodeId: string | null;
   /** What that code is worth against this subscription's plan, frozen when the checkout opened. */
   readonly discountAmountCents: number;
+  /** The paid months that code's discount still has to run; null for no limit. */
+  readonly discountMonthsLeft: number | null;
+  /** What the code takes off from the next renewal when that differs from `discountAmountCents`; null when nothing is waiting. */
+  readonly nextDiscountAmountCents: number | null;
   /** The part of `discountAmountCents` that is a stay offer rather than a code's; zero when none was taken. */
   readonly retentionDiscountCents: number;
   /** The plan the next renewal will bill, once the customer has paid to move up (plan_upgrades); null otherwise. */
@@ -187,6 +191,8 @@ const SUBSCRIPTION_COLUMNS = {
   providerStatus: subscriptions.providerStatus,
   referralCodeId: subscriptions.referralCodeId,
   discountAmountCents: subscriptions.discountAmountCents,
+  discountMonthsLeft: subscriptions.discountMonthsLeft,
+  nextDiscountAmountCents: subscriptions.nextDiscountAmountCents,
   retentionDiscountCents: subscriptions.retentionDiscountCents,
   pendingPlanId: subscriptions.pendingPlanId,
   pendingDiscountAmountCents: subscriptions.pendingDiscountAmountCents,
@@ -377,6 +383,8 @@ export interface NewSubscription {
    * and greater than 0 when there is: `subscriptions_discount_check` refuses anything else.
    */
   readonly discountAmountCents?: number;
+  /** The paid months the code's discount runs for, copied from the code (referral_codes.discount_months). Null or absent for no limit. */
+  readonly discountMonthsLeft?: number | null;
   /** What the add-ons taken at this checkout cost a month before GST: the sum of their net prices. Defaults to 0. */
   readonly bundledAddOnNetCents?: number;
   /** Ad credit a month earned by the package bought at this checkout (adCreditCentsFor in @brandbasket/shared). Defaults to 0. */
@@ -398,6 +406,7 @@ export async function insertSubscription(db: Runner, input: NewSubscription): Pr
       providerStatus: input.providerStatus ?? null,
       referralCodeId: input.referralCodeId ?? null,
       discountAmountCents: input.discountAmountCents ?? 0,
+      discountMonthsLeft: input.discountMonthsLeft ?? null,
       bundledAddOnNetCents: input.bundledAddOnNetCents ?? 0,
       adCreditCents: input.adCreditCents ?? 0,
       status: "incomplete",

@@ -154,7 +154,7 @@ export interface OrderSummary {
   readonly lines: readonly BundleLine[];
   /** The package offer taken off the lines, or null when there is none (one service, or the offer given up). */
   readonly offer: PackageOfferRow | null;
-  /** What the applied code takes off the one service, or 0. A package never has one. */
+  /** What the applied code takes off the basket after the package offer, or 0. */
   readonly discountCents: number;
   /** The taxable amount of the whole payment: the plan's own price and the lines' nets, less the code. */
   readonly netCents: number;
@@ -182,14 +182,13 @@ export interface OrderSummaryInput {
  * The first payment broken into its parts, worked out with the functions checkout uses: the lines and the package offer
  * from bundleLines (packageLines), the ad credit from adCreditCentsAtCheckout and the total from chargedAmountCents over the lines'
  * nets less the code. Checkout charges the plan's own price plus the lines, so the total adds `planInitialAmountCents`
- * too; on the services plan that is 0 and the lines are the whole charge. Throws on an empty basket and on a code with a
- * package, which checkout refuses too.
+ * too; on the services plan that is 0 and the lines are the whole charge. The code comes off once, after the package offer.
+ * Throws on an empty basket.
  */
 export function orderSummary(input: OrderSummaryInput, discountCents: number): OrderSummary {
   const { planInitialAmountCents, services, currency, taxRateBasisPoints, forfeited, hasEverPaid } = input;
   const lines = bundleLines(services, currency, forfeited);
   if (lines.length === 0) throw new RangeError("An order needs at least one service");
-  if (discountCents > 0 && lines.length > 1) throw new RangeError("A code applies to one service, never to a package");
   const chargeableCents = planInitialAmountCents + lines.reduce((total, line) => total + line.netCents, 0);
   const totalCents = chargedAmountCents(chargeableCents, discountCents, taxRateBasisPoints);
   const netCents = chargeableCents - discountCents;
