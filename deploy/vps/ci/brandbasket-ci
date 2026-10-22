@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # CI for pushes to brandbasket-platform, run on the VPS because GitHub Actions cannot run for it. Installed as
-# /usr/local/bin/brandbasket-ci (root-owned) and run as `deploy` every minute by brandbasket-ci.timer. Adapted from
-# Firstfold's firstfold-ci (one repository instead of two).
+# /usr/local/bin/brandbasket-ci (root-owned) and run as the `brandbasket` user (never as Firstfold's `deploy`) every minute by
+# brandbasket-ci.timer. Adapted from Firstfold's firstfold-ci (one repository instead of two).
 #
 #   brandbasket-ci            check every new branch head (what the timer runs)
 #   brandbasket-ci --status   what has been checked and what is waiting
@@ -13,15 +13,17 @@
 # request's Checks tab shows each. The first run records the branches as they are without checking them, except
 # development; from then on every push is checked.
 #
-# One heavy job at a time on the box: before a commit is checked this takes Brandbasket's lock and all three of Firstfold's
-# (heavy-lock.sh) without waiting, and gives them back after the commit. If any is busy (a Firstfold or Brandbasket deploy or
-# CI run), it prints one line and exits 0; the commit is not marked as checked, so the next minute tries again. Holding
-# Firstfold's locks makes its timers skip quietly.
+# One commit per run. If a head was not checked before, this takes Brandbasket's lock and all three of Firstfold's (heavy-lock.sh,
+# Firstfold's opened read-only) without waiting, checks that one commit, and gives the locks back only after the sandbox's
+# transient unit has stopped; the next commit waits for the next minute. If any lock is busy (a Firstfold or Brandbasket deploy
+# or CI run), it prints one line and exits 0; the commit is not marked as checked, so the next minute tries again. A lock file
+# that cannot be opened is an error (exit 1, so the unit's failure alert goes out), not "busy". Holding Firstfold's locks
+# makes its timers skip quietly. ci.service's timeout is longer than the sandbox's limit, so the sandbox can never outlive
+# the locks. Started by hand it runs under a 45 minute limit (bb_bounded).
 set -euo pipefail
 
 readonly CI_ROOT=/srv/brandbasket-ci
 readonly LIB=/usr/local/lib/brandbasket
-readonly FF_LIB=/usr/local/lib/firstfold
 readonly STEPS=(install lint typecheck test build)
 readonly GH_REPO=digibranders/brandbasket-platform
 readonly REMOTE=git@github-brandbasket-platform:digibranders/brandbasket-platform.git
@@ -29,8 +31,12 @@ readonly MIRROR="$CI_ROOT/mirrors/platform.git"
 readonly CHECKED="$CI_ROOT/state/platform.checked"
 
 die() { echo "error: $*" >&2; exit 1; }
-[[ "$(id -un)" == deploy ]] || die "run as deploy"
+[[ "$(id -un)" == brandbasket ]] || die "run as brandbasket (runuser -u brandbasket -- brandbasket-ci ...)"
 cd "$CI_ROOT"
+# shellcheck source=../heavy-lock.sh
+source "$LIB/heavy-lock.sh"
+# shellcheck source=../github-lib.sh
+source "$LIB/github-lib.sh"
 
 fetch() {
   if [[ ! -d "$MIRROR" ]]; then
@@ -56,13 +62,15 @@ if [[ "${1:-}" == --status ]]; then
 fi
 [[ $# -eq 0 ]] || die "unknown option: $1"
 
-exec 9>"$CI_ROOT/.ci.lock"
-flock -n 9 || exit 0
+bb_bounded "$0" "$@"
+bb_load_github_status || die "cannot load the GitHub reporting library"
 
-# shellcheck source=/dev/null
-source "$FF_LIB/github-status.sh"
-# shellcheck source=../heavy-lock.sh
-source "$LIB/heavy-lock.sh"
+# The sandbox runs in its own transient unit; brandbasket-ci-sandbox waits for it, but the locks are not given back until it
+# is really inactive. Not capped here: the unit's own RuntimeMaxSec (30 minutes) ends it, well inside ci.service's timeout.
+wait_sandbox_stopped() {
+  local unit="brandbasket-ci-${1:0:12}.service"
+  while systemctl is-active --quiet "$unit"; do sleep 2; done
+}
 
 check_commit() {
   local sha=$1 branch=$2 log state rc
@@ -104,15 +112,26 @@ if [[ ! -f "$CHECKED" ]]; then
   echo "first run: recorded $(wc -l < "$CHECKED") existing branch heads without checking them"
 fi
 
-while read -r sha branch; do
-  grep -qx "$sha" "$CHECKED" && continue
-  if ! bb_take_heavy_locks 0; then
-    echo "another build, deploy or CI run is going ($BB_LOCK_BUSY is held); checking again next minute"
-    exit 0
-  fi
-  # Recorded before the run, so a commit that crashes the run is not retried every minute.
-  echo "$sha" >> "$CHECKED"
-  check_commit "$sha" "$branch"
-  bb_release_heavy_locks
+# The newest head not checked before; one per run.
+sha="" branch=""
+while read -r candidate name; do
+  grep -qx "$candidate" "$CHECKED" && continue
+  sha=$candidate branch=$name
+  break
 done < <(heads)
+[[ -n "$sha" ]] || exit 0
+
+rc=0
+bb_take_heavy_locks 0 || rc=$?
+case "$rc" in
+  0) ;;
+  1) echo "another build, deploy or CI run is going ($BB_LOCK_BUSY is held); checking again next minute"; exit 0 ;;
+  *) die "cannot take the heavy locks: $BB_LOCK_BUSY" ;;
+esac
+trap bb_release_heavy_locks EXIT
+# Recorded before the run, so a commit that crashes the run is not retried every minute.
+echo "$sha" >> "$CHECKED"
+check_commit "$sha" "$branch"
+wait_sandbox_stopped "$sha"
 tail -n 1000 "$CHECKED" > "$CHECKED.new" && mv "$CHECKED.new" "$CHECKED"
+bb_release_heavy_locks
