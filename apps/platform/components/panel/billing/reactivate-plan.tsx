@@ -6,7 +6,7 @@ import { Button } from "@brandbasket/shared/ui/panel/button";
 import { initialReactivateFormState, type ReactivateFormState } from "@/lib/billing/reactivate-form";
 
 interface ReactivatePlanProps {
-  /** "Brandbasket Managed Website plan". */
+  /** "Brandbasket services plan". */
   readonly planName: string;
   /** What a month takes now, tax included: the figure on the button is the figure charged. */
   readonly monthlyAmount: string;

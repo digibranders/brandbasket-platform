@@ -81,7 +81,7 @@ const HISTORY_TIER_LABELS: Readonly<Record<Plan["tier"], string>> = { managed: "
 
 function ServicesCatalogue(): ReactElement {
   return (
-    <Section title="Services" aside="Before GST. Set in code, not here.">
+    <Section title="Services">
       <ul aria-label="Services" className="max-w-3xl divide-y divide-line">
         {catalogueRows().map((row) => (
           <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-3 text-sm first:pt-0">

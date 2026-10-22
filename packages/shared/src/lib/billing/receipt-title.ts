@@ -16,10 +16,10 @@ export function receiptNumber(sequence: number): string {
   return `#${String(sequence).padStart(3, "0")}`;
 }
 
-/** "Receipt #007 – Sep 2026": the number and the month it was paid in. The month is left off when it is unknown. */
+/** "Receipt #007, Sep 2026": the number and the month it was paid in. The month is left off when it is unknown. */
 export function receiptTitle(sequence: number, paidAt: Date | null): string {
   const title = `Receipt ${receiptNumber(sequence)}`;
-  return paidAt === null ? title : `${title} – ${monthFormat.format(paidAt)}`;
+  return paidAt === null ? title : `${title}, ${monthFormat.format(paidAt)}`;
 }
 
 /** What a payment bought, in the term of the plan it was sold on rather than the plan on sale today. */

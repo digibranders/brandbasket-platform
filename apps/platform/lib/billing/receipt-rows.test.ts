@@ -38,7 +38,7 @@ describe("receiptRows", () => {
     expect(receiptRows([receipt()])).toEqual([
       {
         id: "0192f3c4-0000-7000-8000-000000000001",
-        title: "Receipt #007 – Sep 2026",
+        title: "Receipt #007, Sep 2026",
         description: "Monthly payment",
         paidAtIso: "2026-09-12T10:00:00.000Z",
         status: "Paid",

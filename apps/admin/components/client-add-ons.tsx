@@ -275,7 +275,7 @@ export function ClientAddOns({ businessId, addOns, bundledAddOns, pressReleases,
         </Notice>
       )}
       {addOns.length === 0 && bundledAddOns.length === 0 && pressReleases.length === 0 ? (
-        <Quiet>Nothing bought yet. Social Media and Ads and Local SEO + AEO appear here when the customer takes one.</Quiet>
+        <Quiet>Nothing bought yet. Services appear here when the customer takes one.</Quiet>
       ) : (
         <ul className="max-w-3xl divide-y divide-line">
           {addOns.map((row) => (

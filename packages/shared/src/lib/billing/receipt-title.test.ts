@@ -20,8 +20,8 @@ describe("receiptNumber", () => {
 
 describe("receiptTitle", () => {
   it("names the receipt by its number and the month it was paid, in UTC", () => {
-    expect(receiptTitle(7, new Date("2026-09-12T10:00:00Z"))).toBe("Receipt #007 – Sep 2026");
-    expect(receiptTitle(3, new Date("2026-12-31T23:30:00Z"))).toBe("Receipt #003 – Dec 2026");
+    expect(receiptTitle(7, new Date("2026-09-12T10:00:00Z"))).toBe("Receipt #007, Sep 2026");
+    expect(receiptTitle(3, new Date("2026-12-31T23:30:00Z"))).toBe("Receipt #003, Dec 2026");
   });
 
   it("leaves the month off when the payment date was not recorded", () => {

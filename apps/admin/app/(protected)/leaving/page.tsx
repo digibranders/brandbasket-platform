@@ -36,7 +36,7 @@ export default async function LeavingPage(): Promise<ReactElement> {
 
   return (
     <>
-      <PageHeader title="Leaving" meta="What people told us on the way out. Stay offers are no longer made, so only older entries show one that kept them." />
+      <PageHeader title="Leaving" meta="What people told us on the way out." />
 
       <Figures
         items={[

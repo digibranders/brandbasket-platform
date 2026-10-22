@@ -127,7 +127,7 @@ function SiteApiTokenBlock({ businessId, token }: { readonly businessId: string;
       {token === null ? (
         <Quiet>
           No token yet. This is what their website uses to read their blog, opening hours and announcement, and to
-          send booking requests — generate one when their website is ready.
+          send booking requests. Generate one when their website is ready.
         </Quiet>
       ) : (
         <div className="flex items-start gap-2 rounded-2xl bg-paper-deep py-2 pl-4 pr-2">

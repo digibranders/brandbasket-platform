@@ -8,7 +8,7 @@ describe("the client page's add-on notices", () => {
   it("reads the notices an address names, and nothing else", () => {
     for (const key of Object.keys(ADD_ON_NOTICES)) expect(readAddOnNotice(key)).toBe(key);
     expect(readAddOnNotice("<script>alert(1)</script>")).toBeNull();
-    expect(readAddOnNotice("Digital Growth was cancelled")).toBeNull();
+    expect(readAddOnNotice("Social Media and Ads was cancelled")).toBeNull();
     expect(readAddOnNotice(["cancel-scheduled"])).toBeNull();
     expect(readAddOnNotice("toString")).toBeNull();
     expect(readAddOnNotice("__proto__")).toBeNull();

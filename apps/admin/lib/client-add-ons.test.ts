@@ -280,7 +280,7 @@ describe("clientBundledAddOnRows", () => {
   });
 
   it("names the price of a service with no package offer without any offer wording", () => {
-    expect(clientBundledAddOnRows([bundled()], "INR", context)[0]?.price).toBe("₹7,000 + GST a month, billed with the monthly payment");
+    expect(clientBundledAddOnRows([bundled({ listAmountCents: 999_900, netAmountCents: 999_900 })], "INR", context)[0]?.price).toBe("₹9,999 + GST a month, billed with the monthly payment");
   });
 
   it("offers no removal while the client has asked to close their account", () => {

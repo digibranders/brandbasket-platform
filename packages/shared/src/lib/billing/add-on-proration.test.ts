@@ -27,7 +27,7 @@ function input(overrides: Partial<AddOnQuoteInput> = {}): AddOnQuoteInput {
 }
 
 describe("quoteAddOn", () => {
-  it("charges Digital Growth for the 14 days left of a 31-day month, with GST, and the full basket from the renewal", () => {
+  it("charges Social Media and Ads for the 14 days left of a 31-day month, with GST, and the full basket from the renewal", () => {
     expect(quoteAddOn(input())).toEqual({
       kind: "quote",
       netCents: 316_129,

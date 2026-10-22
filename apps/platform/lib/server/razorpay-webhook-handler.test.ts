@@ -825,7 +825,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
   });
 
   describe("after the customer added an add-on this month", () => {
-    // Digital Growth (₹7,000) was added and its rest-of-month charge paid: the next renewal is (₹2,999 + ₹7,000) with GST.
+    // Social Media and Ads, at a fixture price of ₹7,000, was added and its rest-of-month charge paid: the next renewal is (₹2,999 + ₹7,000) with GST.
     const SIGNED_UP = new Date("2026-09-01T00:00:00.000Z");
     const ADDED = { ...BUNDLED, activatedAt: SIGNED_UP, bundledAddOnNetCents: 0, pendingBundledAddOnNetCents: 700_000 };
     const NEW_TOTAL = 1_179_882;
@@ -898,7 +898,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     });
 
     it("adds to an add-on taken at sign-up, which keeps its offer price", async () => {
-      // Digital Growth at ₹6,650 since sign-up, Local SEO + AEO added at ₹24,999.
+      // Social Media and Ads at ₹6,650 since sign-up, Local SEO + AEO added at ₹24,999.
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ ...ADDED, bundledAddOnNetCents: 665_000, pendingBundledAddOnNetCents: 665_000 + 2_499_900 } as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
       const growth = row("digital-growth", 665_000, SIGNED_UP);

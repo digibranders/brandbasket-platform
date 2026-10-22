@@ -37,7 +37,7 @@ describe("removeBundledAddOnAction", () => {
     vi.mocked(removeBundledAddOnFor).mockResolvedValue({
       kind: "scheduled",
       endsOn: new Date("2026-11-12T09:00:00.000Z"),
-      message: "Digital Growth stays until your next payment date, then it stops.",
+      message: "Social Media and Ads stays until your next payment date, then it stops.",
     });
     expect(await removeBundledAddOnAction(IDLE, form({ addOn: "digital-growth" }))).toEqual({ status: "saved" });
     expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow" });
