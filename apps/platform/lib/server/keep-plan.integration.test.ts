@@ -100,7 +100,7 @@ function linesOf(...services: Parameters<typeof bundleLines>[0]): readonly NewBu
   }));
 }
 
-/** Website and Social at the package price, a ₹300 code with 5 months left and an ad credit, paid on 19 Oct. */
+/** Website and Social at the package price, a ₹300 code for 5 months (4 left after the first payment) and an ad credit, paid on 19 Oct. */
 async function paidPlan(provider: "fake" | "razorpay"): Promise<Subscription> {
   const db = dbs().staff.db;
   const opened = await openCheckoutSubscription(db, {
@@ -271,7 +271,7 @@ describe("the checkout Keep my plan opens", () => {
       planId: old.planId,
       referralCodeId: codeId,
       discountAmountCents: 30_000,
-      discountMonthsLeft: 5,
+      discountMonthsLeft: 4,
       adCreditCents: AD_CREDIT_CENTS,
       bundledAddOnNetCents: 1_039_800,
       commitmentEndsAt: old.commitmentEndsAt,
@@ -411,7 +411,7 @@ describe("the first charge of a kept plan", () => {
       paidThroughAt: NEXT_RENEWAL,
       commitmentEndsAt: old.commitmentEndsAt,
       discountAmountCents: 30_000,
-      discountMonthsLeft: 5,
+      discountMonthsLeft: 3,
       adCreditCents: AD_CREDIT_CENTS,
     });
     const earnings = await listAffiliateEarnings(dbs().staff.db, affiliateId, 10);
@@ -448,7 +448,7 @@ describe("the first charge of a kept plan", () => {
 
     const paid = await dbs().owner.db.query.payments.findMany({ where: (table, { eq }) => eq(table.subscriptionId, successor.id) });
     expect(paid).toHaveLength(1);
-    expect(await findSubscriptionById(dbs().staff.db, successor.id)).toMatchObject({ discountMonthsLeft: 5, paidThroughAt: NEXT_RENEWAL });
+    expect(await findSubscriptionById(dbs().staff.db, successor.id)).toMatchObject({ discountMonthsLeft: 3, paidThroughAt: NEXT_RENEWAL });
   });
 
   it("is kept for staff, and starts nothing, when the amount is not the old renewal's", async () => {
