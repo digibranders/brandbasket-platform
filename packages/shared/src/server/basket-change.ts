@@ -1,5 +1,5 @@
 import "server-only";
-import { hasBillingAccess, type BillingProvider } from "@brandbasket/billing";
+import { discountForChangedBasket, hasBillingAccess, type BillingProvider } from "@brandbasket/billing";
 import {
   BundledAddOnNotPossibleError,
   endPackageOffer,
@@ -9,6 +9,7 @@ import {
   findChargeForBusiness,
   findLiveBundledAddOns,
   findPlanById,
+  findReferralCodeById,
   findSubscriptionById,
   flagPaymentForAttention,
   flagSubscriptionForAttention,
@@ -19,17 +20,20 @@ import {
   isPackageOfferForfeited,
   openBundledAddOn,
   recordBundledAddOnRemoval,
+  setNextDiscount,
   setPendingOfferDiscounts,
   type BillingState,
   type BundledAddOn,
   type Database,
   type PendingOfferDiscount,
   type Plan,
+  type ReferralCode,
   type ScopedTransaction,
   type Subscription,
 } from "@brandbasket/db";
 import { addOnBlock, quoteAddOn, type AddOnBlock, type AddOnQuote } from "../lib/billing/add-on-proration";
 import { addOnById, isMonthlyAddOnId, type MonthlyAddOnId } from "../lib/billing/add-ons";
+import { nextDiscountCents } from "../lib/billing/bundle";
 import { listTotalCents, packageBasisPointsFor, packageDiscountsFor, packageLineWith, type PackageLine, type PackageListLine } from "../lib/billing/packages";
 import { billingPeriodProgress } from "../lib/billing/period";
 import { describeError, logBillingEvent } from "./billing-log";
@@ -53,15 +57,31 @@ export interface BasketDeps {
   readonly ensureDiscountPlan: (provider: BillingProvider, plan: Plan, discountAmountCents: number, addOnNetCents: number) => Promise<string | undefined>;
 }
 
-/** Tells the provider to bill the plan plus `addOnNetCents` from the next renewal. Throws when it cannot. */
-async function moveProviderTo(deps: BasketDeps, subscription: Subscription, plan: Plan, addOnNetCents: number): Promise<void> {
+/**
+ * What the subscription's code takes off from the next renewal once the basket nets `netCents`: an amount code keeps its
+ * amount, a percentage code is repriced on the new net (the code is read through the subscription, since a code's discount is
+ * fixed for its life), and a code whose months have run out takes nothing (discountForChangedBasket).
+ */
+export async function discountOnBasket(db: Database | ScopedTransaction, subscription: Subscription, netCents: number): Promise<number> {
+  const code = subscription.referralCodeId === null || subscription.discountMonthsLeft === 0 ? null : await findReferralCodeById(db, subscription.referralCodeId);
+  return discountForChangedBasket({ monthsLeft: subscription.discountMonthsLeft, heldCents: nextDiscountCents(subscription), discount: code?.discount ?? null, netCents });
+}
+
+/** The basket is still priced at the discount the provider was told, as the subscription now stands under the lock. */
+async function discountStillSent(tx: ScopedTransaction, subscriptionId: string, netCents: number, sentCents: number): Promise<boolean> {
+  const fresh = await findSubscriptionById(tx, subscriptionId);
+  return fresh !== null && (await discountOnBasket(tx, fresh, netCents)) === sentCents;
+}
+
+/** Tells the provider to bill the plan plus `addOnNetCents`, less `discountCents`, from the next renewal. Throws when it cannot. */
+async function moveProviderTo(deps: BasketDeps, subscription: Subscription, plan: Plan, addOnNetCents: number, discountCents: number): Promise<void> {
   const { provider } = deps;
   if (subscription.provider !== provider.name) throw new Error(`The subscription belongs to ${subscription.provider}, but ${provider.name} is configured.`);
   // The plan's own provider plan when nothing is added or taken off, else the one made for that amount.
   const providerPlanId =
-    addOnNetCents === 0 && subscription.discountAmountCents === 0
+    addOnNetCents === 0 && discountCents === 0
       ? (plan.providerPlanId ?? undefined)
-      : await deps.ensureDiscountPlan(provider, plan, subscription.discountAmountCents, addOnNetCents);
+      : await deps.ensureDiscountPlan(provider, plan, discountCents, addOnNetCents);
   // The fake provider needs no plan of its own; Razorpay does, and without one there is nothing to move to.
   if (providerPlanId === undefined && provider.name === "razorpay") throw new Error(`Plan ${plan.code} has no provider plan to move to.`);
   await provider.changeSubscriptionPlanAtPeriodEnd(subscription.providerSubscriptionId, providerPlanId ?? "");
@@ -150,7 +170,7 @@ async function putProviderOnDatabaseAmount(deps: BasketDeps, subscriptionId: str
     if (subscription === null || subscription.provider === "manual") return;
     const plan = await findPlanById(deps.staffDb, subscription.planId);
     if (plan === null) throw new Error(`Subscription ${subscriptionId} has no plan to bill.`);
-    await moveProviderTo(deps, subscription, plan, netCents);
+    await moveProviderTo(deps, subscription, plan, netCents, await discountOnBasket(deps.staffDb, subscription, netCents));
   } catch (error) {
     logBillingEvent("error", "basket-provider-repair-failed", { subscriptionId, ...describeError(error) });
   }
@@ -193,6 +213,8 @@ export interface AddOnAssessmentInput {
   readonly addOn: MonthlyAddOnId;
   /** Whether the business has dropped a service from a package, which ends package prices for good. */
   readonly forfeited: boolean;
+  /** The referral code the subscription was opened with, read for the new basket's discount; null when it has none. */
+  readonly code?: ReferralCode | null;
   readonly providerName: BillingProvider["name"];
   readonly now: Date;
 }
@@ -224,16 +246,22 @@ export function assessAddOn(input: AddOnAssessmentInput): AddOnAssessment {
   if (period === null) return { kind: "unavailable", reason: "renewal-due" };
   const plan = state.plan;
   // The basket once it is added: the lines staying in it share one package percentage (none for a single service or once
-  // the offer is given up). The new line and every line already there move to it; a referral code's discount ends.
+  // the offer is given up). The new line and every line already there move to it. A referral code carries on: an amount code
+  // keeps its amount and a percentage code is repriced on the new basket's net.
   const staying = stayingLines(input.live);
   const line = packageLineWith(listedOf(staying), input.forfeited, input.addOn, plan.currency);
-  const renewalNetCents =
-    plan.recurringAmountCents + line.netCents + totalNetCents(repriced(staying, input.forfeited, { addOn: input.addOn, listCents: line.listCents }));
+  const basketNetCents = line.netCents + totalNetCents(repriced(staying, input.forfeited, { addOn: input.addOn, listCents: line.listCents }));
+  const renewalNetCents = plan.recurringAmountCents + basketNetCents;
   const quote = quoteAddOn({
     netCents: line.netCents,
     taxRateBasisPoints: plan.taxRateBasisPoints,
     renewalNetCents,
-    renewalDiscountCents: staying.length === 0 ? subscription.discountAmountCents : 0,
+    renewalDiscountCents: discountForChangedBasket({
+      monthsLeft: subscription.discountMonthsLeft,
+      heldCents: nextDiscountCents(subscription),
+      discount: input.code?.discount ?? null,
+      netCents: basketNetCents,
+    }),
     period: { start: period.start, end: subscription.paidThroughAt },
     now,
   });
@@ -260,7 +288,9 @@ export async function readAddOnAssessment(
       ? []
       : (await findBundledAddOnsForSubscription(db, state.subscription.id)).filter((row) => row.status !== "removed");
   const forfeited = input.forfeited ?? (await isPackageOfferForfeited(db, input.businessId));
-  return assessAddOn({ state, live, addOn: input.addOn, forfeited, providerName: input.providerName, now: input.now });
+  const codeId = state.subscription?.referralCodeId ?? null;
+  const code = codeId === null ? null : await findReferralCodeById(db, codeId);
+  return assessAddOn({ state, live, addOn: input.addOn, forfeited, code, providerName: input.providerName, now: input.now });
 }
 
 /** "Social Media and Ads, 05 Nov to 18 Nov 2026": what the charge and its invoice line say. */
@@ -304,15 +334,18 @@ export async function moveBasketAtProvider(deps: BasketDeps, subscriptionId: str
     // way a removal is, so a provider that refuses leaves the lines as they were and this step can run again.
     const sent = packageMove(await findBundledAddOnsForSubscription(staffDb, subscriptionId), await isPackageOfferForfeited(staffDb, subscription.businessId));
     if (sent.staying === 0) throw new BasketChangedError(subscriptionId, 0, null);
-    await moveProviderTo(deps, subscription, plan, sent.netCents);
+    // A code carries on through the change: the provider is told the new net less what the code takes off it.
+    const sentDiscountCents = await discountOnBasket(staffDb, subscription, sent.netCents);
+    await moveProviderTo(deps, subscription, plan, sent.netCents, sentDiscountCents);
     await staffDb.transaction(async (tx) => {
       await lockBusinessForBilling(tx, subscription.businessId);
       // Another change may have landed since the lines were read: what is recorded must be what the provider was told.
       const current = packageMove(await findBundledAddOnsForSubscription(tx, subscriptionId), await isPackageOfferForfeited(tx, subscription.businessId));
-      if (current.staying === 0 || current.netCents !== sent.netCents) {
+      if (current.staying === 0 || current.netCents !== sent.netCents || !(await discountStillSent(tx, subscriptionId, current.netCents, sentDiscountCents))) {
         throw new BasketChangedError(subscriptionId, sent.netCents, current.staying === 0 ? null : current.netCents);
       }
       await setPendingOfferDiscounts(tx, { subscriptionId, lines: current.moves, now });
+      await setNextDiscount(tx, { subscriptionId, discountCents: sentDiscountCents, now });
       await markBundledAddOnsScheduled(tx, { subscriptionId, now });
     });
     return { kind: "scheduled" };
@@ -327,6 +360,31 @@ export async function moveBasketAtProvider(deps: BasketDeps, subscriptionId: str
     }
     // An add too small to charge (under ₹1) has no payment of its own to flag: the subscription's is flagged instead.
     if (waiting.some((row) => row.chargeId === null)) await flagForStaff(deps, { businessId: subscription.businessId, subscriptionId }, now);
+    return { kind: "failed" };
+  }
+}
+
+/**
+ * The step after the last paid month of a code's discount: the provider is told to bill the basket without the discount from the
+ * next renewal. Runs after the payment's transaction has committed, never inside it. Safe to run again: it only acts while the
+ * subscription is waiting at no discount (months left 0, 0 due), which the renewal at the full amount clears. A failure is logged and flags
+ * the subscription for staff; the renewal that then arrives at the discounted amount is recorded and flagged too (the webhook).
+ */
+export async function moveProviderAfterDiscountEnds(deps: BasketDeps, subscriptionId: string, now: Date): Promise<BasketMove> {
+  const { staffDb } = deps;
+  const subscription = await findSubscriptionById(staffDb, subscriptionId);
+  if (subscription === null || subscription.discountMonthsLeft !== 0 || subscription.nextDiscountAmountCents !== 0) return { kind: "nothing" };
+  if (subscription.provider === "manual") return { kind: "manual" };
+  const fields = { businessId: subscription.businessId, subscriptionId, provider: subscription.provider };
+  try {
+    const plan = await findPlanById(staffDb, subscription.planId);
+    if (plan === null) throw new Error(`Subscription ${subscriptionId} has no plan to bill.`);
+    // What the provider bills from the next renewal: the basket as it will then stand (a change waiting counts), with no discount.
+    await moveProviderTo(deps, subscription, plan, subscription.pendingBundledAddOnNetCents ?? subscription.bundledAddOnNetCents, 0);
+    return { kind: "scheduled" };
+  } catch (error) {
+    logBillingEvent("error", "discount-end-provider-failed", { ...fields, ...describeError(error) });
+    await flagForStaff(deps, fields, now);
     return { kind: "failed" };
   }
 }
@@ -430,9 +488,10 @@ async function keepBundledAddOnFor(deps: BasketDeps, businessId: string, ending:
   if (basket === null) return false;
   const { row, live, subscription, plan } = basket;
   const keptNetCents = netWithKept(live, row.id);
+  const keptDiscountCents = await discountOnBasket(deps.staffDb, subscription, keptNetCents);
   const fields = { businessId, subscriptionId: subscription.id, addOn: row.addOn };
   try {
-    if (subscription.provider !== "manual") await moveProviderTo(deps, subscription, plan, keptNetCents);
+    if (subscription.provider !== "manual") await moveProviderTo(deps, subscription, plan, keptNetCents, keptDiscountCents);
   } catch (error) {
     logBillingEvent("error", "bundled-add-on-keep-failed", { ...fields, stage: "provider", ...describeError(error) });
     return false;
@@ -442,11 +501,14 @@ async function keepBundledAddOnFor(deps: BasketDeps, businessId: string, ending:
       await lockBusinessForBilling(tx, businessId);
       // The provider was told the amount with this line kept; if the basket has moved since, that is no longer the amount.
       const fresh = await findBundledAddOnsForSubscription(tx, subscription.id);
-      if (netWithKept(fresh, row.id) !== keptNetCents) {
+      if (netWithKept(fresh, row.id) !== keptNetCents || !(await discountStillSent(tx, subscription.id, keptNetCents, keptDiscountCents))) {
         throw new BasketChangedError(subscription.id, keptNetCents, packageMove(fresh, await isPackageOfferForfeited(tx, businessId)).netCents);
       }
       const kept = await keepBundledAddOn(tx, { id: row.id, businessId, now });
-      if (kept) await setPendingOfferDiscounts(tx, { subscriptionId: subscription.id, lines: [{ id: row.id, pendingOfferDiscountAmountCents: 0 }], now });
+      if (kept) {
+        await setPendingOfferDiscounts(tx, { subscriptionId: subscription.id, lines: [{ id: row.id, pendingOfferDiscountAmountCents: 0 }], now });
+        await setNextDiscount(tx, { subscriptionId: subscription.id, discountCents: keptDiscountCents, now });
+      }
       return kept;
     });
   } catch (error) {
@@ -499,9 +561,11 @@ export async function removeBundledAddOn(deps: BasketDeps, input: { readonly bus
   const sent = removalOf(live, row.id);
   if (sent.kept.length === 0) return { kind: "last-service" };
   const fields = { businessId, subscriptionId: subscription.id, addOn };
+  // A code carries on through a drop: an amount code keeps its amount, a percentage code is repriced on what is left.
+  const sentDiscountCents = await discountOnBasket(deps.staffDb, subscription, sent.remainingNetCents);
 
   try {
-    if (subscription.provider !== "manual") await moveProviderTo(deps, subscription, plan, sent.remainingNetCents);
+    if (subscription.provider !== "manual") await moveProviderTo(deps, subscription, plan, sent.remainingNetCents, sentDiscountCents);
   } catch (error) {
     logBillingEvent("error", "bundled-add-on-removal-failed", { ...fields, stage: "provider", ...describeError(error) });
     return { kind: "failed" };
@@ -514,11 +578,14 @@ export async function removeBundledAddOn(deps: BasketDeps, input: { readonly bus
       // removal, a paid add), so what is recorded comes from a fresh reading, and it must come to the same amount.
       const fresh = await findBundledAddOnsForSubscription(tx, subscription.id);
       const current = removalOf(fresh, row.id);
-      if (current.kept.length === 0 || current.remainingNetCents !== sent.remainingNetCents) {
+      if (current.kept.length === 0 || current.remainingNetCents !== sent.remainingNetCents || !(await discountStillSent(tx, subscription.id, current.remainingNetCents, sentDiscountCents))) {
         throw new BasketChangedError(subscription.id, sent.remainingNetCents, packageMove(fresh, await isPackageOfferForfeited(tx, businessId)).netCents);
       }
       const removed = await recordBundledAddOnRemoval(tx, { id: row.id, businessId, pendingBundledAddOnNetCents: current.remainingNetCents, now });
-      if (removed) await endPackageOffer(tx, { businessId, subscriptionId: subscription.id, lines: current.toList, now });
+      if (removed) {
+        await endPackageOffer(tx, { businessId, subscriptionId: subscription.id, lines: current.toList, now });
+        await setNextDiscount(tx, { subscriptionId: subscription.id, discountCents: sentDiscountCents, now });
+      }
       return removed;
     });
     if (!recorded) return { kind: "not-in-plan" };

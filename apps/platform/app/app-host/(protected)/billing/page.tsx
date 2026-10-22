@@ -255,8 +255,8 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
         ) : lapsed && reactivationPlan !== null && reactivation !== null ? (
           <ReactivatePlan
             planName={planLabel(reactivationPlan.name)}
-            monthlyAmount={monthlyPaymentAmount(reactivationPlan, reactivation.netCents)}
-            priceNote={priceNote(reactivationPlan, 0, reactivation.netCents)}
+            monthlyAmount={monthlyPaymentAmount(reactivationPlan, reactivation.netCents - reactivation.discountCents)}
+            priceNote={priceNote(reactivationPlan, reactivation.discountCents, reactivation.netCents)}
             action={reactivateAction}
             services={reactivation.cancelled ? reactivation.services : null}
           >

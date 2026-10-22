@@ -821,20 +821,27 @@ export interface AffiliateCodeUsage {
   readonly members: number;
   /** Payments they have made and kept that took the code's discount off. */
   readonly payments: number;
-  /** What the code has taken off so far: each member's frozen monthly discount times the payments they kept (a refunded one gave it back). Before GST. */
+  /**
+   * What the code has taken off so far: the discount each payment they kept was billed with (a refunded one gave it back), from the
+   * invoice basis stored on the payment, so a discount that ended or changed is counted at what it was. A payment from before the
+   * basis was kept counts at the subscription's frozen discount. Before GST.
+   */
   readonly discountGivenCents: number;
 }
 
 /**
  * Usage of each of an affiliate's codes: who paid on it, and how much discount it has given. A payment counts when it
  * was applied (it carries no attention reason, or only a failed submission): the same rule that decides which payments
- * are a member's months for the affiliate's reward.
+ * are a member's months for the affiliate's reward. The code's share of a payment's discount is what its invoice basis says
+ * (the whole discount less any stay offer).
  */
 export async function listAffiliateCodeUsage(db: Runner, affiliateId: string): Promise<AffiliateCodeUsage[]> {
   if (!isUuid(affiliateId)) return [];
+  const keptDiscount = sql<number>`coalesce(sum(case when ${payments.invoiceBasis} is null then ${subscriptions.discountAmountCents} else (${payments.invoiceBasis}->>'discountAmountCents')::integer - coalesce((${payments.invoiceBasis}->>'retentionDiscountCents')::integer, 0) end), 0)`;
   const applied = db
-    .select({ subscriptionId: payments.subscriptionId, total: count().as("total") })
+    .select({ subscriptionId: payments.subscriptionId, total: count().as("total"), discountCents: keptDiscount.as("discount_cents") })
     .from(payments)
+    .innerJoin(subscriptions, eq(subscriptions.id, payments.subscriptionId))
     .where(
       and(
         eq(payments.status, "captured"),
@@ -849,7 +856,7 @@ export async function listAffiliateCodeUsage(db: Runner, affiliateId: string): P
       codeId: referralCodes.id,
       members: count(sql`distinct ${subscriptions.businessId}`),
       payments: sql<number>`coalesce(sum(${applied.total}), 0)`.mapWith(Number),
-      discountGivenCents: sql<number>`coalesce(sum(${subscriptions.discountAmountCents} * ${applied.total}), 0)`.mapWith(Number),
+      discountGivenCents: sql<number>`coalesce(sum(${applied.discountCents}), 0)`.mapWith(Number),
     })
     .from(referralCodes)
     .innerJoin(subscriptions, and(eq(subscriptions.referralCodeId, referralCodes.id), isNotNull(subscriptions.activatedAt)))

@@ -7,6 +7,7 @@ import {
   findLatestActivatedSubscriptionForBusiness,
   findLatestSubscriptionForBusiness,
   findRedeemableReferralCode,
+  findSubscriptionById,
   isPackageOfferForfeited,
   lockBusinessForBilling,
   markPackageOfferForfeited,
@@ -15,6 +16,7 @@ import {
   findAffiliateAccrualContext,
   recordPaymentAndActivate,
   resolvePaymentAttention,
+  settleDiscountAfterPayment,
   type BillingState,
   type BundledAddOn,
   type ReferralCode,
@@ -54,6 +56,7 @@ vi.mock("@brandbasket/db", () => {
     findLatestActivatedSubscriptionForBusiness: vi.fn(),
     findLatestSubscriptionForBusiness: vi.fn(),
     findRedeemableReferralCode: vi.fn(),
+    findSubscriptionById: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
     lockBusinessForBilling: vi.fn(),
     markPackageOfferForfeited: vi.fn(),
@@ -61,6 +64,7 @@ vi.mock("@brandbasket/db", () => {
     openMembershipForListingBusiness: vi.fn(),
     recordPaymentAndActivate: vi.fn(),
     resolvePaymentAttention: vi.fn(),
+    settleDiscountAfterPayment: vi.fn(),
   };
 });
 
@@ -147,9 +151,14 @@ beforeEach(() => {
   // No lapsed subscription to read a basket from, and the package offer still open, unless a test says otherwise.
   vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue(null);
   vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
-  vi.mocked(openCheckoutSubscription).mockImplementation(
-    async (_tx, input) => ({ id: "sub-manual", ...input }) as unknown as Subscription,
-  );
+  // The subscription a reactivation reads its frozen discount from is the one just opened; no payment has used a month of it yet.
+  let opened: Subscription | null = null;
+  vi.mocked(openCheckoutSubscription).mockImplementation(async (_tx, input) => {
+    opened = { id: "sub-manual", ...input } as unknown as Subscription;
+    return opened;
+  });
+  vi.mocked(findSubscriptionById).mockImplementation(async () => opened);
+  vi.mocked(settleDiscountAfterPayment).mockResolvedValue({ monthsLeft: null, ended: false });
 });
 
 afterEach(() => {

@@ -22,8 +22,10 @@ export const BILLING_LOG_PREFIX = "[brandbasket:billing]";
  *   staff should check the subscription before its next renewal.
  * - `basket-provider-repair-failed`: a change to a subscription's services did not go through, and putting the provider back on
  *   the amount the database holds failed too. Staff should check the subscription's amount at the provider.
+ * - `discount-end-provider-failed`: the last paid month of a code's discount was recorded but the provider would not move the subscription
+ *   to the amount without it. Staff are flagged; check the subscription's amount at the provider before its next renewal.
  * - `basket-flag-failed`: a change to a subscription's services did not go through and flagging it for staff failed as well.
- * - `bundled-renewal-at-old-amount`: a renewal arrived at the old amount while a removal of add-ons was waiting: the provider
+ * - `bundled-renewal-at-old-amount`: a renewal arrived at the old amount while a removal of add-ons, or the end of a code's discount, was waiting: the provider
  *   has not moved the subscription, so the customer was charged for an add-on they asked to remove. Staff should refund it.
  * - `upgrade-provider-failed`: a customer paid to move up to Premium and the provider would not (or could not) move
  *   their subscription to Premium's plan from the next renewal. They have Premium; staff finish the move by hand.
@@ -58,6 +60,7 @@ export type BillingLogEvent =
   | "bundled-add-on-keep-failed"
   | "add-on-provider-failed"
   | "basket-provider-repair-failed"
+  | "discount-end-provider-failed"
   | "basket-flag-failed"
   | "bundled-renewal-at-old-amount"
   | "upgrade-provider-failed"

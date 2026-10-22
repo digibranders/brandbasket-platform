@@ -23,9 +23,10 @@ import {
 } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { reactivationNetCents, readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
-import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
+import { loadCarriedCode, loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { requireCustomerAccess, type GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
+import { discountFrom } from "./referrals";
 import { serverEnv } from "@/lib/server/env";
 import { renewsAutomatically } from "@/lib/billing/payment-method-view";
 import { MAX_RECEIPTS_PER_DOWNLOAD } from "@/lib/billing/receipt-download";
@@ -229,11 +230,14 @@ export interface ReactivationView {
   readonly services: readonly MonthlyAddOnId[];
   /** What a month of them costs before GST. */
   readonly netCents: number;
+  /** What the code a lapse keeps takes off that, before GST; 0 for a customer who cancelled themselves or whose code has no months left. */
+  readonly discountCents: number;
 }
 
 /**
  * What a month of the basket a lapsed customer reactivates costs before GST, from the same basket the checkout reopens
- * (loadReactivationBasket), so the price on Billing is the one charged. A customer who cancelled themselves chooses again:
+ * (loadReactivationBasket), less the discount of the code a lapse keeps (loadCarriedCode), so the price on Billing is the one
+ * charged. A customer who cancelled themselves chooses again:
  * `requested` (what the page names) is priced at list instead, and only catalogue services count; with none left, their
  * previous ones are shown. Null for a customer who has not lapsed, or whose currency has no plan.
  */
@@ -246,7 +250,11 @@ export async function findReactivation(
   const basket = await loadReactivationBasket(getStaffDb(), tenant.businessId);
   const chosen = basket.cancelled ? readBundleSelection(requested) : [];
   const priced = chosen.length === 0 ? basket : { ...basket, services: chosen };
-  return { cancelled: basket.cancelled, services: priced.services, netCents: reactivationNetCents(priced, billing.plan.currency) };
+  const { currency } = billing.plan;
+  const netCents = reactivationNetCents(priced, currency);
+  const carried = await loadCarriedCode(getStaffDb(), tenant.businessId, basket);
+  const discountCents = carried === null ? 0 : (discountFrom(carried.code, { currency, netCents })?.amountCents ?? 0);
+  return { cancelled: basket.cancelled, services: priced.services, netCents, discountCents };
 }
 
 /** What a month of the lapsed customer's reactivation costs before GST (findReactivation), or null. */

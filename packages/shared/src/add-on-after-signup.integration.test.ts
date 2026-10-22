@@ -78,7 +78,7 @@ function bundleOf(...ids: Parameters<typeof bundleLines>[0]): readonly NewBundle
 /** A subscription on the services plan, paid on 19 Oct with the given services (the website alone unless told), as it now stands. */
 async function paidSubscription(
   bundled: readonly NewBundledAddOn[] = bundleOf("managed-website"),
-  options: { readonly adCreditCents?: number; readonly referralCodeId?: string; readonly discountAmountCents?: number } = {},
+  options: { readonly adCreditCents?: number; readonly referralCodeId?: string; readonly discountAmountCents?: number; readonly discountMonthsLeft?: number } = {},
 ): Promise<Subscription> {
   const subscription = await openCheckoutSubscription(dbs.staff.db, {
     businessId,
@@ -87,6 +87,7 @@ async function paidSubscription(
     providerSubscriptionId: `fake_sub_${"a".repeat(24)}`,
     referralCodeId: options.referralCodeId ?? null,
     discountAmountCents: options.discountAmountCents ?? 0,
+    ...(options.discountMonthsLeft === undefined ? {} : { discountMonthsLeft: options.discountMonthsLeft }),
     adCreditCents: options.adCreditCents ?? 0,
     bundledAddOns: bundled,
     replacing: null,
@@ -784,67 +785,141 @@ describe("adding a service moves the basket to the package price", () => {
     expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 12_000 });
   });
 
-  describe("a single service with a referral code", () => {
-    async function codedWebsite(): Promise<Subscription> {
+  describe("a service with a referral code", () => {
+    /** A website bought on a code: ₹300 off, or 10% (₹299.90 off the ₹2,999), for the months given (no limit when null). */
+    async function codedWebsite(kind: "amount" | "percent", discountMonths: number | null = null): Promise<Subscription> {
       await dbs.owner.db.insert(users).values({ id: "staff-code", name: "Staff", email: "staff-code@example.test", emailVerified: true });
       const code = await createReferralCode(dbs.staff.db, {
         code: "GAURAV",
         currency: "INR",
         affiliateId: null,
-        discount: { kind: "amount", amountCents: 30_000 },
+        discount: kind === "amount" ? { kind: "amount", amountCents: 30_000 } : { kind: "percent", basisPoints: 1_000 },
+        discountMonths,
         expiresAt: null,
         maxRedemptions: null,
         createdByStaffId: "staff-code",
       });
-      return paidSubscription(bundleOf("managed-website"), { referralCodeId: code.id, discountAmountCents: 30_000 });
+      return paidSubscription(bundleOf("managed-website"), {
+        referralCodeId: code.id,
+        discountAmountCents: kind === "amount" ? 30_000 : 29_990,
+        ...(discountMonths === null ? {} : { discountMonthsLeft: discountMonths }),
+      });
     }
 
-    it("ends the code's discount from the next bill when a second service is added, and prices the provider's plan without it", async () => {
-      const subscription = await codedWebsite();
+    it("keeps an amount code when a second service is added: the provider's plan is the new net less the same amount", async () => {
+      const subscription = await codedWebsite("amount");
       const assessment = await readAddOnAssessment(dbs.staff.db, { businessId, addOn: "digital-growth", providerName: "fake", now: FIFTH_NOV });
-      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_226_964 } });
+      // The pair nets 10,398; less the 300 the code takes, with 18% GST.
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: chargedAmountCents(1_039_800, 30_000, 1_800) } });
 
       await addAndPay("digital-growth");
 
       expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({
-        discountAmountCents: 0,
-        retentionDiscountCents: 0,
+        discountAmountCents: 30_000,
+        nextDiscountAmountCents: null,
         pendingBundledAddOnNetCents: 1_039_800,
       });
-      expect(plansMade).toEqual([{ net: 1_039_800, discount: 0 }]);
+      expect(plansMade).toEqual([{ net: 1_039_800, discount: 30_000 }]);
     });
 
-    async function codedWebsiteWithOffer(): Promise<Subscription> {
-      const subscription = await codedWebsite();
-      await dbs.owner.db.update(subscriptions).set({ retentionDiscountCents: 10_000 });
-      return subscription;
-    }
-
-    it("zeroes the frozen stay offer with the code's discount, so the renewal invoice has no discount to place", async () => {
-      const subscription = await codedWebsiteWithOffer();
+    it("reprices a percentage code on the new basket's package net, for the next renewal", async () => {
+      const subscription = await codedWebsite("percent");
 
       await addAndPay("digital-growth");
 
-      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountAmountCents: 0, retentionDiscountCents: 0 });
+      // 10% of 10,398 is 1,039.80; the subscription keeps taking its 299.90 until the renewal at the new amount.
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({
+        discountAmountCents: 29_990,
+        nextDiscountAmountCents: 103_980,
+        pendingBundledAddOnNetCents: 1_039_800,
+      });
+      expect(plansMade).toEqual([{ net: 1_039_800, discount: 103_980 }]);
     });
 
-    it("leaves a second add alone once the discount is gone", async () => {
-      const subscription = await codedWebsiteWithOffer();
+    it("reprices again on a third service, from the code and not from the last repricing", async () => {
+      const subscription = await codedWebsite("percent");
       await addAndPay("digital-growth");
 
       await addAndPay("local-seo-aeo");
 
-      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountAmountCents: 0, retentionDiscountCents: 0, pendingBundledAddOnNetCents: 2_659_700 });
+      // The three nets 26,597 at 30% off; 10% of that.
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ nextDiscountAmountCents: 265_970, pendingBundledAddOnNetCents: 2_659_700 });
+      expect(plansMade.at(-1)).toEqual({ net: 2_659_700, discount: 265_970 });
     });
 
-    it("counts only the lines that are staying: a service on its way out does not make a package", async () => {
-      const subscription = await codedWebsiteWithOffer();
-      // The first service is already ending when a second arrives, so only one line is staying.
-      await dbs.owner.db.update(bundledAddOns).set({ endRequestedAt: FIFTH_NOV });
+    /** The renewal at the amount the change moved the provider to: it takes the waiting discount as its own and finishes the change. */
+    async function renewAtNewAmount(subscription: Subscription, providerPaymentId: string): Promise<void> {
+      const waiting = (await findSubscriptionById(dbs.staff.db, subscription.id)) ?? subscription;
+      const renewedAt = waiting.paidThroughAt ?? PAID_AT;
+      const net = waiting.pendingBundledAddOnNetCents ?? waiting.bundledAddOnNetCents;
+      const discount = waiting.nextDiscountAmountCents ?? waiting.discountAmountCents;
+      await dbs.staff.db.transaction(async (tx) => {
+        await activateRenewalPayment(tx, {
+          businessId,
+          subscriptionId: subscription.id,
+          commitmentEndsAt: waiting.commitmentEndsAt ?? renewedAt,
+          provider: "fake",
+          providerPaymentId,
+          amountCents: chargedAmountCents(net, discount, 1_800),
+          currency: "INR",
+          paidAt: renewedAt,
+          paidThroughAt: new Date(renewedAt.getTime() + 30 * 24 * 60 * 60 * 1000),
+          periodStart: renewedAt,
+          invoicedPrice: {
+            plan: managed,
+            bundledAddOns: renewalBundledLines(await rowsOf(subscription), true),
+            netAmountCents: managed.recurringAmountCents,
+            discountAmountCents: discount,
+            retentionDiscountCents: 0,
+          },
+          atNewDiscount: discount !== waiting.discountAmountCents,
+        });
+        await completeBundledAddOnChanges(tx, { subscriptionId: subscription.id, now: renewedAt });
+      });
+    }
 
-      await open(addition(subscription, { addOn: "local-seo-aeo", listAmountCents: 2_499_900, netCents: 50, chargeCents: 0 }));
+    it("takes the discount off a drop as well: a percentage code follows the smaller basket", async () => {
+      const subscription = await codedWebsite("percent");
+      await addAndPay("digital-growth");
+      await renewAtNewAmount(subscription, "fake_pay_renewal_two");
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountAmountCents: 103_980, nextDiscountAmountCents: null });
 
-      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountAmountCents: 30_000, retentionDiscountCents: 10_000 });
+      expect(await removeBundledAddOn(deps(), { businessId, addOn: "digital-growth", now: new Date("2026-11-25T06:00:00.000Z") })).toMatchObject({ kind: "scheduled" });
+
+      // The website alone, at list: 10% of 2,999.
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountAmountCents: 103_980, nextDiscountAmountCents: 29_990, pendingBundledAddOnNetCents: 299_900 });
+      expect(plansMade.at(-1)).toEqual({ net: 299_900, discount: 29_990 });
+    });
+
+    it("keeps an amount code through a drop, and records nothing waiting", async () => {
+      const subscription = await codedWebsite("amount");
+      await addAndPay("digital-growth");
+      await renewAtNewAmount(subscription, "fake_pay_renewal_two");
+
+      expect(await removeBundledAddOn(deps(), { businessId, addOn: "digital-growth", now: new Date("2026-11-25T06:00:00.000Z") })).toMatchObject({ kind: "scheduled" });
+
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountAmountCents: 30_000, nextDiscountAmountCents: null });
+      expect(plansMade.at(-1)).toEqual({ net: 299_900, discount: 30_000 });
+    });
+
+    it("keeps a code with its months through a change: the months are counted by payments, not by changes", async () => {
+      const subscription = await codedWebsite("percent", 3);
+      // The first payment took one of the three months.
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountMonthsLeft: 2 });
+
+      await addAndPay("digital-growth");
+
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountMonthsLeft: 2, nextDiscountAmountCents: 103_980 });
+    });
+
+    it("takes nothing off a change once the code's months have run out", async () => {
+      const subscription = await codedWebsite("percent", 1);
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountMonthsLeft: 0, nextDiscountAmountCents: 0 });
+
+      await addAndPay("digital-growth");
+
+      expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ discountAmountCents: 29_990, nextDiscountAmountCents: 0 });
+      expect(plansMade).toEqual([{ net: 1_039_800, discount: 0 }]);
     });
   });
 

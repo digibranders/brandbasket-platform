@@ -431,6 +431,77 @@ export async function findSubscriptionById(db: Runner, subscriptionId: string): 
   return rows[0] ?? null;
 }
 
+/** Records what a code will take off from the next renewal. Null when it is the amount the subscription takes already. Staff connection, under the billing lock. */
+export async function setNextDiscount(tx: ScopedTransaction, input: { readonly subscriptionId: string; readonly discountCents: number; readonly now: Date }): Promise<void> {
+  if (!isUuid(input.subscriptionId)) return;
+  await tx
+    .update(subscriptions)
+    .set({
+      nextDiscountAmountCents: sql`case when ${input.discountCents}::integer = ${subscriptions.discountAmountCents} then null else ${input.discountCents}::integer end`,
+      updatedAt: input.now,
+    })
+    .where(eq(subscriptions.id, input.subscriptionId));
+}
+
+/** What a payment did to the subscription's discount. */
+export interface DiscountSettlement {
+  /** The paid months the discount still has to run after this payment; null for no limit. */
+  readonly monthsLeft: number | null;
+  /** This payment was the last of the discount's months: the provider must be moved to the amount without it. */
+  readonly ended: boolean;
+}
+
+/**
+ * The one place a payment's effect on a code's discount is worked out, for the first payment, a renewal, a reactivation and
+ * the console's manual payment. Only a payment taken with a code discount counts a month off `discount_months_left` (null
+ * stays null, so months offline cost nothing); the last month sets the amount for the next renewal to 0. A payment taken at the
+ * discount that was waiting (`adoptsNewDiscount`) makes it the subscription's own and clears the wait first, so a month that
+ * ends the discount in the same payment still leaves 0 waiting. Staff connection, in the payment's transaction under the billing lock.
+ */
+export async function settleDiscountAfterPayment(
+  tx: ScopedTransaction,
+  input: { readonly subscriptionId: string; readonly discountTakenCents: number; readonly adoptsNewDiscount: boolean; readonly now: Date },
+): Promise<DiscountSettlement> {
+  const rows = await tx
+    .select({
+      discountAmountCents: subscriptions.discountAmountCents,
+      retentionDiscountCents: subscriptions.retentionDiscountCents,
+      discountMonthsLeft: subscriptions.discountMonthsLeft,
+      nextDiscountAmountCents: subscriptions.nextDiscountAmountCents,
+    })
+    .from(subscriptions)
+    .where(eq(subscriptions.id, input.subscriptionId))
+    .limit(1)
+    .for("update");
+  const row = rows[0];
+  if (row === undefined) throw new Error(`Subscription ${input.subscriptionId} was not found to settle its discount.`);
+  let { discountAmountCents, retentionDiscountCents, nextDiscountAmountCents } = row;
+  if (input.adoptsNewDiscount) {
+    discountAmountCents = input.discountTakenCents;
+    retentionDiscountCents = 0;
+    nextDiscountAmountCents = null;
+  }
+  let monthsLeft = row.discountMonthsLeft;
+  let ended = false;
+  if (input.discountTakenCents > 0 && monthsLeft !== null && monthsLeft > 0) {
+    monthsLeft -= 1;
+    ended = monthsLeft === 0;
+    if (ended) nextDiscountAmountCents = 0;
+  }
+  const unchanged =
+    discountAmountCents === row.discountAmountCents &&
+    retentionDiscountCents === row.retentionDiscountCents &&
+    monthsLeft === row.discountMonthsLeft &&
+    nextDiscountAmountCents === row.nextDiscountAmountCents;
+  if (!unchanged) {
+    await tx
+      .update(subscriptions)
+      .set({ discountAmountCents, retentionDiscountCents, discountMonthsLeft: monthsLeft, nextDiscountAmountCents, updatedAt: input.now })
+      .where(eq(subscriptions.id, input.subscriptionId));
+  }
+  return { monthsLeft, ended };
+}
+
 /** A subscription by the provider's own id, whatever its status. Staff connection. */
 export async function findSubscriptionByProviderId(
   db: Runner,

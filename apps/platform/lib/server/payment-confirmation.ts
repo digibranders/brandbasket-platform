@@ -21,7 +21,9 @@ import {
 } from "@brandbasket/db";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { isOnboardingLocked } from "@/lib/onboarding/snapshot";
+import { basketDeps } from "./add-ons";
 import { getBillingProvider } from "./billing";
+import { moveProviderAfterDiscountEnds } from "@brandbasket/shared/server/basket-change";
 import { activateFirstPayment, activateReactivationPayment } from "@brandbasket/shared/server/billing-activation";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { getStaffDb } from "./db";
@@ -255,6 +257,8 @@ export async function confirmFirstPayment(
     providerPaymentId: confirmed.providerPaymentId,
   };
 
+  // Filled when this payment was the last month of a code's discount: the provider is moved once the transaction commits.
+  const discountEndedFor: string[] = [];
   const confirmation = await getStaffDb().transaction(async (tx): Promise<PaymentConfirmation> => {
     await lockBusinessForBilling(tx, tenant.businessId);
 
@@ -301,7 +305,7 @@ export async function confirmFirstPayment(
 
     if (verdict.reactivating) {
       // Back on today's plan for a month from now: nothing to send, the project is already live.
-      await activateReactivationPayment(tx, {
+      const reactivation = await activateReactivationPayment(tx, {
         businessId: tenant.businessId,
         subscriptionId: subscription.id,
         plan: verdict.plan,
@@ -311,6 +315,7 @@ export async function confirmFirstPayment(
         paidThroughAt: addMonthsUtc(confirmed.paidAt, 1),
         ...(confirmed.method === undefined ? {} : { method: confirmed.method }),
       });
+      if (reactivation.discountEnded) discountEndedFor.push(subscription.id);
       return { kind: "reactivated" };
     }
 
@@ -326,6 +331,7 @@ export async function confirmFirstPayment(
       discountAmountCents: subscription.discountAmountCents,
       ...(confirmed.method === undefined ? {} : { method: confirmed.method }),
     });
+    if (activation.discountEnded) discountEndedFor.push(subscription.id);
 
     if (activation.openedMembership !== null) return { kind: "membership-opened" };
 
@@ -337,6 +343,7 @@ export async function confirmFirstPayment(
     };
   });
 
+  for (const subscriptionId of discountEndedFor) await moveProviderAfterDiscountEnds(basketDeps(), subscriptionId, now);
   // After the commit, as for a setup link: Payload's database is not ours, and the sync logs rather than throws.
   if (confirmation.kind === "membership-opened") {
     await syncTenantForBusiness({ businessId: tenant.businessId, name: tenant.businessName });

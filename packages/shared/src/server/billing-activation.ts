@@ -5,7 +5,9 @@ import {
   bundledNetCents,
   findBundledAddOnsForSubscription,
   openMembershipForListingBusiness,
+  findSubscriptionById,
   recordPaymentAndActivate,
+  settleDiscountAfterPayment,
   type BillingCurrency,
   type BillingProviderName,
   type BundledAddOn,
@@ -39,7 +41,16 @@ export interface FirstPayment {
   readonly method?: PaymentMethodDetails | null;
 }
 
-export interface FirstPaymentActivation extends RecordedActivation {
+/**
+ * What a payment did to its code's discount, for the caller to act on once the transaction has committed: when this payment
+ * was the last of the discount's months, the provider is still billing the discounted amount and must be moved to the one
+ * without it (moveProviderAfterDiscountEnds in basket-change.ts).
+ */
+export interface DiscountEffect {
+  readonly discountEnded: boolean;
+}
+
+export interface FirstPaymentActivation extends RecordedActivation, DiscountEffect {
   /**
    * Set when this payment bought the Premium membership from a free listing account: the business has just become a
    * website client, in this transaction. Once it commits, the caller gives it the Payload tenant every client has
@@ -71,6 +82,9 @@ async function billedLines(tx: ScopedTransaction, subscriptionId: string): Promi
  *
  * The term is unaffected by a discount: a referral code lowers the price, never the length of what it buys.
  *
+ * A payment taken with a code discount counts one of the code's paid months (settleDiscountAfterPayment); the result says when it
+ * was the last, for the caller to move the provider once the transaction has committed.
+ *
  * A payment on an affiliate code also writes what the affiliate earned from it, in the same transaction.
  * Issues the payment's tax invoice last, in a savepoint (D7), a line for each service as it was billed.
  */
@@ -101,8 +115,14 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
     ...(payment.manual === undefined ? {} : { manual: payment.manual }),
     ...(payment.method === undefined ? {} : { method: payment.method }),
   });
-  if (activation.alreadyRecorded) return { ...activation, openedMembership: null };
+  if (activation.alreadyRecorded) return { ...activation, openedMembership: null, discountEnded: false };
   const activeBundle = await activateBundledAddOns(tx, { subscriptionId: payment.subscriptionId, now: payment.paidAt });
+  const settlement = await settleDiscountAfterPayment(tx, {
+    subscriptionId: payment.subscriptionId,
+    discountTakenCents: payment.discountAmountCents ?? 0,
+    adoptsNewDiscount: false,
+    now: payment.paidAt,
+  });
   await accrueAffiliateEarning(tx, { paymentId: activation.payment.id, subscriptionId: payment.subscriptionId, kind: "initial" });
   const openedMembership = await openMembershipForListingBusiness(tx, payment.businessId, {
     withProject: activeBundle.some((line) => line.addOn === "managed-website"),
@@ -122,7 +142,7 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
     periodStart: payment.paidAt,
     periodEnd: termEnd,
   });
-  return { ...activation, openedMembership };
+  return { ...activation, openedMembership, discountEnded: settlement.ended };
 }
 
 /** What a renewal was charged at, exactly as the caller's amount check accepted it, for its tax invoice. */
@@ -154,6 +174,11 @@ export interface RenewalPayment {
   /** The first instant this charge paid for: the provider's own cycle start (Razorpay's `current_start`), or `paidAt`. */
   readonly periodStart: Date;
   readonly invoicedPrice: RenewalInvoicedPrice;
+  /**
+   * The renewal was taken at the discount that was waiting for it (the months ran out, or a basket change repriced the code),
+   * not the one the subscription held: that discount is now the subscription's own.
+   */
+  readonly atNewDiscount?: boolean;
   readonly providerStatus?: string | null;
   /** How the customer paid, when the provider said. */
   readonly method?: PaymentMethodDetails | null;
@@ -167,7 +192,7 @@ export interface RenewalPayment {
  * affiliate code earns the affiliate another month, in the same transaction. Issues the payment's tax invoice last, in a
  * savepoint (D7).
  */
-export async function activateRenewalPayment(tx: ScopedTransaction, payment: RenewalPayment): Promise<RecordedActivation> {
+export async function activateRenewalPayment(tx: ScopedTransaction, payment: RenewalPayment): Promise<RecordedActivation & DiscountEffect> {
   const activation = await recordPaymentAndActivate(tx, {
     businessId: payment.businessId,
     subscriptionId: payment.subscriptionId,
@@ -183,32 +208,37 @@ export async function activateRenewalPayment(tx: ScopedTransaction, payment: Ren
     ...(payment.providerStatus === undefined ? {} : { providerStatus: payment.providerStatus }),
     ...(payment.method === undefined ? {} : { method: payment.method }),
   });
-  if (!activation.alreadyRecorded) {
-    // The subscription still holds the amount it was billed before this payment when the renewal completes a change, so
-    // the earning is worked out on what the renewal was invoiced at.
-    const { bundledAddOns, netAmountCents, discountAmountCents } = payment.invoicedPrice;
-    await accrueAffiliateEarning(tx, {
-      paymentId: activation.payment.id,
-      subscriptionId: payment.subscriptionId,
-      kind: "renewal",
-      ...(bundledAddOns === undefined
-        ? {}
-        : {
-            invoiced: {
-              netCents: netAmountCents + bundledAddOns.reduce((total, line) => total + line.listAmountCents - line.offerDiscountAmountCents, 0),
-              discountCents: discountAmountCents,
-            },
-          }),
-    });
-    await issueTaxInvoiceSafely(tx, activation.payment, {
-      kind: "plan",
-      ...payment.invoicedPrice,
-      monthly: true,
-      periodStart: payment.periodStart,
-      periodEnd: payment.paidThroughAt,
-    });
-  }
-  return activation;
+  if (activation.alreadyRecorded) return { ...activation, discountEnded: false };
+  // The subscription still holds the amount it was billed before this payment when the renewal completes a change, so
+  // the earning is worked out on what the renewal was invoiced at.
+  const { bundledAddOns, netAmountCents, discountAmountCents, retentionDiscountCents } = payment.invoicedPrice;
+  const settlement = await settleDiscountAfterPayment(tx, {
+    subscriptionId: payment.subscriptionId,
+    discountTakenCents: discountAmountCents - retentionDiscountCents,
+    adoptsNewDiscount: payment.atNewDiscount === true,
+    now: payment.paidAt,
+  });
+  await accrueAffiliateEarning(tx, {
+    paymentId: activation.payment.id,
+    subscriptionId: payment.subscriptionId,
+    kind: "renewal",
+    ...(bundledAddOns === undefined
+      ? {}
+      : {
+          invoiced: {
+            netCents: netAmountCents + bundledAddOns.reduce((total, line) => total + line.listAmountCents - line.offerDiscountAmountCents, 0),
+            discountCents: discountAmountCents,
+          },
+        }),
+  });
+  await issueTaxInvoiceSafely(tx, activation.payment, {
+    kind: "plan",
+    ...payment.invoicedPrice,
+    monthly: true,
+    periodStart: payment.periodStart,
+    periodEnd: payment.paidThroughAt,
+  });
+  return { ...activation, discountEnded: settlement.ended };
 }
 
 export interface ReactivationPayment {
@@ -230,19 +260,27 @@ export interface ReactivationPayment {
 /**
  * The first payment on a new subscription for a business that paid before and lapsed (docs/superpowers/specs/2026-10-09-
  * reactivation-design.md). Missed months are not charged: it buys one month from the day it is paid, at the plan's
- * monthly price (0 for a services plan) plus the services its checkout was opened with, with its tax and no coupon. It is not a first payment: no
- * lead is marked paid, no membership opens (the business is already a client) and no affiliate earns on it. Idempotent on
+ * monthly price (0 for a services plan) plus the services its checkout was opened with, with its tax. A lapse (not the client's own
+ * cancel) carries its code onto the new subscription with the months it had left (openPlanCheckout), so the payment is taken
+ * less that frozen discount, counts one of those months, and earns the code's affiliate as a renewal does. It is not a first payment: no
+ * lead is marked paid and no membership opens (the business is already a client). Idempotent on
  * the provider payment id. Issues the payment's tax invoice last, in a savepoint (D7).
  */
-export async function activateReactivationPayment(tx: ScopedTransaction, payment: ReactivationPayment): Promise<RecordedActivation> {
+export async function activateReactivationPayment(tx: ScopedTransaction, payment: ReactivationPayment): Promise<RecordedActivation & DiscountEffect> {
   const bundled = await billedLines(tx, payment.subscriptionId);
+  // The code a lapse carried onto this subscription (openPlanCheckout), repriced on its basket and frozen when the checkout
+  // opened: 0 for a client who cancelled themselves or whose code had run its months out.
+  // (recordPaymentAndActivate below refuses a subscription that is not this business's.)
+  const subscription = await findSubscriptionById(tx, payment.subscriptionId);
+  if (subscription === null) throw new Error(`Subscription ${payment.subscriptionId} was not found to reactivate`);
+  const discountCents = subscription.discountAmountCents;
   const activation = await recordPaymentAndActivate(tx, {
     businessId: payment.businessId,
     subscriptionId: payment.subscriptionId,
     provider: payment.provider,
     providerPaymentId: payment.providerPaymentId,
     kind: "reactivation",
-    amountCents: chargedAmountCents(payment.plan.recurringAmountCents + bundledNetCents(bundled), 0, payment.plan.taxRateBasisPoints),
+    amountCents: chargedAmountCents(payment.plan.recurringAmountCents + bundledNetCents(bundled), discountCents, payment.plan.taxRateBasisPoints),
     currency: payment.plan.currency,
     paidAt: payment.paidAt,
     paidThroughAt: payment.paidThroughAt,
@@ -251,19 +289,20 @@ export async function activateReactivationPayment(tx: ScopedTransaction, payment
     ...(payment.manual === undefined ? {} : { manual: payment.manual }),
     ...(payment.method === undefined ? {} : { method: payment.method }),
   });
-  if (!activation.alreadyRecorded) {
-    const activeBundle = await activateBundledAddOns(tx, { subscriptionId: payment.subscriptionId, now: payment.paidAt });
-    await issueTaxInvoiceSafely(tx, activation.payment, {
-      kind: "plan",
-      plan: payment.plan,
-      bundledAddOns: activeBundle,
-      netAmountCents: payment.plan.recurringAmountCents,
-      discountAmountCents: 0,
-      retentionDiscountCents: 0,
-      monthly: true,
-      periodStart: payment.paidAt,
-      periodEnd: payment.paidThroughAt,
-    });
-  }
-  return activation;
+  if (activation.alreadyRecorded) return { ...activation, discountEnded: false };
+  const activeBundle = await activateBundledAddOns(tx, { subscriptionId: payment.subscriptionId, now: payment.paidAt });
+  const settlement = await settleDiscountAfterPayment(tx, { subscriptionId: payment.subscriptionId, discountTakenCents: discountCents, adoptsNewDiscount: false, now: payment.paidAt });
+  await accrueAffiliateEarning(tx, { paymentId: activation.payment.id, subscriptionId: payment.subscriptionId, kind: "reactivation" });
+  await issueTaxInvoiceSafely(tx, activation.payment, {
+    kind: "plan",
+    plan: payment.plan,
+    bundledAddOns: activeBundle,
+    netAmountCents: payment.plan.recurringAmountCents,
+    discountAmountCents: discountCents,
+    retentionDiscountCents: 0,
+    monthly: true,
+    periodStart: payment.paidAt,
+    periodEnd: payment.paidThroughAt,
+  });
+  return { ...activation, discountEnded: settlement.ended };
 }

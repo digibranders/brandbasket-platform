@@ -1,4 +1,4 @@
-import type { BundledAddOn, BillingState } from "@brandbasket/db";
+import type { BundledAddOn, BillingState, ReferralCode } from "@brandbasket/db";
 import { describe, expect, it, vi } from "vitest";
 import { assessAddOn } from "./basket-change";
 
@@ -24,6 +24,8 @@ const state = {
     paidThroughAt: PAID_THROUGH,
     cancelRequestedAt: null,
     discountAmountCents: 0,
+    discountMonthsLeft: null,
+    nextDiscountAmountCents: null,
   },
 } as unknown as BillingState;
 
@@ -48,6 +50,57 @@ describe("assessAddOn", () => {
     const assessment = assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "digital-growth", forfeited: true, providerName: "fake", now: NOW });
 
     expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 0, netCents: 999_900 }, quote: { nextRenewalCents: 1_533_764 } });
+  });
+
+  describe("with a referral code on the subscription", () => {
+    const withCode = (held: Partial<{ discountAmountCents: number; discountMonthsLeft: number | null; nextDiscountAmountCents: number | null }>): BillingState =>
+      ({ ...state, subscription: { ...state.subscription, ...held } }) as BillingState;
+    const codeOf = (discount: ReferralCode["discount"]): ReferralCode => ({ discount }) as ReferralCode;
+    const website = [line("managed-website", 299_900)];
+
+    it("keeps an amount code's amount through an add", () => {
+      const assessment = assessAddOn({
+        state: withCode({ discountAmountCents: 50_000 }),
+        live: website,
+        addOn: "digital-growth",
+        forfeited: false,
+        code: codeOf({ kind: "amount", amountCents: 50_000 }),
+        providerName: "fake",
+        now: NOW,
+      });
+
+      // The pair nets 10,398; less the 500, with 18% GST.
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_226_964 - 59_000 } });
+    });
+
+    it("reprices a percentage code on the new basket's net", () => {
+      const assessment = assessAddOn({
+        state: withCode({ discountAmountCents: 29_990 }),
+        live: website,
+        addOn: "digital-growth",
+        forfeited: false,
+        code: codeOf({ kind: "percent", basisPoints: 1_000 }),
+        providerName: "fake",
+        now: NOW,
+      });
+
+      // 10% of the 10,398 the pair nets is 1,039.80, not the 299.90 it took off the website alone; 18% GST on what is left.
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_104_268 } });
+    });
+
+    it("takes nothing once the code's months have run out", () => {
+      const assessment = assessAddOn({
+        state: withCode({ discountAmountCents: 0, discountMonthsLeft: 0 }),
+        live: website,
+        addOn: "digital-growth",
+        forfeited: false,
+        code: codeOf({ kind: "percent", basisPoints: 1_000 }),
+        providerName: "fake",
+        now: NOW,
+      });
+
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_226_964 } });
+    });
   });
 
   it("stops rather than price a basket that holds a line that is not a service, which would be quoted as no service at all", () => {

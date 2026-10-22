@@ -6,6 +6,7 @@ import {
   findCurrentPaymentMethod,
   findLatestSubscriptionForBusiness,
   findOpenClosureForUser,
+  findReferralCodeById,
   isPackageOfferForfeited,
   findSubscriptionByProviderId,
   listMembershipsForUser,
@@ -14,6 +15,7 @@ import {
   type BundledAddOn,
   type Database,
   type Plan,
+  type ReferralCode,
   type ScopedTransaction,
   type Subscription,
 } from "@brandbasket/db";
@@ -50,7 +52,9 @@ vi.mock("@brandbasket/db", () => ({
   findBundledAddOnsForSubscription: vi.fn(),
   findBusinessEntry: vi.fn(),
   findCurrentPaymentMethod: vi.fn(),
+  findLatestActivatedSubscriptionForBusiness: vi.fn(),
   findLatestSubscriptionForBusiness: vi.fn(),
+  findReferralCodeById: vi.fn(),
   findOpenClosureForUser: vi.fn(),
   isPackageOfferForfeited: vi.fn(),
   findSubscriptionByProviderId: vi.fn(),
@@ -258,7 +262,7 @@ describe("findReactivationNetCents", () => {
 
   beforeEach(() => {
     vi.mocked(getStaffDb).mockReturnValue({ name: "staff-db" } as unknown as Database);
-    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "past_due", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 0 } as Subscription);
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "past_due", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 0, referralCodeId: null, discountMonthsLeft: null } as Subscription);
     vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
   });
 
@@ -276,7 +280,7 @@ describe("findReactivationNetCents", () => {
 
   describe("for a customer who cancelled the plan themselves", () => {
     beforeEach(() => {
-      vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "cancelled", activatedAt: new Date(), cancelRequestedAt: new Date(), adCreditCents: 0 } as Subscription);
+      vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "cancelled", activatedAt: new Date(), cancelRequestedAt: new Date(), adCreditCents: 0, referralCodeId: null, discountMonthsLeft: null } as Subscription);
       vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "digital-growth", "local-seo-aeo"));
     });
 
@@ -285,6 +289,7 @@ describe("findReactivationNetCents", () => {
         cancelled: true,
         services: ["managed-website", "digital-growth", "local-seo-aeo"],
         netCents: 3_799_700,
+        discountCents: 0,
       });
     });
 
@@ -293,19 +298,39 @@ describe("findReactivationNetCents", () => {
         cancelled: true,
         services: ["managed-website", "local-seo-aeo"],
         netCents: 2_799_800,
+        discountCents: 0,
       });
       await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }), ["digital-growth"])).resolves.toBe(999_900);
     });
   });
 
   it("does not let a lapse choose: a mandate the provider revoked comes back as it was, at the package price", async () => {
-    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "cancelled", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 500_000 } as Subscription);
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "cancelled", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 500_000, referralCodeId: null, discountMonthsLeft: null } as Subscription);
     vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "digital-growth", "local-seo-aeo"));
     await expect(findReactivation(lapsedWith({ currency: "INR" }), ["managed-website"])).resolves.toEqual({
       cancelled: false,
       services: ["managed-website", "digital-growth", "local-seo-aeo"],
       netCents: 2_659_700,
+      discountCents: 0,
     });
+  });
+
+  it("takes off the code a lapse keeps, repriced on the basket, but not after the customer's own cancel", async () => {
+    const code = { id: "code-1", code: "TENOFF", currency: "INR", discount: { kind: "percent", basisPoints: 1_000 }, discountMonths: 6 } as ReferralCode;
+    vi.mocked(findReferralCodeById).mockResolvedValue(code);
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "digital-growth", "local-seo-aeo"));
+    const lapse = (overrides: Partial<Subscription>) =>
+      vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "cancelled", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 0, referralCodeId: code.id, discountMonthsLeft: 2, ...overrides } as Subscription);
+
+    lapse({});
+    // 10% of the 26,597 the package nets.
+    await expect(findReactivation(lapsedWith({ currency: "INR" }))).resolves.toMatchObject({ netCents: 2_659_700, discountCents: 265_970 });
+
+    lapse({ discountMonthsLeft: 0 });
+    await expect(findReactivation(lapsedWith({ currency: "INR" }))).resolves.toMatchObject({ discountCents: 0 });
+
+    lapse({ cancelRequestedAt: new Date() });
+    await expect(findReactivation(lapsedWith({ currency: "INR" }))).resolves.toMatchObject({ cancelled: true, discountCents: 0 });
   });
 
   it("is nothing for a customer who has not lapsed", async () => {
