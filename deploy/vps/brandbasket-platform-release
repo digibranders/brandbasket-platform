@@ -196,6 +196,15 @@ prune() {
   done < <(find "$ROOT/releases" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %f\n' | sort -rn)
 }
 
+# One heavy job at a time on this VPS (system/ff-build-queue): a hand-started run joins the queue like the timers do, first
+# come first run. The timers' units already hold the turn (FF_BUILD_QUEUE_TURN), so they pass straight through. Rollbacks,
+# --list and --status never queue. Without the queue program the script runs as before.
+queue_turn() { # <label> <max seconds> <original arguments...>
+  local label=$1 limit=$2; shift 2
+  [[ -n "${FF_BUILD_QUEUE_TURN:-}" || ! -x /usr/local/sbin/ff-build-queue ]] && return 0
+  exec /usr/local/sbin/ff-build-queue run --label "$label" --max-run "$limit" -- "$0" "$@"
+}
+
 case "${1:-}" in
   --list)
     declare -A live_of=()
@@ -211,11 +220,13 @@ case "${1:-}" in
     echo "autodeploy paused, so it does not replace this release with main; resume: brandbasket-platform-autodeploy --resume" >&2
     activate "$2" "$3" ;;
   --build-only)
+    queue_turn brandbasket-platform-release 2700 "$@"
     valid_release "${2:-}"; [[ $# -ge 3 ]] || die "name at least one app"
     for app in "${@:3}"; do valid_app "$app"; done
     take_lock
     build "$2" "${@:3}" ;;
   *)
+    queue_turn brandbasket-platform-release 2700 "$@"
     valid_release "${1:-}"; [[ $# -ge 2 ]] || die "name at least one app"
     release=$1; shift
     for app in "$@"; do valid_app "$app"; done
