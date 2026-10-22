@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BOOKING_WINDOW_DAYS, bookCallSlot, calcomPage, cancelCallBooking, listCallSlots } from "./call-scheduling";
 
 vi.mock("server-only", () => ({}));
@@ -8,6 +8,18 @@ const URL = "https://calendly.com/steve-brandbasket/30min";
 const INVITEE = { name: "Meera Shah", email: "meera@example.com", timeZone: "Asia/Kolkata", businessId: "b1" };
 
 describe("the local call scheduler", () => {
+  // The local scheduler only runs off a real deployment, so pin a local environment: the VPS runs these tests with its https
+  // build settings loaded, and a real CALCOM or CALENDLY key would pick a live scheduler instead.
+  beforeEach(() => {
+    vi.stubEnv("APP_ORIGIN", "http://app.brandbasket.localhost:3198");
+    vi.stubEnv("VERCEL_ENV", "");
+    vi.stubEnv("CALCOM_API_KEY", "");
+    vi.stubEnv("CALENDLY_API_TOKEN", "");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("offers weekday times inside the booking window, none in the past", async () => {
     const slots = (await listCallSlots(URL, NOW)) ?? [];
     expect(slots.length).toBeGreaterThan(0);
