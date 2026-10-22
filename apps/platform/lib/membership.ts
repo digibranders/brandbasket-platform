@@ -1,6 +1,6 @@
 import { chargedAmountCents } from "@brandbasket/billing/tax";
 import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { bundleLines, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
+import { bundleLines, bundleNetCents, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { adCreditCentsAtCheckout, packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
@@ -103,6 +103,17 @@ export interface MembershipPricing {
 export function membershipPriceLine(plan: MembershipPricing, bundledAddOnNetCents = 0): string {
   const { amount, terms } = membershipPriceParts(plan, 0, bundledAddOnNetCents);
   return `${amount} ${terms}`;
+}
+
+/** The services a sign-up is for, as one phrase in catalogue order: "Managed Website, Social Media and Ads and Local SEO + AEO". */
+export function servicesPhrase(services: readonly MonthlyAddOnId[]): string {
+  const titles = bundleLines(services, "INR").map((line) => line.title);
+  return titles.length < 2 ? (titles[0] ?? "") : `${titles.slice(0, -1).join(", ")} and ${titles[titles.length - 1]}`;
+}
+
+/** What the services cost a month before tax for a new sign-up, at the package price (a new account has given up nothing). */
+export function basketNetCents(services: readonly MonthlyAddOnId[], currency: MoneyCurrency): number {
+  return bundleNetCents(bundleLines(services, currency));
 }
 
 /**

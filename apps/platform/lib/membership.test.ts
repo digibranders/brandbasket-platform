@@ -3,6 +3,8 @@ import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { describe, expect, it } from "vitest";
 import {
   MEMBERSHIP_NAMES,
+  basketNetCents,
+  servicesPhrase,
   MEMBERSHIP_PATH,
   isWaitingOnPayment,
   membershipPriceParts,
@@ -239,5 +241,29 @@ describe("membershipHrefWithServices", () => {
   it("is the plan's page, carrying the services chosen on the website when there are any", () => {
     expect(membershipHrefWithServices("managed", [])).toBe("/plan");
     expect(membershipHrefWithServices("managed", ["digital-growth", "local-seo-aeo"])).toBe("/plan?services=digital-growth,local-seo-aeo");
+  });
+});
+
+describe("servicesPhrase", () => {
+  it.each([
+    [["managed-website"], "Managed Website"],
+    [["digital-growth"], "Social Media and Ads"],
+    [["managed-website", "local-seo-aeo"], "Managed Website and Local SEO + AEO"],
+    [["local-seo-aeo", "managed-website", "digital-growth"], "Managed Website, Social Media and Ads and Local SEO + AEO"],
+  ] as const)("names %o as %s, in catalogue order", (services, phrase) => {
+    expect(servicesPhrase(services)).toBe(phrase);
+  });
+});
+
+describe("basketNetCents", () => {
+  it.each([
+    [["managed-website"], "INR", 299_900],
+    [["digital-growth"], "INR", 999_900],
+    [["managed-website", "digital-growth"], "INR", 1_039_800],
+    [["digital-growth", "local-seo-aeo"], "INR", 2_449_800],
+    [["managed-website", "digital-growth", "local-seo-aeo"], "INR", 2_659_700],
+    [["managed-website", "digital-growth", "local-seo-aeo"], "USD", 35_000],
+  ] as const)("prices %o in %s at %i before tax, the package price a new sign-up pays", (services, currency, net) => {
+    expect(basketNetCents(services, currency)).toBe(net);
   });
 });

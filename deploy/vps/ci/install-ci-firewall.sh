@@ -68,7 +68,9 @@ add_block /etc/ufw/before.rules ufw-before-output iptables-restore
 add_block /etc/ufw/before6.rules ufw6-before-output ip6tables-restore
 if (( APPLY )) && (( changed )); then
   ufw reload
-  iptables -S ufw-before-output | grep -c "uid-owner bbci" | xargs echo "IPv4 bbci rules loaded:"
-  ip6tables -S ufw6-before-output | grep -c "uid-owner bbci" | xargs echo "IPv6 bbci rules loaded:"
+  # iptables prints the owner as a uid, and grep -c exits 1 on zero matches (which set -e would turn into a silent stop).
+  bbci_uid="$(id -u bbci)"
+  echo "IPv4 bbci rules loaded: $(iptables -S ufw-before-output | grep -c -- "--uid-owner $bbci_uid " || true)"
+  echo "IPv6 bbci rules loaded: $(ip6tables -S ufw6-before-output | grep -c -- "--uid-owner $bbci_uid " || true)"
 fi
 (( APPLY )) || echo "nothing changed. Run again with --apply."

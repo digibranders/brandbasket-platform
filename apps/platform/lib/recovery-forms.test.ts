@@ -42,7 +42,7 @@ async function type(name: string, value: string): Promise<void> {
   });
 }
 
-const JOIN_PROPS = { initialChoice: "managed", services: ["managed-website"], preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { INR: { managed: null }, USD: { managed: null } }, confirmsCodes: true, countries: [{ code: "IN", name: "India" }, { code: "AE", name: "United Arab Emirates" }] } as const;
+const JOIN_PROPS = { initialChoice: "managed", services: ["managed-website"], basket: { name: "Managed Website", prices: { INR: null, USD: null } }, preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { INR: { managed: null }, USD: { managed: null } }, confirmsCodes: true, countries: [{ code: "IN", name: "India" }, { code: "AE", name: "United Arab Emirates" }] } as const;
 const codeStep = { otpId: "challenge", emailHint: "o•••@example.test", confirmRequired: true };
 
 /** Picks a state the way a person does: India is the country already chosen, and the state is never filled in for them. */
@@ -88,6 +88,17 @@ it("asks a password reset for an email only, and never offers a code or a mobile
   expect(container.querySelector('input[name="identifier"][type="email"]')).not.toBeNull();
   expect(container.querySelector('input[name="code"]')).toBeNull();
   expect(container.textContent).not.toMatch(/mobile|number|text(ed)?\b|code/i);
+});
+
+it("names the services the link chose and their package price above the details", async () => {
+  await render(createElement(JoinForm, {
+    ...JOIN_PROPS,
+    action: async (): Promise<JoinFormState> => ({ status: "idle" }),
+    services: ["digital-growth", "local-seo-aeo"],
+    basket: { name: "Social Media and Ads and Local SEO + AEO", prices: { INR: "₹24,498 a month + 18% GST", USD: "$297 a month" } },
+  }));
+  expect(container.textContent).toContain("Signing up for Social Media and Ads and Local SEO + AEO · ₹24,498 a month + 18% GST");
+  expect(container.textContent).not.toContain("Managed Website plan");
 });
 
 it("focuses signup details when replacing the plan chooser", async () => {
