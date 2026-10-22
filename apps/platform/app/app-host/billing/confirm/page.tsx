@@ -146,7 +146,11 @@ export default async function TestCheckoutPage({ searchParams }: ConfirmPageProp
     plan === null || discountAmountCents >= netCents ? null : chargedAmountCents(netCents, discountAmountCents, plan.taxRateBasisPoints);
   const terms =
     plan !== null && expected === confirmed.amountCents && plan.currency === confirmed.currency
-      ? describeDiscountedPlanTerms(plan, discountAmountCents === 0 ? null : { amountCents: discountAmountCents }, bundledAddOnNetCents)
+      ? describeDiscountedPlanTerms(
+          plan,
+          discountAmountCents === 0 ? null : { amountCents: discountAmountCents, months: billing.subscription?.discountMonthsLeft ?? null },
+          bundledAddOnNetCents,
+        )
       : null;
 
   return (

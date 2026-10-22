@@ -6,7 +6,7 @@ import { loadBillingDetailsView } from "./billing-details";
 import { getStaffDb } from "./db";
 import { loadMembershipCheckout } from "./membership-checkout";
 import { getMembershipPlan } from "./membership";
-import { findCodeRefusedOnPackage, findLapsedAppliedCode, resolveAppliedDiscount } from "./referrals";
+import { findLapsedAppliedCode, resolveAppliedDiscount } from "./referrals";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@brandbasket/db", () => ({ findBillingState: vi.fn(), isPackageOfferForfeited: vi.fn() }));
@@ -16,7 +16,6 @@ vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./membership", () => ({ getMembershipPlan: vi.fn() }));
 vi.mock("./referrals", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./referrals")>()),
-  findCodeRefusedOnPackage: vi.fn(),
   findLapsedAppliedCode: vi.fn(),
   resolveAppliedDiscount: vi.fn(),
 }));
@@ -41,7 +40,6 @@ beforeEach(() => {
   vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
   vi.mocked(resolveAppliedDiscount).mockResolvedValue(null);
   vi.mocked(findLapsedAppliedCode).mockResolvedValue(null);
-  vi.mocked(findCodeRefusedOnPackage).mockResolvedValue(null);
   vi.mocked(loadBillingDetailsView).mockResolvedValue(null);
 });
 
@@ -74,6 +72,14 @@ describe("loadMembershipCheckout", () => {
 
     await loadMembershipCheckout(customer, "managed", ["managed-website"], NOW);
 
-    expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", listCents: 299_900 }, NOW);
+    expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", netCents: 299_900 }, NOW);
+  });
+
+  it("looks for a code against the package net for a package", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
+
+    await loadMembershipCheckout(customer, "managed", ["managed-website", "digital-growth"], NOW);
+
+    expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", netCents: 1_039_800 }, NOW);
   });
 });

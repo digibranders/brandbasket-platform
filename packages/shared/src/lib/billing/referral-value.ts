@@ -31,6 +31,12 @@ export function describeReferralDiscount(discount: ReferralDiscount, currency: M
   return `${valueWords(discount, currency)} off`;
 }
 
+/** How many paid months a code's discount runs, as a person reads it: "3 months", "1 month", or "No limit" when it has none. */
+export function describeDiscountMonths(months: number | null): string {
+  if (months === null) return "No limit";
+  return months === 1 ? "1 month" : `${months} months`;
+}
+
 /** A referrer's reward: "₹200 a month" or "10% of each payment". */
 export function describeReferralReward(reward: ReferralReward, currency: MoneyCurrency): string {
   return reward.kind === "amount"

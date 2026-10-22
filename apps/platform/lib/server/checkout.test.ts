@@ -249,6 +249,7 @@ describe("startCheckoutFor", () => {
         providerSubscriptionId: expect.stringMatching(/^fake_sub_[0-9a-f]{24}$/),
         referralCodeId: null,
         discountAmountCents: 0,
+        discountMonthsLeft: null,
         bundledAddOns: [WEBSITE_USD_LINE],
         adCreditCents: 0,
         replacing: null,
@@ -327,6 +328,7 @@ describe("startCheckoutFor", () => {
       currency: PLAN.currency,
       affiliateId: null,
       discount: { kind: "amount", amountCents: 1_000 },
+      discountMonths: null,
       active: true,
       expiresAt: null,
       maxRedemptions: null,
@@ -488,6 +490,7 @@ describe("startMembershipCheckoutFor", () => {
     currency: "INR",
     affiliateId: null,
     discount,
+    discountMonths: null,
     active: true,
     expiresAt: null,
     maxRedemptions: null,
@@ -529,6 +532,7 @@ describe("startMembershipCheckoutFor", () => {
       currency: "INR",
       affiliateId: null,
       discount: { kind: "amount", amountCents: 50_000 },
+      discountMonths: null,
       active: true,
       expiresAt: null,
       maxRedemptions: null,
@@ -557,6 +561,7 @@ describe("startMembershipCheckoutFor", () => {
       currency: "INR",
       affiliateId: null,
       discount: { kind: "amount", amountCents: 50_000 },
+      discountMonths: null,
       active: true,
       expiresAt: null,
       maxRedemptions: null,
@@ -705,17 +710,34 @@ describe("startMembershipCheckoutFor", () => {
     expect(openCheckoutSubscription).not.toHaveBeenCalled();
   });
 
-  it("refuses a code on a package of two or more services, opening nothing at the provider", async () => {
+  it("opens a package with a code, pricing it against the package net and freezing its months", async () => {
+    const code = { ...coupon({ kind: "percent", basisPoints: 1_000 }), discountMonths: 3 };
+    vi.mocked(findBusinessReferralCode).mockResolvedValue(code);
+    vi.mocked(findRedeemableReferralCode).mockResolvedValue(code);
+
+    const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "digital-growth"]));
+
+    // The website and Social Media and Ads net ₹10,398 at 20% off; the code takes 10% of that once, ₹1,039.80.
+    expect(charged).toBe(chargedAmountCents(1_039_800, 103_980, 1800));
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 103_980, 1_039_800);
+    expect(openCheckoutSubscription).toHaveBeenCalledWith(
+      { name: "tx2" },
+      expect.objectContaining({ referralCodeId: code.id, discountAmountCents: 103_980, discountMonthsLeft: 3 }),
+    );
+  });
+
+  it("opens all three services with a flat code, which keeps its amount on any basket", async () => {
     const code = coupon({ kind: "amount", amountCents: 50_000 });
     vi.mocked(findBusinessReferralCode).mockResolvedValue(code);
     vi.mocked(findRedeemableReferralCode).mockResolvedValue(code);
 
-    await expect(startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "digital-growth"])).resolves.toEqual({
-      kind: "refused",
-      problem: { message: "A code can only be used on a single service, not on a package.", field: null },
-    });
-    expect(events).toEqual(["tx1:begin", "tx1:commit"]);
-    expect(openCheckoutSubscription).not.toHaveBeenCalled();
+    const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ALL_THREE));
+
+    expect(charged).toBe(chargedAmountCents(2_659_700, 50_000, 1800));
+    expect(openCheckoutSubscription).toHaveBeenCalledWith(
+      { name: "tx2" },
+      expect.objectContaining({ referralCodeId: code.id, discountAmountCents: 50_000, discountMonthsLeft: null }),
+    );
   });
 
   it("prices a code on a single service against that service's line", async () => {
@@ -784,6 +806,7 @@ describe("startReactivationFor", () => {
     currency: "USD",
     affiliateId: null,
     discount: { kind: "amount", amountCents: 500 },
+    discountMonths: null,
     active: true,
     expiresAt: null,
     maxRedemptions: null,

@@ -226,6 +226,7 @@ describe("recordManualFirstPayment", () => {
       providerSubscriptionId: expect.stringMatching(/^manual_sub_[0-9a-f-]{36}$/),
       referralCodeId: null,
       discountAmountCents: 0,
+      discountMonthsLeft: null,
       bundledAddOns: [WEBSITE_USD_LINE],
       replacing: null,
       now: NOW,
@@ -545,6 +546,7 @@ describe("a manual payment on a business that applied a referral code", () => {
     currency: "USD",
     affiliateId: null,
     discount: { kind: "amount", amountCents: 1_125 },
+    discountMonths: 3,
     active: true,
     expiresAt: null,
     maxRedemptions: null,
@@ -563,7 +565,7 @@ describe("a manual payment on a business that applied a referral code", () => {
     await recordManualFirstPayment(MANUAL, NOW);
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       tx,
-      expect.objectContaining({ referralCodeId: "code-1", discountAmountCents: 1_125 }),
+      expect.objectContaining({ referralCodeId: "code-1", discountAmountCents: 1_125, discountMonthsLeft: 3 }),
     );
   });
 

@@ -36,7 +36,7 @@ import {
 import { stateCodeOfIndiaPostName } from "@brandbasket/db/india-states";
 import { addOnById, isMonthlyAddOnId } from "../lib/billing/add-ons";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "../lib/billing/invoice-text";
-import { packageBasisPointsFor, packageOfferNote, percentOf } from "../lib/billing/packages";
+import { packageBasisPointsFor, packageOfferNote, percentOf, shareDiscountAcrossLines } from "../lib/billing/packages";
 import { paymentLabel } from "../lib/billing/payment-method";
 import { planLabel } from "../lib/billing/receipt-title";
 import { PRODUCT_SHORT_NAME } from "../lib/deployment-brand";
@@ -185,6 +185,11 @@ export interface PlanLineNoteInput {
   readonly netAmountCents: number;
   readonly discountAmountCents: number;
   readonly retentionDiscountCents: number;
+  /**
+   * Whether a percentage coupon says its share ("20% off"). False on a line that holds only part of a code's discount: the
+   * share is of the whole basket, so it is not what that line's discount comes to. Defaults to true.
+   */
+  readonly namesShare?: boolean;
 }
 
 /**
@@ -203,6 +208,7 @@ export function planLineNote(input: PlanLineNoteInput): string | null {
   if (coupon !== null && coupon.discountKind !== null && couponCents > 0) {
     const basisPoints = coupon.discountPercentBasisPoints;
     const share =
+      input.namesShare !== false &&
       coupon.discountKind === "percent" &&
       basisPoints !== null &&
       discountCentsFor({ kind: "percent", basisPoints }, input.netAmountCents) === couponCents
@@ -348,10 +354,7 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
       },
     ];
   }
-  const subscription = payment.subscriptionId === null ? null : await findSubscriptionById(tx, payment.subscriptionId);
-  const referralCodeId = subscription?.referralCodeId ?? null;
-  const couponCents = source.discountAmountCents - source.retentionDiscountCents;
-  const coupon = couponCents > 0 && referralCodeId !== null ? await findReferralCodeForInvoice(tx, referralCodeId) : null;
+  const coupon = await couponOf(tx, payment, source);
   const planLine: InvoiceLineInput = {
     description: planLineDescription(source.plan.name),
     detail: planLineDetail(source.monthly, source.periodStart, source.periodEnd),
@@ -371,23 +374,54 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
   if (source.netAmountCents !== 0) return [planLine, ...addOnLines];
   // The plan row costs nothing now that every service is a line: a plan line at 0 says nothing, so it is not printed.
   if (source.discountAmountCents === 0) return addOnLines;
-  // A code is taken on a single-service subscription only (plan 16 Settled 2), so its discount comes off that one line.
-  const [only, ...others] = addOnLines;
-  if (only === undefined || others.length > 0) {
-    throw new Error(`A discount of ${source.discountAmountCents} on payment ${payment.id} needs exactly one service line to come off`);
+  return shareDiscountOver(addOnLines, source, coupon, payment.id);
+}
+
+/**
+ * The referral code a plan payment's discount came from, or null when none took part of it. Read through the payment's own
+ * subscription, so a source cannot name someone else's code.
+ */
+async function couponOf(tx: ScopedTransaction, payment: Payment, source: Extract<InvoiceSource, { kind: "plan" }>): Promise<ReferralCodeForInvoice | null> {
+  const subscription = payment.subscriptionId === null ? null : await findSubscriptionById(tx, payment.subscriptionId);
+  const referralCodeId = subscription?.referralCodeId ?? null;
+  const couponCents = source.discountAmountCents - source.retentionDiscountCents;
+  return couponCents > 0 && referralCodeId !== null ? findReferralCodeForInvoice(tx, referralCodeId) : null;
+}
+
+/**
+ * A code (and a stay offer) is taken once off the whole basket after the package discount, so its discount is shared over the
+ * service lines in proportion to their nets (shareDiscountAcrossLines), the leftover minor units on the largest line, and the
+ * lines still add up to what the payment took. Each line it touches names the code in its note, after the package offer.
+ */
+function shareDiscountOver(
+  lines: readonly InvoiceLineInput[],
+  source: Extract<InvoiceSource, { kind: "plan" }>,
+  coupon: ReferralCodeForInvoice | null,
+  paymentId: string,
+): InvoiceLineInput[] {
+  if (lines.length === 0) {
+    throw new Error(`A discount of ${source.discountAmountCents} on payment ${paymentId} needs a service line to come off`);
   }
-  return [
-    {
-      ...only,
-      note: planLineNote({
-        coupon,
-        netAmountCents: only.unitAmountCents,
-        discountAmountCents: source.discountAmountCents,
-        retentionDiscountCents: source.retentionDiscountCents,
-      }),
-      discountAmountCents: only.discountAmountCents + source.discountAmountCents,
-    },
-  ];
+  const nets = lines.map((line) => line.unitAmountCents - line.discountAmountCents);
+  const couponShares = shareDiscountAcrossLines(nets, source.discountAmountCents - source.retentionDiscountCents);
+  const retentionShares = shareDiscountAcrossLines(nets, source.retentionDiscountCents);
+  return lines.map((line, index) => {
+    const couponCents = couponShares[index] ?? 0;
+    const retentionCents = retentionShares[index] ?? 0;
+    if (couponCents + retentionCents === 0) return line;
+    const discountNote = planLineNote({
+      coupon,
+      netAmountCents: nets[index] ?? 0,
+      discountAmountCents: couponCents + retentionCents,
+      retentionDiscountCents: retentionCents,
+      namesShare: lines.length === 1,
+    });
+    return {
+      ...line,
+      note: [line.note, discountNote].filter((note) => note !== null).join(". ") || null,
+      discountAmountCents: line.discountAmountCents + couponCents + retentionCents,
+    };
+  });
 }
 
 /** An invoice for a payment, and whether this call issued it (false when it had been issued before). */
@@ -468,11 +502,12 @@ export async function issueTaxInvoice(
 }
 
 /** What a plan payment was billed as, in the form kept beside the payment (PaymentInvoiceBasis). */
-function invoiceBasisOf(source: Extract<InvoiceSource, { kind: "plan" }>): PaymentInvoiceBasis {
+function invoiceBasisOf(source: Extract<InvoiceSource, { kind: "plan" }>, coupon: ReferralCodeForInvoice | null): PaymentInvoiceBasis {
   return {
     netAmountCents: source.netAmountCents,
     discountAmountCents: source.discountAmountCents,
     retentionDiscountCents: source.retentionDiscountCents,
+    ...(coupon === null ? {} : { code: coupon.code }),
     lines: (source.bundledAddOns ?? []).map(({ addOn, listAmountCents, offerDiscountAmountCents, taxRateBasisPoints }) => ({
       addOn,
       listAmountCents,
@@ -505,7 +540,9 @@ export async function issueTaxInvoiceSafely(
     provider: payment.provider,
     providerPaymentId: payment.providerPaymentId,
   };
-  if (source.kind === "plan" && isInvoiceablePayment(payment)) await savePaymentInvoiceBasis(tx, payment.id, invoiceBasisOf(source));
+  if (source.kind === "plan" && isInvoiceablePayment(payment)) {
+    await savePaymentInvoiceBasis(tx, payment.id, invoiceBasisOf(source, await couponOf(tx, payment, source)));
+  }
   try {
     const result = await tx.transaction((savepoint) => issueTaxInvoice(savepoint, payment, source, options));
     if (result === null) return null;

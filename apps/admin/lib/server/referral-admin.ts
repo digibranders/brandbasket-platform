@@ -34,6 +34,7 @@ export type ReferralField =
   | "currency"
   | "discountKind"
   | "discountValue"
+  | "discountMonths"
   | "expiresAt"
   | "maxRedemptions"
   | "confirm";
@@ -114,6 +115,20 @@ function readDiscount(formData: FormData, forAffiliate: boolean): Read<ReferralD
     : { ok: true, value: { kind, basisPoints } };
 }
 
+/** The most paid months a discount may run for: ten years, far past any plan anyone would sit on a code for. */
+const MAX_DISCOUNT_MONTHS = 120;
+
+/** The discount length typed: blank is no limit, otherwise a whole number of months from 1 to MAX_DISCOUNT_MONTHS. */
+function readDiscountMonths(raw: string): Read<number | null> {
+  const months = optionalWholeNumber(raw);
+  return months === undefined || (months !== null && (months < 1 || months > MAX_DISCOUNT_MONTHS))
+    ? {
+        ok: false,
+        refusal: refused(`Leave the length blank for no limit, or give a whole number of months from 1 to ${MAX_DISCOUNT_MONTHS}.`, "discountMonths"),
+      }
+    : { ok: true, value: months };
+}
+
 /** A date typed as `YYYY-MM-DD`, read as the end of that day in UTC so the code lasts all of it. */
 function optionalExpiry(raw: string): Date | null | undefined {
   if (raw === "") return null;
@@ -131,11 +146,11 @@ export interface NewReferralCodeInput {
 }
 
 /**
- * Creates a coupon, or a code for an affiliate, from the console's form. A code is used on a single service, never on a
- * package (plan 16 Settled 2), so the discount is checked against the currency's **cheapest service**: a code worth as
- * much as that service would leave nothing for Razorpay to authorise, and that would only be discovered at the worst
- * possible moment, while a member is paying. A percentage is resolved to money first, the same way checkout will resolve
- * it, so a share that rounds to nothing is refused here too.
+ * Creates a coupon, or a code for an affiliate, from the console's form. A code may be used on any basket, so the discount
+ * is checked against the currency's **cheapest service**, the smallest thing it can be used on: a code worth as much as
+ * that service would leave nothing for Razorpay to authorise, and that would only be discovered at the worst possible
+ * moment, while a member is paying. A percentage is resolved to money first, the same way checkout will resolve it, so a
+ * share that rounds to nothing is refused here too. The length in months is blank for no limit.
  *
  * An affiliate on a flat reward is paid in one currency, so their codes must be in it: a payment in another currency
  * could not earn them anything.
@@ -170,7 +185,7 @@ export async function createReferralCodeFor(input: NewReferralCodeInput): Promis
   if (!discountRead.ok) return discountRead.refusal;
   const discount = discountRead.value;
 
-  // A code may be used on any one service, so it is held to the cheapest: it must leave something to charge on each.
+  // A code may be used on any basket, so it is held to the cheapest service: it must leave something to charge on each.
   const cheapest = cheapestServiceListCents(currency);
   if (discount !== null && !isChargeableDiscount(cheapest, discountCentsFor(discount, cheapest))) {
     return refused(
@@ -178,6 +193,9 @@ export async function createReferralCodeFor(input: NewReferralCodeInput): Promis
       "discountValue",
     );
   }
+
+  const monthsRead = readDiscountMonths(text(formData, "discountMonths"));
+  if (!monthsRead.ok) return monthsRead.refusal;
 
   const expiresAt = optionalExpiry(text(formData, "expiresAt"));
   if (expiresAt === undefined) return refused("That expiry date could not be read.", "expiresAt");
@@ -196,6 +214,8 @@ export async function createReferralCodeFor(input: NewReferralCodeInput): Promis
       currency,
       affiliateId,
       discount,
+      // A code that takes nothing off has no length to run for.
+      discountMonths: discount === null ? null : monthsRead.value,
       expiresAt,
       maxRedemptions,
       createdByStaffId: staffUserId,
@@ -258,7 +278,7 @@ export interface ReferralWorth {
   readonly taxRateBasisPoints: number;
 }
 
-/** The lowest list price of any one service in a currency (add-ons.ts): the least a single-service code is used against. */
+/** The lowest list price of any one service in a currency (add-ons.ts): the least any basket a code is used on can cost. */
 export function cheapestServiceListCents(currency: BillingCurrency): number {
   return Math.min(...ADD_ONS.map((service) => service.prices[currency]));
 }

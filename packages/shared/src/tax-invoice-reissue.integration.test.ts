@@ -323,6 +323,39 @@ describe("issueMissingTaxInvoice", () => {
     expect(invoice.totalCents).toBe(payment.amountCents);
   });
 
+  it.each([
+    ["two services", ["managed-website", "digital-growth"] as const],
+    ["three services", ["managed-website", "digital-growth", "local-seo-aeo"] as const],
+  ])("reissues the invoice for a code taken once off %s, shared over the lines to the paisa", async (_name, services_) => {
+    const discount = { kind: "percent", basisPoints: 1_000 } as const;
+    const created = await createReferralCode(dbs.staff.db, {
+      code: "PKGCODE",
+      currency: "INR",
+      affiliateId: null,
+      discount,
+      expiresAt: null,
+      maxRedemptions: null,
+      createdByStaffId: STAFF_USER,
+    });
+    const lines = linesOf(...services_);
+    const netCents = lines.reduce((total, line) => total + line.netAmountCents, 0);
+    const discountAmountCents = discountCentsFor(discount, netCents);
+    const subscription = await openSubscription(lines, { referralCodeId: created.id, discountAmountCents });
+    const payment = await payFirstWithoutPrintableInvoice(subscription, discountAmountCents);
+    // The services, the offer or the code may change after the payment; the invoice is built from what the payment kept.
+    await execSql(dbs.owner, `update subscriptions set discount_amount_cents = 0 where id = '${subscription.id}'`);
+
+    const invoice = await issue(payment.id);
+
+    expect(payment.amountCents).toBe(chargedAmountCents(netCents, discountAmountCents, 1_800));
+    expect(invoice.totalCents).toBe(payment.amountCents);
+    expect(invoice.lines).toHaveLength(services_.length);
+    const codeShares = invoice.lines.map((line, index) => line.discountAmountCents - (lines[index]?.offerDiscountAmountCents ?? 0));
+    expect(codeShares.reduce((total, share) => total + share, 0)).toBe(discountAmountCents);
+    expect(invoice.taxableCents).toBe(netCents - discountAmountCents);
+    expect(invoice.lines.every((line) => line.note?.endsWith("Coupon PKGCODE applied") === true)).toBe(true);
+  });
+
   it("invoices a renewal from the lines it was billed at, a month from the cycle it paid for", async () => {
     const lines = linesOf("managed-website", "digital-growth");
     const subscription = await openSubscription(lines);

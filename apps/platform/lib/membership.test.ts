@@ -1,3 +1,4 @@
+import { discountCentsFor } from "@brandbasket/billing";
 import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { describe, expect, it } from "vitest";
@@ -196,8 +197,23 @@ describe("orderSummary", () => {
     expect(summary).toMatchObject({ discountCents: 30_000, netCents: 269_900, totalCents: chargedAmountCents(299_900, 30_000, 1800) });
   });
 
-  it("refuses a code on a package, and a basket of no service", () => {
-    expect(() => orderSummary({ ...inr, services: ["managed-website", "digital-growth"] }, 30_000)).toThrow(RangeError);
+  it("takes a code off a package once, after the package offer and before GST", () => {
+    // 10% of the ₹10,398 net the website and Social Media and Ads come to at 20% off.
+    const codeCents = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 1_039_800);
+    const summary = orderSummary({ ...inr, services: ["managed-website", "digital-growth"] }, codeCents);
+    expect(summary.offer).toEqual({ label: "Package offer, 20% off", discountCents: 260_000 });
+    expect(summary).toMatchObject({ discountCents: 103_980, netCents: 935_820, totalCents: chargedAmountCents(1_039_800, 103_980, 1800) });
+    expect(summary.totalCents).toBe(1_104_268);
+    expect(summary.gstCents).toBe(1_104_268 - 935_820);
+    expect(summary.adCredit?.cents).toBe(200_000);
+  });
+
+  it("takes a flat code off any basket, three services included", () => {
+    const summary = orderSummary({ ...inr, services: ["managed-website", "digital-growth", "local-seo-aeo"] }, 50_000);
+    expect(summary).toMatchObject({ discountCents: 50_000, netCents: 2_659_700 - 50_000, totalCents: chargedAmountCents(2_659_700, 50_000, 1800) });
+  });
+
+  it("refuses a basket of no service", () => {
     expect(() => orderSummary({ ...inr, services: [] }, 0)).toThrow(RangeError);
   });
 });

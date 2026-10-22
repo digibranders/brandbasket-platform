@@ -72,6 +72,23 @@ describe("discountCentsFor", () => {
     expect(discountCentsFor({ kind: "amount", amountCents: 1_500 }, 6_900)).toBe(1_500);
   });
 
+  it("takes a percentage of a package's net, after the package discount, once", () => {
+    // Website ₹2,999 + Social Media and Ads ₹9,999 at 20% off is ₹10,398 net: 10% of that is ₹1,039.80, not 10% of the ₹12,998 list.
+    expect(discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 1_039_800)).toBe(103_980);
+    // 12.5% of ₹10,398 is ₹1,299.75.
+    expect(discountCentsFor({ kind: "percent", basisPoints: 1_250 }, 1_039_800)).toBe(129_975);
+    // Half a paisa rounds up: 12.5% of ₹27,997.99 is 349,974.875 paise.
+    expect(discountCentsFor({ kind: "percent", basisPoints: 1_250 }, 2_799_799)).toBe(349_975);
+  });
+
+  it("takes a flat amount off a package as it stands, whatever the basket", () => {
+    for (const basketNet of [299_900, 1_039_800, 2_799_800]) {
+      const cents = discountCentsFor({ kind: "amount", amountCents: 50_000 }, basketNet);
+      expect(cents).toBe(50_000);
+      expect(isChargeableDiscount(basketNet, cents)).toBe(true);
+    }
+  });
+
   it("takes a percentage of the plan's pre-tax price", () => {
     // 10% of ₹2,999 is ₹299.90.
     expect(discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 299_900)).toBe(29_990);

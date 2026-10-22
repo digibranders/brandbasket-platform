@@ -99,8 +99,9 @@ function taxRateLabel(taxRateBasisPoints: number): string {
  * The rows of a payment billed as services (PaymentInvoiceBasis), worked out the way the tax invoice is: each service at its
  * list price, the package offer and any code as minus rows, then the GST, and the rows add up to what was taken to the paisa.
  * The GST is what is left of the amount taken after the discounted services, and must agree with the invoice's own rounding
- * (one rounding on the total, splitGst) to within the paisa that round-off absorbs. The code's name is not on this path (a
- * customer's connection cannot read referral codes), so it reads "Code discount". Null when the basis does not describe the
+ * (one rounding on the total, splitGst) to within the paisa that round-off absorbs. The code's name comes from the basis, which
+ * the payment path wrote with it (a customer's connection cannot read referral codes); a payment from before it was kept reads
+ * "Code discount". Null when the basis does not describe the
  * payment, which then prints as a single line.
  */
 function serviceLines(receipt: Receipt, basis: PaymentInvoiceBasis): ReceiptLine[] | null {
@@ -126,7 +127,7 @@ function serviceLines(receipt: Receipt, basis: PaymentInvoiceBasis): ReceiptLine
   return [
     ...services.map((service) => ({ label: addOnById(service.id).title, amount: money(service.listCents) })),
     ...minus(packageOfferNote(packageBasisPoints), offerCents),
-    ...minus("Code discount", codeCents),
+    ...minus(basis.code === undefined ? "Code discount" : `Code ${basis.code}`, codeCents),
     ...minus("Stay offer", basis.retentionDiscountCents),
     ...(taxCents > 0 ? [{ label: taxRateLabel(rate), amount: money(taxCents) }] : []),
   ];

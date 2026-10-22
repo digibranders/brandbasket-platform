@@ -39,7 +39,7 @@ import { getAppDb, getStaffDb } from "./db";
 import { missingProblem, readOnboardingSnapshot, type StepProblem } from "./onboarding";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
-import { codeBasisFor, discountFrom, PACKAGE_TAKES_NO_CODE, type AppliedDiscount } from "./referrals";
+import { discountFrom, type AppliedDiscount } from "./referrals";
 import { ensureDiscountPlan } from "./discount-plans";
 
 /** A stuck button or a script must not be able to open subscriptions at the provider without limit. */
@@ -110,8 +110,7 @@ interface PlannedCheckout {
 type DecisionStep =
   | { readonly kind: "planned"; readonly planned: PlannedCheckout }
   | { readonly kind: "no-plan" }
-  | { readonly kind: "no-services" }
-  | { readonly kind: "code-on-package" };
+  | { readonly kind: "no-services" };
 
 function sameSubscriptionState(seen: Subscription | null, now: Subscription | null): boolean {
   if (seen === null || now === null) return seen === now;
@@ -208,6 +207,7 @@ async function openNewCheckout(
         providerSubscriptionId: started.providerSubscriptionId,
         referralCodeId: discount?.codeId ?? null,
         discountAmountCents: discount?.amountCents ?? 0,
+        discountMonthsLeft: discount?.months ?? null,
         bundledAddOns: planned.bundle,
         adCreditCents: planned.adCreditCents,
         replacing: replacing?.id ?? null,
@@ -341,7 +341,7 @@ function basketKey(addOnIds: readonly string[], netCents: number, adCreditCents:
  * nothing is refused before anything is read (a lapsed business may pass none, as its basket is not chosen, and is checked
  * under the lock). A business that has paid before and lapsed is reactivating and buys the basket it lapsed with instead
  * (loadReactivationBasket), whatever `chosen` says, unless it cancelled the plan itself: then it buys `chosen`, at list.
- * A code is priced against the one service it is used on; a package of two or more refuses one (owner, plan 16 Settled 2).
+ * A code is priced against the basket's package net, so it comes off once, after the package offer.
  */
 async function openPlanCheckout(
   customer: GrantedCustomer,
@@ -375,9 +375,6 @@ async function openPlanCheckout(
     // The client's own cancel ended the package: they chose their services again. A lapse comes back as it was.
     const services = reactivation === null || reactivation.cancelled ? chosen : reactivation.services;
     if (services.length === 0) return { kind: "no-services" };
-    if (redeemable !== null && services.length > 1) return { kind: "code-on-package" };
-    const basis = codeBasisFor(services, plan.currency);
-    const discount = redeemable === null || basis === null ? null : discountFrom(redeemable, basis);
     const forfeited = reactivation?.forfeited ?? (await isPackageOfferForfeited(tx, tenant.businessId));
     const bundle: readonly NewBundledAddOn[] = packageLines({ services, forfeited }, plan.currency).map((line) => ({
       addOn: line.addOn,
@@ -386,6 +383,8 @@ async function openPlanCheckout(
       netAmountCents: line.netCents,
       taxRateBasisPoints: plan.taxRateBasisPoints,
     }));
+    // The code comes off the basket's package net, once: the lines just priced, less their package discount.
+    const discount = redeemable === null ? null : discountFrom(redeemable, { currency: plan.currency, netCents: bundledNetCents(bundle) });
     // Ad credit is for services bought together at the first purchase. A reactivation grants none and keeps what the lapsed
     // subscription had.
     const adCreditCents = reactivation?.adCreditCents ?? adCreditCentsAtCheckout({ services, forfeited, hasEverPaid: false }, plan.currency);
@@ -407,7 +406,6 @@ async function openPlanCheckout(
   });
   if (first.kind === "no-plan") return refused(NO_PLAN);
   if (first.kind === "no-services") return refused(NO_SERVICES);
-  if (first.kind === "code-on-package") return refused(PACKAGE_TAKES_NO_CODE);
 
   const { planned } = first;
   const { decision } = planned;

@@ -9,7 +9,6 @@ import { ReferralCodeForm } from "@/components/panel/referral-code-form";
 import { isWaitingOnPayment, unsettledCheckout, type MembershipPaymentNotice } from "@/lib/membership";
 import type { GrantedCustomer } from "@/lib/server/customer-access";
 import type { MembershipCheckoutView } from "@/lib/server/membership-checkout";
-import { PACKAGE_TAKES_NO_CODE } from "@/lib/server/referrals";
 import { applyMembershipCode, removeMembershipCode } from "@/app/app-host/(protected)/plan/actions";
 
 interface MembershipCheckoutProps {
@@ -27,7 +26,7 @@ interface MembershipCheckoutProps {
  * for the same plan would only be refused.
  */
 export async function MembershipCheckout({ view, notice, billing }: MembershipCheckoutProps): Promise<ReactElement> {
-  const { plan, discount, lapsedCode, refusedCode, billingDetails } = view;
+  const { plan, discount, lapsedCode, billingDetails } = view;
   // Only an account with a checkout open can be waiting to hear about a payment: the address alone is not believed.
   const checkout = unsettledCheckout(billing.subscription);
   const waiting = checkout !== null && isWaitingOnPayment(billing.subscription, notice);
@@ -70,7 +69,6 @@ export async function MembershipCheckout({ view, notice, billing }: MembershipCh
         currency={plan.currency}
         label="Have a code?"
         lapsedCode={lapsedCode}
-        refusedCode={refusedCode === null ? null : { code: refusedCode, reason: PACKAGE_TAKES_NO_CODE }}
         compact
       />
       {billingDetails === null ? null : <BillingDetails view={billingDetails} variant="checkout" />}
