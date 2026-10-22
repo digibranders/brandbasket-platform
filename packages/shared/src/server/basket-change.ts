@@ -110,9 +110,10 @@ function totalNetCents(lines: readonly RepricedLine[]): number {
 
 /**
  * Where the basket's lines should go from the next bill when they are all priced at the package their set earns: the moves
- * that are not already so, the sum the provider is told, and how many lines are staying.
+ * that are not already so, the sum the provider is told, and how many lines are staying. The webhook uses it to recognise a
+ * renewal at the amount the provider was told when the database never recorded the move.
  */
-function packageMove(rows: readonly BundledAddOn[], forfeited: boolean): { readonly moves: readonly PendingOfferDiscount[]; readonly netCents: number; readonly staying: number } {
+export function packageMove(rows: readonly BundledAddOn[], forfeited: boolean): { readonly moves: readonly PendingOfferDiscount[]; readonly netCents: number; readonly staying: number } {
   const staying = stayingLines(rows);
   const targets = repriced(staying, forfeited);
   const moves = targets.flatMap((target): PendingOfferDiscount[] => {

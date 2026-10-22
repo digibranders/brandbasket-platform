@@ -782,8 +782,8 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     it("accepts the renewal at the lower amount, invoices only what stays, and finishes the removal", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(WITH_REMOVAL as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
-      const staying = row("advertising", null);
-      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("social-media", new Date("2026-10-02T00:00:00.000Z")), staying] as never);
+      const staying = row("local-seo-aeo", null);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("digital-growth", new Date("2026-10-02T00:00:00.000Z")), staying] as never);
 
       await handleRazorpayWebhookEvent(chargedAt(LOWER_TOTAL));
 
@@ -798,7 +798,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     it("still accepts the old amount if the provider had not moved yet, flags the payment for staff, without finishing the removal", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(WITH_REMOVAL as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
-      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("social-media", new Date("2026-10-02T00:00:00.000Z")), row("advertising", null)] as never);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("digital-growth", new Date("2026-10-02T00:00:00.000Z")), row("local-seo-aeo", null)] as never);
 
       await handleRazorpayWebhookEvent(chargedAt(OLD_TOTAL));
 
@@ -815,6 +815,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     it("refuses an amount that is neither", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(WITH_REMOVAL as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("digital-growth", new Date("2026-10-02T00:00:00.000Z")), row("local-seo-aeo", null)] as never);
 
       await handleRazorpayWebhookEvent(chargedAt(LOWER_TOTAL - 1));
 

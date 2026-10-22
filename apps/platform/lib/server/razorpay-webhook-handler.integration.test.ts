@@ -114,8 +114,8 @@ async function paidSubscription(services: readonly NewBundledAddOn[], options: {
   return paid;
 }
 
-/** The customer adds a service, pays its charge for the rest of the month, and the provider is told. */
-async function addAndPay(addOn: Parameters<typeof startAddOn>[1]["addOn"]): Promise<void> {
+/** The customer adds a service and pays its charge for the rest of the month; the provider has not been told yet. */
+async function addAndPayWithoutProviderStep(addOn: Parameters<typeof startAddOn>[1]["addOn"]): Promise<string> {
   const started = await startAddOn(deps(), { businessId, addOn, staffId: null, now: FIFTH_NOV });
   if (started.kind !== "pay") throw new Error(`Expected a charge, got ${started.kind}`);
   const charge = await dbs().staff.db.query.charges.findFirst({ where: (table, { eq }) => eq(table.id, started.chargeId) });
@@ -132,7 +132,13 @@ async function addAndPay(addOn: Parameters<typeof startAddOn>[1]["addOn"]): Prom
       now: FIFTH_NOV,
     }),
   );
-  expect(await finishAddOnAfterPayment(deps(), { businessId, chargeId: started.chargeId, now: FIFTH_NOV })).toEqual({ kind: "scheduled" });
+  return started.chargeId;
+}
+
+/** The customer adds a service, pays its charge for the rest of the month, and the provider is told. */
+async function addAndPay(addOn: Parameters<typeof startAddOn>[1]["addOn"]): Promise<void> {
+  const chargeId = await addAndPayWithoutProviderStep(addOn);
+  expect(await finishAddOnAfterPayment(deps(), { businessId, chargeId, now: FIFTH_NOV })).toEqual({ kind: "scheduled" });
 }
 
 /** Razorpay takes the monthly charge on the cycle date. */
@@ -221,6 +227,68 @@ describe("a renewal after a service was added", () => {
     const { invoice } = await renewalInvoice();
     expect(invoice.totalCents).toBe(1_226_964);
     expect(await findSubscriptionById(dbs().staff.db, subscription.id)).toMatchObject({ discountAmountCents: 0, retentionDiscountCents: 0 });
+  });
+});
+
+describe("a renewal at the amount the provider was told, when the database never recorded the move", () => {
+  // The provider is moved first and the lines are recorded after it agrees; a failure in between leaves the provider on the
+  // package price while the subscription still holds the amount worked out when the service was paid for.
+
+  it("is accepted at the package price when a service was added to a package, and the lines move with it", async () => {
+    const subscription = await paidSubscription(linesOf("managed-website", "digital-growth"));
+    await addAndPayWithoutProviderStep("local-seo-aeo");
+
+    await renew(3_138_446);
+
+    const { payment, invoice } = await renewalInvoice();
+    expect(payment).toMatchObject({ amountCents: 3_138_446, attentionReason: null });
+    expect(invoice.totalCents).toBe(3_138_446);
+    expect(invoice.lines.map((line) => [line.description, line.discountAmountCents])).toEqual([
+      ["Managed Website", 89_970],
+      ["Social Media and Ads", 299_970],
+      ["Local SEO + AEO", 750_060],
+    ]);
+    expect(await findSubscriptionById(dbs().staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 2_659_700, pendingBundledAddOnNetCents: null, paidThroughAt: NEXT_RENEWAL });
+    const rows = await findBundledAddOnsForSubscription(dbs().staff.db, subscription.id);
+    expect(rows.map((row) => [row.addOn, row.netAmountCents, row.pendingOfferDiscountAmountCents])).toEqual([
+      ["managed-website", 209_930, null],
+      ["digital-growth", 699_930, null],
+      ["local-seo-aeo", 1_749_840, null],
+    ]);
+  });
+
+  it("is accepted for a coded single service that took a second service, whose code discount ended with the add", async () => {
+    await dbs().owner.db.insert(users).values({ id: "staff-code", name: "Staff", email: "staff-code@example.test", emailVerified: true });
+    const code = await createReferralCode(dbs().staff.db, {
+      code: "ASHA",
+      currency: "INR",
+      affiliateId: null,
+      discount: { kind: "amount", amountCents: 30_000 },
+      expiresAt: null,
+      maxRedemptions: null,
+      createdByStaffId: "staff-code",
+    });
+    const subscription = await paidSubscription(linesOf("digital-growth"), { referralCodeId: code.id, discountAmountCents: 30_000 });
+    await addAndPayWithoutProviderStep("local-seo-aeo");
+
+    await renew(2_890_764);
+
+    const { payment, invoice } = await renewalInvoice();
+    expect(payment).toMatchObject({ amountCents: 2_890_764, attentionReason: null });
+    expect(invoice.totalCents).toBe(2_890_764);
+    expect(await findSubscriptionById(dbs().staff.db, subscription.id)).toMatchObject({ discountAmountCents: 0, bundledAddOnNetCents: 2_449_800, pendingBundledAddOnNetCents: null });
+  });
+
+  it("still refuses an amount that is neither the pending one nor the one the provider was told", async () => {
+    const subscription = await paidSubscription(linesOf("managed-website", "digital-growth"));
+    await addAndPayWithoutProviderStep("local-seo-aeo");
+
+    await renew(3_138_447);
+
+    const payment = await findPaymentByProviderId(dbs().staff.db, "razorpay", "pay_renewal");
+    expect(payment).toMatchObject({ attentionReason: "amount_mismatch" });
+    expect(await findTaxInvoiceByPaymentId(dbs().staff.db, payment?.id ?? "")).toBeNull();
+    expect(await findSubscriptionById(dbs().staff.db, subscription.id)).toMatchObject({ bundledAddOnNetCents: 1_039_800, paidThroughAt: subscription.paidThroughAt });
   });
 });
 
