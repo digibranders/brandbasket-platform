@@ -21,7 +21,8 @@ import {
   type Receipt,
   type TaxInvoice,
 } from "@brandbasket/db";
-import { reactivationNetCents } from "@brandbasket/shared/lib/billing/bundle";
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { reactivationNetCents, readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { requireCustomerAccess, type GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
@@ -220,13 +221,38 @@ export async function findReactivationPlan(customer: Pick<GrantedCustomer, "bill
   return findActivePlan(getStaffDb(), billing.plan.currency, billing.tier);
 }
 
+/** What Billing shows a lapsed customer about coming back. */
+export interface ReactivationView {
+  /** The customer cancelled the plan themselves: they choose their services again, each at its own price. */
+  readonly cancelled: boolean;
+  /** The services the payment is for: the ones chosen when `cancelled` (the lapsed ones until they choose), else the lapsed basket. */
+  readonly services: readonly MonthlyAddOnId[];
+  /** What a month of them costs before GST. */
+  readonly netCents: number;
+}
+
 /**
- * What a month of the basket a lapsed customer reactivates costs before GST: the services they lapsed with at the offer
- * they earn, from the same basket the checkout reopens (loadReactivationBasket), so the price on Billing is the one charged.
- * Null for a customer who has not lapsed, or whose currency has no plan.
+ * What a month of the basket a lapsed customer reactivates costs before GST, from the same basket the checkout reopens
+ * (loadReactivationBasket), so the price on Billing is the one charged. A customer who cancelled themselves chooses again:
+ * `requested` (what the page names) is priced at list instead, and only catalogue services count; with none left, their
+ * previous ones are shown. Null for a customer who has not lapsed, or whose currency has no plan.
  */
-export async function findReactivationNetCents(customer: Pick<GrantedCustomer, "tenant" | "billing">): Promise<number | null> {
+export async function findReactivation(
+  customer: Pick<GrantedCustomer, "tenant" | "billing">,
+  requested: readonly string[] = [],
+): Promise<ReactivationView | null> {
   const { billing, tenant } = customer;
   if (billing.status !== "lapsed" || billing.plan === null) return null;
-  return reactivationNetCents(await loadReactivationBasket(getStaffDb(), tenant.businessId), billing.plan.currency);
+  const basket = await loadReactivationBasket(getStaffDb(), tenant.businessId);
+  const chosen = basket.cancelled ? readBundleSelection(requested) : [];
+  const priced = chosen.length === 0 ? basket : { ...basket, services: chosen };
+  return { cancelled: basket.cancelled, services: priced.services, netCents: reactivationNetCents(priced, billing.plan.currency) };
+}
+
+/** What a month of the lapsed customer's reactivation costs before GST (findReactivation), or null. */
+export async function findReactivationNetCents(
+  customer: Pick<GrantedCustomer, "tenant" | "billing">,
+  requested: readonly string[] = [],
+): Promise<number | null> {
+  return (await findReactivation(customer, requested))?.netCents ?? null;
 }

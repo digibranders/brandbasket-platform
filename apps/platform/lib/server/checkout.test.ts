@@ -898,22 +898,67 @@ describe("startReactivationFor", () => {
       );
     });
 
-    it("starts a cancelled subscription fresh: every service at list, no ad credit, the package offer gone for good", async () => {
+    it("lets a customer who cancelled choose their services again: only those, each at list, no ad credit, the package offer gone for good", async () => {
       lapsedWith(["managed-website", "digital-growth", "local-seo-aeo"], { status: "cancelled", cancelRequestedAt: AGO, adCreditCents: 6_000 });
+      const started = vi.spyOn(provider, "startCheckout");
+
+      redirectUrl(await startReactivationFor(lapsedCustomer, NOW, ["managed-website", "local-seo-aeo"]));
+
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        { name: "tx2" },
+        expect.objectContaining({
+          bundledAddOns: [usdLine("managed-website", 7_500, 0), usdLine("local-seo-aeo", 35_000, 0)],
+          adCreditCents: 0,
+          replacing: null,
+        }),
+      );
+      expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 42_500 }));
+      // Written with the checkout it belongs to, under the second transaction's lock, not before the decision.
+      expect(markPackageOfferForfeited).toHaveBeenCalledWith({ name: "tx2" }, BUSINESS_ID, NOW);
+      expect(vi.mocked(markPackageOfferForfeited).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(openCheckoutSubscription).mock.invocationCallOrder[0] ?? 0);
+    });
+
+    it("refuses a customer who cancelled and chose no service, opening nothing at the provider", async () => {
+      lapsedWith(["managed-website", "digital-growth"], { status: "cancelled", cancelRequestedAt: AGO, adCreditCents: 2_500 });
+
+      await expect(startReactivationFor(lapsedCustomer, NOW, [])).resolves.toEqual({
+        kind: "refused",
+        problem: { message: "Choose at least one service to continue.", field: null },
+      });
+
+      expect(openCheckoutSubscription).not.toHaveBeenCalled();
+      expect(markPackageOfferForfeited).not.toHaveBeenCalled();
+      expect(events).not.toContain("provider:start");
+    });
+
+    it("ignores the services posted by a customer whose plan lapsed without their asking: the basket comes back as it was", async () => {
+      lapsedWith(["managed-website", "digital-growth", "local-seo-aeo"], { adCreditCents: 6_000 });
+
+      redirectUrl(await startReactivationFor(lapsedCustomer, NOW, ["local-seo-aeo"]));
+
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        { name: "tx2" },
+        expect.objectContaining({
+          bundledAddOns: [usdLine("managed-website", 7_500, 2_250), usdLine("digital-growth", 7_500, 2_250), usdLine("local-seo-aeo", 35_000, 10_500)],
+          adCreditCents: 6_000,
+        }),
+      );
+    });
+
+    it("treats a mandate the provider revoked, with no cancel request, as a lapse: package price and ad credit kept, the offer not forfeited", async () => {
+      lapsedWith(["managed-website", "digital-growth", "local-seo-aeo"], { status: "cancelled", adCreditCents: 6_000 });
 
       redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
 
       expect(openCheckoutSubscription).toHaveBeenCalledWith(
         { name: "tx2" },
         expect.objectContaining({
-          bundledAddOns: [usdLine("managed-website", 7_500, 0), usdLine("digital-growth", 7_500, 0), usdLine("local-seo-aeo", 35_000, 0)],
-          adCreditCents: 0,
+          bundledAddOns: [usdLine("managed-website", 7_500, 2_250), usdLine("digital-growth", 7_500, 2_250), usdLine("local-seo-aeo", 35_000, 10_500)],
+          adCreditCents: 6_000,
           replacing: null,
         }),
       );
-      // Written with the checkout it belongs to, under the second transaction's lock, not before the decision.
-      expect(markPackageOfferForfeited).toHaveBeenCalledWith({ name: "tx2" }, BUSINESS_ID, NOW);
-      expect(vi.mocked(markPackageOfferForfeited).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(openCheckoutSubscription).mock.invocationCallOrder[0] ?? 0);
+      expect(markPackageOfferForfeited).not.toHaveBeenCalled();
     });
 
     it("does not end the package offer of a cancelled subscription when the checkout is not opened", async () => {

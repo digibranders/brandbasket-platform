@@ -110,6 +110,7 @@ interface PlannedCheckout {
 type DecisionStep =
   | { readonly kind: "planned"; readonly planned: PlannedCheckout }
   | { readonly kind: "no-plan" }
+  | { readonly kind: "no-services" }
   | { readonly kind: "code-on-package" };
 
 function sameSubscriptionState(seen: Subscription | null, now: Subscription | null): boolean {
@@ -301,19 +302,21 @@ export async function startMembershipCheckoutFor(
 
 /**
  * Reactivate on Billing (docs/superpowers/specs/2026-10-09-reactivation-design.md): a business that paid before and has
- * lapsed opens a checkout for the basket it lapsed with (loadReactivationBasket), with no coupon, and its lapsed
- * subscription is replaced.
+ * lapsed opens a checkout, with no coupon, and its lapsed subscription is replaced. A lapse (a failed payment, a revoked
+ * mandate) reopens the basket it lapsed with (loadReactivationBasket) and ignores `chosen`. A customer who cancelled the plan
+ * themselves chooses their services again: `chosen`, every one at its own price (docs/plans/18-platform-owner-decisions.md,
+ * decision 6); an empty or unknown set is refused.
  * Checked on the server, whatever the page showed: the same rate limit as any checkout, then that the business really
  * has lapsed. A paid-up one is sent to Billing, and one that never paid has nothing to restart. Its project is live,
  * so there is no onboarding to check.
  */
-export async function startReactivationFor(customer: GrantedCustomer, now: Date): Promise<CheckoutOutcome> {
+export async function startReactivationFor(customer: GrantedCustomer, now: Date, chosen: readonly MonthlyAddOnId[] = []): Promise<CheckoutOutcome> {
   const { tenant, billing } = customer;
   const limit = await consumeRateLimit(getAppDb(), `checkout:business:${tenant.businessId}`, CHECKOUT_RATE_LIMIT);
   if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
   if (billing.status === "paid") return { kind: "redirect", url: REACTIVATE_HREF };
   if (billing.status !== "lapsed") return refused(NOTHING_TO_PAY_FOR);
-  return openPlanCheckout(customer, now, REACTIVATE_HREF, null, WEBSITE_ALONE);
+  return openPlanCheckout(customer, now, REACTIVATE_HREF, null, readBundleSelection(chosen));
 }
 
 /**
@@ -335,9 +338,10 @@ function basketKey(addOnIds: readonly string[], netCents: number, adCreditCents:
  *
  * `tier` is the plan being bought, or null for a business that is already on one (a website client paying on Check and
  * send), which pays for the plan its billing state names. `chosen` is the basket bought, never empty: a checkout for
- * nothing is refused before anything is read. A business that has paid before is reactivating and buys the basket it
- * lapsed with instead (loadReactivationBasket), whatever `chosen` says. A code is priced against the one service it is
- * used on; a package of two or more refuses one (owner, plan 16 Settled 2).
+ * nothing is refused before anything is read (a lapsed business may pass none, as its basket is not chosen, and is checked
+ * under the lock). A business that has paid before and lapsed is reactivating and buys the basket it lapsed with instead
+ * (loadReactivationBasket), whatever `chosen` says, unless it cancelled the plan itself: then it buys `chosen`, at list.
+ * A code is priced against the one service it is used on; a package of two or more refuses one (owner, plan 16 Settled 2).
  */
 async function openPlanCheckout(
   customer: GrantedCustomer,
@@ -346,7 +350,7 @@ async function openPlanCheckout(
   tier: PlanTier | null,
   chosen: readonly MonthlyAddOnId[],
 ): Promise<CheckoutOutcome> {
-  if (chosen.length === 0) return refused(NO_SERVICES);
+  if (chosen.length === 0 && customer.billing.status !== "lapsed") return refused(NO_SERVICES);
   const { tenant } = customer;
   const provider = getBillingProvider();
   const first = await getStaffDb().transaction(async (tx): Promise<DecisionStep> => {
@@ -368,7 +372,9 @@ async function openPlanCheckout(
     // The plan row is the terms at a price of 0: every service, the website included, is a line. A business that has paid
     // before is reactivating: the basket it lapsed with, read before the lapsed subscription is replaced and ends its lines.
     const reactivation = state.hasEverPaid ? await loadReactivationBasket(tx, tenant.businessId) : null;
-    const services = reactivation?.services ?? chosen;
+    // The client's own cancel ended the package: they chose their services again. A lapse comes back as it was.
+    const services = reactivation === null || reactivation.cancelled ? chosen : reactivation.services;
+    if (services.length === 0) return { kind: "no-services" };
     if (redeemable !== null && services.length > 1) return { kind: "code-on-package" };
     const basis = codeBasisFor(services, plan.currency);
     const discount = redeemable === null || basis === null ? null : discountFrom(redeemable, basis);
@@ -400,6 +406,7 @@ async function openPlanCheckout(
     return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle, adCreditCents, reactivation } };
   });
   if (first.kind === "no-plan") return refused(NO_PLAN);
+  if (first.kind === "no-services") return refused(NO_SERVICES);
   if (first.kind === "code-on-package") return refused(PACKAGE_TAKES_NO_CODE);
 
   const { planned } = first;

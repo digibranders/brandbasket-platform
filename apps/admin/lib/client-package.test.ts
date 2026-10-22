@@ -59,7 +59,9 @@ describe("clientPackageFacts", () => {
       clientPackageFacts({ lines: WEBSITE_AND_SOCIAL, subscription: { ...SUBSCRIPTION, ...subscription }, currency: "INR", forfeitedAt: null }).adCredit;
     expect(facts({ status: "cancelled", activatedAt: null })).toBe("None");
     expect(facts({ activatedAt: null })).toBe("None");
-    expect(facts({ cancelRequestedAt: new Date("2026-11-01T00:00:00.000Z") })).toBe("None");
+    // A client who asked to close keeps the credit to the end of the month they paid for; the provider's cancel then ends it.
+    expect(facts({ cancelRequestedAt: new Date("2026-11-01T00:00:00.000Z") })).toBe("₹2,000 a month");
+    expect(facts({ cancelRequestedAt: new Date("2026-11-01T00:00:00.000Z"), status: "cancelled" })).toBe("None");
     expect(facts({ status: "inactive" })).toBe("None");
     expect(facts({ status: "past_due" })).toBe("₹2,000 a month");
   });
