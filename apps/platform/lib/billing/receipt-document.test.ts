@@ -84,7 +84,7 @@ describe("receiptDocument", () => {
       "Thane West, Maharashtra 400607, India",
       "GSTIN 27AAICD9268J1Z0",
       "CIN U72900MH2021PTC372344",
-      "hello@brandbasket.in",
+      "support@brandbasket.in",
     ]);
   });
 
@@ -186,7 +186,7 @@ describe("receiptDocument under Brandbasket", () => {
     const doc = receiptDocument(receipt(), { businessName: "Chennai Cafe", email: "owner@chennaicafe.in" }, BRAND);
     expect(doc.fileName).toBe("brandbasket-receipt-007.pdf");
     expect(doc.from[0]).toBe("Brandbasket");
-    expect(doc.note).toContain("hello@brandbasket.in");
+    expect(doc.note).toContain("support@brandbasket.in");
     expect([...doc.from, doc.note, doc.fileName].join(" ")).not.toMatch(/first\s?fold/i);
   });
 });

@@ -39,7 +39,7 @@ const invoice: TaxInvoice = {
     cin: "U72900MH2021PTC372344",
     addressLines: ["Office No. 2617, 26th Floor, Solus Building,", "Hiranandani Estate, Ghodbunder Road,", "Thane West, Maharashtra 400607, India"],
     stateCode: "mh",
-    email: "support@brandbasket.io",
+    email: "support@brandbasket.in",
     phone: "+91 789 789 6607",
   },
   recipient: {
@@ -211,7 +211,7 @@ describe("renderTaxInvoicesPdf with the customer's mobile", () => {
 
 describe("renderTaxInvoicesPdf with a letterhead and contact line of its own", () => {
   const letterhead = { paths: ["M0 0L10 0L10 10L0 10Z"], height: 10, colorHex: "#0C1E2E" } as const;
-  const contact = { email: "hello@brandbasket.in", website: "https://brandbasket.in" } as const;
+  const contact = { email: "support@brandbasket.in", website: "https://brandbasket.in" } as const;
 
   it("draws the given letterhead and contact line, still on one page", async () => {
     const bytes = await renderTaxInvoicesPdf([invoice], { brandName: "Brandbasket", letterhead, contact });

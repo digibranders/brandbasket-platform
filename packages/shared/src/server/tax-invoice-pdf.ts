@@ -31,19 +31,13 @@ const RIGHT_COLUMN = RIGHT - 74 * MM;
 /** The facts row's three columns: the template's grid of 1.3fr 1fr 1.2fr with 4 mm gaps, left of the right column. */
 const FACT_FR = (RIGHT_COLUMN - LEFT - 8 * MM) / 3.5;
 const FACT_COLUMNS = [LEFT, LEFT + 1.3 * FACT_FR + 4 * MM, LEFT + 2.3 * FACT_FR + 8 * MM] as const;
-/** Where the declaration starts: nothing else may be drawn below this line. */
-const FOOTER_TOP = BOTTOM + 86;
+/** Above the page number and the contact line: nothing else may be drawn below this line. */
+const FOOTER_TOP = BOTTOM + 44;
 
 // Ink on white, so the invoice prints cleanly in black and white; the logo is the only colour. The website's ink tokens.
 export const INK = rgb(0x15 / 255, 0x16 / 255, 0x1a / 255);
 export const INK_SOFT = rgb(0x4e / 255, 0x50 / 255, 0x57 / 255);
 export const RULE = rgb(0xe3 / 255, 0xe0 / 255, 0xd9 / 255);
-
-/** Only what Rule 46 asks for: (p) reverse charge, and (q) no signature on an electronic invoice. Gate 5: the CA confirms this wording. */
-export const DECLARATION_LINES = [
-  "Tax is not payable on reverse charge.",
-  "This is a computer generated invoice and does not need a signature.",
-] as const;
 
 interface Fonts {
   readonly regular: PDFFont;
@@ -216,6 +210,8 @@ function facts(page: PDFPage, invoice: TaxInvoice, top: number, fonts: Fonts): n
     label(page, name, x, top - 16, fonts);
     text(page, value, x, top - 31.7, fonts.semibold, 9.6);
   });
+  // Rule 46(p): every invoice says whether tax is payable on reverse charge. Ours never is.
+  text(page, "Reverse charge: No", FACT_COLUMNS[2], top - 46, fonts.regular, 7.8, INK_SOFT);
 
   const inner = RIGHT - 3 * MM;
   const badgeText = "PAID";
@@ -494,19 +490,10 @@ function settle(page: PDFPage, invoice: TaxInvoice, top: number, fonts: Fonts): 
   rupees(page, invoice.totalCents, RIGHT, r, fonts.bold, 14);
 }
 
-/** The contact line on every page, and the declaration above it on the invoice's last page. */
-function footer(page: PDFPage, doc: PDFDocument, fonts: Fonts, withDeclaration: boolean, options: TaxInvoiceRenderOptions): void {
+/** The contact line on every page. */
+function footer(page: PDFPage, doc: PDFDocument, fonts: Fonts, options: TaxInvoiceRenderOptions): void {
   const here = businessDetails;
   const contact = options.contact ?? { email: here.email, website: here.website };
-  if (withDeclaration) {
-    let y = BOTTOM + 78.5;
-    label(page, "Declaration", LEFT, y, fonts);
-    y -= 15.8;
-    DECLARATION_LINES.forEach((line, index) => {
-      if (index > 0) y -= 13.7;
-      text(page, line, LEFT, y, fonts.regular, FINE_PRINT, INK_SOFT);
-    });
-  }
   const ruleY = BOTTOM + 22.3;
   page.drawLine({ start: { x: LEFT, y: ruleY }, end: { x: RIGHT, y: ruleY }, thickness: HAIRLINE, color: RULE });
   const baseline = BOTTOM + 6.4;
@@ -560,7 +547,7 @@ function drawInvoice(doc: PDFDocument, invoice: TaxInvoice, fonts: Fonts, option
   }
   settle(page, invoice, y, fonts);
   pages.forEach((each, index) => {
-    footer(each, doc, fonts, index === pages.length - 1, options);
+    footer(each, doc, fonts, options);
     if (pages.length > 1) spaced(each, `Page ${index + 1} of ${pages.length}`, RIGHT, BOTTOM + 30, fonts.semibold, 7.4, 0.08, INK_SOFT, "right");
   });
 }

@@ -20,9 +20,9 @@ describe("what customers read", () => {
     expect(businessDetails).toMatchObject({
       legalName: "Digibranders Private Limited",
       tradeName: "Brandbasket",
-      email: "hello@brandbasket.in",
+      email: "support@brandbasket.in",
       website: "https://brandbasket.in",
     });
-    expect(siteConfig).toMatchObject({ name: "Brandbasket", email: "hello@brandbasket.in", url: "https://brandbasket.in" });
+    expect(siteConfig).toMatchObject({ name: "Brandbasket", email: "support@brandbasket.in", url: "https://brandbasket.in" });
   });
 });

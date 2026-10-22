@@ -86,7 +86,7 @@ export function paymentReceivedEmail(input: PaymentReceivedInput): EmailMessage 
   const nextDetail =
     input.nextPayment === null ? null : `${money(input.nextPayment.amountCents, input.currency)} on ${longDate(input.nextPayment.dueOn)}.`;
   const next = nextDetail === null ? null : `Your next payment is ${nextDetail}`;
-  const help = "Questions? Reply to this email or write to hello@brandbasket.in.";
+  const help = "Questions? Reply to this email or write to support@brandbasket.in.";
 
   const bodyText = [
     subject,
@@ -125,7 +125,7 @@ export function paymentReceivedEmail(input: PaymentReceivedInput): EmailMessage 
     "</table></td></tr>",
     `<tr><td style="padding:28px 0 32px"><a href="${escapeHtml(invoiceUrl)}" style="display:inline-block;background:${HEADER};color:#ffffff;font-size:14px;font-weight:500;text-decoration:none;padding:12px 20px;border-radius:6px">Download GST invoice</a></td></tr>`,
     ...(next === null ? [] : [`<tr><td style="padding:0 0 32px;font-size:14px;line-height:1.65;color:${MUTED}">${escapeHtml(next)}</td></tr>`]),
-    `<tr><td style="padding-top:20px;border-top:1px solid ${LINE};font-size:12px;line-height:1.7;color:#7b8189">Questions? Reply to this email or write to <a href="mailto:hello@brandbasket.in" style="color:#7b8189">hello@brandbasket.in</a>.<br>${escapeHtml(brand)}</td></tr>`,
+    `<tr><td style="padding-top:20px;border-top:1px solid ${LINE};font-size:12px;line-height:1.7;color:#7b8189">Questions? Reply to this email or write to <a href="mailto:support@brandbasket.in" style="color:#7b8189">support@brandbasket.in</a>.<br>${escapeHtml(brand)}</td></tr>`,
     "</table>",
     "</td></tr></table>",
     "</body>",

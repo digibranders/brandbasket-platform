@@ -6,7 +6,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@brandbasket/db", () => ({ FIRST_PREVIEW_DUE_HOURS: 48 }));
 vi.mock("@brandbasket/email", () => ({
   createAppEmailTransport: vi.fn(),
-  emailTeamInboxDefault: () => "hello@brandbasket.in",
+  emailTeamInboxDefault: () => "support@brandbasket.in",
   onboardingSentEmail: vi.fn(),
 }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({ name: "staff-db" })) }));
@@ -45,7 +45,7 @@ describe("notifyTeamOnboardingSent", () => {
 
   it("falls back to the default team inbox when none is configured", async () => {
     await notifyTeamOnboardingSent("business-1", "Riverside Plumbing");
-    expect(onboardingSentEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "hello@brandbasket.in" }));
+    expect(onboardingSentEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "support@brandbasket.in" }));
   });
 
   it("logs and never throws when the email cannot be sent", async () => {

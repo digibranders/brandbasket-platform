@@ -16,9 +16,9 @@ describe("the brand", () => {
     expect(offersChoice(BRAND, BRANDBASKET_DEFAULT_CHOICE)).toBe(true);
   });
 
-  it("writes to hello@brandbasket.in and draws the Brandbasket logo", () => {
-    expect(supportEmailOf(BRAND)).toBe("hello@brandbasket.in");
-    expect(logoOf(BRAND)).toMatchObject({ name: "Brandbasket", siteUrl: "https://brandbasket.in", email: "hello@brandbasket.in", white: "/brand/brandbasket-logo-white.svg" });
+  it("writes to support@brandbasket.in and draws the Brandbasket logo", () => {
+    expect(supportEmailOf(BRAND)).toBe("support@brandbasket.in");
+    expect(logoOf(BRAND)).toMatchObject({ name: "Brandbasket", siteUrl: "https://brandbasket.in", email: "support@brandbasket.in", white: "/brand/brandbasket-logo-white.svg" });
   });
 });
 

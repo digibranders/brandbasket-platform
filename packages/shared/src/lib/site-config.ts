@@ -96,7 +96,7 @@ export const businessDetails: BusinessDetails = {
   gstNumber: "27AAICD9268J1Z0",
   phone: "+91 789 789 6607",
   phoneHref: "+917897896607",
-  email: "hello@brandbasket.in",
+  email: "support@brandbasket.in",
   website: "https://brandbasket.in",
 };
 

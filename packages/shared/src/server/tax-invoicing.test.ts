@@ -86,7 +86,7 @@ describe("what the invoice calls us", () => {
 
   it("prints the registered company trading as Brandbasket, with Brandbasket's own contact", () => {
     const supplier = supplierFor();
-    expect(supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Brandbasket", email: "hello@brandbasket.in", stateCode: "mh" });
+    expect(supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Brandbasket", email: "support@brandbasket.in", stateCode: "mh" });
     expect(JSON.stringify(supplier)).not.toMatch(/first\s?fold/i);
   });
 });

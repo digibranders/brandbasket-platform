@@ -313,7 +313,7 @@ describe("issueTaxInvoice", () => {
     const invoice = await issueSafely(await seedCouponRenewal("fake_pay_brandbasket"), planSource());
 
     expect(invoice).toMatchObject({ number: "FY/26-27/000001", prefix: "FY", serial: 1 });
-    expect(invoice?.supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Brandbasket", email: "hello@brandbasket.in", gstin: "27AAICD9268J1Z0" });
+    expect(invoice?.supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Brandbasket", email: "support@brandbasket.in", gstin: "27AAICD9268J1Z0" });
     expect(invoice?.lines[0]?.description).toBe("Brandbasket services plan");
   });
 

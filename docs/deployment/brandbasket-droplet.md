@@ -323,7 +323,7 @@ Cloudflare, or the Access login can be skipped by calling the droplet directly. 
    four weeks, then move to `p=quarantine`.
 5. Authenticate the domain in Brevo (the Authenticate button turns green), create an API key (v3) with only the transactional
    permission, and put it in `BREVO_API_KEY` in **both** env files. The sender is `BRANDBASKET_MAIL_FROM=no-reply@brandbasket.in`; replies go
-   to `hello@brandbasket.in` (a real mailbox in Microsoft 365).
+   to `support@brandbasket.in` (a real mailbox in Microsoft 365).
 6. Check: `dig +short TXT brandbasket.in` shows exactly one `v=spf1`; send a test through the sign-up flow (section 14) and open the
    message source: `spf=pass`, `dkim=pass`, `dmarc=pass`.
 
@@ -411,7 +411,7 @@ sudo -u deploy /usr/local/sbin/brandbasket-erase-job --env-file /srv/brandbasket
 - **On the box:** `systemctl --failed` must be empty; `journalctl -u brandbasket-app -u brandbasket-admin -u brandbasket-maintenance -u brandbasket-erase
   -u brandbasket-backup --since yesterday -p warning`; `df -h /` (alert above 80%), `free -h`, `ss -ltn`.
 - **App-level:** the apps email the staff alert address (`SUPPORT_ALERT_EMAIL`, `PRIVACY_ALERT_EMAIL`, `SECURITY_ALERT_EMAIL`, all
-  defaulting to `hello@brandbasket.in`) for support requests, privacy requests due, blocked sign-in bursts and unusual staff access. Set
+  defaulting to `support@brandbasket.in`) for support requests, privacy requests due, blocked sign-in bursts and unusual staff access. Set
   `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` if you use Sentry for errors.
 - **Certificates:** `certbot certificates` (dashboard) and the Cloudflare Origin certificate (valid up to 15 years; note its expiry).
 - **Money:** Razorpay's webhook page should show only 200s; a run of failures means `RAZORPAY_WEBHOOK_SECRET` drifted.
@@ -503,7 +503,7 @@ templates with every optional setting: `apps/platform/.env.production.example` a
 the erase timer); `BRANDBASKET_MAIL_FROM` (both, `no-reply@brandbasket.in`); `BRANDBASKET_MEDIA_ROOT=/srv/brandbasket/media` and
 `BRANDBASKET_SUPPORT_ROOT=/srv/brandbasket/support-private` (both, identical, outside the releases so they survive a deploy).
 
-**Optional:** `SUPPORT_ALERT_EMAIL`, `PRIVACY_ALERT_EMAIL`, `SECURITY_ALERT_EMAIL`, `BRANDBASKET_TEAM_EMAIL` (default `hello@brandbasket.in`),
+**Optional:** `SUPPORT_ALERT_EMAIL`, `PRIVACY_ALERT_EMAIL`, `SECURITY_ALERT_EMAIL`, `BRANDBASKET_TEAM_EMAIL` (default `support@brandbasket.in`),
 `INVOICE_PREFIX`, `CLIENT_SITE_BASE_DOMAIN`, `R2_*` and `SUPPORT_R2_*` (object storage instead of local disks), `TURNSTILE_SITE_KEY`,
 `TURNSTILE_SECRET`, `TURNSTILE_HOSTNAMES` (robot check on sign-in forms: recommended), `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`,
 `NEXT_PUBLIC_BRANDBASKET_RELEASE`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_CONTACT_EMAIL`, `NEXT_PUBLIC_CALENDLY_URL`, `SUPPORT_TICKET_RETENTION_MONTHS`.
