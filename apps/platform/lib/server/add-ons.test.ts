@@ -155,13 +155,25 @@ describe("loadAddOnsPage", () => {
       ...overrides,
     }) as BundledAddOn;
 
-  it("reads through row-level security as the signed-in customer, and never with the staff connection", async () => {
+  it("reads through row-level security as the signed-in customer, and never with the staff connection without a code", async () => {
     await loadAddOnsPage(customer, NOW);
 
     expect(withTenantScope).toHaveBeenCalledWith(appDb, customer.tenant, expect.any(Function));
     expect(findLiveBundledAddOns).toHaveBeenCalledWith(appTx, BUSINESS_ID);
     expect(findBusinessCurrency).toHaveBeenCalledWith(appTx, BUSINESS_ID);
     expect(getStaffDb).not.toHaveBeenCalled();
+  });
+
+  it("reads the code on the customer's own subscription as staff, which their connection cannot, and assesses with it", async () => {
+    const CODE_ID = "0192f3c4-7777-7000-8000-000000000001";
+    const code = { id: CODE_ID, code: "THREE" };
+    vi.mocked(findReferralCodeById).mockResolvedValueOnce(code as never);
+    const coded: GrantedCustomer = { ...customer, billing: { ...customer.billing, subscription: { paidThroughAt: PAID_THROUGH, referralCodeId: CODE_ID } as never } };
+
+    await loadAddOnsPage(coded, NOW);
+
+    expect(findReferralCodeById).toHaveBeenCalledWith(staffDb, CODE_ID);
+    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, expect.objectContaining({ addOn: "digital-growth", code }));
   });
 
   it("offers all three services at list price plus GST when none is in the plan payment, the website included", async () => {
@@ -283,9 +295,9 @@ describe("loadAddOnsPage", () => {
   it("asks for each add-on's assessment through row-level security, at the time given", async () => {
     await loadAddOnsPage(customer, NOW);
 
-    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "managed-website", providerName: "fake", now: NOW, forfeited: false });
-    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "digital-growth", providerName: "fake", now: NOW, forfeited: false });
-    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "local-seo-aeo", providerName: "fake", now: NOW, forfeited: false });
+    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "managed-website", providerName: "fake", now: NOW, forfeited: false, code: null });
+    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "digital-growth", providerName: "fake", now: NOW, forfeited: false, code: null });
+    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "local-seo-aeo", providerName: "fake", now: NOW, forfeited: false, code: null });
   });
 
   it("offers the add with its charge for the rest of the month and the new monthly payment", async () => {

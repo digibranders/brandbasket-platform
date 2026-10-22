@@ -54,7 +54,8 @@ export function getAppDb(): Database {
  *   (and, through packages/shared, pauses and cancels them). Customers never write add_on_subscriptions or charges
  *   through their own connection; the business id comes only from the session, the price only from the server (the
  *   catalogue for a new purchase, the stored row for a resume), and a row is only ever activated by the payment
- *   confirmation. The Services page itself is read through the customer's own tenant scope.
+ *   confirmation. The Services page itself is read through the customer's own tenant scope, except the code on the
+ *   customer's own subscription, read by the subscription's stored code id for its terms (customers cannot read codes).
  * - lib/server/charges.ts and lib/server/listing-promotion.ts, which open and record the customer's own one-off
  *   charges (a paid extra, a week of a listing tag). Customers never write charges or directory_promotions through
  *   their own connection; the business id comes only from the session, the price only from the server, and a week

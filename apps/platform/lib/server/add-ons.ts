@@ -4,6 +4,7 @@ import {
   consumeRateLimit,
   findBusinessCurrency,
   findLiveBundledAddOns,
+  findReferralCodeById,
   isPackageOfferForfeited,
   withTenantScope,
   type BundledAddOn,
@@ -139,11 +140,14 @@ export async function loadWelcomeServices(tenant: GrantedCustomer["tenant"]): Pr
 export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Promise<AddOnsPage> {
   const { tenant } = customer;
   const providerName = getBillingProvider().name;
+  // The customer's connection cannot read referral codes: the code on their own subscription is read as staff, for its terms.
+  const codeId = customer.billing.subscription?.referralCodeId ?? null;
+  const code = codeId === null ? null : await findReferralCodeById(getStaffDb(), codeId);
   const { bundled, currency, assessments, forfeited, keptStartsOn } = await withTenantScope(getAppDb(), tenant, async (tx) => {
     const forfeited = await isPackageOfferForfeited(tx, tenant.businessId);
     const assessed = new Map<MonthlyAddOnId, AddOnAssessment | null>();
     for (const addOn of MONTHLY_ADD_ON_IDS) {
-      assessed.set(addOn, await readAddOnAssessment(tx, { businessId: tenant.businessId, addOn, providerName, now, forfeited }));
+      assessed.set(addOn, await readAddOnAssessment(tx, { businessId: tenant.businessId, addOn, providerName, now, forfeited, code }));
     }
     return {
       bundled: await findLiveBundledAddOns(tx, tenant.businessId),

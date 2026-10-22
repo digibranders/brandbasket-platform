@@ -300,6 +300,8 @@ export async function readAddOnAssessment(
     readonly now: Date;
     /** Whether the business has given the package offer up, when the caller has read it already (a page assessing every service reads it once). */
     readonly forfeited?: boolean;
+    /** The subscription's code, when the caller has read it already: a customer's own connection cannot read referral codes. */
+    readonly code?: ReferralCode | null;
   },
 ): Promise<AddOnAssessment | null> {
   const state = await findBillingState(db, input.businessId);
@@ -310,7 +312,7 @@ export async function readAddOnAssessment(
       : (await findBundledAddOnsForSubscription(db, state.subscription.id)).filter((row) => row.status !== "removed");
   const forfeited = input.forfeited ?? (await isPackageOfferForfeited(db, input.businessId));
   const codeId = state.subscription?.referralCodeId ?? null;
-  const code = codeId === null ? null : await findReferralCodeById(db, codeId);
+  const code = input.code !== undefined ? input.code : codeId === null ? null : await findReferralCodeById(db, codeId);
   const keptStartsOn = await findKeptPlanStart(db, state.subscription);
   return assessAddOn({ state, live, addOn: input.addOn, forfeited, code, keptStartsOn, providerName: input.providerName, now: input.now });
 }
