@@ -51,6 +51,7 @@ function receipt(id: string, sequence: number, overrides: Partial<Receipt> = {})
     taxInvoiceId: null,
     taxInvoiceNumber: null,
     addOnId: null,
+    invoiceBasis: null,
     ...overrides,
   };
 }

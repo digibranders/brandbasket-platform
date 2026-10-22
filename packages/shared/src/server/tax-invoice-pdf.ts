@@ -35,9 +35,9 @@ const FACT_COLUMNS = [LEFT, LEFT + 1.3 * FACT_FR + 4 * MM, LEFT + 2.3 * FACT_FR 
 const FOOTER_TOP = BOTTOM + 86;
 
 // Ink on white, so the invoice prints cleanly in black and white; the logo is the only colour. The website's ink tokens.
-const INK = rgb(0x15 / 255, 0x16 / 255, 0x1a / 255);
-const INK_SOFT = rgb(0x4e / 255, 0x50 / 255, 0x57 / 255);
-const RULE = rgb(0xe3 / 255, 0xe0 / 255, 0xd9 / 255);
+export const INK = rgb(0x15 / 255, 0x16 / 255, 0x1a / 255);
+export const INK_SOFT = rgb(0x4e / 255, 0x50 / 255, 0x57 / 255);
+export const RULE = rgb(0xe3 / 255, 0xe0 / 255, 0xd9 / 255);
 
 /** Only what Rule 46 asks for: (p) reverse charge, and (q) no signature on an electronic invoice. Gate 5: the CA confirms this wording. */
 export const DECLARATION_LINES = [
@@ -178,7 +178,7 @@ function roundedRect(width: number, height: number, radius: number): string {
 }
 
 /** A "#rrggbb" colour as pdf-lib wants it. */
-function hexColor(hex: string): ReturnType<typeof rgb> {
+export function hexColor(hex: string): ReturnType<typeof rgb> {
   const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
   if (match === null) throw new RangeError(`Not a #rrggbb colour: ${hex}`);
   return rgb(Number.parseInt(match[1] ?? "0", 16) / 255, Number.parseInt(match[2] ?? "0", 16) / 255, Number.parseInt(match[3] ?? "0", 16) / 255);

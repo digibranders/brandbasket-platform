@@ -125,3 +125,20 @@ export function adCreditCentsFor(services: readonly MonthlyAddOnId[], currency: 
 export function adCreditCentsAtCheckout(input: PackageInput & { readonly hasEverPaid: boolean }, currency: MoneyCurrency): number {
   return input.hasEverPaid || input.forfeited ? 0 : adCreditCentsFor(input.services, currency);
 }
+
+/** 2000 basis points as "20", 1250 as "12.5", in whole numbers so no float is ever printed. */
+export function percentOf(basisPoints: number): string {
+  const whole = Math.floor(basisPoints / 100);
+  const hundredths = basisPoints % 100;
+  if (hundredths === 0) return String(whole);
+  return `${whole}.${String(hundredths).padStart(2, "0").replace(/0$/, "")}`;
+}
+
+/**
+ * What a service line's package discount is called: "Package offer, 30% off". The percentage is the package's own, never the
+ * line's discount over its list, because a package total floored to the whole rupee moves a few paise of discount onto its
+ * dearest line and that line must not read 29.99%.
+ */
+export function packageOfferNote(basisPoints: number): string {
+  return `Package offer, ${percentOf(basisPoints)}% off`;
+}

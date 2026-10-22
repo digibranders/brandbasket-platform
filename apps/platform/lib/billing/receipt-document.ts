@@ -1,4 +1,7 @@
-import { isUnappliedReason, type Receipt } from "@brandbasket/db";
+import { splitGst } from "@brandbasket/billing/gst";
+import { isUnappliedReason, type PaymentInvoiceBasis, type Receipt } from "@brandbasket/db";
+import { addOnById, isMonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { packageBasisPointsFor, packageOfferNote } from "@brandbasket/shared/lib/billing/packages";
 import { planLabel, receiptDescription, receiptNumber } from "@brandbasket/shared/lib/billing/receipt-title";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { businessDetails, siteConfig } from "@brandbasket/shared/lib/site-config";
@@ -92,6 +95,43 @@ function taxRateLabel(taxRateBasisPoints: number): string {
   return `GST ${taxRateBasisPoints / MINOR_UNITS_PER_MAJOR}%`;
 }
 
+/**
+ * The rows of a payment billed as services (PaymentInvoiceBasis), worked out the way the tax invoice is: each service at its
+ * list price, the package offer and any code as minus rows, then the GST, and the rows add up to what was taken to the paisa.
+ * The GST is what is left of the amount taken after the discounted services, and must agree with the invoice's own rounding
+ * (one rounding on the total, splitGst) to within the paisa that round-off absorbs. The code's name is not on this path (a
+ * customer's connection cannot read referral codes), so it reads "Code discount". Null when the basis does not describe the
+ * payment, which then prints as a single line.
+ */
+function serviceLines(receipt: Receipt, basis: PaymentInvoiceBasis): ReceiptLine[] | null {
+  const [first] = basis.lines;
+  if (first === undefined || basis.netAmountCents !== 0) return null;
+  const rate = first.taxRateBasisPoints;
+  if (basis.lines.some((line) => line.taxRateBasisPoints !== rate)) return null;
+  const services = basis.lines.flatMap((line) => (isMonthlyAddOnId(line.addOn) ? [{ id: line.addOn, listCents: line.listAmountCents }] : []));
+  if (services.length !== basis.lines.length) return null;
+
+  const listCents = basis.lines.reduce((sum, line) => sum + line.listAmountCents, 0);
+  const offerCents = basis.lines.reduce((sum, line) => sum + line.offerDiscountAmountCents, 0);
+  const codeCents = basis.discountAmountCents - basis.retentionDiscountCents;
+  const taxableCents = listCents - offerCents - basis.discountAmountCents;
+  const taxCents = receipt.amountCents - taxableCents;
+  const packageBasisPoints = packageBasisPointsFor({ services: services.map((service) => service.id), forfeited: false });
+  if (codeCents < 0 || basis.retentionDiscountCents < 0 || taxableCents <= 0 || taxCents < 0) return null;
+  if (offerCents > 0 && packageBasisPoints === 0) return null;
+  if (Math.abs(taxCents - splitGst(taxableCents, rate, "inter_state").taxCents) > 1) return null;
+
+  const money = (cents: number): string => receiptMoney(cents, receipt.currency);
+  const minus = (label: string, cents: number): ReceiptLine[] => (cents > 0 ? [{ label, amount: `-${money(cents)}` }] : []);
+  return [
+    ...services.map((service) => ({ label: addOnById(service.id).title, amount: money(service.listCents) })),
+    ...minus(packageOfferNote(packageBasisPoints), offerCents),
+    ...minus("Code discount", codeCents),
+    ...minus("Stay offer", basis.retentionDiscountCents),
+    ...(taxCents > 0 ? [{ label: taxRateLabel(rate), amount: money(taxCents) }] : []),
+  ];
+}
+
 /** The receipt for one payment. Throws for a failed payment, which has nothing to receipt. */
 export function receiptDocument(receipt: Receipt, customer: ReceiptCustomer, brand: Brand = BRAND): ReceiptDocument {
   if (!isDownloadableReceipt(receipt)) {
@@ -106,13 +146,14 @@ export function receiptDocument(receipt: Receipt, customer: ReceiptCustomer, bra
   const { netCents, taxCents } = splitTax(receipt.amountCents, taxRate);
   const total = receiptMoney(receipt.amountCents, receipt.currency);
 
-  const lines: ReceiptLine[] =
+  const single: ReceiptLine[] =
     taxCents === 0
       ? [{ label, amount: total }]
       : [
           { label, amount: receiptMoney(netCents, receipt.currency) },
           { label: taxRateLabel(taxRate), amount: receiptMoney(taxCents, receipt.currency) },
         ];
+  const lines = (receipt.invoiceBasis === null ? null : serviceLines(receipt, receipt.invoiceBasis)) ?? single;
 
   return {
     fileName: `brandbasket-receipt-${number.slice(1)}.pdf`,

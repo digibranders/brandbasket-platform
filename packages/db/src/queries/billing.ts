@@ -18,6 +18,7 @@ import {
   type BillingProviderName,
   type ChargeKind,
   type PaymentAttentionReason,
+  type PaymentInvoiceBasis,
   type PaymentKind,
   type PaymentStatus,
   type PlanTier,
@@ -967,6 +968,8 @@ export interface Receipt extends Payment {
   readonly taxInvoiceNumber: string | null;
   /** For an add-on payment, the catalogue id of what was bought ("digital-growth"). Null for everything else. */
   readonly addOnId: string | null;
+  /** What a plan payment was billed as (its services and discounts), for a receipt that lists them. Null when not kept. */
+  readonly invoiceBasis: PaymentInvoiceBasis | null;
 }
 
 /** The receipts list with the term each payment bought. Newest first. Works through row-level security. */
@@ -997,6 +1000,7 @@ export async function listReceiptsForBusiness(db: Runner, businessId: string, li
       taxInvoiceId: taxInvoices.id,
       taxInvoiceNumber: taxInvoices.number,
       addOnId: addOnSubscriptions.addOn,
+      invoiceBasis: payments.invoiceBasis,
     })
     .from(payments)
     .innerJoin(numbered, eq(numbered.id, payments.id))

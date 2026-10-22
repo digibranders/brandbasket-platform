@@ -29,6 +29,7 @@ function receipt(overrides: Partial<Receipt> = {}): Receipt {
     taxInvoiceId: null,
     taxInvoiceNumber: null,
     addOnId: null,
+    invoiceBasis: null,
     ...overrides,
   };
 }
