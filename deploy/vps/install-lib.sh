@@ -1,10 +1,12 @@
 # shellcheck shell=bash disable=SC2034
 # Helpers shared by deploy/vps/install.sh and deploy/vps/ci/install-ci.sh. Sourced, never run.
 #
-# Every action goes through `act`, `put`, `dir` or `block`, which print what they would do and do it only when APPLY=1
-# (--apply). Everything they write must have "brandbasket" in its path and "firstfold" nowhere in it, so a typo cannot touch a Firstfold file; the two
-# files shared with Firstfold that Brandbasket must also edit (~deploy/.ssh/config and ufw's before.rules) are changed only
-# between marker comments that name Brandbasket, and never outside them.
+# Every action goes through `act`, `put` or `dir`, which print what they would do and do it only when APPLY=1 (--apply).
+# Everything `put` and `dir` write must resolve (realpath -m, so ".." and symlinks count) to a path under an explicit list of
+# Brandbasket prefixes (guard below), and never to a path that names Firstfold, so a typo cannot touch a Firstfold file. The
+# only Firstfold files this kit ever creates are the three lock files of ff_locks, and only when one is missing. The one file
+# shared with Firstfold that Brandbasket edits is ufw's before.rules (install-ci-firewall.sh), between marker comments that
+# name Brandbasket, and never outside them.
 
 APPLY=0
 
@@ -27,10 +29,27 @@ need_cmd() {
   say "  NOT YET: $1 is not installed; --apply would stop here"
 }
 
-# guard <path>: refuses any path that does not name Brandbasket, and any that names Firstfold.
+# guard <path>: refuses any path that does not resolve under a Brandbasket prefix below, and any that names Firstfold. The
+# path is resolved with realpath -m first, so "/srv/brandbasket/../firstfold/x" and a symlink out of /srv/brandbasket are
+# judged by where they really lead.
 guard() {
-  [[ "$1" == *brandbasket* ]] || die "refusing to touch $1: it is not a Brandbasket path"
-  [[ "$1" != *firstfold* ]] || die "refusing to touch $1: it is a Firstfold path"
+  local p
+  p="$(realpath -m -- "$1")" || die "cannot resolve $1"
+  case "$p" in
+    *firstfold*) die "refusing to touch $1: it is a Firstfold path ($p)" ;;
+  esac
+  case "$p" in
+    /srv/brandbasket | /srv/brandbasket/* | /srv/brandbasket-ci | /srv/brandbasket-ci/* \
+      | /home/brandbasket | /home/brandbasket/* \
+      | /etc/brandbasket | /etc/brandbasket/* | /etc/brandbasket-platform-build.env \
+      | /etc/systemd/system/brandbasket-* | /etc/systemd/system/srv-brandbasket* \
+      | /etc/sudoers.d/brandbasket \
+      | /etc/nginx/sites-available/brandbasket | /etc/nginx/sites-enabled/brandbasket | /etc/nginx/snippets/brandbasket-* \
+      | /usr/local/bin/brandbasket-* | /usr/local/sbin/brandbasket-* | /usr/local/lib/brandbasket | /usr/local/lib/brandbasket/* \
+      | /var/lib/brandbasket | /var/lib/brandbasket/* | /var/lib/brandbasket-ci | /var/lib/brandbasket-ci/* \
+      | /var/backups/brandbasket | /var/backups/brandbasket/*) ;;
+    *) die "refusing to touch $1: it is not under a Brandbasket path ($p)" ;;
+  esac
 }
 
 # act <description> <command...>: prints the description; runs the command only with --apply.
@@ -68,16 +87,42 @@ remove_added() {
   for p in "$@"; do guard "$p"; rm -f -- "$p"; done
 }
 
-# block <file> <marker> <content>: appends "# BEGIN <marker>" ... "# END <marker>" to a file shared with another project,
-# unless the block is already there. Nothing outside the markers is read or written. The marker must name Brandbasket.
-block() {
-  local file=$1 marker=$2 content=$3
-  [[ "$marker" == *brandbasket* ]] || die "block marker must name Brandbasket: $marker"
-  if grep -qF "# BEGIN $marker" "$file" 2>/dev/null; then say "  $file already has the $marker block"; return 0; fi
-  say "  $file gets a new block: $marker"
-  if (( APPLY )); then
-    printf '\n# BEGIN %s\n%s\n# END %s\n' "$marker" "$content" "$marker" >> "$file"
-  fi
+# The three lock files of Firstfold's that every Brandbasket build, deploy and CI run holds (heavy-lock.sh). They are the
+# only Firstfold paths this kit ever creates, and only when missing.
+FF_LOCK_FILES=(/srv/firstfold/.release.lock /srv/firstfold-website/.release.lock /srv/firstfold-ci/.ci.lock)
+
+# ff_locks: checks that user brandbasket can open each of Firstfold's lock files read-only, and creates one that is missing.
+# Never changes an existing Firstfold file or directory: a directory other users cannot enter, or a file they cannot read, is
+# a STOP for the owner to decide (this function dies even in a plan). A Firstfold part that is not installed is skipped.
+ff_locks() {
+  local file dir d mode owner
+  for file in "${FF_LOCK_FILES[@]}"; do
+    dir=${file%/*}
+    if [[ ! -d "$dir" ]]; then
+      say "  $dir does not exist (that part of Firstfold is not installed): skipped, as heavy-lock.sh skips it"
+      continue
+    fi
+    d=$dir
+    while [[ -n "$d" ]]; do
+      mode="$(stat -c %a "$d")"
+      (( 8#$mode & 1 )) || die "STOP: $d has mode $mode, so other users cannot enter it and brandbasket could not open $file. This kit does not change Firstfold's permissions; ask the owner."
+      d=${d%/*}
+    done
+    if [[ -e "$file" ]]; then
+      read -r mode owner < <(stat -c '%a %U' "$file")
+      (( 8#$mode & 4 )) || die "STOP: $file (owner $owner, mode $mode) is not readable by other users, so brandbasket could not open it. This kit does not change Firstfold's permissions; ask the owner."
+      say "  $file exists (owner $owner, mode $mode): left as it is"
+    else
+      id deploy >/dev/null 2>&1 || die "user deploy does not exist"
+      act "create $file: empty, owner deploy:deploy, mode 0644 (Firstfold opens it for writing as deploy, so never root-owned)" \
+        install -o deploy -g deploy -m 0644 /dev/null "$file"
+    fi
+    if [[ -e "$file" ]] && id brandbasket >/dev/null 2>&1; then
+      # shellcheck disable=SC2016 # the single quotes are for the inner sh
+      runuser -u brandbasket -- sh -c ': < "$1"' _ "$file" || die "user brandbasket cannot open $file read-only; this kit does not change Firstfold's permissions"
+      say "  brandbasket can open $file read-only"
+    fi
+  done
 }
 
 # parse_args <args...>: sets APPLY and EMAIL; the first non-option word is left in STEP.

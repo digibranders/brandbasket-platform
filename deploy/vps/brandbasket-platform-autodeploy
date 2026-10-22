@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploys main of digibranders/brandbasket-platform whenever it moves, rebuilding only the app the change touches.
-# Installed as /usr/local/bin/brandbasket-platform-autodeploy (root-owned) and run as `deploy` every minute by
-# brandbasket-platform-autodeploy.timer. Adapted from Firstfold's firstfold-platform-autodeploy (same pull model, same
+# Installed as /usr/local/bin/brandbasket-platform-autodeploy (root-owned) and run as the `brandbasket` user (never as
+# Firstfold's `deploy`) every minute by brandbasket-platform-autodeploy.timer. Adapted from Firstfold's firstfold-platform-autodeploy (same pull model, same
 # GitHub reporting); GitHub Actions cannot deploy to this server and nothing on GitHub can reach it.
 #
 #   brandbasket-platform-autodeploy            deploy main to whichever app needs it (what the timer runs)
@@ -19,19 +19,21 @@
 # app's live commit is unknown, that app is deployed.
 #
 # Pull, not push: a local mirror (/srv/brandbasket/repo.git) fetches main with a read-only deploy key
-# (~deploy/.ssh/github-brandbasket-platform, host alias github-brandbasket-platform). The commit is unpacked as a new
+# (~brandbasket/.ssh/github-brandbasket-platform, host alias github-brandbasket-platform). The commit is unpacked as a new
 # release and handed to brandbasket-platform-release, which runs the checks, builds the chosen apps, applies both
 # databases' migrations, and switches each app, switching back on its own if one does not come up (or, on an app's first
 # deploy, leaving it undeployed).
 #
 # One heavy job at a time on the box: before it unpacks anything this takes Brandbasket's lock and all three of Firstfold's
-# (heavy-lock.sh) without waiting. If any is busy, a Firstfold deploy or CI run or a Brandbasket one is going: it prints
-# one line and exits 0, and the next minute looks again. Holding Firstfold's locks makes its timers skip quietly.
+# (heavy-lock.sh, Firstfold's opened read-only) without waiting. If any is busy, a Firstfold deploy or CI run or a Brandbasket
+# one is going: it prints one line and exits 0, and the next minute looks again. Holding Firstfold's locks makes its timers
+# skip quietly. A lock file that cannot be opened is not "busy": it exits 1 and the unit's failure alert goes out. Started by
+# hand it runs under a 45 minute limit (bb_bounded).
 #
 # A commit that fails is recorded in autodeploy-failed and not tried again every minute; the next commit on main is.
 #
-# Every commit on main is reported to GitHub (/usr/local/lib/firstfold/github-status.sh, which takes the repository as an
-# argument) with one check run per app, "Deploy app.brandbasket.in" and "Deploy console.brandbasket.in": deployed (a live
+# Every commit on main is reported to GitHub (Firstfold's github-status.sh, loaded by github-lib.sh with the App credentials
+# read from ~brandbasket, which takes the repository as an argument) with one check run per app, "Deploy app.brandbasket.in" and "Deploy console.brandbasket.in": deployed (a live
 # step table and the log, plus an entry under the repository's Deployments), unchanged by the commit, or nothing to deploy.
 set -euo pipefail
 
@@ -46,9 +48,14 @@ readonly GH_REPO=digibranders/brandbasket-platform
 readonly REPORTED="$ROOT/autodeploy-reported"
 
 die() { echo "error: $*" >&2; exit 1; }
-[[ "$(id -un)" == deploy ]] || die "run as deploy"
-# Wherever it was started from (deploy cannot read root's home, which upsets find).
+[[ "$(id -un)" == brandbasket ]] || die "run as brandbasket (runuser -u brandbasket -- brandbasket-platform-autodeploy ...)"
+# Wherever it was started from (brandbasket cannot read root's home, which upsets find).
 cd "$ROOT"
+ARGS=("$@")
+# shellcheck source=heavy-lock.sh
+source /usr/local/lib/brandbasket/heavy-lock.sh
+# shellcheck source=github-lib.sh
+source /usr/local/lib/brandbasket/github-lib.sh
 
 live_release() { if [[ -L "$ROOT/current-$1" ]]; then basename "$(readlink -f "$ROOT/current-$1")"; else echo none; fi; }
 # What each app runs, for log lines: "platform runs <release>, admin runs <release>".
@@ -122,6 +129,7 @@ case "${1:-}" in
 esac
 
 [[ -f "$PAUSED" ]] && exit 0
+bb_bounded "$0" "${ARGS[@]}"
 
 target="$(fetch_main)"
 read -r -a apps <<<"$(apps_needing "$target")"
@@ -131,8 +139,7 @@ if (( ${#apps[@]} == 0 )); then
   behind=0
   for app in "${APPS[@]}"; do [[ "$(live_commit "$app")" == "$target" ]] || behind=1; done
   if (( behind )) && [[ "$(cat "$REPORTED" 2>/dev/null || true)" != "$target" ]]; then
-    # shellcheck source=/dev/null
-    source /usr/local/lib/firstfold/github-status.sh
+    bb_load_github_status || die "cannot load the GitHub reporting library"
     gh_init "$GH_REPO"
     for app in "${APPS[@]}"; do
       gh_check_note "$GH_REPO" "$target" "Deploy $(host_of "$app")" skipped "Nothing to deploy" \
@@ -145,13 +152,15 @@ fi
 [[ -f "$FAILED" && "$(cat "$FAILED")" == "$target" ]] && exit 0
 
 # One heavy job at a time (see the header). Held until this process exits; the release script is told not to take them again.
-# shellcheck source=heavy-lock.sh
-source /usr/local/lib/brandbasket/heavy-lock.sh
-if ! bb_take_heavy_locks 0; then
-  echo "another build, deploy or CI run is going ($BB_LOCK_BUSY is held); trying again next run"
-  exit 0
-fi
+rc=0
+bb_take_heavy_locks 0 || rc=$?
+case "$rc" in
+  0) ;;
+  1) echo "another build, deploy or CI run is going ($BB_LOCK_BUSY is held); trying again next run"; exit 0 ;;
+  *) die "cannot take the heavy locks: $BB_LOCK_BUSY" ;;
+esac
 export BRANDBASKET_RELEASE_LOCKED=1
+trap bb_release_heavy_locks EXIT
 
 # A fresh directory per deploy. If the other app already runs this commit (it was deployed alone), its directory is
 # live and must not be rebuilt or removed, so this deploy gets a directory of its own.
@@ -160,8 +169,7 @@ for app in "${APPS[@]}"; do
   [[ "$(live_release "$app")" == "$release" ]] && release="$target+$(date -u +%s)"
 done
 echo "main is $target; deploying ${apps[*]} as $release ($(running_summary))"
-# shellcheck source=/dev/null
-source /usr/local/lib/firstfold/github-status.sh
+bb_load_github_status || die "cannot load the GitHub reporting library"
 steps=(install lint typecheck test "build ${apps[*]}" env migrations)
 for app in "${apps[@]}"; do steps+=("switch $app"); done
 started_at="$(date +%s)"
@@ -190,7 +198,7 @@ echo "$target" > "$dir/REVISION"
 # The release's output goes to the journal as before, and with time stamps to a copy the check runs are built from.
 # Both deployed apps share one log and step table; each gets its own conclusion.
 log="$(mktemp)"
-trap 'rm -f "$log"' EXIT
+trap 'rm -f "$log"; bb_release_heavy_locks' EXIT
 report() { # <app> <check state> <report state>
   gh_check_update "$GH_REPO" "$target" "${check_id[$1]}" "Deploy $(host_of "$1")" "$2" \
     "$(gh_check_report "$log" "$3" "$started_at" brandbasket-platform-autodeploy "${steps[@]}")"

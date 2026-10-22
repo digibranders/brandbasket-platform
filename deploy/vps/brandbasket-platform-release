@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds and activates a platform release (app.brandbasket.in and console.brandbasket.in) on the VPS. Installed as
-# /usr/local/bin/brandbasket-platform-release (root-owned) and run as `deploy`. Adapted from Firstfold's
-# firstfold-platform-release.
+# /usr/local/bin/brandbasket-platform-release (root-owned) and run as `brandbasket` (never as Firstfold's `deploy`).
+# Adapted from Firstfold's firstfold-platform-release.
 #
 #   brandbasket-platform-release <release> <app>...          build <app>s in releases/<release> (already unpacked), check
 #                                                            the env files, run both databases' migrations, then switch
@@ -29,7 +29,10 @@
 # undo them: every migration must keep working with the code before it.
 #
 # One heavy job at a time on the box: the autodeploy takes the locks (heavy-lock.sh) and passes that down through
-# BRANDBASKET_RELEASE_LOCKED. Started by hand, this script waits up to 30 minutes for each of them.
+# BRANDBASKET_RELEASE_LOCKED. Started by hand, this script takes them itself, polling for up to 30 minutes (all four or
+# none, never holding one while it waits for another), and runs under a 45 minute limit (bb_bounded: systemd-run with
+# RuntimeMaxSec=45min when this user has a systemd user session, otherwise `timeout 45m`). A lock file that cannot be
+# opened is an error, not "busy".
 set -euo pipefail
 
 readonly ROOT=/srv/brandbasket
@@ -39,27 +42,37 @@ readonly KEEP_OTHERS=2
 readonly PAUSED="$ROOT/autodeploy-paused"
 
 die() { echo "error: $*" >&2; exit 1; }
-[[ "$(id -un)" == deploy ]] || die "run as deploy"
-# Wherever it was started from (deploy cannot read root's home, which upsets find).
+[[ "$(id -un)" == brandbasket ]] || die "run as brandbasket (runuser -u brandbasket -- brandbasket-platform-release ...)"
+# Wherever it was started from (brandbasket cannot read root's home, which upsets find).
 cd "$ROOT"
+ARGS=("$@")
+# shellcheck source=heavy-lock.sh
+source /usr/local/lib/brandbasket/heavy-lock.sh
 
 readonly APPS=(platform admin)
 valid_app() { [[ " ${APPS[*]} " == *" $1 "* ]] || die "not an app: $1 (${APPS[*]})"; }
 valid_release() { [[ "$1" =~ ^[0-9a-f]{40}(\+[0-9]+)?$ ]] || die "not a release name: $1"; }
 
 # Each app's systemd unit with its port, and the host its health check asks for. The unit names are exactly the ones the
-# sudoers rule allows deploy to restart and stop.
+# sudoers rule allows brandbasket to restart and stop.
 units_of() { case "$1" in platform) echo "brandbasket-app:3201" ;; admin) echo "brandbasket-admin:3203" ;; esac; }
 host_of() { case "$1" in platform) echo app.brandbasket.in ;; admin) echo console.brandbasket.in ;; esac; }
 
 take_lock() {
+  local rc=0
   [[ "${BRANDBASKET_RELEASE_LOCKED:-}" == 1 ]] && return 0
-  # shellcheck source=heavy-lock.sh
-  source /usr/local/lib/brandbasket/heavy-lock.sh
-  if ! bb_take_heavy_locks 0; then
+  bb_bounded "$0" "${ARGS[@]}"
+  bb_take_heavy_locks 0 && rc=0 || rc=$?
+  if (( rc == 1 )); then
     echo "another build, deploy or CI run is going ($BB_LOCK_BUSY is held); waiting for it" >&2
-    bb_take_heavy_locks 1800 || die "$BB_LOCK_BUSY is still held after 30 minutes"
+    bb_take_heavy_locks 1800 && rc=0 || rc=$?
   fi
+  case "$rc" in
+    0) ;;
+    1) die "$BB_LOCK_BUSY is still held after 30 minutes" ;;
+    *) die "cannot take the heavy locks: $BB_LOCK_BUSY" ;;
+  esac
+  trap bb_release_heavy_locks EXIT
   export BRANDBASKET_RELEASE_LOCKED=1
 }
 
