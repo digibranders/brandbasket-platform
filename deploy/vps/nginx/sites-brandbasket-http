@@ -1,0 +1,18 @@
+# Brandbasket, step one (deploy/vps/install.sh nginx-http): plain HTTP only, so Let's Encrypt can check the two names before
+# the certificate exists. Installed as /etc/nginx/sites-available/brandbasket and replaced by sites-brandbasket (step
+# nginx-https) once the certificate has been issued. Nothing here touches Firstfold's server blocks: nginx picks this block
+# only for these two names; every other name still reaches Firstfold's catch-all.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name app.brandbasket.in console.brandbasket.in;
+
+    # Let's Encrypt HTTP-01 challenges, answered from the webroot Firstfold's certbot already uses.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/acme;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+
+    location / { return 301 https://$host$request_uri; }
+}
