@@ -6,6 +6,7 @@ import {
   parseCustomerBillingDetails,
   pincodeStateProblem,
 } from "@brandbasket/shared/lib/billing/billing-details-form";
+import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 import { stateName } from "@brandbasket/shared/lib/directory/india-states";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { refresh } from "next/cache";
@@ -34,13 +35,15 @@ export async function payChargeAction(formData: FormData): Promise<void> {
 }
 
 /**
- * Reactivate on Billing. A form post, so opening a payment only ever happens on purpose. Nothing in the form is read:
- * whether this business may reactivate, on which plan and for how much is worked out on the server
- * (startReactivationFor), under the business's billing lock. On success the customer goes to pay.
+ * Reactivate on Billing. A form post, so opening a payment only ever happens on purpose. The only thing read from the form
+ * is the services a customer who cancelled themselves chose (catalogue ids; anything else is dropped, and none is refused by
+ * startReactivationFor). Whether this business may reactivate, whether it chooses its services or comes back as it was, on which
+ * plan and for how much is worked out on the server, under the business's billing lock. On success the customer goes to pay.
  */
-export async function reactivateAction(): Promise<ReactivateFormState> {
+export async function reactivateAction(_previous: ReactivateFormState, formData: FormData): Promise<ReactivateFormState> {
   const customer = await requireCustomerAccess();
-  const outcome = await startReactivationFor(customer, new Date());
+  const chosen = readBundleSelection(formData.getAll("service").filter((value): value is string => typeof value === "string"));
+  const outcome = await startReactivationFor(customer, new Date(), chosen);
   if (outcome.kind === "refused") return { status: "error", message: outcome.problem.message };
   redirect(outcome.url);
 }

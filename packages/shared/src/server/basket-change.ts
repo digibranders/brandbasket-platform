@@ -477,9 +477,9 @@ export type BundledRemoval =
 /**
  * Drops a service from the plan's monthly payment from the next billing date. It stays active and paid for until then.
  * Dropping one while two or more are active ends the package offer for good (plan 16): every service that stays is priced
- * at list from the next bill, the business never earns a package price again, and the subscription's ad credit is 0 from the
- * moment the drop is recorded. Dropping the only service is refused: that is cancelling. So is dropping any while the account
- * has asked to close (a cancel is requested): everything is going at the next billing date, and a drop would only change
+ * at list from the next bill, the business never earns a package price again, and the subscription's ad credit runs to the end
+ * of the month already paid, then stops at the renewal that takes the line off (completeBundledAddOnChanges). Dropping the only
+ * service is refused: that is cancelling. So is dropping any while the account has asked to close (a cancel is requested): everything is going at the next billing date, and a drop would only change
  * what the provider is told for a subscription that is ending.
  *
  * The provider is moved to a plan at the new amount first, for the cycle end, and our record follows in one transaction:

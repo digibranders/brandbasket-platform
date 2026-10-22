@@ -86,19 +86,22 @@ export interface ReactivationBasket {
   readonly forfeited: boolean;
   /** The monthly ad credit the lapsed subscription kept, or 0 when the offer is gone. Never grows. */
   readonly adCreditCents: number;
-  /** The subscription was cancelled (ended at the provider or asked to end), so its package offer ended with it. */
+  /** The customer asked the plan to end (cancelRequestedAt), so its package offer ended with it. A cancel they did not ask for is a lapse. */
   readonly cancelled: boolean;
 }
 
 /**
  * The basket a reactivation restores (docs/plans/16-platform-pricing-offers.md): the services the lapsed subscription was
- * billing, at the offer they earn as a set, with the ad credit it kept. A failed payment loses none of that. A cancelled
- * subscription has no package left to restore: its services come back at list with no ad credit, as the exit flow warns.
+ * billing, at the offer they earn as a set, with the ad credit it kept. A failed payment loses none of that, and neither does a
+ * mandate the customer revoked at their bank: the provider ending the subscription without the customer asking is a lapse.
+ * Only a plan the customer asked to end (`cancelRequestedAt`) has no package left to restore: its services come back at list
+ * with no ad credit, as the exit flow warns, and the customer chooses them again.
  *
  * Two subscriptions are read, because a reactivation checkout that was left unpaid or dropped sits between the business and the
- * one it last paid for. `subscription` is the newest, which carries the ad credit forward and says whether the business
- * cancelled: a checkout that never took a payment and was then cancelled (by the provider, or dropped when the account was
- * deleted) is not a cancelled subscription. `lines` are those of the newest subscription a payment activated: the services it
+ * one it last paid for. `subscription` is the newest, which carries the ad credit forward, and whose `cancelRequestedAt` says
+ * whether the business cancelled (the loader reads it from the last paid subscription when the newest never took a payment): a
+ * checkout that never took a payment and was then cancelled (by the provider, or dropped when the account was deleted) is not
+ * a cancelled subscription. `lines` are those of the newest subscription a payment activated: the services it
  * billed, each one that was paid for and never asked to end. They are still there after a reactivation replaced it, which
  * ends the lines it holds but leaves when they were activated and asked to end.
  * With none, or no subscription, the website alone.
@@ -112,7 +115,7 @@ export function reactivationBasketOf(input: {
   readonly forfeited: boolean;
 }): ReactivationBasket {
   const { subscription } = input;
-  const cancelled = subscription !== null && (subscription.cancelRequestedAt !== null || (subscription.status === "cancelled" && subscription.activatedAt !== null));
+  const cancelled = subscription !== null && subscription.cancelRequestedAt !== null;
   const staying = input.lines.filter((line) => line.activatedAt !== null && line.endRequestedAt === null);
   const services = readBundleSelection(staying.map((line) => line.addOn));
   const forfeited = input.forfeited || cancelled;

@@ -23,6 +23,7 @@ import { BillingConfigurationError, CheckoutVerificationError } from "@brandbask
 import {
   BillingRequiredError,
   findCustomerPaymentMethod,
+  findReactivation,
   findReactivationNetCents,
   getBillingProvider, getRazorpayProvider, razorpayKeyId, razorpayKeySecret,
   requireBillingAccess,
@@ -271,6 +272,40 @@ describe("findReactivationNetCents", () => {
     vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "local-seo-aeo"));
     vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
     await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }))).resolves.toBe(2_799_800);
+  });
+
+  describe("for a customer who cancelled the plan themselves", () => {
+    beforeEach(() => {
+      vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "cancelled", activatedAt: new Date(), cancelRequestedAt: new Date(), adCreditCents: 0 } as Subscription);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "digital-growth", "local-seo-aeo"));
+    });
+
+    it("shows their previous services at list until they choose again", async () => {
+      await expect(findReactivation(lapsedWith({ currency: "INR" }))).resolves.toEqual({
+        cancelled: true,
+        services: ["managed-website", "digital-growth", "local-seo-aeo"],
+        netCents: 3_799_700,
+      });
+    });
+
+    it("prices the services they chose at list, ignoring anything that is not a service", async () => {
+      await expect(findReactivation(lapsedWith({ currency: "INR" }), ["managed-website", "x", "local-seo-aeo"])).resolves.toEqual({
+        cancelled: true,
+        services: ["managed-website", "local-seo-aeo"],
+        netCents: 2_799_800,
+      });
+      await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }), ["digital-growth"])).resolves.toBe(999_900);
+    });
+  });
+
+  it("does not let a lapse choose: a mandate the provider revoked comes back as it was, at the package price", async () => {
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "cancelled", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 500_000 } as Subscription);
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "digital-growth", "local-seo-aeo"));
+    await expect(findReactivation(lapsedWith({ currency: "INR" }), ["managed-website"])).resolves.toEqual({
+      cancelled: false,
+      services: ["managed-website", "digital-growth", "local-seo-aeo"],
+      netCents: 2_659_700,
+    });
   });
 
   it("is nothing for a customer who has not lapsed", async () => {

@@ -362,6 +362,13 @@ export async function findLatestActivatedSubscriptionForBusiness(db: Runner, bus
  */
 const adCreditAfterEnding = sql`case when ${subscriptions.activatedAt} is not null then 0 else ${subscriptions.adCreditCents} end`;
 
+/**
+ * Ad credit of a subscription the provider has cancelled. Zero only when the customer asked for it (`cancel_requested_at`): the
+ * credit then ends with the paid month they kept it for. A cancel they did not ask for (a revoked mandate) is a lapse, which a
+ * reactivation restores with its credit, so the row keeps what it has. Neither is listed once its status is `cancelled`.
+ */
+const adCreditAfterProviderCancel = sql`case when ${subscriptions.activatedAt} is not null and ${subscriptions.cancelRequestedAt} is not null then 0 else ${subscriptions.adCreditCents} end`;
+
 export interface NewSubscription {
   readonly businessId: string;
   readonly planId: string;
@@ -716,7 +723,7 @@ export async function updateSubscriptionProviderStatus(db: Runner, input: Subscr
       status: input.status,
       providerStatus: input.providerStatus,
       lastSyncedAt: input.now,
-      ...(input.status === "cancelled" ? { cancelledAt: sql`coalesce(${subscriptions.cancelledAt}, ${input.now})`, adCreditCents: adCreditAfterEnding } : {}),
+      ...(input.status === "cancelled" ? { cancelledAt: sql`coalesce(${subscriptions.cancelledAt}, ${input.now})`, adCreditCents: adCreditAfterProviderCancel } : {}),
     })
     .where(
       and(

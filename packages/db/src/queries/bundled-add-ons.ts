@@ -252,6 +252,18 @@ export async function completeBundledAddOnChanges(db: Runner, input: { readonly 
     .where(
       and(eq(bundledAddOns.subscriptionId, input.subscriptionId), eq(bundledAddOns.status, "active"), isNotNull(bundledAddOns.endRequestedAt)),
     );
+  // A dropped service gave the package offer up (endPackageOffer), and its ad credit ran to the end of the paid month: this
+  // renewal is the first month without the package, whether the line went or was kept at list, so the credit stops now.
+  await db
+    .update(subscriptions)
+    .set({ adCreditCents: 0, updatedAt: input.now })
+    .where(
+      and(
+        eq(subscriptions.id, input.subscriptionId),
+        gt(subscriptions.adCreditCents, 0),
+        sql`exists (select 1 from ${businesses} where ${businesses.id} = ${subscriptions.businessId} and ${businesses.packageOfferForfeitedAt} is not null)`,
+      ),
+    );
   await db
     .update(bundledAddOns)
     .set({ billedFrom: input.now, updatedAt: input.now })
@@ -625,9 +637,9 @@ export async function markPackageOfferForfeited(tx: ScopedTransaction, businessI
 /**
  * A service has been dropped from a package, after its removal was recorded: the package offer ends for good. The lines
  * that stay move to `lines` (list price) from the next renewal, the business is marked as having given the offer up, the
- * subscription's monthly ad credit goes to 0 and any service still waiting for its charge is dropped, since the price
- * it was quoted at is gone. Ad credit stops when the drop is recorded, not at the next bill, because it is a monthly
- * amount the ads team reads from the subscription. Throws, so the caller's transaction writes nothing, when a line given
+ * any service still waiting for its charge is dropped, since the price it was quoted at is gone. The monthly ad credit
+ * is kept to the end of the month already paid: it stops at the renewal that takes the dropped line off
+ * (completeBundledAddOnChanges). Throws, so the caller's transaction writes nothing, when a line given
  * cannot be moved (setPendingOfferDiscounts). Inside the caller's transaction under its billing lock.
  */
 export async function endPackageOffer(
@@ -636,10 +648,6 @@ export async function endPackageOffer(
 ): Promise<void> {
   await setPendingOfferDiscounts(tx, { subscriptionId: input.subscriptionId, lines: input.lines, now: input.now });
   await markPackageOfferForfeited(tx, input.businessId, input.now);
-  await tx
-    .update(subscriptions)
-    .set({ adCreditCents: 0, updatedAt: input.now })
-    .where(and(eq(subscriptions.id, input.subscriptionId), eq(subscriptions.businessId, input.businessId)));
   const waiting = await tx
     .select({ id: bundledAddOns.id, chargeId: bundledAddOns.chargeId })
     .from(bundledAddOns)
@@ -683,9 +691,9 @@ export interface AdCreditDue {
 /**
  * The subscriptions that are owed ad credit this month: paid at least once (`activated_at`), paid through past `now` (a past
  * due subscription whose paid period has run out is owed nothing, as access.ts has it), still billing (active or past due; not
- * stopped by the provider), not cancelled and not asked to close, with credit above zero. A cancelled row that never
- * took a payment keeps the credit it was opened with, and a close request zeroes it from the request on, so neither is listed
- * by the credit alone. By business name. Staff connection.
+ * stopped by the provider), with credit above zero. A customer who asked to close keeps the credit to the end of the month they
+ * paid for, so a cancel request does not hide the row; the provider's cancel at that date does. A cancelled row that never
+ * took a payment keeps the credit it was opened with and is not listed by the credit alone. By business name. Staff connection.
  */
 export async function listAdCreditDue(db: Runner, now: Date): Promise<readonly AdCreditDue[]> {
   const due = await db
@@ -704,7 +712,6 @@ export async function listAdCreditDue(db: Runner, now: Date): Promise<readonly A
         gt(subscriptions.adCreditCents, 0),
         isNotNull(subscriptions.activatedAt),
         gt(subscriptions.paidThroughAt, now),
-        isNull(subscriptions.cancelRequestedAt),
         inArray(subscriptions.status, ["active", "past_due"]),
       ),
     )

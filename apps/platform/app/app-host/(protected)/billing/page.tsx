@@ -21,13 +21,15 @@ import { PaymentWaiting } from "@/components/panel/payment-waiting";
 import { PaymentMethod } from "@/components/panel/billing/payment-method";
 import { PlanSummary, priceNote } from "@/components/panel/billing/plan-summary";
 import { ReactivatePlan } from "@/components/panel/billing/reactivate-plan";
+import { ServicePicker } from "@/components/panel/billing/service-picker";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import { paymentMethodView, renewsAutomatically } from "@/lib/billing/payment-method-view";
 import { CHARGE_NOTICES, readChargeNotice } from "@/lib/billing/charge-notices";
 import { billingMonths } from "@/lib/billing/billing-months";
 import { listOpenCustomerCharges } from "@/lib/server/charges";
-import { findCustomerPaymentMethod, findReactivationNetCents, findReactivationPlan, listCustomerReceipts } from "@/lib/server/billing";
+import { findCustomerPaymentMethod, findReactivation, findReactivationPlan, listCustomerReceipts } from "@/lib/server/billing";
 import { loadBillingDetailsView } from "@/lib/server/billing-details";
+import { MEMBERSHIP_SERVICES_PARAM } from "@/lib/membership";
 import { reactivateAction } from "./actions";
 import { getCustomerBusinessKind, requireCustomerAccess } from "@/lib/server/customer-access";
 import { getProjectOverview } from "@/lib/server/onboarding";
@@ -107,6 +109,11 @@ function RenewalFailingCard({ until }: { readonly until: Date }): ReactElement {
       </p>
     </section>
   );
+}
+
+/** The services the address names (`?services=managed-website,digital-growth`), as raw text: findReactivation keeps the catalogue ids. */
+function readServicesParam(raw: string | string[] | undefined): string[] {
+  return (Array.isArray(raw) ? raw.join(",") : (raw ?? "")).split(",");
 }
 
 interface BillingPageProps {
@@ -200,11 +207,11 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
 
   const { plan, subscription } = billing;
   const lapsed = billing.status === "lapsed";
-  const [openCharges, params, reactivationPlan, reactivationNet, paymentMethod] = await Promise.all([
+  const params = await searchParams;
+  const [openCharges, reactivationPlan, reactivation, paymentMethod] = await Promise.all([
     listOpenCustomerCharges(customer),
-    searchParams,
     lapsed ? findReactivationPlan(customer) : Promise.resolve(null),
-    lapsed ? findReactivationNetCents(customer) : Promise.resolve(null),
+    lapsed ? findReactivation(customer, readServicesParam(params[MEMBERSHIP_SERVICES_PARAM])) : Promise.resolve(null),
     findCustomerPaymentMethod(customer),
   ]);
   // Razorpay's confirmation arrives separately from the customer's return, so a page drawn straight after paying waits for
@@ -245,13 +252,18 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
             delayedText="Confirming your payment is taking longer than usual."
             supportEmail={supportEmailOf(brand)}
           />
-        ) : lapsed && reactivationPlan !== null && reactivationNet !== null ? (
+        ) : lapsed && reactivationPlan !== null && reactivation !== null ? (
           <ReactivatePlan
             planName={planLabel(reactivationPlan.name)}
-            monthlyAmount={monthlyPaymentAmount(reactivationPlan, reactivationNet)}
-            priceNote={priceNote(reactivationPlan, 0, reactivationNet)}
+            monthlyAmount={monthlyPaymentAmount(reactivationPlan, reactivation.netCents)}
+            priceNote={priceNote(reactivationPlan, 0, reactivation.netCents)}
             action={reactivateAction}
-          />
+            services={reactivation.cancelled ? reactivation.services : null}
+          >
+            {reactivation.cancelled ? (
+              <ServicePicker selected={reactivation.services} currency={reactivationPlan.currency} />
+            ) : null}
+          </ReactivatePlan>
         ) : lapsed || plan === null || subscription === null ? (
           <Card title="Your plan">
             <p className="text-sm leading-relaxed text-ink-soft">
