@@ -27,7 +27,7 @@ import { getAppDb, getStaffDb } from "./db";
 import { ensureDiscountPlan } from "./discount-plans";
 
 /*
- * The Add-ons page's server side (docs/plans/11-platform-plans.md and 13-platform-add-ons-after-signup.md in the BrandBasket
+ * The Services page's server side (docs/plans/11-platform-plans.md and 13-platform-add-ons-after-signup.md in the BrandBasket
  * workspace). Brandbasket bills an add-on only inside the plan's own monthly payment: chosen at the first checkout, or added
  * here with a charge for the rest of the paid month, and taken out here from the next billing date. Fynix's separate add-on
  * subscriptions are not sold here.
@@ -129,7 +129,7 @@ export async function loadWelcomeServices(tenant: GrantedCustomer["tenant"]): Pr
   return welcomeServices(lines);
 }
 
-/** Everything the Add-ons page shows, read through row-level security as the signed-in customer. */
+/** Everything the Services page shows, read through row-level security as the signed-in customer. */
 export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Promise<AddOnsPage> {
   const { tenant } = customer;
   const providerName = getBillingProvider().name;
@@ -180,7 +180,7 @@ export type AddOnAddResult =
 const CANNOT_ADD_NOW = "We couldn't add that just now. Reload the page to see where it stands.";
 
 /**
- * Add on the Add-ons page: a charge for the rest of the paid month, or keeping an add-on that is ending
+ * Add on the Services page: a charge for the rest of the paid month, or keeping an add-on that is ending
  * (startAddOn in @brandbasket/shared/server/basket-change). The form carries only the add-on; whether it can be added, and
  * at what price, is worked out again on the server under the business's lock.
  */

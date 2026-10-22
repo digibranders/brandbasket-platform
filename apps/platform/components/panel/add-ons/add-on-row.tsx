@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { requestBrand } from "@/lib/server/request-brand";
 import type { AddOn } from "@brandbasket/shared/lib/billing/add-ons";
 import { formatMoney } from "@brandbasket/shared/lib/money";
-import { addBundledAddOnAction, removeBundledAddOnAction } from "@/app/app-host/(protected)/add-ons/actions";
+import { addBundledAddOnAction, removeBundledAddOnAction } from "@/app/app-host/(protected)/services/actions";
 import { BundledAddOnAdd } from "@/components/panel/add-ons/bundled-add-on-add";
 import { BundledAddOnRemove } from "@/components/panel/add-ons/bundled-add-on-remove";
 import { addOnDate } from "@/lib/billing/add-on-copy";

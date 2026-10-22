@@ -75,7 +75,7 @@ const LISTING_NAV: Readonly<Record<ClientListingSection, SidebarNavItem>> = {
  * both.
  *
  * The rows come in sections with a hairline between them: the business's day-to-day (Home, bookings), its directory
- * pages, its website (setup, project, domain, content), and its account (add-ons, billing).
+ * pages, its website (setup, project, domain, content), and its account (services, billing).
  */
 function customerNav({
   setupDone,
@@ -136,7 +136,7 @@ function customerNav({
       },
     ],
     [
-      { href: ADD_ONS_PATH, label: "Add-ons", icon: <NavCirclePlusIcon className="size-5" /> },
+      { href: ADD_ONS_PATH, label: "Services", icon: <NavCirclePlusIcon className="size-5" /> },
       { href: "/billing", label: "Billing", icon: <NavScrollTextIcon className="size-5" /> },
     ],
   ]);

@@ -11,9 +11,9 @@ import { listOpenCustomerCharges } from "@/lib/server/charges";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { requestBrand } from "@/lib/server/request-brand";
 
-export const metadata: Metadata = { title: "Add-ons" };
+export const metadata: Metadata = { title: "Services" };
 
-interface AddOnsPageProps {
+interface ServicesPageProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
@@ -23,7 +23,7 @@ interface AddOnsPageProps {
  * as on in its row, so only a problem gets a notice, and while Razorpay's confirmation is still on its way the page waits for
  * it and offers no Add, so nobody pays twice.
  */
-export default async function AddOnsPage({ searchParams }: AddOnsPageProps): Promise<ReactElement> {
+export default async function ServicesPage({ searchParams }: ServicesPageProps): Promise<ReactElement> {
   const customer = await requireCustomerAccess({ listingAccount: "allow" });
   const [page, params, openCharges, brand] = await Promise.all([
     loadAddOnsPage(customer, new Date()),
@@ -38,7 +38,7 @@ export default async function AddOnsPage({ searchParams }: AddOnsPageProps): Pro
 
   return (
     <>
-      <h1 className="panel-title">Add-ons</h1>
+      <h1 className="panel-title">Services</h1>
       {notice === null ? null : <NoticeBanner {...CHARGE_NOTICES[notice]} />}
       {confirming ? (
         <div className="mt-6">

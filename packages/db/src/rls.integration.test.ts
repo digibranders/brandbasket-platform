@@ -89,7 +89,7 @@ describe("row-level security for bb_app", () => {
     expect(message).toMatch(/permission denied for table businesses/);
   });
 
-  it("lets a member read whether their own business has given the package offer up, and no one else's, as the Add-ons page does", async () => {
+  it("lets a member read whether their own business has given the package offer up, and no one else's, as the Services page does", async () => {
     await dbs.staff.db.transaction((tx) => markPackageOfferForfeited(tx, businessA, new Date("2026-10-21T10:00:00.000Z")));
 
     const ownBusiness = await withTenantScope(dbs.app.db, { userId: USER_A, businessId: businessA }, (tx) => isPackageOfferForfeited(tx, businessA));

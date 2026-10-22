@@ -10,7 +10,7 @@ import type { MoneyCurrency } from "../money";
  * browser-safe.
  */
 
-export const ADD_ONS_PATH = "/add-ons";
+export const ADD_ONS_PATH = "/services";
 
 /** Days after Razorpay gives up on a renewal during which the customer can still Pay now. */
 export const ADD_ON_GRACE_DAYS = 7;

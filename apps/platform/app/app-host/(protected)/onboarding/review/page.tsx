@@ -73,9 +73,6 @@ function Checklist({ items }: { readonly items: readonly ChecklistItem[] }): Rea
   );
 }
 
-const REFUND_NOTE =
-  "Changed your mind? You can ask for a full refund within 7 days of paying, as long as we haven’t started building.";
-
 function PaymentSection({
   heading,
   children,
@@ -144,12 +141,7 @@ function PaymentPanel({
             ready={step.ready}
             label={`Pay ${step.amount} and send`}
             pendingLabel="Opening checkout…"
-            note={
-              <>
-                <p>Once you pay, we start building and your answers lock. You can still email us about changes.</p>
-                <p className="mt-2">{REFUND_NOTE}</p>
-              </>
-            }
+            note={<p>Once you pay, we start building and your answers lock. You can still email us about changes.</p>}
           />
           <ReferralPanel discount={discount} currency={currency} lapsedCode={lapsedCode} />
         </PaymentSection>
@@ -166,7 +158,6 @@ function PaymentPanel({
             ready
             label={`Pay ${step.amount}`}
             pendingLabel="Opening checkout…"
-            note={<p>{REFUND_NOTE}</p>}
           />
           <ReferralPanel discount={discount} currency={currency} lapsedCode={lapsedCode} />
         </PaymentSection>

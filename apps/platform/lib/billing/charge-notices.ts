@@ -45,11 +45,11 @@ const AD_NOTICE: Readonly<Record<ChargeNotice, string>> = {
 
 /**
  * Where paying a charge returns to: Billing, or for a won ad spot (`directory_ad`) the Advertise page, where the
- * owner sees the ad go up rather than a list of receipts, and for an add-on (`add_on`) the Add-ons page, where it shows on.
+ * owner sees the ad go up rather than a list of receipts, and for an add-on (`add_on`) the Services page, where it shows on.
  */
 export function chargeReturnHref(kind: string, notice: ChargeNotice): string {
   if (kind === "directory_ad") return `/advertise?notice=${AD_NOTICE[notice]}`;
-  if (kind === "add_on") return `/add-ons?charge=${notice}`;
+  if (kind === "add_on") return `/services?charge=${notice}`;
   return chargeNoticeHref(notice);
 }
 

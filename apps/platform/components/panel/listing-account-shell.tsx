@@ -56,7 +56,7 @@ function listingAccountNav(newLeadCount: number): readonly SidebarNavItem[] {
       { href: ADVERTISE_PATH, label: "Advertise", icon: <NavMegaphoneIcon className="size-5" /> },
     ],
     [
-      { href: ADD_ONS_PATH, label: "Add-ons", icon: <NavCirclePlusIcon className="size-5" /> },
+      { href: ADD_ONS_PATH, label: "Services", icon: <NavCirclePlusIcon className="size-5" /> },
       { href: "/billing", label: "Billing", icon: <NavScrollTextIcon className="size-5" /> },
     ],
     [{ href: MEMBERSHIP_PATH, label: "Managed Website", icon: <NavCircleArrowUpIcon className="size-5" /> }],

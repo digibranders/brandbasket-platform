@@ -10,7 +10,7 @@ import type { StatusTone } from "@/components/console/status-dot";
 /**
  * What the client page's Add-ons section shows for each add-on row and each press release. Pure, so the rules (which rows
  * count, what each state is called, when Pause and Cancel are offered) are tested without a page. Dates are in India
- * time, the same as the customer's Add-ons page, so staff and customer read the same day.
+ * time, the same as the customer's Services page, so staff and customer read the same day.
  */
 
 const INDIA_TIME = "Asia/Kolkata";

@@ -198,7 +198,7 @@ Rules:
   the two buttons swap for one sentence that says what will happen and the date, then "Yes, …" and "Keep it".
   Focus moves to the sentence, and "Keep it" puts it back on the button that opened the question. When the action
   goes through, focus lands on the add-on's heading and the state line under its price announces the result.
-- One exception is a purchase panel, which is not a confirmation. Get it, Resume, Pay now and Keep it on the Add-ons
+- One exception is a purchase panel, which is not a confirmation. Get it, Resume, Pay now and Keep it on the Services
   page open a native `<dialog>` (`components/panel/add-ons/add-on-checkout-dialog.tsx`, opened with `showModal`)
   that builds the price line by line before anything is charged. Opening it puts focus on its heading and Escape
   closes it. This and the image cropper are the only dialogs in the app; do not add a third for a confirmation.

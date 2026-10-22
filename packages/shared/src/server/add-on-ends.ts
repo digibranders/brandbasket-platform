@@ -17,7 +17,7 @@ import { formatCalendarDate } from "../lib/format";
 import { describeError, logBillingEvent } from "./billing-log";
 
 /**
- * Pause and Cancel for one add-on (docs/superpowers/specs/2026-10-09-add-ons-design.md), for the customer's Add-ons page
+ * Pause and Cancel for one add-on (docs/superpowers/specs/2026-10-09-add-ons-design.md), for the customer's Services page
  * and for staff acting on a customer's behalf. Both stop the subscription at the provider at the end of the month already
  * paid for and record the end, so nobody who asked can be charged again. There is no scheduled job: the end date is
  * worked out from the stored row when it is shown (addOnView).
@@ -325,7 +325,7 @@ export async function recordAddOnClosure(
 const PROVIDER_UNAVAILABLE = "We couldn't reach the payment provider. Try again in a minute.";
 const INDIA_TIME = "Asia/Kolkata";
 
-/** The sentence the Add-ons page shows for an outcome. Dates are in India time, like the rest of billing. */
+/** The sentence the Services page shows for an outcome. Dates are in India time, like the rest of billing. */
 export function addOnEndMessage(outcome: AddOnEndOutcome): string {
   if (outcome.kind === "refused") {
     if (outcome.addOn === null) return "We couldn't find that add-on.";

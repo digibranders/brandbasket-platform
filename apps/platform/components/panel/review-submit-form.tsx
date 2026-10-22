@@ -10,8 +10,8 @@ interface ReviewSubmitFormProps {
   /** The button, e.g. "Pay $75 and send" or "Send it to us". */
   readonly label: string;
   readonly pendingLabel: string;
-  /** What pressing it means, shown under the button. */
-  readonly note: ReactNode;
+  /** What pressing it means, shown under the button when there is something to say. */
+  readonly note?: ReactNode;
 }
 
 /**
@@ -26,7 +26,7 @@ export function ReviewSubmitForm({ action, ready, label, pendingLabel, note }: R
       <StepSubmit controls={controls} label={label} pendingLabel={pendingLabel}>
         {ready ? null : <p className="text-sm text-ink-soft">Finish the steps above first.</p>}
       </StepSubmit>
-      <div className="max-w-xl text-sm leading-relaxed text-ink-soft">{note}</div>
+      {note === undefined ? null : <div className="max-w-xl text-sm leading-relaxed text-ink-soft">{note}</div>}
     </form>
   );
 }

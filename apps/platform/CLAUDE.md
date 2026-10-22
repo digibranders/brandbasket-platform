@@ -14,10 +14,10 @@ The app at app.brandbasket.in: sign-up and sign-in, onboarding, the business das
 
 | Path under `app/app-host/` | Holds |
 |---|---|
-| `(protected)/` | Signed-in dashboard: onboarding, business, content (blog, authors, categories), billing, add-ons, upgrade, care, premium, appointments, patients, leads, reviews, deals, photos, monitoring, project, changelog, settings |
+| `(protected)/` | Signed-in dashboard: onboarding, business, content (blog, authors, categories), billing, services, upgrade, care, premium, appointments, patients, leads, reviews, deals, photos, monitoring, project, changelog, settings |
 | `(support)/support` | Support tickets |
 | `login`, `join`, `forgot-password`, `reset-password/[token]`, `confirm-email/[token]`, `setup/[token]`, `restore-account` | Account entry points |
-| `billing/*`, `add-ons/*` | Pay and confirm pages for plans, charges and add-ons |
+| `billing/*` | Pay and confirm pages for plans, charges and services |
 | `affiliate/` | Affiliate portal and setup |
 
 `app/api/` holds the public endpoints: `site/*` (called by client websites with a site token: info, availability, bookings, posts, media), `leads`, `pricing`, `webhooks/razorpay`, upload routes, privacy requests, error reports and the dormant `directory/*` routes.
