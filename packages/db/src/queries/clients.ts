@@ -27,7 +27,7 @@ import {
   type SubscriptionStatus,
 } from "../schema";
 import { isPhoneAccountEmail } from "../phone-account";
-import { PLAN_EXCLUDED_PAYMENT_KINDS, planTierForSignupChoice } from "./billing";
+import { PLAN_EXCLUDED_PAYMENT_KINDS, planTierForSignupChoice, subscriptionWaitingToStart } from "./billing";
 import { isUuid } from "./tenant";
 
 /**
@@ -170,7 +170,7 @@ async function billingByBusiness(db: Database, businessIds: readonly string[]): 
         commitmentEndsAt: subscriptions.commitmentEndsAt,
       })
       .from(subscriptions)
-      .where(inArray(subscriptions.businessId, ids))
+      .where(and(inArray(subscriptions.businessId, ids), sql`not ${subscriptionWaitingToStart()}`))
       // Newest first, so the first row seen per business is its latest (see findLatestSubscriptionForBusiness).
       .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id)),
     db
@@ -237,7 +237,7 @@ async function tiersByBusiness(db: Database, businessIds: readonly string[]): Pr
       .from(subscriptions)
       .innerJoin(plans, eq(plans.id, subscriptions.planId))
       .leftJoin(pendingPlans, eq(pendingPlans.id, subscriptions.pendingPlanId))
-      .where(inArray(subscriptions.businessId, ids))
+      .where(and(inArray(subscriptions.businessId, ids), sql`not ${subscriptionWaitingToStart()}`))
       // Newest first, so the first row seen per business is its latest (see findLatestSubscriptionForBusiness).
       .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id)),
     db.select({ id: businesses.id, signupChoice: businesses.signupChoice }).from(businesses).where(inArray(businesses.id, ids)),

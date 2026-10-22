@@ -1,6 +1,7 @@
 import "server-only";
 import { chargedAmountCents, mapRazorpayStatus, type RazorpayWebhookEvent } from "@brandbasket/billing";
 import {
+  activateBundledAddOns,
   completeBundledAddOnChanges,
   completePlanUpgradeAtRenewal,
   findAddOnSubscriptionByProviderId,
@@ -13,6 +14,7 @@ import {
   lockBusinessForBilling,
   recordUnappliedAddOnPayment,
   recordUnappliedPayment,
+  removeBundledAddOnsOf,
   renewalBundledLines,
   setPendingOfferDiscounts,
   updateAddOnStatus,
@@ -30,6 +32,7 @@ import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellati
 import { getRazorpayProvider } from "./billing";
 import { recordRazorpayChargePayment } from "./charges";
 import { getStaffDb } from "./db";
+import { restoreKeptPlan } from "./keep-plan";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 
 /** A free listing business this charge turned into a website client: it needs its Payload tenant once committed. */
@@ -103,6 +106,13 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       providerStatus,
       now: new Date(),
     });
+    // The mandate of a kept plan (Keep my plan) is authorised: the account closure is lifted and the plan shows as running.
+    if (known.continuesId !== null && mapRazorpayStatus(providerStatus) === "active") {
+      await getStaffDb().transaction(async (tx) => {
+        await lockBusinessForBilling(tx, known.businessId);
+        await restoreKeptPlan(tx, known.id, new Date());
+      });
+    }
     return;
   }
 
@@ -171,14 +181,17 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       // The first charge on a new subscription for a business that has paid before is a reactivation: one month of the
       // services it lapsed with, the lines frozen on this subscription when its checkout opened, with no coupon
       // (docs/superpowers/specs/2026-10-09-reactivation-design.md).
-      const reactivating = subscription.activatedAt === null && (await hasEverPaid(tx, subscription.businessId));
+      // The first charge of a kept plan (Keep my plan) is not that: it is the renewal of the plan the client cancelled, at the
+      // old amount, with no new commitment (see the renewal branch below).
+      const kept = subscription.activatedAt === null && subscription.continuesId !== null;
+      const reactivating = subscription.activatedAt === null && !kept && (await hasEverPaid(tx, subscription.businessId));
       const plan = await findPlanById(tx, subscription.planId);
       // What Razorpay should have taken: the plan's net price less the discount frozen onto this subscription when
       // its checkout opened, with the plan's tax on top, from chargedAmountCents, the same function the Razorpay
       // plan's own amount was worked out with. The frozen discount, never the code's current one, keeps this in
       // step even if the code is edited or retired afterwards. If the two ever disagree, the charge falls through to
       // amount_mismatch below and lands in the attention queue rather than activating anything.
-      const basePrice = subscription.activatedAt === null && !reactivating ? plan?.initialAmountCents : plan?.recurringAmountCents;
+      const basePrice = subscription.activatedAt === null && !reactivating && !kept ? plan?.initialAmountCents : plan?.recurringAmountCents;
       // The services are billed as lines, every month: their frozen total is the price (the plan row costs nothing). A
       // reactivation is a fresh subscription with its own lines, frozen when its checkout opened.
       const bundledNetCents = subscription.bundledAddOnNetCents;
@@ -260,7 +273,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         return null;
       }
 
-      if (subscription.activatedAt === null) {
+      if (subscription.activatedAt === null && !kept) {
         // Not reachable with no plan: the amount check above refused it. (A renewal at a new price never has a first payment.)
         if (plan === null || plan === undefined) throw new Error(`Subscription ${subscription.id} has no plan to activate`);
         if (reactivating) {
@@ -295,6 +308,13 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           // already-activated subscription (activatedAt !== null) having a null commitmentEndsAt is a real
           // data-integrity anomaly. Fail loudly instead of silently manufacturing a commitment date.
           throw new Error(`Subscription ${subscription.id} is activated but has no commitmentEndsAt`);
+        }
+        if (kept && subscription.continuesId !== null) {
+          // Charged before (or without) the mandate's own event: lift the closure now. The services billed in this charge
+          // turn on, and those of the subscription it carries on from end with it, as a replaced subscription's do.
+          await restoreKeptPlan(tx, subscription.id, event.paidAt);
+          await activateBundledAddOns(tx, { subscriptionId: subscription.id, now: event.paidAt });
+          await removeBundledAddOnsOf(tx, { subscriptionId: subscription.continuesId, now: event.paidAt });
         }
         // What the amount check above accepted, so the invoice explains the charge by construction: the new plan for the
         // renewal that completes a paid move up, else the subscription's own plan with its frozen discount and stay offer.

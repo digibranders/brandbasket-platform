@@ -23,6 +23,11 @@ export function getAppDb(): Database {
  *   customer's own business. Customers may never write billing rows through their own connection; these take the
  *   business id only from the session, never from the request, and the confirmation sends onboarding back under the
  *   customer's role (withCustomerRole) so row-level security still applies to it.
+ * - lib/server/keep-plan.ts, which opens and records the keep checkout of a closing account's own plan (Keep my plan, on
+ *   the restore-account page) and lifts the closure once the provider confirms its mandate. A closing account has no
+ *   tenant to scope under. The business id comes only from the signed-in user's own open closure; the plan, services,
+ *   discount and credit only from the subscription's stored rows, never from the request, and the mandate is only ever
+ *   confirmed by the provider's signed webhook or the fake provider's signed token for that business's own checkout.
  * - lib/server/membership-checkout.ts and lib/server/billing.ts, which read billing rows for the signed-in customer's own
  *   business to price the plan page and Billing: the billing state, the plan on sale, the services a lapsed plan reactivates
  *   with and whether the package offer is given up. They write nothing. The business id comes only from the session; the
