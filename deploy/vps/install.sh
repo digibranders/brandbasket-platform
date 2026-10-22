@@ -54,7 +54,8 @@ readonly FILL_ME_NAMES='BREVO_API_KEY|RAZORPAY_KEY_ID|RAZORPAY_KEY_SECRET'
 usage() { sed -n '2,/^set -euo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; }
 
 # Runs a command as the brandbasket user with its home (runuser alone keeps root's HOME).
-as_bb() { runuser -u brandbasket -- env HOME="$BB_HOME" "$@"; }
+# From brandbasket's home: install.sh runs in /root/brandbasket-src, which brandbasket cannot enter, and git refuses to start there.
+as_bb() { (cd "$BB_HOME" && runuser -u brandbasket -- env HOME="$BB_HOME" "$@"); }
 
 need_user() { id brandbasket >/dev/null 2>&1 || die "user brandbasket does not exist: run install.sh user first"; }
 
