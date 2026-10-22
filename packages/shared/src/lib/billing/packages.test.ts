@@ -9,7 +9,7 @@ describe("package offers", () => {
     [["digital-growth"], 0],
     [["managed-website", "digital-growth"], 2000],
     [["managed-website", "local-seo-aeo"], 2000],
-    [["digital-growth", "local-seo-aeo"], 3000],
+    [["digital-growth", "local-seo-aeo"], 2000],
     [["managed-website", "digital-growth", "local-seo-aeo"], 3000],
   ] as const)("gives %o %i basis points off", (services, bp) => {
     expect(packageBasisPointsFor({ services, forfeited: false })).toBe(bp);
@@ -54,7 +54,7 @@ describe("package offers", () => {
       { addOn: "digital-growth", listCents: 7500 },
     ] as const;
     expect(packageLineWith(dollars, false, "local-seo-aeo", "USD")).toMatchObject({ discountCents: 10500, netCents: 24500 });
-    expect(packageLineWith(dollars.slice(1), false, "local-seo-aeo", "USD")).toMatchObject({ discountCents: 10550, netCents: 24450 });
+    expect(packageLineWith(dollars.slice(1), false, "local-seo-aeo", "USD")).toMatchObject({ discountCents: 7000, netCents: 28000 });
     expect(packageLineWith(website, true, "digital-growth", "INR")).toMatchObject({ discountCents: 0, netCents: 999900 });
     expect(packageLineWith([], false, "managed-website", "INR")).toMatchObject({ discountCents: 0, netCents: 299900 });
   });
@@ -90,7 +90,7 @@ const PACKAGES: readonly {
 }[] = [
   { services: ["managed-website", "digital-growth"], netCents: { INR: 1039800, USD: 12000 }, chargedInr: 1226964, savingsCents: { INR: 260000, USD: 3000 }, lines: { INR: [239920, 799880], USD: [6000, 6000] } },
   { services: ["managed-website", "local-seo-aeo"], netCents: { INR: 2239800, USD: 34000 }, chargedInr: 2642964, savingsCents: { INR: 560000, USD: 8500 }, lines: { INR: [239920, 1999880], USD: [6000, 28000] } },
-  { services: ["digital-growth", "local-seo-aeo"], netCents: { INR: 2449800, USD: 29700 }, chargedInr: 2890764, savingsCents: { INR: 1050000, USD: 12800 }, lines: { INR: [699930, 1749870], USD: [5250, 24450] } },
+  { services: ["digital-growth", "local-seo-aeo"], netCents: { INR: 2799800, USD: 34000 }, chargedInr: 3303764, savingsCents: { INR: 700000, USD: 8500 }, lines: { INR: [799920, 1999880], USD: [6000, 28000] } },
   { services: ["managed-website", "digital-growth", "local-seo-aeo"], netCents: { INR: 2659700, USD: 35000 }, chargedInr: 3138446, savingsCents: { INR: 1140000, USD: 15000 }, lines: { INR: [209930, 699930, 1749840], USD: [5250, 5250, 24500] } },
 ];
 

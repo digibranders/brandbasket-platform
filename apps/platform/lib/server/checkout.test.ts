@@ -862,7 +862,7 @@ describe("startReactivationFor", () => {
       );
     });
 
-    it("reopens Social + SEO at $297, the 50 cents that round it down to a whole dollar on the dearest line", async () => {
+    it("reopens Social + SEO at 20% off, $340 a month", async () => {
       lapsedWith(["digital-growth", "local-seo-aeo"], { adCreditCents: 2_500 });
       const started = vi.spyOn(provider, "startCheckout");
 
@@ -870,9 +870,9 @@ describe("startReactivationFor", () => {
 
       expect(openCheckoutSubscription).toHaveBeenCalledWith(
         { name: "tx2" },
-        expect.objectContaining({ bundledAddOns: [usdLine("digital-growth", 7_500, 2_250), usdLine("local-seo-aeo", 35_000, 10_550)], adCreditCents: 2_500 }),
+        expect.objectContaining({ bundledAddOns: [usdLine("digital-growth", 7_500, 1_500), usdLine("local-seo-aeo", 35_000, 7_000)], adCreditCents: 2_500 }),
       );
-      expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 29_700 }));
+      expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 34_000 }));
     });
 
     it("reopens a single service at its list price, with no ad credit", async () => {

@@ -371,10 +371,10 @@ describe("issueMissingTaxInvoice", () => {
 
     const restarted = await issue(restart.payment.id, new Date("2026-12-15T05:30:00.000Z"));
 
-    expect(restart.payment.amountCents).toBe(2_890_764);
+    expect(restart.payment.amountCents).toBe(3_303_764);
     expect(restarted.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
-      ["Social Media and Ads", 299_970, "Package offer, 30% off"],
-      ["Local SEO + AEO", 750_030, "Package offer, 30% off"],
+      ["Social Media and Ads", 199_980, "Package offer, 20% off"],
+      ["Local SEO + AEO", 500_020, "Package offer, 20% off"],
     ]);
     expect(restarted.lines[0]?.detail).toBe("Monthly subscription, 09 Dec 2026 to 08 Jan 2027");
     expect(restarted.totalCents).toBe(restart.payment.amountCents);

@@ -258,10 +258,10 @@ describe("receiptDocument for services", () => {
     rowsAddUp(doc, paid.amountCents);
   });
 
-  it("names the 30% offer on the two-service package that earns it", () => {
+  it("names the 20% offer on a two-service package", () => {
     const paid = servicesPayment(["digital-growth", "local-seo-aeo"]);
     const doc = receiptDocument(paid, CUSTOMER);
-    expect(doc.lines.map((line) => line.label)).toContain("Package offer, 30% off");
+    expect(doc.lines.map((line) => line.label)).toContain("Package offer, 20% off");
     rowsAddUp(doc, paid.amountCents);
   });
 

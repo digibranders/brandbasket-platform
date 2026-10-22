@@ -18,7 +18,7 @@ describe("publicPricing", () => {
     expect(pricing.packages).toEqual([
       { services: ["managed-website", "digital-growth"], basisPoints: 2_000, adCreditCents: { INR: 200_000, USD: 2_500 } },
       { services: ["managed-website", "local-seo-aeo"], basisPoints: 2_000, adCreditCents: { INR: 0, USD: 0 } },
-      { services: ["digital-growth", "local-seo-aeo"], basisPoints: 3_000, adCreditCents: { INR: 200_000, USD: 2_500 } },
+      { services: ["digital-growth", "local-seo-aeo"], basisPoints: 2_000, adCreditCents: { INR: 200_000, USD: 2_500 } },
       { services: ["managed-website", "digital-growth", "local-seo-aeo"], basisPoints: 3_000, adCreditCents: { INR: 500_000, USD: 6_000 } },
     ]);
   });

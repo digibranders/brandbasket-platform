@@ -37,8 +37,8 @@ describe("bundleLines", () => {
 
   it("takes the package discount off each service, to the paisa", () => {
     expect(bundleLines(["digital-growth", "local-seo-aeo"], "INR")).toEqual([
-      { addOn: "digital-growth", title: "Social Media and Ads", listCents: 999_900, offerCents: 299_970, netCents: 699_930 },
-      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 2_499_900, offerCents: 750_030, netCents: 1_749_870 },
+      { addOn: "digital-growth", title: "Social Media and Ads", listCents: 999_900, offerCents: 199_980, netCents: 799_920 },
+      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 2_499_900, offerCents: 500_020, netCents: 1_999_880 },
     ]);
   });
 

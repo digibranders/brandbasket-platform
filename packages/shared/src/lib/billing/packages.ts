@@ -29,7 +29,7 @@ const PACKAGE_ROUNDING_CENTS = 100;
 export const PACKAGE_OFFERS: readonly PackageOffer[] = [
   { services: ["managed-website", "digital-growth"], basisPoints: 2000, adCreditCents: { INR: 200000, USD: 2500 } },
   { services: ["managed-website", "local-seo-aeo"], basisPoints: 2000, adCreditCents: { INR: 0, USD: 0 } },
-  { services: ["digital-growth", "local-seo-aeo"], basisPoints: 3000, adCreditCents: { INR: 200000, USD: 2500 } },
+  { services: ["digital-growth", "local-seo-aeo"], basisPoints: 2000, adCreditCents: { INR: 200000, USD: 2500 } },
   { services: ["managed-website", "digital-growth", "local-seo-aeo"], basisPoints: 3000, adCreditCents: { INR: 500000, USD: 6000 } },
 ];
 

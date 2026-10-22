@@ -123,7 +123,7 @@ describe("orderSummary", () => {
     ["Local SEO + AEO", ["local-seo-aeo"], 2_949_882, 0, 35_000, 0, null],
     ["website and social", ["managed-website", "digital-growth"], 1_226_964, 200_000, 12_000, 2_500, "Package offer, 20% off"],
     ["website and SEO", ["managed-website", "local-seo-aeo"], 2_642_964, 0, 34_000, 0, "Package offer, 20% off"],
-    ["social and SEO", ["digital-growth", "local-seo-aeo"], 2_890_764, 200_000, 29_700, 2_500, "Package offer, 30% off"],
+    ["social and SEO", ["digital-growth", "local-seo-aeo"], 3_303_764, 200_000, 34_000, 2_500, "Package offer, 20% off"],
     ["all three", ["managed-website", "digital-growth", "local-seo-aeo"], 3_138_446, 500_000, 35_000, 6_000, "Package offer, 30% off"],
   ];
 
@@ -260,7 +260,7 @@ describe("basketNetCents", () => {
     [["managed-website"], "INR", 299_900],
     [["digital-growth"], "INR", 999_900],
     [["managed-website", "digital-growth"], "INR", 1_039_800],
-    [["digital-growth", "local-seo-aeo"], "INR", 2_449_800],
+    [["digital-growth", "local-seo-aeo"], "INR", 2_799_800],
     [["managed-website", "digital-growth", "local-seo-aeo"], "INR", 2_659_700],
     [["managed-website", "digital-growth", "local-seo-aeo"], "USD", 35_000],
   ] as const)("prices %o in %s at %i before tax, the package price a new sign-up pays", (services, currency, net) => {

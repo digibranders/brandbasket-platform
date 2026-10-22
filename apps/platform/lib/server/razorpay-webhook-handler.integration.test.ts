@@ -294,12 +294,12 @@ describe("a renewal at the amount the provider was told, when the database never
     const subscription = await paidSubscription(linesOf("digital-growth"), { referralCodeId: code.id, discountAmountCents: 30_000 });
     await addAndPayWithoutProviderStep("local-seo-aeo");
 
-    await renew(2_890_764);
+    await renew(3_303_764);
 
     const { payment, invoice } = await renewalInvoice();
-    expect(payment).toMatchObject({ amountCents: 2_890_764, attentionReason: null });
-    expect(invoice.totalCents).toBe(2_890_764);
-    expect(await findSubscriptionById(dbs().staff.db, subscription.id)).toMatchObject({ discountAmountCents: 0, bundledAddOnNetCents: 2_449_800, pendingBundledAddOnNetCents: null });
+    expect(payment).toMatchObject({ amountCents: 3_303_764, attentionReason: null });
+    expect(invoice.totalCents).toBe(3_303_764);
+    expect(await findSubscriptionById(dbs().staff.db, subscription.id)).toMatchObject({ discountAmountCents: 0, bundledAddOnNetCents: 2_799_800, pendingBundledAddOnNetCents: null });
   });
 
   it("still refuses an amount that is neither the pending one nor the one the provider was told", async () => {
@@ -381,11 +381,11 @@ describe("the affiliate's earning on a renewal after a change to the services", 
     await paidSubscription(linesOf("digital-growth"), { referralCodeId: codeId, discountAmountCents: 30_000 });
     await addAndPay("local-seo-aeo");
 
-    await renew(2_890_764);
+    await renew(3_303_764);
 
-    // 5% of Social + SEO at the package price, ₹24,498, not of the Social line the subscription held until this payment.
+    // 5% of Social + SEO at the package price, ₹27,998, not of the Social line the subscription held until this payment.
     expect(await listAffiliateEarnings(dbs().staff.db, affiliateId, 10)).toMatchObject([
-      { paymentKind: "renewal", basisCents: 2_449_800, amountCents: 122_490 },
+      { paymentKind: "renewal", basisCents: 2_799_800, amountCents: 139_990 },
       { paymentKind: "initial", basisCents: 969_900 },
     ]);
   });
