@@ -244,7 +244,7 @@ describe("clientBundledAddOnRows", () => {
   const SIGNED_UP = new Date("2026-10-19T00:00:00.000Z");
   const ADDED = new Date("2026-11-05T06:00:00.000Z");
   const NEXT_BILLING = new Date("2026-11-19T00:00:00.000Z");
-  const context = { nextBillingOn: NEXT_BILLING, openChargeCents: new Map([["charge-1", 373_032]]), cancelRequested: false };
+  const context = { nextBillingOn: NEXT_BILLING, openChargeCents: new Map([["charge-1", 373_032]]), cancelRequested: false, keptStartsOn: null };
   const bundled = (overrides: Partial<BundledAddOn> = {}): BundledAddOn =>
     ({
       id: "row-1",
@@ -285,6 +285,10 @@ describe("clientBundledAddOnRows", () => {
 
   it("offers no removal while the client has asked to close their account", () => {
     expect(clientBundledAddOnRows([bundled()], "INR", { ...context, cancelRequested: true })[0]).toMatchObject({ canRemove: false, endsOnText: null });
+  });
+
+  it("offers no removal while the client's kept plan waits to start", () => {
+    expect(clientBundledAddOnRows([bundled()], "INR", { ...context, keptStartsOn: new Date("2026-11-19T00:00:00.000Z") })[0]).toMatchObject({ canRemove: false, endsOnText: null });
   });
 
   it("shows one added since, waiting for its charge, with the amount", () => {
@@ -343,6 +347,10 @@ describe("clientAddOnOption", () => {
     expect(clientAddOnOption("local-seo-aeo", { kind: "keep" } as unknown as AddOnAssessment, "INR")).toMatchObject({ kind: "keep", title: "Local SEO + AEO" });
     expect(clientAddOnOption("local-seo-aeo", { kind: "blocked", reason: "manual-billing" }, "INR")).toBeNull();
     expect(clientAddOnOption("local-seo-aeo", null, "INR")).toBeNull();
+  });
+
+  it("offers nothing while the client's kept plan waits to start", () => {
+    expect(clientAddOnOption("local-seo-aeo", { kind: "plan-kept", startsOn: new Date("2026-11-19T00:00:00.000Z") }, "INR")).toBeNull();
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AddOnEndOutcome } from "@brandbasket/shared/server/add-on-ends";
-import { ADD_ON_NOTICES, addOnNoticeHref, noticeForEndOutcome, noticeForRemoval, readAddOnNotice } from "./add-on-notices";
+import { ADD_ON_NOTICES, addOnNoticeHref, addOnNoticeText, noticeForEndOutcome, noticeForRemoval, noticeForStart, readAddOnNotice } from "./add-on-notices";
 
 const ENDS_ON = new Date("2026-11-12T09:00:00Z");
 
@@ -73,7 +73,27 @@ describe("the notice for taking a service out of the plan payment", () => {
     expect(noticeForRemoval({ kind: "scheduled", endsOn: ENDS_ON })).toBe("add-on-removal-scheduled");
     expect(noticeForRemoval({ kind: "last-service" })).toBe("add-on-removal-last-service");
     expect(noticeForRemoval({ kind: "cancel-requested" })).toBe("add-on-removal-cancel-requested");
+    expect(noticeForRemoval({ kind: "plan-kept", startsOn: ENDS_ON })).toBe("add-on-plan-kept");
     expect(noticeForRemoval({ kind: "not-in-plan" })).toBe("add-on-removal-failed");
     expect(noticeForRemoval({ kind: "failed" })).toBe("add-on-removal-failed");
+  });
+});
+
+describe("the notice for adding or keeping a service for the client", () => {
+  it("names each result of a start, and a kept plan on its own", () => {
+    expect(noticeForStart({ kind: "pay", chargeId: "charge-1" })).toBe("add-on-charge-opened");
+    expect(noticeForStart({ kind: "added", move: { kind: "scheduled" } })).toBe("add-on-on");
+    expect(noticeForStart({ kind: "kept" })).toBe("add-on-kept");
+    expect(noticeForStart({ kind: "changed" })).toBe("add-on-not-possible");
+    expect(noticeForStart({ kind: "refused", assessment: { kind: "blocked", reason: "ending" } })).toBe("add-on-not-possible");
+    expect(noticeForStart({ kind: "refused", assessment: { kind: "plan-kept", startsOn: ENDS_ON } })).toBe("add-on-plan-kept");
+  });
+
+  it("says the day the kept plan starts, or that nothing could be changed once it has", () => {
+    expect(addOnNoticeText("add-on-plan-kept", "19 November 2026")).toBe(
+      "Nothing changed: this client is keeping their plan, which starts again on 19 November 2026. Change services after that.",
+    );
+    expect(addOnNoticeText("add-on-plan-kept", null)).toBe(ADD_ON_NOTICES["add-on-not-possible"].text);
+    expect(addOnNoticeText("contacted", "19 November 2026")).toBe(ADD_ON_NOTICES.contacted.text);
   });
 });

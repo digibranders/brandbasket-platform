@@ -103,6 +103,36 @@ describe("assessAddOn", () => {
     });
   });
 
+  describe("while a kept plan waits to start", () => {
+    const STARTS_ON = PAID_THROUGH;
+    const website = [line("managed-website", 299_900)];
+
+    it("refuses an add, saying when the plan starts", () => {
+      const assessment = assessAddOn({ state, live: website, addOn: "digital-growth", forfeited: false, keptStartsOn: STARTS_ON, providerName: "fake", now: NOW });
+
+      expect(assessment).toEqual({ kind: "plan-kept", startsOn: STARTS_ON });
+    });
+
+    it("refuses keeping a service that was being dropped, which would otherwise be kept at no charge", () => {
+      const ending = [{ ...line("digital-growth", 999_900), endRequestedAt: NOW }];
+
+      expect(assessAddOn({ state, live: ending, addOn: "digital-growth", forfeited: false, providerName: "fake", now: NOW })).toMatchObject({ kind: "keep" });
+      expect(assessAddOn({ state, live: ending, addOn: "digital-growth", forfeited: false, keptStartsOn: STARTS_ON, providerName: "fake", now: NOW })).toEqual({
+        kind: "plan-kept",
+        startsOn: STARTS_ON,
+      });
+    });
+
+    it("leaves the closing account's own reason first: the plan is not yet kept until it is authorised", () => {
+      const closing = { ...state, subscription: { ...state.subscription, cancelRequestedAt: NOW } } as unknown as BillingState;
+
+      expect(assessAddOn({ state: closing, live: website, addOn: "digital-growth", forfeited: false, keptStartsOn: STARTS_ON, providerName: "fake", now: NOW })).toEqual({
+        kind: "blocked",
+        reason: "ending",
+      });
+    });
+  });
+
   it("stops rather than price a basket that holds a line that is not a service, which would be quoted as no service at all", () => {
     expect(() =>
       assessAddOn({ state, live: [line("managed-website", 299_900), line("press-release", 100_000)], addOn: "digital-growth", forfeited: false, providerName: "fake", now: NOW }),

@@ -882,6 +882,7 @@ export default async function ClientPage({
           pressReleases={clientAddOns.pressReleases}
           options={clientAddOns.options}
           notice={addOnNotice}
+          keptStartsOn={clientAddOns.keptStartsOn}
         />
 
         <ClientChatbots

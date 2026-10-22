@@ -6,7 +6,7 @@ import { checkboxClasses, hintClasses } from "@/components/console/field-styles"
 import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
 import { StatusDot } from "@/components/console/status-dot";
-import { ADD_ON_NOTICES, type AddOnNotice } from "@/lib/add-on-notices";
+import { ADD_ON_NOTICES, addOnNoticeText, type AddOnNotice } from "@/lib/add-on-notices";
 import { removeHint, type ClientAddOnOption, type ClientAddOnRow, type ClientBundledAddOnRow, type ClientPressReleaseRow, type PressReleaseStatus } from "@/lib/client-add-ons";
 import {
   addClientAddOnAction,
@@ -257,6 +257,8 @@ interface ClientAddOnsProps {
   readonly pressReleases: readonly ClientPressReleaseRow[];
   readonly options: readonly ClientAddOnOption[];
   readonly notice: AddOnNotice | null;
+  /** The day the client's kept plan starts, when one is waiting: what the plan-kept notice says. */
+  readonly keptStartsOn: string | null;
 }
 
 /**
@@ -264,14 +266,14 @@ interface ClientAddOnsProps {
  * date, who scheduled an end) and each press release with its status. Staff follow up a new purchase, pause or cancel
  * for the customer, and move a press release on. The id lets the Journey and every notice link land here.
  */
-export function ClientAddOns({ businessId, addOns, bundledAddOns, pressReleases, options, notice }: ClientAddOnsProps): ReactElement {
+export function ClientAddOns({ businessId, addOns, bundledAddOns, pressReleases, options, notice, keptStartsOn }: ClientAddOnsProps): ReactElement {
   const toFollowUp =
     addOns.filter((row) => row.needsContact).length + bundledAddOns.filter((row) => row.needsContact).length + pressReleases.filter((release) => release.status === "waiting").length;
   return (
     <Section id="add-ons" title="Add-ons" aside={toFollowUp === 0 ? "Bought by the customer" : `${toFollowUp} to follow up`}>
       {notice === null ? null : (
         <Notice tone={ADD_ON_NOTICES[notice].ok ? "ok" : "problem"} className="mb-6">
-          {ADD_ON_NOTICES[notice].text}
+          {addOnNoticeText(notice, keptStartsOn)}
         </Notice>
       )}
       {addOns.length === 0 && bundledAddOns.length === 0 && pressReleases.length === 0 ? (

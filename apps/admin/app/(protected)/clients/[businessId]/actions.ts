@@ -41,7 +41,7 @@ import { projectLaunchNoticeHref } from "@brandbasket/shared/lib/project-launch-
 import { projectPreviewNoticeHref } from "@brandbasket/shared/lib/project-preview-notices";
 import { chatbotNoticeHref, parseChatbotForm, parseOperatorKeyForm, readChatbotStatus } from "@/lib/chatbot-form";
 import { addClientChatbot, removeClientChatbot, setClientChatbotOperatorKey, setClientChatbotStatus } from "@/lib/server/chatbots-admin";
-import { addOnNoticeHref, noticeForEndOutcome, noticeForRemoval, type AddOnNotice } from "@/lib/add-on-notices";
+import { addOnNoticeHref, noticeForEndOutcome, noticeForRemoval, noticeForStart, type AddOnNotice } from "@/lib/add-on-notices";
 import { clientListingKey, clientTagsHref } from "@/lib/client-tags";
 import {
   addClientAddOn,
@@ -444,9 +444,7 @@ export async function addClientAddOnAction(formData: FormData): Promise<void> {
 
   const started = await addClientAddOn({ businessId, addOn, staffUserId: user.id }, new Date());
   revalidateClient(businessId);
-  const notice: AddOnNotice =
-    started.kind === "pay" ? "add-on-charge-opened" : started.kind === "added" ? "add-on-on" : started.kind === "kept" ? "add-on-kept" : "add-on-not-possible";
-  redirect(addOnNoticeHref(businessId, notice));
+  redirect(addOnNoticeHref(businessId, noticeForStart(started)));
 }
 
 /** Takes an add-on out of the client's plan payment from the next billing date, after staff confirm they told the customer. */

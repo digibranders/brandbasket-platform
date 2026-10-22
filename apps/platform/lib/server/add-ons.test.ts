@@ -8,6 +8,7 @@ import {
   findPlanById,
   findReferralCodeById,
   findSubscriptionById,
+  findWaitingSuccessor,
   isPackageOfferForfeited,
   recordBundledAddOnRemoval,
   setNextDiscount,
@@ -47,6 +48,7 @@ vi.mock("@brandbasket/db", () => {
     findPlanById: vi.fn(),
     findReferralCodeById: vi.fn(),
     findSubscriptionById: vi.fn(),
+    findWaitingSuccessor: vi.fn(),
     flagSubscriptionForAttention: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
     lockBusinessForBilling: vi.fn(),
@@ -89,6 +91,7 @@ beforeEach(() => {
   vi.mocked(findLiveBundledAddOns).mockResolvedValue([]);
   vi.mocked(findBusinessCurrency).mockResolvedValue("INR");
   vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
+  vi.mocked(findWaitingSuccessor).mockResolvedValue(null);
   events = [];
   openTransactions = 0;
   transactionCount = 0;
@@ -252,6 +255,19 @@ describe("loadAddOnsPage", () => {
       expect(addOns.map((entry) => (entry.kind === "included" ? entry.drop : "available"))).toEqual([null, null, null]);
     });
 
+    it("offers no drop, and no add, while the client's kept plan waits to start, and says when it starts", async () => {
+      vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website", 299_900), line("digital-growth", 999_900)]);
+      vi.mocked(findWaitingSuccessor).mockResolvedValue({ startAt: PAID_THROUGH } as never);
+      vi.mocked(readAddOnAssessment).mockImplementation(async (_tx, input) =>
+        input.addOn === "local-seo-aeo" ? { kind: "plan-kept", startsOn: PAID_THROUGH } : null,
+      );
+
+      const { addOns } = await loadAddOnsPage(subscribed, NOW);
+
+      expect(addOns.map((entry) => (entry.kind === "included" ? entry.drop : "available"))).toEqual([null, null, "available"]);
+      expect(addOns[2]).toMatchObject({ kind: "available", offer: { kind: "plan-kept", startsOn: PAID_THROUGH } });
+    });
+
     it("offers no drop for the only service, or for one that is already ending", async () => {
       vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("digital-growth", 999_900)]);
       expect((await loadAddOnsPage(subscribed, NOW)).addOns[1]).toMatchObject({ kind: "included", drop: null });
@@ -407,6 +423,20 @@ describe("removeBundledAddOnFor", () => {
     expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:change-plan", "tx2:begin", "tx2:commit"]);
   });
 
+  it("refuses while a kept plan waits to start: the provider is not asked and nothing is recorded", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([bundledRow("managed-website"), bundledRow("digital-growth"), bundledRow("local-seo-aeo")] as never);
+    vi.mocked(findWaitingSuccessor).mockResolvedValue({ startAt: new Date("2026-11-19T00:00:00.000Z") } as never);
+
+    expect(await removeBundledAddOnFor(customer, "digital-growth", NOW)).toEqual({
+      kind: "refused",
+      message: "Your plan starts again on 19 November 2026. You can change your services from then.",
+    });
+
+    expect(findWaitingSuccessor).toHaveBeenCalledWith(expect.anything(), "sub-1");
+    expect(changed).not.toHaveBeenCalled();
+    expect(recordBundledAddOnRemoval).not.toHaveBeenCalled();
+  });
+
   it("keeps an amount code through a drop: the provider is told the new net less the same amount, and it is recorded as unchanged", async () => {
     vi.mocked(findSubscriptionById).mockResolvedValue(subscription({ referralCodeId: "code-1", discountAmountCents: 50_000, discountMonthsLeft: 4 }) as never);
     vi.mocked(findReferralCodeById).mockResolvedValue({ discount: { kind: "amount", amountCents: 50_000 } } as never);
@@ -543,6 +573,15 @@ describe("addBundledAddOnFor", () => {
     vi.mocked(startAddOn).mockResolvedValue(started);
 
     expect(await addBundledAddOnFor(customer, "digital-growth", NOW)).toMatchObject({ kind: "refused", message: expect.stringContaining("Reload the page") });
+  });
+
+  it("says when the plan starts again while a kept plan waits", async () => {
+    vi.mocked(startAddOn).mockResolvedValue({ kind: "refused", assessment: { kind: "plan-kept", startsOn: new Date("2026-11-19T00:00:00.000Z") } });
+
+    expect(await addBundledAddOnFor(customer, "digital-growth", NOW)).toEqual({
+      kind: "refused",
+      message: "Your plan starts again on 19 November 2026. You can change your services from then.",
+    });
   });
 
   it("stops at the rate limit, before anything is opened", async () => {

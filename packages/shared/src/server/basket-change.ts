@@ -11,6 +11,7 @@ import {
   findPlanById,
   findReferralCodeById,
   findSubscriptionById,
+  findWaitingSuccessor,
   flagPaymentForAttention,
   flagSubscriptionForAttention,
   keepBundledAddOn,
@@ -65,6 +66,21 @@ export interface BasketDeps {
 export async function discountOnBasket(db: Database | ScopedTransaction, subscription: Subscription, netCents: number): Promise<number> {
   const code = subscription.referralCodeId === null || subscription.discountMonthsLeft === 0 ? null : await findReferralCodeById(db, subscription.referralCodeId);
   return discountForChangedBasket({ monthsLeft: subscription.discountMonthsLeft, heldCents: nextDiscountCents(subscription), discount: code?.discount ?? null, netCents });
+}
+
+/**
+ * When a kept plan's new mandate starts, while it waits beside the subscription it carries on from; null when none waits.
+ * That subscription is already cancelled at the provider (a cancel cannot be undone), so a change to its services would act on
+ * a plan that will not renew: add, drop and keep are refused until the new one has charged.
+ */
+export async function findKeptPlanStart(db: Database | ScopedTransaction, subscription: Subscription | null): Promise<Date | null> {
+  if (subscription === null) return null;
+  const waiting = await findWaitingSuccessor(db, subscription.id);
+  if (waiting === null) return null;
+  // start_at is set for every continuing subscription (subscriptions_keep_check); the old plan's paid-through date is the same day.
+  const startsOn = waiting.startAt ?? subscription.paidThroughAt;
+  if (startsOn === null) throw new Error(`Kept plan ${waiting.id} has no start date`);
+  return startsOn;
 }
 
 /** The basket is still priced at the discount the provider was told, as the subscription now stands under the lock. */
@@ -194,6 +210,8 @@ export type AddOnAssessment =
   | { readonly kind: "blocked"; readonly reason: AddOnBlock }
   /** It could, but not now: the renewal is due, or the subscription is at a provider that is not the one in use. */
   | { readonly kind: "unavailable"; readonly reason: "renewal-due" | "provider-not-ready" }
+  /** The client is keeping their plan: services can change once the new mandate starts, on `startsOn`. */
+  | { readonly kind: "plan-kept"; readonly startsOn: Date }
   /** It is ending: adding it keeps it, at no charge, since the month is paid. */
   | { readonly kind: "keep"; readonly row: BundledAddOn }
   | {
@@ -215,6 +233,8 @@ export interface AddOnAssessmentInput {
   readonly forfeited: boolean;
   /** The referral code the subscription was opened with, read for the new basket's discount; null when it has none. */
   readonly code?: ReferralCode | null;
+  /** When the kept plan the subscription is carried on by starts, if one is waiting (findKeptPlanStart); null or absent when none is. */
+  readonly keptStartsOn?: Date | null;
   readonly providerName: BillingProvider["name"];
   readonly now: Date;
 }
@@ -238,6 +258,7 @@ export function assessAddOn(input: AddOnAssessmentInput): AddOnAssessment {
     addOnActive: active !== undefined && active.endRequestedAt === null,
   });
   if (block !== null) return { kind: "blocked", reason: block };
+  if (input.keptStartsOn != null) return { kind: "plan-kept", startsOn: input.keptStartsOn };
   if (subscription === null || state.plan === null || subscription.paidThroughAt === null) return { kind: "blocked", reason: "unpaid" };
   if (subscription.provider !== input.providerName) return { kind: "unavailable", reason: "provider-not-ready" };
   if (active !== undefined) return { kind: "keep", row: active };
@@ -290,7 +311,8 @@ export async function readAddOnAssessment(
   const forfeited = input.forfeited ?? (await isPackageOfferForfeited(db, input.businessId));
   const codeId = state.subscription?.referralCodeId ?? null;
   const code = codeId === null ? null : await findReferralCodeById(db, codeId);
-  return assessAddOn({ state, live, addOn: input.addOn, forfeited, code, providerName: input.providerName, now: input.now });
+  const keptStartsOn = await findKeptPlanStart(db, state.subscription);
+  return assessAddOn({ state, live, addOn: input.addOn, forfeited, code, keptStartsOn, providerName: input.providerName, now: input.now });
 }
 
 /** "Social Media and Ads, 05 Nov to 18 Nov 2026": what the charge and its invoice line say. */
@@ -464,7 +486,14 @@ async function liveBasket(
   deps: BasketDeps,
   businessId: string,
   pick: (row: BundledAddOn) => boolean,
-): Promise<{ readonly row: BundledAddOn; readonly live: readonly BundledAddOn[]; readonly subscription: Subscription; readonly plan: Plan } | null> {
+): Promise<{
+  readonly row: BundledAddOn;
+  readonly live: readonly BundledAddOn[];
+  readonly subscription: Subscription;
+  readonly plan: Plan;
+  /** When a kept plan waiting beside the subscription starts; null when none waits (findKeptPlanStart). */
+  readonly keptStartsOn: Date | null;
+} | null> {
   return deps.staffDb.transaction(async (tx) => {
     await lockBusinessForBilling(tx, businessId);
     const live = await findLiveBundledAddOns(tx, businessId);
@@ -474,7 +503,7 @@ async function liveBasket(
     if (subscription === null || subscription.businessId !== businessId || subscription.activatedAt === null || subscription.status === "cancelled") return null;
     const plan = await findPlanById(tx, subscription.planId);
     if (plan === null || subscription.paidThroughAt === null) return null;
-    return { row, live: live.filter((candidate) => candidate.subscriptionId === subscription.id), subscription, plan };
+    return { row, live: live.filter((candidate) => candidate.subscriptionId === subscription.id), subscription, plan, keptStartsOn: await findKeptPlanStart(tx, subscription) };
   });
 }
 
@@ -486,7 +515,9 @@ async function liveBasket(
 async function keepBundledAddOnFor(deps: BasketDeps, businessId: string, ending: BundledAddOn, now: Date): Promise<boolean> {
   const basket = await liveBasket(deps, businessId, (row) => row.id === ending.id && row.endRequestedAt !== null);
   if (basket === null) return false;
-  const { row, live, subscription, plan } = basket;
+  const { row, live, subscription, plan, keptStartsOn } = basket;
+  // The client is keeping their plan: the subscription is cancelled at the provider, so there is nothing to keep this line in.
+  if (keptStartsOn !== null) return false;
   const keptNetCents = netWithKept(live, row.id);
   const keptDiscountCents = await discountOnBasket(deps.staffDb, subscription, keptNetCents);
   const fields = { businessId, subscriptionId: subscription.id, addOn: row.addOn };
@@ -533,6 +564,8 @@ export type BundledRemoval =
   | { readonly kind: "last-service" }
   /** The account has asked to close: the services all stop at the next billing date anyway, so none is taken out on its own. */
   | { readonly kind: "cancel-requested" }
+  /** The client is keeping their plan, which starts again on `startsOn`: the one it carries on from is cancelled at the provider, so no service changes until then. */
+  | { readonly kind: "plan-kept"; readonly startsOn: Date }
   /** The provider refused, or the request could not be recorded. */
   | { readonly kind: "failed" };
 
@@ -542,7 +575,7 @@ export type BundledRemoval =
  * at list from the next bill, the business never earns a package price again, and the subscription's ad credit runs to the end
  * of the month already paid, then stops at the renewal that takes the line off (completeBundledAddOnChanges). Dropping the only
  * service is refused: that is cancelling. So is dropping any while the account has asked to close (a cancel is requested): everything is going at the next billing date, and a drop would only change
- * what the provider is told for a subscription that is ending.
+ * what the provider is told for a subscription that is ending. And while a kept plan waits to start (Keep my plan): the subscription is already cancelled at the provider.
  *
  * The provider is moved to a plan at the new amount first, for the cycle end, and our record follows in one transaction:
  * if the provider refuses nothing here changes. If our record cannot then be written the provider is ahead of us, which is
@@ -556,8 +589,9 @@ export async function removeBundledAddOn(deps: BasketDeps, input: { readonly bus
   const { businessId, addOn, now } = input;
   const basket = await liveBasket(deps, businessId, (row) => row.addOn === addOn && row.endRequestedAt === null);
   if (basket === null) return { kind: "not-in-plan" };
-  const { row, live, subscription, plan } = basket;
+  const { row, live, subscription, plan, keptStartsOn } = basket;
   if (subscription.cancelRequestedAt !== null) return { kind: "cancel-requested" };
+  if (keptStartsOn !== null) return { kind: "plan-kept", startsOn: keptStartsOn };
   const sent = removalOf(live, row.id);
   if (sent.kept.length === 0) return { kind: "last-service" };
   const fields = { businessId, subscriptionId: subscription.id, addOn };

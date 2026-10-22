@@ -7,3 +7,8 @@ const INDIA_TIME = "Asia/Kolkata";
 export function addOnDate(date: Date): string {
   return formatCalendarDate(date, INDIA_TIME);
 }
+
+/** Said instead of an Add or Remove while a kept plan waits to start: the subscription it carries on from is cancelled at the provider. */
+export function planStartsAgain(startsOn: Date): string {
+  return `Your plan starts again on ${addOnDate(startsOn)}. You can change your services from then.`;
+}

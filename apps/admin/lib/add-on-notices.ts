@@ -1,5 +1,5 @@
 import type { AddOnEndOutcome } from "@brandbasket/shared/server/add-on-ends";
-import type { BundledRemoval } from "@brandbasket/shared/server/basket-change";
+import type { AddOnStart, BundledRemoval } from "@brandbasket/shared/server/basket-change";
 
 /**
  * What the client page's Add-ons section says after staff pause, cancel or follow up a purchase, or set a press release's
@@ -30,6 +30,7 @@ export type AddOnNotice =
   | "add-on-removal-failed"
   | "add-on-removal-last-service"
   | "add-on-removal-cancel-requested"
+  | "add-on-plan-kept"
   | "provider-told"
   | "provider-still-refusing";
 
@@ -90,6 +91,11 @@ export const ADD_ON_NOTICES: Readonly<Record<AddOnNotice, { readonly text: strin
     text: "Nothing changed: this client has asked to close their account, so a service can’t be removed on its own.",
     ok: false,
   },
+  // {date} is the day the kept plan starts, filled in by addOnNoticeText.
+  "add-on-plan-kept": {
+    text: "Nothing changed: this client is keeping their plan, which starts again on {date}. Change services after that.",
+    ok: false,
+  },
   "provider-told": { text: "The payment provider will bill the add-on from the next renewal.", ok: true },
   "provider-still-refusing": { text: "The payment provider still refused. Try again later, or ask engineering to check it.", ok: false },
 };
@@ -97,6 +103,12 @@ export const ADD_ON_NOTICES: Readonly<Record<AddOnNotice, { readonly text: strin
 /** `#add-ons` scrolls the reader to the Add-ons section, since the notice renders inside it. */
 export function addOnNoticeHref(businessId: string, notice: AddOnNotice): string {
   return `/clients/${businessId}?addOns=${notice}#add-ons`;
+}
+
+/** The notice's words. The kept plan's start day is read when the page is drawn; once the plan has started there is none to say. */
+export function addOnNoticeText(notice: AddOnNotice, keptStartsOn: string | null): string {
+  if (notice !== "add-on-plan-kept") return ADD_ON_NOTICES[notice].text;
+  return keptStartsOn === null ? ADD_ON_NOTICES["add-on-not-possible"].text : ADD_ON_NOTICES[notice].text.replace("{date}", keptStartsOn);
 }
 
 export function readAddOnNotice(value: string | string[] | undefined): AddOnNotice | null {
@@ -128,12 +140,34 @@ export function noticeForRemoval(removal: BundledRemoval): AddOnNotice {
       return "add-on-removal-last-service";
     case "cancel-requested":
       return "add-on-removal-cancel-requested";
+    case "plan-kept":
+      return "add-on-plan-kept";
     case "not-in-plan":
     case "failed":
       return "add-on-removal-failed";
     default: {
       const unhandled: never = removal;
       throw new Error(`Unhandled removal ${JSON.stringify(unhandled)}`);
+    }
+  }
+}
+
+/** The notice for what adding (or keeping) an add-on for the client came to. */
+export function noticeForStart(started: AddOnStart): AddOnNotice {
+  switch (started.kind) {
+    case "pay":
+      return "add-on-charge-opened";
+    case "added":
+      return "add-on-on";
+    case "kept":
+      return "add-on-kept";
+    case "refused":
+      return started.assessment.kind === "plan-kept" ? "add-on-plan-kept" : "add-on-not-possible";
+    case "changed":
+      return "add-on-not-possible";
+    default: {
+      const unhandled: never = started;
+      throw new Error(`Unhandled add-on start ${JSON.stringify(unhandled)}`);
     }
   }
 }

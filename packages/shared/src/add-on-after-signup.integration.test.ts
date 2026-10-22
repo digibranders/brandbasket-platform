@@ -5,6 +5,7 @@ import {
   bundledAddOns,
   businesses,
   completeBundledAddOnChanges,
+  confirmKeptSubscription,
   createReferralCode,
   endPackageOffer,
   findActivePlan,
@@ -18,6 +19,7 @@ import {
   markPackageOfferForfeited,
   openBundledAddOn,
   openCheckoutSubscription,
+  openKeptSubscription,
   recordBundledAddOnRemoval,
   renewalBundledLines,
   subscriptions,
@@ -1239,6 +1241,40 @@ describe("dropping a service ends the package offer for good", () => {
     expect(await linesOf(subscription)).toEqual({ "managed-website": [59_980, 239_920, null], "digital-growth": [200_020, 799_880, null] });
     expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ adCreditCents: 200_000, pendingBundledAddOnNetCents: null });
     expect(moves).toEqual([]);
+  });
+
+  it("is refused, like an add and a keep, while a kept plan waits to start: the old plan is cancelled at the provider, so nothing changes and the provider is not asked", async () => {
+    const subscription = await paidSubscription(bundleOf("managed-website", "digital-growth", "local-seo-aeo"), { adCreditCents: 500_000 });
+    expect(await removeBundledAddOn(deps(), { businessId, addOn: "digital-growth", now: FIFTH_NOV })).toMatchObject({ kind: "scheduled" });
+    // The client cancelled, then chose Keep my plan, and the provider holds the new mandate: it starts where the paid month ends.
+    await dbs.owner.db.update(subscriptions).set({ cancelRequestedAt: FIFTH_NOV });
+    const old = await findSubscriptionById(dbs.staff.db, subscription.id);
+    if (old === null) throw new Error("The plan was not recorded");
+    const successor = await openKeptSubscription(dbs.staff.db, {
+      continues: old,
+      provider: "fake",
+      providerSubscriptionId: `fake_sub_${"b".repeat(24)}`,
+      bundledAddOns: bundleOf("managed-website", "local-seo-aeo"),
+      adCreditCents: 500_000,
+      replacing: null,
+      now: FIFTH_NOV,
+    });
+    const before = await linesOf(subscription);
+    const startsOn = subscription.paidThroughAt;
+
+    // Until the mandate is authorised the account is still closing, and says so.
+    expect(await removeBundledAddOn(deps(), { businessId, addOn: "local-seo-aeo", now: FIFTH_NOV })).toEqual({ kind: "cancel-requested" });
+
+    await confirmKeptSubscription(dbs.staff.db, { subscriptionId: successor.id, now: FIFTH_NOV });
+
+    expect(await removeBundledAddOn(deps(), { businessId, addOn: "local-seo-aeo", now: FIFTH_NOV })).toEqual({ kind: "plan-kept", startsOn });
+    expect(await startAddOn(deps(), { businessId, addOn: "digital-growth", staffId: null, now: FIFTH_NOV })).toEqual({
+      kind: "refused",
+      assessment: { kind: "plan-kept", startsOn },
+    });
+    expect(await readAddOnAssessment(dbs.staff.db, { businessId, addOn: "digital-growth", providerName: "fake", now: FIFTH_NOV })).toEqual({ kind: "plan-kept", startsOn });
+    expect(await linesOf(subscription)).toEqual(before);
+    expect(moves).toHaveLength(1);
   });
 
   it("changes nothing when the provider refuses: the offer, the ad credit and the lines stay", async () => {

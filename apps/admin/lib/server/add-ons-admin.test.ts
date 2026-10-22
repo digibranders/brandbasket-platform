@@ -26,6 +26,7 @@ vi.mock("@brandbasket/shared/server/billing-log", async () => {
 vi.mock("./billing-provider", () => ({ getBillingProvider: () => ({ name: "razorpay" }) }));
 vi.mock("./basket-deps", () => ({ basketDeps: () => ({ name: "basket-deps" }) }));
 vi.mock("@brandbasket/shared/server/basket-change", () => ({
+  findKeptPlanStart: vi.fn(),
   moveBasketAtProvider: vi.fn(),
   readAddOnAssessment: vi.fn(),
   removeBundledAddOn: vi.fn(),
@@ -47,7 +48,7 @@ import {
   setPressReleaseStatus,
 } from "@brandbasket/db";
 import { scheduleAddOnEndFor } from "@brandbasket/shared/server/add-on-ends";
-import { moveBasketAtProvider, readAddOnAssessment, removeBundledAddOn, startAddOn } from "@brandbasket/shared/server/basket-change";
+import { findKeptPlanStart, moveBasketAtProvider, readAddOnAssessment, removeBundledAddOn, startAddOn } from "@brandbasket/shared/server/basket-change";
 import { logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import {
   addClientAddOn,
@@ -74,6 +75,7 @@ beforeEach(() => {
   vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue(null);
   vi.mocked(findPackageOfferForfeitedAt).mockResolvedValue(null);
   vi.mocked(readAddOnAssessment).mockResolvedValue(null);
+  vi.mocked(findKeptPlanStart).mockResolvedValue(null);
 });
 
 describe("endClientAddOn", () => {
@@ -329,6 +331,19 @@ describe("adding, removing and retrying an add-on for the client", () => {
 
     expect(readAddOnAssessment).toHaveBeenCalledWith({ name: "staff-db" }, { businessId: BUSINESS, addOn: "digital-growth", providerName: "razorpay", now: NOW });
     expect(loaded.options).toEqual([expect.objectContaining({ addOn: "digital-growth", kind: "add", costText: expect.stringContaining("₹8,260 now") })]);
+  });
+
+  it("reads the day a waiting kept plan starts, and stops offering the row a removal", async () => {
+    vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
+    vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
+    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, addOn: "local-seo-aeo", status: "active", activatedAt: NOW, billedFrom: NOW, endRequestedAt: null, contactedAt: NOW, createdAt: NOW, netAmountCents: 2_499_900, offerDiscountAmountCents: 0, taxRateBasisPoints: 1_800 }] as never);
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ paidThroughAt: NOW, cancelRequestedAt: null } as never);
+    vi.mocked(findKeptPlanStart).mockResolvedValue(new Date("2026-11-19T00:00:00.000Z"));
+
+    const loaded = await loadClientAddOns(BUSINESS, NOW);
+
+    expect(loaded.keptStartsOn).toBe("19 November 2026");
+    expect(loaded.bundledAddOns[0]).toMatchObject({ canRemove: false, endsOnText: null });
   });
 
   it("shows the amount of an added add-on's open charge", async () => {
