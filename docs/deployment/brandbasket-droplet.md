@@ -429,6 +429,11 @@ health-checked switch for a release you name.
 columns and tables first; remove or rename only in a later release). Undoing a migration means restoring a backup (section 10)
 and is a last resort. A release that must not be served for a data reason: roll back first, then think.
 
+**The services release is forward-only.** Migration 0184 deletes the priced plan rows and refuses to run on a database that already
+has subscriptions or payments. Once it has run, the previous release cannot price anything, so rolling back the apps alone is
+unsafe. Check production with a read-only count of subscriptions and payments before merging to `main`, and if a release has to
+be undone, restore a backup (section 10).
+
 Commit what you want to ship before running it: the build is a clean export of `HEAD`, so uncommitted changes are not deployed
 (the script says so).
 
