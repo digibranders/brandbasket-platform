@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# Emails the Brandbasket team when a Brandbasket systemd unit fails. Runs as root from brandbasket-notify-failure@.service, which
+# a failing unit starts through OnFailure=. Installed as /usr/local/sbin/brandbasket-notify-failure (root, 0700). A copy of
+# Firstfold's firstfold-notify-failure with every name changed, so a Brandbasket alert never depends on Firstfold's files,
+# state or mail settings (and Firstfold's handler is not used for Brandbasket units).
+#
+#   brandbasket-notify-failure <unit>      e.g. brandbasket-backup.service
+#
+# A unit gets an alert from a drop-in (systemd/10-notify-failure.conf, installed by install.sh as
+# <unit>.service.d/10-notify-failure.conf):  [Unit]  OnFailure=brandbasket-notify-failure@%n.service
+# Put it on the SERVICE, not the timer: the service fails, the timer does not.
+#
+# Settings are read from /srv/brandbasket/shared/platform.env.local: BREVO_API_KEY, BRANDBASKET_MAIL_FROM (the sender the
+# app already uses; ALERTS_FROM_EMAIL overrides it), ALERTS_FROM_NAME (optional) and BRANDBASKET_TEAM_EMAIL (one address, or
+# several separated by commas; default hello@brandbasket.in). The file is parsed with grep and sed, never sourced, and no
+# value is printed. While BREVO_API_KEY is blank (before the owner has filled it in) this only logs and exits 0, so a server
+# without Brevo does not pile up failed alert units. The API key goes to curl on standard input, so it is not on any command
+# line or in the process list.
+#
+# No customer data leaves the server in an alert: the mail has the unit name, its result and exit status, and the time. Only
+# for the units that never handle customer data (the autodeploy, backup, restore test and maintenance job) does it add the
+# last 30 journal lines, with anything that looks like a secret masked: URLs with passwords, NAME=value for names holding
+# SECRET, TOKEN or PASSWORD or ending in _KEY, bearer tokens, GitHub tokens, age and PEM keys, JWTs, and long mixed-case
+# strings. For brandbasket-app and brandbasket-admin (and any other unit) there are no journal lines at all: their logs can
+# hold requests and names.
+#
+# One alert per unit per 30 minutes (BRANDBASKET_NOTIFY_MIN_INTERVAL seconds), so a unit that fails every minute does not
+# fill the inbox; the journal still has every failure. A handler that cannot send exits non-zero, so its own unit shows as
+# failed in systemctl and the reason is in the journal.
+set -euo pipefail
+umask 077
+
+readonly ENV_FILE=/srv/brandbasket/shared/platform.env.local
+readonly STATE_DIR=/var/lib/brandbasket/notify-failure
+readonly MIN_INTERVAL="${BRANDBASKET_NOTIFY_MIN_INTERVAL:-1800}"
+readonly API_URL=https://api.brevo.com/v3/smtp/email
+readonly DEFAULT_TEAM=hello@brandbasket.in
+# Units whose journal lines may be mailed: none of them handles customer data.
+readonly JOURNAL_UNITS=" brandbasket-platform-autodeploy.service brandbasket-backup.service brandbasket-restore-test.service brandbasket-maintenance.service "
+
+die() { echo "brandbasket-notify-failure: $*" >&2; exit 1; }
+
+UNIT="${1:-}"
+[[ -n "$UNIT" ]] || die "usage: brandbasket-notify-failure <unit>"
+[[ "$UNIT" =~ ^[A-Za-z0-9:_.@\\-]+$ && ${#UNIT} -le 200 ]] || die "that does not look like a unit name"
+for tool in curl python3 journalctl systemctl grep sed; do
+  command -v "$tool" >/dev/null || die "$tool is not installed"
+done
+[[ -r "$ENV_FILE" ]] || die "cannot read $ENV_FILE"
+
+# env_value <NAME>: the last NAME=value line of the env file, without quotes or a trailing comment. Never sourced.
+env_value() {
+  local line
+  line="$(grep -E "^[[:space:]]*(export[[:space:]]+)?$1=" "$ENV_FILE" | tail -n 1 || true)"
+  line="${line#*=}"
+  line="${line%$'\r'}"
+  line="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+  case "$line" in
+    \"*\") line="${line#\"}"; line="${line%\"}" ;;
+    \'*\') line="${line#\'}"; line="${line%\'}" ;;
+    *) line="$(printf '%s' "$line" | sed -E 's/[[:space:]]+#.*$//')" ;;
+  esac
+  printf '%s' "$line"
+}
+
+BREVO_API_KEY="$(env_value BREVO_API_KEY)"
+if [[ -z "$BREVO_API_KEY" ]]; then
+  echo "brandbasket-notify-failure: $UNIT failed, but BREVO_API_KEY is blank in $ENV_FILE, so no email was sent (see: journalctl -u $UNIT)"
+  exit 0
+fi
+FROM_EMAIL="$(env_value ALERTS_FROM_EMAIL)"
+[[ -n "$FROM_EMAIL" ]] || FROM_EMAIL="$(env_value BRANDBASKET_MAIL_FROM)"
+FROM_NAME="$(env_value ALERTS_FROM_NAME)"
+[[ -n "$FROM_NAME" ]] || FROM_NAME="Brandbasket server"
+TEAM_EMAIL="$(env_value BRANDBASKET_TEAM_EMAIL)"
+[[ -n "$TEAM_EMAIL" ]] || TEAM_EMAIL="$DEFAULT_TEAM"
+[[ -n "$FROM_EMAIL" ]] || die "cannot alert for $UNIT: neither ALERTS_FROM_EMAIL nor BRANDBASKET_MAIL_FROM is set in $ENV_FILE"
+
+# Rate limit, per unit.
+mkdir -p "$STATE_DIR"
+stamp_file="$STATE_DIR/$(printf '%s' "$UNIT" | tr -c 'A-Za-z0-9._-' '_').last"
+now="$(date +%s)"
+if [[ -f "$stamp_file" ]]; then
+  last="$(cat "$stamp_file" 2>/dev/null || echo 0)"
+  if [[ "$last" =~ ^[0-9]+$ ]] && ((now - last < MIN_INTERVAL)); then
+    echo "brandbasket-notify-failure: alert for $UNIT suppressed, one was sent $((now - last)) seconds ago"
+    exit 0
+  fi
+fi
+
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+
+HOST="$(hostname)"
+: > "$WORK/journal.txt"
+WITH_JOURNAL=0
+if [[ "$JOURNAL_UNITS" == *" $UNIT "* ]]; then
+  WITH_JOURNAL=1
+  journalctl -u "$UNIT" -n 30 --no-pager -o short-iso --utc -q > "$WORK/journal.txt" 2>/dev/null || true
+fi
+STATUS="$(systemctl show -p Result -p ExecMainStatus --value "$UNIT" 2>/dev/null | paste -sd' ' - || true)"
+
+# Build the JSON, masking secret-looking text first. Values come in as arguments (none is a secret); the journal comes
+# from a file.
+build_payload() {
+  python3 - "$WORK/journal.txt" "$UNIT" "$HOST" "$STATUS" "$FROM_NAME" "$FROM_EMAIL" "$TEAM_EMAIL" "$WITH_JOURNAL" "$WORK/payload.json" <<'PY'
+import json, re, sys, time
+
+journal_path, unit, host, status, from_name, from_email, team, with_journal, out_path = sys.argv[1:10]
+
+ansi = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
+patterns = [
+    (re.compile(r"(?i)([a-z][a-z0-9+.-]*://[^:/@\s]*:)[^@\s]*@"), r"\1***@"),
+    (re.compile(r"(?i)\b([A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PASSWD|_PW|_KEY)[A-Z0-9_]*\s*[=:]\s*)\S+"), r"\1***"),
+    (re.compile(r"(?i)\b(api-key|x-api-key|authorization)\s*:\s*\S+(\s+\S+)?"), r"\1: ***"),
+    (re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]+"), r"\1***"),
+    (re.compile(r"\b(ghp|gho|ghs|ghu|github_pat)_[A-Za-z0-9_]+"), "***"),
+    (re.compile(r"AGE-SECRET-KEY-[A-Z0-9]+"), "***"),
+    (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"), "***"),
+    # Email addresses (a journal line could name a customer).
+    (re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"), "***@***"),
+    (re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*"), "***"),
+    # Long opaque strings that mix upper case, lower case and digits (not git hashes, which are lower-case hex).
+    (re.compile(r"(?=[A-Za-z0-9_-]*[A-Z])(?=[A-Za-z0-9_-]*[a-z])(?=[A-Za-z0-9_-]*[0-9])\b[A-Za-z0-9_-]{32,}\b"), "***"),
+]
+
+lines = []
+if with_journal == "1":
+    try:
+        with open(journal_path, encoding="utf-8", errors="replace") as handle:
+            for raw in handle:
+                text = ansi.sub("", raw.rstrip("\n"))
+                for pattern, repl in patterns:
+                    text = pattern.sub(repl, text)
+                lines.append(text[:600])
+    except FileNotFoundError:
+        pass
+    if not lines:
+        lines = ["(no journal lines found for this unit)"]
+
+recipients = [a for a in re.split(r"[,;\s]+", team) if re.fullmatch(r"[^@\s]+@[^@\s]+", a)]
+if not recipients:
+    sys.exit("BRANDBASKET_TEAM_EMAIL holds no valid address")
+
+body = [
+    f"{unit} failed on {host}.",
+    f"Time (UTC): {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())}",
+    f"Result and exit status: {status or 'unknown'}",
+    "",
+]
+if with_journal == "1":
+    body += ["Last 30 journal lines for the unit (anything that looks like a secret is masked):", "", *lines, ""]
+else:
+    body += ["No log lines are sent for this unit, because its logs can hold customer data.", ""]
+body.append(f"On the server: journalctl -u {unit} -n 100 --no-pager")
+payload = {
+    "sender": {"name": from_name, "email": from_email},
+    "to": [{"email": a} for a in recipients],
+    "subject": f"[Brandbasket server] {unit} failed",
+    "textContent": "\n".join(body),
+}
+with open(out_path, "w", encoding="utf-8") as handle:
+    json.dump(payload, handle)
+PY
+}
+build_payload || die "could not build the message for $UNIT"
+
+# post <payload file>: the API key goes in on standard input, as a header file, never on the command line.
+post() {
+  curl -sS --max-time 20 --connect-timeout 10 --retry 2 --retry-delay 3 -X POST -H @- \
+    -H 'accept: application/json' -H 'content-type: application/json' \
+    --data-binary @"$1" -o "$WORK/response.txt" -w '%{http_code}' "$API_URL" <<EOF
+api-key: $BREVO_API_KEY
+EOF
+}
+
+code="$(post "$WORK/payload.json" 2>"$WORK/curl-error.txt")" || {
+  die "could not reach Brevo to alert for $UNIT: $(head -c 300 "$WORK/curl-error.txt" | tr '\n' ' ')"
+}
+if [[ "$code" != 2?? ]]; then
+  die "Brevo refused the alert for $UNIT (HTTP $code): $(head -c 300 "$WORK/response.txt" | tr '\n' ' ')"
+fi
+
+date +%s > "$stamp_file"
+echo "brandbasket-notify-failure: alert sent for $UNIT (HTTP $code)"
