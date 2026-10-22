@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# Nightly backup of Brandbasket's two databases, its uploaded media and private support files, and the files that rebuild
+# this part of the server. Installed as /usr/local/sbin/brandbasket-backup (root-owned) and started by
+# brandbasket-backup.timer with --apply; without --apply it only prints what it would do. Adapted from Firstfold's
+# firstfold-backup; it reads and writes nothing of Firstfold's except the shared R2 settings and public age key that
+# /etc/brandbasket/offsite.sh uses.
+#
+#   /var/backups/brandbasket/daily/<UTC stamp>/{brandbasket_platform.dump,brandbasket_platform_payload.dump,
+#                                               media/,support-private/,server-config.tar.gz,SHA256SUMS}
+#
+# Keeps 14 dailies and 8 weeklies (the Sunday backup, hardlinked, so it costs almost nothing). Everything under
+# /var/backups/brandbasket is root-only: it holds customer data and the secrets file.
+# Role passwords are not dumped with pg_dumpall (that would copy Firstfold's roles too): the secrets file in
+# server-config.tar.gz has them, and install.sh database recreates the bb_* roles from it before a restore.
+# If /etc/brandbasket/offsite.sh is executable it is run with the new backup's path to ship it off this server, encrypted
+# (a local copy on the same disk is not a backup against losing the server). Its failure fails this run, so the unit
+# shows as failed and the alert goes out; the local backup is kept either way.
+set -euo pipefail
+umask 077
+
+APPLY=0
+case "${1:-}" in
+  "") ;;
+  --apply) APPLY=1 ;;
+  *) echo "usage: brandbasket-backup [--apply]" >&2; exit 64 ;;
+esac
+
+readonly ROOT=/var/backups/brandbasket
+readonly SRV=/srv/brandbasket
+readonly STATE=/var/lib/brandbasket
+readonly OFFSITE=/etc/brandbasket/offsite.sh
+readonly DATABASES=(brandbasket_platform brandbasket_platform_payload)
+readonly MEDIA_DIRS=(media support-private)
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+readonly STAMP
+readonly DEST="$ROOT/daily/$STAMP"
+
+if (( ! APPLY )); then
+  echo "[dry-run] would write $DEST with:"
+  for db in "${DATABASES[@]}"; do echo "  pg_dump -Fc $db -> $db.dump (checked with pg_restore -l)"; done
+  for d in "${MEDIA_DIRS[@]}"; do echo "  $SRV/$d -> $d/ (hardlinked against the previous backup)"; done
+  echo "  server-config.tar.gz: Brandbasket's nginx, units, sudoers, scripts, certificate, deploy key, env files, secrets file"
+  echo "  weekly copy on Sundays, prune to 14 daily and 8 weekly, then $OFFSITE $DEST (age-encrypted to R2)"
+  echo "Nothing was done. Add --apply."
+  exit 0
+fi
+
+[[ "$(id -u)" == 0 ]] || { echo "run as root" >&2; exit 1; }
+mkdir -p "$ROOT/daily" "$ROOT/weekly" "$STATE"
+exec 9>"$ROOT/.lock"
+flock -n 9 || { echo "another backup is running" >&2; exit 1; }
+mkdir -p "$DEST"
+trap 'echo "backup FAILED, removing partial $DEST" >&2; rm -rf "${DEST:?}"' ERR
+
+for db in "${DATABASES[@]}"; do
+  runuser -u postgres -- pg_dump -Fc "$db" > "$DEST/$db.dump"
+  # A truncated custom-format dump fails to list its table of contents.
+  runuser -u postgres -- pg_restore -l < "$DEST/$db.dump" > /dev/null
+done
+
+# Media and private support files: a hardlinked snapshot against the previous one, so only new and changed files cost space.
+for d in "${MEDIA_DIRS[@]}"; do
+  [[ -d "$SRV/$d" ]] || { echo "skipped $SRV/$d (not there yet)"; continue; }
+  previous="$(find "$ROOT/daily" -mindepth 2 -maxdepth 2 -type d -name "$d" -not -path "$DEST/*" | sort | tail -n 1)"
+  if [[ -n "$previous" ]]; then
+    rsync -a --link-dest="$previous" "$SRV/$d/" "$DEST/$d/"
+  else
+    rsync -a "$SRV/$d/" "$DEST/$d/"
+  fi
+done
+
+# Everything needed to rebuild Brandbasket's part of this box around the data above. Contains database passwords and
+# signing secrets, so it stays root-only here and must only ever leave this server encrypted. Paths are relative to /.
+shopt -s nullglob
+config=(
+  etc/nginx/sites-available/brandbasket etc/nginx/snippets/brandbasket-proxy.conf
+  etc/sudoers.d/brandbasket-deploy etc/brandbasket etc/brandbasket-platform-build.env
+  etc/systemd/system/brandbasket-* etc/letsencrypt/live/brandbasket etc/letsencrypt/archive/brandbasket
+  etc/letsencrypt/renewal/brandbasket.conf
+  usr/local/bin/brandbasket-* usr/local/sbin/brandbasket-* usr/local/lib/brandbasket
+  home/deploy/.ssh/github-brandbasket-platform home/deploy/.ssh/github-brandbasket-platform.pub
+  root/brandbasket-secrets.env srv/brandbasket/shared/platform.env.local srv/brandbasket/shared/admin.env.local
+)
+shopt -u nullglob
+tar -czf "$DEST/server-config.tar.gz" --ignore-failed-read -C / "${config[@]}" 2>/dev/null
+
+( cd "$DEST" && sha256sum ./*.dump server-config.tar.gz > SHA256SUMS )
+
+# Weekly copy of Sunday's backup.
+if [[ "$(date -u +%u)" == 7 ]]; then cp -al "$DEST" "$ROOT/weekly/$STAMP"; fi
+
+# Retention: newest N directories survive. find (not ls) so an empty directory is not an error under pipefail.
+prune() { find "$1" -mindepth 1 -maxdepth 1 -type d -name '20*' | sort | head -n -"$2" | xargs -r rm -rf; }
+prune "$ROOT/daily" 14
+prune "$ROOT/weekly" 8
+
+# The local backup is complete from here on: an off-site failure must never remove it.
+trap - ERR
+date -u +%FT%TZ > "$STATE/last-backup-ok"
+echo "backup ok: $DEST ($(du -sh "$DEST" | cut -f1))"
+
+if [[ -x "$OFFSITE" ]]; then
+  if "$OFFSITE" "$DEST"; then
+    date -u +%FT%TZ > "$STATE/last-offsite-ok"
+  else
+    echo "off-site copy FAILED; the local backup is kept" >&2
+    exit 1
+  fi
+else
+  echo "no $OFFSITE: this backup exists only on this server" >&2
+  exit 1
+fi

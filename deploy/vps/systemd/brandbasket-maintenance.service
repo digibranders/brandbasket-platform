@@ -1,0 +1,26 @@
+# The daily upkeep job: removes expired support screenshots and closed support requests, then runs the retention schedule
+# (docs/operations/retention-run.md), sends the staff access review and privacy-request reminders. Installed by
+# deploy/vps/install.sh backups; started by brandbasket-maintenance.timer. It reads the dashboard's environment through the
+# release's apps/platform/.env.local link, as the app does, so it needs a deployed release.
+# Look at it with: journalctl -u brandbasket-maintenance -n 50 (a good run prints a line starting "Support maintenance:").
+[Unit]
+Description=Brandbasket daily maintenance (support attachments, retention, alerts)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/srv/brandbasket/current-platform
+Environment=HOME=/home/deploy
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/env pnpm support:attachments:maintain
+Nice=10
+IOWeight=20
+TimeoutStartSec=15min
+MemoryMax=700M
+SyslogIdentifier=brandbasket-maintenance
+NoNewPrivileges=true
+PrivateTmp=true

@@ -1,0 +1,16 @@
+# The nightly backup: both databases, uploaded media and private support files, and the files that rebuild Brandbasket's
+# part of this server, into /var/backups/brandbasket, then an age-encrypted copy to Cloudflare R2 (bucket firstfold-backups,
+# objects daily/brandbasket-<stamp>.tar.age). See brandbasket-vps.md, "Backups". Installed by deploy/vps/install.sh backups.
+# Runs as root because the dumps go through the postgres user and the secrets file is root-only; the script it runs is the
+# root-owned copy in /usr/local/sbin, never anything from a release directory.
+[Unit]
+Description=Brandbasket nightly backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/brandbasket-backup --apply
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=idle
+SyslogIdentifier=brandbasket-backup

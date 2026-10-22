@@ -1,0 +1,13 @@
+# Restores the newest local backup into throwaway databases, checks it, and drops them again. If this fails the backups
+# cannot be trusted: check `systemctl status brandbasket-restore-test` after the first Sunday of the timer.
+# Installed by deploy/vps/install.sh backups. Runs as root (it uses the postgres user).
+[Unit]
+Description=Brandbasket weekly backup restore test
+After=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/brandbasket-restore-test --apply
+TimeoutStartSec=1h
+Nice=10
+SyslogIdentifier=brandbasket-restore-test
