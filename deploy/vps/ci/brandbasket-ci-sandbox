@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Runs the CI checks for one commit in a sandbox, as root on behalf of brandbasket-ci (which runs as `deploy` and may call
+# only this through sudo). Installed as /usr/local/sbin/brandbasket-ci-sandbox (root:root 0755). Adapted from Firstfold's
+# firstfold-ci-sandbox with the same hardening and caps.
+#
+#   brandbasket-ci-sandbox <sha>
+#
+# Pushed code has not been reviewed, so it never runs as `deploy` and never next to production data. It runs as the system
+# user `bbci` in a transient systemd unit that:
+#   - cannot read /home, /root, /srv/brandbasket*, /srv/firstfold*, /etc/brandbasket, /etc/firstfold, certificates or
+#     backups (no env files, keys or data of either project). /etc/brandbasket-platform-build.env stays readable: it holds
+#     public values and placeholders only, and the checks need it;
+#   - cannot reach this machine's services: a ufw rule for user bbci (install-ci-firewall.sh) allows loopback only on
+#     ephemeral ports, where Turbopack's own workers listen, and resets every service port (Postgres, the apps, nginx, SSH,
+#     DNS), including through the public address, which also travels over loopback. It sees its own /etc/hosts and
+#     /etc/resolv.conf (ci-hosts, ci-resolv.conf), and link-local addresses (cloud metadata) are blocked;
+#   - has no capabilities, no sudo, no new privileges, a private /tmp, a read-only system, and writes only its work directory
+#     and its own home (pnpm's store and cache);
+#   - runs at low priority with memory, task and time limits, so it cannot starve the live sites.
+# The commit comes from /srv/brandbasket-ci/archives/<sha>.tar, written by brandbasket-ci. Exit status is the checks' status.
+set -euo pipefail
+
+readonly CI_ROOT=/srv/brandbasket-ci
+readonly CI_HOME=/var/lib/brandbasket-ci
+readonly LIB=/usr/local/lib/brandbasket
+# Link-local (cloud metadata), IPv4 and IPv6. Loopback is filtered by the ufw rule instead (see above).
+readonly BLOCKED_ADDRESSES="169.254.0.0/16 fe80::/10"
+# Hidden from the sandbox. A leading "-" ignores a path that does not exist (yet). Brandbasket's secrets and data, all of
+# Firstfold's (its CI user's home and work directory included), and both projects' certificates and backups.
+readonly HIDDEN="-/srv/brandbasket -/srv/brandbasket-ci/archives -/srv/brandbasket-ci/mirrors -/srv/brandbasket-ci/state -/etc/brandbasket -/srv/firstfold -/srv/firstfold-website -/srv/firstfold-media -/srv/firstfold-ci -/var/lib/firstfold-ci -/var/lib/firstfold -/var/lib/brandbasket -/etc/firstfold -/etc/letsencrypt -/etc/ssl/firstfold-origin -/var/backups"
+
+die() { echo "error: $*" >&2; exit 64; }
+[[ "$(id -u)" == 0 ]] || die "run as root (through sudo)"
+[[ $# -eq 1 ]] || die "usage: brandbasket-ci-sandbox <sha>"
+sha=$1
+[[ "$sha" =~ ^[0-9a-f]{40}$ ]] || die "not a full commit sha: $sha"
+
+archive="$CI_ROOT/archives/$sha.tar"
+work="$CI_ROOT/work/$sha"
+[[ -f "$archive" && ! -L "$archive" && "$(stat -c %U "$archive")" == deploy ]] || die "no archive for $sha"
+
+cleanup() { rm -rf --one-file-system "$work"; }
+trap cleanup EXIT
+cleanup
+install -d -o bbci -g bbci -m 700 "$work"
+runuser -u bbci -- tar -x -C "$work" < "$archive"
+
+set +e
+systemd-run --unit="brandbasket-ci-${sha:0:12}" --quiet --wait --pipe --collect \
+  -p User=bbci -p Group=bbci -p WorkingDirectory="$work" \
+  -p Environment="HOME=$CI_HOME PATH=/usr/bin:/bin CI=1 NEXT_TELEMETRY_DISABLED=1 COREPACK_ENABLE_DOWNLOAD_PROMPT=0" \
+  -p Nice=10 -p CPUWeight=20 -p IOWeight=20 -p MemoryHigh=4G -p MemoryMax=5G -p TasksMax=1024 -p RuntimeMaxSec=30min \
+  -p NoNewPrivileges=yes -p CapabilityBoundingSet= -p AmbientCapabilities= \
+  -p PrivateTmp=yes -p PrivateDevices=yes -p ProtectSystem=strict -p ProtectHome=yes \
+  -p ReadWritePaths="$work $CI_HOME" -p BindReadOnlyPaths="$LIB/ci-hosts:/etc/hosts $LIB/ci-resolv.conf:/etc/resolv.conf" \
+  -p InaccessiblePaths="$HIDDEN" \
+  -p ProtectKernelTunables=yes -p ProtectKernelModules=yes -p ProtectKernelLogs=yes -p ProtectControlGroups=yes \
+  -p ProtectClock=yes -p ProtectHostname=yes -p RestrictNamespaces=yes -p RestrictRealtime=yes -p RestrictSUIDSGID=yes \
+  -p LockPersonality=yes -p SystemCallArchitectures=native -p UMask=0077 \
+  -p RestrictAddressFamilies="AF_INET AF_INET6 AF_UNIX AF_NETLINK" \
+  -p IPAddressDeny="$BLOCKED_ADDRESSES" \
+  /bin/bash "$LIB/ci-steps.sh"
+rc=$?
+set -e
+exit "$rc"

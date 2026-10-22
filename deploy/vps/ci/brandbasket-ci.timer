@@ -1,0 +1,12 @@
+# Looks for new pushes at 50 seconds past every minute (Brandbasket's autodeploy looks at :20; Firstfold's units at :00,
+# :30 and :45). Wall-clock, so a failed run never stops the next one; systemd skips a tick while the previous run is still
+# going.
+[Unit]
+Description=Brandbasket CI: look for new pushes every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:50
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
