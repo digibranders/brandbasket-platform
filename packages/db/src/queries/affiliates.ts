@@ -381,9 +381,11 @@ export interface AffiliateAccrualContext {
  * when the subscription was opened with no code or with a coupon. The affiliate's reward and month limit are read as
  * they stand now, which is the rule: an edit changes what later payments earn.
  *
- * The month a payment is counts the subscription's applied payments up to and including it, in the order they were
- * paid. A payment that bought nothing (it carries an attention reason other than submission_failed) is not one of the
- * member's months, and nor is one whose earning staff cancelled (a refunded month): it does not use up the limit.
+ * The month a payment is counts the member's applied payments up to and including it, in the order they were paid, over
+ * every subscription of the business that carries the code: a code carried onto a reactivated or kept plan (plan 18) goes
+ * on counting where it stopped, so the limit holds across them. A payment that bought nothing (it carries an attention
+ * reason other than submission_failed) is not one of the member's months, and nor is one whose earning staff cancelled
+ * (a refunded month): it does not use up the limit.
  */
 export async function findAffiliateAccrualContext(
   db: Runner,
@@ -428,17 +430,20 @@ export async function findAffiliateAccrualContext(
     sql`${payments.paidAt} < ${paidAt}`,
     and(eq(payments.paidAt, paidAt), lte(payments.id, paymentId)),
   );
+  const onThisCode = and(eq(subscriptions.businessId, row.businessId), eq(subscriptions.referralCodeId, row.referralCodeId));
   const counted = await db
     .select({ months: count() })
     .from(payments)
-    .where(and(eq(payments.subscriptionId, subscriptionId), eq(payments.status, "captured"), applied, upToThis));
+    .innerJoin(subscriptions, eq(subscriptions.id, payments.subscriptionId))
+    .where(and(onThisCode, eq(payments.status, "captured"), applied, upToThis));
   const cancelled = await db
     .select({ months: count() })
     .from(affiliateEarnings)
     .innerJoin(payments, eq(payments.id, affiliateEarnings.paymentId))
+    .innerJoin(subscriptions, eq(subscriptions.id, payments.subscriptionId))
     .where(
       and(
-        eq(payments.subscriptionId, subscriptionId),
+        onThisCode,
         eq(affiliateEarnings.status, "cancelled"),
         sql`${payments.id} <> ${paymentId}`,
         upToThis,

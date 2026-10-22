@@ -97,8 +97,8 @@ function lines(...services: Parameters<typeof bundleLines>[0]): readonly NewBund
   }));
 }
 
-/** A code of ₹300 for `months` paid months (no limit when null), from an affiliate on 5% when `affiliate` is set. */
-async function codeFor(months: number | null, affiliate = false): Promise<string> {
+/** A code of ₹300 for `months` paid months (no limit when null), from an affiliate on 5% when `affiliate` is set, paid for `rewardCycles` months (every month when null). */
+async function codeFor(months: number | null, affiliate = false, rewardCycles: number | null = null): Promise<string> {
   const staff = dbs().staff.db;
   const affiliateId = affiliate
     ? (
@@ -108,7 +108,7 @@ async function codeFor(months: number | null, affiliate = false): Promise<string
           phone: null,
           reward: { kind: "percent", basisPoints: 500 },
           rewardCurrency: null,
-          rewardCycles: null,
+          rewardCycles,
           notes: null,
           createdByStaffId: STAFF_USER,
         })
@@ -347,6 +347,29 @@ describe("months offline", () => {
     expect(await listAffiliateEarnings(dbs().staff.db, affiliateId, 10)).toMatchObject([
       { paymentKind: "reactivation", basisCents: WEBSITE_NET - CODE_CENTS, amountCents: 13_495 },
       { paymentKind: "initial", basisCents: WEBSITE_NET - CODE_CENTS },
+    ]);
+  });
+
+  it("keep counting the affiliate's paid months across the lapse: the reactivation and the renewal after it do not start the count again", async () => {
+    // An affiliate paid for the member's first 2 months, on a code that discounts 3.
+    const codeId = await codeFor(3, true, 2);
+    const lapsed = await openOn(codeId, 3);
+    await charge(0, DISCOUNTED);
+    await execSql(dbs().owner, `update subscriptions set status = 'inactive', provider_status = 'halted' where id = '${lapsed.id}'`);
+    const carried = await loadCarriedCode(dbs().staff.db, businessId, await loadReactivationBasket(dbs().staff.db, businessId));
+    const back = await openOn(codeId, carried?.monthsLeft ?? null, { replacing: lapsed.id, providerSubscriptionId: "sub_rzp_back" });
+
+    await charge(1, DISCOUNTED, "sub_rzp_back");
+    await charge(2, DISCOUNTED, "sub_rzp_back");
+
+    // The member has now paid 3 months on the code, and the discount runs on to its last one.
+    expect(await paymentOf(2, "sub_rzp_back")).toMatchObject({ kind: "renewal", amountCents: DISCOUNTED, attentionReason: null });
+    expect(await held(back)).toMatchObject({ discountMonthsLeft: 0 });
+    const affiliateId = (await dbs().staff.db.query.affiliates.findFirst())?.id ?? "";
+    // Months 1 and 2 earned; month 3 is past the limit, though it is the renewal's first payment on its own subscription.
+    expect((await listAffiliateEarnings(dbs().staff.db, affiliateId, 10)).map((earning) => [earning.paymentKind, earning.cycleNumber])).toEqual([
+      ["reactivation", 2],
+      ["initial", 1],
     ]);
   });
 
