@@ -1,0 +1,48 @@
+# Runs the Brandbasket customer dashboard (apps/platform) on port 3201, behind nginx, as the deploy user. Installed to
+# /etc/systemd/system/ by deploy/vps/install.sh services. /srv/brandbasket/current-platform is a symlink to the live
+# release (brandbasket-platform-release moves it and restarts this unit); the release's apps/platform/.env.local is a link
+# to /srv/brandbasket/shared/platform.env.local, which `next start` reads itself. Until the first deploy there is no
+# release: the unit is enabled and not started.
+[Unit]
+Description=Brandbasket dashboard (apps/platform)
+After=network-online.target postgresql.service
+Wants=network-online.target
+# Three failed starts in a minute is a broken release, not a blip: stop and let the release script (or a person) decide.
+# (These two belong in [Unit]; in [Service] systemd ignores them.)
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/srv/brandbasket/current-platform/apps/platform
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+# The V8 heap stays below the cgroup limits so the process is asked to collect garbage before systemd has to act.
+Environment=NODE_OPTIONS=--max-old-space-size=640
+# No -H flag, on purpose: `next start -H 127.0.0.1` makes Next build its internal rewrite address as http://localhost:3201,
+# which resolves to IPv6 first, and every page then answers 404 (checked). Next therefore listens on all interfaces, so
+# port 3201 must stay closed to the outside: ufw denies incoming except 22 and, from Cloudflare's ranges, 80 and 443.
+# nginx reaches it on 127.0.0.1.
+ExecStart=/srv/brandbasket/current-platform/apps/platform/node_modules/.bin/next start -p 3201
+Restart=on-failure
+RestartSec=3
+# Low ceiling so a leak cannot take the database and nginx down with it: MemoryHigh slows the process first, MemoryMax is
+# the hard stop (the service is then restarted by Restart=on-failure). Killed before Postgres if memory runs out.
+MemoryHigh=800M
+MemoryMax=1000M
+OOMScoreAdjust=300
+TasksMax=256
+TimeoutStopSec=20
+SyslogIdentifier=brandbasket-app
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

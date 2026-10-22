@@ -1,0 +1,24 @@
+# Deploys main of brandbasket-platform to whichever app needs it. Started every minute by
+# brandbasket-platform-autodeploy.timer; systemd never starts it twice at once.
+# Logs: journalctl -u brandbasket-platform-autodeploy
+[Unit]
+Description=Brandbasket platform: deploy main when it moves
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+WorkingDirectory=/srv/brandbasket
+Environment=HOME=/home/deploy
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/local/bin/brandbasket-platform-autodeploy
+# The checks and two builds: the same work and limits as Firstfold's platform deploy (about 3.5 minutes, 4.4 GB peak,
+# measured there). The live apps are separate units, so these limits hold the build back without touching them.
+Nice=10
+CPUWeight=20
+IOWeight=20
+MemoryHigh=5G
+MemoryMax=6G
+TimeoutStartSec=45min

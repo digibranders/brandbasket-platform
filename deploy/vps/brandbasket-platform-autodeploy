@@ -1,0 +1,225 @@
+#!/usr/bin/env bash
+# Deploys main of digibranders/brandbasket-platform whenever it moves, rebuilding only the app the change touches.
+# Installed as /usr/local/bin/brandbasket-platform-autodeploy (root-owned) and run as `deploy` every minute by
+# brandbasket-platform-autodeploy.timer. Adapted from Firstfold's firstfold-platform-autodeploy (same pull model, same
+# GitHub reporting); GitHub Actions cannot deploy to this server and nothing on GitHub can reach it.
+#
+#   brandbasket-platform-autodeploy            deploy main to whichever app needs it (what the timer runs)
+#   brandbasket-platform-autodeploy --status   what each app runs, main, what main would deploy, pause and last failure
+#   brandbasket-platform-autodeploy --pause    stop deploying main (a manual --activate rollback does this itself)
+#   brandbasket-platform-autodeploy --resume   deploy main again, including a commit that failed before
+#
+# Which apps a commit needs, from the files changed between what that app runs and main:
+#   docs/, deploy/, .github/ and top-level *.md   no app (nothing that runs changed)
+#   apps/platform/                                  platform only
+#   apps/admin/                                     admin only
+#   anything else (packages/, the lockfile, package.json, pnpm-workspace.yaml, tsconfig.base.json, scripts/, ...)
+#                                                   both: each app uses the shared packages
+# A path nobody listed counts as "both", so a new kind of file can only cause an extra build, never a missed one. If an
+# app's live commit is unknown, that app is deployed.
+#
+# Pull, not push: a local mirror (/srv/brandbasket/repo.git) fetches main with a read-only deploy key
+# (~deploy/.ssh/github-brandbasket-platform, host alias github-brandbasket-platform). The commit is unpacked as a new
+# release and handed to brandbasket-platform-release, which runs the checks, builds the chosen apps, applies both
+# databases' migrations, and switches each app, switching back on its own if one does not come up (or, on an app's first
+# deploy, leaving it undeployed).
+#
+# One heavy job at a time on the box: before it unpacks anything this takes Brandbasket's lock and all three of Firstfold's
+# (heavy-lock.sh) without waiting. If any is busy, a Firstfold deploy or CI run or a Brandbasket one is going: it prints
+# one line and exits 0, and the next minute looks again. Holding Firstfold's locks makes its timers skip quietly.
+#
+# A commit that fails is recorded in autodeploy-failed and not tried again every minute; the next commit on main is.
+#
+# Every commit on main is reported to GitHub (/usr/local/lib/firstfold/github-status.sh, which takes the repository as an
+# argument) with one check run per app, "Deploy app.brandbasket.in" and "Deploy console.brandbasket.in": deployed (a live
+# step table and the log, plus an entry under the repository's Deployments), unchanged by the commit, or nothing to deploy.
+set -euo pipefail
+
+readonly ROOT=/srv/brandbasket
+readonly MIRROR="$ROOT/repo.git"
+readonly REMOTE=git@github-brandbasket-platform:digibranders/brandbasket-platform.git
+readonly BRANCH=main
+readonly FAILED="$ROOT/autodeploy-failed"
+readonly PAUSED="$ROOT/autodeploy-paused"
+readonly APPS=(platform admin)
+readonly GH_REPO=digibranders/brandbasket-platform
+readonly REPORTED="$ROOT/autodeploy-reported"
+
+die() { echo "error: $*" >&2; exit 1; }
+[[ "$(id -un)" == deploy ]] || die "run as deploy"
+# Wherever it was started from (deploy cannot read root's home, which upsets find).
+cd "$ROOT"
+
+live_release() { if [[ -L "$ROOT/current-$1" ]]; then basename "$(readlink -f "$ROOT/current-$1")"; else echo none; fi; }
+# What each app runs, for log lines: "platform runs <release>, admin runs <release>".
+running_summary() {
+  local app out=""
+  for app in "${APPS[@]}"; do out+="${out:+, }$app runs $(live_release "$app")"; done
+  echo "$out"
+}
+# A release is <sha> or <sha>+<unix time>.
+live_commit() { local release; release="$(live_release "$1")"; echo "${release%%+*}"; }
+
+host_of() { case "$1" in platform) echo app.brandbasket.in ;; admin) echo console.brandbasket.in ;; esac; }
+
+# The other app's folder, as one grep alternation: a change only there never redeploys this app.
+other_apps_pattern() {
+  local app out=()
+  for app in "${APPS[@]}"; do [[ "$app" == "$1" ]] || out+=("apps/$app/"); done
+  local IFS='|'
+  echo "${out[*]}"
+}
+
+# Succeeds when <app> must be deployed to go from <from> to <to>.
+needs_deploy() {
+  local app=$1 from=$2 to=$3 changed relevant
+  # An app whose folder does not exist at <to> can never be built from it.
+  git -C "$MIRROR" cat-file -e "$to:apps/$app" 2>/dev/null || return 1
+  [[ "$from" == "$to" ]] && return 1
+  git -C "$MIRROR" cat-file -e "$from^{commit}" 2>/dev/null || return 0
+  changed="$(git -C "$MIRROR" diff --name-only "$from" "$to")"
+  [[ -n "$changed" ]] || return 1
+  relevant="$(grep -cvE "^(docs/|deploy/|\.github/|[^/]+\.md$|$(other_apps_pattern "$app"))" <<<"$changed" || true)"
+  (( relevant > 0 ))
+}
+
+fetch_main() {
+  if [[ ! -d "$MIRROR" ]]; then
+    git init --quiet --bare "$MIRROR"
+    git -C "$MIRROR" remote add origin "$REMOTE"
+  fi
+  timeout 120 git -C "$MIRROR" fetch --quiet --prune origin "+refs/heads/$BRANCH:refs/heads/$BRANCH"
+  git -C "$MIRROR" rev-parse --verify "refs/heads/$BRANCH^{commit}"
+}
+
+# The apps main needs, space-separated (empty when none).
+apps_needing() {
+  local target=$1 app out=()
+  for app in "${APPS[@]}"; do
+    needs_deploy "$app" "$(live_commit "$app")" "$target" && out+=("$app")
+  done
+  echo "${out[*]}"
+}
+
+case "${1:-}" in
+  --status)
+    main="$(git -C "$MIRROR" rev-parse --verify --quiet "refs/heads/$BRANCH" || echo "not fetched yet")"
+    for app in "${APPS[@]}"; do echo "$app: $(live_release "$app")"; done
+    echo "main:     $main"
+    if [[ "$main" =~ ^[0-9a-f]{40}$ ]]; then
+      pending="$(apps_needing "$main")"
+      echo "pending:  ${pending:-nothing (main matches, or changed only docs, deploy files and workflows)}"
+    fi
+    if [[ -f "$PAUSED" ]]; then echo "paused:   yes (brandbasket-platform-autodeploy --resume)"; else echo "paused:   no"; fi
+    if [[ -f "$FAILED" ]]; then echo "failed:   $(cat "$FAILED") (not retried until main moves, or --resume)"; else echo "failed:   none"; fi
+    exit 0 ;;
+  --pause)
+    touch "$PAUSED"; echo "autodeploy paused"; exit 0 ;;
+  --resume)
+    rm -f "$PAUSED" "$FAILED"; echo "autodeploy resumed; the next run deploys main to any app that needs it"; exit 0 ;;
+  "") ;;
+  *) die "unknown option: $1" ;;
+esac
+
+[[ -f "$PAUSED" ]] && exit 0
+
+target="$(fetch_main)"
+read -r -a apps <<<"$(apps_needing "$target")"
+if (( ${#apps[@]} == 0 )); then
+  # main moved without changing anything an app runs (docs, deploy files, workflows): say so on the commit, once. When
+  # every app already runs main there is nothing to say.
+  behind=0
+  for app in "${APPS[@]}"; do [[ "$(live_commit "$app")" == "$target" ]] || behind=1; done
+  if (( behind )) && [[ "$(cat "$REPORTED" 2>/dev/null || true)" != "$target" ]]; then
+    # shellcheck source=/dev/null
+    source /usr/local/lib/firstfold/github-status.sh
+    gh_init "$GH_REPO"
+    for app in "${APPS[@]}"; do
+      gh_check_note "$GH_REPO" "$target" "Deploy $(host_of "$app")" skipped "Nothing to deploy" \
+        "This commit changed only docs, deploy files or workflows, so no app was rebuilt."
+    done
+    echo "$target" > "$REPORTED"
+  fi
+  exit 0
+fi
+[[ -f "$FAILED" && "$(cat "$FAILED")" == "$target" ]] && exit 0
+
+# One heavy job at a time (see the header). Held until this process exits; the release script is told not to take them again.
+# shellcheck source=heavy-lock.sh
+source /usr/local/lib/brandbasket/heavy-lock.sh
+if ! bb_take_heavy_locks 0; then
+  echo "another build, deploy or CI run is going ($BB_LOCK_BUSY is held); trying again next run"
+  exit 0
+fi
+export BRANDBASKET_RELEASE_LOCKED=1
+
+# A fresh directory per deploy. If the other app already runs this commit (it was deployed alone), its directory is
+# live and must not be rebuilt or removed, so this deploy gets a directory of its own.
+release="$target"
+for app in "${APPS[@]}"; do
+  [[ "$(live_release "$app")" == "$release" ]] && release="$target+$(date -u +%s)"
+done
+echo "main is $target; deploying ${apps[*]} as $release ($(running_summary))"
+# shellcheck source=/dev/null
+source /usr/local/lib/firstfold/github-status.sh
+steps=(install lint typecheck test "build ${apps[*]}" env migrations)
+for app in "${apps[@]}"; do steps+=("switch $app"); done
+started_at="$(date +%s)"
+gh_init "$GH_REPO"
+declare -A deployment=() check_id=() check_url=()
+for app in "${APPS[@]}"; do
+  host="$(host_of "$app")"
+  if [[ " ${apps[*]} " == *" $app "* ]]; then
+    deployment[$app]="$(gh_deployment_create "$GH_REPO" "$target" "$host" "Checks, build and switch on the VPS")"
+    read -r id url <<<"$(gh_check_start "$GH_REPO" "$target" "Deploy $host" "Starting on the VPS")" || true
+    check_id[$app]="${id:-}"; check_url[$app]="${url:-}"
+    gh_deployment_status "$GH_REPO" "${deployment[$app]}" in_progress "Checks and build running on the VPS" \
+      "https://$host" "${check_url[$app]}"
+  else
+    gh_check_note "$GH_REPO" "$target" "Deploy $host" neutral "Unchanged by this commit" \
+      "Nothing this app runs changed, so it was not rebuilt or restarted."
+  fi
+done
+
+dir="$ROOT/releases/$release"
+rm -rf "$dir"
+mkdir -p "$dir"
+git -C "$MIRROR" archive "$target" | tar -x -C "$dir"
+echo "$target" > "$dir/REVISION"
+
+# The release's output goes to the journal as before, and with time stamps to a copy the check runs are built from.
+# Both deployed apps share one log and step table; each gets its own conclusion.
+log="$(mktemp)"
+trap 'rm -f "$log"' EXIT
+report() { # <app> <check state> <report state>
+  gh_check_update "$GH_REPO" "$target" "${check_id[$1]}" "Deploy $(host_of "$1")" "$2" \
+    "$(gh_check_report "$log" "$3" "$started_at" brandbasket-platform-autodeploy "${steps[@]}")"
+}
+progress() { local app; for app in "${apps[@]}"; do report "$app" in_progress running; done; }
+if gh_run_logged "$log" progress brandbasket-platform-release "$release" "${apps[@]}"; then
+  rm -f "$FAILED"
+  for app in "${apps[@]}"; do
+    report "$app" success success
+    gh_deployment_status "$GH_REPO" "${deployment[$app]}" success "Live" "https://$(host_of "$app")" "${check_url[$app]}"
+  done
+  echo "$target" > "$REPORTED"
+  echo "deployed $target to ${apps[*]}"
+else
+  echo "$target" > "$FAILED"
+  title="$(gh_check_report "$log" failure "$started_at" brandbasket-platform-autodeploy "${steps[@]}" | gh_field title)"
+  # Apps are switched one after another, so one may be live on the new release when the next one fails.
+  for app in "${apps[@]}"; do
+    host="$(host_of "$app")"
+    if [[ "$(live_release "$app")" == "$release" ]]; then
+      report "$app" success failure
+      gh_deployment_status "$GH_REPO" "${deployment[$app]}" success "Live" "https://$host" "${check_url[$app]}"
+    else
+      report "$app" failure failure
+      still="$(live_commit "$app")"
+      gh_deployment_status "$GH_REPO" "${deployment[$app]}" failure "$title. ${still:0:7} still live" "https://$host" \
+        "${check_url[$app]}"
+    fi
+  done
+  echo "$target" > "$REPORTED"
+  die "deploy of $target failed ($title); $(running_summary). Fix main, or run brandbasket-platform-autodeploy --resume to retry it"
+fi
