@@ -6,6 +6,8 @@
  * rectangles of paper, which spin and drift as they fall and fade out together.
  */
 
+import { addOnById, MONTHLY_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
+
 /** The query parameter a landing page carries to say "a payment just opened this plan". */
 export const WELCOME_PARAM = "welcome";
 
@@ -26,6 +28,19 @@ export function withoutWelcome(search: string): string {
 }
 
 /** Brandbasket's own colours, bright enough to read on the dimmed page. */
+/** A service line as the welcome reads it: which service, whether it is paid for, and whether it is on its way out. */
+export interface WelcomeLine {
+  readonly addOn: string;
+  readonly status: string;
+  readonly endRequestedAt: Date | null;
+}
+
+/** What the welcome lists as now yours: the services the payment opened, by name, in catalogue order. */
+export function welcomeServices(lines: readonly WelcomeLine[]): readonly string[] {
+  const paid = new Set(lines.filter((line) => line.status === "active" && line.endRequestedAt === null).map((line) => line.addOn));
+  return MONTHLY_ADD_ON_IDS.filter((id) => paid.has(id)).map((id) => addOnById(id).title);
+}
+
 export const CONFETTI_COLOURS = ["#63001e", "#f4b46f", "#f2c572", "#b27716", "#3d7a4a", "#f4dfe2", "#ffffff"] as const;
 
 export interface Piece {

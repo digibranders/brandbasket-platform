@@ -8,24 +8,14 @@ import { Button } from "@brandbasket/shared/ui/panel/button";
 import { useBrand } from "@/components/panel/brand-provider";
 import { firePoppers } from "@/components/panel/fire-poppers";
 import { wantsWelcome, withoutWelcome } from "@/lib/celebration";
-import type { MembershipTier } from "@/lib/membership";
 
 interface PaymentCelebrationProps {
-  readonly tier: MembershipTier;
-}
-
-/** What each plan holds, in the order the sign-up page lists it: the list the pop-up ticks off. */
-const HOLDS: Readonly<Record<MembershipTier, readonly string[]>> = {
-  managed: ["Free listing", "Website", "Hosting and upkeep", "Monthly health report", "OyeChats chatbot"],
-};
-
-/** What a plan holds under a brand: without "Free listing" where the brand does not sell the listing. */
-function holdsFor(tier: MembershipTier, showsListing: boolean): readonly string[] {
-  return showsListing ? HOLDS[tier] : HOLDS[tier].filter((item) => item !== "Free listing");
+  /** The services the payment opened, by name, in catalogue order (lib/celebration.ts welcomeServices). */
+  readonly services: readonly string[];
 }
 
 /**
- * The sheet unfolds in two folds from the top, the headline first and then what the plan holds, each item ticked in
+ * The sheet unfolds in two folds from the top, the headline first and then the services the payment opened, each ticked in
  * turn. Switched off for anyone who asked their device for less motion: everything is simply there.
  */
 const KEYFRAMES = `
@@ -43,14 +33,13 @@ function subscribeToNothing(): () => void {
 
 /**
  * What the dashboard does the moment a payment has opened the plan: party poppers, and a short welcome to the brand
- * that lists what the plan holds. It shows while the address carries `welcome=1` (lib/celebration.ts), which the
+ * that lists the services the payment opened. It shows while the address carries `welcome=1` (lib/celebration.ts), which the
  * payment's landing adds; closing it takes that off the address, so a refresh, a shared link or the back button
  * after that never replays it. Read from the live address, not once: a payment lands here by a client-side redirect,
  * when the address is not yet the new one at first render.
  */
-export function PaymentCelebration({ tier }: PaymentCelebrationProps): ReactElement | null {
+export function PaymentCelebration({ services }: PaymentCelebrationProps): ReactElement | null {
   const brand = useBrand();
-  const showsListing = brand.showsListing;
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams().toString();
@@ -84,7 +73,6 @@ export function PaymentCelebration({ tier }: PaymentCelebrationProps): ReactElem
   }, [visible, close]);
 
   if (!visible) return null;
-  const holds = holdsFor(tier, showsListing);
   // Drawn into the page's own body, not where it is mounted: the dashboard's working panel clips what it holds to itself,
   // which would leave the sidebar outside the dimming and the blur.
   return createPortal(
@@ -117,20 +105,24 @@ export function PaymentCelebration({ tier }: PaymentCelebrationProps): ReactElem
             </h2>
           </div>
           <div className="fy-anim px-8 py-6" style={{ animation: `fy-unfold 0.7s ${EASE} both`, animationDelay: "0.35s", transformOrigin: "top" }}>
-            <p className="text-sm text-ink-soft">Now yours</p>
-            <ul className="mt-3 divide-y divide-line border-y border-line">
-              {holds.map((item, index) => (
-                <li key={item} className="flex items-center gap-4 py-3">
-                  <span
-                    className="fy-anim grid size-7 shrink-0 place-items-center rounded-full bg-success text-paper"
-                    style={{ animation: `fy-pop 0.5s ${EASE} both`, animationDelay: `${String(0.8 + index * 0.25)}s` }}
-                  >
-                    <TickIcon className="size-4" />
-                  </span>
-                  <span className="text-[0.9375rem] font-medium">{item}</span>
-                </li>
-              ))}
-            </ul>
+            {services.length > 0 ? (
+              <>
+                <p className="text-sm text-ink-soft">Now yours</p>
+                <ul className="mt-3 divide-y divide-line border-y border-line">
+                  {services.map((item, index) => (
+                    <li key={item} className="flex items-center gap-4 py-3">
+                      <span
+                        className="fy-anim grid size-7 shrink-0 place-items-center rounded-full bg-success text-paper"
+                        style={{ animation: `fy-pop 0.5s ${EASE} both`, animationDelay: `${String(0.8 + index * 0.25)}s` }}
+                      >
+                        <TickIcon className="size-4" />
+                      </span>
+                      <span className="text-[0.9375rem] font-medium">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
             <Button type="button" onClick={close} className="mt-6 w-full">
               Let’s go
             </Button>
