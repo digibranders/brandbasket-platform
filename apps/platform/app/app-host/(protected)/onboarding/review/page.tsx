@@ -30,7 +30,7 @@ import { checklistInputFrom } from "@/lib/onboarding/snapshot";
 import { onboardingStepHref, type OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import { loadBillingDetailsView } from "@/lib/server/billing-details";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
 import { ReferralCodeForm } from "@/components/panel/referral-code-form";
 import { codeBasisFor, findLapsedAppliedCode, resolveAppliedDiscount } from "@/lib/server/referrals";
@@ -237,7 +237,7 @@ interface ReviewStepPageProps {
 }
 
 export default async function ReviewStepPage({ searchParams }: ReviewStepPageProps): Promise<ReactElement> {
-  const { billing, tenant } = await requireCustomerAccess();
+  const { billing, tenant } = await requireWebsiteClient();
   const snapshot = await getOnboardingSnapshot();
   const { payment } = await searchParams;
   const editable = !snapshot.locked;

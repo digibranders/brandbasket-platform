@@ -26,7 +26,7 @@ The app at app.brandbasket.in: sign-up and sign-in, onboarding, the business das
 
 - Business logic lives in `lib/server/` (one file per concern, about 145 of them). Pages and actions stay thin and call into it. Shared domain logic used by both apps belongs in `packages/shared/src/server`.
 - Server actions are `actions.ts` files (a few sections use `commands.ts`) beside the route that uses them, marked `"use server"`.
-- Access guards: `requireCustomerAccess`, `requireBillingAccess`, `requireWebsiteAccess` (billing plus the Managed Website service, for blog, details and media writes), `requireWebsiteClient` (onboarding pages), `requireSupportAccess`, `requireAffiliateAccess`, `requireAppointmentsModule`, and the ownership checks `requireOwnedBlogPost` and `requireOwnedTaxonomyDoc`. Call the right one at the top of every page and action.
+- Access guards: `requireCustomerAccess`, `requireBillingAccess`, `requireWebsiteAccess` (billing plus the Managed Website service, for blog, details and media writes), `requireWebsiteClient` (the website's pages: onboarding, project, domain, OyeChats, content, details), `requireSupportAccess`, `requireAffiliateAccess`, `requireAppointmentsModule`, and the ownership checks `requireOwnedBlogPost` and `requireOwnedTaxonomyDoc`. Call the right one at the top of every page and action.
 - Connections (`lib/server/db.ts`, `lib/server/public-db.ts`):
   - `getAppDb()`: customer work under row-level security. Scope with `withUserScope` or `withTenantScope`.
   - `getPublicDb()`: lead intake only (`POST /api/leads`). That role can only insert leads, rate-limit rows and outbox messages.

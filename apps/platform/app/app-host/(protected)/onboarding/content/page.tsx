@@ -3,14 +3,14 @@ import type { ReactElement } from "react";
 import { ContentStepForm } from "@/components/panel/content-step-form";
 import { ContentSummary, SummaryCard } from "@/components/panel/onboarding-summary";
 import { StepHeading } from "@/components/panel/step-heading";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
 import { saveContentStep } from "./actions";
 
 export const metadata: Metadata = { title: "What you offer" };
 
 export default async function ContentStepPage(): Promise<ReactElement> {
-  const { billing } = await requireCustomerAccess();
+  const { billing } = await requireWebsiteClient();
   const snapshot = await getOnboardingSnapshot();
 
   if (snapshot.locked) {

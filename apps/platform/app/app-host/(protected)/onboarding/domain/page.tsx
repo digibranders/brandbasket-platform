@@ -7,14 +7,14 @@ import { StepHeading } from "@/components/panel/step-heading";
 import { slugify } from "@brandbasket/db";
 import { clientSiteBaseDomain, isTemporarySubdomain, suggestSubdomainName } from "@brandbasket/shared/lib/onboarding/domain-form";
 
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
 import { saveDomainStep, useTemporarySubdomainAction } from "./actions";
 
 export const metadata: Metadata = { title: "Your domain" };
 
 export default async function DomainStepPage(): Promise<ReactElement> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireWebsiteClient();
   const snapshot = await getOnboardingSnapshot();
   const baseDomain = clientSiteBaseDomain();
 

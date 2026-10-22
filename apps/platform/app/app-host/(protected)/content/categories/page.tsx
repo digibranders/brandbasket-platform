@@ -4,11 +4,13 @@ import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import { BlogEmptyState } from "@/components/panel/blog-editor/blog-empty-state";
 import { CategoriesTable } from "@/components/panel/blog-editor/categories-table";
 import { getBlogCategoriesWithStats } from "@/lib/server/blog-taxonomy";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 
 export const metadata: Metadata = { title: "Categories" };
 
 /** Content → Categories: what posts are filed under. Each has its own page on the website, /blog/category/<name>. */
 export default async function CategoriesPage(): Promise<ReactElement> {
+  await requireWebsiteClient();
   const categories = await getBlogCategoriesWithStats();
   return (
     <>

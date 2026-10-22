@@ -6,7 +6,7 @@ import { NoAssistantYet, OyeChatsIntro } from "@/components/panel/oyechats/oyech
 import { buildLeadRows, readPageParam } from "@/lib/chatbots-view";
 import { loadBotActivity } from "@/lib/server/chatbot-conversations";
 import { LEADS_PER_PAGE, loadLeadsPage } from "@/lib/server/chatbots";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 
 export const metadata: Metadata = { title: "OyeChats leads" };
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "OyeChats leads" };
  * from OyeChats (app/api/webhooks/oyechats); the conversations are read from OyeChats itself when asked for.
  */
 export default async function OyeChatsLeadsPage({ searchParams }: { readonly searchParams: Promise<{ readonly page?: string | string[] }> }): Promise<ReactElement> {
-  const customer = await requireCustomerAccess();
+  const customer = await requireWebsiteClient();
   const { page: requested } = await searchParams;
   const { bots, leads, total, page, pageCount } = await loadLeadsPage(customer, readPageParam(requested));
   // Message counts come from OyeChats itself. A bot without a key, or OyeChats being down, only means the

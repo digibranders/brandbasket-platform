@@ -14,7 +14,7 @@ interface PlanSummaryProps {
   readonly plan: Plan;
   readonly subscription: Subscription;
   readonly now: Date;
-  /** The business holds the Managed Website service: the change and blog allowances below are the website's, so only it is told them. */
+  /** The business holds the Managed Website service: "What's included" and the change and blog allowances are the website's, so only it is shown them. */
   readonly hasWebsite: boolean;
   /** The brand the dashboard is sold under: it words the plan's name. Brandbasket when left out. */
   readonly brand?: Brand;
@@ -119,23 +119,25 @@ export function PlanSummary({ plan, subscription, now, hasWebsite, paymentMethod
         )}
       </div>
 
-      <details className="group border-t border-line">
-        <summary className="flex cursor-pointer list-none items-center justify-end gap-1.5 px-6 py-3.5 text-xs font-semibold text-accent-deep transition-colors duration-300 ease-calm hover:text-ink sm:px-7 [&::-webkit-details-marker]:hidden">
-          What’s included
-          <ChevronDownIcon className="size-3.5 transition-transform duration-300 ease-calm group-open:rotate-180" />
-        </summary>
-        <div className="px-6 pb-6 sm:px-7">
-          <ul className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
-            {carePlan.includes.map((item) => (
-              <li key={item} className="flex gap-2 text-xs">
-                <TickIcon className="mt-px size-3.5 shrink-0 text-accent" />
-                {item}
-              </li>
-            ))}
-          </ul>
-          {hasWebsite ? <p className="mt-4 text-xs leading-relaxed text-ink-soft">{changesNote(plan)}</p> : null}
-        </div>
-      </details>
+      {hasWebsite ? (
+        <details className="group border-t border-line">
+          <summary className="flex cursor-pointer list-none items-center justify-end gap-1.5 px-6 py-3.5 text-xs font-semibold text-accent-deep transition-colors duration-300 ease-calm hover:text-ink sm:px-7 [&::-webkit-details-marker]:hidden">
+            What’s included
+            <ChevronDownIcon className="size-3.5 transition-transform duration-300 ease-calm group-open:rotate-180" />
+          </summary>
+          <div className="px-6 pb-6 sm:px-7">
+            <ul className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
+              {carePlan.includes.map((item) => (
+                <li key={item} className="flex gap-2 text-xs">
+                  <TickIcon className="mt-px size-3.5 shrink-0 text-accent" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-xs leading-relaxed text-ink-soft">{changesNote(plan)}</p>
+          </div>
+        </details>
+      ) : null}
     </section>
   );
 }

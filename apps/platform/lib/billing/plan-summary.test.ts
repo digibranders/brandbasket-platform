@@ -37,7 +37,14 @@ describe("PlanSummary", () => {
     expect(markup(true)).toContain("Your first hour of changes is free");
   });
 
-  it("leaves the website's allowances out for a client without a website", () => {
+  it("lists what the website includes for a website client", () => {
+    expect(markup(true)).toContain("What’s included");
+    expect(markup(true)).toContain("Hosting and SSL certificate");
+  });
+
+  it("leaves the website's list and allowances out for a client without a website", () => {
+    expect(markup(false)).not.toContain("What’s included");
+    expect(markup(false)).not.toContain("Hosting and SSL certificate");
     expect(markup(false)).not.toContain("hour of changes");
   });
 });

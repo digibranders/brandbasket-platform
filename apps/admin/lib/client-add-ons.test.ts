@@ -349,7 +349,7 @@ describe("clientAddOnOption", () => {
 describe("removeHint", () => {
   it("adds the website going offline, on the date it stops, when the website is the one removed", () => {
     expect(removeHint("managed-website", "12 November 2026")).toBe(
-      "It stays until the next billing date. Then the other services go to list price and package prices end for good, the same as when the customer removes it. Your website goes offline on 12 November 2026.",
+      "It stays until the next billing date. Then the other services go to list price and package prices end for good, the same as when the customer removes it. Their website goes offline on 12 November 2026.",
     );
   });
 

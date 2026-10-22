@@ -4,7 +4,7 @@ import { ChatbotName } from "@/components/panel/oyechats/chatbot-name";
 import { NoAssistantYet, OyeChatsIntro } from "@/components/panel/oyechats/oyechats-intro";
 import { chatbotStatusLine, websiteLabel } from "@/lib/chatbots-view";
 import { loadChatbots } from "@/lib/server/chatbots";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 
 export const metadata: Metadata = { title: "OyeChats chatbot name" };
 
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "OyeChats chatbot name" };
  * A bot has no login of its own; anything else about it goes to the team through Support. Bots are registered by staff.
  */
 export default async function OyeChatsNamePage(): Promise<ReactElement> {
-  const customer = await requireCustomerAccess();
+  const customer = await requireWebsiteClient();
   const bots = await loadChatbots(customer);
 
   return (

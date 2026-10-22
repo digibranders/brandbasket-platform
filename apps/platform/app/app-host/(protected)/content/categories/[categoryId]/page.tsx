@@ -4,7 +4,7 @@ import type { ReactElement } from "react";
 import { CategoryEditor } from "@/components/panel/blog-editor/category-editor";
 import { getOwnWebsiteUrl } from "@/lib/server/blog-preview-link";
 import { getBlogCategory } from "@/lib/server/blog-taxonomy";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { deleteCategoryAction, saveCategoryAction } from "../actions";
 
 export const metadata: Metadata = { title: "Category" };
@@ -26,7 +26,7 @@ export default async function CategoryPage({
   readonly params: Promise<{ readonly categoryId: string }>;
 }): Promise<ReactElement> {
   const { categoryId } = await params;
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireWebsiteClient();
   const [category, websiteUrl] = await Promise.all([getBlogCategory(categoryId), getOwnWebsiteUrl(tenant)]);
   if (category === null) notFound();
 

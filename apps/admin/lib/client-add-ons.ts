@@ -165,11 +165,11 @@ export interface ClientBundledAddOnRow {
 
 /**
  * Under the remove confirm: when it stops and what that does to the other services. Taking the website out also says the
- * site goes offline that day, the sentence the customer reads in their own confirm.
+ * site goes offline that day, worded for staff reading about the customer (the customer's own confirm says "Your").
  */
 export function removeHint(addOn: MonthlyAddOnId, endsOnText: string): string {
   const stays = "It stays until the next billing date. Then the other services go to list price and package prices end for good, the same as when the customer removes it.";
-  return addOn === "managed-website" ? `${stays} Your website goes offline on ${endsOnText}.` : stays;
+  return addOn === "managed-website" ? `${stays} Their website goes offline on ${endsOnText}.` : stays;
 }
 
 /** What the rows need besides the add-on rows themselves. */
