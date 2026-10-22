@@ -1,0 +1,11 @@
+# Read-only access to GitHub for the Brandbasket autodeploy and CI, installed as /home/brandbasket/.ssh/config (the
+# brandbasket user's own; Firstfold's deploy user has a separate file that this kit never reads or writes). One deploy key per
+# repository (GitHub allows a key on one repository only), so the repository has its own host alias.
+Host github-brandbasket-platform
+  HostName github.com
+  User git
+  IdentityFile /home/brandbasket/.ssh/github-brandbasket-platform
+  IdentitiesOnly yes
+  UserKnownHostsFile /home/brandbasket/.ssh/known_hosts
+  StrictHostKeyChecking yes
+  BatchMode yes

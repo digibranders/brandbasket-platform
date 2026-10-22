@@ -1,0 +1,15 @@
+# Started by a failing unit through OnFailure=brandbasket-notify-failure@%n.service (see 10-notify-failure.conf). The instance
+# is the failed unit's name, inserted by %n as plain text and not escaped. Use %i, the instance as written: %I would
+# unescape it and turn every hyphen into a slash, and the handler would refuse the name.
+# This unit has no OnFailure of its own on purpose: an alert that fails must not start another alert.
+[Unit]
+Description=Email the Brandbasket team that %i failed
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/brandbasket-notify-failure %i
+Nice=10
+TimeoutStartSec=90
+PrivateTmp=true

@@ -15,6 +15,10 @@
 #   bb_public  insert-only: sign-up codes and account email outbox writes       -> DATABASE_URL_PUBLIC
 #   bb_cms     owns brandbasket_platform_payload (blog and content); runs its migrations -> DATABASE_URL_PAYLOAD (both apps)
 #
+# Connection caps (this Postgres is shared with Firstfold, max_connections 120): brandbasket_platform 40, brandbasket_platform_payload
+# 20, set with ALTER DATABASE ... CONNECTION LIMIT on every run (so a changed number below is applied, and a hand edit is undone).
+# The plan and the final report both print them.
+#
 # Secrets: /root/brandbasket-secrets.env (mode 600): OWNER_PW, APP_PW, STAFF_PW, PUBLIC_PW, CMS_PW. Missing ones are generated.
 #
 # Test hooks (never needed on the droplet): BRANDBASKET_PSQL (the psql command line), BRANDBASKET_SECRETS_FILE, BRANDBASKET_DB, BRANDBASKET_PAYLOAD_DB.
@@ -34,14 +38,15 @@ DB="${BRANDBASKET_DB:-brandbasket_platform}"
 PAYLOAD_DB="${BRANDBASKET_PAYLOAD_DB:-brandbasket_platform_payload}"
 read -r -a PSQL <<<"${BRANDBASKET_PSQL:-sudo -u postgres psql}"
 readonly SECRETS_FILE DB PAYLOAD_DB
+readonly DB_CONN_LIMIT=40 PAYLOAD_CONN_LIMIT=20
 
 say() { printf '%s\n' "$*"; }
 psql_q() { "${PSQL[@]}" -X -v ON_ERROR_STOP=1 -Atq "$@"; }
 
 say "== Inspecting (read-only)"
 psql_q -c "select 'postgres ' || current_setting('server_version')" || { say "Cannot reach Postgres with: ${PSQL[*]}" >&2; exit 1; }
-say "existing roles named brandbasket_:"
-psql_q -c "select '  ' || rolname || case when rolcanlogin then ' (login)' else ' (nologin)' end from pg_roles where rolname ~ '^brandbasket_' order by 1" || true
+say "existing roles named bb_:"
+psql_q -c "select '  ' || rolname || case when rolcanlogin then ' (login)' else ' (nologin)' end from pg_roles where rolname ~ '^bb_' order by 1" || true
 say "existing databases named brandbasket_:"
 psql_q -c "select '  ' || datname from pg_database where datname ~ '^brandbasket_' order by 1" || true
 
@@ -78,6 +83,8 @@ sql() {
 \\set cms_pw '${PW_CMS_PW}'
 \\set db '${DB}'
 \\set pdb '${PAYLOAD_DB}'
+\\set dblimit ${DB_CONN_LIMIT}
+\\set pdblimit ${PAYLOAD_CONN_LIMIT}
 
 CREATE TEMP TABLE wanted_roles (name text, pw text);
 INSERT INTO wanted_roles VALUES
@@ -102,6 +109,10 @@ ALTER ROLE bb_owner CREATEROLE;
 SELECT format('GRANT %I TO bb_owner WITH ADMIN OPTION', name)
 FROM (VALUES ('bb_app'), ('bb_staff'), ('bb_public')) AS r(name) \\gexec
 
+-- Connection caps, so neither database can take the connections Firstfold's databases need.
+SELECT format('ALTER DATABASE %I CONNECTION LIMIT %s', db, lim)
+FROM (VALUES (:'db', :dblimit), (:'pdb', :pdblimit)) AS c(db, lim) \\gexec
+
 -- Only the roles that need a database may connect to it.
 SELECT format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', db) FROM (VALUES (:'db'), (:'pdb')) AS d(db) \\gexec
 SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'db', role)
@@ -113,6 +124,7 @@ SQL
 say "== Plan"
 say "  roles: bb_owner bb_app bb_staff bb_public bb_cms (all login, none superuser)"
 say "  databases: ${DB} (owner bb_owner), ${PAYLOAD_DB} (owner bb_cms)"
+say "  connection limits: ${DB} ${DB_CONN_LIMIT}, ${PAYLOAD_DB} ${PAYLOAD_CONN_LIMIT} (ALTER DATABASE ... CONNECTION LIMIT, every run)"
 if [[ $APPLY -eq 0 ]]; then
   say "[dry-run] nothing changed. Run again with --apply."
   exit 0
@@ -120,6 +132,6 @@ fi
 
 sql | "${PSQL[@]}" -X -q >/dev/null
 say "== Done. Roles and databases now:"
-psql_q -c "select '  ' || rolname || case when rolcanlogin then ' (login)' else ' (nologin)' end from pg_roles where rolname ~ '^brandbasket_' order by 1"
-psql_q -c "select '  ' || d.datname || ' owned by ' || r.rolname from pg_database d join pg_roles r on r.oid = d.datdba where d.datname ~ '^brandbasket_' order by 1"
-say "Next: make the env files (scripts/server/make-env-files.sh), then the first release (docs/deployment/brandbasket-droplet.md)."
+psql_q -c "select '  ' || rolname || case when rolcanlogin then ' (login)' else ' (nologin)' end from pg_roles where rolname ~ '^bb_' order by 1"
+psql_q -c "select '  ' || d.datname || ' owned by ' || r.rolname || ', connection limit ' || d.datconnlimit from pg_database d join pg_roles r on r.oid = d.datdba where d.datname ~ '^brandbasket_' order by 1"
+say "Next: make the env files (scripts/server/make-env-files.sh), then the rest of docs/deployment/brandbasket-vps.md."

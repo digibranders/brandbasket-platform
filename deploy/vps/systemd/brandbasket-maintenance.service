@@ -1,0 +1,55 @@
+# The daily upkeep job: removes expired support screenshots and closed support requests, then runs the retention schedule
+# (docs/operations/retention-run.md), sends the staff access review and privacy-request reminders. Installed by
+# deploy/vps/install.sh backups; started by brandbasket-maintenance.timer. It reads the dashboard's environment through the
+# release's apps/platform/.env.local link, as the app does, so it needs a deployed release. Runs as the brandbasket user in the
+# same sandbox as the apps; it writes only the uploaded media and the private support files. pnpm needs a writable home for
+# its own cache, so HOME is the unit's cache directory (/var/cache/brandbasket-maintenance), not /home.
+# Look at it with: journalctl -u brandbasket-maintenance -n 50 (a good run prints a line starting "Support maintenance:").
+[Unit]
+Description=Brandbasket daily maintenance (support attachments, retention, alerts)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=brandbasket
+Group=brandbasket
+WorkingDirectory=/srv/brandbasket/current-platform
+CacheDirectory=brandbasket-maintenance
+Environment=HOME=/var/cache/brandbasket-maintenance
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=NODE_ENV=production
+Environment=COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ExecStart=/usr/bin/env pnpm support:attachments:maintain
+Nice=10
+IOWeight=20
+TimeoutStartSec=15min
+MemoryMax=700M
+LimitNOFILE=65535
+SyslogIdentifier=brandbasket-maintenance
+# Sandbox (Firstfold's app hardening): read-only system, writable only where this unit writes, no privileges, no unneeded
+# syscalls. Firstfold's folders, its env files, keys and backups do not exist for this unit (InaccessiblePaths; the "-" ignores
+# a path that is not there).
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+# AF_NETLINK: Next lists network interfaces at startup (os.networkInterfaces), which needs a netlink socket.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+CapabilityBoundingSet=
+UMask=0077
+ReadWritePaths=/srv/brandbasket/media /srv/brandbasket/support-private
+InaccessiblePaths=-/srv/firstfold -/srv/firstfold-website -/srv/firstfold-media -/srv/firstfold-ci -/etc/firstfold -/var/backups -/var/lib/firstfold -/var/lib/firstfold-ci

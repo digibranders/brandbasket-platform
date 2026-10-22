@@ -1,0 +1,12 @@
+# Starts brandbasket-backup.service every night at 02:15 UTC (07:45 India time). Firstfold's backup runs at 21:00 UTC and
+# its upkeep jobs at 21:30 and 22:00, so nothing overlaps.
+[Unit]
+Description=Brandbasket nightly backup
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,5 @@
+# /etc/hosts as the Brandbasket CI sandbox sees it (bound over the real one by brandbasket-ci-sandbox). The server's own
+# file maps names to 127.0.0.1 for Firstfold's loopback calls; here every name resolves through DNS like for any visitor,
+# because the sandbox may not use loopback.
+127.0.0.1 localhost
+::1 localhost ip6-localhost ip6-loopback

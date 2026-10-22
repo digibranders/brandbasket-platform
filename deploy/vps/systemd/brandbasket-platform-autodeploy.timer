@@ -1,0 +1,12 @@
+# Looks for a new commit on main at 20 seconds past every minute (Firstfold's website looks at :00, its platform at :30, its
+# CI at :45; Brandbasket's CI at :50). Wall-clock, so a failed run never stops the next one; systemd skips a tick while the
+# previous run is still going.
+[Unit]
+Description=Brandbasket platform: look for a new commit on main every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:20
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

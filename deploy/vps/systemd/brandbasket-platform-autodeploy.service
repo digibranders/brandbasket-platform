@@ -1,0 +1,32 @@
+# Deploys main of brandbasket-platform to whichever app needs it. Started every minute by
+# brandbasket-platform-autodeploy.timer; systemd never starts it twice at once.
+# Logs: journalctl -u brandbasket-platform-autodeploy
+#
+# Runs as the brandbasket user, not Firstfold's deploy. It builds, runs sudo (migrations, restarts) and holds Firstfold's
+# three lock files, so it cannot use NoNewPrivileges or a read-only system; what it gets is InaccessiblePaths for everything
+# of Firstfold's except the lock files themselves (heavy-lock.sh opens those read-only), so only the folders around them
+# are listed.
+[Unit]
+Description=Brandbasket platform: deploy main when it moves
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=brandbasket
+Group=brandbasket
+WorkingDirectory=/srv/brandbasket
+Environment=HOME=/home/brandbasket
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+# The unit's timeout below is its limit; a hand-started run gets its own 45 minute limit (heavy-lock.sh, bb_bounded).
+Environment=BRANDBASKET_BOUNDED=1
+ExecStart=/usr/local/bin/brandbasket-platform-autodeploy
+# The checks and two builds: the same work and limits as Firstfold's platform deploy (about 3.5 minutes, 4.4 GB peak,
+# measured there). The live apps are separate units, so these limits hold the build back without touching them.
+Nice=10
+CPUWeight=20
+IOWeight=20
+MemoryHigh=5G
+MemoryMax=6G
+TimeoutStartSec=45min
+InaccessiblePaths=-/srv/firstfold/shared -/srv/firstfold/releases -/srv/firstfold/repo.git -/srv/firstfold-website/shared -/srv/firstfold-website/releases -/srv/firstfold-website/repo.git -/srv/firstfold-media -/srv/firstfold-ci/archives -/srv/firstfold-ci/mirrors -/srv/firstfold-ci/state -/srv/firstfold-ci/work -/etc/firstfold -/home/deploy -/var/backups -/var/lib/firstfold -/var/lib/firstfold-ci

@@ -10,7 +10,7 @@ Each app has its own `CLAUDE.md` (`apps/platform/`, `apps/admin/`) with app-spec
 
 - Work on `development`. `main` is production and only changes through a PR from `development`.
 - CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `development` and `main`: lint, typecheck, unit tests and build, and in parallel a job that creates a Postgres, runs `db:roles`, migrations, Payload migrations and the integration tests.
-- `deploy.yml` runs after CI passes on `main` and calls `scripts/server/deploy.sh`, which migrates before switching releases on the droplet. Runbook: `docs/deployment/brandbasket-droplet.md`.
+- Deploys are pulled by the Firstfold VPS, not pushed by GitHub: it fetches `main` every minute, runs the checks and migrations, and switches the apps with health checks (`deploy/vps/`, runbook `docs/deployment/brandbasket-vps.md`; `docs/deployment/brandbasket-droplet.md` is superseded). The VPS also runs CI on every other branch and reports both to the Checks tab.
 
 | Surface | App | Production | Local (README) |
 |---|---|---|---|

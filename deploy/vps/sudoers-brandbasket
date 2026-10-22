@@ -1,0 +1,9 @@
+# Installed as /etc/sudoers.d/brandbasket (root:root 0440, checked with visudo -cf first). What the `brandbasket` user may run
+# as root, and nothing else: apply migrations (the wrapper reads the database owner's password from a root-only file and
+# takes no arguments), restart and stop the two app units (stop only for an app's first deploy that does not come up), and
+# run CI checks in the bbci sandbox (brandbasket-ci-sandbox takes one commit hash and checks it itself). No wildcards, no
+# shell. The alias name is prefixed so it cannot clash with Firstfold's /etc/sudoers.d/firstfold-deploy, which is not touched.
+# Firstfold's `deploy` user has no rule here, and `brandbasket` has none in Firstfold's file.
+Cmnd_Alias BRANDBASKET_UNITS = /usr/bin/systemctl restart brandbasket-app, /usr/bin/systemctl restart brandbasket-admin, \
+  /usr/bin/systemctl stop brandbasket-app, /usr/bin/systemctl stop brandbasket-admin
+brandbasket ALL=(root) NOPASSWD: BRANDBASKET_UNITS, /usr/local/sbin/brandbasket-migrate "", /usr/local/sbin/brandbasket-ci-sandbox

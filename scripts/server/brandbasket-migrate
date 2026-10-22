@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # What this does: applies pending migrations to Brandbasket's main production database (brandbasket_platform) as its migration owner
-# (bb_owner). Installed on the droplet as /usr/local/sbin/brandbasket-migrate (root:root 0755) by bootstrap-droplet.sh, and
-# called by scripts/server/deploy.sh through sudo. Besides restarting the two apps it is the only thing the deploy user
-# may run through sudo (see deploy/sudoers.brandbasket.example).
+# (bb_owner). Installed on the VPS as /usr/local/sbin/brandbasket-migrate (root:root 0755) by deploy/vps/install.sh services, and
+# called by brandbasket-platform-release (deploy/vps) through sudo. Besides restarting and stopping the two apps it is the only thing
+# the brandbasket user may run through sudo, apart from the CI sandbox (see deploy/vps/sudoers-brandbasket).
 #
 # Assumes: /root/brandbasket-secrets.env (mode 600, written by setup-database.sh) holds OWNER_PW; PostgreSQL listens on
-# localhost:5432; /srv/brandbasket/deploying is a symlink to the release being deployed; node and pnpm are on the deploy user's PATH.
+# localhost:5432; /srv/brandbasket/deploying is a symlink to the release being deployed; node and pnpm are on the app user's PATH.
 #
 # Root is needed for one reason: the owner's password lives in a root-only file. Nothing else runs as root. The migration
-# itself runs as the deploy user, because the release directory is theirs: executing that code as root would hand root to
-# anyone who can act as deploy. Takes no arguments, and the sudoers rule allows none.
+# itself runs as the user that owns /srv/brandbasket (`brandbasket` on the VPS; the droplet's `deploy`), because the release
+# directory is theirs: executing that code as root would hand root to anyone who can act as that user. Takes no arguments, and
+# the sudoers rule allows none. The owner's database address reaches the migration through its environment only, never on a
+# command line (where `ps` would show it).
 #
 # Safe to re-run: pending migrations are applied once, already-applied ones are skipped by the migration runner.
 set -euo pipefail
@@ -17,13 +19,19 @@ set -euo pipefail
 readonly SECRETS_FILE="${BRANDBASKET_SECRETS_FILE:-/root/brandbasket-secrets.env}"
 readonly DEPLOY_ROOT="${BRANDBASKET_ROOT:-/srv/brandbasket}"
 readonly DEPLOYING="$DEPLOY_ROOT/deploying"
-readonly DEPLOY_USER="${BRANDBASKET_DEPLOY_USER:-deploy}"
+# The user that owns the deploy root; never root. (The variable is a test hook: sudo clears it.)
+DEPLOY_USER="${BRANDBASKET_DEPLOY_USER:-$(stat -c %U "$DEPLOY_ROOT" 2>/dev/null || stat -f %Su "$DEPLOY_ROOT" 2>/dev/null || true)}"
+readonly DEPLOY_USER
 readonly DB_NAME=brandbasket_platform
 readonly DB_OWNER=bb_owner
 
 if [[ $# -ne 0 ]]; then
   echo "brandbasket-migrate takes no arguments." >&2
   exit 64
+fi
+if [[ -z "$DEPLOY_USER" || "$DEPLOY_USER" == root ]]; then
+  echo "brandbasket-migrate: $DEPLOY_ROOT must exist and be owned by the app user, not root." >&2
+  exit 1
 fi
 if [[ ! -r "$SECRETS_FILE" ]]; then
   echo "Cannot read $SECRETS_FILE (run it with sudo, after scripts/server/setup-database.sh --apply)." >&2
@@ -64,4 +72,6 @@ if [[ "${BRANDBASKET_MIGRATE_DRY_RUN:-0}" == 1 ]]; then
   echo "[dry-run] would run as $DEPLOY_USER in $app_root: pnpm db:migrate (database $DB_NAME as $DB_OWNER; address user: $(printf %s "$owner_url" | sed -E 's#^postgresql://([^:]*):.*/([^/]*)$#\1 db \2#'))"
   exit 0
 fi
-exec runuser -u "$DEPLOY_USER" -- env HOME="/home/$DEPLOY_USER" DATABASE_URL_OWNER="$owner_url" pnpm db:migrate
+# runuser keeps the environment (and root's HOME), so both are set here and the address is exported, not passed as an argument.
+export HOME="/home/$DEPLOY_USER" DATABASE_URL_OWNER="$owner_url"
+exec runuser -u "$DEPLOY_USER" -- pnpm db:migrate

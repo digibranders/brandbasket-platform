@@ -1,0 +1,65 @@
+# Runs the Brandbasket staff console (apps/admin) on port 3203, behind nginx, as the brandbasket user. nginx serves it only to
+# requests that came through Cloudflare. Installed to /etc/systemd/system/ by deploy/vps/install.sh services.
+# /srv/brandbasket/current-admin is a symlink to the live release (brandbasket-platform-release moves it and restarts this
+# unit); the release's apps/admin/.env.local is a link to /srv/brandbasket/shared/admin.env.local. Until the first deploy
+# there is no release: the unit is enabled and not started. It writes only the releases folder (Next's .next/cache), the
+# uploaded media and the private support files.
+[Unit]
+Description=Brandbasket staff console (apps/admin)
+After=network-online.target postgresql.service
+Wants=network-online.target
+# Three failed starts in a minute is a broken release, not a blip: stop and let the release script (or a person) decide.
+# (These two belong in [Unit]; in [Service] systemd ignores them.)
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=brandbasket
+Group=brandbasket
+WorkingDirectory=/srv/brandbasket/current-admin/apps/admin
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=NODE_OPTIONS=--max-old-space-size=384
+# No -H flag, on purpose (see brandbasket-app.service): port 3203 stays closed to the outside through ufw.
+ExecStart=/srv/brandbasket/current-admin/apps/admin/node_modules/.bin/next start -p 3203
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+# Next exits 143 on SIGTERM: a normal stop (every deploy restarts the unit), not a failure that sends an alert.
+SuccessExitStatus=143
+LimitNOFILE=65535
+MemoryHigh=500M
+MemoryMax=650M
+OOMScoreAdjust=300
+TasksMax=256
+SyslogIdentifier=brandbasket-admin
+# Sandbox (Firstfold's app hardening): read-only system, writable only where this unit writes, no privileges, no unneeded
+# syscalls. Firstfold's folders, its env files, keys and backups do not exist for this unit (InaccessiblePaths; the "-" ignores
+# a path that is not there).
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+# AF_NETLINK: Next lists network interfaces at startup (os.networkInterfaces), which needs a netlink socket.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+CapabilityBoundingSet=
+UMask=0077
+ReadWritePaths=/srv/brandbasket/releases /srv/brandbasket/media /srv/brandbasket/support-private
+InaccessiblePaths=-/srv/firstfold -/srv/firstfold-website -/srv/firstfold-media -/srv/firstfold-ci -/etc/firstfold -/var/backups -/var/lib/firstfold -/var/lib/firstfold-ci
+
+[Install]
+WantedBy=multi-user.target

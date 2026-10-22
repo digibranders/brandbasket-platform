@@ -2,7 +2,7 @@
 # Applies Payload's migrations to the Payload database (brandbasket_platform_payload), then fails unless every one has run.
 #
 # Run from the repository root, by the production deploy (brandbasket-platform-release on the VPS, from the release
-# being deployed; see docs/deployment/brandbasket-droplet.md) and by CI's database job. It reads
+# being deployed; see docs/deployment/brandbasket-vps.md) and by CI's database job. It reads
 # DATABASE_URL_PAYLOAD and PAYLOAD_SECRET from apps/platform/.env.local, as `pnpm cms:migrate` always does; the
 # connection there belongs to the role that owns the Payload database, so no sudo or owner password is involved.
 #

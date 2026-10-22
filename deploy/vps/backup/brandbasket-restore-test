@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Proves the newest Brandbasket backup can actually be restored: loads each dump into a THROWAWAY database
+# (brandbasket_restore_test_platform / brandbasket_restore_test_payload), checks the result (tables exist, the key table
+# is readable, row counts printed), then drops the throwaway databases. The real databases are never touched. Installed as
+# /usr/local/sbin/brandbasket-restore-test (root-owned); run weekly by brandbasket-restore-test.timer with --apply.
+# Without --apply it only prints what it would do.
+#
+#   brandbasket-restore-test [--apply]          the newest local backup in /var/backups/brandbasket/daily
+#   brandbasket-restore-test --apply --r2       the newest OFF-SITE copy instead: downloaded from R2 (only
+#                                               daily/brandbasket-*.tar.age), checked against its checksum, and decrypted
+#                                               with the age private key read from standard input (stream it over ssh; it
+#                                               is never written to this server):
+#       ssh root@<vps> brandbasket-restore-test --apply --r2 < firstfold-backup-age.key
+#
+# The dumps keep object owners, so the roles from install.sh database must exist (they do on this server; on a new one run
+# that step first, then restore the secrets file from server-config.tar.gz). Run as root. Exit 0 only if both restore.
+#
+# Who restores: the local backup is restored by the postgres superuser. The OFF-SITE copy (--r2) is data that has travelled
+# through a bucket, so it is restored, and queried, as the database's own unprivileged owner (bb_owner for the platform
+# database, bb_cms for the payload database), over TCP with the password from /root/brandbasket-secrets.env in the
+# environment. Only the empty scratch databases are created by the superuser. A dump that carried a statement needing more than
+# an owner may do (CREATE EXTENSION of an untrusted extension, COPY ... PROGRAM, a superuser-only function) then fails the
+# test, instead of running as postgres.
+set -euo pipefail
+
+APPLY=0 R2=0
+for arg in "$@"; do
+  case "$arg" in
+    --apply) APPLY=1 ;;
+    --r2) R2=1 ;;
+    *) echo "usage: brandbasket-restore-test [--apply] [--r2]" >&2; exit 64 ;;
+  esac
+done
+
+readonly ROOT=/var/backups/brandbasket
+readonly STATE=/var/lib/brandbasket
+readonly SECRETS=/root/brandbasket-secrets.env
+readonly SCRATCH_PLATFORM=brandbasket_restore_test_platform
+readonly SCRATCH_PAYLOAD=brandbasket_restore_test_payload
+pg() { runuser -u postgres -- "$@"; }
+# secret <NAME>: one value from the secrets file, read by name and never printed.
+secret() { { grep -E "^$1=" "$SECRETS" || true; } | head -n 1 | cut -d= -f2- | tr -d "\"'"; }
+# restore_dump <dump> <scratch db> <owner role> <password>   and   query <scratch db> <owner role> <password> <sql>: as the
+# superuser for a local backup, as <owner role> for the off-site copy (see the header). The password is in the environment of
+# the one client process, never on a command line.
+restore_dump() {
+  if (( R2 )); then PGPASSWORD="$4" pg_restore --exit-on-error -h localhost -U "$3" -d "$2" < "$1"
+  else pg pg_restore --exit-on-error -d "$2" < "$1"; fi
+}
+query() {
+  if (( R2 )); then PGPASSWORD="$3" psql -X -At -h localhost -U "$2" -d "$1" -c "$4"
+  else pg psql -X -At -d "$1" -c "$4"; fi
+}
+
+if (( ! APPLY )); then
+  if (( R2 )); then
+    echo "[dry-run] would download the newest r2:<bucket>/daily/brandbasket-*.tar.age, verify its checksum, decrypt it with the age key on standard input,"
+  else
+    echo "[dry-run] would take the newest directory in $ROOT/daily,"
+  fi
+  echo "  restore brandbasket_platform.dump into $SCRATCH_PLATFORM and brandbasket_platform_payload.dump into $SCRATCH_PAYLOAD,"
+  echo "  check tables and row counts, then drop both. Nothing was done. Add --apply."
+  exit 0
+fi
+[[ "$(id -u)" == 0 ]] || { echo "run as root" >&2; exit 1; }
+
+work=""
+drop_scratch() {
+  pg dropdb --if-exists "$SCRATCH_PLATFORM" >/dev/null 2>&1 || true
+  pg dropdb --if-exists "$SCRATCH_PAYLOAD" >/dev/null 2>&1 || true
+}
+cleanup() {
+  drop_scratch
+  if [[ -n "$work" ]]; then rm -rf "${work:?}"; fi
+}
+trap cleanup EXIT
+
+OWNER_PW="" CMS_PW=""
+if (( R2 )); then
+  OWNER_PW="$(secret OWNER_PW)" CMS_PW="$(secret CMS_PW)"
+  [[ -n "$OWNER_PW" && -n "$CMS_PW" ]] || { echo "OWNER_PW and CMS_PW must be in $SECRETS" >&2; exit 1; }
+  # shellcheck source=/dev/null
+  . /usr/local/lib/firstfold/r2-lib.sh
+  r2_env
+  work="$(mktemp -d)"
+  object="$(rclone lsf "r2:$R2_BUCKET/daily/" --include 'brandbasket-*.tar.age' | sort | tail -n 1)"
+  [[ -n "$object" ]] || { echo "no Brandbasket backups in r2:$R2_BUCKET/daily/" >&2; exit 1; }
+  echo "downloading r2:$R2_BUCKET/daily/$object"
+  rclone copyto "r2:$R2_BUCKET/daily/$object" "$work/$object"
+  rclone cat "r2:$R2_BUCKET/daily/$object.sha256" > "$work/$object.sha256"
+  ( cd "$work" && sha256sum -c "$object.sha256" )
+  age -d -i - "$work/$object" | tar -x -C "$work"
+  rm -f "${work:?}/${object:?}"
+  latest="$(find "$work" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+else
+  latest="$(find "$ROOT/daily" -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)"
+fi
+[[ -n "$latest" ]] || { echo "no backups found" >&2; exit 1; }
+echo "testing $latest"
+( cd "$latest" && sha256sum -c SHA256SUMS )
+
+# A leftover from a crashed run goes first.
+drop_scratch
+fail=0
+restore_and_check() { # <dump> <scratch database> <label> <a table that must exist> <owner role> <owner password (--r2 only)>
+  local dump=$1 scratch=$2 label=$3 must_have=$4 owner=$5 pw=$6 tables rows
+  pg createdb -O "$owner" "$scratch"
+  if ! restore_dump "$dump" "$scratch" "$owner" "$pw"; then
+    echo "  FAIL  $label: pg_restore reported errors" >&2; fail=1; return
+  fi
+  tables="$(query "$scratch" "$owner" "$pw" "select count(*) from information_schema.tables where table_schema = 'public'")"
+  if [[ "${tables:-0}" -lt 3 ]]; then echo "  FAIL  $label: only ${tables:-0} tables restored" >&2; fail=1; return; fi
+  rows="$(query "$scratch" "$owner" "$pw" "select count(*) from \"$must_have\"" 2>&1 || true)"
+  if ! [[ "$rows" =~ ^[0-9]+$ ]]; then echo "  FAIL  $label: could not read $must_have ($rows)" >&2; fail=1; return; fi
+  echo "  PASS  $label: $tables tables restored, $must_have has $rows rows"
+}
+restore_and_check "$latest/brandbasket_platform.dump" "$SCRATCH_PLATFORM" "platform database" users bb_owner "$OWNER_PW"
+query "$SCRATCH_PLATFORM" bb_owner "$OWNER_PW" "select 'migrations applied: ' || count(*) from drizzle.__drizzle_migrations" 2>/dev/null | sed 's/^/        /' || true
+restore_and_check "$latest/brandbasket_platform_payload.dump" "$SCRATCH_PAYLOAD" "payload database" payload_migrations bb_cms "$CMS_PW"
+if (( fail )); then echo "RESTORE TEST FAILED: do not trust these backups until this is explained." >&2; exit 1; fi
+mkdir -p "$STATE"
+date -u +%FT%TZ > "$STATE/last-restore-test-ok"
+echo "Restore test passed; the throwaway databases were dropped."

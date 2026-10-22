@@ -1,0 +1,134 @@
+# Brandbasket: app.brandbasket.in (customer dashboard, apps/platform on 3201) and console.brandbasket.in (staff console,
+# apps/admin on 3203), both proxied by Cloudflare, which reaches this server over IPv6 only (AAAA records, no A record), so
+# every listener has an IPv6 twin. Installed as /etc/nginx/sites-available/brandbasket by deploy/vps/install.sh nginx-https,
+# after the certificate "brandbasket" exists. The apps listen on 3201 and 3203, which ufw keeps off the internet.
+#
+# What lives elsewhere and is NOT repeated here (checked with `nginx -T` on 2026-10-22). This is the whole list of what this
+# file borrows from Firstfold's nginx; if Firstfold renames or moves any of it, `nginx -t` fails and install.sh takes the
+# change back:
+#   nginx.conf             server_tokens off, ssl_protocols, gzip, log format, limit_req_status / limit_conn_status 429,
+#                          http2 on the listen lines (nginx 1.24)
+#   conf.d/10-cloudflare   geo $realip_remote_addr $from_cloudflare (Cloudflare's IPv4 and IPv6 ranges); Firstfold's monthly
+#                          timer regenerates it and snippets/cloudflare-realip.conf, which this file only includes
+#   the default servers    Firstfold's catch-all on 80 and 443 (444 / ssl_reject_handshake) for every name that is not ours
+#   /var/www/acme          Firstfold's ACME webroot, shared with certbot
+# The rate-limit zones are Brandbasket's own (brandbasket_general, brandbasket_signin, brandbasket_perip, defined just below),
+# so Firstfold's traffic can never use up Brandbasket's allowance, nor the reverse, and no zone name is shared.
+# The apps set Strict-Transport-Security themselves (an https build), and apps/platform sets X-Robots-Tag; only the console
+# needs it added here.
+
+# Per-visitor limits. Loopback callers (checks on this box) share one address, so they are exempt: an empty key is not counted.
+map $remote_addr $brandbasket_limit_key {
+    127.0.0.1 "";
+    ::1       "";
+    default   $binary_remote_addr;
+}
+limit_req_zone  $brandbasket_limit_key zone=brandbasket_general:10m rate=50r/s;
+limit_req_zone  $brandbasket_limit_key zone=brandbasket_signin:5m   rate=30r/m;
+limit_conn_zone $brandbasket_limit_key zone=brandbasket_perip:5m;
+
+upstream brandbasket_app   { server 127.0.0.1:3201; keepalive 16; }
+upstream brandbasket_admin { server 127.0.0.1:3203; keepalive 8; }
+
+# Plain HTTP only redirects, and answers certificate challenges.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name app.brandbasket.in console.brandbasket.in;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/acme;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+
+    location / { return 301 https://$host$request_uri; }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name app.brandbasket.in;
+
+    ssl_certificate     /etc/letsencrypt/live/brandbasket/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/brandbasket/privkey.pem;
+    ssl_session_cache   shared:brandbasket_ssl:5m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # A validator that was redirected to https lands here too.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/acme;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+
+    # Visitor address: from CF-Connecting-IP only when the peer is a Cloudflare address (proxied), otherwise the peer itself.
+    include snippets/cloudflare-realip.conf;
+
+    # Uploads (support screenshots, product photos). The app enforces its own, smaller limits per route.
+    client_max_body_size 25m;
+    limit_req  zone=brandbasket_general burst=100 nodelay;
+    limit_conn brandbasket_perip 50;
+
+    location ~ /\.(?!well-known) { return 404; }
+
+    # Brute-force guard in front of the app's own database-backed sign-in limits.
+    location ~ ^/(login|join|forgot-password|reset-password|restore-account)(/|$) {
+        limit_req zone=brandbasket_signin burst=20 nodelay;
+        include snippets/brandbasket-proxy.conf;
+        proxy_pass http://brandbasket_app;
+    }
+
+    location / {
+        include snippets/brandbasket-proxy.conf;
+        proxy_pass http://brandbasket_app;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name console.brandbasket.in;
+
+    ssl_certificate     /etc/letsencrypt/live/brandbasket/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/brandbasket/privkey.pem;
+    ssl_session_cache   shared:brandbasket_ssl:5m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/acme;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+
+    include snippets/cloudflare-realip.conf;
+
+    # The console stays behind Cloudflare (and, once set up, Cloudflare Access) while the origin address is public, so
+    # refuse anything that did not come through Cloudflare; loopback stays allowed for checks on this box.
+    set $console_denied 1;
+    if ($from_cloudflare) { set $console_denied 0; }
+    if ($realip_remote_addr = "127.0.0.1") { set $console_denied 0; }
+    if ($console_denied) { return 403; }
+
+    client_max_body_size 10m;
+    limit_req  zone=brandbasket_general burst=100 nodelay;
+    limit_conn brandbasket_perip 50;
+
+    # Nothing here is for search engines.
+    add_header X-Robots-Tag "noindex, nofollow" always;
+
+    location ~ /\.(?!well-known) { return 404; }
+
+    location ~ ^/login(/|$) {
+        limit_req zone=brandbasket_signin burst=10 nodelay;
+        include snippets/brandbasket-proxy.conf;
+        proxy_pass http://brandbasket_admin;
+    }
+
+    location / {
+        include snippets/brandbasket-proxy.conf;
+        proxy_pass http://brandbasket_admin;
+    }
+}

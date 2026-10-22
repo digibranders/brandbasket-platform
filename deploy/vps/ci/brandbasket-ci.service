@@ -1,0 +1,30 @@
+# Checks new branch heads of brandbasket-platform and reports them to GitHub (brandbasket-ci). Started every minute by
+# brandbasket-ci.timer; systemd never starts it twice at once. One commit per run. The checks themselves run in a separate
+# sandboxed unit (brandbasket-ci-sandbox, 30 minute limit, on the fixed-size sandbox disk). Logs: journalctl -u brandbasket-ci
+#
+# Runs as the brandbasket user, not Firstfold's deploy. InaccessiblePaths hides Firstfold's data from it; the three lock
+# files of Firstfold's that every Brandbasket job holds stay reachable (heavy-lock.sh opens them read-only), so only the
+# folders around them are listed.
+[Unit]
+Description=Brandbasket CI: check new pushes to every branch
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/srv/brandbasket-ci/sandbox
+
+[Service]
+Type=oneshot
+User=brandbasket
+Group=brandbasket
+WorkingDirectory=/srv/brandbasket-ci
+Environment=HOME=/home/brandbasket
+Environment=PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/bin
+# The unit's timeout below is its limit; a hand-started run gets its own 45 minute limit (heavy-lock.sh, bb_bounded).
+Environment=BRANDBASKET_BOUNDED=1
+ExecStart=/usr/local/bin/brandbasket-ci
+# One commit per run: the sandbox is limited to 30 minutes, so this must be longer, or the sandbox could outlive the locks.
+TimeoutStartSec=50min
+Nice=10
+CPUWeight=20
+IOWeight=20
+MemoryMax=1G
+InaccessiblePaths=-/srv/firstfold/shared -/srv/firstfold/releases -/srv/firstfold/repo.git -/srv/firstfold-website/shared -/srv/firstfold-website/releases -/srv/firstfold-website/repo.git -/srv/firstfold-media -/srv/firstfold-ci/archives -/srv/firstfold-ci/mirrors -/srv/firstfold-ci/state -/srv/firstfold-ci/work -/etc/firstfold -/home/deploy -/var/backups -/var/lib/firstfold -/var/lib/firstfold-ci

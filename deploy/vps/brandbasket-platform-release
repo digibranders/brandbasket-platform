@@ -1,0 +1,228 @@
+#!/usr/bin/env bash
+# Builds and activates a platform release (app.brandbasket.in and console.brandbasket.in) on the VPS. Installed as
+# /usr/local/bin/brandbasket-platform-release (root-owned) and run as `brandbasket` (never as Firstfold's `deploy`).
+# Adapted from Firstfold's firstfold-platform-release.
+#
+#   brandbasket-platform-release <release> <app>...          build <app>s in releases/<release> (already unpacked), check
+#                                                            the env files, run both databases' migrations, then switch
+#                                                            each <app> to it
+#   brandbasket-platform-release --build-only <release> <app>...   build and link env files only
+#   brandbasket-platform-release --activate <app> <release>  switch one app to an already-built release (manual
+#                                                            rollback); pauses the autodeploy
+#   brandbasket-platform-release --list                      releases, newest first, and which app runs which
+#
+# <app> is `platform` or `admin`. Both live in one repository and share every package, but each runs from its own symlink
+# (current-platform, current-admin), so a change confined to one app's folder rebuilds and restarts that app only.
+# brandbasket-platform-autodeploy decides which apps a commit needs; this script does what it is told.
+#
+# Layout under /srv/brandbasket:
+#   releases/<release>/     the monorepo at one commit (<sha>, or <sha>+<unix time> when <sha> is already live for the other
+#                           app), with node_modules and the built app(s)
+#   shared/<app>.env.local  each app's env file, linked into every release after its build
+#   current-<app> ->        the release that app runs; its unit resolves it when it starts
+#   deploying ->            the release being deployed, which brandbasket-migrate (root) runs the migrations from
+#
+# Builds read /etc/brandbasket-platform-build.env: the public values compiled into the browser bundle and placeholders that
+# only satisfy the env schemas. The real env files are linked in after the build, so a build never reaches the database.
+#
+# Migrations run before any restart, so new code never starts against the old schema. Switching a symlink back does not
+# undo them: every migration must keep working with the code before it.
+#
+# One heavy job at a time on the box: the autodeploy takes the locks (heavy-lock.sh) and passes that down through
+# BRANDBASKET_RELEASE_LOCKED. Started by hand, this script takes them itself, polling for up to 30 minutes (all four or
+# none, never holding one while it waits for another), and runs under a 45 minute limit (bb_bounded: systemd-run with
+# RuntimeMaxSec=45min when this user has a systemd user session, otherwise `timeout 45m`). A lock file that cannot be
+# opened is an error, not "busy".
+set -euo pipefail
+
+readonly ROOT=/srv/brandbasket
+readonly BUILD_ENV=/etc/brandbasket-platform-build.env
+readonly HEALTH_PATH=/login
+readonly KEEP_OTHERS=2
+readonly PAUSED="$ROOT/autodeploy-paused"
+
+die() { echo "error: $*" >&2; exit 1; }
+[[ "$(id -un)" == brandbasket ]] || die "run as brandbasket (runuser -u brandbasket -- brandbasket-platform-release ...)"
+# Wherever it was started from (brandbasket cannot read root's home, which upsets find).
+cd "$ROOT"
+ARGS=("$@")
+# shellcheck source=heavy-lock.sh
+source /usr/local/lib/brandbasket/heavy-lock.sh
+
+readonly APPS=(platform admin)
+valid_app() { [[ " ${APPS[*]} " == *" $1 "* ]] || die "not an app: $1 (${APPS[*]})"; }
+valid_release() { [[ "$1" =~ ^[0-9a-f]{40}(\+[0-9]+)?$ ]] || die "not a release name: $1"; }
+
+# Each app's systemd unit with its port, and the host its health check asks for. The unit names are exactly the ones the
+# sudoers rule allows brandbasket to restart and stop.
+units_of() { case "$1" in platform) echo "brandbasket-app:3201" ;; admin) echo "brandbasket-admin:3203" ;; esac; }
+host_of() { case "$1" in platform) echo app.brandbasket.in ;; admin) echo console.brandbasket.in ;; esac; }
+
+take_lock() {
+  local rc=0
+  [[ "${BRANDBASKET_RELEASE_LOCKED:-}" == 1 ]] && return 0
+  bb_bounded "$0" "${ARGS[@]}"
+  bb_take_heavy_locks 0 && rc=0 || rc=$?
+  if (( rc == 1 )); then
+    echo "another build, deploy or CI run is going ($BB_LOCK_BUSY is held); waiting for it" >&2
+    bb_take_heavy_locks 1800 && rc=0 || rc=$?
+  fi
+  case "$rc" in
+    0) ;;
+    1) die "$BB_LOCK_BUSY is still held after 30 minutes" ;;
+    *) die "cannot take the heavy locks: $BB_LOCK_BUSY" ;;
+  esac
+  trap bb_release_heavy_locks EXIT
+  export BRANDBASKET_RELEASE_LOCKED=1
+}
+
+live_release() { if [[ -L "$ROOT/current-$1" ]]; then basename "$(readlink -f "$ROOT/current-$1")"; else echo none; fi; }
+
+is_built() { [[ -f "$ROOT/releases/$2/apps/$1/.next/BUILD_ID" && -x "$ROOT/releases/$2/apps/$1/node_modules/.bin/next" ]]; }
+
+wait_healthy() {
+  local port=$1 host=$2 code
+  for _ in $(seq 1 45); do
+    code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 -H "Host: $host" "http://127.0.0.1:$port$HEALTH_PATH" || true)"
+    [[ "$code" == 200 ]] && return 0
+    sleep 1
+  done
+  return 1
+}
+
+# Atomic: a new symlink renamed over the old one.
+point() {
+  ln -sfn "releases/$2" "$ROOT/$1.next"
+  mv -T "$ROOT/$1.next" "$ROOT/$1"
+}
+
+build() {
+  local release=$1; shift
+  local dir="$ROOT/releases/$release" filters=() app
+  [[ -f "$dir/package.json" ]] || die "unpack the source to $dir first"
+  for app in "$@"; do
+    # Building writes apps/<app>/.next in place: never under a unit that is serving it.
+    [[ "$(live_release "$app")" != "$release" ]] || die "$app runs $release; build a new release instead"
+    filters+=(--filter "@brandbasket/$app")
+  done
+  # No real env file may be present while building (see the header).
+  for app in "${APPS[@]}"; do rm -f "$dir/apps/$app/.env.local"; done
+  (
+    cd "$dir"
+    set -a
+    # shellcheck source=/dev/null
+    source "$BUILD_ENV"
+    set +a
+    export COREPACK_ENABLE_DOWNLOAD_PROMPT=0 CI=1 NEXT_TELEMETRY_DISABLED=1
+    # Lower priority than the live apps. The checks run here, before the build, so nothing reaches production without
+    # them (GitHub Actions cannot run for this repository); any failure stops before migrations or a switch. Lint, types
+    # and tests always cover the whole repository: the packages are shared, so a change can break either app.
+    # "== step:" lines mark where each step starts; the autodeploy's GitHub report builds its step table from them.
+    echo "== step: install"; nice -n 10 pnpm install --frozen-lockfile
+    echo "== step: lint"; nice -n 10 pnpm lint
+    echo "== step: typecheck"; nice -n 10 pnpm typecheck
+    echo "== step: test"; nice -n 10 pnpm -r test
+    # Two builds at a time, as Firstfold's platform deploy measures it (about 4.4 GB peak against the 6G cap).
+    echo "== step: build $*"; nice -n 10 pnpm --workspace-concurrency=2 "${filters[@]}" build
+  )
+  # An app folder a release does not have gets no link.
+  for app in "${APPS[@]}"; do
+    if [[ -d "$dir/apps/$app" ]]; then ln -sfn "$ROOT/shared/$app.env.local" "$dir/apps/$app/.env.local"; fi
+  done
+  echo "built $* in $release"
+}
+
+# Stops before the database is touched when a setting the apps refuse to start without is blank (a Brevo or Razorpay key
+# the owner has not filled in yet), a secret differs between the two files, or fake billing is on. Names settings, never values.
+check_env() {
+  echo "== step: env"
+  ( cd "$ROOT/releases/$1" && pnpm env:check --platform "$ROOT/shared/platform.env.local" --admin "$ROOT/shared/admin.env.local" )
+}
+
+migrate() {
+  echo "== step: migrations"
+  point deploying "$1"
+  sudo -n /usr/local/sbin/brandbasket-migrate
+  ( cd "$ROOT/releases/$1" && ./scripts/cms-migrate.sh )
+}
+
+# Restarts the app's unit and waits for it to answer. If it does not come back, the app is switched back and restarted on
+# the previous release. On an app's first deploy (no previous release) the link is removed and the unit is stopped
+# instead: the app is left undeployed.
+activate() {
+  local app=$1 release=$2 previous host entry unit port
+  is_built "$app" "$release" || die "$app is not built in $release"
+  previous="$(live_release "$app")"
+  host="$(host_of "$app")"
+  point "current-$app" "$release"
+  echo "== step: switch $app"
+  echo "current-$app -> $release (was $previous)"
+  for entry in $(units_of "$app"); do
+    unit=${entry%%:*}; port=${entry##*:}
+    sudo -n /usr/bin/systemctl restart "$unit"
+    if ! wait_healthy "$port" "$host"; then
+      if [[ "$previous" == none ]]; then
+        # A first deploy has nothing to go back to. Leaving the link would make live_release report this unhealthy
+        # release as live, and the autodeploy would then skip the app on every later commit that does not touch it.
+        echo "$unit did not answer on $release; $app has no previous release" >&2
+        rm -f "$ROOT/current-$app"
+        sudo -n /usr/bin/systemctl stop "$unit" || echo "could not stop $unit: stop it by hand" >&2
+        echo "no previous release, $app left undeployed" >&2
+      else
+        echo "$unit did not answer on $release; switching $app back to $previous" >&2
+        if is_built "$app" "$previous"; then
+          point "current-$app" "$previous"
+          sudo -n /usr/bin/systemctl restart "$unit"
+          wait_healthy "$port" "$host" || echo "$unit is also unhealthy on $previous: journalctl -u $unit" >&2
+        fi
+      fi
+      return 1
+    fi
+    echo "$unit healthy on $release"
+  done
+}
+
+# Keeps the releases any app runs and the one being deployed, plus the KEEP_OTHERS newest others for rollback.
+prune() {
+  local app deploying old n=0 live=()
+  for app in "${APPS[@]}"; do live+=("$(live_release "$app")"); done
+  deploying="$(basename "$(readlink -f "$ROOT/deploying" || echo none)")"
+  while read -r _ old; do
+    [[ " ${live[*]} " == *" $old "* || "$old" == "$deploying" ]] && continue
+    n=$((n + 1))
+    (( n <= KEEP_OTHERS )) && continue
+    rm -rf "${ROOT:?}/releases/$old"
+    echo "pruned $old"
+  done < <(find "$ROOT/releases" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %f\n' | sort -rn)
+}
+
+case "${1:-}" in
+  --list)
+    declare -A live_of=()
+    for app in "${APPS[@]}"; do live_of[$app]="$(live_release "$app")"; done
+    find "$ROOT/releases" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %f\n' | sort -rn | while read -r _ r; do
+      tags=""
+      for app in "${APPS[@]}"; do [[ "$r" == "${live_of[$app]}" ]] && tags+=" $app"; done
+      if [[ -n "$tags" ]]; then echo "$r  (live:$tags)"; else echo "$r"; fi
+    done ;;
+  --activate)
+    valid_app "${2:-}"; valid_release "${3:-}"; take_lock
+    touch "$PAUSED"
+    echo "autodeploy paused, so it does not replace this release with main; resume: brandbasket-platform-autodeploy --resume" >&2
+    activate "$2" "$3" ;;
+  --build-only)
+    valid_release "${2:-}"; [[ $# -ge 3 ]] || die "name at least one app"
+    for app in "${@:3}"; do valid_app "$app"; done
+    take_lock
+    build "$2" "${@:3}" ;;
+  *)
+    valid_release "${1:-}"; [[ $# -ge 2 ]] || die "name at least one app"
+    release=$1; shift
+    for app in "$@"; do valid_app "$app"; done
+    take_lock
+    build "$release" "$@"
+    check_env "$release"
+    migrate "$release"
+    for app in "$@"; do activate "$app" "$release"; done
+    prune ;;
+esac

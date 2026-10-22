@@ -1,0 +1,17 @@
+# The CI sandbox's disk: an 8 GB ext4 image file mounted through a loop device, so the checks of pushed (unreviewed) code
+# can fill that image and nothing else. It holds the sandbox's work directories and the user bbci's home (pnpm's store and
+# cache), on one filesystem so pnpm can hardlink packages into node_modules. install-ci.sh creates the image
+# (/srv/brandbasket-ci/sandbox.img, sparse: it uses disk only as the checks write to it) and installs this file under the
+# name systemd derives from Where=: srv-brandbasket\x2dci-sandbox.mount (systemd-escape -p --suffix=mount <path>).
+[Unit]
+Description=Brandbasket CI sandbox disk (fixed 8 GB ext4 image)
+ConditionPathExists=/srv/brandbasket-ci/sandbox.img
+
+[Mount]
+What=/srv/brandbasket-ci/sandbox.img
+Where=/srv/brandbasket-ci/sandbox
+Type=ext4
+Options=loop,nosuid,nodev,noatime
+
+[Install]
+WantedBy=multi-user.target
