@@ -83,7 +83,7 @@ function code(overrides: Partial<ReferralCode> = {}): ReferralCode {
 }
 
 function state(overrides: Partial<BillingState> = {}): BillingState {
-  return { currency: "INR", tier: "managed", upgradePaid: false, subscription: null, hasEverPaid: false, paymentUnderReview: false, plan: PLAN, ...overrides };
+  return { currency: "INR", tier: "managed", upgradePaid: false, subscription: null, hasEverPaid: false, paymentUnderReview: false, plan: PLAN, addOns: [], ...overrides };
 }
 
 const customer = {

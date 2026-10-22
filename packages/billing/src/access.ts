@@ -1,4 +1,4 @@
-import type { SubscriptionStatus } from "@brandbasket/db";
+import type { BundledAddOn, SubscriptionStatus } from "@brandbasket/db";
 
 export interface BillingAccessInput {
   readonly status: SubscriptionStatus;
@@ -36,4 +36,21 @@ export function hasBillingAccess(subscription: BillingAccessInput | null, now: D
       throw new Error(`Unhandled subscription status: ${String(unhandled)}`);
     }
   }
+}
+
+/** The part of a subscription line the website rule reads. */
+export type WebsiteLineInput = Pick<BundledAddOn, "addOn" | "status">;
+
+/**
+ * Whether the business has the Managed Website service: the website, its allowances and its onboarding follow this, not the
+ * plan row. It needs billing access and a paid (`active`) `managed-website` line. A line the customer has dropped stays
+ * `active` until the renewal completes the change, and billing access already ends at `paidThroughAt`, so a dropped website
+ * runs to the end of the paid month and stops there, as a cancel does. A Social-only or SEO-only business has no such line.
+ */
+export function hasWebsiteService(
+  lines: readonly WebsiteLineInput[],
+  subscription: BillingAccessInput | null,
+  now: Date,
+): boolean {
+  return hasBillingAccess(subscription, now) && lines.some((line) => line.addOn === "managed-website" && line.status === "active");
 }

@@ -1,7 +1,7 @@
 import type { AddOnAssessment } from "@brandbasket/shared/server/basket-change";
 import type { AddOnSubscriptionForStaff, BundledAddOn, PressRelease } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
-import { clientAddOnRows, clientPressReleaseRows, clientAddOnOption, clientBundledAddOnRows } from "./client-add-ons";
+import { clientAddOnRows, clientPressReleaseRows, clientAddOnOption, clientBundledAddOnRows, removeHint } from "./client-add-ons";
 
 const NOW = new Date("2026-10-20T09:00:00.000Z");
 const PERIOD_END = new Date("2026-11-12T09:00:00.000Z");
@@ -343,5 +343,18 @@ describe("clientAddOnOption", () => {
     expect(clientAddOnOption("local-seo-aeo", { kind: "keep" } as unknown as AddOnAssessment, "INR")).toMatchObject({ kind: "keep", title: "Local SEO + AEO" });
     expect(clientAddOnOption("local-seo-aeo", { kind: "blocked", reason: "manual-billing" }, "INR")).toBeNull();
     expect(clientAddOnOption("local-seo-aeo", null, "INR")).toBeNull();
+  });
+});
+
+describe("removeHint", () => {
+  it("adds the website going offline, on the date it stops, when the website is the one removed", () => {
+    expect(removeHint("managed-website", "12 November 2026")).toBe(
+      "It stays until the next billing date. Then the other services go to list price and package prices end for good, the same as when the customer removes it. Your website goes offline on 12 November 2026.",
+    );
+  });
+
+  it("says nothing about the website when another service is removed", () => {
+    expect(removeHint("digital-growth", "12 November 2026")).not.toContain("website");
+    expect(removeHint("local-seo-aeo", "12 November 2026")).not.toContain("website");
   });
 });

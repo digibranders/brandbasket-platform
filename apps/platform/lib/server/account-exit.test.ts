@@ -64,7 +64,7 @@ const customer = (subscription: Subscription | null): GrantedCustomer =>
   ({
     user: { id: USER_ID, email: "ana@example.com", name: "Ana Diaz", emailConfirmed: true, phone: null },
     tenant: { userId: USER_ID, businessId: BUSINESS_ID, businessName: "Riverside Dental", role: "owner" },
-    billing: { status: "paid", hasAccess: true, subscription, tier: "managed", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
+    billing: { status: "paid", hasAccess: true, hasWebsite: true, subscription, tier: "managed", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
   }) as GrantedCustomer;
 
 /** A paid plan at the fake provider that has not been asked to end. */

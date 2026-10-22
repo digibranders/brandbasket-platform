@@ -1,4 +1,4 @@
-import type { BillingState, Plan, Subscription, SubscriptionStatus } from "@brandbasket/db";
+import type { BillingState, BundledAddOn, Plan, Subscription, SubscriptionStatus } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { summariseBilling } from "./status";
 
@@ -7,6 +7,8 @@ const LATER = new Date("2026-12-16T12:00:00.000Z");
 const EARLIER = new Date("2026-08-16T12:00:00.000Z");
 
 const PLAN = { id: "plan-usd", currency: "USD", initialAmountCents: 22500 } as Plan;
+const WEBSITE_LINE = { addOn: "managed-website", status: "active" } as BundledAddOn;
+const SOCIAL_LINE = { addOn: "digital-growth", status: "active" } as BundledAddOn;
 
 function subscription(status: SubscriptionStatus, paidThroughAt: Date | null): Subscription {
   return { id: "sub-1", status, paidThroughAt } as Subscription;
@@ -22,6 +24,7 @@ function state(sub: Subscription | null, history: Partial<BillingState> = {}): B
     hasEverPaid: sub?.paidThroughAt !== null && sub?.paidThroughAt !== undefined,
     paymentUnderReview: false,
     plan: PLAN,
+    addOns: [],
     ...history,
   };
 }
@@ -31,6 +34,7 @@ describe("summariseBilling", () => {
     expect(summariseBilling(state(null), NOW)).toEqual({
       status: "unpaid",
       hasAccess: false,
+      hasWebsite: false,
       subscription: null,
       tier: "managed",
       upgradePaid: false,
@@ -107,5 +111,13 @@ describe("summariseBilling", () => {
 
   it("passes the plan through, including none", () => {
     expect(summariseBilling({ ...state(null), currency: "INR", plan: null }, NOW).plan).toBeNull();
+  });
+
+  it("has a website only with an active Managed Website line on a paid subscription", () => {
+    const paid = subscription("active", LATER);
+    expect(summariseBilling(state(paid, { addOns: [SOCIAL_LINE, WEBSITE_LINE] }), NOW).hasWebsite).toBe(true);
+    expect(summariseBilling(state(paid, { addOns: [SOCIAL_LINE] }), NOW).hasWebsite).toBe(false);
+    expect(summariseBilling(state(paid), NOW).hasWebsite).toBe(false);
+    expect(summariseBilling(state(subscription("active", EARLIER), { addOns: [WEBSITE_LINE] }), NOW).hasWebsite).toBe(false);
   });
 });

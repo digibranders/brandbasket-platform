@@ -107,6 +107,7 @@ const NOT_PAID: BillingState = {
   hasEverPaid: false,
   paymentUnderReview: false,
   plan: PLAN,
+  addOns: [],
 };
 
 /** Every billing log line written, joined, for checking what was (and was not) logged. */

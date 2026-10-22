@@ -31,7 +31,7 @@ const customer = {
 const staffDb = { name: "staff-db" } as unknown as Database;
 
 function stateWith(hasEverPaid: boolean): BillingState {
-  return { currency: "INR", tier: "managed", upgradePaid: false, subscription: null, hasEverPaid, paymentUnderReview: false, plan: PLAN };
+  return { currency: "INR", tier: "managed", upgradePaid: false, subscription: null, hasEverPaid, paymentUnderReview: false, plan: PLAN, addOns: [] };
 }
 
 beforeEach(() => {

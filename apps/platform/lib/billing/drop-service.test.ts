@@ -13,6 +13,7 @@ describe("dropPreview", () => {
       currency: "INR",
       taxRateBasisPoints: 1_800,
       endsPackage: true,
+      endsWebsite: false,
     });
   });
 
@@ -44,6 +45,7 @@ describe("dropPreview", () => {
       keeps: ["digital-growth", "local-seo-aeo"],
       newMonthlyCents: 4_129_764,
       endsPackage: false,
+      endsWebsite: true,
     });
   });
 
@@ -60,6 +62,7 @@ describe("dropCopy", () => {
     expect(dropCopy(preview, "12 November 2026")).toEqual({
       keeps: "You keep Managed Website and Social Media and Ads.",
       monthly: "From 12 November 2026 you pay ₹15,337.64 a month, GST included.",
+      websiteOffline: null,
       packageEnds: "Your package price and ad credit end for good. Adding a service again later will be at its own price.",
     });
     expect(PACKAGE_ENDS).toBe(dropCopy(preview, "12 November 2026").packageEnds);
@@ -73,8 +76,19 @@ describe("dropCopy", () => {
     expect(dropCopy(preview, "12 November 2026")).toEqual({
       keeps: "You keep Managed Website.",
       monthly: "From 12 November 2026 you pay $75 a month.",
+      websiteOffline: null,
       packageEnds: null,
     });
+  });
+
+  it("says the website goes offline on the same date as the stay-until line when it is the website being dropped", () => {
+    const preview = dropPreview({ staying: [WEBSITE, SOCIAL, SEO], dropping: "managed-website", forfeited: false, currency: "INR" });
+    if (preview === null) throw new Error("Expected a preview");
+
+    const copy = dropCopy(preview, "12 November 2026");
+    expect(copy.websiteOffline).toBe("Your website goes offline on 12 November 2026.");
+    expect(copy.keeps).toBe("You keep Social Media and Ads and Local SEO + AEO.");
+    expect(Object.values(copy).join(" ")).not.toMatch(/[\u2013\u2014]/);
   });
 
   it("is written with no em or en dashes", () => {

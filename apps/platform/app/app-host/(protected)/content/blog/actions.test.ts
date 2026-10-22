@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BillingRequiredError, requireBillingAccess } from "@/lib/server/billing";
+import { BillingRequiredError, requireWebsiteAccess, WebsiteRequiredError } from "@/lib/server/billing";
 import {
   createBlogPostAction,
   deleteBlogPostAction,
@@ -28,12 +28,20 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/lib/server/billing", () => ({
-  requireBillingAccess: vi.fn(),
+  requireWebsiteAccess: vi.fn(),
   BillingRequiredError: class BillingRequiredError extends Error {
     readonly businessId: string;
     constructor(businessId: string) {
       super(`Business ${businessId} has no paid subscription, so this action is not available.`);
       this.name = "BillingRequiredError";
+      this.businessId = businessId;
+    }
+  },
+  WebsiteRequiredError: class WebsiteRequiredError extends Error {
+    readonly businessId: string;
+    constructor(businessId: string) {
+      super(`Business ${businessId} has no Managed Website service, so this action is not available.`);
+      this.name = "WebsiteRequiredError";
       this.businessId = businessId;
     }
   },
@@ -112,7 +120,7 @@ vi.mock("payload", () => ({
   NotFound: FakeNotFound,
 }));
 
-const mockedRequireBillingAccess = vi.mocked(requireBillingAccess);
+const mockedRequireWebsiteAccess = vi.mocked(requireWebsiteAccess);
 
 const BUSINESS_A = "0192f3c4-aaaa-7000-8000-00000000000a";
 const BUSINESS_B = "0192f3c4-bbbb-7000-8000-00000000000b";
@@ -178,7 +186,7 @@ const USAGE_AT_LIMIT = { used: 100, allowance: 100, nextBlock: { posts: 100, pri
 
 describe("the blog post limit", () => {
   it("refuses a new post once every allowed post is used, creating nothing", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     vi.mocked(getBlogUsage).mockResolvedValueOnce(USAGE_AT_LIMIT);
     const formData = new FormData();
     formData.set("title", "One too many");
@@ -194,7 +202,7 @@ describe("the blog post limit", () => {
 
   it("opens the unlock at the plan's price and sends the customer to pay it", async () => {
     const access = { ...(tenantFor(BUSINESS_A) as object), billing: { hasAccess: true, plan: { id: "plan" } } } as never;
-    mockedRequireBillingAccess.mockResolvedValue(access);
+    mockedRequireWebsiteAccess.mockResolvedValue(access);
     vi.mocked(getBlogUsage).mockResolvedValueOnce(USAGE_AT_LIMIT);
     vi.mocked(openBlogUnlock).mockResolvedValueOnce({ id: "charge-1" } as never);
     vi.mocked(startCustomerChargePayment).mockResolvedValueOnce({ kind: "redirect", url: "/pay" });
@@ -208,7 +216,7 @@ describe("the blog post limit", () => {
 
   it("sells no block to a customer who still has posts left", async () => {
     const access = { ...(tenantFor(BUSINESS_A) as object), billing: { hasAccess: true, plan: { id: "plan" } } } as never;
-    mockedRequireBillingAccess.mockResolvedValue(access);
+    mockedRequireWebsiteAccess.mockResolvedValue(access);
     vi.mocked(getBlogUsage).mockResolvedValueOnce({ ...USAGE_AT_LIMIT, used: 12 });
     vi.mocked(redirect).mockImplementationOnce(() => {
       throw new Error("NEXT_REDIRECT");
@@ -223,7 +231,7 @@ describe("the blog post limit", () => {
 
 describe("createBlogPostAction", () => {
   it("creates a draft post scoped to the caller's own business", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     const formData = new FormData();
     formData.set("title", "My New Post");
 
@@ -237,7 +245,7 @@ describe("createBlogPostAction", () => {
   });
 
   it("never gives a post the address a category page uses", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     const formData = new FormData();
     formData.set("title", "Category");
 
@@ -248,7 +256,7 @@ describe("createBlogPostAction", () => {
   });
 
   it("gives a post whose title another of the business's posts already uses its own address", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
 
     const formData = new FormData();
     formData.set("title", "Old title");
@@ -263,7 +271,7 @@ describe("createBlogPostAction", () => {
   });
 
   it("never gives a post the address a client site uses for its preview page", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     const formData = new FormData();
     formData.set("title", "Preview");
 
@@ -274,7 +282,7 @@ describe("createBlogPostAction", () => {
   });
 
   it("does not count another business's posts when choosing an address", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_B));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_B));
     const formData = new FormData();
     formData.set("title", "Old title");
 
@@ -287,7 +295,7 @@ describe("createBlogPostAction", () => {
   });
 
   it("refuses an empty title without creating anything", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     const formData = new FormData();
     formData.set("title", "   ");
 
@@ -300,7 +308,7 @@ describe("createBlogPostAction", () => {
 
 describe("updateBlogPostAction", () => {
   it("updates title, excerpt and body on the caller's own post", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
 
     const result = await updateBlogPostAction(POST_A_ID, fields({ excerpt: "New excerpt" }));
 
@@ -312,7 +320,7 @@ describe("updateBlogPostAction", () => {
   });
 
   it("refuses a save against another business's real post id, even naming that business's own post", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_B));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_B));
 
     const result = await updateBlogPostAction(POST_A_ID, fields({ title: "Hijacked", excerpt: "Hijacked" }));
 
@@ -322,7 +330,7 @@ describe("updateBlogPostAction", () => {
   });
 
   it("refuses an empty title without calling Payload's update", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
 
     const result = await updateBlogPostAction(POST_A_ID, fields({ title: "   ", excerpt: "excerpt" }));
 
@@ -331,7 +339,7 @@ describe("updateBlogPostAction", () => {
   });
 
   it("refuses malformed body JSON without calling Payload's update", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
 
     const result = await updateBlogPostAction(POST_A_ID, fields({ title: "Title", excerpt: "excerpt", bodyJson: "{not json" }));
 
@@ -340,7 +348,7 @@ describe("updateBlogPostAction", () => {
   });
 
   it("refuses a post id that does not exist", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
 
     const result = await updateBlogPostAction("does-not-exist", fields({ title: "Title", excerpt: "excerpt" }));
 
@@ -351,7 +359,7 @@ describe("updateBlogPostAction", () => {
 
 describe("updateBlogPostAction: category, author and search settings", () => {
   it("saves the business's own category, author and search settings", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     const result = await updateBlogPostAction(
       POST_A_ID,
       fields({
@@ -374,7 +382,7 @@ describe("updateBlogPostAction: category, author and search settings", () => {
 
   it("clears category and author when none is chosen, and stores blank search fields as null", async () => {
     store.blogPosts.set(POST_A_ID, { ...store.blogPosts.get(POST_A_ID)!, category: "cat-a", author: "author-a" });
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     await updateBlogPostAction(POST_A_ID, fields());
     expect(store.blogPosts.get(POST_A_ID)).toMatchObject({
       category: null,
@@ -390,14 +398,14 @@ describe("updateBlogPostAction: category, author and search settings", () => {
     ["another business's author", { authorId: "author-b" }],
     ["a category that doesn't exist", { categoryId: "missing" }],
   ])("refuses %s and writes nothing", async (_label, overrides) => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     const result = await updateBlogPostAction(POST_A_ID, fields(overrides));
     expect(result).toEqual({ ok: false, message: "That category or author no longer exists. Reload the page." });
     expect(store.blogPosts.get(POST_A_ID)!.title).toBe("Old title");
   });
 
   it("saves the address typed in one box: a prefix and an address, or an address at the root", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     await updateBlogPostAction(POST_A_ID, fields({ address: " Health Tips/Desk Stretches " }));
     expect(store.blogPosts.get(POST_A_ID)).toMatchObject({ pathPrefix: "health-tips", slug: "desk-stretches" });
     await updateBlogPostAction(POST_A_ID, fields({ address: "desk-stretches" }));
@@ -405,26 +413,26 @@ describe("updateBlogPostAction: category, author and search settings", () => {
   });
 
   it("refuses an unusable address and writes nothing", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     const result = await updateBlogPostAction(POST_A_ID, fields({ address: "api/x" }));
     expect(result).toEqual({ ok: false, message: '"api" is already used by your website. Choose another word.' });
     expect(store.blogPosts.get(POST_A_ID)!.title).toBe("Old title");
   });
 
   it("changes the article's address and remembers the old one, so it can redirect", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     expect(await updateBlogPostAction(POST_A_ID, fields({ address: "blog/ Desk Stretches " }))).toEqual({ ok: true });
     expect(store.blogPosts.get(POST_A_ID)).toMatchObject({ slug: "desk-stretches", previousSlugs: ["old-title"] });
   });
 
   it("makes the address from the title when it is left blank", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     await updateBlogPostAction(POST_A_ID, fields({ title: "Monsoon Menu", address: "" }));
     expect(store.blogPosts.get(POST_A_ID)!.slug).toBe("monsoon-menu");
   });
 
   it("leaves the earlier addresses alone when the address doesn't change", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     await updateBlogPostAction(POST_A_ID, fields());
     expect(store.blogPosts.get(POST_A_ID)).toMatchObject({ slug: "old-title", previousSlugs: [] });
   });
@@ -438,7 +446,7 @@ describe("updateBlogPostAction: category, author and search settings", () => {
       previousSlugs: ["first-menu"],
       status: "draft",
     });
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     for (const slug of ["monsoon-menu", "first-menu"]) {
       expect(await updateBlogPostAction(POST_A_ID, fields({ address: `tips/${slug}` }))).toEqual({
         ok: false,
@@ -449,12 +457,12 @@ describe("updateBlogPostAction: category, author and search settings", () => {
   });
 
   it("allows an address another business uses: addresses are per website", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     expect(await updateBlogPostAction(POST_A_ID, fields({ address: "business-bs-post" }))).toEqual({ ok: true });
   });
 
   it("caps the search description at what search engines show", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     await updateBlogPostAction(POST_A_ID, fields({ metaDescription: "x".repeat(500) }));
     expect(store.blogPosts.get(POST_A_ID)!.metaDescription).toHaveLength(160);
   });
@@ -475,7 +483,7 @@ describe("updateBlogPostAction: publishing, scheduling and alt text", () => {
   });
 
   it("saves the cover image's alt text, trimmed, and blank as null", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     expect(await updateBlogPostAction(POST_A_ID, fields({ coverImageAlt: " A bowl of dal " }))).toEqual({ ok: true });
     expect(store.blogPosts.get(POST_A_ID)?.coverImageAlt).toBe("A bowl of dal");
     await updateBlogPostAction(POST_A_ID, fields({ coverImageAlt: "  " }));
@@ -483,13 +491,13 @@ describe("updateBlogPostAction: publishing, scheduling and alt text", () => {
   });
 
   it("refuses a publish date that is not a date", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     expect((await updateBlogPostAction(POST_A_ID, fields({ publishedAt: "not a date" }))).ok).toBe(false);
     expect(update).not.toHaveBeenCalled();
   });
 
   it("publishes what is on screen in the same write, dated now when no date is set", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     const before = Date.now();
     expect(await updateBlogPostAction(POST_A_ID, fields({ title: "Fresh" }), "publish")).toEqual({ ok: true });
     const saved = store.blogPosts.get(POST_A_ID)!;
@@ -499,7 +507,7 @@ describe("updateBlogPostAction: publishing, scheduling and alt text", () => {
   });
 
   it("schedules a post published with a date ahead", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     await updateBlogPostAction(POST_A_ID, fields({ publishedAt: "2027-01-05T04:30:00.000Z" }), "publish");
     expect(store.blogPosts.get(POST_A_ID)).toMatchObject({
       status: "published",
@@ -508,7 +516,7 @@ describe("updateBlogPostAction: publishing, scheduling and alt text", () => {
   });
 
   it("keeps a published post published and its date when saved with the date cleared", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     await updateBlogPostAction(POST_A2_ID, fields({ title: "Second", address: "blog/second" }));
     expect(store.blogPosts.get(POST_A2_ID)).toMatchObject({
       status: "published",
@@ -517,7 +525,7 @@ describe("updateBlogPostAction: publishing, scheduling and alt text", () => {
   });
 
   it("unpublishes in the same write as the save", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     await updateBlogPostAction(POST_A2_ID, fields({ title: "Back to draft", address: "blog/second" }), "unpublish");
     expect(store.blogPosts.get(POST_A2_ID)).toMatchObject({ title: "Back to draft", status: "draft" });
   });
@@ -526,14 +534,14 @@ describe("updateBlogPostAction: publishing, scheduling and alt text", () => {
 describe("removeCoverImageAction", () => {
   it("takes the cover image and its alt text off the caller's own post", async () => {
     store.blogPosts.set(POST_A_ID, { ...store.blogPosts.get(POST_A_ID)!, coverImage: "media-a1", coverImageAlt: "Dal" });
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     expect(await removeCoverImageAction(POST_A_ID)).toEqual({ ok: true });
     expect(store.blogPosts.get(POST_A_ID)).toMatchObject({ coverImage: null, coverImageAlt: null });
   });
 
   it("refuses another business's post", async () => {
     store.blogPosts.set(POST_A_ID, { ...store.blogPosts.get(POST_A_ID)!, coverImage: "media-a1" });
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_B));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_B));
     expect((await removeCoverImageAction(POST_A_ID)).ok).toBe(false);
     expect(store.blogPosts.get(POST_A_ID)?.coverImage).toBe("media-a1");
   });
@@ -548,7 +556,7 @@ describe("duplicateBlogPostAction", () => {
       previousSlugs: ["older"],
       category: "cat-a",
     });
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
 
     await duplicateBlogPostAction(POST_A_ID);
 
@@ -566,13 +574,13 @@ describe("duplicateBlogPostAction", () => {
   });
 
   it("refuses another business's post, creating nothing", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_B));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_B));
     expect((await duplicateBlogPostAction(POST_A_ID)).ok).toBe(false);
     expect(create).not.toHaveBeenCalled();
   });
 
   it("refuses once every allowed post is used", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
     vi.mocked(getBlogUsage).mockResolvedValueOnce(USAGE_AT_LIMIT);
     expect((await duplicateBlogPostAction(POST_A_ID)).ok).toBe(false);
     expect(create).not.toHaveBeenCalled();
@@ -581,7 +589,7 @@ describe("duplicateBlogPostAction", () => {
 
 describe("setCoverImageAction", () => {
   it("attaches the caller's own upload to the caller's own post", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
 
     const result = await setCoverImageAction(POST_A_ID, "media-a1");
 
@@ -590,7 +598,7 @@ describe("setCoverImageAction", () => {
   });
 
   it("refuses an upload that belongs to a different business", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
 
     const result = await setCoverImageAction(POST_A_ID, "media-b1");
 
@@ -599,7 +607,7 @@ describe("setCoverImageAction", () => {
   });
 
   it("refuses to attach an image to another business's real post id", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_B));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_B));
 
     const result = await setCoverImageAction(POST_A_ID, "media-b1");
 
@@ -610,7 +618,7 @@ describe("setCoverImageAction", () => {
 
 describe("publishBlogPostAction / unpublishBlogPostAction", () => {
   it("publishes the caller's own post", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
 
     await publishBlogPostAction(POST_A_ID);
 
@@ -618,7 +626,7 @@ describe("publishBlogPostAction / unpublishBlogPostAction", () => {
   });
 
   it("refuses to publish another business's real post id", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_B));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_B));
 
     await expect(publishBlogPostAction(POST_A_ID)).rejects.toThrow();
 
@@ -627,7 +635,7 @@ describe("publishBlogPostAction / unpublishBlogPostAction", () => {
 
   it("unpublishes the caller's own post", async () => {
     store.blogPosts.set(POST_A_ID, { ...store.blogPosts.get(POST_A_ID)!, status: "published" });
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
 
     await unpublishBlogPostAction(POST_A_ID);
 
@@ -636,7 +644,7 @@ describe("publishBlogPostAction / unpublishBlogPostAction", () => {
 
   it("refuses to unpublish another business's real post id", async () => {
     store.blogPosts.set(POST_A_ID, { ...store.blogPosts.get(POST_A_ID)!, status: "published" });
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_B));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_B));
 
     await expect(unpublishBlogPostAction(POST_A_ID)).rejects.toThrow();
 
@@ -646,7 +654,7 @@ describe("publishBlogPostAction / unpublishBlogPostAction", () => {
 
 describe("deleteBlogPostAction", () => {
   it("deletes the caller's own post", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
 
     await deleteBlogPostAction(POST_A_ID);
 
@@ -654,7 +662,7 @@ describe("deleteBlogPostAction", () => {
   });
 
   it("refuses to delete another business's real post id, even given its real id", async () => {
-    mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_B));
+    mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_B));
 
     await expect(deleteBlogPostAction(POST_A_ID)).rejects.toThrow();
 
@@ -662,9 +670,28 @@ describe("deleteBlogPostAction", () => {
   });
 });
 
+describe("every blog action, for a paid business without the Managed Website service", () => {
+  beforeEach(() => {
+    mockedRequireWebsiteAccess.mockRejectedValue(new WebsiteRequiredError(BUSINESS_A));
+  });
+
+  it("refuses to create, save or publish a post", async () => {
+    const formData = new FormData();
+    formData.set("title", "A new post");
+    const refusal = { ok: false, message: BLOG_PAYMENT_REQUIRED_MESSAGE };
+
+    await expect(createBlogPostAction({ ok: true }, formData)).resolves.toEqual(refusal);
+    await expect(updateBlogPostAction(POST_A_ID, fields())).resolves.toEqual(refusal);
+    await expect(publishBlogPostAction(POST_A_ID)).resolves.toEqual(refusal);
+    expect(create).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(store.blogPosts.get(POST_A_ID)?.title).toBe("Old title");
+  });
+});
+
 describe("every blog action, for a business that has not paid", () => {
   beforeEach(() => {
-    mockedRequireBillingAccess.mockRejectedValue(new BillingRequiredError(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockRejectedValue(new BillingRequiredError(BUSINESS_A));
   });
 
   const refusal = { ok: false, message: BLOG_PAYMENT_REQUIRED_MESSAGE };
@@ -705,7 +732,7 @@ describe("every blog action, for a business that has not paid", () => {
   });
 
   it("still lets any other failure through, so a real outage is not reported as unpaid", async () => {
-    mockedRequireBillingAccess.mockRejectedValue(new Error("database is down"));
+    mockedRequireWebsiteAccess.mockRejectedValue(new Error("database is down"));
 
     await expect(publishBlogPostAction(POST_A_ID)).rejects.toThrow("database is down");
   });

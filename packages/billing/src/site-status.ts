@@ -1,9 +1,9 @@
 import type { ProjectStatus } from "@brandbasket/db";
-import { hasBillingAccess, type BillingAccessInput } from "./access";
 
 export interface SiteStatusInput {
   readonly projectStatus: ProjectStatus;
-  readonly subscription: BillingAccessInput | null;
+  /** hasWebsiteService: billing access and a Managed Website line. */
+  readonly hasWebsite: boolean;
 }
 
 /**
@@ -12,16 +12,17 @@ export interface SiteStatusInput {
  * `on_hold`, which only pauses `submitted`/`building`/`revisions`, and `cancelled`, reachable only from "any
  * pre-`live`" status) is definitionally a project that has never had a live website. So there is no website worth
  * reporting on for any of them, whatever billing looks like — a stalled, paused or cancelled-before-launch business
- * never shows as a misleading "offline" site. Once `live`, status is computed from `hasBillingAccess` — see this
- * plan's "Deliberately deferred": there is no worker yet setting a `suspended_at` column, so this is the interim
- * source of truth (computed live on every read), not a cached one.
+ * never shows as a misleading "offline" site. Once `live`, status follows `hasWebsite` (billing access and a Managed Website
+ * line; a business without one is reported offline under the same reason). See this plan's "Deliberately deferred": there
+ * is no worker yet setting a `suspended_at` column, so this is the interim source of truth (computed live on every read),
+ * not a cached one.
  */
 export type SiteStatus =
   | { readonly kind: "not_launched" }
   | { readonly kind: "online" }
   | { readonly kind: "offline"; readonly reason: "payment_lapsed" };
 
-export function deriveSiteStatus(input: SiteStatusInput, now: Date): SiteStatus {
+export function deriveSiteStatus(input: SiteStatusInput): SiteStatus {
   if (input.projectStatus !== "live") return { kind: "not_launched" };
-  return hasBillingAccess(input.subscription, now) ? { kind: "online" } : { kind: "offline", reason: "payment_lapsed" };
+  return input.hasWebsite ? { kind: "online" } : { kind: "offline", reason: "payment_lapsed" };
 }

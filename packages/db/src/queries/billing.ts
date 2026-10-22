@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, ne, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
-import { bundledNetCents, insertBundledAddOns, removeBundledAddOnsOf, type NewBundledAddOn } from "./bundled-add-ons";
+import { bundledNetCents, findLiveBundledAddOns, insertBundledAddOns, removeBundledAddOnsOf, type NewBundledAddOn } from "./bundled-add-ons";
 import { markLeadPaidForBusiness } from "./leads";
 import { isUuid } from "./tenant";
 import {
@@ -16,6 +16,7 @@ import {
   UNAPPLIED_PAYMENT_REASONS,
   type BillingCurrency,
   type BillingProviderName,
+  type BundledAddOn,
   type ChargeKind,
   type PaymentAttentionReason,
   type PaymentInvoiceBasis,
@@ -1177,6 +1178,8 @@ export interface BillingState {
    * the active plan of its tier for its currency. Null only when its currency has no active plan of that tier.
    */
   readonly plan: Plan | null;
+  /** The services billed inside the subscription (`pending` or `active`): what decides whether the business has a website. */
+  readonly addOns: readonly BundledAddOn[];
 }
 
 /**
@@ -1198,6 +1201,7 @@ export async function findBillingState(db: Runner, businessId: string): Promise<
   const subscription = await findLatestSubscriptionForBusiness(db, businessId);
   const everPaid = await hasEverPaid(db, businessId);
   const paymentUnderReview = await hasPaymentUnderReview(db, businessId);
+  const addOns = await findLiveBundledAddOns(db, businessId);
   const billed = subscription === null ? null : await findPlanById(db, subscription.planId);
   // A move up that has been paid for is Premium from that moment, though the provider bills the old plan until the
   // renewal: the customer is shown, and gets, what they paid for.
@@ -1224,5 +1228,6 @@ export async function findBillingState(db: Runner, businessId: string): Promise<
     hasEverPaid: everPaid,
     paymentUnderReview,
     plan,
+    addOns,
   };
 }

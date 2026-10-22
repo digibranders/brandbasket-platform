@@ -28,7 +28,8 @@ export async function startCheckout(_previous: StepFormState, formData: FormData
 
 /**
  * Step 05 for a customer who has already paid: sends onboarding and starts the build. Refused without payment, on the
- * server, whatever the page showed. The checklist is re-run from stored data inside submitOnboardingFor.
+ * server, whatever the page showed; a paid client without the Managed Website service is sent Home. The checklist is
+ * re-run from stored data inside submitOnboardingFor.
  */
 export async function submitOnboarding(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
   const access = await requireBillingAccess().catch((error: unknown) => {
@@ -36,6 +37,8 @@ export async function submitOnboarding(_previous: StepFormState, formData: FormD
     throw error;
   });
   if (access === null) return refusedStepState({ message: PAYMENT_NEEDED, field: null }, formData);
+  // Onboarding is the website's: a paid client without the Managed Website service has nothing to send.
+  if (!access.billing.hasWebsite) redirect("/");
 
   const problem = await submitOnboardingFor(getAppDb(), access.tenant, new Date());
   if (problem !== null) return refusedStepState(problem, formData);

@@ -7,7 +7,7 @@ import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
 import { StatusDot } from "@/components/console/status-dot";
 import { ADD_ON_NOTICES, type AddOnNotice } from "@/lib/add-on-notices";
-import type { ClientAddOnOption, ClientAddOnRow, ClientBundledAddOnRow, ClientPressReleaseRow, PressReleaseStatus } from "@/lib/client-add-ons";
+import { removeHint, type ClientAddOnOption, type ClientAddOnRow, type ClientBundledAddOnRow, type ClientPressReleaseRow, type PressReleaseStatus } from "@/lib/client-add-ons";
 import {
   addClientAddOnAction,
   endAddOnAction,
@@ -186,7 +186,7 @@ function BundledAddOnRow({ businessId, row }: { readonly businessId: string; rea
               action={removeClientAddOnAction}
               fields={{ businessId, addOn: row.addOn }}
               confirm={`I’ve told the customer. ${row.title} will stop on ${row.endsOnText}.`}
-              hint="It stays until the next billing date. Then the other services go to list price and package prices end for good, the same as when the customer removes it."
+              hint={removeHint(row.addOn, row.endsOnText)}
               submit={`Remove ${row.title}`}
               danger
             />

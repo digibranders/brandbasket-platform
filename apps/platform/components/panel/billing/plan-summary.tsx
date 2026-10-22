@@ -14,6 +14,8 @@ interface PlanSummaryProps {
   readonly plan: Plan;
   readonly subscription: Subscription;
   readonly now: Date;
+  /** The business holds the Managed Website service: the change and blog allowances below are the website's, so only it is told them. */
+  readonly hasWebsite: boolean;
   /** The brand the dashboard is sold under: it words the plan's name. Brandbasket when left out. */
   readonly brand?: Brand;
   /** How they pay, shown inside the card under the price (components/panel/billing/payment-method.tsx), or left out. */
@@ -77,7 +79,7 @@ function PeriodBar({ progress, children }: { readonly progress: PeriodProgress; 
 }
 
 /** The plan card: name, price per month, how far through the paid period the customer is, how they pay, and what it includes. */
-export function PlanSummary({ plan, subscription, now, paymentMethod }: PlanSummaryProps): ReactElement {
+export function PlanSummary({ plan, subscription, now, hasWebsite, paymentMethod }: PlanSummaryProps): ReactElement {
   const price = renewalCharge(plan, subscription.discountAmountCents, nextBundledNetCents(subscription));
   const progress = billingPeriodProgress(subscription, now);
 
@@ -131,7 +133,7 @@ export function PlanSummary({ plan, subscription, now, paymentMethod }: PlanSumm
               </li>
             ))}
           </ul>
-          <p className="mt-4 text-xs leading-relaxed text-ink-soft">{changesNote(plan)}</p>
+          {hasWebsite ? <p className="mt-4 text-xs leading-relaxed text-ink-soft">{changesNote(plan)}</p> : null}
         </div>
       </details>
     </section>

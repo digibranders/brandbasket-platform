@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { redirect } from "next/navigation";
-import { BillingRequiredError, requireBillingAccess } from "@/lib/server/billing";
+import { BillingRequiredError, requireWebsiteAccess, WebsiteRequiredError } from "@/lib/server/billing";
 import { BLOG_PAYMENT_REQUIRED_MESSAGE } from "@/lib/server/blog";
 import {
   createAuthorAction,
@@ -18,12 +18,20 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
 vi.mock("@/lib/server/billing", () => ({
-  requireBillingAccess: vi.fn(),
+  requireWebsiteAccess: vi.fn(),
   BillingRequiredError: class BillingRequiredError extends Error {
     readonly businessId: string;
     constructor(businessId: string) {
       super(`Business ${businessId} has no paid subscription, so this action is not available.`);
       this.name = "BillingRequiredError";
+      this.businessId = businessId;
+    }
+  },
+  WebsiteRequiredError: class WebsiteRequiredError extends Error {
+    readonly businessId: string;
+    constructor(businessId: string) {
+      super(`Business ${businessId} has no Managed Website service, so this action is not available.`);
+      this.name = "WebsiteRequiredError";
       this.businessId = businessId;
     }
   },
@@ -101,7 +109,7 @@ vi.mock("payload", () => ({
   NotFound: FakeNotFound,
 }));
 
-const mockedRequireBillingAccess = vi.mocked(requireBillingAccess);
+const mockedRequireWebsiteAccess = vi.mocked(requireWebsiteAccess);
 
 const BUSINESS_A = "0192f3c4-aaaa-7000-8000-00000000000a";
 const BUSINESS_B = "0192f3c4-bbbb-7000-8000-00000000000b";
@@ -115,7 +123,7 @@ function tenantFor(businessId: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   resetStore();
-  mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+  mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
   store.blogAuthors!.set("author-a", { id: "author-a", businessId: BUSINESS_A, name: "Asha", bio: "Chef" });
   store.blogAuthors!.set("author-b", { id: "author-b", businessId: BUSINESS_B, name: "Ben", bio: null });
   store.blogPosts!.set("post-a", { id: "post-a", businessId: BUSINESS_A, author: "author-a" });
@@ -207,10 +215,20 @@ describe("deleteAuthorAction", () => {
 
 describe("for a business that has not paid", () => {
   it("refuses every author action with a message", async () => {
-    mockedRequireBillingAccess.mockRejectedValue(new BillingRequiredError(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockRejectedValue(new BillingRequiredError(BUSINESS_A));
     const refusal = { ok: false, message: BLOG_PAYMENT_REQUIRED_MESSAGE };
     expect(await saveAuthorAction("author-a", { name: "X", role: "", bio: "", links: NO_LINKS })).toEqual(refusal);
     expect(await setAuthorPhotoAction("author-a", "media-a")).toEqual(refusal);
+    expect(await deleteAuthorAction("author-a")).toEqual(refusal);
+    expect(store.blogAuthors!.get("author-a")?.name).toBe("Asha");
+  });
+});
+
+describe("for a paid business without the Managed Website service", () => {
+  it("refuses every author action with the same message", async () => {
+    mockedRequireWebsiteAccess.mockRejectedValue(new WebsiteRequiredError(BUSINESS_A));
+    const refusal = { ok: false, message: BLOG_PAYMENT_REQUIRED_MESSAGE };
+    expect(await saveAuthorAction("author-a", { name: "X", role: "", bio: "", links: NO_LINKS })).toEqual(refusal);
     expect(await deleteAuthorAction("author-a")).toEqual(refusal);
     expect(store.blogAuthors!.get("author-a")?.name).toBe("Asha");
   });

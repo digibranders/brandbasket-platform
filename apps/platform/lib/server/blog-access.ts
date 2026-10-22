@@ -1,17 +1,18 @@
 import "server-only";
-import { BillingRequiredError, requireBillingAccess } from "./billing";
+import { BillingRequiredError, requireWebsiteAccess, WebsiteRequiredError } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 
 /**
- * `requireBillingAccess()`, with an unpaid business turned into `null` so each blog action can answer with a
- * "pay first" result rather than throwing to the error boundary. Only `BillingRequiredError` is caught: the sign-in
- * redirect and any real failure still propagate, so an outage is never reported to the customer as "unpaid".
+ * `requireWebsiteAccess()`, with an unpaid business, or one without the Managed Website service, turned into `null` so
+ * each blog action can answer with a "pay first" result rather than throwing to the error boundary. Only
+ * `BillingRequiredError` and `WebsiteRequiredError` are caught: the sign-in redirect and any real failure still
+ * propagate, so an outage is never reported to the customer as "unpaid".
  * Shared by content/blog/actions.ts (posts), content/blog/taxonomy-actions.ts (categories and authors) and
  * details/actions.ts (hours, closures and the announcement).
  */
 export async function paidCustomerOrNull(): Promise<GrantedCustomer | null> {
-  return requireBillingAccess().catch((error: unknown) => {
-    if (error instanceof BillingRequiredError) return null;
+  return requireWebsiteAccess().catch((error: unknown) => {
+    if (error instanceof BillingRequiredError || error instanceof WebsiteRequiredError) return null;
     throw error;
   });
 }

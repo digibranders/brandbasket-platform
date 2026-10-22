@@ -26,8 +26,10 @@ import {
   findReactivationNetCents,
   getBillingProvider, getRazorpayProvider, razorpayKeyId, razorpayKeySecret,
   requireBillingAccess,
+  requireWebsiteAccess,
+  WebsiteRequiredError,
 } from "./billing";
-import { CustomerBusinessMissingError, requireCustomerAccess } from "./customer-access";
+import { CustomerBusinessMissingError, requireCustomerAccess, requireWebsiteClient } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { getSessionUser } from "./session";
 
@@ -87,6 +89,7 @@ function billingState(sub: Subscription | null, overrides: Partial<BillingState>
     hasEverPaid: sub !== null && sub.status !== "incomplete",
     paymentUnderReview: false,
     plan: PLAN,
+    addOns: [],
     ...overrides,
   };
 }
@@ -195,6 +198,34 @@ describe("requireCustomerAccess billing", () => {
   });
 });
 
+describe("requireWebsiteClient", () => {
+  const WEBSITE = { addOn: "managed-website", status: "active" } as BundledAddOn;
+  const SOCIAL = { addOn: "digital-growth", status: "active" } as BundledAddOn;
+  const paid = (): Subscription => subscription("active", new Date(Date.now() + DAY_MS));
+
+  it("lets a paid client with the Managed Website service through", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(billingState(paid(), { addOns: [SOCIAL, WEBSITE] }));
+    await expect(requireWebsiteClient()).resolves.toMatchObject({ billing: { hasWebsite: true } });
+  });
+
+  it("sends a paid Social-only client Home", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(billingState(paid(), { addOns: [SOCIAL] }));
+    await expect(requireWebsiteClient()).rejects.toThrow("redirect:/");
+  });
+
+  it("lets an unpaid client through: the first payment is taken on the website's own pages", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(billingState(null));
+    await expect(requireWebsiteClient()).resolves.toMatchObject({ billing: { status: "unpaid", hasWebsite: false } });
+  });
+
+  it("lets a lapsed client through to reactivate", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(
+      billingState(subscription("active", new Date(Date.now() - DAY_MS)), { addOns: [WEBSITE] }),
+    );
+    await expect(requireWebsiteClient()).resolves.toMatchObject({ billing: { status: "lapsed" } });
+  });
+});
+
 describe("findCustomerPaymentMethod", () => {
   const tenant = { userId: USER.id, businessId: BUSINESS_ID, businessName: "Riverside Plumbing", role: "owner" };
 
@@ -291,6 +322,31 @@ describe("requireBillingAccess", () => {
     const access = await requireBillingAccess();
     expect(access.tenant.businessId).toBe(BUSINESS_ID);
     expect(access.billing.hasAccess).toBe(true);
+  });
+});
+
+describe("requireWebsiteAccess", () => {
+  const line = (addOn: string): BundledAddOn => ({ addOn, status: "active" }) as BundledAddOn;
+  const paid = (): Subscription => subscription("active", new Date(Date.now() + DAY_MS));
+
+  it("returns the customer when the paid plan holds a Managed Website line", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(billingState(paid(), { addOns: [line("digital-growth"), line("managed-website")] }));
+
+    await expect(requireWebsiteAccess()).resolves.toMatchObject({ billing: { hasAccess: true, hasWebsite: true } });
+  });
+
+  it("refuses a paid Social-only client: the plan is paid, but there is no website to own", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(billingState(paid(), { addOns: [line("digital-growth")] }));
+
+    const error: unknown = await requireWebsiteAccess().catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(WebsiteRequiredError);
+    expect((error as WebsiteRequiredError).businessId).toBe(BUSINESS_ID);
+  });
+
+  it("refuses an unpaid business as billing, before it asks about the website", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(billingState(null, { addOns: [line("managed-website")] }));
+
+    await expect(requireWebsiteAccess()).rejects.toBeInstanceOf(BillingRequiredError);
   });
 });
 

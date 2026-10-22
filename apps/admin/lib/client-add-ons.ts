@@ -163,6 +163,15 @@ export interface ClientBundledAddOnRow {
   readonly canRetry: boolean;
 }
 
+/**
+ * Under the remove confirm: when it stops and what that does to the other services. Taking the website out also says the
+ * site goes offline that day, the sentence the customer reads in their own confirm.
+ */
+export function removeHint(addOn: MonthlyAddOnId, endsOnText: string): string {
+  const stays = "It stays until the next billing date. Then the other services go to list price and package prices end for good, the same as when the customer removes it.";
+  return addOn === "managed-website" ? `${stays} Your website goes offline on ${endsOnText}.` : stays;
+}
+
 /** What the rows need besides the add-on rows themselves. */
 export interface BundledRowContext {
   /** The next billing date of the plan the add-ons ride on, or null with none. */

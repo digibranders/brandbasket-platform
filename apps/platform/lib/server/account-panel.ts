@@ -35,9 +35,6 @@ export const getAccountPanel = cache(async (): Promise<AccountPanel> => {
       nextStep: nextStep({ project: overview.project, completedSteps: overview.completed, liveWebsite }),
     }),
     liveWebsiteUrl: liveWebsite === null ? null : `https://${liveWebsite.hostname}`,
-    siteStatus: deriveSiteStatus(
-      { projectStatus: projectStatus ?? "onboarding", subscription: billing.subscription },
-      new Date(),
-    ),
+    siteStatus: deriveSiteStatus({ projectStatus: projectStatus ?? "onboarding", hasWebsite: billing.hasWebsite }),
   };
 });

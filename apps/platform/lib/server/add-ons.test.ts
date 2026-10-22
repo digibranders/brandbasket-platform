@@ -62,7 +62,7 @@ const appTx = { name: "app-tx" } as unknown as ScopedTransaction;
 const customer: GrantedCustomer = {
   user: { id: "user-a", email: "ana@example.com", name: "Ana Diaz", emailConfirmed: true, phone: null },
   tenant: { userId: "user-a", businessId: BUSINESS_ID, businessName: "Riverside Dental", role: "owner" },
-  billing: { status: "paid", hasAccess: true, subscription: null, tier: "managed", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
+  billing: { status: "paid", hasAccess: true, hasWebsite: true, subscription: null, tier: "managed", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
 };
 
 /** Social Media and Ads and Local SEO + AEO in rupees as frozen on their rows, before GST. */

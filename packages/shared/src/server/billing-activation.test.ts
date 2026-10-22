@@ -9,6 +9,7 @@ vi.mock("@brandbasket/db", async () => {
     ...actual,
     recordPaymentAndActivate: vi.fn().mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } }),
     openMembershipForListingBusiness: vi.fn(),
+    activateBundledAddOns: vi.fn().mockResolvedValue([]),
   };
 });
 
@@ -16,7 +17,7 @@ vi.mock("@brandbasket/db", async () => {
 vi.mock("./affiliate-accrual", () => ({ accrueAffiliateEarning: vi.fn() }));
 vi.mock("./tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn() }));
 
-import { openMembershipForListingBusiness, recordPaymentAndActivate } from "@brandbasket/db";
+import { activateBundledAddOns, openMembershipForListingBusiness, recordPaymentAndActivate, type BundledAddOn } from "@brandbasket/db";
 import { accrueAffiliateEarning } from "./affiliate-accrual";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 
@@ -144,10 +145,20 @@ describe("activateFirstPayment", () => {
   it("opens the membership for a free listing business in the same transaction, and says so", async () => {
     const tx = {} as never;
     vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } } as never);
+    vi.mocked(activateBundledAddOns).mockResolvedValueOnce([{ addOn: "managed-website" } as BundledAddOn]);
     vi.mocked(openMembershipForListingBusiness).mockResolvedValue({ businessName: "Smile Dental" });
     const activation = await activateFirstPayment(tx, BASE);
-    expect(openMembershipForListingBusiness).toHaveBeenCalledWith(tx, "biz-1");
+    expect(openMembershipForListingBusiness).toHaveBeenCalledWith(tx, "biz-1", { withProject: true });
     expect(activation.openedMembership).toEqual({ businessName: "Smile Dental" });
+  });
+
+  it("opens no onboarding project when the basket has no Managed Website line", async () => {
+    const tx = {} as never;
+    vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } } as never);
+    vi.mocked(activateBundledAddOns).mockResolvedValueOnce([{ addOn: "digital-growth" } as BundledAddOn, { addOn: "local-seo-aeo" } as BundledAddOn]);
+    vi.mocked(openMembershipForListingBusiness).mockResolvedValue({ businessName: "Smile Dental" });
+    await activateFirstPayment(tx, BASE);
+    expect(openMembershipForListingBusiness).toHaveBeenCalledWith(tx, "biz-1", { withProject: false });
   });
 
   it("reports no membership opened for a business that was already a client", async () => {

@@ -1,4 +1,4 @@
-export { hasBillingAccess, type BillingAccessInput } from "./access";
+export { hasBillingAccess, hasWebsiteService, type BillingAccessInput, type WebsiteLineInput } from "./access";
 export {
   CHECKOUT_REUSE_WINDOW_MS,
   bundleKey,

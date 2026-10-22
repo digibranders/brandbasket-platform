@@ -66,7 +66,8 @@ async function billedLines(tx: ScopedTransaction, subscriptionId: string): Promi
  * the lead paid, all inside the caller's staff transaction. Idempotent on the provider payment id.
  *
  * A free listing account pays before it has a project (docs/superpowers/specs/2026-09-30-single-entry-premium-
- * design.md), so its first payment also makes it a website client and opens its setup, in the same transaction.
+ * design.md), so its first payment also makes it a website client and, when the basket holds the Managed Website
+ * service, opens its setup, in the same transaction.
  *
  * The term is unaffected by a discount: a referral code lowers the price, never the length of what it buys.
  *
@@ -103,7 +104,9 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   if (activation.alreadyRecorded) return { ...activation, openedMembership: null };
   const activeBundle = await activateBundledAddOns(tx, { subscriptionId: payment.subscriptionId, now: payment.paidAt });
   await accrueAffiliateEarning(tx, { paymentId: activation.payment.id, subscriptionId: payment.subscriptionId, kind: "initial" });
-  const openedMembership = await openMembershipForListingBusiness(tx, payment.businessId);
+  const openedMembership = await openMembershipForListingBusiness(tx, payment.businessId, {
+    withProject: activeBundle.some((line) => line.addOn === "managed-website"),
+  });
   // The last write that takes a lock outside this business's own rows: the invoice's serial holds the year's series row
   // until this transaction commits. Callers still run completePlanUpgradeAtRenewal and sendAfterPayment after it, but those
   // touch only this business's rows, which no other payment transaction can hold under the billing lock.

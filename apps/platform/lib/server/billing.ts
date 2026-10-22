@@ -44,6 +44,20 @@ export class BillingRequiredError extends Error {
 }
 
 /**
+ * A write that needs the Managed Website service was attempted by a business that does not hold it: Social-only or
+ * SEO-only, or its website's paid month has run out. Like BillingRequiredError, it carries no customer-facing copy.
+ */
+export class WebsiteRequiredError extends Error {
+  readonly businessId: string;
+
+  constructor(businessId: string) {
+    super(`Business ${businessId} has no Managed Website service, so this action is not available.`);
+    this.name = "WebsiteRequiredError";
+    this.businessId = businessId;
+  }
+}
+
+/**
  * The guard every mutating customer action that needs payment runs first. The dashboard is readable before payment so
  * people can see what they are buying, and drafts save freely; sending onboarding, and everything that comes after
  * it, waits for the first payment. A disabled button in the browser is a courtesy, not a control: a server action
@@ -52,6 +66,13 @@ export class BillingRequiredError extends Error {
 export async function requireBillingAccess(): Promise<GrantedCustomer> {
   const access = await requireCustomerAccess();
   if (!access.billing.hasAccess) throw new BillingRequiredError(access.tenant.businessId);
+  return access;
+}
+
+/** requireBillingAccess, and the business must hold the Managed Website service: the guard for everything the website owns. */
+export async function requireWebsiteAccess(): Promise<GrantedCustomer> {
+  const access = await requireBillingAccess();
+  if (!access.billing.hasWebsite) throw new WebsiteRequiredError(access.tenant.businessId);
   return access;
 }
 

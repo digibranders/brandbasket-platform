@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { redirect } from "next/navigation";
-import { BillingRequiredError, requireBillingAccess } from "@/lib/server/billing";
+import { BillingRequiredError, requireWebsiteAccess, WebsiteRequiredError } from "@/lib/server/billing";
 import { BLOG_PAYMENT_REQUIRED_MESSAGE } from "@/lib/server/blog";
 import { createCategoryAction, deleteCategoryAction, saveCategoryAction } from "./actions";
 import type { BlogCategoryFields } from "@/lib/blog-category-fields";
@@ -13,12 +13,20 @@ vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
 vi.mock("@/lib/server/billing", () => ({
-  requireBillingAccess: vi.fn(),
+  requireWebsiteAccess: vi.fn(),
   BillingRequiredError: class BillingRequiredError extends Error {
     readonly businessId: string;
     constructor(businessId: string) {
       super(`Business ${businessId} has no paid subscription, so this action is not available.`);
       this.name = "BillingRequiredError";
+      this.businessId = businessId;
+    }
+  },
+  WebsiteRequiredError: class WebsiteRequiredError extends Error {
+    readonly businessId: string;
+    constructor(businessId: string) {
+      super(`Business ${businessId} has no Managed Website service, so this action is not available.`);
+      this.name = "WebsiteRequiredError";
       this.businessId = businessId;
     }
   },
@@ -96,7 +104,7 @@ vi.mock("payload", () => ({
   NotFound: FakeNotFound,
 }));
 
-const mockedRequireBillingAccess = vi.mocked(requireBillingAccess);
+const mockedRequireWebsiteAccess = vi.mocked(requireWebsiteAccess);
 
 const BUSINESS_A = "0192f3c4-aaaa-7000-8000-00000000000a";
 const BUSINESS_B = "0192f3c4-bbbb-7000-8000-00000000000b";
@@ -113,7 +121,7 @@ function fields(overrides: Partial<BlogCategoryFields> = {}): BlogCategoryFields
 beforeEach(() => {
   vi.clearAllMocks();
   resetStore();
-  mockedRequireBillingAccess.mockResolvedValue(tenantFor(BUSINESS_A));
+  mockedRequireWebsiteAccess.mockResolvedValue(tenantFor(BUSINESS_A));
   store.blogCategories!.set("cat-a", { id: "cat-a", businessId: BUSINESS_A, name: "Recipes", slug: "recipes" });
   store.blogCategories!.set("cat-a2", { id: "cat-a2", businessId: BUSINESS_A, name: "News", slug: "news" });
   store.blogCategories!.set("cat-b", { id: "cat-b", businessId: BUSINESS_B, name: "Offers", slug: "offers" });
@@ -201,7 +209,17 @@ describe("deleteCategoryAction", () => {
 
 describe("for a business that has not paid", () => {
   it("refuses every category action with a message", async () => {
-    mockedRequireBillingAccess.mockRejectedValue(new BillingRequiredError(BUSINESS_A));
+    mockedRequireWebsiteAccess.mockRejectedValue(new BillingRequiredError(BUSINESS_A));
+    const refusal = { ok: false, message: BLOG_PAYMENT_REQUIRED_MESSAGE };
+    expect(await saveCategoryAction("cat-a", fields({ name: "X" }))).toEqual(refusal);
+    expect(await deleteCategoryAction("cat-a")).toEqual(refusal);
+    expect(store.blogCategories!.get("cat-a")?.name).toBe("Recipes");
+  });
+});
+
+describe("for a paid business without the Managed Website service", () => {
+  it("refuses every category action with the same message", async () => {
+    mockedRequireWebsiteAccess.mockRejectedValue(new WebsiteRequiredError(BUSINESS_A));
     const refusal = { ok: false, message: BLOG_PAYMENT_REQUIRED_MESSAGE };
     expect(await saveCategoryAction("cat-a", fields({ name: "X" }))).toEqual(refusal);
     expect(await deleteCategoryAction("cat-a")).toEqual(refusal);

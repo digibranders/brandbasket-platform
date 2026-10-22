@@ -1,6 +1,6 @@
 import type { SubscriptionStatus } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
-import { hasBillingAccess } from "./access";
+import { hasBillingAccess, hasWebsiteService } from "./access";
 
 const NOW = new Date("2026-09-16T12:00:00.000Z");
 const FUTURE = new Date("2026-10-16T12:00:00.000Z");
@@ -48,5 +48,41 @@ describe("hasBillingAccess", () => {
     it("refuses when nothing has been paid through", () => {
       expect(hasBillingAccess(subscription(status, null), NOW)).toBe(false);
     });
+  });
+});
+
+describe("hasWebsiteService", () => {
+  const PAID = subscription("active", FUTURE);
+  const WEBSITE = { addOn: "managed-website", status: "active" } as const;
+  const DROPPED = { addOn: "managed-website", status: "active", endRequestedAt: PAST } as const;
+  const SOCIAL = { addOn: "digital-growth", status: "active" } as const;
+
+  it("is true for an active Managed Website line on a paid subscription", () => {
+    expect(hasWebsiteService([SOCIAL, WEBSITE], PAID, NOW)).toBe(true);
+  });
+
+  it("keeps a dropped line until the paid month ends: it stays active until the renewal", () => {
+    expect(hasWebsiteService([DROPPED], PAID, NOW)).toBe(true);
+  });
+
+  it("stops once the paid month has ended, dropped or not", () => {
+    expect(hasWebsiteService([DROPPED], subscription("active", PAST), NOW)).toBe(false);
+    expect(hasWebsiteService([DROPPED], subscription("active", new Date(NOW.getTime())), NOW)).toBe(false);
+    expect(hasWebsiteService([WEBSITE], subscription("active", PAST), NOW)).toBe(false);
+  });
+
+  it("is false with no Managed Website line, a Social-only or SEO-only plan included", () => {
+    expect(hasWebsiteService([], PAID, NOW)).toBe(false);
+    expect(hasWebsiteService([SOCIAL, { addOn: "local-seo-aeo", status: "active" }], PAID, NOW)).toBe(false);
+  });
+
+  it("is false for a line that is not active yet or has gone", () => {
+    expect(hasWebsiteService([{ addOn: "managed-website", status: "pending" }], PAID, NOW)).toBe(false);
+    expect(hasWebsiteService([{ addOn: "managed-website", status: "removed" }], PAID, NOW)).toBe(false);
+  });
+
+  it("is false without billing access, whatever the lines say", () => {
+    expect(hasWebsiteService([WEBSITE], null, NOW)).toBe(false);
+    expect(hasWebsiteService([WEBSITE], subscription("inactive", FUTURE), NOW)).toBe(false);
   });
 });

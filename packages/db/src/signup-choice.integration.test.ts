@@ -92,19 +92,33 @@ describe("openMembershipForListingBusiness", () => {
       signupChoice: "managed",
     });
 
-    expect(await dbs.staff.db.transaction((tx) => openMembershipForListingBusiness(tx, businessId))).toEqual({ businessName: "Smile Dental" });
+    expect(await dbs.staff.db.transaction((tx) => openMembershipForListingBusiness(tx, businessId, { withProject: true }))).toEqual({ businessName: "Smile Dental" });
     expect(await findBusinessEntry(dbs.staff.db, businessId)).toEqual({ kind: "website", signupChoice: "managed" });
     expect(await projectsOf(businessId)).toEqual([{ kind: "initial_build", status: "onboarding" }]);
     // Its page on the local directory stays: the claim is left as it was.
     expect(await findClaimForBusiness(dbs.staff.db, businessId)).toMatchObject({ listingKey: LISTING_KEY });
 
-    expect(await dbs.staff.db.transaction((tx) => openMembershipForListingBusiness(tx, businessId))).toBeNull();
+    expect(await dbs.staff.db.transaction((tx) => openMembershipForListingBusiness(tx, businessId, { withProject: true }))).toBeNull();
     expect(await projectsOf(businessId)).toHaveLength(1);
+  });
+
+  it("makes a website client without a setup project when the payment bought no website", async () => {
+    const { businessId } = await createListingAccountBusiness(dbs.staff.db, {
+      userId: OWNER,
+      listingKey: LISTING_KEY,
+      businessName: "Smile Dental",
+      phone: "+919820000011",
+      signupChoice: "managed",
+    });
+
+    expect(await dbs.staff.db.transaction((tx) => openMembershipForListingBusiness(tx, businessId, { withProject: false }))).toEqual({ businessName: "Smile Dental" });
+    expect(await findBusinessEntry(dbs.staff.db, businessId)).toEqual({ kind: "website", signupChoice: "managed" });
+    expect(await projectsOf(businessId)).toEqual([]);
   });
 
   it("leaves a website client alone", async () => {
     const client = await dbs.staff.db.transaction((tx) => insertBusiness(tx, "Aster Physio", "INR"));
-    expect(await dbs.staff.db.transaction((tx) => openMembershipForListingBusiness(tx, client.id))).toBeNull();
+    expect(await dbs.staff.db.transaction((tx) => openMembershipForListingBusiness(tx, client.id, { withProject: true }))).toBeNull();
     expect(await projectsOf(client.id)).toEqual([]);
     const rows = await dbs.staff.db.select({ kind: businesses.kind }).from(businesses).where(eq(businesses.id, client.id));
     expect(rows).toEqual([{ kind: "website" }]);

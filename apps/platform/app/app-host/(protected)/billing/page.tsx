@@ -259,7 +259,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
             </p>
           </Card>
         ) : (
-          <PlanSummary plan={plan} subscription={subscription} now={new Date()} brand={brand} />
+          <PlanSummary plan={plan} subscription={subscription} now={new Date()} hasWebsite={billing.hasWebsite} brand={brand} />
         )}
       </div>
       <PaymentMethodSection method={paymentMethod} renews={renewsAutomatically(billing)} />
