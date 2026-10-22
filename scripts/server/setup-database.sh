@@ -122,4 +122,4 @@ sql | "${PSQL[@]}" -X -q >/dev/null
 say "== Done. Roles and databases now:"
 psql_q -c "select '  ' || rolname || case when rolcanlogin then ' (login)' else ' (nologin)' end from pg_roles where rolname ~ '^brandbasket_' order by 1"
 psql_q -c "select '  ' || d.datname || ' owned by ' || r.rolname from pg_database d join pg_roles r on r.oid = d.datdba where d.datname ~ '^brandbasket_' order by 1"
-say "Next: make the env files (scripts/server/make-env-files.sh), then the first release (docs/deployment/brandbasket-droplet.md)."
+say "Next: make the env files (scripts/server/make-env-files.sh), then the rest of docs/deployment/brandbasket-vps.md."

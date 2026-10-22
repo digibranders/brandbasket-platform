@@ -3,7 +3,7 @@
 # from the database passwords in /root/brandbasket-secrets.env (made by setup-database.sh) and freshly generated secrets, with the
 # values only a person can supply (Brevo and Razorpay keys) left blank, marked, for you to fill in.
 #
-# What it assumes: run as root on the droplet after setup-database.sh. It NEVER overwrites a file that already exists
+# What it assumes: run as root on the server (the VPS) after setup-database.sh. It NEVER overwrites a file that already exists
 # (so re-running is safe and cannot lose a key you filled in); it prints what it skipped. Dry-run by default; --apply writes.
 # The files are created mode 600, owned by the deploy user. The secrets that must match in both files are generated once and
 # written to both. Afterwards run `pnpm env:check` (or deploy.sh does) to see what is still blank.

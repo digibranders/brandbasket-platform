@@ -1,5 +1,12 @@
 # Production: Brandbasket's own DigitalOcean droplet
 
+> **Superseded (2026-10-22).** Production is the Firstfold VPS, deployed by the VPS itself: see
+> [brandbasket-vps.md](brandbasket-vps.md). The droplet and the push-from-the-Mac scripts (`scripts/server/deploy.sh`,
+> `bootstrap-droplet.sh`, `backup.sh`, `restore-test.sh`) and `deploy/systemd`, `deploy/nginx` are kept for reference only and are not
+> used. Still current here: Brevo (section 8), Razorpay (section 9), the environment variables (section 15) and the free-website
+> address notes in section 7. `setup-database.sh`, `make-env-files.sh`, `brandbasket-migrate` and `run-erase-job.sh` are used by the VPS
+> install.
+
 This is the runbook for putting the Brandbasket dashboard and staff console on Brandbasket's own droplet, and for running them there.
 Nothing in this repository logs in to a server by itself: every script takes the server's address as an argument, prints what
 it would do unless you add `--apply`, and is safe to run again.

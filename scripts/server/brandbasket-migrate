@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # What this does: applies pending migrations to Brandbasket's main production database (brandbasket_platform) as its migration owner
-# (bb_owner). Installed on the droplet as /usr/local/sbin/brandbasket-migrate (root:root 0755) by bootstrap-droplet.sh, and
-# called by scripts/server/deploy.sh through sudo. Besides restarting the two apps it is the only thing the deploy user
-# may run through sudo (see deploy/sudoers.brandbasket.example).
+# (bb_owner). Installed on the VPS as /usr/local/sbin/brandbasket-migrate (root:root 0755) by deploy/vps/install.sh services, and
+# called by brandbasket-platform-release (deploy/vps) through sudo. Besides restarting the two apps it is the only thing the deploy user
+# may run through sudo (see deploy/vps/sudoers-brandbasket-deploy).
 #
 # Assumes: /root/brandbasket-secrets.env (mode 600, written by setup-database.sh) holds OWNER_PW; PostgreSQL listens on
 # localhost:5432; /srv/brandbasket/deploying is a symlink to the release being deployed; node and pnpm are on the deploy user's PATH.
