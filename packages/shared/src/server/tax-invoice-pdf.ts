@@ -34,16 +34,14 @@ const FACT_COLUMNS = [LEFT, LEFT + 1.3 * FACT_FR + 4 * MM, LEFT + 2.3 * FACT_FR 
 /** Where the declaration starts: nothing else may be drawn below this line. */
 const FOOTER_TOP = BOTTOM + 86;
 
-const INK = rgb(0x2a / 255, 0x0d / 255, 0x10 / 255);
-const INK_SOFT = rgb(0x5e / 255, 0x3a / 255, 0x40 / 255);
-const ACCENT = rgb(0x63 / 255, 0x00 / 255, 0x1e / 255);
-const RULE = rgb(0xe2 / 255, 0xd2 / 255, 0xc1 / 255);
-const TINT = rgb(0xfa / 255, 0xf5 / 255, 0xef / 255);
+// Ink on white, so the invoice prints cleanly in black and white; the logo is the only colour. The website's ink tokens.
+const INK = rgb(0x15 / 255, 0x16 / 255, 0x1a / 255);
+const INK_SOFT = rgb(0x4e / 255, 0x50 / 255, 0x57 / 255);
+const RULE = rgb(0xe3 / 255, 0xe0 / 255, 0xd9 / 255);
 
-/** Gate 5: the CA confirms this wording. */
+/** Only what Rule 46 asks for: (p) reverse charge, and (q) no signature on an electronic invoice. Gate 5: the CA confirms this wording. */
 export const DECLARATION_LINES = [
   "Tax is not payable on reverse charge.",
-  "The subscription renews monthly until cancelled. A refund is issued against a credit note that quotes this invoice number.",
   "This is a computer generated invoice and does not need a signature.",
 ] as const;
 
@@ -151,7 +149,7 @@ function wrap(value: string, font: PDFFont, size: number, maxWidth: number): str
 }
 
 /** "₹6,607.06" with its right edge at x: the figure in Hanken Grotesk, the sign as a vector path from Noto Sans. */
-function rupees(page: PDFPage, cents: number, x: number, y: number, font: PDFFont, size: number, color: RGB = ACCENT): void {
+function rupees(page: PDFPage, cents: number, x: number, y: number, font: PDFFont, size: number, color: RGB = INK): void {
   const figure = money(cents);
   const figureWidth = font.widthOfTextAtSize(figure, size);
   const scale = size / RUPEE_UNITS_PER_EM;
@@ -193,18 +191,20 @@ function header(page: PDFPage, fonts: Fonts, continued: boolean, options: TaxInv
   const letterhead = options.letterhead ?? BRANDBASKET_LETTERHEAD;
   const scale = logoHeight / letterhead.height;
   const color = hexColor(letterhead.colorHex);
-  for (const path of letterhead.paths) page.drawSvgPath(path, { x: LEFT, y: headBottom + logoHeight, scale, color });
-  spaced(page, "Tax invoice", RIGHT, TOP - 15.5, fonts.bold, 19, 0.04, ACCENT, "right");
+  for (const path of letterhead.paths) {
+    const [d, fill] = typeof path === "string" ? [path, color] : [path.d, hexColor(path.colorHex)];
+    page.drawSvgPath(d, { x: LEFT, y: headBottom + logoHeight, scale, color: fill });
+  }
+  spaced(page, "Tax invoice", RIGHT, TOP - 15.5, fonts.bold, 19, 0.04, INK, "right");
   spaced(page, continued ? "Continued" : "Original for recipient", RIGHT, TOP - 31, fonts.regular, 7.6, 0.1, INK_SOFT, "right");
   return headBottom - 6 * MM - 1;
 }
 
-/** Invoice number, date and place of supply, with the amount paid in the tinted right column. Returns the y below. */
+/** Invoice number, date and place of supply, with the amount paid in the right column. Returns the y below. */
 function facts(page: PDFPage, invoice: TaxInvoice, top: number, fonts: Fonts): number {
   const height = 63.9;
-  page.drawRectangle({ x: RIGHT_COLUMN, y: top - height, width: RIGHT - RIGHT_COLUMN, height, color: TINT });
   page.drawLine({ start: { x: RIGHT_COLUMN, y: top }, end: { x: RIGHT_COLUMN, y: top - height }, thickness: HAIRLINE, color: RULE });
-  page.drawLine({ start: { x: LEFT, y: top }, end: { x: RIGHT, y: top }, thickness: HAIRLINE, color: ACCENT });
+  page.drawLine({ start: { x: LEFT, y: top }, end: { x: RIGHT, y: top }, thickness: HAIRLINE, color: INK });
   page.drawLine({ start: { x: LEFT, y: top - height }, end: { x: RIGHT, y: top - height }, thickness: HAIRLINE, color: RULE });
   const entries = [
     ["Invoice number", invoice.number],
@@ -228,10 +228,10 @@ function facts(page: PDFPage, invoice: TaxInvoice, top: number, fonts: Fonts): n
   page.drawSvgPath(roundedRect(badge.width - badge.border, badge.height - badge.border, 1 * MM), {
     x: badgeLeft + badge.border / 2,
     y: top - 8.6 - badge.border / 2,
-    borderColor: ACCENT,
+    borderColor: INK,
     borderWidth: badge.border,
   });
-  spaced(page, badgeText, badgeLeft + 1.8 * MM, top - 16.7, fonts.bold, 7, 0.12, ACCENT);
+  spaced(page, badgeText, badgeLeft + 1.8 * MM, top - 16.7, fonts.bold, 7, 0.12, INK);
   label(page, "Amount paid", badgeLeft - 6.3, top - 17.6, fonts, "right");
   rupees(page, invoice.totalCents, inner, top - 37.4, fonts.bold, 15);
   // "Visa credit card ending 4366, 09 Oct 2026", or just the date when a long bank reference would not fit the column.
@@ -242,6 +242,9 @@ function facts(page: PDFPage, invoice: TaxInvoice, top: number, fonts: Fonts): n
 }
 
 /** What a render may add that an invoice's stored snapshot deliberately does not hold. */
+/** One path of a letterhead: filled with the letterhead's colour, or with its own (the pin of a two-colour logo). */
+export type LetterheadPath = string | { readonly d: string; readonly colorHex: string };
+
 export interface TaxInvoiceRenderOptions {
   /** The name the PDF files itself under (its title and creator): "Brandbasket" unless the caller names another. */
   readonly brandName?: string;
@@ -250,7 +253,7 @@ export interface TaxInvoiceRenderOptions {
    * drawn in, and the colour to fill them (a hex like "#0C1E2E"). The company on the invoice (name, GSTIN, address) is
    * the stored snapshot's and never changes; this is only the name the customer knows it by.
    */
-  readonly letterhead?: { readonly paths: readonly string[]; readonly height: number; readonly colorHex: string };
+  readonly letterhead?: { readonly paths: readonly LetterheadPath[]; readonly height: number; readonly colorHex: string };
   /** The address and site the footer sends questions to: `businessDetails` when unset. */
   readonly contact?: { readonly email: string; readonly website: string };
   /**
@@ -285,7 +288,7 @@ function parties(page: PDFPage, doc: PDFDocument, invoice: TaxInvoice, top: numb
     left -= 14.4;
   }
   if (supplier.tradeName !== null) {
-    text(page, `Trading as ${supplier.tradeName}`, LEFT, left, fonts.semibold, 9, ACCENT);
+    text(page, `Trading as ${supplier.tradeName}`, LEFT, left, fonts.semibold, 9, INK);
     left -= 15.9;
   }
   for (const line of supplier.addressLines) {
@@ -485,7 +488,7 @@ function settle(page: PDFPage, invoice: TaxInvoice, top: number, fonts: Fonts): 
     text(page, money(cents), RIGHT, r, fonts.regular, 9, INK, "right");
   });
   r -= 14.2;
-  page.drawLine({ start: { x: RIGHT_COLUMN, y: r }, end: { x: RIGHT, y: r }, thickness: HAIRLINE, color: ACCENT });
+  page.drawLine({ start: { x: RIGHT_COLUMN, y: r }, end: { x: RIGHT, y: r }, thickness: HAIRLINE, color: INK });
   r -= 21.9;
   text(page, "Invoice total", RIGHT_COLUMN, r, fonts.bold, 10);
   rupees(page, invoice.totalCents, RIGHT, r, fonts.bold, 14);
@@ -519,7 +522,7 @@ function footer(page: PDFPage, doc: PDFDocument, fonts: Fonts, withDeclaration: 
 function continuationPage(doc: PDFDocument, invoice: TaxInvoice, fonts: Fonts, options: TaxInvoiceRenderOptions): { readonly page: PDFPage; readonly top: number } {
   const page = doc.addPage([PAGE.width, PAGE.height]);
   const top = header(page, fonts, true, options);
-  page.drawLine({ start: { x: LEFT, y: top }, end: { x: RIGHT, y: top }, thickness: HAIRLINE, color: ACCENT });
+  page.drawLine({ start: { x: LEFT, y: top }, end: { x: RIGHT, y: top }, thickness: HAIRLINE, color: INK });
   label(page, "Invoice number", LEFT, top - 15, fonts);
   text(page, invoice.number, LEFT, top - 31, fonts.semibold, 9.6);
   return { page, top: top - 48 };

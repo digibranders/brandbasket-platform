@@ -237,9 +237,11 @@ and states the real payment date.
   apostrophe is accepted and saved with a straight one. Letters of other scripts (Devanagari, accented letters) are
   not touched, so they still hold the invoice.
 - **Links**: the supplier's email, the footer's email (mailto) and fynix.digital are clickable.
-- **Declaration** (Gate 5): "Tax is not payable on reverse charge." "The subscription renews monthly until cancelled. A
-  refund is issued against a credit note that quotes this invoice number." "This is a computer generated invoice and
-  does not need a signature."
+- **Declaration** (Gate 5): "Tax is not payable on reverse charge." "This is a computer generated invoice and does not
+  need a signature." Only what Rule 46 asks for: (p), and (q) relying on its proviso for an electronic invoice. The
+  renewal and refund terms stay on the website and at checkout (owner, 2026-10-22).
+- **Colours** (owner, 2026-10-22): ink on white, so the invoice prints cleanly in black and white. The logo is the only
+  colour: the light lockup, its pin in rattan.
 - Built with pdf-lib, not a headless browser: production units are sandboxed and cannot run Chromium (D8).
 
 ## Privacy and erasure
