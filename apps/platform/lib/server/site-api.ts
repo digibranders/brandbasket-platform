@@ -1,7 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { getPayload } from "payload";
-import { hasBillingAccess } from "@brandbasket/billing";
+import { hasWebsiteService } from "@brandbasket/billing";
 import { findBillingState } from "@brandbasket/db";
 import config from "@/payload.config";
 import { getStaffDb } from "./db";
@@ -63,16 +63,18 @@ export async function findTenantBySiteToken(token: string): Promise<SiteApiTenan
 }
 
 /**
- * Whether a business's website may be shown: the same rule as the dashboard (hasBillingAccess). There is no grace period:
+ * Whether a business's website may be shown: the same rule as the dashboard (hasWebsiteService). There is no grace period:
  * it is on while the period the customer paid for runs, and off the moment the payment is given up on (or the period ends
- * with nothing renewed), so a website whose plan has ended stops being served at once. A business that never paid has none.
+ * with nothing renewed), so a website whose plan has ended stops being served at once. A business that never paid has none,
+ * and neither has one without a Managed Website line (a Social-only or SEO-only client); a dropped website runs to the end of
+ * the paid month.
  */
 export async function siteHasAccess(businessId: string, now: Date = new Date()): Promise<boolean> {
   const state = await findBillingState(getStaffDb(), businessId);
-  return hasBillingAccess(state?.subscription ?? null, now);
+  return hasWebsiteService(state?.addOns ?? [], state?.subscription ?? null, now);
 }
 
-/** findTenantBySiteToken, but null as well when the business's plan has ended: for the routes that answer a bad token the same way. */
+/** findTenantBySiteToken, but null as well when the business's website has ended: for the routes that answer a bad token the same way. */
 export async function findOnlineTenantBySiteToken(token: string): Promise<SiteApiTenant | null> {
   const tenant = await findTenantBySiteToken(token);
   if (tenant === null) return null;

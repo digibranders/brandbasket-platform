@@ -10,7 +10,7 @@ import { supportTicketAlertEmail } from "./templates/support-ticket-alert";
 let dbs: TestDatabases;
 
 const ticketAlert = supportTicketAlertEmail({
-  to: "hello@brandbasket.in",
+  to: "support@brandbasket.in",
   reference: "FY-0192ABCD",
   ticketId: "0192f3c4-1234-7000-8000-000000000001",
   category: "bug",
@@ -26,7 +26,7 @@ const ticketAlert = supportTicketAlertEmail({
 });
 
 const replyAlert = supportReplyAlertEmail({
-  to: "hello@brandbasket.in",
+  to: "support@brandbasket.in",
   reference: "FY-0192ABCD",
   ticketId: "0192f3c4-1234-7000-8000-000000000001",
   subject: "Cannot upload photos",
@@ -61,7 +61,7 @@ describe("support alerts in the email outbox", () => {
     const rows = await listRecentEmails(dbs.staff.db, 10);
     expect(rows).toHaveLength(2);
     for (const row of rows) {
-      expect(row.toAddress).toBe("hello@brandbasket.in");
+      expect(row.toAddress).toBe("support@brandbasket.in");
       expect(row.transport).toBe("outbox");
       const stored = JSON.stringify(row);
       expect(stored).toContain("FY-0192ABCD");

@@ -1,3 +1,4 @@
+import { discountCentsFor } from "@brandbasket/billing";
 import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { describe, expect, it } from "vitest";
@@ -9,6 +10,7 @@ import {
   isWaitingOnPayment,
   membershipPriceParts,
   orderSummary,
+  renewalTerms,
   servicesAfterToggle,
   membershipFailedHref,
   membershipHrefWithServices,
@@ -123,7 +125,7 @@ describe("orderSummary", () => {
     ["Local SEO + AEO", ["local-seo-aeo"], 2_949_882, 0, 35_000, 0, null],
     ["website and social", ["managed-website", "digital-growth"], 1_226_964, 200_000, 12_000, 2_500, "Package offer, 20% off"],
     ["website and SEO", ["managed-website", "local-seo-aeo"], 2_642_964, 0, 34_000, 0, "Package offer, 20% off"],
-    ["social and SEO", ["digital-growth", "local-seo-aeo"], 2_890_764, 200_000, 29_700, 2_500, "Package offer, 30% off"],
+    ["social and SEO", ["digital-growth", "local-seo-aeo"], 3_303_764, 200_000, 34_000, 2_500, "Package offer, 20% off"],
     ["all three", ["managed-website", "digital-growth", "local-seo-aeo"], 3_138_446, 500_000, 35_000, 6_000, "Package offer, 30% off"],
   ];
 
@@ -196,8 +198,23 @@ describe("orderSummary", () => {
     expect(summary).toMatchObject({ discountCents: 30_000, netCents: 269_900, totalCents: chargedAmountCents(299_900, 30_000, 1800) });
   });
 
-  it("refuses a code on a package, and a basket of no service", () => {
-    expect(() => orderSummary({ ...inr, services: ["managed-website", "digital-growth"] }, 30_000)).toThrow(RangeError);
+  it("takes a code off a package once, after the package offer and before GST", () => {
+    // 10% of the ₹10,398 net the website and Social Media and Ads come to at 20% off.
+    const codeCents = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 1_039_800);
+    const summary = orderSummary({ ...inr, services: ["managed-website", "digital-growth"] }, codeCents);
+    expect(summary.offer).toEqual({ label: "Package offer, 20% off", discountCents: 260_000 });
+    expect(summary).toMatchObject({ discountCents: 103_980, netCents: 935_820, totalCents: chargedAmountCents(1_039_800, 103_980, 1800) });
+    expect(summary.totalCents).toBe(1_104_268);
+    expect(summary.gstCents).toBe(1_104_268 - 935_820);
+    expect(summary.adCredit?.cents).toBe(200_000);
+  });
+
+  it("takes a flat code off any basket, three services included", () => {
+    const summary = orderSummary({ ...inr, services: ["managed-website", "digital-growth", "local-seo-aeo"] }, 50_000);
+    expect(summary).toMatchObject({ discountCents: 50_000, netCents: 2_659_700 - 50_000, totalCents: chargedAmountCents(2_659_700, 50_000, 1800) });
+  });
+
+  it("refuses a basket of no service", () => {
     expect(() => orderSummary({ ...inr, services: [] }, 0)).toThrow(RangeError);
   });
 });
@@ -260,10 +277,35 @@ describe("basketNetCents", () => {
     [["managed-website"], "INR", 299_900],
     [["digital-growth"], "INR", 999_900],
     [["managed-website", "digital-growth"], "INR", 1_039_800],
-    [["digital-growth", "local-seo-aeo"], "INR", 2_449_800],
+    [["digital-growth", "local-seo-aeo"], "INR", 2_799_800],
     [["managed-website", "digital-growth", "local-seo-aeo"], "INR", 2_659_700],
     [["managed-website", "digital-growth", "local-seo-aeo"], "USD", 35_000],
   ] as const)("prices %o in %s at %i before tax, the package price a new sign-up pays", (services, currency, net) => {
     expect(basketNetCents(services, currency)).toBe(net);
+  });
+});
+
+describe("renewalTerms", () => {
+  const inr = { planInitialAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false } as const;
+  const plan = { currency: "INR", taxRateBasisPoints: 1800, initialTermMonths: 1 } as const;
+  const websiteAndSocial = ["managed-website", "digital-growth"] as const;
+  // 10% of the ₹10,398 package: ₹1,039.80 off, so ₹11,042.68 with GST, and ₹12,269.64 once the code ends.
+  const coded = orderSummary({ ...inr, services: websiteAndSocial }, 103_980);
+
+  it("names the months a code has left after the first payment, and the price after it ends", () => {
+    expect(renewalTerms(coded, plan, 3)).toBe(
+      "Your first payment covers your first month, then ₹11,042.68 (GST included) is taken each month for 2 more months, and ₹12,269.64 a month after that.",
+    );
+    expect(renewalTerms(coded, plan, 2)).toContain("for 1 more month, and ₹12,269.64 a month after that.");
+  });
+
+  it("goes straight to the price without the code when the first payment uses the code's only month", () => {
+    expect(renewalTerms(coded, plan, 1)).toBe("Your first payment covers your first month, then ₹12,269.64 (GST included) is taken each month for your services.");
+  });
+
+  it("keeps the discounted amount each month for a code with no limit, and the plain amount with no code", () => {
+    expect(renewalTerms(coded, plan, null)).toBe("Your first payment covers your first month, then ₹11,042.68 (GST included) is taken each month for your services.");
+    const plain = orderSummary({ ...inr, services: ["managed-website"] }, 0);
+    expect(renewalTerms(plain, plan, 3)).toBe("Your first payment covers your first month, then ₹3,538.82 (GST included) is taken each month for your service.");
   });
 });

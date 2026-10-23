@@ -43,12 +43,12 @@ function transport(): { readonly send: ReturnType<typeof vi.fn<(message: EmailMe
 }
 
 describe("privacyAlertRecipient", () => {
-  it("prefers the privacy mailbox, then the support alert mailbox, then the team address, then hello@brandbasket.in", () => {
+  it("prefers the privacy mailbox, then the support alert mailbox, then the team address, then support@brandbasket.in", () => {
     expect(privacyAlertRecipient({ PRIVACY_ALERT_EMAIL: " grievance@brandbasket.in ", SUPPORT_ALERT_EMAIL: "s@brandbasket.in" })).toBe("grievance@brandbasket.in");
     expect(privacyAlertRecipient({ SUPPORT_ALERT_EMAIL: "s@brandbasket.in", BRANDBASKET_TEAM_EMAIL: "t@brandbasket.in" })).toBe("s@brandbasket.in");
     expect(privacyAlertRecipient({ BRANDBASKET_TEAM_EMAIL: "t@brandbasket.in" })).toBe("t@brandbasket.in");
-    expect(privacyAlertRecipient({ PRIVACY_ALERT_EMAIL: "  " })).toBe("hello@brandbasket.in");
-    expect(privacyAlertRecipient({})).toBe("hello@brandbasket.in");
+    expect(privacyAlertRecipient({ PRIVACY_ALERT_EMAIL: "  " })).toBe("support@brandbasket.in");
+    expect(privacyAlertRecipient({})).toBe("support@brandbasket.in");
   });
 });
 
@@ -62,9 +62,9 @@ describe("links and dates", () => {
 describe("sendNewPrivacyRequestAlert", () => {
   it("sends the reference, kind and due day to the mailbox, and none of what the person wrote", async () => {
     const { send, asTransport } = transport();
-    await sendNewPrivacyRequestAlert(asTransport, { reference: "PR-7K2M9QXD", kind: "erasure", dueAt: at(30) }, { to: "hello@brandbasket.in", adminOrigin: ADMIN });
+    await sendNewPrivacyRequestAlert(asTransport, { reference: "PR-7K2M9QXD", kind: "erasure", dueAt: at(30) }, { to: "support@brandbasket.in", adminOrigin: ADMIN });
     const message = send.mock.calls[0]?.[0];
-    expect(message?.to).toBe("hello@brandbasket.in");
+    expect(message?.to).toBe("support@brandbasket.in");
     expect(message?.subject).toBe("New privacy request PR-7K2M9QXD (Erasure)");
     expect(message?.bodyText).toContain("https://console.brandbasket.in/privacy-requests");
   });

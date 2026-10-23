@@ -35,7 +35,7 @@ describe("sendStaffAccessReview", () => {
   it("looks at the last 24 hours and emails the team when something reached a limit", async () => {
     vi.mocked(tallyStaffAccessSince).mockResolvedValue([row("asha@brandbasket.in", "access.denied", "denied", 7)]);
     const send = vi.fn<(message: EmailMessage) => Promise<void>>(async () => undefined);
-    const listed = await sendStaffAccessReview(db, { send } as unknown as EmailTransport, { to: "hello@brandbasket.in", adminOrigin: "https://console.brandbasket.in", now: NOW });
+    const listed = await sendStaffAccessReview(db, { send } as unknown as EmailTransport, { to: "support@brandbasket.in", adminOrigin: "https://console.brandbasket.in", now: NOW });
     expect(listed).toBe(1);
     expect(tallyStaffAccessSince).toHaveBeenCalledWith(db, new Date("2026-10-31T22:00:00.000Z"));
     expect(send.mock.calls[0]?.[0].bodyText).toContain("asha@brandbasket.in: Was refused a page that needs a higher role, 7 times");
@@ -51,11 +51,11 @@ describe("sendStaffAccessReview", () => {
 });
 
 describe("securityAlertRecipient", () => {
-  it("prefers the security mailbox, then the support alerts, then the team address, then hello@brandbasket.in", () => {
+  it("prefers the security mailbox, then the support alerts, then the team address, then support@brandbasket.in", () => {
     expect(securityAlertRecipient({ SECURITY_ALERT_EMAIL: "sec@brandbasket.in", SUPPORT_ALERT_EMAIL: "s@brandbasket.in" })).toBe("sec@brandbasket.in");
     expect(securityAlertRecipient({ SUPPORT_ALERT_EMAIL: "s@brandbasket.in" })).toBe("s@brandbasket.in");
     expect(securityAlertRecipient({ BRANDBASKET_TEAM_EMAIL: "t@brandbasket.in" })).toBe("t@brandbasket.in");
-    expect(securityAlertRecipient({})).toBe("hello@brandbasket.in");
-    expect(securityAlertRecipient({})).toBe("hello@brandbasket.in");
+    expect(securityAlertRecipient({})).toBe("support@brandbasket.in");
+    expect(securityAlertRecipient({})).toBe("support@brandbasket.in");
   });
 });

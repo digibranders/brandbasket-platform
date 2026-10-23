@@ -3,7 +3,7 @@ import { EmailUs } from "@/components/panel/email-us";
 import { LockedNotice } from "@/components/panel/onboarding-summary";
 import { OnboardingSteps } from "@/components/panel/onboarding-steps";
 import { SetupCallCard } from "@/components/panel/setup-call-card";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
 import { getSetupCallUrl } from "@/lib/server/setup-call-link";
 
@@ -12,7 +12,7 @@ interface OnboardingLayoutProps {
 }
 
 export default async function OnboardingLayout({ children }: OnboardingLayoutProps): Promise<ReactElement> {
-  await requireCustomerAccess();
+  await requireWebsiteClient();
   const snapshot = await getOnboardingSnapshot();
   const setupCallUrl = await getSetupCallUrl();
 

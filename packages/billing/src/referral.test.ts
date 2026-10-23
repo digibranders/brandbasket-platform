@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   discountCentsFor,
+  discountForChangedBasket,
   isChargeableDiscount,
   MAX_REFERRAL_CODE_LENGTH,
   MIN_DISCOUNT_AMOUNT_CENTS,
@@ -72,6 +73,23 @@ describe("discountCentsFor", () => {
     expect(discountCentsFor({ kind: "amount", amountCents: 1_500 }, 6_900)).toBe(1_500);
   });
 
+  it("takes a percentage of a package's net, after the package discount, once", () => {
+    // Website ₹2,999 + Social Media and Ads ₹9,999 at 20% off is ₹10,398 net: 10% of that is ₹1,039.80, not 10% of the ₹12,998 list.
+    expect(discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 1_039_800)).toBe(103_980);
+    // 12.5% of ₹10,398 is ₹1,299.75.
+    expect(discountCentsFor({ kind: "percent", basisPoints: 1_250 }, 1_039_800)).toBe(129_975);
+    // Half a paisa rounds up: 12.5% of ₹27,997.99 is 349,974.875 paise.
+    expect(discountCentsFor({ kind: "percent", basisPoints: 1_250 }, 2_799_799)).toBe(349_975);
+  });
+
+  it("takes a flat amount off a package as it stands, whatever the basket", () => {
+    for (const basketNet of [299_900, 1_039_800, 2_799_800]) {
+      const cents = discountCentsFor({ kind: "amount", amountCents: 50_000 }, basketNet);
+      expect(cents).toBe(50_000);
+      expect(isChargeableDiscount(basketNet, cents)).toBe(true);
+    }
+  });
+
   it("takes a percentage of the plan's pre-tax price", () => {
     // 10% of ₹2,999 is ₹299.90.
     expect(discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 299_900)).toBe(29_990);
@@ -135,5 +153,30 @@ describe("rewardCentsFor", () => {
   it("refuses a payment or a percentage it cannot work with", () => {
     expect(() => rewardCentsFor({ kind: "percent", basisPoints: 500 }, -1)).toThrow(RangeError);
     expect(() => rewardCentsFor({ kind: "percent", basisPoints: 10_001 }, 5_400)).toThrow(RangeError);
+  });
+});
+
+describe("discountForChangedBasket", () => {
+  const percent = { kind: "percent", basisPoints: 1_000 } as const;
+  const amount = { kind: "amount", amountCents: 50_000 } as const;
+
+  it("reprices a percentage code on the new basket's net", () => {
+    expect(discountForChangedBasket({ monthsLeft: 3, heldCents: 30_000, discount: percent, netCents: 900_000 })).toBe(90_000);
+    expect(discountForChangedBasket({ monthsLeft: null, heldCents: 90_000, discount: percent, netCents: 299_900 })).toBe(29_990);
+  });
+
+  it("keeps an amount code's amount on any basket it still fits", () => {
+    expect(discountForChangedBasket({ monthsLeft: 2, heldCents: 50_000, discount: amount, netCents: 299_900 })).toBe(50_000);
+    expect(discountForChangedBasket({ monthsLeft: 2, heldCents: 50_000, discount: amount, netCents: 1_200_000 })).toBe(50_000);
+  });
+
+  it("takes nothing once the months have run out, and when the code no longer fits the basket", () => {
+    expect(discountForChangedBasket({ monthsLeft: 0, heldCents: 0, discount: percent, netCents: 900_000 })).toBe(0);
+    expect(discountForChangedBasket({ monthsLeft: 4, heldCents: 50_000, discount: amount, netCents: 50_000 })).toBe(0);
+  });
+
+  it("carries on what the subscription holds when there is no discount to reprice", () => {
+    expect(discountForChangedBasket({ monthsLeft: null, heldCents: 0, discount: null, netCents: 900_000 })).toBe(0);
+    expect(discountForChangedBasket({ monthsLeft: null, heldCents: 7_000, discount: null, netCents: 900_000 })).toBe(7_000);
   });
 });

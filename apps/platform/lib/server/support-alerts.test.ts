@@ -30,7 +30,7 @@ describe("support-alerts", () => {
     mockSend.mockReset();
     mockSend.mockResolvedValue(undefined);
     vi.mocked(createAppEmailTransport).mockReturnValue({ send: mockSend });
-    process.env.SUPPORT_ALERT_EMAIL = "hello@brandbasket.in";
+    process.env.SUPPORT_ALERT_EMAIL = "support@brandbasket.in";
     process.env.BRANDBASKET_TEAM_EMAIL = "team@brandbasket.in";
   });
 
@@ -57,7 +57,7 @@ describe("support-alerts", () => {
       expect(createAppEmailTransport).not.toHaveBeenCalledWith(db);
       expect(mockSend).toHaveBeenCalledTimes(1);
       const sent = mockSend.mock.calls[0][0];
-      expect(sent.to).toBe("hello@brandbasket.in");
+      expect(sent.to).toBe("support@brandbasket.in");
       expect(sent.subject).toContain("SUP-A1B2C3");
       expect(sent.subject).toContain("Cannot reset 2FA");
       expect(sent.bodyText).toContain("Locked out of my device.");
@@ -127,7 +127,7 @@ describe("support-alerts", () => {
 
       expect(mockSend).toHaveBeenCalledTimes(1);
       const sent = mockSend.mock.calls[0][0];
-      expect(sent.to).toBe("hello@brandbasket.in");
+      expect(sent.to).toBe("support@brandbasket.in");
       expect(sent.subject).toContain("SUP-A1B2C3");
       expect(sent.bodyText).toContain("I have uploaded the document.");
       expect(sent.bodyText).toContain("Alice");
@@ -173,7 +173,7 @@ describe("support-alerts", () => {
 
       expect(mockSend).toHaveBeenCalledTimes(1);
       const sent = mockSend.mock.calls[0][0];
-      expect(sent.to).toBe("hello@brandbasket.in");
+      expect(sent.to).toBe("support@brandbasket.in");
       expect(sent.subject).toContain("DatabaseConnectionTimeout");
       expect(sent.subject).toContain("/api/checkout");
       expect(sent.bodyText).toContain("err-evt-456");

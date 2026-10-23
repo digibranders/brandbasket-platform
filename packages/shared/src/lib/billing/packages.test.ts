@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { MonthlyAddOnId } from "./add-ons";
-import { adCreditCentsAtCheckout, adCreditCentsFor, packageBasisPointsFor, packageDiscountCentsFor, packageDiscountsFor, packageLines, packageLineWith } from "./packages";
+import { adCreditCentsAtCheckout, adCreditCentsFor, packageBasisPointsFor, packageDiscountCentsFor, packageDiscountsFor, packageLines, packageLineWith, shareDiscountAcrossLines } from "./packages";
 
 describe("package offers", () => {
   it.each([
@@ -9,7 +9,7 @@ describe("package offers", () => {
     [["digital-growth"], 0],
     [["managed-website", "digital-growth"], 2000],
     [["managed-website", "local-seo-aeo"], 2000],
-    [["digital-growth", "local-seo-aeo"], 3000],
+    [["digital-growth", "local-seo-aeo"], 2000],
     [["managed-website", "digital-growth", "local-seo-aeo"], 3000],
   ] as const)("gives %o %i basis points off", (services, bp) => {
     expect(packageBasisPointsFor({ services, forfeited: false })).toBe(bp);
@@ -54,7 +54,7 @@ describe("package offers", () => {
       { addOn: "digital-growth", listCents: 7500 },
     ] as const;
     expect(packageLineWith(dollars, false, "local-seo-aeo", "USD")).toMatchObject({ discountCents: 10500, netCents: 24500 });
-    expect(packageLineWith(dollars.slice(1), false, "local-seo-aeo", "USD")).toMatchObject({ discountCents: 10550, netCents: 24450 });
+    expect(packageLineWith(dollars.slice(1), false, "local-seo-aeo", "USD")).toMatchObject({ discountCents: 7000, netCents: 28000 });
     expect(packageLineWith(website, true, "digital-growth", "INR")).toMatchObject({ discountCents: 0, netCents: 999900 });
     expect(packageLineWith([], false, "managed-website", "INR")).toMatchObject({ discountCents: 0, netCents: 299900 });
   });
@@ -90,7 +90,7 @@ const PACKAGES: readonly {
 }[] = [
   { services: ["managed-website", "digital-growth"], netCents: { INR: 1039800, USD: 12000 }, chargedInr: 1226964, savingsCents: { INR: 260000, USD: 3000 }, lines: { INR: [239920, 799880], USD: [6000, 6000] } },
   { services: ["managed-website", "local-seo-aeo"], netCents: { INR: 2239800, USD: 34000 }, chargedInr: 2642964, savingsCents: { INR: 560000, USD: 8500 }, lines: { INR: [239920, 1999880], USD: [6000, 28000] } },
-  { services: ["digital-growth", "local-seo-aeo"], netCents: { INR: 2449800, USD: 29700 }, chargedInr: 2890764, savingsCents: { INR: 1050000, USD: 12800 }, lines: { INR: [699930, 1749870], USD: [5250, 24450] } },
+  { services: ["digital-growth", "local-seo-aeo"], netCents: { INR: 2799800, USD: 34000 }, chargedInr: 3303764, savingsCents: { INR: 700000, USD: 8500 }, lines: { INR: [799920, 1999880], USD: [6000, 28000] } },
   { services: ["managed-website", "digital-growth", "local-seo-aeo"], netCents: { INR: 2659700, USD: 35000 }, chargedInr: 3138446, savingsCents: { INR: 1140000, USD: 15000 }, lines: { INR: [209930, 699930, 1749840], USD: [5250, 5250, 24500] } },
 ];
 
@@ -173,5 +173,35 @@ describe("package prices", () => {
     ] as const;
     // 20% of 100050 is 20010 each, so the net is 160080: 80 over a whole 100, which goes to the website, first in the catalogue.
     expect(packageDiscountsFor(equal, 2000)).toEqual([20010, 20090]);
+  });
+});
+
+describe("shareDiscountAcrossLines", () => {
+  it("shares in proportion to the nets, the leftover on the largest line, to the minor unit", () => {
+    // ₹1,500 over ₹2,399.20 and ₹7,998.80.
+    expect(shareDiscountAcrossLines([239_920, 799_880], 150_000)).toEqual([34_610, 115_390]);
+    // ₹1,000 over the three services at 30% off.
+    expect(shareDiscountAcrossLines([209_930, 699_930, 1_749_840], 100_000)).toEqual([7_892, 26_316, 65_792]);
+  });
+
+  it("always adds up to the whole discount", () => {
+    for (const total of [1, 2, 3, 99, 12_345, 2_659_699]) {
+      expect(shareDiscountAcrossLines([209_930, 699_930, 1_749_840], total).reduce((sum, share) => sum + share, 0)).toBe(total);
+    }
+  });
+
+  it("gives the first of equal lines the leftover", () => {
+    expect(shareDiscountAcrossLines([100, 100, 100], 100)).toEqual([34, 33, 33]);
+  });
+
+  it("gives a single line the whole discount, and nothing to share when there is no discount or no net", () => {
+    expect(shareDiscountAcrossLines([299_900], 50_000)).toEqual([50_000]);
+    expect(shareDiscountAcrossLines([100, 200], 0)).toEqual([0, 0]);
+    expect(shareDiscountAcrossLines([0, 0], 5)).toEqual([0, 0]);
+  });
+
+  it("refuses a discount that is not whole minor units", () => {
+    expect(() => shareDiscountAcrossLines([100], 1.5)).toThrow(RangeError);
+    expect(() => shareDiscountAcrossLines([100], -1)).toThrow(RangeError);
   });
 });

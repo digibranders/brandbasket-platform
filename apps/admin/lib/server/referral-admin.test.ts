@@ -55,6 +55,7 @@ function form(overrides: Record<string, string> = {}): FormData {
     currency: "INR",
     discountKind: "amount",
     discountValue: "500",
+    discountMonths: "",
     expiresAt: "",
     maxRedemptions: "",
     ...overrides,
@@ -214,6 +215,23 @@ describe("createReferralCodeFor", () => {
     }
   });
 
+  it("tells the difference between no limit on the discount's length and a length it could not read", async () => {
+    await createReferralCodeFor({ formData: form({ discountMonths: "" }), staffUserId: STAFF_USER, affiliateId: null, now: NOW });
+    expect(createReferralCode).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ discountMonths: null }));
+
+    for (const [typed, months] of [["1", 1], ["3", 3], ["120", 120]] as const) {
+      await createReferralCodeFor({ formData: form({ discountMonths: typed }), staffUserId: STAFF_USER, affiliateId: null, now: NOW });
+      expect(createReferralCode).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ discountMonths: months }));
+    }
+
+    vi.mocked(createReferralCode).mockClear();
+    for (const discountMonths of ["0", "-1", "121", "2.5", "lots"]) {
+      const outcome = await createReferralCodeFor({ formData: form({ discountMonths }), staffUserId: STAFF_USER, affiliateId: null, now: NOW });
+      expect(refusalOf(outcome).field).toBe("discountMonths");
+    }
+    expect(createReferralCode).not.toHaveBeenCalled();
+  });
+
   it("explains a duplicate code rather than throwing the database error at the staff member", async () => {
     vi.mocked(createReferralCode).mockRejectedValue(
       new Error('duplicate key value violates unique constraint "referral_codes_code_unique"'),
@@ -254,6 +272,16 @@ describe("createReferralCodeFor for an affiliate", () => {
       expect.anything(),
       expect.objectContaining({ code: "PRIYA", affiliateId: "affiliate-1", discount: null }),
     );
+  });
+
+  it("stores no length on an affiliate code that takes nothing off", async () => {
+    await createReferralCodeFor({
+      formData: form({ code: "priya", discountKind: "none", discountValue: "", discountMonths: "6" }),
+      staffUserId: STAFF_USER,
+      affiliateId: "affiliate-1",
+      now: NOW,
+    });
+    expect(createReferralCode).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ discount: null, discountMonths: null }));
   });
 
   it("refuses a coupon with no discount", async () => {

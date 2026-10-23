@@ -21,10 +21,12 @@ import {
   type Receipt,
   type TaxInvoice,
 } from "@brandbasket/db";
-import { reactivationNetCents } from "@brandbasket/shared/lib/billing/bundle";
-import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { reactivationNetCents, readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
+import { loadCarriedCode, loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { requireCustomerAccess, type GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
+import { discountFrom } from "./referrals";
 import { serverEnv } from "@/lib/server/env";
 import { renewsAutomatically } from "@/lib/billing/payment-method-view";
 import { MAX_RECEIPTS_PER_DOWNLOAD } from "@/lib/billing/receipt-download";
@@ -44,6 +46,20 @@ export class BillingRequiredError extends Error {
 }
 
 /**
+ * A write that needs the Managed Website service was attempted by a business that does not hold it: Social-only or
+ * SEO-only, or its website's paid month has run out. Like BillingRequiredError, it carries no customer-facing copy.
+ */
+export class WebsiteRequiredError extends Error {
+  readonly businessId: string;
+
+  constructor(businessId: string) {
+    super(`Business ${businessId} has no Managed Website service, so this action is not available.`);
+    this.name = "WebsiteRequiredError";
+    this.businessId = businessId;
+  }
+}
+
+/**
  * The guard every mutating customer action that needs payment runs first. The dashboard is readable before payment so
  * people can see what they are buying, and drafts save freely; sending onboarding, and everything that comes after
  * it, waits for the first payment. A disabled button in the browser is a courtesy, not a control: a server action
@@ -52,6 +68,13 @@ export class BillingRequiredError extends Error {
 export async function requireBillingAccess(): Promise<GrantedCustomer> {
   const access = await requireCustomerAccess();
   if (!access.billing.hasAccess) throw new BillingRequiredError(access.tenant.businessId);
+  return access;
+}
+
+/** requireBillingAccess, and the business must hold the Managed Website service: the guard for everything the website owns. */
+export async function requireWebsiteAccess(): Promise<GrantedCustomer> {
+  const access = await requireBillingAccess();
+  if (!access.billing.hasWebsite) throw new WebsiteRequiredError(access.tenant.businessId);
   return access;
 }
 
@@ -199,13 +222,45 @@ export async function findReactivationPlan(customer: Pick<GrantedCustomer, "bill
   return findActivePlan(getStaffDb(), billing.plan.currency, billing.tier);
 }
 
+/** What Billing shows a lapsed customer about coming back. */
+export interface ReactivationView {
+  /** The customer cancelled the plan themselves: they choose their services again, each at its own price. */
+  readonly cancelled: boolean;
+  /** The services the payment is for: the ones chosen when `cancelled` (the lapsed ones until they choose), else the lapsed basket. */
+  readonly services: readonly MonthlyAddOnId[];
+  /** What a month of them costs before GST. */
+  readonly netCents: number;
+  /** What the code a lapse keeps takes off that, before GST; 0 for a customer who cancelled themselves or whose code has no months left. */
+  readonly discountCents: number;
+}
+
 /**
- * What a month of the basket a lapsed customer reactivates costs before GST: the services they lapsed with at the offer
- * they earn, from the same basket the checkout reopens (loadReactivationBasket), so the price on Billing is the one charged.
- * Null for a customer who has not lapsed, or whose currency has no plan.
+ * What a month of the basket a lapsed customer reactivates costs before GST, from the same basket the checkout reopens
+ * (loadReactivationBasket), less the discount of the code a lapse keeps (loadCarriedCode), so the price on Billing is the one
+ * charged. A customer who cancelled themselves chooses again:
+ * `requested` (what the page names) is priced at list instead, and only catalogue services count; with none left, their
+ * previous ones are shown. Null for a customer who has not lapsed, or whose currency has no plan.
  */
-export async function findReactivationNetCents(customer: Pick<GrantedCustomer, "tenant" | "billing">): Promise<number | null> {
+export async function findReactivation(
+  customer: Pick<GrantedCustomer, "tenant" | "billing">,
+  requested: readonly string[] = [],
+): Promise<ReactivationView | null> {
   const { billing, tenant } = customer;
   if (billing.status !== "lapsed" || billing.plan === null) return null;
-  return reactivationNetCents(await loadReactivationBasket(getStaffDb(), tenant.businessId), billing.plan.currency);
+  const basket = await loadReactivationBasket(getStaffDb(), tenant.businessId);
+  const chosen = basket.cancelled ? readBundleSelection(requested) : [];
+  const priced = chosen.length === 0 ? basket : { ...basket, services: chosen };
+  const { currency } = billing.plan;
+  const netCents = reactivationNetCents(priced, currency);
+  const carried = await loadCarriedCode(getStaffDb(), tenant.businessId, basket);
+  const discountCents = carried === null ? 0 : (discountFrom(carried.code, { currency, netCents })?.amountCents ?? 0);
+  return { cancelled: basket.cancelled, services: priced.services, netCents, discountCents };
+}
+
+/** What a month of the lapsed customer's reactivation costs before GST (findReactivation), or null. */
+export async function findReactivationNetCents(
+  customer: Pick<GrantedCustomer, "tenant" | "billing">,
+  requested: readonly string[] = [],
+): Promise<number | null> {
+  return (await findReactivation(customer, requested))?.netCents ?? null;
 }

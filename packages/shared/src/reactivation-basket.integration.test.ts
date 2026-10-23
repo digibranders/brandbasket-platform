@@ -89,11 +89,15 @@ async function lapsedSubscription(services: readonly MonthlyAddOnId[]): Promise<
   return subscription;
 }
 
-/** What the checkout does for a business that paid before: the basket first, then the replacing subscription at its price. */
-async function openReactivation(): Promise<Subscription> {
+/**
+ * What the checkout does for a business that paid before: the basket first, then the replacing subscription at its price. A
+ * customer who cancelled themselves buys the services they `chose`; a lapse reopens the basket it had.
+ */
+async function openReactivation(chose: readonly MonthlyAddOnId[] = []): Promise<Subscription> {
   sequence += 1;
   return dbs.staff.db.transaction(async (tx) => {
     const basket = await loadReactivationBasket(tx, businessId);
+    const services = basket.cancelled ? chose : basket.services;
     if (basket.cancelled) await markPackageOfferForfeited(tx, businessId, BACK_AT);
     const latest = await findLatestSubscriptionForBusiness(tx, businessId);
     return openCheckoutSubscription(tx, {
@@ -102,7 +106,7 @@ async function openReactivation(): Promise<Subscription> {
       provider: "fake",
       providerSubscriptionId: `fake_sub_${String(sequence).padStart(24, "0")}`,
       adCreditCents: basket.adCreditCents,
-      bundledAddOns: linesFor(basket.services, basket.forfeited),
+      bundledAddOns: linesFor(services, basket.forfeited),
       replacing: latest !== null && latest.status !== "cancelled" ? latest.id : null,
       now: BACK_AT,
     });
@@ -147,12 +151,12 @@ describe("a lapsed subscription that is reactivated", () => {
     ["INR", ["managed-website", "digital-growth", "local-seo-aeo"], 3_138_446, 500_000],
     ["INR", ["managed-website", "digital-growth"], 1_226_964, 200_000],
     ["INR", ["managed-website", "local-seo-aeo"], 2_642_964, 0],
-    ["INR", ["digital-growth", "local-seo-aeo"], 2_890_764, 200_000],
+    ["INR", ["digital-growth", "local-seo-aeo"], 3_303_764, 200_000],
     ["INR", ["local-seo-aeo"], 2_949_882, 0],
     ["INR", ["managed-website"], 353_882, 0],
     ["USD", ["managed-website", "digital-growth", "local-seo-aeo"], 35_000, 6_000],
     ["USD", ["managed-website", "digital-growth"], 12_000, 2_500],
-    ["USD", ["digital-growth", "local-seo-aeo"], 29_700, 2_500],
+    ["USD", ["digital-growth", "local-seo-aeo"], 34_000, 2_500],
     ["USD", ["digital-growth"], 7_500, 0],
   ] as const)("keeps its basket at the same offer and its ad credit: %s %j charges %i, credit %i", async (currency, services, charged, adCredit) => {
     await setUp(currency);
@@ -220,40 +224,95 @@ describe("a lapsed subscription that is reactivated", () => {
   });
 });
 
-describe("a subscription that was cancelled", () => {
+describe("a subscription the provider ended without the customer asking (a revoked mandate)", () => {
+  it("is a lapse: the package price, the ad credit and the offer all come back", async () => {
+    await setUp("INR");
+    const lapsed = await lapsedSubscription(["managed-website", "digital-growth", "local-seo-aeo"]);
+    await updateSubscriptionProviderStatus(dbs.staff.db, {
+      provider: "fake",
+      providerSubscriptionId: lapsed.providerSubscriptionId,
+      status: "cancelled",
+      providerStatus: "cancelled",
+      now: new Date("2026-10-01T09:00:00.000Z"),
+    });
+    expect((await findSubscriptionById(dbs.staff.db, lapsed.id))?.adCreditCents).toBe(500_000);
+
+    const basket = await loadReactivationBasket(dbs.staff.db, businessId);
+    expect(basket).toMatchObject({ forfeited: false, adCreditCents: 500_000, cancelled: false });
+    expect(reactivationNetCents(basket, "INR")).toBe(2_659_700);
+
+    const reopened = await openReactivation();
+    const payment = await pay(reopened);
+
+    expect(reopened.adCreditCents).toBe(500_000);
+    expect(payment.chargedCents).toBe(3_138_446);
+    expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(false);
+  });
+});
+
+describe("a subscription the customer cancelled", () => {
   it.each([
     [
       "asked to end with its period",
       async (subscription: Subscription) => markCancelRequested(dbs.staff.db, { subscriptionId: subscription.id, businessId, now: new Date("2026-09-25T09:00:00.000Z") }),
     ],
     [
-      "ended by the provider",
-      async (subscription: Subscription) =>
-        updateSubscriptionProviderStatus(dbs.staff.db, {
+      "asked to end, then ended by the provider",
+      async (subscription: Subscription) => {
+        await markCancelRequested(dbs.staff.db, { subscriptionId: subscription.id, businessId, now: new Date("2026-09-25T09:00:00.000Z") });
+        await updateSubscriptionProviderStatus(dbs.staff.db, {
           provider: "fake",
           providerSubscriptionId: subscription.providerSubscriptionId,
           status: "cancelled",
           providerStatus: "cancelled",
           now: new Date("2026-10-01T09:00:00.000Z"),
-        }),
+        });
+      },
     ],
   ] as const)("starts fresh at list with no ad credit, and stays at list for good: %s", async (_label, cancel) => {
     await setUp("INR");
     const lapsed = await lapsedSubscription(["managed-website", "digital-growth", "local-seo-aeo"]);
     await cancel(lapsed);
-    expect((await findSubscriptionById(dbs.staff.db, lapsed.id))?.adCreditCents).toBe(0);
 
     const basket = await loadReactivationBasket(dbs.staff.db, businessId);
     expect(basket).toMatchObject({ forfeited: true, adCreditCents: 0, cancelled: true });
     expect(reactivationNetCents(basket, "INR")).toBe(3_799_700);
 
-    const reopened = await openReactivation();
+    const reopened = await openReactivation(["managed-website", "digital-growth", "local-seo-aeo"]);
     const payment = await pay(reopened);
 
     expect(reopened.adCreditCents).toBe(0);
     expect(payment.chargedCents).toBe(4_483_646);
     // Every service is at its own price from now on, a service added later included.
     expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(true);
+  });
+
+  it("charges the services the customer chose again at list, with no offer and no ad credit", async () => {
+    await setUp("INR");
+    const lapsed = await lapsedSubscription(["managed-website", "digital-growth", "local-seo-aeo"]);
+    await markCancelRequested(dbs.staff.db, { subscriptionId: lapsed.id, businessId, now: new Date("2026-09-25T09:00:00.000Z") });
+
+    const reopened = await openReactivation(["managed-website", "local-seo-aeo"]);
+    const payment = await pay(reopened);
+
+    expect(reopened.adCreditCents).toBe(0);
+    expect((await findBundledAddOnsForSubscription(dbs.staff.db, reopened.id)).map((row) => [row.addOn, row.listAmountCents, row.netAmountCents])).toEqual([
+      ["managed-website", 299_900, 299_900],
+      ["local-seo-aeo", 2_499_900, 2_499_900],
+    ]);
+    // 2,999 + 24,999 = ₹27,998 plus 18% GST.
+    expect(payment.chargedCents).toBe(3_303_764);
+    expect(payment.invoiceLines).toHaveLength(2);
+  });
+
+  it("remembers the cancel when the customer opens a checkout, leaves it unpaid and comes back", async () => {
+    await setUp("INR");
+    const lapsed = await lapsedSubscription(["managed-website", "digital-growth"]);
+    await markCancelRequested(dbs.staff.db, { subscriptionId: lapsed.id, businessId, now: new Date("2026-09-25T09:00:00.000Z") });
+    const abandoned = await openReactivation(["managed-website"]);
+    expect(abandoned.cancelRequestedAt).toBeNull();
+
+    expect(await loadReactivationBasket(dbs.staff.db, businessId)).toMatchObject({ cancelled: true, forfeited: true, adCreditCents: 0 });
   });
 });
 

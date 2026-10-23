@@ -7,6 +7,8 @@ import {
   findLatestActivatedSubscriptionForBusiness,
   findLatestSubscriptionForBusiness,
   findRedeemableReferralCode,
+  findReferralCodeById,
+  findSubscriptionById,
   isPackageOfferForfeited,
   lockBusinessForBilling,
   markPackageOfferForfeited,
@@ -15,6 +17,7 @@ import {
   findAffiliateAccrualContext,
   recordPaymentAndActivate,
   resolvePaymentAttention,
+  settleDiscountAfterPayment,
   type BillingState,
   type BundledAddOn,
   type ReferralCode,
@@ -27,7 +30,8 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { getBillingProvider } from "./billing-provider";
 import { activateFirstPayment } from "@brandbasket/shared/server/billing-activation";
-import { recordManualFirstPayment, resolveFlaggedPayment, type ManualFirstPayment } from "./billing-admin";
+import { loadManualCarriedCode, recordManualFirstPayment, resolveFlaggedPayment, type ManualFirstPayment } from "./billing-admin";
+import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { getStaffDb } from "./db";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 
@@ -54,6 +58,8 @@ vi.mock("@brandbasket/db", () => {
     findLatestActivatedSubscriptionForBusiness: vi.fn(),
     findLatestSubscriptionForBusiness: vi.fn(),
     findRedeemableReferralCode: vi.fn(),
+    findReferralCodeById: vi.fn(),
+    findSubscriptionById: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
     lockBusinessForBilling: vi.fn(),
     markPackageOfferForfeited: vi.fn(),
@@ -61,6 +67,7 @@ vi.mock("@brandbasket/db", () => {
     openMembershipForListingBusiness: vi.fn(),
     recordPaymentAndActivate: vi.fn(),
     resolvePaymentAttention: vi.fn(),
+    settleDiscountAfterPayment: vi.fn(),
   };
 });
 
@@ -104,7 +111,7 @@ const MANUAL: ManualFirstPayment = {
 };
 
 function state(subscription: Subscription | null, history: Partial<BillingState> = {}): BillingState {
-  return { currency: "USD", tier: "managed", upgradePaid: false, subscription, hasEverPaid: false, paymentUnderReview: false, plan: USD, ...history };
+  return { currency: "USD", tier: "managed", upgradePaid: false, subscription, hasEverPaid: false, paymentUnderReview: false, plan: USD, addOns: [], ...history };
 }
 
 beforeEach(() => {
@@ -144,12 +151,18 @@ beforeEach(() => {
   // No referral code applied, unless a test says otherwise.
   vi.mocked(findBusinessReferralCode).mockResolvedValue(null);
   vi.mocked(findRedeemableReferralCode).mockResolvedValue(null);
+  vi.mocked(findReferralCodeById).mockResolvedValue(null);
   // No lapsed subscription to read a basket from, and the package offer still open, unless a test says otherwise.
   vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue(null);
   vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
-  vi.mocked(openCheckoutSubscription).mockImplementation(
-    async (_tx, input) => ({ id: "sub-manual", ...input }) as unknown as Subscription,
-  );
+  // The subscription a reactivation reads its frozen discount from is the one just opened; no payment has used a month of it yet.
+  let opened: Subscription | null = null;
+  vi.mocked(openCheckoutSubscription).mockImplementation(async (_tx, input) => {
+    opened = { id: "sub-manual", ...input } as unknown as Subscription;
+    return opened;
+  });
+  vi.mocked(findSubscriptionById).mockImplementation(async () => opened);
+  vi.mocked(settleDiscountAfterPayment).mockResolvedValue({ monthsLeft: null, ended: false });
 });
 
 afterEach(() => {
@@ -226,6 +239,7 @@ describe("recordManualFirstPayment", () => {
       providerSubscriptionId: expect.stringMatching(/^manual_sub_[0-9a-f-]{36}$/),
       referralCodeId: null,
       discountAmountCents: 0,
+      discountMonthsLeft: null,
       bundledAddOns: [WEBSITE_USD_LINE],
       replacing: null,
       now: NOW,
@@ -433,6 +447,8 @@ describe("recordManualFirstPayment", () => {
         createdAt: AGO,
         cancelRequestedAt: null,
         adCreditCents: 0,
+        referralCodeId: null,
+        discountMonthsLeft: null,
         ...overrides,
       } as Subscription;
       vi.mocked(findActivePlan).mockResolvedValue(SERVICES_USD);
@@ -472,6 +488,61 @@ describe("recordManualFirstPayment", () => {
         expect.objectContaining({ replacing: null, adCreditCents: 0, bundledAddOns: [usdLine("managed-website", 7_500, 0), usdLine("digital-growth", 7_500, 0)] }),
       );
       expect(markPackageOfferForfeited).toHaveBeenCalledWith(tx, BUSINESS_ID, NOW);
+    });
+
+    describe("with the code the lapsed subscription was paying with", () => {
+      const THREE = { id: "code-3", code: "THREE", currency: "USD", discount: { kind: "percent", basisPoints: 1_000 }, discountMonths: 3, active: false, expiresAt: NOW } as ReferralCode;
+      const PACKAGE = [["managed-website", 5_250], ["digital-growth", 5_250], ["local-seo-aeo", 24_500]] as const;
+
+      beforeEach(() => {
+        vi.mocked(findReferralCodeById).mockResolvedValue(THREE);
+      });
+
+      it("carries it with the months it has left, repriced on the basket, and takes the payment less that discount, counting a month", async () => {
+        lapse({ referralCodeId: "code-3", discountMonthsLeft: 2, discountAmountCents: 1_000 }, PACKAGE);
+
+        await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
+
+        // 10% of the package net 35,000 is 3,500, not the 1,000 the code took off the smaller basket it was frozen on. The code is retired, and still carries.
+        expect(openCheckoutSubscription).toHaveBeenCalledWith(tx, expect.objectContaining({ referralCodeId: "code-3", discountAmountCents: 3_500, discountMonthsLeft: 2 }));
+        expect(findRedeemableReferralCode).not.toHaveBeenCalled();
+        expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ kind: "reactivation", amountCents: 31_500 }));
+        expect(settleDiscountAfterPayment).toHaveBeenCalledWith(tx, expect.objectContaining({ subscriptionId: "sub-manual", discountTakenCents: 3_500 }));
+      });
+
+      it("carries a code with no limit as no limit", async () => {
+        lapse({ referralCodeId: "code-3", discountMonthsLeft: null }, PACKAGE);
+
+        await recordManualFirstPayment(MANUAL, NOW);
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith(tx, expect.objectContaining({ referralCodeId: "code-3", discountMonthsLeft: null }));
+      });
+
+      it("carries nothing once its months have run out", async () => {
+        lapse({ referralCodeId: "code-3", discountMonthsLeft: 0 }, PACKAGE);
+
+        await recordManualFirstPayment(MANUAL, NOW);
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith(tx, expect.objectContaining({ referralCodeId: null, discountAmountCents: 0, discountMonthsLeft: null }));
+        expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ amountCents: 35_000 }));
+      });
+
+      it("carries nothing after the client's own cancel", async () => {
+        lapse({ status: "cancelled", cancelRequestedAt: AGO, referralCodeId: "code-3", discountMonthsLeft: 2 }, [["managed-website", 7_500], ["digital-growth", 7_500]]);
+
+        await recordManualFirstPayment(MANUAL, NOW);
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith(tx, expect.objectContaining({ referralCodeId: null, discountAmountCents: 0 }));
+        expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ amountCents: 15_000 }));
+      });
+
+      it("prices what the client page shows from the same code on the same basket", async () => {
+        lapse({ referralCodeId: "code-3", discountMonthsLeft: 2 }, PACKAGE);
+        const basket = await loadReactivationBasket(tx, BUSINESS_ID);
+
+        expect(await loadManualCarriedCode(tx, BUSINESS_ID, basket, "USD")).toMatchObject({ monthsLeft: 2, discountCents: 3_500, code: { code: "THREE" } });
+        expect(await loadManualCarriedCode(tx, BUSINESS_ID, { ...basket, cancelled: true }, "USD")).toBeNull();
+      });
     });
 
     it("is not held back by the unpaid reactivation checkout it replaces, which holds the same basket", async () => {
@@ -545,6 +616,7 @@ describe("a manual payment on a business that applied a referral code", () => {
     currency: "USD",
     affiliateId: null,
     discount: { kind: "amount", amountCents: 1_125 },
+    discountMonths: 3,
     active: true,
     expiresAt: null,
     maxRedemptions: null,
@@ -563,7 +635,7 @@ describe("a manual payment on a business that applied a referral code", () => {
     await recordManualFirstPayment(MANUAL, NOW);
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       tx,
-      expect.objectContaining({ referralCodeId: "code-1", discountAmountCents: 1_125 }),
+      expect.objectContaining({ referralCodeId: "code-1", discountAmountCents: 1_125, discountMonthsLeft: 3 }),
     );
   });
 

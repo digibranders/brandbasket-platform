@@ -4,6 +4,7 @@ import {
   consumeRateLimit,
   findBusinessCurrency,
   findLiveBundledAddOns,
+  findReferralCodeById,
   isPackageOfferForfeited,
   withTenantScope,
   type BundledAddOn,
@@ -13,12 +14,14 @@ import {
 import { addOnById, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { packageLineWith } from "@brandbasket/shared/lib/billing/packages";
 import {
+  findKeptPlanStart,
   readAddOnAssessment,
   removeBundledAddOn,
   startAddOn,
   type AddOnAssessment,
   type BasketDeps,
 } from "@brandbasket/shared/server/basket-change";
+import { planStartsAgain } from "@/lib/billing/add-on-copy";
 import { dropPreview, type DropPreview } from "@/lib/billing/drop-service";
 import { welcomeServices } from "@/lib/celebration";
 import { getBillingProvider } from "./billing";
@@ -27,7 +30,7 @@ import { getAppDb, getStaffDb } from "./db";
 import { ensureDiscountPlan } from "./discount-plans";
 
 /*
- * The Add-ons page's server side (docs/plans/11-platform-plans.md and 13-platform-add-ons-after-signup.md in the BrandBasket
+ * The Services page's server side (docs/plans/11-platform-plans.md and 13-platform-add-ons-after-signup.md in the BrandBasket
  * workspace). Brandbasket bills an add-on only inside the plan's own monthly payment: chosen at the first checkout, or added
  * here with a charge for the rest of the paid month, and taken out here from the next billing date. Fynix's separate add-on
  * subscriptions are not sold here.
@@ -70,6 +73,8 @@ export type AddOnOffer =
   | { readonly kind: "renewal-due"; readonly renewsOn: Date | null }
   /** Paid by bank transfer: staff add it. */
   | { readonly kind: "manual" }
+  /** The client is keeping their plan, which starts again on `startsOn`: services change from then. */
+  | { readonly kind: "plan-kept"; readonly startsOn: Date }
   /** Anything else that stops an add here (no live plan, a payment under review): write to us. */
   | { readonly kind: "write" };
 
@@ -87,7 +92,7 @@ export type AddOnPageEntry =
       readonly joinsOn: Date | null;
       /** It is ending and adding it again keeps it, at no charge. */
       readonly keepable: boolean;
-      /** What taking it out would leave, shown before it is done. Null when it is ending, is the only service (that is cancelling) or the account is closing. */
+      /** What taking it out would leave, shown before it is done. Null when it is ending, is the only service (that is cancelling), the account is closing or a kept plan has yet to start. */
       readonly drop: DropPreview | null;
     }
   /** Not in the plan's payment: its price once added (the package price the basket would earn), and the add or the way to ask for it. */
@@ -112,6 +117,8 @@ function offerOf(assessment: AddOnAssessment | null, renewsOn: Date | null): Add
       };
     case "unavailable":
       return assessment.reason === "renewal-due" ? { kind: "renewal-due", renewsOn } : { kind: "write" };
+    case "plan-kept":
+      return { kind: "plan-kept", startsOn: assessment.startsOn };
     case "blocked":
       return assessment.reason === "manual-billing" ? { kind: "manual" } : { kind: "write" };
     case "keep":
@@ -129,21 +136,25 @@ export async function loadWelcomeServices(tenant: GrantedCustomer["tenant"]): Pr
   return welcomeServices(lines);
 }
 
-/** Everything the Add-ons page shows, read through row-level security as the signed-in customer. */
+/** Everything the Services page shows, read through row-level security as the signed-in customer. */
 export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Promise<AddOnsPage> {
   const { tenant } = customer;
   const providerName = getBillingProvider().name;
-  const { bundled, currency, assessments, forfeited } = await withTenantScope(getAppDb(), tenant, async (tx) => {
+  // The customer's connection cannot read referral codes: the code on their own subscription is read as staff, for its terms.
+  const codeId = customer.billing.subscription?.referralCodeId ?? null;
+  const code = codeId === null ? null : await findReferralCodeById(getStaffDb(), codeId);
+  const { bundled, currency, assessments, forfeited, keptStartsOn } = await withTenantScope(getAppDb(), tenant, async (tx) => {
     const forfeited = await isPackageOfferForfeited(tx, tenant.businessId);
     const assessed = new Map<MonthlyAddOnId, AddOnAssessment | null>();
     for (const addOn of MONTHLY_ADD_ON_IDS) {
-      assessed.set(addOn, await readAddOnAssessment(tx, { businessId: tenant.businessId, addOn, providerName, now, forfeited }));
+      assessed.set(addOn, await readAddOnAssessment(tx, { businessId: tenant.businessId, addOn, providerName, now, forfeited, code }));
     }
     return {
       bundled: await findLiveBundledAddOns(tx, tenant.businessId),
       currency: await billedCurrencyOf(tx, tenant.businessId),
       assessments: assessed,
       forfeited,
+      keptStartsOn: await findKeptPlanStart(tx, customer.billing.subscription),
     };
   });
   const closing = customer.billing.subscription?.cancelRequestedAt != null;
@@ -163,7 +174,7 @@ export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Prom
       nextBillingOn,
       joinsOn: included.billedFrom === null ? nextBillingOn : null,
       keepable: assessment?.kind === "keep",
-      drop: included.endRequestedAt === null && !closing ? dropPreview({ staying: stayingLines, dropping: addOn, forfeited, currency }) : null,
+      drop: included.endRequestedAt === null && !closing && keptStartsOn === null ? dropPreview({ staying: stayingLines, dropping: addOn, forfeited, currency }) : null,
     };
   });
   return { addOns, currency };
@@ -180,7 +191,7 @@ export type AddOnAddResult =
 const CANNOT_ADD_NOW = "We couldn't add that just now. Reload the page to see where it stands.";
 
 /**
- * Add on the Add-ons page: a charge for the rest of the paid month, or keeping an add-on that is ending
+ * Add on the Services page: a charge for the rest of the paid month, or keeping an add-on that is ending
  * (startAddOn in @brandbasket/shared/server/basket-change). The form carries only the add-on; whether it can be added, and
  * at what price, is worked out again on the server under the business's lock.
  */
@@ -197,6 +208,7 @@ export async function addBundledAddOnFor(customer: Pick<GrantedCustomer, "tenant
     case "kept":
       return { kind: "done" };
     case "refused":
+      return refused(started.assessment.kind === "plan-kept" ? planStartsAgain(started.assessment.startsOn) : CANNOT_ADD_NOW);
     case "changed":
       return refused(CANNOT_ADD_NOW);
     default: {
@@ -245,6 +257,8 @@ export async function removeBundledAddOnFor(customer: Pick<GrantedCustomer, "ten
       return refused(LAST_SERVICE);
     case "cancel-requested":
       return refused(CANCEL_REQUESTED);
+    case "plan-kept":
+      return refused(planStartsAgain(removal.startsOn));
     case "failed":
       return refused(CANNOT_REMOVE_NOW);
     default: {

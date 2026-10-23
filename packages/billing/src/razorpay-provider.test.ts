@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { CheckoutVerificationError } from "./provider";
-import { createRazorpayProvider } from "./razorpay-provider";
+import { createRazorpayProvider, RAZORPAY_KEEP_PAY_PATH } from "./razorpay-provider";
 
 const KEY_SECRET = "a-test-key-secret-at-least-this-long";
 
@@ -127,6 +127,46 @@ describe("createRazorpayProvider", () => {
       });
       expect(create).toHaveBeenCalledWith(expect.objectContaining({ plan_id: "plan_discounted456" }));
       expect(create.mock.calls[0]?.[0]).not.toHaveProperty("offer_id");
+    });
+
+    it("starts a kept plan's subscription on the given day, in whole seconds, and opens its checkout on the restore-account page", async () => {
+      const create = vi.fn().mockResolvedValue({ id: "sub_kept" });
+      const provider = createRazorpayProvider({
+        resolveChargeOrder: async () => null,
+        keySecret: KEY_SECRET,
+        client: fakeClient({ create }) as never,
+        resolveBusinessId: async () => null,
+      });
+      const startAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 456);
+      const result = await provider.startCheckout({
+        businessId: "11111111-1111-7111-8111-111111111111",
+        businessName: "Acme",
+        email: "owner@acme.test",
+        plan: { providerPlanId: "plan_razorpay123" } as never,
+        startAt,
+      });
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ plan_id: "plan_razorpay123", start_at: Math.floor(startAt.getTime() / 1000) }));
+      expect(result).toEqual({ providerSubscriptionId: "sub_kept", checkoutUrl: RAZORPAY_KEEP_PAY_PATH });
+    });
+
+    it("refuses a start day that is not in the future, before anything is opened at Razorpay", async () => {
+      const create = vi.fn();
+      const provider = createRazorpayProvider({
+        resolveChargeOrder: async () => null,
+        keySecret: KEY_SECRET,
+        client: fakeClient({ create }) as never,
+        resolveBusinessId: async () => null,
+      });
+      await expect(
+        provider.startCheckout({
+          businessId: "11111111-1111-7111-8111-111111111111",
+          businessName: "Acme",
+          email: "owner@acme.test",
+          plan: { providerPlanId: "plan_razorpay123" } as never,
+          startAt: new Date(Date.now() - 1_000),
+        }),
+      ).rejects.toThrow(RangeError);
+      expect(create).not.toHaveBeenCalled();
     });
 
     it("throws when the plan has no provider plan id", async () => {

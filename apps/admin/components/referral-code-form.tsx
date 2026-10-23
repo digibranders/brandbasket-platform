@@ -227,8 +227,8 @@ function DiscountField({
             {choice === "none"
               ? "The member pays the full price. The code only records who brought them."
               : percent
-                ? "A share of the service’s price before GST, off every month for as long as it runs. Up to 99%."
-                : "How much comes off every month, before GST, for as long as the service runs. Less than the cheapest service’s price."}
+                ? "A share of the price before GST, off every month for as many months as you set below. Up to 99%."
+                : "How much comes off every month, before GST, for as many months as you set below. Less than the cheapest service’s price."}
           </span>
         </>
       }
@@ -372,6 +372,7 @@ export function NewReferralCodeForm({
       <RetirementFields
         expiresAt={valueOf("expiresAt")}
         maxRedemptions={valueOf("maxRedemptions")}
+        discountMonths={choice === "none" ? undefined : valueOf("discountMonths")}
         fieldStatus={fieldStatus}
       />
 
@@ -380,7 +381,7 @@ export function NewReferralCodeForm({
       </GatedSubmitButton>
 
       <p className="text-sm leading-relaxed text-ink-soft">
-        The discount and the currency are fixed once the {noun} exists. If one is wrong, turn it off and make another.
+        The discount, its length and the currency are fixed once the {noun} exists. If one is wrong, turn it off and make another.
       </p>
     </form>
   );
@@ -427,20 +428,24 @@ export function RetireReferralCodeForm({
 }
 
 /**
- * The two fields that retire a code: when it stops working, and how many may ever use it. Both carry a one-line
- * hint, so the two inputs line up across the pair; a hint on only one would push its input half a line lower.
+ * The fields that retire a code: when it stops working, and how many may ever use it. A new code adds the length of its
+ * discount in months, which is read-only once the code exists, so the edit form leaves it out. Each carries a one-line
+ * hint, so the inputs line up across the row; a hint on only one would push its input half a line lower.
  */
 function RetirementFields({
   expiresAt,
   maxRedemptions,
+  discountMonths,
   fieldStatus,
 }: {
   readonly expiresAt: string;
   readonly maxRedemptions: string;
+  /** The length field's value on a new code; undefined leaves the field out. */
+  readonly discountMonths?: string;
   readonly fieldStatus: (field: ReferralField) => Record<string, unknown>;
 }): ReactElement {
   return (
-    <div className="grid gap-6 sm:grid-cols-2">
+    <div className={cn("grid gap-6", discountMonths === undefined ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
       <Field id="referral-expires" label="Expires" hint="Blank never expires.">
         <input
           id="referral-expires"
@@ -466,6 +471,22 @@ function RetirementFields({
           {...fieldStatus("maxRedemptions")}
         />
       </Field>
+      {discountMonths === undefined ? null : (
+        <Field id="referral-months" label="Discount length" hint="In months. Blank means no limit.">
+          <RuleInput
+            rule="digits"
+            id="referral-months"
+            name="discountMonths"
+            pattern="[1-9][0-9]{0,2}"
+            title="A whole number of months from 1 to 120, or blank for no limit"
+            maxLength={3}
+            autoComplete="off"
+            defaultValue={discountMonths}
+            className={fieldClasses}
+            {...fieldStatus("discountMonths")}
+          />
+        </Field>
+      )}
     </div>
   );
 }

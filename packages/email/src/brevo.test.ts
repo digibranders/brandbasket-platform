@@ -3,7 +3,7 @@ import { BrevoDeliveryError, createAppEmailTransport, createBrevoTransport, crea
 import type { EmailMessage } from "./message";
 
 const sampleMessage: EmailMessage = {
-  to: "hello@brandbasket.in",
+  to: "support@brandbasket.in",
   subject: "[New Bug] Broken button (SUP-001)",
   template: "support-ticket-alert",
   bodyText: "A customer reported a broken button.",
@@ -38,7 +38,7 @@ describe("createBrevoTransport", () => {
 
     const body = JSON.parse(capturedOptions?.body as string);
     expect(body.sender).toEqual({ email: "no-reply@brandbasket.in", name: "Brandbasket Alerts" });
-    expect(body.to).toEqual([{ email: "hello@brandbasket.in" }]);
+    expect(body.to).toEqual([{ email: "support@brandbasket.in" }]);
     expect(body.subject).toBe(sampleMessage.subject);
     expect(body.htmlContent).toBe(sampleMessage.bodyHtml);
     expect(body.textContent).toBe(sampleMessage.bodyText);
@@ -68,14 +68,14 @@ describe("createBrevoTransport", () => {
 
     const transport = createBrevoTransport({
       apiKey: "test-key",
-      replyTo: { email: "hello@brandbasket.in", name: "Support Team" },
+      replyTo: { email: "support@brandbasket.in", name: "Support Team" },
       fetchFn: mockFetch,
     });
 
     await transport.send(sampleMessage);
 
     const body = JSON.parse(capturedOptions?.body as string);
-    expect(body.replyTo).toEqual({ email: "hello@brandbasket.in", name: "Support Team" });
+    expect(body.replyTo).toEqual({ email: "support@brandbasket.in", name: "Support Team" });
   });
 });
 
@@ -142,7 +142,7 @@ describe("createDualTransport", () => {
     await createDualTransport({ send: brevoSend }, db).send(message);
     expect(brevoSend).toHaveBeenCalledWith(message);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ subject: "Support request SUP-001", bodyText: "Reference SUP-001", transport: "brevo", toAddress: "hello@brandbasket.in" });
+    expect(rows[0]).toMatchObject({ subject: "Support request SUP-001", bodyText: "Reference SUP-001", transport: "brevo", toAddress: "support@brandbasket.in" });
     expect(JSON.stringify(rows)).not.toContain("4242");
   });
 
@@ -222,10 +222,10 @@ describe("who mail comes from", () => {
     return body;
   }
 
-  it("is Brandbasket <no-reply@brandbasket.in> with replies to hello@brandbasket.in", async () => {
+  it("is Brandbasket <no-reply@brandbasket.in> with replies to support@brandbasket.in", async () => {
     const body = await sentBody({});
     expect(body.sender).toEqual({ email: "no-reply@brandbasket.in", name: "Brandbasket" });
-    expect(body.replyTo).toEqual({ email: "hello@brandbasket.in", name: "Brandbasket Support" });
+    expect(body.replyTo).toEqual({ email: "support@brandbasket.in", name: "Brandbasket Support" });
   });
 
   it("sends Brandbasket mail from BRANDBASKET_MAIL_FROM, named Brandbasket", async () => {

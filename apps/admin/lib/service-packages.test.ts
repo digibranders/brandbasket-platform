@@ -28,7 +28,7 @@ describe("packageRows", () => {
     expect(packageRows()).toEqual([
       { services: "Managed Website + Social Media and Ads", offer: "20% off each service", adCredit: "₹2,000 or $25 a month" },
       { services: "Managed Website + Local SEO + AEO", offer: "20% off each service", adCredit: "None" },
-      { services: "Social Media and Ads + Local SEO + AEO", offer: "30% off each service", adCredit: "₹2,000 or $25 a month" },
+      { services: "Social Media and Ads + Local SEO + AEO", offer: "20% off each service", adCredit: "₹2,000 or $25 a month" },
       { services: "Managed Website + Social Media and Ads + Local SEO + AEO", offer: "30% off each service", adCredit: "₹5,000 or $60 a month" },
     ]);
   });

@@ -8,7 +8,7 @@ import { AnnouncementPanel } from "@/components/panel/details/announcement-panel
 import { ClosuresPanel } from "@/components/panel/details/closures-panel";
 import { HoursPanel } from "@/components/panel/details/hours-panel";
 import { LivePreviewLayout } from "@/components/panel/live-preview/live-preview-layout";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
 import { livePreviewSource } from "@/lib/server/live-preview";
 import { addClosureAction, clearAnnouncementAction, deleteClosureAction, saveAnnouncementAction, saveHoursAction } from "./actions";
@@ -22,7 +22,7 @@ const DEFAULT_ANNOUNCEMENT_DAYS = 2;
  * same tenant-scoped transaction: findBusinessTimeZone runs there too, since businesses is only readable by the
  * app role for its own row. */
 export default async function DetailsPage(): Promise<ReactElement> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireWebsiteClient();
 
   const { timeZone, hoursRows, closures, announcement, listing } = await withTenantScope(getAppDb(), tenant, async (tx) => ({
     timeZone: await findBusinessTimeZone(tx, tenant.businessId),

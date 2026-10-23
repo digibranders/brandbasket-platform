@@ -1,4 +1,4 @@
-import { hasBillingAccess } from "@brandbasket/billing";
+import { hasBillingAccess, hasWebsiteService } from "@brandbasket/billing";
 import type { BillingState, Plan, PlanTier, Subscription } from "@brandbasket/db";
 
 /**
@@ -15,6 +15,12 @@ export interface CustomerBilling {
   readonly status: CustomerBillingStatus;
   /** The access rule's answer. The only thing a write action should check. */
   readonly hasAccess: boolean;
+  /**
+   * The business holds the Managed Website service (hasWebsiteService): its website, change and publish allowances and
+   * onboarding follow this, not the plan. False for a Social-only or SEO-only business, and once a dropped website's paid
+   * month has run out.
+   */
+  readonly hasWebsite: boolean;
   /** The newest subscription, whatever its status. */
   readonly subscription: Subscription | null;
   /** Which plan the business is on or is buying, Care or Premium: what its dashboard shows and its pages allow. */
@@ -40,9 +46,10 @@ export interface CustomerBilling {
 }
 
 export function summariseBilling(state: BillingState, now: Date): CustomerBilling {
-  const { subscription, plan, tier, upgradePaid, hasEverPaid, paymentUnderReview } = state;
+  const { subscription, plan, tier, upgradePaid, hasEverPaid, paymentUnderReview, addOns } = state;
   const hasAccess = hasBillingAccess(subscription, now);
+  const hasWebsite = hasWebsiteService(addOns, subscription, now);
   const status: CustomerBillingStatus = hasAccess ? "paid" : hasEverPaid ? "lapsed" : "unpaid";
   const renewalFailingUntil = hasAccess && subscription?.status === "past_due" ? subscription.paidThroughAt : null;
-  return { status, hasAccess, subscription, tier, upgradePaid, plan, paymentUnderReview, renewalFailingUntil };
+  return { status, hasAccess, hasWebsite, subscription, tier, upgradePaid, plan, paymentUnderReview, renewalFailingUntil };
 }

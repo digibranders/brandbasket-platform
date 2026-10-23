@@ -25,6 +25,7 @@ import {
 import { findActivePlan, insertSubscription, recordPaymentAndActivate, type Plan } from "./queries/billing";
 import { findProviderDiscountPlan, saveProviderDiscountPlan } from "./queries/discount-plans";
 import { createReferralCode } from "./queries/referrals";
+import { savePaymentInvoiceBasis } from "./queries/tax-invoices";
 import { accounts, affiliateEarnings, affiliatePayouts, affiliates, businesses, sessions, users } from "./schema";
 import { captureErrorText, openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
 
@@ -662,6 +663,25 @@ describe("listAffiliateCodeUsage", () => {
 
     // The member still paid on the code, but only one payment was kept, so only one discount stands.
     expect(await listAffiliateCodeUsage(dbs.staff.db, affiliateId)).toEqual([{ codeId, members: 1, payments: 1, discountGivenCents: 50_000 }]);
+  });
+
+  it("sums the discount each payment was billed with, so a discount that ended or changed is counted at what it was", async () => {
+    const affiliateId = await seedAffiliate();
+    const codeId = await seedAffiliateCode(affiliateId);
+    const first = await payOnCode(codeId, 50_000, "one");
+    // The code's months ran out: the second renewal took nothing off, and the first took a repriced ₹800.
+    const repriced = await renew(first.subscriptionId, businessId, "one-b");
+    const full = await renew(first.subscriptionId, businessId, "one-c");
+    // An older payment, from before the basis was kept, counts at the discount frozen on the subscription.
+    await renew(first.subscriptionId, businessId, "one-d");
+    const basis = (discountAmountCents: number) => ({ netAmountCents: 0, discountAmountCents, retentionDiscountCents: 0, lines: [] });
+    await dbs.staff.db.transaction(async (tx) => {
+      await savePaymentInvoiceBasis(tx, first.paymentId, basis(50_000));
+      await savePaymentInvoiceBasis(tx, repriced, basis(80_000));
+      await savePaymentInvoiceBasis(tx, full, basis(0));
+    });
+
+    expect(await listAffiliateCodeUsage(dbs.staff.db, affiliateId)).toEqual([{ codeId, members: 1, payments: 4, discountGivenCents: 180_000 }]);
   });
 
   it("leaves out a business that has not paid, and another affiliate's codes", async () => {

@@ -23,6 +23,11 @@ export function getAppDb(): Database {
  *   customer's own business. Customers may never write billing rows through their own connection; these take the
  *   business id only from the session, never from the request, and the confirmation sends onboarding back under the
  *   customer's role (withCustomerRole) so row-level security still applies to it.
+ * - lib/server/keep-plan.ts, which opens and records the keep checkout of a closing account's own plan (Keep my plan, on
+ *   the restore-account page) and lifts the closure once the provider confirms its mandate. A closing account has no
+ *   tenant to scope under. The business id comes only from the signed-in user's own open closure; the plan, services,
+ *   discount and credit only from the subscription's stored rows, never from the request, and the mandate is only ever
+ *   confirmed by the provider's signed webhook or the fake provider's signed token for that business's own checkout.
  * - lib/server/membership-checkout.ts and lib/server/billing.ts, which read billing rows for the signed-in customer's own
  *   business to price the plan page and Billing: the billing state, the plan on sale, the services a lapsed plan reactivates
  *   with and whether the package offer is given up. They write nothing. The business id comes only from the session; the
@@ -49,7 +54,8 @@ export function getAppDb(): Database {
  *   (and, through packages/shared, pauses and cancels them). Customers never write add_on_subscriptions or charges
  *   through their own connection; the business id comes only from the session, the price only from the server (the
  *   catalogue for a new purchase, the stored row for a resume), and a row is only ever activated by the payment
- *   confirmation. The Add-ons page itself is read through the customer's own tenant scope.
+ *   confirmation. The Services page itself is read through the customer's own tenant scope, except the code on the
+ *   customer's own subscription, read by the subscription's stored code id for its terms (customers cannot read codes).
  * - lib/server/charges.ts and lib/server/listing-promotion.ts, which open and record the customer's own one-off
  *   charges (a paid extra, a week of a listing tag). Customers never write charges or directory_promotions through
  *   their own connection; the business id comes only from the session, the price only from the server, and a week

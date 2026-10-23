@@ -56,6 +56,23 @@ describe("renderReceiptsPdf", () => {
     expect((await PDFDocument.load(bytes)).getPageCount()).toBe(1);
   });
 
+  it("draws every service, the minus rows and the letterhead on one page", async () => {
+    const bytes = await renderReceiptsPdf([
+      doc({
+        lines: [
+          { label: "Managed Website", amount: "INR 2,999.00" },
+          { label: "Social Media and Ads", amount: "INR 9,999.00" },
+          { label: "Local SEO + AEO", amount: "INR 24,999.00" },
+          { label: "Package offer, 30% off", amount: "-INR 11,099.10" },
+          { label: "Code discount", amount: "-INR 1,500.00" },
+          { label: "GST 18%", amount: "INR 4,262.62" },
+        ],
+        total: { label: "Total paid", amount: "INR 27,660.52" },
+      }),
+    ]);
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(1);
+  });
+
   it("refuses to make an empty PDF", async () => {
     await expect(renderReceiptsPdf([])).rejects.toThrow(RangeError);
   });

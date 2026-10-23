@@ -304,7 +304,7 @@ VPS checks every push itself.
 `brandbasket-app`, `brandbasket-admin`, the autodeploy, the backup, the restore test and the maintenance job carry
 `OnFailure=brandbasket-notify-failure@%n.service` (`/usr/local/sbin/brandbasket-notify-failure`, a copy of Firstfold's with every name
 changed). It reads `BREVO_API_KEY`, `BRANDBASKET_MAIL_FROM` (or `ALERTS_FROM_EMAIL`) and `BRANDBASKET_TEAM_EMAIL` (default
-`hello@brandbasket.in`; several addresses separated by commas) from `/srv/brandbasket/shared/platform.env.local`, keeps its
+`support@brandbasket.in`; several addresses separated by commas) from `/srv/brandbasket/shared/platform.env.local`, keeps its
 rate-limit state (one mail per unit per 30 minutes) in `/var/lib/brandbasket/notify-failure`, and the subject reads `[Brandbasket
 server] <unit> failed`. While `BREVO_API_KEY` is blank it only logs a line and exits 0.
 
@@ -378,6 +378,6 @@ timing of a build next to Firstfold's apps.
 - Cloudflare Access in front of the console: not needed for staging (nginx refuses non-Cloudflare requests); the console's own sign-in
   has no second factor (`docs/STAFF-ACCESS.md`), so set it up before real staff use it.
 - Starting `brandbasket-erase.timer`: it deletes customer data 30 days after a closure. Not enabled by anything here.
-- Alert recipients: Brandbasket's handler mails `BRANDBASKET_TEAM_EMAIL` from `platform.env.local`, default `hello@brandbasket.in`.
+- Alert recipients: Brandbasket's handler mails `BRANDBASKET_TEAM_EMAIL` from `platform.env.local`, default `support@brandbasket.in`.
   Set it there if the team address differs, and fill `BREVO_API_KEY` (alerts only log until then).
 - The Hostinger snapshot before the first change, and adding the repository to the GitHub App installation, as in the install table.

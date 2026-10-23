@@ -2,6 +2,7 @@ import { chargedAmountCents } from "@brandbasket/billing/tax";
 import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines, bundleNetCents, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { adCreditCentsAtCheckout, packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
+import { initialTermPhrase } from "@brandbasket/shared/lib/billing/terms";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
 
@@ -154,13 +155,15 @@ export interface OrderSummary {
   readonly lines: readonly BundleLine[];
   /** The package offer taken off the lines, or null when there is none (one service, or the offer given up). */
   readonly offer: PackageOfferRow | null;
-  /** What the applied code takes off the one service, or 0. A package never has one. */
+  /** What the applied code takes off the basket after the package offer, or 0. */
   readonly discountCents: number;
   /** The taxable amount of the whole payment: the plan's own price and the lines' nets, less the code. */
   readonly netCents: number;
   readonly gstCents: number;
   /** What the provider takes today: the same figure the Pay button shows and the checkout freezes. */
   readonly totalCents: number;
+  /** What each month costs with GST once the code's discount has ended: `totalCents` when there is no code. */
+  readonly totalWithoutCodeCents: number;
   /** The monthly ad credit this checkout would freeze, or null when it freezes none. */
   readonly adCredit: AdCreditRow | null;
 }
@@ -182,14 +185,13 @@ export interface OrderSummaryInput {
  * The first payment broken into its parts, worked out with the functions checkout uses: the lines and the package offer
  * from bundleLines (packageLines), the ad credit from adCreditCentsAtCheckout and the total from chargedAmountCents over the lines'
  * nets less the code. Checkout charges the plan's own price plus the lines, so the total adds `planInitialAmountCents`
- * too; on the services plan that is 0 and the lines are the whole charge. Throws on an empty basket and on a code with a
- * package, which checkout refuses too.
+ * too; on the services plan that is 0 and the lines are the whole charge. The code comes off once, after the package offer.
+ * Throws on an empty basket.
  */
 export function orderSummary(input: OrderSummaryInput, discountCents: number): OrderSummary {
   const { planInitialAmountCents, services, currency, taxRateBasisPoints, forfeited, hasEverPaid } = input;
   const lines = bundleLines(services, currency, forfeited);
   if (lines.length === 0) throw new RangeError("An order needs at least one service");
-  if (discountCents > 0 && lines.length > 1) throw new RangeError("A code applies to one service, never to a package");
   const chargeableCents = planInitialAmountCents + lines.reduce((total, line) => total + line.netCents, 0);
   const totalCents = chargedAmountCents(chargeableCents, discountCents, taxRateBasisPoints);
   const netCents = chargeableCents - discountCents;
@@ -202,8 +204,36 @@ export function orderSummary(input: OrderSummaryInput, discountCents: number): O
     netCents,
     gstCents: totalCents - netCents,
     totalCents,
+    totalWithoutCodeCents: chargedAmountCents(chargeableCents, 0, taxRateBasisPoints),
     adCredit: adCreditCents === 0 ? null : { cents: adCreditCents, label: `We add ${formatMoney(adCreditCents, currency)} a month to your ads` },
   };
+}
+
+/** The plan facts the line under the Pay button is worded from. */
+export interface RenewalTermsPlan {
+  readonly currency: MoneyCurrency;
+  readonly taxRateBasisPoints: number;
+  readonly initialTermMonths: number;
+}
+
+/**
+ * The line under the Pay button: what is taken each month after the first payment, and, for a code with a length, for how many
+ * more months that lower amount runs before the price without the code. The first payment uses one of the code's months
+ * (settleDiscountAfterPayment counts payments), so a 3-month code has 2 more after it.
+ */
+export function renewalTerms(
+  parts: Pick<OrderSummary, "totalCents" | "totalWithoutCodeCents" | "discountCents" | "lines">,
+  plan: RenewalTermsPlan,
+  codeMonths: number | null,
+): string {
+  const money = (cents: number): string => formatMoney(cents, plan.currency);
+  const gst = plan.taxRateBasisPoints > 0 ? " (GST included)" : "";
+  const first = `Your first payment covers ${initialTermPhrase(plan.initialTermMonths)}, then`;
+  const services = parts.lines.length === 1 ? "service" : "services";
+  if (parts.discountCents === 0 || codeMonths === null) return `${first} ${money(parts.totalCents)}${gst} is taken each month for your ${services}.`;
+  const monthsLeft = codeMonths - 1;
+  if (monthsLeft < 1) return `${first} ${money(parts.totalWithoutCodeCents)}${gst} is taken each month for your ${services}.`;
+  return `${first} ${money(parts.totalCents)}${gst} is taken each month for ${monthsLeft} more ${monthsLeft === 1 ? "month" : "months"}, and ${money(parts.totalWithoutCodeCents)} a month after that.`;
 }
 
 /** The Pay form's state: idle, or the reason the payment could not be started. */

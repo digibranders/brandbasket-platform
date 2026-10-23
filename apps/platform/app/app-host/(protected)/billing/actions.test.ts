@@ -3,7 +3,8 @@ import { refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { GENERIC_ERROR_MESSAGE } from "@/lib/server/panel-form-errors";
-import { lookupBillingPincodeAction, saveBillingDetailsAction } from "./actions";
+import { startReactivationFor } from "@/lib/server/checkout";
+import { lookupBillingPincodeAction, reactivateAction, saveBillingDetailsAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
@@ -209,5 +210,26 @@ describe("lookupBillingPincodeAction", () => {
     vi.mocked(requireCustomerAccess).mockRejectedValueOnce(new Error("NEXT_REDIRECT"));
     await expect(lookupBillingPincodeAction("400080")).rejects.toThrow("NEXT_REDIRECT");
     expect(findPincode).not.toHaveBeenCalled();
+  });
+});
+
+describe("reactivateAction", () => {
+  it("passes on the services the customer chose, keeping only catalogue ids once each in the catalogue's order", async () => {
+    vi.mocked(startReactivationFor).mockResolvedValue({ kind: "refused", problem: { message: "Choose at least one service to continue.", field: null } });
+    const data = new FormData();
+    for (const value of ["local-seo-aeo", "managed-website", "not-a-service", "local-seo-aeo"]) data.append("service", value);
+
+    await reactivateAction({ status: "idle" }, data);
+
+    expect(startReactivationFor).toHaveBeenCalledWith({ tenant: TENANT }, expect.any(Date), ["managed-website", "local-seo-aeo"]);
+  });
+
+  it("hands the server no service when the form names none or only unknown ones, and shows its refusal", async () => {
+    vi.mocked(startReactivationFor).mockResolvedValue({ kind: "refused", problem: { message: "Choose at least one service to continue.", field: null } });
+    const data = new FormData();
+    data.append("service", "not-a-service");
+
+    expect(await reactivateAction({ status: "idle" }, data)).toEqual({ status: "error", message: "Choose at least one service to continue." });
+    expect(startReactivationFor).toHaveBeenCalledWith({ tenant: TENANT }, expect.any(Date), []);
   });
 });

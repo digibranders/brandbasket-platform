@@ -178,7 +178,7 @@ describe("a subscription of a leaving business", () => {
     expect(text).toContain("subscriptions_discount_check");
   });
 
-  it("ends the package offer and the ad credit when the cancel request is noted, for good", async () => {
+  it("leaves the package offer and the ad credit alone when the cancel request is noted: they run to the end of the paid month", async () => {
     const subscription = await insertSubscription(dbs.staff.db, {
       businessId,
       planId: plan.id,
@@ -188,17 +188,13 @@ describe("a subscription of a leaving business", () => {
       discountAmountCents: 0,
       adCreditCents: 500_000,
     });
-    expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(false);
 
     await markCancelRequested(dbs.staff.db, { subscriptionId: subscription.id, businessId, now: NOW });
 
-    expect((await findLatestSubscriptionForBusiness(dbs.staff.db, businessId))?.adCreditCents).toBe(0);
-    const [business] = await dbs.owner.db.select({ at: businesses.packageOfferForfeitedAt }).from(businesses).where(eq(businesses.id, businessId));
-    expect(business?.at).toEqual(NOW);
-
-    await markCancelRequested(dbs.staff.db, { subscriptionId: subscription.id, businessId, now: new Date("2026-10-09T00:00:00.000Z") });
-    const [again] = await dbs.owner.db.select({ at: businesses.packageOfferForfeitedAt }).from(businesses).where(eq(businesses.id, businessId));
-    expect(again?.at).toEqual(NOW);
+    const noted = await findLatestSubscriptionForBusiness(dbs.staff.db, businessId);
+    expect(noted?.cancelRequestedAt).toEqual(NOW);
+    expect(noted?.adCreditCents).toBe(500_000);
+    expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(false);
   });
 
   it("does nothing for another business's subscription", async () => {

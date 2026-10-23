@@ -1,4 +1,4 @@
-export { hasBillingAccess, type BillingAccessInput } from "./access";
+export { hasBillingAccess, hasWebsiteService, type BillingAccessInput, type WebsiteLineInput } from "./access";
 export {
   CHECKOUT_REUSE_WINDOW_MS,
   bundleKey,
@@ -12,6 +12,7 @@ export { createBillingProvider, type BillingProviderSecrets } from "./factory";
 export {
   BASIS_POINTS_PER_WHOLE,
   discountCentsFor,
+  discountForChangedBasket,
   discountPlanCode,
   isChargeableDiscount,
   MAX_DISCOUNT_BASIS_POINTS,
@@ -28,6 +29,7 @@ export {
   FAKE_CHECKOUT_TOKEN_TTL_MS,
   FAKE_CHARGE_CONFIRM_PATH,
   FAKE_CONFIRM_PATH,
+  FAKE_KEEP_CONFIRM_PATH,
   FAKE_PAYMENT_METHOD,
   type FakeBillingProviderOptions,
 } from "./fake-provider";
@@ -57,6 +59,7 @@ export {
 export { parseRazorpayWebhookEvent, verifyRazorpayWebhookSignature, type RazorpayWebhookEvent } from "./razorpay-webhook";
 export {
   createRazorpayProvider,
+  RAZORPAY_KEEP_PAY_PATH,
   RAZORPAY_PAY_PATH,
   type RazorpayBillingProvider,
   type RazorpayProviderOptions,

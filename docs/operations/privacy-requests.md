@@ -8,7 +8,7 @@ Every rights request and complaint is a row in `privacy_requests`, worked in the
 
 **The clock.** Our target is 30 days from the day it arrived; the Act allows 90 at most (DPDP Act s.13, Rules 2025 r.14). The page flags a request from day 20 and as urgent from day 25.
 
-**Emails** (to `PRIVACY_ALERT_EMAIL`, else `SUPPORT_ALERT_EMAIL`, else `hello@brandbasket.in`)
+**Emails** (to `PRIVACY_ALERT_EMAIL`, else `SUPPORT_ALERT_EMAIL`, else `support@brandbasket.in`)
 - *New request*: sent as soon as a website request is filed.
 - *Due soon*: sent each night by the support maintenance command (`pnpm support:attachments:maintain`, run by `brandbasket-maintenance.timer`; see `docs/deployment/brandbasket-droplet.md`). It lists open requests the first night they reach day 20, day 25 or their due date, and every night after that while one is overdue. The stage already emailed is kept on the row (`reminder_stage`), so a request is not listed twice for the same stage.
 - Neither email carries a name, number, address or anything the person wrote: only the reference, the kind and the date, with a link to the console.

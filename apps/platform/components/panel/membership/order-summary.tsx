@@ -1,13 +1,12 @@
 import type { ReactElement, ReactNode } from "react";
 import { ChevronDownIcon } from "@brandbasket/shared/ui/icons";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { initialTermPhrase } from "@brandbasket/shared/lib/billing/terms";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import Link from "next/link";
 import { IncludedList } from "@/components/panel/membership/included-list";
 import { MembershipPayForm } from "@/components/panel/membership/membership-pay-form";
 import { MANAGED_WEBSITE_INCLUDED, type IncludedItem } from "@/lib/checkout-included";
-import type { MembershipTier, OrderSummary as OrderSummaryParts } from "@/lib/membership";
+import { renewalTerms, type MembershipTier, type OrderSummary as OrderSummaryParts } from "@/lib/membership";
 import type { MembershipCheckoutView } from "@/lib/server/membership-checkout";
 import { startMembership } from "@/app/app-host/(protected)/plan/actions";
 
@@ -102,10 +101,7 @@ export function OrderSummary({ tier, view, parts, removeHref, children }: OrderS
       <div className="mt-4 hidden lg:block">
         <MembershipPayForm action={startMembership} amount={money(parts.totalCents)} tier={tier} services={parts.lines.map((line) => line.addOn)} />
       </div>
-      <p className="mt-3 text-xs leading-relaxed text-ink-soft">
-        Your first payment covers {initialTermPhrase(plan.initialTermMonths)}, then {money(parts.totalCents)}
-        {plan.taxRateBasisPoints > 0 ? " (GST included)" : ""} is taken each month for your {parts.lines.length === 1 ? "service" : "services"}.
-      </p>
+      <p className="mt-3 text-xs leading-relaxed text-ink-soft">{renewalTerms(parts, plan, discount?.months ?? null)}</p>
 
       {children === undefined ? null : <div className="mt-4 space-y-5 border-t border-line pt-4">{children}</div>}
 

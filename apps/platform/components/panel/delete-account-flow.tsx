@@ -139,7 +139,7 @@ export function DeleteAccountFlow({ deleteAccount, planEndsAt, addOnsRunning, pa
         {packageEnds.map((line) => (
           <li key={line}>{line}</li>
         ))}
-        {addOnsRunning ? <li>Your add-ons stop at the end of the month you’ve paid for.</li> : null}
+        {addOnsRunning ? <li>Your services stop at the end of the month you’ve paid for.</li> : null}
         <li>You’re signed out everywhere and your dashboard is locked.</li>
         <li>
           After {ACCOUNT_CLOSURE_GRACE_DAYS} days your data is erased. Sign in before then and you can restore it.

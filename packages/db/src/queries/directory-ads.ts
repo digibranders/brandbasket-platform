@@ -780,12 +780,17 @@ export interface OpenedMembership {
 
 /**
  * Opens the Premium membership for a free listing business whose first payment has just been recorded: it becomes a
- * website client and gets the onboarding project every client starts from. Null for a business that is already a
+ * website client and, when the payment bought the Managed Website service (`withProject`), gets the onboarding project every
+ * website starts from; a Social-only or SEO-only basket has no website to set up, so no project. Null for a business that is already a
  * client (a setup-link client paying, or a second delivery of the same payment), which is left as it is. Its claim is
  * not touched, so its page on the local directory stays up. Staff connection, inside the payment's own transaction: the
  * kind only changes if the payment commits.
  */
-export async function openMembershipForListingBusiness(tx: ScopedTransaction, businessId: string): Promise<OpenedMembership | null> {
+export async function openMembershipForListingBusiness(
+  tx: ScopedTransaction,
+  businessId: string,
+  options: { readonly withProject: boolean },
+): Promise<OpenedMembership | null> {
   const converted = await tx
     .update(businesses)
     .set({ kind: "website" })
@@ -793,7 +798,7 @@ export async function openMembershipForListingBusiness(tx: ScopedTransaction, bu
     .returning({ businessName: businesses.name });
   const opened = converted[0];
   if (opened === undefined) return null;
-  await insertOnboardingProject(tx, businessId);
+  if (options.withProject) await insertOnboardingProject(tx, businessId);
   return opened;
 }
 

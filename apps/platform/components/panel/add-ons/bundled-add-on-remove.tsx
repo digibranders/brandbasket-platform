@@ -31,6 +31,7 @@ export function BundledAddOnRemove({ addOn, title, endsOn, copy, headingId, acti
   const questionId = useId();
   const keepsId = useId();
   const monthlyId = useId();
+  const websiteOfflineId = useId();
   const packageEndsId = useId();
   const questionRef = useRef<HTMLParagraphElement>(null);
   const openerRef = useRef<HTMLButtonElement>(null);
@@ -73,6 +74,11 @@ export function BundledAddOnRemove({ addOn, title, endsOn, copy, headingId, acti
         <p id={monthlyId} className="tabular-nums text-ink-soft">
           {copy.monthly}
         </p>
+        {copy.websiteOffline === null ? null : (
+          <p id={websiteOfflineId} className="text-ink">
+            {copy.websiteOffline}
+          </p>
+        )}
         {copy.packageEnds === null ? null : (
           <p id={packageEndsId} className="text-ink">
             {copy.packageEnds}
@@ -90,7 +96,9 @@ export function BundledAddOnRemove({ addOn, title, endsOn, copy, headingId, acti
               className="text-accent-deep! hover:bg-accent-pale!"
               disabled={controls.isPending}
               aria-busy={controls.isPending}
-              aria-describedby={copy.packageEnds === null ? `${keepsId} ${monthlyId}` : `${keepsId} ${monthlyId} ${packageEndsId}`}
+              aria-describedby={[keepsId, monthlyId, copy.websiteOffline === null ? null : websiteOfflineId, copy.packageEnds === null ? null : packageEndsId]
+                .filter((id) => id !== null)
+                .join(" ")}
               aria-label={controls.isPending ? `Removing ${title}` : `Yes, remove ${title}`}
             >
               {controls.isPending ? "Removing…" : "Yes, remove"}

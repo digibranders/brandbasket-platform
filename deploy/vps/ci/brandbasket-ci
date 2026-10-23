@@ -62,6 +62,17 @@ if [[ "${1:-}" == --status ]]; then
 fi
 [[ $# -eq 0 ]] || die "unknown option: $1"
 
+# One heavy job at a time on this VPS (system/ff-build-queue): a hand-started run joins the queue like the timers do, first
+# come first run. The timers' units already hold the turn (FF_BUILD_QUEUE_TURN), so they pass straight through. Rollbacks,
+# --list and --status never queue. Without the queue program the script runs as before.
+queue_turn() { # <label> <max seconds> <original arguments...>
+  local label=$1 limit=$2; shift 2
+  [[ -n "${FF_BUILD_QUEUE_TURN:-}" || ! -x /usr/local/sbin/ff-build-queue ]] && return 0
+  exec /usr/local/sbin/ff-build-queue run --label "$label" --max-run "$limit" -- "$0" "$@"
+}
+
+queue_turn brandbasket-ci 3000 "$@"
+
 bb_bounded "$0" "$@"
 bb_load_github_status || die "cannot load the GitHub reporting library"
 

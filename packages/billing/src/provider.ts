@@ -28,6 +28,11 @@ export interface StartCheckoutInput {
    * `providerPlanId` (a plan priced at the sum); the fake provider adds it directly.
    */
   readonly bundledAddOnNetCents?: number;
+  /**
+   * Keep my plan: the day the new subscription starts and is first charged, the end of the paid month it carries on from.
+   * The customer authorises the mandate now and nothing is taken until then. Absent starts the subscription at once.
+   */
+  readonly startAt?: Date;
 }
 
 export interface StartedCheckout {

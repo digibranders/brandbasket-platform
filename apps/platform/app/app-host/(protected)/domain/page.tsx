@@ -6,7 +6,7 @@ import { DomainMoveSteps } from "@/components/panel/domain-move-steps";
 import { EmailUs } from "@/components/panel/email-us";
 import { MoveDomainForm } from "@/components/panel/move-domain-form";
 import { domainPageState, moveStepIndex } from "@/lib/domain-page";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
 import { getLiveWebsite, getOnboardingSnapshot } from "@/lib/server/onboarding";
 import { dnsRecordsFor } from "@brandbasket/shared/lib/onboarding/domain-dns";
@@ -50,7 +50,7 @@ function HelpBlock(): ReactElement {
  * DNS records and a check, kept for anyone who needs to look again. Which of it shows is decided by domainPageState.
  */
 export default async function DomainPage(): Promise<ReactElement> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireWebsiteClient();
   const [snapshot, live, connecting] = await Promise.all([
     getOnboardingSnapshot(),
     getLiveWebsite(),

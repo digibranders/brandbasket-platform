@@ -5,7 +5,7 @@ import { ChevronDownIcon, TickIcon } from "@brandbasket/shared/ui/icons";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { billingPeriodProgress, type PeriodProgress } from "@brandbasket/shared/lib/billing/period";
 import { changesNote, renewalCharge } from "@brandbasket/shared/lib/billing/terms";
-import { nextBundledNetCents } from "@brandbasket/shared/lib/billing/bundle";
+import { nextBundledNetCents, nextDiscountCents } from "@brandbasket/shared/lib/billing/bundle";
 import { planLabel } from "@brandbasket/shared/lib/billing/receipt-title";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { carePlan } from "@brandbasket/shared/lib/pricing";
@@ -14,6 +14,8 @@ interface PlanSummaryProps {
   readonly plan: Plan;
   readonly subscription: Subscription;
   readonly now: Date;
+  /** The business holds the Managed Website service: "What's included" and the change and blog allowances are the website's, so only it is shown them. */
+  readonly hasWebsite: boolean;
   /** The brand the dashboard is sold under: it words the plan's name. Brandbasket when left out. */
   readonly brand?: Brand;
   /** How they pay, shown inside the card under the price (components/panel/billing/payment-method.tsx), or left out. */
@@ -45,7 +47,7 @@ function NextPaymentCaption({
     return <>No more payments. Your plan ends on {end}.</>;
   }
   if (subscription.provider === "manual") return <>We’ll arrange your next payment with you directly.</>;
-  const amount = renewalCharge(plan, subscription.discountAmountCents, nextBundledNetCents(subscription));
+  const amount = renewalCharge(plan, nextDiscountCents(subscription), nextBundledNetCents(subscription));
   if (amount === null) return <>Your next period starts on {end}.</>;
   return (
     <>
@@ -77,8 +79,8 @@ function PeriodBar({ progress, children }: { readonly progress: PeriodProgress; 
 }
 
 /** The plan card: name, price per month, how far through the paid period the customer is, how they pay, and what it includes. */
-export function PlanSummary({ plan, subscription, now, paymentMethod }: PlanSummaryProps): ReactElement {
-  const price = renewalCharge(plan, subscription.discountAmountCents, nextBundledNetCents(subscription));
+export function PlanSummary({ plan, subscription, now, hasWebsite, paymentMethod }: PlanSummaryProps): ReactElement {
+  const price = renewalCharge(plan, nextDiscountCents(subscription), nextBundledNetCents(subscription));
   const progress = billingPeriodProgress(subscription, now);
 
   return (
@@ -95,7 +97,7 @@ export function PlanSummary({ plan, subscription, now, paymentMethod }: PlanSumm
                   Monthly
                 </span>
               </div>
-              <p className="mt-1 text-xs text-ink-soft">{priceNote(plan, subscription.discountAmountCents, nextBundledNetCents(subscription))}</p>
+              <p className="mt-1 text-xs text-ink-soft">{priceNote(plan, nextDiscountCents(subscription), nextBundledNetCents(subscription))}</p>
             </div>
             {price === null ? null : (
               <p className="flex items-baseline gap-1.5">
@@ -117,23 +119,25 @@ export function PlanSummary({ plan, subscription, now, paymentMethod }: PlanSumm
         )}
       </div>
 
-      <details className="group border-t border-line">
-        <summary className="flex cursor-pointer list-none items-center justify-end gap-1.5 px-6 py-3.5 text-xs font-semibold text-accent-deep transition-colors duration-300 ease-calm hover:text-ink sm:px-7 [&::-webkit-details-marker]:hidden">
-          What’s included
-          <ChevronDownIcon className="size-3.5 transition-transform duration-300 ease-calm group-open:rotate-180" />
-        </summary>
-        <div className="px-6 pb-6 sm:px-7">
-          <ul className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
-            {carePlan.includes.map((item) => (
-              <li key={item} className="flex gap-2 text-xs">
-                <TickIcon className="mt-px size-3.5 shrink-0 text-accent" />
-                {item}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-4 text-xs leading-relaxed text-ink-soft">{changesNote(plan)}</p>
-        </div>
-      </details>
+      {hasWebsite ? (
+        <details className="group border-t border-line">
+          <summary className="flex cursor-pointer list-none items-center justify-end gap-1.5 px-6 py-3.5 text-xs font-semibold text-accent-deep transition-colors duration-300 ease-calm hover:text-ink sm:px-7 [&::-webkit-details-marker]:hidden">
+            What’s included
+            <ChevronDownIcon className="size-3.5 transition-transform duration-300 ease-calm group-open:rotate-180" />
+          </summary>
+          <div className="px-6 pb-6 sm:px-7">
+            <ul className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
+              {carePlan.includes.map((item) => (
+                <li key={item} className="flex gap-2 text-xs">
+                  <TickIcon className="mt-px size-3.5 shrink-0 text-accent" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-xs leading-relaxed text-ink-soft">{changesNote(plan)}</p>
+          </div>
+        </details>
+      ) : null}
     </section>
   );
 }

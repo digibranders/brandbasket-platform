@@ -14,6 +14,8 @@ export interface DropPreview {
   readonly taxRateBasisPoints: number;
   /** Dropping ends a package price and ad credit the business still has: false once the offer is already given up. */
   readonly endsPackage: boolean;
+  /** The service being dropped is Managed Website: the site goes offline when its paid month ends. */
+  readonly endsWebsite: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export function dropPreview(input: {
     currency: input.currency,
     taxRateBasisPoints,
     endsPackage: !input.forfeited,
+    endsWebsite: input.dropping === "managed-website",
   };
 }
 
@@ -46,17 +49,23 @@ export const PACKAGE_ENDS = "Your package price and ad credit end for good. Addi
 export interface DropCopy {
   readonly keeps: string;
   readonly monthly: string;
+  /** Null unless the service being dropped is Managed Website. */
+  readonly websiteOffline: string | null;
   /** Null when the business has no package to lose. */
   readonly packageEnds: string | null;
 }
 
-/** "You keep Managed Website and Social Media and Ads." / "From 12 November 2026 you pay ₹15,337.64 a month, GST included." */
+/**
+ * "You keep Managed Website and Social Media and Ads." / "From 12 November 2026 you pay ₹15,337.64 a month, GST included." /
+ * "Your website goes offline on 12 November 2026." when it is the website being dropped.
+ */
 export function dropCopy(preview: DropPreview, nextBillingOn: string): DropCopy {
   const titles = preview.keeps.map((id) => addOnById(id).title);
   const tax = preview.taxRateBasisPoints > 0 ? ", GST included" : "";
   return {
     keeps: `You keep ${titles.join(" and ")}.`,
     monthly: `From ${nextBillingOn} you pay ${formatMoney(preview.newMonthlyCents, preview.currency)} a month${tax}.`,
+    websiteOffline: preview.endsWebsite ? `Your website goes offline on ${nextBillingOn}.` : null,
     packageEnds: preview.endsPackage ? PACKAGE_ENDS : null,
   };
 }

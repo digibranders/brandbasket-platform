@@ -18,11 +18,11 @@ export function emailBrandName(): string {
 export function emailSenderDefaults(): { readonly from: EmailAddress; readonly replyTo: EmailAddress } {
   return {
     from: { email: "no-reply@brandbasket.in", name: "Brandbasket" },
-    replyTo: { email: "hello@brandbasket.in", name: "Brandbasket Support" },
+    replyTo: { email: "support@brandbasket.in", name: "Brandbasket Support" },
   };
 }
 
 /** Where team alerts go when the environment names no inbox: the product's own support address. */
 export function emailTeamInboxDefault(): string {
-  return "hello@brandbasket.in";
+  return "support@brandbasket.in";
 }

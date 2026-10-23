@@ -4,7 +4,7 @@ import type { ReactElement } from "react";
 import { BrandStepForm, type UploadedImage } from "@/components/panel/media-uploader";
 import { BrandSummary, SummaryCard } from "@/components/panel/onboarding-summary";
 import { StepHeading } from "@/components/panel/step-heading";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
 import { removeBrandImage, saveBrandStep } from "./actions";
 
@@ -22,7 +22,7 @@ function uploadedImage(asset: MediaAsset): UploadedImage {
 }
 
 export default async function BrandStepPage(): Promise<ReactElement> {
-  await requireCustomerAccess();
+  await requireWebsiteClient();
   const snapshot = await getOnboardingSnapshot();
 
   if (snapshot.locked) {

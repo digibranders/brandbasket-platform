@@ -34,8 +34,8 @@ import {
  *
  * Unlike the admin route (staff, blanket access, `businessId` trusted from a header because the single-admin model
  * already gives staff access to every business), this one is customer-facing: `businessId` is *only* ever
- * `getCustomerTenant()`'s own tenant id, and a write requires billing access — the same rule
- * `requireBillingAccess()` (lib/server/billing.ts) enforces for every other customer mutation, replicated here
+ * `getCustomerTenant()`'s own tenant id, and a write requires billing access and the Managed Website service,
+ * the same rule `requireWebsiteAccess()` (lib/server/billing.ts) enforces for the website's other mutations, replicated here
  * without its `redirect("/login")`: a redirect response is useless to a `fetch()` caller (the browser would follow
  * it and try to parse the login page's HTML as JSON), so this checks the same underlying session + billing state
  * and answers a plain JSON 401/402 instead.
@@ -75,7 +75,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const billing = await getCustomerBilling(tenant.userId, tenant.businessId);
-  if (!billing.hasAccess) {
+  if (!billing.hasAccess || !billing.hasWebsite) {
     return Response.json({ error: "This needs an active plan. Check Billing, then try again." }, { status: 402 });
   }
 

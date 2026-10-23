@@ -22,7 +22,7 @@ export interface ClientPackageFacts {
  * The package a client has today: the services staying on their latest subscription (active and not asked to end) and the
  * percentage off each, which is none for one service or once the offer was given up. The ad credit is shown only while the
  * subscription is live and paid, as in the "Ad credit due this month" list (listAdCreditDue): a cancelled row that never took
- * a payment, and one the client asked to close, can still carry a credit that is not owed.
+ * a payment can still carry a credit that is not owed. A client who asked to close keeps it to the end of the paid month.
  */
 export function clientPackageFacts(input: {
   readonly lines: readonly BundledAddOn[];
@@ -40,7 +40,6 @@ export function clientPackageFacts(input: {
     subscription !== null &&
     subscription.adCreditCents > 0 &&
     subscription.activatedAt !== null &&
-    subscription.cancelRequestedAt === null &&
     (subscription.status === "active" || subscription.status === "past_due");
   return {
     package: basisPoints > 0 ? `${packageLabel(services)}, ${basisPoints / 100}% off each service` : "No package",

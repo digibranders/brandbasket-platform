@@ -193,7 +193,7 @@ describe("afterPaymentHref", () => {
 
 describe("a referral discount", () => {
   // 15% of the website's 299,900 paise (44,985 rounded half up), frozen when the checkout opened.
-  const FIFTEEN_OFF = { code: "SAVE15", amountCents: 44_985, stated: { kind: "amount", amountCents: 44_985 } } as const;
+  const FIFTEEN_OFF = { code: "SAVE15", amountCents: 44_985, months: null, stated: { kind: "amount", amountCents: 44_985 } } as const;
 
   it("prices the button from the discount, so it matches what the checkout charges", () => {
     expect(paymentStep({ ...OPEN_UNPAID, plan: INR, discount: FIFTEEN_OFF })).toMatchObject({
@@ -202,7 +202,7 @@ describe("a referral discount", () => {
     });
   });
 
-  it("quotes the discounted monthly price, because the discount runs for as long as the plan does", () => {
+  it("quotes the discounted monthly price, because a code with no length runs for as long as the plan does", () => {
     const step = paymentStep({ ...OPEN_UNPAID, plan: INR, discount: FIFTEEN_OFF });
     expect(step).toMatchObject({
       terms: "₹2,549.15 a month plus 18% GST, so ₹3,008 in all, instead of ₹2,999 before GST, for as long as your plan runs. Your first payment covers your first month, then it renews monthly.",

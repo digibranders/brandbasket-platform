@@ -95,7 +95,8 @@ export const affiliates = pgTable(
  * - a **coupon** (`affiliate_id` null): a discount, nobody is paid;
  * - an **affiliate code** (`affiliate_id` set): it names who brought the member, and may or may not discount.
  *
- * The discount comes off every month for the life of the subscription. Razorpay takes it through a discounted
+ * The discount comes off every month, for `discount_months` paid months or for the life of the subscription when that is
+ * null. Razorpay takes it through a discounted
  * Razorpay plan created automatically at checkout (`provider_discount_plans`); our own copy of what it is worth is
  * frozen onto `subscriptions.discount_amount_cents`, so editing or retiring a code can never change what an existing
  * member is charged. The discount is therefore fixed for the code's life.
@@ -132,6 +133,11 @@ export const referralCodes = pgTable(
      * is worth is worked out once, at checkout, and frozen onto the subscription like a flat amount.
      */
     discountPercentBasisPoints: integer("discount_percent_basis_points"),
+    /**
+     * How many paid months the discount runs for, fixed when the code is made like the discount itself. Null means no
+     * limit. Copied onto `subscriptions.discount_months_left` at checkout, which counts it down.
+     */
+    discountMonths: integer("discount_months"),
     /** How a code is retired: existing subscriptions keep their frozen discount, new ones cannot use it. */
     active: boolean("active").notNull().default(true),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
@@ -156,6 +162,7 @@ export const referralCodes = pgTable(
       "referral_codes_discount_check",
       sql`(${table.discountKind} is null and ${table.affiliateId} is not null and ${table.discountAmountCents} is null and ${table.discountPercentBasisPoints} is null) or (${table.discountKind} = 'amount' and ${table.discountAmountCents} is not null and ${table.discountAmountCents} > 0 and ${table.discountPercentBasisPoints} is null) or (${table.discountKind} = 'percent' and ${table.discountPercentBasisPoints} is not null and ${table.discountPercentBasisPoints} between 1 and 9900 and ${table.discountAmountCents} is null)`,
     ),
+    check("referral_codes_discount_months_check", sql`${table.discountMonths} is null or ${table.discountMonths} between 1 and 120`),
     check(
       "referral_codes_max_redemptions_check",
       sql`${table.maxRedemptions} is null or ${table.maxRedemptions} > 0`,

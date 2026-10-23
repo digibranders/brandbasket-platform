@@ -228,7 +228,7 @@ describe("privacy request alerts", () => {
   const CONSOLE = "https://console.brandbasket.in/privacy-requests";
 
   it("announces a new request with its reference, kind, due day and a console link, and nothing about the person", () => {
-    const message = privacyRequestAlertEmail({ to: "hello@brandbasket.in", reference: "PR-7K2M9QXD", kindLabel: "Erasure", dueDay: "12 November 2026", consoleUrl: CONSOLE });
+    const message = privacyRequestAlertEmail({ to: "support@brandbasket.in", reference: "PR-7K2M9QXD", kindLabel: "Erasure", dueDay: "12 November 2026", consoleUrl: CONSOLE });
     expect(message.subject).toBe("New privacy request PR-7K2M9QXD (Erasure)");
     expect(message.template).toBe("privacy-request-alert");
     for (const body of [message.bodyText, message.bodyHtml]) {
@@ -248,7 +248,7 @@ describe("privacy request alerts", () => {
 
   it("lists each open request with its stage and how many days are left or overdue", () => {
     const message = privacyRequestsDueEmail({
-      to: "hello@brandbasket.in",
+      to: "support@brandbasket.in",
       consoleUrl: CONSOLE,
       items: [
         { reference: "PR-LATE0001", kindLabel: "Grievance", dueDay: "5 November 2026", stage: "overdue", daysLeft: -3 },
@@ -274,7 +274,7 @@ describe("privacy request alerts", () => {
 describe("security alerts", () => {
   it("says what happened, how many and over what time, with the runbook and the CERT-In clock", () => {
     const message = securityEventAlertEmail({
-      to: "hello@brandbasket.in",
+      to: "support@brandbasket.in",
       eventLabel: "Sign-ins blocked for too many tries",
       advice: "Many accounts or addresses are being tried.",
       count: 20,
@@ -293,7 +293,7 @@ describe("security alerts", () => {
 
   it("lists each staff finding in the nightly review, and refuses an empty review", () => {
     const message = staffAccessReviewEmail({
-      to: "hello@brandbasket.in",
+      to: "support@brandbasket.in",
       hours: 24,
       consoleUrl: "https://console.brandbasket.in/access-log",
       findings: [{ staff: "asha@brandbasket.in", what: "Exported the invoice register", count: 5 }],
@@ -442,7 +442,7 @@ describe("listingEnquiryEmail", () => {
 
 describe("supportTicketAlertEmail", () => {
   const input = {
-    to: "hello@brandbasket.in",
+    to: "support@brandbasket.in",
     reference: "SUP-2026-A1B2",
     ticketId: "0192f3c4-1234-7000-8000-000000000001",
     category: "bug",
@@ -463,7 +463,7 @@ describe("supportTicketAlertEmail", () => {
   it("formats subject with category, subject, and reference", () => {
     const email = supportTicketAlertEmail(input);
     expect(email.subject).toBe("[Report a bug] Cannot upload photos (SUP-2026-A1B2)");
-    expect(email.to).toBe("hello@brandbasket.in");
+    expect(email.to).toBe("support@brandbasket.in");
     expect(email.template).toBe("support-ticket-alert");
   });
 
@@ -511,7 +511,7 @@ describe("supportTicketAlertEmail", () => {
 
 describe("supportReplyAlertEmail", () => {
   const input = {
-    to: "hello@brandbasket.in",
+    to: "support@brandbasket.in",
     reference: "SUP-2026-A1B2",
     ticketId: "0192f3c4-1234-7000-8000-000000000001",
     subject: "Cannot upload photos",
@@ -525,7 +525,7 @@ describe("supportReplyAlertEmail", () => {
   it("formats subject and contains customer reply details", () => {
     const email = supportReplyAlertEmail(input);
     expect(email.subject).toBe("[Customer Reply] Cannot upload photos (SUP-2026-A1B2)");
-    expect(email.to).toBe("hello@brandbasket.in");
+    expect(email.to).toBe("support@brandbasket.in");
     expect(email.template).toBe("support-reply-alert");
     for (const body of [email.bodyText, email.bodyHtml]) {
       expect(body).toContain("Still happening today on Chrome.");
@@ -552,7 +552,7 @@ describe("supportReplyAlertEmail", () => {
 
 describe("systemErrorAlertEmail", () => {
   const input = {
-    to: "hello@brandbasket.in",
+    to: "support@brandbasket.in",
     app: "platform",
     operation: "server_action",
     errorClass: "DatabaseConnectionTimeout",

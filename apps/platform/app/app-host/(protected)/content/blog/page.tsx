@@ -6,7 +6,7 @@ import { BlogEmptyState } from "@/components/panel/blog-editor/blog-empty-state"
 import { BlogPostsTable } from "@/components/panel/blog-editor/blog-posts-table";
 import { getBlogPosts } from "@/lib/server/blog";
 import { getBlogUsage, isAtBlogLimit, type BlogUsage } from "@/lib/server/blog-allowance";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { unlockBlogPostsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Blog" };
@@ -23,7 +23,7 @@ function UnlockMorePosts({ usage }: { readonly usage: BlogUsage }): ReactElement
 }
 
 export default async function BlogListPage(): Promise<ReactElement> {
-  const customer = await requireCustomerAccess();
+  const customer = await requireWebsiteClient();
   const [posts, usage] = await Promise.all([getBlogPosts(), getBlogUsage(customer, customer.billing.plan)]);
   const atLimit = isAtBlogLimit(usage);
 

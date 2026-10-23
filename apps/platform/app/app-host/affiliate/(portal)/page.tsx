@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import type { AffiliateCodeUsage, AffiliateEarningStatus, ListedReferralCode } from "@brandbasket/db";
-import { describeAffiliateReward, describeRewardCycles, describeReferralDiscount } from "@brandbasket/shared/lib/billing/referral-value";
+import { describeAffiliateReward, describeDiscountMonths, describeRewardCycles, describeReferralDiscount } from "@brandbasket/shared/lib/billing/referral-value";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
@@ -63,7 +63,10 @@ function CodeRow({
   readonly now: Date;
 }): ReactElement {
   const status = codeStatus(code, affiliateActive, now);
-  const gives = code.discount === null ? "No discount for members" : `Members get ${describeReferralDiscount(code.discount, code.currency)} every month`;
+  const gives =
+    code.discount === null
+      ? "No discount for members"
+      : `Members get ${describeReferralDiscount(code.discount, code.currency)} ${code.discountMonths === null ? "every month" : `a month for ${describeDiscountMonths(code.discountMonths)}`}`;
   const members = usage?.members ?? 0;
   const given = usage?.discountGivenCents ?? 0;
   return (

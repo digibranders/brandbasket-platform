@@ -39,9 +39,9 @@ describe("chargeReturnHref", () => {
     expect(chargeReturnHref("directory_ad", "failed")).toBe("/advertise?notice=pay-failed");
   });
 
-  it("returns an add-on's charge to Add-ons, for every outcome", () => {
+  it("returns an add-on's charge to Services, for every outcome", () => {
     const notices: readonly ChargeNotice[] = ["paid", "processing", "failed", "duplicate", "review", "stale", "not-open"];
-    for (const notice of notices) expect(chargeReturnHref("add_on", notice), notice).toBe(`/add-ons?charge=${notice}`);
+    for (const notice of notices) expect(chargeReturnHref("add_on", notice), notice).toBe(`/services?charge=${notice}`);
   });
 
   it("returns a plan upgrade or a press release to Billing like any other charge, for every outcome", () => {

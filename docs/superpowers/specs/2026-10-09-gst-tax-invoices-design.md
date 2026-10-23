@@ -237,9 +237,9 @@ and states the real payment date.
   apostrophe is accepted and saved with a straight one. Letters of other scripts (Devanagari, accented letters) are
   not touched, so they still hold the invoice.
 - **Links**: the supplier's email, the footer's email (mailto) and fynix.digital are clickable.
-- **Declaration** (Gate 5): "Tax is not payable on reverse charge." "This is a computer generated invoice and does not
-  need a signature." Only what Rule 46 asks for: (p), and (q) relying on its proviso for an electronic invoice. The
-  renewal and refund terms stay on the website and at checkout (owner, 2026-10-22).
+- **No declaration block** (owner, 2026-10-22). Rule 46(p) is met by "Reverse charge: No" under Place of supply. Rule
+  46(q) relies on its proviso for an electronic invoice, with no signature sentence printed (Gate 5: the CA confirms).
+  The renewal and refund terms stay on the website and at checkout.
 - **Colours** (owner, 2026-10-22): ink on white, so the invoice prints cleanly in black and white. The logo is the only
   colour: the light lockup, its pin in rattan.
 - Built with pdf-lib, not a headless browser: production units are sandboxed and cannot run Chromium (D8).
@@ -311,12 +311,12 @@ Against what the PDF prints. "Confirm with CA" marks a point we believe is met b
 | (i) | Quantity | Qty column | Met |
 | (j) | Total value of supply | Rate × Qty and the line's taxable value; gross per line is not printed separately | Confirm with CA |
 | (k) | Taxable value, taking discount into account | Discount and Taxable value columns, Taxable value total | Met |
-| (l) | Rate of tax (central, state, integrated) | GST % per line; CGST @ 9% and SGST @ 9%, or IGST @ 18%, in the totals | Met; per-line split shown only in totals, confirm with CA |
+| (l) | Rate of tax (central, state, integrated) | CGST @ 9% and SGST @ 9%, or IGST @ 18%, in the totals; no per-line rate column (owner, 2026-10-22), as every line is 18% | Met; rate shown only in totals, confirm with CA |
 | (m) | Amount of tax charged (central, state, integrated) | Tax per line; CGST, SGST or IGST in the totals | Met |
 | (n) | Place of supply with the state's name, for inter-state supply | "Place of supply: Karnataka (29)" on every invoice | Met |
 | (o) | Delivery address, where different from place of supply | Not applicable to a service delivered online | Not applicable |
-| (p) | Whether tax is payable on reverse charge | Declaration: "Tax is not payable on reverse charge." | Met; wording to confirm (Gate 5) |
-| (q) | Signature or digital signature of the supplier or authorised representative | "Computer generated, does not need a signature" | Open (Gate 5) |
+| (p) | Whether tax is payable on reverse charge | "Reverse charge: No" under Place of supply | Met; wording to confirm (Gate 5) |
+| (q) | Signature or digital signature of the supplier or authorised representative | None printed; the proviso for an electronic invoice | Open (Gate 5) |
 | Rule 48 | Copies for a supply of services | "Original for recipient"; the supplier's record is the stored snapshot | Confirm with CA |
 | Companies Act s.12 | Name, registered office, CIN, contact on bills | Supplier block and footer | Met |
 

@@ -70,19 +70,41 @@ export function isChargeableDiscount(planAmountCents: number, discountAmountCent
 
 
 /**
- * What a code's discount is worth in minor units against a plan's pre-tax price. A flat amount is itself; a
- * percentage is that share of the price, rounded half up (half a paisa or cent and over rounds up, anything less
- * down), in integer arithmetic so no float ever touches the figure. 12.5% of ₹2,999 is 37,487.5 paise, so 37,488.
+ * What a code's discount is worth in minor units against a basket's pre-tax price. The price is the basket's package net:
+ * every service's list price less the package discount, added up, so a code is taken once, after the package offer (a
+ * single service has no offer, so its net is its list price). A flat amount is itself, on any basket; a percentage is that
+ * share of the net, rounded half up (half a paisa or cent and over rounds up, anything less down), in integer arithmetic so
+ * no float ever touches the figure. 12.5% of ₹2,999 is 37,487.5 paise, so 37,488; 10% of the ₹10,398 that the website and Social Media and
+ * Ads come to together at the 20% package price is ₹1,039.80.
  *
  * This is worked out at the moment a checkout opens and the result is frozen onto the subscription; nothing
  * re-derives it afterwards, so a later plan price change never alters what an existing customer pays. The result
  * may still fail isChargeableDiscount (a tiny share of a tiny price rounds to nothing), and every caller checks.
  */
-export function discountCentsFor(discount: ReferralDiscount, planAmountCents: number): number {
-  assertWholeNonNegative(planAmountCents, "A plan amount");
+export function discountCentsFor(discount: ReferralDiscount, basketNetCents: number): number {
+  assertWholeNonNegative(basketNetCents, "A basket net");
   if (discount.kind === "amount") return discount.amountCents;
   assertBasisPoints(discount.basisPoints, MAX_DISCOUNT_BASIS_POINTS, "A percentage discount");
-  return Math.floor((planAmountCents * discount.basisPoints + HALF_BASIS_POINTS) / BASIS_POINTS_PER_WHOLE);
+  return Math.floor((basketNetCents * discount.basisPoints + HALF_BASIS_POINTS) / BASIS_POINTS_PER_WHOLE);
+}
+
+/**
+ * What a code takes off the next renewal once the basket has changed (a service added or dropped), on a basket whose package
+ * net is `netCents`. An amount code keeps its amount and a percentage code is repriced on the new net (discountCentsFor); a code
+ * whose months have run out takes nothing, and a code that can no longer be charged against the basket stops applying, as at
+ * checkout (isChargeableDiscount). With no discount to reprice (`discount` null: no code, or an affiliate code that gives none)
+ * the amount the subscription already holds, `heldCents`, carries on.
+ */
+export function discountForChangedBasket(input: {
+  readonly monthsLeft: number | null;
+  readonly heldCents: number;
+  readonly discount: ReferralDiscount | null;
+  readonly netCents: number;
+}): number {
+  if (input.monthsLeft === 0) return 0;
+  if (input.discount === null) return input.heldCents;
+  const discountCents = discountCentsFor(input.discount, input.netCents);
+  return isChargeableDiscount(input.netCents, discountCents) ? discountCents : 0;
 }
 
 /**

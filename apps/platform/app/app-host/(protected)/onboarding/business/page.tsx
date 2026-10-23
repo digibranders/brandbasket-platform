@@ -4,7 +4,7 @@ import type { ReactElement } from "react";
 import { BusinessStepForm, type SavedBusinessProfile } from "@/components/panel/business-step-form";
 import { BusinessSummary, SummaryCard } from "@/components/panel/onboarding-summary";
 import { StepHeading } from "@/components/panel/step-heading";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
 import { phoneCountryOptions } from "@brandbasket/shared/server/phone-countries";
 import { savedPhoneStart, visitorPhoneCountry } from "@brandbasket/shared/server/phone-defaults";
@@ -13,7 +13,7 @@ import { saveBusinessStep } from "./actions";
 export const metadata: Metadata = { title: "Your business" };
 
 export default async function BusinessStepPage(): Promise<ReactElement> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireWebsiteClient();
   const snapshot = await getOnboardingSnapshot();
 
   if (snapshot.locked) {

@@ -95,9 +95,9 @@ it("names the services the link chose and their package price above the details"
     ...JOIN_PROPS,
     action: async (): Promise<JoinFormState> => ({ status: "idle" }),
     services: ["digital-growth", "local-seo-aeo"],
-    basket: { name: "Social Media and Ads and Local SEO + AEO", prices: { INR: "₹24,498 a month + 18% GST", USD: "$297 a month" } },
+    basket: { name: "Social Media and Ads and Local SEO + AEO", prices: { INR: "₹27,998 a month + 18% GST", USD: "$340 a month" } },
   }));
-  expect(container.textContent).toContain("Signing up for Social Media and Ads and Local SEO + AEO · ₹24,498 a month + 18% GST");
+  expect(container.textContent).toContain("Signing up for Social Media and Ads and Local SEO + AEO · ₹27,998 a month + 18% GST");
   expect(container.textContent).not.toContain("Managed Website plan");
 });
 

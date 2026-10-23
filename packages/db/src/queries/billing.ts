@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, ne, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
-import { bundledNetCents, insertBundledAddOns, removeBundledAddOnsOf, type NewBundledAddOn } from "./bundled-add-ons";
+import { bundledNetCents, findLiveBundledAddOns, insertBundledAddOns, removeBundledAddOnsOf, type NewBundledAddOn } from "./bundled-add-ons";
 import { markLeadPaidForBusiness } from "./leads";
 import { isUuid } from "./tenant";
 import {
@@ -16,8 +16,10 @@ import {
   UNAPPLIED_PAYMENT_REASONS,
   type BillingCurrency,
   type BillingProviderName,
+  type BundledAddOn,
   type ChargeKind,
   type PaymentAttentionReason,
+  type PaymentInvoiceBasis,
   type PaymentKind,
   type PaymentStatus,
   type PlanTier,
@@ -154,6 +156,10 @@ export interface Subscription {
   readonly referralCodeId: string | null;
   /** What that code is worth against this subscription's plan, frozen when the checkout opened. */
   readonly discountAmountCents: number;
+  /** The paid months that code's discount still has to run; null for no limit. */
+  readonly discountMonthsLeft: number | null;
+  /** What the code takes off from the next renewal when that differs from `discountAmountCents`; null when nothing is waiting. */
+  readonly nextDiscountAmountCents: number | null;
   /** The part of `discountAmountCents` that is a stay offer rather than a code's; zero when none was taken. */
   readonly retentionDiscountCents: number;
   /** The plan the next renewal will bill, once the customer has paid to move up (plan_upgrades); null otherwise. */
@@ -173,6 +179,10 @@ export interface Subscription {
   readonly currentPeriodEnd: Date | null;
   readonly cancelRequestedAt: Date | null;
   readonly cancelledAt: Date | null;
+  /** Keep my plan: the subscription this one carries on from, or null. */
+  readonly continuesId: string | null;
+  /** Keep my plan: the day this one is first charged, or null. */
+  readonly startAt: Date | null;
   readonly createdAt: Date;
 }
 
@@ -185,6 +195,8 @@ const SUBSCRIPTION_COLUMNS = {
   providerStatus: subscriptions.providerStatus,
   referralCodeId: subscriptions.referralCodeId,
   discountAmountCents: subscriptions.discountAmountCents,
+  discountMonthsLeft: subscriptions.discountMonthsLeft,
+  nextDiscountAmountCents: subscriptions.nextDiscountAmountCents,
   retentionDiscountCents: subscriptions.retentionDiscountCents,
   pendingPlanId: subscriptions.pendingPlanId,
   pendingDiscountAmountCents: subscriptions.pendingDiscountAmountCents,
@@ -198,6 +210,8 @@ const SUBSCRIPTION_COLUMNS = {
   currentPeriodEnd: subscriptions.currentPeriodEnd,
   cancelRequestedAt: subscriptions.cancelRequestedAt,
   cancelledAt: subscriptions.cancelledAt,
+  continuesId: subscriptions.continuesId,
+  startAt: subscriptions.startAt,
   createdAt: subscriptions.createdAt,
 } as const;
 
@@ -319,19 +333,33 @@ export async function findPlanById(db: Runner, planId: string): Promise<Plan | n
 }
 
 /**
+ * A kept plan's successor (Keep my plan) whose first charge has not been recorded. It waits beside the subscription it
+ * continues, which stays the one billing state, access and the console read until the new mandate has charged for the
+ * first time. A condition for any read that picks a business's current subscription.
+ */
+export function subscriptionWaitingToStart(): SQL {
+  return sql`(${subscriptions.continuesId} is not null and ${subscriptions.activatedAt} is null)`;
+}
+
+function notWaitingToStart(): SQL {
+  return sql`not ${subscriptionWaitingToStart()}`;
+}
+
+/**
  * The business's newest subscription, whatever its status. This is the one billing state is read from: a
  * subscription cancelled inside its paid period still grants access until `paidThroughAt`, so it must not vanish
  * from view the moment it is cancelled. `subscriptions_one_live_per_business_idx` allows at most one subscription
  * that is not cancelled, and a new one is only ever opened once the older one is cancelled, so the newest row is the
  * live one whenever a live one exists. Ties on `created_at` (rows written in one transaction) fall to the id, which
- * is a UUIDv7 and so ordered by creation.
+ * is a UUIDv7 and so ordered by creation. A kept plan's successor that has not been charged yet is skipped (it waits beside
+ * the paid month it carries on from).
  */
 export async function findLatestSubscriptionForBusiness(db: Runner, businessId: string): Promise<Subscription | null> {
   if (!isUuid(businessId)) return null;
   const rows = await db
     .select(SUBSCRIPTION_COLUMNS)
     .from(subscriptions)
-    .where(eq(subscriptions.businessId, businessId))
+    .where(and(eq(subscriptions.businessId, businessId), notWaitingToStart()))
     .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id))
     .limit(1);
   return rows[0] ?? null;
@@ -360,6 +388,13 @@ export async function findLatestActivatedSubscriptionForBusiness(db: Runner, bus
  */
 const adCreditAfterEnding = sql`case when ${subscriptions.activatedAt} is not null then 0 else ${subscriptions.adCreditCents} end`;
 
+/**
+ * Ad credit of a subscription the provider has cancelled. Zero only when the customer asked for it (`cancel_requested_at`): the
+ * credit then ends with the paid month they kept it for. A cancel they did not ask for (a revoked mandate) is a lapse, which a
+ * reactivation restores with its credit, so the row keeps what it has. Neither is listed once its status is `cancelled`.
+ */
+const adCreditAfterProviderCancel = sql`case when ${subscriptions.activatedAt} is not null and ${subscriptions.cancelRequestedAt} is not null then 0 else ${subscriptions.adCreditCents} end`;
+
 export interface NewSubscription {
   readonly businessId: string;
   readonly planId: string;
@@ -375,10 +410,19 @@ export interface NewSubscription {
    * and greater than 0 when there is: `subscriptions_discount_check` refuses anything else.
    */
   readonly discountAmountCents?: number;
+  /** The paid months the code's discount runs for, copied from the code (referral_codes.discount_months). Null or absent for no limit. */
+  readonly discountMonthsLeft?: number | null;
   /** What the add-ons taken at this checkout cost a month before GST: the sum of their net prices. Defaults to 0. */
   readonly bundledAddOnNetCents?: number;
   /** Ad credit a month earned by the package bought at this checkout (adCreditCentsFor in @brandbasket/shared). Defaults to 0. */
   readonly adCreditCents?: number;
+  /** Keep my plan only: the stay-offer part of the discount, the discount waiting for the next renewal, and the commitment, all carried over. */
+  readonly retentionDiscountCents?: number;
+  readonly nextDiscountAmountCents?: number | null;
+  readonly commitmentEndsAt?: Date | null;
+  /** Keep my plan only: the subscription this one carries on from and the day it is first charged. Both or neither. */
+  readonly continuesId?: string | null;
+  readonly startAt?: Date | null;
 }
 
 /**
@@ -396,8 +440,14 @@ export async function insertSubscription(db: Runner, input: NewSubscription): Pr
       providerStatus: input.providerStatus ?? null,
       referralCodeId: input.referralCodeId ?? null,
       discountAmountCents: input.discountAmountCents ?? 0,
+      discountMonthsLeft: input.discountMonthsLeft ?? null,
       bundledAddOnNetCents: input.bundledAddOnNetCents ?? 0,
       adCreditCents: input.adCreditCents ?? 0,
+      retentionDiscountCents: input.retentionDiscountCents ?? 0,
+      nextDiscountAmountCents: input.nextDiscountAmountCents ?? null,
+      commitmentEndsAt: input.commitmentEndsAt ?? null,
+      continuesId: input.continuesId ?? null,
+      startAt: input.startAt ?? null,
       status: "incomplete",
     })
     .returning(SUBSCRIPTION_COLUMNS);
@@ -411,6 +461,77 @@ export async function findSubscriptionById(db: Runner, subscriptionId: string): 
   if (!isUuid(subscriptionId)) return null;
   const rows = await db.select(SUBSCRIPTION_COLUMNS).from(subscriptions).where(eq(subscriptions.id, subscriptionId)).limit(1);
   return rows[0] ?? null;
+}
+
+/** Records what a code will take off from the next renewal. Null when it is the amount the subscription takes already. Staff connection, under the billing lock. */
+export async function setNextDiscount(tx: ScopedTransaction, input: { readonly subscriptionId: string; readonly discountCents: number; readonly now: Date }): Promise<void> {
+  if (!isUuid(input.subscriptionId)) return;
+  await tx
+    .update(subscriptions)
+    .set({
+      nextDiscountAmountCents: sql`case when ${input.discountCents}::integer = ${subscriptions.discountAmountCents} then null else ${input.discountCents}::integer end`,
+      updatedAt: input.now,
+    })
+    .where(eq(subscriptions.id, input.subscriptionId));
+}
+
+/** What a payment did to the subscription's discount. */
+export interface DiscountSettlement {
+  /** The paid months the discount still has to run after this payment; null for no limit. */
+  readonly monthsLeft: number | null;
+  /** This payment was the last of the discount's months: the provider must be moved to the amount without it. */
+  readonly ended: boolean;
+}
+
+/**
+ * The one place a payment's effect on a code's discount is worked out, for the first payment, a renewal, a reactivation and
+ * the console's manual payment. Only a payment taken with a code discount counts a month off `discount_months_left` (null
+ * stays null, so months offline cost nothing); the last month sets the amount for the next renewal to 0. A payment taken at the
+ * discount that was waiting (`adoptsNewDiscount`) makes it the subscription's own and clears the wait first, so a month that
+ * ends the discount in the same payment still leaves 0 waiting. Staff connection, in the payment's transaction under the billing lock.
+ */
+export async function settleDiscountAfterPayment(
+  tx: ScopedTransaction,
+  input: { readonly subscriptionId: string; readonly discountTakenCents: number; readonly adoptsNewDiscount: boolean; readonly now: Date },
+): Promise<DiscountSettlement> {
+  const rows = await tx
+    .select({
+      discountAmountCents: subscriptions.discountAmountCents,
+      retentionDiscountCents: subscriptions.retentionDiscountCents,
+      discountMonthsLeft: subscriptions.discountMonthsLeft,
+      nextDiscountAmountCents: subscriptions.nextDiscountAmountCents,
+    })
+    .from(subscriptions)
+    .where(eq(subscriptions.id, input.subscriptionId))
+    .limit(1)
+    .for("update");
+  const row = rows[0];
+  if (row === undefined) throw new Error(`Subscription ${input.subscriptionId} was not found to settle its discount.`);
+  let { discountAmountCents, retentionDiscountCents, nextDiscountAmountCents } = row;
+  if (input.adoptsNewDiscount) {
+    discountAmountCents = input.discountTakenCents;
+    retentionDiscountCents = 0;
+    nextDiscountAmountCents = null;
+  }
+  let monthsLeft = row.discountMonthsLeft;
+  let ended = false;
+  if (input.discountTakenCents > 0 && monthsLeft !== null && monthsLeft > 0) {
+    monthsLeft -= 1;
+    ended = monthsLeft === 0;
+    if (ended) nextDiscountAmountCents = 0;
+  }
+  const unchanged =
+    discountAmountCents === row.discountAmountCents &&
+    retentionDiscountCents === row.retentionDiscountCents &&
+    monthsLeft === row.discountMonthsLeft &&
+    nextDiscountAmountCents === row.nextDiscountAmountCents;
+  if (!unchanged) {
+    await tx
+      .update(subscriptions)
+      .set({ discountAmountCents, retentionDiscountCents, discountMonthsLeft: monthsLeft, nextDiscountAmountCents, updatedAt: input.now })
+      .where(eq(subscriptions.id, input.subscriptionId));
+  }
+  return { monthsLeft, ended };
 }
 
 /** A subscription by the provider's own id, whatever its status. Staff connection. */
@@ -518,6 +639,91 @@ export async function openCheckoutSubscription(db: Runner, input: CheckoutSubscr
     await insertBundledAddOns(tx, { businessId: input.businessId, subscriptionId: subscription.id, items: bundledAddOns });
     return subscription;
   });
+}
+
+/** The unpaid or authorised-but-uncharged successor of a kept plan, or null. At most one exists (subscriptions_one_successor_idx). */
+export async function findWaitingSuccessor(db: Runner, subscriptionId: string): Promise<Subscription | null> {
+  if (!isUuid(subscriptionId)) return null;
+  const rows = await db
+    .select(SUBSCRIPTION_COLUMNS)
+    .from(subscriptions)
+    .where(and(eq(subscriptions.continuesId, subscriptionId), ne(subscriptions.status, "cancelled"), subscriptionWaitingToStart()))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export interface KeptSubscription {
+  /** The subscription the client cancelled at the provider and is keeping. Its plan, discount, credit and commitment carry over. */
+  readonly continues: Subscription;
+  readonly provider: BillingProviderName;
+  readonly providerSubscriptionId: string;
+  /** The services as they will be billed, each at its current package price. */
+  readonly bundledAddOns: readonly NewBundledAddOn[];
+  readonly adCreditCents: number;
+  /** An earlier keep checkout that was never authorised, ended here so only one exists. */
+  readonly replacing: string | null;
+  readonly now: Date;
+}
+
+/**
+ * Opens the successor of a plan the client is keeping: an `incomplete` subscription for the same plan, discount, code
+ * months and commitment, starting on the old one's `paid_through_at` (docs/plans/18-platform-owner-decisions.md, Keep my
+ * plan). The old subscription stays the business's current one until this is charged. Throws for a subscription with no
+ * paid month to start from.
+ */
+export async function openKeptSubscription(db: Runner, input: KeptSubscription): Promise<Subscription> {
+  const { continues } = input;
+  if (continues.paidThroughAt === null) throw new Error(`Subscription ${continues.id} has no paid month to continue from`);
+  const startAt = continues.paidThroughAt;
+  return db.transaction(async (tx) => {
+    if (input.replacing !== null) {
+      await cancelStaleSubscription(tx, { subscriptionId: input.replacing, businessId: continues.businessId, now: input.now });
+    }
+    const subscription = await insertSubscription(tx, {
+      businessId: continues.businessId,
+      planId: continues.planId,
+      provider: input.provider,
+      providerSubscriptionId: input.providerSubscriptionId,
+      referralCodeId: continues.referralCodeId,
+      // The discount the next renewal would have taken (a code repriced on a changed basket, or ended), now its own.
+      discountAmountCents: continues.nextDiscountAmountCents ?? continues.discountAmountCents,
+      discountMonthsLeft: continues.discountMonthsLeft,
+      nextDiscountAmountCents: null,
+      retentionDiscountCents: continues.nextDiscountAmountCents === null ? continues.retentionDiscountCents : 0,
+      commitmentEndsAt: continues.commitmentEndsAt,
+      bundledAddOnNetCents: bundledNetCents(input.bundledAddOns),
+      adCreditCents: input.adCreditCents,
+      continuesId: continues.id,
+      startAt,
+    });
+    await insertBundledAddOns(tx, { businessId: continues.businessId, subscriptionId: subscription.id, items: input.bundledAddOns });
+    return subscription;
+  });
+}
+
+export interface ConfirmedKeep {
+  readonly businessId: string;
+  /** The subscription that was kept: its cancel request is cleared, so the plan shows as running. */
+  readonly continuesId: string;
+}
+
+/**
+ * Records that the provider holds the new mandate of a kept plan: the successor is `active` (authorised, not yet
+ * charged) and the subscription it continues no longer carries the client's cancel request. Idempotent: null when the
+ * subscription is not a successor still waiting to start (already charged, cancelled, or not a kept plan). The caller holds
+ * the business's billing lock. Staff connection.
+ */
+export async function confirmKeptSubscription(db: Runner, input: { readonly subscriptionId: string; readonly now: Date }): Promise<ConfirmedKeep | null> {
+  if (!isUuid(input.subscriptionId)) return null;
+  const confirmed = await db
+    .update(subscriptions)
+    .set({ status: "active", lastSyncedAt: input.now })
+    .where(and(eq(subscriptions.id, input.subscriptionId), inArray(subscriptions.status, ["incomplete", "active"]), subscriptionWaitingToStart()))
+    .returning({ businessId: subscriptions.businessId, continuesId: subscriptions.continuesId });
+  const row = confirmed[0];
+  if (row === undefined || row.continuesId === null) return null;
+  await db.update(subscriptions).set({ cancelRequestedAt: null }).where(eq(subscriptions.id, row.continuesId));
+  return { businessId: row.businessId, continuesId: row.continuesId };
 }
 
 export async function findPaymentByProviderId(
@@ -714,7 +920,7 @@ export async function updateSubscriptionProviderStatus(db: Runner, input: Subscr
       status: input.status,
       providerStatus: input.providerStatus,
       lastSyncedAt: input.now,
-      ...(input.status === "cancelled" ? { cancelledAt: sql`coalesce(${subscriptions.cancelledAt}, ${input.now})`, adCreditCents: adCreditAfterEnding } : {}),
+      ...(input.status === "cancelled" ? { cancelledAt: sql`coalesce(${subscriptions.cancelledAt}, ${input.now})`, adCreditCents: adCreditAfterProviderCancel } : {}),
     })
     .where(
       and(
@@ -967,6 +1173,8 @@ export interface Receipt extends Payment {
   readonly taxInvoiceNumber: string | null;
   /** For an add-on payment, the catalogue id of what was bought ("digital-growth"). Null for everything else. */
   readonly addOnId: string | null;
+  /** What a plan payment was billed as (its services and discounts), for a receipt that lists them. Null when not kept. */
+  readonly invoiceBasis: PaymentInvoiceBasis | null;
 }
 
 /** The receipts list with the term each payment bought. Newest first. Works through row-level security. */
@@ -997,6 +1205,7 @@ export async function listReceiptsForBusiness(db: Runner, businessId: string, li
       taxInvoiceId: taxInvoices.id,
       taxInvoiceNumber: taxInvoices.number,
       addOnId: addOnSubscriptions.addOn,
+      invoiceBasis: payments.invoiceBasis,
     })
     .from(payments)
     .innerJoin(numbered, eq(numbered.id, payments.id))
@@ -1173,6 +1382,8 @@ export interface BillingState {
    * the active plan of its tier for its currency. Null only when its currency has no active plan of that tier.
    */
   readonly plan: Plan | null;
+  /** The services billed inside the subscription (`pending` or `active`): what decides whether the business has a website. */
+  readonly addOns: readonly BundledAddOn[];
 }
 
 /**
@@ -1194,6 +1405,7 @@ export async function findBillingState(db: Runner, businessId: string): Promise<
   const subscription = await findLatestSubscriptionForBusiness(db, businessId);
   const everPaid = await hasEverPaid(db, businessId);
   const paymentUnderReview = await hasPaymentUnderReview(db, businessId);
+  const addOns = await findLiveBundledAddOns(db, businessId);
   const billed = subscription === null ? null : await findPlanById(db, subscription.planId);
   // A move up that has been paid for is Premium from that moment, though the provider bills the old plan until the
   // renewal: the customer is shown, and gets, what they paid for.
@@ -1220,5 +1432,6 @@ export async function findBillingState(db: Runner, businessId: string): Promise<
     hasEverPaid: everPaid,
     paymentUnderReview,
     plan,
+    addOns,
   };
 }

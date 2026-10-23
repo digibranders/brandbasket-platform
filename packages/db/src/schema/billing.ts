@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -167,6 +168,16 @@ export const subscriptions = pgTable(
      */
     discountAmountCents: integer("discount_amount_cents").notNull().default(0),
     /**
+     * The paid months the code's discount still has to run, copied from `referral_codes.discount_months` when the checkout
+     * opened and counted down by each payment taken with the discount. Null means no limit.
+     */
+    discountMonthsLeft: integer("discount_months_left"),
+    /**
+     * What the code takes off from the next renewal when that differs from `discount_amount_cents`: 0 when the months
+     * run out, or a percent code repriced after a service was added or dropped. Null when nothing is waiting.
+     */
+    nextDiscountAmountCents: integer("next_discount_amount_cents"),
+    /**
      * The part of `discountAmountCents` that is a stay offer taken on the way out of the account (the delete-account
      * page), rather than a referral code. It needs no code, so it is the one discount a subscription may carry without
      * one. Zero when no offer was taken. An offer is taken once.
@@ -212,15 +223,25 @@ export const subscriptions = pgTable(
     cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    /** Keep my plan: the subscription this one carries on from, which was cancelled at the provider at the client's request. */
+    continuesId: uuid("continues_id"),
+    /** Keep my plan: the day the new mandate is first charged, the old one's `paid_through_at`. Null for any other subscription. */
+    startAt: timestamp("start_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
+    foreignKey({ columns: [table.continuesId], foreignColumns: [table.id], name: "subscriptions_continues_id_fk" }),
     uniqueIndex("subscriptions_provider_id_idx").on(table.provider, table.providerSubscriptionId),
-    // A business may have many cancelled subscriptions over time, but only ever one live one.
+    // A business may have many cancelled subscriptions over time, but only ever one live one. A kept plan's successor
+    // waits beside the subscription it continues, so it is counted by its own index below.
     uniqueIndex("subscriptions_one_live_per_business_idx")
       .on(table.businessId)
+      .where(sql`${table.status} <> 'cancelled' and ${table.continuesId} is null`),
+    uniqueIndex("subscriptions_one_successor_idx")
+      .on(table.continuesId)
       .where(sql`${table.status} <> 'cancelled'`),
+    check("subscriptions_keep_check", sql`(${table.continuesId} is null) = (${table.startAt} is null)`),
     index("subscriptions_business_id_idx").on(table.businessId),
     // A discount that is neither a referral code's nor a stay offer's, or an offer that is more than the whole
     // discount, is a bug rather than a state to handle.
@@ -229,6 +250,10 @@ export const subscriptions = pgTable(
       sql`${table.bundledAddOnNetCents} >= 0 and (${table.pendingBundledAddOnNetCents} is null or ${table.pendingBundledAddOnNetCents} >= 0)`,
     ),
     check("subscriptions_ad_credit_check", sql`${table.adCreditCents} >= 0`),
+    check(
+      "subscriptions_discount_months_check",
+      sql`(${table.discountMonthsLeft} is null or ${table.discountMonthsLeft} >= 0) and (${table.nextDiscountAmountCents} is null or ${table.nextDiscountAmountCents} >= 0)`,
+    ),
     check(
       "subscriptions_pending_check",
       sql`${table.pendingDiscountAmountCents} >= 0 and (${table.pendingDiscountAmountCents} = 0 or (${table.pendingPlanId} is not null and ${table.referralCodeId} is not null))`,
@@ -313,6 +338,8 @@ export interface PaymentInvoiceBasis {
   readonly discountAmountCents: number;
   /** The stay offer's part of `discountAmountCents`, or 0. */
   readonly retentionDiscountCents: number;
+  /** The referral code that took the rest of the discount, so the receipt can name it: a customer's connection cannot read referral codes. Absent with no code, and on payments recorded before this was kept. */
+  readonly code?: string;
   /** The services billed in the charge, in the order they were added. */
   readonly lines: readonly {
     readonly addOn: string;

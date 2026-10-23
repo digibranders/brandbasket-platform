@@ -4,11 +4,13 @@ import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import { AuthorsTable } from "@/components/panel/blog-editor/authors-table";
 import { BlogEmptyState } from "@/components/panel/blog-editor/blog-empty-state";
 import { getBlogAuthorsWithStats } from "@/lib/server/blog-taxonomy";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 
 export const metadata: Metadata = { title: "Authors" };
 
 /** Content → Authors: the people who write the business's posts, and how much each has written. */
 export default async function AuthorsPage(): Promise<ReactElement> {
+  await requireWebsiteClient();
   const authors = await getBlogAuthorsWithStats();
 
   return (

@@ -14,7 +14,7 @@ implements: "A successful payment brings the site back automatically, with no re
 | Question | Decision |
 |---|---|
 | Which plan | The tier they were on (Care or Premium), at the price on sale today. A customer who paid the old ₹2,999 Premium returns at ₹6,999. Moving Care to Premium afterwards uses the existing Upgrade flow. |
-| Coupons | None. No code is applied and no affiliate earns on a reactivation. |
+| Coupons | A code is not applied to a reactivation, but a lapse (a failed payment, a revoked mandate) keeps the code it had for the months it has left (plan 18, decision 4): the discount is repriced on the basket and its months are copied across, and the code's affiliate earns as on a renewal. After the customer's own cancel nothing carries. |
 | Renewal still being retried, paid period over | The customer may reactivate now. The retrying Razorpay subscription is cancelled. |
 | Staff | Recording a bank transfer in the console reactivates a lapsed client the same way. |
 | Currency | INR. Nothing here is specific to a currency, and no USD work is done. |
@@ -59,7 +59,7 @@ After the commit, the old subscription is cancelled at Razorpay immediately with
 
 ### Opening the checkout (`apps/platform/lib/server/checkout.ts`)
 
-- `openPlanCheckout` applies no referral discount when the business has paid before (`state.hasEverPaid`).
+- `openPlanCheckout` applies no new referral code when the business has paid before (`state.hasEverPaid`). A lapse carries the code of the subscription it last paid on (`loadCarriedCode`) when the customer did not cancel themselves and the code has months left (or no limit): the discount is repriced on the reactivation basket and `discount_months_left` is copied across. The code need not still be redeemable, and the redemption cap is not used again (it counts businesses).
 - `needs-reactivation` handling is removed.
 - New `startReactivationFor(customer, now)`: the checkout rate limit, a check that the business has paid before and
   has no access now (anything else is refused with the existing messages), then `openPlanCheckout` with the business's
@@ -72,13 +72,13 @@ After the commit, the old subscription is cancelled at Razorpay immediately with
 New `activateReactivationPayment(tx, input)`: records the payment as kind `reactivation` (the enum value and the
 receipt wording already exist) at the plan's recurring amount with its tax, sets the period to end at the
 `paidThroughAt` it is given, and sets `commitmentEndsAt` to the same date. It does not mark a lead paid, open a
-membership or accrue an affiliate earning.
+membership. It takes the discount frozen on the new subscription (0 unless a lapse carried a code), counts a month off the code, and accrues an affiliate earning as a renewal does.
 
 A first charge on a subscription is a reactivation when the business already has another activated subscription. This
 is read under the business's billing lock, so it is a fact at that moment, not a guess.
 
 - **Razorpay webhook:** `paidThroughAt` is the event's `current_end`, Razorpay's own cycle end, as for renewals. The
-  expected amount is the plan's recurring amount with tax (no discount).
+  expected amount is the plan's recurring amount with tax, less the discount frozen on the new subscription (none unless a lapse carried a code).
 - **Fake provider (local):** one calendar month from payment.
 - **Staff bank transfer:** one calendar month from the date the money arrived.
 
@@ -98,7 +98,9 @@ subscription's retry lands in the seconds before Razorpay cancels it, and staff 
 `recordManualFirstPayment` follows the new decision: a lapsed client's bank transfer ends the lapsed row, opens a
 `manual` subscription on the tier's current plan, and records it with `activateReactivationPayment`. The
 `needs-reactivation` notice in `packages/shared/src/lib/billing/manual-payment-notices.ts` goes. The amount shown on
-the form is the amount recorded.
+the form is the amount recorded. A lapsed client keeps their code here as on the dashboard (`loadManualCarriedCode`, over
+`loadCarriedCode`): the discount is repriced on the basket, the months are copied across and the payment counts one down.
+The form's amount and hint show the discounted amount and name the code with the months it has left.
 
 ### Screens (`apps/platform`)
 
@@ -128,10 +130,10 @@ the form is the amount recorded.
   review.
 - `cancelStaleSubscription` (integration, real database): ends a lapsed live row; refuses one with access; refuses one
   whose `paid_through_at` moved into the future.
-- `activateReactivationPayment`: kind, amount, dates, no lead marked, no membership, no affiliate earning.
+- `activateReactivationPayment`: kind, amount (with the carried discount), dates, no lead marked, no membership, the affiliate earning and the code's month counted.
 - Webhook: a first charge for a returning business records `reactivation` with `current_end`; a charge on a cancelled
   subscription is recorded as `checkout_replaced` and activates nothing.
-- Checkout: no discount for a returning business; the lapsed row is cancelled at the provider after the commit.
+- Checkout: no new code for a returning business, the lapsed subscription's code carried with its months after a lapse and nothing carried after the customer's own cancel; the lapsed row is cancelled at the provider after the commit.
 - Console: a bank transfer for a lapsed client reactivates it.
 - Banner and plan card: the lapsed state shows today's price and Reactivate.
 - One end-to-end run in Razorpay test mode before release: lapse a test subscription, reactivate, confirm access
@@ -139,4 +141,4 @@ the form is the amount recorded.
 
 ## Out of scope
 
-Choosing a different tier on return, grandfathered prices, coupons on reactivation, refunds through the API, USD.
+Choosing a different tier on return, grandfathered prices, a new coupon on reactivation, refunds through the API, USD.

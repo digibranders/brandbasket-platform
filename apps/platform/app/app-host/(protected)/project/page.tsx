@@ -18,7 +18,7 @@ import { PROJECT_RESPONSE_NOTICES, readProjectResponseNotice } from "@/lib/proje
 import { PROJECT_STAGES, projectStageIndex } from "@/lib/project-stages";
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
 import type { PrimaryDomain, ProjectStatus } from "@brandbasket/db";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { getLiveWebsite, getOnboardingSnapshot, type LiveWebsite } from "@/lib/server/onboarding";
 import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import { approvePreviewAction, checkDomainAction, requestPreviewChangesAction } from "./actions";
@@ -125,7 +125,7 @@ export default async function ProjectPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
-  await requireCustomerAccess();
+  await requireWebsiteClient();
   const [snapshot, liveWebsite] = await Promise.all([getOnboardingSnapshot(), getLiveWebsite()]);
   const { project } = snapshot;
   const sp = await searchParams;

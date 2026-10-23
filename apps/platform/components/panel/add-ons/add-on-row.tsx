@@ -2,10 +2,10 @@ import type { ReactElement } from "react";
 import { requestBrand } from "@/lib/server/request-brand";
 import type { AddOn } from "@brandbasket/shared/lib/billing/add-ons";
 import { formatMoney } from "@brandbasket/shared/lib/money";
-import { addBundledAddOnAction, removeBundledAddOnAction } from "@/app/app-host/(protected)/add-ons/actions";
+import { addBundledAddOnAction, removeBundledAddOnAction } from "@/app/app-host/(protected)/services/actions";
 import { BundledAddOnAdd } from "@/components/panel/add-ons/bundled-add-on-add";
 import { BundledAddOnRemove } from "@/components/panel/add-ons/bundled-add-on-remove";
-import { addOnDate } from "@/lib/billing/add-on-copy";
+import { addOnDate, planStartsAgain } from "@/lib/billing/add-on-copy";
 import { dropCopy } from "@/lib/billing/drop-service";
 import type { AddOnOffer, AddOnPageEntry } from "@/lib/server/add-ons";
 
@@ -150,6 +150,8 @@ function AvailableAddOn({ addOn, entry, canAdd, headingId, contactEmail, writeTo
           and we&apos;ll add it.
         </p>
       );
+    case "plan-kept":
+      return <p className="text-sm text-ink-soft">{planStartsAgain(offer.startsOn)}</p>;
     case "write":
       return writeToUs;
     default: {

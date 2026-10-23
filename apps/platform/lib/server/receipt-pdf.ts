@@ -1,5 +1,7 @@
 import "server-only";
 import { BRAND, type Brand } from "@/lib/brand";
+import { BRANDBASKET_LETTERHEAD } from "@brandbasket/shared/server/brandbasket-letterhead";
+import { hexColor, INK, INK_SOFT, RULE } from "@brandbasket/shared/server/tax-invoice-pdf";
 import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
 import type { ReceiptDocument } from "@/lib/billing/receipt-document";
 
@@ -11,12 +13,10 @@ const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
 const COLUMN_GAP = 32;
 const COLUMN_WIDTH = (CONTENT_WIDTH - COLUMN_GAP) / 2;
 
-/** The dashboard's ink, accent and rule colours (theme.css), so a receipt looks like it came from the same place. */
-const INK = rgb(0x2a / 255, 0x0d / 255, 0x10 / 255);
-const INK_SOFT = rgb(0x5e / 255, 0x3a / 255, 0x40 / 255);
-const ACCENT = rgb(0x63 / 255, 0x00 / 255, 0x1e / 255);
-const LINE = rgb(0xe2 / 255, 0xd2 / 255, 0xc1 / 255);
+/** The tax invoice's palette (ink on white) and letterhead, so a receipt looks like the invoice it stands in for. */
 const PAPER = rgb(1, 1, 1);
+/** The letterhead's height on the page: 9.5 mm, as on the invoice. */
+const LOGO_HEIGHT = 26.93;
 
 interface Fonts {
   readonly regular: PDFFont;
@@ -80,7 +80,7 @@ function drawRule(page: PDFPage, y: number): void {
     start: { x: MARGIN, y },
     end: { x: PAGE_WIDTH - MARGIN, y },
     thickness: 0.75,
-    color: LINE,
+    color: RULE,
   });
 }
 
@@ -98,19 +98,31 @@ function drawBlock(page: PDFPage, fonts: Fonts, label: string, lines: readonly s
   return y;
 }
 
-function drawReceipt(page: PDFPage, fonts: Fonts, receipt: ReceiptDocument, brand: Brand): void {
+/** The logo, its wordmark resting on `baseline`. */
+function drawLetterhead(page: PDFPage, baseline: number): void {
+  const { paths, height, colorHex } = BRANDBASKET_LETTERHEAD;
+  const scale = LOGO_HEIGHT / height;
+  // The wordmark's baseline sits 37.1 units down the 55-unit logo; drawSvgPath's y is the logo's top edge.
+  const top = baseline + 37.1 * scale;
+  for (const path of paths) {
+    const [d, fill] = typeof path === "string" ? [path, hexColor(colorHex)] : [path.d, hexColor(path.colorHex)];
+    page.drawSvgPath(d, { x: MARGIN, y: top, scale, color: fill });
+  }
+}
+
+function drawReceipt(page: PDFPage, fonts: Fonts, receipt: ReceiptDocument): void {
   // A PDF page has no background of its own, and viewers in dark mode show that as black, which hides the dark
   // text. Painting the page white keeps a receipt readable (and printable) in every viewer.
   page.drawRectangle({ x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT, color: PAPER });
   const right = PAGE_WIDTH - MARGIN;
   let y = PAGE_HEIGHT - MARGIN - 8;
 
-  drawText(page, brand.name, MARGIN, y, { font: fonts.bold, size: 20, color: ACCENT });
+  drawLetterhead(page, y);
   drawRightAligned(page, receipt.title, right, y, { font: fonts.bold, size: 18 });
   y -= 20;
   drawRightAligned(page, `Issued ${receipt.issuedOn}`, right, y, { font: fonts.regular, size: 9.5, color: INK_SOFT });
   y -= 14;
-  drawRightAligned(page, receipt.status, right, y, { font: fonts.bold, size: 9.5, color: ACCENT });
+  drawRightAligned(page, receipt.status, right, y, { font: fonts.bold, size: 9.5 });
 
   y -= 30;
   drawRule(page, y);
@@ -170,7 +182,7 @@ export async function renderReceiptsPdf(receipts: readonly ReceiptDocument[], br
   pdf.setCreator(brand.name);
 
   for (const receipt of receipts) {
-    drawReceipt(pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]), fonts, receipt, brand);
+    drawReceipt(pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]), fonts, receipt);
   }
   return pdf.save();
 }

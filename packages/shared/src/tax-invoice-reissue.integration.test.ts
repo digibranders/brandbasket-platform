@@ -299,7 +299,7 @@ describe("issueMissingTaxInvoice", () => {
     expect(invoice.lines[0]).toMatchObject({ description: "Social Media and Ads", discountAmountCents: 0, note: null });
   });
 
-  it("names the coupon on a single service, though the code's discount ended when a second service was added", async () => {
+  it("names the coupon on a single service from what the payment kept, though the subscription's discount has ended since (its months ran out)", async () => {
     const discount = { kind: "percent", basisPoints: 2_000 } as const;
     const created = await createReferralCode(dbs.staff.db, {
       code: "GAURAV",
@@ -313,7 +313,8 @@ describe("issueMissingTaxInvoice", () => {
     const discountAmountCents = discountCentsFor(discount, 299_900);
     const subscription = await openSubscription(linesOf("managed-website"), { referralCodeId: created.id, discountAmountCents });
     const payment = await payFirstWithoutPrintableInvoice(subscription, discountAmountCents);
-    await execSql(dbs.owner, `update subscriptions set discount_amount_cents = 0 where id = '${subscription.id}'`);
+    // The code's months run out after the payment: the subscription now takes nothing off, but the payment was billed with it.
+    await execSql(dbs.owner, `update subscriptions set discount_amount_cents = 0, discount_months_left = 0 where id = '${subscription.id}'`);
 
     const invoice = await issue(payment.id);
 
@@ -321,6 +322,39 @@ describe("issueMissingTaxInvoice", () => {
     expect(invoice.lines).toHaveLength(1);
     expect(invoice.lines[0]).toMatchObject({ description: "Managed Website", discountAmountCents, note: "Coupon GAURAV applied, 20% off" });
     expect(invoice.totalCents).toBe(payment.amountCents);
+  });
+
+  it.each([
+    ["two services", ["managed-website", "digital-growth"] as const],
+    ["three services", ["managed-website", "digital-growth", "local-seo-aeo"] as const],
+  ])("reissues the invoice for a code taken once off %s, shared over the lines to the paisa", async (_name, services_) => {
+    const discount = { kind: "percent", basisPoints: 1_000 } as const;
+    const created = await createReferralCode(dbs.staff.db, {
+      code: "PKGCODE",
+      currency: "INR",
+      affiliateId: null,
+      discount,
+      expiresAt: null,
+      maxRedemptions: null,
+      createdByStaffId: STAFF_USER,
+    });
+    const lines = linesOf(...services_);
+    const netCents = lines.reduce((total, line) => total + line.netAmountCents, 0);
+    const discountAmountCents = discountCentsFor(discount, netCents);
+    const subscription = await openSubscription(lines, { referralCodeId: created.id, discountAmountCents });
+    const payment = await payFirstWithoutPrintableInvoice(subscription, discountAmountCents);
+    // The services, the offer or the code may change after the payment; the invoice is built from what the payment kept.
+    await execSql(dbs.owner, `update subscriptions set discount_amount_cents = 0, discount_months_left = 0 where id = '${subscription.id}'`);
+
+    const invoice = await issue(payment.id);
+
+    expect(payment.amountCents).toBe(chargedAmountCents(netCents, discountAmountCents, 1_800));
+    expect(invoice.totalCents).toBe(payment.amountCents);
+    expect(invoice.lines).toHaveLength(services_.length);
+    const codeShares = invoice.lines.map((line, index) => line.discountAmountCents - (lines[index]?.offerDiscountAmountCents ?? 0));
+    expect(codeShares.reduce((total, share) => total + share, 0)).toBe(discountAmountCents);
+    expect(invoice.taxableCents).toBe(netCents - discountAmountCents);
+    expect(invoice.lines.every((line) => line.note?.endsWith("Coupon PKGCODE applied") === true)).toBe(true);
   });
 
   it("invoices a renewal from the lines it was billed at, a month from the cycle it paid for", async () => {
@@ -371,10 +405,10 @@ describe("issueMissingTaxInvoice", () => {
 
     const restarted = await issue(restart.payment.id, new Date("2026-12-15T05:30:00.000Z"));
 
-    expect(restart.payment.amountCents).toBe(2_890_764);
+    expect(restart.payment.amountCents).toBe(3_303_764);
     expect(restarted.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
-      ["Social Media and Ads", 299_970, "Package offer, 30% off"],
-      ["Local SEO + AEO", 750_030, "Package offer, 30% off"],
+      ["Social Media and Ads", 199_980, "Package offer, 20% off"],
+      ["Local SEO + AEO", 500_020, "Package offer, 20% off"],
     ]);
     expect(restarted.lines[0]?.detail).toBe("Monthly subscription, 09 Dec 2026 to 08 Jan 2027");
     expect(restarted.totalCents).toBe(restart.payment.amountCents);

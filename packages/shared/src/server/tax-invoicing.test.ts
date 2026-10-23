@@ -1,4 +1,4 @@
-import { BRANDBASKET_SAC } from "@brandbasket/billing";
+import { BRANDBASKET_SAC, chargedAmountCents } from "@brandbasket/billing";
 import { BillingRangeError } from "@brandbasket/billing/billing-range-error";
 import { InvoiceAmountMismatchError } from "@brandbasket/billing/tax-invoice";
 import type { AddOnSubscription, NewTaxInvoice, Payment, Plan, ScopedTransaction, TaxInvoice } from "@brandbasket/db";
@@ -27,6 +27,8 @@ vi.mock("@brandbasket/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@brandbasket/db")>()),
   findAddOnSubscriptionForPayment: vi.fn(),
   findBillingProfile: vi.fn(),
+  findReferralCodeForInvoice: vi.fn(),
+  findSubscriptionById: vi.fn(),
   findInvoiceFallbackRecipient: vi.fn(),
   findPaymentForInvoice: vi.fn(),
   findTaxInvoiceByPaymentId: vi.fn(),
@@ -86,7 +88,7 @@ describe("what the invoice calls us", () => {
 
   it("prints the registered company trading as Brandbasket, with Brandbasket's own contact", () => {
     const supplier = supplierFor();
-    expect(supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Brandbasket", email: "hello@brandbasket.in", stateCode: "mh" });
+    expect(supplier).toMatchObject({ legalName: "Digibranders Private Limited", tradeName: "Brandbasket", email: "support@brandbasket.in", stateCode: "mh" });
     expect(JSON.stringify(supplier)).not.toMatch(/first\s?fold/i);
   });
 });
@@ -500,5 +502,74 @@ describe("issueTaxInvoice for a payment of services", () => {
     arrangeInvoiceStore();
 
     await expect(issueTaxInvoice(tx, payment(1_179_882), source([line("press-release", SOCIAL, 0)]))).rejects.toThrow("not a monthly add-on");
+  });
+
+  describe("with a referral code taken once off the package", () => {
+    /** The payment is on a subscription carrying the code, which the invoice reads to name it on each line it touches. */
+    const withCode = (code: { discountKind: "amount" | "percent"; discountPercentBasisPoints: number | null }): void => {
+      vi.mocked(db.findSubscriptionById).mockResolvedValue({ referralCodeId: "code-1" } as Awaited<ReturnType<typeof db.findSubscriptionById>>);
+      vi.mocked(db.findReferralCodeForInvoice).mockResolvedValue({ code: "SAVE10", ...code });
+    };
+    const paymentOn = (amountCents: number): Payment => ({ ...payment(amountCents), subscriptionId: "sub-1" });
+
+    it("shares the code over two lines in proportion to their nets, the leftover paisa on the larger, adding up to the paisa", async () => {
+      const { inserted } = arrangeInvoiceStore();
+      withCode({ discountKind: "amount", discountPercentBasisPoints: null });
+      // Nets after the 20% package offer: ₹2,399.20 and ₹7,998.80. A ₹1,500 code splits 34,610 and 115,390 paise.
+      const lines = [line("managed-website", WEBSITE, 59_980), line("digital-growth", SOCIAL, 199_980 + 40)];
+
+      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(1_039_800, 150_000, 1_800)), source(lines, 150_000));
+
+      expect(inserted().lines.map((l) => [l.description, l.discountAmountCents, l.note])).toEqual([
+        ["Managed Website", 59_980 + 34_610, "Package offer, 20% off. Coupon SAVE10 applied"],
+        ["Social Media and Ads", 199_980 + 40 + 115_390, "Package offer, 20% off. Coupon SAVE10 applied"],
+      ]);
+      const codeShares = inserted().lines.map((l, i) => l.discountAmountCents - [59_980, 200_020][i]!);
+      expect(codeShares.reduce((total, share) => total + share, 0)).toBe(150_000);
+      expect(inserted()).toMatchObject({ taxableCents: 1_039_800 - 150_000, totalCents: 1_049_964 });
+    });
+
+    it("shares it over three lines the same way, and the invoice still comes to what was charged", async () => {
+      const { inserted } = arrangeInvoiceStore();
+      withCode({ discountKind: "amount", discountPercentBasisPoints: null });
+      const lines = [line("managed-website", WEBSITE, 89_970), line("digital-growth", SOCIAL, 299_970), line("local-seo-aeo", SEO, 750_060)];
+
+      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(2_659_700, 100_000, 1_800)), source(lines, 100_000));
+
+      expect(inserted().lines.map((l) => l.discountAmountCents)).toEqual([89_970 + 7_892, 299_970 + 26_316, 750_060 + 65_792]);
+      expect(inserted().lines.every((l) => l.note === "Package offer, 30% off. Coupon SAVE10 applied")).toBe(true);
+      expect(inserted()).toMatchObject({ taxableCents: 2_659_700 - 100_000, totalCents: 3_020_446 });
+    });
+
+    it("names a percentage code without a share on a package, since no line holds that share of its own net", async () => {
+      const { inserted } = arrangeInvoiceStore();
+      withCode({ discountKind: "percent", discountPercentBasisPoints: 1_000 });
+      const lines = [line("managed-website", WEBSITE, 59_980), line("digital-growth", SOCIAL, 199_980 + 40)];
+
+      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(1_039_800, 103_980, 1_800)), source(lines, 103_980));
+
+      expect(inserted().lines.map((l) => l.note)).toEqual(["Package offer, 20% off. Coupon SAVE10 applied", "Package offer, 20% off. Coupon SAVE10 applied"]);
+    });
+
+    it("keeps naming the share on a single service", async () => {
+      const { inserted } = arrangeInvoiceStore();
+      withCode({ discountKind: "percent", discountPercentBasisPoints: 1_000 });
+
+      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(SOCIAL, 99_990, 1_800)), source([line("digital-growth", SOCIAL, 0)], 99_990));
+
+      expect(inserted().lines).toHaveLength(1);
+      expect(inserted().lines[0]).toMatchObject({ discountAmountCents: 99_990, note: "Coupon SAVE10 applied, 10% off" });
+    });
+
+    it("leaves a line the code gave nothing to without a code note", async () => {
+      const { inserted } = arrangeInvoiceStore();
+      withCode({ discountKind: "amount", discountPercentBasisPoints: null });
+      // One paisa over two lines: the whole of it lands on the larger, so the smaller line is untouched.
+      const lines = [line("managed-website", WEBSITE, 59_980), line("digital-growth", SOCIAL, 199_980 + 40)];
+
+      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(1_039_800, 1, 1_800)), source(lines, 1));
+
+      expect(inserted().lines.map((l) => l.note)).toEqual(["Package offer, 20% off", "Package offer, 20% off. Coupon SAVE10 applied"]);
+    });
   });
 });

@@ -4,6 +4,7 @@ import {
   consumeRateLimit,
   findBusinessCurrency,
   findLiveBundledAddOns,
+  findWaitingSuccessor,
   insertExitFeedback,
   isPackageOfferForfeited,
   listAddOnSubscriptionsForBusiness,
@@ -99,8 +100,27 @@ export async function closeAccountFor(
   const { subscription, plan } = customer.billing;
   const closure = planClosureFor(subscription);
   const staffDb = getStaffDb();
+  // A plan kept after an earlier cancel (Keep my plan) has a new mandate waiting at the provider. It is what would take
+  // the next payment, so it is the one cancelled; the plan it continues was already cancelled at its cycle end.
+  const kept = subscription === null ? null : await findWaitingSuccessor(staffDb, subscription.id);
+  if (kept !== null) {
+    const provider = getBillingProvider();
+    try {
+      if (kept.provider !== provider.name) throw new Error(`The subscription belongs to ${kept.provider}, but ${provider.name} is configured.`);
+      await provider.cancelSubscription(kept.providerSubscriptionId);
+    } catch (error) {
+      logBillingEvent("error", "provider-cancel-failed", {
+        businessId,
+        subscriptionId: kept.id,
+        provider: kept.provider,
+        providerSubscriptionId: kept.providerSubscriptionId,
+        ...describeError(error),
+      });
+      return { kind: "refused", message: CLOSE_FAILED, field: null };
+    }
+  }
 
-  if (subscription !== null && (closure === "end-with-period" || closure === "drop-unpaid")) {
+  if (subscription !== null && kept === null && (closure === "end-with-period" || closure === "drop-unpaid")) {
     const provider = getBillingProvider();
     if (subscription.provider !== provider.name) {
       logBillingEvent("error", "provider-cancel-failed", {
@@ -149,6 +169,7 @@ export async function closeAccountFor(
     await staffDb.transaction(async (tx) => {
       // First, so a payment or a change to the services lands wholly before or wholly after the closure.
       await lockBusinessForBilling(tx, businessId);
+      if (kept !== null) await cancelStaleSubscription(tx, { subscriptionId: kept.id, businessId, now });
       if (subscription !== null && (closure === "end-with-period" || closure === "note-only")) {
         await markCancelRequested(tx, { subscriptionId: subscription.id, businessId, now });
       }

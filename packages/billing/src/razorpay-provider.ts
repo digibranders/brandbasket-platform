@@ -110,6 +110,9 @@ const STOPPED_SUBSCRIPTION_STATUSES: ReadonlySet<string> = new Set(["cancelled",
  * database rather than trusting a subscription id from the URL, so nothing here needs to carry one. */
 export const RAZORPAY_PAY_PATH = "/billing/pay";
 
+/** Where a kept plan's checkout opens: the signed-in account is closing, so it cannot use RAZORPAY_PAY_PATH. */
+export const RAZORPAY_KEEP_PAY_PATH = "/restore-account/keep-plan";
+
 /**
  * Rejects an oversized `razorpay_payment_id` / `razorpay_subscription_id` / `razorpay_signature` before it is used
  * for anything (hashing, a database lookup). Real Razorpay ids and hex signatures are well under 100 characters;
@@ -241,6 +244,9 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
       if (providerPlanId === null) {
         throw new Error(`Plan ${input.plan.code} has no Razorpay plan id. Run Task 2's script and migration first.`);
       }
+      if (input.startAt !== undefined && !(input.startAt.getTime() > Date.now())) {
+        throw new RangeError(`A subscription start date must be in the future, received ${input.startAt.toISOString()}`);
+      }
       const created = await client.subscriptions.create({
         plan_id: providerPlanId,
         total_count: EFFECTIVELY_UNBOUNDED_CYCLES,
@@ -248,8 +254,9 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
         // We send our own emails (packages/email); Razorpay's would duplicate them.
         customer_notify: false,
         notes: { businessId: input.businessId },
+        ...(input.startAt === undefined ? {} : { start_at: Math.floor(input.startAt.getTime() / 1000) }),
       });
-      return { providerSubscriptionId: created.id, checkoutUrl: RAZORPAY_PAY_PATH };
+      return { providerSubscriptionId: created.id, checkoutUrl: input.startAt === undefined ? RAZORPAY_PAY_PATH : RAZORPAY_KEEP_PAY_PATH };
     },
 
     async confirmCheckout(payload: unknown): Promise<ConfirmedPayment> {

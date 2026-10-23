@@ -10,6 +10,7 @@ import {
   findBundledAddOnsForSubscription,
   findBusinessReferralCode,
   findLatestSubscriptionForBusiness,
+  findPaymentInvoiceBasis,
   findRedeemableReferralCode,
   findTaxInvoiceByPaymentId,
   listAffiliateEarnings,
@@ -27,6 +28,7 @@ import {
 } from "@brandbasket/db";
 import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
 import { addOnById, type MonthlyAddOnId } from "./lib/billing/add-ons";
+import { packageLines } from "./lib/billing/packages";
 import { activateFirstPayment, activateRenewalPayment } from "./server/billing-activation";
 
 // billing-activation is server-only in the app; there is no browser here to keep it out of.
@@ -35,9 +37,8 @@ vi.mock("server-only", () => ({}));
 /**
  * The whole code money path, end to end, against a real database: a superadmin creates a coupon or an affiliate
  * code, a customer applies it, a checkout opens at the discounted amount, the customer pays, the subscription
- * activates, and an affiliate code earns its affiliate a month for that payment and every renewal. A code is taken on a
- * single service only (plan 16 Settled 2) and priced against that service's line, never the services plan's 0; the
- * refusal of a code on a package is the app's checkout (apps/platform lib/server/checkout.test.ts).
+ * activates, and an affiliate code earns its affiliate a month for that payment and every renewal. A code is priced against
+ * the basket's package net (the services' lines less the package offer), never the services plan's 0, and comes off once.
  *
  * This runs the same functions the app does (`packages/db`'s queries, `packages/billing`'s decision and provider,
  * and the same activation call the webhook makes) rather than doubles of them. What it deliberately does not
@@ -111,12 +112,13 @@ async function seedAffiliate(reward: ReferralReward = AFFILIATE_REWARD, rewardCy
   return affiliate.id;
 }
 
-async function seedCode(code: string, affiliateId: string | null, discount: ReferralDiscount | null): Promise<string> {
+async function seedCode(code: string, affiliateId: string | null, discount: ReferralDiscount | null, discountMonths: number | null = null): Promise<string> {
   const created = await createReferralCode(dbs.staff.db, {
     code,
     currency: "INR",
     affiliateId,
     discount,
+    discountMonths,
     expiresAt: null,
     maxRedemptions: null,
     createdByStaffId: STAFF_USER,
@@ -124,8 +126,13 @@ async function seedCode(code: string, affiliateId: string | null, discount: Refe
   return created.id;
 }
 
-/** Opens a checkout for one service on the code and pays it through the activation the webhook uses. */
-async function payFirstMonth(codeId: string, discountAmountCents: number, line: NewBundledAddOn = WEBSITE): Promise<Subscription> {
+/** Opens a checkout for a basket on the code and pays it through the activation the webhook uses. */
+async function payFirstMonth(
+  codeId: string,
+  discountAmountCents: number,
+  lines: NewBundledAddOn | readonly NewBundledAddOn[] = WEBSITE,
+  discountMonthsLeft: number | null = null,
+): Promise<Subscription> {
   const plan = await requirePlan();
   const staffDb = dbs.staff.db;
   const subscription = await openCheckoutSubscription(staffDb, {
@@ -135,7 +142,8 @@ async function payFirstMonth(codeId: string, discountAmountCents: number, line: 
     providerSubscriptionId: "fake_sub_cccccccccccccccccccccccc",
     referralCodeId: codeId,
     discountAmountCents,
-    bundledAddOns: [line],
+    discountMonthsLeft,
+    bundledAddOns: Array.isArray(lines) ? lines : [lines],
     replacing: null,
     now: NOW,
   });
@@ -312,6 +320,39 @@ describe("a member paying with an affiliate code", () => {
     // ₹22,499.10 plus 18% GST, and the affiliate's 5% of ₹22,499.10.
     expect((await listPaymentsForBusiness(dbs.staff.db, businessId, 10))[0]).toMatchObject({ amountCents: 2_654_894 });
     expect(await listAffiliateEarnings(dbs.staff.db, affiliateId, 10)).toMatchObject([{ amountCents: 112_495, basisCents: 2_249_910 }]);
+  });
+
+  it("prices a code on a package against the package net, once, and invoices it across the lines", async () => {
+    const affiliateId = await seedAffiliate({ kind: "percent", basisPoints: 500 });
+    const codeId = await seedCode("PKG10", affiliateId, { kind: "percent", basisPoints: 1_000 }, 3);
+    // The website and Social Media and Ads at the 20% package offer: ₹2,399.20 + ₹7,998.80 = ₹10,398 before GST.
+    const lines: NewBundledAddOn[] = packageLines({ services: ["managed-website", "digital-growth"], forfeited: false }, "INR").map((line) => ({
+      addOn: line.addOn,
+      listAmountCents: line.listCents,
+      offerDiscountAmountCents: line.offerCents,
+      netAmountCents: line.netCents,
+      taxRateBasisPoints: 1_800,
+    }));
+    const packageNetCents = lines.reduce((total, line) => total + line.netAmountCents, 0);
+    expect(packageNetCents).toBe(1_039_800);
+    // 10% of the package net, not of the ₹12,998 list: ₹1,039.80.
+    const discountAmountCents = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, packageNetCents);
+    expect(discountAmountCents).toBe(103_980);
+
+    const subscription = await payFirstMonth(codeId, discountAmountCents, lines, 3);
+    expect(subscription).toMatchObject({ discountAmountCents: 103_980, discountMonthsLeft: 3, bundledAddOnNetCents: 1_039_800 });
+
+    const [payment] = await listPaymentsForBusiness(dbs.staff.db, businessId, 10);
+    expect(payment).toMatchObject({ amountCents: chargedAmountCents(1_039_800, 103_980, 1_800) });
+    const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment?.id ?? "");
+    expect(invoice?.totalCents).toBe(payment?.amountCents);
+    // The code is shared over both lines, which still add up to what was taxed, and each names it.
+    expect(invoice?.lines.reduce((total, line) => total + line.unitAmountCents - line.discountAmountCents, 0)).toBe(packageNetCents - discountAmountCents);
+    expect(invoice?.lines.map((line) => line.note)).toEqual(["Package offer, 20% off. Coupon PKG10 applied", "Package offer, 20% off. Coupon PKG10 applied"]);
+    // The payment keeps the code's name for the receipt, which a customer's connection cannot look up.
+    expect(await findPaymentInvoiceBasis(dbs.staff.db, payment?.id ?? "")).toMatchObject({ code: "PKG10", discountAmountCents: 103_980 });
+    // The affiliate's 5% is of what the member paid before GST.
+    expect(await listAffiliateEarnings(dbs.staff.db, affiliateId, 10)).toMatchObject([{ amountCents: 46_791, basisCents: 935_820 }]);
   });
 
   it("charges the full price on an affiliate code that gives no discount, and still earns", async () => {

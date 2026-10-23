@@ -18,7 +18,6 @@ import {
   applyReferralCodeFor,
   codeBasisFor,
   discountFrom,
-  findCodeRefusedOnPackage,
   findLapsedAppliedCode,
   isOwnAffiliateCode,
   removeReferralCodeFor,
@@ -63,8 +62,10 @@ const PLAN = {
   taxRateBasisPoints: 1_800,
 } as const satisfies Plan;
 
-/** What a code is priced against on a Managed Website subscription: the website's ₹2,999 list price. */
-const WEBSITE = { currency: "INR", listCents: 299_900 } as const;
+/** What a code is priced against on a Managed Website subscription: the website's ₹2,999 list price, which is its package net. */
+const WEBSITE = { currency: "INR", netCents: 299_900 } as const;
+/** The website and Social Media and Ads together: ₹10,398 after the 20% package offer. */
+const PACKAGE_BASIS = { currency: "INR", netCents: 1_039_800 } as const;
 const WEBSITE_ALONE = ["managed-website"] as const;
 
 function code(overrides: Partial<ReferralCode> = {}): ReferralCode {
@@ -74,6 +75,7 @@ function code(overrides: Partial<ReferralCode> = {}): ReferralCode {
     currency: "INR",
     affiliateId: null,
     discount: { kind: "amount", amountCents: 52_500 },
+    discountMonths: null,
     active: true,
     expiresAt: null,
     maxRedemptions: null,
@@ -83,7 +85,7 @@ function code(overrides: Partial<ReferralCode> = {}): ReferralCode {
 }
 
 function state(overrides: Partial<BillingState> = {}): BillingState {
-  return { currency: "INR", tier: "managed", upgradePaid: false, subscription: null, hasEverPaid: false, paymentUnderReview: false, plan: PLAN, ...overrides };
+  return { currency: "INR", tier: "managed", upgradePaid: false, subscription: null, hasEverPaid: false, paymentUnderReview: false, plan: PLAN, addOns: [], ...overrides };
 }
 
 const customer = {
@@ -109,13 +111,17 @@ function refusalOf(outcome: Awaited<ReturnType<typeof applyReferralCodeFor>>): s
 }
 
 describe("codeBasisFor", () => {
-  it("is the one service's list price for a single-service basket", () => {
+  it("is the basket's net: the service's list price when it is alone", () => {
     expect(codeBasisFor(["managed-website"], "INR")).toEqual(WEBSITE);
-    expect(codeBasisFor(["local-seo-aeo"], "USD")).toEqual({ currency: "USD", listCents: 35_000 });
+    expect(codeBasisFor(["local-seo-aeo"], "USD")).toEqual({ currency: "USD", netCents: 35_000 });
   });
 
-  it("is null for a package, which never takes a code, and for no services at all", () => {
-    expect(codeBasisFor(["managed-website", "digital-growth"], "INR")).toBeNull();
+  it("is the package net, after the package offer, for two or more services", () => {
+    expect(codeBasisFor(["managed-website", "digital-growth"], "INR")).toEqual(PACKAGE_BASIS);
+    expect(codeBasisFor(["managed-website", "digital-growth", "local-seo-aeo"], "INR")).toEqual({ currency: "INR", netCents: 2_659_700 });
+  });
+
+  it("is null for no services at all", () => {
     expect(codeBasisFor([], "INR")).toBeNull();
   });
 });
@@ -126,17 +132,31 @@ describe("discountFrom", () => {
       codeId: "code-1",
       code: "SAVE15",
       amountCents: 52_500,
+      months: null,
       stated: { kind: "amount", amountCents: 52_500 },
     });
   });
 
-  it("resolves a percentage code against the service's pre-tax list price, not the plan's 0", () => {
+  it("carries the code's length in months, for checkout to count down", () => {
+    expect(discountFrom(code({ discountMonths: 3 }), WEBSITE)).toMatchObject({ months: 3 });
+  });
+
+  it("resolves a percentage code against the basket's pre-tax net, not the plan's 0", () => {
     // 10% of ₹2,999 is ₹299.90; 12.5% is ₹374.88 (half a paisa up).
     const tenPercent = discountFrom(code({ discount: { kind: "percent", basisPoints: 1_000 } }), WEBSITE);
     expect(tenPercent).toMatchObject({ amountCents: 29_990, stated: { kind: "percent", basisPoints: 1_000 } });
     expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_250 } }), WEBSITE)?.amountCents).toBe(37_488);
     // 10% of Local SEO + AEO's ₹24,999.
-    expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_000 } }), { currency: "INR", listCents: 2_499_900 })?.amountCents).toBe(249_990);
+    expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_000 } }), { currency: "INR", netCents: 2_499_900 })?.amountCents).toBe(249_990);
+  });
+
+  it("resolves a percentage code against a package's net, after the package offer", () => {
+    // 10% of ₹10,398, not of the ₹12,998 the two services list at.
+    expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_000 } }), PACKAGE_BASIS)?.amountCents).toBe(103_980);
+  });
+
+  it("takes a flat code's own amount on a package, which leaves something to charge", () => {
+    expect(discountFrom(code({ discount: { kind: "amount", amountCents: 100_000 } }), PACKAGE_BASIS)?.amountCents).toBe(100_000);
   });
 
   it("does not apply a code for another currency", () => {
@@ -148,6 +168,7 @@ describe("discountFrom", () => {
       codeId: "code-1",
       code: "SAVE15",
       amountCents: 0,
+      months: null,
       stated: null,
     });
   });
@@ -180,6 +201,7 @@ describe("applyReferralCodeFor", () => {
         codeId: "code-1",
         code: "SAVE15",
         amountCents: 52_500,
+        months: null,
         stated: { kind: "amount", amountCents: 52_500 },
       },
     });
@@ -227,11 +249,11 @@ describe("applyReferralCodeFor", () => {
     expect(setBusinessReferralCode).not.toHaveBeenCalled();
   });
 
-  it("refuses a code on a package of two or more services, and stores nothing", async () => {
-    const refusal = refusalOf(await applyReferralCodeFor(customer, "SAVE15", ["managed-website", "local-seo-aeo"], NOW));
-    expect(refusal).toBe("A code can only be used on a single service, not on a package.");
-    expect(findRedeemableReferralCode).not.toHaveBeenCalled();
-    expect(setBusinessReferralCode).not.toHaveBeenCalled();
+  it("accepts a code on a package of two or more services, priced against the package net", async () => {
+    vi.mocked(findRedeemableReferralCode).mockResolvedValue(code({ discount: { kind: "percent", basisPoints: 1_000 }, discountMonths: 3 }));
+    const outcome = await applyReferralCodeFor(customer, "SAVE15", ["managed-website", "digital-growth"], NOW);
+    expect(outcome).toMatchObject({ kind: "applied", discount: { amountCents: 103_980, months: 3 } });
+    expect(setBusinessReferralCode).toHaveBeenCalledWith(expect.anything(), { businessId: BUSINESS_ID, referralCodeId: "code-1" });
   });
 
   it("prices a code on a single service against that service's list price", async () => {
@@ -325,29 +347,5 @@ describe("findLapsedAppliedCode", () => {
     await expect(findLapsedAppliedCode(BUSINESS_ID, WEBSITE, NOW)).resolves.toBeNull();
     vi.mocked(findBusinessReferralCode).mockResolvedValue(null);
     await expect(findLapsedAppliedCode(BUSINESS_ID, WEBSITE, NOW)).resolves.toBeNull();
-  });
-});
-
-describe("findCodeRefusedOnPackage", () => {
-  const PACKAGE = ["managed-website", "digital-growth"] as const;
-
-  it("names the working code a business applied when the basket is a package, which never takes one", async () => {
-    vi.mocked(findBusinessReferralCode).mockResolvedValue(code());
-    await expect(findCodeRefusedOnPackage(BUSINESS_ID, PACKAGE, "INR", NOW)).resolves.toBe("SAVE15");
-    expect(findRedeemableReferralCode).toHaveBeenCalledWith({ name: "staff" }, { code: "SAVE15", currency: "INR", now: NOW });
-  });
-
-  it("is null for a single service, without looking the code up", async () => {
-    vi.mocked(findBusinessReferralCode).mockResolvedValue(code());
-    await expect(findCodeRefusedOnPackage(BUSINESS_ID, WEBSITE_ALONE, "INR", NOW)).resolves.toBeNull();
-    expect(findBusinessReferralCode).not.toHaveBeenCalled();
-  });
-
-  it("is null when no code is applied, and when the applied one no longer works", async () => {
-    vi.mocked(findBusinessReferralCode).mockResolvedValue(null);
-    await expect(findCodeRefusedOnPackage(BUSINESS_ID, PACKAGE, "INR", NOW)).resolves.toBeNull();
-    vi.mocked(findBusinessReferralCode).mockResolvedValue(code());
-    vi.mocked(findRedeemableReferralCode).mockResolvedValue(null);
-    await expect(findCodeRefusedOnPackage(BUSINESS_ID, PACKAGE, "INR", NOW)).resolves.toBeNull();
   });
 });

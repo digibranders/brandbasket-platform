@@ -1,9 +1,11 @@
 import type { BillingProvider } from "@brandbasket/billing";
 import {
+  cancelStaleSubscription,
   changeAddOnEndKind,
   consumeRateLimit,
   findBusinessCurrency,
   findLiveBundledAddOns,
+  findWaitingSuccessor,
   insertExitFeedback,
   isPackageOfferForfeited,
   listAddOnSubscriptionsForBusiness,
@@ -41,6 +43,7 @@ vi.mock("@brandbasket/db", () => ({
   findAddOnSubscription: vi.fn(),
   findBusinessCurrency: vi.fn(),
   findLiveBundledAddOns: vi.fn(),
+  findWaitingSuccessor: vi.fn(),
   insertExitFeedback: vi.fn(),
   isPackageOfferForfeited: vi.fn(),
   listAddOnSubscriptionsForBusiness: vi.fn(),
@@ -64,7 +67,7 @@ const customer = (subscription: Subscription | null): GrantedCustomer =>
   ({
     user: { id: USER_ID, email: "ana@example.com", name: "Ana Diaz", emailConfirmed: true, phone: null },
     tenant: { userId: USER_ID, businessId: BUSINESS_ID, businessName: "Riverside Dental", role: "owner" },
-    billing: { status: "paid", hasAccess: true, subscription, tier: "managed", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
+    billing: { status: "paid", hasAccess: true, hasWebsite: true, subscription, tier: "managed", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
   }) as GrantedCustomer;
 
 /** A paid plan at the fake provider that has not been asked to end. */
@@ -133,6 +136,7 @@ beforeEach(() => {
   } as unknown as Database);
   vi.mocked(getAppDb).mockReturnValue({} as Database);
   vi.mocked(consumeRateLimit).mockResolvedValue({ allowed: true } as Awaited<ReturnType<typeof consumeRateLimit>>);
+  vi.mocked(findWaitingSuccessor).mockResolvedValue(null);
   vi.mocked(checkPasswordFor).mockResolvedValue("correct");
   vi.mocked(scheduleAddOnEnd).mockResolvedValue("scheduled");
   vi.mocked(changeAddOnEndKind).mockResolvedValue("changed");
@@ -284,6 +288,37 @@ describe("closeAccountFor with add-ons", () => {
 
     expect(events.filter((event) => event.startsWith("transaction"))).toEqual(["transaction:begin", "transaction:commit"]);
     expect(openAccountClosure).toHaveBeenCalledTimes(1);
+  });
+
+  describe("a plan kept after an earlier cancel", () => {
+    const KEPT = { id: "0192f3c4-4444-7000-8000-000000000001", provider: "fake", providerSubscriptionId: `fake_sub_${"k".repeat(24)}`, status: "active" } as Subscription;
+
+    it("cancels the waiting mandate now, not the plan it continues, and records its end with the closure", async () => {
+      withRows();
+      vi.mocked(findWaitingSuccessor).mockResolvedValue(KEPT);
+
+      await expect(closeAccountFor(customer(PLAN_SUBSCRIPTION), DETAILS, NOW)).resolves.toEqual({ kind: "closed" });
+
+      expect(findWaitingSuccessor).toHaveBeenCalledWith(expect.anything(), PLAN_SUBSCRIPTION.id);
+      expect(cancelNow).toHaveBeenCalledWith(KEPT.providerSubscriptionId);
+      expect(atPeriodEnd).not.toHaveBeenCalled();
+      expect(cancelStaleSubscription).toHaveBeenCalledWith(expect.anything(), { subscriptionId: KEPT.id, businessId: BUSINESS_ID, now: NOW });
+      expect(markCancelRequested).toHaveBeenCalledWith(expect.anything(), { subscriptionId: PLAN_SUBSCRIPTION.id, businessId: BUSINESS_ID, now: NOW });
+      expect(events.some((event) => event.includes("INSIDE"))).toBe(false);
+    });
+
+    it("refuses and records nothing when the provider cannot cancel the waiting mandate", async () => {
+      withRows();
+      vi.mocked(findWaitingSuccessor).mockResolvedValue(KEPT);
+      cancelNow.mockRejectedValue(new Error("provider unreachable"));
+
+      const outcome = await closeAccountFor(customer(PLAN_SUBSCRIPTION), DETAILS, NOW);
+
+      expect(outcome).toMatchObject({ kind: "refused", field: null });
+      expect(events).not.toContain("transaction:begin");
+      expect(cancelStaleSubscription).not.toHaveBeenCalled();
+      expect(openAccountClosure).not.toHaveBeenCalled();
+    });
   });
 
   it("does not read or end anything when the password is wrong", async () => {

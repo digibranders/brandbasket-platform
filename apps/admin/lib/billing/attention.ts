@@ -26,7 +26,7 @@ export const PAYMENT_ATTENTION_LABELS: Readonly<
   },
   add_on_not_applied: {
     title: "Paid for an add-on that no longer applied",
-    action: "Nothing changed for the client: their month had renewed or their plan was ending. Refund it at the provider; they can add it again from Add-ons.",
+    action: "Nothing changed for the client: their month had renewed or their plan was ending. Refund it at the provider; they can add it again from Services.",
   },
   add_on_provider_pending: {
     title: "A service change didn’t reach the provider",

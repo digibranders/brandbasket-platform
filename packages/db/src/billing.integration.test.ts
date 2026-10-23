@@ -1,23 +1,27 @@
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
+  confirmKeptSubscription,
   findActivePlan,
   findBillingState,
   findCurrentPaymentMethod,
   findLatestPaymentMethod,
   findLatestSubscriptionForBusiness,
   findSubscriptionByProviderId,
+  findWaitingSuccessor,
   insertSubscription,
   InvalidAmountError,
   listPaymentsForBusiness,
   listReceiptsForBusiness,
+  openKeptSubscription,
   recordPaymentAndActivate,
   SubscriptionNotFoundError,
   updateSubscriptionProviderStatus,
   type PaymentMethodDetails,
   type Plan,
 } from "./queries/billing";
-import { businesses, businessMembers, payments, plans, subscriptions, users } from "./schema";
+import { findLiveBundledAddOns } from "./queries/bundled-add-ons";
+import { bundledAddOns, businesses, businessMembers, payments, plans, subscriptions, users } from "./schema";
 import { withTenantScope } from "./scope";
 import {
   captureErrorText,
@@ -954,5 +958,112 @@ describe("how a payment was made, and receipt numbers", () => {
     ]);
     expect(all[0]).toMatchObject({ planName: expect.any(String), taxRateBasisPoints: 0 });
     expect(newestOnly.map((receipt) => receipt.sequence)).toEqual([2]);
+  });
+});
+
+describe("a kept plan's successor", () => {
+  const RENEWS_AT = addMonths(PAID_AT, 1);
+  const LINES = [
+    { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 0, netAmountCents: 299_900, taxRateBasisPoints: 1_800 },
+  ] as const;
+
+  /** A paid plan the client cancelled at its cycle end, and the new mandate that carries it on. */
+  async function cancelledPlanWithSuccessor(): Promise<{ readonly old: string; readonly successor: string; readonly plan: Plan }> {
+    const plan = await requirePlan("INR");
+    const opened = await insertSubscription(dbs.staff.db, { businessId: businessB, planId: plan.id, provider: "fake", providerSubscriptionId: "fake_sub_old", adCreditCents: 100 });
+    await dbs.staff.db.insert(bundledAddOns).values({ businessId: businessB, subscriptionId: opened.id, ...LINES[0], status: "active" });
+    await recordPaymentAndActivate(dbs.staff.db, { ...activationFor(businessB, opened.id, plan, "fake_pay_old"), currency: "INR" });
+    await dbs.staff.db.update(subscriptions).set({ cancelRequestedAt: PAID_AT }).where(eq(subscriptions.id, opened.id));
+    const old = await findLatestSubscriptionForBusiness(dbs.staff.db, businessB);
+    if (old === null) throw new Error("The plan was not recorded");
+    const successor = await openKeptSubscription(dbs.staff.db, {
+      continues: old,
+      provider: "fake",
+      providerSubscriptionId: "fake_sub_kept",
+      bundledAddOns: LINES,
+      adCreditCents: 100,
+      replacing: null,
+      now: PAID_AT,
+    });
+    return { old: old.id, successor: successor.id, plan };
+  }
+
+  it("is opened beside the live plan, starting where its paid month ends, and the old plan stays the business's current one", async () => {
+    const { old, successor } = await cancelledPlanWithSuccessor();
+
+    const row = await dbs.owner.db.query.subscriptions.findFirst({ where: eq(subscriptions.id, successor) });
+    expect(row).toMatchObject({ continuesId: old, status: "incomplete", startAt: RENEWS_AT, bundledAddOnNetCents: 299_900, adCreditCents: 100 });
+    expect((await findLatestSubscriptionForBusiness(dbs.staff.db, businessB))?.id).toBe(old);
+    expect((await findWaitingSuccessor(dbs.staff.db, old))?.id).toBe(successor);
+    // The lines are the old plan's alone until the successor is charged.
+    expect((await findLiveBundledAddOns(dbs.staff.db, businessB)).map((line) => line.subscriptionId)).toEqual([old]);
+  });
+
+  it("allows one successor per plan and still only one live plan per business", async () => {
+    const { old, plan } = await cancelledPlanWithSuccessor();
+    const oldRow = await findLatestSubscriptionForBusiness(dbs.staff.db, businessB);
+    if (oldRow === null) throw new Error("The plan was not recorded");
+
+    const second = await captureErrorText(
+      openKeptSubscription(dbs.staff.db, { continues: oldRow, provider: "fake", providerSubscriptionId: "fake_sub_kept_2", bundledAddOns: LINES, adCreditCents: 0, replacing: null, now: PAID_AT }),
+    );
+    expect(second).toContain("subscriptions_one_successor_idx");
+    const another = await captureErrorText(insertSubscription(dbs.staff.db, { businessId: businessB, planId: plan.id, provider: "fake", providerSubscriptionId: "fake_sub_other" }));
+    expect(another).toContain("subscriptions_one_live_per_business_idx");
+    expect(old).toBe(oldRow.id);
+  });
+
+  it("replaces an earlier successor that was never authorised", async () => {
+    const { old, successor } = await cancelledPlanWithSuccessor();
+    const oldRow = await findLatestSubscriptionForBusiness(dbs.staff.db, businessB);
+    if (oldRow === null) throw new Error("The plan was not recorded");
+
+    const replacement = await openKeptSubscription(dbs.staff.db, {
+      continues: oldRow,
+      provider: "fake",
+      providerSubscriptionId: "fake_sub_kept_2",
+      bundledAddOns: LINES,
+      adCreditCents: 100,
+      replacing: successor,
+      now: PAID_AT,
+    });
+
+    expect((await findWaitingSuccessor(dbs.staff.db, old))?.id).toBe(replacement.id);
+    expect((await dbs.owner.db.query.subscriptions.findFirst({ where: eq(subscriptions.id, successor) }))?.status).toBe("cancelled");
+  });
+
+  it("refuses a continuation with no start day, or a start day with nothing continued", async () => {
+    const { old } = await cancelledPlanWithSuccessor();
+    const plan = await requirePlan("INR");
+
+    expect(await captureErrorText(dbs.owner.db.update(subscriptions).set({ startAt: null }).where(eq(subscriptions.continuesId, old)))).toContain("subscriptions_keep_check");
+    expect(await captureErrorText(insertSubscription(dbs.staff.db, { businessId: businessA, planId: plan.id, provider: "fake", providerSubscriptionId: "fake_sub_x", startAt: RENEWS_AT }))).toContain("subscriptions_keep_check");
+  });
+
+  it("is authorised without being charged, which clears the cancel and takes nothing else", async () => {
+    const { old, successor } = await cancelledPlanWithSuccessor();
+
+    expect(await confirmKeptSubscription(dbs.staff.db, { subscriptionId: successor, now: PAID_AT })).toEqual({ businessId: businessB, continuesId: old });
+    expect(await confirmKeptSubscription(dbs.staff.db, { subscriptionId: old, now: PAID_AT })).toBeNull();
+
+    expect(await dbs.owner.db.query.subscriptions.findFirst({ where: eq(subscriptions.id, successor) })).toMatchObject({ status: "active", activatedAt: null, paidThroughAt: null });
+    const current = await findLatestSubscriptionForBusiness(dbs.staff.db, businessB);
+    expect(current).toMatchObject({ id: old, cancelRequestedAt: null });
+  });
+
+  it("becomes the business's current plan once its first payment is recorded", async () => {
+    const { old, successor } = await cancelledPlanWithSuccessor();
+    const plan = await requirePlan("INR");
+
+    await recordPaymentAndActivate(dbs.staff.db, {
+      ...activationFor(businessB, successor, plan, "fake_pay_kept"),
+      kind: "renewal",
+      currency: "INR",
+      paidAt: RENEWS_AT,
+      paidThroughAt: addMonths(RENEWS_AT, 1),
+    });
+
+    expect((await findLatestSubscriptionForBusiness(dbs.staff.db, businessB))?.id).toBe(successor);
+    expect(await findWaitingSuccessor(dbs.staff.db, old)).toBeNull();
   });
 });

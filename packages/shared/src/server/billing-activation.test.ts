@@ -9,6 +9,9 @@ vi.mock("@brandbasket/db", async () => {
     ...actual,
     recordPaymentAndActivate: vi.fn().mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } }),
     openMembershipForListingBusiness: vi.fn(),
+    activateBundledAddOns: vi.fn().mockResolvedValue([]),
+    settleDiscountAfterPayment: vi.fn().mockResolvedValue({ monthsLeft: null, ended: false }),
+    findSubscriptionById: vi.fn(),
   };
 });
 
@@ -16,7 +19,7 @@ vi.mock("@brandbasket/db", async () => {
 vi.mock("./affiliate-accrual", () => ({ accrueAffiliateEarning: vi.fn() }));
 vi.mock("./tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn() }));
 
-import { openMembershipForListingBusiness, recordPaymentAndActivate } from "@brandbasket/db";
+import { activateBundledAddOns, findSubscriptionById, openMembershipForListingBusiness, recordPaymentAndActivate, settleDiscountAfterPayment, type BundledAddOn } from "@brandbasket/db";
 import { accrueAffiliateEarning } from "./affiliate-accrual";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 
@@ -144,10 +147,20 @@ describe("activateFirstPayment", () => {
   it("opens the membership for a free listing business in the same transaction, and says so", async () => {
     const tx = {} as never;
     vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } } as never);
+    vi.mocked(activateBundledAddOns).mockResolvedValueOnce([{ addOn: "managed-website" } as BundledAddOn]);
     vi.mocked(openMembershipForListingBusiness).mockResolvedValue({ businessName: "Smile Dental" });
     const activation = await activateFirstPayment(tx, BASE);
-    expect(openMembershipForListingBusiness).toHaveBeenCalledWith(tx, "biz-1");
+    expect(openMembershipForListingBusiness).toHaveBeenCalledWith(tx, "biz-1", { withProject: true });
     expect(activation.openedMembership).toEqual({ businessName: "Smile Dental" });
+  });
+
+  it("opens no onboarding project when the basket has no Managed Website line", async () => {
+    const tx = {} as never;
+    vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } } as never);
+    vi.mocked(activateBundledAddOns).mockResolvedValueOnce([{ addOn: "digital-growth" } as BundledAddOn, { addOn: "local-seo-aeo" } as BundledAddOn]);
+    vi.mocked(openMembershipForListingBusiness).mockResolvedValue({ businessName: "Smile Dental" });
+    await activateFirstPayment(tx, BASE);
+    expect(openMembershipForListingBusiness).toHaveBeenCalledWith(tx, "biz-1", { withProject: false });
   });
 
   it("reports no membership opened for a business that was already a client", async () => {
@@ -163,6 +176,23 @@ describe("activateFirstPayment", () => {
     expect(openMembershipForListingBusiness).not.toHaveBeenCalled();
   });
 
+  it("counts a payment taken with a discount as one of the code's months, and says when it was the last", async () => {
+    const tx = {} as never;
+    vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } } as never);
+    vi.mocked(settleDiscountAfterPayment).mockClear();
+    vi.mocked(settleDiscountAfterPayment).mockResolvedValueOnce({ monthsLeft: 0, ended: true });
+    const activation = await activateFirstPayment(tx, { ...BASE, discountAmountCents: 52_500 });
+    expect(settleDiscountAfterPayment).toHaveBeenCalledWith(tx, { subscriptionId: "sub-1", discountTakenCents: 52_500, adoptsNewDiscount: false, now: BASE.paidAt });
+    expect(activation.discountEnded).toBe(true);
+  });
+
+  it("counts nothing for a payment already recorded", async () => {
+    vi.mocked(settleDiscountAfterPayment).mockClear();
+    vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: true } as never);
+    expect((await activateFirstPayment({} as never, { ...BASE, discountAmountCents: 52_500 })).discountEnded).toBe(false);
+    expect(settleDiscountAfterPayment).not.toHaveBeenCalled();
+  });
+
   it("refuses a discount that would leave nothing to record", async () => {
     await expect(activateFirstPayment({} as never, { ...BASE, discountAmountCents: 350_000 })).rejects.toThrow(RangeError);
     await expect(activateFirstPayment({} as never, { ...BASE, discountAmountCents: -1 })).rejects.toThrow(RangeError);
@@ -171,6 +201,11 @@ describe("activateFirstPayment", () => {
 
 describe("activateReactivationPayment", () => {
   const tx = {} as never;
+  beforeEach(() => {
+    vi.mocked(findSubscriptionById).mockResolvedValue({ discountAmountCents: 0 } as never);
+    vi.mocked(settleDiscountAfterPayment).mockClear();
+    vi.mocked(accrueAffiliateEarning).mockClear();
+  });
   // Premium at ₹9,999 + 18% GST. Its first payment equals its monthly price today, but a reactivation must use the
   // monthly price whatever the first payment is, so the two are set apart here.
   const PLAN = {
@@ -210,13 +245,75 @@ describe("activateReactivationPayment", () => {
     );
   });
 
-  it("opens no membership and earns no affiliate anything", async () => {
+  it("opens no membership, and earns the code's affiliate as a renewal does", async () => {
     vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } } as never);
     vi.mocked(openMembershipForListingBusiness).mockClear();
-    vi.mocked(accrueAffiliateEarning).mockClear();
     await activateReactivationPayment(tx, BASE);
     expect(openMembershipForListingBusiness).not.toHaveBeenCalled();
-    expect(accrueAffiliateEarning).not.toHaveBeenCalled();
+    expect(accrueAffiliateEarning).toHaveBeenCalledWith(tx, { paymentId: "payment_1", subscriptionId: "sub-back", kind: "reactivation" });
+  });
+
+  it("takes the discount a lapse carried, counts one of its months and invoices it", async () => {
+    vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } } as never);
+    vi.mocked(findSubscriptionById).mockResolvedValue({ discountAmountCents: 99_990 } as never);
+    vi.mocked(settleDiscountAfterPayment).mockResolvedValue({ monthsLeft: 0, ended: true });
+    vi.mocked(issueTaxInvoiceSafely).mockClear();
+
+    const activation = await activateReactivationPayment(tx, BASE);
+
+    // (999,900 - 99,990) + 18% GST
+    expect(recordPaymentAndActivate).toHaveBeenLastCalledWith(tx, expect.objectContaining({ amountCents: 1_061_894 }));
+    expect(settleDiscountAfterPayment).toHaveBeenCalledWith(tx, { subscriptionId: "sub-back", discountTakenCents: 99_990, adoptsNewDiscount: false, now: PAID });
+    expect(vi.mocked(issueTaxInvoiceSafely).mock.calls[0]?.[2]).toMatchObject({ discountAmountCents: 99_990 });
+    expect(activation.discountEnded).toBe(true);
+  });
+
+  it("counts nothing for a payment already recorded", async () => {
+    vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: true, payment: { id: "payment_1" } } as never);
+    expect((await activateReactivationPayment(tx, BASE)).discountEnded).toBe(false);
+    expect(settleDiscountAfterPayment).not.toHaveBeenCalled();
+  });
+});
+
+describe("a renewal and the code's months", () => {
+  const paidAt = new Date("2026-10-14T12:00:00.000Z");
+  const renewal = {
+    businessId: "biz_1",
+    subscriptionId: "sub_1",
+    commitmentEndsAt: paidAt,
+    provider: "razorpay",
+    providerPaymentId: "pay_1",
+    amountCents: 3_000,
+    currency: "INR",
+    paidAt,
+    paidThroughAt: new Date("2026-11-14T12:00:00.000Z"),
+    periodStart: paidAt,
+    invoicedPrice: { plan: { id: "plan_1" } as never, netAmountCents: 0, discountAmountCents: 1_000, retentionDiscountCents: 0 },
+  } as const;
+
+  beforeEach(() => {
+    vi.mocked(settleDiscountAfterPayment).mockClear();
+    vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } } as never);
+  });
+
+  it("counts the discount the renewal was invoiced with, and says when it was the last month", async () => {
+    const tx = {} as never;
+    vi.mocked(settleDiscountAfterPayment).mockResolvedValueOnce({ monthsLeft: 0, ended: true });
+    const activation = await activateRenewalPayment(tx, renewal);
+    expect(settleDiscountAfterPayment).toHaveBeenCalledWith(tx, { subscriptionId: "sub_1", discountTakenCents: 1_000, adoptsNewDiscount: false, now: paidAt });
+    expect(activation.discountEnded).toBe(true);
+  });
+
+  it("makes the waiting discount the subscription's own when the renewal was taken at it", async () => {
+    const tx = {} as never;
+    await activateRenewalPayment(tx, { ...renewal, atNewDiscount: true, invoicedPrice: { ...renewal.invoicedPrice, discountAmountCents: 0 } });
+    expect(settleDiscountAfterPayment).toHaveBeenCalledWith(tx, { subscriptionId: "sub_1", discountTakenCents: 0, adoptsNewDiscount: true, now: paidAt });
+  });
+
+  it("counts nothing for a payment already recorded", async () => {
+    vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: true, payment: { id: "payment_1" } } as never);
+    expect((await activateRenewalPayment({} as never, renewal)).discountEnded).toBe(false);
+    expect(settleDiscountAfterPayment).not.toHaveBeenCalled();
   });
 });
 
@@ -301,6 +398,7 @@ describe("the tax invoice", () => {
   });
 
   it("is issued for a restart at the plan's monthly price with no discount", async () => {
+    vi.mocked(findSubscriptionById).mockResolvedValue({ discountAmountCents: 0 } as never);
     await activateReactivationPayment({} as never, { businessId: "biz_1", subscriptionId: "sub_1", plan, provider: "razorpay", providerPaymentId: "pay_2", paidAt, paidThroughAt });
     expect(vi.mocked(issueTaxInvoiceSafely).mock.calls[0]?.[2]).toEqual({
       kind: "plan", plan, bundledAddOns: [], netAmountCents: 999_900, discountAmountCents: 0, retentionDiscountCents: 0, monthly: true, periodStart: paidAt, periodEnd: paidThroughAt,

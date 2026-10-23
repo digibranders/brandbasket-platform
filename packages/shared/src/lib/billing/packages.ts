@@ -29,7 +29,7 @@ const PACKAGE_ROUNDING_CENTS = 100;
 export const PACKAGE_OFFERS: readonly PackageOffer[] = [
   { services: ["managed-website", "digital-growth"], basisPoints: 2000, adCreditCents: { INR: 200000, USD: 2500 } },
   { services: ["managed-website", "local-seo-aeo"], basisPoints: 2000, adCreditCents: { INR: 0, USD: 0 } },
-  { services: ["digital-growth", "local-seo-aeo"], basisPoints: 3000, adCreditCents: { INR: 200000, USD: 2500 } },
+  { services: ["digital-growth", "local-seo-aeo"], basisPoints: 2000, adCreditCents: { INR: 200000, USD: 2500 } },
   { services: ["managed-website", "digital-growth", "local-seo-aeo"], basisPoints: 3000, adCreditCents: { INR: 500000, USD: 6000 } },
 ];
 
@@ -87,6 +87,22 @@ export function packageDiscountsFor(lines: readonly PackageListLine[], basisPoin
   return discounts.map((discount, index) => (index === dearest ? discount + leftoverCents : discount));
 }
 
+/**
+ * A discount taken once off a basket (a referral code), shared across its lines in proportion to their nets after the package
+ * discount, in the order the lines are given. Each line's share is rounded down and the minor units that leaves go to the
+ * line with the largest net (the first among equals), the same floor rule as packageDiscountsFor, so the shares always add
+ * up to `totalCents` to the minor unit. A basket with no net shares nothing.
+ */
+export function shareDiscountAcrossLines(netCents: readonly number[], totalCents: number): number[] {
+  const basketCents = netCents.reduce((total, net) => total + net, 0);
+  if (!Number.isSafeInteger(totalCents) || totalCents < 0) throw new RangeError(`A discount must be whole, non-negative minor units, received ${totalCents}`);
+  if (basketCents === 0 || totalCents === 0) return netCents.map(() => 0);
+  const shares = netCents.map((net) => Math.floor((totalCents * net) / basketCents));
+  const leftoverCents = totalCents - shares.reduce((total, share) => total + share, 0);
+  const largest = netCents.reduce((best, net, index) => (net > (netCents[best] ?? 0) ? index : best), 0);
+  return shares.map((share, index) => (index === largest ? share + leftoverCents : share));
+}
+
 /** Every line of the basket with its package discount, once each, in catalogue order. */
 export function packageLines(input: PackageInput, currency: MoneyCurrency): PackageLine[] {
   const services = distinctServices(input.services);
@@ -124,4 +140,21 @@ export function adCreditCentsFor(services: readonly MonthlyAddOnId[], currency: 
  */
 export function adCreditCentsAtCheckout(input: PackageInput & { readonly hasEverPaid: boolean }, currency: MoneyCurrency): number {
   return input.hasEverPaid || input.forfeited ? 0 : adCreditCentsFor(input.services, currency);
+}
+
+/** 2000 basis points as "20", 1250 as "12.5", in whole numbers so no float is ever printed. */
+export function percentOf(basisPoints: number): string {
+  const whole = Math.floor(basisPoints / 100);
+  const hundredths = basisPoints % 100;
+  if (hundredths === 0) return String(whole);
+  return `${whole}.${String(hundredths).padStart(2, "0").replace(/0$/, "")}`;
+}
+
+/**
+ * What a service line's package discount is called: "Package offer, 30% off". The percentage is the package's own, never the
+ * line's discount over its list, because a package total floored to the whole rupee moves a few paise of discount onto its
+ * dearest line and that line must not read 29.99%.
+ */
+export function packageOfferNote(basisPoints: number): string {
+  return `Package offer, ${percentOf(basisPoints)}% off`;
 }

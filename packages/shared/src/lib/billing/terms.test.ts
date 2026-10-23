@@ -94,14 +94,14 @@ describe("a referral discount with tax", () => {
   it("takes the discount off before GST, so the tax is on what is actually sold", () => {
     // ₹2,999 − ₹500 = ₹2,499, plus 18% = ₹2,948.82.
     expect(discountedFirstPaymentAmount(INR, { amountCents: 50_000 })).toBe("₹2,948.82");
-    expect(describeDiscountedPlanTerms(INR, { amountCents: 50_000 })).toBe(
+    expect(describeDiscountedPlanTerms(INR, { amountCents: 50_000, months: null })).toBe(
       "₹2,499 a month plus 18% GST, so ₹2,948.82 in all, instead of ₹2,999 before GST, for as long as your plan runs. Your first payment covers your first month, then it renews monthly.",
     );
   });
 
   it("says nothing about tax for a plan that has none", () => {
     expect(discountedFirstPaymentAmount(USD, { amountCents: 1_500 })).toBe("$54");
-    expect(describeDiscountedPlanTerms(USD, { amountCents: 1_500 })).toBe(
+    expect(describeDiscountedPlanTerms(USD, { amountCents: 1_500, months: null })).toBe(
       "$54 a month, instead of $69, for as long as your plan runs. Your first payment covers your first month, then it renews monthly.",
     );
   });
@@ -109,6 +109,15 @@ describe("a referral discount with tax", () => {
   it("prices a percentage code from the money it resolved to, before GST", () => {
     // 10% of ₹2,999 is ₹299.90: ₹2,699.10 plus 18% is ₹3,184.94.
     expect(discountedFirstPaymentAmount(INR, { amountCents: 29_990 })).toBe("₹3,184.94");
+  });
+
+  it("says how many months a code lasts, and keeps the open-ended wording when it has no length", () => {
+    expect(describeDiscountedPlanTerms(INR, { amountCents: 50_000, months: 3 })).toBe(
+      "₹2,499 a month plus 18% GST, so ₹2,948.82 in all, instead of ₹2,999 before GST, for 3 months. Your first payment covers your first month, then it renews monthly.",
+    );
+    expect(describeDiscountedPlanTerms(USD, { amountCents: 1_500, months: 1 })).toBe(
+      "$54 a month, instead of $69, for 1 month. Your first payment covers your first month, then it renews monthly.",
+    );
   });
 
   it("falls back to the plain terms when no code is applied", () => {
@@ -119,12 +128,20 @@ describe("a referral discount with tax", () => {
 
 describe("describeDiscount", () => {
   it("names a flat code by its amount", () => {
-    const discount = { code: "FLAT500", amountCents: 50_000, stated: { kind: "amount", amountCents: 50_000 } } as const;
+    const discount = { code: "FLAT500", amountCents: 50_000, months: null, stated: { kind: "amount", amountCents: 50_000 } } as const;
     expect(describeDiscount(discount, "INR")).toBe("₹500 off, every month");
   });
 
+  it("names the months a code lasts", () => {
+    const flat = { code: "FLAT500", amountCents: 50_000, months: 3, stated: { kind: "amount", amountCents: 50_000 } } as const;
+    expect(describeDiscount(flat, "INR")).toBe("₹500 off a month for 3 months");
+    expect(describeDiscount({ ...flat, months: 1 }, "INR")).toBe("₹500 off a month for 1 month");
+    const percent = { code: "TENPCT", amountCents: 29_990, months: 6, stated: { kind: "percent", basisPoints: 1_000 } } as const;
+    expect(describeDiscount(percent, "INR")).toBe("10% off (₹299.90) a month for 6 months");
+  });
+
   it("names a percentage code by its percent and the money it comes to", () => {
-    const discount = { code: "TENPCT", amountCents: 29_990, stated: { kind: "percent", basisPoints: 1_000 } } as const;
+    const discount = { code: "TENPCT", amountCents: 29_990, months: null, stated: { kind: "percent", basisPoints: 1_000 } } as const;
     expect(describeDiscount(discount, "INR")).toBe("10% off (₹299.90), every month");
   });
 });
@@ -228,7 +245,7 @@ describe("a plan that costs nothing, with its services as lines", () => {
     );
     // ₹2,999 less a ₹300 code, plus 18% GST.
     expect(discountedFirstPaymentAmount(SERVICES_PLAN, { amountCents: 30_000 }, 299_900)).toBe("₹3,184.82");
-    expect(describeDiscountedPlanTerms(SERVICES_PLAN, { amountCents: 30_000 }, 299_900)).toBe(
+    expect(describeDiscountedPlanTerms(SERVICES_PLAN, { amountCents: 30_000, months: null }, 299_900)).toBe(
       "₹2,699 a month plus 18% GST, so ₹3,184.82 in all, instead of ₹2,999 before GST, for as long as your plan runs. Your first payment covers your first month, then it renews monthly.",
     );
     expect(describeDiscountedPlanTerms(SERVICES_PLAN, null, 299_900)).toBe(describePlanTerms(SERVICES_PLAN, 299_900));

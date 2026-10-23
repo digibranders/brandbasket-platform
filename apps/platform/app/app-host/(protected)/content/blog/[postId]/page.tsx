@@ -5,7 +5,7 @@ import { BlogPostEditor } from "@/components/panel/blog-editor/blog-post-editor"
 import { getBlogPost } from "@/lib/server/blog";
 import { getBlogAuthors, getBlogCategories } from "@/lib/server/blog-taxonomy";
 import { getOwnWebsiteUrl } from "@/lib/server/blog-preview-link";
-import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { requireWebsiteClient } from "@/lib/server/customer-access";
 import {
   deleteBlogPostAction,
   duplicateBlogPostAction,
@@ -28,7 +28,7 @@ export default async function BlogPostEditPage({
   readonly params: Promise<{ readonly postId: string }>;
 }): Promise<ReactElement> {
   const { postId } = await params;
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireWebsiteClient();
   const [post, websiteUrl, categories, authors] = await Promise.all([
     getBlogPost(postId),
     getOwnWebsiteUrl(tenant),

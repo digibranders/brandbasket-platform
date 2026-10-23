@@ -119,3 +119,14 @@ export async function requireCustomerAccess(options: CustomerAccessOptions = {})
   const billing = await getCustomerBilling(access.tenant.userId, access.tenant.businessId);
   return { user: access.user, tenant: access.tenant, billing };
 }
+
+/**
+ * requireCustomerAccess for the website's own pages (onboarding, project, domain, OyeChats, content, details): a paid
+ * client without the Managed Website service (Social-only, SEO-only, or a dropped website whose month has ended) is sent
+ * Home. An unpaid client passes, because the first payment is taken on these pages, and so does a lapsed one.
+ */
+export async function requireWebsiteClient(): Promise<GrantedCustomer> {
+  const customer = await requireCustomerAccess();
+  if (customer.billing.hasAccess && !customer.billing.hasWebsite) redirect("/");
+  return customer;
+}

@@ -10,7 +10,7 @@ import type { StatusTone } from "@/components/console/status-dot";
 /**
  * What the client page's Add-ons section shows for each add-on row and each press release. Pure, so the rules (which rows
  * count, what each state is called, when Pause and Cancel are offered) are tested without a page. Dates are in India
- * time, the same as the customer's Add-ons page, so staff and customer read the same day.
+ * time, the same as the customer's Services page, so staff and customer read the same day.
  */
 
 const INDIA_TIME = "Asia/Kolkata";
@@ -163,6 +163,15 @@ export interface ClientBundledAddOnRow {
   readonly canRetry: boolean;
 }
 
+/**
+ * Under the remove confirm: when it stops and what that does to the other services. Taking the website out also says the
+ * site goes offline that day, worded for staff reading about the customer (the customer's own confirm says "Your").
+ */
+export function removeHint(addOn: MonthlyAddOnId, endsOnText: string): string {
+  const stays = "It stays until the next billing date. Then the other services go to list price and package prices end for good, the same as when the customer removes it.";
+  return addOn === "managed-website" ? `${stays} Their website goes offline on ${endsOnText}.` : stays;
+}
+
 /** What the rows need besides the add-on rows themselves. */
 export interface BundledRowContext {
   /** The next billing date of the plan the add-ons ride on, or null with none. */
@@ -171,6 +180,13 @@ export interface BundledRowContext {
   readonly openChargeCents: ReadonlyMap<string, number>;
   /** The account has asked to close: no service is taken out on its own, so none can be removed here. */
   readonly cancelRequested: boolean;
+  /** When the kept plan waiting beside the subscription starts, or null with none: services change after it, so none can be removed here. */
+  readonly keptStartsOn: Date | null;
+}
+
+/** The day a kept plan starts, as the client page says it. Null with none waiting. */
+export function keptStartsOnText(startsOn: Date | null): string | null {
+  return startsOn === null ? null : day(startsOn);
 }
 
 function bundledState(row: BundledAddOn, currency: BillingCurrency, context: BundledRowContext): Pick<ClientBundledAddOnRow, "state" | "dateLine" | "canRetry"> {
@@ -202,7 +218,7 @@ export function clientBundledAddOnRows(rows: readonly BundledAddOn[], currency: 
   return rows.flatMap((row): ClientBundledAddOnRow[] => {
     if (!isMonthlyAddOnId(row.addOn)) return [];
     if (row.status === "pending" ? row.chargeId === null : row.activatedAt === null) return [];
-    const canRemove = row.status === "active" && row.endRequestedAt === null && !context.cancelRequested;
+    const canRemove = row.status === "active" && row.endRequestedAt === null && !context.cancelRequested && context.keptStartsOn === null;
     return [
       {
         id: row.id,

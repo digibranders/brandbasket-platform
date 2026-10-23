@@ -15,6 +15,7 @@ import {
 import { logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { scheduleAddOnEndFor, type AddOnEndOutcome, type AddOnEndRequest } from "@brandbasket/shared/server/add-on-ends";
 import {
+  findKeptPlanStart,
   moveBasketAtProvider,
   readAddOnAssessment,
   removeBundledAddOn,
@@ -29,6 +30,7 @@ import {
   clientAddOnOption,
   clientAddOnRows,
   clientBundledAddOnRows,
+  keptStartsOnText,
   type ClientAddOnOption,
   clientPressReleaseRows,
   type ClientAddOnRow,
@@ -54,6 +56,8 @@ export interface ClientAddOns {
   readonly options: readonly ClientAddOnOption[];
   /** The package the client has, its ad credit and when the offer was given up. */
   readonly package: ClientPackageFacts;
+  /** The day the client's kept plan starts, when one is waiting: services change after it. */
+  readonly keptStartsOn: string | null;
 }
 
 /** Everything the client page's Add-ons section shows for one business. */
@@ -73,6 +77,7 @@ export async function loadClientAddOns(businessId: string, now: Date): Promise<C
     if (row.broken) logBillingEvent("error", "add-on-view-failed", { businessId, addOnSubscriptionId: row.id });
   }
   const subscription = await findLatestSubscriptionForBusiness(db, businessId);
+  const keptStartsOn = await findKeptPlanStart(db, subscription);
   const openChargeCents = new Map<string, number>();
   for (const row of bundled) {
     if (row.status !== "pending" || row.chargeId === null) continue;
@@ -91,10 +96,12 @@ export async function loadClientAddOns(businessId: string, now: Date): Promise<C
       nextBillingOn: subscription?.paidThroughAt ?? null,
       openChargeCents,
       cancelRequested: subscription?.cancelRequestedAt != null,
+      keptStartsOn,
     }),
     pressReleases: clientPressReleaseRows(releases),
     options,
     package: clientPackageFacts({ lines: bundled, subscription, currency, forfeitedAt }),
+    keptStartsOn: keptStartsOnText(keptStartsOn),
   };
 }
 

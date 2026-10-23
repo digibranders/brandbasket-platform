@@ -6,7 +6,7 @@ import { chargedAmountCents } from "@brandbasket/billing/tax";
  * The kinds staff can add from the staff console. A `listing_promotion` is not one of them: only the customer opens
  * it, from the Listing page, and its tag and price are fixed (lib/directory/promotion.ts). Nor is a `directory_ad`:
  * only the ad auction's settlement opens one, at the price the auction set (lib/directory/ads.ts). Nor is a
- * `press_release`: only the customer buys one, from the Add-ons page, at the catalogue price. Nor is an `add_on`: only
+ * `press_release`: only the customer buys one, from the Services page, at the catalogue price. Nor is an `add_on`: only
  * adding an add-on to a running plan opens one, at the quote for the rest of the paid month (add-on-proration.ts).
  */
 export type StaffChargeKind = Exclude<

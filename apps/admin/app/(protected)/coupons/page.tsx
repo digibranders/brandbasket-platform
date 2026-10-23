@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { TagIcon } from "@brandbasket/shared/ui/icons";
-import { describeReferralDiscount } from "@brandbasket/shared/lib/billing/referral-value";
+import { describeDiscountMonths, describeReferralDiscount } from "@brandbasket/shared/lib/billing/referral-value";
 import { buttonPrimary } from "@/components/console/buttons";
 import { Figures } from "@/components/console/figures";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
@@ -78,6 +78,7 @@ export default async function CouponsPage(): Promise<ReactElement> {
                     <span className="block truncate">
                       {code.discount === null ? "No discount" : describeReferralDiscount(code.discount, code.currency)} ·{" "}
                       {code.currency}
+                      {code.discount === null ? null : ` · ${describeDiscountMonths(code.discountMonths)}`}
                     </span>
                   }
                   meta={

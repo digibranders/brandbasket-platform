@@ -52,8 +52,13 @@ const nextConfig: NextConfig = {
     ];
   },
   async redirects() {
-    // Browsers ask for /favicon.ico on their own; the icon is the file app/icon.png, served at /icon.png.
-    return [{ source: "/favicon.ico", destination: "/icon.png", permanent: true }];
+    return [
+      // Browsers ask for /favicon.ico on their own; the icon is the file app/icon.png, served at /icon.png.
+      { source: "/favicon.ico", destination: "/icon.png", permanent: true },
+      // The Add-ons page is now Services. A charge paid before the rename can still return to the old address with ?charge=,
+      // which a redirect passes through. Redirects run before the proxy, so this holds on the dashboard host.
+      { source: "/add-ons", destination: "/services", permanent: true },
+    ];
   },
   // Server actions keep Next's default 1 MB body limit. Raising it for uploads would let anyone make every action
   // request hold more memory, so uploads go to the /api/uploads route handler instead, which counts the bytes itself

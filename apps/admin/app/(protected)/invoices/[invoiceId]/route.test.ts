@@ -51,7 +51,7 @@ const invoice: TaxInvoice = {
     cin: "U72900MH2021PTC372344",
     addressLines: ["Thane West, Maharashtra 400607, India"],
     stateCode: "mh",
-    email: "hello@brandbasket.in",
+    email: "support@brandbasket.in",
     phone: "+91 789 789 6607",
   },
   recipient: {

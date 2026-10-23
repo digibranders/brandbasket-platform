@@ -12,7 +12,7 @@
 #
 # Settings are read from /srv/brandbasket/shared/platform.env.local: BREVO_API_KEY, BRANDBASKET_MAIL_FROM (the sender the
 # app already uses; ALERTS_FROM_EMAIL overrides it), ALERTS_FROM_NAME (optional) and BRANDBASKET_TEAM_EMAIL (one address, or
-# several separated by commas; default hello@brandbasket.in). The file is parsed with grep and sed, never sourced, and no
+# several separated by commas; default support@brandbasket.in). The file is parsed with grep and sed, never sourced, and no
 # value is printed. While BREVO_API_KEY is blank (before the owner has filled it in) this only logs and exits 0, so a server
 # without Brevo does not pile up failed alert units. The API key goes to curl on standard input, so it is not on any command
 # line or in the process list.
@@ -34,7 +34,7 @@ readonly ENV_FILE=/srv/brandbasket/shared/platform.env.local
 readonly STATE_DIR=/var/lib/brandbasket/notify-failure
 readonly MIN_INTERVAL="${BRANDBASKET_NOTIFY_MIN_INTERVAL:-1800}"
 readonly API_URL=https://api.brevo.com/v3/smtp/email
-readonly DEFAULT_TEAM=hello@brandbasket.in
+readonly DEFAULT_TEAM=support@brandbasket.in
 # Units whose journal lines may be mailed: none of them handles customer data.
 readonly JOURNAL_UNITS=" brandbasket-platform-autodeploy.service brandbasket-backup.service brandbasket-restore-test.service brandbasket-maintenance.service "
 

@@ -1,6 +1,6 @@
 # Security alerts
 
-Signs of an attack are emailed to the team (`SECURITY_ALERT_EMAIL`, else `SUPPORT_ALERT_EMAIL`, else `hello@brandbasket.in`), so a person notices in time to act: CERT-In must be told within 6 hours of noticing an incident (Directions 2022), and `vps-setup/BREACH-RESPONSE.md` is what to follow. The emails carry no customer data: the kind of event, how many, over what time, and a link to the console.
+Signs of an attack are emailed to the team (`SECURITY_ALERT_EMAIL`, else `SUPPORT_ALERT_EMAIL`, else `support@brandbasket.in`), so a person notices in time to act: CERT-In must be told within 6 hours of noticing an incident (Directions 2022), and `vps-setup/BREACH-RESPONSE.md` is what to follow. The emails carry no customer data: the kind of event, how many, over what time, and a link to the console.
 
 **As it happens** (`apps/platform/lib/server/security-events.ts`). Each event is counted across all app processes in the shared rate-limit table; the first time a count passes its limit in an hour, one email goes out, and no more that hour.
 

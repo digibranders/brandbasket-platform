@@ -14,11 +14,13 @@ import {
   resolvePaymentAttention,
   type NewBundledAddOn,
   type ScopedTransaction,
+  type Database,
   type OpenedMembership,
   type ReferralCode,
   type Subscription,
 } from "@brandbasket/db";
 import { addOnPrice, addOnById, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { reactivationNetCents, type ReactivationBasket } from "@brandbasket/shared/lib/billing/bundle";
 import { packageLines } from "@brandbasket/shared/lib/billing/packages";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import type { ManualPaymentDetails } from "@brandbasket/shared/lib/billing/manual-payment-form";
@@ -28,7 +30,7 @@ import { activateFirstPayment, activateReactivationPayment } from "@brandbasket/
 import { getStaffDb } from "./db";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
-import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
+import { loadCarriedCode, loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 
 
 export interface ManualFirstPayment extends ManualPaymentDetails {
@@ -59,8 +61,8 @@ async function holdsMoreThanWebsite(tx: ScopedTransaction, checkout: Subscriptio
 }
 
 /**
- * What a code the business applied is worth against the one service a manual payment buys (a percentage resolved to
- * money against its list price, never the plan's 0), or null when none applies. A bank transfer is discounted the same
+ * What a code is worth against what a manual payment buys (a percentage resolved to money against `listCents`: the one
+ * service's list price for a first payment, the basket's package net for a reactivation, never the plan's 0), or null when none applies. A bank transfer is discounted the same
  * way a checkout is, so the amount recorded matches what the customer was actually asked to send, and a discounted
  * transfer does not look like an underpayment. An affiliate code that gives no discount is worth 0 and still applies,
  * so the payment earns its affiliate.
@@ -72,13 +74,34 @@ function manualDiscount(code: ReferralCode | null, currency: MoneyCurrency, list
   return isChargeableDiscount(listCents, discountCents) ? discountCents : null;
 }
 
+/** The code a lapsed business keeps when staff record its reactivation, with the months it has left and what it takes off the basket. */
+export interface ManualCarriedCode {
+  readonly code: ReferralCode;
+  readonly monthsLeft: number | null;
+  readonly discountCents: number;
+}
+
+/**
+ * The code a manual reactivation carries, as the client's own reactivation does (loadCarriedCode: a lapse keeps its code for
+ * the months it has left, the client's own cancel keeps nothing), priced on the basket's package net. Null when none carries, or
+ * it cannot be charged against the basket. Read before the lapsed subscription is replaced; the client page shows the amount
+ * from it and recordManualFirstPayment books the same.
+ */
+export async function loadManualCarriedCode(db: Database | ScopedTransaction, businessId: string, basket: ReactivationBasket, currency: MoneyCurrency): Promise<ManualCarriedCode | null> {
+  const carried = await loadCarriedCode(db, businessId, basket);
+  if (carried === null) return null;
+  const discountCents = manualDiscount(carried.code, currency, reactivationNetCents(basket, currency));
+  return discountCents === null ? null : { ...carried, discountCents };
+}
+
 /**
  * Records a first payment the team received outside any provider, such as a bank transfer. It buys the website alone at
  * its list price, as a line (the plan row costs nothing), less any code applied, and goes through the same activation as
  * a checkout (activateFirstPayment): the lines' total, the plan's own term, the lead marked paid. For a business that
  * paid before and lapsed it is a reactivation instead (activateReactivationPayment): its lapsed plan is ended and it
  * gets one month of the basket it lapsed with (loadReactivationBasket), at the offer that basket earns and with its ad
- * credit kept, with no coupon. It also stores who recorded it, the bank or payment
+ * credit kept. A lapse (a failed payment, a revoked mandate) keeps its code for the months it has left, repriced on that
+ * basket, and the payment counts one of them; a client who cancelled themselves gets no coupon. It also stores who recorded it, the bank or payment
  * reference, and the date the money arrived. The paid term starts when it is recorded, which is when access opens, not
  * on the date the money arrived.
  *
@@ -102,7 +125,7 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
     const plan = await findActivePlan(tx, state.currency, state.tier);
     if (plan === null) return { outcome: { kind: "no-plan" }, replaced: null };
 
-    // A business that has paid before is reactivating, which takes no code: its services come back at the offer they earn.
+    // A business that has paid before is reactivating, which takes no new code: a lapse keeps the one it had (below).
     const applied = state.hasEverPaid ? null : await findBusinessReferralCode(tx, businessId);
     const redeemable =
       applied === null
@@ -122,12 +145,15 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
       netAmountCents: line.netCents,
       taxRateBasisPoints: plan.taxRateBasisPoints,
     }));
-    const discountAmountCents = manualDiscount(redeemable, plan.currency, website.listCents);
+    // A lapse keeps its code with the months it has left, even if the code was retired since; the redemption cap is not used again.
+    const carried = reactivation === null ? null : await loadManualCarriedCode(tx, businessId, reactivation, plan.currency);
+    const code = carried?.code ?? redeemable;
+    const discountAmountCents = carried === null ? manualDiscount(redeemable, plan.currency, website.listCents) : carried.discountCents;
 
     const decision = decideCheckout(
       // A payment recorded by hand never reuses a checkout (it is opened at another provider): reuse and replace both end the unpaid one below.
       state.subscription === null ? null : { ...state.subscription, bundleKey: "" },
-      { planId: plan.id, provider: "manual", referralCodeId: discountAmountCents === null ? null : redeemable?.id ?? null, bundleKey: "" },
+      { planId: plan.id, provider: "manual", referralCodeId: discountAmountCents === null ? null : code?.id ?? null, bundleKey: "" },
       now,
       { paymentUnderReview: false },
     );
@@ -167,8 +193,9 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
       planId: plan.id,
       provider: "manual",
       providerSubscriptionId: `manual_sub_${reference}`,
-      referralCodeId: discountAmountCents === null ? null : (redeemable?.id ?? null),
+      referralCodeId: discountAmountCents === null ? null : (code?.id ?? null),
       discountAmountCents: discountAmountCents ?? 0,
+      discountMonthsLeft: discountAmountCents === null ? null : carried === null ? (redeemable?.discountMonths ?? null) : carried.monthsLeft,
       bundledAddOns: lines,
       ...(reactivation === null ? {} : { adCreditCents: reactivation.adCreditCents }),
       replacing: replaced?.id ?? null,
@@ -176,7 +203,8 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
     });
     const manual = { recordedByStaffId: input.staffUserId, reference: input.reference, receivedOn: input.receivedOn };
     if (state.hasEverPaid) {
-      // Reactivation: one month from now of the lines it was opened with, like a reactivation paid online.
+      // Reactivation: one month from now of the lines it was opened with, less the code a lapse kept, like a reactivation paid online.
+      // The payment counts one of the code's months (activateReactivationPayment).
       await activateReactivationPayment(tx, {
         businessId,
         subscriptionId: subscription.id,

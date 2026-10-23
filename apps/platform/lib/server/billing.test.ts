@@ -6,6 +6,7 @@ import {
   findCurrentPaymentMethod,
   findLatestSubscriptionForBusiness,
   findOpenClosureForUser,
+  findReferralCodeById,
   isPackageOfferForfeited,
   findSubscriptionByProviderId,
   listMembershipsForUser,
@@ -14,6 +15,7 @@ import {
   type BundledAddOn,
   type Database,
   type Plan,
+  type ReferralCode,
   type ScopedTransaction,
   type Subscription,
 } from "@brandbasket/db";
@@ -23,11 +25,14 @@ import { BillingConfigurationError, CheckoutVerificationError } from "@brandbask
 import {
   BillingRequiredError,
   findCustomerPaymentMethod,
+  findReactivation,
   findReactivationNetCents,
   getBillingProvider, getRazorpayProvider, razorpayKeyId, razorpayKeySecret,
   requireBillingAccess,
+  requireWebsiteAccess,
+  WebsiteRequiredError,
 } from "./billing";
-import { CustomerBusinessMissingError, requireCustomerAccess } from "./customer-access";
+import { CustomerBusinessMissingError, requireCustomerAccess, requireWebsiteClient } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { getSessionUser } from "./session";
 
@@ -47,7 +52,9 @@ vi.mock("@brandbasket/db", () => ({
   findBundledAddOnsForSubscription: vi.fn(),
   findBusinessEntry: vi.fn(),
   findCurrentPaymentMethod: vi.fn(),
+  findLatestActivatedSubscriptionForBusiness: vi.fn(),
   findLatestSubscriptionForBusiness: vi.fn(),
+  findReferralCodeById: vi.fn(),
   findOpenClosureForUser: vi.fn(),
   isPackageOfferForfeited: vi.fn(),
   findSubscriptionByProviderId: vi.fn(),
@@ -87,6 +94,7 @@ function billingState(sub: Subscription | null, overrides: Partial<BillingState>
     hasEverPaid: sub !== null && sub.status !== "incomplete",
     paymentUnderReview: false,
     plan: PLAN,
+    addOns: [],
     ...overrides,
   };
 }
@@ -195,6 +203,34 @@ describe("requireCustomerAccess billing", () => {
   });
 });
 
+describe("requireWebsiteClient", () => {
+  const WEBSITE = { addOn: "managed-website", status: "active" } as BundledAddOn;
+  const SOCIAL = { addOn: "digital-growth", status: "active" } as BundledAddOn;
+  const paid = (): Subscription => subscription("active", new Date(Date.now() + DAY_MS));
+
+  it("lets a paid client with the Managed Website service through", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(billingState(paid(), { addOns: [SOCIAL, WEBSITE] }));
+    await expect(requireWebsiteClient()).resolves.toMatchObject({ billing: { hasWebsite: true } });
+  });
+
+  it("sends a paid Social-only client Home", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(billingState(paid(), { addOns: [SOCIAL] }));
+    await expect(requireWebsiteClient()).rejects.toThrow("redirect:/");
+  });
+
+  it("lets an unpaid client through: the first payment is taken on the website's own pages", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(billingState(null));
+    await expect(requireWebsiteClient()).resolves.toMatchObject({ billing: { status: "unpaid", hasWebsite: false } });
+  });
+
+  it("lets a lapsed client through to reactivate", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(
+      billingState(subscription("active", new Date(Date.now() - DAY_MS)), { addOns: [WEBSITE] }),
+    );
+    await expect(requireWebsiteClient()).resolves.toMatchObject({ billing: { status: "lapsed" } });
+  });
+});
+
 describe("findCustomerPaymentMethod", () => {
   const tenant = { userId: USER.id, businessId: BUSINESS_ID, businessName: "Riverside Plumbing", role: "owner" };
 
@@ -226,7 +262,7 @@ describe("findReactivationNetCents", () => {
 
   beforeEach(() => {
     vi.mocked(getStaffDb).mockReturnValue({ name: "staff-db" } as unknown as Database);
-    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "past_due", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 0 } as Subscription);
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "past_due", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 0, referralCodeId: null, discountMonthsLeft: null } as Subscription);
     vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
   });
 
@@ -240,6 +276,61 @@ describe("findReactivationNetCents", () => {
     vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "local-seo-aeo"));
     vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
     await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }))).resolves.toBe(2_799_800);
+  });
+
+  describe("for a customer who cancelled the plan themselves", () => {
+    beforeEach(() => {
+      vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "cancelled", activatedAt: new Date(), cancelRequestedAt: new Date(), adCreditCents: 0, referralCodeId: null, discountMonthsLeft: null } as Subscription);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "digital-growth", "local-seo-aeo"));
+    });
+
+    it("shows their previous services at list until they choose again", async () => {
+      await expect(findReactivation(lapsedWith({ currency: "INR" }))).resolves.toEqual({
+        cancelled: true,
+        services: ["managed-website", "digital-growth", "local-seo-aeo"],
+        netCents: 3_799_700,
+        discountCents: 0,
+      });
+    });
+
+    it("prices the services they chose at list, ignoring anything that is not a service", async () => {
+      await expect(findReactivation(lapsedWith({ currency: "INR" }), ["managed-website", "x", "local-seo-aeo"])).resolves.toEqual({
+        cancelled: true,
+        services: ["managed-website", "local-seo-aeo"],
+        netCents: 2_799_800,
+        discountCents: 0,
+      });
+      await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }), ["digital-growth"])).resolves.toBe(999_900);
+    });
+  });
+
+  it("does not let a lapse choose: a mandate the provider revoked comes back as it was, at the package price", async () => {
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "cancelled", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 500_000, referralCodeId: null, discountMonthsLeft: null } as Subscription);
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "digital-growth", "local-seo-aeo"));
+    await expect(findReactivation(lapsedWith({ currency: "INR" }), ["managed-website"])).resolves.toEqual({
+      cancelled: false,
+      services: ["managed-website", "digital-growth", "local-seo-aeo"],
+      netCents: 2_659_700,
+      discountCents: 0,
+    });
+  });
+
+  it("takes off the code a lapse keeps, repriced on the basket, but not after the customer's own cancel", async () => {
+    const code = { id: "code-1", code: "TENOFF", currency: "INR", discount: { kind: "percent", basisPoints: 1_000 }, discountMonths: 6 } as ReferralCode;
+    vi.mocked(findReferralCodeById).mockResolvedValue(code);
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "digital-growth", "local-seo-aeo"));
+    const lapse = (overrides: Partial<Subscription>) =>
+      vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "cancelled", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 0, referralCodeId: code.id, discountMonthsLeft: 2, ...overrides } as Subscription);
+
+    lapse({});
+    // 10% of the 26,597 the package nets.
+    await expect(findReactivation(lapsedWith({ currency: "INR" }))).resolves.toMatchObject({ netCents: 2_659_700, discountCents: 265_970 });
+
+    lapse({ discountMonthsLeft: 0 });
+    await expect(findReactivation(lapsedWith({ currency: "INR" }))).resolves.toMatchObject({ discountCents: 0 });
+
+    lapse({ cancelRequestedAt: new Date() });
+    await expect(findReactivation(lapsedWith({ currency: "INR" }))).resolves.toMatchObject({ cancelled: true, discountCents: 0 });
   });
 
   it("is nothing for a customer who has not lapsed", async () => {
@@ -291,6 +382,31 @@ describe("requireBillingAccess", () => {
     const access = await requireBillingAccess();
     expect(access.tenant.businessId).toBe(BUSINESS_ID);
     expect(access.billing.hasAccess).toBe(true);
+  });
+});
+
+describe("requireWebsiteAccess", () => {
+  const line = (addOn: string): BundledAddOn => ({ addOn, status: "active" }) as BundledAddOn;
+  const paid = (): Subscription => subscription("active", new Date(Date.now() + DAY_MS));
+
+  it("returns the customer when the paid plan holds a Managed Website line", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(billingState(paid(), { addOns: [line("digital-growth"), line("managed-website")] }));
+
+    await expect(requireWebsiteAccess()).resolves.toMatchObject({ billing: { hasAccess: true, hasWebsite: true } });
+  });
+
+  it("refuses a paid Social-only client: the plan is paid, but there is no website to own", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(billingState(paid(), { addOns: [line("digital-growth")] }));
+
+    const error: unknown = await requireWebsiteAccess().catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(WebsiteRequiredError);
+    expect((error as WebsiteRequiredError).businessId).toBe(BUSINESS_ID);
+  });
+
+  it("refuses an unpaid business as billing, before it asks about the website", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(billingState(null, { addOns: [line("managed-website")] }));
+
+    await expect(requireWebsiteAccess()).rejects.toBeInstanceOf(BillingRequiredError);
   });
 });
 

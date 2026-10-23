@@ -57,6 +57,8 @@ import {
 import { MANUAL_PAYMENT_NOTICES, readManualPaymentNotice } from "@brandbasket/shared/lib/billing/manual-payment-notices";
 import { reactivationNetCents, websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
+import { loadManualCarriedCode } from "@/lib/server/billing-admin";
+import { couponPhrase, type CarriedCodeHint } from "@/lib/manual-reactivation-hint";
 import { firstPaymentAmount, initialTermPhrase, monthlyPaymentAmount } from "@brandbasket/shared/lib/billing/terms";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
 import { isPlacementField } from "@brandbasket/shared/lib/directory/placement-form";
@@ -313,13 +315,15 @@ function BillingFacts({
 interface ManualPaymentFormProps {
   readonly businessId: string;
   readonly plan: Plan;
-  /** What the payment buys a month before GST: the website for a first payment, the basket they lapsed with for a reactivation. */
+  /** What the payment buys a month before GST: the website for a first payment, the basket they lapsed with, less any code a lapse keeps, for a reactivation. */
   readonly netCents: number;
   /** The client paid before and lapsed: this payment reactivates their plan rather than being their first. */
   readonly reactivating: boolean;
+  /** The code a lapse keeps, already taken off `netCents`; null for a first payment, a client who cancelled themselves or a code with no months left. */
+  readonly carriedCode: CarriedCodeHint | null;
 }
 
-function ManualPaymentForm({ businessId, plan, netCents, reactivating }: ManualPaymentFormProps): ReactElement {
+function ManualPaymentForm({ businessId, plan, netCents, reactivating, carriedCode }: ManualPaymentFormProps): ReactElement {
   // Exactly what recordManualFirstPayment records, so the box staff tick names the money that must have arrived.
   const amount = reactivating ? monthlyPaymentAmount(plan, netCents) : firstPaymentAmount(plan, netCents);
   return (
@@ -328,7 +332,7 @@ function ManualPaymentForm({ businessId, plan, netCents, reactivating }: ManualP
       {reactivating ? (
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
           For money that arrived outside the payment provider, such as a bank transfer. It records {amount}, one month
-          from today for the services they lapsed with, with no coupon, ends their lapsed plan and brings their website back. Your name,
+          from today for the services they lapsed with, {couponPhrase(carriedCode)}, ends their lapsed plan and brings their website back. Your name,
           the reference and the date are kept with it.
         </p>
       ) : (
@@ -619,13 +623,15 @@ export default async function ClientPage({
     loadClientAddOns(client.businessId, renderedAt),
     loadClientChatbots(client.businessId),
   ]);
-  // Exactly what recordManualFirstPayment books: the basket they lapsed with, else the website at list.
+  // Exactly what recordManualFirstPayment books: the basket they lapsed with, less the code a lapse keeps, else the website at list.
+  const lapsedBasket = plan !== null && paymentState.kind === "lapsed" ? await loadReactivationBasket(db, client.businessId) : null;
+  const carriedCode = plan === null || lapsedBasket === null ? null : await loadManualCarriedCode(db, client.businessId, lapsedBasket, plan.currency);
   const manualNetCents =
     plan === null
       ? 0
-      : paymentState.kind === "lapsed"
-        ? reactivationNetCents(await loadReactivationBasket(db, client.businessId), plan.currency)
-        : websiteAloneNetCents(plan.currency);
+      : lapsedBasket === null
+        ? websiteAloneNetCents(plan.currency)
+        : reactivationNetCents(lapsedBasket, plan.currency) - (carriedCode?.discountCents ?? 0);
   const chargesNotice = readStaffChargeNotice(sp.charges);
   const websiteNotice = sp.website === "saved" || sp.website === "invalid" ? sp.website : null;
   const featuresNotice = readBusinessModuleNotice(sp.features);
@@ -843,7 +849,13 @@ export default async function ClientPage({
         <Section title="Billing">
           <BillingFacts client={client} state={paymentState} packageFacts={clientAddOns.package} />
           {canRecordPayment && plan !== null ? (
-            <ManualPaymentForm businessId={client.businessId} plan={plan} netCents={manualNetCents} reactivating={paymentState.kind === "lapsed"} />
+            <ManualPaymentForm
+              businessId={client.businessId}
+              plan={plan}
+              netCents={manualNetCents}
+              reactivating={paymentState.kind === "lapsed"}
+              carriedCode={carriedCode === null ? null : { code: carriedCode.code.code, monthsLeft: carriedCode.monthsLeft }}
+            />
           ) : null}
           {canRecordPayment && plan === null ? (
             <p className="mt-6 text-sm text-ink-soft">
@@ -882,6 +894,7 @@ export default async function ClientPage({
           pressReleases={clientAddOns.pressReleases}
           options={clientAddOns.options}
           notice={addOnNotice}
+          keptStartsOn={clientAddOns.keptStartsOn}
         />
 
         <ClientChatbots

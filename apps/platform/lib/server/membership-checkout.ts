@@ -8,7 +8,7 @@ import { loadBillingDetailsView } from "./billing-details";
 import type { GrantedCustomer } from "./customer-access";
 import { getStaffDb } from "./db";
 import { getMembershipPlan } from "./membership";
-import { codeBasisFor, findCodeRefusedOnPackage, findLapsedAppliedCode, resolveAppliedDiscount, type AppliedDiscount } from "./referrals";
+import { codeBasisFor, findLapsedAppliedCode, resolveAppliedDiscount, type AppliedDiscount } from "./referrals";
 
 /** Everything the way to pay for one plan needs, read once for the page that shows it. */
 export interface MembershipCheckoutView {
@@ -19,15 +19,10 @@ export interface MembershipCheckoutView {
    * has paid before lapsed with (loadReactivationBasket), the same rule the checkout applies.
    */
   readonly services: readonly MonthlyAddOnId[];
-  /**
-   * The code in force against the one service, re-validated now, or null. Always null for a package of two or more
-   * services, which never takes a code: its checkout refuses one.
-   */
+  /** The code in force against the basket's package net, re-validated now, or null. */
   readonly discount: AppliedDiscount | null;
-  /** A code that was applied and no longer works against the one service, so the page can say why the price is full. */
+  /** A code that was applied and no longer works against the basket, so the page can say why the price is full. */
   readonly lapsedCode: string | null;
-  /** A code that works but is on a package, which checkout refuses to open with: the page shows it with a way to remove it. */
-  readonly refusedCode: string | null;
   /** The business has given the package offer up for good: every line is at list, with no ad credit. */
   readonly forfeited: boolean;
   /** The business has paid before: it earns no ad credit. */
@@ -66,14 +61,13 @@ export async function loadMembershipCheckout(
   const services = reactivation?.services ?? requested;
   // A reactivation takes no code, so none is looked for against its basket.
   const basis = plan === null || hasEverPaid ? null : codeBasisFor(services, plan.currency);
-  const [discount, lapsedCode, refusedCode, forfeited, billingDetails] = await Promise.all([
+  const [discount, lapsedCode, forfeited, billingDetails] = await Promise.all([
     basis === null ? null : resolveAppliedDiscount(businessId, basis, now),
     basis === null ? null : findLapsedAppliedCode(businessId, basis, now),
-    plan === null || hasEverPaid ? null : findCodeRefusedOnPackage(businessId, services, plan.currency, now),
     reactivation?.forfeited ?? isPackageOfferForfeited(staffDb, businessId),
     loadBillingDetailsView(customer),
   ]);
   const offer: MembershipOffer = !hasEverPaid && plan !== null ? { kind: "available" } : { kind: "none" };
   // A code that still works is not lapsed, whatever the second read says.
-  return { plan, services, discount, lapsedCode: discount === null ? lapsedCode : null, refusedCode, forfeited, hasEverPaid, billingDetails, offer };
+  return { plan, services, discount, lapsedCode: discount === null ? lapsedCode : null, forfeited, hasEverPaid, billingDetails, offer };
 }

@@ -1282,6 +1282,20 @@
       "when": 1792584795992,
       "tag": "0185_payment_invoice_basis",
       "breakpoints": true
+    },
+    {
+      "idx": 183,
+      "version": "7",
+      "when": 1792681685573,
+      "tag": "0186_referral_code_months",
+      "breakpoints": true
+    },
+    {
+      "idx": 184,
+      "version": "7",
+      "when": 1792684249496,
+      "tag": "0187_keep_my_plan",
+      "breakpoints": true
     }
   ]
 }

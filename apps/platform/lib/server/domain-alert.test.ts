@@ -6,7 +6,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@brandbasket/email", () => ({
   createAppEmailTransport: vi.fn(),
   domainConnectedEmail: vi.fn(),
-  emailTeamInboxDefault: () => "hello@brandbasket.in",
+  emailTeamInboxDefault: () => "support@brandbasket.in",
 }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({})) }));
 vi.mock("./env", () => ({ serverEnv: () => ({ ADMIN_ORIGIN: "http://admin.localhost:3001" }) }));
@@ -42,7 +42,7 @@ describe("notifyTeamDomainConnected", () => {
 
   it("falls back to the default team inbox", async () => {
     await notifyTeamDomainConnected("business-1", "Riverside Plumbing", "riverside.com");
-    expect(domainConnectedEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "hello@brandbasket.in" }));
+    expect(domainConnectedEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "support@brandbasket.in" }));
   });
 
   it("logs and never throws when the email cannot be sent", async () => {

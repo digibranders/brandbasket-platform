@@ -1,13 +1,30 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { findActivePlan, openCheckoutSubscription, recordPaymentAndActivate, type Plan } from "./queries/billing";
-import { activateBundledAddOns, listAdCreditDue, type NewBundledAddOn } from "./queries/bundled-add-ons";
+import { markCancelRequested } from "./queries/account-closures";
+import {
+  findActivePlan,
+  findSubscriptionById,
+  openCheckoutSubscription,
+  recordPaymentAndActivate,
+  updateSubscriptionProviderStatus,
+  type Plan,
+} from "./queries/billing";
+import {
+  activateBundledAddOns,
+  completeBundledAddOnChanges,
+  endPackageOffer,
+  findBundledAddOnsForSubscription,
+  listAdCreditDue,
+  recordBundledAddOnRemoval,
+  type NewBundledAddOn,
+} from "./queries/bundled-add-ons";
 import { bundledAddOns, businesses, subscriptions } from "./schema";
 import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
 
 /**
  * The console's "Ad credit due this month" list: only subscriptions that are live and paid, since a cancelled row that
- * never took a payment keeps the credit it was opened with.
+ * never took a payment keeps the credit it was opened with. Credit runs to the end of the paid month after a cancel request or
+ * a dropped service, and stops there.
  */
 
 const OPENED_AT = new Date("2026-10-21T10:00:00.000Z");
@@ -100,9 +117,53 @@ describe("listAdCreditDue", () => {
     expect(await listAdCreditDue(dbs.staff.db, NOW)).toEqual([]);
   });
 
-  it("leaves out an account that has asked to close, though it may still carry credit", async () => {
+  it("keeps an account that has asked to close in the list until the month it paid for ends", async () => {
     const { subscriptionId } = await business("Closing", { paid: true, adCreditCents: 200_000 });
     await dbs.owner.db.update(subscriptions).set({ cancelRequestedAt: OPENED_AT }).where(eq(subscriptions.id, subscriptionId));
+
+    expect((await listAdCreditDue(dbs.staff.db, NOW)).map((row) => row.businessName)).toEqual(["Closing"]);
+    expect(await listAdCreditDue(dbs.staff.db, new Date(PAID_THROUGH.getTime() + 1))).toEqual([]);
+  });
+
+  it("zeroes the credit when the provider's cancel of a requested close lands, but keeps it for a cancel nobody asked for", async () => {
+    const asked = await business("Asked", { paid: true, adCreditCents: 200_000 });
+    const revoked = await business("Revoked", { paid: true, adCreditCents: 200_000 });
+    await markCancelRequested(dbs.staff.db, { subscriptionId: asked.subscriptionId, businessId: asked.businessId, now: OPENED_AT });
+    for (const { subscriptionId } of [asked, revoked]) {
+      const row = await findSubscriptionById(dbs.staff.db, subscriptionId);
+      if (row === null) throw new Error("The subscription was not opened");
+      await updateSubscriptionProviderStatus(dbs.staff.db, {
+        provider: "fake",
+        providerSubscriptionId: row.providerSubscriptionId,
+        status: "cancelled",
+        providerStatus: "cancelled",
+        now: PAID_THROUGH,
+      });
+    }
+
+    expect((await findSubscriptionById(dbs.staff.db, asked.subscriptionId))?.adCreditCents).toBe(0);
+    // A revoked mandate is a lapse: a reactivation restores the credit, so the row keeps it. It is not listed, as it is cancelled.
+    expect((await findSubscriptionById(dbs.staff.db, revoked.subscriptionId))?.adCreditCents).toBe(200_000);
+    expect(await listAdCreditDue(dbs.staff.db, NOW)).toEqual([]);
+  });
+
+  it("keeps the credit through the paid month after a service is dropped, and ends it at the renewal that takes the line off", async () => {
+    const { businessId, subscriptionId } = await business("Dropper", { paid: true, adCreditCents: 200_000 });
+    const lines = await findBundledAddOnsForSubscription(dbs.staff.db, subscriptionId);
+    const dropped = lines.find((row) => row.addOn === "digital-growth");
+    const staying = lines.filter((row) => row.addOn !== "digital-growth");
+    if (dropped === undefined) throw new Error("The Social Media and Ads line was not opened");
+    await recordBundledAddOnRemoval(dbs.staff.db, { id: dropped.id, businessId, pendingBundledAddOnNetCents: 299_900, now: OPENED_AT });
+    await dbs.staff.db.transaction((tx) =>
+      endPackageOffer(tx, { businessId, subscriptionId, lines: staying.map((row) => ({ id: row.id, pendingOfferDiscountAmountCents: 0 })), now: OPENED_AT }),
+    );
+
+    expect((await findSubscriptionById(dbs.staff.db, subscriptionId))?.adCreditCents).toBe(200_000);
+    expect((await listAdCreditDue(dbs.staff.db, NOW)).map((row) => row.businessName)).toEqual(["Dropper"]);
+
+    await completeBundledAddOnChanges(dbs.staff.db, { subscriptionId, now: PAID_THROUGH });
+
+    expect((await findSubscriptionById(dbs.staff.db, subscriptionId))?.adCreditCents).toBe(0);
     expect(await listAdCreditDue(dbs.staff.db, NOW)).toEqual([]);
   });
 
