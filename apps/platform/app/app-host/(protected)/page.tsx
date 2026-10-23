@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import { isPhoneAccountEmail } from "@brandbasket/db";
 import { BillingBanner } from "@/components/panel/billing-banner";
 import { KickoffCallCard } from "@/components/panel/kickoff-call-card";
+import { LaunchPath } from "@/components/panel/launch-path";
 import { NextStepCard } from "@/components/panel/next-step-card";
 import { PaidBadge } from "@/components/panel/paid-badge";
 import { PrepareChecklist } from "@/components/panel/prepare-checklist";
@@ -56,10 +57,8 @@ export default async function AppHomePage(): Promise<ReactElement> {
   const email = isPhoneAccountEmail(user.email) ? null : user.email;
   const paidAt = billing.subscription?.activatedAt ?? null;
   const booked = setupCall?.booking != null;
-  // One thing to do at a time: pick a time first, and the steps to prepare appear once a call is booked. With no booking page
-  // set there is nothing to book, so the steps are shown straight away.
-  const showSteps = booked || setupCall?.url === null;
-  const subtitle = settingUp && booked ? BOOKED_SUBTITLE : settingUp && !showSteps ? BOOKING_SUBTITLE : SUBTITLES[step.kind];
+  // With no booking page set there is nothing to book, so the lede speaks only of getting online.
+  const subtitle = settingUp && booked ? BOOKED_SUBTITLE : settingUp && setupCall?.url != null ? BOOKING_SUBTITLE : SUBTITLES[step.kind];
 
   return (
     <>
@@ -92,14 +91,22 @@ export default async function AppHomePage(): Promise<ReactElement> {
             )}
           </div>
         ) : (
-          <div className={showSteps ? "grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start" : "max-w-4xl"}>
-            <KickoffCallCard
-              url={setupCall.url}
-              booking={setupCall.booking}
-              prefill={{ name: user.name, email }}
-              businessId={tenant.businessId}
-            />
-            {showSteps ? <PrepareChecklist completedSteps={completed} /> : null}
+          // Option A, "Kickoff studio" (owner's pick, 2026-10-23): the call and the launch path side by side, the steps below.
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-start gap-5">
+              <div className="min-w-0 flex-[999_1_36rem]">
+                <KickoffCallCard
+                  url={setupCall.url}
+                  booking={setupCall.booking}
+                  prefill={{ name: user.name, email }}
+                  businessId={tenant.businessId}
+                />
+              </div>
+              <div className="min-w-0 flex-[1_1_17rem]">
+                <LaunchPath paidAtIso={paidAt?.toISOString() ?? null} booked={booked} callStartsAtIso={setupCall.booking?.startsAtIso ?? null} />
+              </div>
+            </div>
+            <PrepareChecklist completedSteps={completed} />
           </div>
         )}
       </div>
