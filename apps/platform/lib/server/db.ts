@@ -71,6 +71,10 @@ export function getAppDb(): Database {
  *   The sender has no session, and customers never write chatbots or chatbot_leads through their own connection. Nothing
  *   in the body is believed until its signature checks out under that bot's own secret (chatbot_webhook_secrets, staff
  *   only), and the business a lead goes to comes from our record of the bot, never from the body.
+ * - lib/server/calcom-webhook.ts (POST /api/webhooks/calcom), which moves or forgets a kickoff call the client rescheduled or
+ *   cancelled from Cal.com's email. The sender has no session. Nothing in the body is believed until its signature checks
+ *   out under CALCOM_WEBHOOK_SECRET, and the booking is found only by the Cal.com booking it was stored under, never by a
+ *   business named in the body.
  * - lib/server/chatbot-conversations.ts (the OyeChats page's message counts and the conversation pop-up), which reads one
  *   bot's OyeChats operator key from chatbot_webhook_secrets, a staff-only table, to fetch conversations from OyeChats for the
  *   signed-in customer. The bot comes from a read made through the customer's own tenant scope (and the lead from

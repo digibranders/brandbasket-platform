@@ -35,3 +35,29 @@ export async function recordSetupCallBooking(
       set: { inviteeUri: input.inviteeUri, bookedAt: input.now, updatedAt: input.now, ...times },
     });
 }
+
+/**
+ * Moves a booked call to the time its booking service rescheduled it to, found by the booking it replaces (the client
+ * rescheduled from the booking service's email, not the dashboard). True when a booking moved. Staff connection.
+ */
+export async function moveSetupCallBooking(
+  db: Runner,
+  input: { readonly fromInviteeUri: string; readonly toInviteeUri: string; readonly startsAt: Date; readonly endsAt: Date; readonly now: Date },
+): Promise<boolean> {
+  const moved = await db
+    .update(setupCallBookings)
+    .set({ inviteeUri: input.toInviteeUri, startsAt: input.startsAt, endsAt: input.endsAt, updatedAt: input.now })
+    .where(eq(setupCallBookings.inviteeUri, input.fromInviteeUri))
+    .returning({ id: setupCallBookings.id });
+  return moved.length > 0;
+}
+
+/**
+ * Forgets a booked call its booking service says was cancelled, so the dashboard asks for a time again. True when one was
+ * removed. A booking the dashboard replaced is no longer stored under its old address, so its cancel removes nothing.
+ * Staff connection.
+ */
+export async function removeSetupCallBooking(db: Runner, inviteeUri: string): Promise<boolean> {
+  const removed = await db.delete(setupCallBookings).where(eq(setupCallBookings.inviteeUri, inviteeUri)).returning({ id: setupCallBookings.id });
+  return removed.length > 0;
+}

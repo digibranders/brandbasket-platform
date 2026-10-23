@@ -20,7 +20,7 @@ The app at app.brandbasket.in: sign-up and sign-in, onboarding, the business das
 | `billing/*` | Pay and confirm pages for plans, charges and services |
 | `affiliate/` | Affiliate portal and setup |
 
-`app/api/` holds the public endpoints: `site/*` (called by client websites with a site token: info, availability, bookings, posts, media), `leads`, `pricing`, `webhooks/razorpay`, upload routes, privacy requests, error reports and the dormant `directory/*` routes.
+`app/api/` holds the public endpoints: `site/*` (called by client websites with a site token: info, availability, bookings, posts, media), `leads`, `pricing`, `webhooks/razorpay`, `webhooks/oyechats`, `webhooks/calcom`, upload routes, privacy requests, error reports and the dormant `directory/*` routes.
 
 ## Server code
 

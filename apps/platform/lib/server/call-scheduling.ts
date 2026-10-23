@@ -155,6 +155,11 @@ const calcomSlotsSchema = z.object({ data: z.record(z.string(), z.array(z.object
 const calcomBookingSchema = z.object({ data: z.object({ uid: z.string(), start: z.string(), end: z.string() }) });
 /** The form a Cal.com booking is stored in; only a booking this server made has it, so only that is ever cancelled. */
 const CALCOM_BOOKING_URI = /^https:\/\/api\.cal\.com\/v2\/bookings\/([A-Za-z0-9_-]{1,64})$/;
+
+/** The address a Cal.com booking is stored under: the API's own address for it, by its uid. */
+export function calcomBookingUri(uid: string): string {
+  return `${CALCOM_API}/bookings/${uid}`;
+}
 const calcomErrorSchema = z.object({ error: z.object({ message: z.string().optional() }).optional(), message: z.string().optional() });
 
 /** The host and event a Cal.com booking link points at, or null when the link is not a plain cal.com/<user>/<event> one. */
@@ -223,7 +228,7 @@ function calcomScheduler(key: string, page: { readonly username: string; readonl
         });
         return {
           ok: true,
-          call: { startsAt: new Date(booked.data.start), endsAt: new Date(booked.data.end), inviteeUri: `${CALCOM_API}/bookings/${booked.data.uid}` },
+          call: { startsAt: new Date(booked.data.start), endsAt: new Date(booked.data.end), inviteeUri: calcomBookingUri(booked.data.uid) },
         };
       } catch (error) {
         if (!isTakenAnswer(error)) console.error("[call-scheduling] Cal.com did not book the call", error instanceof CalcomError ? `${String(error.status)} ${error.detail}` : error);
