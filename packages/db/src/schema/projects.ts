@@ -95,8 +95,9 @@ export const onboardingProgress = pgTable(
 /**
  * The kickoff call a business booked from its dashboard (the setup call link, lib/setup-call-link.ts): at most one row a
  * business, written when the booking page says a time was picked. `startsAt` and `endsAt` are the meeting's time, filled
- * in when the booking page reports it (the Calendly webhook); until then the row only says a call was booked, so the
- * dashboard stops asking for one.
+ * in when the dashboard books it through Cal.com; a booking page that reports only that a call was booked leaves them null,
+ * so the dashboard stops asking for one. Cal.com's webhook moves the row when the call is rescheduled from its email, and
+ * removes it when the call is cancelled there.
  */
 export const setupCallBookings = pgTable(
   "setup_call_bookings",

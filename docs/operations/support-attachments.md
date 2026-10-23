@@ -21,7 +21,7 @@ Verify a staged object remains unavailable through customer GET, another request
 
 Closed ticket content, internal notes, contextual details, error links, read state, and screenshots are removed 24 calendar months after the ticket's last change, the period in the retention schedule (`docs/operations/retention-schedule.md`). `SUPPORT_TICKET_RETENTION_MONTHS` may set another whole number of months from 1 to 120; any other value, 0 included, is refused so a typo cannot purge data early or turn the schedule off. This does not change financial record retention. Resolved tickets remain available; only closed tickets enter this pass. A claimed ticket cannot receive new replies or changes while its objects are being removed. Its content is retained when any object delete fails, and removed only after every associated object is marked deleted. No customer-identifying analytics are preserved by this command.
 
-The same command also removes resolved automatic error issues 90 days after resolution (see `docs/operations/automatic-errors.md`). `docs/deployment/brandbasket-droplet.md` describes how to schedule it.
+The same command also removes resolved automatic error issues 90 days after resolution (see `docs/operations/automatic-errors.md`). `docs/deployment/brandbasket-vps.md` describes how it is scheduled on the VPS.
 
 ## Where customer text can be stored
 

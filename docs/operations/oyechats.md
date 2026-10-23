@@ -22,24 +22,24 @@ read. An operator key can only see its own bot: OyeChats refuses it anything els
 
 ## One-time setup for the server
 
-1. Add the OyeChats API address to the **platform** env file on the droplet (the dashboard reads the conversations, the console does not):
+1. Add the OyeChats API address to the **platform** env file on the VPS (the dashboard reads the conversations, the console does not):
 
    ```bash
-   ssh deploy@<droplet>
+   ssh root@<the VPS>     # access: docs/vps/ACCESS.md in firstfold-platform
    nano /srv/brandbasket/shared/platform.env.local     # add:  OYECHATS_API_URL=https://<your OyeChats API address>
    ```
 
-   It is an origin only (`https://host`, no path). The `deploy` user owns the file (mode 600).
+   It is an origin only (`https://host`, no path). The `brandbasket` user owns the file (mode 600).
 
 2. Ship this change the way you ship any other. The four new migrations (0176 to 0179) run by themselves in the deploy's
    migration step, before the new release goes live. Restart is part of the deploy; if you only changed the env file, restart the app:
 
    ```bash
-   sudo systemctl restart brandbasket-app
+   systemctl restart brandbasket-app
    ```
 
    Check it with `pnpm env:check --platform /srv/brandbasket/shared/platform.env.local --admin /srv/brandbasket/shared/admin.env.local`
-   as in the droplet runbook (`docs/deployment/brandbasket-droplet.md`). The new setting is optional, so it never fails the check.
+   as in the VPS runbook (`docs/deployment/brandbasket-vps.md`). The new setting is optional, so it never fails the check.
 
 ## For each customer's assistant
 
