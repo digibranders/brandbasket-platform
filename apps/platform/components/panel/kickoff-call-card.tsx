@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactElement } from "react";
-import { ArrowIcon } from "@brandbasket/shared/ui/icons";
+import { ArrowIcon, ChatIcon, ClockIcon, TickIcon, UsersIcon } from "@brandbasket/shared/ui/icons";
 import { Button, ExternalButtonLink } from "@brandbasket/shared/ui/panel/button";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { callInviteHref } from "@brandbasket/shared/lib/call-slots";
@@ -14,6 +14,13 @@ import type { SetupCallBookingView } from "@/lib/server/setup-call";
 const CALENDLY_ORIGIN = "https://calendly.com";
 const WIDGET_SCRIPT = "https://assets.calendly.com/assets/external/widget.js";
 const WIDGET_STYLES = "https://assets.calendly.com/assets/external/widget.css";
+
+/** What the call covers, shown once it is booked. */
+const ON_THE_CALL: readonly string[] = [
+  "Your business, your customers and what you want the website to do.",
+  "Your pages, and the look and feel.",
+  "What we need from you, and when your website goes live.",
+];
 
 /** After a booking, the meeting's time arrives a few seconds later (the booking page tells us); look for it a few times, then stop. */
 const TIME_CHECKS_MS: readonly number[] = [4000, 9000, 16000];
@@ -167,14 +174,35 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
   );
   const onUnavailable = useCallback((): void => setPageInstead(true), []);
 
+  const heading = booked ? (changing && ownCalendar ? "Pick a new time" : "Your kickoff call") : url === null ? "Your kickoff call" : "Pick a time for your kickoff call";
+
   return (
     <section aria-labelledby="kickoff-call-heading" className="rounded-shell bg-paper-deep p-6 sm:p-8">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div>
+          <p className="text-[0.8125rem] font-semibold text-highlight-deep">Step 2 of 6</p>
+          <h2 id="kickoff-call-heading" className="panel-title mt-1">
+            {heading}
+          </h2>
+        </div>
+        <ul className="flex flex-wrap gap-2" aria-label="About the call">
+          <li className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[0.8125rem] text-ink-soft">
+            <ClockIcon className="size-4 shrink-0" />
+            {minutes === null ? "30 minutes" : `${String(minutes)} minutes`}
+          </li>
+          <li className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[0.8125rem] text-ink-soft">
+            <ChatIcon className="size-4 shrink-0" />
+            Video call
+          </li>
+          <li className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-[0.8125rem] text-ink-soft">
+            <UsersIcon className="size-4 shrink-0" />
+            With the Brandbasket team
+          </li>
+        </ul>
+      </div>
       {booked ? (
         changing && ownCalendar ? (
           <>
-            <h2 id="kickoff-call-heading" className="panel-title">
-              Pick a new time
-            </h2>
             <p className="mt-2 text-sm leading-relaxed text-ink-soft">Your current time stays until you confirm a new one.</p>
             <div className="mt-6">
               <CallSlotPicker onBooked={onPicked} onUnavailable={onUnavailable} />
@@ -184,61 +212,70 @@ export function KickoffCallCard({ url, booking, prefill, businessId }: KickoffCa
             </Button>
           </>
         ) : (
-        <>
-          <h2 id="kickoff-call-heading" className="panel-title">
-            Your kickoff call is booked
-          </h2>
-          <div className="mt-4 rounded-card bg-card p-5 sm:p-6">
-            {startsAtIso === null ? (
-              <p className="text-lg font-medium text-ink">Checking the time with the calendar…</p>
-            ) : (
-              <p className="text-2xl font-semibold tracking-tight text-ink tabular-nums">
-                <LocalDateTime iso={startsAtIso} />
+          <div className="mt-6 grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+            <div data-surface="dark" className="flex flex-col rounded-card bg-dark-surface p-6 text-paper sm:p-7">
+              <p className="inline-flex items-center gap-2 text-[0.8125rem] font-semibold text-amber">
+                <TickIcon className="size-4 shrink-0" />
+                Booked
               </p>
-            )}
-            <p className="mt-1 text-[0.9375rem] text-ink-soft">
-              {minutes === null ? "Video call with the Brandbasket team" : `${String(minutes)} minutes, video call with the Brandbasket team`}
-            </p>
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              {startsAtIso === null || endsAtIso === null ? null : (
-                <ExternalButtonLink href={callInviteHref(startsAtIso, endsAtIso)} download="brandbasket-kickoff-call.ics" variant="secondary" size="sm">
-                  Add to calendar
-                </ExternalButtonLink>
+              {startsAtIso === null ? (
+                <p className="mt-3 text-lg font-medium">Checking the time with the calendar…</p>
+              ) : (
+                <p className="mt-3 text-2xl font-semibold tracking-tight tabular-nums">
+                  <LocalDateTime iso={startsAtIso} />
+                </p>
               )}
-              {ownCalendar ? (
-                <Button type="button" variant="quiet" size="sm" onClick={() => setChanging(true)}>
-                  Change time
-                </Button>
-              ) : url === null ? null : (
-                <ExternalButtonLink href={url} target="_blank" rel="noopener noreferrer" variant="quiet" size="sm" className="group">
-                  Book a different time
-                  <span className="sr-only"> (opens in a new tab)</span>
-                  <ArrowIcon className="size-4 shrink-0 transition-transform duration-300 ease-calm group-hover:translate-x-1" />
-                </ExternalButtonLink>
-              )}
+              <p className="mt-3 text-sm leading-relaxed text-paper/80">The invite and the video link are in your email.</p>
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                {startsAtIso === null || endsAtIso === null ? null : (
+                  <a
+                    href={callInviteHref(startsAtIso, endsAtIso)}
+                    download="brandbasket-kickoff-call.ics"
+                    className="inline-flex items-center rounded-full bg-paper px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-accent-pale"
+                  >
+                    Add to calendar
+                  </a>
+                )}
+                {ownCalendar ? (
+                  <button
+                    type="button"
+                    onClick={() => setChanging(true)}
+                    className="rounded-full border border-paper/35 px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-white/10"
+                  >
+                    Change time
+                  </button>
+                ) : url === null ? null : (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group inline-flex items-center gap-1.5 rounded-full border border-paper/35 px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-white/10"
+                  >
+                    Book a different time
+                    <span className="sr-only"> (opens in a new tab)</span>
+                    <ArrowIcon className="size-4 shrink-0 transition-transform duration-300 ease-calm group-hover:translate-x-1" />
+                  </a>
+                )}
+              </div>
             </div>
-            <p className="mt-5 text-sm leading-relaxed text-ink-soft">
-              You’ll get an email with the details and the video link. Fill in the checklist before the call so we can use the time well.
-            </p>
+            <div className="py-1">
+              <p className="text-[0.9375rem] font-medium text-ink">On the call</p>
+              <ol className="mt-3 space-y-3.5">
+                {ON_THE_CALL.map((item, index) => (
+                  <li key={item} className="flex gap-3 text-sm leading-relaxed text-ink">
+                    <span aria-hidden="true" className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-pale text-[0.8125rem] font-semibold text-highlight-deep tabular-nums">
+                      {index + 1}
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
-          <div className="mt-6">
-            <p className="text-sm font-medium text-ink">On the call</p>
-            <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-ink-soft">
-              <li>We go through your business, your customers and the pages you need.</li>
-              <li>You choose the look and feel, and we agree the plan for the build.</li>
-              <li>You leave knowing the date your website goes live.</li>
-            </ul>
-          </div>
-        </>
         )
       ) : (
         <>
-          <h2 id="kickoff-call-heading" className="panel-title">
-            Book your kickoff call
-          </h2>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
-            Thirty minutes with our team. We plan your website together, and you leave knowing what happens next.
-          </p>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">We plan your website together, and you leave knowing what happens next.</p>
           <div className="mt-6">
             {url === null ? (
               <p className="rounded-card bg-card p-6 text-sm leading-relaxed text-ink-soft">Our team will email you to arrange a time for the call.</p>

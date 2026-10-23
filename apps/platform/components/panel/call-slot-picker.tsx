@@ -73,7 +73,7 @@ export function CallSlotPicker({ onBooked, onUnavailable }: CallSlotPickerProps)
           <Bar className="h-5 w-36 rounded-full" />
           <div className="grid grid-cols-7 gap-1.5">
             {Array.from({ length: 35 }, (_, index) => (
-              <Bar key={index} className="aspect-square rounded-full" />
+              <Bar key={index} className="aspect-square rounded-xl" />
             ))}
           </div>
         </div>
@@ -180,7 +180,7 @@ export function CallSlotPicker({ onBooked, onUnavailable }: CallSlotPickerProps)
                       setProblem(null);
                     }}
                     className={cn(
-                      "aspect-square rounded-full text-sm transition-colors duration-200 ease-calm",
+                      "aspect-square rounded-xl text-sm tabular-nums transition-colors duration-200 ease-calm",
                       key === activeDay && free
                         ? "bg-accent font-semibold text-accent-light"
                         : free
@@ -210,8 +210,8 @@ export function CallSlotPicker({ onBooked, onUnavailable }: CallSlotPickerProps)
                     setProblem(null);
                   }}
                   className={cn(
-                    "w-full rounded-control border-2 border-accent px-3 py-2.5 text-[0.9375rem] font-semibold tabular-nums transition-colors duration-200 ease-calm",
-                    iso === pickedSlot ? "bg-accent text-accent-light" : "bg-card text-accent hover:bg-accent-pale",
+                    "w-full rounded-full border px-3 py-2.5 text-[0.9375rem] font-semibold tabular-nums transition-colors duration-200 ease-calm",
+                    iso === pickedSlot ? "border-accent bg-accent text-accent-light" : "border-ink-soft/65 bg-card text-ink hover:bg-accent-pale",
                   )}
                 >
                   {timeFormat.format(new Date(iso))}
