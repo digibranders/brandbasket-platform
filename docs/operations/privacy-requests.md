@@ -10,7 +10,7 @@ Every rights request and complaint is a row in `privacy_requests`, worked in the
 
 **Emails** (to `PRIVACY_ALERT_EMAIL`, else `SUPPORT_ALERT_EMAIL`, else `support@brandbasket.in`)
 - *New request*: sent as soon as a website request is filed.
-- *Due soon*: sent each night by the support maintenance command (`pnpm support:attachments:maintain`, run by `brandbasket-maintenance.timer`; see `docs/deployment/brandbasket-droplet.md`). It lists open requests the first night they reach day 20, day 25 or their due date, and every night after that while one is overdue. The stage already emailed is kept on the row (`reminder_stage`), so a request is not listed twice for the same stage.
+- *Due soon*: sent each night by the support maintenance command (`pnpm support:attachments:maintain`, run by `brandbasket-maintenance.timer`; see `docs/deployment/brandbasket-vps.md`). It lists open requests the first night they reach day 20, day 25 or their due date, and every night after that while one is overdue. The stage already emailed is kept on the row (`reminder_stage`), so a request is not listed twice for the same stage.
 - Neither email carries a name, number, address or anything the person wrote: only the reference, the kind and the date, with a link to the console.
 
 **Until the timer is installed on the server** the "due soon" email does not go out. The page still flags requests, and the new-request email does not depend on the timer.

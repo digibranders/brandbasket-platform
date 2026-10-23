@@ -4,7 +4,7 @@
 `retention-schedule.md`, approved by the owner on 13 October 2026.
 
 **What it removes**, nightly (it runs inside the support maintenance run, `brandbasket-maintenance.timer`; see
-`docs/deployment/brandbasket-droplet.md`):
+`docs/deployment/brandbasket-vps.md`):
 
 | What | Removed when |
 |---|---|
