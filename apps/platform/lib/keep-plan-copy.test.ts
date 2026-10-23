@@ -12,6 +12,6 @@ describe("keepPlanRefusal", () => {
   });
 
   it("says the plan carries on and the next bill does not change", () => {
-    expect(KEEP_PLAN_NOTE).toBe("Your plan carries on as it is. Nothing changes on your next bill.");
+    expect(KEEP_PLAN_NOTE).toBe("Keep my plan sets up your payment again, so your plan carries on as it is. Nothing changes on your next bill.");
   });
 });

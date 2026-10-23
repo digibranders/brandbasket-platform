@@ -2,6 +2,7 @@ import { chargedAmountCents } from "@brandbasket/billing/tax";
 import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines, bundleNetCents, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { adCreditCentsAtCheckout, packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
+import { initialTermPhrase } from "@brandbasket/shared/lib/billing/terms";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
 
@@ -161,6 +162,8 @@ export interface OrderSummary {
   readonly gstCents: number;
   /** What the provider takes today: the same figure the Pay button shows and the checkout freezes. */
   readonly totalCents: number;
+  /** What each month costs with GST once the code's discount has ended: `totalCents` when there is no code. */
+  readonly totalWithoutCodeCents: number;
   /** The monthly ad credit this checkout would freeze, or null when it freezes none. */
   readonly adCredit: AdCreditRow | null;
 }
@@ -201,8 +204,36 @@ export function orderSummary(input: OrderSummaryInput, discountCents: number): O
     netCents,
     gstCents: totalCents - netCents,
     totalCents,
+    totalWithoutCodeCents: chargedAmountCents(chargeableCents, 0, taxRateBasisPoints),
     adCredit: adCreditCents === 0 ? null : { cents: adCreditCents, label: `We add ${formatMoney(adCreditCents, currency)} a month to your ads` },
   };
+}
+
+/** The plan facts the line under the Pay button is worded from. */
+export interface RenewalTermsPlan {
+  readonly currency: MoneyCurrency;
+  readonly taxRateBasisPoints: number;
+  readonly initialTermMonths: number;
+}
+
+/**
+ * The line under the Pay button: what is taken each month after the first payment, and, for a code with a length, for how many
+ * more months that lower amount runs before the price without the code. The first payment uses one of the code's months
+ * (settleDiscountAfterPayment counts payments), so a 3-month code has 2 more after it.
+ */
+export function renewalTerms(
+  parts: Pick<OrderSummary, "totalCents" | "totalWithoutCodeCents" | "discountCents" | "lines">,
+  plan: RenewalTermsPlan,
+  codeMonths: number | null,
+): string {
+  const money = (cents: number): string => formatMoney(cents, plan.currency);
+  const gst = plan.taxRateBasisPoints > 0 ? " (GST included)" : "";
+  const first = `Your first payment covers ${initialTermPhrase(plan.initialTermMonths)}, then`;
+  const services = parts.lines.length === 1 ? "service" : "services";
+  if (parts.discountCents === 0 || codeMonths === null) return `${first} ${money(parts.totalCents)}${gst} is taken each month for your ${services}.`;
+  const monthsLeft = codeMonths - 1;
+  if (monthsLeft < 1) return `${first} ${money(parts.totalWithoutCodeCents)}${gst} is taken each month for your ${services}.`;
+  return `${first} ${money(parts.totalCents)}${gst} is taken each month for ${monthsLeft} more ${monthsLeft === 1 ? "month" : "months"}, and ${money(parts.totalWithoutCodeCents)} a month after that.`;
 }
 
 /** The Pay form's state: idle, or the reason the payment could not be started. */

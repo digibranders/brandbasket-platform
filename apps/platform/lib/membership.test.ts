@@ -10,6 +10,7 @@ import {
   isWaitingOnPayment,
   membershipPriceParts,
   orderSummary,
+  renewalTerms,
   servicesAfterToggle,
   membershipFailedHref,
   membershipHrefWithServices,
@@ -281,5 +282,30 @@ describe("basketNetCents", () => {
     [["managed-website", "digital-growth", "local-seo-aeo"], "USD", 35_000],
   ] as const)("prices %o in %s at %i before tax, the package price a new sign-up pays", (services, currency, net) => {
     expect(basketNetCents(services, currency)).toBe(net);
+  });
+});
+
+describe("renewalTerms", () => {
+  const inr = { planInitialAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false } as const;
+  const plan = { currency: "INR", taxRateBasisPoints: 1800, initialTermMonths: 1 } as const;
+  const websiteAndSocial = ["managed-website", "digital-growth"] as const;
+  // 10% of the ₹10,398 package: ₹1,039.80 off, so ₹11,042.68 with GST, and ₹12,269.64 once the code ends.
+  const coded = orderSummary({ ...inr, services: websiteAndSocial }, 103_980);
+
+  it("names the months a code has left after the first payment, and the price after it ends", () => {
+    expect(renewalTerms(coded, plan, 3)).toBe(
+      "Your first payment covers your first month, then ₹11,042.68 (GST included) is taken each month for 2 more months, and ₹12,269.64 a month after that.",
+    );
+    expect(renewalTerms(coded, plan, 2)).toContain("for 1 more month, and ₹12,269.64 a month after that.");
+  });
+
+  it("goes straight to the price without the code when the first payment uses the code's only month", () => {
+    expect(renewalTerms(coded, plan, 1)).toBe("Your first payment covers your first month, then ₹12,269.64 (GST included) is taken each month for your services.");
+  });
+
+  it("keeps the discounted amount each month for a code with no limit, and the plain amount with no code", () => {
+    expect(renewalTerms(coded, plan, null)).toBe("Your first payment covers your first month, then ₹11,042.68 (GST included) is taken each month for your services.");
+    const plain = orderSummary({ ...inr, services: ["managed-website"] }, 0);
+    expect(renewalTerms(plain, plan, 3)).toBe("Your first payment covers your first month, then ₹3,538.82 (GST included) is taken each month for your service.");
   });
 });

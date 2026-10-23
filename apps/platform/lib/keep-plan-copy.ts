@@ -1,5 +1,5 @@
-/** What the restore-account page says about Keep my plan. */
-export const KEEP_PLAN_NOTE = "Your plan carries on as it is. Nothing changes on your next bill.";
+/** What the restore-account page says under its buttons about Keep my plan: what pressing it does. */
+export const KEEP_PLAN_NOTE = "Keep my plan sets up your payment again, so your plan carries on as it is. Nothing changes on your next bill.";
 
 /** Why a Keep my plan press was refused, by the mark it comes back with (`?keep=`), so the page can say so without keeping any state. */
 export const KEEP_PLAN_REFUSALS = {

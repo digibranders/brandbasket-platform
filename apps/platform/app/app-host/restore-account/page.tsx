@@ -44,7 +44,6 @@ export default async function RestoreAccountPage({ searchParams }: RestoreAccoun
         If you do nothing, it is deleted after <LocalDate iso={access.eraseAfter.toISOString()} />. A paid plan that was
         ending still ends with its paid month{keepOffered ? "." : ": email us if you’d like to keep it going."}
       </p>
-      {keepOffered ? <p className="mt-2 text-sm text-ink-soft">{KEEP_PLAN_NOTE}</p> : null}
       {refusal === null ? null : (
         <p role="alert" className="mt-4 rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
           {refusal}
@@ -63,6 +62,7 @@ export default async function RestoreAccountPage({ searchParams }: RestoreAccoun
         ) : null}
         <SignOutButton signOut={signOut} />
       </div>
+      {keepOffered ? <p className="mt-3 text-sm text-ink-soft">{KEEP_PLAN_NOTE}</p> : null}
     </EntryScreen>
   );
 }
