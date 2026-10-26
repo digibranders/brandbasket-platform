@@ -34,10 +34,12 @@ export function KickoffPicker({ showLiveBy, bookingUrl }: KickoffPickerProps): R
 
   useEffect(() => {
     let live = true;
-    void loadCallSlots().then((result) => {
-      if (!live) return;
-      setSlots(result.status === "ok" && result.slots.length > 0 ? { kind: "ready", slots: result.slots } : { kind: "unavailable" });
-    });
+    loadCallSlots()
+      .then((result) => (result.status === "ok" && result.slots.length > 0 ? ({ kind: "ready", slots: result.slots } as const) : ({ kind: "unavailable" } as const)))
+      .catch(() => ({ kind: "unavailable" }) as const)
+      .then((next) => {
+        if (live) setSlots(next);
+      });
     return () => {
       live = false;
     };
@@ -47,7 +49,7 @@ export function KickoffPicker({ showLiveBy, bookingUrl }: KickoffPickerProps): R
 
   if (slots.kind === "loading") {
     return (
-      <div aria-busy="true" aria-label="Loading times" className="grid gap-2">
+      <div role="status" aria-label="Loading times" className="grid gap-2">
         <div className="h-12 animate-pulse rounded-lg bg-sunken" />
         <div className="h-9 animate-pulse rounded-lg bg-sunken" />
       </div>
@@ -69,7 +71,7 @@ export function KickoffPicker({ showLiveBy, bookingUrl }: KickoffPickerProps): R
 
   const dayKeys = [...days.keys()];
   const shownDays = allDays ? dayKeys : dayKeys.slice(0, DAYS_SHOWN);
-  const activeDay = day ?? dayKeys[0] ?? null;
+  const activeDay = day !== null && days.has(day) ? day : (dayKeys[0] ?? null);
   const times = activeDay === null ? [] : (days.get(activeDay) ?? []);
   const liveBy = slot === null ? null : promiseDates(slot).liveBy;
 
@@ -77,13 +79,23 @@ export function KickoffPicker({ showLiveBy, bookingUrl }: KickoffPickerProps): R
     if (slot === null) return;
     setProblem(null);
     startBooking(async () => {
-      const result = await bookCallSlot(slot, BRAND_TIME_ZONE);
-      if (result.ok) {
-        router.refresh();
-        return;
-      }
-      setProblem(result.reason);
-      setSlot(null);
+      const result = await bookCallSlot(slot, BRAND_TIME_ZONE).catch(() => ({ ok: false, reason: "failed" }) as const);
+      // Updates after an await are no longer inside the transition, so wrap them to keep `booking` true until they land.
+      startBooking(() => {
+        if (result.ok) {
+          router.refresh();
+          return;
+        }
+        setProblem(result.reason);
+        if (result.reason !== "taken") return;
+        // The time is gone: drop it so it cannot be picked again.
+        setSlot(null);
+        setSlots((current) => {
+          if (current.kind !== "ready") return current;
+          const left = current.slots.filter((iso) => iso !== slot);
+          return left.length > 0 ? { kind: "ready", slots: left } : { kind: "unavailable" };
+        });
+      });
     });
   };
 

@@ -63,10 +63,31 @@ it("says so when the picked time was just taken", async () => {
   await click("Book Tue 27 Oct, 10:00");
   expect(container.querySelector('[role="alert"]')?.textContent).toBe("That time was just taken. Please pick another.");
   expect(mocks.refresh).not.toHaveBeenCalled();
+  expect([...container.querySelectorAll("button")].some((item) => item.textContent === "10:00")).toBe(false);
+  expect(button("14:00")).toBeDefined();
 });
 
 it("offers the booking page when the times cannot be listed here", async () => {
   mocks.loadCallSlots.mockResolvedValue({ status: "unavailable" });
   await render(createElement(KickoffPicker, { showLiveBy: true, bookingUrl: "https://cal.com/brandbasket/kickoff" }));
   expect(container.querySelector("a")?.getAttribute("href")).toBe("https://cal.com/brandbasket/kickoff");
+});
+
+it("falls back to the booking page when listing the times throws", async () => {
+  mocks.loadCallSlots.mockRejectedValue(new Error("network"));
+  await render(createElement(KickoffPicker, { showLiveBy: true, bookingUrl: "https://cal.com/brandbasket/kickoff" }));
+  expect(container.querySelector('[role="status"]')).toBeNull();
+  expect(container.querySelector("a")?.getAttribute("href")).toBe("https://cal.com/brandbasket/kickoff");
+});
+
+it("keeps the picked time and says so when booking throws", async () => {
+  mocks.loadCallSlots.mockResolvedValue({ status: "ok", slots: SLOTS });
+  mocks.bookCallSlot.mockRejectedValue(new Error("network"));
+  await render(createElement(KickoffPicker, { showLiveBy: false, bookingUrl: null }));
+  await click("14:00");
+  await click("Book Tue 27 Oct, 14:00");
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe("We could not book that time. Please try again.");
+  expect(button("14:00").getAttribute("aria-pressed")).toBe("true");
+  expect(button("Book Tue 27 Oct, 14:00").disabled).toBe(false);
+  expect(mocks.refresh).not.toHaveBeenCalled();
 });
