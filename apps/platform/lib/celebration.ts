@@ -1,6 +1,6 @@
 /**
  * The party poppers that go off when a payment opens a plan. This file is the arithmetic only (where the paper starts,
- * how it flies, how it fades); components/panel/payment-celebration.tsx draws it.
+ * how it flies, how it fades); no component draws it any more: the Welcome overview replaced the popup, and this file keeps the welcome address and service names.
  *
  * Two cannons sit at the foot of the screen, one in each bottom corner, aimed up and in. Each throws a burst of small
  * rectangles of paper, which spin and drift as they fall and fade out together.

@@ -4,7 +4,7 @@ import type { BusinessKind } from "@brandbasket/db";
  * Which of the directory sections a business's dashboard has. A free listing account has them all in its own menu
  * (components/panel/listing-account-shell.tsx). A free listing that buys Premium becomes a website client but keeps
  * its claim on the listing, and with it everything it had: its Listing page, leads, photos and ads, now in the
- * client's menu (components/panel/customer-shell.tsx). A client that never had a free listing has only the listing
+ * client's menu (components/v2/app-shell.tsx). A client that never had a free listing has only the listing
  * staff placed for it, if any. Reviews, where an owner answers their business's reviews, comes with Leads: every verified
  * owner has it, on any plan (docs/superpowers/specs/2026-10-12-directory-owner-replies-design.md).
  */
