@@ -20,7 +20,7 @@ export interface ServiceLine {
   readonly endRequestedAt: Date | null;
 }
 
-/** The services the plan pays for now, in catalogue order: active lines that are not on their way out. */
+/** The services the plan keeps, in catalogue order: active lines that are not on their way out (a service asked to be dropped is still billed until its end, but the kickoff call does not plan it). */
 export function servicesBought(lines: readonly ServiceLine[]): readonly ServiceKey[] {
   const paid = new Set(lines.filter((line) => line.status === "active" && line.endRequestedAt === null).map((line) => line.addOn));
   return MONTHLY_ADD_ON_IDS.filter((id) => paid.has(id)).map((id) => SERVICE_OF[id]);
@@ -29,7 +29,8 @@ export function servicesBought(lines: readonly ServiceLine[]): readonly ServiceK
 /**
  * Whether the account is still in its first look (plan 28 section 3): the website has not been sent, and the kickoff
  * call has not happened yet. shortcut: a call counts as held once its end time has passed, so a missed call also ends
- * the first look; plan 30 replaces this with the team marking the call as held.
+ * the first look; plan 30 replaces this with the team marking the call as held. A booked call with no end time (a
+ * booking page that did not report one) keeps the first look open until the website is sent.
  */
 export function inFirstLook(input: { readonly websiteSent: boolean; readonly callEndsAtIso: string | null; readonly nowMs: number }): boolean {
   if (input.websiteSent) return false;
