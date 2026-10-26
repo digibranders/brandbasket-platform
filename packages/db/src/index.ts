@@ -814,6 +814,7 @@ export {
   findTaxInvoiceById,
   findTaxInvoiceByPaymentId,
   findTaxInvoiceForBusiness,
+  findTaxInvoicesByNumber,
   insertTaxInvoice,
   isInvoiceablePayment,
   listMissingTaxInvoices,
