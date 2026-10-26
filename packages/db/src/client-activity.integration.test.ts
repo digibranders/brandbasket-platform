@@ -5,7 +5,7 @@ import { countChatbotLeadsSince } from "./queries/chatbots";
 import { listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
 import { insertBusiness } from "./queries/onboarding";
 import { listServiceSetups, saveServiceSetup } from "./queries/service-setup";
-import { clearSetupCallHeld, findSetupCallBooking, markSetupCallHeld } from "./queries/setup-calls";
+import { clearSetupCallHeld, findSetupCallBooking, markSetupCallHeld, recordSetupCallBooking, removeSetupCallBooking } from "./queries/setup-calls";
 import { chatbotLeads, chatbots, setupCallBookings, users } from "./schema";
 import { withTenantScope } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
@@ -110,10 +110,25 @@ describe("marking the kickoff call held", () => {
     expect(await clearSetupCallHeld(dbs.staff.db, businessId, NOW)).toBe(false);
     await markSetupCallHeld(dbs.staff.db, { businessId, staffId: STAFF, now: NOW });
     expect(await clearSetupCallHeld(dbs.staff.db, businessId, NOW)).toBe(true);
-    const booking = await asOwner((tx) => findSetupCallBooking(tx, businessId));
-    expect(booking?.heldAt).toBeNull();
-    expect(booking?.heldByStaffId).toBeNull();
+    expect(await asOwner((tx) => findSetupCallBooking(tx, businessId))).toBeNull();
     expect(await clearSetupCallHeld(dbs.staff.db, businessId, NOW)).toBe(false);
+  });
+
+  it("deletes a held row that was made for a phone call, so no empty booking is left behind", async () => {
+    await dbs.staff.db.delete(setupCallBookings).where(eq(setupCallBookings.businessId, otherBusinessId));
+    await markSetupCallHeld(dbs.staff.db, { businessId: otherBusinessId, staffId: STAFF, now: NOW });
+    expect(await clearSetupCallHeld(dbs.staff.db, otherBusinessId, NOW)).toBe(true);
+    expect(await findSetupCallBooking(dbs.staff.db, otherBusinessId)).toBeNull();
+  });
+
+  it("keeps a booked call's booking when only the mark is cleared", async () => {
+    const startsAt = new Date("2026-10-30T10:00:00.000Z");
+    const endsAt = new Date("2026-10-30T10:30:00.000Z");
+    await recordSetupCallBooking(dbs.staff.db, { businessId, inviteeUri: "https://api.cal.com/v2/bookings/held", now: NOW, startsAt, endsAt });
+    await markSetupCallHeld(dbs.staff.db, { businessId, staffId: STAFF, now: NOW });
+    expect(await clearSetupCallHeld(dbs.staff.db, businessId, NOW)).toBe(true);
+    const booking = await findSetupCallBooking(dbs.staff.db, businessId);
+    expect(booking).toMatchObject({ inviteeUri: "https://api.cal.com/v2/bookings/held", startsAt, endsAt, heldAt: null, heldByStaffId: null });
   });
 
   it("refuses the customer connection, so it must run as staff", async () => {
@@ -123,6 +138,59 @@ describe("marking the kickoff call held", () => {
     expect(await sqlState(() => asOwner((tx) => clearSetupCallHeld(tx, businessId, NOW)))).toBe("42501");
     const booking = await asOwner((tx) => findSetupCallBooking(tx, businessId));
     expect(booking?.heldAt).toEqual(NOW);
+  });
+});
+
+describe("a cancelled call after staff marked it held", () => {
+  const URI = "https://api.cal.com/v2/bookings/cancelled";
+  const startsAt = new Date("2026-10-30T10:00:00.000Z");
+  const endsAt = new Date("2026-10-30T10:30:00.000Z");
+
+  it("keeps the row and the held mark, and clears the booking and its times", async () => {
+    await recordSetupCallBooking(dbs.staff.db, { businessId, inviteeUri: URI, now: NOW, startsAt, endsAt });
+    await markSetupCallHeld(dbs.staff.db, { businessId, staffId: STAFF, now: NOW });
+    expect(await removeSetupCallBooking(dbs.staff.db, URI)).toBe(true);
+    const booking = await findSetupCallBooking(dbs.staff.db, businessId);
+    expect(booking).toMatchObject({ inviteeUri: null, startsAt: null, endsAt: null, heldAt: NOW, heldByStaffId: STAFF });
+  });
+
+  it("still deletes a booking that was never marked held", async () => {
+    await recordSetupCallBooking(dbs.staff.db, { businessId, inviteeUri: URI, now: NOW, startsAt, endsAt });
+    expect(await removeSetupCallBooking(dbs.staff.db, URI)).toBe(true);
+    expect(await findSetupCallBooking(dbs.staff.db, businessId)).toBeNull();
+    expect(await removeSetupCallBooking(dbs.staff.db, URI)).toBe(false);
+  });
+});
+
+describe("the held mark and the booking row agree", () => {
+  it("refuses a held time with no staff member, and a staff member with no held time", async () => {
+    expect(
+      await sqlState(() => dbs.staff.db.execute(sql`update setup_call_bookings set held_at = now(), held_by_staff_id = null where business_id = ${businessId}`)),
+    ).toBe("23514");
+    expect(
+      await sqlState(() => dbs.staff.db.execute(sql`update setup_call_bookings set held_at = null, held_by_staff_id = ${STAFF} where business_id = ${businessId}`)),
+    ).toBe("23514");
+    await dbs.staff.db.execute(sql`update setup_call_bookings set held_at = now(), held_by_staff_id = ${STAFF} where business_id = ${businessId}`);
+  });
+});
+
+describe("what the database accepts as saved answers and update titles", () => {
+  it("refuses answers that are not an object, or are over 8 KB, and accepts a normal object", async () => {
+    await asOwner((tx) => saveServiceSetup(tx, { businessId, service: "social", answers: { tone: "friendly" }, now: NOW }));
+    const state = (answers: string) =>
+      sqlState(() =>
+        asOwner((tx) => tx.execute(sql`update service_setup set answers = ${answers}::jsonb where business_id = ${businessId} and service = 'social'`)),
+      );
+    expect(await state("[]")).toBe("23514");
+    expect(await state(JSON.stringify({ notes: "x".repeat(9000) }))).toBe("23514");
+    expect(await state(JSON.stringify({ tone: "warm" }))).toBeUndefined();
+  });
+
+  it("refuses an update title of only spaces, and accepts a normal one", async () => {
+    const add = (title: string) => sqlState(() => addActivityEvent(dbs.staff.db, { businessId, service: null, title, occurredAt: NOW, staffId: STAFF }));
+    expect(await add("   ")).toBe("23514");
+    expect(await add("  ab  ")).toBe("23514");
+    expect(await add("Ads narrowed to 4 km")).toBeUndefined();
   });
 });
 

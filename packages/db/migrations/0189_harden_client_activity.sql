@@ -1,0 +1,4 @@
+ALTER TABLE "activity_events" DROP CONSTRAINT "activity_events_title_check";--> statement-breakpoint
+ALTER TABLE "activity_events" ADD CONSTRAINT "activity_events_title_trim_check" CHECK (char_length(btrim("activity_events"."title")) between 3 and 140);--> statement-breakpoint
+ALTER TABLE "service_setup" ADD CONSTRAINT "service_setup_answers_check" CHECK (jsonb_typeof("service_setup"."answers") = 'object' and pg_column_size("service_setup"."answers") <= 8192);--> statement-breakpoint
+ALTER TABLE "setup_call_bookings" ADD CONSTRAINT "setup_call_bookings_held_check" CHECK (("setup_call_bookings"."held_at" is null) = ("setup_call_bookings"."held_by_staff_id" is null));

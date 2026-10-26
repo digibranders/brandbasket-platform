@@ -129,6 +129,7 @@ export const setupCallBookings = pgTable(
       "setup_call_bookings_time_check",
       sql`(${table.startsAt} is null and ${table.endsAt} is null) or (${table.startsAt} is not null and ${table.endsAt} is not null and ${table.endsAt} > ${table.startsAt})`,
     ),
+    check("setup_call_bookings_held_check", sql`(${table.heldAt} is null) = (${table.heldByStaffId} is null)`),
   ],
 );
 export type SetupCallBooking = typeof setupCallBookings.$inferSelect;

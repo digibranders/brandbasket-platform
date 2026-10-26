@@ -1303,6 +1303,13 @@
       "when": 1793039195996,
       "tag": "0188_client_activity",
       "breakpoints": true
+    },
+    {
+      "idx": 186,
+      "version": "7",
+      "when": 1793041282501,
+      "tag": "0189_harden_client_activity",
+      "breakpoints": true
     }
   ]
 }

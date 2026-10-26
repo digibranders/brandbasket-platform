@@ -35,6 +35,8 @@ export const serviceSetup = pgTable(
   (table) => [
     uniqueIndex("service_setup_business_service_idx").on(table.businessId, table.service),
     check("service_setup_service_check", sql`${table.service} in ('social', 'search')`),
+    // The customer writes this column, so the database keeps it a small object whatever the app sends.
+    check("service_setup_answers_check", sql`jsonb_typeof(${table.answers}) = 'object' and pg_column_size(${table.answers}) <= 8192`),
   ],
 );
 export type ServiceSetup = typeof serviceSetup.$inferSelect;
@@ -62,7 +64,7 @@ export const activityEvents = pgTable(
   (table) => [
     index("activity_events_business_idx").on(table.businessId, table.occurredAt),
     check("activity_events_service_check", sql`${table.service} is null or ${table.service} in ('website', 'social', 'search')`),
-    check("activity_events_title_check", sql`char_length(${table.title}) between 3 and 140`),
+    check("activity_events_title_trim_check", sql`char_length(btrim(${table.title})) between 3 and 140`),
   ],
 );
 export type ActivityEvent = typeof activityEvents.$inferSelect;
