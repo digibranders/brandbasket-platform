@@ -11,6 +11,7 @@ import {
   findTaxInvoiceById,
   findTaxInvoiceByPaymentId,
   findTaxInvoiceForBusiness,
+  findTaxInvoicesByNumber,
   insertTaxInvoice,
   isInvoiceablePayment,
   lockPaymentForInvoice,
@@ -695,3 +696,14 @@ describe("billing details", () => {
     expect(await findReferralCodeForInvoice(dbs.staff.db, "00000000-0000-7000-8000-000000000000")).toBeNull();
   });
 });
+
+describe("finding invoices by number", () => {
+  it("finds an invoice by any part of its number, and treats % and _ as plain characters", async () => {
+    const stored = await insertTaxInvoice(dbs.staff.db, sampleInvoice({ paymentId: paymentA }));
+    expect((await findTaxInvoicesByNumber(dbs.staff.db, stored.number.slice(-6), 8)).map((invoice) => invoice.id)).toEqual([stored.id]);
+    expect(await findTaxInvoicesByNumber(dbs.staff.db, "999999", 8)).toEqual([]);
+    expect(await findTaxInvoicesByNumber(dbs.staff.db, "%", 8)).toEqual([]);
+    expect(await findTaxInvoicesByNumber(dbs.staff.db, "_", 8)).toEqual([]);
+  });
+});
+

@@ -10,6 +10,7 @@ export const STAFF_ACCESS_ACTIONS = [
   "staff.sign_in",
   "access_log.view",
   "access.denied",
+  "search.run",
   "client.view",
   "lead.view",
   "outbox.view",
