@@ -26,7 +26,7 @@ export async function saveNumbersAction(formData: FormData): Promise<void> {
 
   const text: Record<string, string> = {};
   for (const [name, value] of formData.entries()) if (typeof value === "string") text[name] = value;
-  const parsed = parseNumbersForm(text);
+  const parsed = parseNumbersForm(text, new Date());
   if (!parsed.success) finish(businessId, "invalid");
 
   const db = getStaffDb();

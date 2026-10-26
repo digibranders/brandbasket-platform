@@ -94,6 +94,7 @@ describe("addUpdateAction", () => {
 
 describe("removeUpdateAction", () => {
   it("removes the update only within the given business, logs it and returns to the section", async () => {
+    vi.mocked(removeActivityEvent).mockResolvedValue(true);
     await expect(removeUpdateAction(form({ id: EVENT, businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?updates=removed#updates`);
     expect(removeActivityEvent).toHaveBeenCalledWith(DB, { id: EVENT, businessId: BUSINESS });
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith({
@@ -112,7 +113,14 @@ describe("removeUpdateAction", () => {
     expect(removeActivityEvent).not.toHaveBeenCalled();
   });
 
+  it("writes no log entry, and still returns to the section, when the update was already gone", async () => {
+    vi.mocked(removeActivityEvent).mockResolvedValue(false);
+    await expect(removeUpdateAction(form({ id: EVENT, businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?updates=removed#updates`);
+    expect(logStaffAccessOrThrow).not.toHaveBeenCalled();
+  });
+
   it("lets an access log failure propagate", async () => {
+    vi.mocked(removeActivityEvent).mockResolvedValue(true);
     vi.mocked(logStaffAccessOrThrow).mockRejectedValue(new Error("log down"));
     await expect(removeUpdateAction(form({ id: EVENT, businessId: BUSINESS }))).rejects.toThrow("log down");
   });

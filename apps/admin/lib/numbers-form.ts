@@ -27,12 +27,15 @@ function whole(raw: string | undefined): number | null | undefined {
   return digits !== undefined && digits.length <= 15 ? Number(digits) : undefined;
 }
 
-/** Checks the monthly numbers form. Only the fields of the chosen service count; the others are ignored. */
-export function parseNumbersForm(input: Readonly<Record<string, string>>): NumbersParse {
+const TODAY_INDIA = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+
+/** Checks the monthly numbers form. Only the fields of the chosen service count; the others are ignored. A month after this one (India time) is refused. */
+export function parseNumbersForm(input: Readonly<Record<string, string>>, now: Date): NumbersParse {
   const service = input["service"];
   if (service !== "social" && service !== "search") return { success: false, field: "service", message: "Choose Social & Ads or Search." };
   const month = input["month"] ?? "";
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return { success: false, field: "month", message: "Choose a month." };
+  if (month > TODAY_INDIA.format(now).slice(0, 7)) return { success: false, field: "month", message: "Choose this month or an earlier one." };
 
   const names = service === "social" ? (["adSpendRupees", "adBudgetRupees", "adEnquiries", "postsPublished", "postsPlanned"] as const) : (["keywordsPageOne", "keywordsPageOnePrev"] as const);
   const read: Record<string, number | null> = {};

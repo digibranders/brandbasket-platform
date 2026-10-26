@@ -26,8 +26,8 @@ function finish(businessId: string): never {
 export async function markCallHeldAction(formData: FormData): Promise<void> {
   const { user } = await requireStaffAccess();
   const businessId = readBusinessId(formData);
-  await markSetupCallHeld(getStaffDb(), { businessId, staffId: user.id, now: new Date() });
-  await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.held", targetType: "business", targetId: businessId, businessId });
+  const marked = await markSetupCallHeld(getStaffDb(), { businessId, staffId: user.id, now: new Date() });
+  if (marked) await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.held", targetType: "business", targetId: businessId, businessId });
   finish(businessId);
 }
 
@@ -35,7 +35,7 @@ export async function markCallHeldAction(formData: FormData): Promise<void> {
 export async function undoCallHeldAction(formData: FormData): Promise<void> {
   const { user } = await requireStaffAccess();
   const businessId = readBusinessId(formData);
-  await clearSetupCallHeld(getStaffDb(), businessId, new Date());
-  await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.unheld", targetType: "business", targetId: businessId, businessId });
+  const cleared = await clearSetupCallHeld(getStaffDb(), businessId, new Date());
+  if (cleared) await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.unheld", targetType: "business", targetId: businessId, businessId });
   finish(businessId);
 }

@@ -48,7 +48,7 @@ export async function removeUpdateAction(formData: FormData): Promise<void> {
   const { user } = await requireStaffAccess();
   const id = readId(formData, "id");
   const businessId = readId(formData, "businessId");
-  await removeActivityEvent(getStaffDb(), { id, businessId });
-  await logStaffAccessOrThrow({ staffUserId: user.id, action: "activity.remove", targetType: "business", targetId: businessId, businessId });
+  const removed = await removeActivityEvent(getStaffDb(), { id, businessId });
+  if (removed) await logStaffAccessOrThrow({ staffUserId: user.id, action: "activity.remove", targetType: "business", targetId: businessId, businessId });
   finish(businessId, "removed");
 }
