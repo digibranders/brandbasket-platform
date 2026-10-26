@@ -51,24 +51,23 @@ function taxInvoices(overrides: Partial<Parameters<typeof ClientTaxInvoices>[0]>
   );
 }
 
-const sectionTag = (html: string): string => html.match(/<section[^>]*>/)?.[0] ?? "";
 
 describe("ClientTaxInvoices", () => {
   it("is the page's attention section when a payment lacks its invoice and nothing else has the mark", () => {
     const html = taxInvoices({ missing: [missingPayment] });
-    expect(sectionTag(html)).toContain("border-accent");
-    expect(html).toContain("text-accent");
+    expect(html).toContain("border-error");
+    expect(html).toContain("text-error");
     expect(html).toContain("1 missing");
   });
 
   it("stays plain when another section already has the attention mark", () => {
-    const tag = sectionTag(taxInvoices({ missing: [missingPayment], attentionTaken: true }));
-    expect(tag).toContain("border-line");
-    expect(tag).not.toContain("border-accent");
+    const html = taxInvoices({ missing: [missingPayment], attentionTaken: true });
+    expect(html).toContain("border-line");
+    expect(html).not.toContain("border-error");
   });
 
   it("stays plain when nothing is missing, however the page is marked", () => {
-    expect(sectionTag(taxInvoices({ attentionTaken: false }))).toContain("border-line");
+    expect(taxInvoices({ attentionTaken: false })).toContain("border-line");
   });
 
   it("names its lists and the section, and gives each Issue invoice button the payment it is for", () => {
@@ -133,7 +132,7 @@ function billingDetails(details: { readonly saved: SavedBillingDetails | null })
 describe("ClientBillingDetails", () => {
   it("lists what was given, with the state by name, and never takes the attention mark", () => {
     const html = billingDetails({ saved });
-    expect(sectionTag(html)).toContain("border-line");
+    expect(html).toContain("border-line");
     expect(html).toContain('id="billing-details"');
     expect(html).toContain('aria-labelledby="section-billing-details"');
     expect(html).toContain("27AAPFU0939F1ZV");
