@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, type ReactElement } from "react";
 import { bookCallSlot, loadCallSlots } from "@/app/app-host/(protected)/setup-call-actions";
@@ -57,7 +58,13 @@ export function KickoffPicker({ showLiveBy, bookingUrl }: KickoffPickerProps): R
   }
   if (slots.kind === "unavailable") {
     return bookingUrl === null ? (
-      <p className="text-sm text-ink-2">We could not load the times. Please try again in a few minutes.</p>
+      <p className="text-sm text-ink-2">
+        We could not load the times. Please try again in a few minutes, or write to us in{" "}
+        <Link href="/support" className="font-semibold text-ink underline underline-offset-4">
+          Requests
+        </Link>
+        .
+      </p>
     ) : (
       <p className="text-sm text-ink-2">
         We could not load the times here.{" "}

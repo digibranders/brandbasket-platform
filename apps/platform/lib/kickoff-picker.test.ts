@@ -73,6 +73,14 @@ it("offers the booking page when the times cannot be listed here", async () => {
   expect(container.querySelector("a")?.getAttribute("href")).toBe("https://cal.com/brandbasket/kickoff");
 });
 
+it("points to Requests when the times cannot be listed and there is no booking page", async () => {
+  mocks.loadCallSlots.mockResolvedValue({ status: "unavailable" });
+  await render(createElement(KickoffPicker, { showLiveBy: true, bookingUrl: null }));
+  expect(container.textContent).toBe("We could not load the times. Please try again in a few minutes, or write to us in Requests.");
+  expect(container.querySelector("a")?.getAttribute("href")).toBe("/support");
+  expect(container.querySelector("a")?.textContent).toBe("Requests");
+});
+
 it("falls back to the booking page when listing the times throws", async () => {
   mocks.loadCallSlots.mockRejectedValue(new Error("network"));
   await render(createElement(KickoffPicker, { showLiveBy: true, bookingUrl: "https://cal.com/brandbasket/kickoff" }));
