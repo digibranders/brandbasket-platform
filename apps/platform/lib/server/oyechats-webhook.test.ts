@@ -3,9 +3,12 @@ import { createHmac } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffDb } from "./db";
 import { handleOyeChatsWebhook } from "./oyechats-webhook";
+import { alertTeams } from "./teams";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
+vi.mock("./teams", () => ({ alertTeams: vi.fn(async () => undefined) }));
+vi.mock("./env", () => ({ serverEnv: () => ({ ADMIN_ORIGIN: "http://console.localhost:3199" }) }));
 vi.mock("@brandbasket/db", () => ({
   applyChatbotQualification: vi.fn(),
   findChatbotWebhookTarget: vi.fn(),
@@ -52,6 +55,17 @@ describe("handleOyeChatsWebhook", () => {
       company: null,
       capturedAt: new Date("2026-10-16T09:00:00.000Z"),
     });
+  });
+
+  it("posts a Teams card for a new lead that names the client and none of the visitor's details", async () => {
+    const body = lead();
+    expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "recorded" });
+    expect(alertTeams).toHaveBeenCalledTimes(1);
+    const [destination, message] = vi.mocked(alertTeams).mock.calls[0] ?? [];
+    expect(destination).toBe("enquiries");
+    const text = JSON.stringify(message);
+    expect(text).toContain("http://console.localhost:3199/clients/business-1");
+    expect(text).not.toContain("meera@example.com");
   });
 
   it("rates a lead from a qualification event", async () => {

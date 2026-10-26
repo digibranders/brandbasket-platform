@@ -1,7 +1,20 @@
 import "server-only";
 import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLead } from "@brandbasket/db";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { parseOyeChatsEvent, readOyeChatsBotId, verifyOyeChatsSignature } from "@brandbasket/shared/server/oyechats-webhook";
 import { getStaffDb } from "./db";
+import { serverEnv } from "./env";
+import { alertTeams } from "./teams";
+import { chatbotLeadTeamsCard } from "./teams-cards";
+
+/** Tells the Teams enquiries channel a client's chatbot caught a lead. Best effort: never throws and never waits on Teams. */
+function alertChatbotLead(businessId: string): void {
+  try {
+    void alertTeams("enquiries", chatbotLeadTeamsCard({ clientUrl: new URL(`/clients/${businessId}`, serverEnv().ADMIN_ORIGIN).toString() }));
+  } catch (error) {
+    console.error("A chatbot lead was saved but Teams could not be told about it.", errorLogInfo(error));
+  }
+}
 
 /**
  * What an OyeChats delivery came to. `refused` is one answer for an unknown bot, a missing signature and a wrong one, so
@@ -39,6 +52,7 @@ export async function handleOyeChatsWebhook(rawBody: string, signature: string |
         company: event.company,
         capturedAt: event.occurredAt,
       });
+      alertChatbotLead(target.businessId);
       return { kind: "recorded" };
     case "qualification": {
       const rated = await applyChatbotQualification(staffDb, {
