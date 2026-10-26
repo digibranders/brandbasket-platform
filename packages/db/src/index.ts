@@ -882,6 +882,13 @@ export {
   type TenantScope,
 } from "./scope";
 export {
+  listActivityForBusiness,
+  listRecentActivity,
+  recordActivity,
+  type ActivityInput,
+  type ActivityRow,
+} from "./queries/activity";
+export {
   findClientDetail,
   findMediaForStaff,
   listClients,
