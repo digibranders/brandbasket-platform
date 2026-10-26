@@ -83,6 +83,7 @@ import { PROJECT_STATUS_LABELS, PROJECT_STATUSES_WAITING_ON_US } from "@brandbas
 import { Avatar } from "@/components/console/avatar";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
+import { KickoffCallSection } from "@/components/console/kickoff-call-section";
 import { Notice } from "@/components/console/notice";
 import { PLAN_TIER_LABELS } from "@brandbasket/shared/lib/billing/plan-tier";
 import { PageHeader } from "@/components/console/page-header";
@@ -826,6 +827,8 @@ export default async function ClientPage({
             </>
           )}
         </Section>
+
+        <KickoffCallSection businessId={businessId} />
 
         <Section title="Setup progress" aside={`${ANSWER_STEPS.filter((step) => done.has(step)).length} of ${ANSWER_STEPS.length} done`}>
           <ul className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
