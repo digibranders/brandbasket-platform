@@ -10,6 +10,9 @@ export function leadTeamsCard(lead: {
   readonly name: string;
   readonly businessName: string;
   readonly businessType: string;
+  /** The plans picked on the website, by name; null when none. */
+  readonly wants?: string | null;
+  readonly city?: string | null;
   readonly email: string;
   readonly phone: string | null;
   readonly message: string | null;
@@ -20,6 +23,8 @@ export function leadTeamsCard(lead: {
     subtitle: `${lead.name} got in touch`,
     facts: [
       { name: "Business type", value: lead.businessType },
+      { name: "Wants", value: lead.wants ?? null },
+      { name: "City", value: lead.city ?? null },
       { name: "Email", value: lead.email },
       { name: "Phone", value: lead.phone },
     ],

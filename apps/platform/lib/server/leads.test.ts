@@ -79,4 +79,13 @@ describe("recordLead", () => {
     expect(createLead).not.toHaveBeenCalled();
     expect(recordConsent).not.toHaveBeenCalled();
   });
+
+  it("stores a contact enquiry's source and plans, and names the plans on the Teams card", async () => {
+    const contact = { name: "Neha", businessName: "Green Leaf Cafe", email: "neha@example.com", phone: null, businessType: null, message: null, source: "pricing_page", plans: ["website", "growth"], city: "Pune", page: "/contact" } as const;
+    expect(await recordLead(contact, "203.0.113.9", null)).toBe("recorded");
+    expect(createLead).toHaveBeenCalledWith(DB, expect.objectContaining({ source: "pricing_page", plans: ["website", "growth"], city: "Pune", currency: "USD" }));
+    const text = JSON.stringify(vi.mocked(alertTeams).mock.calls[0]?.[1]);
+    expect(text).toContain("Website, Social & Ads");
+    expect(text).toContain("Not given");
+  });
 });
