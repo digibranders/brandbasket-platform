@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { findClientDetail, findMediaForStaff, listClients } from "./queries/clients";
+import { findClientDetail, findMediaForStaff, listBusinessMembersForStaff, listClients, renameBusinessOwner } from "./queries/clients";
 import { insertMediaAsset, newMediaAssetId, softDeleteMediaAsset } from "./queries/media";
 import {
   markStepComplete,
@@ -341,6 +341,30 @@ describe("listClients include (contract C3b)", () => {
     expect(await names(["not_paid", "leaving"])).toEqual(["Not Paid Yet", "Harbour Bakery"]);
     // A leaving business that paid is still paying: the default list does not change.
     expect(await names()).toEqual(["Harbour Bakery"]);
+  });
+});
+
+describe("a business's members", () => {
+  it("lists the owner and editors, oldest first, hiding a phone account's placeholder email", async () => {
+    await dbs.staff.db.insert(users).values({ id: "editor-1", name: "Sam Editor", email: phoneAccountEmail("+919820012345"), phoneNumber: "+919820012345" });
+    await dbs.staff.db.insert(businessMembers).values({ businessId, userId: "editor-1", role: "editor" });
+
+    const members = await listBusinessMembersForStaff(dbs.staff.db, businessId);
+    expect(members.map((member) => [member.userId, member.role, member.email, member.phone])).toEqual([
+      [OWNER, "owner", "riley@example.com", null],
+      ["editor-1", "editor", null, "+919820012345"],
+    ]);
+    expect(await listBusinessMembersForStaff(dbs.staff.db, "not-a-uuid")).toEqual([]);
+  });
+
+  it("renames the owner of this business only", async () => {
+    expect(await renameBusinessOwner(dbs.staff.db, { businessId, userId: OWNER, name: "Riley Fernandes" })).toBe(true);
+    expect((await findClientDetail(dbs.staff.db, businessId))?.owner?.name).toBe("Riley Fernandes");
+
+    await dbs.staff.db.insert(users).values({ id: "editor-2", name: "Kim Editor", email: "kim@example.com" });
+    await dbs.staff.db.insert(businessMembers).values({ businessId, userId: "editor-2", role: "editor" });
+    expect(await renameBusinessOwner(dbs.staff.db, { businessId, userId: "editor-2", name: "Not The Owner" })).toBe(false);
+    expect(await renameBusinessOwner(dbs.staff.db, { businessId: "not-a-uuid", userId: OWNER, name: "X" })).toBe(false);
   });
 });
 

@@ -893,7 +893,9 @@ export {
 export {
   findClientDetail,
   findMediaForStaff,
+  listBusinessMembersForStaff,
   listClients,
+  renameBusinessOwner,
   type ClientBilling,
   type ClientDetail,
   type ClientFirstPayment,
@@ -906,6 +908,7 @@ export {
   type ClientService,
   type ClientSubscription,
   type ClientSummary,
+  type StaffBusinessMember,
   type StaffMediaFile,
 } from "./queries/clients";
 export {

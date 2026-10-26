@@ -457,6 +457,57 @@ export async function findClientDetail(db: Database, businessId: string): Promis
   };
 }
 
+export interface StaffBusinessMember {
+  readonly userId: string;
+  readonly name: string;
+  /** Null for an account opened with a mobile number: its stored address is a placeholder nobody reads. */
+  readonly email: string | null;
+  readonly phone: string | null;
+  readonly role: "owner" | "editor";
+  readonly joinedAt: Date;
+}
+
+/** Everyone who can open the business's dashboard, the earliest first. Staff connection. */
+export async function listBusinessMembersForStaff(db: Database, businessId: string): Promise<readonly StaffBusinessMember[]> {
+  if (!isUuid(businessId)) return [];
+  const rows = await db
+    .select({
+      userId: businessMembers.userId,
+      name: users.name,
+      email: users.email,
+      phone: users.phoneNumber,
+      role: businessMembers.role,
+      joinedAt: businessMembers.createdAt,
+    })
+    .from(businessMembers)
+    .innerJoin(users, eq(users.id, businessMembers.userId))
+    .where(eq(businessMembers.businessId, businessId))
+    .orderBy(asc(businessMembers.createdAt), asc(businessMembers.userId));
+  return rows.map((row) => ({ ...row, email: isPhoneAccountEmail(row.email) ? null : row.email }));
+}
+
+/**
+ * Changes the name of an owner of this business. False when the user is not an owner of it. The name is shown on the
+ * dashboard and in emails; it is not how anyone signs in, so it can be corrected without proof.
+ */
+export async function renameBusinessOwner(
+  db: Database,
+  input: { readonly businessId: string; readonly userId: string; readonly name: string },
+): Promise<boolean> {
+  if (!isUuid(input.businessId)) return false;
+  const rows = await db
+    .update(users)
+    .set({ name: input.name })
+    .where(
+      and(
+        eq(users.id, input.userId),
+        sql`exists (select 1 from ${businessMembers} where ${businessMembers.businessId} = ${input.businessId} and ${businessMembers.userId} = ${users.id} and ${businessMembers.role} = 'owner')`,
+      ),
+    )
+    .returning({ id: users.id });
+  return rows.length > 0;
+}
+
 export interface StaffMediaFile {
   readonly storageKey: string;
   readonly mimeType: string;
