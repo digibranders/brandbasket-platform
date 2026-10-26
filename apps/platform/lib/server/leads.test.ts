@@ -3,9 +3,11 @@ import { consumeRateLimit, createLead, recordConsent, type Database } from "@bra
 import type { LeadInput } from "@brandbasket/shared/lib/lead-form";
 import { recordLead } from "./leads";
 import { getPublicDb } from "./public-db";
+import { alertTeams } from "./teams";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./public-db", () => ({ getPublicDb: vi.fn() }));
+vi.mock("./teams", () => ({ alertTeams: vi.fn(async () => undefined) }));
 vi.mock("./env", () => ({ serverEnv: () => ({ ADMIN_ORIGIN: "http://admin.localhost:3003" }) }));
 vi.mock("@brandbasket/email", () => ({
   createAppEmailTransport: () => ({ send: vi.fn(async () => undefined) }),
@@ -44,6 +46,18 @@ describe("recordLead", () => {
       noticeVersion: "pre-dpdp",
       channel: "web",
     });
+  });
+
+  it("tells the Teams enquiries channel, with the lead's details and a link to it", async () => {
+    expect(await recordLead({ ...LEAD, message: "Please call me." }, "203.0.113.9", null)).toBe("recorded");
+    expect(alertTeams).toHaveBeenCalledTimes(1);
+    const [destination, message] = vi.mocked(alertTeams).mock.calls[0] ?? [];
+    expect(destination).toBe("enquiries");
+    const text = JSON.stringify(message);
+    expect(text).toContain("Smile Dental");
+    expect(text).toContain("asha@example.com");
+    expect(text).toContain("Please call me.");
+    expect(text).toContain("http://admin.localhost:3003/leads/lead-1");
   });
 
   it("records no consent when the website sent no notice version", async () => {

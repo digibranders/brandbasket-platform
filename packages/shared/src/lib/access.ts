@@ -62,6 +62,8 @@ export const STAFF_CAPABILITIES = {
   money: ["finance", "admin"],
   /** The access log: who opened what. */
   oversight: ["admin"],
+  /** Where alerts are sent (the Teams webhook addresses in Settings). */
+  integrations: ["admin"],
 } as const satisfies Readonly<Record<string, readonly StaffRole[]>>;
 
 export type StaffCapability = keyof typeof STAFF_CAPABILITIES;
