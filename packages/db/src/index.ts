@@ -173,8 +173,13 @@ export {
   type SetupInvite,
 } from "./queries/invites";
 export {
+  assignLead,
   changeLeadCurrency,
+  countLeadsToContact,
   createLead,
+  LEAD_STATUSES_TO_CONTACT,
+  listLeadInvites,
+  type LeadInvite,
   isBillingStarted,
   type LeadCurrencyChange,
   findLead,

@@ -348,3 +348,49 @@ export async function changeLeadCurrency(
   });
 }
 
+/** Enquiries waiting for someone to get in touch: new ones, and accounts opened that have not paid. */
+export const LEAD_STATUSES_TO_CONTACT = ["new", "account_created"] as const satisfies readonly LeadStatus[];
+
+/** How many enquiries are waiting for someone to get in touch (the console rail's Enquiries count). */
+export async function countLeadsToContact(db: Database): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(leads)
+    .where(inArray(leads.status, [...LEAD_STATUSES_TO_CONTACT]));
+  return rows[0]?.count ?? 0;
+}
+
+/**
+ * Gives an enquiry to a staff member, or to nobody (null). Returns false when the lead does not exist. The caller checks
+ * the staff member is active; the foreign key only checks they are on the staff table.
+ */
+export async function assignLead(db: Database, leadId: string, staffUserId: string | null): Promise<boolean> {
+  const updated = await db.update(leads).set({ assignedStaffId: staffUserId }).where(eq(leads.id, leadId)).returning({ id: leads.id });
+  return updated.length > 0;
+}
+
+/** One setup link sent for a lead, without its token. */
+export interface LeadInvite {
+  readonly id: string;
+  readonly createdAt: Date;
+  readonly expiresAt: Date;
+  readonly redeemedAt: Date | null;
+  readonly revokedAt: Date | null;
+}
+
+/** Every setup link sent for a lead, newest first. */
+export async function listLeadInvites(db: Database, leadId: string): Promise<readonly LeadInvite[]> {
+  return db
+    .select({
+      id: setupInvites.id,
+      createdAt: setupInvites.createdAt,
+      expiresAt: setupInvites.expiresAt,
+      redeemedAt: setupInvites.redeemedAt,
+      revokedAt: setupInvites.revokedAt,
+    })
+    .from(setupInvites)
+    .where(eq(setupInvites.leadId, leadId))
+    .orderBy(desc(setupInvites.createdAt), desc(setupInvites.id));
+}
+
+

@@ -1,6 +1,8 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createLead, findLead, recordSignupLead } from "./queries/leads";
-import { businesses, leads } from "./schema";
+import { createSetupInvite } from "./queries/invites";
+import { assignLead, countLeadsToContact, createLead, findLead, listLeadInvites, recordSignupLead } from "./queries/leads";
+import { businesses, leads, staffMembers, users } from "./schema";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
 let dbs: TestDatabases;
@@ -22,6 +24,10 @@ const BASE = { name: "Neha Joshi", businessName: "Green Leaf Cafe", email: "neha
 async function addBusiness(slug: string): Promise<string> {
   const rows = await dbs.owner.db.insert(businesses).values({ slug, name: slug, currency: "INR" }).returning({ id: businesses.id });
   return rows[0]?.id ?? "";
+}
+
+function eqId(id: string): ReturnType<typeof eq> {
+  return eq(leads.id, id);
 }
 
 describe("lead source, plans, city and page", () => {
@@ -51,3 +57,48 @@ describe("lead source, plans, city and page", () => {
     expect(rows[0]).toMatchObject({ source: "pricing_page", status: "account_created" });
   });
 });
+
+async function addStaff(id: string): Promise<string> {
+  await dbs.owner.db.insert(users).values({ id, name: "Riya Kapoor", email: `${id}@brandbasket.test` });
+  await dbs.owner.db.insert(staffMembers).values({ userId: id });
+  return id;
+}
+
+describe("assignLead", () => {
+  it("gives an enquiry to a staff member and takes it back", async () => {
+    const staffId = await addStaff("staff-riya");
+    const { id } = await createLead(dbs.staff.db, BASE);
+    expect(await assignLead(dbs.staff.db, id, staffId)).toBe(true);
+    expect((await findLead(dbs.staff.db, id))?.assignedStaffId).toBe(staffId);
+    expect(await assignLead(dbs.staff.db, id, null)).toBe(true);
+    expect((await findLead(dbs.staff.db, id))?.assignedStaffId).toBeNull();
+  });
+
+  it("says so when the lead does not exist", async () => {
+    expect(await assignLead(dbs.staff.db, "01920000-0000-7000-8000-000000000999", null)).toBe(false);
+  });
+});
+
+describe("countLeadsToContact", () => {
+  it("counts new enquiries and accounts opened without paying, nothing else", async () => {
+    await createLead(dbs.staff.db, BASE);
+    const talking = await createLead(dbs.staff.db, { ...BASE, email: "b@example.test" });
+    await dbs.owner.db.update(leads).set({ status: "call_done" }).where(eqId(talking.id));
+    const businessId = await addBusiness("glow-dental");
+    await recordSignupLead(dbs.staff.db, { name: "Rohan", businessName: "Glow", email: "rohan@example.test", businessId, plan: "managed" });
+    expect(await countLeadsToContact(dbs.staff.db)).toBe(2);
+  });
+});
+
+describe("listLeadInvites", () => {
+  it("lists every setup link sent for a lead, newest first", async () => {
+    const staffId = await addStaff("staff-riya");
+    const { id } = await createLead(dbs.staff.db, BASE);
+    const first = await createSetupInvite(dbs.staff.db, { leadId: id, email: BASE.email, businessName: BASE.businessName, createdByStaffId: staffId, expiresInDays: 7 });
+    const second = await createSetupInvite(dbs.staff.db, { leadId: id, email: BASE.email, businessName: BASE.businessName, createdByStaffId: staffId, expiresInDays: 7 });
+    const invites = await listLeadInvites(dbs.staff.db, id);
+    expect(invites.map((invite) => invite.id)).toEqual([second.invite.id, first.invite.id]);
+    expect(invites[0]).toMatchObject({ redeemedAt: null, revokedAt: null });
+  });
+});
+
