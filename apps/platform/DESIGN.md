@@ -2,7 +2,7 @@
 
 The owner chose direction B, "Ledger", on 2026-10-26: `docs/plans/28-platform-redesign-ux.md`, mock
 `docs/design/platform-ledger.html`. This file is the rulebook for every new or reworked screen. Pages not reworked yet
-still use the older components; they already take the v2 palette and type through theme.css `[data-app="customer"]`.
+follow `DESIGN-v1.md`; they already take the v2 palette and type through theme.css `[data-app="customer"]`.
 
 ## Palette (theme.css `@theme`)
 
@@ -57,12 +57,22 @@ them ("With this time, your website can be live by Thu 5 Nov"). New copy goes to
 
 `transition-colors` or `transition-transform` at 200ms; `active:translate-y-px` on buttons. Respect reduced motion.
 
+## Accessibility
+
+- Text 4.5:1 against its background, marks and field edges 3:1. `ink` and `ink-2` pass on `bg`, `surface` and `sunken`. `rattan-text` on `bg` is about 4.0:1: use it only for text 18px and up and for marks; small text in an accent uses `rattan-ink` (about 5:1 on `rattan-wash`).
+- Field edges: `border-ink-2/65` at least; `line` is never a field edge.
+- Focus: a 2px `rattan` ring with a 3px offset on light surfaces; on the dark rail (`data-surface="dark"`) the ring is white.
+- `aria-current="page"` on the current rail link and tab; a word or an `aria-label` next to every icon that carries meaning.
+- Form errors: the field gets `aria-invalid` and `aria-describedby` pointing at the message; page-level results use `role="status"` or `role="alert"`.
+- Dialogs move focus inside on open and give it back on close (native `<dialog>` does both).
+- The clinic screens never hold medical fields or free-text clinical notes (`docs/superpowers/specs/2026-09-29-clinic-patients-design.md`).
+
 ## Not allowed
 
 - Bordered boxes around sections or rows.
 - More than one raised surface, or more than one dark button, on a screen.
 - Outlined secondary buttons or chips.
 - Colour as the only sign of a state.
-- Modals for confirmation. Dialogs are for search and the phone menu only.
+- Modals for confirmation. Dialogs are for search, the phone menu, the add-on checkout and the image cropper.
 - Fonts other than Red Hat; hex values outside the palette above.
 - Em or en dashes in any copy.
