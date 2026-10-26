@@ -1,0 +1,260 @@
+/*
+ * The navy panel beside the account screens (entry-screen.tsx): the launch path over a basket weave. Owner's pick,
+ * 2026-10-26 (docs/design/platform-auth-art-weave.html in the workspace). Every colour is a theme token, fainter
+ * shades mix it toward transparent. The resting state is the finished frame; the motion runs once, and only when
+ * the visitor has not asked for reduced motion.
+ */
+
+/* Set on each step by its animation and read by its marker: the marker's fill, and 0 (number) or 1 (tick). */
+@property --entry-fill {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+
+@property --entry-done {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+/* How far the weave reaches from the corner. */
+@property --entry-reach {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 80%;
+}
+
+/* One peach glow in the far corner, under the weave. */
+.art {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 55% 45% at 100% 100%,
+    color-mix(in srgb, var(--color-amber) 14%, transparent),
+    transparent 70%
+  );
+}
+
+/* The weave keeps to the corner and fades out before the steps' text. */
+.weave {
+  position: absolute;
+  inset: 0;
+  mask: radial-gradient(
+    ellipse 80% 85% at 100% 100%,
+    black calc(var(--entry-reach) * 0.4),
+    transparent var(--entry-reach)
+  );
+}
+
+/* The basket itself: peach seen through a 64px tile. Two strips per square, the direction alternating square by
+   square; each strip fades at its ends, which reads as it passing under its neighbours, and has a hairline of light
+   along one edge. The tile is only a mask, so the colour stays the theme's. */
+.weave::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-amber);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cdefs%3E%3ClinearGradient id='h'%3E%3Cstop offset='0' stop-opacity='.05'/%3E%3Cstop offset='.5' stop-opacity='.24'/%3E%3Cstop offset='1' stop-opacity='.05'/%3E%3C/linearGradient%3E%3ClinearGradient id='v' x2='0' y2='1'%3E%3Cstop offset='0' stop-opacity='.05'/%3E%3Cstop offset='.5' stop-opacity='.24'/%3E%3Cstop offset='1' stop-opacity='.05'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='url(%23h)'%3E%3Crect x='1' y='1' width='30' height='14' rx='2'/%3E%3Crect x='1' y='17' width='30' height='14' rx='2'/%3E%3Crect x='33' y='33' width='30' height='14' rx='2'/%3E%3Crect x='33' y='49' width='30' height='14' rx='2'/%3E%3C/g%3E%3Cg fill='url(%23v)'%3E%3Crect x='33' y='1' width='14' height='30' rx='2'/%3E%3Crect x='49' y='1' width='14' height='30' rx='2'/%3E%3Crect x='1' y='33' width='14' height='30' rx='2'/%3E%3Crect x='17' y='33' width='14' height='30' rx='2'/%3E%3C/g%3E%3Cpath stroke='black' stroke-opacity='.3' stroke-linecap='round' d='M4 1.5h24M4 17.5h24M36 33.5h24M36 49.5h24M33.5 4v24M49.5 4v24M1.5 36v24M17.5 36v24'/%3E%3C/svg%3E")
+    right bottom / 64px 64px;
+}
+
+/* The six steps with the Home page's launch-path markers, and a rail between the markers' centres. */
+.path {
+  position: relative;
+}
+
+.path::before,
+.path::after {
+  content: "";
+  position: absolute;
+  top: 1.375rem;
+  bottom: 1.375rem;
+  left: calc(1.375rem - 1px);
+  width: 2px;
+}
+
+.path::before {
+  background: color-mix(in srgb, white 12%, transparent);
+}
+
+.path::after {
+  background: var(--color-amber);
+  transform-origin: top;
+}
+
+.step {
+  --entry-fill: white;
+  --entry-done: 1;
+  color: white;
+}
+
+.step:last-child {
+  --entry-fill: var(--color-amber);
+  color: var(--color-amber);
+}
+
+/* Done: filled, with a tick in the panel's navy. Not reached yet: outlined, with its number. */
+.mark {
+  background: var(--entry-fill);
+}
+
+.mark > span {
+  opacity: calc(1 - var(--entry-done));
+}
+
+.mark::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 13px;
+  margin: -8px 0 0 -4px;
+  border: solid var(--color-dark-surface);
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+  opacity: var(--entry-done);
+}
+
+/*
+ * Plays once on load, about 7 seconds: the rail fills down and each step ticks as it is reached, the last in peach;
+ * the weave spreads out from the corner. Then everything rests on the finished frame above.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .weave {
+    animation: weave-in 2.4s var(--ease-calm) 0.2s both;
+  }
+
+  .path::after {
+    animation: rail 7s linear both;
+  }
+
+  .step {
+    animation: step 7s var(--ease-calm) both;
+  }
+
+  .step:nth-child(2) {
+    animation-name: step-2;
+  }
+
+  .step:nth-child(3) {
+    animation-name: step-3;
+  }
+
+  .step:nth-child(4) {
+    animation-name: step-4;
+  }
+
+  .step:nth-child(5) {
+    animation-name: step-5;
+  }
+
+  .step:nth-child(6) {
+    animation-name: step-6;
+  }
+}
+
+@keyframes weave-in {
+  from {
+    --entry-reach: 0%;
+  }
+}
+
+@keyframes rail {
+  0%,
+  7% {
+    transform: scaleY(0);
+  }
+  86%,
+  100% {
+    transform: none;
+  }
+}
+
+/* The rest state each step starts in; each keyframe set holds it until the rail reaches that step. */
+@keyframes step {
+  0%,
+  7% {
+    --entry-fill: var(--color-dark-surface);
+    --entry-done: 0;
+    color: color-mix(in srgb, white 28%, transparent);
+  }
+  10% {
+    --entry-fill: white;
+    --entry-done: 1;
+    color: white;
+  }
+}
+
+@keyframes step-2 {
+  0%,
+  23% {
+    --entry-fill: var(--color-dark-surface);
+    --entry-done: 0;
+    color: color-mix(in srgb, white 28%, transparent);
+  }
+  26% {
+    --entry-fill: white;
+    --entry-done: 1;
+    color: white;
+  }
+}
+
+@keyframes step-3 {
+  0%,
+  38% {
+    --entry-fill: var(--color-dark-surface);
+    --entry-done: 0;
+    color: color-mix(in srgb, white 28%, transparent);
+  }
+  41% {
+    --entry-fill: white;
+    --entry-done: 1;
+    color: white;
+  }
+}
+
+@keyframes step-4 {
+  0%,
+  54% {
+    --entry-fill: var(--color-dark-surface);
+    --entry-done: 0;
+    color: color-mix(in srgb, white 28%, transparent);
+  }
+  57% {
+    --entry-fill: white;
+    --entry-done: 1;
+    color: white;
+  }
+}
+
+@keyframes step-5 {
+  0%,
+  70% {
+    --entry-fill: var(--color-dark-surface);
+    --entry-done: 0;
+    color: color-mix(in srgb, white 28%, transparent);
+  }
+  73% {
+    --entry-fill: white;
+    --entry-done: 1;
+    color: white;
+  }
+}
+
+@keyframes step-6 {
+  0%,
+  86% {
+    --entry-fill: var(--color-dark-surface);
+    --entry-done: 0;
+    color: color-mix(in srgb, white 28%, transparent);
+  }
+  89% {
+    --entry-fill: var(--color-amber);
+    --entry-done: 1;
+    color: var(--color-amber);
+  }
+}
