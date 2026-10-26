@@ -1,5 +1,6 @@
 export * from "./account-closures";
 export * from "./account-otps";
+export * from "./activity";
 export * from "./add-ons";
 export * from "./affiliates";
 export * from "./appointments";
