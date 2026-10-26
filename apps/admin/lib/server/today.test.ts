@@ -1,0 +1,107 @@
+import {
+  countActiveErrorIssues,
+  countSupportTicketsByStatus,
+  listAddOnsToContact,
+  listClients,
+  listErrorIssues,
+  listLeads,
+  listPaymentsNeedingAttention,
+  listSetupCallsBetween,
+  listSupportTicketsForStaff,
+  sumCapturedPaymentsBetween,
+  type Lead,
+} from "@brandbasket/db";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readSystemHealth } from "./system-health";
+import { countTodayItems, loadTodayItems, loadTodayPage } from "./today";
+
+vi.mock("server-only", () => ({}));
+vi.mock("@brandbasket/db", async () => {
+  const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
+  return {
+    ...actual,
+    countActiveErrorIssues: vi.fn(),
+    countSupportTicketsByStatus: vi.fn(),
+    listAddOnsToContact: vi.fn(),
+    listClients: vi.fn(),
+    listErrorIssues: vi.fn(),
+    listLeads: vi.fn(),
+    listPaymentsNeedingAttention: vi.fn(),
+    listSetupCallsBetween: vi.fn(),
+    listSupportTicketsForStaff: vi.fn(),
+    sumCapturedPaymentsBetween: vi.fn(),
+  };
+});
+vi.mock("./db", () => ({ getStaffDb: () => ({}) }));
+vi.mock("./system-health", () => ({ readSystemHealth: vi.fn() }));
+
+const NOW = new Date("2026-11-30T06:00:00.000Z");
+
+const NEW_LEAD = {
+  id: "lead-1",
+  businessName: "Green Leaf Cafe",
+  status: "new",
+  createdAt: new Date("2026-11-30T05:30:00.000Z"),
+} as Lead;
+
+beforeEach(() => {
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+  vi.mocked(listClients).mockResolvedValue([]);
+  vi.mocked(listLeads).mockResolvedValue([NEW_LEAD]);
+  vi.mocked(listPaymentsNeedingAttention).mockResolvedValue([]);
+  vi.mocked(listAddOnsToContact).mockResolvedValue([]);
+  vi.mocked(listSupportTicketsForStaff).mockResolvedValue({ items: [], nextCursor: null });
+  vi.mocked(listErrorIssues).mockResolvedValue({ issues: [], total: 0 });
+  vi.mocked(sumCapturedPaymentsBetween).mockResolvedValue([{ currency: "INR", amountCents: 299_900 }]);
+  vi.mocked(countSupportTicketsByStatus).mockResolvedValue({ new: 1, triaged: 0, in_progress: 0, waiting_on_you: 0, resolved: 0, closed: 0 });
+  vi.mocked(countActiveErrorIssues).mockResolvedValue(0);
+  vi.mocked(listSetupCallsBetween).mockResolvedValue([]);
+  vi.mocked(readSystemHealth).mockResolvedValue([]);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("loadTodayItems", () => {
+  it("keeps the rest of the queue when one source fails, and logs the failure", async () => {
+    vi.mocked(listClients).mockRejectedValue(new Error("database down"));
+    const items = await loadTodayItems(NOW);
+    expect(items.map((item) => item.key)).toEqual(["lead:lead-1"]);
+    expect(console.error).toHaveBeenCalled();
+  });
+
+  it("asks only for requests nobody has answered", async () => {
+    await loadTodayItems(NOW);
+    expect(listSupportTicketsForStaff).toHaveBeenCalledWith({}, { status: "new", limit: 25 });
+    expect(listErrorIssues).toHaveBeenCalledWith({}, { status: "new" });
+  });
+});
+
+describe("countTodayItems", () => {
+  it("is the length of the queue", async () => {
+    expect(await countTodayItems()).toBe(1);
+  });
+});
+
+describe("loadTodayPage", () => {
+  it("returns the queue, six figures, today's calls and the systems lines", async () => {
+    const call = { businessId: "b1", businessName: "Kumar Opticals", startsAt: new Date("2026-11-30T08:30:00.000Z"), endsAt: new Date("2026-11-30T09:00:00.000Z") };
+    vi.mocked(listSetupCallsBetween).mockResolvedValue([call]);
+    vi.mocked(readSystemHealth).mockResolvedValue([{ key: "email", label: "Email", state: "ok", detail: "last 09:40" }]);
+    const page = await loadTodayPage(NOW);
+    expect(page.items).toHaveLength(1);
+    expect(page.figures).toHaveLength(6);
+    expect(page.figures[2]?.value).toBe("₹2,999");
+    expect(page.calls).toEqual([call]);
+    expect(page.systems).toEqual([{ key: "email", label: "Email", state: "ok", detail: "last 09:40" }]);
+    expect(listSetupCallsBetween).toHaveBeenCalledWith({}, new Date("2026-11-29T18:30:00.000Z"), new Date("2026-11-30T18:30:00.000Z"));
+  });
+
+  it("still draws the figures when the money and request counts fail", async () => {
+    vi.mocked(sumCapturedPaymentsBetween).mockRejectedValue(new Error("down"));
+    vi.mocked(countSupportTicketsByStatus).mockRejectedValue(new Error("down"));
+    const page = await loadTodayPage(NOW);
+    expect(page.figures.map((figure) => figure.value)).toEqual(["1", "0", "₹0", "0", "0", "0"]);
+  });
+});
