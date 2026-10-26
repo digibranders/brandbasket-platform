@@ -1,0 +1,179 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { expect, it } from "vitest";
+
+import { MonthOverview } from "@/components/overview/month-overview";
+import { DARK_BUTTON } from "@/components/v2/classes";
+import type { ServiceKey } from "@/lib/first-look";
+import type { OverviewData } from "@/lib/server/overview";
+import type { TodoItem } from "@/lib/todo";
+
+// Tue 3 Nov 2026, 10:00 in India.
+const NOW = new Date("2026-11-03T04:30:00.000Z");
+
+function item(index: number, overrides: Partial<TodoItem> = {}): TodoItem {
+  return {
+    key: `item-${index}`,
+    label: `Thing ${index}`,
+    hint: `Hint ${index}`,
+    service: "website",
+    done: false,
+    kind: "link",
+    href: `/onboarding/step-${index}`,
+    ...overrides,
+  } as TodoItem;
+}
+
+function data(overrides: Partial<OverviewData> = {}): OverviewData {
+  const todo = overrides.todo ?? [];
+  return {
+    services: ["website", "social"] satisfies ServiceKey[],
+    open: todo.filter((entry) => !entry.done).length,
+    todo,
+    results: [],
+    activity: [],
+    nextPayment: null,
+    ...overrides,
+  };
+}
+
+/** The overview as the server sends it, with React's text-node separators removed so sentences read whole. */
+function render(overview: OverviewData, extra: { readonly bookingUrl?: string | null } = {}): string {
+  return renderToStaticMarkup(
+    createElement(MonthOverview, {
+      firstName: "Priya",
+      businessName: "Sai Dental Care",
+      data: overview,
+      now: NOW,
+      buildCard: null,
+      bookingUrl: extra.bookingUrl ?? null,
+    }),
+  ).replaceAll("<!-- -->", "");
+}
+
+it("greets by name with the subline for the open count, and offers a change request", () => {
+  const html = render(data({ todo: [item(1), item(2)] }));
+  expect(html).toContain("Good morning, Priya.");
+  expect(html).toContain("Everything is running. 2 things need you.");
+  expect(html).toContain('href="/support"');
+  expect(html).toContain("Ask for a change");
+  expect(html).not.toContain("Book a call");
+});
+
+it("offers the booking page in a new tab when one is set", () => {
+  const html = render(data(), { bookingUrl: "https://cal.com/brandbasket/call" });
+  expect(html).toContain("Book a call");
+  expect(html).toContain('href="https://cal.com/brandbasket/call"');
+  expect(html).toContain('target="_blank"');
+  expect(html).toContain('rel="noopener noreferrer"');
+});
+
+it("lists at most 4 open items, with See all N to the To do page when there are more", () => {
+  const items = [1, 2, 3, 4, 5, 6].map((n) => item(n));
+  const html = render(data({ todo: [...items, item(7, { done: true })] }));
+  expect(html).toContain("Needs you");
+  expect(html).toContain("Thing 4");
+  expect(html).not.toContain("Thing 5");
+  expect(html).not.toContain("Thing 7");
+  expect(html).toContain("See all 6");
+  expect(html).toContain('href="/todo"');
+});
+
+it("shows no See all link when everything open fits", () => {
+  const html = render(data({ todo: [item(1), item(2)] }));
+  expect(html).not.toContain("See all");
+});
+
+it("opens the top item on its page with the dark button and the others with soft buttons, form items on the To do page", () => {
+  const html = render(data({ todo: [item(1), item(2, { kind: "form", setup: "accounts" } as Partial<TodoItem>)] }));
+  expect(html).toContain('href="/onboarding/step-1"');
+  expect(html).toContain('href="/todo#item-2"');
+  expect(html.split(DARK_BUTTON).length - 1).toBe(1);
+  expect(html.indexOf(DARK_BUTTON)).toBeLessThan(html.indexOf("/todo#item-2"));
+});
+
+it("with nothing open replaces the heading with a quiet line and shows no dark button", () => {
+  const html = render(data({ todo: [item(1, { done: true })] }));
+  expect(html).toContain("Nothing needs you right now.");
+  expect(html).not.toContain("Needs you");
+  expect(html).not.toContain(DARK_BUTTON);
+  expect(html).toContain("Everything is running. Nothing needs you.");
+});
+
+it("shows only the result lines given, each with its figure, headline and detail", () => {
+  const html = render(
+    data({
+      results: [
+        { service: "social", figure: "21", headline: "enquiries came from your ads", detail: "12 posts published" },
+        { service: "search", figure: "9", headline: "searches show you on Google's first page", detail: null },
+      ],
+    }),
+  );
+  expect(html).toContain("November for Sai Dental Care");
+  expect(html).toContain("21");
+  expect(html).toContain("enquiries came from your ads");
+  expect(html).toContain("12 posts published");
+  expect(html).toContain("9");
+  expect(html).toContain("searches show you on Google&#x27;s first page");
+  expect(html).not.toContain("will appear here once we have them");
+});
+
+it("with no result lines says when the numbers will appear", () => {
+  expect(render(data())).toContain("Numbers for November will appear here once we have them.");
+});
+
+it("lists What we did with day and month dates and labels", () => {
+  const html = render(
+    data({
+      activity: [
+        { key: "a", at: new Date("2026-10-27T06:00:00.000Z"), label: "New Sunday hours are live", service: "website" },
+        { key: "b", at: new Date("2026-10-26T06:00:00.000Z"), label: "Ads narrowed to 4 km", service: "social" },
+      ],
+    }),
+  );
+  expect(html).toContain("What we did");
+  expect(html).toContain("27 Oct");
+  expect(html).toContain("New Sunday hours are live");
+  expect(html).toContain("26 Oct");
+  expect(html).toContain("Ads narrowed to 4 km");
+  expect(html).not.toContain("Updates will appear here as we work.");
+});
+
+it("with no activity says updates will appear", () => {
+  expect(render(data())).toContain("Updates will appear here as we work.");
+});
+
+it("shows the next payment with its amount and date, and nothing when there is none", () => {
+  const paying = render(data({ nextPayment: { date: new Date("2026-12-26T06:00:00.000Z"), amount: "₹30,398" } }));
+  expect(paying).toContain("Next payment");
+  expect(paying).toContain("₹30,398");
+  expect(paying).toContain("26 Dec");
+  expect(render(data())).not.toContain("Next payment");
+});
+
+it("shows the next payment date alone when the amount is unknown", () => {
+  const html = render(data({ nextPayment: { date: new Date("2026-12-26T06:00:00.000Z"), amount: null } }));
+  expect(html).toContain("26 Dec");
+  expect(html).not.toContain("null");
+});
+
+it("puts the build card first in the left column when one is given", () => {
+  const html = renderToStaticMarkup(
+    createElement(MonthOverview, {
+      firstName: "Priya",
+      businessName: "Sai Dental Care",
+      data: data({ todo: [item(1)] }),
+      now: NOW,
+      buildCard: createElement("div", { id: "build-card" }),
+      bookingUrl: null,
+    }),
+  );
+  expect(html.indexOf("build-card")).toBeGreaterThan(-1);
+  expect(html.indexOf("build-card")).toBeLessThan(html.indexOf("Needs you"));
+});
+
+it("uses no uppercase labels and exactly one dark button", () => {
+  const html = render(data({ todo: [item(1), item(2), item(3)], results: [{ service: "website", figure: "3", headline: "people left details", detail: null }] }));
+  expect(html).not.toMatch(/\buppercase\b/);
+  expect(html.split(DARK_BUTTON).length - 1).toBe(1);
+});
