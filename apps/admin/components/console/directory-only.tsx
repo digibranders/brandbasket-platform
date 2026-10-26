@@ -7,7 +7,7 @@ import { adminBrand } from "@/lib/brand";
  * A deployment that does not run the directory (Brandbasket) answers them as pages that do not exist, so they are switched
  * off, not just left out of the dock.
  */
-export function DirectoryOnly({ children, directory = adminBrand().sellsDirectory }: { readonly children: ReactNode; readonly directory?: boolean }): ReactElement {
+export function DirectoryOnly({ children, directory = adminBrand().sellsDirectory }: { readonly children?: ReactNode; readonly directory?: boolean }): ReactElement {
   if (!directory) notFound();
   return <>{children}</>;
 }

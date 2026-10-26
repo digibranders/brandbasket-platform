@@ -11,10 +11,10 @@ vi.mock("next/navigation", () => ({
 
 describe("DirectoryOnly", () => {
   it("shows the section where the deployment runs the directory", () => {
-    expect(renderToStaticMarkup(createElement(DirectoryOnly, { directory: true, children: "Ads" }))).toBe("Ads");
+    expect(renderToStaticMarkup(createElement(DirectoryOnly, { directory: true }, "Ads"))).toBe("Ads");
   });
 
   it("answers as a page that does not exist where it does not (Brandbasket)", () => {
-    expect(() => renderToStaticMarkup(createElement(DirectoryOnly, { directory: false, children: "Ads" }))).toThrow("NEXT_NOT_FOUND");
+    expect(() => renderToStaticMarkup(createElement(DirectoryOnly, { directory: false }, "Ads"))).toThrow("NEXT_NOT_FOUND");
   });
 });
