@@ -2,6 +2,7 @@ import { CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import type { OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
+import type { SetupKey } from "@/lib/service-setup";
 import { andList, SERVICE_NAMES, serviceWords, type ServiceKey } from "@/lib/first-look";
 import type { FirstPaymentView } from "@/lib/server/first-look";
 import { LIFT } from "@/components/v2/classes";
@@ -18,12 +19,13 @@ interface WelcomeOverviewProps {
   readonly call: { readonly startsAtIso: string | null; readonly endsAtIso: string | null } | null;
   readonly bookingUrl: string | null;
   readonly doneSteps: readonly OnboardingStepKey[];
+  readonly doneSetup: readonly SetupKey[];
   /** False for an account without a real email address: the invitation could not reach it. */
   readonly canBook: boolean;
 }
 
 /** Overview until the kickoff call has happened (plan 28 section 3): one button, and the answers beside it. */
-export function WelcomeOverview({ firstName, services, payment, call, bookingUrl, doneSteps, canBook }: WelcomeOverviewProps): ReactElement {
+export function WelcomeOverview({ firstName, services, payment, call, bookingUrl, doneSteps, doneSetup, canBook }: WelcomeOverviewProps): ReactElement {
   const hasWebsite = services.includes("website");
   const booked = call !== null;
   return (
@@ -46,7 +48,7 @@ export function WelcomeOverview({ firstName, services, payment, call, bookingUrl
         {booked ? (
           <div className="grid gap-4">
             <BookedLine key={call.startsAtIso ?? "booked"} startsAtIso={call.startsAtIso} endsAtIso={call.endsAtIso} showLiveBy={hasWebsite} bookingUrl={bookingUrl} />
-            {services.length === 0 ? null : <ReadyTask services={services} doneSteps={doneSteps} />}
+            {services.length === 0 ? null : <ReadyTask services={services} doneSteps={doneSteps} doneSetup={doneSetup} />}
             <p className="text-[0.8125rem] text-ink-2">Add what you can now; bring the rest to the call. Everything saves as you go.</p>
           </div>
         ) : (

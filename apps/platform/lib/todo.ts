@@ -30,3 +30,8 @@ export function buildTodo(services: readonly ServiceKey[], doneSteps: readonly O
 export function openCount(items: readonly TodoItem[]): number {
   return items.filter((item) => !item.done).length;
 }
+
+/** The Social and Search answers already given, for the first look's ready list. */
+export function doneSetupOf(items: readonly TodoItem[]): SetupKey[] {
+  return items.flatMap((item) => (item.kind === "form" && item.done ? [item.setup] : []));
+}

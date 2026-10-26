@@ -5,6 +5,7 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { onboardingStepHref, type OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
 import { SERVICE_NAMES, type ServiceKey } from "@/lib/first-look";
 import { readyItemsFor, readyRows, type ReadyRow } from "@/lib/ready-items";
+import type { SetupKey } from "@/lib/service-setup";
 import { LIFT, SECTION_TITLE, SERVICE_DOT, SOFT_BUTTON } from "@/components/v2/classes";
 
 /** Open items shown before the rest fold away. */
@@ -66,20 +67,24 @@ function ReadyRowItem({ row }: { readonly row: ReadyRow }): ReactElement {
           <ServiceTag service={item.service} /> · {item.hint}
         </span>
       </span>
-      {item.step === null ? (
-        <span className="text-xs text-ink-2">Bring to the call</span>
-      ) : (
-        <Link href={onboardingStepHref(item.step)} aria-label={`${action} ${item.label}`} className={SOFT_BUTTON}>
-          {action}
-        </Link>
-      )}
+      <Link href={item.step === null ? `/todo#${item.key}` : onboardingStepHref(item.step)} aria-label={`${action} ${item.label}`} className={SOFT_BUTTON}>
+        {action}
+      </Link>
     </li>
   );
 }
 
 /** After booking: the same list as the task, open items first, the rest behind Show all. */
-export function ReadyTask({ services, doneSteps }: { readonly services: readonly ServiceKey[]; readonly doneSteps: readonly OnboardingStepKey[] }): ReactElement {
-  const rows = readyRows(services, doneSteps);
+export function ReadyTask({
+  services,
+  doneSteps,
+  doneSetup,
+}: {
+  readonly services: readonly ServiceKey[];
+  readonly doneSteps: readonly OnboardingStepKey[];
+  readonly doneSetup: readonly SetupKey[];
+}): ReactElement {
+  const rows = readyRows(services, doneSteps, doneSetup);
   const open = rows.filter((row) => !row.done);
   const doneCount = rows.length - open.length;
   const rest = [...open.slice(OPEN_SHOWN), ...rows.filter((row) => row.done)];

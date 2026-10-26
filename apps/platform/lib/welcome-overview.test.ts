@@ -30,6 +30,7 @@ function render(options: Options): string {
       call: options.call ?? null,
       bookingUrl: options.bookingUrl ?? null,
       doneSteps: [],
+      doneSetup: [],
       canBook: options.canBook ?? true,
     }),
   ).replaceAll("<!-- -->", "");
@@ -77,4 +78,10 @@ it("for a plan without the website, the timeline says work starts and never prom
   const html = render({ call: CALL, services: ["social"] });
   expect(html).toContain("We start work");
   expect(html).not.toContain("Your website is live");
+});
+
+it("for a booked Social plan, sends the ready items to the To do page", () => {
+  const html = render({ call: CALL, services: ["social"] });
+  expect(html).toContain('href="/todo#accounts"');
+  expect(html).not.toContain("Bring to the call");
 });

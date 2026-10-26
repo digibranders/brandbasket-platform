@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTodo, openCount } from "@/lib/todo";
+import { buildTodo, doneSetupOf, openCount } from "@/lib/todo";
 
 describe("buildTodo", () => {
   it("links website items to their setup step and makes Social and Search items forms", () => {
@@ -32,5 +32,13 @@ describe("buildTodo", () => {
   it("is empty for a plan with nothing to ask", () => {
     expect(buildTodo([], [], [])).toEqual([]);
     expect(openCount([])).toBe(0);
+  });
+});
+
+describe("doneSetupOf", () => {
+  it("lists the Social and Search items that are done, and skips open and website items", () => {
+    const items = buildTodo(["website", "social", "search"], ["brand"], ["offers", "areas"]);
+    expect(doneSetupOf(items)).toEqual(["offers", "areas"]);
+    expect(doneSetupOf(buildTodo(["website"], ["brand"], []))).toEqual([]);
   });
 });

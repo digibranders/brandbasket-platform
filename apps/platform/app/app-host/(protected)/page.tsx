@@ -18,6 +18,8 @@ import { getBillingBanner } from "@/lib/server/billing-banner";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getLiveWebsite, getProjectOverview } from "@/lib/server/onboarding";
 import { getSetupCallState } from "@/lib/server/setup-call";
+import { loadTodo } from "@/lib/server/todo";
+import { doneSetupOf } from "@/lib/todo";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -62,7 +64,8 @@ export default async function AppHomePage(): Promise<ReactElement> {
     nowMs: callState.readAtMs,
   });
   if (firstLook) {
-    const { services, payment } = await loadFirstLook(tenant);
+    // loadTodo is request-cached: the shell reads it for the rail count.
+    const [{ services, payment }, todo] = await Promise.all([loadFirstLook(tenant), loadTodo(tenant)]);
     return (
       <>
         {banner === null ? null : (
@@ -77,6 +80,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
           call={callState.booking === null ? null : { startsAtIso: callState.booking.startsAtIso, endsAtIso: callState.booking.endsAtIso }}
           bookingUrl={callState.url}
           doneSteps={completed}
+          doneSetup={doneSetupOf(todo.items)}
           canBook={!isPhoneAccountEmail(user.email)}
         />
       </>
