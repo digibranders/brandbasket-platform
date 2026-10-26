@@ -65,7 +65,7 @@ export async function AppShell({ userName, userEmail, businessId, children }: Ap
   };
 
   return (
-    <div className="flex min-h-dvh bg-bg lg:bg-dark-surface">
+    <div className="dashboard-type flex min-h-dvh bg-bg lg:bg-dark-surface">
       <Rail sections={sections} logo={logo} menu={menu} signOut={signOut} />
       <div className="flex min-w-0 flex-1 flex-col">
         <PhoneBars sections={sections} logo={logo} menu={menu} signOut={signOut} />

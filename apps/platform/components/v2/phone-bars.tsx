@@ -36,7 +36,7 @@ export function PhoneBars({ sections, logo, menu, signOut }: PhoneBarsProps): Re
 
   return (
     <>
-      <header className="sticky top-0 z-20 flex items-center justify-between bg-bg/90 px-5 pb-2 pt-3 backdrop-blur lg:hidden">
+      <header className="flex items-center justify-between bg-bg px-5 pb-2 pt-3 lg:hidden">
         <WordmarkLogo href="/" brand={logo} />
         <button type="button" onClick={() => setSearching(true)} aria-label="Search" className="grid size-10 place-items-center rounded-full text-ink transition-colors duration-200 hover:bg-sunken">
           <MagnifyingGlass size={22} aria-hidden="true" />
