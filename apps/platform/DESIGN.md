@@ -53,7 +53,7 @@ Rules:
   qualify for marks, not words.
 - Text on `accent` or `ink` fills is `paper` at full strength.
 - Decorative art (`WaveLines`, `ContourField` at `text-accent/10`–`/15`) carries nothing and has no minimum. Nor do
-  the sign-in panel's weave and its steps before the rail reaches them (`white` at 28%), which sit inside `aria-hidden`.
+  the sign-in panel's cross weave and its lines at rest (`white` at 14%), which sit inside `aria-hidden`.
 - Don't change the hex values; change which token a thing uses.
 
 ## Type
@@ -243,10 +243,10 @@ Filled means "still matters"; hollow means "ended without a visit". Sentence cas
 - Progress bars grow their width over 500–700ms `ease-calm`. Arrows nudge `group-hover:translate-x-1`.
 - Pulses (skeletons, the changelog dot) are `motion-safe:` only. `rise`, `reveal`, `ripple`, `drift` exist in the
   theme and switch off under reduced motion; the customer app does not use them. `ease-spring` is for the website.
-- The sign-in panel (`entry-panel.module.css`) plays once on load, about 7 seconds: the rail fills down the launch
-  path, each step ticks as it is reached and the last lands in peach, while the weave spreads out from the corner.
-  Then it rests. Its resting state is the finished frame, and the motion only runs under
-  `prefers-reduced-motion: no-preference`. No loops.
+- The sign-in panel (`entry-panel.module.css`) is the CMS sign-in's, on a 12 second loop: each of the six launch-path
+  lines takes a two second turn, lighting up and sliding 10px right, then fading back, and the last lands in `amber`.
+  Only `color` and `transform` change. Under `prefers-reduced-motion` nothing moves and only the last line is
+  highlighted.
 
 ## Icons
 
@@ -310,4 +310,4 @@ step.
 | **Add-ons** | One hairline row per service (Local SEO, Performance marketing, Press release): `panel-section` name, one line of what it does, the price with "+ GST", then a state line and the buttons. The state line is a `role="status"` region that is always in the page; it turns to the error colour only for a failing or failed payment or a broken row. Buttons are Get it, Pause, Cancel, Keep it, Resume and Pay now, never more than the state allows. Pause and Cancel confirm in the row; the rest open the purchase dialog. A customer's press releases list under the Press release row with a status word: "We'll contact you", "In progress", "Published". Every sentence on this page (state lines, button names and their `aria-label`s, the confirm question, the dialog text, press release statuses) comes from `lib/billing/add-on-copy.ts`; edit the words there, not in the components. |
 | **Listing** | Status dot and serif headline, the listing's address and View/Copy buttons, then **Promotion**: with no tag running, three hairline radio rows (tag + "· Ad" in `ink-soft`, one-line hint), primary "Pay ₹352.82 for 7 days" (`SubmitButton`, "Opening…") and the "₹299 + ₹53.82 GST (18%) · 7 days, no auto-renew" line under it. While a tag runs: serif "Hot & New · Ad — until 6 Oct", "N days left" (and "next week paid, from …" once renewed), an `accent-pale` reminder in the last two days, an "On directory" hairline row with Shown / "Hidden, still paid for" and a secondary Hide/Show button, and "Renew for another week · ₹352.82" while no next week is booked. Refusals from a Pay press come back as an `accent-pale` notice (`?promotion=`). Then Your details and Set by us. |
 | **Settings** | Account and business facts (13px `ink-soft` label over the value), signing-in note, Sign out. |
-| **Sign-in / setup** | `EntryScreen` (`components/panel/entry-screen.tsx`, owner's pick 2026-10-26) for sign in, create account, forgot and reset password, the setup links, confirming an email and restoring an account. From `lg` it is the dashboard's frame: on the navy ground, the logo (still a link to the website) over a panel that is decoration and `aria-hidden`: the six launch-path steps with the Home page's markers, "Then we look after it, every month." and the website's address, over a peach basket weave in the far corner. The form sits on the inset `rounded-shell` paper panel. Below `lg` there is no panel: the logo sits above the form. The form side keeps `SignInForm` on white fields with `ink-soft/65` edges, the "or" rule in sentence case and the footer line. `AuthScreen` (centred, contour arcs) is now only the billing pay and confirm pages and keep-plan. |
+| **Sign-in / setup** | `EntryScreen` (`components/panel/entry-screen.tsx`, owner's pick 2026-10-26) for sign in, create account, forgot and reset password, the setup links, confirming an email and restoring an account. From `lg` it is the dashboard's frame: on the navy ground, the logo (still a link to the website) over a panel that is decoration and `aria-hidden` and is the CMS sign-in's: a faint 45 degree cross weave in `amber` with one soft glow where the two halves meet, drawn once on the whole frame so it also runs through the margin around the form panel, the six launch-path steps as large lines that take turns, "Then we look after it, every month." and the website's address. The frame is exactly one screen tall and the page never scrolls: the navy panel runs to the bottom edge and the form sits on the inset `rounded-shell` paper panel, which scrolls inside itself when a form (Create account) is taller than the window; the steps shrink on short windows. Below `lg` there is no panel: the logo sits above the form. The form side keeps `SignInForm` on white fields with `ink-soft/65` edges, the "or" rule in sentence case and the footer line. `AuthScreen` (centred, contour arcs) is now only the billing pay and confirm pages and keep-plan. |
