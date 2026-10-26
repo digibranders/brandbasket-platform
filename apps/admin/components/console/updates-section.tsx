@@ -86,7 +86,7 @@ export async function UpdatesSection({
               <form action={removeUpdateAction}>
                 <input type="hidden" name="id" value={event.id} />
                 <input type="hidden" name="businessId" value={businessId} />
-                <button type="submit" className={`${buttonSecondary} !px-3 !py-1.5 text-sm`}>
+                <button type="submit" aria-label={`Remove update: ${event.title}`} className={`${buttonSecondary} !px-3 !py-1.5 text-sm`}>
                   Remove
                 </button>
               </form>

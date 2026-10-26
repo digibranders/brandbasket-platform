@@ -53,6 +53,8 @@ describe("UpdatesSection", () => {
     expect(html).toContain("General");
     expect(html).toContain(`name="id" value="${EVENT}"`);
     expect(html.match(/>Remove</g)).toHaveLength(2);
+    expect(html).toContain('aria-label="Remove update: Posted three reels"');
+    expect(html).toContain('aria-label="Remove update: Monthly check done"');
   });
 
   it("shows the notice for what just happened", async () => {
