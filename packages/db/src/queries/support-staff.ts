@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, lt, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, lt, or, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import type { Database } from "../client";
 import { users } from "../schema/auth";
@@ -126,3 +126,12 @@ export async function countSupportTicketsAwaitingStaff(db: Database): Promise<nu
     .where(inArray(supportTickets.status, [...SUPPORT_STATUSES_AWAITING_STAFF]));
   return row?.count ?? 0;
 }
+
+/** How many requests are in each status, every status present (zero where there are none), for the console's figures. */
+export async function countSupportTicketsByStatus(db: Database): Promise<Readonly<Record<SupportStatus, number>>> {
+  const rows = await db.select({ status: supportTickets.status, total: count() }).from(supportTickets).groupBy(supportTickets.status);
+  const totals = Object.fromEntries(supportStatus.enumValues.map((status) => [status, 0])) as Record<SupportStatus, number>;
+  for (const row of rows) totals[row.status] = row.total;
+  return totals;
+}
+
