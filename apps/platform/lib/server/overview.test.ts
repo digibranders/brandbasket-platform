@@ -47,6 +47,27 @@ describe("loadOverview", () => {
     log.mockRestore();
   });
 
+  it("still draws and logs when the project and the live website cannot be read", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+    vi.mocked(getProjectOverview).mockRejectedValue(new Error("db down"));
+    vi.mocked(getLiveWebsite).mockRejectedValue(new Error("db down"));
+
+    const data = await loadOverview(tenant, noBilling, now);
+
+    expect(data.activity).toEqual([]);
+    expect(log.mock.calls.map((call) => call[0])).toEqual(["[overview] could not read the project", "[overview] could not read the live website"]);
+    log.mockRestore();
+  });
+
+  it("does not swallow a redirect thrown while reading the project", async () => {
+    const redirect = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/login;307;" });
+    vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+    vi.mocked(getProjectOverview).mockRejectedValue(redirect);
+
+    await expect(loadOverview(tenant, noBilling, now)).rejects.toBe(redirect);
+  });
+
   it("merges a staff update with the live website row, newest first", async () => {
     vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
     vi.mocked(listActivityEvents).mockResolvedValue([

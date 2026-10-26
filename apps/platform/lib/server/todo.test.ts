@@ -66,4 +66,37 @@ describe("loadTodo", () => {
     expect(todo.items.some((item) => item.kind === "link")).toBe(false);
     expect(todo.items.every((item) => item.service === "social")).toBe(true);
   });
+
+  it("still draws the page, with no website items, and logs once when the project read fails", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.mocked(loadSetupServices).mockResolvedValue(["website", "social"]);
+    vi.mocked(listServiceSetups).mockResolvedValue([]);
+    vi.mocked(getProjectOverview).mockRejectedValue(new Error("db down"));
+
+    const todo = await loadTodo(freshTenant());
+
+    expect(todo.items.map((item) => item.key)).toContain("offers");
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls[0]?.[0]).toBe("[todo] could not read the project");
+    log.mockRestore();
+  });
+
+  it("does not swallow a redirect thrown while reading the project", async () => {
+    const redirect = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/login;307;" });
+    vi.mocked(loadSetupServices).mockResolvedValue(["social"]);
+    vi.mocked(listServiceSetups).mockResolvedValue([]);
+    vi.mocked(getProjectOverview).mockRejectedValue(redirect);
+
+    await expect(loadTodo(freshTenant())).rejects.toBe(redirect);
+  });
+
+  it("treats a failed services read as no services so the page still draws", async () => {
+    vi.mocked(loadSetupServices).mockResolvedValue(null);
+    vi.mocked(listServiceSetups).mockResolvedValue([]);
+
+    const todo = await loadTodo(freshTenant());
+
+    expect(todo.services).toEqual([]);
+    expect(todo.items).toEqual([]);
+  });
 });

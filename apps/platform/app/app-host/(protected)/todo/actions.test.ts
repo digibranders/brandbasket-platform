@@ -59,6 +59,19 @@ describe("saveSetupItemAction", () => {
     expect(saveServiceSetup).not.toHaveBeenCalled();
   });
 
+  it("asks the customer to try again, not 'not part of your plan', when the services cannot be read", async () => {
+    vi.mocked(loadSetupServices).mockResolvedValue(null);
+    const state = await saveSetupItemAction(initialSetupFormState, form({ key: "offers", offers: "A free check-up" }));
+    expect(state).toEqual({
+      status: "error",
+      key: "offers",
+      field: "",
+      message: "We could not save that. Please try again.",
+      values: { offers: "A free check-up" },
+    });
+    expect(saveServiceSetup).not.toHaveBeenCalled();
+  });
+
   it("saves a good answer for the session's business, revalidates and reports saved", async () => {
     const state = await saveSetupItemAction(initialSetupFormState, form({ key: "offers", offers: "  A free check-up in December  " }));
     expect(state).toEqual({ status: "saved", key: "offers" });

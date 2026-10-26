@@ -32,15 +32,16 @@ export async function loadServicesBought(tenant: TenantContext): Promise<readonl
 
 /**
  * The services the To do page, Overview and the console all agree on: the website the plan pays for, and Social and Search
- * by the one rule in the db package (taken with the plan or bought later). A failed read shows none, so a page still draws.
+ * by the one rule in the db package (taken with the plan or bought later). Null when the read failed, so a caller can tell
+ * that from a business with no services; a page treats null as none and still draws.
  */
-export async function loadSetupServices(tenant: TenantContext): Promise<readonly ServiceKey[]> {
+export async function loadSetupServices(tenant: TenantContext): Promise<readonly ServiceKey[] | null> {
   return withTenantScope(getAppDb(), tenant, async (tx) => {
     const [live, setup] = await Promise.all([findLiveBundledAddOns(tx, tenant.businessId), listBoughtSetupServices(tx, tenant.businessId)]);
     return [...servicesBought(live).filter((service) => service === "website"), ...setup];
   }).catch((error: unknown) => {
     console.error("[first-look] could not read the services", errorLogInfo(error));
-    return [] as readonly ServiceKey[];
+    return null;
   });
 }
 

@@ -34,12 +34,12 @@ describe("loadSetupServices", () => {
     expect(await loadSetupServices(tenant)).toEqual(["social"]);
   });
 
-  it("shows no services and logs once when a read fails, so a page still draws", async () => {
+  it("returns null, so a caller can tell a failed read from no services, and logs once", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.mocked(findLiveBundledAddOns).mockResolvedValue([]);
     vi.mocked(listBoughtSetupServices).mockRejectedValue(new Error("db down"));
 
-    expect(await loadSetupServices(tenant)).toEqual([]);
+    expect(await loadSetupServices(tenant)).toBeNull();
     expect(log).toHaveBeenCalledTimes(1);
     expect(log.mock.calls[0]?.[0]).toBe("[first-look] could not read the services");
     log.mockRestore();

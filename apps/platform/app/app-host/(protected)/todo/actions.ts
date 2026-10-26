@@ -25,6 +25,7 @@ export async function saveSetupItemAction(_previous: SetupFormState, formData: F
 
   const service = SETUP_SERVICE[key];
   const bought = await loadSetupServices(tenant);
+  if (bought === null) return { status: "error", key, field: "", message: "We could not save that. Please try again.", values };
   if (!bought.includes(service)) return { status: "error", key, field: "", message: "That item is not part of your plan.", values };
 
   try {

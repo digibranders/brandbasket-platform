@@ -8,7 +8,10 @@ import { doneSetupKeys } from "@/lib/service-setup";
 import { buildTodo, openCount, type TodoItem } from "@/lib/todo";
 import { getAppDb } from "./db";
 import { loadSetupServices } from "./first-look";
-import { getProjectOverview } from "./onboarding";
+import { getProjectOverview, type ProjectOverview } from "./onboarding";
+import { quietly } from "./quietly";
+
+const NO_PROJECT: ProjectOverview = { project: null, completed: [] };
 
 export interface TodoData {
   readonly services: readonly ServiceKey[];
@@ -24,14 +27,15 @@ export interface TodoData {
  * and Search item as open rather than breaking the page.
  */
 export const loadTodo = cache(async (tenant: TenantContext): Promise<TodoData> => {
-  const [services, overview, setups] = await Promise.all([
+  const [loaded, overview, setups] = await Promise.all([
     loadSetupServices(tenant),
-    getProjectOverview(),
+    quietly("todo", "the project", NO_PROJECT, getProjectOverview),
     withTenantScope(getAppDb(), tenant, (tx) => listServiceSetups(tx, tenant.businessId)).catch((error: unknown) => {
       console.error("[todo] could not read the saved answers", errorLogInfo(error));
       return [];
     }),
   ]);
+  const services = loaded ?? [];
   const answers = { social: setups.find((row) => row.service === "social")?.answers, search: setups.find((row) => row.service === "search")?.answers };
   const items = buildTodo(services, overview.completed, doneSetupKeys(answers));
   return { services, items, open: openCount(items), answers };

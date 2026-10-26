@@ -5,12 +5,12 @@ import { nextPaymentDate } from "@brandbasket/shared/lib/billing/period";
 import { nextBundledNetCents, nextDiscountCents } from "@brandbasket/shared/lib/billing/bundle";
 import { renewalCharge } from "@brandbasket/shared/lib/billing/terms";
 import type { CustomerBilling } from "@brandbasket/shared/lib/billing/status";
-import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { paymentsContinue } from "@/lib/billing/payments-continue";
 import { activityRows, monthKey, monthStart, resultLines, type ActivityRow, type ResultLine, type SnapshotView } from "@/lib/overview";
 import type { ServiceKey } from "@/lib/first-look";
 import { getAppDb } from "./db";
-import { getLiveWebsite, getProjectOverview } from "./onboarding";
+import { getLiveWebsite, getProjectOverview, type ProjectOverview } from "./onboarding";
+import { quietly } from "./quietly";
 import { loadTodo, type TodoData } from "./todo";
 
 export interface OverviewData {
@@ -32,27 +32,19 @@ const toView = (row: SnapshotView): SnapshotView => ({
   keywordsPageOnePrev: row.keywordsPageOnePrev,
 });
 
-/** Never throws for a data problem: each part that cannot be read is simply left out, and logged. */
-async function quietly<T>(label: string, fallback: T, work: () => Promise<T>): Promise<T> {
-  try {
-    return await work();
-  } catch (error) {
-    console.error(`[overview] could not read ${label}`, errorLogInfo(error));
-    return fallback;
-  }
-}
+const NO_PROJECT: ProjectOverview = { project: null, completed: [] };
 
 export async function loadOverview(tenant: TenantContext, billing: CustomerBilling, now: Date): Promise<OverviewData> {
   const todo = await loadTodo(tenant);
   const db = getAppDb();
   const [leads, snapshots, events, overview, live] = await Promise.all([
     todo.services.includes("website")
-      ? quietly("chatbot leads", 0, () => withTenantScope(db, tenant, (tx) => countChatbotLeadsSince(tx, tenant.businessId, monthStart(now))))
+      ? quietly("overview", "chatbot leads", 0, () => withTenantScope(db, tenant, (tx) => countChatbotLeadsSince(tx, tenant.businessId, monthStart(now))))
       : Promise.resolve(0),
-    quietly("monthly numbers", [], () => withTenantScope(db, tenant, (tx) => listMonthlySnapshots(tx, tenant.businessId, monthKey(now)))),
-    quietly("updates", [], () => withTenantScope(db, tenant, (tx) => listActivityEvents(tx, tenant.businessId, 8))),
-    getProjectOverview(),
-    getLiveWebsite(),
+    quietly("overview", "monthly numbers", [], () => withTenantScope(db, tenant, (tx) => listMonthlySnapshots(tx, tenant.businessId, monthKey(now)))),
+    quietly("overview", "updates", [], () => withTenantScope(db, tenant, (tx) => listActivityEvents(tx, tenant.businessId, 8))),
+    quietly("overview", "the project", NO_PROJECT, getProjectOverview),
+    quietly("overview", "the live website", null, getLiveWebsite),
   ]);
   const social = snapshots.find((row) => row.service === "social");
   const search = snapshots.find((row) => row.service === "search");
