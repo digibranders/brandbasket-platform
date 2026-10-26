@@ -59,7 +59,16 @@ export function PhoneBars({ sections, logo, menu, signOut }: PhoneBarsProps): Re
         </button>
       </nav>
 
-      <dialog ref={sheet} onClose={() => setMenuOpen(false)} aria-label="Menu" className="m-0 ml-auto h-dvh max-h-none w-[min(20rem,100%)] bg-bg p-0 text-ink backdrop:bg-ink/30">
+      <dialog
+        ref={sheet}
+        onClose={() => setMenuOpen(false)}
+        onClick={(event) => {
+          // The dialog has no padding, so a click that lands on the dialog itself is a click on the dimmed backdrop.
+          if (event.target === event.currentTarget) setMenuOpen(false);
+        }}
+        aria-label="Menu"
+        className="m-0 ml-auto h-dvh max-h-none w-[min(20rem,100%)] bg-bg p-0 text-ink backdrop:bg-ink/30"
+      >
         <div
           className="flex h-full flex-col gap-1 px-4 py-4"
           onClick={(event) => {

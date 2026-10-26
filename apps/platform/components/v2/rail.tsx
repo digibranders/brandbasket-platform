@@ -33,6 +33,10 @@ export function Rail({ sections, logo, menu, signOut }: RailProps): ReactElement
   const pathname = usePathname();
   const [searching, setSearching] = useState(false);
   const openSearch = useCallback(() => setSearching(true), []);
+  // The rail is display:none below lg; a dialog opened inside it would leave the page inert with nothing to see.
+  const openFromShortcut = useCallback(() => {
+    if (window.matchMedia("(min-width: 1024px)").matches) setSearching(true);
+  }, []);
   return (
     <aside data-surface="dark" className="sticky top-0 z-20 hidden h-dvh w-[14.5rem] shrink-0 flex-col px-3 py-4 text-white lg:flex">
       <div className="px-2.5 pb-3">
@@ -91,7 +95,7 @@ export function Rail({ sections, logo, menu, signOut }: RailProps): ReactElement
       <div className="mt-auto pt-3">
         <AccountBar signOut={signOut} {...menu} dark />
       </div>
-      <CommandSearch sections={sections} open={searching} onClose={() => setSearching(false)} onShortcut={openSearch} />
+      <CommandSearch sections={sections} open={searching} onClose={() => setSearching(false)} onShortcut={openFromShortcut} />
     </aside>
   );
 }
