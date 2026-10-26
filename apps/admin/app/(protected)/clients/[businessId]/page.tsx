@@ -87,6 +87,7 @@ import { KickoffCallSection } from "@/components/console/kickoff-call-section";
 import { Notice } from "@/components/console/notice";
 import { PLAN_TIER_LABELS } from "@brandbasket/shared/lib/billing/plan-tier";
 import { PageHeader } from "@/components/console/page-header";
+import { UpdatesSection } from "@/components/console/updates-section";
 import { FactList, Quiet, Section, type Fact } from "@/components/console/section";
 import { StageTrack } from "@/components/console/stage-track";
 import { attentionSection } from "@/lib/client-attention";
@@ -635,6 +636,7 @@ export default async function ClientPage({
         : reactivationNetCents(lapsedBasket, plan.currency) - (carriedCode?.discountCents ?? 0);
   const chargesNotice = readStaffChargeNotice(sp.charges);
   const websiteNotice = sp.website === "saved" || sp.website === "invalid" ? sp.website : null;
+  const updatesNotice = sp.updates === "added" || sp.updates === "removed" || sp.updates === "invalid" ? sp.updates : null;
   const featuresNotice = readBusinessModuleNotice(sp.features);
   const listingNotice = readListingNotice(sp.listing, sp.listingField);
   const invoiceNotice = readInvoiceNotice(sp.invoice);
@@ -829,6 +831,8 @@ export default async function ClientPage({
         </Section>
 
         <KickoffCallSection businessId={businessId} />
+
+        <UpdatesSection businessId={businessId} notice={updatesNotice} />
 
         <Section title="Setup progress" aside={`${ANSWER_STEPS.filter((step) => done.has(step)).length} of ${ANSWER_STEPS.length} done`}>
           <ul className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
