@@ -5,10 +5,10 @@ import { CountPill } from "@/components/v2/count-pill";
 
 const render = (count: number | undefined, current: boolean): string => renderToStaticMarkup(createElement(CountPill, { count, current }));
 
-it("shows the number with an accessible name", () => {
+it("shows the number and says what it counts to a screen reader", () => {
   const html = render(3, false);
-  expect(html).toContain(">3<");
-  expect(html).toContain('aria-label="3 open"');
+  expect(html).toContain('<span aria-hidden="true">3</span><span class="sr-only">, 3 open</span>');
+  expect(html).not.toContain("aria-label");
 });
 
 it("is hidden on the current page and when there is no count", () => {

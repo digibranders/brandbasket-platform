@@ -66,6 +66,8 @@ export function SetupItemForm({ setup, saved }: SetupItemFormProps): ReactElemen
                 id={id}
                 name={field.name}
                 type="text"
+                inputMode={field.inputMode}
+                autoComplete="off"
                 defaultValue={startValue(field.name)}
                 placeholder={field.placeholder}
                 aria-invalid={problem !== null}
@@ -91,11 +93,10 @@ export function SetupItemForm({ setup, saved }: SetupItemFormProps): ReactElemen
         <button type="submit" disabled={pending} className={SOFT_BUTTON}>
           {pending ? "Saving..." : "Save"}
         </button>
-        {mine?.status === "saved" ? (
-          <p role="status" className="text-xs font-semibold text-sage-deep">
-            Saved.
-          </p>
-        ) : null}
+        {/* Always in the page, so a screen reader announces the text when it appears. */}
+        <p role="status" className="text-xs font-semibold text-sage-deep">
+          {mine?.status === "saved" ? "Saved." : ""}
+        </p>
       </div>
     </form>
   );

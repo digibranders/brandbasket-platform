@@ -84,6 +84,21 @@ it("never asks for a password", () => {
 });
 
 it("keeps a row's open state its own: only the initial value comes from the page", () => {
-  expect(renderToStaticMarkup(createElement(TodoRow, { initiallyOpen: true, className: "group", children: "x" }))).toMatch(/^<details[^>]* open/);
-  expect(renderToStaticMarkup(createElement(TodoRow, { initiallyOpen: false, className: "group", children: "x" }))).not.toContain(" open");
+  expect(renderToStaticMarkup(createElement(TodoRow, { initiallyOpen: true, className: "group" }, "x"))).toMatch(/^<details[^>]* open/);
+  expect(renderToStaticMarkup(createElement(TodoRow, { initiallyOpen: false, className: "group" }, "x"))).not.toContain(" open");
+});
+
+it("always renders the status region, empty until saved, so the saved message is announced", () => {
+  const idle = renderToStaticMarkup(createElement(SetupItemForm, { setup: "offers", saved: undefined }));
+  expect(idle).toMatch(/<p role="status"[^>]*><\/p>/);
+  expect(idle).not.toContain("Saved.");
+  formState = { status: "saved", key: "offers" };
+  expect(renderToStaticMarkup(createElement(SetupItemForm, { setup: "offers", saved: undefined }))).toMatch(/role="status"[^>]*>Saved\.</);
+});
+
+it("gives the budget a numeric keypad and keeps browsers from autofilling the text inputs", () => {
+  const budget = renderToStaticMarkup(createElement(SetupItemForm, { setup: "budget", saved: undefined }));
+  expect(budget).toMatch(/name="adBudgetRupees"[^>]*inputMode="numeric"|inputMode="numeric"[^>]*name="adBudgetRupees"/);
+  expect(budget.match(/autoComplete="off"/g)).toHaveLength(2);
+  expect(budget.match(/inputMode=/g)).toHaveLength(1);
 });

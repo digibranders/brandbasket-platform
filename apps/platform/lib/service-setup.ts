@@ -22,6 +22,8 @@ export interface SetupField {
   readonly kind: "text" | "textarea" | "select";
   readonly hint?: string;
   readonly placeholder?: string;
+  /** Which keyboard a phone shows for a text field. */
+  readonly inputMode?: "numeric";
   readonly options?: readonly { readonly value: string; readonly label: string }[];
 }
 
@@ -43,7 +45,7 @@ export const SETUP_FIELDS: Readonly<Record<SetupKey, readonly SetupField[]>> = {
   ],
   offers: [{ name: "offers", label: "What do you want to promote this month?", kind: "textarea", placeholder: "A free check-up in December" }],
   budget: [
-    { name: "adBudgetRupees", label: "Monthly ad budget in rupees", kind: "text", placeholder: "10000" },
+    { name: "adBudgetRupees", label: "Monthly ad budget in rupees", kind: "text", placeholder: "10000", inputMode: "numeric" },
     { name: "adArea", label: "How far from you should ads reach?", kind: "text", placeholder: "4 km around the clinic" },
   ],
   areas: [
