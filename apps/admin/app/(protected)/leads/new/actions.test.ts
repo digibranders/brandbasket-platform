@@ -67,4 +67,9 @@ describe("createLeadAction", () => {
     expect(outcome).toMatchObject({ status: "error", field: "phone" });
     expect(createLead).not.toHaveBeenCalled();
   });
+
+  it("records a lead staff typed in as added after a call", async () => {
+    await expect(createLeadAction(IDLE, form(POSTED))).rejects.toThrow("redirect:/leads/");
+    expect(createLead).toHaveBeenCalledWith(DB, expect.objectContaining({ source: "staff" }));
+  });
 });

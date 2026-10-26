@@ -21,7 +21,7 @@ export async function createLeadAction(_previous: LeadFormState, formData: FormD
 
   let leadId: string;
   try {
-    const created = await createLead(getStaffDb(), { ...parsed.data, currency: billingCurrencyForPhone(parsed.data.phone) });
+    const created = await createLead(getStaffDb(), { ...parsed.data, source: "staff", currency: billingCurrencyForPhone(parsed.data.phone) });
     leadId = created.id;
   } catch (error) {
     console.error("A staff member could not create a lead.", error);

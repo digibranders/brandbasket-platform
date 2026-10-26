@@ -1,5 +1,6 @@
 "use server";
 
+import { assignLead, listAssignableSupportStaff, setLeadStatusUnlessSystemSet } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { getStaffDb } from "@/lib/server/db";
 import { sendSetupLink } from "@/lib/server/invites";
@@ -41,3 +42,33 @@ export async function attachAccountAction(formData: FormData): Promise<void> {
   await attachAccountAndSyncTenant(getStaffDb(), { leadId, attachedByStaffId: user.id });
   revalidatePath(`/leads/${leadId}`);
 }
+
+/**
+ * Mark talking (`call_done`) and Mark lost (`lost`) in the open enquiry. A lead the system has already moved on (account
+ * created, paid) keeps its status: the database refuses the change.
+ */
+export async function setEnquiryStatusAction(formData: FormData): Promise<void> {
+  await requireStaffAccess();
+  const leadId = readLeadId(formData.get("leadId"));
+  const status = formData.get("status");
+  if (status !== "call_done" && status !== "lost") throw new Error(`Not an enquiry status: ${String(status)}`);
+  await setLeadStatusUnlessSystemSet(getStaffDb(), leadId, status);
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/leads");
+}
+
+/** Gives the open enquiry to an active staff member, or to nobody. */
+export async function assignLeadAction(formData: FormData): Promise<void> {
+  await requireStaffAccess();
+  const leadId = readLeadId(formData.get("leadId"));
+  const raw = formData.get("assignee");
+  const assignee = typeof raw === "string" && raw !== "" ? raw : null;
+  const db = getStaffDb();
+  if (assignee !== null && !(await listAssignableSupportStaff(db)).some((member) => member.userId === assignee)) {
+    throw new Error("Only an active staff member can own an enquiry.");
+  }
+  await assignLead(db, leadId, assignee);
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/leads");
+}
+
