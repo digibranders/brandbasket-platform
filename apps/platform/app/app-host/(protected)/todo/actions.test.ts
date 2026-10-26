@@ -28,7 +28,7 @@ function form(fields: Record<string, string>): FormData {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
-  vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-1" }, tenant, billing: {} } as never);
+  vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-1" }, tenant, billing: { hasAccess: true } } as never);
   vi.mocked(loadSetupServices).mockResolvedValue(["website", "social", "search"]);
   vi.mocked(withTenantScope).mockImplementation((_db, _tenant, run) => run(tx as never));
   vi.mocked(saveServiceSetup).mockResolvedValue(undefined as never);
@@ -43,6 +43,20 @@ describe("saveSetupItemAction", () => {
   it("returns the typed values and saves nothing when an answer is not valid", async () => {
     const state = await saveSetupItemAction(initialSetupFormState, form({ key: "offers", offers: "   " }));
     expect(state).toMatchObject({ status: "error", key: "offers", field: "offers", values: { offers: "   " } });
+    expect(saveServiceSetup).not.toHaveBeenCalled();
+  });
+
+  it("refuses an account that has not paid, or has lapsed, and saves nothing", async () => {
+    vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-1" }, tenant, billing: { hasAccess: false } } as never);
+    const state = await saveSetupItemAction(initialSetupFormState, form({ key: "offers", offers: "A free check-up" }));
+    expect(state).toEqual({
+      status: "error",
+      key: "offers",
+      field: "",
+      message: "We could not save that. Please try again.",
+      values: { offers: "A free check-up" },
+    });
+    expect(loadSetupServices).not.toHaveBeenCalled();
     expect(saveServiceSetup).not.toHaveBeenCalled();
   });
 

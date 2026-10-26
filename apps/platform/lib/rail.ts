@@ -26,6 +26,8 @@ export interface RailSection {
 export interface RailInput {
   /** Until the kickoff call has happened (lib/first-look.ts inFirstLook): only what a new customer can use. */
   readonly quiet: boolean;
+  /** Whether the plan is paid and running (billing.hasAccess). To do is for paid accounts only. */
+  readonly hasAccess: boolean;
   /** False for a paid plan without the Managed Website service. */
   readonly hasWebsite: boolean;
   /** Whether the website's setup has been sent (or the site is live). */
@@ -82,7 +84,7 @@ export function railSections(input: RailInput): readonly RailSection[] {
   }
   const todo: RailLink = { href: TODO_HREF, label: "To do", icon: "todo", ...(input.todoCount > 0 ? { count: input.todoCount } : {}) };
   return [
-    { label: null, links: [OVERVIEW, todo, REQUESTS] },
+    { label: null, links: input.hasAccess ? [OVERVIEW, todo, REQUESTS] : [OVERVIEW, REQUESTS] },
     ...(input.hasWebsite ? [{ label: "Services", links: [websiteLink(input.websiteSetupDone)] }] : []),
     ...(input.listingClaim ? [{ label: "Directory", links: [REVIEWS, DEALS] }] : []),
     { label: "Account", links: [PROFILE, SERVICES, BILLING, SETTINGS] },

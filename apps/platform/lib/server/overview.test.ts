@@ -91,8 +91,9 @@ describe("loadOverview", () => {
   describe("the next payment", () => {
     const paidThrough = new Date("2026-11-20T00:00:00Z");
     const plan = { recurringAmountCents: 299_900, currency: "INR" };
-    const billingFor = (overrides: Record<string, unknown>, planOverride: unknown = plan) =>
+    const billingFor = (overrides: Record<string, unknown>, planOverride: unknown = plan, hasAccess = true) =>
       ({
+        hasAccess,
         subscription: {
           status: "active",
           provider: "razorpay",
@@ -114,6 +115,14 @@ describe("loadOverview", () => {
       const data = await loadOverview(tenant, billingFor({}), now);
 
       expect(data.nextPayment).toEqual({ date: paidThrough, amount: expect.stringContaining("2,999") });
+    });
+
+    it("shows no next payment once access has lapsed, even with a past paid-through date", async () => {
+      vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+
+      const data = await loadOverview(tenant, billingFor({ paidThroughAt: new Date("2026-10-01T00:00:00Z") }, plan, false), now);
+
+      expect(data.nextPayment).toBeNull();
     });
 
     it("keeps the date with no amount when nothing is left to charge", async () => {

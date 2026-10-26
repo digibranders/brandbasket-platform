@@ -49,7 +49,7 @@ export async function loadOverview(tenant: TenantContext, billing: CustomerBilli
   const social = snapshots.find((row) => row.service === "social");
   const search = snapshots.find((row) => row.service === "search");
   const subscription = billing.subscription;
-  const date = subscription === null || !paymentsContinue(subscription) ? null : nextPaymentDate(subscription, now);
+  const date = !billing.hasAccess || subscription === null || !paymentsContinue(subscription) ? null : nextPaymentDate(subscription, now);
   const amount =
     subscription === null || billing.plan === null ? null : renewalCharge(billing.plan, nextDiscountCents(subscription), nextBundledNetCents(subscription));
   return {

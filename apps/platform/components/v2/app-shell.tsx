@@ -48,7 +48,7 @@ export async function AppShell({ userName, userEmail, businessId, children }: Ap
     readListingNav(),
     getSetupCallState(tenant),
     // The count is a convenience: a failed read shows no number rather than taking the shell down.
-    quietly("app-shell", "the To do count", 0, async () => (await loadTodo(tenant)).open),
+    billing.hasAccess ? quietly("app-shell", "the To do count", 0, async () => (await loadTodo(tenant)).open) : Promise.resolve(0),
   ]);
   const setupSent = overview.project?.onboardingSubmittedAt != null;
   const websiteSent = liveWebsite !== null || setupSent;
@@ -62,6 +62,7 @@ export async function AppShell({ userName, userEmail, businessId, children }: Ap
   });
   const sections = railSections({
     quiet,
+    hasAccess: billing.hasAccess,
     // An unpaid client still sets up and pays on Check and send: only a paid plan without a website loses the section.
     hasWebsite: !billing.hasAccess || billing.hasWebsite,
     websiteSetupDone: websiteSent,

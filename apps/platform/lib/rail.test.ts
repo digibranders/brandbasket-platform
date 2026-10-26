@@ -4,7 +4,7 @@ import { DEALS_PATH } from "@/lib/deals";
 import { REVIEWS_PATH } from "@/lib/owner-replies";
 import { isCurrent, linkIsCurrent, railSections, searchRail } from "@/lib/rail";
 
-const FULL = { quiet: false, hasWebsite: true, websiteSetupDone: false, listingClaim: false, todoCount: 3 } as const;
+const FULL = { quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, listingClaim: false, todoCount: 3 } as const;
 
 const shape = (input: Parameters<typeof railSections>[0]) =>
   railSections(input).map((section) => [section.label, section.links.map((link) => link.label)]);
@@ -23,6 +23,12 @@ describe("railSections", () => {
       ["Services", ["Website"]],
       ["Account", ["Business profile", "Your plan", "Billing", "Settings"]],
     ]);
+  });
+
+  it("gives an account that has not paid, or has lapsed, no To do link", () => {
+    const unpaid = { ...FULL, hasAccess: false };
+    expect(shape(unpaid)[0]).toEqual([null, ["Overview", "Requests"]]);
+    expect(railSections(unpaid).flatMap((section) => section.links).some((link) => link.count !== undefined)).toBe(false);
   });
 
   it("opens the website on its setup until it is sent, then on the project", () => {
@@ -65,7 +71,7 @@ describe("searchRail", () => {
 
 describe("the To do link", () => {
   const find = (todoCount: number, quiet: boolean) =>
-    railSections({ quiet, hasWebsite: true, websiteSetupDone: false, listingClaim: false, todoCount })[0]?.links.find((link) => link.label === "To do");
+    railSections({ quiet, hasAccess: true, hasWebsite: true, websiteSetupDone: false, listingClaim: false, todoCount })[0]?.links.find((link) => link.label === "To do");
 
   it("shows after the call with the number of open items", () => {
     expect(find(3, false)).toMatchObject({ href: "/todo", icon: "todo", count: 3 });
@@ -80,7 +86,7 @@ describe("the To do link", () => {
   });
 
   it("can be found by search", () => {
-    const sections = railSections({ quiet: false, hasWebsite: true, websiteSetupDone: false, listingClaim: false, todoCount: 2 });
+    const sections = railSections({ quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, listingClaim: false, todoCount: 2 });
     expect(searchRail(sections, "to do").map((target) => target.label)).toContain("To do");
   });
 });
@@ -96,7 +102,7 @@ describe("browser safety", () => {
   });
 
   it("uses the same paths as the pages", () => {
-    const directory = railSections({ quiet: false, hasWebsite: true, websiteSetupDone: false, listingClaim: true, todoCount: 0 }).find((section) => section.label === "Directory");
+    const directory = railSections({ quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, listingClaim: true, todoCount: 0 }).find((section) => section.label === "Directory");
     expect(directory?.links.map((link) => link.href)).toEqual([REVIEWS_PATH, DEALS_PATH]);
   });
 });

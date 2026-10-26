@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import { isPhoneAccountEmail } from "@brandbasket/db";
 import { BillingBanner } from "@/components/panel/billing-banner";
 import { NextStepCard } from "@/components/panel/next-step-card";
+import { UnpaidHome } from "@/components/panel/unpaid-home";
 import { WelcomeOverview } from "@/components/first-look/welcome-overview";
 import { MonthOverview } from "@/components/overview/month-overview";
 import { inFirstLook } from "@/lib/first-look";
@@ -33,6 +34,12 @@ export default async function AppHomePage(): Promise<ReactElement> {
   // thing that still knows the status. Without this the build list falls back to the state it shows a customer who has
   // not started, on the very screen that tells them their website is up.
   const status = liveWebsite === null ? (project?.status ?? null) : "live";
+
+  const buildStageIndex = status === null ? 0 : projectStageIndex({ status, onboardingSubmittedAt: project?.onboardingSubmittedAt ?? null });
+  // Overview and To do are for paid accounts: one that has not paid, or has lapsed, sees its payment banner and where the website stands.
+  if (!billing.hasAccess) {
+    return <UnpaidHome firstName={firstName(user.name)} banner={banner} step={step} buildStageIndex={buildStageIndex} completedSteps={completed} />;
+  }
 
   const callState = await getSetupCallState(tenant);
 
@@ -85,12 +92,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
         now={now}
         bookingUrl={callState.url}
         buildCard={
-          showsBuildCard ? (
-            <NextStepCard
-              step={step}
-              buildStageIndex={status === null ? 0 : projectStageIndex({ status, onboardingSubmittedAt: project?.onboardingSubmittedAt ?? null })}
-            />
-          ) : null
+          showsBuildCard ? <NextStepCard step={step} buildStageIndex={buildStageIndex} /> : null
         }
       />
     </>

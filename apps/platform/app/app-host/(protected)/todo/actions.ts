@@ -13,12 +13,15 @@ import { isSetupKey, parseSetupItem, SETUP_FIELDS, SETUP_SERVICE, type SetupForm
  * only the item's own fields are read from the form. Answers are never logged.
  */
 export async function saveSetupItemAction(_previous: SetupFormState, formData: FormData): Promise<SetupFormState> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant, billing } = await requireCustomerAccess();
   const key = String(formData.get("key") ?? "");
   if (!isSetupKey(key)) throw new Error("Unknown To do item.");
 
   const values: Record<string, string> = {};
   for (const field of SETUP_FIELDS[key]) values[field.name] = String(formData.get(field.name) ?? "");
+
+  // To do is for paid accounts: a page opened before access lapsed must not save.
+  if (!billing.hasAccess) return { status: "error", key, field: "", message: "We could not save that. Please try again.", values };
 
   const parsed = parseSetupItem(key, values);
   if (!parsed.success) return { status: "error", key, field: parsed.field, message: parsed.message, values };
