@@ -29,12 +29,12 @@ const PACKAGE_ROUNDING_CENTS = 100;
 
 /**
  * Ad credit a month at the first checkout (owner, 2026-10-26): 1,500 rupees for Website + Social and for Social + SEO, 3,000 for
- * all three, none for Website + SEO. The dollar amounts are the earlier ones, kept until the owner gives new values.
+ * all three, none for Website + SEO. In dollars it is $30 for the two-plan packages and $60 for all three (owner, 2026-10-26).
  */
 export const PACKAGE_OFFERS: readonly PackageOffer[] = [
-  { services: ["managed-website", "digital-growth"], basisPoints: 1000, adCreditCents: { INR: 150000, USD: 2500 } },
+  { services: ["managed-website", "digital-growth"], basisPoints: 1000, adCreditCents: { INR: 150000, USD: 3000 } },
   { services: ["managed-website", "local-seo-aeo"], basisPoints: 1000, adCreditCents: { INR: 0, USD: 0 } },
-  { services: ["digital-growth", "local-seo-aeo"], basisPoints: 1000, adCreditCents: { INR: 150000, USD: 2500 } },
+  { services: ["digital-growth", "local-seo-aeo"], basisPoints: 1000, adCreditCents: { INR: 150000, USD: 3000 } },
   { services: ["managed-website", "digital-growth", "local-seo-aeo"], basisPoints: 2000, adCreditCents: { INR: 300000, USD: 6000 } },
 ];
 

@@ -370,8 +370,6 @@ export interface AffiliateAccrualContext {
   readonly planCurrency: BillingCurrency;
   readonly initialAmountCents: number;
   readonly recurringAmountCents: number;
-  /** The GST inside every price, in basis points, so the earning can be worked out on what the member paid before it. */
-  readonly taxRateBasisPoints: number;
   /** The subscription's service lines a month, after any package offer, GST included: what the member pays for, the plan costing 0. */
   readonly bundledAddOnNetCents: number;
   /** Frozen on the subscription when its checkout opened. */
@@ -408,7 +406,6 @@ export async function findAffiliateAccrualContext(
       planCurrency: plans.currency,
       initialAmountCents: plans.initialAmountCents,
       recurringAmountCents: plans.recurringAmountCents,
-      taxRateBasisPoints: plans.taxRateBasisPoints,
       bundledAddOnNetCents: subscriptions.bundledAddOnNetCents,
       discountAmountCents: subscriptions.discountAmountCents,
     })

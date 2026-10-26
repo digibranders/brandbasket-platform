@@ -18,7 +18,7 @@ export type ReferralValueKind = (typeof referralValueKind.enumValues)[number];
  * to open their own sign-in, which shows them only their codes and what those earned (`user_id`). Each of their codes is a `referral_codes` row pointing here, and every payment a member makes on one of those codes
  * earns them `affiliate_earnings` worked out from the reward below at that moment.
  *
- * The reward is a flat amount (in `reward_currency`) or a percentage of what the member pays before GST and after
+ * The reward is a flat amount (in `reward_currency`) or a percentage of what the member pays, GST included, and after
  * their discount. It is freely editable: nothing outside this database knows it, and an edit only changes what is
  * earned from then on. Bank details are deliberately not stored; staff keep them outside the system.
  *
@@ -37,7 +37,7 @@ export const affiliates = pgTable(
     /** Per paid month, in `reward_currency`'s minor units, when `reward_kind` is 'amount'. 0 means nobody is paid. */
     rewardAmountCents: integer("reward_amount_cents"),
     rewardCurrency: billingCurrency("reward_currency"),
-    /** A share of each payment before GST and after the member's discount, when `reward_kind` is 'percent'. */
+    /** A share of each payment, GST included, after the member's discount, when `reward_kind` is 'percent'. */
     rewardPercentBasisPoints: integer("reward_percent_basis_points"),
     /**
      * How many of each member's paid months earn the reward: 12 means a member's first 12 paid months do, and from the

@@ -411,7 +411,7 @@ describe("a renewal after a service was dropped from a package", () => {
 });
 
 describe("the affiliate's earning on a renewal after a change to the services", () => {
-  /** An affiliate on 5% of what the member pays before the GST inside it, and a code of theirs that takes ₹300 off. */
+  /** An affiliate on 5% of what the member pays, GST included, and a code of theirs that takes ₹300 off. */
   async function seedAffiliateCode(): Promise<{ readonly affiliateId: string; readonly codeId: string }> {
     await dbs().owner.db.insert(users).values({ id: "staff-code", name: "Staff", email: "staff-code@example.test", emailVerified: true });
     const affiliate = await createAffiliate(dbs().staff.db, {
@@ -443,11 +443,11 @@ describe("the affiliate's earning on a renewal after a change to the services", 
 
     await renew(3_119_900);
 
-    // 5% of Social + SEO at the package price, ₹31,499, less the ₹300 the code still takes, less the ₹4,759.16 of GST inside
-    // that: not of the Social line the subscription held until this payment. The first payment was ₹9,699 holding ₹1,479.50.
+    // 5% of Social + SEO at the package price, ₹31,499, less the ₹300 the code still takes, so ₹31,199: not of the Social
+    // line the subscription held until this payment. The first payment was ₹9,699.
     expect(await listAffiliateEarnings(dbs().staff.db, affiliateId, 10)).toMatchObject([
-      { paymentKind: "renewal", basisCents: 2_643_984, amountCents: 132_199 },
-      { paymentKind: "initial", basisCents: 821_950 },
+      { paymentKind: "renewal", basisCents: 3_119_900, amountCents: 155_995 },
+      { paymentKind: "initial", basisCents: 969_900 },
     ]);
   });
 
@@ -458,11 +458,11 @@ describe("the affiliate's earning on a renewal after a change to the services", 
 
     await renew(1_269_800);
 
-    // 5% of Website + Social at list, ₹12,998, less the ₹300 the code still takes, less the ₹1,936.98 of GST inside that:
-    // not of the three services the subscription held until this payment. The first payment was ₹30,098 holding ₹4,591.22.
+    // 5% of Website + Social at list, ₹12,998, less the ₹300 the code still takes, so ₹12,698: not of the three services
+    // the subscription held until this payment. The first payment was ₹30,098.
     expect(await listAffiliateEarnings(dbs().staff.db, affiliateId, 10)).toMatchObject([
-      { paymentKind: "renewal", basisCents: 1_076_102, amountCents: 53_805 },
-      { paymentKind: "initial", basisCents: 2_550_678 },
+      { paymentKind: "renewal", basisCents: 1_269_800, amountCents: 63_490 },
+      { paymentKind: "initial", basisCents: 3_009_800 },
     ]);
   });
 });

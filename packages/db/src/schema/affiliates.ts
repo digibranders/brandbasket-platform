@@ -68,7 +68,7 @@ export const affiliatePayouts = pgTable(
  * a provider delivering the same payment twice can never earn twice. A zero reward writes no row.
  *
  * The amount is frozen when it is written: changing the affiliate's reward later changes only what later payments
- * earn. `basis_cents` is what the member paid before GST and after their discount, the figure a percentage is of.
+ * earn. `basis_cents` is what the member paid, GST included, after their discount, the figure a percentage is of.
  */
 export const affiliateEarnings = pgTable(
   "affiliate_earnings",

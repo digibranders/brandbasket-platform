@@ -16,9 +16,9 @@ describe("publicPricing", () => {
 
   it("lists the four packages with their percentage and ad credit", () => {
     expect(pricing.packages).toEqual([
-      { services: ["managed-website", "digital-growth"], basisPoints: 1_000, adCreditCents: { INR: 150_000, USD: 2_500 } },
+      { services: ["managed-website", "digital-growth"], basisPoints: 1_000, adCreditCents: { INR: 150_000, USD: 3_000 } },
       { services: ["managed-website", "local-seo-aeo"], basisPoints: 1_000, adCreditCents: { INR: 0, USD: 0 } },
-      { services: ["digital-growth", "local-seo-aeo"], basisPoints: 1_000, adCreditCents: { INR: 150_000, USD: 2_500 } },
+      { services: ["digital-growth", "local-seo-aeo"], basisPoints: 1_000, adCreditCents: { INR: 150_000, USD: 3_000 } },
       { services: ["managed-website", "digital-growth", "local-seo-aeo"], basisPoints: 2_000, adCreditCents: { INR: 300_000, USD: 6_000 } },
     ]);
   });
