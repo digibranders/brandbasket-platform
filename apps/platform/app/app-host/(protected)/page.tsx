@@ -8,6 +8,9 @@ import { NextStepCard } from "@/components/panel/next-step-card";
 import { PaidBadge } from "@/components/panel/paid-badge";
 import { PrepareChecklist } from "@/components/panel/prepare-checklist";
 import { TeamCallCard } from "@/components/panel/team-call-card";
+import { WelcomeOverview } from "@/components/first-look/welcome-overview";
+import { inFirstLook } from "@/lib/first-look";
+import { loadFirstLook } from "@/lib/server/first-look";
 import { firstName } from "@brandbasket/shared/lib/names";
 import { nextStep, type NextStep } from "@brandbasket/shared/lib/next-step";
 import { projectStageIndex } from "@/lib/project-stages";
@@ -49,6 +52,23 @@ export default async function AppHomePage(): Promise<ReactElement> {
   // Until the setup is sent, the home screen is about two things: booking the kickoff call, and having the steps ready for it.
   const settingUp = step.kind === "start-onboarding" || step.kind === "continue-onboarding";
   const callState = await getSetupCallState(tenant);
+
+  // The first look (plan 28 section 3): until the kickoff call has happened, Overview is the Welcome overview.
+  const websiteSent = liveWebsite !== null || project?.onboardingSubmittedAt != null;
+  if (inFirstLook({ websiteSent, callEndsAtIso: callState.booking?.endsAtIso ?? null, nowMs: callState.readAtMs })) {
+    const { services, payment } = await loadFirstLook(tenant);
+    return (
+      <WelcomeOverview
+        firstName={firstName(user.name)}
+        services={services}
+        payment={payment}
+        call={callState.booking === null ? null : { startsAtIso: callState.booking.startsAtIso, endsAtIso: callState.booking.endsAtIso }}
+        bookingUrl={callState.url}
+        doneSteps={completed}
+        canBook={!isPhoneAccountEmail(user.email)}
+      />
+    );
+  }
   const setupCall = settingUp ? callState : null;
   // After setup, a call can be booked at any time; one that has taken place no longer counts, so another can be booked.
   const callStart = callState.booking?.startsAtIso ?? null;
