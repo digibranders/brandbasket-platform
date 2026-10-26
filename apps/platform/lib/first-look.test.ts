@@ -14,26 +14,27 @@ describe("servicesBought", () => {
 });
 
 describe("inFirstLook", () => {
-  const now = Date.parse("2026-10-26T10:00:00.000Z");
-  const base = { hasAccess: true, websiteLive: false, setupSent: false, callEndsAtIso: null, nowMs: now };
+  const NOW = Date.parse("2026-10-28T10:00:00.000Z");
+  const base = { hasAccess: true, websiteLive: false, setupSent: false, callHeld: false, callEndsAtIso: null, nowMs: NOW } as const;
 
-  it("holds until the kickoff call has ended", () => {
+  it("holds until the call has been marked held, with or without a booking", () => {
     expect(inFirstLook(base)).toBe(true);
-    expect(inFirstLook({ ...base, callEndsAtIso: "2026-10-27T09:00:00.000Z" })).toBe(true);
-    expect(inFirstLook({ ...base, callEndsAtIso: "2026-10-26T09:00:00.000Z" })).toBe(false);
+    expect(inFirstLook({ ...base, callEndsAtIso: "2026-10-29T09:00:00.000Z" })).toBe(true);
   });
 
-  it("ends once the website is live", () => {
-    expect(inFirstLook({ ...base, websiteLive: true })).toBe(false);
+  it("ends when staff mark the call held", () => {
+    expect(inFirstLook({ ...base, callEndsAtIso: "2026-10-27T09:00:00.000Z", callHeld: true })).toBe(false);
   });
 
-  it("ends once the setup has been sent", () => {
-    expect(inFirstLook({ ...base, setupSent: true })).toBe(false);
+  it("ends two days after the call's end time when nobody marked it, so a forgotten click never locks a customer in", () => {
+    expect(inFirstLook({ ...base, callEndsAtIso: "2026-10-27T09:00:00.000Z" })).toBe(true); // 25 hours after: still inside the grace
+    expect(inFirstLook({ ...base, callEndsAtIso: "2026-10-26T09:00:00.000Z" })).toBe(false); // 49 hours after
   });
 
-  it("never applies to an account that has not paid or has lapsed, even with no call booked", () => {
+  it("never applies to an account that has not paid, or once the website is sent or live", () => {
     expect(inFirstLook({ ...base, hasAccess: false })).toBe(false);
-    expect(inFirstLook({ ...base, hasAccess: false, callEndsAtIso: "2026-10-27T09:00:00.000Z" })).toBe(false);
+    expect(inFirstLook({ ...base, websiteLive: true })).toBe(false);
+    expect(inFirstLook({ ...base, setupSent: true })).toBe(false);
   });
 });
 
