@@ -40,4 +40,20 @@ describe("parseNumbersForm", () => {
     expect(parseNumbersForm({ ...SOCIAL, adEnquiries: "twenty" })).toMatchObject({ success: false, field: "adEnquiries" });
     expect(parseNumbersForm({ ...SOCIAL, postsPublished: "-1" })).toMatchObject({ success: false, field: "postsPublished" });
   });
+
+  it("caps rupees at 10,000,000 and counts at 1,000,000 so the database columns cannot overflow", () => {
+    expect(parseNumbersForm({ ...SOCIAL, adSpendRupees: "999999999" })).toEqual({ success: false, field: "adSpendRupees", message: "Enter 10,000,000 or less." });
+    expect(parseNumbersForm({ ...SOCIAL, adBudgetRupees: "10000001" })).toMatchObject({ success: false, field: "adBudgetRupees", message: "Enter 10,000,000 or less." });
+    expect(parseNumbersForm({ ...SOCIAL, adSpendRupees: "10,000,000" })).toMatchObject({ success: true, data: { figures: { adSpendCents: 1_000_000_000 } } });
+    expect(parseNumbersForm({ ...SOCIAL, adEnquiries: "1000001" })).toEqual({ success: false, field: "adEnquiries", message: "Enter 1,000,000 or less." });
+    expect(parseNumbersForm({ ...SOCIAL, service: "search", keywordsPageOnePrev: "1000001" })).toMatchObject({ success: false, field: "keywordsPageOnePrev" });
+  });
+
+  it("does not glue digits together across spaces or a rupee sign", () => {
+    expect(parseNumbersForm({ ...SOCIAL, adSpendRupees: "1 2" })).toEqual({ success: false, field: "adSpendRupees", message: "Use whole numbers only." });
+    expect(parseNumbersForm({ ...SOCIAL, adSpendRupees: "1₹2" })).toMatchObject({ success: false, field: "adSpendRupees" });
+    expect(parseNumbersForm({ ...SOCIAL, adSpendRupees: "1,,2" })).toMatchObject({ success: false, field: "adSpendRupees" });
+    expect(parseNumbersForm({ ...SOCIAL, adSpendRupees: ",12" })).toMatchObject({ success: false, field: "adSpendRupees" });
+    expect(parseNumbersForm({ ...SOCIAL, adSpendRupees: "₹ 6,240" })).toMatchObject({ success: true, data: { figures: { adSpendCents: 624000 } } });
+  });
 });

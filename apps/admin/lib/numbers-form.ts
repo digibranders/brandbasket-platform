@@ -14,11 +14,17 @@ const BLANK: SnapshotFigures = {
   keywordsPageOnePrev: null,
 };
 
-/** A whole number from what staff typed, null when blank, undefined when it is not one. */
+// The database columns are 32 bit: 10,000,000 rupees is 1,000,000,000 paise, under 2,147,483,647.
+const RUPEES_MAX = 10_000_000;
+const COUNT_MAX = 1_000_000;
+
+/** A whole number from what staff typed, null when blank, undefined when it is not one. Allows a leading rupee sign and commas between digits only. */
 function whole(raw: string | undefined): number | null | undefined {
-  const text = (raw ?? "").replace(/[₹,\s]/g, "");
+  const text = (raw ?? "").trim();
   if (text === "") return null;
-  return /^\d{1,9}$/.test(text) ? Number(text) : undefined;
+  const match = /^(?:₹\s*)?(\d+(?:,\d+)*)$/.exec(text);
+  const digits = match?.[1]?.replace(/,/g, "");
+  return digits !== undefined && digits.length <= 15 ? Number(digits) : undefined;
 }
 
 /** Checks the monthly numbers form. Only the fields of the chosen service count; the others are ignored. */
@@ -33,6 +39,8 @@ export function parseNumbersForm(input: Readonly<Record<string, string>>): Numbe
   for (const name of names) {
     const value = whole(input[name]);
     if (value === undefined) return { success: false, field: name, message: "Use whole numbers only." };
+    const max = name.endsWith("Rupees") ? RUPEES_MAX : COUNT_MAX;
+    if (value !== null && value > max) return { success: false, field: name, message: `Enter ${max.toLocaleString("en-US")} or less.` };
     read[name] = value;
   }
   if (names.every((name) => read[name] === null)) return { success: false, field: names[0], message: "Enter at least one number." };

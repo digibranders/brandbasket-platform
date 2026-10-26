@@ -25,6 +25,13 @@ describe("parseUpdateForm", () => {
     expect(parseUpdateForm({ service: "", title: "Something happened", date: "2026-02-30" }, TODAY)).toMatchObject({ success: false });
     expect(parseUpdateForm({ service: "", title: "Something happened", date: "2026-11-28" }, TODAY)).toEqual({ success: false, message: "That date is in the future." });
   });
+
+  it("refuses impossible dates and years before 2000 without throwing", () => {
+    for (const date of ["2026-13-01", "2026-00-10", "2026-11-32", "0001-01-01"]) {
+      expect(() => parseUpdateForm({ service: "", title: "Something happened", date }, TODAY)).not.toThrow();
+      expect(parseUpdateForm({ service: "", title: "Something happened", date }, TODAY)).toEqual({ success: false, message: "Enter the date as day, month and year." });
+    }
+  });
 });
 
 describe("occurredAtFor", () => {

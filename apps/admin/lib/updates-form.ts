@@ -20,7 +20,11 @@ export function parseUpdateForm(input: { readonly service: string; readonly titl
   if (title.length < TITLE_MIN || title.length > TITLE_MAX) return { success: false, message: `Write the update in ${TITLE_MIN} to ${TITLE_MAX} characters.` };
   if (input.service !== "" && !(ACTIVITY_SERVICES as readonly string[]).includes(input.service)) return { success: false, message: "Choose General, Website, Social & Ads or Search." };
   const date = input.date.trim() === "" ? todayIso : input.date.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) !== date) return { success: false, message: "Enter the date as day, month and year." };
+  const parsed = new Date(`${date}T00:00:00Z`);
+  // getTime() is NaN for 2026-13-01, where toISOString() would throw; the round trip catches 2026-02-30.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date || date < "2000-01-01") {
+    return { success: false, message: "Enter the date as day, month and year." };
+  }
   if (date > todayIso) return { success: false, message: "That date is in the future." };
   return { success: true, data: { service: input.service === "" ? null : (input.service as ActivityService), title, occurredOn: date } };
 }
