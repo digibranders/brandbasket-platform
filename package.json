@@ -5,6 +5,9 @@
   "engines": {
     "node": ">=24"
   },
+  "devDependencies": {
+    "vite": "^8.3.5"
+  },
   "scripts": {
     "dev": "pnpm --parallel --filter @brandbasket/platform --filter @brandbasket/admin dev",
     "dev:platform": "pnpm --filter @brandbasket/platform dev",
@@ -31,13 +34,5 @@
     "staff:create": "pnpm --filter @brandbasket/auth staff:create",
     "retention:run": "pnpm --filter @brandbasket/db exec tsx ../../apps/platform/scripts/retention-run.ts",
     "support:attachments:maintain": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server ../../apps/platform/scripts/maintain-support-attachments.ts"
-  },
-  "pnpm": {
-    "overrides": {
-      "undici": "^7.29.1",
-      "dompurify": "^3.4.17",
-      "source-map-js": "^1.2.2",
-      "esbuild@<0.25.0": "0.25.12"
-    }
   }
 }

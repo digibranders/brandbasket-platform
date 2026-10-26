@@ -28,7 +28,7 @@
     "@payloadcms/richtext-lexical": "^3.90.2",
     "lexical": "0.41.0",
     "libphonenumber-js": "1.13.13",
-    "next": "16.3.8",
+    "next": "16.4.3",
     "payload": "^3.90.2",
     "pg": "8.23.0",
     "razorpay": "^2.9.8",
@@ -36,7 +36,7 @@
     "react-dom": "19.2.8",
     "server-only": "0.0.1",
     "sharp": "0.35.5",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -44,7 +44,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.5",
+    "eslint-config-next": "16.4.3",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.0"
