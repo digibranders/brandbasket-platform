@@ -1,5 +1,5 @@
 import "server-only";
-import { countSupportTicketsAwaitingStaff, listLeads } from "@brandbasket/db";
+import { countLeadsToContact, countSupportTicketsAwaitingStaff } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import type { RailCountKey, RailCounts } from "@/lib/console-rail";
 import { getStaffDb } from "./db";
@@ -20,7 +20,7 @@ export async function readRailCounts(): Promise<RailCounts> {
   const db = getStaffDb();
   const [today, leads, requests] = await Promise.all([
     countOrNothing("today", () => countTodayItems()),
-    countOrNothing("leads", async () => (await listLeads(db, { status: "new" })).length),
+    countOrNothing("leads", () => countLeadsToContact(db)),
     countOrNothing("requests", () => countSupportTicketsAwaitingStaff(db)),
   ]);
   const read: readonly (readonly [RailCountKey, number | undefined])[] = [
