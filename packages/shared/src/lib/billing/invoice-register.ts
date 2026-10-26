@@ -125,7 +125,7 @@ function quoted(value: string): string {
  * carriage return as a formula, so such a cell gets a leading apostrophe (shown as text, not run). Only text goes through
  * here: the money columns are ours, and a negative round off must stay a number.
  */
-function textCell(value: string): string {
+export function textCell(value: string): string {
   return quoted(/^[=+\-@\t\r]/.test(value) ? `'${value}` : value);
 }
 
