@@ -1,11 +1,11 @@
-import { listLeads, type Lead, type LeadStatus } from "@brandbasket/db";
+import { listLeads, type LeadStatus } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { SearchIcon } from "@brandbasket/shared/ui/icons";
 import { LEAD_STATUS_LABELS, LEAD_STATUS_ORDER } from "@brandbasket/shared/lib/lead-status";
-import { displayPhone } from "@brandbasket/shared/server/phone-display";
+import { matchesLeadSearch } from "@/lib/lead-search";
 import { leadContactLine } from "@/lib/mask";
 import { Avatar } from "@/components/console/avatar";
 import { buttonPrimary } from "@/components/console/buttons";
@@ -24,15 +24,6 @@ function first(value: string | string[] | undefined): string | undefined {
 
 function isLeadStatus(value: string | undefined): value is LeadStatus {
   return value !== undefined && (LEAD_STATUS_ORDER as readonly string[]).includes(value);
-}
-
-/** Matches the search box: business, contact name, email or phone. */
-function matchesSearch(lead: Lead, term: string): boolean {
-  // Both the stored number and its readable layout, so "98765 43210" finds "+919876543210".
-  const haystack = [lead.businessName, lead.name, lead.email, lead.phone ?? "", lead.phone === null ? "" : displayPhone(lead.phone).text]
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(term);
 }
 
 /** The view Leads opens on: people who made an account and have not paid, the ones staff follow up. */
@@ -82,7 +73,7 @@ export default async function LeadsPage({
   const allLeads = await listLeads(getStaffDb(), {});
   const visible = allLeads
     .filter((lead) => (status === null ? true : lead.status === status))
-    .filter((lead) => (search === undefined || search === "" ? true : matchesSearch(lead, search)));
+    .filter((lead) => (search === undefined || search === "" ? true : matchesLeadSearch(lead, search)));
   const rows = oldestFirst ? [...visible].reverse() : visible;
   const countOf = (option: LeadStatus): number => allLeads.filter((lead) => lead.status === option).length;
 
