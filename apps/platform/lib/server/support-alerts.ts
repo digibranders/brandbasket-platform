@@ -5,6 +5,8 @@ import type { Database } from "@brandbasket/db";
 import { getSupportTicket } from "@brandbasket/db";
 import { serverEnv } from "@/lib/server/env";
 import { getStaffDb } from "./db";
+import { alertTeams } from "./teams";
+import { supportReplyTeamsCard, supportTicketTeamsCard, systemErrorTeamsCard } from "./teams-cards";
 
 function getAlertRecipient(): string {
   return process.env.SUPPORT_ALERT_EMAIL?.trim() || process.env.BRANDBASKET_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
@@ -52,9 +54,27 @@ export async function sendSupportTicketAlert(
     readonly businessName?: string | null;
   },
 ): Promise<void> {
+  const adminUrl = getAdminUrl(`/support/${ticket.id}`);
+  await alertTeams(
+    "support",
+    supportTicketTeamsCard({
+      reference: ticket.displayRef,
+      categoryLabel: SUPPORT_CATEGORY_LABELS[input.category] ?? input.category,
+      subject: input.subject,
+      description: input.description,
+      statusLabel: SUPPORT_STATUS_LABELS.new,
+      requesterName: access.user.name,
+      requesterEmail: access.user.email,
+      requesterPhone: access.user.phone,
+      businessName: access.businessName,
+      details: input.details,
+      attachmentCount: input.attachmentIds?.length ?? 0,
+      browserDevice: input.browserDevice,
+      adminUrl,
+    }),
+  );
   try {
     const to = getAlertRecipient();
-    const adminUrl = getAdminUrl(`/support/${ticket.id}`);
 
     const message = supportTicketAlertEmail({
       to,
@@ -113,6 +133,21 @@ export async function sendSupportReplyAlert(
 
     const adminUrl = getAdminUrl(`/support/${ticketId}`);
 
+    await alertTeams(
+      "support",
+      supportReplyTeamsCard({
+        reference: detail.ticket.displayRef,
+        subject: detail.ticket.subject,
+        categoryLabel: SUPPORT_CATEGORY_LABELS[detail.ticket.category],
+        statusLabel: SUPPORT_STATUS_LABELS[detail.ticket.status],
+        authorName: access.user.name,
+        authorEmail: access.user.email,
+        body: reply.body,
+        attachmentCount: reply.attachmentIds?.length ?? 0,
+        adminUrl,
+      }),
+    );
+
     const message = supportReplyAlertEmail({
       to,
       reference: detail.ticket.displayRef,
@@ -165,6 +200,8 @@ export async function sendSystemErrorAlert(
 
     const to = getAlertRecipient();
     const adminUrl = getAdminUrl("/support/errors");
+
+    await alertTeams("system", systemErrorTeamsCard({ ...report, adminUrl }));
 
     const message = systemErrorAlertEmail({
       to,

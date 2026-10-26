@@ -7,6 +7,8 @@ import type { LeadInput } from "@brandbasket/shared/lib/lead-form";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { displayPhone } from "@brandbasket/shared/server/phone-display";
 import { serverEnv } from "./env";
+import { alertTeams } from "./teams";
+import { leadTeamsCard } from "./teams-cards";
 import type { LeadRecordOutcome } from "./lead-intake";
 import { getPublicDb } from "./public-db";
 
@@ -57,6 +59,21 @@ async function keepNoticeProof(leadId: string, noticeVersion: string): Promise<v
 
 /** The lead is already saved by this point, so a failure here is logged and never shown to the visitor. */
 async function notifyTeam(leadId: string, lead: LeadInput): Promise<void> {
+  const leadUrl = new URL(`/leads/${leadId}`, serverEnv().ADMIN_ORIGIN).toString();
+  // Not awaited: the visitor's answer never waits on Teams.
+  void alertTeams(
+    "enquiries",
+    leadTeamsCard({
+      name: lead.name,
+      businessName: lead.businessName,
+      businessType: businessTypeLabel(lead.businessType),
+      email: lead.email,
+      phone: lead.phone === null ? null : displayPhone(lead.phone).text,
+      message: lead.message,
+      leadUrl,
+    }),
+  );
+
   const teamInbox = process.env.BRANDBASKET_TEAM_EMAIL;
   if (teamInbox === undefined || teamInbox.trim() === "") {
     console.error("BRANDBASKET_TEAM_EMAIL is not set, so nobody was told about a new lead.", { leadId });
@@ -73,7 +90,7 @@ async function notifyTeam(leadId: string, lead: LeadInput): Promise<void> {
         email: lead.email,
         phone: lead.phone === null ? null : displayPhone(lead.phone).text,
         message: lead.message,
-        leadUrl: new URL(`/leads/${leadId}`, serverEnv().ADMIN_ORIGIN).toString(),
+        leadUrl,
       }),
     );
   } catch (error) {

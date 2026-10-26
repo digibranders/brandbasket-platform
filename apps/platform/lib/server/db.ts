@@ -17,6 +17,9 @@ export function getAppDb(): Database {
 /**
  * Staff console and system work only. Never call from customer-facing code paths, with these sanctioned
  * exceptions:
+ * - lib/server/teams.ts, which reads the sealed Teams webhook address from staff-only site_settings to post an alert
+ *   (a new enquiry, a support request, a system error). It reads that one setting and nothing else, and the address is
+ *   never returned to a caller or logged.
  * - lib/server/setup.ts, where an unauthenticated visitor redeems a setup link. The customer has no account yet, so
  *   there is no scope to read the invite under; see the comment there for what keeps it safe.
  * - lib/server/checkout.ts and lib/server/payment-confirmation.ts, which write billing rows for the signed-in

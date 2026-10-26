@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { staffCan } from "@brandbasket/shared/lib/access";
 import { MAX_SETUP_CALL_URL_LENGTH, SETUP_CALL_URL_FIELD } from "@brandbasket/shared/lib/setup-call-link";
-import { buttonPrimary } from "@/components/console/buttons";
+import { MAX_TEAMS_URL_LENGTH, TEAMS_DESTINATION_FIELD, TEAMS_DESTINATION_INFO, TEAMS_DESTINATIONS, TEAMS_URL_FIELD } from "@brandbasket/shared/lib/teams-webhook";
+import { buttonDanger, buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
@@ -11,18 +13,20 @@ import { Quiet, Section } from "@/components/console/section";
 import { readSettingsNotice, SETTINGS_NOTICES } from "@/lib/settings-notices";
 import { loadSetupCallSetting } from "@/lib/server/settings-admin";
 import { requireStaffAccess } from "@/lib/server/staff-access";
-import { saveSetupCallUrlAction } from "./actions";
+import { loadTeamsStates } from "@/lib/server/teams-admin";
+import { removeTeamsWebhookAction, saveSetupCallUrlAction, saveTeamsWebhookAction, testTeamsWebhookAction } from "./actions";
 
 export const metadata: Metadata = { title: "Settings" };
 
-/** What staff can change without a developer. Today that is one thing: where the Book a call button on the dashboard goes. */
+/** What staff can change without a developer: where the Book a call button on the dashboard goes, and where alerts are sent. */
 export default async function SettingsPage({
   searchParams,
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
-  await requireStaffAccess();
-  const [setting, params] = await Promise.all([loadSetupCallSetting(), searchParams]);
+  const { staff } = await requireStaffAccess();
+  const canSetAlerts = staffCan(staff.role, "integrations");
+  const [setting, params, teams] = await Promise.all([loadSetupCallSetting(), searchParams, canSetAlerts ? loadTeamsStates() : null]);
   const notice = readSettingsNotice(params.saved);
 
   return (
@@ -75,6 +79,68 @@ export default async function SettingsPage({
           </p>
         )}
       </Section>
+
+      {teams === null ? null : (
+        <Section id="teams" title="Teams alerts" aside="Admins only">
+          <div className="grid max-w-2xl gap-8">
+            <p className="text-sm text-ink-soft">
+              Each kind of alert can go to its own Teams channel. In Teams, open the channel, choose Workflows and use{" "}
+              <b className="font-medium text-ink">Post to a channel when a webhook request is received</b>. Paste the address it gives you
+              below. The address is kept encrypted and is never shown again. An alert with no address set is not sent to Teams.
+            </p>
+            {TEAMS_DESTINATIONS.map((destination) => {
+              const state = teams[destination];
+              const info = TEAMS_DESTINATION_INFO[destination];
+              const inputId = `teams-${destination}`;
+              return (
+                <form key={destination} action={saveTeamsWebhookAction} className="grid gap-3 border-t border-line pt-6 first:border-t-0 first:pt-0">
+                  <input type="hidden" name={TEAMS_DESTINATION_FIELD} value={destination} />
+                  <div>
+                    <label htmlFor={inputId} className={labelClasses}>
+                      {info.label}
+                    </label>
+                    <p className={hintClasses}>{info.posts}</p>
+                  </div>
+                  <input
+                    id={inputId}
+                    name={TEAMS_URL_FIELD}
+                    type="password"
+                    maxLength={MAX_TEAMS_URL_LENGTH}
+                    placeholder={state.state === "unset" ? "Paste the webhook address" : "Paste a new address to replace the saved one"}
+                    autoComplete="off"
+                    spellCheck={false}
+                    className={fieldClasses}
+                  />
+                  <p className="text-sm text-ink-soft">
+                    {state.state === "unset" ? "Not set." : state.state === "set" ? "An address is saved." : "An address is saved but can no longer be read. Paste it again."}
+                    {state.state === "unset" ? null : (
+                      <>
+                        {" "}
+                        Last changed {state.changedBy === null ? "" : `by ${state.changedBy} `}on <LocalDateTime iso={state.changedAt.toISOString()} variant="timestamp" />
+                      </>
+                    )}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <GatedSubmitButton className={buttonPrimary} pendingLabel="Saving…">
+                      Save address
+                    </GatedSubmitButton>
+                    {state.state === "unset" ? null : (
+                      <>
+                        <button type="submit" formAction={testTeamsWebhookAction} formNoValidate className={buttonSecondary}>
+                          Send test
+                        </button>
+                        <button type="submit" formAction={removeTeamsWebhookAction} formNoValidate className={buttonDanger}>
+                          Remove
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </form>
+              );
+            })}
+          </div>
+        </Section>
+      )}
     </>
   );
 }
