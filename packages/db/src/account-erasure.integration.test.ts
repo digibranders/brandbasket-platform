@@ -412,11 +412,11 @@ describe("what the erase knows about", () => {
   ];
   /** Tables the erase empties for the business. */
   const ERASED = [
-    "appointment_services", "appointment_settings", "appointments", "billing_profiles", "booking_otps", "business_announcements", "business_closures",
+    "activity_events", "appointment_services", "appointment_settings", "appointments", "billing_profiles", "booking_otps", "business_announcements", "business_closures",
     "business_hours", "business_members", "business_modules", "business_profiles", "chatbot_leads", "chatbots", "directory_business_categories", "directory_business_faqs",
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
-    "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "onboarding_progress",
-    "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "projects", "services",
+    "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "monthly_snapshots", "onboarding_progress",
+    "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "projects", "service_setup", "services",
     "setup_call_bookings", "setup_invites", "support_tickets",
   ];
 
