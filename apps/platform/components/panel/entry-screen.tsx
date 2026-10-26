@@ -1,63 +1,61 @@
 import type { ReactElement, ReactNode } from "react";
 import { WordmarkLogo } from "@brandbasket/shared/ui/logo";
 import { siteConfig } from "@brandbasket/shared/lib/site-config";
-import { logoOf, supportEmailOf, type Brand } from "@/lib/brand";
+import { logoOf, type Brand } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { ENTRY_LEDE_SLOT_ID } from "@/lib/account-entry";
+import styles from "./entry-panel.module.css";
 
-/**
- * What a business owner is told on the Brandbasket sign-in: one plain line each, every one something the website really does.
- * No numbers or results are claimed.
- */
-const BRANDBASKET_POINTS = [
-  { title: "Be found", line: "On Google Maps and in local search." },
-  { title: "Be reached", line: "Click-to-call, WhatsApp and enquiry forms on every page." },
-  { title: "Be trusted", line: "A fast, secure website that is hosted and kept up to date for you." },
+/** The launch path from the Home page, in an owner's words: what happens after sign-up, ending with the website live. */
+const LAUNCH_STEPS = [
+  "Sign up.",
+  "Book your call.",
+  "Send your details.",
+  "We build your website.",
+  "You review it.",
+  "It goes live.",
 ] as const;
 
 /**
- * The Brandbasket side of the account screens: a solid navy panel of type, no photograph. From 1024px it fills the left of
- * the screen with the headline, a line about the offer, the three points and the way to write to Brandbasket; on a phone it is
- * a band across the top with the logo and the headline, the form sheet drawn up over its edge.
+ * The navy side of the account screens from 1024px, on the dashboard's own frame where the sidebar will sit: the logo,
+ * the launch path filling down once over a basket weave (entry-panel.module.css), and the website's address. Everything
+ * but the logo is decoration and hidden from screen readers; the logo stays a link back to the website. Phones do not
+ * get the panel.
  */
-function BrandbasketPanel({ brand }: { readonly brand: Brand }): ReactElement {
+function LaunchPathPanel({ brand }: { readonly brand: Brand }): ReactElement {
   return (
-    <section
-      aria-label={brand.name}
-      className="relative flex flex-col bg-dark-surface px-6 pt-5 pb-12 text-white [&_:focus-visible]:outline-white lg:sticky lg:top-0 lg:h-dvh lg:px-14 lg:py-12"
+    <div
+      data-surface="dark"
+      className="relative isolate hidden overflow-hidden text-white lg:sticky lg:top-3 lg:flex lg:h-[calc(100dvh-1.5rem)] lg:flex-col lg:pt-5 lg:pr-14 lg:pb-7 lg:pl-9"
     >
-      <WordmarkLogo href={brand.siteUrl ?? siteConfig.url} tone="light" className="self-start" brand={logoOf(brand)} />
-      <div className="mt-8 lg:mt-auto">
-        <p className="font-serif text-[1.75rem] leading-[1.12] font-medium text-balance lg:text-[2.75rem] lg:leading-[1.1]">
-          Your customers search before they call. <em className="block text-amber">Be the business they find.</em>
-        </p>
-        <p className="mt-4 hidden max-w-[38ch] text-base leading-relaxed text-white/70 lg:block">
-          A professional website for your business, built free and looked after every month.
-        </p>
+      <div aria-hidden="true" className={styles.art}>
+        <div className={styles.weave} />
       </div>
-      <ol className="mt-8 hidden border-b border-white/15 lg:block">
-        {BRANDBASKET_POINTS.map((point, index) => (
-          <li key={point.title} className="grid grid-cols-[2.25rem_1fr] gap-x-1 border-t border-white/15 py-3.5">
-            <span aria-hidden="true" className="pt-0.5 text-sm text-amber tabular-nums">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <div>
-              <p className="text-base leading-snug font-medium">{point.title}</p>
-              <p className="mt-0.5 text-[0.9375rem] leading-normal text-white/65">{point.line}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-      <p className="mt-4 hidden justify-between gap-4 text-sm text-white/60 lg:flex">
-        <span>For local businesses</span>
-        <a href={`mailto:${supportEmailOf(brand)}`} className="underline-offset-4 hover:text-white hover:underline">
-          {supportEmailOf(brand)}
-        </a>
+      <WordmarkLogo href={brand.siteUrl ?? siteConfig.url} tone="light" className="self-start" brand={logoOf(brand)} />
+      <div aria-hidden="true" className="my-auto py-8">
+        <ol className={`${styles.path} grid gap-[1.375rem]`}>
+          {LAUNCH_STEPS.map((step, index) => (
+            <li
+              key={step}
+              className={`${styles.step} grid grid-cols-[2.75rem_1fr] items-center gap-[1.375rem] text-[clamp(1.875rem,3vw,2.75rem)] leading-[1.1] font-medium tracking-[-0.03em]`}
+            >
+              <span
+                className={`${styles.mark} relative z-10 grid size-11 place-items-center rounded-full border-2 border-current text-[0.9375rem] font-semibold tracking-normal tabular-nums`}
+              >
+                <span>{index + 1}</span>
+              </span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-9 ml-[4.125rem] text-lg leading-relaxed text-white/70">Then we look after it, every month.</p>
+      </div>
+      <p aria-hidden="true" className="text-sm text-white/60">
+        {new URL(brand.siteUrl).host}
       </p>
-    </section>
+    </div>
   );
 }
-
 
 interface EntryScreenProps {
   readonly title: ReactNode;
@@ -69,22 +67,22 @@ interface EntryScreenProps {
 
 /**
  * The account screens a business owner meets before the dashboard (sign in, create an account, forgot and reset
- * password, the setup link, confirming an email). The Sea Link at dusk, in a tall photo, sits beside the form from
- * 1024px; on a phone the wide photo is a band across the top with the form on a sheet drawn up over its edge. The
- * photo carries the logo, the way back to the website, one headline and the three promises in a row; the form side
- * carries everything else.
+ * password, the setup link, confirming an email, restoring an account). From 1024px they sit in the dashboard's own
+ * frame: the navy launch-path panel on the left, the form on the inset paper panel on the right. On a phone there is
+ * no panel: the logo sits above the form.
  */
 export async function EntryScreen({ title, lede, switcher, children }: EntryScreenProps): Promise<ReactElement> {
   const brand = await requestBrand();
   return (
-    <div className="min-h-dvh bg-paper lg:grid lg:grid-cols-[46fr_54fr]">
-      <BrandbasketPanel brand={brand} />
+    <div className="min-h-dvh bg-paper lg:grid lg:grid-cols-2 lg:bg-dark-surface lg:p-3 lg:pl-0">
+      <LaunchPathPanel brand={brand} />
 
       <main
         id="main"
-        className="relative -mt-6 rounded-t-card bg-paper px-6 pt-7 pb-14 sm:px-10 lg:mt-0 lg:flex lg:items-center lg:justify-center lg:rounded-none lg:px-12 lg:py-16"
+        className="bg-paper px-6 pt-7 pb-14 sm:px-10 lg:flex lg:min-h-[calc(100dvh-1.5rem)] lg:items-center lg:justify-center lg:rounded-shell lg:px-12 lg:py-16"
       >
         <div className="mx-auto w-full max-w-[28rem]">
+          <WordmarkLogo href={brand.siteUrl ?? siteConfig.url} className="mb-8 lg:hidden" brand={logoOf(brand)} />
           {switcher}
           <h1 className="heading-display text-[1.75rem] leading-none sm:text-[2.25rem] lg:text-[3.25rem]">{title}</h1>
           <div className="mt-2 flex items-baseline justify-between gap-4 sm:mt-3">
