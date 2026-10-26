@@ -3,7 +3,7 @@ import { readyItemsFor, readyRows } from "@/lib/ready-items";
 
 describe("readyItemsFor", () => {
   it("lists only the services bought, website first", () => {
-    expect(readyItemsFor(["search", "website"]).map((item) => item.service)).toEqual(["website", "website", "website", "website", "search"]);
+    expect(readyItemsFor(["search", "website"]).map((item) => item.service)).toEqual(["website", "website", "website", "search"]);
     expect(readyItemsFor(["social"]).map((item) => item.key)).toEqual(["accounts", "offers", "budget"]);
   });
 });
@@ -14,8 +14,7 @@ describe("readyRows", () => {
     expect(rows.map((row) => [row.item.key, row.done])).toEqual([
       ["services", false],
       ["domain", false],
-      ["logo", true],
-      ["photos", true],
+      ["brand", true],
     ]);
   });
 

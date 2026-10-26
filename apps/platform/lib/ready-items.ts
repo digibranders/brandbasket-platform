@@ -13,10 +13,9 @@ export interface ReadyItem {
 
 /** The list, in the order the screens show it (mock: docs/design/platform-ledger.html, screen 1). */
 export const READY_ITEMS: readonly ReadyItem[] = [
-  { key: "logo", service: "website", label: "Your logo", hint: "A picture file, any size", step: "brand" },
-  { key: "photos", service: "website", label: "5 to 10 photos", hint: "Your place, your team, your work", step: "brand" },
+  { key: "brand", service: "website", label: "Logo and photos", hint: "Your logo and 5 to 10 photos of your place, team and work", step: "brand" },
   { key: "services", service: "website", label: "Services and prices", hint: "What you want on the site", step: "content" },
-  { key: "domain", service: "website", label: "Domain login, if you already own one", hint: "Or we start on a free address", step: "domain" },
+  { key: "domain", service: "website", label: "Your web address", hint: "Your domain login if you own one, or a free address to start", step: "domain" },
   { key: "accounts", service: "social", label: "Instagram and Facebook login", hint: "So we can post for you", step: null },
   { key: "offers", service: "social", label: "Offers you want to promote", hint: "Anything for this month", step: null },
   { key: "budget", service: "social", label: "Monthly ad budget", hint: "And how far from you to show ads", step: null },
