@@ -1296,6 +1296,13 @@
       "when": 1792684249496,
       "tag": "0187_keep_my_plan",
       "breakpoints": true
+    },
+    {
+      "idx": 185,
+      "version": "7",
+      "when": 1793039195996,
+      "tag": "0188_client_activity",
+      "breakpoints": true
     }
   ]
 }
