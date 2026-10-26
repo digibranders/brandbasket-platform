@@ -33,6 +33,9 @@
 # none, never holding one while it waits for another), and runs under a 45 minute limit (bb_bounded: systemd-run with
 # RuntimeMaxSec=45min when this user has a systemd user session, otherwise `timeout 45m`). A lock file that cannot be
 # opened is an error, not "busy".
+# Checks: lint, typecheck and tests are NOT run here by default (FF_RELEASE_CHECKS unset or 0). Since 2026-10-26 all CI runs locally and
+# the VPS only builds, migrates and deploys, so several projects shipping together do not queue behind minutes of checks. To run them
+# again for one release, start it with FF_RELEASE_CHECKS=1 in the environment; to restore them for good, set that variable in the unit's drop-in.
 set -euo pipefail
 
 readonly ROOT=/srv/brandbasket
@@ -119,9 +122,9 @@ build() {
     # and tests always cover the whole repository: the packages are shared, so a change can break either app.
     # "== step:" lines mark where each step starts; the autodeploy's GitHub report builds its step table from them.
     echo "== step: install"; nice -n 10 pnpm install --frozen-lockfile
-    echo "== step: lint"; nice -n 10 pnpm lint
-    echo "== step: typecheck"; nice -n 10 pnpm typecheck
-    echo "== step: test"; nice -n 10 pnpm -r test
+    if [[ "${FF_RELEASE_CHECKS:-0}" == 1 ]]; then echo "== step: lint"; nice -n 10 pnpm lint; fi
+    if [[ "${FF_RELEASE_CHECKS:-0}" == 1 ]]; then echo "== step: typecheck"; nice -n 10 pnpm typecheck; fi
+    if [[ "${FF_RELEASE_CHECKS:-0}" == 1 ]]; then echo "== step: test"; nice -n 10 pnpm -r test; fi
     # Two builds at a time, as Firstfold's platform deploy measures it (about 4.4 GB peak against the 6G cap).
     echo "== step: build $*"; nice -n 10 pnpm --workspace-concurrency=2 "${filters[@]}" build
   )
