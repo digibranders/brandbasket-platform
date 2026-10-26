@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { LeadInput } from "@brandbasket/shared/lib/lead-form";
+import type { CapturedLead } from "./lead-intake";
 import { handleLeadRequest, type LeadIntakeDeps, type LeadRecordOutcome } from "./lead-intake";
 
 vi.mock("server-only", () => ({}));
@@ -18,7 +18,7 @@ const FIELDS = {
   website: "",
 };
 
-let recorded: { input: LeadInput; clientIp: string; noticeVersion: string | null }[];
+let recorded: { input: CapturedLead; clientIp: string; noticeVersion: string | null }[];
 let outcome: LeadRecordOutcome;
 
 function deps(overrides: Partial<LeadIntakeDeps> = {}): LeadIntakeDeps {
@@ -150,3 +150,66 @@ describe("handleLeadRequest", () => {
     expect(body.message).toMatch(/email us/);
   });
 });
+
+const CONTACT = {
+  name: "Neha Joshi",
+  business: "Green Leaf Cafe",
+  email: "Neha@Example.com",
+  phone: "98220 14567",
+  city: "Pune",
+  plans: ["website", "growth"],
+  message: "Menu and Instagram, please.",
+  page: "/contact",
+};
+
+function contactBody(contact: Record<string, unknown> = CONTACT): Record<string, unknown> {
+  return { kind: "contact", contact, clientIp: "203.0.113.9", noticeVersion: "2026-10-19.1" };
+}
+
+describe("handleLeadRequest, the website's contact form", () => {
+  it("stores the enquiry with its plans, city and page, as from the pricing page when plans were picked", async () => {
+    const response = await handleLeadRequest(post(contactBody()), deps());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "sent", name: "Neha Joshi", email: "neha@example.com" });
+    expect(recorded[0]).toEqual({
+      input: {
+        name: "Neha Joshi",
+        businessName: "Green Leaf Cafe",
+        email: "neha@example.com",
+        phone: "+919822014567",
+        businessType: null,
+        message: "Menu and Instagram, please.",
+        source: "pricing_page",
+        plans: ["website", "growth"],
+        city: "Pune",
+        page: "/contact",
+      },
+      clientIp: "203.0.113.9",
+      noticeVersion: "2026-10-19.1",
+    });
+  });
+
+  it("calls an enquiry with no plans a website form, and drops a blank city", async () => {
+    await handleLeadRequest(post(contactBody({ ...CONTACT, plans: [], city: "  " })), deps());
+    expect(recorded[0]?.input).toMatchObject({ source: "website_form", plans: [], city: null });
+  });
+
+  it("keeps an enquiry whose phone number does not parse, without the number", async () => {
+    const response = await handleLeadRequest(post(contactBody({ ...CONTACT, phone: "12345" })), deps());
+    expect(response.status).toBe(200);
+    expect(recorded[0]?.input.phone).toBeNull();
+  });
+
+  it("refuses a contact body that is not the agreed shape", async () => {
+    const response = await handleLeadRequest(post(contactBody({ ...CONTACT, plans: ["care"] })), deps());
+    expect(response.status).toBe(400);
+    expect(recorded).toHaveLength(0);
+  });
+
+  it("passes on a rate limit as 429 for the contact form too", async () => {
+    outcome = "limited";
+    expect((await handleLeadRequest(post(contactBody()), deps())).status).toBe(429);
+  });
+});
+
