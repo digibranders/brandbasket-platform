@@ -6,6 +6,7 @@ import { nextBundledNetCents, nextDiscountCents } from "@brandbasket/shared/lib/
 import { renewalCharge } from "@brandbasket/shared/lib/billing/terms";
 import type { CustomerBilling } from "@brandbasket/shared/lib/billing/status";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
+import { paymentsContinue } from "@/lib/billing/payments-continue";
 import { activityRows, monthKey, monthStart, resultLines, type ActivityRow, type ResultLine, type SnapshotView } from "@/lib/overview";
 import type { ServiceKey } from "@/lib/first-look";
 import { getAppDb } from "./db";
@@ -56,7 +57,7 @@ export async function loadOverview(tenant: TenantContext, billing: CustomerBilli
   const social = snapshots.find((row) => row.service === "social");
   const search = snapshots.find((row) => row.service === "search");
   const subscription = billing.subscription;
-  const date = subscription === null ? null : nextPaymentDate(subscription, now);
+  const date = subscription === null || !paymentsContinue(subscription) ? null : nextPaymentDate(subscription, now);
   const amount =
     subscription === null || billing.plan === null ? null : renewalCharge(billing.plan, nextDiscountCents(subscription), nextBundledNetCents(subscription));
   return {

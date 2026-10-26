@@ -66,4 +66,53 @@ describe("loadOverview", () => {
 
     expect(data.nextPayment).toBeNull();
   });
+
+  describe("the next payment", () => {
+    const paidThrough = new Date("2026-11-20T00:00:00Z");
+    const plan = { recurringAmountCents: 299_900, currency: "INR" };
+    const billingFor = (overrides: Record<string, unknown>, planOverride: unknown = plan) =>
+      ({
+        subscription: {
+          status: "active",
+          provider: "razorpay",
+          cancelRequestedAt: null,
+          commitmentEndsAt: null,
+          paidThroughAt: paidThrough,
+          discountAmountCents: 0,
+          nextDiscountAmountCents: null,
+          bundledAddOnNetCents: 0,
+          pendingBundledAddOnNetCents: null,
+          ...overrides,
+        },
+        plan: planOverride,
+      }) as never;
+
+    it("shows the date and the amount for an active card subscription", async () => {
+      vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+
+      const data = await loadOverview(tenant, billingFor({}), now);
+
+      expect(data.nextPayment).toEqual({ date: paidThrough, amount: expect.stringContaining("2,999") });
+    });
+
+    it("keeps the date with no amount when nothing is left to charge", async () => {
+      vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+
+      const data = await loadOverview(tenant, billingFor({ discountAmountCents: 299_900 }), now);
+
+      expect(data.nextPayment).toEqual({ date: paidThrough, amount: null });
+    });
+
+    it.each([
+      ["cancelled", { status: "cancelled" }],
+      ["asked to end", { cancelRequestedAt: new Date("2026-10-20T00:00:00Z") }],
+      ["paid by hand", { provider: "manual" }],
+    ])("shows no next payment for a subscription that is %s", async (_label, overrides) => {
+      vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+
+      const data = await loadOverview(tenant, billingFor(overrides), now);
+
+      expect(data.nextPayment).toBeNull();
+    });
+  });
 });
