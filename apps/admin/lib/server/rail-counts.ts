@@ -1,13 +1,9 @@
 import "server-only";
-import { countSupportTicketsAwaitingStaff, listAddOnsToContact, listClients, listLeads, listPaymentsNeedingAttention } from "@brandbasket/db";
+import { countSupportTicketsAwaitingStaff, listLeads } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import type { RailCountKey, RailCounts } from "@/lib/console-rail";
-import { attentionItems } from "@/lib/pipeline";
-import { clientsWaitingOnUs } from "@/lib/waiting-clients";
 import { getStaffDb } from "./db";
-
-/** Flagged payments and add-ons read for Today's count; far more than are ever open at once, as on the home page. */
-const ATTENTION_READ_LIMIT = 100;
+import { countTodayItems } from "./today";
 
 /** One count, or nothing when it cannot be read: the failure is logged and only that count is left off the rail. */
 export async function countOrNothing(key: RailCountKey, read: () => Promise<number>): Promise<number | undefined> {
@@ -22,17 +18,8 @@ export async function countOrNothing(key: RailCountKey, read: () => Promise<numb
 /** The numbers beside the rail's entries (plan 41, contract C2). A phase that adds a count adds one entry here. */
 export async function readRailCounts(): Promise<RailCounts> {
   const db = getStaffDb();
-  const now = new Date();
   const [today, leads, requests] = await Promise.all([
-    countOrNothing("today", async () => {
-      const [clients, everyLead, flagged, addOns] = await Promise.all([
-        listClients(db),
-        listLeads(db, {}),
-        listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }),
-        listAddOnsToContact(db, ATTENTION_READ_LIMIT),
-      ]);
-      return attentionItems({ flagged, addOns, waiting: clientsWaitingOnUs(clients, now), newLeads: everyLead.filter((lead) => lead.status === "new"), now }).length;
-    }),
+    countOrNothing("today", () => countTodayItems()),
     countOrNothing("leads", async () => (await listLeads(db, { status: "new" })).length),
     countOrNothing("requests", () => countSupportTicketsAwaitingStaff(db)),
   ]);
