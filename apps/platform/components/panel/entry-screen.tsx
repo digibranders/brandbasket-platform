@@ -17,10 +17,10 @@ const LAUNCH_STEPS = [
 ] as const;
 
 /**
- * The navy side of the account screens from 1024px, on the dashboard's own frame where the sidebar will sit: the logo,
- * the launch path filling down once over a basket weave (entry-panel.module.css), and the website's address. Everything
- * but the logo is decoration and hidden from screen readers; the logo stays a link back to the website. Phones do not
- * get the panel.
+ * The navy side of the account screens from 1024px, inside the dashboard's frame: the logo, the launch path as large
+ * lines that take turns (entry-panel.module.css, the same panel as the CMS sign-in's), and the website's address. All
+ * of it but the logo is decoration and hidden from screen readers; the logo stays a link back to the website. Phones
+ * do not get the panel.
  */
 function LaunchPathPanel({ brand }: { readonly brand: Brand }): ReactElement {
   return (
@@ -28,27 +28,21 @@ function LaunchPathPanel({ brand }: { readonly brand: Brand }): ReactElement {
       data-surface="dark"
       className="relative isolate hidden overflow-hidden text-white lg:flex lg:flex-col lg:pt-8 lg:pr-14 lg:pb-10 lg:pl-9"
     >
-      <div aria-hidden="true" className={styles.art}>
-        <div className={styles.weave} />
-      </div>
       <WordmarkLogo href={brand.siteUrl ?? siteConfig.url} tone="light" className="self-start" brand={logoOf(brand)} />
-      <div aria-hidden="true" className="my-auto py-[clamp(0.5rem,3vh,2rem)]">
-        <ol className={`${styles.path} grid gap-[clamp(0.75rem,2.4vh,1.375rem)]`}>
-          {LAUNCH_STEPS.map((step, index) => (
+      <div aria-hidden="true" className="my-auto py-[clamp(0.5rem,3vh,2rem)] lg:pl-[clamp(0px,2.2vw,2.25rem)]">
+        <ol className="grid gap-0.5">
+          {LAUNCH_STEPS.map((step) => (
             <li
               key={step}
-              className={`${styles.step} grid grid-cols-[2.75rem_1fr] items-center gap-[1.375rem] text-[clamp(1.5rem,min(3vw,5vh),2.75rem)] leading-[1.1] font-medium tracking-[-0.03em]`}
+              className={`${styles.line} text-[clamp(1.875rem,min(3.9vw,7vh),4rem)] leading-[1.04] font-medium tracking-[-0.05em]`}
             >
-              <span
-                className={`${styles.mark} relative z-10 grid size-11 place-items-center rounded-full border-2 border-current text-[0.9375rem] font-semibold tracking-normal tabular-nums`}
-              >
-                <span>{index + 1}</span>
-              </span>
-              <span>{step}</span>
+              {step}
             </li>
           ))}
         </ol>
-        <p className="mt-[clamp(1rem,3.5vh,2.25rem)] ml-[4.125rem] text-lg leading-relaxed text-white/70">Then we look after it, every month.</p>
+        <p className="mt-[clamp(1rem,3.5vh,1.75rem)] max-w-[34ch] text-lg leading-[1.55] text-white/70">
+          Then we look after it, every month.
+        </p>
       </div>
       <p aria-hidden="true" className="text-sm text-white/60">
         {new URL(brand.siteUrl).host}
@@ -75,7 +69,7 @@ interface EntryScreenProps {
 export async function EntryScreen({ title, lede, switcher, children }: EntryScreenProps): Promise<ReactElement> {
   const brand = await requestBrand();
   return (
-    <div className="min-h-dvh bg-paper lg:grid lg:h-dvh lg:grid-cols-2 lg:grid-rows-1 lg:overflow-hidden lg:bg-dark-surface">
+    <div className={`${styles.frame} min-h-dvh bg-paper lg:grid lg:h-dvh lg:grid-cols-2 lg:grid-rows-1 lg:overflow-hidden`}>
       <LaunchPathPanel brand={brand} />
 
       <main
