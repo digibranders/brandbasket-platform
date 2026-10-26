@@ -749,7 +749,14 @@ export {
   type RecordedAddOnPayment,
 } from "./queries/add-ons";
 export { clearSiteSetting, findSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "./queries/site-settings";
-export { findSetupCallBooking, moveSetupCallBooking, recordSetupCallBooking, removeSetupCallBooking } from "./queries/setup-calls";
+export {
+  findSetupCallBooking,
+  listSetupCallsBetween,
+  moveSetupCallBooking,
+  recordSetupCallBooking,
+  removeSetupCallBooking,
+  type BookedCall,
+} from "./queries/setup-calls";
 export {
   activateBundledAddOns,
   BundledAddOnNotPossibleError,

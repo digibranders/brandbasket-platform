@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, asc, eq, gte, lt } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
-import { setupCallBookings, type SetupCallBooking } from "../schema";
+import { businesses, setupCallBookings, type SetupCallBooking } from "../schema";
 
 type Runner = Database | ScopedTransaction;
 
@@ -61,3 +61,36 @@ export async function removeSetupCallBooking(db: Runner, inviteeUri: string): Pr
   const removed = await db.delete(setupCallBookings).where(eq(setupCallBookings.inviteeUri, inviteeUri)).returning({ id: setupCallBookings.id });
   return removed.length > 0;
 }
+
+/** A kickoff call with a time, and the business it is for. */
+export interface BookedCall {
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly startsAt: Date;
+  readonly endsAt: Date;
+}
+
+/**
+ * Calls starting between `from` (included) and `to` (excluded), earliest first, for every business: the console reads
+ * them over the staff connection. A booking whose time the booking page never reported has no place on a day and is
+ * left out.
+ */
+export async function listSetupCallsBetween(db: Runner, from: Date, to: Date): Promise<BookedCall[]> {
+  const rows = await db
+    .select({
+      businessId: setupCallBookings.businessId,
+      businessName: businesses.name,
+      startsAt: setupCallBookings.startsAt,
+      endsAt: setupCallBookings.endsAt,
+    })
+    .from(setupCallBookings)
+    .innerJoin(businesses, eq(businesses.id, setupCallBookings.businessId))
+    .where(and(gte(setupCallBookings.startsAt, from), lt(setupCallBookings.startsAt, to)))
+    .orderBy(asc(setupCallBookings.startsAt));
+  return rows.flatMap((row) =>
+    row.startsAt === null || row.endsAt === null
+      ? []
+      : [{ businessId: row.businessId, businessName: row.businessName, startsAt: row.startsAt, endsAt: row.endsAt }],
+  );
+}
+
