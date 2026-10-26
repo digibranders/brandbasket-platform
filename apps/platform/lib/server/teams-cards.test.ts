@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { leadTeamsCard, supportReplyTeamsCard, supportTicketTeamsCard, systemErrorTeamsCard } from "./teams-cards";
+import { chatbotLeadTeamsCard, leadTeamsCard, signupTeamsCard, supportReplyTeamsCard, supportTicketTeamsCard, systemErrorTeamsCard } from "./teams-cards";
 
 type Block = { type: string; text?: string; facts?: { title: string; value: string }[] };
 const parts = (message: ReturnType<typeof leadTeamsCard>): { body: Block[]; actions?: { title: string; url: string }[] } =>
@@ -73,5 +73,19 @@ describe("the Teams cards carry what the alert emails carry", () => {
       { title: "Release", value: "abc123" },
     ]);
     expect(card.actions?.[0]?.title).toBe("Open the error reports");
+  });
+
+  it("tells the team about a sign-up that has not paid, with a link to the enquiry", () => {
+    const card = parts(signupTeamsCard({ name: "Arun Kumar", businessName: "Kumar Opticals", email: "arun@example.com", phone: "+91 98201 11111", plan: "Managed Website", leadUrl: "https://console.example/leads/3" }));
+    expect(card.body[0]?.text).toBe("New sign-up: Kumar Opticals");
+    expect(card.body[1]?.text).toBe("Arun Kumar opened an account and has not paid yet");
+    expect(card.body[2]?.facts?.map((fact) => fact.title)).toEqual(["Chose", "Email", "Phone"]);
+    expect(card.actions).toEqual([{ type: "Action.OpenUrl", title: "Open the enquiry", url: "https://console.example/leads/3" }]);
+  });
+
+  it("tells the team about a chatbot lead without any of the visitor's details", () => {
+    const card = parts(chatbotLeadTeamsCard({ clientUrl: "https://console.example/clients/5" }));
+    expect(card.body.map((block) => block.text)).toEqual(["New chatbot lead", "A visitor left their details with a client's chatbot"]);
+    expect(card.actions).toEqual([{ type: "Action.OpenUrl", title: "Open the client", url: "https://console.example/clients/5" }]);
   });
 });

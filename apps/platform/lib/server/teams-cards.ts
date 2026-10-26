@@ -115,3 +115,38 @@ export function systemErrorTeamsCard(report: {
     open: { label: "Open the error reports", url: report.adminUrl },
   });
 }
+
+/** Someone opened an account on the dashboard. It is a lead until they pay. */
+export function signupTeamsCard(signup: {
+  readonly name: string;
+  readonly businessName: string;
+  readonly email: string;
+  readonly phone: string | null;
+  /** The plan they chose on the form, by name; null when none. */
+  readonly plan: string | null;
+  readonly leadUrl: string;
+}): TeamsMessage {
+  return teamsCard({
+    title: `New sign-up: ${signup.businessName}`,
+    subtitle: `${signup.name} opened an account and has not paid yet`,
+    facts: [
+      { name: "Chose", value: signup.plan },
+      { name: "Email", value: signup.email },
+      { name: "Phone", value: signup.phone },
+    ],
+    open: { label: "Open the enquiry", url: signup.leadUrl },
+  });
+}
+
+/**
+ * A visitor left their details with a client's chatbot. The details belong to the client, so the card carries none of
+ * them: only a link to the client in the console.
+ */
+export function chatbotLeadTeamsCard(lead: { readonly clientUrl: string }): TeamsMessage {
+  return teamsCard({
+    title: "New chatbot lead",
+    subtitle: "A visitor left their details with a client's chatbot",
+    open: { label: "Open the client", url: lead.clientUrl },
+  });
+}
+
