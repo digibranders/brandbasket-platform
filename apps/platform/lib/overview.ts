@@ -131,5 +131,5 @@ export function activityRows(input: {
   if (input.launchedAt !== null) {
     rows.push({ key: "launched", at: input.launchedAt, label: input.hostname === null ? "Your website went live" : `Your website went live on ${input.hostname}`, service: "website" });
   }
-  return rows.sort((a, b) => b.at.getTime() - a.at.getTime() || a.key.localeCompare(b.key)).slice(0, input.limit);
+  return rows.sort((a, b) => b.at.getTime() - a.at.getTime() || b.key.localeCompare(a.key)).slice(0, input.limit);
 }

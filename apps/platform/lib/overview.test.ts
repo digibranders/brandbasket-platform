@@ -101,6 +101,21 @@ describe("activityRows", () => {
     expect(rows[2]?.service).toBe("website");
   });
 
+  it("puts events on the same instant in descending id order, as the database lists them", () => {
+    const at = new Date("2026-11-24T06:00:00.000Z");
+    const rows = activityRows({
+      events: [
+        { id: "a", occurredAt: at, title: "First line", service: null },
+        { id: "b", occurredAt: at, title: "Second line", service: null },
+      ],
+      previewSentAt: null,
+      launchedAt: null,
+      hostname: null,
+      limit: 5,
+    });
+    expect(rows.map((row) => row.label)).toEqual(["Second line", "First line"]);
+  });
+
   it("limits the list and tolerates nothing to show", () => {
     expect(activityRows({ events, previewSentAt: null, launchedAt: null, hostname: null, limit: 1 })).toHaveLength(1);
     expect(activityRows({ events: [], previewSentAt: null, launchedAt: null, hostname: null, limit: 5 })).toEqual([]);

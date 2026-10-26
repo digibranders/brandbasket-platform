@@ -26,6 +26,11 @@ describe("inFirstLook", () => {
     expect(inFirstLook({ ...base, callEndsAtIso: "2026-10-27T09:00:00.000Z", callHeld: true })).toBe(false);
   });
 
+  it("ends when staff mark the call held, even if the call is still ahead or has no time", () => {
+    expect(inFirstLook({ ...base, callEndsAtIso: "2026-10-29T09:00:00.000Z", callHeld: true })).toBe(false);
+    expect(inFirstLook({ ...base, callEndsAtIso: null, callHeld: true })).toBe(false);
+  });
+
   it("ends two days after the call's end time when nobody marked it, so a forgotten click never locks a customer in", () => {
     expect(inFirstLook({ ...base, callEndsAtIso: "2026-10-27T09:00:00.000Z" })).toBe(true); // 25 hours after: still inside the grace
     expect(inFirstLook({ ...base, callEndsAtIso: "2026-10-26T09:00:00.000Z" })).toBe(false); // 49 hours after

@@ -76,6 +76,23 @@ describe("parseSetupItem offers, budget and areas", () => {
   });
 });
 
+describe("parseSetupItem limits", () => {
+  it("refuses a 10,000 character answer in every text field", () => {
+    const long = "x".repeat(10_000);
+    const cases = [
+      { key: "accounts", input: { instagramUrl: `instagram.com/${long}`, facebookUrl: "", adminAccess: "added" }, field: "instagramUrl" },
+      { key: "accounts", input: { instagramUrl: "", facebookUrl: `facebook.com/${long}`, adminAccess: "added" }, field: "facebookUrl" },
+      { key: "offers", input: { offers: long }, field: "offers" },
+      { key: "budget", input: { adBudgetRupees: long, adArea: "Thane" }, field: "adBudgetRupees" },
+      { key: "budget", input: { adBudgetRupees: "5000", adArea: long }, field: "adArea" },
+      { key: "areas", input: { areas: long, competitors: "", googleBusinessUrl: "" }, field: "areas" },
+      { key: "areas", input: { areas: "Thane", competitors: long, googleBusinessUrl: "" }, field: "competitors" },
+      { key: "areas", input: { areas: "Thane", competitors: "", googleBusinessUrl: `https://g.page/${long}` }, field: "googleBusinessUrl" },
+    ] as const;
+    for (const { key, input, field } of cases) expect(parseSetupItem(key, input)).toMatchObject({ success: false, field });
+  });
+});
+
 describe("doneSetupKeys", () => {
   it("is empty when nothing is saved", () => {
     expect(doneSetupKeys({ social: undefined, search: undefined })).toEqual([]);

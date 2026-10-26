@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { readyItemsFor, readyRows } from "@/lib/ready-items";
+import { READY_ITEMS, readyItemsFor, readyRows } from "@/lib/ready-items";
+import { SETUP_KEYS, SETUP_SERVICE } from "@/lib/service-setup";
 
 describe("readyItemsFor", () => {
   it("lists only the services bought, website first", () => {
@@ -12,6 +13,20 @@ describe("readyItemsFor", () => {
     expect(accounts?.label).toBe("Instagram and Facebook pages");
     expect(accounts?.setup).toBe("accounts");
     expect(accounts?.step).toBeNull();
+  });
+});
+
+describe("READY_ITEMS", () => {
+  it("gives each item exactly one of a website step or a setup answer, on the matching service", () => {
+    for (const item of READY_ITEMS) {
+      expect((item.step === null) !== (item.setup === null)).toBe(true);
+      if (item.setup !== null) expect(SETUP_SERVICE[item.setup]).toBe(item.service);
+    }
+  });
+
+  it("covers every setup key", () => {
+    const covered = READY_ITEMS.map((item) => item.setup);
+    for (const key of SETUP_KEYS) expect(covered).toContain(key);
   });
 });
 
