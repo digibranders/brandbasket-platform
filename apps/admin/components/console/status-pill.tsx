@@ -12,6 +12,6 @@ const TONES: Readonly<Record<PillTone, string>> = {
 };
 
 /** A state in words on a soft tint: the word carries the meaning, the colour only helps. */
-export function StatusPill({ tone, children }: { readonly tone: PillTone; readonly children: ReactNode }): ReactElement {
+export function StatusPill({ tone, children }: { readonly tone: PillTone; readonly children?: ReactNode }): ReactElement {
   return <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold", TONES[tone])}>{children}</span>;
 }
