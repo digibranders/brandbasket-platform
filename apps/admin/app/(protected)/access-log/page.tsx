@@ -18,6 +18,7 @@ const ACTION_LABELS: Readonly<Record<StaffAccessAction, string>> = {
   "staff.sign_in": "Signed in",
   "access_log.view": "Opened the access log",
   "access.denied": "Was refused: needs a higher role",
+  "search.run": "Searched the console",
   "client.view": "Opened a client",
   "lead.view": "Opened a lead",
   "outbox.view": "Opened an outbox message",
