@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, ne, notInArray, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, notInArray, or, sql, sum, type SQL } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { bundledNetCents, findLiveBundledAddOns, insertBundledAddOns, removeBundledAddOnsOf, type NewBundledAddOn } from "./bundled-add-ons";
@@ -1435,3 +1435,24 @@ export async function findBillingState(db: Runner, businessId: string): Promise<
     addOns,
   };
 }
+
+/** Money collected in one currency over a period, in minor units (paise for INR, cents for USD). */
+export interface CollectedAmount {
+  readonly currency: BillingCurrency;
+  readonly amountCents: number;
+}
+
+/**
+ * What came in between `from` (included) and `to` (excluded): captured payments that bought something, plan and extras
+ * alike, summed per currency. A payment that could not be applied (paymentWasApplied) is left out, as everywhere else.
+ */
+export async function sumCapturedPaymentsBetween(db: Database, from: Date, to: Date): Promise<CollectedAmount[]> {
+  const rows = await db
+    .select({ currency: payments.currency, total: sum(payments.amountCents) })
+    .from(payments)
+    .where(and(eq(payments.status, "captured"), gte(payments.paidAt, from), lt(payments.paidAt, to), paymentWasApplied()))
+    .groupBy(payments.currency)
+    .orderBy(asc(payments.currency));
+  return rows.map((row) => ({ currency: row.currency, amountCents: Number(row.total ?? 0) }));
+}
+
