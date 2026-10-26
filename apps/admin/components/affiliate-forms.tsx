@@ -257,7 +257,7 @@ export function AffiliateForm({
               ))}
             </span>
             <span className="block">
-              {percent ? "Of what the member pays before GST, after their discount." : "A fixed amount for each month a member pays."}
+              {percent ? "Of what the member pays, GST included, after their discount." : "A fixed amount for each month a member pays."}
             </span>
           </>
         }

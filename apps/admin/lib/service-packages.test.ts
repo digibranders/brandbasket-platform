@@ -26,9 +26,9 @@ describe("catalogueRows", () => {
 describe("packageRows", () => {
   it("lists the four packages with the percentage off each service and the ad credit a month", () => {
     expect(packageRows()).toEqual([
-      { services: "Managed Website + Social Media and Ads", offer: "10% off each service", adCredit: "₹1,500 or $25 a month" },
+      { services: "Managed Website + Social Media and Ads", offer: "10% off each service", adCredit: "₹1,500 or $30 a month" },
       { services: "Managed Website + Local SEO + AEO", offer: "10% off each service", adCredit: "None" },
-      { services: "Social Media and Ads + Local SEO + AEO", offer: "10% off each service", adCredit: "₹1,500 or $25 a month" },
+      { services: "Social Media and Ads + Local SEO + AEO", offer: "10% off each service", adCredit: "₹1,500 or $30 a month" },
       { services: "Managed Website + Social Media and Ads + Local SEO + AEO", offer: "20% off each service", adCredit: "₹3,000 or $60 a month" },
     ]);
   });

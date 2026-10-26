@@ -1,5 +1,5 @@
 import "server-only";
-import { gstInsideCents, rewardCentsFor } from "@brandbasket/billing";
+import { rewardCentsFor } from "@brandbasket/billing";
 import {
   findAffiliateAccrualContext,
   insertAffiliateEarning,
@@ -40,9 +40,9 @@ export type AccrualOutcome =
  *
  * Only the first `rewardCycles` of the member's paid months earn, when the affiliate has a limit; the member's
  * discount is not affected by it. The earning is the affiliate's reward as it stands now, applied to what the member
- * paid before GST and after their frozen discount: the subscription's service lines on top of the plan's own price (its
- * initial price for a first payment, its recurring one for a renewal; both 0 for the services plan), less the code, less
- * the GST inside that (gstInsideCents, the same figure the tax invoice carries), because GST is not ours to share.
+ * paid after their frozen discount, GST included (owner, 2026-10-26: every price includes all taxes, so a percentage is of the
+ * full amount): the subscription's service lines on top of the plan's own price (its initial price for a first payment, its
+ * recurring one for a renewal; both 0 for the services plan), less the code.
  */
 export async function accrueAffiliateEarning(tx: ScopedTransaction, payment: AccruedPayment): Promise<AccrualOutcome> {
   const context = await findAffiliateAccrualContext(tx, payment.subscriptionId, payment.paymentId);
@@ -63,8 +63,7 @@ export async function accrueAffiliateEarning(tx: ScopedTransaction, payment: Acc
   }
 
   const listPrice = payment.invoiced?.netCents ?? (payment.kind === "initial" ? context.initialAmountCents : context.recurringAmountCents) + context.bundledAddOnNetCents;
-  const paidCents = Math.max(0, listPrice - (payment.invoiced?.discountCents ?? context.discountAmountCents));
-  const basisCents = paidCents - gstInsideCents(paidCents, context.taxRateBasisPoints);
+  const basisCents = Math.max(0, listPrice - (payment.invoiced?.discountCents ?? context.discountAmountCents));
   const amountCents = rewardCentsFor(context.reward, basisCents);
   if (amountCents === 0) return { kind: "none" };
 

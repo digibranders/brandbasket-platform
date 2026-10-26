@@ -117,13 +117,13 @@ export function discountPlanCode(basePlanCode: string, discountAmountCents: numb
 }
 
 /**
- * What an affiliate earns for one month, given what the member paid that month before GST and after their
+ * What an affiliate earns for one month, given what the member paid that month, GST included, and after their
  * discount. A flat reward is itself; a percentage is that share, rounded down, so an affiliate is never owed a
  * fraction of a minor unit that was never received.
  */
-export function rewardCentsFor(reward: ReferralReward, customerPaysPreTaxCents: number): number {
-  assertWholeNonNegative(customerPaysPreTaxCents, "A payment");
+export function rewardCentsFor(reward: ReferralReward, customerPaysCents: number): number {
+  assertWholeNonNegative(customerPaysCents, "A payment");
   if (reward.kind === "amount") return reward.amountCents;
   assertBasisPoints(reward.basisPoints, MAX_REWARD_BASIS_POINTS, "A percentage reward");
-  return Math.floor((customerPaysPreTaxCents * reward.basisPoints) / BASIS_POINTS_PER_WHOLE);
+  return Math.floor((customerPaysCents * reward.basisPoints) / BASIS_POINTS_PER_WHOLE);
 }

@@ -155,8 +155,8 @@ describe("a lapsed subscription that is reactivated", () => {
     ["INR", ["local-seo-aeo"], 2_499_900, 0],
     ["INR", ["managed-website"], 299_900, 0],
     ["USD", ["managed-website", "digital-growth", "local-seo-aeo"], 45_200, 6_000],
-    ["USD", ["managed-website", "digital-growth"], 19_400, 2_500],
-    ["USD", ["digital-growth", "local-seo-aeo"], 45_000, 2_500],
+    ["USD", ["managed-website", "digital-growth"], 19_400, 3_000],
+    ["USD", ["digital-growth", "local-seo-aeo"], 45_000, 3_000],
     ["USD", ["digital-growth"], 15_000, 0],
   ] as const)("keeps its basket at the same offer and its ad credit: %s %j charges %i, credit %i", async (currency, services, charged, adCredit) => {
     await setUp(currency);

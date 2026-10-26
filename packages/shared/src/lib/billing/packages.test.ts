@@ -33,8 +33,8 @@ describe("package offers", () => {
     [["managed-website", "local-seo-aeo"], "INR", 0],
     [["digital-growth", "local-seo-aeo"], "INR", 150000],
     [["managed-website", "digital-growth", "local-seo-aeo"], "INR", 300000],
-    [["managed-website", "digital-growth"], "USD", 2500],
-    [["digital-growth", "local-seo-aeo"], "USD", 2500],
+    [["managed-website", "digital-growth"], "USD", 3000],
+    [["digital-growth", "local-seo-aeo"], "USD", 3000],
     [["managed-website", "digital-growth", "local-seo-aeo"], "USD", 6000],
     [["managed-website", "local-seo-aeo"], "USD", 0],
   ] as const)("earns %o bought together ad credit in %s of %i a month", (services, currency, cents) => {
@@ -179,7 +179,7 @@ describe("package prices", () => {
       }
     }
     expect(adCreditCentsFor(["managed-website", "digital-growth", "local-seo-aeo"], "INR")).toBe(300000);
-    expect(adCreditCentsFor(["digital-growth", "local-seo-aeo"], "USD")).toBe(2500);
+    expect(adCreditCentsFor(["digital-growth", "local-seo-aeo"], "USD")).toBe(3000);
   });
 
   it("gives a tie to the line first in the catalogue's order, whatever order the lines are given in", () => {

@@ -101,7 +101,7 @@ function optionalPhone(raw: string): string | null | undefined {
 
 /**
  * What they earn for each month a member they brought pays: a flat amount in one currency, or a share of each
- * payment before GST and after the member's discount. Blank is a flat nothing, in rupees unless said otherwise.
+ * payment, GST included, after the member's discount. Blank is a flat nothing, in rupees unless said otherwise.
  */
 function readReward(formData: FormData): Read<{ readonly reward: ReferralReward; readonly currency: BillingCurrency | null }> {
   const kind = text(formData, "rewardKind") || "amount";

@@ -123,9 +123,9 @@ describe("orderSummary", () => {
     ["Managed Website", ["managed-website"], 299_900, 0, 6_500, 0, null],
     ["Social Media and Ads", ["digital-growth"], 999_900, 0, 15_000, 0, null],
     ["Local SEO + AEO", ["local-seo-aeo"], 2_499_900, 0, 35_000, 0, null],
-    ["website and social", ["managed-website", "digital-growth"], 1_169_900, 150_000, 19_400, 2_500, "Package offer, 10% off"],
+    ["website and social", ["managed-website", "digital-growth"], 1_169_900, 150_000, 19_400, 3_000, "Package offer, 10% off"],
     ["website and SEO", ["managed-website", "local-seo-aeo"], 2_519_900, 0, 37_400, 0, "Package offer, 10% off"],
-    ["social and SEO", ["digital-growth", "local-seo-aeo"], 3_149_900, 150_000, 45_000, 2_500, "Package offer, 10% off"],
+    ["social and SEO", ["digital-growth", "local-seo-aeo"], 3_149_900, 150_000, 45_000, 3_000, "Package offer, 10% off"],
     ["all three", ["managed-website", "digital-growth", "local-seo-aeo"], 3_039_800, 300_000, 45_200, 6_000, "Package offer, 20% off"],
   ];
 

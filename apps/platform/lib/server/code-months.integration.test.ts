@@ -343,11 +343,11 @@ describe("months offline", () => {
     expect(payment).toMatchObject({ kind: "reactivation", amountCents: DISCOUNTED, attentionReason: null });
     expect(await held(back)).toMatchObject({ discountMonthsLeft: 1, discountAmountCents: CODE_CENTS });
     expect((await findTaxInvoiceByPaymentId(dbs().staff.db, payment.id))?.lines.map((line) => [line.unitAmountCents, line.discountAmountCents])).toEqual([[WEBSITE_NET, CODE_CENTS]]);
-    // 5% of what the member paid before the GST inside it, as for a renewal: ₹2,699 holds ₹411.72 of GST, leaving ₹2,287.28, and 5% of that is ₹114.364, taken down to ₹114.36.
+    // 5% of what the member paid, GST included, as for a renewal: ₹2,699, so ₹134.95.
     const affiliateId = (await dbs().staff.db.query.affiliates.findFirst())?.id ?? "";
     expect(await listAffiliateEarnings(dbs().staff.db, affiliateId, 10)).toMatchObject([
-      { paymentKind: "reactivation", basisCents: 228_728, amountCents: 11_436 },
-      { paymentKind: "initial", basisCents: 228_728 },
+      { paymentKind: "reactivation", basisCents: 269_900, amountCents: 13_495 },
+      { paymentKind: "initial", basisCents: 269_900 },
     ]);
   });
 
