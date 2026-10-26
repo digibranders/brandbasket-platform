@@ -8,16 +8,12 @@ interface NoticeProps {
   readonly className?: string;
 }
 
-/** The result of an action, as one line under the header: a dot and a sentence, no banner box. */
+/** The result of an action, as one line under the header: a rule at the left and a sentence, no banner box. */
 export function Notice({ tone, children, className }: NoticeProps): ReactElement {
   return (
     <p
       role="status"
-      className={cn(
-        "flex items-start gap-3 border-l-2 py-1 pl-4 text-[0.95rem] leading-relaxed",
-        tone === "ok" ? "border-[#3d7a4a] text-ink" : "border-accent text-accent",
-        className,
-      )}
+      className={cn("flex items-start gap-3 border-l-2 py-1 pl-4 text-sm leading-relaxed", tone === "ok" ? "border-sage text-ink" : "border-error text-error", className)}
     >
       {children}
     </p>
