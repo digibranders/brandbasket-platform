@@ -2,7 +2,7 @@ import { ADD_ONS_PATH } from "@brandbasket/shared/lib/billing/add-ons";
 import { CHATBOT_LEADS_PATH, CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
 
 /** The rail's icons by name; components/v2/rail-icon.tsx draws them. */
-export type RailIcon = "overview" | "requests" | "website" | "reviews" | "deals" | "profile" | "services" | "billing" | "settings";
+export type RailIcon = "overview" | "requests" | "todo" | "website" | "reviews" | "deals" | "profile" | "services" | "billing" | "settings";
 
 export interface RailTarget {
   readonly href: string;
@@ -11,6 +11,8 @@ export interface RailTarget {
 
 export interface RailLink extends RailTarget {
   readonly icon: RailIcon;
+  /** Open items shown as a number beside the link. */
+  readonly count?: number;
   /** Pages inside the link, shown under it while one of them is open. */
   readonly children?: readonly RailTarget[];
 }
@@ -30,11 +32,14 @@ export interface RailInput {
   readonly websiteSetupDone: boolean;
   /** A member who claimed a directory listing keeps its Reviews and Deals. */
   readonly listingClaim: boolean;
+  /** Items the customer still owes us (lib/todo.ts openCount). */
+  readonly todoCount: number;
 }
 
 /** Plain strings, not imported from lib/deals.ts and lib/owner-replies.ts: those pull the database driver into the browser bundle, and this file is bundled into client components. lib/rail.test.ts pins them to the real paths. */
 const DEALS_HREF = "/deals";
 const REVIEWS_HREF = "/reviews";
+const TODO_HREF = "/todo";
 
 const OVERVIEW: RailLink = { href: "/", label: "Overview", icon: "overview" };
 const REQUESTS: RailLink = { href: "/support", label: "Requests", icon: "requests" };
@@ -69,10 +74,15 @@ function websiteLink(setupDone: boolean): RailLink {
 }
 
 export function railSections(input: RailInput): readonly RailSection[] {
-  const top: RailSection = { label: null, links: [OVERVIEW, REQUESTS] };
-  if (input.quiet) return [top, { label: "Account", links: [BILLING, SETTINGS] }];
+  if (input.quiet) {
+    return [
+      { label: null, links: [OVERVIEW, REQUESTS] },
+      { label: "Account", links: [BILLING, SETTINGS] },
+    ];
+  }
+  const todo: RailLink = { href: TODO_HREF, label: "To do", icon: "todo", ...(input.todoCount > 0 ? { count: input.todoCount } : {}) };
   return [
-    top,
+    { label: null, links: [OVERVIEW, todo, REQUESTS] },
     ...(input.hasWebsite ? [{ label: "Services", links: [websiteLink(input.websiteSetupDone)] }] : []),
     ...(input.listingClaim ? [{ label: "Directory", links: [REVIEWS, DEALS] }] : []),
     { label: "Account", links: [PROFILE, SERVICES, BILLING, SETTINGS] },
