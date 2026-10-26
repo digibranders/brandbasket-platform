@@ -12,16 +12,20 @@ import { assertSupportSubmissionKey, assertSupportUuid, claimSupportAttachments,
 export interface StaffSupportListOptions {
   readonly cursor?: string; readonly limit?: number; readonly status?: SupportStatus; readonly category?: SupportCategory;
   readonly priority?: SupportPriority; readonly assigneeStaffId?: string | null; readonly search?: string;
+  /** Only this business's tickets, for the client page's Requests tab. */
+  readonly businessId?: string;
 }
 export interface StaffSupportTicketPage { readonly items: SupportTicket[]; readonly nextCursor: string | null }
 export async function listSupportTicketsForStaff(db: Database, options: StaffSupportListOptions = {}): Promise<StaffSupportTicketPage> {
   const limit = supportPageLimit(options.limit);
   if (options.cursor) assertSupportUuid(options.cursor, "Cursor");
+  if (options.businessId !== undefined) assertSupportUuid(options.businessId, "Business ID");
   const search = options.search?.trim();
   if (search && search.length > 120) throw new SupportQueryError("invalid_input", "Search must be at most 120 characters.");
   const pattern = search ? `%${search.replaceAll(/[\\%_]/g, "\\$&")}%` : undefined;
   const rows = await db.select().from(supportTickets).where(and(
     options.cursor ? lt(supportTickets.id, options.cursor) : undefined,
+    options.businessId !== undefined ? eq(supportTickets.businessId, options.businessId) : undefined,
     options.status ? eq(supportTickets.status, options.status) : undefined,
     options.category ? eq(supportTickets.category, options.category) : undefined,
     options.priority ? eq(supportTickets.priority, options.priority) : undefined,

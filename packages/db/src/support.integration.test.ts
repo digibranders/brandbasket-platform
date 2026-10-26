@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { users, businesses, businessMembers, staffMembers, accountClosures } from "./schema";
 import { supportAttachments, supportMessages, supportTickets } from "./schema/support";
 import { appendSupportReply, appendSupportReplyWithOutcome, beginSupportAccountErasure, claimSupportTicketsDueRetention, createSupportTicket, createSupportTicketWithOutcome, eraseSupportDataForUser, finalizeSupportTicketRetention, getSupportTicket, getSupportUnreadCount, markSupportAttachmentPurged, markSupportTicketRead, stageSupportAttachment } from "./queries/support";
-import { appendSupportMessageByStaff, countSupportTicketsAwaitingStaff, updateSupportTicketByStaff } from "./queries/support-staff";
+import { appendSupportMessageByStaff, countSupportTicketsAwaitingStaff, listSupportTicketsForStaff, updateSupportTicketByStaff } from "./queries/support-staff";
 import { captureErrorText, openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 import { withUserScope } from "./scope";
 
@@ -155,3 +155,19 @@ describe("the staff queue count", () => {
     expect(await countSupportTicketsAwaitingStaff(dbs.staff.db)).toBe(1);
   });
 });
+
+describe("listSupportTicketsForStaff by business", () => {
+  it("lists only the tickets of the business asked for", async () => {
+    const ofBusiness = await createSupportTicket(dbs.app.db, { ...input, userId: OTHER, businessId, submissionKey: "business-ticket-1234" });
+    const noBusiness = await createSupportTicket(dbs.app.db, input);
+    const page = await listSupportTicketsForStaff(dbs.staff.db, { businessId });
+    expect(page.items.map((ticket) => ticket.id)).toEqual([ofBusiness.id]);
+    expect(page.items.some((ticket) => ticket.id === noBusiness.id)).toBe(false);
+    expect((await listSupportTicketsForStaff(dbs.staff.db, { businessId: "01a0f71b-8402-7d48-a90a-000000000000" })).items).toEqual([]);
+  });
+
+  it("refuses a business id that is not one", async () => {
+    await expect(listSupportTicketsForStaff(dbs.staff.db, { businessId: "nope" })).rejects.toThrow(/Business ID/);
+  });
+});
+
