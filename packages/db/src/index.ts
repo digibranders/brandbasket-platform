@@ -756,7 +756,7 @@ export {
   recordSetupCallBooking,
   removeSetupCallBooking,
 } from "./queries/setup-calls";
-export { listServiceSetups, saveServiceSetup } from "./queries/service-setup";
+export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
 export { addActivityEvent, listActivityEvents, removeActivityEvent } from "./queries/activity-events";
 export { listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
 export {

@@ -7,7 +7,7 @@ import type { ServiceKey } from "@/lib/first-look";
 import { doneSetupKeys } from "@/lib/service-setup";
 import { buildTodo, openCount, type TodoItem } from "@/lib/todo";
 import { getAppDb } from "./db";
-import { loadServicesBought } from "./first-look";
+import { loadSetupServices } from "./first-look";
 import { getProjectOverview } from "./onboarding";
 
 export interface TodoData {
@@ -25,7 +25,7 @@ export interface TodoData {
  */
 export const loadTodo = cache(async (tenant: TenantContext): Promise<TodoData> => {
   const [services, overview, setups] = await Promise.all([
-    loadServicesBought(tenant),
+    loadSetupServices(tenant),
     getProjectOverview(),
     withTenantScope(getAppDb(), tenant, (tx) => listServiceSetups(tx, tenant.businessId)).catch((error: unknown) => {
       console.error("[todo] could not read the saved answers", errorLogInfo(error));

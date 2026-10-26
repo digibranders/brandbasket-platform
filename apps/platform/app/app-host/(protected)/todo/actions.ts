@@ -5,7 +5,7 @@ import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { revalidatePath } from "next/cache";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
-import { loadServicesBought } from "@/lib/server/first-look";
+import { loadSetupServices } from "@/lib/server/first-look";
 import { isSetupKey, parseSetupItem, SETUP_FIELDS, SETUP_SERVICE, type SetupFormState } from "@/lib/service-setup";
 
 /**
@@ -24,7 +24,7 @@ export async function saveSetupItemAction(_previous: SetupFormState, formData: F
   if (!parsed.success) return { status: "error", key, field: parsed.field, message: parsed.message, values };
 
   const service = SETUP_SERVICE[key];
-  const bought = await loadServicesBought(tenant);
+  const bought = await loadSetupServices(tenant);
   if (!bought.includes(service)) return { status: "error", key, field: "", message: "That item is not part of your plan.", values };
 
   try {

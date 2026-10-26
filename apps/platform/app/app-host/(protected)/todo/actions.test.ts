@@ -2,7 +2,7 @@ import { saveServiceSetup, withTenantScope } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
-import { loadServicesBought } from "@/lib/server/first-look";
+import { loadSetupServices } from "@/lib/server/first-look";
 import { initialSetupFormState } from "@/lib/service-setup";
 import { saveSetupItemAction } from "./actions";
 
@@ -10,7 +10,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/server/db", () => ({ getAppDb: vi.fn(() => ({ kind: "app-db" })) }));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
-vi.mock("@/lib/server/first-look", () => ({ loadServicesBought: vi.fn() }));
+vi.mock("@/lib/server/first-look", () => ({ loadSetupServices: vi.fn() }));
 vi.mock("@brandbasket/db", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@brandbasket/db")>();
   return { ...actual, saveServiceSetup: vi.fn(), withTenantScope: vi.fn() };
@@ -29,7 +29,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-1" }, tenant, billing: {} } as never);
-  vi.mocked(loadServicesBought).mockResolvedValue(["website", "social", "search"]);
+  vi.mocked(loadSetupServices).mockResolvedValue(["website", "social", "search"]);
   vi.mocked(withTenantScope).mockImplementation((_db, _tenant, run) => run(tx as never));
   vi.mocked(saveServiceSetup).mockResolvedValue(undefined as never);
 });
@@ -47,7 +47,7 @@ describe("saveSetupItemAction", () => {
   });
 
   it("refuses an item for a service the customer did not buy", async () => {
-    vi.mocked(loadServicesBought).mockResolvedValue(["website"]);
+    vi.mocked(loadSetupServices).mockResolvedValue(["website"]);
     const state = await saveSetupItemAction(initialSetupFormState, form({ key: "offers", offers: "A free check-up" }));
     expect(state).toEqual({
       status: "error",

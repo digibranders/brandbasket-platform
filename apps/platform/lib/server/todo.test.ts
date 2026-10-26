@@ -1,13 +1,13 @@
 import { listServiceSetups, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getAppDb } from "./db";
-import { loadServicesBought } from "./first-look";
+import { loadSetupServices } from "./first-look";
 import { getProjectOverview } from "./onboarding";
 import { loadTodo } from "./todo";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn() }));
-vi.mock("./first-look", () => ({ loadServicesBought: vi.fn() }));
+vi.mock("./first-look", () => ({ loadSetupServices: vi.fn() }));
 vi.mock("./onboarding", () => ({ getProjectOverview: vi.fn() }));
 vi.mock("@brandbasket/db", () => ({ listServiceSetups: vi.fn(), withTenantScope: vi.fn() }));
 
@@ -24,7 +24,7 @@ beforeEach(() => {
 
 describe("loadTodo", () => {
   it("marks the saved Social answers done and drops them from the open count", async () => {
-    vi.mocked(loadServicesBought).mockResolvedValue(["social"]);
+    vi.mocked(loadSetupServices).mockResolvedValue(["social"]);
     vi.mocked(listServiceSetups).mockResolvedValue([
       { service: "social", answers: { instagramUrl: "https://instagram.com/cafe", facebookUrl: "", adminAccess: "yes" } },
     ] as never);
@@ -40,7 +40,7 @@ describe("loadTodo", () => {
 
   it("shows every Social item open and logs once when the saved answers cannot be read", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    vi.mocked(loadServicesBought).mockResolvedValue(["social"]);
+    vi.mocked(loadSetupServices).mockResolvedValue(["social"]);
     vi.mocked(listServiceSetups).mockRejectedValue(new Error("db down"));
 
     const todo = await loadTodo(freshTenant());
@@ -57,7 +57,7 @@ describe("loadTodo", () => {
   });
 
   it("gives a Social-only customer no website link", async () => {
-    vi.mocked(loadServicesBought).mockResolvedValue(["social"]);
+    vi.mocked(loadSetupServices).mockResolvedValue(["social"]);
     vi.mocked(listServiceSetups).mockResolvedValue([]);
 
     const todo = await loadTodo(freshTenant());
