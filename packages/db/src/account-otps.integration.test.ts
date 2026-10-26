@@ -7,7 +7,9 @@ import {
   createAccountOtp,
   findUserByEmail,
   findUserByPhone,
+  phoneNumberIsTaken,
   purgeExpiredAccountOtps,
+  setUserPhoneNumber,
 } from "./queries/account-otps";
 import { accountOtps, users } from "./schema";
 import { captureErrorText, openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
@@ -146,6 +148,30 @@ describe("an account's phone number", () => {
     expect(
       await captureErrorText(dbs.staff.db.insert(users).values({ id: "third", name: "C", email: "c@example.com", phoneNumber: "9820011223" })),
     ).toContain("users_phone_number_check");
+  });
+});
+
+describe("the mobile number an owner gives when signing up", () => {
+  it("is saved unproven, so it signs nobody in, and any account holding it makes it taken", async () => {
+    await dbs.staff.db.insert(users).values({ id: "new-owner", name: "Asha", email: "asha@example.test" });
+    expect(await phoneNumberIsTaken(dbs.staff.db, PHONE)).toBe(false);
+
+    expect(await setUserPhoneNumber(dbs.staff.db, "new-owner", PHONE)).toBe(true);
+
+    const [row] = await dbs.staff.db.select({ phone: users.phoneNumber, proven: users.phoneNumberVerified }).from(users).where(eq(users.id, "new-owner"));
+    expect(row).toEqual({ phone: PHONE, proven: false });
+    expect(await phoneNumberIsTaken(dbs.staff.db, PHONE)).toBe(true);
+    expect(await findUserByPhone(dbs.staff.db, PHONE)).toBeNull();
+  });
+
+  it("is refused, with nothing saved, when another account already holds it", async () => {
+    await dbs.staff.db.insert(users).values({ id: "first", name: "A", email: "a@example.test", phoneNumber: PHONE });
+    await dbs.staff.db.insert(users).values({ id: "second", name: "B", email: "b@example.test" });
+
+    expect(await setUserPhoneNumber(dbs.staff.db, "second", PHONE)).toBe(false);
+
+    const [row] = await dbs.staff.db.select({ phone: users.phoneNumber }).from(users).where(eq(users.id, "second"));
+    expect(row?.phone).toBeNull();
   });
 });
 

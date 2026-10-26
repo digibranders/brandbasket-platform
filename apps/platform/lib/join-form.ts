@@ -3,12 +3,13 @@ import type { OtpRetry } from "@/lib/auth-retry";
 import { OTP_LENGTH } from "@brandbasket/shared/lib/appointments/otp";
 import { HOME_COUNTRY, isCountryCode } from "@brandbasket/shared/lib/countries";
 import { isIndiaStateCode } from "@brandbasket/shared/lib/directory/india-states";
+import { MAX_PHONE_LENGTH, PHONE_COUNTRY_FIELD } from "@brandbasket/shared/lib/phone/fields";
 import { cleanLine } from "@brandbasket/shared/lib/validation/text";
 import { newPasswordSchema } from "@/lib/setup-form";
 
 /*
  * The sign-up form (/login, Create account): browser-safe, so the form component can share its limits. An owner gives
- * their name, their email address and a password; we email the address a code, and the account is opened once they
+ * their name, their email address, their mobile number and a password; we email the address a code, and the account is opened once they
  * enter it. So the form is sent twice: first with no code (send me one), then with the code and the one it answers.
  *
  * Before any of that the owner picks a plan (docs/superpowers/specs/2026-10-07-care-plan-design.md): the free listing,
@@ -91,13 +92,19 @@ interface JoinAccountBase {
   readonly code: JoinCode | null;
 }
 
+/** The mobile number as the form sent it: the country code the owner picked and the digits as typed. The server makes it E.164. */
+export interface JoinPhone {
+  readonly country: string;
+  readonly number: string;
+}
+
 /** How the owner is reached, and how they sign in. */
 export interface JoinContact {
   /** Trimmed and lowercased, as accounts are stored. */
   readonly email: string;
 }
 
-type JoinAccount = JoinAccountBase & JoinContact;
+type JoinAccount = JoinAccountBase & JoinContact & { readonly phone: JoinPhone };
 
 /** A new account and the business it opens with: the business picks its category and area after signing in. */
 export type JoinInput = JoinAccount & {
@@ -155,6 +162,24 @@ function readContact(formData: FormData): { readonly success: true; readonly con
   return email.success ? { success: true, contact: { email: email.data } } : { success: false, message: firstMessage(email.error) };
 }
 
+const PHONE_MISSING_MESSAGE = "Enter your mobile number.";
+const PHONE_TOO_LONG_MESSAGE = "That phone number is too long.";
+const PHONE_COUNTRY_MESSAGE = "Choose your country code.";
+const PHONE_COUNTRY_SHAPE = /^[A-Z]{2}$/;
+
+/**
+ * The mobile number, required: a number typed, and a two-letter country code picked from the list. Whether the digits are
+ * a real number of that country is for the server, which loads the phone metadata this file must not.
+ */
+function readPhone(formData: FormData): { readonly success: true; readonly phone: JoinPhone } | { readonly success: false; readonly message: string } {
+  const number = cleanLine(textValue(formData, "phone"));
+  if (number === "") return { success: false, message: PHONE_MISSING_MESSAGE };
+  if (number.length > MAX_PHONE_LENGTH) return { success: false, message: PHONE_TOO_LONG_MESSAGE };
+  const country = textValue(formData, PHONE_COUNTRY_FIELD).trim();
+  if (!PHONE_COUNTRY_SHAPE.test(country)) return { success: false, message: PHONE_COUNTRY_MESSAGE };
+  return { success: true, phone: { country, number } };
+}
+
 const COUNTRY_MESSAGE = "Choose your country.";
 const STATE_MESSAGE = "Choose your state.";
 
@@ -187,13 +212,15 @@ export function parseJoinForm(formData: FormData): JoinParseResult {
 
   const where = readLocation(formData);
   if (!where.success) return { success: false, message: where.message };
+  const phone = readPhone(formData);
+  if (!phone.success) return { success: false, message: phone.message };
   const code = readCode(formData);
   if (!code.ok) return { success: false, message: CODE_MESSAGE };
 
   // One clean line; a free sign-up never asks for it, so anything it sent here is ignored.
   const typed = cleanLine(textValue(formData, "businessName")).replace(/\s+/g, " ");
-  if (!isPaidChoice(choice)) return { success: true, data: { choice, businessName: null, ...account.data, ...where.location, agreed: true, code: code.code } };
+  if (!isPaidChoice(choice)) return { success: true, data: { choice, businessName: null, ...account.data, ...where.location, phone: phone.phone, agreed: true, code: code.code } };
   if (typed === "") return { success: false, message: NEW_BUSINESS_NAME_MESSAGE };
   if (typed.length > JOIN_BUSINESS_NAME_MAX_LENGTH) return { success: false, message: "That business name is too long." };
-  return { success: true, data: { choice, businessName: typed, ...account.data, ...where.location, agreed: true, code: code.code } };
+  return { success: true, data: { choice, businessName: typed, ...account.data, ...where.location, phone: phone.phone, agreed: true, code: code.code } };
 }

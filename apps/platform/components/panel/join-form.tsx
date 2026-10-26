@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef, useState, useSyncExternalStore, type ReactElement } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 import { HOME_COUNTRY, type CountryOption } from "@brandbasket/shared/lib/countries";
 import { INDIA_STATES } from "@brandbasket/shared/lib/directory/india-states";
@@ -9,6 +9,9 @@ import { OTP_LENGTH } from "@brandbasket/shared/lib/appointments/otp";
 import { cn } from "@brandbasket/shared/lib/cn";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { currencyForCountry } from "@brandbasket/shared/lib/pricing";
+import { PHONE_COUNTRY_FIELD, type PhoneCountryOption } from "@brandbasket/shared/lib/phone/fields";
+import { PhoneField, type PhoneFieldValue } from "@brandbasket/shared/ui/phone-field";
+import { SelectField } from "@brandbasket/shared/ui/select-field";
 import { Button } from "@brandbasket/shared/ui/panel/button";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
@@ -93,6 +96,10 @@ interface JoinFormProps {
   readonly confirmsCodes: boolean;
   /** Every country the owner may pick, by English name (lib/countries.ts countryOptions). */
   readonly countries: readonly CountryOption[];
+  /** Every country code the mobile number's dropdown offers, built on the server (shared/server/phone-countries.ts). */
+  readonly phoneCountries: readonly PhoneCountryOption[];
+  /** The code the dropdown opens on: the visitor's country when it can be told, otherwise India. */
+  readonly defaultPhoneCountry: string;
 }
 
 function subscribeToNothing(): () => void {
@@ -181,7 +188,7 @@ function PaperFold({ chosen, flap }: { readonly chosen: boolean; readonly flap: 
 }
 
 /** India's states and union territories by name, for the state select. */
-const STATE_OPTIONS = [...INDIA_STATES].sort((a, b) => a.name.localeCompare(b.name, "en"));
+const STATE_CHOICES = [...INDIA_STATES].sort((a, b) => a.name.localeCompare(b.name, "en")).map((state) => ({ value: state.code, label: state.name }));
 
 const ERROR_ID = "join-error";
 /** The longest password the server accepts (lib/join-form.ts). */
@@ -209,6 +216,8 @@ export function JoinForm({
   prices,
   confirmsCodes,
   countries,
+  phoneCountries,
+  defaultPhoneCountry,
 }: JoinFormProps): ReactElement {
   const cooldown = useOtpRetryCooldown();
   const runAction = async (previous: JoinFormState, formData: FormData): Promise<JoinFormState> => {
@@ -232,7 +241,10 @@ export function JoinForm({
   /** India first: the product is sold there. The state is never filled in for the owner; they pick it. */
   const [country, setCountry] = useState<string>(HOME_COUNTRY);
   const planPrices = prices[currencyForCountry(country)];
+  const countryChoices = useMemo(() => countries.map((option) => ({ value: option.code, label: option.name })), [countries]);
   const [stateCode, setStateCode] = useState("");
+  /** The mobile number: held here, since the code step sends the details again, and the field itself keeps no copy. */
+  const [phone, setPhone] = useState<PhoneFieldValue>({ country: defaultPhoneCountry, number: "" });
   const [password, setPassword] = useState("");
   /** Never ticked for the owner: agreeing to the Terms and Privacy Notice is their own act (DPDP Act s.6). */
   const [agreed, setAgreed] = useState(false);
@@ -352,6 +364,8 @@ export function JoinForm({
         <input type="hidden" name="email" value={email} />
         <input type="hidden" name="country" value={country} />
         {country === HOME_COUNTRY ? <input type="hidden" name="stateCode" value={stateCode} /> : null}
+        <input type="hidden" name={PHONE_COUNTRY_FIELD} value={phone.country} />
+        <input type="hidden" name="phone" value={phone.number} />
         <input type="hidden" name="password" value={password} />
         {agreed ? <input type="hidden" name={AGREE_FIELD} value={AGREE_VALUE} /> : null}
         <input type="hidden" name="otpId" value={otp.otpId} />
@@ -506,23 +520,17 @@ export function JoinForm({
           Country
           <RequiredMark />
         </label>
-        <select
+        <SelectField
           id="join-country"
           name="country"
           required
-          autoComplete="country"
+          options={countryChoices}
           value={country}
           disabled={isPending}
-          onChange={(event) => setCountry(event.target.value)}
+          onChange={setCountry}
           aria-describedby={describedBy}
-          className={INPUT_CLASSES}
-        >
-          {countries.map((option) => (
-            <option key={option.code} value={option.code}>
-              {option.name}
-            </option>
-          ))}
-        </select>
+          className={cn(INPUT_CLASSES, "cursor-pointer")}
+        />
       </div>
       {country === HOME_COUNTRY ? (
         <div>
@@ -530,31 +538,43 @@ export function JoinForm({
             State
             <RequiredMark />
           </label>
-          <select
+          <SelectField
             id="join-state"
             name="stateCode"
             required
-            autoComplete="address-level1"
+            options={STATE_CHOICES}
+            placeholder="Choose your state"
             value={stateCode}
             disabled={isPending}
-            onChange={(event) => setStateCode(event.target.value)}
+            onChange={setStateCode}
             aria-describedby={`join-state-hint${describedBy === undefined ? "" : ` ${describedBy}`}`}
-            className={INPUT_CLASSES}
-          >
-            <option value="" disabled>
-              Choose your state
-            </option>
-            {STATE_OPTIONS.map((state) => (
-              <option key={state.code} value={state.code}>
-                {state.name}
-              </option>
-            ))}
-          </select>
+            className={cn(INPUT_CLASSES, "cursor-pointer")}
+          />
           <p id="join-state-hint" className="mt-2 text-xs text-ink-soft sm:text-sm">
             Used for GST on your invoices.
           </p>
         </div>
       ) : null}
+      <div>
+        <label htmlFor="join-phone" className="block text-xs font-medium sm:text-sm">
+          Mobile number
+          <RequiredMark />
+        </label>
+        <PhoneField
+          id="join-phone"
+          countries={phoneCountries}
+          country={phone.country}
+          defaultCountry={defaultPhoneCountry}
+          number={phone.number}
+          size="roomy"
+          required
+          disabled={isPending}
+          numberStatus={{ "aria-describedby": describedBy }}
+          countryStatus={{ "aria-describedby": describedBy }}
+          className="mt-2"
+          onChange={setPhone}
+        />
+      </div>
       <div>
         <label htmlFor="join-password" className="block text-xs font-medium sm:text-sm">
           Choose a password

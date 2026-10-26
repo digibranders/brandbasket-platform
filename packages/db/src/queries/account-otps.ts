@@ -1,7 +1,7 @@
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { accountOtps, users, type AccountOtpPurpose } from "../schema";
-import { isUuid } from "./tenant";
+import { hasPostgresCode, isUuid, UNIQUE_VIOLATION } from "./tenant";
 
 /*
  * The codes emailed to an address to open an account (schema/account-otps.ts), and the lookups of the account an address
@@ -99,6 +99,26 @@ export async function findUserByPhone(db: Database, phone: string): Promise<Phon
     .where(and(eq(users.phoneNumber, phone), eq(users.phoneNumberVerified, true)))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/** Whether any account holds `phone` (E.164), proven or not: a number belongs to one account only. */
+export async function phoneNumberIsTaken(db: Database, phone: string): Promise<boolean> {
+  const rows = await db.select({ id: users.id }).from(users).where(eq(users.phoneNumber, phone)).limit(1);
+  return rows[0] !== undefined;
+}
+
+/**
+ * Saves the mobile number (E.164) an owner gave when signing up. It stays unproven (`phone_number_verified` is left
+ * false), so it is a contact number and signs nobody in. False, with nothing saved, when another account holds it.
+ */
+export async function setUserPhoneNumber(db: Database, userId: string, phone: string): Promise<boolean> {
+  try {
+    await db.update(users).set({ phoneNumber: phone }).where(eq(users.id, userId));
+    return true;
+  } catch (error) {
+    if (hasPostgresCode(error, UNIQUE_VIOLATION)) return false;
+    throw error;
+  }
 }
 
 /** The account that signs in with `email`, or null; the address is compared in lowercase, as accounts are stored. */

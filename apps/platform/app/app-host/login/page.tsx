@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
 import { EntryScreen } from "@/components/panel/entry-screen";
@@ -9,6 +10,8 @@ import type { Plan } from "@brandbasket/db";
 import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import { EntrySwitch } from "@/components/panel/entry-switch";
 import { countryOptions } from "@brandbasket/shared/lib/countries";
+import { phoneCountryOptions } from "@brandbasket/shared/server/phone-countries";
+import { visitorPhoneCountry } from "@brandbasket/shared/server/phone-defaults";
 import { JoinForm, type JoinBasket, type PlanPricesByCurrency } from "@/components/panel/join-form";
 import { loginNotice } from "@/lib/login-notice";
 import { requestBrand } from "@/lib/server/request-brand";
@@ -156,6 +159,8 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
           prices={prices}
           confirmsCodes={confirmsCodes}
           countries={countryOptions()}
+          phoneCountries={phoneCountryOptions()}
+          defaultPhoneCountry={visitorPhoneCountry(await headers())}
         />
       </TurnstileScope>
     </EntryScreen>
