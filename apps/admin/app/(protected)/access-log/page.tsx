@@ -21,6 +21,7 @@ const ACTION_LABELS: Readonly<Record<StaffAccessAction, string>> = {
   "search.run": "Searched the console",
   "client.view": "Opened a client",
   "lead.view": "Opened a lead",
+  "lead.export": "Exported enquiries",
   "outbox.view": "Opened an outbox message",
   "support_ticket.view": "Opened a support request",
   "support_attachment.view": "Opened a support screenshot",

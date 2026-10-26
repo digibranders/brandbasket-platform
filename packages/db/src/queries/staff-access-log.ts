@@ -13,6 +13,7 @@ export const STAFF_ACCESS_ACTIONS = [
   "search.run",
   "client.view",
   "lead.view",
+  "lead.export",
   "outbox.view",
   "support_ticket.view",
   "support_attachment.view",
