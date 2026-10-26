@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactElement, ReactNode } from "react";
 import { DashboardRoot, dashboardMetadataBase, dashboardViewport } from "@brandbasket/shared/ui/panel/dashboard-root";
 import { adminBrand } from "@/lib/brand";
-import { figtree } from "@/lib/brandbasket-font";
+import { brandbasketFontVariables } from "@/lib/brandbasket-font";
 import "./console.css";
 
 // A root layout (see components/dashboard-root.tsx for why): this app no longer has a single shared
@@ -13,14 +13,18 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export const viewport: Viewport = dashboardViewport;
+/** The browser bar takes the page colour (theme.css `--color-bg`). */
+export const viewport: Viewport = { ...dashboardViewport, themeColor: "#f6f5f2" };
 
 interface AdminHostLayoutProps {
   readonly children: ReactNode;
 }
 
 export default async function AdminHostLayout({ children }: AdminHostLayoutProps): Promise<ReactElement> {
-  // Brandbasket's palette and typeface are the shared theme's `html[data-brand="brandbasket"]`, as on the customer dashboard; console.css adds
-  // the console's own surfaces (the dock's glass, its buttons) in the same colours.
-  return <DashboardRoot brand={{ id: "brandbasket", className: figtree.variable }}>{children}</DashboardRoot>;
+  // The v2 palette and Red Hat type come from theme.css `[data-app="console"]`, the same block the customer dashboard uses.
+  return (
+    <DashboardRoot brand={{ id: "brandbasket", className: brandbasketFontVariables }} app="console">
+      {children}
+    </DashboardRoot>
+  );
 }
