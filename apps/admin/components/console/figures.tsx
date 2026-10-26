@@ -4,30 +4,32 @@ import { cn } from "@brandbasket/shared/lib/cn";
 export interface FigureItem {
   readonly value: ReactNode;
   readonly label: string;
-  /** A short qualifier under the label. */
+  /** A short qualifier under the value. */
   readonly note?: string;
   readonly emphasis?: boolean;
-  /** A figure that can run long, such as rupees with paise: set a step smaller and allowed to wrap, so it never runs into the next one. */
+  /** A figure that can run long, such as rupees with paise: set a step smaller and allowed to wrap. */
   readonly long?: boolean;
+  /** Colours the note: good news, something to watch, or something wrong. */
+  readonly tone?: "good" | "warn" | "bad";
 }
 
-/** Big numbers in a row, separated by space alone. The figure carries the weight; the words stay small. */
+const NOTE_TONES: Readonly<Record<NonNullable<FigureItem["tone"]>, string>> = {
+  good: "text-sage",
+  warn: "text-rattan-ink",
+  bad: "text-error",
+};
+
+/** The KPI line: figures side by side between two hairlines, label above, value in the figure face, note under. */
 export function Figures({ items }: { readonly items: readonly FigureItem[] }): ReactElement {
   return (
-    <div className="mt-8 flex flex-wrap gap-x-14 gap-y-6">
+    <div className="mt-5 grid grid-cols-2 border-y border-line sm:grid-cols-3 lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none">
       {items.map((item) => (
-        <div key={item.label} className={cn("min-w-0", item.long ? "max-w-full" : "max-w-[16rem]")}>
-          <p
-            className={cn(
-              "font-serif leading-none tracking-[-0.02em] tabular-nums",
-              item.long ? "break-words text-[2rem] sm:text-[2.25rem]" : "text-[2.75rem]",
-              item.emphasis && "text-accent",
-            )}
-          >
+        <div key={item.label} className="grid min-w-0 content-start gap-1 py-3 pr-3.5 lg:border-l lg:border-line lg:pl-3.5 lg:first:border-l-0 lg:first:pl-0">
+          <p className="text-xs text-ink-2">{item.label}</p>
+          <p className={cn("font-figure leading-none tracking-[-0.04em] tabular-nums", item.long ? "break-words text-xl" : "text-[1.625rem]", item.emphasis && "text-rattan-text")}>
             {item.value}
           </p>
-          <p className="mt-2 text-sm font-medium text-ink-soft">{item.label}</p>
-          {item.note === undefined ? null : <p className="mt-0.5 text-sm text-ink-soft/80">{item.note}</p>}
+          {item.note === undefined ? null : <p className={cn("text-xs font-semibold", item.tone === undefined ? "text-ink-2" : NOTE_TONES[item.tone])}>{item.note}</p>}
         </div>
       ))}
     </div>
