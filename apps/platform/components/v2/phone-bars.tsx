@@ -60,7 +60,12 @@ export function PhoneBars({ sections, logo, menu, signOut }: PhoneBarsProps): Re
       </nav>
 
       <dialog ref={sheet} onClose={() => setMenuOpen(false)} aria-label="Menu" className="m-0 ml-auto h-dvh max-h-none w-[min(20rem,100%)] bg-bg p-0 text-ink backdrop:bg-ink/30">
-        <div className="flex h-full flex-col gap-1 px-4 py-4">
+        <div
+          className="flex h-full flex-col gap-1 px-4 py-4"
+          onClick={(event) => {
+            if (event.target instanceof Element && event.target.closest("a[href]") !== null) setMenuOpen(false);
+          }}
+        >
           <div className="flex items-center justify-between pb-2">
             <WordmarkLogo href="/" brand={logo} />
             <button type="button" onClick={() => setMenuOpen(false)} aria-label="Close menu" className="grid size-10 place-items-center rounded-full hover:bg-sunken">
@@ -71,7 +76,7 @@ export function PhoneBars({ sections, logo, menu, signOut }: PhoneBarsProps): Re
             <nav key={section.label ?? "main"} aria-label={section.label ?? "Main"} className="grid gap-0.5">
               {section.label === null ? null : <p className="px-3 pb-1 pt-3 text-xs text-ink-2">{section.label}</p>}
               {section.links.flatMap((link) => [link, ...(link.children ?? []).map((child) => ({ ...child, icon: link.icon }))]).map((target) => (
-                <Link key={target.href + target.label} href={target.href} onClick={() => setMenuOpen(false)} aria-current={isCurrent(pathname, target.href) ? "page" : undefined} className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm", isCurrent(pathname, target.href) ? "bg-sunken font-semibold" : "text-ink")}>
+                <Link key={target.href + target.label} href={target.href} aria-current={isCurrent(pathname, target.href) ? "page" : undefined} className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm", isCurrent(pathname, target.href) ? "bg-sunken font-semibold" : "text-ink")}>
                   <RailIconMark name={target.icon} current={isCurrent(pathname, target.href)} />
                   {target.label}
                 </Link>
@@ -79,7 +84,7 @@ export function PhoneBars({ sections, logo, menu, signOut }: PhoneBarsProps): Re
             </nav>
           ))}
           <div className="mt-auto">
-            <AccountBar signOut={signOut} {...menu} dark={false} placement="bottom" />
+            <AccountBar signOut={signOut} {...menu} dark={false} />
           </div>
         </div>
       </dialog>
