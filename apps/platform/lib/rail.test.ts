@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { DEALS_PATH } from "@/lib/deals";
+import { REVIEWS_PATH } from "@/lib/owner-replies";
 import { isCurrent, linkIsCurrent, railSections, searchRail } from "@/lib/rail";
 
 const FULL = { quiet: false, hasWebsite: true, websiteSetupDone: false, listingClaim: false } as const;
@@ -57,5 +60,21 @@ describe("searchRail", () => {
     const sections = railSections(FULL);
     expect(searchRail(sections, "")[0]?.label).toBe("Ask for a change");
     expect(searchRail(sections, "BLOG").map((target) => target.label)).toEqual(["Website: Blog"]);
+  });
+});
+
+describe("browser safety", () => {
+  it("keeps the rail model free of server code", () => {
+    const source = readFileSync(new URL("./rail.ts", import.meta.url), "utf8");
+    const imports = [...source.matchAll(/^import\s+(type\s+)?[^;]*?from\s+"([^"]+)"/gm)].map((match) => ({ typeOnly: match[1] !== undefined, spec: match[2] ?? "" }));
+    const banned = imports.filter(
+      ({ typeOnly, spec }) => spec === "@/lib/deals" || spec === "@/lib/owner-replies" || spec.startsWith("@/lib/server/") || (spec === "@brandbasket/db" && !typeOnly),
+    );
+    expect(banned, "rail.ts is bundled into client components").toEqual([]);
+  });
+
+  it("uses the same paths as the pages", () => {
+    const directory = railSections({ quiet: false, hasWebsite: true, websiteSetupDone: false, listingClaim: true }).find((section) => section.label === "Directory");
+    expect(directory?.links.map((link) => link.href)).toEqual([REVIEWS_PATH, DEALS_PATH]);
   });
 });

@@ -1,7 +1,5 @@
 import { ADD_ONS_PATH } from "@brandbasket/shared/lib/billing/add-ons";
 import { CHATBOT_LEADS_PATH, CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
-import { DEALS_PATH } from "@/lib/deals";
-import { REVIEWS_PATH } from "@/lib/owner-replies";
 
 /** The rail's icons by name; components/v2/rail-icon.tsx draws them. */
 export type RailIcon = "overview" | "requests" | "website" | "reviews" | "deals" | "profile" | "services" | "billing" | "settings";
@@ -34,6 +32,10 @@ export interface RailInput {
   readonly listingClaim: boolean;
 }
 
+/** Plain strings, not imported from lib/deals.ts and lib/owner-replies.ts: those pull the database driver into the browser bundle, and this file is bundled into client components. lib/rail.test.ts pins them to the real paths. */
+const DEALS_HREF = "/deals";
+const REVIEWS_HREF = "/reviews";
+
 const OVERVIEW: RailLink = { href: "/", label: "Overview", icon: "overview" };
 const REQUESTS: RailLink = { href: "/support", label: "Requests", icon: "requests" };
 const PROFILE: RailLink = { href: "/details", label: "Business profile", icon: "profile" };
@@ -41,8 +43,8 @@ const PROFILE: RailLink = { href: "/details", label: "Business profile", icon: "
 const SERVICES: RailLink = { href: ADD_ONS_PATH, label: "Your plan", icon: "services" };
 const BILLING: RailLink = { href: "/billing", label: "Billing", icon: "billing" };
 const SETTINGS: RailLink = { href: "/settings", label: "Settings", icon: "settings" };
-const REVIEWS: RailLink = { href: REVIEWS_PATH, label: "Reviews", icon: "reviews" };
-const DEALS: RailLink = { href: DEALS_PATH, label: "Deals", icon: "deals" };
+const REVIEWS: RailLink = { href: REVIEWS_HREF, label: "Reviews", icon: "reviews" };
+const DEALS: RailLink = { href: DEALS_HREF, label: "Deals", icon: "deals" };
 
 /** Ask for a change, the first thing search offers (plan 28 section 2). Requests until plan 31 gives it its own form. */
 export const ASK_FOR_A_CHANGE: RailTarget = { href: "/support", label: "Ask for a change" };
