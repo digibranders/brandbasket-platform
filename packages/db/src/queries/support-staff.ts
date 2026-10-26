@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, lt, or, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import type { Database } from "../client";
 import { users } from "../schema/auth";
@@ -113,4 +113,16 @@ export async function appendSupportMessageByStaff(db: Database, input: AppendSup
     await claimSupportAttachments(tx, input.staffUserId, ticket.id, message.id, attachmentIds);
     return message;
   });
+}
+
+/** The statuses in which a request is waiting on the team: not picked up, sorted, or being worked on. */
+export const SUPPORT_STATUSES_AWAITING_STAFF = ["new", "triaged", "in_progress"] as const satisfies readonly SupportStatus[];
+
+/** How many requests are waiting on the team (the console rail's Requests count). */
+export async function countSupportTicketsAwaitingStaff(db: Database): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(supportTickets)
+    .where(inArray(supportTickets.status, [...SUPPORT_STATUSES_AWAITING_STAFF]));
+  return row?.count ?? 0;
 }
