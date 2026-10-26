@@ -94,6 +94,8 @@ describe("sendTeamsTest", () => {
     const body = String(post.mock.calls[0]?.[1]?.body);
     expect(body).toContain("owner@example.com");
     expect(body).toContain("Website enquiries");
+    // 10:00 UTC is 3:30 pm in India.
+    expect(body).toContain("3:30 pm IST");
   });
 });
 
