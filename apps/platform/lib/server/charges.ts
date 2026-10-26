@@ -237,7 +237,7 @@ export async function openBlogUnlock(tenant: TenantContext, plan: Plan): Promise
     quantity: 1,
     unitAmountCents: pricing.unitAmountCents,
     taxRateBasisPoints: plan.taxRateBasisPoints,
-    amountCents: chargeAmountCents(pricing.unitAmountCents, 1, plan.taxRateBasisPoints),
+    amountCents: chargeAmountCents(pricing.unitAmountCents, 1),
     currency: plan.currency,
     createdByStaffId: null,
   });

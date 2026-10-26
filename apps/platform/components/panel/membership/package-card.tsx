@@ -59,7 +59,7 @@ function ServiceRow({
             ) : null}
             {formatMoney(netCents, currency)}
           </span>
-          <span className="block text-xs text-ink-soft">{currency === "INR" ? "a month + GST" : "a month"}</span>
+          <span className="block text-xs text-ink-soft">{currency === "INR" ? "a month, GST included" : "a month"}</span>
         </p>
         {added && isLast ? (
           <Button type="button" size="sm" variant="secondary" disabled aria-label={`${addOn.title}, added, your only service`} className="min-w-[5.5rem] text-success">

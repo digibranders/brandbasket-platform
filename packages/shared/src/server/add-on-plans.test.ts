@@ -58,9 +58,9 @@ describe("ensureAddOnPlan", () => {
 
     await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: DIGITAL_GROWTH, price: addOnPrice(DIGITAL_GROWTH, "USD") })).resolves.toBe("plan_usd");
 
-    const key = { addOn: "digital-growth", netAmountCents: 7_500, taxRateBasisPoints: 0, currency: "USD", provider: "razorpay" } as const;
+    const key = { addOn: "digital-growth", netAmountCents: 15_000, taxRateBasisPoints: 0, currency: "USD", provider: "razorpay" } as const;
     expect(findAddOnProviderPlan).toHaveBeenCalledWith(staffDb, key);
-    expect(createPlan).toHaveBeenCalledWith(expect.objectContaining({ currency: "USD", netMonthlyCents: 7_500, taxRateBasisPoints: 0 }));
+    expect(createPlan).toHaveBeenCalledWith(expect.objectContaining({ currency: "USD", netMonthlyCents: 15_000, taxRateBasisPoints: 0 }));
     expect(saveAddOnProviderPlan).toHaveBeenCalledWith(staffDb, { ...key, providerPlanId: "plan_usd" });
   });
 

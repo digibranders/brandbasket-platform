@@ -157,7 +157,6 @@ function payRenewal(subscriptionId: string, invoicedPrice: RenewalInvoicedPrice,
       amountCents: chargedAmountCents(
         invoicedPrice.netAmountCents + (invoicedPrice.bundledAddOns ?? []).reduce((total, line) => total + line.listAmountCents - line.offerDiscountAmountCents, 0),
         invoicedPrice.discountAmountCents,
-        invoicedPrice.plan.taxRateBasisPoints,
       ),
       currency: "INR",
       paidAt: NEXT_MONTH,
@@ -184,7 +183,7 @@ async function payAddOn(discounted: boolean, providerPaymentId: string) {
     offerDiscountAmountCents: discountAmountCents,
     netAmountCents: 999_900 - discountAmountCents,
     taxRateBasisPoints: 1_800,
-    chargedAmountCents: chargedAmountCents(999_900, discountAmountCents, 1_800),
+    chargedAmountCents: chargedAmountCents(999_900, discountAmountCents),
     currency: "INR",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${randomUUID()}`,
@@ -284,7 +283,7 @@ describe("invoicing every payment path", () => {
         commitmentEndsAt,
         provider: "fake",
         providerPaymentId: "fake_pay_renewal",
-        amountCents: chargedAmountCents(299_900, 0, services.taxRateBasisPoints),
+        amountCents: chargedAmountCents(299_900, 0),
         currency: "INR",
         paidAt: NEXT_MONTH,
         paidThroughAt: MONTH_AFTER,
@@ -328,7 +327,7 @@ describe("invoicing every payment path", () => {
       quantity: 2,
       unitAmountCents: 142_500,
       taxRateBasisPoints: services.taxRateBasisPoints,
-      amountCents: chargeAmountCents(142_500, 2, services.taxRateBasisPoints),
+      amountCents: chargeAmountCents(142_500, 2),
       currency: "INR",
       createdByStaffId: STAFF_USER,
     });
@@ -401,7 +400,8 @@ describe("what the invoice describes", () => {
       unitAmountCents: 299_900,
       discountAmountCents: coupon.discountAmountCents,
     });
-    expect(invoice?.taxableCents).toBe(299_900 - coupon.discountAmountCents);
+    // The member pays ₹2,399.20, which holds ₹365.98 of GST.
+    expect(invoice?.taxableCents).toBe(203_322);
     expect(invoice?.totalCents).toBe(activation.payment.amountCents);
   });
 
@@ -438,7 +438,8 @@ describe("what the invoice describes", () => {
       unitAmountCents: 299_900,
       discountAmountCents: coupon.discountAmountCents + stayOffer,
     });
-    expect(invoice?.taxableCents).toBe(299_900 - coupon.discountAmountCents - stayOffer);
+    // The member pays ₹2,099.30, which holds ₹320.24 of GST.
+    expect(invoice?.taxableCents).toBe(177_906);
     expect(invoice?.totalCents).toBe(renewal.payment.amountCents);
   });
 
@@ -459,9 +460,10 @@ describe("what the invoice describes", () => {
       discountAmountCents: 50_000,
       taxRateBasisPoints: 1_800,
     });
-    expect(invoice).toMatchObject({ taxableCents: 949_900, totalCents: 1_120_882 });
-    expect(invoice?.cgstCents).toBe(85_491);
-    expect(invoice?.sgstCents).toBe(85_491);
+    // The member pays ₹9,499, which holds ₹1,449 of GST: ₹724.50 each of CGST and SGST.
+    expect(invoice).toMatchObject({ taxableCents: 805_000, totalCents: 949_900 });
+    expect(invoice?.cgstCents).toBe(72_450);
+    expect(invoice?.sgstCents).toBe(72_450);
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
 
@@ -472,11 +474,12 @@ describe("what the invoice describes", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
     expect(invoice?.lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, unitAmountCents: 999_900, discountAmountCents: 0 });
-    expect(invoice).toMatchObject({ taxableCents: 999_900, totalCents: 1_179_882 });
+    // ₹9,999 holds ₹1,525.28 of GST.
+    expect(invoice).toMatchObject({ taxableCents: 847_372, totalCents: 999_900 });
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
 
-  it("describes a first payment of all three services by a line each at its list price less 30%, with no line for the plan row and nothing about ad credit", async () => {
+  it("describes a first payment of all three services by a line each at its list price less 20%, with no line for the plan row and nothing about ad credit", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
     const lines = linesOf(services, "managed-website", "digital-growth", "local-seo-aeo");
 
@@ -484,26 +487,27 @@ describe("what the invoice describes", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents, line.note])).toEqual([
-      ["Managed Website", 299_900, 89_970, "Package offer, 30% off"],
-      ["Social Media and Ads", 999_900, 299_970, "Package offer, 30% off"],
-      ["Local SEO + AEO", 2_499_900, 750_060, "Package offer, 30% off"],
+      ["Managed Website", 299_900, 59_980, "Package offer, 20% off"],
+      ["Social Media and Ads", 999_900, 199_980, "Package offer, 20% off"],
+      ["Local SEO + AEO", 2_499_900, 499_940, "Package offer, 20% off"],
     ]);
-    expect(invoice).toMatchObject({ taxableCents: 2_659_700, cgstCents: 239_373, sgstCents: 239_373, roundOffCents: 0, totalCents: 3_138_446 });
-    expect(activation.payment.amountCents).toBe(3_138_446);
+    // ₹30,398 holds ₹4,636.98 of GST: ₹2,318.49 each of CGST and SGST.
+    expect(invoice).toMatchObject({ taxableCents: 2_576_102, cgstCents: 231_849, sgstCents: 231_849, roundOffCents: 0, totalCents: 3_039_800 });
+    expect(activation.payment.amountCents).toBe(3_039_800);
     expect(JSON.stringify(invoice?.lines)).not.toMatch(/credit/i);
   });
 
-  it("describes a first payment of Website and Social at 20% by a line each", async () => {
+  it("describes a first payment of Website and Social at 10% by a line each", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
     const activation = await payFirst(await openSubscription(businessId, services, null, linesOf(services, "managed-website", "digital-growth")), services);
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
-      ["Managed Website", 59_980, "Package offer, 20% off"],
-      ["Social Media and Ads", 200_020, "Package offer, 20% off"],
+      ["Managed Website", 29_990, "Package offer, 10% off"],
+      ["Social Media and Ads", 99_910, "Package offer, 10% off"],
     ]);
-    expect(invoice?.totalCents).toBe(1_226_964);
+    expect(invoice?.totalCents).toBe(1_169_900);
   });
 
   it("describes a first payment of one service with no discount and no note", async () => {
@@ -514,7 +518,7 @@ describe("what the invoice describes", () => {
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({ description: "Local SEO + AEO", discountAmountCents: 0, note: null });
-    expect(invoice?.totalCents).toBe(2_949_882);
+    expect(invoice?.totalCents).toBe(2_499_900);
   });
 
   it("calls a first payment that covers three months a subscription, not a monthly one", async () => {
@@ -571,7 +575,7 @@ describe("what the invoice describes", () => {
       quantity: 1,
       unitAmountCents: 142_500,
       taxRateBasisPoints: services.taxRateBasisPoints,
-      amountCents: chargeAmountCents(142_500, 1, services.taxRateBasisPoints),
+      amountCents: chargeAmountCents(142_500, 1),
       currency: "INR",
       createdByStaffId: STAFF_USER,
     });

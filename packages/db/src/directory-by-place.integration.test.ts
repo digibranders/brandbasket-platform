@@ -103,10 +103,10 @@ const BY_GYM_KEY: DirectoryRef = { placeId: null, listingKey: GYM_KEY };
 const PRIYA = "+919876543210";
 const RAVI = "+919811111111";
 
-/** 18% GST, rounded half up, as chargedAmountCents does. */
+/** A won spot is charged at its price, which already includes the 18% GST, as chargedAmountCents does. */
 const PRICING: AdChargePricing = {
   taxRateBasisPoints: 1800,
-  chargedPaise: (net) => Math.floor((net * 11_800 + 5_000) / 10_000),
+  chargedPaise: (price) => price,
   describe: (win) => `Ad, ${win.placement} spot ${win.spot}, week of ${win.weekStart}`,
 };
 const WEEK = "2026-10-05";

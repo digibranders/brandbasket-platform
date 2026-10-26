@@ -27,7 +27,7 @@ export interface NewBundledAddOn {
   readonly taxRateBasisPoints: number;
 }
 
-/** The monthly price of a set of bundled add-ons before GST: what is added to the plan's net price. */
+/** The monthly price of a set of bundled add-ons, GST included: what is added to the plan's price. */
 export function bundledNetCents(items: readonly Pick<NewBundledAddOn, "netAmountCents">[]): number {
   return items.reduce((total, item) => total + item.netAmountCents, 0);
 }
@@ -114,7 +114,7 @@ export async function removeBundledAddOnsOf(db: Runner, input: { readonly subscr
 /** A base plan at one total net monthly price, at one provider. */
 export interface BundlePlanKey {
   readonly planId: string;
-  /** The net monthly price the provider plan charges before tax, in minor units. Greater than 0. */
+  /** The monthly price the provider plan charges, GST included, in minor units. Greater than 0. */
   readonly netMonthlyCents: number;
   readonly provider: BillingProviderName;
 }
@@ -317,9 +317,9 @@ export interface NewAddedAddOn {
   readonly offerDiscountAmountCents: number;
   readonly taxRateBasisPoints: number;
   readonly currency: BillingCurrency;
-  /** The share of the monthly net price for the days left, before tax. */
+  /** The share of the monthly price for the days left. */
   readonly netCents: number;
-  /** What is taken now, tax included. Zero when the share is too small to charge: the add-on is on at once. */
+  /** What is taken now. Zero when the share is too small to charge: the add-on is on at once. */
   readonly chargeCents: number;
   /** The end of the paid month the quote was worked out for. */
   readonly quotedPeriodEnd: Date;

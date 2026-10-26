@@ -8,7 +8,7 @@ import { initialMembershipFormState, type MembershipFormState, type MembershipTi
 
 interface MembershipPayFormProps {
   readonly action: (state: MembershipFormState, formData: FormData) => Promise<MembershipFormState>;
-  /** What the provider will take, tax included: the figure on the button is the figure charged. */
+  /** What the provider will take: the figure on the button is the figure charged. */
   readonly amount: string;
   /** The plan whose page this is, sent with the press: the server checks it and opens that plan's checkout. */
   readonly tier: MembershipTier;

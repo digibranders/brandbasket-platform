@@ -35,22 +35,34 @@ describe("bundleLines", () => {
     ]);
   });
 
-  it("takes the package discount off each service, to the paisa", () => {
+  it("takes 10% off two services as a whole-rupee saving, the odd paise on the dearest line", () => {
+    // Worked out on their own: 10% of 3,499,800 paise is 349,980, so the saving is ₹3,499 (349,900). Each line's own 10%
+    // is 99,990 and 249,990, which is 80 paise too much, taken back from the dearer line.
     expect(bundleLines(["digital-growth", "local-seo-aeo"], "INR")).toEqual([
-      { addOn: "digital-growth", title: "Social Media and Ads", listCents: 999_900, offerCents: 199_980, netCents: 799_920 },
-      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 2_499_900, offerCents: 500_020, netCents: 1_999_880 },
+      { addOn: "digital-growth", title: "Social Media and Ads", listCents: 999_900, offerCents: 99_990, netCents: 899_910 },
+      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 2_499_900, offerCents: 249_910, netCents: 2_249_990 },
+    ]);
+  });
+
+  it("takes 20% off all three, again as a whole-rupee saving", () => {
+    // 20% of 3,799,700 is 759,940, so the saving is ₹7,599 (759,900): 40 paise less than the lines' own 20%, off the dearest.
+    expect(bundleLines(["managed-website", "digital-growth", "local-seo-aeo"], "INR").map((line) => [line.offerCents, line.netCents])).toEqual([
+      [59_980, 239_920],
+      [199_980, 799_920],
+      [499_940, 1_999_960],
     ]);
   });
 
   it("prices a dollar package in cents, in the catalogue's order", () => {
+    // 10% of 41,500 cents is 4,150, so the saving is $41 (4,100): 50 cents less than the lines' own 10%, off the dearer line.
     expect(bundleLines(["local-seo-aeo", "managed-website"], "USD")).toEqual([
-      { addOn: "managed-website", title: "Managed Website", listCents: 7_500, offerCents: 1_500, netCents: 6_000 },
-      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 35_000, offerCents: 7_000, netCents: 28_000 },
+      { addOn: "managed-website", title: "Managed Website", listCents: 6_500, offerCents: 650, netCents: 5_850 },
+      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 35_000, offerCents: 3_450, netCents: 31_550 },
     ]);
   });
 
   it("adds the nets together, and is nothing for no services", () => {
-    expect(bundleNetCents(bundleLines(["managed-website", "digital-growth", "local-seo-aeo"], "INR"))).toBe(2_659_700);
+    expect(bundleNetCents(bundleLines(["managed-website", "digital-growth", "local-seo-aeo"], "INR"))).toBe(3_039_800);
     expect(bundleNetCents(bundleLines([], "INR"))).toBe(0);
   });
 });
@@ -66,13 +78,13 @@ describe("nextBundledNetCents", () => {
 describe("websiteAloneNetCents", () => {
   it("is the website's list price in each currency", () => {
     expect(websiteAloneNetCents("INR")).toBe(299_900);
-    expect(websiteAloneNetCents("USD")).toBe(7_500);
+    expect(websiteAloneNetCents("USD")).toBe(6_500);
   });
 });
 
 describe("reactivationBasketOf", () => {
   const PAID = new Date("2026-09-01T00:00:00Z");
-  const LAPSED = { status: "active", activatedAt: PAID, cancelRequestedAt: null, adCreditCents: 500_000 } as const;
+  const LAPSED = { status: "active", activatedAt: PAID, cancelRequestedAt: null, adCreditCents: 300_000 } as const;
   const line = (addOn: string, overrides: Partial<LapsedLine> = {}): LapsedLine => ({ addOn, activatedAt: PAID, endRequestedAt: null, ...overrides });
   const ALL_THREE = [line("managed-website"), line("digital-growth"), line("local-seo-aeo")];
 
@@ -81,21 +93,22 @@ describe("reactivationBasketOf", () => {
     expect(basket).toEqual({
       services: ["managed-website", "digital-growth", "local-seo-aeo"],
       forfeited: false,
-      adCreditCents: 500_000,
+      adCreditCents: 300_000,
       cancelled: false,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(2_659_700);
-    expect(reactivationNetCents(basket, "USD")).toBe(35_000);
+    expect(reactivationNetCents(basket, "INR")).toBe(3_039_800);
+    // 56,500 cents of list, 20% off is 11,300, exactly $113.
+    expect(reactivationNetCents(basket, "USD")).toBe(45_200);
   });
 
   it("prices the set it restores, not the percentage the lapsed lines were last billed at", () => {
     const basket = reactivationBasketOf({
-      subscription: { ...LAPSED, adCreditCents: 200_000 },
+      subscription: { ...LAPSED, adCreditCents: 150_000 },
       lines: [line("managed-website"), line("digital-growth")],
       forfeited: false,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(1_039_800);
-    expect(basket.adCreditCents).toBe(200_000);
+    expect(reactivationNetCents(basket, "INR")).toBe(1_169_900);
+    expect(basket.adCreditCents).toBe(150_000);
   });
 
   it("restores a single service at its list price", () => {
@@ -124,25 +137,25 @@ describe("reactivationBasketOf", () => {
 
   it("takes the services the lapsed subscription billed, and its credit from the unpaid checkout that replaced it", () => {
     const basket = reactivationBasketOf({
-      subscription: { status: "incomplete", activatedAt: null, cancelRequestedAt: null, adCreditCents: 500_000 },
+      subscription: { status: "incomplete", activatedAt: null, cancelRequestedAt: null, adCreditCents: 300_000 },
       lines: ALL_THREE,
       forfeited: false,
     });
     expect(basket).toEqual({
       services: ["managed-website", "digital-growth", "local-seo-aeo"],
       forfeited: false,
-      adCreditCents: 500_000,
+      adCreditCents: 300_000,
       cancelled: false,
     });
   });
 
   it("does not take an unpaid checkout that was cancelled for a cancelled subscription", () => {
     const basket = reactivationBasketOf({
-      subscription: { status: "cancelled", activatedAt: null, cancelRequestedAt: null, adCreditCents: 500_000 },
+      subscription: { status: "cancelled", activatedAt: null, cancelRequestedAt: null, adCreditCents: 300_000 },
       lines: ALL_THREE,
       forfeited: false,
     });
-    expect(basket).toMatchObject({ forfeited: false, adCreditCents: 500_000, cancelled: false });
+    expect(basket).toMatchObject({ forfeited: false, adCreditCents: 300_000, cancelled: false });
     expect(basket.services).toHaveLength(3);
   });
 
@@ -166,10 +179,10 @@ describe("reactivationBasketOf", () => {
     expect(basket).toEqual({
       services: ["managed-website", "digital-growth", "local-seo-aeo"],
       forfeited: false,
-      adCreditCents: 500_000,
+      adCreditCents: 300_000,
       cancelled: false,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(2_659_700);
+    expect(reactivationNetCents(basket, "INR")).toBe(3_039_800);
   });
 
   it("falls back to the website alone, which earns no ad credit, when no service is left to restore", () => {

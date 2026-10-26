@@ -1732,7 +1732,7 @@ export async function listWinsForBusiness(db: Runner, businessId: string, fromWe
 /** What a won spot's charge looks like: supplied by the caller, which owns tax and wording. */
 export interface AdChargePricing {
   readonly taxRateBasisPoints: number;
-  /** The amount charged for `netPaise`, tax included (chargedAmountCents in @brandbasket/billing). */
+  /** The amount charged for `netPaise`: the price itself, which includes GST (chargedAmountCents in @brandbasket/billing). */
   readonly chargedPaise: (netPaise: number) => number;
   /** The charge's description on Billing and the receipt. */
   readonly describe: (win: { readonly placement: DirectoryAdPlacement; readonly spot: number; readonly weekStart: string } & DirectoryAdMarket) => string;

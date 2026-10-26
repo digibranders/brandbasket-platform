@@ -85,10 +85,10 @@ const AFTER_CLOSE = new Date(biddingClosesAt(WEEK).getTime() + 60_000);
 const AFTER_PAY_BY = new Date(firstPayBy(WEEK).getTime() + 60_000);
 const IN_THE_WEEK = new Date(weekStartsAt(WEEK).getTime() + 2 * 60 * 60 * 1000);
 
-/** 18% GST, rounded half up, as chargedAmountCents does. */
+/** A won spot is charged at its price, which already includes the 18% GST, as chargedAmountCents does. */
 const PRICING: AdChargePricing = {
   taxRateBasisPoints: 1800,
-  chargedPaise: (net) => Math.floor((net * 11_800 + 5_000) / 10_000),
+  chargedPaise: (price) => price,
   describe: (win) => `Ad, ${win.placement} spot ${win.spot}, ${win.categorySlug} in ${win.areaSlug}, week of ${win.weekStart}`,
 };
 
@@ -875,7 +875,7 @@ describe("settlement", () => {
     expect(await settleDirectoryAds(dbs.staff.db, WEDNESDAY, PRICING)).toEqual({ settled: 0, won: 0, lapsed: 0, passedOn: 0 });
   });
 
-  it("settles second-price, keeps a top winner out of the side spots, and charges GST", async () => {
+  it("settles second-price, keeps a top winner out of the side spots, and charges its price, GST included", async () => {
     await approveAll();
     await bid(0, "top", 900);
     await bid(1, "top", 700);
@@ -894,7 +894,7 @@ describe("settlement", () => {
     expect(top[0]).toMatchObject({ placement: "top", spot: 1, pricePaise: 71_000, status: "awaiting_payment" });
     expect(top[0]?.payBy.toISOString()).toBe(firstPayBy(WEEK).toISOString());
     const charge = await findChargeForBusiness(dbs.staff.db, id(0), top[0]?.chargeId ?? "");
-    expect(charge).toMatchObject({ kind: "directory_ad", unitAmountCents: 71_000, amountCents: 83_780, status: "open", currency: "INR" });
+    expect(charge).toMatchObject({ kind: "directory_ad", unitAmountCents: 71_000, amountCents: 71_000, status: "open", currency: "INR" });
 
     // Business 0 holds top, so side goes to 1 (pays 2's bid + ₹10) and 2 (pays 3's bid + ₹10).
     const side1 = await listWinsForBusiness(dbs.staff.db, id(1), WEEK);

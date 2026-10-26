@@ -9,7 +9,7 @@ import {
 import {
   PROMOTION_TAX_BASIS_POINTS,
   PROMOTION_WEEK_CHARGED_PAISE,
-  PROMOTION_WEEK_NET_PAISE,
+  PROMOTION_WEEK_PRICE_PAISE,
   promotionChargeDescription,
 } from "@brandbasket/shared/lib/directory/promotion";
 import { startCustomerChargePayment, type ChargePaymentStart } from "./charges";
@@ -45,7 +45,7 @@ export async function startListingPromotionPayment(
     businessId: tenant.businessId,
     tag,
     description: promotionChargeDescription(tag),
-    unitAmountCents: PROMOTION_WEEK_NET_PAISE,
+    unitAmountCents: PROMOTION_WEEK_PRICE_PAISE,
     taxRateBasisPoints: PROMOTION_TAX_BASIS_POINTS,
     amountCents: PROMOTION_WEEK_CHARGED_PAISE,
     now,

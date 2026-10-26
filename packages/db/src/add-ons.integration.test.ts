@@ -112,7 +112,7 @@ async function pressReleaseFor(businessId: string, createdAt: Date): Promise<str
     quantity: 1,
     unitAmountCents: 700_000,
     taxRateBasisPoints: 1_800,
-    amountCents: 826_000,
+    amountCents: 700_000,
     currency: "INR",
     createdByStaffId: null,
   });
@@ -132,7 +132,7 @@ async function payForPlan(businessId: string, providerSubscriptionId: string, pa
     provider: "fake",
     providerPaymentId: `fake_pay_${providerSubscriptionId}`,
     kind: "initial",
-    amountCents: 353_882,
+    amountCents: 299_900,
     currency: "INR",
     paidAt,
     paidThroughAt: paidAt,
@@ -680,7 +680,7 @@ describe("what staff need to contact", () => {
     const list = await listPressReleasesForBusiness(dbs.staff.db, businessA);
 
     expect(list.map((row) => row.id)).toEqual([newer, older]);
-    expect(list[0]).toMatchObject({ status: "waiting", amountCents: 826_000, paidAt: null });
+    expect(list[0]).toMatchObject({ status: "waiting", amountCents: 700_000, paidAt: null });
     expect(await setPressReleaseStatus(dbs.staff.db, { id: older, status: "published", staffUserId: STAFF, now: LATER })).toBe(true);
     expect(await setPressReleaseStatus(dbs.staff.db, { id: uuidv7(), status: "published", staffUserId: STAFF, now: LATER })).toBe(false);
     const after = await listPressReleasesForBusiness(dbs.staff.db, businessA);

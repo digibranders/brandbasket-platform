@@ -15,7 +15,7 @@ function row(overrides: Partial<AddOnSubscriptionForStaff> & Pick<AddOnSubscript
     offerDiscountAmountCents: 0,
     netAmountCents: 999_900,
     taxRateBasisPoints: 1_800,
-    chargedAmountCents: 1_179_882,
+    chargedAmountCents: 999_900,
     currency: "INR",
     provider: "razorpay",
     providerSubscriptionId: `sub_${overrides.id}`,
@@ -48,7 +48,7 @@ describe("clientAddOnRows", () => {
       id: "a",
       title: "Social Media and Ads",
       state: { tone: "done", label: "Active" },
-      price: "₹9,999 + GST a month",
+      price: "₹9,999 a month, GST included",
       dateLine: "Renews on 12 November 2026",
       endNote: null,
       canEnd: true,
@@ -229,7 +229,7 @@ describe("clientPressReleaseRows", () => {
       ["b", "in_progress", "In progress", ["published"]],
       ["c", "published", "Published", []],
     ]);
-    expect(rows[0]).toMatchObject({ state: { tone: "waiting" }, boughtOn: "12 October 2026", amount: "₹8,260 with GST" });
+    expect(rows[0]).toMatchObject({ state: { tone: "waiting" }, boughtOn: "12 October 2026", amount: "₹8,260, GST included" });
     expect(rows[1]?.state.tone).toBe("moving");
     expect(rows[2]?.state.tone).toBe("done");
   });
@@ -269,7 +269,7 @@ describe("clientBundledAddOnRows", () => {
     expect(clientBundledAddOnRows([bundled({ offerDiscountAmountCents: 35_000, netAmountCents: 665_000 })], "INR", context)).toEqual([
       expect.objectContaining({
         state: { tone: "done", label: "Active" },
-        price: "₹6,650 + GST a month, package price, billed with the monthly payment",
+        price: "₹6,650 a month, GST included, package price, billed with the monthly payment",
         dateLine: "Bought on 19 October 2026",
         canRemove: true,
         endsOnText: "19 November 2026",
@@ -280,7 +280,7 @@ describe("clientBundledAddOnRows", () => {
   });
 
   it("names the price of a service with no package offer without any offer wording", () => {
-    expect(clientBundledAddOnRows([bundled({ listAmountCents: 999_900, netAmountCents: 999_900 })], "INR", context)[0]?.price).toBe("₹9,999 + GST a month, billed with the monthly payment");
+    expect(clientBundledAddOnRows([bundled({ listAmountCents: 999_900, netAmountCents: 999_900 })], "INR", context)[0]?.price).toBe("₹9,999 a month, GST included, billed with the monthly payment");
   });
 
   it("offers no removal while the client has asked to close their account", () => {
@@ -333,13 +333,13 @@ describe("clientAddOnOption", () => {
     const assessment = {
       kind: "offer",
       plan: { taxRateBasisPoints: 1_800 },
-      quote: { kind: "quote", chargeCents: 826_000, nextRenewalCents: 1_179_882, daysLeft: 31 },
+      quote: { kind: "quote", chargeCents: 826_000, nextRenewalCents: 999_900, daysLeft: 31 },
     } as unknown as AddOnAssessment;
     expect(clientAddOnOption("digital-growth", assessment, "INR")).toEqual({
       addOn: "digital-growth",
       title: "Social Media and Ads",
       kind: "add",
-      costText: "₹8,260 now for the 31 days left, then ₹11,798.82 a month with GST. The customer pays the charge from Billing.",
+      costText: "₹8,260 now for the 31 days left, then ₹9,999 a month, GST included. The customer pays the charge from Billing.",
     });
   });
 

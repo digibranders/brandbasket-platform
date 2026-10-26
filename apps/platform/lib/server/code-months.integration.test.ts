@@ -1,4 +1,4 @@
-import { chargedAmountCents, createFakeBillingProvider, type BillingProvider } from "@brandbasket/billing";
+import { createFakeBillingProvider, type BillingProvider } from "@brandbasket/billing";
 import {
   businesses,
   createAffiliate,
@@ -59,11 +59,12 @@ const STAFF_USER = "staff-code";
 const CYCLES = ["2026-10-19", "2026-11-19", "2026-12-19", "2027-01-19", "2027-02-19"].map((day) => new Date(`${day}T00:00:00.000Z`));
 const PAID_AT = CYCLES[0] ?? new Date();
 
-/** The Managed Website at ₹2,999 with a ₹300 code: the first of the lines every test bills. */
+/** The Managed Website at ₹2,999, GST included, with a ₹300 code: the first of the lines every test bills. */
 const WEBSITE_NET = 299_900;
 const CODE_CENTS = 30_000;
-const DISCOUNTED = chargedAmountCents(WEBSITE_NET, CODE_CENTS, 1_800);
-const AT_LIST = chargedAmountCents(WEBSITE_NET, 0, 1_800);
+/** ₹2,999 less ₹300. */
+const DISCOUNTED = 269_900;
+const AT_LIST = 299_900;
 
 function dbs(): TestDatabases {
   if (state.dbs === null) throw new Error("The test database is not open");
@@ -342,11 +343,11 @@ describe("months offline", () => {
     expect(payment).toMatchObject({ kind: "reactivation", amountCents: DISCOUNTED, attentionReason: null });
     expect(await held(back)).toMatchObject({ discountMonthsLeft: 1, discountAmountCents: CODE_CENTS });
     expect((await findTaxInvoiceByPaymentId(dbs().staff.db, payment.id))?.lines.map((line) => [line.unitAmountCents, line.discountAmountCents])).toEqual([[WEBSITE_NET, CODE_CENTS]]);
-    // 5% of what the member paid before GST, as for a renewal.
+    // 5% of what the member paid before the GST inside it, as for a renewal: ₹2,699 holds ₹411.72 of GST, leaving ₹2,287.28, and 5% of that is ₹114.364, taken down to ₹114.36.
     const affiliateId = (await dbs().staff.db.query.affiliates.findFirst())?.id ?? "";
     expect(await listAffiliateEarnings(dbs().staff.db, affiliateId, 10)).toMatchObject([
-      { paymentKind: "reactivation", basisCents: WEBSITE_NET - CODE_CENTS, amountCents: 13_495 },
-      { paymentKind: "initial", basisCents: WEBSITE_NET - CODE_CENTS },
+      { paymentKind: "reactivation", basisCents: 228_728, amountCents: 11_436 },
+      { paymentKind: "initial", basisCents: 228_728 },
     ]);
   });
 

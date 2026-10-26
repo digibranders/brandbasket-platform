@@ -2,7 +2,7 @@ import { ADD_ONS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/ad
 import { PACKAGE_OFFERS } from "@brandbasket/shared/lib/billing/packages";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 
-/** One service as the marketing website reads it: its list price in each currency, net of tax, in minor units. */
+/** One service as the marketing website reads it: its list price in each currency, GST included, in minor units. */
 export interface PublicService {
   readonly id: MonthlyAddOnId;
   readonly title: string;

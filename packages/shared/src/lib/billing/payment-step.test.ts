@@ -20,7 +20,7 @@ const INR = {
   initialTermMonths: 1,
   recurringAmountCents: 0,
 } as Plan;
-const USD_TERMS = "$75 a month. Your first payment covers your first month, then it renews monthly.";
+const USD_TERMS = "$65 a month. Your first payment covers your first month, then it renews monthly.";
 const MISSING: ChecklistItem = { key: "domain", label: "Your domain, confirmed as yours", step: "domain", passed: false };
 
 const OPEN_UNPAID: PaymentStepInput = {
@@ -37,13 +37,13 @@ describe("paymentStep", () => {
   it("offers to pay and send, priced from the plan", () => {
     expect(paymentStep(OPEN_UNPAID)).toEqual({
       kind: "pay-and-send",
-      amount: "$75",
+      amount: "$65",
       terms: USD_TERMS,
       ready: true,
     });
     expect(paymentStep({ ...OPEN_UNPAID, plan: INR })).toMatchObject({
-      amount: "₹3,538.82",
-      terms: "₹2,999 a month plus 18% GST, so ₹3,538.82 in all. Your first payment covers your first month, then it renews monthly.",
+      amount: "₹2,999",
+      terms: "₹2,999 a month, GST included. Your first payment covers your first month, then it renews monthly.",
     });
   });
 
@@ -54,7 +54,7 @@ describe("paymentStep", () => {
   it("offers payment alone when the answers were sent before payment was required", () => {
     expect(paymentStep({ ...OPEN_UNPAID, locked: true })).toEqual({
       kind: "pay",
-      amount: "$75",
+      amount: "$65",
       terms: USD_TERMS,
     });
   });
@@ -103,7 +103,7 @@ describe("billingBanner", () => {
     renewalFailingUntil: null,
   };
   const TITLE = "Make your payment to continue";
-  const USD_PRICE = { amount: "$75", term: "First month" };
+  const USD_PRICE = { amount: "$65", term: "First month" };
 
   it("shows the price but sends the customer to finish setup first", () => {
     expect(billingBanner(base)).toEqual({
@@ -125,7 +125,7 @@ describe("billingBanner", () => {
 
   it("prices an Indian plan in rupees for its one-month start", () => {
     expect(billingBanner({ ...base, setupComplete: true, plan: INR })).toMatchObject({
-      price: { amount: "₹3,538.82", term: "First month" },
+      price: { amount: "₹2,999", term: "First month" },
     });
   });
 
@@ -198,21 +198,21 @@ describe("a referral discount", () => {
   it("prices the button from the discount, so it matches what the checkout charges", () => {
     expect(paymentStep({ ...OPEN_UNPAID, plan: INR, discount: FIFTEEN_OFF })).toMatchObject({
       kind: "pay-and-send",
-      amount: "₹3,008",
+      amount: "₹2,549.15",
     });
   });
 
   it("quotes the discounted monthly price, because a code with no length runs for as long as the plan does", () => {
     const step = paymentStep({ ...OPEN_UNPAID, plan: INR, discount: FIFTEEN_OFF });
     expect(step).toMatchObject({
-      terms: "₹2,549.15 a month plus 18% GST, so ₹3,008 in all, instead of ₹2,999 before GST, for as long as your plan runs. Your first payment covers your first month, then it renews monthly.",
+      terms: "₹2,549.15 a month, GST included, instead of ₹2,999, for as long as your plan runs. Your first payment covers your first month, then it renews monthly.",
     });
   });
 
   it("discounts the pay-alone step too, for answers sent before payment was required", () => {
     expect(paymentStep({ ...OPEN_UNPAID, plan: INR, locked: true, discount: FIFTEEN_OFF })).toMatchObject({
       kind: "pay",
-      amount: "₹3,008",
+      amount: "₹2,549.15",
     });
   });
 
@@ -230,10 +230,10 @@ describe("a referral discount", () => {
     const step = paymentStep({ ...OPEN_UNPAID, plan: INR, discount: FIFTEEN_OFF });
     if (banner?.kind !== "pay" || step.kind !== "pay-and-send") throw new Error("expected a pay banner and step");
     expect(banner.price?.amount).toBe(step.amount);
-    expect(banner.price).toEqual({ amount: "₹3,008", term: "First month" });
+    expect(banner.price).toEqual({ amount: "₹2,549.15", term: "First month" });
   });
 
   it("changes nothing for a customer with no code applied", () => {
-    expect(paymentStep({ ...OPEN_UNPAID, discount: null })).toMatchObject({ amount: "$75", terms: USD_TERMS });
+    expect(paymentStep({ ...OPEN_UNPAID, discount: null })).toMatchObject({ amount: "$65", terms: USD_TERMS });
   });
 });

@@ -71,11 +71,11 @@ const customer: GrantedCustomer = {
   billing: { status: "paid", hasAccess: true, hasWebsite: true, subscription: null, tier: "managed", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
 };
 
-/** Social Media and Ads and Local SEO + AEO in rupees as frozen on their rows, before GST. */
+/** Social Media and Ads and Local SEO + AEO in rupees as frozen on their rows, GST included. */
 const DIGITAL_GROWTH_NET = 665_000;
 
-/** The discount frozen on each line of the three-service package: 30% of its list, the dearest line carrying the leftover. */
-const PACKAGE_DISCOUNTS: Readonly<Record<string, number>> = { "managed-website": 89_970, "digital-growth": 299_970, "local-seo-aeo": 750_060 };
+/** The discount frozen on each line of the three-service package: 20% of its list, the dearest line carrying the leftover. */
+const PACKAGE_DISCOUNTS: Readonly<Record<string, number>> = { "managed-website": 59_980, "digital-growth": 199_980, "local-seo-aeo": 499_940 };
 
 let provider: BillingProvider;
 let staffDb: Database;
@@ -176,14 +176,14 @@ describe("loadAddOnsPage", () => {
     expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, expect.objectContaining({ addOn: "digital-growth", code }));
   });
 
-  it("offers all three services at list price plus GST when none is in the plan payment, the website included", async () => {
+  it("offers all three services at list price, GST included, when none is in the plan payment, the website included", async () => {
     const page = await loadAddOnsPage(customer, NOW);
 
     expect(page.currency).toBe("INR");
     expect(page.addOns).toEqual([
-      { kind: "available", addOn: "managed-website", price: expect.objectContaining({ listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 353_882 }), offer: { kind: "write" } },
-      { kind: "available", addOn: "digital-growth", price: expect.objectContaining({ listCents: 999_900, discountCents: 0, netCents: 999_900, chargedCents: 1_179_882 }), offer: { kind: "write" } },
-      { kind: "available", addOn: "local-seo-aeo", price: expect.objectContaining({ listCents: 2_499_900, discountCents: 0, netCents: 2_499_900, chargedCents: 2_949_882 }), offer: { kind: "write" } },
+      { kind: "available", addOn: "managed-website", price: expect.objectContaining({ listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 }), offer: { kind: "write" } },
+      { kind: "available", addOn: "digital-growth", price: expect.objectContaining({ listCents: 999_900, discountCents: 0, netCents: 999_900, chargedCents: 999_900 }), offer: { kind: "write" } },
+      { kind: "available", addOn: "local-seo-aeo", price: expect.objectContaining({ listCents: 2_499_900, discountCents: 0, netCents: 2_499_900, chargedCents: 2_499_900 }), offer: { kind: "write" } },
     ]);
   });
 
@@ -193,7 +193,7 @@ describe("loadAddOnsPage", () => {
     const page = await loadAddOnsPage(subscribed, NOW);
     expect(page.addOns.find((entry) => entry.addOn === "digital-growth")).toMatchObject({
       kind: "available",
-      price: { listCents: 999_900, discountCents: 200_020, netCents: 799_880, chargedCents: 943_858 },
+      price: { listCents: 999_900, discountCents: 99_910, netCents: 899_990, chargedCents: 899_990 },
     });
 
     vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
@@ -208,8 +208,8 @@ describe("loadAddOnsPage", () => {
 
     expect(page.currency).toBe("USD");
     expect(page.addOns.map((entry) => entry.price)).toEqual([
-      expect.objectContaining({ currency: "USD", listCents: 7_500, taxRateBasisPoints: 0, chargedCents: 7_500 }),
-      expect.objectContaining({ currency: "USD", listCents: 7_500, taxRateBasisPoints: 0, chargedCents: 7_500 }),
+      expect.objectContaining({ currency: "USD", listCents: 6_500, taxRateBasisPoints: 0, chargedCents: 6_500 }),
+      expect.objectContaining({ currency: "USD", listCents: 15_000, taxRateBasisPoints: 0, chargedCents: 15_000 }),
       expect.objectContaining({ currency: "USD", listCents: 35_000, taxRateBasisPoints: 0, chargedCents: 35_000 }),
     ]);
   });
@@ -222,7 +222,7 @@ describe("loadAddOnsPage", () => {
     expect(page.addOns[1]).toEqual({
       kind: "included",
       addOn: "digital-growth",
-      price: { currency: "INR", listCents: 700_000, discountCents: 35_000, offerCents: 35_000, netCents: DIGITAL_GROWTH_NET, taxRateBasisPoints: 1_800, chargedCents: 784_700 },
+      price: { currency: "INR", listCents: 700_000, discountCents: 35_000, offerCents: 35_000, netCents: DIGITAL_GROWTH_NET, taxRateBasisPoints: 1_800, chargedCents: 665_000 },
       endsOn: null,
       nextBillingOn: PAID_THROUGH,
       joinsOn: null,
@@ -237,15 +237,15 @@ describe("loadAddOnsPage", () => {
       includedRow({ addOn, listAmountCents, offerDiscountAmountCents: PACKAGE_DISCOUNTS[addOn] ?? 0, netAmountCents: listAmountCents - (PACKAGE_DISCOUNTS[addOn] ?? 0), ...overrides });
     const all = () => [line("managed-website", 299_900), line("digital-growth", 999_900), line("local-seo-aeo", 2_499_900)];
 
-    it("shows, for each of three services, the others at list: dropping Local SEO + AEO leaves ₹15,337.64 a month with GST and ends the package", async () => {
+    it("shows, for each of three services, the others at list: dropping Local SEO + AEO leaves ₹12,998 a month, GST included, and ends the package", async () => {
       vi.mocked(findLiveBundledAddOns).mockResolvedValue(all());
 
       const { addOns } = await loadAddOnsPage(subscribed, NOW);
 
       expect(addOns.map((entry) => (entry.kind === "included" ? [entry.addOn, entry.drop?.keeps, entry.drop?.newMonthlyCents, entry.drop?.endsPackage] : null))).toEqual([
-        ["managed-website", ["digital-growth", "local-seo-aeo"], 4_129_764, true],
-        ["digital-growth", ["managed-website", "local-seo-aeo"], 3_303_764, true],
-        ["local-seo-aeo", ["managed-website", "digital-growth"], 1_533_764, true],
+        ["managed-website", ["digital-growth", "local-seo-aeo"], 3_499_800, true],
+        ["digital-growth", ["managed-website", "local-seo-aeo"], 2_799_800, true],
+        ["local-seo-aeo", ["managed-website", "digital-growth"], 1_299_800, true],
       ]);
     });
 
@@ -255,7 +255,7 @@ describe("loadAddOnsPage", () => {
 
       const { addOns } = await loadAddOnsPage(subscribed, NOW);
 
-      expect(addOns[2]).toMatchObject({ drop: { newMonthlyCents: 1_533_764, endsPackage: false } });
+      expect(addOns[2]).toMatchObject({ drop: { newMonthlyCents: 1_299_800, endsPackage: false } });
     });
 
     it("offers no drop while the account has asked to close", async () => {
@@ -361,7 +361,7 @@ describe("removeBundledAddOnFor", () => {
   const PLAN = { id: "plan-managed", code: "managed-inr-2026-10", currency: "INR", providerPlanId: "plan_managed_rzp" };
   const IDS = { "managed-website": "000000000001", "digital-growth": "000000000002", "local-seo-aeo": "000000000003" } as const;
   const LISTS = { "managed-website": 299_900, "digital-growth": 999_900, "local-seo-aeo": 2_499_900 } as const;
-  /** A line of the three-service package as frozen on it: 30% off every line, and the dearest carries the 90 paise that round the total down to a whole rupee. */
+  /** A line of the three-service package as frozen on it: 20% off every line, and the dearest carries the 40 paise that round the saving down to a whole rupee. */
   const bundledRow = (addOn: keyof typeof IDS, overrides: Record<string, unknown> = {}) => ({
     id: `0192f3c4-5555-7000-8000-${IDS[addOn]}`,
     businessId: BUSINESS_ID,

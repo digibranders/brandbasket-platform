@@ -202,7 +202,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       const expectedAmount =
         plan === null || plan === undefined || basePrice === undefined || subscription.discountAmountCents >= basePrice + bundledNetCents
           ? undefined
-          : chargedAmountCents(basePrice + bundledNetCents, subscription.discountAmountCents, plan.taxRateBasisPoints);
+          : chargedAmountCents(basePrice + bundledNetCents, subscription.discountAmountCents);
       // A customer who paid to move up to Premium is billed Premium from the next renewal: the provider was told to move
       // the subscription at the cycle end, so that renewal arrives at the new plan's price. It is recognised here, and
       // is the renewal that completes the move (below). `pendingPlanId` is the only thing that makes this price
@@ -218,7 +218,6 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         chargedAmountCents(
           pendingPlan.recurringAmountCents + subscription.bundledAddOnNetCents,
           subscription.pendingDiscountAmountCents,
-          pendingPlan.taxRateBasisPoints,
         ) === event.amountCents;
       // A customer who added an add-on to the plan's payment, or took one out, or whose code's months ran out, is billed the new
       // amount from the next renewal: the provider was told to move the subscription at the cycle end. `pendingBundledAddOnNetCents`
@@ -236,7 +235,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       const renewalAtStoredPendingAmount =
         changeWaiting &&
         discountDueCents < plan.recurringAmountCents + waitingBundledNetCents &&
-        chargedAmountCents(plan.recurringAmountCents + waitingBundledNetCents, discountDueCents, plan.taxRateBasisPoints) === event.amountCents;
+        chargedAmountCents(plan.recurringAmountCents + waitingBundledNetCents, discountDueCents) === event.amountCents;
       // The provider is moved before the lines are recorded, so a failure in between leaves it on the package price while the
       // stored pending amount is the one worked out when the service was paid for. While a change is waiting, the amount the
       // provider would have been told for the basket as it stands (what moveBasketAtProvider sends, with the code repriced on it) is
@@ -252,7 +251,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         plan !== undefined &&
         sentMove.staying > 0 &&
         sentDiscountCents < plan.recurringAmountCents + sentMove.netCents &&
-        chargedAmountCents(plan.recurringAmountCents + sentMove.netCents, sentDiscountCents, plan.taxRateBasisPoints) === event.amountCents;
+        chargedAmountCents(plan.recurringAmountCents + sentMove.netCents, sentDiscountCents) === event.amountCents;
       const renewalAtPendingAddOns = renewalAtStoredPendingAmount || renewalAtSentAmount;
       // What the code took off this renewal. A renewal at the old discounted amount while a change is waiting keeps the discount
       // the subscription holds; one at the new amount makes the waiting discount the subscription's own.

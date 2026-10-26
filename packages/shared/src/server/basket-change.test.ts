@@ -36,20 +36,21 @@ describe("assessAddOn", () => {
   it("quotes the service as a line of the basket it joins", () => {
     const assessment = assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "digital-growth", forfeited: false, providerName: "fake", now: NOW });
 
-    expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 999_900, discountCents: 200_020, netCents: 799_880 }, quote: { nextRenewalCents: 1_226_964 } });
+    expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 999_900, discountCents: 99_910, netCents: 899_990 }, quote: { nextRenewalCents: 1_169_900 } });
   });
 
   it("quotes the next renewal of the whole package when the leftover lands on a line already there", () => {
     const assessment = assessAddOn({ state, live: [line("local-seo-aeo", 2_499_900)], addOn: "managed-website", forfeited: false, providerName: "fake", now: NOW });
 
-    // Website + SEO is 2,239,800 net: the website takes its 20%, and the SEO line already there takes the 40 paise.
-    expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 59_980, netCents: 239_920 }, quote: { nextRenewalCents: 2_642_964 } });
+    // Website + SEO is 2,519,900 for the two: the website takes its 10% (29,990), and the SEO line already there takes the
+    // 80 paise the whole-rupee saving gives back.
+    expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 29_990, netCents: 269_910 }, quote: { nextRenewalCents: 2_519_900 } });
   });
 
   it("quotes the next renewal at list once the offer is given up", () => {
     const assessment = assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "digital-growth", forfeited: true, providerName: "fake", now: NOW });
 
-    expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 0, netCents: 999_900 }, quote: { nextRenewalCents: 1_533_764 } });
+    expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 0, netCents: 999_900 }, quote: { nextRenewalCents: 1_299_800 } });
   });
 
   describe("with a referral code on the subscription", () => {
@@ -69,11 +70,11 @@ describe("assessAddOn", () => {
         now: NOW,
       });
 
-      // The pair nets 10,398; less the 500, with 18% GST.
-      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_226_964 - 59_000 } });
+      // The pair costs 11,699 at the package price; less the 500.
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_119_900 } });
     });
 
-    it("reprices a percentage code on the new basket's net", () => {
+    it("reprices a percentage code on the new basket's price", () => {
       const assessment = assessAddOn({
         state: withCode({ discountAmountCents: 29_990 }),
         live: website,
@@ -84,8 +85,8 @@ describe("assessAddOn", () => {
         now: NOW,
       });
 
-      // 10% of the 10,398 the pair nets is 1,039.80, not the 299.90 it took off the website alone; 18% GST on what is left.
-      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_104_268 } });
+      // 10% of the 11,699 the pair costs is 1,169.90, not the 299.90 it took off the website alone: 10,529.10 is left.
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_052_910 } });
     });
 
     it("takes nothing once the code's months have run out", () => {
@@ -99,7 +100,7 @@ describe("assessAddOn", () => {
         now: NOW,
       });
 
-      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_226_964 } });
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_169_900 } });
     });
   });
 

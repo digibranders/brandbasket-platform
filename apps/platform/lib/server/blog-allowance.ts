@@ -38,7 +38,7 @@ export async function getBlogUsage(customer: Pick<GrantedCustomer, "tenant">, pl
     allowance,
     nextBlock: {
       posts: plan.blogPostBlockSize,
-      price: formatMoney(chargeAmountCents(plan.extraBlogPostsAmountCents, 1, plan.taxRateBasisPoints), plan.currency),
+      price: formatMoney(chargeAmountCents(plan.extraBlogPostsAmountCents, 1), plan.currency),
     },
   };
 }

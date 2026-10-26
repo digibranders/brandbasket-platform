@@ -9,14 +9,14 @@ import { packageLines } from "./packages";
  * (packages.ts). Pure and browser-safe, so the page, the server and the invoice all price a bundle the same way.
  */
 
-/** One bundled service as the checkout freezes it. All amounts in minor units of the plan's currency, before any tax. */
+/** One bundled service as the checkout freezes it. All amounts in minor units of the plan's currency, GST included. */
 export interface BundleLine {
   readonly addOn: MonthlyAddOnId;
   readonly title: string;
   readonly listCents: number;
   /** The package discount taken off the list price, or 0 for a service bought alone. */
   readonly offerCents: number;
-  /** List less the discount: what is added to the subscription's net price each month. */
+  /** List less the discount: what is added to the subscription's price each month. */
   readonly netCents: number;
 }
 
@@ -47,13 +47,13 @@ export function bundleLines(selection: readonly MonthlyAddOnId[], currency: Mone
   }));
 }
 
-/** What a bundle adds to the plan's net monthly price, before GST. */
+/** What a bundle adds to the plan's monthly price, GST included. */
 export function bundleNetCents(lines: readonly Pick<BundleLine, "netCents">[]): number {
   return lines.reduce((total, line) => total + line.netCents, 0);
 }
 
 /**
- * What the website alone nets a month at list, before GST: what Check and send and a payment recorded by hand for a first
+ * What the website alone costs a month at list, GST included: what Check and send and a payment recorded by hand for a first
  * purchase charge, since the plan row itself costs nothing.
  */
 export function websiteAloneNetCents(currency: MoneyCurrency): number {
@@ -136,7 +136,7 @@ export function reactivationBasketOf(input: {
   };
 }
 
-/** What the basket nets a month before GST. */
+/** What the basket costs a month, GST included. */
 export function reactivationNetCents(basket: ReactivationBasket, currency: MoneyCurrency): number {
   return bundleNetCents(bundleLines(basket.services, currency, basket.forfeited));
 }

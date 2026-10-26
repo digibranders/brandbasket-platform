@@ -22,7 +22,7 @@ interface PlanToCreate {
 
 // Kept in sync with packages/db/migrations/0039_plans_69_and_2999.sql. Both plans are monthly from the first payment,
 // so a Razorpay Plan's amount is the one price for the first charge and every renewal. That amount is the TAXED
-// figure, worked out by chargedAmountCents, because it is what Razorpay takes: the INR plan is ₹2,999 plus 18% GST.
+// figure, worked out by chargedAmountCents, because it is what Razorpay takes: since 2026-10-26 the INR plan is ₹2,999 with GST inside it.
 const PLANS_TO_CREATE: readonly PlanToCreate[] = [
   { code: "care-usd-2026-09", currency: "USD", netAmountCents: 6_900, taxRateBasisPoints: NO_TAX },
   { code: "care-inr-2026-09", currency: "INR", netAmountCents: 299_900, taxRateBasisPoints: GST_BASIS_POINTS },
@@ -37,7 +37,7 @@ async function main(): Promise<void> {
   const client = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
   for (const plan of PLANS_TO_CREATE) {
-    const amount = chargedAmountCents(plan.netAmountCents, 0, plan.taxRateBasisPoints);
+    const amount = chargedAmountCents(plan.netAmountCents, 0);
     const created = await client.plans.create({
       period: "monthly",
       interval: 1,

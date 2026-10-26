@@ -37,7 +37,7 @@ describe("the Brandbasket services plan", () => {
     ]);
   });
 
-  it("costs nothing of its own in rupees, with 18% GST, a one-month first term and the website allowances", async () => {
+  it("costs nothing of its own in rupees, with 18% GST inside its prices, a one-month first term and the website allowances", async () => {
     expect(await findActivePlan(databases.staff.db, "INR", "managed")).toMatchObject({
       name: "Brandbasket services",
       tier: "managed",

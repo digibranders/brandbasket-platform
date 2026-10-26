@@ -123,7 +123,7 @@ export interface AuctionWinner {
   readonly bidId: string;
   /** 1 is the top spot of its placement. */
   readonly spot: number;
-  /** Net, before GST. */
+  /** GST included. */
   readonly pricePaise: number;
 }
 

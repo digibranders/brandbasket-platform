@@ -18,7 +18,7 @@ import type { BidPanelOffer, BidPanelWeek } from "@/lib/advertise-view";
 /*
  * Bidding as one decision at a time: pick the week, tap one of the four places an ad can show (each drawn as a small
  * sketch of its page; the chosen one shows the business's own name), and enter a bid. The owner sees the most it could
- * cost with GST before bidding, that losing costs nothing, and the four dates that follow. A place staff have not
+ * cost, GST included, before bidding, that losing costs nothing, and the four dates that follow. A place staff have not
  * opened yet is shown but cannot be chosen. Every rule is checked again on the server (saveBidAction); what this
  * checks first is only to answer sooner.
  */
@@ -35,8 +35,6 @@ interface BidPanelProps {
   /** Where to start: what was last bid on, so the page comes back to it. */
   readonly initialWeek: string | null;
   readonly initialPlacement: DirectoryAdPlacement | null;
-  /** GST on a won spot, in basis points. */
-  readonly taxBasisPoints: number;
   /** A form action that redirects back to this page with a notice. */
   readonly action: (formData: FormData) => Promise<void>;
 }
@@ -232,7 +230,6 @@ export function BidPanel({
   preview,
   initialWeek,
   initialPlacement,
-  taxBasisPoints,
   action,
 }: BidPanelProps): ReactElement | null {
   const brand = useBrand();
@@ -291,7 +288,7 @@ export function BidPanel({
   const problem = edited ? bidProblem : null;
 
   // A zero bid has nothing to charge tax on (chargedAmountCents refuses it): it shows no total, as an empty box does.
-  const total = valid && typed !== null && typed > 0 ? chargedAmountCents(typed * 100, 0, taxBasisPoints) : null;
+  const total = valid && typed !== null && typed > 0 ? chargedAmountCents(typed * 100, 0) : null;
   // One business holds one of the list page's spots a week, so with bids on both it helps to know which one it would get.
   const bidOnBoth = ["top", "side"].every((name) => week.offers.some((entry) => entry.placement === name && entry.myBidPaise !== null));
 
@@ -416,13 +413,13 @@ export function BidPanel({
               <p id="bid-problem" role="status" className={cn("mt-3 text-sm text-accent-deep", problem === null && "hidden")}>
                 {problem}
               </p>
-              {/* One line for the cost: the ceiling with GST, then what it is made of and that losing is free. */}
+              {/* One line for the cost: the ceiling, GST included, then that losing is free. */}
               <div id="bid-cost" className="mt-4">
                 {total !== null && typed !== null ? (
                   <>
                     <p className="text-[0.9375rem] font-medium tabular-nums">You pay at most {rupees(total)}</p>
                     <p className="mt-1 text-sm tabular-nums text-ink-soft">
-                      {rupees(typed * 100)} + {rupees(total - typed * 100)} GST. Often less, and nothing if you don&rsquo;t win.
+                      Your bid, GST included. Often less, and nothing if you don&rsquo;t win.
                     </p>
                   </>
                 ) : problem === null ? (

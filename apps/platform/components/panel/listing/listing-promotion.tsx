@@ -17,7 +17,7 @@ const DOT_SEPARATOR = " · ";
 const ELLIPSIS = "…";
 const EM_DASH = "—";
 
-/** The week's price, already formatted: "₹299", "₹53.82" and "₹352.82". */
+/** The week's price, already formatted, GST included: "₹299", with "₹45.74" of it GST at "18%". `net` is what is left after the GST. */
 export interface PromotionPrice {
   readonly net: string;
   readonly tax: string;
@@ -95,7 +95,7 @@ function PriceBreakdown({ price }: { readonly price: PromotionPrice }): ReactEle
   return (
     <p className="text-sm text-ink-soft">
       <span className="tabular-nums">
-        {price.net} + {price.tax} GST ({price.taxRate})
+        {price.total}, with {price.tax} GST ({price.taxRate}) inside
       </span>
       {DOT_SEPARATOR}
       {PROMOTION_DAYS} days, no auto-renew

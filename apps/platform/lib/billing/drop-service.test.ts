@@ -6,10 +6,10 @@ const SOCIAL = { addOn: "digital-growth", listAmountCents: 999_900, taxRateBasis
 const SEO = { addOn: "local-seo-aeo", listAmountCents: 2_499_900, taxRateBasisPoints: 1_800 } as const;
 
 describe("dropPreview", () => {
-  it("dropping Local SEO + AEO from all three keeps the other two at list, ₹15,337.64 a month with GST, and says the package ends", () => {
+  it("dropping Local SEO + AEO from all three keeps the other two at list, ₹12,998 a month with GST included, and says the package ends", () => {
     expect(dropPreview({ staying: [WEBSITE, SOCIAL, SEO], dropping: "local-seo-aeo", forfeited: false, currency: "INR" })).toEqual({
       keeps: ["managed-website", "digital-growth"],
-      newMonthlyCents: 1_533_764,
+      newMonthlyCents: 1_299_800,
       currency: "INR",
       taxRateBasisPoints: 1_800,
       endsPackage: true,
@@ -17,24 +17,24 @@ describe("dropPreview", () => {
     });
   });
 
-  it("prices the website kept alone at its list price with GST", () => {
+  it("prices the website kept alone at its list price, GST included", () => {
     expect(dropPreview({ staying: [WEBSITE, SOCIAL], dropping: "digital-growth", forfeited: false, currency: "INR" })).toMatchObject({
       keeps: ["managed-website"],
-      newMonthlyCents: 353_882,
+      newMonthlyCents: 299_900,
       endsPackage: true,
     });
   });
 
   it("prices from the list prices on the lines, not the package prices they are billed at now", () => {
     const discounted = [{ ...WEBSITE, offerDiscountAmountCents: 89_970 }, { ...SOCIAL, offerDiscountAmountCents: 299_970 }, SEO];
-    expect(dropPreview({ staying: discounted, dropping: "local-seo-aeo", forfeited: false, currency: "INR" })?.newMonthlyCents).toBe(1_533_764);
+    expect(dropPreview({ staying: discounted, dropping: "local-seo-aeo", forfeited: false, currency: "INR" })?.newMonthlyCents).toBe(1_299_800);
   });
 
   it("adds no GST in dollars", () => {
     const usd = (addOn: "managed-website" | "digital-growth", listAmountCents: number) => ({ addOn, listAmountCents, taxRateBasisPoints: 0 });
-    expect(dropPreview({ staying: [usd("managed-website", 7_500), usd("digital-growth", 7_500)], dropping: "digital-growth", forfeited: false, currency: "USD" })).toMatchObject({
+    expect(dropPreview({ staying: [usd("managed-website", 6_500), usd("digital-growth", 15_000)], dropping: "digital-growth", forfeited: false, currency: "USD" })).toMatchObject({
       keeps: ["managed-website"],
-      newMonthlyCents: 7_500,
+      newMonthlyCents: 6_500,
       currency: "USD",
       taxRateBasisPoints: 0,
     });
@@ -43,7 +43,7 @@ describe("dropPreview", () => {
   it("has nothing to lose once the offer is already given up", () => {
     expect(dropPreview({ staying: [WEBSITE, SOCIAL, SEO], dropping: "managed-website", forfeited: true, currency: "INR" })).toMatchObject({
       keeps: ["digital-growth", "local-seo-aeo"],
-      newMonthlyCents: 4_129_764,
+      newMonthlyCents: 3_499_800,
       endsPackage: false,
       endsWebsite: true,
     });
@@ -61,7 +61,7 @@ describe("dropCopy", () => {
 
     expect(dropCopy(preview, "12 November 2026")).toEqual({
       keeps: "You keep Managed Website and Social Media and Ads.",
-      monthly: "From 12 November 2026 you pay ₹15,337.64 a month, GST included.",
+      monthly: "From 12 November 2026 you pay ₹12,998 a month, GST included.",
       websiteOffline: null,
       packageEnds: "Your package price and ad credit end for good. Adding a service again later will be at its own price.",
     });
@@ -69,13 +69,13 @@ describe("dropCopy", () => {
   });
 
   it("names one service kept, says nothing about a package already given up, and adds no GST in dollars", () => {
-    const usd = (addOn: "managed-website" | "digital-growth") => ({ addOn, listAmountCents: 7_500, taxRateBasisPoints: 0 });
+    const usd = (addOn: "managed-website" | "digital-growth") => ({ addOn, listAmountCents: 6_500, taxRateBasisPoints: 0 });
     const preview = dropPreview({ staying: [usd("managed-website"), usd("digital-growth")], dropping: "digital-growth", forfeited: true, currency: "USD" });
     if (preview === null) throw new Error("Expected a preview");
 
     expect(dropCopy(preview, "12 November 2026")).toEqual({
       keeps: "You keep Managed Website.",
-      monthly: "From 12 November 2026 you pay $75 a month.",
+      monthly: "From 12 November 2026 you pay $65 a month.",
       websiteOffline: null,
       packageEnds: null,
     });

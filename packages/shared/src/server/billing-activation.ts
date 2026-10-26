@@ -71,8 +71,8 @@ async function billedLines(tx: ScopedTransaction, subscriptionId: string): Promi
 
 /**
  * The one activation path for a first payment, however it arrived (the provider's checkout or an admin recording a
- * bank transfer). It records what was charged (the services' nets, with the plan row's own initial amount if it has one,
- * less any referral discount, plus the plan's tax), opens the subscription until
+ * bank transfer). It records what was charged (the services' prices, GST included, with the plan row's own initial
+ * amount if it has one, less any referral discount), opens the subscription until
  * `plan.initialTermMonths` calendar months after payment (the paid-up-front term is also the commitment), and marks
  * the lead paid, all inside the caller's staff transaction. Idempotent on the provider payment id.
  *
@@ -90,15 +90,14 @@ async function billedLines(tx: ScopedTransaction, subscriptionId: string): Promi
  */
 export async function activateFirstPayment(tx: ScopedTransaction, payment: FirstPayment): Promise<FirstPaymentActivation> {
   const termEnd = addMonthsUtc(payment.paidAt, payment.plan.initialTermMonths);
-  // What was actually taken: net price less discount, with the plan's tax on top. chargedAmountCents throws for a
-  // discount that would leave nothing, so a nonsense figure is never recorded as a payment.
-  // The services taken at this checkout are lines of the subscription, billed in the same charge: their nets (the plan row
-  // itself costs nothing), less the discount.
+  // What was actually taken: the price (GST included) less the discount. chargedAmountCents throws for a discount that
+  // would leave nothing, so a nonsense figure is never recorded as a payment.
+  // The services taken at this checkout are lines of the subscription, billed in the same charge: their prices (the plan
+  // row itself costs nothing), less the discount.
   const bundled = await billedLines(tx, payment.subscriptionId);
   const amountCents = chargedAmountCents(
     payment.plan.initialAmountCents + bundledNetCents(bundled),
     payment.discountAmountCents ?? 0,
-    payment.plan.taxRateBasisPoints,
   );
   const activation = await recordPaymentAndActivate(tx, {
     businessId: payment.businessId,
@@ -280,7 +279,7 @@ export async function activateReactivationPayment(tx: ScopedTransaction, payment
     provider: payment.provider,
     providerPaymentId: payment.providerPaymentId,
     kind: "reactivation",
-    amountCents: chargedAmountCents(payment.plan.recurringAmountCents + bundledNetCents(bundled), discountCents, payment.plan.taxRateBasisPoints),
+    amountCents: chargedAmountCents(payment.plan.recurringAmountCents + bundledNetCents(bundled), discountCents),
     currency: payment.plan.currency,
     paidAt: payment.paidAt,
     paidThroughAt: payment.paidThroughAt,

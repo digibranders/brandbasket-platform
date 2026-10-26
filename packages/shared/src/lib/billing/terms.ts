@@ -32,71 +32,64 @@ type TermedPlan = Pick<
   "initialAmountCents" | "initialTermMonths" | "recurringAmountCents" | "currency" | "taxRateBasisPoints"
 >;
 
-/** A tax rate as people read it: 1800 basis points is "18%". */
-function taxRateLabel(taxRateBasisPoints: number): string {
-  return `${taxRateBasisPoints / 100}%`;
-}
-
 /**
- * What the first payment actually takes, tax included, formatted in the plan's currency: "$69", or "₹3,538.82"
- * for ₹2,999 plus GST. This is the figure a Pay button must show, because it is the figure the provider charges.
- * `bundledAddOnNetCents` is the services billed as lines on top of the plan's own price (0 for the services plan).
+ * What the first payment actually takes, formatted in the plan's currency: "$65", or "₹2,999" for the ₹2,999 plan. Every
+ * price includes GST, so this is the figure a Pay button must show, because it is the figure the provider charges.
+ * `bundledAddOnPriceCents` is the services billed as lines on top of the plan's own price (0 for the services plan).
  */
-export function firstPaymentAmount(plan: PricedPlan, bundledAddOnNetCents = 0): string {
-  return formatMoney(chargedAmountCents(plan.initialAmountCents + bundledAddOnNetCents, 0, plan.taxRateBasisPoints), plan.currency);
+export function firstPaymentAmount(plan: PricedPlan, bundledAddOnPriceCents = 0): string {
+  return formatMoney(chargedAmountCents(plan.initialAmountCents + bundledAddOnPriceCents, 0), plan.currency);
 }
 
 /**
- * What a month at the plan's price takes, tax included and with no discount, formatted: what a reactivation records
- * (docs/superpowers/specs/2026-10-09-reactivation-design.md). "₹11,798.82" for ₹9,999 plus GST.
+ * What a month at the plan's price takes, with no discount, formatted: what a reactivation records
+ * (docs/superpowers/specs/2026-10-09-reactivation-design.md). "₹9,999" for the ₹9,999 plan.
  */
 export function monthlyPaymentAmount(
-  plan: Pick<Plan, "recurringAmountCents" | "currency" | "taxRateBasisPoints">,
-  bundledAddOnNetCents = 0,
+  plan: Pick<Plan, "recurringAmountCents" | "currency">,
+  bundledAddOnPriceCents = 0,
 ): string {
-  return formatMoney(chargedAmountCents(plan.recurringAmountCents + bundledAddOnNetCents, 0, plan.taxRateBasisPoints), plan.currency);
+  return formatMoney(chargedAmountCents(plan.recurringAmountCents + bundledAddOnPriceCents, 0), plan.currency);
 }
 
 /**
  * What each renewal actually takes, formatted: the basket's lines (and the plan's own price, 0 for the services plan)
- * less the discount frozen onto the subscription, with the plan's tax on top ("₹31,384.46" for all three services at
- * ₹26,597 plus GST). A "next payment" figure must be this, not the bare net, or an Indian customer is told ₹26,597 and
- * charged ₹31,384.46. Null when the discount would leave nothing to charge.
+ * less the discount frozen onto the subscription. A "next payment" figure must be this, not the bare price, or a customer
+ * with a code is told the full price and charged less. Null when the discount would leave nothing to charge.
  */
 export function renewalCharge(
-  plan: Pick<Plan, "recurringAmountCents" | "currency" | "taxRateBasisPoints">,
+  plan: Pick<Plan, "recurringAmountCents" | "currency">,
   discountAmountCents: number,
-  bundledAddOnNetCents = 0,
+  bundledAddOnPriceCents = 0,
 ): string | null {
-  const netCents = plan.recurringAmountCents + bundledAddOnNetCents;
-  if (discountAmountCents >= netCents) return null;
-  return formatMoney(chargedAmountCents(netCents, discountAmountCents, plan.taxRateBasisPoints), plan.currency);
+  const priceCents = plan.recurringAmountCents + bundledAddOnPriceCents;
+  if (discountAmountCents >= priceCents) return null;
+  return formatMoney(chargedAmountCents(priceCents, discountAmountCents), plan.currency);
 }
 
 /**
- * A monthly price in words, with any tax spelled out: "$69 a month", or "₹2,999 a month plus 18% GST, so
- * ₹3,538.82 in all". GST is named because it is the only tax any plan carries; a plan with none says nothing.
+ * A monthly price in words: "$65 a month", or "₹2,999 a month, GST included". GST is named because it is the only tax any
+ * plan carries and the price already holds it; a plan with none says nothing.
  */
-function monthlyPriceWords(netCents: number, plan: Pick<Plan, "currency" | "taxRateBasisPoints">): string {
-  const net = formatMoney(netCents, plan.currency);
-  if (plan.taxRateBasisPoints === 0) return `${net} a month`;
-  const total = formatMoney(chargedAmountCents(netCents, 0, plan.taxRateBasisPoints), plan.currency);
-  return `${net} a month plus ${taxRateLabel(plan.taxRateBasisPoints)} GST, so ${total} in all`;
+function monthlyPriceWords(priceCents: number, plan: Pick<Plan, "currency" | "taxRateBasisPoints">): string {
+  // chargedAmountCents refuses a price of nothing, so a plan with no services is never worded as free.
+  const price = formatMoney(chargedAmountCents(priceCents, 0), plan.currency);
+  return plan.taxRateBasisPoints === 0 ? `${price} a month` : `${price} a month, GST included`;
 }
 
 /**
- * The whole price in a sentence. A plan that starts at its monthly price reads "$69 a month. Your first payment
- * covers your first month, then it renews monthly."; a taxed one names the tax and the total. Any other start
- * names both amounts: "$225 covers your first 3 months, then it's $75 a month." `bundledAddOnNetCents` is the services
+ * The whole price in a sentence. A plan that starts at its monthly price reads "$65 a month. Your first payment
+ * covers your first month, then it renews monthly."; a taxed one says the GST is included. Any other start
+ * names both amounts: "$195 covers your first 3 months, then it's $65 a month." `bundledAddOnPriceCents` is the services
  * billed as lines on top of the plan's own price, which is the whole price on the services plan (it costs 0 itself).
  */
-export function describePlanTerms(plan: TermedPlan, bundledAddOnNetCents = 0): string {
+export function describePlanTerms(plan: TermedPlan, bundledAddOnPriceCents = 0): string {
   const term = initialTermPhrase(plan.initialTermMonths);
-  const recurringCents = plan.recurringAmountCents + bundledAddOnNetCents;
+  const recurringCents = plan.recurringAmountCents + bundledAddOnPriceCents;
   if (plan.initialTermMonths === 1 && plan.initialAmountCents === plan.recurringAmountCents) {
     return `${monthlyPriceWords(recurringCents, plan)}. Your first payment covers ${term}, then it renews monthly.`;
   }
-  return `${firstPaymentAmount(plan, bundledAddOnNetCents)} covers ${term}, then it’s ${monthlyPriceWords(recurringCents, plan)}.`;
+  return `${firstPaymentAmount(plan, bundledAddOnPriceCents)} covers ${term}, then it’s ${monthlyPriceWords(recurringCents, plan)}.`;
 }
 
 type ChangePricing = Pick<
@@ -142,9 +135,9 @@ export interface PlanDiscount {
 export function discountedFirstPaymentAmount(
   plan: PricedPlan,
   discount: Pick<PlanDiscount, "amountCents"> | null,
-  bundledAddOnNetCents = 0,
+  bundledAddOnPriceCents = 0,
 ): string {
-  const charged = chargedAmountCents(plan.initialAmountCents + bundledAddOnNetCents, discount?.amountCents ?? 0, plan.taxRateBasisPoints);
+  const charged = chargedAmountCents(plan.initialAmountCents + bundledAddOnPriceCents, discount?.amountCents ?? 0);
   return formatMoney(charged, plan.currency);
 }
 
@@ -156,15 +149,13 @@ export function discountedFirstPaymentAmount(
 export function describeDiscountedPlanTerms(
   plan: TermedPlan,
   discount: Pick<PlanDiscount, "amountCents" | "months"> | null,
-  bundledAddOnNetCents = 0,
+  bundledAddOnPriceCents = 0,
 ): string {
-  if (discount === null || discount.amountCents === 0) return describePlanTerms(plan, bundledAddOnNetCents);
-  const recurringCents = plan.recurringAmountCents + bundledAddOnNetCents;
-  const full = formatMoney(recurringCents, plan.currency);
+  if (discount === null || discount.amountCents === 0) return describePlanTerms(plan, bundledAddOnPriceCents);
+  const recurringCents = plan.recurringAmountCents + bundledAddOnPriceCents;
+  const was = formatMoney(recurringCents, plan.currency);
   const term = initialTermPhrase(plan.initialTermMonths);
   const discounted = monthlyPriceWords(recurringCents - discount.amountCents, plan);
-  // The list price is quoted net, like the discounted one, so a taxed plan says so rather than implying the totals.
-  const was = plan.taxRateBasisPoints === 0 ? full : `${full} before GST`;
   const howLong = discount.months === null ? "for as long as your plan runs" : `for ${describeDiscountMonths(discount.months)}`;
   return `${discounted}, instead of ${was}, ${howLong}. Your first payment covers ${term}, then it renews monthly.`;
 }

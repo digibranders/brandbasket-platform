@@ -5,7 +5,6 @@ import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
-import { chargedAmountCents } from "@brandbasket/billing/tax";
 import {
   formPriceValue,
   PRICING_CURRENCY_FIELD,
@@ -48,9 +47,8 @@ interface PriceInputProps {
   readonly hint: string;
 }
 
-/** One price box: typed before tax, with what the customer is actually charged shown under it. */
+/** One price box: typed with the GST included, which is exactly what the customer is charged. */
 function PriceInput({ id, name, label, cents, plan, hint }: PriceInputProps): ReactElement {
-  const charged = formatMoney(chargedAmountCents(cents, 0, plan.taxRateBasisPoints), plan.currency);
   return (
     <div>
       <label htmlFor={id} className={labelClasses}>
@@ -70,7 +68,7 @@ function PriceInput({ id, name, label, cents, plan, hint }: PriceInputProps): Re
       />
       <p className={`${hintClasses} tabular-nums`}>
         {hint}
-        {plan.taxRateBasisPoints > 0 ? ` · charged ${charged} with GST` : null}
+        {plan.taxRateBasisPoints > 0 ? " · GST included" : null}
       </p>
     </div>
   );
@@ -116,7 +114,7 @@ function PackageOffers(): ReactElement {
 
 function ExtrasForm({ plan }: { readonly plan: Plan }): ReactElement {
   const key = `${plan.tier}-${plan.currency.toLowerCase()}`;
-  const tax = plan.taxRateBasisPoints > 0 ? `before ${plan.taxRateBasisPoints / 100}% GST` : "no tax";
+  const tax = plan.taxRateBasisPoints > 0 ? `include ${plan.taxRateBasisPoints / 100}% GST` : "carry no tax";
   return (
     <Section title={`Extras · ${BILLING_CURRENCY_LABELS[plan.currency]}`} aside={`Prices ${tax}.`}>
       <form action={savePricesAction} className="max-w-2xl">

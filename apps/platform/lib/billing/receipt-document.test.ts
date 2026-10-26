@@ -4,7 +4,7 @@ import { addOnById, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/
 import { packageBasisPointsFor, packageDiscountsFor } from "@brandbasket/shared/lib/billing/packages";
 import { BRAND } from "@/lib/brand";
 import { describe, expect, it } from "vitest";
-import { isDownloadableReceipt, receiptDocument, splitTax } from "./receipt-document";
+import { isDownloadableReceipt, receiptDocument } from "./receipt-document";
 
 const PAID_AT = new Date("2026-09-12T10:00:00.000Z");
 
@@ -16,7 +16,7 @@ function receipt(overrides: Partial<Receipt> = {}): Receipt {
     provider: "razorpay",
     providerPaymentId: "pay_abc123",
     kind: "renewal",
-    amountCents: 353_882,
+    amountCents: 299_900,
     currency: "INR",
     status: "captured",
     paidAt: PAID_AT,
@@ -42,25 +42,8 @@ function receipt(overrides: Partial<Receipt> = {}): Receipt {
 
 const CUSTOMER = { businessName: "Chennai Cafe", email: "owner@chennaicafe.in" };
 
-describe("splitTax", () => {
-  it("takes 18% GST back out of what was charged, to the paisa", () => {
-    expect(splitTax(353_882, 1800)).toEqual({ netCents: 299_900, taxCents: 53_982 });
-  });
-
-  it("leaves an untaxed amount whole", () => {
-    expect(splitTax(6_900, 0)).toEqual({ netCents: 6_900, taxCents: 0 });
-  });
-
-  it("always adds back up to the amount charged", () => {
-    for (const gross of [1, 99, 118, 12_345, 353_881, 1_000_001]) {
-      const { netCents, taxCents } = splitTax(gross, 1800);
-      expect(netCents + taxCents).toBe(gross);
-    }
-  });
-});
-
 describe("receiptDocument", () => {
-  it("splits GST out for an Indian receipt and prints rupees as INR", () => {
+  it("shows the GST inside an Indian receipt and prints rupees as INR", () => {
     const doc = receiptDocument(receipt(), CUSTOMER);
 
     expect(doc).toMatchObject({
@@ -72,9 +55,9 @@ describe("receiptDocument", () => {
       billedTo: ["Chennai Cafe", "owner@chennaicafe.in"],
       lines: [
         { label: "Care plan · Monthly payment", amount: "INR 2,999.00" },
-        { label: "GST 18%", amount: "INR 539.82" },
+        { label: "Includes GST 18%", amount: "INR 457.48" },
       ],
-      total: { label: "Total paid", amount: "INR 3,538.82" },
+      total: { label: "Total paid", amount: "INR 2,999.00" },
     });
     expect(doc.from).toEqual([
       "Brandbasket",
@@ -90,12 +73,12 @@ describe("receiptDocument", () => {
 
   it("prints a dollar receipt as a single line", () => {
     const doc = receiptDocument(
-      receipt({ currency: "USD", amountCents: 6_900, taxRateBasisPoints: 0, kind: "initial", sequence: 1 }),
+      receipt({ currency: "USD", amountCents: 6_500, taxRateBasisPoints: 0, kind: "initial", sequence: 1 }),
       CUSTOMER,
     );
 
-    expect(doc.lines).toEqual([{ label: "Care plan · First payment, covering your first month", amount: "USD 69.00" }]);
-    expect(doc.total).toEqual({ label: "Total paid", amount: "USD 69.00" });
+    expect(doc.lines).toEqual([{ label: "Care plan · First payment, covering your first month", amount: "USD 65.00" }]);
+    expect(doc.total).toEqual({ label: "Total paid", amount: "USD 65.00" });
     expect(doc.fileName).toBe("brandbasket-receipt-001.pdf");
   });
 
@@ -114,7 +97,7 @@ describe("receiptDocument", () => {
       receipt({ planName: null, taxRateBasisPoints: null, initialTermMonths: null, subscriptionId: null }),
       CUSTOMER,
     );
-    expect(doc.lines).toEqual([{ label: "Monthly payment", amount: "INR 3,538.82" }]);
+    expect(doc.lines).toEqual([{ label: "Monthly payment", amount: "INR 2,999.00" }]);
   });
 
   it("falls back to the day it was recorded when the payment date is missing", () => {
@@ -136,7 +119,7 @@ describe("isDownloadableReceipt", () => {
 });
 
 describe("receiptDocument for a paid extra", () => {
-  it("names the extra and splits its own GST", () => {
+  it("names the extra and shows the GST inside its price", () => {
     const doc = receiptDocument(
       receipt({
         kind: "charge",
@@ -146,21 +129,21 @@ describe("receiptDocument for a paid extra", () => {
         chargeKind: "change_hours",
         chargeDescription: "Extra change hours",
         chargeQuantity: 2,
-        amountCents: 336_300,
+        amountCents: 285_000,
         taxRateBasisPoints: 1800,
       }),
       CUSTOMER,
     );
     expect(doc.lines).toEqual([
       { label: "Extra change hours · 2 h", amount: "INR 2,850.00" },
-      { label: "GST 18%", amount: "INR 513.00" },
+      { label: "Includes GST 18%", amount: "INR 434.74" },
     ]);
-    expect(doc.total.amount).toBe("INR 3,363.00");
+    expect(doc.total.amount).toBe("INR 2,850.00");
   });
 });
 
 describe("receiptDocument for an add-on payment", () => {
-  it("names the add-on and splits its GST out of what was charged", () => {
+  it("names the add-on and shows the GST inside what was charged", () => {
     const doc = receiptDocument(
       receipt({
         kind: "add_on",
@@ -168,16 +151,16 @@ describe("receiptDocument for an add-on payment", () => {
         planName: null,
         initialTermMonths: null,
         addOnId: "digital-growth",
-        amountCents: 1_062_000,
+        amountCents: 900_000,
         taxRateBasisPoints: 1800,
       }),
       CUSTOMER,
     );
     expect(doc.lines).toEqual([
       { label: "Social Media and Ads, monthly", amount: "INR 9,000.00" },
-      { label: "GST 18%", amount: "INR 1,620.00" },
+      { label: "Includes GST 18%", amount: "INR 1,372.88" },
     ]);
-    expect(doc.total.amount).toBe("INR 10,620.00");
+    expect(doc.total.amount).toBe("INR 9,000.00");
   });
 });
 
@@ -221,31 +204,33 @@ function servicesPayment(
     })),
   };
   const net = invoiceBasis.lines.reduce((sum, line) => sum + line.listAmountCents - line.offerDiscountAmountCents, 0);
-  return receipt({ amountCents: chargedAmountCents(net, discountAmountCents, 1800), invoiceBasis });
+  return receipt({ amountCents: chargedAmountCents(net, discountAmountCents), invoiceBasis });
 }
 
 describe("receiptDocument for services", () => {
+  /** The priced rows add up to the total; the "Includes GST" row only explains it and is left out of the sum. */
   function rowsAddUp(doc: ReturnType<typeof receiptDocument>, paid: number): void {
-    expect(doc.lines.reduce((sum, line) => sum + cents(line.amount), 0)).toBe(paid);
+    const priced = doc.lines.filter((line) => !line.label.startsWith("Includes GST"));
+    expect(priced.reduce((sum, line) => sum + cents(line.amount), 0)).toBe(paid);
     expect(cents(doc.total.amount)).toBe(paid);
   }
 
-  it("lists two services at list, the 20% package offer, GST and the total", () => {
+  it("lists two services at list, the 10% package offer, the GST inside and the total", () => {
     const paid = servicesPayment(["managed-website", "digital-growth"]);
     const doc = receiptDocument(paid, CUSTOMER);
 
     expect(doc.lines.map((line) => line.label)).toEqual([
       "Managed Website",
       "Social Media and Ads",
-      "Package offer, 20% off",
-      "GST 18%",
+      "Package offer, 10% off",
+      "Includes GST 18%",
     ]);
-    expect(doc.lines.map((line) => line.amount)).toEqual(["INR 2,999.00", "INR 9,999.00", "-INR 2,600.00", "INR 1,871.64"]);
-    expect(doc.total).toEqual({ label: "Total paid", amount: "INR 12,269.64" });
+    expect(doc.lines.map((line) => line.amount)).toEqual(["INR 2,999.00", "INR 9,999.00", "-INR 1,299.00", "INR 1,784.60"]);
+    expect(doc.total).toEqual({ label: "Total paid", amount: "INR 11,699.00" });
     rowsAddUp(doc, paid.amountCents);
   });
 
-  it("lists three services with the 30% package offer", () => {
+  it("lists three services with the 20% package offer", () => {
     const paid = servicesPayment(["managed-website", "digital-growth", "local-seo-aeo"]);
     const doc = receiptDocument(paid, CUSTOMER);
 
@@ -253,16 +238,26 @@ describe("receiptDocument for services", () => {
       "Managed Website",
       "Social Media and Ads",
       "Local SEO + AEO",
-      "Package offer, 30% off",
-      "GST 18%",
+      "Package offer, 20% off",
+      "Includes GST 18%",
     ]);
+    expect(doc.lines.map((line) => line.amount)).toEqual([
+      "INR 2,999.00",
+      "INR 9,999.00",
+      "INR 24,999.00",
+      "-INR 7,599.00",
+      "INR 4,636.98",
+    ]);
+    expect(doc.total.amount).toBe("INR 30,398.00");
     rowsAddUp(doc, paid.amountCents);
   });
 
-  it("names the 20% offer on a two-service package", () => {
+  it("names the 10% offer on any two-service package", () => {
     const paid = servicesPayment(["digital-growth", "local-seo-aeo"]);
     const doc = receiptDocument(paid, CUSTOMER);
-    expect(doc.lines.map((line) => line.label)).toContain("Package offer, 20% off");
+    expect(doc.lines.map((line) => line.label)).toContain("Package offer, 10% off");
+    expect(doc.lines.map((line) => line.amount)).toEqual(["INR 9,999.00", "INR 24,999.00", "-INR 3,499.00", "INR 4,804.94"]);
+    expect(doc.total.amount).toBe("INR 31,499.00");
     rowsAddUp(doc, paid.amountCents);
   });
 
@@ -272,8 +267,9 @@ describe("receiptDocument for services", () => {
 
     expect(doc.lines).toEqual([
       { label: "Managed Website", amount: "INR 2,999.00" },
-      { label: "GST 18%", amount: "INR 539.82" },
+      { label: "Includes GST 18%", amount: "INR 457.48" },
     ]);
+    expect(doc.total.amount).toBe("INR 2,999.00");
     rowsAddUp(doc, paid.amountCents);
   });
 
@@ -283,40 +279,66 @@ describe("receiptDocument for services", () => {
     expect(codeDoc.lines.map((line) => line.label)).toEqual([
       "Managed Website",
       "Social Media and Ads",
-      "Package offer, 20% off",
+      "Package offer, 10% off",
       "Code discount",
-      "GST 18%",
+      "Includes GST 18%",
     ]);
     expect(codeDoc.lines[3]?.amount).toBe("-INR 1,500.00");
+    expect(codeDoc.lines[4]?.amount).toBe("INR 1,555.78");
+    expect(codeDoc.total.amount).toBe("INR 10,199.00");
     rowsAddUp(codeDoc, withCode.amountCents);
 
     const withStay = servicesPayment(["managed-website", "digital-growth"], { codeCents: 150_000, retentionCents: 50_000 });
     const stayDoc = receiptDocument(withStay, CUSTOMER);
     expect(stayDoc.lines.map((line) => line.label)).toContain("Stay offer");
+    expect(stayDoc.lines.at(-1)).toEqual({ label: "Includes GST 18%", amount: "INR 1,479.50" });
+    expect(stayDoc.total.amount).toBe("INR 9,699.00");
     rowsAddUp(stayDoc, withStay.amountCents);
   });
 
   it("names the code on its row when the payment kept it, over a package or a single service", () => {
-    const onPackage = servicesPayment(["managed-website", "digital-growth"], { codeCents: 103_980, code: "SAVE10" });
+    const onPackage = servicesPayment(["managed-website", "digital-growth"], { codeCents: 116_990, code: "SAVE10" });
     const packageDoc = receiptDocument(onPackage, CUSTOMER);
-    expect(packageDoc.lines.map((line) => line.label)).toEqual(["Managed Website", "Social Media and Ads", "Package offer, 20% off", "Code SAVE10", "GST 18%"]);
-    expect(packageDoc.lines[3]?.amount).toBe("-INR 1,039.80");
+    expect(packageDoc.lines.map((line) => line.label)).toEqual(["Managed Website", "Social Media and Ads", "Package offer, 10% off", "Code SAVE10", "Includes GST 18%"]);
+    expect(packageDoc.lines[3]?.amount).toBe("-INR 1,169.90");
+    expect(packageDoc.lines[4]?.amount).toBe("INR 1,606.14");
+    expect(packageDoc.total.amount).toBe("INR 10,529.10");
     rowsAddUp(packageDoc, onPackage.amountCents);
 
     const alone = servicesPayment(["managed-website"], { codeCents: 30_000, code: "SAVE10" });
-    expect(receiptDocument(alone, CUSTOMER).lines.map((line) => line.label)).toEqual(["Managed Website", "Code SAVE10", "GST 18%"]);
+    expect(receiptDocument(alone, CUSTOMER).lines.map((line) => line.label)).toEqual(["Managed Website", "Code SAVE10", "Includes GST 18%"]);
   });
 
   it("keeps today's single line when the basis does not describe the payment", () => {
     const paid = servicesPayment(["managed-website", "digital-growth"]);
     const wrongAmount = receiptDocument({ ...paid, amountCents: paid.amountCents + 5_000 }, CUSTOMER);
-    expect(wrongAmount.lines.map((line) => line.label)).toEqual(["Care plan · Monthly payment", "GST 18%"]);
+    expect(wrongAmount.lines.map((line) => line.label)).toEqual(["Care plan · Monthly payment", "Includes GST 18%"]);
   });
 
   it("keeps today's single line for a payment with no basis", () => {
     expect(receiptDocument(receipt({ invoiceBasis: null }), CUSTOMER).lines).toEqual([
       { label: "Care plan · Monthly payment", amount: "INR 2,999.00" },
-      { label: "GST 18%", amount: "INR 539.82" },
+      { label: "Includes GST 18%", amount: "INR 457.48" },
     ]);
+  });
+
+  it("lists a dollar basket at list and the package offer, with no GST row", () => {
+    const invoiceBasis: PaymentInvoiceBasis = {
+      netAmountCents: 0,
+      discountAmountCents: 0,
+      retentionDiscountCents: 0,
+      lines: [
+        { addOn: "managed-website", listAmountCents: 6_500, offerDiscountAmountCents: 650, taxRateBasisPoints: 0 },
+        { addOn: "digital-growth", listAmountCents: 15_000, offerDiscountAmountCents: 1_450, taxRateBasisPoints: 0 },
+      ],
+    };
+    const doc = receiptDocument(receipt({ currency: "USD", amountCents: 19_400, taxRateBasisPoints: 0, invoiceBasis }), CUSTOMER);
+
+    expect(doc.lines).toEqual([
+      { label: "Managed Website", amount: "USD 65.00" },
+      { label: "Social Media and Ads", amount: "USD 150.00" },
+      { label: "Package offer, 10% off", amount: "-USD 21.00" },
+    ]);
+    expect(doc.total).toEqual({ label: "Total paid", amount: "USD 194.00" });
   });
 });

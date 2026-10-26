@@ -4,8 +4,9 @@ import type { MoneyCurrency } from "../money";
 /**
  * The services Brandbasket sells: Managed Website, Social Media and Ads and Local SEO + AEO, each on its own or two or more
  * together as a package priced in packages.ts (docs/plans/16-platform-pricing-offers.md in the BrandBasket workspace), and
- * what each lists at in each currency a business is billed in. Rupee prices are net of GST,
- * in paise; dollar prices are in cents with no tax. They match the website's pricing page: change both together. A price
+ * what each lists at in each currency a business is billed in. Every price includes GST (owner, 2026-10-26;
+ * docs/plans/25-money-gst-and-offers.md): rupee prices are in paise with 18% GST inside them, dollar prices are in cents
+ * with no tax of ours. They match the website's pricing page: change both together. A price
  * here only affects new purchases; what a business pays for an existing subscription is stored on it. Pure and
  * browser-safe.
  */
@@ -26,7 +27,7 @@ export interface AddOn {
   /** One line on what the service does for the business. */
   readonly line: string;
   readonly billing: "monthly" | "one-time";
-  /** The list price before any discount, in minor units of each currency: net of GST in rupees, untaxed in dollars. */
+  /** The list price before any discount, in minor units of each currency, GST included in rupees (none of ours on dollars). */
   readonly prices: Readonly<Record<MoneyCurrency, number>>;
   /** What the price is for: "a month". */
   readonly unit: string;
@@ -42,7 +43,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Managed Website",
     line: "A professionally designed website of up to 5 pages, mobile-friendly, with enquiry forms, click-to-call, a local SEO foundation and the OyeChats professional chatbot.",
     billing: "monthly",
-    prices: { INR: 2_999 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
+    prices: { INR: 2_999 * MINOR_UNITS_PER_MAJOR, USD: 65 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
   },
   {
@@ -51,7 +52,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Social Media and Ads",
     line: "Instagram, Facebook and Google profile posts planned with you each month, review replies, and Meta ads managed for up to ₹10,000 a month of your budget.",
     billing: "monthly",
-    prices: { INR: 9_999 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
+    prices: { INR: 9_999 * MINOR_UNITS_PER_MAJOR, USD: 150 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
     extra: "+ your ad spend",
     platforms: ["Google Business Profile", "Facebook Ads", "Instagram Ads"],
@@ -91,10 +92,11 @@ export interface AddOnPrice {
   readonly discountCents: number;
   /** The part of `discountCents` that is the package offer (packages.ts), or 0. */
   readonly offerCents: number;
-  /** List less discount: the taxable value. */
+  /** List less discount: what the customer pays for it, GST included. (The name is older than GST-inclusive prices; the taxable value is worked out from it on the invoice.) */
   readonly netCents: number;
+  /** The rate of the GST inside the price: 1800 in rupees, 0 in dollars. */
   readonly taxRateBasisPoints: number;
-  /** What Razorpay takes: net plus any tax, from chargedAmountCents like every other price. */
+  /** What Razorpay takes: the same as `netCents`, from chargedAmountCents like every other price. */
   readonly chargedCents: number;
 }
 
@@ -118,6 +120,6 @@ export function addOnPrice(addOn: AddOn, currency: MoneyCurrency, discountCents 
     offerCents,
     netCents: listCents - discountCents,
     taxRateBasisPoints,
-    chargedCents: chargedAmountCents(listCents, discountCents, taxRateBasisPoints),
+    chargedCents: chargedAmountCents(listCents, discountCents),
   };
 }

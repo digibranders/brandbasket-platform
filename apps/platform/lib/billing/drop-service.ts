@@ -34,7 +34,7 @@ export function dropPreview(input: {
   if (taxRateBasisPoints === undefined) return null;
   return {
     keeps: MONTHLY_ADD_ON_IDS.filter((id) => kept.some((line) => line.addOn === id)),
-    newMonthlyCents: chargedAmountCents(listTotalCents(kept), 0, taxRateBasisPoints),
+    newMonthlyCents: chargedAmountCents(listTotalCents(kept), 0),
     currency: input.currency,
     taxRateBasisPoints,
     endsPackage: !input.forfeited,

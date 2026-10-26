@@ -9,9 +9,9 @@ import { initialReactivateFormState, type ReactivateFormState } from "@/lib/bill
 interface ReactivatePlanProps {
   /** "Brandbasket services plan". */
   readonly planName: string;
-  /** What a month takes now, tax included: the figure on the button is the figure charged. */
+  /** What a month takes now: the figure on the button is the figure charged. */
   readonly monthlyAmount: string;
-  /** Under the price: "₹9,999 a month plus 18% GST." */
+  /** Under the price: "₹9,999 a month, GST included." */
   readonly priceNote: string;
   readonly action: (state: ReactivateFormState, formData: FormData) => Promise<ReactivateFormState>;
   /** The services the customer chose to come back to, posted with the press, or null when the basket is not theirs to choose. */

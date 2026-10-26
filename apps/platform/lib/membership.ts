@@ -1,4 +1,4 @@
-import { chargedAmountCents } from "@brandbasket/billing/tax";
+import { chargedAmountCents, gstInsideCents } from "@brandbasket/billing/tax";
 import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines, bundleNetCents, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { adCreditCentsAtCheckout, packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
@@ -98,8 +98,8 @@ export interface MembershipPricing {
 }
 
 /**
- * The membership's price as people say it, before tax, with the tax named: "₹2,999 a month + 18% GST", or
- * "$69 a month" for a plan with none. The figure the Pay button shows is the charged one, tax included.
+ * The membership's price as people say it, with the GST named: "₹2,999 a month, GST included", or "$65 a month" for a
+ * plan with none. It is also the figure the Pay button shows: every price includes GST.
  */
 export function membershipPriceLine(plan: MembershipPricing, bundledAddOnNetCents = 0): string {
   const { amount, terms } = membershipPriceParts(plan, 0, bundledAddOnNetCents);
@@ -112,13 +112,13 @@ export function servicesPhrase(services: readonly MonthlyAddOnId[]): string {
   return titles.length < 2 ? (titles[0] ?? "") : `${titles.slice(0, -1).join(", ")} and ${titles[titles.length - 1]}`;
 }
 
-/** What the services cost a month before tax for a new sign-up, at the package price (a new account has given up nothing). */
+/** What the services cost a month for a new sign-up, GST included, at the package price (a new account has given up nothing). */
 export function basketNetCents(services: readonly MonthlyAddOnId[], currency: MoneyCurrency): number {
   return bundleNetCents(bundleLines(services, currency));
 }
 
 /**
- * The same price in two parts, for a page that sets the figure large: "₹9,999" and "a month + 18% GST". With a discount
+ * The same price in two parts, for a page that sets the figure large: "₹9,999" and "a month, GST included". With a discount
  * (a code, the package offer) the figure is the discounted price and `was` the list price.
  */
 export function membershipPriceParts(
@@ -131,13 +131,13 @@ export function membershipPriceParts(
   const amount = formatMoney(listCents - discountCents, plan.currency);
   return {
     amount,
-    terms: plan.taxRateBasisPoints === 0 ? "a month" : `a month + ${plan.taxRateBasisPoints / 100}% GST`,
+    terms: plan.taxRateBasisPoints === 0 ? "a month" : "a month, GST included",
     // The list price, shown struck through beside a discounted one.
     was: discountCents > 0 ? formatMoney(listCents, plan.currency) : null,
   };
 }
 
-/** The package offer on the basket, named for the summary: "Package offer, 30% off", and what it takes off before GST. */
+/** The package offer on the basket, named for the summary: "Package offer, 20% off", and what it takes off. */
 export interface PackageOfferRow {
   readonly label: string;
   readonly discountCents: number;
@@ -149,7 +149,7 @@ export interface AdCreditRow {
   readonly label: string;
 }
 
-/** What today's payment is made of, in the plan's minor units, for the order summary beside the Pay button. */
+/** What today's payment is made of, in the plan's minor units (GST included), for the order summary beside the Pay button. */
 export interface OrderSummary {
   /** One line per service, each with its list price, its package discount and its net, in the catalogue's order. */
   readonly lines: readonly BundleLine[];
@@ -157,12 +157,13 @@ export interface OrderSummary {
   readonly offer: PackageOfferRow | null;
   /** What the applied code takes off the basket after the package offer, or 0. */
   readonly discountCents: number;
-  /** The taxable amount of the whole payment: the plan's own price and the lines' nets, less the code. */
+  /** What the whole payment is worth before the code's discount is taken off: the plan's own price and the lines' prices. */
   readonly netCents: number;
+  /** The GST inside `totalCents`, for the line that says what the price includes. */
   readonly gstCents: number;
   /** What the provider takes today: the same figure the Pay button shows and the checkout freezes. */
   readonly totalCents: number;
-  /** What each month costs with GST once the code's discount has ended: `totalCents` when there is no code. */
+  /** What each month costs once the code's discount has ended: `totalCents` when there is no code. */
   readonly totalWithoutCodeCents: number;
   /** The monthly ad credit this checkout would freeze, or null when it freezes none. */
   readonly adCredit: AdCreditRow | null;
@@ -184,7 +185,7 @@ export interface OrderSummaryInput {
 /**
  * The first payment broken into its parts, worked out with the functions checkout uses: the lines and the package offer
  * from bundleLines (packageLines), the ad credit from adCreditCentsAtCheckout and the total from chargedAmountCents over the lines'
- * nets less the code. Checkout charges the plan's own price plus the lines, so the total adds `planInitialAmountCents`
+ * prices less the code. Checkout charges the plan's own price plus the lines, so the total adds `planInitialAmountCents`
  * too; on the services plan that is 0 and the lines are the whole charge. The code comes off once, after the package offer.
  * Throws on an empty basket.
  */
@@ -193,8 +194,8 @@ export function orderSummary(input: OrderSummaryInput, discountCents: number): O
   const lines = bundleLines(services, currency, forfeited);
   if (lines.length === 0) throw new RangeError("An order needs at least one service");
   const chargeableCents = planInitialAmountCents + lines.reduce((total, line) => total + line.netCents, 0);
-  const totalCents = chargedAmountCents(chargeableCents, discountCents, taxRateBasisPoints);
-  const netCents = chargeableCents - discountCents;
+  const totalCents = chargedAmountCents(chargeableCents, discountCents);
+  const netCents = chargeableCents;
   const basisPoints = packageBasisPointsFor({ services, forfeited });
   const adCreditCents = adCreditCentsAtCheckout({ services, forfeited, hasEverPaid }, currency);
   return {
@@ -202,9 +203,9 @@ export function orderSummary(input: OrderSummaryInput, discountCents: number): O
     offer: basisPoints === 0 ? null : { label: `Package offer, ${basisPoints / 100}% off`, discountCents: lines.reduce((total, line) => total + line.offerCents, 0) },
     discountCents,
     netCents,
-    gstCents: totalCents - netCents,
+    gstCents: gstInsideCents(totalCents, taxRateBasisPoints),
     totalCents,
-    totalWithoutCodeCents: chargedAmountCents(chargeableCents, 0, taxRateBasisPoints),
+    totalWithoutCodeCents: chargedAmountCents(chargeableCents, 0),
     adCredit: adCreditCents === 0 ? null : { cents: adCreditCents, label: `We add ${formatMoney(adCreditCents, currency)} a month to your ads` },
   };
 }

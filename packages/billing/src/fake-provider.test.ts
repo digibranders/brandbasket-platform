@@ -133,12 +133,12 @@ describe("createFakeBillingProvider", () => {
     });
   });
 
-  it("charges a basket of services on the plan that costs nothing: the lines' nets with the plan's tax on top", async () => {
-    // All three services in rupees at the package price, ₹26,597 a month before 18% GST (docs/plans/16-platform-pricing-offers.md).
+  it("charges a basket of services on the plan that costs nothing: the lines' prices as they stand, GST inside", async () => {
+    // All three services in rupees at the package price, ₹30,398 a month with the 18% GST inside it (docs/plans/25-money-gst-and-offers.md).
     const services: Plan = { ...USD_PLAN, code: "services-inr-2026-10", currency: "INR", initialAmountCents: 0, recurringAmountCents: 0, taxRateBasisPoints: 1_800 };
     const fake = provider();
-    const started = await fake.startCheckout({ ...CHECKOUT, plan: services, bundledAddOnNetCents: 2_659_700 });
-    expect(await fake.confirmCheckout({ token: tokenFrom(started.checkoutUrl) })).toMatchObject({ amountCents: 3_138_446, currency: "INR" });
+    const started = await fake.startCheckout({ ...CHECKOUT, plan: services, bundledAddOnNetCents: 3_039_800 });
+    expect(await fake.confirmCheckout({ token: tokenFrom(started.checkoutUrl) })).toMatchObject({ amountCents: 3_039_800, currency: "INR" });
   });
 
   it("rejects a token whose amount was edited", async () => {

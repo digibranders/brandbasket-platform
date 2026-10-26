@@ -37,7 +37,7 @@ let dbs: TestDatabases;
 let businessA = "";
 let businessB = "";
 
-/** 2 extra hours at ₹1,425 net, with 18% GST: 285,000 net, 336,300 charged. */
+/** 2 extra hours at ₹1,425 each, GST included: 285,000 charged. */
 function hoursCharge(businessId: string, overrides: Partial<NewCharge> = {}): NewCharge {
   return {
     businessId,
@@ -46,7 +46,7 @@ function hoursCharge(businessId: string, overrides: Partial<NewCharge> = {}): Ne
     quantity: 2,
     unitAmountCents: 142_500,
     taxRateBasisPoints: 1800,
-    amountCents: 336_300,
+    amountCents: 285_000,
     currency: "INR",
     createdByStaffId: STAFF,
     ...overrides,
@@ -61,13 +61,13 @@ function blogCharge(businessId: string): NewCharge {
     quantity: 1,
     unitAmountCents: 47_500,
     taxRateBasisPoints: 1800,
-    amountCents: 56_050,
+    amountCents: 47_500,
     currency: "INR",
     createdByStaffId: null,
   };
 }
 
-function payFor(chargeId: string, businessId: string, providerPaymentId: string, amountCents = 336_300) {
+function payFor(chargeId: string, businessId: string, providerPaymentId: string, amountCents = 285_000) {
   return {
     chargeId,
     businessId,
@@ -123,7 +123,7 @@ describe("adding and reading charges", () => {
     const other = await asOwner(businessB, OWNER_B, (tx) => findChargeForBusiness(tx, businessA, charge.id));
 
     expect(own.map((row) => row.id)).toEqual([charge.id]);
-    expect(own[0]).toMatchObject({ status: "open", amountCents: 336_300, quantity: 2, createdByStaffId: STAFF });
+    expect(own[0]).toMatchObject({ status: "open", amountCents: 285_000, quantity: 2, createdByStaffId: STAFF });
     expect(other).toBeNull();
   });
 
@@ -152,7 +152,7 @@ describe("recordChargePayment", () => {
     const result = await recordChargePayment(dbs.staff.db, payFor(charge.id, businessA, "fake_pay_charge_1"));
 
     expect(result).toMatchObject({ outcome: "paid", alreadyRecorded: false });
-    expect(result.payment).toMatchObject({ kind: "charge", subscriptionId: null, amountCents: 336_300, attentionReason: null });
+    expect(result.payment).toMatchObject({ kind: "charge", subscriptionId: null, amountCents: 285_000, attentionReason: null });
     expect(await findChargeForBusiness(dbs.staff.db, businessA, charge.id)).toMatchObject({
       status: "paid",
       paymentId: result.payment.id,
@@ -261,7 +261,7 @@ describe("a paid press release", () => {
       quantity: 1,
       unitAmountCents: 700_000,
       taxRateBasisPoints: 1800,
-      amountCents: 826_000,
+      amountCents: 700_000,
       currency: "INR",
       createdByStaffId: null,
     };
@@ -271,7 +271,7 @@ describe("a paid press release", () => {
     const charge = await insertCharge(dbs.staff.db, pressReleaseCharge(businessA));
     expect(await dbs.staff.db.select().from(pressReleases)).toEqual([]);
 
-    await recordChargePayment(dbs.staff.db, payFor(charge.id, businessA, "fake_pay_press", 826_000));
+    await recordChargePayment(dbs.staff.db, payFor(charge.id, businessA, "fake_pay_press", 700_000));
 
     const rows = await dbs.staff.db.select().from(pressReleases);
     expect(rows).toHaveLength(1);
@@ -280,9 +280,9 @@ describe("a paid press release", () => {
 
   it("starts it once, however many times the payment is delivered", async () => {
     const charge = await insertCharge(dbs.staff.db, pressReleaseCharge(businessA));
-    await recordChargePayment(dbs.staff.db, payFor(charge.id, businessA, "fake_pay_press", 826_000));
-    await recordChargePayment(dbs.staff.db, payFor(charge.id, businessA, "fake_pay_press", 826_000));
-    await recordChargePayment(dbs.staff.db, payFor(charge.id, businessA, "fake_pay_press_duplicate", 826_000));
+    await recordChargePayment(dbs.staff.db, payFor(charge.id, businessA, "fake_pay_press", 700_000));
+    await recordChargePayment(dbs.staff.db, payFor(charge.id, businessA, "fake_pay_press", 700_000));
+    await recordChargePayment(dbs.staff.db, payFor(charge.id, businessA, "fake_pay_press_duplicate", 700_000));
 
     expect(await dbs.staff.db.select().from(pressReleases)).toHaveLength(1);
   });
@@ -349,7 +349,7 @@ describe("blog post unlocks", () => {
     const unlock = await openBlogPostsCharge(dbs.staff.db, blogCharge(businessA));
     expect(await countPaidBlogBlocks(dbs.staff.db, businessA)).toBe(0);
 
-    await recordChargePayment(dbs.staff.db, payFor(unlock.id, businessA, "fake_pay_blog", 56_050));
+    await recordChargePayment(dbs.staff.db, payFor(unlock.id, businessA, "fake_pay_blog", 47_500));
     const next = await openBlogPostsCharge(dbs.staff.db, blogCharge(businessA));
 
     expect(next.id).not.toBe(unlock.id);
@@ -373,7 +373,7 @@ describe("plan payments are unaffected", () => {
       provider: "fake",
       providerPaymentId: "fake_pay_plan",
       kind: "initial",
-      amountCents: 353_882,
+      amountCents: 299_900,
       currency: "INR",
       paidAt: NOW,
       paidThroughAt: NOW,

@@ -415,11 +415,11 @@ describe("referralWorth", () => {
   }
 
   it("resolves a percentage discount against Managed Website's list price, the cheapest service", () => {
-    // 10% of ₹2,999 is ₹299.90: ₹2,699.10 plus 18% GST.
+    // 10% of ₹2,999 is ₹299.90, so the customer pays ₹2,699.10 with the GST inside it.
     expect(referralWorth(codeWith({ kind: "percent", basisPoints: 1_000 }))).toEqual({
-      serviceChargeCents: 353_882,
+      serviceChargeCents: 299_900,
       discountCents: 29_990,
-      customerPaysCents: 318_494,
+      customerPaysCents: 269_910,
       taxRateBasisPoints: 1_800,
     });
   });
@@ -427,12 +427,12 @@ describe("referralWorth", () => {
   it("keeps a flat code's figures as they were", () => {
     expect(referralWorth(codeWith({ kind: "amount", amountCents: 50_000 }))).toMatchObject({
       discountCents: 50_000,
-      customerPaysCents: 294_882,
+      customerPaysCents: 249_900,
     });
   });
 
   it("charges the full price on an affiliate code with no discount", () => {
-    expect(referralWorth(codeWith(null))).toMatchObject({ discountCents: 0, customerPaysCents: 353_882 });
+    expect(referralWorth(codeWith(null))).toMatchObject({ discountCents: 0, customerPaysCents: 299_900 });
   });
 
   it("is null for a code worth as much as the cheapest service", () => {

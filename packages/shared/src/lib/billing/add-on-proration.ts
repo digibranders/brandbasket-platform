@@ -58,11 +58,9 @@ export function addOnBlock(standing: AddOnStanding): AddOnBlock | null {
 }
 
 export interface AddOnQuoteInput {
-  /** The service's monthly net price once added: its list price less the package offer its basket earns (list when it earns none). */
+  /** The service's monthly price once added, GST included: its list price less the package offer its basket earns (list when it earns none). */
   readonly netCents: number;
-  /** The plan's tax rate, which the add-on is charged at too. */
-  readonly taxRateBasisPoints: number;
-  /** The plan row's net monthly price (0: every service is a line) plus every service billed from the renewal, this one included. */
+  /** The plan row's monthly price (0: every service is a line) plus every service billed from the renewal, this one included, GST included. */
   readonly renewalNetCents: number;
   /** The discount frozen onto the subscription, taken off the plan's price at each renewal. */
   readonly renewalDiscountCents: number;
@@ -73,13 +71,13 @@ export interface AddOnQuoteInput {
 
 export interface AddOnQuote {
   readonly kind: "quote";
-  /** What is worked out for the days left, before tax. */
+  /** What is worked out for the days left, GST included. */
   readonly netCents: number;
-  /** What is taken now, tax included. Zero when there is nothing to take. */
+  /** What is taken now: the same, or zero when there is nothing to take. */
   readonly chargeCents: number;
   /** True when the charge is too small for the provider to take: the add-on is applied with no payment. */
   readonly free: boolean;
-  /** What each renewal takes from then on, tax included. */
+  /** What each renewal takes from then on. */
   readonly nextRenewalCents: number;
   readonly periodEnd: Date;
   readonly daysLeft: number;
@@ -99,8 +97,8 @@ function shareOf(amount: number, share: number, divisor: number): number {
 }
 
 /**
- * What a client pays today to have an add-on for the rest of the month they have paid for: its monthly net price for the
- * share of the month that is left, with the plan's tax on top. The add-on's full price joins the next renewal.
+ * What a client pays today to have an add-on for the rest of the month they have paid for: its monthly price (GST included)
+ * for the share of the month that is left. The add-on's full price joins the next renewal.
  */
 export function quoteAddOn(input: AddOnQuoteInput): AddOnQuote | { readonly kind: "refused"; readonly reason: "renewal-due" } {
   const { period, now } = input;
@@ -113,14 +111,14 @@ export function quoteAddOn(input: AddOnQuoteInput): AddOnQuote | { readonly kind
   const periodDays = Math.max(1, Math.round(totalMs / MS_PER_DAY));
   const daysLeft = Math.min(periodDays, Math.max(1, Math.ceil(remainingMs / MS_PER_DAY)));
   const netCents = shareOf(input.netCents, daysLeft, periodDays);
-  const chargeCents = netCents >= 1 ? chargedAmountCents(netCents, 0, input.taxRateBasisPoints) : 0;
+  const chargeCents = netCents >= 1 ? chargedAmountCents(netCents, 0) : 0;
   const free = chargeCents < MIN_ONLINE_CHARGE_CENTS;
   return {
     kind: "quote",
     netCents,
     chargeCents: free ? 0 : chargeCents,
     free,
-    nextRenewalCents: chargedAmountCents(input.renewalNetCents, input.renewalDiscountCents, input.taxRateBasisPoints),
+    nextRenewalCents: chargedAmountCents(input.renewalNetCents, input.renewalDiscountCents),
     periodEnd: period.end,
     daysLeft,
     periodDays,

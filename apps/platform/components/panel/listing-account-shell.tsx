@@ -29,7 +29,7 @@ interface ListingAccountShellProps {
   readonly userName: string;
   readonly userEmail: string;
   /**
-   * The membership's price ("₹2,999 a month + 18% GST") for the line that points an account with no website of its
+   * The membership's price ("₹2,999 a month, GST included") for the line that points an account with no website of its
    * own at Premium. Null leaves the line out: the account has its own website, or no plan is on sale. Premium stays
    * in the sections either way.
    */

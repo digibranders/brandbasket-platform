@@ -391,7 +391,7 @@ export const directoryStaffAds = pgTable(
     placement: directoryAdPlacement("placement").notNull(),
     spot: smallint("spot").notNull(),
     weekStart: date("week_start", { mode: "string" }).notNull(),
-    /** The weekly price agreed with the business, before GST; null when none was recorded. */
+    /** The weekly price agreed with the business, GST included; null when none was recorded. */
     agreedPaise: integer("agreed_paise"),
     note: text("note"),
     placedByUserId: text("placed_by_user_id")

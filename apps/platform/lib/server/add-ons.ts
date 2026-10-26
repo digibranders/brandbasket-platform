@@ -54,7 +54,7 @@ function bundledPrice(row: BundledAddOn, currency: AddOnPrice["currency"]): AddO
     offerCents: row.offerDiscountAmountCents,
     netCents: row.netAmountCents,
     taxRateBasisPoints: row.taxRateBasisPoints,
-    chargedCents: chargedAmountCents(row.netAmountCents, 0, row.taxRateBasisPoints),
+    chargedCents: chargedAmountCents(row.netAmountCents, 0),
   };
 }
 

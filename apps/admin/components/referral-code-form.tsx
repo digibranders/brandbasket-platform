@@ -129,17 +129,17 @@ function previewFor(
   const net = basis.netAmountCents;
   const tax = basis.taxRateBasisPoints;
   const money = (cents: number): string => formatMoney(cents, currency);
-  const planCharge = money(chargedAmountCents(net, 0, tax));
+  const planCharge = money(chargedAmountCents(net, 0));
   if (choice === "none") return { planCharge, memberPays: planCharge, discounted: false, taxed: tax !== 0 };
   if (discount === null) return null;
   const discountCents = discountCentsFor(discount, net);
   if (!isChargeableDiscount(net, discountCents)) return null;
-  return { planCharge, memberPays: money(chargedAmountCents(net, discountCents, tax)), discounted: true, taxed: tax !== 0 };
+  return { planCharge, memberPays: money(chargedAmountCents(net, discountCents)), discounted: true, taxed: tax !== 0 };
 }
 
 /** One calm line: the money the code means today. */
 function ReferralSummary({ preview }: { readonly preview: ReferralPreview }): ReactElement {
-  const gst = preview.taxed ? " with GST" : "";
+  const gst = preview.taxed ? ", GST included" : "";
   return (
     <p role="status" className="mt-4 border-l-2 border-gold-deep py-1 pl-4 text-sm leading-relaxed text-ink">
       {preview.discounted ? (
@@ -227,8 +227,8 @@ function DiscountField({
             {choice === "none"
               ? "The member pays the full price. The code only records who brought them."
               : percent
-                ? "A share of the price before GST, off every month for as many months as you set below. Up to 99%."
-                : "How much comes off every month, before GST, for as many months as you set below. Less than the cheapest service’s price."}
+                ? "A share of the price, GST included, off every month for as many months as you set below. Up to 99%."
+                : "How much comes off every month, GST included, for as many months as you set below. Less than the cheapest service’s price."}
           </span>
         </>
       }

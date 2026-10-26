@@ -49,15 +49,15 @@ describe("chargePricing", () => {
 });
 
 describe("chargeAmountCents", () => {
-  it("adds the plan's tax on top of the net total", () => {
-    expect(chargeAmountCents(142_500, 2, 1800)).toBe(336_300);
-    expect(chargeAmountCents(47_500, 1, 1800)).toBe(56_050);
-    expect(chargeAmountCents(1_500, 3, 0)).toBe(4_500);
+  it("is the unit price, GST included, times the quantity", () => {
+    expect(chargeAmountCents(142_500, 2)).toBe(285_000);
+    expect(chargeAmountCents(47_500, 1)).toBe(47_500);
+    expect(chargeAmountCents(1_500, 3)).toBe(4_500);
   });
 
   it("refuses a quantity that is not a positive whole number", () => {
-    expect(() => chargeAmountCents(1_500, 0, 0)).toThrow(RangeError);
-    expect(() => chargeAmountCents(1_500, 1.5, 0)).toThrow(RangeError);
+    expect(() => chargeAmountCents(1_500, 0)).toThrow(RangeError);
+    expect(() => chargeAmountCents(1_500, 1.5)).toThrow(RangeError);
   });
 });
 

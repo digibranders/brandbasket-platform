@@ -102,7 +102,7 @@ export function AddChargeForm({ businessId, kindOptions, defaultKind, customKind
         </div>
         <div>
           <label htmlFor="charge-price" className={labelClasses}>
-            Price each, before tax <span className="font-normal text-ink-soft">(Something else only)</span>
+            Price each, GST included <span className="font-normal text-ink-soft">(Something else only)</span>
             {isCustom ? <RequiredMark /> : null}
           </label>
           <RuleInput

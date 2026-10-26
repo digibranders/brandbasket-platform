@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import type { BillingProvider } from "@brandbasket/billing";
-import { chargedAmountCents } from "@brandbasket/billing";
 import {
   billingProfiles,
   businesses,
@@ -65,7 +64,7 @@ function addRow(continuesId: string | null = null): Promise<AddOnSubscription> {
     discountAmountCents: 0,
     netAmountCents: LIST_CENTS,
     taxRateBasisPoints: TAX_BASIS_POINTS,
-    chargedAmountCents: chargedAmountCents(LIST_CENTS, 0, TAX_BASIS_POINTS),
+    chargedAmountCents: LIST_CENTS,
     currency: "INR",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${randomUUID()}`,

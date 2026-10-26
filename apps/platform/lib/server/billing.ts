@@ -228,14 +228,14 @@ export interface ReactivationView {
   readonly cancelled: boolean;
   /** The services the payment is for: the ones chosen when `cancelled` (the lapsed ones until they choose), else the lapsed basket. */
   readonly services: readonly MonthlyAddOnId[];
-  /** What a month of them costs before GST. */
+  /** What a month of them costs, GST included. */
   readonly netCents: number;
-  /** What the code a lapse keeps takes off that, before GST; 0 for a customer who cancelled themselves or whose code has no months left. */
+  /** What the code a lapse keeps takes off that; 0 for a customer who cancelled themselves or whose code has no months left. */
   readonly discountCents: number;
 }
 
 /**
- * What a month of the basket a lapsed customer reactivates costs before GST, from the same basket the checkout reopens
+ * What a month of the basket a lapsed customer reactivates costs, GST included, from the same basket the checkout reopens
  * (loadReactivationBasket), less the discount of the code a lapse keeps (loadCarriedCode), so the price on Billing is the one
  * charged. A customer who cancelled themselves chooses again:
  * `requested` (what the page names) is priced at list instead, and only catalogue services count; with none left, their
@@ -257,7 +257,7 @@ export async function findReactivation(
   return { cancelled: basket.cancelled, services: priced.services, netCents, discountCents };
 }
 
-/** What a month of the lapsed customer's reactivation costs before GST (findReactivation), or null. */
+/** What a month of the lapsed customer's reactivation costs, GST included (findReactivation), or null. */
 export async function findReactivationNetCents(
   customer: Pick<GrantedCustomer, "tenant" | "billing">,
   requested: readonly string[] = [],

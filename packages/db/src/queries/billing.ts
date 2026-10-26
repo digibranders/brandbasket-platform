@@ -165,7 +165,7 @@ export interface Subscription {
   /** The plan the next renewal will bill, once the customer has paid to move up (plan_upgrades); null otherwise. */
   readonly pendingPlanId: string | null;
   readonly pendingDiscountAmountCents: number;
-  /** What the add-ons taken at the first checkout cost a month before GST (bundled_add_ons, summed), billed within this subscription. */
+  /** What the add-ons taken at the first checkout cost a month, GST included (bundled_add_ons, summed), billed within this subscription. */
   readonly bundledAddOnNetCents: number;
   /** What those add-ons cost once the ones the customer asked to remove have stopped, from the next renewal; null when none are waiting. */
   readonly pendingBundledAddOnNetCents: number | null;
@@ -412,7 +412,7 @@ export interface NewSubscription {
   readonly discountAmountCents?: number;
   /** The paid months the code's discount runs for, copied from the code (referral_codes.discount_months). Null or absent for no limit. */
   readonly discountMonthsLeft?: number | null;
-  /** What the add-ons taken at this checkout cost a month before GST: the sum of their net prices. Defaults to 0. */
+  /** What the add-ons taken at this checkout cost a month, GST included: the sum of their prices. Defaults to 0. */
   readonly bundledAddOnNetCents?: number;
   /** Ad credit a month earned by the package bought at this checkout (adCreditCentsFor in @brandbasket/shared). Defaults to 0. */
   readonly adCreditCents?: number;

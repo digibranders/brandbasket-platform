@@ -308,11 +308,11 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
     },
 
     /**
-     * A Razorpay Plan charging the new monthly price with its tax on top, the same amount chargedAmountCents gives the
+     * A Razorpay Plan charging the new monthly price, GST already inside it, the same amount chargedAmountCents gives the
      * renewal check, so a renewal on it matches our plan row to the paisa.
      */
     async createPlan(input: CreatePlanInput): Promise<{ readonly providerPlanId: string | null }> {
-      const amount = chargedAmountCents(input.netMonthlyCents, 0, input.taxRateBasisPoints);
+      const amount = chargedAmountCents(input.netMonthlyCents, 0);
       const created = await client.plans.create({
         period: "monthly",
         interval: 1,

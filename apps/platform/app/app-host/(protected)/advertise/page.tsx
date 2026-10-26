@@ -8,7 +8,6 @@ import {
   AD_MARKER,
   AD_PLACEMENTS,
   AD_TAGLINE_MAX_LENGTH,
-  AD_TAX_BASIS_POINTS,
   adChargedPaise,
   formatAdDeadline,
   formatAdWeek,
@@ -69,7 +68,7 @@ function seeItHref(page: AdvertisePage, placement: DirectoryAdWin["placement"]):
   return page.market === null ? null : placementPageHref(placement, page.market, siteConfig.url);
 }
 
-/** A spot won and not yet paid for: the amount with GST, one button, and what happens if it is left. */
+/** A spot won and not yet paid for: the amount, GST included, one button, and what happens if it is left. */
 function ToPay({ win }: { readonly win: DirectoryAdWin }): ReactElement {
   const total = adChargedPaise(win.pricePaise);
   return (
@@ -83,7 +82,7 @@ function ToPay({ win }: { readonly win: DirectoryAdWin }): ReactElement {
         </p>
         <p className="heading-display mt-2 text-5xl tabular-nums">{formatRupees(total)}</p>
         <p className="mt-1 text-sm tabular-nums text-ink-soft">
-          {formatRupees(win.pricePaise)} + {formatRupees(total - win.pricePaise)} GST
+          GST included
         </p>
       </div>
       <form action={payChargeAction} className="sm:text-right">
@@ -227,7 +226,6 @@ function Bidding({
           preview={adPreviewData(page, market, photos)}
           initialWeek={week}
           initialPlacement={parseAdPlacement(spot)}
-          taxBasisPoints={AD_TAX_BASIS_POINTS}
           action={saveBidAction}
         />
       </div>

@@ -72,12 +72,12 @@ export function chargePricing(kind: StaffChargeKind, plan: ChargePlan): ChargePr
   }
 }
 
-/** What a charge takes: net unit price times quantity, with the tax on top (chargedAmountCents rounds it). */
-export function chargeAmountCents(unitAmountCents: number, quantity: number, taxRateBasisPoints: number): number {
+/** What a charge takes: the unit price (GST included) times the quantity. */
+export function chargeAmountCents(unitAmountCents: number, quantity: number): number {
   if (!Number.isSafeInteger(quantity) || quantity < 1) {
     throw new RangeError(`A charge's quantity must be a positive whole number, received ${quantity}`);
   }
-  return chargedAmountCents(unitAmountCents * quantity, 0, taxRateBasisPoints);
+  return chargedAmountCents(unitAmountCents * quantity, 0);
 }
 
 /** How many blog posts a business may have: the plan's included posts, plus a block for every block paid for. */

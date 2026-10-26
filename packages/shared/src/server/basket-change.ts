@@ -275,7 +275,6 @@ export function assessAddOn(input: AddOnAssessmentInput): AddOnAssessment {
   const renewalNetCents = plan.recurringAmountCents + basketNetCents;
   const quote = quoteAddOn({
     netCents: line.netCents,
-    taxRateBasisPoints: plan.taxRateBasisPoints,
     renewalNetCents,
     renewalDiscountCents: discountForChangedBasket({
       monthsLeft: subscription.discountMonthsLeft,

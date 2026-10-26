@@ -141,31 +141,31 @@ afterEach(() => {
 });
 
 describe("a first checkout of a package", () => {
-  it("charges all three at 30% off on one provider plan for their total, and freezes ₹5,000 of ad credit", async () => {
+  it("charges all three at 20% off on one provider plan for their total, and freezes ₹3,000 of ad credit", async () => {
     const { providerPlanId, bundledAddOnNetCents, asked, subscription } = await firstCheckout(["managed-website", "digital-growth", "local-seo-aeo"]);
 
-    expect(bundledAddOnNetCents).toBe(2_659_700);
-    expect(providerPlanId).toBe("plan_test_2659700");
-    expect(await findProviderBundlePlan(dbs.staff.db, { planId: plan.id, netMonthlyCents: 2_659_700, provider: "fake" })).toBe("plan_test_2659700");
-    expect(asked).toBe(3_138_446);
-    expect(subscription).toMatchObject({ bundledAddOnNetCents: 2_659_700, adCreditCents: 500_000 });
+    expect(bundledAddOnNetCents).toBe(3_039_800);
+    expect(providerPlanId).toBe("plan_test_3039800");
+    expect(await findProviderBundlePlan(dbs.staff.db, { planId: plan.id, netMonthlyCents: 3_039_800, provider: "fake" })).toBe("plan_test_3039800");
+    expect(asked).toBe(3_039_800);
+    expect(subscription).toMatchObject({ bundledAddOnNetCents: 3_039_800, adCreditCents: 300_000 });
 
     const activation = await payFirst(subscription);
-    expect(activation.payment.amountCents).toBe(3_138_446);
+    expect(activation.payment.amountCents).toBe(3_039_800);
   });
 
-  it("charges Website + SEO at 20% off, which earns no ad credit", async () => {
+  it("charges Website + SEO at 10% off, which earns no ad credit", async () => {
     const { asked, subscription } = await firstCheckout(["managed-website", "local-seo-aeo"]);
 
-    expect(asked).toBe(2_642_964);
+    expect(asked).toBe(2_519_900);
     expect(subscription.adCreditCents).toBe(0);
-    expect((await payFirst(subscription)).payment.amountCents).toBe(2_642_964);
+    expect((await payFirst(subscription)).payment.amountCents).toBe(2_519_900);
   });
 
-  it("charges one service its list price plus GST, with no package and no ad credit", async () => {
+  it("charges one service its list price, GST included, with no package and no ad credit", async () => {
     const { asked, subscription } = await firstCheckout(["digital-growth"]);
 
-    expect(asked).toBe(1_179_882);
+    expect(asked).toBe(999_900);
     expect(subscription).toMatchObject({ bundledAddOnNetCents: 999_900, adCreditCents: 0 });
   });
 });
@@ -174,11 +174,11 @@ describe("a first payment with services", () => {
   it("freezes the add-ons on the subscription, as pending until it is paid", async () => {
     const subscription = await openSubscription(bundleOf("digital-growth", "local-seo-aeo"));
 
-    expect(subscription.bundledAddOnNetCents).toBe(799_920 + 1_999_880);
+    expect(subscription.bundledAddOnNetCents).toBe(899_910 + 2_249_990);
     const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     expect(rows.map((row) => [row.addOn, row.status, row.netAmountCents])).toEqual([
-      ["digital-growth", "pending", 799_920],
-      ["local-seo-aeo", "pending", 1_999_880],
+      ["digital-growth", "pending", 899_910],
+      ["local-seo-aeo", "pending", 2_249_990],
     ]);
   });
 
@@ -186,17 +186,17 @@ describe("a first payment with services", () => {
     const subscription = await openSubscription(bundleOf("digital-growth", "local-seo-aeo"));
     const activation = await payFirst(subscription);
 
-    // Social + SEO at 20% off, rounded down to the whole rupee: ₹27,998 plus 18% GST.
-    expect(activation.payment.amountCents).toBe(3_303_764);
+    // Social + SEO at 10% off, with the saving rounded down to the whole rupee: ₹34,998 less ₹3,499, so ₹31,499, GST included.
+    expect(activation.payment.amountCents).toBe(3_149_900);
 
     const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     expect(rows.every((row) => row.status === "active" && row.activatedAt !== null)).toBe(true);
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
-    expect(invoice?.totalCents).toBe(3_303_764);
+    expect(invoice?.totalCents).toBe(3_149_900);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
-      ["Social Media and Ads", 999_900, 199_980],
-      ["Local SEO + AEO", 2_499_900, 500_020],
+      ["Social Media and Ads", 999_900, 99_990],
+      ["Local SEO + AEO", 2_499_900, 249_910],
     ]);
     expect(invoice?.cgstCents).toBe(invoice?.sgstCents);
   });
@@ -208,7 +208,7 @@ describe("a first payment with services", () => {
 
     expect(again.alreadyRecorded).toBe(true);
     expect((await findPaymentByProviderId(dbs.staff.db, "fake", "fake_pay_bundle"))?.amountCents).toBe(
-      chargedAmountCents(plan.initialAmountCents + 999_900, 0, plan.taxRateBasisPoints),
+      chargedAmountCents(plan.initialAmountCents + 999_900, 0),
     );
   });
 
@@ -228,7 +228,7 @@ describe("a first payment with services", () => {
     if (open?.commitmentEndsAt == null) throw new Error("The first payment did not open the subscription");
     const active = (await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).filter((row) => row.status === "active");
 
-    const amountCents = chargedAmountCents(plan.recurringAmountCents + 999_900, 0, plan.taxRateBasisPoints);
+    const amountCents = chargedAmountCents(plan.recurringAmountCents + 999_900, 0);
     const renewal = await dbs.staff.db.transaction((tx) =>
       activateRenewalPayment(tx, {
         businessId,
@@ -266,7 +266,7 @@ describe("a first payment with services", () => {
       expect(await recordBundledAddOnRemoval(dbs.staff.db, { id: growth.id, businessId, pendingBundledAddOnNetCents: 2_499_900, now: NEXT_MONTH })).toBe(true);
 
       const after = await findSubscriptionById(dbs.staff.db, subscription.id);
-      expect(after).toMatchObject({ bundledAddOnNetCents: 2_799_800, pendingBundledAddOnNetCents: 2_499_900 });
+      expect(after).toMatchObject({ bundledAddOnNetCents: 3_149_900, pendingBundledAddOnNetCents: 2_499_900 });
       const row = (await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).find((candidate) => candidate.id === growth.id);
       expect(row).toMatchObject({ status: "active", endRequestedAt: NEXT_MONTH });
     });

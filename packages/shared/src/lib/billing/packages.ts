@@ -2,9 +2,10 @@ import type { MoneyCurrency } from "../money";
 import { addOnById, addOnPrice, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId } from "./add-ons";
 
 /**
- * Package offers (owner decisions, 2026-10-21; docs/plans/16-platform-pricing-offers.md). Two or more services on one
- * subscription are priced off every line, and the package total is rounded down to a whole rupee or dollar (the floor rule
- * in packageDiscountsFor); a package bought together at the first checkout also earns monthly ad credit. Pure and
+ * Package offers (owner decisions, 2026-10-21 and 2026-10-26; docs/plans/16-platform-pricing-offers.md and
+ * docs/plans/25-money-gst-and-offers.md). Two services on one subscription are 10% off and all three 20% off, taken off the
+ * price the customer pays (GST included), and the package saving is rounded down to a whole rupee or dollar (the rule in
+ * packageDiscountsFor); a package bought together at the first checkout also earns monthly ad credit. Pure and
  * browser-safe. brandbasket-website holds the same numbers in lib/pricing.ts.
  */
 interface PackageOffer {
@@ -23,14 +24,18 @@ export interface PackageInput {
 export type PackageLine = AddOnPrice & { readonly addOn: MonthlyAddOnId };
 
 const BASIS_POINTS_DENOMINATOR = 10_000;
-/** A package is priced in whole rupees and whole dollars: its total is a multiple of this many minor units. */
+/** A package saving is a whole number of rupees or dollars: a multiple of this many minor units. */
 const PACKAGE_ROUNDING_CENTS = 100;
 
+/**
+ * Ad credit a month at the first checkout (owner, 2026-10-26): 1,500 rupees for Website + Social and for Social + SEO, 3,000 for
+ * all three, none for Website + SEO. The dollar amounts are the earlier ones, kept until the owner gives new values.
+ */
 export const PACKAGE_OFFERS: readonly PackageOffer[] = [
-  { services: ["managed-website", "digital-growth"], basisPoints: 2000, adCreditCents: { INR: 200000, USD: 2500 } },
-  { services: ["managed-website", "local-seo-aeo"], basisPoints: 2000, adCreditCents: { INR: 0, USD: 0 } },
-  { services: ["digital-growth", "local-seo-aeo"], basisPoints: 2000, adCreditCents: { INR: 200000, USD: 2500 } },
-  { services: ["managed-website", "digital-growth", "local-seo-aeo"], basisPoints: 3000, adCreditCents: { INR: 500000, USD: 6000 } },
+  { services: ["managed-website", "digital-growth"], basisPoints: 1000, adCreditCents: { INR: 150000, USD: 2500 } },
+  { services: ["managed-website", "local-seo-aeo"], basisPoints: 1000, adCreditCents: { INR: 0, USD: 0 } },
+  { services: ["digital-growth", "local-seo-aeo"], basisPoints: 1000, adCreditCents: { INR: 150000, USD: 2500 } },
+  { services: ["managed-website", "digital-growth", "local-seo-aeo"], basisPoints: 2000, adCreditCents: { INR: 300000, USD: 6000 } },
 ];
 
 /** The services once each, in the catalogue's order. */
@@ -49,7 +54,7 @@ export function packageBasisPointsFor(input: PackageInput): number {
   return input.forfeited ? 0 : (offerFor(input.services)?.basisPoints ?? 0);
 }
 
-/** One line's share before the package is rounded down: `basisPoints` of its list price, half a minor unit rounding up. A package is priced only by packageDiscountsFor. */
+/** One line's share before the package saving is rounded down: `basisPoints` of its list price, half a minor unit rounding up. A package is priced only by packageDiscountsFor. */
 export function packageDiscountCentsFor(listCents: number, basisPoints: number): number {
   if (!Number.isSafeInteger(listCents) || listCents < 0) throw new RangeError(`A list price must be whole, non-negative minor units, received ${listCents}`);
   return Math.floor((listCents * basisPoints * 2 + BASIS_POINTS_DENOMINATOR) / (BASIS_POINTS_DENOMINATOR * 2));
@@ -63,11 +68,11 @@ export interface PackageListLine {
 
 /**
  * The discount on each line of a package, in the order the lines are given: every line takes `basisPoints` of its own list
- * price (packageDiscountCentsFor), then the package total is rounded down to a whole rupee or dollar
- * (PACKAGE_ROUNDING_CENTS) and the minor units that takes off are added to the discount of the most expensive line (the
- * first in the catalogue's order among equals). So every line still has net = list - discount, a discount from 0 to its
- * list price, and the nets add up to the package price to the minor unit. With no percentage at all (a single service, or
- * the offer given up) there is no package, so no rounding: the lines stay at list.
+ * price (packageDiscountCentsFor), then the whole package saving is set to the exact discount on the lists rounded DOWN to a
+ * whole rupee or dollar (PACKAGE_ROUNDING_CENTS), and the difference is added to the discount of the most expensive line (the
+ * first in the catalogue's order among equals). So 10% off ₹12,998 is a saving of ₹1,299 (not ₹1,299.80) and the customer pays
+ * ₹11,699. Every line still has net = list - discount, and the nets add up to the package price to the minor unit. With no
+ * percentage at all (a single service, or the offer given up) there is no package, so no rounding: the lines stay at list.
  *
  * The one place a package is priced: the checkout, the quote for adding a service, the repricing when one is dropped,
  * the order summary, the invoice and the console all take their discounts from here.
@@ -75,16 +80,17 @@ export interface PackageListLine {
 export function packageDiscountsFor(lines: readonly PackageListLine[], basisPoints: number): number[] {
   const discounts = lines.map((line) => packageDiscountCentsFor(line.listCents, basisPoints));
   if (basisPoints === 0 || lines.length === 0) return discounts;
-  const netCents = lines.reduce((total, line, index) => total + line.listCents - (discounts[index] ?? 0), 0);
-  const leftoverCents = netCents % PACKAGE_ROUNDING_CENTS;
-  if (leftoverCents === 0) return discounts;
+  const listCents = lines.reduce((total, line) => total + line.listCents, 0);
+  const savingCents = Math.floor((listCents * basisPoints) / (BASIS_POINTS_DENOMINATOR * PACKAGE_ROUNDING_CENTS)) * PACKAGE_ROUNDING_CENTS;
+  const differenceCents = savingCents - discounts.reduce((total, discount) => total + discount, 0);
+  if (differenceCents === 0) return discounts;
   const catalogueRank = (line: PackageListLine): number => MONTHLY_ADD_ON_IDS.indexOf(line.addOn);
   const dearest = lines.reduce((best, line, index) => {
     const bestLine = lines[best];
     if (bestLine === undefined) return index;
     return line.listCents > bestLine.listCents || (line.listCents === bestLine.listCents && catalogueRank(line) < catalogueRank(bestLine)) ? index : best;
   }, 0);
-  return discounts.map((discount, index) => (index === dearest ? discount + leftoverCents : discount));
+  return discounts.map((discount, index) => (index === dearest ? discount + differenceCents : discount));
 }
 
 /**

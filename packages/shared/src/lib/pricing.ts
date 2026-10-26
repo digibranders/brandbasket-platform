@@ -84,7 +84,7 @@ export function planPrice(key: PlanPriceKey, currency: MoneyCurrency): string {
   return formatMoney(planPrices[currency][key], currency);
 }
 
-/** For text that can't switch currency (FAQ answers, search snippets): "$75 (₹9,999 in India)". The rupee figure is net of GST. */
+/** For text that can't switch currency (FAQ answers, search snippets): "$75 (₹9,999 in India)". The rupee figure includes GST. */
 export function planPriceInBoth(key: PlanPriceKey): string {
   return `${planPrice(key, "USD")} (${planPrice(key, "INR")} in India)`;
 }
