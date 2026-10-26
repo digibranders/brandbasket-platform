@@ -2,6 +2,7 @@
  * What a customer tells us for Social and Search after the kickoff call (plan 30). Pure and browser-safe: the page draws
  * a form from SETUP_FIELDS, the action checks the answers with parseSetupItem, and doneSetupKeys says which items are
  * done. We never ask for a password: the accounts item asks for page links and whether we were added as an admin.
+ * Saved answers are shown back in form fields only; never render them as HTML.
  */
 
 export const SETUP_KEYS = ["accounts", "offers", "budget", "areas"] as const;
@@ -64,20 +65,31 @@ const AREA_MAX = 120;
 const TEXT_MAX = 300;
 const BUDGET_MAX = 1_000_000;
 
-/** A page link on one of `hosts`, or "" when blank, or null when it is not one. Adds https:// when it is missing. */
+const LINK_MAX = 200;
+
+/** Whether `hostname` is one of `hosts` or a subdomain of one (a leading www. is ignored). */
+function onHost(hostname: string, hosts: readonly string[]): boolean {
+  const host = hostname.toLowerCase().replace(/^www\./, "");
+  return hosts.some((allowed) => host === allowed || host.endsWith(`.${allowed}`));
+}
+
+/** A page link on one of `hosts`, or "" when blank, or null when it is not one. Adds https:// when it is missing; keeps host and path only. */
 function pageLink(raw: string, hosts: readonly string[]): string | null {
   const text = raw.trim();
   if (text === "") return "";
+  if (text.length > LINK_MAX) return null;
   let url: URL;
   try {
     url = new URL(/^https?:\/\//i.test(text) ? text : `https://${text}`);
   } catch {
     return null;
   }
-  if (url.username !== "" || url.password !== "") return null;
-  const host = url.hostname.toLowerCase().replace(/^www\./, "");
-  return hosts.some((allowed) => host === allowed || host.endsWith(`.${allowed}`)) ? url.toString() : null;
+  if (url.username !== "" || url.password !== "" || url.port !== "") return null;
+  if (url.pathname === "" || url.pathname === "/") return null;
+  return onHost(url.hostname, hosts) ? `https://${url.hostname}${url.pathname}` : null;
 }
+
+const GOOGLE_HOSTS = ["google.com", "g.page", "goo.gl", "share.google"] as const;
 
 /** Checks one item's form. `input` is the form's text values, untrimmed. */
 export function parseSetupItem(key: SetupKey, input: Readonly<Record<string, string>>): SetupParse {
@@ -96,7 +108,7 @@ export function parseSetupItem(key: SetupKey, input: Readonly<Record<string, str
     case "offers": {
       const offers = value("offers");
       if (offers === "") return fail("offers", "Write a line about what you want to promote, or tell us on the call.");
-      if (offers.length > OFFERS_MAX) return fail("offers", `Keep it under ${OFFERS_MAX} characters.`);
+      if (offers.length > OFFERS_MAX) return fail("offers", `Keep it to ${OFFERS_MAX} characters or fewer.`);
       return { success: true, answers: { offers } };
     }
     case "budget": {
@@ -106,16 +118,16 @@ export function parseSetupItem(key: SetupKey, input: Readonly<Record<string, str
       }
       const area = value("adArea");
       if (area.length < 2) return fail("adArea", "Say how far from you the ads should reach, for example 4 km around the clinic.");
-      if (area.length > AREA_MAX) return fail("adArea", `Keep it under ${AREA_MAX} characters.`);
+      if (area.length > AREA_MAX) return fail("adArea", `Keep it to ${AREA_MAX} characters or fewer.`);
       return { success: true, answers: { adBudgetRupees: Number(digits), adArea: area } };
     }
     case "areas": {
       const areas = value("areas");
       if (areas.length < 2) return fail("areas", "Say where you want to be found, for example Naupada and Thane West.");
-      if (areas.length > TEXT_MAX) return fail("areas", `Keep it under ${TEXT_MAX} characters.`);
+      if (areas.length > TEXT_MAX) return fail("areas", `Keep it to ${TEXT_MAX} characters or fewer.`);
       const competitors = value("competitors");
-      if (competitors.length > TEXT_MAX) return fail("competitors", `Keep it under ${TEXT_MAX} characters.`);
-      const google = value("googleBusinessUrl");
+      if (competitors.length > TEXT_MAX) return fail("competitors", `Keep it to ${TEXT_MAX} characters or fewer.`);
+      let google = value("googleBusinessUrl");
       if (google !== "") {
         let url: URL | null = null;
         try {
@@ -123,7 +135,10 @@ export function parseSetupItem(key: SetupKey, input: Readonly<Record<string, str
         } catch {
           url = null;
         }
-        if (url === null || url.protocol !== "https:" || google.length > TEXT_MAX) return fail("googleBusinessUrl", "Paste the full link, starting with https://.");
+        const bad = "Paste the full link, starting with https://.";
+        if (url === null || url.protocol !== "https:" || google.length > TEXT_MAX) return fail("googleBusinessUrl", bad);
+        if (url.username !== "" || url.password !== "" || !onHost(url.hostname, GOOGLE_HOSTS)) return fail("googleBusinessUrl", bad);
+        google = url.toString();
       }
       return { success: true, answers: { areas, competitors, googleBusinessUrl: google } };
     }

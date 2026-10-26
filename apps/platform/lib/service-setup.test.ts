@@ -20,6 +20,15 @@ describe("parseSetupItem accounts", () => {
     expect(parseSetupItem("accounts", { instagramUrl: "", facebookUrl: "https://me:pw@facebook.com/x", adminAccess: "added" })).toMatchObject({ success: false, field: "facebookUrl" });
   });
 
+  it("refuses a long link, a bare host, a port, and keeps only the host and path", () => {
+    const parse = (instagramUrl: string) => parseSetupItem("accounts", { instagramUrl, facebookUrl: "", adminAccess: "added" });
+    expect(parse(`instagram.com/${"a".repeat(5000)}`)).toMatchObject({ success: false, field: "instagramUrl" });
+    expect(parse("instagram.com")).toMatchObject({ success: false, field: "instagramUrl" });
+    expect(parse("l.instagram.com/?u=x")).toMatchObject({ success: false, field: "instagramUrl" });
+    expect(parse("http://instagram.com:8080/x")).toMatchObject({ success: false, field: "instagramUrl" });
+    expect(parse("instagram.com/saidental?utm=1#top")).toMatchObject({ success: true, answers: { instagramUrl: "https://instagram.com/saidental" } });
+  });
+
   it("refuses an admin answer that is not one of the three", () => {
     expect(parseSetupItem("accounts", { instagramUrl: "instagram.com/a", facebookUrl: "", adminAccess: "yes" })).toMatchObject({ success: false, field: "adminAccess" });
   });
@@ -49,6 +58,21 @@ describe("parseSetupItem offers, budget and areas", () => {
     });
     expect(parseSetupItem("areas", { areas: "", competitors: "", googleBusinessUrl: "" })).toMatchObject({ success: false, field: "areas" });
     expect(parseSetupItem("areas", { areas: "Thane", competitors: "", googleBusinessUrl: "http://g.page/x" })).toMatchObject({ success: false, field: "googleBusinessUrl" });
+  });
+
+  it("takes a Google link only from Google's own hosts, without a login in it, and stores it normalised", () => {
+    const parse = (googleBusinessUrl: string) => parseSetupItem("areas", { areas: "Thane", competitors: "", googleBusinessUrl });
+    expect(parse("https://user:pw@g.page/x")).toMatchObject({ success: false, field: "googleBusinessUrl" });
+    expect(parse("https://evil.com/x")).toMatchObject({ success: false, field: "googleBusinessUrl" });
+    expect(parse("https://maps.google.com/?cid=1")).toMatchObject({ success: true, answers: { googleBusinessUrl: "https://maps.google.com/?cid=1" } });
+    expect(parse("HTTPS://G.PAGE/saidental")).toMatchObject({ success: true, answers: { googleBusinessUrl: "https://g.page/saidental" } });
+  });
+
+  it("says the limit is allowed in the too-long messages", () => {
+    expect(parseSetupItem("offers", { offers: "x".repeat(501) })).toMatchObject({ message: "Keep it to 500 characters or fewer." });
+    expect(parseSetupItem("budget", { adBudgetRupees: "5000", adArea: "x".repeat(121) })).toMatchObject({ message: "Keep it to 120 characters or fewer." });
+    expect(parseSetupItem("areas", { areas: "x".repeat(301), competitors: "", googleBusinessUrl: "" })).toMatchObject({ message: "Keep it to 300 characters or fewer." });
+    expect(parseSetupItem("areas", { areas: "Thane", competitors: "x".repeat(301), googleBusinessUrl: "" })).toMatchObject({ message: "Keep it to 300 characters or fewer." });
   });
 });
 
