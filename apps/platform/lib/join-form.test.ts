@@ -14,6 +14,8 @@ const account = {
   password: "correct-horse-battery-9",
   country: "IN",
   stateCode: "mh",
+  phoneCountry: "IN",
+  phone: " 98200 11223 ",
   agree: "yes",
 };
 const OTP_ID = "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
@@ -30,6 +32,7 @@ describe("parseJoinForm", () => {
         password: "correct-horse-battery-9",
         country: "IN",
         stateCode: "mh",
+        phone: { country: "IN", number: "98200 11223" },
         agreed: true,
         code: null,
       },
@@ -53,10 +56,25 @@ describe("parseJoinForm", () => {
     expect(parseJoinForm(form({ ...account, country: "AE" }))).toMatchObject({ success: true, data: { country: "AE", stateCode: null } });
   });
 
-  it("never asks for a mobile number, and ignores one it is sent", () => {
-    const parsed = parseJoinForm(form({ ...account, phone: "98200 11223" }));
-    expect(parsed).toMatchObject({ success: true });
-    expect(parsed.success && "phone" in parsed.data).toBe(false);
+  it("asks for a mobile number: the country code the owner picked and the number as typed, trimmed", () => {
+    expect(parseJoinForm(form({ ...account, phoneCountry: "AE", phone: "  50 123 4567" }))).toMatchObject({
+      success: true,
+      data: { phone: { country: "AE", number: "50 123 4567" } },
+    });
+  });
+
+  it("refuses a sign-up with no mobile number, a blank one, one that is too long or no country code", () => {
+    const without = (key: string): Record<string, string> => Object.fromEntries(Object.entries(account).filter(([name]) => name !== key));
+    expect(parseJoinForm(form(without("phone")))).toEqual({ success: false, message: "Enter your mobile number." });
+    expect(parseJoinForm(form({ ...account, phone: "   " }))).toEqual({ success: false, message: "Enter your mobile number." });
+    expect(parseJoinForm(form({ ...account, phone: "9".repeat(41) }))).toEqual({ success: false, message: "That phone number is too long." });
+    expect(parseJoinForm(form(without("phoneCountry")))).toEqual({ success: false, message: "Choose your country code." });
+    expect(parseJoinForm(form({ ...account, phoneCountry: "in" }))).toEqual({ success: false, message: "Choose your country code." });
+  });
+
+  it("asks for the mobile number again on the code step, which sends the form's fields a second time", () => {
+    const without = Object.fromEntries(Object.entries(account).filter(([name]) => name !== "phone"));
+    expect(parseJoinForm(form({ ...without, otpId: OTP_ID, code: "123456" }))).toMatchObject({ success: false });
   });
 
   it("ignores the listing a directory claim link names: a claim is proven by a call to the listing's number, and no account here has one", () => {

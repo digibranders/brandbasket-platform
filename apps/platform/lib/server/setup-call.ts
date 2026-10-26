@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { findSetupCallBooking, recordSetupCallBooking, withTenantScope } from "@brandbasket/db";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { readInviteeUri } from "@brandbasket/shared/lib/setup-call-link";
@@ -27,8 +28,10 @@ export interface SetupCallBookingView {
 /**
  * The call link and the business's booking, for the home screen. Neither is allowed to break the page: a failure to read
  * the booking is logged and treated as "not booked yet", and the link has its own guard (getSetupCallUrl).
+ * Read once per request, keyed on the tenant object (requireCustomerAccess hands every caller the same one), so the
+ * shell and the page agree on `readAtMs` and on whether the first look has ended.
  */
-export async function getSetupCallState(tenant: TenantContext): Promise<SetupCallState> {
+export const getSetupCallState = cache(async (tenant: TenantContext): Promise<SetupCallState> => {
   const url = await getSetupCallUrl();
   const readAtMs = Date.now();
   try {
@@ -47,7 +50,7 @@ export async function getSetupCallState(tenant: TenantContext): Promise<SetupCal
     console.error("[setup-call] could not read the booking", errorLogInfo(error));
     return { url, booking: null, readAtMs };
   }
-}
+});
 
 /**
  * Notes that the business booked its kickoff call, when its booking page says a time was picked. The booking link comes

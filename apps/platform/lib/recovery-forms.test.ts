@@ -42,18 +42,21 @@ async function type(name: string, value: string): Promise<void> {
   });
 }
 
-const JOIN_PROPS = { initialChoice: "managed", services: ["managed-website"], basket: { name: "Managed Website", prices: { INR: null, USD: null } }, preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { INR: { managed: null }, USD: { managed: null } }, confirmsCodes: true, countries: [{ code: "IN", name: "India" }, { code: "AE", name: "United Arab Emirates" }] } as const;
+const JOIN_PROPS = { initialChoice: "managed", services: ["managed-website"], basket: { name: "Managed Website", prices: { INR: null, USD: null } }, preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { INR: { managed: null }, USD: { managed: null } }, confirmsCodes: true, countries: [{ code: "IN", name: "India" }, { code: "AE", name: "United Arab Emirates" }], phoneCountries: [{ code: "IN", name: "India", dialCode: "+91", flag: "IN", example: "98765 43210", digits: { min: 10, max: 10 } }, { code: "AE", name: "United Arab Emirates", dialCode: "+971", flag: "AE", example: "50 123 4567", digits: { min: 8, max: 9 } }], defaultPhoneCountry: "IN" } as const;
 const codeStep = { otpId: "challenge", emailHint: "o•••@example.test", confirmRequired: true };
 
 /** Picks a state the way a person does: India is the country already chosen, and the state is never filled in for them. */
-async function pickState(code = "mh"): Promise<void> {
-  const select = container.querySelector<HTMLSelectElement>('select[name="stateCode"]');
-  if (!select) throw new Error("Missing the state select");
-  const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
-  await act(async () => {
-    setValue?.call(select, code);
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+async function pickState(name = "Maharashtra"): Promise<void> {
+  const option = optionsOf("stateCode").find((item) => item.textContent === name);
+  if (!option) throw new Error(`Missing the state ${name}`);
+  await act(async () => option.click());
+}
+
+/** The options of one of the form's dropdowns, which keep their value in a field of that name and list their choices beside it. */
+function optionsOf(fieldName: string): HTMLElement[] {
+  const field = container.querySelector<HTMLInputElement>(`input[name="${fieldName}"]`);
+  if (!field?.parentElement) throw new Error(`Missing the dropdown ${fieldName}`);
+  return [...field.parentElement.querySelectorAll<HTMLElement>('[role="option"]')];
 }
 
 /** Fills the details a Managed Website sign-up asks for and asks for the code. */
@@ -62,6 +65,7 @@ async function askForCode(): Promise<void> {
   await type("name", "Owner");
   await type("email", "owner@example.test");
   await pickState();
+  await type("phone", "98200 11223");
   await type("password", "a-long-password");
   await act(async () => container.querySelector<HTMLInputElement>('input[name="agree"]')?.click());
   await click("Email me a code");
@@ -110,21 +114,42 @@ it("focuses signup details when replacing the plan chooser", async () => {
   expect(document.activeElement?.getAttribute("name")).toBe("name");
 });
 
-it("asks a sign-up for a country, and a state only for India", async () => {
-  await render(createElement(JoinForm, { ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "idle" }) }));
-  const country = container.querySelector<HTMLSelectElement>('select[name="country"]');
-  expect(country?.value).toBe("IN");
-  const state = container.querySelector<HTMLSelectElement>('select[name="stateCode"]');
-  expect(state?.value).toBe("");
-  expect(state?.options.length).toBeGreaterThan(30);
+it("opens on the details when the brand sells one plan, with no plan chooser", async () => {
+  await render(createElement(JoinForm, { ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "idle" }), initialChoice: null }));
+  expect(container.textContent).not.toContain("Choose your plan");
+  expect(container.querySelector('input[type="hidden"][name="choice"]')?.getAttribute("value")).toBe("managed");
+  expect(container.querySelector('input[name="name"]')).not.toBeNull();
 });
 
-it("asks a sign-up for an email address, and never for a mobile number", async () => {
+it("asks a sign-up for a country and a state in the site's own dropdowns, never the browser's", async () => {
+  await render(createElement(JoinForm, { ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "idle" }) }));
+  expect(container.querySelector("select")).toBeNull();
+  expect(container.querySelector<HTMLInputElement>('input[name="country"]')?.value).toBe("IN");
+  expect(container.querySelector<HTMLInputElement>('input[name="stateCode"]')?.value).toBe("");
+  expect(optionsOf("stateCode").length).toBeGreaterThan(30);
+  expect(optionsOf("country").map((option) => option.textContent)).toEqual(["India", "United Arab Emirates"]);
+});
+
+it("asks a sign-up for a mobile number, with a country code dropdown opening on the visitor's country", async () => {
+  await render(createElement(JoinForm, { ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "idle" }) }));
+  const number = container.querySelector<HTMLInputElement>('input[name="phone"]');
+  expect(number?.required).toBe(true);
+  expect(number?.type).toBe("tel");
+  expect(container.querySelector<HTMLInputElement>('input[name="phoneCountry"]')?.value).toBe("IN");
+  expect(container.textContent).toContain("Mobile number");
+  expect(optionsOf("phoneCountry").map((option) => option.textContent)).toEqual(["IN India (+91)", "AE United Arab Emirates (+971)"]);
+});
+
+it("opens the country code on another country when the server could tell where the visitor is", async () => {
+  await render(createElement(JoinForm, { ...JOIN_PROPS, defaultPhoneCountry: "AE", action: async (): Promise<JoinFormState> => ({ status: "idle" }) }));
+  expect(container.querySelector<HTMLInputElement>('input[name="phoneCountry"]')?.value).toBe("AE");
+});
+
+it("asks a sign-up for an email address, which it emails the code to", async () => {
   await render(createElement(JoinForm, { ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "idle" }) }));
   expect(container.querySelector('input[name="email"][type="email"]')).not.toBeNull();
-  expect(container.querySelector('input[name="phone"]')).toBeNull();
   expect(container.textContent).toContain("Email me a code");
-  expect(container.textContent).not.toMatch(/mobile number|text(ed)? (it|you)|send me a code/i);
+  expect(container.textContent).not.toMatch(/text(ed)? (it|you)|send me a code/i);
 });
 
 it("tells the owner where the code was emailed, and offers to change the address", async () => {
@@ -132,9 +157,10 @@ it("tells the owner where the code was emailed, and offers to change the address
   await askForCode();
   expect(container.textContent).toContain("We emailed a 6-digit code to o•••@example.test");
   expect(container.querySelector('input[type="hidden"][name="email"]')).not.toBeNull();
-  expect(container.querySelector('input[type="hidden"][name="phone"]')).toBeNull();
+  expect(container.querySelector('input[type="hidden"][name="phone"]')?.getAttribute("value")).toBe("98200 11223");
+  expect(container.querySelector('input[type="hidden"][name="phoneCountry"]')?.getAttribute("value")).toBe("IN");
   expect(container.textContent).toContain("Change email");
-  expect(container.textContent).not.toMatch(/texted|text message|mobile/i);
+  expect(container.textContent).not.toMatch(/texted|text message/i);
 });
 
 it("goes back to the details, with the address as typed, on Change email", async () => {
@@ -142,6 +168,7 @@ it("goes back to the details, with the address as typed, on Change email", async
   await askForCode();
   await click("Change email");
   expect(container.querySelector<HTMLInputElement>('input[name="email"]:not([type="hidden"])')?.value).toBe("owner@example.test");
+  expect(container.querySelector<HTMLInputElement>('input[name="phone"]:not([type="hidden"])')?.value).toBe("98200 11223");
   expect(container.textContent).toContain("Email me a code");
 });
 
@@ -182,10 +209,11 @@ it("locks the details while a code is being sent", async () => {
   await type("name", "Owner");
   await type("email", "owner@example.test");
   await pickState();
+  await type("phone", "98200 11223");
   await type("password", "a-long-password");
   await act(async () => container.querySelector<HTMLInputElement>('input[name="agree"]')?.click());
   await click("Email me a code");
-  for (const name of ["businessName", "name", "email", "password"]) {
+  for (const name of ["businessName", "name", "email", "phone", "password"]) {
     expect(container.querySelector<HTMLInputElement>(`input[name="${name}"]`)?.readOnly, name).toBe(true);
   }
   await act(async () => release?.({ status: "code", otp: codeStep }));

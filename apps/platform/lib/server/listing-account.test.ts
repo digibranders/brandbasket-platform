@@ -4,7 +4,10 @@ import {
   consumeRateLimit,
   createUnlistedAccountBusiness,
   findUserByEmail,
+  phoneNumberIsTaken,
   recordConsent,
+  recordSignupLead,
+  setUserPhoneNumber,
   UserAlreadyHasBusinessError,
   type Database,
 } from "@brandbasket/db";
@@ -44,6 +47,9 @@ vi.mock("@brandbasket/db", async () => {
     createUnlistedAccountBusiness: vi.fn(),
     recordConsent: vi.fn(),
     findUserByEmail: vi.fn(),
+    phoneNumberIsTaken: vi.fn(),
+    setUserPhoneNumber: vi.fn(),
+    recordSignupLead: vi.fn(),
   };
 });
 
@@ -52,7 +58,9 @@ const OTP_ID = "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
 const EMAIL = "meera.shah@example.test";
 const signInEmail = vi.fn();
 
-const FIRST: JoinInput = { choice: "managed", businessName: "Smile Dental", name: "Meera Shah", email: EMAIL, password: "correct-horse-battery", country: "IN", stateCode: "mh", agreed: true, code: null };
+const PHONE = { country: "IN", number: "98200 11223" } as const;
+const E164 = "+919820011223";
+const FIRST: JoinInput = { choice: "managed", businessName: "Smile Dental", name: "Meera Shah", email: EMAIL, password: "correct-horse-battery", country: "IN", stateCode: "mh", phone: PHONE, agreed: true, code: null };
 const WITH_CODE: JoinInput = { ...FIRST, code: { otpId: OTP_ID, code: "123456" } };
 
 beforeEach(() => {
@@ -61,6 +69,9 @@ beforeEach(() => {
   vi.mocked(getAuth).mockReturnValue({ api: { signInEmail } } as unknown as ReturnType<typeof getAuth>);
   vi.mocked(consumeRateLimit).mockResolvedValue({ allowed: true, remaining: 1, retryAfterSeconds: 0 });
   vi.mocked(findUserByEmail).mockResolvedValue(null);
+  vi.mocked(phoneNumberIsTaken).mockResolvedValue(false);
+  vi.mocked(setUserPhoneNumber).mockResolvedValue(true);
+  vi.mocked(recordSignupLead).mockResolvedValue({ id: "lead-1" });
   vi.mocked(requestAccountEmailCode).mockResolvedValue({ kind: "sent", otpId: OTP_ID, expiresInSeconds: 600, emailHint: "m•••@example.test", confirmRequired: true });
   vi.mocked(confirmAccountEmailCode).mockResolvedValue({ kind: "confirmed" });
   vi.mocked(createVerifiedEmailAccountWithGrant).mockResolvedValue({ userId: "user-2", email: EMAIL });
@@ -77,6 +88,23 @@ describe("requestJoinCode", () => {
   it("tells the form when no code has to be read, so it does not say one must be", async () => {
     vi.mocked(requestAccountEmailCode).mockResolvedValue({ kind: "sent", otpId: OTP_ID, expiresInSeconds: 600, emailHint: "m•••@example.test", confirmRequired: false });
     expect(await requestJoinCode(FIRST)).toMatchObject({ kind: "code", otp: { confirmRequired: false } });
+  });
+
+  it("refuses a mobile number that is not a real number of the country code picked, and emails nothing", async () => {
+    expect(await requestJoinCode({ ...FIRST, phone: { country: "IN", number: "12345" } })).toEqual({ kind: "refused", message: "Enter a valid phone number for India." });
+    expect(requestAccountEmailCode).not.toHaveBeenCalled();
+  });
+
+  it("reads a number typed with its own country code, whatever the dropdown says", async () => {
+    expect(await requestJoinCode({ ...FIRST, phone: { country: "AE", number: "+91 98200 11223" } })).toMatchObject({ kind: "code" });
+    expect(phoneNumberIsTaken).toHaveBeenCalledWith(DB, E164);
+  });
+
+  it("sends a mobile number another account already holds to sign in or use another, and emails nothing", async () => {
+    vi.mocked(phoneNumberIsTaken).mockResolvedValue(true);
+    expect(await requestJoinCode(FIRST)).toEqual({ kind: "refused", message: "That mobile number is already on an account. Sign in, or use another number." });
+    expect(phoneNumberIsTaken).toHaveBeenCalledWith(DB, E164);
+    expect(requestAccountEmailCode).not.toHaveBeenCalled();
   });
 
   it("sends an address that already has an account to sign in, and emails nothing", async () => {
@@ -115,6 +143,26 @@ describe("createListingAccount", () => {
     expect(createVerifiedEmailAccountWithGrant).toHaveBeenCalledWith(expect.anything(), DB, { email: EMAIL, name: "Meera Shah", password: "correct-horse-battery" });
     expect(createUnlistedAccountBusiness).toHaveBeenCalledWith(DB, { userId: "user-2", businessName: "Smile Dental", signupChoice: "managed", countryCode: "IN", stateCode: "mh", currency: "INR" });
     expect(signInEmail).toHaveBeenCalledWith(expect.objectContaining({ body: { email: EMAIL, password: "correct-horse-battery" } }));
+  });
+
+  it("saves the mobile number, as E.164 and unproven, on the account it opens, and gives it to the lead staff will call", async () => {
+    expect(await createListingAccount(WITH_CODE)).toEqual({ kind: "created" });
+    expect(setUserPhoneNumber).toHaveBeenCalledWith(DB, "user-2", E164);
+    expect(recordSignupLead).toHaveBeenCalledWith(DB, expect.objectContaining({ businessId: "business-1", phone: E164 }));
+  });
+
+  it("opens nothing, and spends no code, for a mobile number that is not real or that another account holds", async () => {
+    expect(await createListingAccount({ ...WITH_CODE, phone: { country: "IN", number: "12345" } })).toEqual({ kind: "refused", message: "Enter a valid phone number for India." });
+    vi.mocked(phoneNumberIsTaken).mockResolvedValue(true);
+    expect(await createListingAccount(WITH_CODE)).toEqual({ kind: "refused", message: "That mobile number is already on an account. Sign in, or use another number." });
+    expect(confirmAccountEmailCode).not.toHaveBeenCalled();
+    expect(createVerifiedEmailAccountWithGrant).not.toHaveBeenCalled();
+  });
+
+  it("still opens the account, with the number on the lead, when it was taken in the moment between the check and the save", async () => {
+    vi.mocked(setUserPhoneNumber).mockResolvedValue(false);
+    expect(await createListingAccount(WITH_CODE)).toEqual({ kind: "created" });
+    expect(recordSignupLead).toHaveBeenCalledWith(DB, expect.objectContaining({ phone: E164 }));
   });
 
   it("keeps the country and no state for an owner outside India", async () => {

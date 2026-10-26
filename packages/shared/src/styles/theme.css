@@ -81,6 +81,28 @@
       transform: translateY(-0.12rem) scale(1.02);
     }
   }
+
+  /* Customer dashboard v2: the website's palette (brandbasket-website app/globals.css). New names only; the
+     [data-app="customer"] block at the end of this file points the older names at the same values. */
+  --color-bg: #f6f5f2;
+  --color-surface: #ffffff;
+  --color-sunken: #eeece7;
+  --color-ink-2: #4e5057;
+  --color-ink-raised: #23242a;
+  --color-rattan: #c48a47;
+  --color-rattan-text: #a46c2f;
+  --color-rattan-ink: #8a5524;
+  --color-rattan-wash: #f4e6d3;
+  --color-sage: #4a745e;
+  --color-sage-wash: #e5efe8;
+  --color-sage-deep: #2f5a43;
+  --color-error: #b42318;
+  --color-c-site: #a8743c;
+  --color-c-growth: #2f7f7a;
+  --color-c-search: #3d5a8a;
+  /* The one raised surface a screen may have (DESIGN.md "Surfaces"). */
+  --shadow-lift: 0 1px 2px rgb(21 22 26 / 0.05), 0 14px 34px -20px rgb(21 22 26 / 0.28);
+  --radius-lift: 0.875rem;
 }
 
 @theme inline {
@@ -88,6 +110,9 @@
   --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
   --font-brand: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-script: var(--font-caveat), "Segoe Print", "Bradley Hand", cursive;
+  /* v2 titles and figures. The console never loads Red Hat, so each falls back to what it had. */
+  --font-display: var(--font-red-hat-display, var(--font-newsreader)), ui-sans-serif, system-ui, sans-serif;
+  --font-figure: var(--font-red-hat-mono, ui-monospace), ui-monospace, monospace;
 }
 
 @layer base {
@@ -370,6 +395,36 @@ html[data-brand="brandbasket"] {
 
 html[data-brand="brandbasket"] :where(.heading-display, .panel-title) em {
   color: #8b6a2e;
+}
+
+/* The customer dashboard (app-host/layout.tsx sets data-app="customer"): the website's palette and Red Hat type, on
+   every page at once, including the ones not redesigned yet. The console keeps the block above. This selector is more
+   specific than that one, so the order of the two does not matter. */
+html[data-brand="brandbasket"][data-app="customer"] {
+  --color-paper: #f6f5f2;
+  --color-paper-deep: #eeece7;
+  --color-card: #ffffff;
+  --color-line: #e3e0d9;
+  --color-ink: #15161a;
+  --color-ink-soft: #4e5057;
+  --color-dark-surface: #15161a;
+  --color-dark-raised: #23242a;
+  --color-accent: #15161a;
+  --color-accent-deep: #15161a;
+  --color-accent-light: #f6f5f2;
+  --color-accent-pale: #f4e6d3;
+  --color-highlight: #c48a47;
+  --color-highlight-deep: #a46c2f;
+  --color-dusk: #15161a;
+  --color-amber: #c48a47;
+  --font-newsreader: var(--font-red-hat-display);
+  --font-hanken: var(--font-red-hat-text);
+  --font-inter: var(--font-red-hat-text);
+  --font-outfit: var(--font-red-hat-display);
+}
+
+html[data-brand="brandbasket"][data-app="customer"] :where(.heading-display, .panel-title) em {
+  color: #a46c2f;
 }
 
 /* The paper grain is Brandbasket's; the Brandbasket site has none. */

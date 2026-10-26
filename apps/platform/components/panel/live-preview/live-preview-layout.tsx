@@ -196,7 +196,7 @@ function WithPreview({ source, base, section, children }: WithPreviewProps): Rea
           )
         : null}
 
-      <div className="sticky bottom-0 z-30 mt-8 border-t border-line bg-paper py-3 xl:hidden">
+      <div className="sticky bottom-0 z-30 mt-8 border-t border-line bg-paper py-3 max-lg:bottom-[calc(3.75rem+env(safe-area-inset-bottom))] xl:hidden">
         <button
           type="button"
           onClick={() => {

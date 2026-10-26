@@ -46,6 +46,25 @@ describe("recordSignupLead", () => {
     expect(rows[0]?.notes).toContain("Managed Website");
   });
 
+  it("keeps the mobile number given on the form, so staff can call", async () => {
+    const businessId = await addBusiness("glow-dental");
+    await recordSignupLead(dbs.staff.db, { name: "Rohan", businessName: "Glow", email: "r@example.test", businessId, plan: "managed", phone: "+919820011223" });
+    expect((await allLeads())[0]?.phone).toBe("+919820011223");
+  });
+
+  it("fills a missing number on a lead it takes over, and keeps one the lead already has", async () => {
+    await createLead(dbs.staff.db, { name: "A", businessName: "A", email: "a@example.test", phone: null, businessType: null, currency: "INR", message: null });
+    await createLead(dbs.staff.db, { name: "B", businessName: "B", email: "b@example.test", phone: "+919876543210", businessType: null, currency: "INR", message: null });
+    const first = await addBusiness("a-business");
+    const second = await addBusiness("b-business");
+    await recordSignupLead(dbs.staff.db, { name: "A", businessName: "A", email: "a@example.test", businessId: first, plan: "managed", phone: "+919820011223" });
+    await recordSignupLead(dbs.staff.db, { name: "B", businessName: "B", email: "b@example.test", businessId: second, plan: "managed", phone: "+919820011223" });
+
+    const byEmail = new Map((await allLeads()).map((row) => [row.email, row.phone]));
+    expect(byEmail.get("a@example.test")).toBe("+919820011223");
+    expect(byEmail.get("b@example.test")).toBe("+919876543210");
+  });
+
   it("becomes paid when the first payment is confirmed, the same way a staff-made lead does", async () => {
     const businessId = await addBusiness("glow-dental");
     await recordSignupLead(dbs.staff.db, { name: "Rohan", businessName: "Glow", email: "r@example.test", businessId, plan: "managed" });

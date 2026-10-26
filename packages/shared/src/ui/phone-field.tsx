@@ -10,6 +10,12 @@ import { MAX_PHONE_LENGTH, PHONE_COUNTRY_FIELD, type PhoneCountryOption } from "
 /** The error wiring each form already computes for its own inputs. */
 export type PhoneFieldStatus = { readonly "aria-invalid"?: true; readonly "aria-describedby"?: string };
 
+/** What the field holds: the chosen country code and the number as typed. */
+export interface PhoneFieldValue {
+  readonly country: string;
+  readonly number: string;
+}
+
 /** "roomy" matches the Get started and Add lead fields; "compact" matches the onboarding step fields. */
 export type PhoneFieldSize = "roomy" | "compact";
 
@@ -26,6 +32,8 @@ interface PhoneFieldProps {
   readonly number: string;
   readonly size: PhoneFieldSize;
   readonly required?: boolean;
+  /** Locks both inputs while the form is being sent: the number turns read-only and the dropdown stops opening. */
+  readonly disabled?: boolean;
   readonly numberStatus: PhoneFieldStatus;
   readonly countryStatus: PhoneFieldStatus;
   /** Spacing from the label, which differs per form. Wraps the field and its length message. */
@@ -35,6 +43,8 @@ interface PhoneFieldProps {
   readonly numberName?: string;
   /** What the country select posts as. Defaults to PHONE_COUNTRY_FIELD, for the same reason as `numberName`. */
   readonly countryName?: string;
+  /** Called with both values whenever either changes, for a form that keeps what was typed (the sign-up form's steps). */
+  readonly onChange?: (value: PhoneFieldValue) => void;
 }
 
 const SIZES: Record<PhoneFieldSize, { readonly frame: string; readonly country: string; readonly number: string }> = {
@@ -67,11 +77,13 @@ function PhoneFieldControl({
   number,
   size,
   required = false,
+  disabled = false,
   numberStatus,
   countryStatus,
   className,
   numberName = "phone",
   countryName = PHONE_COUNTRY_FIELD,
+  onChange,
 }: PhoneFieldProps & { readonly startCountry: string }): ReactElement {
   const [selected, setSelected] = useState(startCountry);
   const [entry, setEntry] = useState(number);
@@ -121,8 +133,12 @@ function PhoneFieldControl({
           name={countryName}
           options={options}
           value={selected}
-          onChange={setSelected}
+          onChange={(code) => {
+            setSelected(code);
+            onChange?.({ country: code, number: entry });
+          }}
           required={required}
+          disabled={disabled}
           aria-label="Country code"
           aria-invalid={countryStatus["aria-invalid"]}
           aria-describedby={countryStatus["aria-describedby"]}
@@ -146,10 +162,15 @@ function PhoneFieldControl({
           type="tel"
           autoComplete="tel-national"
           required={required}
+          readOnly={disabled}
           maxLength={MAX_PHONE_LENGTH}
           placeholder={option?.example ?? undefined}
           value={entry}
-          onChange={(event) => setEntry(event.currentTarget.value)}
+          onChange={(event) => {
+            const typed = event.currentTarget.value;
+            setEntry(typed);
+            onChange?.({ country: selected, number: typed });
+          }}
           onBlur={() => setTouched(true)}
           className={cn(
             "block w-full min-w-0 flex-1 bg-transparent tabular-nums placeholder:text-ink-soft/80 focus-visible:outline-none",

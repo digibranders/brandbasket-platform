@@ -93,6 +93,8 @@ export interface SignupLead {
   readonly businessId: string;
   /** The plan they chose on the sign-up form, for the note staff read. */
   readonly plan: "managed" | null;
+  /** The mobile number they gave on the form (E.164), so staff can call them. A lead that already has a number keeps it. */
+  readonly phone?: string | null;
 }
 
 const SIGNUP_PLAN_LABEL = { managed: "Managed Website" } as const;
@@ -116,7 +118,7 @@ export async function recordSignupLead(db: Database, signup: SignupLead): Promis
 
     const note = `Signed up on the dashboard${signup.plan === null ? "" : ` and chose the ${SIGNUP_PLAN_LABEL[signup.plan]} plan`}. Has not paid yet.`;
     const taken = await tx
-      .select({ id: leads.id, notes: leads.notes })
+      .select({ id: leads.id, notes: leads.notes, phone: leads.phone })
       .from(leads)
       .where(and(sql`lower(${leads.email}) = ${email}`, sql`${leads.businessId} is null`, ne(leads.status, "lost")))
       .orderBy(desc(leads.createdAt))
@@ -126,7 +128,7 @@ export async function recordSignupLead(db: Database, signup: SignupLead): Promis
     if (lead !== undefined) {
       await tx
         .update(leads)
-        .set({ status: "account_created", businessId: signup.businessId, notes: lead.notes === null ? note : `${lead.notes}\n${note}` })
+        .set({ status: "account_created", businessId: signup.businessId, phone: lead.phone ?? signup.phone ?? null, notes: lead.notes === null ? note : `${lead.notes}\n${note}` })
         .where(eq(leads.id, lead.id));
       return { id: lead.id };
     }
@@ -137,7 +139,7 @@ export async function recordSignupLead(db: Database, signup: SignupLead): Promis
       name: signup.name,
       businessName: signup.businessName,
       email,
-      phone: null,
+      phone: signup.phone ?? null,
       businessType: null,
       currency,
       message: null,

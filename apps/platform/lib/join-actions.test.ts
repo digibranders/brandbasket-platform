@@ -16,7 +16,7 @@ vi.mock("@/lib/server/customer-access", () => ({ LISTING_PAGE_PATH: "/business" 
 const otp = { otpId: "existing-challenge", emailHint: "o•••@example.test", confirmRequired: true };
 function form(code: boolean): FormData {
   const result = new FormData();
-  for (const [key, value] of Object.entries({ choice: "listing_only", name: "Owner", email: "Owner@Example.test", password: "long-password-9", country: "IN", stateCode: "mh", agree: "yes", otpId: otp.otpId })) {
+  for (const [key, value] of Object.entries({ choice: "listing_only", name: "Owner", email: "Owner@Example.test", password: "long-password-9", country: "IN", stateCode: "mh", phoneCountry: "IN", phone: "98200 11223", agree: "yes", otpId: otp.otpId })) {
     result.set(key, value);
   }
   if (code) result.set("code", "123456");
@@ -47,7 +47,7 @@ it("retains signup confirmation retry instead of redirecting as a created accoun
 /** A Brandbasket form: Managed Website, with the business's name. */
 function brandbasketForm(entries: Record<string, string>): FormData {
   const result = new FormData();
-  const base = { choice: "managed", businessName: "Smile Dental", name: "Owner", email: "Owner@Example.test", password: "long-password-9", country: "IN", stateCode: "mh", agree: "yes" };
+  const base = { choice: "managed", businessName: "Smile Dental", name: "Owner", email: "Owner@Example.test", password: "long-password-9", country: "IN", stateCode: "mh", phoneCountry: "IN", phone: "98200 11223", agree: "yes" };
   for (const [key, value] of Object.entries({ ...base, ...entries })) result.set(key, value);
   return result;
 }
@@ -73,13 +73,22 @@ it("sends the code for Managed Website on the Brandbasket host, to the email add
   host.brand = BRAND;
   vi.mocked(requestJoinCode).mockResolvedValue({ kind: "code", otp: emailOtp });
   expect(await joinForListing({ status: "idle" }, brandbasketForm({}))).toMatchObject({ status: "code", otp: emailOtp });
-  expect(requestJoinCode).toHaveBeenCalledWith(expect.objectContaining({ choice: "managed", email: "owner@example.test", code: null }));
-  expect(vi.mocked(requestJoinCode).mock.calls[0]?.[0]).not.toHaveProperty("phone");
+  expect(requestJoinCode).toHaveBeenCalledWith(
+    expect.objectContaining({ choice: "managed", email: "owner@example.test", phone: { country: "IN", number: "98200 11223" }, code: null }),
+  );
 });
 
-it("asks a sign-up for an email address, and sends nothing without one, even when a number is posted", async () => {
+it("asks for a mobile number, and sends nothing without one", async () => {
   host.brand = BRAND;
-  const data = brandbasketForm({ phone: "9820000000" });
+  const data = brandbasketForm({});
+  data.delete("phone");
+  expect(await joinForListing({ status: "idle" }, data)).toMatchObject({ status: "error", message: "Enter your mobile number." });
+  expect(requestJoinCode).not.toHaveBeenCalled();
+});
+
+it("asks a sign-up for an email address, and sends nothing without one", async () => {
+  host.brand = BRAND;
+  const data = brandbasketForm({});
   data.delete("email");
   expect(await joinForListing({ status: "idle" }, data)).toMatchObject({ status: "error", message: "Enter your email address." });
   expect(requestJoinCode).not.toHaveBeenCalled();

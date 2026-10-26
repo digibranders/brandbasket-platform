@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactElement, ReactNode } from "react";
 import { DashboardRoot, dashboardMetadataBase, dashboardViewport } from "@brandbasket/shared/ui/panel/dashboard-root";
 import { BrandProvider } from "@/components/panel/brand-provider";
-import { figtree } from "@/lib/brandbasket-font";
+import { brandbasketFontVariables } from "@/lib/brandbasket-font";
 import { requestBrand } from "@/lib/server/request-brand";
 import { requireSurfaceHost } from "@/lib/server/surface-host";
 import { SupportProvider } from "@/components/panel/support/support-provider";
@@ -22,7 +22,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export const viewport: Viewport = dashboardViewport;
+/** The browser bar takes the page colour (theme.css `--color-bg`). */
+export const viewport: Viewport = { ...dashboardViewport, themeColor: "#f6f5f2" };
 
 interface AppHostLayoutProps {
   readonly children: ReactNode;
@@ -32,5 +33,5 @@ export default async function AppHostLayout({ children }: AppHostLayoutProps): P
   await requireSurfaceHost("app");
   const brand = await requestBrand();
   const userId = process.env.BRANDBASKET_SUPPORT_MODE === "internal" ? (await getSessionUser())?.id ?? null : null;
-  return <DashboardRoot brand={{ id: "brandbasket", className: figtree.variable }}><BrandProvider brand={brand}><SupportProvider canCreate={canCreateSupportRequest(userId)}>{children}</SupportProvider></BrandProvider></DashboardRoot>;
+  return <DashboardRoot brand={{ id: "brandbasket", className: brandbasketFontVariables }} app="customer"><BrandProvider brand={brand}><SupportProvider canCreate={canCreateSupportRequest(userId)}>{children}</SupportProvider></BrandProvider></DashboardRoot>;
 }

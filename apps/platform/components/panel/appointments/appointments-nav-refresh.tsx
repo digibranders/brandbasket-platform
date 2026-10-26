@@ -13,7 +13,7 @@ const REFRESH_INTERVAL_MS = 60_000;
  * regains focus or becomes visible again, and on a 60s timer while it stays visible -- not while backgrounded, so
  * a hidden tab isn't polling for nothing.
  *
- * Renders nothing. Mount only when Appointments is switched on (see CustomerShell) -- there's no badge to keep
+ * Renders nothing. Mount only when Appointments is switched on (see AppShell, components/v2/app-shell.tsx; the v2 shell no longer mounts it) -- there's no badge to keep
  * fresh otherwise, and this would just be a pointless timer.
  */
 export function AppointmentsNavRefresh(): null {
