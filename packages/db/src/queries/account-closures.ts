@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull, sql, type AnyColumn, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import {
@@ -96,6 +96,47 @@ export async function restoreAccountClosureForBusiness(db: Runner, input: { read
     .update(accountClosures)
     .set({ restoredAt: input.now })
     .where(and(eq(accountClosures.businessId, input.businessId), isNull(accountClosures.restoredAt), isNull(accountClosures.erasedAt)))
+    .returning({ id: accountClosures.id });
+  return rows.length > 0;
+}
+
+// ── Staff: accounts that are leaving ────────────────────────────────────────────────────────────────────────────
+
+export interface OpenClosure {
+  readonly businessId: string;
+  readonly requestedAt: Date;
+  readonly eraseAfter: Date;
+}
+
+const OPEN_FOR_BUSINESS = (businessId: string) =>
+  and(eq(accountClosures.businessId, businessId), isNull(accountClosures.restoredAt), isNull(accountClosures.erasedAt));
+
+/** Every account waiting to be erased, the soonest first. Staff connection. */
+export async function listOpenClosures(db: Runner): Promise<readonly OpenClosure[]> {
+  return db
+    .select({ businessId: accountClosures.businessId, requestedAt: accountClosures.requestedAt, eraseAfter: accountClosures.eraseAfter })
+    .from(accountClosures)
+    .where(and(isNull(accountClosures.restoredAt), isNull(accountClosures.erasedAt)))
+    .orderBy(asc(accountClosures.eraseAfter), asc(accountClosures.id));
+}
+
+/** The business's open closure, or null when it is not leaving. */
+export async function findOpenClosureForBusiness(db: Runner, businessId: string): Promise<AccountClosure | null> {
+  if (!isUuid(businessId)) return null;
+  const rows = await db.select(CLOSURE_COLUMNS).from(accountClosures).where(OPEN_FOR_BUSINESS(businessId)).limit(1);
+  return rows[0] ?? null;
+}
+
+/** The most a staff member may push an erase date out by in one go. */
+export const MAX_CLOSURE_EXTENSION_DAYS = 90;
+
+/** Pushes the open closure's erase date out by whole days. False when there is no open closure or `days` is out of range. */
+export async function extendAccountClosure(db: Runner, input: { readonly businessId: string; readonly days: number }): Promise<boolean> {
+  if (!isUuid(input.businessId) || !Number.isInteger(input.days) || input.days < 1 || input.days > MAX_CLOSURE_EXTENSION_DAYS) return false;
+  const rows = await db
+    .update(accountClosures)
+    .set({ eraseAfter: sql`${accountClosures.eraseAfter} + make_interval(days => ${input.days})` })
+    .where(OPEN_FOR_BUSINESS(input.businessId))
     .returning({ id: accountClosures.id });
   return rows.length > 0;
 }

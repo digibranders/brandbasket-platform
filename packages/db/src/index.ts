@@ -1163,10 +1163,14 @@ export {
   type ErasureSkipReason,
 } from "./queries/account-erasure";
 export {
+  extendAccountClosure,
+  findOpenClosureForBusiness,
   findOpenClosureForUser,
   insertExitFeedback,
   listExitFeedback,
+  listOpenClosures,
   markCancelRequested,
+  MAX_CLOSURE_EXTENSION_DAYS,
   openAccountClosure,
   restoreAccountClosure,
   restoreAccountClosureForBusiness,
@@ -1176,6 +1180,7 @@ export {
   type ExitFeedbackSummary,
   type NewAccountClosure,
   type NewExitFeedback,
+  type OpenClosure,
 } from "./queries/account-closures";
 export {
   claimAccountOtpAttempt,
