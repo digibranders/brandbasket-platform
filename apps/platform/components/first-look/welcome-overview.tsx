@@ -45,7 +45,7 @@ export function WelcomeOverview({ firstName, services, payment, call, bookingUrl
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
         {booked ? (
           <div className="grid gap-4">
-            <BookedLine startsAtIso={call.startsAtIso} endsAtIso={call.endsAtIso} showLiveBy={hasWebsite} bookingUrl={bookingUrl} />
+            <BookedLine key={call.startsAtIso ?? "booked"} startsAtIso={call.startsAtIso} endsAtIso={call.endsAtIso} showLiveBy={hasWebsite} bookingUrl={bookingUrl} />
             {services.length === 0 ? null : <ReadyTask services={services} doneSteps={doneSteps} />}
             <p className="text-[0.8125rem] text-ink-2">Add what you can now; bring the rest to the call. Everything saves as you go.</p>
           </div>

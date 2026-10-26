@@ -49,13 +49,17 @@ export function ReadyPreview({ services }: { readonly services: readonly Service
 
 function ReadyRowItem({ row }: { readonly row: ReadyRow }): ReactElement {
   const { item, done } = row;
+  const action = done ? "Edit" : UPLOADS.has(item.key) ? "Upload" : "Add";
   return (
     <li className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-2.5 border-t border-line px-4 py-3 first:border-t-0">
-      {done ? (
-        <CheckCircle size={18} weight="fill" aria-label="Done" className="text-sage" />
-      ) : (
-        <Circle size={18} aria-label="To do" className="text-ink-2" />
-      )}
+      <span>
+        {done ? (
+          <CheckCircle size={18} weight="fill" aria-hidden="true" className="text-sage" />
+        ) : (
+          <Circle size={18} aria-hidden="true" className="text-ink-2" />
+        )}
+        <span className="sr-only">{done ? "Done" : "To do"}</span>
+      </span>
       <span className="min-w-0">
         <span className="block text-[0.84375rem] font-semibold text-ink">{item.label}</span>
         <span className="block text-xs text-ink-2">
@@ -65,8 +69,8 @@ function ReadyRowItem({ row }: { readonly row: ReadyRow }): ReactElement {
       {item.step === null ? (
         <span className="text-xs text-ink-2">Bring to the call</span>
       ) : (
-        <Link href={onboardingStepHref(item.step)} className={SOFT_BUTTON}>
-          {done ? "Edit" : UPLOADS.has(item.key) ? "Upload" : "Add"}
+        <Link href={onboardingStepHref(item.step)} aria-label={`${action} ${item.label}`} className={SOFT_BUTTON}>
+          {action}
         </Link>
       )}
     </li>
@@ -89,16 +93,21 @@ export function ReadyTask({ services, doneSteps }: { readonly services: readonly
           {doneCount} of {rows.length}
         </span>
       </h2>
-      <ul>
-        {open.slice(0, OPEN_SHOWN).map((row) => (
-          <ReadyRowItem key={row.item.key} row={row} />
-        ))}
-      </ul>
+      {open.length === 0 ? (
+        <p className="px-4 py-3 text-[0.8125rem] text-ink-2">All set. Anything you add later is saved as you go.</p>
+      ) : (
+        <ul>
+          {open.slice(0, OPEN_SHOWN).map((row) => (
+            <ReadyRowItem key={row.item.key} row={row} />
+          ))}
+        </ul>
+      )}
       {rest.length === 0 ? null : (
         <details className="group border-t border-line">
           <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-[0.8125rem] text-ink-2">
             {summary}
             <span className="font-semibold text-ink group-open:hidden">Show all</span>
+            <span className="hidden font-semibold text-ink group-open:inline">Hide</span>
           </summary>
           <ul className="border-t border-line">
             {rest.map((row) => (
