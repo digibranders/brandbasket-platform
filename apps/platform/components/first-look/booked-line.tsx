@@ -25,7 +25,7 @@ export function BookedLine({ startsAtIso, endsAtIso, showLiveBy, bookingUrl }: B
           <b className="block text-sm font-semibold text-ink">Kickoff call booked</b>
           <span className="block font-figure text-[0.8125rem] text-ink-2">{startsAtIso === null ? "The time is in your confirmation email" : slotLabel(startsAtIso)}</span>
         </p>
-        <span className="flex gap-2">
+        <span className="flex gap-2 max-sm:w-full max-sm:pl-[2.125rem]">
           {startsAtIso === null || endsAtIso === null ? null : (
             <a href={callInviteHref(startsAtIso, endsAtIso)} download="brandbasket-kickoff-call.ics" className={SOFT_BUTTON}>
               Add to calendar
