@@ -5,7 +5,7 @@ import { dayMonth } from "@/lib/call-dates";
 import { SERVICE_NAMES } from "@/lib/first-look";
 import { greetingFor, monthName, sublineFor } from "@/lib/overview";
 import type { OverviewData } from "@/lib/server/overview";
-import type { TodoItem } from "@/lib/todo";
+import { todoItemHref, type TodoItem } from "@/lib/todo";
 import { DARK_BUTTON, LIFT, SECTION_TITLE, SERVICE_DOT, SOFT_BUTTON } from "@/components/v2/classes";
 import { ResultLine } from "./result-line";
 
@@ -23,7 +23,7 @@ interface MonthOverviewProps {
 }
 
 /** A website item opens its page; a Social or Search item opens its form on the To do page. */
-const itemHref = (item: TodoItem): string => (item.kind === "link" ? item.href : `/todo#${item.key}`);
+const itemHref = (item: TodoItem): string => (item.kind === "link" ? item.href : todoItemHref(item.key));
 
 function NeedsYou({ open, count }: { readonly open: readonly TodoItem[]; readonly count: number }): ReactElement {
   if (count === 0) return <p className="text-sm text-ink-2">Nothing needs you right now.</p>;

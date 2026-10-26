@@ -14,6 +14,7 @@ vi.mock("react", async (importOriginal) => {
 
 import { SetupItemForm } from "@/components/todo/setup-item-form";
 import { TodoList } from "@/components/todo/todo-list";
+import { TodoRow } from "@/components/todo/todo-row";
 import type { TodoItem } from "@/lib/todo";
 
 const BRAND: TodoItem = { key: "brand", label: "Logo and photos", hint: "Your logo and photos", service: "website", done: false, kind: "link", href: "/onboarding/brand" };
@@ -80,4 +81,9 @@ it("never asks for a password", () => {
   const html = render([BRAND, ACCOUNTS, AREAS]);
   expect(html).not.toMatch(/type="password"/);
   expect(html).not.toMatch(/name="[^"]*(password|passcode|pin)[^"]*"/i);
+});
+
+it("keeps a row's open state its own: only the initial value comes from the page", () => {
+  expect(renderToStaticMarkup(createElement(TodoRow, { initiallyOpen: true, className: "group", children: "x" }))).toMatch(/^<details[^>]* open/);
+  expect(renderToStaticMarkup(createElement(TodoRow, { initiallyOpen: false, className: "group", children: "x" }))).not.toContain(" open");
 });

@@ -87,9 +87,9 @@ it("shows no See all link when everything open fits", () => {
 it("opens the top item on its page with the dark button and the others with soft buttons, form items on the To do page", () => {
   const html = render(data({ todo: [item(1), item(2, { kind: "form", setup: "accounts" } as Partial<TodoItem>)] }));
   expect(html).toContain('href="/onboarding/step-1"');
-  expect(html).toContain('href="/todo#item-2"');
+  expect(html).toContain('href="/todo?focus=item-2#item-2"');
   expect(html.split(DARK_BUTTON).length - 1).toBe(1);
-  expect(html.indexOf(DARK_BUTTON)).toBeLessThan(html.indexOf("/todo#item-2"));
+  expect(html.indexOf(DARK_BUTTON)).toBeLessThan(html.indexOf("/todo?focus=item-2#item-2"));
 });
 
 it("with nothing open replaces the heading with a quiet line and shows no dark button", () => {

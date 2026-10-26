@@ -7,6 +7,7 @@ import { SERVICE_NAMES } from "@/lib/first-look";
 import type { TodoData } from "@/lib/server/todo";
 import { openCount, type TodoItem } from "@/lib/todo";
 import { SetupItemForm } from "./setup-item-form";
+import { TodoRow } from "./todo-row";
 
 interface TodoListProps {
   readonly items: readonly TodoItem[];
@@ -70,7 +71,7 @@ export function TodoList({ items, answers, focus }: TodoListProps): ReactElement
                     </Link>
                   </div>
                 ) : (
-                  <details open={item.key === opened} className="group">
+                  <TodoRow initiallyOpen={item.key === opened} className="group">
                     <summary className={cn(ROW, "cursor-pointer list-none [&::-webkit-details-marker]:hidden")}>
                       <RowText item={item} />
                       <span className={SOFT_BUTTON}>
@@ -79,7 +80,7 @@ export function TodoList({ items, answers, focus }: TodoListProps): ReactElement
                       </span>
                     </summary>
                     <SetupItemForm setup={item.setup} saved={item.setup === "areas" ? answers.search : answers.social} />
-                  </details>
+                  </TodoRow>
                 )}
               </li>
             ))}

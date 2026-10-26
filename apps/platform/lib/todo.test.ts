@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTodo, doneSetupOf, openCount } from "@/lib/todo";
+import { buildTodo, doneSetupOf, openCount, todoItemHref } from "@/lib/todo";
 
 describe("buildTodo", () => {
   it("links website items to their setup step and makes Social and Search items forms", () => {
@@ -40,5 +40,11 @@ describe("doneSetupOf", () => {
     const items = buildTodo(["website", "social", "search"], ["brand"], ["offers", "areas"]);
     expect(doneSetupOf(items)).toEqual(["offers", "areas"]);
     expect(doneSetupOf(buildTodo(["website"], ["brand"], []))).toEqual([]);
+  });
+});
+
+describe("todoItemHref", () => {
+  it("opens the item's row and scrolls to it", () => {
+    expect(todoItemHref("offers")).toBe("/todo?focus=offers#offers");
   });
 });

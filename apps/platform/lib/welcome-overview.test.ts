@@ -82,6 +82,6 @@ it("for a plan without the website, the timeline says work starts and never prom
 
 it("for a booked Social plan, sends the ready items to the To do page", () => {
   const html = render({ call: CALL, services: ["social"] });
-  expect(html).toContain('href="/todo#accounts"');
+  expect(html).toContain('href="/todo?focus=accounts#accounts"');
   expect(html).not.toContain("Bring to the call");
 });

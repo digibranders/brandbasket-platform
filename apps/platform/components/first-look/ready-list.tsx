@@ -6,6 +6,7 @@ import { onboardingStepHref, type OnboardingStepKey } from "@brandbasket/shared/
 import { SERVICE_NAMES, type ServiceKey } from "@/lib/first-look";
 import { readyItemsFor, readyRows, type ReadyRow } from "@/lib/ready-items";
 import type { SetupKey } from "@/lib/service-setup";
+import { todoItemHref } from "@/lib/todo";
 import { LIFT, SECTION_TITLE, SERVICE_DOT, SOFT_BUTTON } from "@/components/v2/classes";
 
 /** Open items shown before the rest fold away. */
@@ -67,7 +68,7 @@ function ReadyRowItem({ row }: { readonly row: ReadyRow }): ReactElement {
           <ServiceTag service={item.service} /> · {item.hint}
         </span>
       </span>
-      <Link href={item.step === null ? `/todo#${item.key}` : onboardingStepHref(item.step)} aria-label={`${action} ${item.label}`} className={SOFT_BUTTON}>
+      <Link href={item.step === null ? todoItemHref(item.key) : onboardingStepHref(item.step)} aria-label={`${action} ${item.label}`} className={SOFT_BUTTON}>
         {action}
       </Link>
     </li>
