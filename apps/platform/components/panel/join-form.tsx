@@ -192,7 +192,8 @@ const INPUT_CLASSES =
   "mt-2 block w-full rounded-control border border-ink-soft/65 bg-white px-3.5 py-2.5 text-sm text-ink sm:px-4 sm:py-3 sm:text-base transition-colors duration-300 ease-calm placeholder:text-ink-soft/80 focus:border-accent";
 
 /**
- * Creating an account, in three steps on one form: which plan the owner wants (all shown at once), then their name,
+ * Creating an account, in three steps on one form: which plan the owner wants (all shown at once; skipped when the brand
+ * sells one), then their name,
  * email address and a password, then the code we email to that address. Every value is held here, so the code step sends
  * the details again with the code and a refused submission leaves the form as it was. "Go back" returns to the plans,
  * "Change email" to the details, and "Send a new code" sends them again without a code.
@@ -218,10 +219,12 @@ export function JoinForm({
   /** A code belongs to the exact challenge that requested it, including before its send response renders. */
   const [codeEntry, setCodeEntry] = useState<{ readonly otpId: string; readonly value: string }>({ otpId: "", value: "" });
   const [state, formAction, isPending] = useActionState(runAction, initialJoinFormState);
-  /** The plan picked; a link that already chose one has picked it for the owner. */
-  const [choice, setChoice] = useState<JoinChoice | null>(initialChoice ?? preselected);
-  /** True once the owner has pressed Continue on the plans (or a link picked one for them). */
-  const [choiceMade, setChoiceMade] = useState(initialChoice !== null);
+  /** A brand that sells one plan (Brandbasket) asks nothing about plans: the form opens on the details with it set. */
+  const onlyChoice = choices.length === 1 ? choices[0] : null;
+  /** The plan picked; a link that already chose one, or a brand with only one, has picked it for the owner. */
+  const [choice, setChoice] = useState<JoinChoice | null>(initialChoice ?? onlyChoice ?? preselected);
+  /** True once the owner has pressed Continue on the plans (or a link or the brand picked one for them). */
+  const [choiceMade, setChoiceMade] = useState(initialChoice !== null || onlyChoice !== null);
   const [name, setName] = useState("");
   /** Asked only of a Managed Website sign-up. */
   const [newBusinessName, setNewBusinessName] = useState("");
@@ -425,7 +428,7 @@ export function JoinForm({
   return (
     <form ref={detailsRef} action={formAction} noValidate className="space-y-4 sm:space-y-5">
       {sentFields}
-      <GoBack onBack={() => settleChoice(false)} disabled={isPending} />
+      {onlyChoice === null ? <GoBack onBack={() => settleChoice(false)} disabled={isPending} /> : null}
       {choice !== "listing_only" ? (
         <p className="text-sm text-ink-soft">
           Signing up for <span className="font-medium text-ink">{basket.name}</span>

@@ -110,6 +110,13 @@ it("focuses signup details when replacing the plan chooser", async () => {
   expect(document.activeElement?.getAttribute("name")).toBe("name");
 });
 
+it("opens on the details when the brand sells one plan, with no plan chooser", async () => {
+  await render(createElement(JoinForm, { ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "idle" }), initialChoice: null }));
+  expect(container.textContent).not.toContain("Choose your plan");
+  expect(container.querySelector('input[type="hidden"][name="choice"]')?.getAttribute("value")).toBe("managed");
+  expect(container.querySelector('input[name="name"]')).not.toBeNull();
+});
+
 it("asks a sign-up for a country, and a state only for India", async () => {
   await render(createElement(JoinForm, { ...JOIN_PROPS, action: async (): Promise<JoinFormState> => ({ status: "idle" }) }));
   const country = container.querySelector<HTMLSelectElement>('select[name="country"]');
