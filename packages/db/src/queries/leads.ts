@@ -10,6 +10,7 @@ import {
   subscriptions,
   users,
   type BillingCurrency,
+  type LeadSource,
   type LeadStatus,
 } from "../schema";
 
@@ -37,6 +38,13 @@ export interface NewLead {
    */
   readonly currency: BillingCurrency;
   readonly message: string | null;
+  /** Where it came from; the database's default is `website_form`. */
+  readonly source?: LeadSource;
+  /** The website plan ids picked in the basket ("website", "growth", "search"). */
+  readonly plans?: readonly string[];
+  readonly city?: string | null;
+  /** The website page the form was sent from, as a path. */
+  readonly page?: string | null;
 }
 
 export interface Lead {
@@ -54,6 +62,12 @@ export interface Lead {
   /** Set only when staff attached an existing account to this lead's business by hand. */
   readonly attachedByStaffId: string | null;
   readonly attachedAt: Date | null;
+  readonly source: LeadSource;
+  readonly plans: readonly string[];
+  readonly city: string | null;
+  readonly page: string | null;
+  /** The staff member who owns this enquiry, or null. */
+  readonly assignedStaffId: string | null;
   readonly createdAt: Date;
 }
 
@@ -71,6 +85,11 @@ const LEAD_COLUMNS = {
   businessId: leads.businessId,
   attachedByStaffId: leads.attachedByStaffId,
   attachedAt: leads.attachedAt,
+  source: leads.source,
+  plans: leads.plans,
+  city: leads.city,
+  page: leads.page,
+  assignedStaffId: leads.assignedStaffId,
   createdAt: leads.createdAt,
 } as const;
 
@@ -80,7 +99,7 @@ const LEAD_COLUMNS = {
  */
 export async function createLead(db: Database, lead: NewLead): Promise<{ readonly id: string }> {
   const id = uuidv7();
-  await db.insert(leads).values({ ...lead, id });
+  await db.insert(leads).values({ ...lead, plans: lead.plans === undefined ? undefined : [...lead.plans], id });
   return { id };
 }
 
@@ -144,6 +163,7 @@ export async function recordSignupLead(db: Database, signup: SignupLead): Promis
       currency,
       message: null,
       status: "account_created",
+      source: "signup",
       notes: note,
       businessId: signup.businessId,
     });

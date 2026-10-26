@@ -55,6 +55,11 @@ function lead(id: string, status: LeadStatus, createdAt = NOW): Lead {
     businessId: null,
     attachedByStaffId: null,
     attachedAt: null,
+    source: "website_form",
+    plans: [],
+    city: null,
+    page: null,
+    assignedStaffId: null,
     createdAt,
   };
 }
