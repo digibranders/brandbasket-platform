@@ -85,3 +85,9 @@ it("for a booked Social plan, sends the ready items to the To do page", () => {
   expect(html).toContain('href="/todo?focus=accounts#accounts"');
   expect(html).not.toContain("Bring to the call");
 });
+
+it("for a booked customer, does not promise that everything saves as you go", () => {
+  const html = render({ call: CALL, services: ["social"] });
+  expect(html).toContain("Add what you can now; bring the rest to the call.");
+  expect(html).not.toContain("saves as you go");
+});

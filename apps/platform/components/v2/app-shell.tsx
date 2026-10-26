@@ -3,7 +3,7 @@ import { unstable_rethrow } from "next/navigation";
 import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { logoOf } from "@/lib/brand";
-import { inFirstLook } from "@/lib/first-look";
+import { firstLookInput, inFirstLook } from "@/lib/first-look";
 import type { ClientListingState } from "@/lib/listing-sections";
 import { railSections } from "@/lib/rail";
 import { getAccountPanel } from "@/lib/server/account-panel";
@@ -40,26 +40,21 @@ async function readListingNav(): Promise<ClientListingState> {
 /** The customer dashboard v2: the rail (or the phone bars) around the page. */
 export async function AppShell({ userName, userEmail, businessId, children }: AppShellProps): Promise<ReactElement> {
   const { tenant, billing } = await requireCustomerAccess();
-  const [brand, panel, overview, liveWebsite, listing, callState, todoCount] = await Promise.all([
+  const [brand, panel, overview, liveWebsite, listing, callState] = await Promise.all([
     requestBrand(),
     getAccountPanel(),
     getProjectOverview(),
     getLiveWebsite(),
     readListingNav(),
     getSetupCallState(tenant),
-    // The count is a convenience: a failed read shows no number rather than taking the shell down.
-    billing.hasAccess ? quietly("app-shell", "the To do count", 0, async () => (await loadTodo(tenant)).open) : Promise.resolve(0),
   ]);
   const setupSent = overview.project?.onboardingSubmittedAt != null;
   const websiteSent = liveWebsite !== null || setupSent;
-  const quiet = inFirstLook({
-    hasAccess: billing.hasAccess,
-    websiteLive: liveWebsite !== null,
-    setupSent,
-    callHeld: callState.booking?.heldAtIso != null,
-    callEndsAtIso: callState.booking?.endsAtIso ?? null,
-    nowMs: callState.readAtMs,
-  });
+  const quiet = inFirstLook(firstLookInput({ hasAccess: billing.hasAccess, liveWebsite, project: overview.project, callState }));
+  // To do is for paid accounts past the first look. The count is a convenience: a failed read shows no number rather than
+  // taking the shell down.
+  const todoCount =
+    quiet || !billing.hasAccess ? 0 : await quietly("app-shell", "the To do count", 0, async () => (await loadTodo(tenant)).open);
   const sections = railSections({
     quiet,
     hasAccess: billing.hasAccess,

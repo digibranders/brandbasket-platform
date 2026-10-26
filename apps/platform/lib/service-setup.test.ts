@@ -42,9 +42,9 @@ describe("parseSetupItem offers, budget and areas", () => {
   });
 
   it("reads the budget in rupees with commas and the rupee sign, and needs an area", () => {
-    expect(parseSetupItem("budget", { adBudgetRupees: "₹10,000", adArea: "4 km around the clinic" })).toEqual({
+    expect(parseSetupItem("budget", { adBudgetRupees: "₹10,000", adArea: "4 km around your business" })).toEqual({
       success: true,
-      answers: { adBudgetRupees: 10000, adArea: "4 km around the clinic" },
+      answers: { adBudgetRupees: 10000, adArea: "4 km around your business" },
     });
     expect(parseSetupItem("budget", { adBudgetRupees: "ten", adArea: "Thane" })).toMatchObject({ success: false, field: "adBudgetRupees" });
     expect(parseSetupItem("budget", { adBudgetRupees: "0", adArea: "Thane" })).toMatchObject({ success: false, field: "adBudgetRupees" });
@@ -119,5 +119,17 @@ describe("SETUP_FIELDS", () => {
       expect(names.length).toBeGreaterThan(0);
       expect(new Set(names).size).toBe(names.length);
     }
+  });
+});
+
+describe("example text", () => {
+  it("suits any business, not one kind", () => {
+    const text = JSON.stringify(SETUP_FIELDS);
+    expect(text).not.toMatch(/clinic/i);
+    const fields = Object.values(SETUP_FIELDS).flat();
+    expect(fields.find((field) => field.name === "instagramUrl")?.placeholder).toBe("instagram.com/yourbusiness");
+    expect(fields.find((field) => field.name === "facebookUrl")?.placeholder).toBe("facebook.com/yourbusiness");
+    expect(fields.find((field) => field.name === "adArea")?.placeholder).toBe("4 km around your business");
+    expect(parseSetupItem("budget", { adBudgetRupees: "5000", adArea: "" })).toMatchObject({ message: expect.stringContaining("4 km around your business") });
   });
 });

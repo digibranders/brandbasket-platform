@@ -49,7 +49,7 @@ export function WelcomeOverview({ firstName, services, payment, call, bookingUrl
           <div className="grid gap-4">
             <BookedLine key={call.startsAtIso ?? "booked"} startsAtIso={call.startsAtIso} endsAtIso={call.endsAtIso} showLiveBy={hasWebsite} bookingUrl={bookingUrl} />
             {services.length === 0 ? null : <ReadyTask services={services} doneSteps={doneSteps} doneSetup={doneSetup} />}
-            <p className="text-[0.8125rem] text-ink-2">Add what you can now; bring the rest to the call. Everything saves as you go.</p>
+            <p className="text-[0.8125rem] text-ink-2">Add what you can now; bring the rest to the call.</p>
           </div>
         ) : (
           <section aria-labelledby="kickoff-title" className={cn(LIFT, "grid gap-4 p-5")}>

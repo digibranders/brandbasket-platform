@@ -6,7 +6,7 @@ import { NextStepCard } from "@/components/panel/next-step-card";
 import { UnpaidHome } from "@/components/panel/unpaid-home";
 import { WelcomeOverview } from "@/components/first-look/welcome-overview";
 import { MonthOverview } from "@/components/overview/month-overview";
-import { inFirstLook } from "@/lib/first-look";
+import { firstLookInput, inFirstLook } from "@/lib/first-look";
 import { loadFirstLook } from "@/lib/server/first-look";
 import { firstName } from "@brandbasket/shared/lib/names";
 import { nextStep } from "@brandbasket/shared/lib/next-step";
@@ -44,14 +44,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
   const callState = await getSetupCallState(tenant);
 
   // The first look (plan 28 section 3): until the kickoff call has happened, Overview is the Welcome overview.
-  const firstLook = inFirstLook({
-    hasAccess: billing.hasAccess,
-    websiteLive: liveWebsite !== null,
-    setupSent: project?.onboardingSubmittedAt != null,
-    callHeld: callState.booking?.heldAtIso != null,
-    callEndsAtIso: callState.booking?.endsAtIso ?? null,
-    nowMs: callState.readAtMs,
-  });
+  const firstLook = inFirstLook(firstLookInput({ hasAccess: billing.hasAccess, liveWebsite, project, callState }));
   if (firstLook) {
     // loadTodo is request-cached: the shell reads it for the rail count.
     const [{ services, payment }, todo] = await Promise.all([loadFirstLook(tenant), loadTodo(tenant)]);

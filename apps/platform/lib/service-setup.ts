@@ -29,8 +29,8 @@ export interface SetupField {
 
 export const SETUP_FIELDS: Readonly<Record<SetupKey, readonly SetupField[]>> = {
   accounts: [
-    { name: "instagramUrl", label: "Instagram page", kind: "text", placeholder: "instagram.com/yourclinic" },
-    { name: "facebookUrl", label: "Facebook page", kind: "text", placeholder: "facebook.com/yourclinic" },
+    { name: "instagramUrl", label: "Instagram page", kind: "text", placeholder: "instagram.com/yourbusiness" },
+    { name: "facebookUrl", label: "Facebook page", kind: "text", placeholder: "facebook.com/yourbusiness" },
     {
       name: "adminAccess",
       label: "Have you added us as an admin?",
@@ -46,7 +46,7 @@ export const SETUP_FIELDS: Readonly<Record<SetupKey, readonly SetupField[]>> = {
   offers: [{ name: "offers", label: "What do you want to promote this month?", kind: "textarea", placeholder: "A free check-up in December" }],
   budget: [
     { name: "adBudgetRupees", label: "Monthly ad budget in rupees", kind: "text", placeholder: "10000", inputMode: "numeric" },
-    { name: "adArea", label: "How far from you should ads reach?", kind: "text", placeholder: "4 km around the clinic" },
+    { name: "adArea", label: "How far from you should ads reach?", kind: "text", placeholder: "4 km around your business" },
   ],
   areas: [
     { name: "areas", label: "Where do you want to be found?", kind: "textarea", placeholder: "Naupada and Thane West" },
@@ -119,7 +119,7 @@ export function parseSetupItem(key: SetupKey, input: Readonly<Record<string, str
         return fail("adBudgetRupees", "Enter the monthly amount in rupees, for example 10000.");
       }
       const area = value("adArea");
-      if (area.length < 2) return fail("adArea", "Say how far from you the ads should reach, for example 4 km around the clinic.");
+      if (area.length < 2) return fail("adArea", "Say how far from you the ads should reach, for example 4 km around your business.");
       if (area.length > AREA_MAX) return fail("adArea", `Keep it to ${AREA_MAX} characters or fewer.`);
       return { success: true, answers: { adBudgetRupees: Number(digits), adArea: area } };
     }
