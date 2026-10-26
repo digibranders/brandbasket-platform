@@ -13,6 +13,7 @@ import {
 import { submitProject } from "./queries/projects";
 import { businesses, businessMembers, payments, plans, projects, users, type PaymentKind, type PaymentStatus } from "./schema";
 import { insertSubscription } from "./queries/billing";
+import { openAccountClosure } from "./queries/account-closures";
 import { phoneAccountEmail } from "./phone-account";
 import { withTenantScope, type ScopedTransaction } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
@@ -309,3 +310,37 @@ describe("findMediaForStaff", () => {
     expect(await findMediaForStaff(dbs.staff.db, mediaId)).toBeNull();
   });
 });
+
+describe("listClients include (contract C3b)", () => {
+  it("lists paying businesses by default and any mix of paying, not paid and leaving when asked", async () => {
+    const [unpaid] = await dbs.staff.db
+      .insert(businesses)
+      .values({ slug: "not-paid-yet", name: "Not Paid Yet", currency: "INR" })
+      .returning({ id: businesses.id });
+    if (unpaid === undefined) throw new Error("Seed business was not inserted");
+    const names = async (include?: readonly ("paying" | "not_paid" | "leaving")[]): Promise<string[]> =>
+      (await listClients(dbs.staff.db, include === undefined ? undefined : { include })).map((client) => client.businessName);
+
+    expect(await names()).toEqual(["Harbour Bakery"]);
+    expect(await listClients(dbs.staff.db, {})).toEqual(await listClients(dbs.staff.db));
+    expect(await names(["not_paid"])).toEqual(["Not Paid Yet"]);
+    expect(await names(["paying", "not_paid"])).toEqual(["Not Paid Yet", "Harbour Bakery"]);
+    expect(await names(["leaving"])).toEqual([]);
+    expect(await names([])).toEqual([]);
+
+    const notPaid = (await listClients(dbs.staff.db, { include: ["not_paid"] }))[0];
+    expect(notPaid?.billing.firstPayment).toBeNull();
+
+    await openAccountClosure(dbs.staff.db, {
+      userId: OWNER,
+      businessId,
+      now: new Date("2026-10-01T09:00:00.000Z"),
+      eraseAfter: new Date("2026-10-31T09:00:00.000Z"),
+    });
+    expect(await names(["leaving"])).toEqual(["Harbour Bakery"]);
+    expect(await names(["not_paid", "leaving"])).toEqual(["Not Paid Yet", "Harbour Bakery"]);
+    // A leaving business that paid is still paying: the default list does not change.
+    expect(await names()).toEqual(["Harbour Bakery"]);
+  });
+});
+

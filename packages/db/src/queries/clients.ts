@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, isNull, notInArray, or, sql } from "drizzl
 import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "../client";
 import {
+  accountClosures,
   businesses,
   businessHours,
   businessMembers,
@@ -250,6 +251,21 @@ async function tiersByBusiness(db: Database, businessIds: readonly string[]): Pr
 
 const NO_BILLING: ClientBilling = { subscription: null, firstPayment: null };
 
+/** Which businesses the staff client list holds (contract C3b). A business is listed when it is in any included group. */
+export type ClientListInclude = "paying" | "not_paid" | "leaving";
+
+/** Today's list: businesses whose first plan payment was captured. */
+const DEFAULT_CLIENT_INCLUDE: readonly ClientListInclude[] = ["paying"];
+
+/** Businesses with an open closure: asked to delete, not restored, not erased yet. */
+async function leavingBusinessIds(db: Database): Promise<ReadonlySet<string>> {
+  const rows = await db
+    .select({ businessId: accountClosures.businessId })
+    .from(accountClosures)
+    .where(and(isNull(accountClosures.restoredAt), isNull(accountClosures.erasedAt)));
+  return new Set(rows.map((row) => row.businessId));
+}
+
 /**
  * Every website client with its owner and current project, newest first. A client is a customer who has paid: a business
  * that has registered but whose first plan payment has not been captured is not one yet, so it does not appear here (and
@@ -257,8 +273,10 @@ const NO_BILLING: ClientBilling = { subscription: null, firstPayment: null };
  * only a captured payment for the plan does (see billingByBusiness). Free listing accounts (kind `listing`) are not
  * clients: the staff console shows them on the Ads page. A business is still opened by its address (findClientDetail), so
  * a link from the Leads screen to one that has not paid yet keeps working.
+ * With options.include it can also list businesses that have not paid ("not_paid", with no first payment) and those leaving ("leaving"); without it, paying businesses only.
  */
-export async function listClients(db: Database): Promise<ClientSummary[]> {
+export async function listClients(db: Database, options?: { readonly include?: readonly ClientListInclude[] }): Promise<ClientSummary[]> {
+  const include = new Set(options?.include ?? DEFAULT_CLIENT_INCLUDE);
   const registered = await db
     .select({
       businessId: businesses.id,
@@ -274,7 +292,11 @@ export async function listClients(db: Database): Promise<ClientSummary[]> {
     db,
     registered.map((row) => row.businessId),
   );
-  const rows = registered.filter((row) => allBilling.get(row.businessId)?.firstPayment != null);
+  const leaving = include.has("leaving") ? await leavingBusinessIds(db) : new Set<string>();
+  const rows = registered.filter((row) => {
+    const paid = allBilling.get(row.businessId)?.firstPayment != null;
+    return include.has(paid ? "paying" : "not_paid") || leaving.has(row.businessId);
+  });
 
   const ids = rows.map((row) => row.businessId);
   const [owners, projectsByBusiness, tiers] = await Promise.all([

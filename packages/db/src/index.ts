@@ -896,6 +896,7 @@ export {
   type ClientDetail,
   type ClientFirstPayment,
   type ClientHours,
+  type ClientListInclude,
   type ClientManualPayment,
   type ClientMedia,
   type ClientOwner,
