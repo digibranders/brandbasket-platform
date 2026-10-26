@@ -27,13 +27,21 @@ export function servicesBought(lines: readonly ServiceLine[]): readonly ServiceK
 }
 
 /**
- * Whether the account is still in its first look (plan 28 section 3): the website has not been sent, and the kickoff
- * call has not happened yet. shortcut: a call counts as held once its end time has passed, so a missed call also ends
- * the first look; plan 30 replaces this with the team marking the call as held. A booked call with no end time (a
- * booking page that did not report one) keeps the first look open until the website is sent.
+ * Whether the account is still in its first look (plan 28 section 3): it has paid and is current, the website is not
+ * live and the setup has not been sent, and the kickoff call has not happened yet. An account that has not paid or
+ * has lapsed never gets the first look. shortcut: a call counts as held once its end time has passed, so a missed call
+ * also ends the first look; plan 30 replaces this with the team marking the call as held. A booked call with no end
+ * time (a booking page that did not report one) keeps the first look open until the website is sent.
  */
-export function inFirstLook(input: { readonly websiteSent: boolean; readonly callEndsAtIso: string | null; readonly nowMs: number }): boolean {
-  if (input.websiteSent) return false;
+export function inFirstLook(input: {
+  readonly hasAccess: boolean;
+  readonly websiteLive: boolean;
+  readonly setupSent: boolean;
+  readonly callEndsAtIso: string | null;
+  readonly nowMs: number;
+}): boolean {
+  if (!input.hasAccess) return false;
+  if (input.websiteLive || input.setupSent) return false;
   return input.callEndsAtIso === null || Date.parse(input.callEndsAtIso) > input.nowMs;
 }
 

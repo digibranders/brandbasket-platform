@@ -46,8 +46,15 @@ export async function AppShell({ userName, userEmail, businessId, children }: Ap
     readListingNav(),
     getSetupCallState(tenant),
   ]);
-  const websiteSent = liveWebsite !== null || overview.project?.onboardingSubmittedAt != null;
-  const quiet = inFirstLook({ websiteSent, callEndsAtIso: callState.booking?.endsAtIso ?? null, nowMs: callState.readAtMs });
+  const setupSent = overview.project?.onboardingSubmittedAt != null;
+  const websiteSent = liveWebsite !== null || setupSent;
+  const quiet = inFirstLook({
+    hasAccess: billing.hasAccess,
+    websiteLive: liveWebsite !== null,
+    setupSent,
+    callEndsAtIso: callState.booking?.endsAtIso ?? null,
+    nowMs: callState.readAtMs,
+  });
   const sections = railSections({
     quiet,
     // An unpaid client still sets up and pays on Check and send: only a paid plan without a website loses the section.

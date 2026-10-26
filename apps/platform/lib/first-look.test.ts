@@ -15,15 +15,25 @@ describe("servicesBought", () => {
 
 describe("inFirstLook", () => {
   const now = Date.parse("2026-10-26T10:00:00.000Z");
+  const base = { hasAccess: true, websiteLive: false, setupSent: false, callEndsAtIso: null, nowMs: now };
 
   it("holds until the kickoff call has ended", () => {
-    expect(inFirstLook({ websiteSent: false, callEndsAtIso: null, nowMs: now })).toBe(true);
-    expect(inFirstLook({ websiteSent: false, callEndsAtIso: "2026-10-27T09:00:00.000Z", nowMs: now })).toBe(true);
-    expect(inFirstLook({ websiteSent: false, callEndsAtIso: "2026-10-26T09:00:00.000Z", nowMs: now })).toBe(false);
+    expect(inFirstLook(base)).toBe(true);
+    expect(inFirstLook({ ...base, callEndsAtIso: "2026-10-27T09:00:00.000Z" })).toBe(true);
+    expect(inFirstLook({ ...base, callEndsAtIso: "2026-10-26T09:00:00.000Z" })).toBe(false);
   });
 
-  it("never applies once the website has been sent or is live", () => {
-    expect(inFirstLook({ websiteSent: true, callEndsAtIso: null, nowMs: now })).toBe(false);
+  it("ends once the website is live", () => {
+    expect(inFirstLook({ ...base, websiteLive: true })).toBe(false);
+  });
+
+  it("ends once the setup has been sent", () => {
+    expect(inFirstLook({ ...base, setupSent: true })).toBe(false);
+  });
+
+  it("never applies to an account that has not paid or has lapsed, even with no call booked", () => {
+    expect(inFirstLook({ ...base, hasAccess: false })).toBe(false);
+    expect(inFirstLook({ ...base, hasAccess: false, callEndsAtIso: "2026-10-27T09:00:00.000Z" })).toBe(false);
   });
 });
 

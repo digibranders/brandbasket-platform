@@ -54,19 +54,32 @@ export default async function AppHomePage(): Promise<ReactElement> {
   const callState = await getSetupCallState(tenant);
 
   // The first look (plan 28 section 3): until the kickoff call has happened, Overview is the Welcome overview.
-  const websiteSent = liveWebsite !== null || project?.onboardingSubmittedAt != null;
-  if (inFirstLook({ websiteSent, callEndsAtIso: callState.booking?.endsAtIso ?? null, nowMs: callState.readAtMs })) {
+  const firstLook = inFirstLook({
+    hasAccess: billing.hasAccess,
+    websiteLive: liveWebsite !== null,
+    setupSent: project?.onboardingSubmittedAt != null,
+    callEndsAtIso: callState.booking?.endsAtIso ?? null,
+    nowMs: callState.readAtMs,
+  });
+  if (firstLook) {
     const { services, payment } = await loadFirstLook(tenant);
     return (
-      <WelcomeOverview
-        firstName={firstName(user.name)}
-        services={services}
-        payment={payment}
-        call={callState.booking === null ? null : { startsAtIso: callState.booking.startsAtIso, endsAtIso: callState.booking.endsAtIso }}
-        bookingUrl={callState.url}
-        doneSteps={completed}
-        canBook={!isPhoneAccountEmail(user.email)}
-      />
+      <>
+        {banner === null ? null : (
+          <div className="mx-auto mb-5 w-full max-w-[68rem]">
+            <BillingBanner banner={banner} />
+          </div>
+        )}
+        <WelcomeOverview
+          firstName={firstName(user.name)}
+          services={services}
+          payment={payment}
+          call={callState.booking === null ? null : { startsAtIso: callState.booking.startsAtIso, endsAtIso: callState.booking.endsAtIso }}
+          bookingUrl={callState.url}
+          doneSteps={completed}
+          canBook={!isPhoneAccountEmail(user.email)}
+        />
+      </>
     );
   }
   const setupCall = settingUp ? callState : null;
