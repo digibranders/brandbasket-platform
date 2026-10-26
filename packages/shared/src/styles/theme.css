@@ -83,7 +83,7 @@
   }
 
   /* Customer dashboard v2: the website's palette (brandbasket-website app/globals.css). New names only; the
-     [data-app="customer"] block at the end of this file points the older names at the same values. */
+     v2 block at the end of this file (data-app "customer" or "console") points the older names at the same values. */
   --color-bg: #f6f5f2;
   --color-surface: #ffffff;
   --color-sunken: #eeece7;
@@ -397,10 +397,10 @@ html[data-brand="brandbasket"] :where(.heading-display, .panel-title) em {
   color: #8b6a2e;
 }
 
-/* The customer dashboard (app-host/layout.tsx sets data-app="customer"): the website's palette and Red Hat type, on
-   every page at once, including the ones not redesigned yet. The console keeps the block above. This selector is more
-   specific than that one, so the order of the two does not matter. */
-html[data-brand="brandbasket"][data-app="customer"] {
+/* The customer dashboard (app-host/layout.tsx sets data-app="customer") and the staff console (data-app="console"): the
+   website's palette and Red Hat type, on every page at once, including the ones not redesigned yet. This selector is
+   more specific than the block above, so the order of the two does not matter. */
+html[data-brand="brandbasket"]:is([data-app="customer"], [data-app="console"]) {
   --color-paper: #f6f5f2;
   --color-paper-deep: #eeece7;
   --color-card: #ffffff;
@@ -423,7 +423,7 @@ html[data-brand="brandbasket"][data-app="customer"] {
   --font-outfit: var(--font-red-hat-display);
 }
 
-html[data-brand="brandbasket"][data-app="customer"] :where(.heading-display, .panel-title) em {
+html[data-brand="brandbasket"]:is([data-app="customer"], [data-app="console"]) :where(.heading-display, .panel-title) em {
   color: #a46c2f;
 }
 

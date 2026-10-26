@@ -61,8 +61,8 @@ interface DashboardRootProps {
    * that brand's own font variable. Omitted: the document is exactly Brandbasket's.
    */
   readonly brand?: { readonly id: string; readonly className: string };
-  /** Which app this document is, for styles only one app takes (theme.css `[data-app="customer"]`). The console leaves it off. */
-  readonly app?: "customer";
+  /** Which app this document is (theme.css `[data-app]`): the customer dashboard or the staff console. */
+  readonly app?: "customer" | "console";
 }
 
 /** The `<html>`/`<body>` shell every dashboard root layout renders. */
