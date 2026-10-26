@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { setupCallBookings, type SetupCallBooking } from "../schema";
@@ -60,4 +60,30 @@ export async function moveSetupCallBooking(
 export async function removeSetupCallBooking(db: Runner, inviteeUri: string): Promise<boolean> {
   const removed = await db.delete(setupCallBookings).where(eq(setupCallBookings.inviteeUri, inviteeUri)).returning({ id: setupCallBookings.id });
   return removed.length > 0;
+}
+
+/**
+ * Staff mark the kickoff call as held. A business that never booked through the dashboard (the call happened by phone)
+ * gets a row with no times, so the mark still has somewhere to live. Staff connection. True when the row now says held.
+ */
+export async function markSetupCallHeld(db: Runner, input: { readonly businessId: string; readonly staffId: string; readonly now: Date }): Promise<boolean> {
+  const rows = await db
+    .insert(setupCallBookings)
+    .values({ businessId: input.businessId, bookedAt: input.now, heldAt: input.now, heldByStaffId: input.staffId })
+    .onConflictDoUpdate({
+      target: setupCallBookings.businessId,
+      set: { heldAt: input.now, heldByStaffId: input.staffId, updatedAt: input.now },
+    })
+    .returning({ id: setupCallBookings.id });
+  return rows.length > 0;
+}
+
+/** Undoes the mark. True when a call was held and no longer is. Staff connection. */
+export async function clearSetupCallHeld(db: Runner, businessId: string, now: Date): Promise<boolean> {
+  const rows = await db
+    .update(setupCallBookings)
+    .set({ heldAt: null, heldByStaffId: null, updatedAt: now })
+    .where(and(eq(setupCallBookings.businessId, businessId), isNotNull(setupCallBookings.heldAt)))
+    .returning({ id: setupCallBookings.id });
+  return rows.length > 0;
 }

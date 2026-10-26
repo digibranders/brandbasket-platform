@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { chatbotLeads, chatbots, chatbotWebhookSecrets, type Chatbot, type ChatbotLead, type ChatbotStatus } from "../schema";
@@ -154,6 +154,16 @@ export async function listChatbotLeadsForBusiness(db: Runner, businessId: string
 export async function countChatbotLeadsForBusiness(db: Runner, businessId: string): Promise<number> {
   if (!isUuid(businessId)) return 0;
   const rows = await db.select({ total: sql<number>`count(*)::int` }).from(chatbotLeads).where(eq(chatbotLeads.businessId, businessId));
+  return rows[0]?.total ?? 0;
+}
+
+/** Leads the business's chatbots captured on or after `since`. Read through row-level security as the customer. */
+export async function countChatbotLeadsSince(db: Runner, businessId: string, since: Date): Promise<number> {
+  if (!isUuid(businessId)) return 0;
+  const rows = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(chatbotLeads)
+    .where(and(eq(chatbotLeads.businessId, businessId), gte(chatbotLeads.capturedAt, since)));
   return rows[0]?.total ?? 0;
 }
 
