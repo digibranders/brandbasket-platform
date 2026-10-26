@@ -60,6 +60,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
     hasAccess: billing.hasAccess,
     websiteLive: liveWebsite !== null,
     setupSent: project?.onboardingSubmittedAt != null,
+    callHeld: callState.booking?.heldAtIso != null,
     callEndsAtIso: callState.booking?.endsAtIso ?? null,
     nowMs: callState.readAtMs,
   });

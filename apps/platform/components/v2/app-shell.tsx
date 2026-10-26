@@ -11,8 +11,10 @@ import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getClientListingState } from "@/lib/server/listing";
 import { getLiveWebsite, getProjectOverview } from "@/lib/server/onboarding";
 import { requestBrand } from "@/lib/server/request-brand";
+import { quietly } from "@/lib/server/quietly";
 import { getSetupCallState } from "@/lib/server/setup-call";
 import { signOut } from "@/lib/server/sign-out";
+import { loadTodo } from "@/lib/server/todo";
 import { PhoneBars } from "./phone-bars";
 import { Rail, type AccountMenu } from "./rail";
 
@@ -38,13 +40,15 @@ async function readListingNav(): Promise<ClientListingState> {
 /** The customer dashboard v2: the rail (or the phone bars) around the page. */
 export async function AppShell({ userName, userEmail, businessId, children }: AppShellProps): Promise<ReactElement> {
   const { tenant, billing } = await requireCustomerAccess();
-  const [brand, panel, overview, liveWebsite, listing, callState] = await Promise.all([
+  const [brand, panel, overview, liveWebsite, listing, callState, todoCount] = await Promise.all([
     requestBrand(),
     getAccountPanel(),
     getProjectOverview(),
     getLiveWebsite(),
     readListingNav(),
     getSetupCallState(tenant),
+    // The count is a convenience: a failed read shows no number rather than taking the shell down.
+    quietly("app-shell", "the To do count", 0, async () => (await loadTodo(tenant)).open),
   ]);
   const setupSent = overview.project?.onboardingSubmittedAt != null;
   const websiteSent = liveWebsite !== null || setupSent;
@@ -52,6 +56,7 @@ export async function AppShell({ userName, userEmail, businessId, children }: Ap
     hasAccess: billing.hasAccess,
     websiteLive: liveWebsite !== null,
     setupSent,
+    callHeld: callState.booking?.heldAtIso != null,
     callEndsAtIso: callState.booking?.endsAtIso ?? null,
     nowMs: callState.readAtMs,
   });
@@ -61,6 +66,7 @@ export async function AppShell({ userName, userEmail, businessId, children }: Ap
     hasWebsite: !billing.hasAccess || billing.hasWebsite,
     websiteSetupDone: websiteSent,
     listingClaim: listing.claim,
+    todoCount,
   });
   const logo = logoOf(brand);
   const menu: AccountMenu = {
