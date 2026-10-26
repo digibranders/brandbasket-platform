@@ -20,18 +20,23 @@ export interface FirstLookData {
   readonly payment: FirstPaymentView | null;
 }
 
+/** The services the plan pays for now. A failed read shows none, so a page still draws. */
+export async function loadServicesBought(tenant: TenantContext): Promise<readonly ServiceKey[]> {
+  return withTenantScope(getAppDb(), tenant, (tx) => findLiveBundledAddOns(tx, tenant.businessId))
+    .then(servicesBought)
+    .catch((error: unknown) => {
+      console.error("[first-look] could not read the services", errorLogInfo(error));
+      return [] as readonly ServiceKey[];
+    });
+}
+
 /**
  * The services bought and the first payment, read as the customer. Neither may break the page: a failed payment read
  * only hides the paid line, and a failed services read shows the call without the per-service lists.
  */
 export async function loadFirstLook(tenant: TenantContext): Promise<FirstLookData> {
   const db = getAppDb();
-  const services = await withTenantScope(db, tenant, (tx) => findLiveBundledAddOns(tx, tenant.businessId))
-    .then(servicesBought)
-    .catch((error: unknown) => {
-      console.error("[first-look] could not read the services", errorLogInfo(error));
-      return [] as readonly ServiceKey[];
-    });
+  const services = await loadServicesBought(tenant);
   const payment = await withTenantScope(db, tenant, (tx) => findFirstPayment(tx, tenant.businessId))
     .then((row): FirstPaymentView | null =>
       row === null || row.paidAt === null
