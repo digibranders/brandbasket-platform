@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { DashboardRoot } from "@brandbasket/shared/ui/panel/dashboard-root";
 import { PanelNotFound } from "@brandbasket/shared/ui/panel/panel-not-found";
 import { logoOf } from "@/lib/brand";
-import { figtree } from "@/lib/brandbasket-font";
+import { brandbasketFontVariables } from "@/lib/brandbasket-font";
 import { requestBrand } from "@/lib/server/request-brand";
 
 /**
@@ -31,7 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function GlobalNotFound(): Promise<ReactElement> {
   const brand = await requestBrand();
   return (
-    <DashboardRoot brand={{ id: "brandbasket", className: figtree.variable }}>
+    <DashboardRoot brand={{ id: "brandbasket", className: brandbasketFontVariables }} app="customer">
       <PanelNotFound brand={logoOf(brand)} />
     </DashboardRoot>
   );

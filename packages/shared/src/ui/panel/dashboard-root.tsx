@@ -61,13 +61,15 @@ interface DashboardRootProps {
    * that brand's own font variable. Omitted: the document is exactly Brandbasket's.
    */
   readonly brand?: { readonly id: string; readonly className: string };
+  /** Which app this document is, for styles only one app takes (theme.css `[data-app="customer"]`). The console leaves it off. */
+  readonly app?: "customer";
 }
 
 /** The `<html>`/`<body>` shell every dashboard root layout renders. */
-export function DashboardRoot({ children, brand }: DashboardRootProps): ReactElement {
+export function DashboardRoot({ children, brand, app }: DashboardRootProps): ReactElement {
   const fonts = `${newsreader.variable} ${hankenGrotesk.variable} ${inter.variable} ${outfit.variable}`;
   return (
-    <html lang="en" className={brand === undefined ? fonts : `${fonts} ${brand.className}`} data-brand={brand?.id}>
+    <html lang="en" className={brand === undefined ? fonts : `${fonts} ${brand.className}`} data-brand={brand?.id} data-app={app}>
       <body className="flex min-h-dvh flex-col">{children}</body>
     </html>
   );
