@@ -27,6 +27,9 @@ export const STAFF_ACCESS_ACTIONS = [
   "privacy_request.log",
   "privacy_request.update",
   "privacy_request.close",
+  "client.people_view",
+  "client.closure_restore",
+  "client.closure_extend",
 ] as const;
 export type StaffAccessAction = (typeof STAFF_ACCESS_ACTIONS)[number];
 

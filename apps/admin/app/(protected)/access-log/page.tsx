@@ -35,6 +35,9 @@ const ACTION_LABELS: Readonly<Record<StaffAccessAction, string>> = {
   "privacy_request.log": "Logged a privacy request",
   "privacy_request.update": "Updated a privacy request",
   "privacy_request.close": "Closed a privacy request",
+  "client.people_view": "Opened client people tab",
+  "client.closure_restore": "Restored leaving account",
+  "client.closure_extend": "Extended leaving account closure",
 };
 
 function labelFor(action: string): string {
