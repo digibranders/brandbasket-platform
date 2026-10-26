@@ -8,6 +8,7 @@ import { MAX_TEAMS_URL_LENGTH, TEAMS_DESTINATION_FIELD, TEAMS_DESTINATION_INFO, 
 import { buttonDanger, buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
+import { SecretInput } from "@/components/console/secret-input";
 import { PageHeader } from "@/components/console/page-header";
 import { Quiet, Section } from "@/components/console/section";
 import { readSettingsNotice, SETTINGS_NOTICES } from "@/lib/settings-notices";
@@ -101,15 +102,13 @@ export default async function SettingsPage({
                     </label>
                     <p className={hintClasses}>{info.posts}</p>
                   </div>
-                  <input
+                  <SecretInput
                     id={inputId}
                     name={TEAMS_URL_FIELD}
-                    type="password"
                     maxLength={MAX_TEAMS_URL_LENGTH}
                     placeholder={state.state === "unset" ? "Paste the webhook address" : "Paste a new address to replace the saved one"}
                     autoComplete="off"
                     spellCheck={false}
-                    className={fieldClasses}
                   />
                   <p className="text-sm text-ink-soft">
                     {state.state === "unset" ? "Not set." : state.state === "set" ? "An address is saved." : "An address is saved but can no longer be read. Paste it again."}
