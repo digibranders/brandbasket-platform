@@ -88,7 +88,7 @@ async function sourceFor(tx: ScopedTransaction, payment: Payment): Promise<Invoi
   const basis = parsed.data;
   const net = basis.netAmountCents + basis.lines.reduce((total, line) => total + line.listAmountCents - line.offerDiscountAmountCents, 0);
   // A discount that leaves nothing never matches (chargedAmountCents would refuse it).
-  if (basis.discountAmountCents >= net || chargedAmountCents(net, basis.discountAmountCents, plan.taxRateBasisPoints) !== payment.amountCents) {
+  if (basis.discountAmountCents >= net || chargedAmountCents(net, basis.discountAmountCents) !== payment.amountCents) {
     throw new InvoiceSourceMismatchError(payment.kind);
   }
   const initial = payment.kind === "initial";

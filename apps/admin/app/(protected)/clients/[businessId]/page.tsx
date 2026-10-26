@@ -315,7 +315,7 @@ function BillingFacts({
 interface ManualPaymentFormProps {
   readonly businessId: string;
   readonly plan: Plan;
-  /** What the payment buys a month before GST: the website for a first payment, the basket they lapsed with, less any code a lapse keeps, for a reactivation. */
+  /** What the payment buys a month, GST included: the website for a first payment, the basket they lapsed with, less any code a lapse keeps, for a reactivation. */
   readonly netCents: number;
   /** The client paid before and lapsed: this payment reactivates their plan rather than being their first. */
   readonly reactivating: boolean;

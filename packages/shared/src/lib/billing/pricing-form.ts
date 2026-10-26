@@ -11,7 +11,7 @@ export const PRICING_EXTRA_BLOG_POSTS_FIELD = "extraBlogPosts";
 export const MAX_FORM_PRICE_CENTS = 10_000_000;
 
 /**
- * One currency's extra prices as staff set them: net of tax, in minor units. The extras are the same on every plan row in
+ * One currency's extra prices as staff set them: GST included, in minor units. The extras are the same on every plan row in
  * the currency and are set on all of them. There is no monthly price here: the services are priced in code
  * (packages/shared/src/lib/billing/add-ons.ts and packages.ts), and the plan row holds the subscription's terms at 0.
  */
@@ -40,7 +40,7 @@ function price(formData: FormData, field: string): number | null {
 
 /**
  * Reads the staff console's extras form for one currency. Every price is required and must be above zero; amounts
- * are typed as people write them ("2,999" or "69.50") and are before GST, which is added on top for India.
+ * are typed as people write them ("2,999" or "69.50") and include the GST for India.
  */
 export function parsePricingForm(formData: FormData): PricingForm {
   const currency = formData.get(PRICING_CURRENCY_FIELD);

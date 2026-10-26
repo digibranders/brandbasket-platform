@@ -1,4 +1,4 @@
-import { splitGst } from "@brandbasket/billing/gst";
+import { gstInsideCents } from "@brandbasket/billing/tax";
 import { isUnappliedReason, type PaymentInvoiceBasis, type Receipt } from "@brandbasket/db";
 import { addOnById, isMonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { packageBasisPointsFor, packageOfferNote } from "@brandbasket/shared/lib/billing/packages";
@@ -7,7 +7,6 @@ import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { businessDetails, siteConfig } from "@brandbasket/shared/lib/site-config";
 import { BRAND, type Brand } from "@/lib/brand";
 
-const BASIS_POINTS = 10_000;
 const MINOR_UNITS_PER_MAJOR = 100;
 
 /** One priced line on a receipt. */
@@ -45,24 +44,6 @@ export function isDownloadableReceipt(receipt: Pick<Receipt, "status">): boolean
   return receipt.status !== "failed";
 }
 
-/**
- * Takes the tax back out of what was charged: the net price is the gross divided by (1 + rate), rounded half up the
- * way chargedAmountCents rounds the tax it adds, and the tax is whatever is left, so the two always add up to the
- * amount actually taken. For ₹3,538.82 at 18% that is ₹2,999 plus ₹539.82.
- */
-export function splitTax(grossCents: number, taxRateBasisPoints: number): { netCents: number; taxCents: number } {
-  if (!Number.isSafeInteger(grossCents) || grossCents < 0) {
-    throw new RangeError(`An amount charged must be a whole, non-negative number of minor units, received ${grossCents}`);
-  }
-  if (!Number.isSafeInteger(taxRateBasisPoints) || taxRateBasisPoints < 0) {
-    throw new RangeError(`A tax rate must be a whole, non-negative number of basis points, received ${taxRateBasisPoints}`);
-  }
-  if (taxRateBasisPoints === 0) return { netCents: grossCents, taxCents: 0 };
-  const divisor = BASIS_POINTS + taxRateBasisPoints;
-  const netCents = Math.floor((grossCents * BASIS_POINTS * 2 + divisor) / (divisor * 2));
-  return { netCents, taxCents: grossCents - netCents };
-}
-
 const LOCALES: Readonly<Record<MoneyCurrency, string>> = { USD: "en-US", INR: "en-IN" };
 
 /**
@@ -91,15 +72,15 @@ function receiptStatus(receipt: Receipt): string {
   return "Paid";
 }
 
+/** The row that says how much of the total is GST: the prices include it, so it explains the total and is not added to it. */
 function taxRateLabel(taxRateBasisPoints: number): string {
-  return `GST ${taxRateBasisPoints / MINOR_UNITS_PER_MAJOR}%`;
+  return `Includes GST ${taxRateBasisPoints / MINOR_UNITS_PER_MAJOR}%`;
 }
 
 /**
  * The rows of a payment billed as services (PaymentInvoiceBasis), worked out the way the tax invoice is: each service at its
- * list price, the package offer and any code as minus rows, then the GST, and the rows add up to what was taken to the paisa.
- * The GST is what is left of the amount taken after the discounted services, and must agree with the invoice's own rounding
- * (one rounding on the total, splitGst) to within the paisa that round-off absorbs. The code's name comes from the basis, which
+ * price (GST included), the package offer and any code as minus rows, which add up to what was taken to the paisa, then the
+ * GST inside that, worked out from the amount taken as the invoice does (gstInsideCents). The code's name comes from the basis, which
  * the payment path wrote with it (a customer's connection cannot read referral codes); a payment from before it was kept reads
  * "Code discount". Null when the basis does not describe the
  * payment, which then prints as a single line.
@@ -115,12 +96,11 @@ function serviceLines(receipt: Receipt, basis: PaymentInvoiceBasis): ReceiptLine
   const listCents = basis.lines.reduce((sum, line) => sum + line.listAmountCents, 0);
   const offerCents = basis.lines.reduce((sum, line) => sum + line.offerDiscountAmountCents, 0);
   const codeCents = basis.discountAmountCents - basis.retentionDiscountCents;
-  const taxableCents = listCents - offerCents - basis.discountAmountCents;
-  const taxCents = receipt.amountCents - taxableCents;
+  const paidCents = listCents - offerCents - basis.discountAmountCents;
+  const taxCents = gstInsideCents(receipt.amountCents, rate);
   const packageBasisPoints = packageBasisPointsFor({ services: services.map((service) => service.id), forfeited: false });
-  if (codeCents < 0 || basis.retentionDiscountCents < 0 || taxableCents <= 0 || taxCents < 0) return null;
+  if (codeCents < 0 || basis.retentionDiscountCents < 0 || paidCents <= 0 || paidCents !== receipt.amountCents) return null;
   if (offerCents > 0 && packageBasisPoints === 0) return null;
-  if (Math.abs(taxCents - splitGst(taxableCents, rate, "inter_state").taxCents) > 1) return null;
 
   const money = (cents: number): string => receiptMoney(cents, receipt.currency);
   const minus = (label: string, cents: number): ReceiptLine[] => (cents > 0 ? [{ label, amount: `-${money(cents)}` }] : []);
@@ -144,14 +124,14 @@ export function receiptDocument(receipt: Receipt, customer: ReceiptCustomer, bra
   const label =
     receipt.kind === "charge" || receipt.planName === null ? description : `${planLabel(receipt.planName)} · ${description}`;
   const taxRate = receipt.taxRateBasisPoints ?? 0;
-  const { netCents, taxCents } = splitTax(receipt.amountCents, taxRate);
+  const taxCents = gstInsideCents(receipt.amountCents, taxRate);
   const total = receiptMoney(receipt.amountCents, receipt.currency);
 
   const single: ReceiptLine[] =
     taxCents === 0
       ? [{ label, amount: total }]
       : [
-          { label, amount: receiptMoney(netCents, receipt.currency) },
+          { label, amount: total },
           { label: taxRateLabel(taxRate), amount: receiptMoney(taxCents, receipt.currency) },
         ];
   const lines = (receipt.invoiceBasis === null ? null : serviceLines(receipt, receipt.invoiceBasis)) ?? single;

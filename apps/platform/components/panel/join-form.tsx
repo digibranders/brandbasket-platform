@@ -84,7 +84,7 @@ interface JoinFormProps {
   readonly choices: readonly JoinChoice[];
   /** Where the Terms and the Privacy Notice are, for the brand this is sold under (lib/legal-links.ts legalLinksFor). */
   readonly legalLinks: LegalLinks;
-  /** Each paid plan's price as the page says it ("₹2,999 a month + 18% GST", "$75 a month"); null when no plan of that tier is on sale in that currency. */
+  /** Each paid plan's price as the page says it ("₹2,999 a month, GST included", "$65 a month"); null when no plan of that tier is on sale in that currency. */
   readonly prices: PlanPricesByCurrency;
   /**
    * False while the local bypass is on (EMAIL_CODE_BYPASS; lib/server/env.ts): the details step then promises no real

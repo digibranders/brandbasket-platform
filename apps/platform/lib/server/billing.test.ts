@@ -268,8 +268,8 @@ describe("findReactivationNetCents", () => {
 
   it("is the net of the basket the checkout will reopen, at the offer it earns", async () => {
     vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(lines("managed-website", "digital-growth", "local-seo-aeo"));
-    await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }))).resolves.toBe(2_659_700);
-    await expect(findReactivationNetCents(lapsedWith({ currency: "USD" }))).resolves.toBe(35_000);
+    await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }))).resolves.toBe(3_039_800);
+    await expect(findReactivationNetCents(lapsedWith({ currency: "USD" }))).resolves.toBe(45_200);
   });
 
   it("is list for a business that gave the offer up", async () => {
@@ -310,7 +310,7 @@ describe("findReactivationNetCents", () => {
     await expect(findReactivation(lapsedWith({ currency: "INR" }), ["managed-website"])).resolves.toEqual({
       cancelled: false,
       services: ["managed-website", "digital-growth", "local-seo-aeo"],
-      netCents: 2_659_700,
+      netCents: 3_039_800,
       discountCents: 0,
     });
   });
@@ -323,8 +323,8 @@ describe("findReactivationNetCents", () => {
       vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "cancelled", activatedAt: new Date(), cancelRequestedAt: null, adCreditCents: 0, referralCodeId: code.id, discountMonthsLeft: 2, ...overrides } as Subscription);
 
     lapse({});
-    // 10% of the 26,597 the package nets.
-    await expect(findReactivation(lapsedWith({ currency: "INR" }))).resolves.toMatchObject({ netCents: 2_659_700, discountCents: 265_970 });
+    // 10% of the 30,398 the package nets.
+    await expect(findReactivation(lapsedWith({ currency: "INR" }))).resolves.toMatchObject({ netCents: 3_039_800, discountCents: 303_980 });
 
     lapse({ discountMonthsLeft: 0 });
     await expect(findReactivation(lapsedWith({ currency: "INR" }))).resolves.toMatchObject({ discountCents: 0 });

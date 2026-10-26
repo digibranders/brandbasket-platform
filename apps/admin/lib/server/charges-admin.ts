@@ -54,7 +54,7 @@ export async function addClientCharge(
     quantity: request.quantity,
     unitAmountCents,
     taxRateBasisPoints: plan.taxRateBasisPoints,
-    amountCents: chargeAmountCents(unitAmountCents, request.quantity, plan.taxRateBasisPoints),
+    amountCents: chargeAmountCents(unitAmountCents, request.quantity),
     currency: plan.currency,
     createdByStaffId: input.staffUserId,
   });

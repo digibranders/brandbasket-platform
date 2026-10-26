@@ -7,7 +7,7 @@ const CACHE_CONTROL = "public, max-age=60, s-maxage=300, stale-while-revalidate=
  * `GET /api/pricing`: what is on sale, for the marketing website (docs/plans/16-platform-pricing-offers.md in the
  * BrandBasket workspace). Public: it is published on the website anyway, and it carries nothing about any customer.
  *
- * `services` is the catalogue with each list price, net of GST in paise for rupees and in cents for dollars; `packages` is
+ * `services` is the catalogue with each list price, GST included, in paise for rupees and in cents for dollars; `packages` is
  * the offers (the services, the percentage off each in basis points, the ad credit a month). Both come from the shared
  * catalogue, so a change there is the only change.
  */

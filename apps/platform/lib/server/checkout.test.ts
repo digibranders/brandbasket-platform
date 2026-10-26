@@ -1,4 +1,4 @@
-import { chargedAmountCents, createFakeBillingProvider, type BillingProvider } from "@brandbasket/billing";
+import { createFakeBillingProvider, type BillingProvider } from "@brandbasket/billing";
 import {
   consumeRateLimit,
   findActivePlan,
@@ -85,7 +85,7 @@ const appTx = { name: "app-tx" } as unknown as ScopedTransaction;
 const PLAN = { id: "plan-usd", currency: "USD", initialAmountCents: 0, recurringAmountCents: 0, initialTermMonths: 1, taxRateBasisPoints: 0 } as Plan;
 
 /** Every checkout bills the website as a line: here in dollars, at its list price with no tax of ours. */
-const WEBSITE_USD_LINE = { addOn: "managed-website", listAmountCents: 7_500, offerDiscountAmountCents: 0, netAmountCents: 7_500, taxRateBasisPoints: 0 };
+const WEBSITE_USD_LINE = { addOn: "managed-website", listAmountCents: 6_500, offerDiscountAmountCents: 0, netAmountCents: 6_500, taxRateBasisPoints: 0 };
 /** The website line an earlier checkout left waiting for its payment, so the same basket can be reused. */
 const PENDING_WEBSITE = { addOn: "managed-website", status: "pending" } as BundledAddOn;
 
@@ -129,7 +129,7 @@ function subscription(overrides: Partial<Subscription>): Subscription {
     paidThroughAt: null,
     referralCodeId: null,
     discountAmountCents: 0,
-    bundledAddOnNetCents: 7_500,
+    bundledAddOnNetCents: 6_500,
     adCreditCents: 0,
     cancelRequestedAt: null,
     createdAt: new Date(NOW.getTime() - HOUR_MS),
@@ -346,7 +346,7 @@ describe("startCheckoutFor", () => {
     // What the reopened checkout asks for is the subscription's own frozen discount, not the full price.
     expect(confirmed).toMatchObject({
       providerSubscriptionId: recent.providerSubscriptionId,
-      amountCents: chargedAmountCents(7_500, 1_000, PLAN.taxRateBasisPoints),
+      amountCents: 5_500,
     });
     expect(openCheckoutSubscription).not.toHaveBeenCalled();
   });
@@ -478,7 +478,7 @@ describe("startMembershipCheckoutFor", () => {
   const INR_PLAN = { id: "plan-inr", currency: "INR", initialAmountCents: 0, recurringAmountCents: 0, initialTermMonths: 1, taxRateBasisPoints: 1800 } as Plan;
   const WEBSITE_ALONE = ["managed-website"] as const;
   const ALL_THREE = ["managed-website", "digital-growth", "local-seo-aeo"] as const;
-  /** A rupee line as the checkout freezes it: list, package discount and net, with 18% GST. */
+  /** A rupee line as the checkout freezes it: list, package discount and the price paid, with the 18% GST inside it. */
   const inrLine = (addOn: string, listAmountCents: number, offerDiscountAmountCents: number) => ({
     addOn,
     listAmountCents,
@@ -547,7 +547,7 @@ describe("startMembershipCheckoutFor", () => {
 
     redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE));
 
-    // The website line in rupees, ₹2,999 a month before GST, is billed with the plan.
+    // The website line in rupees, ₹2,999 a month with the GST inside it, is billed with the plan.
     expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 50_000, 299_900);
     expect(started).toHaveBeenCalledWith(expect.objectContaining({ providerPlanId: "plan_discounted", discountAmountCents: 50_000 }));
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
@@ -584,29 +584,29 @@ describe("startMembershipCheckoutFor", () => {
   it("charges all three services at the package price on one plan for their total, and freezes the ad credit", async () => {
     const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ALL_THREE));
 
-    expect(charged).toBe(3_138_446);
-    // The provider runs one plan for the lines' total, ₹26,597 a month before GST.
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 0, 2_659_700);
+    expect(charged).toBe(3_039_800);
+    // The provider runs one plan for the lines' total, ₹30,398 a month with the GST inside it.
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 0, 3_039_800);
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
       expect.objectContaining({
-        bundledAddOns: [inrLine("managed-website", 299_900, 89_970), inrLine("digital-growth", 999_900, 299_970), inrLine("local-seo-aeo", 2_499_900, 750_060)],
-        adCreditCents: 500_000,
+        bundledAddOns: [inrLine("managed-website", 299_900, 59_980), inrLine("digital-growth", 999_900, 199_980), inrLine("local-seo-aeo", 2_499_900, 499_940)],
+        adCreditCents: 300_000,
       }),
     );
   });
 
-  it("charges Website + SEO at 20% off, which earns no ad credit", async () => {
+  it("charges Website + SEO at 10% off, which earns no ad credit", async () => {
     const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "local-seo-aeo"]));
 
-    expect(charged).toBe(2_642_964);
+    expect(charged).toBe(2_519_900);
     expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ adCreditCents: 0 }));
   });
 
-  it("charges one service its list price plus GST, with no package and no website", async () => {
+  it("charges one service its list price, GST included, with no package and no website", async () => {
     const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ["local-seo-aeo"]));
 
-    expect(charged).toBe(2_949_882);
+    expect(charged).toBe(2_499_900);
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
       expect.objectContaining({ bundledAddOns: [inrLine("local-seo-aeo", 2_499_900, 0)], adCreditCents: 0 }),
@@ -616,7 +616,7 @@ describe("startMembershipCheckoutFor", () => {
   it("prices a package at list, with no ad credit, once the business has given the offer up", async () => {
     vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
 
-    expect(await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "digital-growth"]))).toBe(1_533_764);
+    expect(await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "digital-growth"]))).toBe(1_299_800);
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
       expect.objectContaining({ bundledAddOns: [inrLine("managed-website", 299_900, 0), inrLine("digital-growth", 999_900, 0)], adCreditCents: 0 }),
@@ -640,7 +640,7 @@ describe("startMembershipCheckoutFor", () => {
 
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
-      expect.objectContaining({ bundledAddOns: [inrLine("managed-website", 299_900, 59_980), inrLine("local-seo-aeo", 2_499_900, 500_020)] }),
+      expect.objectContaining({ bundledAddOns: [inrLine("managed-website", 299_900, 29_990), inrLine("local-seo-aeo", 2_499_900, 249_910)] }),
     );
   });
 
@@ -651,8 +651,8 @@ describe("startMembershipCheckoutFor", () => {
 
     const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "managed-website"]));
 
-    // The website at list less the ₹500 code, plus 18% GST: no package offer, no refusal.
-    expect(charged).toBe(294_882);
+    // The website at list less the ₹500 code, GST still inside: no package offer, no refusal.
+    expect(charged).toBe(249_900);
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
       expect.objectContaining({ bundledAddOns: [inrLine("managed-website", 299_900, 0)], referralCodeId: code.id, discountAmountCents: 50_000 }),
@@ -660,13 +660,13 @@ describe("startMembershipCheckoutFor", () => {
   });
 
   it("replaces an abandoned package checkout when the owner comes back for the website alone, with no ad credit", async () => {
-    const abandoned = subscription({ planId: "plan-inr", bundledAddOnNetCents: 2_659_700, adCreditCents: 500_000 });
+    const abandoned = subscription({ planId: "plan-inr", bundledAddOnNetCents: 3_039_800, adCreditCents: 300_000 });
     newest(abandoned, { currency: "INR", plan: INR_PLAN });
     vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(ALL_THREE.map((addOn) => ({ addOn, status: "pending" }) as BundledAddOn));
 
     const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE));
 
-    expect(charged).toBe(353_882);
+    expect(charged).toBe(299_900);
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
       expect.objectContaining({ replacing: "sub-old", bundledAddOns: [inrLine("managed-website", 299_900, 0)], adCreditCents: 0 }),
@@ -676,8 +676,8 @@ describe("startMembershipCheckoutFor", () => {
 
   it("sends an owner back to the abandoned package checkout when they ask for the same basket again", async () => {
     const real = createFakeBillingProvider({ secret: SECRET, now: () => NOW });
-    const opened = await real.startCheckout({ businessId: BUSINESS_ID, businessName: "Smile Dental", email: owner.user.email, plan: INR_PLAN, discountAmountCents: 0, bundledAddOnNetCents: 2_659_700 });
-    newest(subscription({ planId: "plan-inr", providerSubscriptionId: opened.providerSubscriptionId, bundledAddOnNetCents: 2_659_700, adCreditCents: 500_000 }), {
+    const opened = await real.startCheckout({ businessId: BUSINESS_ID, businessName: "Smile Dental", email: owner.user.email, plan: INR_PLAN, discountAmountCents: 0, bundledAddOnNetCents: 3_039_800 });
+    newest(subscription({ planId: "plan-inr", providerSubscriptionId: opened.providerSubscriptionId, bundledAddOnNetCents: 3_039_800, adCreditCents: 300_000 }), {
       currency: "INR",
       plan: INR_PLAN,
     });
@@ -691,14 +691,14 @@ describe("startMembershipCheckoutFor", () => {
   });
 
   it("replaces an abandoned package checkout for the same services once the business has given the offer up", async () => {
-    const abandoned = subscription({ planId: "plan-inr", bundledAddOnNetCents: 1_039_800, adCreditCents: 200_000 });
+    const abandoned = subscription({ planId: "plan-inr", bundledAddOnNetCents: 1_169_900, adCreditCents: 150_000 });
     newest(abandoned, { currency: "INR", plan: INR_PLAN });
     vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue(["managed-website", "digital-growth"].map((addOn) => ({ addOn, status: "pending" }) as BundledAddOn));
     vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
 
     const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "digital-growth"]));
 
-    expect(charged).toBe(1_533_764);
+    expect(charged).toBe(1_299_800);
     expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ replacing: "sub-old", adCreditCents: 0 }));
     expect(cancelled).toHaveBeenCalledWith(abandoned.providerSubscriptionId);
   });
@@ -719,12 +719,12 @@ describe("startMembershipCheckoutFor", () => {
 
     const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "digital-growth"]));
 
-    // The website and Social Media and Ads net ₹10,398 at 20% off; the code takes 10% of that once, ₹1,039.80.
-    expect(charged).toBe(chargedAmountCents(1_039_800, 103_980, 1800));
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 103_980, 1_039_800);
+    // The website and Social Media and Ads come to ₹11,699 at 10% off; the code takes 10% of that once, ₹1,169.90.
+    expect(charged).toBe(1_052_910);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 116_990, 1_169_900);
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
-      expect.objectContaining({ referralCodeId: code.id, discountAmountCents: 103_980, discountMonthsLeft: 3 }),
+      expect.objectContaining({ referralCodeId: code.id, discountAmountCents: 116_990, discountMonthsLeft: 3 }),
     );
   });
 
@@ -735,7 +735,7 @@ describe("startMembershipCheckoutFor", () => {
 
     const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ALL_THREE));
 
-    expect(charged).toBe(chargedAmountCents(2_659_700, 50_000, 1800));
+    expect(charged).toBe(2_989_800);
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
       expect.objectContaining({ referralCodeId: code.id, discountAmountCents: 50_000, discountMonthsLeft: null }),
@@ -749,8 +749,8 @@ describe("startMembershipCheckoutFor", () => {
 
     const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ["local-seo-aeo"]));
 
-    // 10% of ₹24,999 is ₹2,499.90; ₹22,499.10 plus 18% GST.
-    expect(charged).toBe(2_654_894);
+    // 10% of ₹24,999 is ₹2,499.90, leaving ₹22,499.10 with the GST inside it.
+    expect(charged).toBe(2_249_910);
     expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 249_990, 2_499_900);
     expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ referralCodeId: code.id, discountAmountCents: 249_990 }));
   });
@@ -863,16 +863,16 @@ describe("startReactivationFor", () => {
       taxRateBasisPoints: 0,
     });
 
-    it("reopens an all-three package at 30% off with its ad credit kept, and asks the provider for the same total", async () => {
+    it("reopens an all-three package at 20% off with its ad credit kept, and asks the provider for the same total", async () => {
       lapsedWith(["managed-website", "digital-growth", "local-seo-aeo"], { adCreditCents: 6_000 });
       const started = vi.spyOn(provider, "startCheckout");
 
       redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
 
-      const lines = [usdLine("managed-website", 7_500, 2_250), usdLine("digital-growth", 7_500, 2_250), usdLine("local-seo-aeo", 35_000, 10_500)];
+      const lines = [usdLine("managed-website", 6_500, 1_300), usdLine("digital-growth", 15_000, 3_000), usdLine("local-seo-aeo", 35_000, 7_000)];
       expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ bundledAddOns: lines, adCreditCents: 6_000, replacing: "sub-lapsed", referralCodeId: null, discountAmountCents: 0 }));
-      expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 35_000, discountAmountCents: 0 }));
-      expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 35_000);
+      expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 45_200, discountAmountCents: 0 }));
+      expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 45_200);
       expect(markPackageOfferForfeited).not.toHaveBeenCalled();
     });
 
@@ -883,11 +883,11 @@ describe("startReactivationFor", () => {
 
       expect(openCheckoutSubscription).toHaveBeenCalledWith(
         { name: "tx2" },
-        expect.objectContaining({ bundledAddOns: [usdLine("managed-website", 7_500, 1_500), usdLine("digital-growth", 7_500, 1_500)], adCreditCents: 2_500 }),
+        expect.objectContaining({ bundledAddOns: [usdLine("managed-website", 6_500, 650), usdLine("digital-growth", 15_000, 1_450)], adCreditCents: 2_500 }),
       );
     });
 
-    it("reopens Social + SEO at 20% off, $340 a month", async () => {
+    it("reopens Social + SEO at 10% off, $450 a month", async () => {
       lapsedWith(["digital-growth", "local-seo-aeo"], { adCreditCents: 2_500 });
       const started = vi.spyOn(provider, "startCheckout");
 
@@ -895,9 +895,9 @@ describe("startReactivationFor", () => {
 
       expect(openCheckoutSubscription).toHaveBeenCalledWith(
         { name: "tx2" },
-        expect.objectContaining({ bundledAddOns: [usdLine("digital-growth", 7_500, 1_500), usdLine("local-seo-aeo", 35_000, 7_000)], adCreditCents: 2_500 }),
+        expect.objectContaining({ bundledAddOns: [usdLine("digital-growth", 15_000, 1_500), usdLine("local-seo-aeo", 35_000, 3_500)], adCreditCents: 2_500 }),
       );
-      expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 34_000 }));
+      expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 45_000 }));
     });
 
     it("reopens a single service at its list price, with no ad credit", async () => {
@@ -919,7 +919,7 @@ describe("startReactivationFor", () => {
 
       expect(openCheckoutSubscription).toHaveBeenCalledWith(
         { name: "tx2" },
-        expect.objectContaining({ bundledAddOns: [usdLine("managed-website", 7_500, 0), usdLine("local-seo-aeo", 35_000, 0)], adCreditCents: 0 }),
+        expect.objectContaining({ bundledAddOns: [usdLine("managed-website", 6_500, 0), usdLine("local-seo-aeo", 35_000, 0)], adCreditCents: 0 }),
       );
     });
 
@@ -927,8 +927,8 @@ describe("startReactivationFor", () => {
       // Retired since the client paid on it: the code is theirs already, so it still carries.
       const CODE: ReferralCode = { ...COUPON, id: "01a0e81e-89b6-704e-a3c2-702156218f38", code: "TENOFF", discount: { kind: "percent", basisPoints: 1_000 }, discountMonths: 6, active: false };
       const allThree = ["managed-website", "digital-growth", "local-seo-aeo"];
-      /** The 10% the code took off the website alone; the package it comes back as nets more. */
-      const lapsedOn = (overrides: Partial<Subscription>) => lapsedWith(allThree, { adCreditCents: 6_000, referralCodeId: CODE.id, discountAmountCents: 750, ...overrides });
+      /** The 10% the code took off the website alone ($65); the package it comes back as is worth more. */
+      const lapsedOn = (overrides: Partial<Subscription>) => lapsedWith(allThree, { adCreditCents: 6_000, referralCodeId: CODE.id, discountAmountCents: 650, ...overrides });
 
       beforeEach(() => {
         vi.mocked(findReferralCodeById).mockResolvedValue(CODE);
@@ -940,13 +940,13 @@ describe("startReactivationFor", () => {
 
         redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
 
-        // 10% of the 35,000 the package nets.
+        // 10% of the 45,200 the package comes to.
         expect(openCheckoutSubscription).toHaveBeenCalledWith(
           { name: "tx2" },
-          expect.objectContaining({ referralCodeId: CODE.id, discountAmountCents: 3_500, discountMonthsLeft: 2, adCreditCents: 6_000, replacing: "sub-lapsed" }),
+          expect.objectContaining({ referralCodeId: CODE.id, discountAmountCents: 4_520, discountMonthsLeft: 2, adCreditCents: 6_000, replacing: "sub-lapsed" }),
         );
-        expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 35_000, discountAmountCents: 3_500 }));
-        expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 3_500, 35_000);
+        expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 45_200, discountAmountCents: 4_520 }));
+        expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 4_520, 45_200);
         // The client has the code already: it need not still be redeemable, and the redemption cap is not used again.
         expect(findRedeemableReferralCode).not.toHaveBeenCalled();
         expect(findBusinessReferralCode).not.toHaveBeenCalled();
@@ -1008,12 +1008,12 @@ describe("startReactivationFor", () => {
       expect(openCheckoutSubscription).toHaveBeenCalledWith(
         { name: "tx2" },
         expect.objectContaining({
-          bundledAddOns: [usdLine("managed-website", 7_500, 0), usdLine("local-seo-aeo", 35_000, 0)],
+          bundledAddOns: [usdLine("managed-website", 6_500, 0), usdLine("local-seo-aeo", 35_000, 0)],
           adCreditCents: 0,
           replacing: null,
         }),
       );
-      expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 42_500 }));
+      expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 41_500 }));
       // Written with the checkout it belongs to, under the second transaction's lock, not before the decision.
       expect(markPackageOfferForfeited).toHaveBeenCalledWith({ name: "tx2" }, BUSINESS_ID, NOW);
       expect(vi.mocked(markPackageOfferForfeited).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(openCheckoutSubscription).mock.invocationCallOrder[0] ?? 0);
@@ -1040,7 +1040,7 @@ describe("startReactivationFor", () => {
       expect(openCheckoutSubscription).toHaveBeenCalledWith(
         { name: "tx2" },
         expect.objectContaining({
-          bundledAddOns: [usdLine("managed-website", 7_500, 2_250), usdLine("digital-growth", 7_500, 2_250), usdLine("local-seo-aeo", 35_000, 10_500)],
+          bundledAddOns: [usdLine("managed-website", 6_500, 1_300), usdLine("digital-growth", 15_000, 3_000), usdLine("local-seo-aeo", 35_000, 7_000)],
           adCreditCents: 6_000,
         }),
       );
@@ -1054,7 +1054,7 @@ describe("startReactivationFor", () => {
       expect(openCheckoutSubscription).toHaveBeenCalledWith(
         { name: "tx2" },
         expect.objectContaining({
-          bundledAddOns: [usdLine("managed-website", 7_500, 2_250), usdLine("digital-growth", 7_500, 2_250), usdLine("local-seo-aeo", 35_000, 10_500)],
+          bundledAddOns: [usdLine("managed-website", 6_500, 1_300), usdLine("digital-growth", 15_000, 3_000), usdLine("local-seo-aeo", 35_000, 7_000)],
           adCreditCents: 6_000,
           replacing: null,
         }),
@@ -1124,7 +1124,7 @@ describe("startReactivationFor", () => {
 
     it("sends the customer back to a reactivation checkout left open for the same basket", async () => {
       const lapsed = subscription({ id: "sub-lapsed", status: "cancelled", activatedAt: AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });
-      const open = subscription({ id: "sub-open", status: "incomplete", adCreditCents: 2_500, bundledAddOnNetCents: 12_000 });
+      const open = subscription({ id: "sub-open", status: "incomplete", adCreditCents: 2_500, bundledAddOnNetCents: 19_400 });
       newest(open, { hasEverPaid: true });
       vi.mocked(findLatestActivatedSubscriptionForBusiness).mockResolvedValue(lapsed);
       // The lapsed subscription's lines ended when the open checkout replaced it; they still say what it billed.

@@ -10,7 +10,7 @@ import { areaName, categoryLabel, cityName } from "./places";
  * directory-ad-rules; this is wording, money and form parsing.
  */
 
-/** GST on a won spot, like every other charge. */
+/** The GST inside a won spot's price, like every other charge: prices include it. */
 export const AD_TAX_BASIS_POINTS = GST_BASIS_POINTS;
 /** Bids and prices are whole rupees in this range (the database checks the same). */
 export const AD_MIN_RUPEES = 100;
@@ -49,9 +49,9 @@ export const AD_PLACEMENT_HINTS: Readonly<Record<DirectoryAdPlacement, string>> 
 /** The slug a home page auction keeps where a category and an area would be (HOME_AD_SCOPE_SLUG in @brandbasket/db). */
 const HOME_SCOPE_SLUG = "all";
 
-/** What a won spot is charged, GST included, from its net price. The one tax helper every charge uses. */
-export function adChargedPaise(netPaise: number): number {
-  return chargedAmountCents(netPaise, 0, AD_TAX_BASIS_POINTS);
+/** What a won spot is charged: its price, which already includes GST. The one helper every charge uses. */
+export function adChargedPaise(pricePaise: number): number {
+  return chargedAmountCents(pricePaise, 0);
 }
 
 /** "₹1,500" or "₹1,770.50". */

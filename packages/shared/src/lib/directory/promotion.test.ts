@@ -9,7 +9,7 @@ import {
   PROMOTION_TAGS,
   PROMOTION_TAX_BASIS_POINTS,
   PROMOTION_WEEK_CHARGED_PAISE,
-  PROMOTION_WEEK_NET_PAISE,
+  PROMOTION_WEEK_PRICE_PAISE,
   PROMOTION_WEEK_TAX_PAISE,
   promotionChargeDescription,
   promotionStatus,
@@ -24,13 +24,13 @@ function week(tag: DirectoryPaidTag, startsAt: Date, visible = true) {
 }
 
 describe("the week's price", () => {
-  it("is ₹299 with 18% GST: ₹352.82 charged, ₹53.82 of it tax", () => {
-    expect(PROMOTION_WEEK_NET_PAISE).toBe(29_900);
+  it("is ₹299 with the 18% GST inside it: ₹299 charged, ₹45.62 of it tax", () => {
+    expect(PROMOTION_WEEK_PRICE_PAISE).toBe(29_900);
     expect(PROMOTION_TAX_BASIS_POINTS).toBe(1_800);
-    expect(PROMOTION_WEEK_CHARGED_PAISE).toBe(35_282);
-    expect(PROMOTION_WEEK_TAX_PAISE).toBe(5_382);
-    expect(formatMoney(PROMOTION_WEEK_CHARGED_PAISE, PROMOTION_CURRENCY)).toBe("₹352.82");
-    expect(formatMoney(PROMOTION_WEEK_NET_PAISE, PROMOTION_CURRENCY)).toBe("₹299");
+    expect(PROMOTION_WEEK_CHARGED_PAISE).toBe(29_900);
+    expect(PROMOTION_WEEK_TAX_PAISE).toBe(4_562);
+    expect(formatMoney(PROMOTION_WEEK_CHARGED_PAISE, PROMOTION_CURRENCY)).toBe("₹299");
+    expect(formatMoney(PROMOTION_WEEK_TAX_PAISE, PROMOTION_CURRENCY)).toBe("₹45.62");
   });
 });
 

@@ -33,7 +33,7 @@ export async function MembershipGateShell({ children }: MembershipGateShellProps
       {/* One quiet line, so the page ends instead of stopping: who takes the payment, and where to read the terms or ask for help. */}
       <footer className="mx-auto w-full max-w-5xl border-t border-line pb-20 pt-6 text-xs leading-relaxed text-ink-soft lg:pb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p>Secure payment. Prices are in rupees and GST is added at checkout.</p>
+          <p>Secure payment. Prices are in rupees and include GST.</p>
           <nav aria-label="Legal and help" className="flex flex-wrap gap-x-5 gap-y-1">
             <a href={legal.terms} className="underline-offset-4 transition-colors duration-300 ease-calm hover:text-ink hover:underline">
               Terms

@@ -115,10 +115,10 @@ describe("discountCentsFor", () => {
     expect(isChargeableDiscount(49, cents)).toBe(false);
   });
 
-  it("puts the 10% INR example at ₹2,699.10 before GST, ₹3,184.94 with it", () => {
+  it("puts the 10% INR example at ₹2,699.10 paid, GST inside it", () => {
     const cents = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 299_900);
     expect(299_900 - cents).toBe(269_910);
-    expect(chargedAmountCents(299_900, cents, GST_BASIS_POINTS)).toBe(318_494);
+    expect(chargedAmountCents(299_900, cents)).toBe(269_910);
   });
 
   it("refuses a plan price or a percentage it cannot work with", () => {

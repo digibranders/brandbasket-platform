@@ -197,7 +197,7 @@ async function applicability(
 /**
  * What the provider was asked to take for this checkout: the plan's first payment (its monthly price, for a
  * reactivation, both 0 now that every service is a line) plus the services taken at the checkout, less the subscription's
- * referral discount, plus the plan's tax (₹2,999 + 18% GST is ₹3,538.82 for the website alone). The
+ * referral discount (₹2,999 with its GST inside is ₹2,999 for the website alone). The
  * same chargedAmountCents the checkout and the webhook use, so a payment is judged against exactly what was charged.
  * Null when the discount leaves nothing to charge, which no payment can match.
  */
@@ -210,7 +210,7 @@ function expectedFirstPaymentCents(
   const price = reactivating ? plan.recurringAmountCents : plan.initialAmountCents;
   try {
     // The services taken at this checkout, the website included, are the charge.
-    return chargedAmountCents(price + bundledAddOnNetCents, discountAmountCents, plan.taxRateBasisPoints);
+    return chargedAmountCents(price + bundledAddOnNetCents, discountAmountCents);
   } catch (error) {
     if (error instanceof RangeError) return null;
     throw error;

@@ -23,7 +23,7 @@ export interface StartCheckoutInput {
    */
   readonly discountAmountCents?: number;
   /**
-   * What the add-ons taken at this checkout cost a month before tax, already about to be frozen on the subscription: the
+   * What the add-ons taken at this checkout cost a month, GST included, already about to be frozen on the subscription: the
    * checkout takes the plan's price plus this, less the discount. Defaults to 0. Razorpay takes it through
    * `providerPlanId` (a plan priced at the sum); the fake provider adds it directly.
    */
@@ -62,7 +62,7 @@ export interface StartChargePaymentInput {
   readonly chargeId: string;
   /** What the customer sees in the payment window: "Extra change hours · 2 h". */
   readonly description: string;
-  /** What to take, tax included, in minor units of `currency`. The charge row's amount, never recomputed. */
+  /** What to take, in minor units of `currency`. The charge row's amount, never recomputed. */
   readonly amountCents: number;
   readonly currency: BillingCurrency;
 }
@@ -93,8 +93,9 @@ export interface ConfirmedChargePayment {
 /** A new monthly price to put on sale at the provider. */
 export interface CreatePlanInput {
   readonly currency: BillingCurrency;
-  /** The monthly price before tax, in minor units. */
+  /** The monthly price in minor units. Since 2026-10-26 every price includes GST, so this is what the customer pays (the name is older). */
   readonly netMonthlyCents: number;
+  /** The GST inside the price, for the provider's own records; it does not change the amount. */
   readonly taxRateBasisPoints: number;
   /** Our plan code for the new version, recorded on the provider's plan for tracing. */
   readonly code: string;
@@ -109,7 +110,7 @@ export interface StartAddOnSubscriptionInput {
   readonly addOnSubscriptionId: string;
   /** The Razorpay plan for this amount; null with the fake provider. */
   readonly providerPlanId: string | null;
-  /** What each charge takes, net plus GST, in paise. The fake provider charges this; Razorpay takes it from the plan. */
+  /** What each charge takes, GST included, in paise. The fake provider charges this; Razorpay takes it from the plan. */
   readonly amountCents: number;
   readonly currency: BillingCurrency;
   /** Keep it: the day the subscription starts and is first charged. Null starts it at once. */

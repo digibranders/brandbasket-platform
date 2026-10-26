@@ -17,7 +17,6 @@ const DAY = 86_400_000;
 function input(overrides: Partial<AddOnQuoteInput> = {}): AddOnQuoteInput {
   return {
     netCents: 700_000,
-    taxRateBasisPoints: 1_800,
     renewalNetCents: 299_900 + 700_000,
     renewalDiscountCents: 0,
     period: { start: START, end: END },
@@ -27,13 +26,14 @@ function input(overrides: Partial<AddOnQuoteInput> = {}): AddOnQuoteInput {
 }
 
 describe("quoteAddOn", () => {
-  it("charges Social Media and Ads for the 14 days left of a 31-day month, with GST, and the full basket from the renewal", () => {
+  it("charges Social Media and Ads for the 14 days left of a 31-day month, GST inside, and the full basket from the renewal", () => {
+    // 700,000 x 14 / 31 = 316,129.03, taken as 316,129. Every price includes GST, so that is also what is charged.
     expect(quoteAddOn(input())).toEqual({
       kind: "quote",
       netCents: 316_129,
-      chargeCents: 373_032,
+      chargeCents: 316_129,
       free: false,
-      nextRenewalCents: 1_179_882,
+      nextRenewalCents: 999_900,
       periodEnd: END,
       daysLeft: 14,
       periodDays: 31,
@@ -41,17 +41,19 @@ describe("quoteAddOn", () => {
   });
 
   it("charges Local SEO + AEO and dollar add-ons the same way", () => {
-    expect(quoteAddOn(input({ netCents: 2_499_900 }))).toMatchObject({ netCents: 1_128_987, chargeCents: 1_332_205 });
-    expect(quoteAddOn(input({ netCents: 7_500, taxRateBasisPoints: 0, renewalNetCents: 15_000 }))).toMatchObject({
-      netCents: 3_387,
-      chargeCents: 3_387,
-      nextRenewalCents: 15_000,
+    // 2,499,900 x 14 / 31 = 1,128,987.09.
+    expect(quoteAddOn(input({ netCents: 2_499_900 }))).toMatchObject({ netCents: 1_128_987, chargeCents: 1_128_987 });
+    // $150 x 14 / 31 = 6,774.19 cents, on top of the $65 website already in the basket.
+    expect(quoteAddOn(input({ netCents: 15_000, renewalNetCents: 6_500 + 15_000 }))).toMatchObject({
+      netCents: 6_774,
+      chargeCents: 6_774,
+      nextRenewalCents: 21_500,
     });
   });
 
   it("prices the renewal after the subscription's frozen discount", () => {
-    // ₹500 off the plan: ₹9,499 net from the renewal, plus 18%.
-    expect(quoteAddOn(input({ renewalDiscountCents: 50_000 }))).toMatchObject({ nextRenewalCents: 1_120_882 });
+    // ₹500 off ₹9,999: ₹9,499 from the renewal.
+    expect(quoteAddOn(input({ renewalDiscountCents: 50_000 }))).toMatchObject({ nextRenewalCents: 949_900 });
   });
 
   it("gives the same quote all day, so a repeated press finds the same price", () => {

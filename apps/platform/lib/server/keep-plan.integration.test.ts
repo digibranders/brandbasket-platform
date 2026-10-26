@@ -1,4 +1,4 @@
-import { chargedAmountCents, createFakeBillingProvider, FAKE_KEEP_CONFIRM_PATH, type BillingProvider } from "@brandbasket/billing";
+import { createFakeBillingProvider, FAKE_KEEP_CONFIRM_PATH, type BillingProvider } from "@brandbasket/billing";
 import {
   businessMembers,
   businesses,
@@ -66,7 +66,7 @@ const NOW = new Date("2026-11-05T06:00:00.000Z");
 const RENEWS_AT = new Date("2026-11-19T00:00:00.000Z");
 const NEXT_RENEWAL = new Date("2026-12-19T00:00:00.000Z");
 const OLD_PROVIDER_ID = `fake_sub_${"a".repeat(24)}`;
-const AD_CREDIT_CENTS = 100_000;
+const AD_CREDIT_CENTS = 150_000;
 
 let businessId = "";
 let managed: Plan;
@@ -147,9 +147,9 @@ async function kept(): Promise<Subscription> {
   return waiting;
 }
 
-/** What Razorpay takes on the start day: the plan's price less the code, GST on top. */
+/** What Razorpay takes on the start day: the two services at the 10% package price (₹11,699, GST included) less the ₹300 code. */
 function renewalAmount(): number {
-  return chargedAmountCents(managed.recurringAmountCents + 1_039_800, 30_000, managed.taxRateBasisPoints);
+  return 1_139_900;
 }
 
 function firstCharge(successor: Subscription, amountCents = renewalAmount(), paymentId = "pay_kept_first") {
@@ -273,14 +273,14 @@ describe("the checkout Keep my plan opens", () => {
       discountAmountCents: 30_000,
       discountMonthsLeft: 4,
       adCreditCents: AD_CREDIT_CENTS,
-      bundledAddOnNetCents: 1_039_800,
+      bundledAddOnNetCents: 1_169_900,
       commitmentEndsAt: old.commitmentEndsAt,
     });
     expect(successor.providerSubscriptionId).not.toBe(old.providerSubscriptionId);
     const lines = await findBundledAddOnsForSubscription(dbs().staff.db, successor.id);
     expect(lines.map((line) => [line.addOn, line.listAmountCents, line.offerDiscountAmountCents, line.netAmountCents, line.status])).toEqual([
-      ["managed-website", 299_900, 59_980, 239_920, "pending"],
-      ["digital-growth", 999_900, 200_020, 799_880, "pending"],
+      ["managed-website", 299_900, 29_990, 269_910, "pending"],
+      ["digital-growth", 999_900, 99_910, 899_990, "pending"],
     ]);
   });
 

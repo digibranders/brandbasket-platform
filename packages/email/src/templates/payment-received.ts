@@ -14,9 +14,10 @@ export interface PaymentReceivedInput {
   readonly businessName: string;
   /** ISO 4217 code of the amounts, in minor units. */
   readonly currency: string;
-  /** What the payment bought, before tax: the plan or the add-on, and any discount as a negative line. */
+  /** What the payment bought, GST included: the plan or the add-on, and any discount as a negative line. The lines add up to the total. */
   readonly lines: readonly PaymentReceivedLine[];
   readonly gstRatePercent: number;
+  /** The GST inside the total, shown under it. */
   readonly gstCents: number;
   readonly totalCents: number;
   readonly paidAt: Date;
@@ -64,7 +65,7 @@ function row(label: string, amount: string, options: { readonly total?: boolean 
 }
 
 /**
- * Sent when a payment has been received and recorded: a short receipt with what was paid for, the GST on it, the total, a
+ * Sent when a payment has been received and recorded: a short receipt with what was paid for, the total, the GST inside it, a
  * button to the tax invoice and the date of the next payment. One template for every kind of payment (the first, a
  * renewal, an add-on); the caller says what each line is called.
  */
@@ -82,7 +83,7 @@ export function paymentReceivedEmail(input: PaymentReceivedInput): EmailMessage 
   const greeting = input.ownerName === null ? "Hi," : `Hi ${input.ownerName},`;
   const intro = `${greeting} thank you for your payment.`;
   const subject = `We received your payment of ${total}`;
-  const gstLabel = `GST ${input.gstRatePercent}%`;
+  const gstLabel = `Includes GST ${input.gstRatePercent}%`;
   const nextDetail =
     input.nextPayment === null ? null : `${money(input.nextPayment.amountCents, input.currency)} on ${longDate(input.nextPayment.dueOn)}.`;
   const next = nextDetail === null ? null : `Your next payment is ${nextDetail}`;
@@ -92,7 +93,7 @@ export function paymentReceivedEmail(input: PaymentReceivedInput): EmailMessage 
     subject,
     `${paidOn}, ${input.businessName}`,
     intro,
-    [...input.lines.map((line) => `${line.label}: ${money(line.amountCents, input.currency)}`), `${gstLabel}: ${money(input.gstCents, input.currency)}`, `Total paid: ${total}`].join("\n"),
+    [...input.lines.map((line) => `${line.label}: ${money(line.amountCents, input.currency)}`), `Total paid: ${total}`, `${gstLabel}: ${money(input.gstCents, input.currency)}`].join("\n"),
     `Download your GST invoice: ${invoiceUrl}`,
     ...(next === null ? [] : [next]),
     help,
@@ -100,8 +101,8 @@ export function paymentReceivedEmail(input: PaymentReceivedInput): EmailMessage 
 
   const rows = [
     ...input.lines.map((line) => row(line.label, money(line.amountCents, input.currency))),
-    row(gstLabel, money(input.gstCents, input.currency)),
     row("Total paid", total, { total: true }),
+    row(gstLabel, money(input.gstCents, input.currency)),
   ].join("\n");
 
   const bodyHtml = [

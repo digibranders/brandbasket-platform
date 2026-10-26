@@ -816,7 +816,7 @@ function PricesSection({ board, categories }: { readonly board: PriceBoard; read
           Home page
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
-          One weekly price, before GST, for each of the four tiles. Every category in a city bids for them together; it is also the lowest bid.
+          One weekly price, GST included, for each of the four tiles. Every category in a city bids for them together; it is also the lowest bid.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
           <StatusDot tone={board.homeWeekPaise === null ? "quiet" : "done"} label={board.homeWeekPaise === null ? "Closed" : `Open at ${formatRupees(board.homeWeekPaise)} a week`} />
@@ -847,7 +847,7 @@ function PricesSection({ board, categories }: { readonly board: PriceBoard; read
         <h2 id="set-price-heading" className="font-serif text-xl">
           Set a category&rsquo;s list price
         </h2>
-        <p className="mt-1 text-sm text-ink-soft">Per week, before GST. It is also the lowest bid, in every area.</p>
+        <p className="mt-1 text-sm text-ink-soft">Per week, GST included. It is also the lowest bid, in every area.</p>
         <form action={savePriceAction} className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
           <div>
             <label htmlFor="price-category" className={labelClasses}>
@@ -877,7 +877,7 @@ function PricesSection({ board, categories }: { readonly board: PriceBoard; read
         <h2 id="set-profile-price-heading" className="font-serif text-xl">
           Set a category&rsquo;s business page price
         </h2>
-        <p className="mt-1 text-sm text-ink-soft">The one spot on every business page in the category, per week before GST.</p>
+        <p className="mt-1 text-sm text-ink-soft">The one spot on every business page in the category, per week, GST included.</p>
         <form action={saveSpotPriceAction} className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] sm:items-end">
           <input type="hidden" name="placement" value="profile" />
           <div>

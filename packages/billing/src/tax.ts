@@ -1,7 +1,9 @@
 /**
- * What a customer is actually charged: a plan's net price, less any referral discount, with the plan's tax added
- * on top. The one place this is worked out, so the price shown, the amount Razorpay is set up to take, the amount
- * the webhook expects and the amount recorded against the payment can never be computed four different ways.
+ * What a customer is actually charged. Every price includes GST (owner, 2026-10-26; docs/plans/25-money-gst-and-offers.md),
+ * so the charge is the price less any discount and nothing is added on top. The GST inside it is worked out from the
+ * charge, never the other way round, which is how the invoice splits it. The one place this is worked out, so the price
+ * shown, the amount Razorpay is set up to take, the amount the webhook expects and the amount recorded against the payment
+ * can never be computed several different ways.
  *
  * Tax rates are held in basis points (1800 is 18%) so they stay whole numbers, like every amount of money here.
  */
@@ -13,8 +15,6 @@ export const GST_BASIS_POINTS = 1_800;
 export const NO_TAX = 0;
 
 const BASIS_POINTS = 10_000;
-/** Adding half the divisor before flooring rounds half a minor unit up, and anything less down. */
-const HALF = BASIS_POINTS / 2;
 
 function assertWholeNonNegative(value: number, what: string): void {
   if (!Number.isSafeInteger(value) || value < 0) {
@@ -23,24 +23,38 @@ function assertWholeNonNegative(value: number, what: string): void {
 }
 
 /**
- * `netAmountCents` less `discountAmountCents`, with `taxRateBasisPoints` of tax added, in whole minor units.
- *
- * The discount comes off **before** tax, because GST is charged on what is actually sold: a ₹500 code on the
- * ₹2,999 plan is ₹2,499 plus 18%, which is ₹2,948.82, not ₹3,538.82 less ₹500. Tax that lands on a fraction of a
- * minor unit is rounded half up. Nothing outside this function computes the figure, and the Razorpay plan a
- * customer is subscribed to is created from it, so the provider and our expectation agree by construction.
+ * `priceCents` less `discountAmountCents`, in whole minor units: the price the customer pays, GST included. A ₹500 code
+ * on the ₹2,999 plan is ₹2,499 paid. Nothing outside this function computes the figure, and the Razorpay plan a customer
+ * is subscribed to is created from it, so the provider and our expectation agree by construction.
  */
-export function chargedAmountCents(
-  netAmountCents: number,
-  discountAmountCents: number,
-  taxRateBasisPoints: number,
-): number {
-  assertWholeNonNegative(netAmountCents, "A net amount");
+export function chargedAmountCents(priceCents: number, discountAmountCents: number): number {
+  assertWholeNonNegative(priceCents, "A price");
   assertWholeNonNegative(discountAmountCents, "A discount");
-  assertWholeNonNegative(taxRateBasisPoints, "A tax rate");
-  const taxable = netAmountCents - discountAmountCents;
-  if (taxable <= 0) {
-    throw new RangeError(`A discount of ${discountAmountCents} leaves nothing to charge against ${netAmountCents}`);
+  const charged = priceCents - discountAmountCents;
+  if (charged <= 0) {
+    throw new RangeError(`A discount of ${discountAmountCents} leaves nothing to charge against ${priceCents}`);
   }
-  return Math.floor((taxable * (BASIS_POINTS + taxRateBasisPoints) + HALF) / BASIS_POINTS);
+  return charged;
+}
+
+/**
+ * The GST inside a price that includes it, in minor units. CGST and SGST are each the amount times half the rate over
+ * (100% plus the rate), rounded half up, and are always equal, so the tax is always an even number: ₹2,999 holds ₹457.48
+ * of GST (₹228.74 each) and ₹2,541.52 taxable. Across states the same figure is one IGST, so a sale is taxed the same
+ * wherever the customer is. Throws RangeError for a rate that cannot split into two whole halves.
+ */
+export function gstInsideCents(chargedCents: number, taxRateBasisPoints: number): number {
+  assertWholeNonNegative(chargedCents, "A charged amount");
+  assertWholeNonNegative(taxRateBasisPoints, "A tax rate");
+  if (taxRateBasisPoints === 0) return 0;
+  if (taxRateBasisPoints % 2 !== 0) throw new RangeError(`A rate of ${taxRateBasisPoints} basis points cannot split into CGST and SGST`);
+  const divisor = BASIS_POINTS + taxRateBasisPoints;
+  // Rounding half up is floor((2a + b) / 2b) for a / b.
+  const half = Math.floor((2 * chargedCents * (taxRateBasisPoints / 2) + divisor) / (2 * divisor));
+  return half * 2;
+}
+
+/** What the customer's payment is worth before the GST inside it: the charge less `gstInsideCents`. */
+export function taxableCents(chargedCents: number, taxRateBasisPoints: number): number {
+  return chargedCents - gstInsideCents(chargedCents, taxRateBasisPoints);
 }

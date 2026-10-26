@@ -1,95 +1,71 @@
 import { describe, expect, it } from "vitest";
-import { BillingRangeError } from "./billing-range-error";
-import { splitGst, splitGstAcross, supplyTypeOf } from "./gst";
+import { splitGstInside, supplyTypeOf } from "./gst";
 import { UnknownStateError } from "./gst-states";
-import { GST_BASIS_POINTS } from "./tax";
+import { GST_BASIS_POINTS, gstInsideCents } from "./tax";
 
-describe("splitGst", () => {
-  it("splits 18% into equal CGST and SGST within a state: ₹5,599.20 gives ₹503.93 each", () => {
-    expect(splitGst(559_920, GST_BASIS_POINTS, "intra_state")).toEqual({
-      cgstCents: 50_393,
-      sgstCents: 50_393,
-      igstCents: 0,
-      taxCents: 100_786,
-    });
+describe("splitGstInside", () => {
+  const line = (paidCents: number, rateBasisPoints = GST_BASIS_POINTS) => ({ paidCents, rateBasisPoints });
+
+  it("works the GST out of a price that includes it: ₹2,999 holds ₹2,541.52 taxable and ₹228.74 each of CGST and SGST", () => {
+    const [only] = splitGstInside([line(299_900)], "intra_state");
+    expect(only).toMatchObject({ taxableCents: 254_152, cgstCents: 22_874, sgstCents: 22_874, igstCents: 0, taxCents: 45_748 });
   });
 
-  it("charges IGST across states, rounded once", () => {
-    expect(splitGst(559_920, GST_BASIS_POINTS, "inter_state")).toEqual({
-      cgstCents: 0,
-      sgstCents: 0,
-      igstCents: 100_786,
-      taxCents: 100_786,
-    });
+  it("charges one IGST across states, the same tax as CGST plus SGST", () => {
+    const [only] = splitGstInside([line(299_900)], "inter_state");
+    expect(only).toMatchObject({ taxableCents: 254_152, cgstCents: 0, sgstCents: 0, igstCents: 45_748, taxCents: 45_748 });
   });
 
-  it("rounds each half on its own, so CGST always equals SGST even when that loses a paisa", () => {
-    // 9% of 25 paise is 2.25: each half rounds to 2, total 4. One rounding of 18% would give 5.
-    expect(splitGst(25, GST_BASIS_POINTS, "intra_state")).toEqual({
-      cgstCents: 2,
-      sgstCents: 2,
-      igstCents: 0,
-      taxCents: 4,
-    });
-    expect(splitGst(25, GST_BASIS_POINTS, "inter_state").taxCents).toBe(5);
+  it("shares the GST of the total over the lines by the largest remainder, so the lines add up to it to the paisa (Website + Social)", () => {
+    // Worked out on their own: 269,910 + 899,990 paid is 1,169,900, which holds 178,460 of GST.
+    expect(splitGstInside([line(269_910), line(899_990)], "intra_state")).toMatchObject([
+      { taxableCents: 228_738, cgstCents: 20_586, sgstCents: 20_586, taxCents: 41_172 },
+      { taxableCents: 762_702, cgstCents: 68_644, sgstCents: 68_644, taxCents: 137_288 },
+    ]);
+    expect(splitGstInside([line(269_910), line(899_990)], "inter_state")).toMatchObject([
+      { taxableCents: 228_737, igstCents: 41_173, taxCents: 41_173 },
+      { taxableCents: 762_703, igstCents: 137_287, taxCents: 137_287 },
+    ]);
   });
 
-  it("has nothing to split at a zero rate", () => {
-    expect(splitGst(10_000, 0, "intra_state").taxCents).toBe(0);
+  it("gives every line equal CGST and SGST, adding up to the halves of the tax inside the total", () => {
+    const lines = splitGstInside([line(269_910), line(899_990), line(1_869_900)], "intra_state");
+    const tax = gstInsideCents(269_910 + 899_990 + 1_869_900, GST_BASIS_POINTS);
+    expect(lines.every((part) => part.cgstCents === part.sgstCents && part.igstCents === 0 && part.taxCents === 2 * part.cgstCents)).toBe(true);
+    expect(lines.reduce((total, part) => total + part.taxCents, 0)).toBe(tax);
   });
 
-  it("refuses a rate that cannot be halved into whole basis points within a state", () => {
-    expect(() => splitGst(10_000, 1_801, "intra_state")).toThrow(RangeError);
-    expect(() => splitGst(10_000, 1_801, "intra_state")).toThrow(BillingRangeError);
-  });
-
-  it("refuses a taxable value that is not a whole, non-negative number of paise", () => {
-    expect(() => splitGst(Number.NaN, GST_BASIS_POINTS, "intra_state")).toThrow(RangeError);
-    expect(() => splitGst(-1, GST_BASIS_POINTS, "intra_state")).toThrow(RangeError);
-    expect(() => splitGst(10.5, GST_BASIS_POINTS, "inter_state")).toThrow(RangeError);
-  });
-
-  it("refuses a rate that is not a whole number of basis points between 0 and 10000", () => {
-    expect(() => splitGst(10_000, 10_001, "inter_state")).toThrow(RangeError);
-    expect(() => splitGst(10_000, -1, "inter_state")).toThrow(RangeError);
-    expect(() => splitGst(10_000, Number.NaN, "inter_state")).toThrow(RangeError);
-    expect(() => splitGst(10_000, 1_800.5, "inter_state")).toThrow(RangeError);
-  });
-});
-
-describe("splitGstAcross", () => {
-  const line = (taxableCents: number, rateBasisPoints = GST_BASIS_POINTS) => ({ taxableCents, rateBasisPoints });
-
-  it("spreads the GST on the total over the lines, so they add up to it where rounding each line would not", () => {
-    // 239,920 + 799,920 at 18% is 43,185.6 + 143,985.6: each rounds up to 187,172 together, the total (187,171.2) rounds down to 187,171.
-    const lines = splitGstAcross([line(239_920), line(799_920)], "inter_state");
-    expect(lines.map((tax) => tax.igstCents)).toEqual([43_186, 143_985]);
-    expect(lines.reduce((total, tax) => total + tax.taxCents, 0)).toBe(splitGst(1_039_840, GST_BASIS_POINTS, "inter_state").taxCents);
-  });
-
-  it("gives each line equal CGST and SGST that add up to the halves of the total", () => {
-    const lines = splitGstAcross([line(239_920), line(799_920)], "intra_state");
-    const total = splitGst(1_039_840, GST_BASIS_POINTS, "intra_state");
-    expect(lines.every((tax) => tax.cgstCents === tax.sgstCents && tax.igstCents === 0 && tax.taxCents === 2 * tax.cgstCents)).toBe(true);
-    expect(lines.reduce((sum, tax) => sum + tax.cgstCents, 0)).toBe(total.cgstCents);
-    expect(lines.reduce((sum, tax) => sum + tax.sgstCents, 0)).toBe(total.sgstCents);
+  it("lets every line's taxable value and tax add up to what it was paid", () => {
+    const paid = [269_910, 899_990, 1_869_900, 1];
+    for (const supply of ["intra_state", "inter_state"] as const) {
+      const lines = splitGstInside(paid.map((cents) => line(cents)), supply);
+      lines.forEach((part, index) => expect(part.taxableCents + part.taxCents).toBe(paid[index]));
+    }
   });
 
   it("hands the spare paisa to the line with the largest remainder, and to the earlier line on a tie", () => {
-    // 25 paise at 18% is 4.5: two lines floor to 4 + 4 and the total, 9, needs one more.
-    expect(splitGstAcross([line(25), line(25)], "inter_state").map((tax) => tax.igstCents)).toEqual([5, 4]);
-    // 10 paise is 1.8 and 20 paise is 3.6: the total 5.4 rounds to 5, the floors give 1 + 3, and 10 paise has the larger remainder.
-    expect(splitGstAcross([line(10), line(20)], "inter_state").map((tax) => tax.igstCents)).toEqual([2, 3]);
+    // Two lines of 5,000: the tax inside 10,000 is 1,526, shared 763 each, so no spare. Odd sizes leave one to hand out.
+    expect(splitGstInside([line(5_000), line(5_000)], "inter_state").map((part) => part.igstCents)).toEqual([763, 763]);
+    const spare = splitGstInside([line(100), line(100), line(100)], "inter_state").map((part) => part.igstCents);
+    expect(spare.reduce((total, tax) => total + tax, 0)).toBe(gstInsideCents(300, GST_BASIS_POINTS));
+    expect(spare[0]).toBeGreaterThanOrEqual(spare[2] ?? 0);
   });
 
-  it("works each rate on its own", () => {
-    const lines = splitGstAcross([line(10_000), line(10_000, 500), line(10_000, 0)], "intra_state");
-    expect(lines.map((tax) => tax.taxCents)).toEqual([1_800, 500, 0]);
+  it("works each rate on its own, a zero rate having no tax", () => {
+    const lines = splitGstInside([line(10_000), line(10_000, 500), line(10_000, 0)], "intra_state");
+    expect(lines.map((part) => part.taxCents)).toEqual([1_526, 476, 0]);
+    expect(lines.map((part) => part.taxableCents)).toEqual([8_474, 9_524, 10_000]);
   });
 
   it("gives no line a negative amount, and refuses a line that is not whole paise", () => {
-    expect(splitGstAcross([line(1), line(1), line(1)], "inter_state").every((tax) => tax.igstCents >= 0)).toBe(true);
-    expect(() => splitGstAcross([line(-1)], "inter_state")).toThrow(RangeError);
+    expect(splitGstInside([line(1), line(1), line(1)], "inter_state").every((part) => part.igstCents >= 0 && part.taxableCents >= 0)).toBe(true);
+    expect(() => splitGstInside([line(-1)], "inter_state")).toThrow(RangeError);
+    expect(() => splitGstInside([line(10.5)], "inter_state")).toThrow(RangeError);
+  });
+
+  it("refuses a rate that cannot split into two equal halves", () => {
+    expect(() => splitGstInside([line(10_000, 1_801)], "intra_state")).toThrow(RangeError);
+    expect(() => splitGstInside([line(10_000, 1_801)], "inter_state")).toThrow(RangeError);
   });
 });
 

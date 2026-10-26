@@ -1,4 +1,3 @@
-import { chargedAmountCents } from "@brandbasket/billing";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   billingProfiles,
@@ -35,12 +34,12 @@ const PAID_AT = new Date("2026-10-09T09:00:00.000Z");
 const PERIOD_END = new Date("2026-11-09T09:00:00.000Z");
 /**
  * A plan line at a price of its own, the way plans were sold before the services became lines (the plan row itself costs
- * nothing now, so these amounts are the source's): ₹6,999 less a 20% coupon is ₹5,599.20 taxable, CGST and SGST ₹503.93 each,
- * ₹6,607.06 charged.
+ * nothing now, so these amounts are the source's): ₹6,999, GST included, less a 20% coupon is ₹5,599.20 charged. That holds
+ * ₹854.12 of GST, ₹427.06 each of CGST and SGST, and ₹4,745.08 taxable.
  */
 const NET_CENTS = 699_900;
 const DISCOUNT_CENTS = 139_980;
-const PLAN_CHARGED_CENTS = chargedAmountCents(NET_CENTS, DISCOUNT_CENTS, 1_800);
+const PLAN_CHARGED_CENTS = 559_920;
 
 let dbs: TestDatabases;
 let businessId = "";
@@ -146,7 +145,7 @@ async function seedCouponRenewal(providerPaymentId = "fake_pay_renewal", coupon:
   const discount = coupon.discountAmountCents + coupon.retentionDiscountCents;
   return seedPayment(dbs.staff.db, providerPaymentId, {
     subscriptionId: subscription.id,
-    amountCents: chargedAmountCents(NET_CENTS, discount, 1_800),
+    amountCents: NET_CENTS - discount,
   });
 }
 
@@ -228,9 +227,9 @@ describe("issueTaxInvoice", () => {
       placeOfSupplyStateCode: "mh",
       placeOfSupplyBasis: "gstin",
       supplyType: "intra_state",
-      taxableCents: 559_920,
-      cgstCents: 50_393,
-      sgstCents: 50_393,
+      taxableCents: 474_508,
+      cgstCents: 42_706,
+      sgstCents: 42_706,
       igstCents: 0,
       roundOffCents: 0,
       totalCents: payment.amountCents,
@@ -247,12 +246,12 @@ describe("issueTaxInvoice", () => {
         unitAmountCents: NET_CENTS,
         grossAmountCents: NET_CENTS,
         discountAmountCents: DISCOUNT_CENTS,
-        taxableCents: 559_920,
+        taxableCents: 474_508,
         taxRateBasisPoints: 1_800,
-        cgstCents: 50_393,
-        sgstCents: 50_393,
+        cgstCents: 42_706,
+        sgstCents: 42_706,
         igstCents: 0,
-        taxCents: 100_786,
+        taxCents: 85_412,
       },
     ]);
     expect(invoice?.recipient).toEqual({
@@ -276,36 +275,33 @@ describe("issueTaxInvoice", () => {
 
   it("invoices a package at the odd prices to the paisa, with the GST on the total shared over the lines and the lines kept beside the payment", async () => {
     await saveDetails();
-    // ₹2,999 and ₹9,999 at 20% off, the total floored to the whole rupee: the dearest line carries 40 paise more of discount.
+    // ₹2,999 and ₹9,999 at 10% off, the saving floored to the whole rupee: the dearest line carries 80 paise less discount than its own 10%.
     const bundledAddOns = [
-      { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 59_980, taxRateBasisPoints: 1_800 },
-      { addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 199_980 + 40, taxRateBasisPoints: 1_800 },
+      { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 29_990, taxRateBasisPoints: 1_800 },
+      { addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 99_990 - 80, taxRateBasisPoints: 1_800 },
     ];
-    const payment = await seedPayment(dbs.staff.db, "fake_pay_odd", { kind: "initial", amountCents: 1_226_964 });
+    const payment = await seedPayment(dbs.staff.db, "fake_pay_odd", { kind: "initial", amountCents: 1_169_900 });
 
     const invoice = await issueSafely(payment, { ...planSource(0), netAmountCents: 0, bundledAddOns });
 
-    expect(invoice).toMatchObject({ taxableCents: 1_039_800, cgstCents: 93_582, sgstCents: 93_582, roundOffCents: 0, totalCents: 1_226_964 });
+    // ₹11,699 holds 178,460 paise of GST, 89,230 each of CGST and SGST, shared over the lines by the largest remainder.
+    expect(invoice).toMatchObject({ taxableCents: 991_440, cgstCents: 89_230, sgstCents: 89_230, roundOffCents: 0, totalCents: 1_169_900 });
     expect(invoice?.lines.map((line) => [line.taxableCents, line.cgstCents, line.sgstCents, line.taxCents])).toEqual([
-      [239_920, 21_593, 21_593, 43_186],
-      [799_880, 71_989, 71_989, 143_978],
+      [228_738, 20_586, 20_586, 41_172],
+      [762_702, 68_644, 68_644, 137_288],
     ]);
     const kept = await querySql<{ invoice_basis: unknown }>(dbs.owner, `select invoice_basis from payments where id = '${payment.id}'`);
     expect(kept[0]?.invoice_basis).toEqual({ netAmountCents: 0, discountAmountCents: 0, retentionDiscountCents: 0, lines: bundledAddOns });
   });
 
-  it("prints the one paisa that equal CGST and SGST cannot share as a round-off when the GST on the total is odd", async () => {
+  it("prints no round-off when the payment is an odd number of paise: the GST inside it is a pair of equal halves, and the taxable value takes the odd paisa", async () => {
     await saveDetails();
-    // ₹2,399.20 and ₹7,999.20: the GST on their total, 187,171.2, rounds to 187,171, and the two halves can only be even.
-    const bundledAddOns = [
-      { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 59_980, taxRateBasisPoints: 1_800 },
-      { addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 199_980, taxRateBasisPoints: 1_800 },
-    ];
-    const payment = await seedPayment(dbs.staff.db, "fake_pay_odd_gst", { kind: "initial", amountCents: 1_227_011 });
+    // ₹5,599.19 paid (₹6,999 less 139,981 paise): the GST inside is still 85,412 paise, 42,706 each of CGST and SGST.
+    const payment = await seedPayment(dbs.staff.db, "fake_pay_odd_gst", { kind: "initial", amountCents: 559_919 });
 
-    const invoice = await issueSafely(payment, { ...planSource(0), netAmountCents: 0, bundledAddOns });
+    const invoice = await issueSafely(payment, planSource(139_981));
 
-    expect(invoice).toMatchObject({ taxableCents: 1_039_840, cgstCents: 93_586, sgstCents: 93_586, roundOffCents: -1, totalCents: 1_227_011 });
+    expect(invoice).toMatchObject({ taxableCents: 474_507, cgstCents: 42_706, sgstCents: 42_706, roundOffCents: 0, totalCents: 559_919 });
   });
 
   it("issues the invoice in the FY series, trading as Brandbasket", async () => {
@@ -386,7 +382,7 @@ describe("issueTaxInvoice", () => {
   });
 
   it("refuses a charge that this payment did not pay", async () => {
-    const payment = await seedPayment(dbs.staff.db, "fake_pay_other", { kind: "charge", amountCents: chargedAmountCents(49_900, 0, 1_800) });
+    const payment = await seedPayment(dbs.staff.db, "fake_pay_other", { kind: "charge", amountCents: 49_900 });
     const open = await dbs.owner.db
       .insert(charges)
       .values({
@@ -396,7 +392,7 @@ describe("issueTaxInvoice", () => {
         quantity: 1,
         unitAmountCents: 49_900,
         taxRateBasisPoints: 1_800,
-        amountCents: chargedAmountCents(49_900, 0, 1_800),
+        amountCents: 49_900,
         currency: "INR",
         status: "open",
         createdByStaffId: STAFF_USER,
@@ -432,7 +428,8 @@ describe("issueTaxInvoice", () => {
     expect(invoice?.lines[0]).toMatchObject({
       note: "Coupon GAURAV applied, 20% off. Stay offer applied",
       discountAmountCents: DISCOUNT_CENTS + 70_000,
-      taxableCents: NET_CENTS - DISCOUNT_CENTS - 70_000,
+      // ₹4,899.20 paid holds 74,734 paise of GST.
+      taxableCents: 415_186,
     });
     expect(invoice?.roundOffCents).toBe(0);
     expect(invoice?.totalCents).toBe(payment.amountCents);
@@ -444,11 +441,11 @@ describe("issueTaxInvoice", () => {
 
     const invoice = await issueSafely(payment, planSource(0));
 
-    expect(invoice?.lines[0]).toMatchObject({ note: null, discountAmountCents: 0, taxableCents: NET_CENTS });
+    expect(invoice?.lines[0]).toMatchObject({ note: null, discountAmountCents: 0, taxableCents: 593_136 });
   });
 
   it("issues nothing for a dollar payment, or for money that bought nothing", async () => {
-    const dollars = await seedPayment(dbs.staff.db, "fake_pay_usd", { currency: "USD", amountCents: 6_900 });
+    const dollars = await seedPayment(dbs.staff.db, "fake_pay_usd", { currency: "USD", amountCents: 6_500 });
     const mismatched = await seedPayment(dbs.staff.db, "fake_pay_mismatch", {
       attentionReason: "amount_mismatch",
       attentionRaisedAt: PAID_AT,
@@ -469,7 +466,7 @@ describe("issueTaxInvoice", () => {
       region: "Karnataka",
       postalCode: "560001",
     });
-    const amountCents = chargedAmountCents(2 * 49_900, 0, 1_800);
+    const amountCents = 2 * 49_900;
     const payment = await seedPayment(dbs.staff.db, "fake_pay_charge", { kind: "charge", amountCents });
     const rows = await dbs.owner.db
       .insert(charges)
@@ -497,10 +494,11 @@ describe("issueTaxInvoice", () => {
       placeOfSupplyStateCode: "ka",
       placeOfSupplyBasis: "billing_address",
       supplyType: "inter_state",
-      taxableCents: 99_800,
+      // ₹998 paid holds 15,224 paise of GST, all of it IGST.
+      taxableCents: 84_576,
       cgstCents: 0,
       sgstCents: 0,
-      igstCents: 17_964,
+      igstCents: 15_224,
       roundOffCents: 0,
       totalCents: amountCents,
     });
@@ -516,7 +514,7 @@ describe("issueTaxInvoice", () => {
   });
 
   it("falls back to our own state when nothing says where the customer is", async () => {
-    const payment = await seedPayment(dbs.staff.db, "fake_pay_nowhere", { amountCents: chargedAmountCents(NET_CENTS, 0, 1_800) });
+    const payment = await seedPayment(dbs.staff.db, "fake_pay_nowhere", { amountCents: NET_CENTS });
 
     const invoice = await issueSafely(payment, planSource(0));
 
@@ -579,7 +577,7 @@ describe("an invoice that cannot be printed", () => {
     await renameBusiness(DEVANAGARI_NAME);
 
     const payment = await dbs.staff.db.transaction(async (tx) => {
-      const recorded = await seedPayment(tx, "fake_pay_hindi", { amountCents: chargedAmountCents(NET_CENTS, 0, 1_800) });
+      const recorded = await seedPayment(tx, "fake_pay_hindi", { amountCents: NET_CENTS });
       expect(await issueTaxInvoiceSafely(tx, recorded, planSource(0))).toBeNull();
       return recorded;
     });
@@ -605,7 +603,7 @@ describe("an invoice that cannot be printed", () => {
       postalCode: "400080",
     });
 
-    const payment = await seedPayment(dbs.staff.db, "fake_pay_curly", { amountCents: chargedAmountCents(NET_CENTS, 0, 1_800) });
+    const payment = await seedPayment(dbs.staff.db, "fake_pay_curly", { amountCents: NET_CENTS });
     const invoice = await issueSafely(payment, planSource(0));
 
     expect(invoice?.recipient.legalName).toBe("Dr. Rao's Dental");
@@ -626,7 +624,7 @@ describe("an invoice that cannot be printed", () => {
       phone: null,
     });
 
-    const payment = await seedPayment(dbs.staff.db, "fake_pay_curly_details", { amountCents: chargedAmountCents(NET_CENTS, 0, 1_800) });
+    const payment = await seedPayment(dbs.staff.db, "fake_pay_curly_details", { amountCents: NET_CENTS });
     const invoice = await issueSafely(payment, planSource(0));
 
     expect(invoice?.recipient.legalName).toBe("Rao's Dental Clinic");
@@ -635,7 +633,7 @@ describe("an invoice that cannot be printed", () => {
 
   it("issues it later, with the payment's own date, once English billing details are saved", async () => {
     await renameBusiness(DEVANAGARI_NAME);
-    const payment = await seedPayment(dbs.staff.db, "fake_pay_hindi_later", { amountCents: chargedAmountCents(NET_CENTS, 0, 1_800) });
+    const payment = await seedPayment(dbs.staff.db, "fake_pay_hindi_later", { amountCents: NET_CENTS });
     expect(await issueSafely(payment, planSource(0))).toBeNull();
 
     await saveDetails();
@@ -649,7 +647,7 @@ describe("an invoice that cannot be printed", () => {
 
   it("refuses a line description the invoice cannot print, and takes no number for it", async () => {
     await saveDetails();
-    const payment = await seedPayment(dbs.staff.db, "fake_pay_charge_hindi", { amountCents: 11_800, kind: "charge" });
+    const payment = await seedPayment(dbs.staff.db, "fake_pay_charge_hindi", { amountCents: 10_000, kind: "charge" });
     const rows = await dbs.owner.db
       .insert(charges)
       .values({
@@ -659,7 +657,7 @@ describe("an invoice that cannot be printed", () => {
         quantity: 1,
         unitAmountCents: 10_000,
         taxRateBasisPoints: 1_800,
-        amountCents: 11_800,
+        amountCents: 10_000,
         currency: "INR",
         status: "paid",
         createdByStaffId: STAFF_USER,

@@ -23,7 +23,7 @@ export interface CatalogueRow {
   readonly usd: string;
 }
 
-/** The services on sale with their list prices a month, before GST in rupees: what the Pricing page shows. */
+/** The services on sale with their list prices a month, GST included: what the Pricing page shows. */
 export function catalogueRows(): CatalogueRow[] {
   return MONTHLY_ADD_ON_IDS.map((id) => {
     const service = addOnById(id);

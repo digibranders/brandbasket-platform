@@ -1,10 +1,10 @@
 import type { DirectoryPaidTag, DirectoryPromotion } from "@brandbasket/db";
 // The subpath, not the package index: this module reaches client components, and the index pulls in the database.
-import { chargedAmountCents, GST_BASIS_POINTS } from "@brandbasket/billing/tax";
+import { chargedAmountCents, GST_BASIS_POINTS, gstInsideCents } from "@brandbasket/billing/tax";
 
 /*
  * Paid listing tags on the local directory, as the customer's Listing page and the staff console show them. A week of one
- * tag is ₹299 plus 18% GST, paid once with no auto-renew; the directory always shows the tag with an "Ad" marker. The
+ * tag is ₹299 with the 18% GST included, paid once with no auto-renew; the directory always shows the tag with an "Ad" marker. The
  * ids come from the database enum (directory_paid_tag); the labels and marker match the website contract's PAID_TAGS
  * and PAID_TAG_MARKER (apps/platform/lib/directory-api.ts), which a parity test checks.
  */
@@ -37,14 +37,14 @@ export const PROMOTION_DAYS = 7;
 /** The Listing page reminds the customer to renew once this many days or fewer are left. */
 export const PROMOTION_REMINDER_DAYS = 2;
 
-/** The week's net price in paise: ₹299. */
-export const PROMOTION_WEEK_NET_PAISE = 29_900;
-/** GST on it, in basis points. */
+/** The week's price in paise, GST included: ₹299. */
+export const PROMOTION_WEEK_PRICE_PAISE = 29_900;
+/** The GST inside it, in basis points. */
 export const PROMOTION_TAX_BASIS_POINTS = GST_BASIS_POINTS;
-/** What one week is charged, tax included: ₹352.82. Worked out by the one tax helper every charge uses. */
-export const PROMOTION_WEEK_CHARGED_PAISE = chargedAmountCents(PROMOTION_WEEK_NET_PAISE, 0, PROMOTION_TAX_BASIS_POINTS);
-/** The GST part of that, for the breakdown the customer sees. */
-export const PROMOTION_WEEK_TAX_PAISE = PROMOTION_WEEK_CHARGED_PAISE - PROMOTION_WEEK_NET_PAISE;
+/** What one week is charged: the price itself. Worked out by the one helper every charge uses. */
+export const PROMOTION_WEEK_CHARGED_PAISE = chargedAmountCents(PROMOTION_WEEK_PRICE_PAISE, 0);
+/** The GST inside that, for the breakdown the customer sees: ₹45.62. */
+export const PROMOTION_WEEK_TAX_PAISE = gstInsideCents(PROMOTION_WEEK_CHARGED_PAISE, PROMOTION_TAX_BASIS_POINTS);
 /** The directory is in India, so a week is always priced in rupees. */
 export const PROMOTION_CURRENCY = "INR";
 

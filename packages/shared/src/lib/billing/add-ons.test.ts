@@ -15,10 +15,10 @@ describe("services catalogue", () => {
     expect(isMonthlyAddOnId("constructor")).toBe(false);
   });
 
-  it("lists in minor units: 2,999, 9,999 and 24,999 rupees, 75, 75 and 350 dollars", () => {
+  it("lists in minor units: 2,999, 9,999 and 24,999 rupees (GST included), 65, 150 and 350 dollars", () => {
     expect(ADD_ONS.map((addOn) => [addOn.id, addOn.prices.INR, addOn.prices.USD])).toEqual([
-      ["managed-website", 299_900, 7_500],
-      ["digital-growth", 999_900, 7_500],
+      ["managed-website", 299_900, 6_500],
+      ["digital-growth", 999_900, 15_000],
       ["local-seo-aeo", 2_499_900, 35_000],
     ]);
   });
@@ -31,21 +31,21 @@ describe("services catalogue", () => {
     expect(line).not.toMatch(/\d+ (designed )?posts/);
   });
 
-  it("charges the website at 3,538.82 rupees a month with 18% GST", () => {
+  it("charges the website at 2,999 rupees a month, the 18% GST already inside it", () => {
     expect(addOnPrice(addOnById("managed-website"), "INR")).toEqual({
-      currency: "INR", listCents: 299_900, discountCents: 0, offerCents: 0, netCents: 299_900, taxRateBasisPoints: 1_800, chargedCents: 353_882,
+      currency: "INR", listCents: 299_900, discountCents: 0, offerCents: 0, netCents: 299_900, taxRateBasisPoints: 1_800, chargedCents: 299_900,
     });
-    expect(addOnPrice(addOnById("local-seo-aeo"), "INR").chargedCents).toBe(2_949_882);
+    expect(addOnPrice(addOnById("local-seo-aeo"), "INR").chargedCents).toBe(2_499_900);
   });
 
   it("prices in dollars with no tax", () => {
-    expect(addOnPrice(addOnById("digital-growth"), "USD")).toMatchObject({ listCents: 7_500, taxRateBasisPoints: 0, chargedCents: 7_500 });
+    expect(addOnPrice(addOnById("digital-growth"), "USD")).toMatchObject({ listCents: 15_000, taxRateBasisPoints: 0, chargedCents: 15_000 });
     expect(addOnPrice(addOnById("local-seo-aeo"), "USD")).toMatchObject({ listCents: 35_000, taxRateBasisPoints: 0, chargedCents: 35_000 });
   });
 
-  it("takes the package discount it is given off the list price, before tax", () => {
+  it("takes the package discount it is given off the list price the customer pays", () => {
     expect(addOnPrice(addOnById("digital-growth"), "INR", 299_970)).toEqual({
-      currency: "INR", listCents: 999_900, discountCents: 299_970, offerCents: 299_970, netCents: 699_930, taxRateBasisPoints: 1_800, chargedCents: 825_917,
+      currency: "INR", listCents: 999_900, discountCents: 299_970, offerCents: 299_970, netCents: 699_930, taxRateBasisPoints: 1_800, chargedCents: 699_930,
     });
   });
 

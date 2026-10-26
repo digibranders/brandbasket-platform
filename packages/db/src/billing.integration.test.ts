@@ -51,8 +51,8 @@ function addMonths(from: Date, months: number): Date {
   return result;
 }
 
-/** What the website alone is charged, tax included: its line is the whole charge, since the plan row costs nothing. */
-const WEBSITE_CHARGED_CENTS = { USD: 7_500, INR: 353_882 } as const;
+/** What the website alone is charged, GST included in rupees: its line is the whole charge, since the plan row costs nothing. */
+const WEBSITE_CHARGED_CENTS = { USD: 6_500, INR: 299_900 } as const;
 
 async function requirePlan(currency: "USD" | "INR"): Promise<Plan> {
   const plan = await findActivePlan(dbs.staff.db, currency, "managed");
@@ -149,8 +149,8 @@ describe("plans", () => {
     const usd = await requirePlan("USD");
     const inr = await requirePlan("INR");
 
-    // Both cost nothing of their own (the services are the lines) and cover one month: no tax of ours in dollars, and 18%
-    // GST on top in rupees.
+    // Both cost nothing of their own (the services are the lines) and cover one month: no tax of ours in dollars, and the 18%
+    // GST inside every price in rupees.
     expect(usd).toMatchObject({ code: "services-usd-2026-10", currency: "USD", initialAmountCents: 0, taxRateBasisPoints: 0, initialTermMonths: 1, recurringAmountCents: 0 });
     expect(inr).toMatchObject({
       code: "services-inr-2026-10",
@@ -299,7 +299,7 @@ describe("recordPaymentAndActivate", () => {
       provider: "fake",
       providerPaymentId: "fake_pay_1",
       kind: "initial",
-      amountCents: 7500,
+      amountCents: 6500,
       currency: "USD",
       status: "captured",
     });
@@ -331,7 +331,7 @@ describe("recordPaymentAndActivate", () => {
 
     const oneMonthOn = new Date("2026-04-01T10:00:00.000Z");
     expect(plan.initialTermMonths).toBe(1);
-    expect(result.payment).toMatchObject({ amountCents: 353_882, currency: "INR", kind: "initial" });
+    expect(result.payment).toMatchObject({ amountCents: 299_900, currency: "INR", kind: "initial" });
     expect(await findLatestSubscriptionForBusiness(dbs.staff.db, businessB)).toMatchObject({
       status: "active",
       commitmentEndsAt: oneMonthOn,
@@ -419,7 +419,7 @@ describe("recordPaymentAndActivate", () => {
 
     const listed = await listPaymentsForBusiness(dbs.staff.db, businessA, 10);
     expect(listed.map((payment) => payment.providerPaymentId)).toEqual(["fake_pay_2", "fake_pay_1"]);
-    expect(listed.map((payment) => payment.amountCents)).toEqual([7500, 7500]);
+    expect(listed.map((payment) => payment.amountCents)).toEqual([6500, 6500]);
     expect(await listPaymentsForBusiness(dbs.staff.db, businessB, 10)).toEqual([]);
   });
 });

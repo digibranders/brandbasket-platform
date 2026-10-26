@@ -39,7 +39,7 @@ export async function listActivePlans(db: Runner): Promise<Plan[]> {
   return db.select(PLAN_COLUMNS).from(plans).where(eq(plans.active, true)).orderBy(asc(plans.currency), asc(plans.tier));
 }
 
-/** The extra prices staff may set, net of tax, in minor units. A field left out is not changed. */
+/** The extra prices staff may set, GST included, in minor units. A field left out is not changed. */
 export interface ExtraPrices {
   readonly extraHourAmountCents?: number;
   readonly extraPublishAmountCents?: number;

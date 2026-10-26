@@ -46,7 +46,7 @@ function Included({ items }: { readonly items: readonly IncludedItem[] }): React
 
 /**
  * Today's payment, in one place: a line for each service in the basket at its list price (the Managed Website line with what
- * it includes), the package offer and the code if there is one, the GST, what is due and the Pay button, then the ad credit
+ * it includes), the package offer and the code if there is one, what is due with the GST it includes and the Pay button, then the ad credit
  * a package earns. Beside the page's content on a wide screen and following it down; below it on a phone, where the Pay
  * button also floats (membership-page.tsx). Every figure is in `parts`, which the page worked out with the functions the
  * checkout charges by. A service can be taken out with Remove unless it is the only one.
@@ -54,7 +54,7 @@ function Included({ items }: { readonly items: readonly IncludedItem[] }): React
 export function OrderSummary({ tier, view, parts, removeHref, children }: OrderSummaryProps): ReactElement {
   const { plan, discount } = view;
   const money = (cents: number): string => formatMoney(cents, plan.currency);
-  // What the package offer and a code take off, before GST: the figure the lines above add up to less.
+  // What the package offer and a code take off: the figure the lines above add up to less.
   const savedCents = parts.discountCents + (parts.offer?.discountCents ?? 0);
   const removable = parts.lines.length > 1;
 
@@ -81,11 +81,11 @@ export function OrderSummary({ tier, view, parts, removeHref, children }: OrderS
         ))}
         {parts.offer === null ? null : <Row label={parts.offer.label} amount={`-${money(parts.offer.discountCents)}`} />}
         {discount === null || parts.discountCents === 0 ? null : <Row label={`Code ${discount.code}`} amount={`-${money(parts.discountCents)}`} />}
-        {plan.taxRateBasisPoints > 0 ? <Row label={`GST ${plan.taxRateBasisPoints / 100}%`} amount={money(parts.gstCents)} /> : null}
         <div className="flex items-baseline justify-between gap-4 pt-3">
           <dt className="text-sm font-semibold text-ink">Due today</dt>
           <dd className="font-serif text-3xl tabular-nums text-ink">{money(parts.totalCents)}</dd>
         </div>
+        {plan.taxRateBasisPoints > 0 ? <p className="pt-1 text-right text-xs text-ink-soft">Includes {money(parts.gstCents)} of GST at {plan.taxRateBasisPoints / 100}%</p> : null}
         {savedCents > 0 ? (
           <div>
             <p className="pt-1.5 text-right text-base font-semibold text-success">You saved {money(savedCents)}</p>

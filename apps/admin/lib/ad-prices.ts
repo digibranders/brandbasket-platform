@@ -10,7 +10,7 @@ export const HOME_PRICE_SCOPE = "all";
 export interface CategoryPriceRow {
   readonly categorySlug: string;
   readonly label: string;
-  /** Weekly prices in paise before GST; null when that placement is closed. */
+  /** Weekly prices in paise, GST included; null when that placement is closed. */
   readonly topWeekPaise: number | null;
   readonly sideWeekPaise: number | null;
   readonly profileWeekPaise: number | null;

@@ -42,11 +42,11 @@ const STATUS_TONES: Readonly<Record<Charge["status"], StatusTone>> = {
 const STATUS_LABELS: Readonly<Record<Charge["status"], string>> = { open: "To pay", paid: "Paid", waived: "Waived" };
 
 
-/** What one unit of each priced kind costs this client, tax included, for the kind picker. */
+/** What one unit of each priced kind costs this client (GST included), for the kind picker. */
 function kindOptionLabel(kind: StaffChargeKind, plan: Plan): string {
   const pricing = chargePricing(kind, plan);
   if (pricing.unitAmountCents === null) return `${CHARGE_KIND_LABELS[kind]} (price below)`;
-  const price = formatMoney(chargeAmountCents(pricing.unitAmountCents, 1, plan.taxRateBasisPoints), plan.currency);
+  const price = formatMoney(chargeAmountCents(pricing.unitAmountCents, 1), plan.currency);
   return `${CHARGE_KIND_LABELS[kind]}: ${price} per ${pricing.unit ?? "unit"}`;
 }
 

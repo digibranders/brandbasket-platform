@@ -228,14 +228,14 @@ describe("activateReactivationPayment", () => {
     paidThroughAt: THROUGH,
   } as const;
 
-  it("records a reactivation at the monthly price with tax, through the date it is given", async () => {
+  it("records a reactivation at the monthly price, GST inside it, through the date it is given", async () => {
     vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } } as never);
     await activateReactivationPayment(tx, BASE);
     expect(recordPaymentAndActivate).toHaveBeenCalledWith(
       tx,
       expect.objectContaining({
         kind: "reactivation",
-        amountCents: 1_179_882,
+        amountCents: 999_900,
         currency: "INR",
         paidAt: PAID,
         paidThroughAt: THROUGH,
@@ -261,8 +261,8 @@ describe("activateReactivationPayment", () => {
 
     const activation = await activateReactivationPayment(tx, BASE);
 
-    // (999,900 - 99,990) + 18% GST
-    expect(recordPaymentAndActivate).toHaveBeenLastCalledWith(tx, expect.objectContaining({ amountCents: 1_061_894 }));
+    // 999,900 - 99,990: the price the customer pays, with its GST inside
+    expect(recordPaymentAndActivate).toHaveBeenLastCalledWith(tx, expect.objectContaining({ amountCents: 899_910 }));
     expect(settleDiscountAfterPayment).toHaveBeenCalledWith(tx, { subscriptionId: "sub-back", discountTakenCents: 99_990, adoptsNewDiscount: false, now: PAID });
     expect(vi.mocked(issueTaxInvoiceSafely).mock.calls[0]?.[2]).toMatchObject({ discountAmountCents: 99_990 });
     expect(activation.discountEnded).toBe(true);

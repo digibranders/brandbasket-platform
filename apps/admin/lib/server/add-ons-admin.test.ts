@@ -235,9 +235,9 @@ describe("add-ons taken with the plan", () => {
     businessId: BUSINESS,
     addOn: "digital-growth",
     status: "active",
-    listAmountCents: 199_900,
-    offerDiscountAmountCents: 9_995,
-    netAmountCents: 189_905,
+    listAmountCents: 999_900,
+    offerDiscountAmountCents: 99_990,
+    netAmountCents: 899_910,
     taxRateBasisPoints: 1_800,
     activatedAt: new Date("2026-10-09T09:00:00.000Z"),
     endRequestedAt: null,
@@ -262,7 +262,7 @@ describe("add-ons taken with the plan", () => {
         id: BUNDLED,
         title: "Social Media and Ads",
         state: { tone: "done", label: "Active" },
-        price: "₹1,899.05 + GST a month, package price, billed with the monthly payment",
+        price: "₹8,999.10 a month, GST included, package price, billed with the monthly payment",
         needsContact: true,
       }),
     ]);
@@ -276,12 +276,12 @@ describe("add-ons taken with the plan", () => {
       bundledRow({ subscriptionId: "sub-1", addOn: "managed-website" }),
       bundledRow({ id: "second", subscriptionId: "sub-1" }),
     ] as never);
-    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "active", activatedAt: NOW, cancelRequestedAt: null, adCreditCents: 200_000, paidThroughAt: null } as never);
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "active", activatedAt: NOW, cancelRequestedAt: null, adCreditCents: 150_000, paidThroughAt: null } as never);
 
-    expect((await loadClientAddOns(BUSINESS, NOW)).package).toEqual({ package: "Website + Social, 20% off each service", adCredit: "₹2,000 a month", forfeitedOn: null });
+    expect((await loadClientAddOns(BUSINESS, NOW)).package).toEqual({ package: "Website + Social, 10% off each service", adCredit: "₹1,500 a month", forfeitedOn: null });
 
     vi.mocked(findPackageOfferForfeitedAt).mockResolvedValue(FORFEITED);
-    expect((await loadClientAddOns(BUSINESS, NOW)).package).toEqual({ package: "No package", adCredit: "₹2,000 a month", forfeitedOn: "5 November 2026" });
+    expect((await loadClientAddOns(BUSINESS, NOW)).package).toEqual({ package: "No package", adCredit: "₹1,500 a month", forfeitedOn: "5 November 2026" });
   });
 
   it("shows one the customer asked to remove as ending, and a removed one as removed", async () => {
@@ -323,7 +323,7 @@ describe("adding, removing and retrying an add-on for the client", () => {
     vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
     vi.mocked(readAddOnAssessment).mockImplementation(async (_db, input) =>
       input.addOn === "digital-growth"
-        ? ({ kind: "offer", plan: { taxRateBasisPoints: 1_800 }, quote: { chargeCents: 826_000, nextRenewalCents: 1_179_882, daysLeft: 31 } } as never)
+        ? ({ kind: "offer", plan: { taxRateBasisPoints: 1_800 }, quote: { chargeCents: 826_000, nextRenewalCents: 999_900, daysLeft: 31 } } as never)
         : { kind: "blocked", reason: "already-added" },
     );
 

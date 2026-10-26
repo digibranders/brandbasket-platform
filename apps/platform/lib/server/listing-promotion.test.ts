@@ -39,7 +39,7 @@ beforeEach(() => {
 });
 
 describe("startListingPromotionPayment", () => {
-  it("opens the charge at ₹299 + 18% GST for the chosen tag, then the ordinary charge payment", async () => {
+  it("opens the charge at ₹299, GST included, for the chosen tag, then the ordinary charge payment", async () => {
     vi.mocked(openListingPromotionCharge).mockResolvedValue({ kind: "opened", chargeId: CHARGE_ID });
     vi.mocked(startCustomerChargePayment).mockResolvedValue({ kind: "redirect", url: "/pay" });
 
@@ -52,7 +52,7 @@ describe("startListingPromotionPayment", () => {
       description: "Hot & New listing tag, 7 days",
       unitAmountCents: 29_900,
       taxRateBasisPoints: 1_800,
-      amountCents: 35_282,
+      amountCents: 29_900,
       now: NOW,
     });
     expect(startCustomerChargePayment).toHaveBeenCalledWith(customer(), CHARGE_ID);

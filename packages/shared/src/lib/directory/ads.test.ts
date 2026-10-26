@@ -15,14 +15,14 @@ import {
 } from "./ads";
 
 describe("ad money", () => {
-  it("adds 18% GST through the one tax helper", () => {
-    expect(adChargedPaise(71_000)).toBe(83_780);
-    expect(adChargedPaise(29_900)).toBe(35_282);
+  it("charges the price as it stands: every price includes the 18% GST", () => {
+    expect(adChargedPaise(71_000)).toBe(71_000);
+    expect(adChargedPaise(29_900)).toBe(29_900);
   });
 
   it("formats rupees the Indian way", () => {
     expect(formatRupees(150_000)).toBe("₹1,500");
-    expect(formatRupees(35_282)).toBe("₹352.82");
+    expect(formatRupees(29_950)).toBe("₹299.50");
   });
 
   it("reads whole rupees in range and refuses the rest", () => {

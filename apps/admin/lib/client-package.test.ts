@@ -7,7 +7,7 @@ const SUBSCRIPTION = {
   status: "active",
   activatedAt: new Date("2026-10-21T10:00:00.000Z"),
   cancelRequestedAt: null,
-  adCreditCents: 200_000,
+  adCreditCents: 150_000,
 } as Subscription;
 
 const line = (addOn: string, overrides: Partial<BundledAddOn> = {}): BundledAddOn =>
@@ -18,8 +18,8 @@ const WEBSITE_AND_SOCIAL = [line("managed-website"), line("digital-growth")];
 describe("clientPackageFacts", () => {
   it("names the services and the percentage off each, the credit a month, and no forfeit date", () => {
     expect(clientPackageFacts({ lines: WEBSITE_AND_SOCIAL, subscription: SUBSCRIPTION, currency: "INR", forfeitedAt: null })).toEqual({
-      package: "Website + Social, 20% off each service",
-      adCredit: "₹2,000 a month",
+      package: "Website + Social, 10% off each service",
+      adCredit: "₹1,500 a month",
       forfeitedOn: null,
     });
   });
@@ -60,10 +60,10 @@ describe("clientPackageFacts", () => {
     expect(facts({ status: "cancelled", activatedAt: null })).toBe("None");
     expect(facts({ activatedAt: null })).toBe("None");
     // A client who asked to close keeps the credit to the end of the month they paid for; the provider's cancel then ends it.
-    expect(facts({ cancelRequestedAt: new Date("2026-11-01T00:00:00.000Z") })).toBe("₹2,000 a month");
+    expect(facts({ cancelRequestedAt: new Date("2026-11-01T00:00:00.000Z") })).toBe("₹1,500 a month");
     expect(facts({ cancelRequestedAt: new Date("2026-11-01T00:00:00.000Z"), status: "cancelled" })).toBe("None");
     expect(facts({ status: "inactive" })).toBe("None");
-    expect(facts({ status: "past_due" })).toBe("₹2,000 a month");
+    expect(facts({ status: "past_due" })).toBe("₹1,500 a month");
   });
 
   it("is no package and no credit for a business with no subscription", () => {

@@ -24,9 +24,8 @@ const STAFF = "staff-1";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 const NOW = new Date("2026-10-01T06:30:00.000Z");
-/** ₹299 with 18% GST. */
-const NET = 29_900;
-const CHARGED = 35_282;
+/** ₹299, with the 18% GST inside it: a week is charged at its price. */
+const PRICE = 29_900;
 
 const PLACEMENT: ListingPlacementInput = {
   categorySlug: "dentists",
@@ -66,9 +65,9 @@ function promotionInput(businessId: string, tag: DirectoryPaidTag, now: Date): O
     businessId,
     tag,
     description: `${tag} listing tag, 7 days`,
-    unitAmountCents: NET,
+    unitAmountCents: PRICE,
     taxRateBasisPoints: 1800,
-    amountCents: CHARGED,
+    amountCents: PRICE,
     now,
   };
 }
@@ -87,7 +86,7 @@ async function pay(chargeId: string, businessId: string, now: Date, providerPaym
     businessId,
     provider: "fake",
     providerPaymentId: providerPaymentId ?? `pay_promo_${paymentCounter}`,
-    amountCents: CHARGED,
+    amountCents: PRICE,
     currency: "INR",
     paidAt: now,
     now,
@@ -142,16 +141,16 @@ describe("opening a promotion charge", () => {
       kind: "listing_promotion",
       status: "open",
       quantity: 1,
-      unitAmountCents: NET,
+      unitAmountCents: PRICE,
       taxRateBasisPoints: 1800,
-      amountCents: CHARGED,
+      amountCents: PRICE,
       currency: "INR",
       createdByStaffId: null,
     });
     expect(await asA((tx) => findOpenPromotionCharge(tx, businessA))).toEqual({
       chargeId,
       tag: "hot_new",
-      amountCents: CHARGED,
+      amountCents: PRICE,
       currency: "INR",
     });
     expect(await asB((tx) => findOpenPromotionCharge(tx, businessA))).toBeNull();
@@ -180,9 +179,9 @@ describe("opening a promotion charge", () => {
       kind: "listing_promotion" as const,
       description: "Hot & New listing tag, 7 days",
       quantity: 1,
-      unitAmountCents: NET,
+      unitAmountCents: PRICE,
       taxRateBasisPoints: 1800,
-      amountCents: CHARGED,
+      amountCents: PRICE,
       currency: "INR" as const,
     };
     expect(await captureErrorText(dbs.staff.db.insert(charges).values(base))).toMatch(/charges_promotion_tag_check/);
@@ -229,7 +228,7 @@ describe("paying for a week", () => {
       businessId: businessA,
       provider: "fake",
       providerPaymentId: "pay_short",
-      amountCents: NET,
+      amountCents: PRICE - 1,
       currency: "INR",
       paidAt: NOW,
       now: NOW,
@@ -309,9 +308,9 @@ describe("renewing and the one-tag rule", () => {
         promotionTag: "most_searched",
         description: "Most Searched listing tag, 7 days",
         quantity: 1,
-        unitAmountCents: NET,
+        unitAmountCents: PRICE,
         taxRateBasisPoints: 1800,
-        amountCents: CHARGED,
+        amountCents: PRICE,
         currency: "INR",
       })
       .returning({ id: charges.id });

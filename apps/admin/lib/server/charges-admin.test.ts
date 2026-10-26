@@ -36,7 +36,7 @@ const INR_PLAN = {
   blogPostBlockSize: 100,
 };
 
-const OPEN_CHARGE = { id: "charge-1", status: "open", amountCents: 336_300, currency: "INR" } as Charge;
+const OPEN_CHARGE = { id: "charge-1", status: "open", amountCents: 285_000, currency: "INR" } as Charge;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -44,7 +44,7 @@ beforeEach(() => {
 });
 
 describe("addClientCharge", () => {
-  it("prices a charge from the client's plan, in its currency, with its GST", async () => {
+  it("prices a charge from the client's plan, in its currency, with its GST included", async () => {
     const outcome = await addClientCharge({
       businessId: BUSINESS,
       staffUserId: "staff-1",
@@ -59,7 +59,7 @@ describe("addClientCharge", () => {
       quantity: 2,
       unitAmountCents: 142_500,
       taxRateBasisPoints: 1800,
-      amountCents: 336_300,
+      amountCents: 285_000,
       currency: "INR",
       createdByStaffId: "staff-1",
     });
@@ -74,7 +74,7 @@ describe("addClientCharge", () => {
 
     expect(insertCharge).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ description: "Logo refresh", unitAmountCents: 250_000, amountCents: 295_000 }),
+      expect.objectContaining({ description: "Logo refresh", unitAmountCents: 250_000, amountCents: 250_000 }),
     );
   });
 
@@ -105,7 +105,7 @@ describe("markClientChargePaid", () => {
       { name: "staff-tx" },
       expect.objectContaining({
         provider: "manual",
-        amountCents: 336_300,
+        amountCents: 285_000,
         currency: "INR",
         manual: { recordedByStaffId: "staff-1", reference: "NEFT 123", receivedOn: "2026-10-01" },
       }),

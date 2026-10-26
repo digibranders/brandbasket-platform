@@ -168,7 +168,7 @@ action top right, and header-owned children such as the stage track.
 
 - `formatMoney` always, with currency symbol; `tabular-nums`; serif `text-lg` for the amount at the end of a charge
   row; big figures in `Figures`. Old → new prices: old ink-soft struck through, new semibold.
-- Say whether GST is in: "charged ₹3,539 with GST", "before 18% GST".
+- Say whether GST is in: every price includes it, so write "₹2,999 a month, GST included".
 
 ## Confirm steps
 
@@ -253,7 +253,7 @@ action top right, and header-owned children such as the stage track.
 - **Add-ons:** the section (`#add-ons`, which every notice and Journey item links to) sits after Extras. Its aside reads
   "Bought by the customer", or "N to follow up" when paid purchases are waiting. A notice (fixed words, `?addOns=`)
   shows first. Then hairline rows, one per add-on the customer actually bought, newest first (an unpaid checkout and
-  a row cancelled before it was ever paid are left out): name, price before GST ("₹9,999 + GST a month", with
+  a row cancelled before it was ever paid are left out): name, price ("₹9,999 a month, GST included", with
   ", package price" when discounted), a date line (Renews on, Ends on, Pauses on, Paused since, Starting on, or
   "Customer can pay until …"), who scheduled an end and when, and a `StatusDot` (Active done; Ending, Pausing and
   Starting waiting; Payment failing and Payment failed problem; Paused and Ended quiet). A row replaced by a newer one
@@ -266,7 +266,7 @@ action top right, and header-owned children such as the stage track.
 - **Dock:** 13 sections and Add lead do not fit a phone or a narrow desktop, so the glass bar scrolls sideways inside
   the screen (no scrollbar, items never narrower than 3.75rem) and centres the current section when the page changes,
   without smooth scrolling.
-- **Pricing:** one section per currency: four price fields (before tax, charged-with-GST hint), a gold-deep rule
+- **Pricing:** one section per currency: four price fields (typed with GST included, with a "GST included" hint), a gold-deep rule
   explaining who a change affects, "Save INR prices". Then Price changes (old struck, new bold, who, when).
 - **Invoices:** header with the one primary action, Download CSV (a plain link to `/invoices/export?month=`). A month row:
   previous month link, a native month field with "Show month" (works without JavaScript), next month link

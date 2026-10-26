@@ -24,7 +24,7 @@ export interface ClientAddOnRow {
   readonly id: string;
   readonly title: string;
   readonly state: ClientAddOnState;
-  /** What the customer pays, before any GST, as it was fixed at purchase: "₹9,999 + GST a month", "$125 a month". */
+  /** What the customer pays, as it was fixed at purchase: "₹9,999 a month, GST included", "$125 a month". */
   readonly price: string;
   /** The next billing, end or pause date in words, or null when there is none to say. */
   readonly dateLine: string | null;
@@ -47,7 +47,7 @@ function day(date: Date): string {
 }
 
 function priceOf(row: AddOnSubscriptionForStaff): string {
-  return `${formatMoney(row.netAmountCents, row.currency)}${row.taxRateBasisPoints > 0 ? " + GST" : ""} a month`;
+  return `${formatMoney(row.netAmountCents, row.currency)} a month${row.taxRateBasisPoints > 0 ? ", GST included" : ""}`;
 }
 
 function endNoteOf(row: AddOnSubscriptionForStaff): string | null {
@@ -150,7 +150,7 @@ export interface ClientBundledAddOnRow {
   readonly addOn: MonthlyAddOnId;
   readonly title: string;
   readonly state: ClientAddOnState;
-  /** What it adds to the monthly payment, before GST: "₹6,650 + GST a month, package price, billed with the monthly payment". */
+  /** What it adds to the monthly payment: "₹6,650 a month, GST included, package price, billed with the monthly payment". */
   readonly price: string;
   readonly dateLine: string | null;
   /** Paid, and nobody has marked the customer as contacted yet. */
@@ -225,7 +225,7 @@ export function clientBundledAddOnRows(rows: readonly BundledAddOn[], currency: 
         addOn: row.addOn,
         title: addOnById(row.addOn).title,
         ...bundledState(row, currency, context),
-        price: `${formatMoney(row.netAmountCents, currency)}${row.taxRateBasisPoints > 0 ? " + GST" : ""} a month, ${row.offerDiscountAmountCents > 0 ? "package price, " : ""}billed with the monthly payment`,
+        price: `${formatMoney(row.netAmountCents, currency)} a month${row.taxRateBasisPoints > 0 ? ", GST included" : ""}, ${row.offerDiscountAmountCents > 0 ? "package price, " : ""}billed with the monthly payment`,
         needsContact: row.activatedAt !== null && row.contactedAt === null,
         contactedOn: row.contactedAt === null ? null : day(row.contactedAt),
         canRemove,
@@ -240,7 +240,7 @@ export interface ClientAddOnOption {
   readonly addOn: MonthlyAddOnId;
   readonly title: string;
   readonly kind: "add" | "keep";
-  /** "₹8,260 now for the 31 days left, then ₹11,798.82 a month with GST", or what keeping it means. */
+  /** "₹8,260 now for the 31 days left, then ₹9,999 a month, GST included", or what keeping it means. */
   readonly costText: string;
 }
 
@@ -251,7 +251,7 @@ export function clientAddOnOption(addOn: MonthlyAddOnId, assessment: AddOnAssess
   if (assessment?.kind !== "offer") return null;
   const { quote } = assessment;
   const days = quote.daysLeft === 1 ? "the 1 day left" : `the ${quote.daysLeft} days left`;
-  const tax = assessment.plan.taxRateBasisPoints > 0 ? " with GST" : "";
+  const tax = assessment.plan.taxRateBasisPoints > 0 ? ", GST included" : "";
   return {
     addOn,
     title,
@@ -291,7 +291,7 @@ export function clientPressReleaseRows(
   return releases.map((release) => ({
     id: release.id,
     boughtOn: day(release.paidAt ?? release.createdAt),
-    amount: `${formatMoney(release.amountCents, "INR")} with GST`,
+    amount: `${formatMoney(release.amountCents, "INR")}, GST included`,
     status: release.status,
     state: PRESS_RELEASE_STATES[release.status],
     nextSteps: NEXT_STEPS[release.status],

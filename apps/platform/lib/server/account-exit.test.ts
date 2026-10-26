@@ -371,9 +371,9 @@ describe("loadPackageEndsFor", () => {
   });
 
   it("reads the client's own basket, forfeit and ad credit, and says what cancelling ends", async () => {
-    await expect(loadPackageEndsFor(withCredit(500_000))).resolves.toEqual([
-      "Your package price (30% off)",
-      "\u20B95,000 a month of ad credit",
+    await expect(loadPackageEndsFor(withCredit(300_000))).resolves.toEqual([
+      "Your package price (20% off)",
+      "\u20B93,000 a month of ad credit",
       "If you come back, every service is at its own price",
     ]);
     expect(withTenantScope).toHaveBeenCalledWith(expect.anything(), { userId: USER_ID, businessId: BUSINESS_ID }, expect.any(Function));
@@ -384,22 +384,22 @@ describe("loadPackageEndsFor", () => {
     vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website"), line("digital-growth", { endRequestedAt: NOW }), line("local-seo-aeo")]);
 
     await expect(loadPackageEndsFor(withCredit(0))).resolves.toEqual([
-      "Your package price (20% off)",
+      "Your package price (10% off)",
       "If you come back, every service is at its own price",
     ]);
   });
 
   it("lists the lines for a plan the team collects by hand and for one whose renewal is failing", async () => {
-    const lines = ["Your package price (30% off)", "\u20B95,000 a month of ad credit", "If you come back, every service is at its own price"];
-    await expect(loadPackageEndsFor(withCredit(500_000, { provider: "manual" }))).resolves.toEqual(lines);
-    await expect(loadPackageEndsFor(withCredit(500_000, { status: "past_due" }))).resolves.toEqual(lines);
+    const lines = ["Your package price (20% off)", "\u20B93,000 a month of ad credit", "If you come back, every service is at its own price"];
+    await expect(loadPackageEndsFor(withCredit(300_000, { provider: "manual" }))).resolves.toEqual(lines);
+    await expect(loadPackageEndsFor(withCredit(300_000, { status: "past_due" }))).resolves.toEqual(lines);
   });
 
   it("does not count a service that is not yet paid for", async () => {
     vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website"), line("digital-growth"), line("local-seo-aeo", { status: "pending" })]);
 
     await expect(loadPackageEndsFor(withCredit(0))).resolves.toEqual([
-      "Your package price (20% off)",
+      "Your package price (10% off)",
       "If you come back, every service is at its own price",
     ]);
   });
@@ -415,8 +415,8 @@ describe("loadPackageEndsFor", () => {
 
   it("lists nothing when closing does not end a paid plan, and reads nothing", async () => {
     await expect(loadPackageEndsFor(customer(null))).resolves.toEqual([]);
-    await expect(loadPackageEndsFor(withCredit(500_000, { cancelRequestedAt: NOW }))).resolves.toEqual([]);
-    await expect(loadPackageEndsFor(withCredit(500_000, { status: "incomplete" }))).resolves.toEqual([]);
+    await expect(loadPackageEndsFor(withCredit(300_000, { cancelRequestedAt: NOW }))).resolves.toEqual([]);
+    await expect(loadPackageEndsFor(withCredit(300_000, { status: "incomplete" }))).resolves.toEqual([]);
     expect(withTenantScope).not.toHaveBeenCalled();
   });
 });

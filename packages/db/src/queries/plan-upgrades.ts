@@ -120,7 +120,7 @@ export interface NewPlanUpgrade {
   readonly toDiscountAmountCents: number;
   readonly periodEnd: Date;
   readonly netDifferenceCents: number;
-  /** What is taken, tax included. Zero when nothing is: the move is applied at once. */
+  /** What is taken. Zero when nothing is: the move is applied at once. */
   readonly chargeCents: number;
   /** The charge's tax rate and currency, for the charge row; used only when `chargeCents` is above zero. */
   readonly taxRateBasisPoints: number;

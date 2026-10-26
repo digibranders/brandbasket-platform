@@ -210,7 +210,7 @@ describe("recordRazorpayChargePayment", () => {
 });
 
 describe("openBlogUnlock", () => {
-  it("prices the unlock from the plan, tax included", async () => {
+  it("prices the unlock from the plan, GST included in the price", async () => {
     vi.mocked(openBlogPostsCharge).mockResolvedValue(CHARGE);
     const plan = {
       currency: "INR",
@@ -230,7 +230,7 @@ describe("openBlogUnlock", () => {
       quantity: 1,
       unitAmountCents: 47_500,
       taxRateBasisPoints: 1800,
-      amountCents: 56_050,
+      amountCents: 47_500,
       currency: "INR",
       createdByStaffId: null,
     });

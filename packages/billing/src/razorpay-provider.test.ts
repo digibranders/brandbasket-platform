@@ -524,7 +524,7 @@ describe("charge payments", () => {
 });
 
 describe("createPlan", () => {
-  it("creates a monthly Razorpay plan at the price with its GST on top", async () => {
+  it("creates a monthly Razorpay plan at the price, GST inside it", async () => {
     const createPlan = vi.fn().mockResolvedValue({ id: "plan_new" });
     const provider = createRazorpayProvider({
       keySecret: KEY_SECRET,
@@ -539,7 +539,7 @@ describe("createPlan", () => {
     expect(createPlan).toHaveBeenCalledWith({
       period: "monthly",
       interval: 1,
-      item: { name: "Subscription plan (INR)", amount: 412_882, currency: "INR" },
+      item: { name: "Subscription plan (INR)", amount: 349_900, currency: "INR" },
       notes: { brandbasketPlanCode: "care-inr-20261002-093000" },
     });
   });
@@ -561,7 +561,7 @@ describe("createPlan", () => {
       itemName: "Social media",
     });
     expect(createPlan).toHaveBeenCalledWith(
-      expect.objectContaining({ item: { name: "Social media", amount: 590_000, currency: "INR" } }),
+      expect.objectContaining({ item: { name: "Social media", amount: 500_000, currency: "INR" } }),
     );
   });
 });

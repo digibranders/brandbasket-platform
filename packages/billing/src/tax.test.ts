@@ -1,53 +1,70 @@
 import { describe, expect, it } from "vitest";
-import { chargedAmountCents, GST_BASIS_POINTS, NO_TAX } from "./tax";
+import { chargedAmountCents, GST_BASIS_POINTS, gstInsideCents, NO_TAX, taxableCents } from "./tax";
 
 describe("chargedAmountCents", () => {
-  it("adds 18% GST to the Indian plan: ₹2,999 becomes ₹3,538.82", () => {
-    expect(chargedAmountCents(299_900, 0, GST_BASIS_POINTS)).toBe(353_882);
+  it("charges the price as written: every price includes GST, so ₹2,999 is ₹2,999 (owner, 2026-10-26)", () => {
+    expect(chargedAmountCents(299_900, 0)).toBe(299_900);
   });
 
-  it("charges the dollar plan as it stands, with no tax of ours", () => {
-    expect(chargedAmountCents(6_900, 0, NO_TAX)).toBe(6_900);
+  it("charges the dollar price as it stands too", () => {
+    expect(chargedAmountCents(6_500, 0)).toBe(6_500);
   });
 
-  it("takes a referral discount off before tax, as GST is charged on what is actually sold", () => {
-    // ₹2,999 − ₹500 = ₹2,499, plus 18% = ₹2,948.82. Not ₹3,538.82 − ₹500.
-    expect(chargedAmountCents(299_900, 50_000, GST_BASIS_POINTS)).toBe(294_882);
-    expect(chargedAmountCents(6_900, 1_500, NO_TAX)).toBe(5_400);
-  });
-
-  it("rounds a half minor unit of tax up, and anything less down", () => {
-    // 1 paise × 18% = 0.18 paise → 0. 3 paise × 18% = 0.54 → 1. 25 paise × 18% = 4.5 → 5.
-    expect(chargedAmountCents(1, 0, GST_BASIS_POINTS)).toBe(1);
-    expect(chargedAmountCents(3, 0, GST_BASIS_POINTS)).toBe(4);
-    expect(chargedAmountCents(25, 0, GST_BASIS_POINTS)).toBe(30);
+  it("takes a discount off the price the customer pays", () => {
+    // A ₹500 code on the ₹2,999 plan: ₹2,499 paid, GST inside it. Not a discount on a price before GST.
+    expect(chargedAmountCents(299_900, 50_000)).toBe(249_900);
+    expect(chargedAmountCents(6_500, 1_500)).toBe(5_000);
   });
 
   it("refuses a discount that leaves nothing to charge", () => {
-    expect(() => chargedAmountCents(6_900, 6_900, NO_TAX)).toThrow(RangeError);
-    expect(() => chargedAmountCents(6_900, 7_000, NO_TAX)).toThrow(RangeError);
+    expect(() => chargedAmountCents(6_500, 6_500)).toThrow(RangeError);
+    expect(() => chargedAmountCents(6_500, 7_000)).toThrow(RangeError);
   });
 
-  it("refuses amounts and rates that are not whole, non-negative numbers", () => {
-    expect(() => chargedAmountCents(-1, 0, NO_TAX)).toThrow(RangeError);
-    expect(() => chargedAmountCents(10.5, 0, NO_TAX)).toThrow(RangeError);
-    expect(() => chargedAmountCents(6_900, -1, NO_TAX)).toThrow(RangeError);
-    expect(() => chargedAmountCents(6_900, 0, -1)).toThrow(RangeError);
-    expect(() => chargedAmountCents(6_900, 0, 18.5)).toThrow(RangeError);
+  it("refuses amounts that are not whole, non-negative numbers", () => {
+    expect(() => chargedAmountCents(-1, 0)).toThrow(RangeError);
+    expect(() => chargedAmountCents(10.5, 0)).toThrow(RangeError);
+    expect(() => chargedAmountCents(6_500, -1)).toThrow(RangeError);
   });
 });
 
-describe("a discounted provider plan", () => {
-  it("charges exactly what the webhook expects of a discounted subscription, for every discount on both plans", () => {
-    // The Razorpay plan a code runs on is created at chargedAmountCents(net - discount, 0, tax); the webhook expects
-    // chargedAmountCents(net, discount, tax). Both tax the same figure, so they can never differ by a paisa.
-    for (const [net, tax] of [
-      [299_900, GST_BASIS_POINTS],
-      [6_900, NO_TAX],
-    ] as const) {
-      for (let discount = 1; discount < net; discount += 7) {
-        expect(chargedAmountCents(net - discount, 0, tax)).toBe(chargedAmountCents(net, discount, tax));
-      }
-    }
+describe("gstInsideCents", () => {
+  // Figures worked out on their own: tax = 2 x round half up (price x 900 / 11,800), so CGST and SGST are equal halves.
+  it.each([
+    [299_900, 45_748, 254_152],
+    [999_900, 152_528, 847_372],
+    [2_499_900, 381_340, 2_118_560],
+    [1_169_900, 178_460, 991_440],
+    [2_519_900, 384_392, 2_135_508],
+    [3_149_900, 480_494, 2_669_406],
+    [3_039_800, 463_698, 2_576_102],
+    [249_900, 38_120, 211_780],
+    [354_000, 54_000, 300_000],
+  ])("finds the GST inside %i paise: %i of tax, %i taxable", (charged, tax, taxable) => {
+    expect(gstInsideCents(charged, GST_BASIS_POINTS)).toBe(tax);
+    expect(taxableCents(charged, GST_BASIS_POINTS)).toBe(taxable);
+    expect(taxable + tax).toBe(charged);
+  });
+
+  it("is always an even number of paise, so CGST and SGST are never a paisa apart", () => {
+    for (let charged = 1; charged <= 5_000; charged += 1) expect(gstInsideCents(charged, GST_BASIS_POINTS) % 2).toBe(0);
+  });
+
+  it("rounds a half paisa of each half up, and anything less down", () => {
+    // 25 paise x 900 / 11,800 = 1.9 -> 2 per half. 1 paisa -> 0.08 -> 0.
+    expect(gstInsideCents(25, GST_BASIS_POINTS)).toBe(4);
+    expect(gstInsideCents(1, GST_BASIS_POINTS)).toBe(0);
+  });
+
+  it("has no tax of ours on a dollar price", () => {
+    expect(gstInsideCents(6_500, NO_TAX)).toBe(0);
+    expect(taxableCents(6_500, NO_TAX)).toBe(6_500);
+  });
+
+  it("refuses a rate that cannot split into two equal halves, or amounts that are not whole", () => {
+    expect(() => gstInsideCents(299_900, 1_801)).toThrow(RangeError);
+    expect(() => gstInsideCents(299_900, -2)).toThrow(RangeError);
+    expect(() => gstInsideCents(10.5, GST_BASIS_POINTS)).toThrow(RangeError);
+    expect(() => gstInsideCents(-1, GST_BASIS_POINTS)).toThrow(RangeError);
   });
 });

@@ -193,7 +193,7 @@ export const subscriptions = pgTable(
     /** What the discount that carries over takes off the pending plan's net price. Zero with no pending plan. */
     pendingDiscountAmountCents: integer("pending_discount_amount_cents").notNull().default(0),
     /**
-     * What the services cost every month before GST, after any package discount, in the plan's
+     * What the services cost every month, GST included, after any package discount, in the plan's
      * minor units (bundled_add_ons, summed): frozen when the checkout opened. The provider bills one amount a month, the
      * plan's price plus this, so every amount check adds it to the plan's price. Zero for a subscription with no add-ons.
      */
@@ -310,7 +310,7 @@ export const providerBundlePlans = pgTable(
     planId: uuid("plan_id")
       .notNull()
       .references(() => plans.id),
-    /** The net monthly price this provider plan charges before tax, in minor units. */
+    /** The monthly price this provider plan charges, GST included, in minor units. */
     netMonthlyCents: integer("net_monthly_cents").notNull(),
     provider: billingProvider("provider").notNull(),
     providerPlanId: text("provider_plan_id").notNull(),
@@ -594,7 +594,7 @@ export const planUpgrades = pgTable(
     toDiscountAmountCents: integer("to_discount_amount_cents").notNull().default(0),
     /** The end of the paid month the quote was worked out for. */
     periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
-    /** The difference for the days left, before tax, and what is taken for it, tax included. Zero when nothing is. */
+    /** The difference for the days left and what is taken for it, GST included. Zero when nothing is. */
     netDifferenceCents: integer("net_difference_cents").notNull(),
     chargeCents: integer("charge_cents").notNull(),
     source: planUpgradeSource("source").notNull(),
@@ -644,7 +644,7 @@ export const planPriceChanges = pgTable(
       .$defaultFn(() => uuidv7()),
     currency: billingCurrency("currency").notNull(),
     field: planPriceField("field").notNull(),
-    /** Net prices, before tax, in minor units. */
+    /** Prices, GST included, in minor units. */
     oldAmountCents: integer("old_amount_cents").notNull(),
     newAmountCents: integer("new_amount_cents").notNull(),
     /** For a monthly change: the plan version it created. */

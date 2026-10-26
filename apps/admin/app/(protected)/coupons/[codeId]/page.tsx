@@ -83,7 +83,7 @@ export default async function CodePage({ params }: CodePageProps): Promise<React
             {
               value: formatMoney(worth.customerPaysCents, code.currency),
               label: "Member pays",
-              note: `a month${gst ? " with GST" : ""}`,
+              note: `a month${gst ? ", GST included" : ""}`,
             },
             {
               value:
@@ -96,7 +96,7 @@ export default async function CodePage({ params }: CodePageProps): Promise<React
               note:
                 code.discount === null
                   ? "full price"
-                  : `${formatMoney(worth.discountCents, code.currency)} off${gst ? " before GST" : ""}`,
+                  : `${formatMoney(worth.discountCents, code.currency)} off`,
             },
             ...(code.discount === null ? [] : [{ value: describeDiscountMonths(code.discountMonths), label: "Discount length" }]),
             {

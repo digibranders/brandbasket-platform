@@ -199,13 +199,9 @@ export function createFakeBillingProvider(options: FakeBillingProviderOptions): 
       const providerSubscriptionId =
         input.existingProviderSubscriptionId ??
         `${SUBSCRIPTION_ID_PREFIX}${randomBytes(SUBSCRIPTION_ID_BYTES).toString("hex")}`;
-      // Charged through the same function everything else uses, discount before tax, so the local and test path
-      // takes exactly what Razorpay would. It throws for a discount that leaves nothing to charge.
-      const amountCents = chargedAmountCents(
-        input.plan.initialAmountCents + (input.bundledAddOnNetCents ?? 0),
-        input.discountAmountCents ?? 0,
-        input.plan.taxRateBasisPoints,
-      );
+      // Charged through the same function everything else uses (the price less any discount, GST already inside it), so the
+      // local and test path takes exactly what Razorpay would. It throws for a discount that leaves nothing to charge.
+      const amountCents = chargedAmountCents(input.plan.initialAmountCents + (input.bundledAddOnNetCents ?? 0), input.discountAmountCents ?? 0);
       const token = mintToken(secret, {
         providerSubscriptionId,
         businessId: input.businessId,
@@ -324,7 +320,7 @@ export function createFakeBillingProvider(options: FakeBillingProviderOptions): 
 
     /** Simulated payments need no plan at a provider: the amount comes from our own plan row. */
     async createPlan(input: CreatePlanInput): Promise<{ readonly providerPlanId: string | null }> {
-      chargedAmountCents(input.netMonthlyCents, 0, input.taxRateBasisPoints);
+      chargedAmountCents(input.netMonthlyCents, 0);
       return { providerPlanId: null };
     },
 

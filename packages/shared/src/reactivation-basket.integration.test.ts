@@ -148,16 +148,16 @@ afterEach(() => {
 
 describe("a lapsed subscription that is reactivated", () => {
   it.each([
-    ["INR", ["managed-website", "digital-growth", "local-seo-aeo"], 3_138_446, 500_000],
-    ["INR", ["managed-website", "digital-growth"], 1_226_964, 200_000],
-    ["INR", ["managed-website", "local-seo-aeo"], 2_642_964, 0],
-    ["INR", ["digital-growth", "local-seo-aeo"], 3_303_764, 200_000],
-    ["INR", ["local-seo-aeo"], 2_949_882, 0],
-    ["INR", ["managed-website"], 353_882, 0],
-    ["USD", ["managed-website", "digital-growth", "local-seo-aeo"], 35_000, 6_000],
-    ["USD", ["managed-website", "digital-growth"], 12_000, 2_500],
-    ["USD", ["digital-growth", "local-seo-aeo"], 34_000, 2_500],
-    ["USD", ["digital-growth"], 7_500, 0],
+    ["INR", ["managed-website", "digital-growth", "local-seo-aeo"], 3_039_800, 300_000],
+    ["INR", ["managed-website", "digital-growth"], 1_169_900, 150_000],
+    ["INR", ["managed-website", "local-seo-aeo"], 2_519_900, 0],
+    ["INR", ["digital-growth", "local-seo-aeo"], 3_149_900, 150_000],
+    ["INR", ["local-seo-aeo"], 2_499_900, 0],
+    ["INR", ["managed-website"], 299_900, 0],
+    ["USD", ["managed-website", "digital-growth", "local-seo-aeo"], 45_200, 6_000],
+    ["USD", ["managed-website", "digital-growth"], 19_400, 2_500],
+    ["USD", ["digital-growth", "local-seo-aeo"], 45_000, 2_500],
+    ["USD", ["digital-growth"], 15_000, 0],
   ] as const)("keeps its basket at the same offer and its ad credit: %s %j charges %i, credit %i", async (currency, services, charged, adCredit) => {
     await setUp(currency);
     const lapsed = await lapsedSubscription(services);
@@ -184,13 +184,13 @@ describe("a lapsed subscription that is reactivated", () => {
     await setUp("INR");
     await lapsedSubscription(["managed-website", "digital-growth", "local-seo-aeo"]);
     const abandoned = await openReactivation();
-    expect(abandoned.adCreditCents).toBe(500_000);
+    expect(abandoned.adCreditCents).toBe(300_000);
 
     const again = await openReactivation();
 
-    expect(again.adCreditCents).toBe(500_000);
-    expect(again.bundledAddOnNetCents).toBe(2_659_700);
-    expect((await pay(again)).chargedCents).toBe(3_138_446);
+    expect(again.adCreditCents).toBe(300_000);
+    expect(again.bundledAddOnNetCents).toBe(3_039_800);
+    expect((await pay(again)).chargedCents).toBe(3_039_800);
     // It never took a payment, so it earned no credit to take back.
     expect(await findSubscriptionById(dbs.staff.db, abandoned.id)).toMatchObject({ status: "cancelled", activatedAt: null });
   });
@@ -216,7 +216,7 @@ describe("a lapsed subscription that is reactivated", () => {
     const payment = await pay(reopened);
 
     expect(reopened.adCreditCents).toBe(0);
-    expect(payment.chargedCents).toBe(3_303_764);
+    expect(payment.chargedCents).toBe(2_799_800);
     expect((await findBundledAddOnsForSubscription(dbs.staff.db, reopened.id)).map((row) => [row.addOn, row.netAmountCents])).toEqual([
       ["managed-website", 299_900],
       ["local-seo-aeo", 2_499_900],
@@ -235,17 +235,17 @@ describe("a subscription the provider ended without the customer asking (a revok
       providerStatus: "cancelled",
       now: new Date("2026-10-01T09:00:00.000Z"),
     });
-    expect((await findSubscriptionById(dbs.staff.db, lapsed.id))?.adCreditCents).toBe(500_000);
+    expect((await findSubscriptionById(dbs.staff.db, lapsed.id))?.adCreditCents).toBe(300_000);
 
     const basket = await loadReactivationBasket(dbs.staff.db, businessId);
-    expect(basket).toMatchObject({ forfeited: false, adCreditCents: 500_000, cancelled: false });
-    expect(reactivationNetCents(basket, "INR")).toBe(2_659_700);
+    expect(basket).toMatchObject({ forfeited: false, adCreditCents: 300_000, cancelled: false });
+    expect(reactivationNetCents(basket, "INR")).toBe(3_039_800);
 
     const reopened = await openReactivation();
     const payment = await pay(reopened);
 
-    expect(reopened.adCreditCents).toBe(500_000);
-    expect(payment.chargedCents).toBe(3_138_446);
+    expect(reopened.adCreditCents).toBe(300_000);
+    expect(payment.chargedCents).toBe(3_039_800);
     expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(false);
   });
 });
@@ -282,7 +282,7 @@ describe("a subscription the customer cancelled", () => {
     const payment = await pay(reopened);
 
     expect(reopened.adCreditCents).toBe(0);
-    expect(payment.chargedCents).toBe(4_483_646);
+    expect(payment.chargedCents).toBe(3_799_700);
     // Every service is at its own price from now on, a service added later included.
     expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(true);
   });
@@ -300,8 +300,8 @@ describe("a subscription the customer cancelled", () => {
       ["managed-website", 299_900, 299_900],
       ["local-seo-aeo", 2_499_900, 2_499_900],
     ]);
-    // 2,999 + 24,999 = ₹27,998 plus 18% GST.
-    expect(payment.chargedCents).toBe(3_303_764);
+    // 2,999 + 24,999 = ₹27,998, GST included.
+    expect(payment.chargedCents).toBe(2_799_800);
     expect(payment.invoiceLines).toHaveLength(2);
   });
 
@@ -328,11 +328,11 @@ async function addSeoToPaidMonth(lapsed: Subscription, paid: boolean): Promise<v
       subscriptionId: lapsed.id,
       addOn: "local-seo-aeo",
       listAmountCents: 2_499_900,
-      offerDiscountAmountCents: 750_060,
+      offerDiscountAmountCents: 499_940,
       taxRateBasisPoints: plan.taxRateBasisPoints,
       currency: plan.currency,
       netCents: 500_000,
-      chargeCents: 590_000,
+      chargeCents: 500_000,
       quotedPeriodEnd: paidThroughAt,
       description: "Local SEO + AEO, 25 Sep to 01 Oct 2026",
       staffId: null,
@@ -358,7 +358,7 @@ async function addSeoToPaidMonth(lapsed: Subscription, paid: boolean): Promise<v
     // The services already billed move to the three-service package from the next bill, which never came.
     const lines = (await findBundledAddOnsForSubscription(tx, lapsed.id)).filter((row) => row.addOn !== "local-seo-aeo");
     const threeServices = [...lines.map((row) => ({ addOn: row.addOn as MonthlyAddOnId, listCents: row.listAmountCents })), { addOn: "local-seo-aeo" as const, listCents: 2_499_900 }];
-    const discounts = packageDiscountsFor(threeServices, 3_000);
+    const discounts = packageDiscountsFor(threeServices, 2_000);
     await setPendingOfferDiscounts(tx, {
       subscriptionId: lapsed.id,
       lines: lines.map((row, index) => ({ id: row.id, pendingOfferDiscountAmountCents: discounts[index] ?? 0 })),
@@ -374,13 +374,13 @@ describe("a lapsed subscription with an add that was in flight", () => {
     await addSeoToPaidMonth(lapsed, false);
 
     const basket = await loadReactivationBasket(dbs.staff.db, businessId);
-    expect(basket).toEqual({ services: ["managed-website", "digital-growth"], forfeited: false, adCreditCents: 200_000, cancelled: false });
+    expect(basket).toEqual({ services: ["managed-website", "digital-growth"], forfeited: false, adCreditCents: 150_000, cancelled: false });
 
     const reopened = await openReactivation();
     const payment = await pay(reopened);
 
-    expect(payment.chargedCents).toBe(1_226_964);
-    expect(reopened.adCreditCents).toBe(200_000);
+    expect(payment.chargedCents).toBe(1_169_900);
+    expect(reopened.adCreditCents).toBe(150_000);
     expect((await findBundledAddOnsForSubscription(dbs.staff.db, reopened.id)).map((row) => row.addOn)).toEqual(["managed-website", "digital-growth"]);
   });
 
@@ -395,9 +395,9 @@ describe("a lapsed subscription with an add that was in flight", () => {
     const reopened = await openReactivation();
     const payment = await pay(reopened);
 
-    // All three at 30% off, priced from the set, not from what each line was last billed at.
-    expect(payment.chargedCents).toBe(3_138_446);
-    expect(reopened.adCreditCents).toBe(200_000);
+    // All three at 20% off, priced from the set, not from what each line was last billed at.
+    expect(payment.chargedCents).toBe(3_039_800);
+    expect(reopened.adCreditCents).toBe(150_000);
     expect((await findBundledAddOnsForSubscription(dbs.staff.db, reopened.id)).map((row) => row.addOn)).toEqual(["managed-website", "digital-growth", "local-seo-aeo"]);
   });
 });
@@ -429,15 +429,15 @@ describe("an unpaid reactivation that is dropped", () => {
     expect(basket).toEqual({
       services: ["managed-website", "digital-growth", "local-seo-aeo"],
       forfeited: false,
-      adCreditCents: 500_000,
+      adCreditCents: 300_000,
       cancelled: false,
     });
 
     const reopened = await openReactivation();
     const payment = await pay(reopened);
 
-    expect(reopened.adCreditCents).toBe(500_000);
-    expect(payment.chargedCents).toBe(3_138_446);
+    expect(reopened.adCreditCents).toBe(300_000);
+    expect(payment.chargedCents).toBe(3_039_800);
     expect(await isPackageOfferForfeited(dbs.staff.db, businessId)).toBe(false);
   });
 
@@ -448,7 +448,7 @@ describe("an unpaid reactivation that is dropped", () => {
 
     await cancelStaleSubscription(dbs.staff.db, { subscriptionId: unpaid.id, businessId, now: new Date("2026-10-22T09:00:00.000Z") });
 
-    expect(await findSubscriptionById(dbs.staff.db, unpaid.id)).toMatchObject({ status: "cancelled", activatedAt: null, adCreditCents: 500_000 });
+    expect(await findSubscriptionById(dbs.staff.db, unpaid.id)).toMatchObject({ status: "cancelled", activatedAt: null, adCreditCents: 300_000 });
     expect(await findSubscriptionById(dbs.staff.db, lapsed.id)).toMatchObject({ status: "cancelled", adCreditCents: 0 });
   });
 });
