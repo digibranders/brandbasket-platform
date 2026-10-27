@@ -16,7 +16,7 @@ const CLOSED_STATUSES: readonly ProjectStatus[] = ["live", "cancelled"];
 export const PROJECT_STATUSES_PREVIEWABLE: readonly ProjectStatus[] = ["submitted", "building", "revisions"];
 
 /** A staff write across tenants: the plain staff connection, or a transaction opened on it. */
-type Runner = Database | ScopedTransaction;
+export type Runner = Database | ScopedTransaction;
 
 export class ProjectNotInOnboardingError extends Error {
   constructor(projectId: string) {
@@ -65,7 +65,7 @@ export interface Project {
   readonly updatedAt: Date;
 }
 
-const PROJECT_COLUMNS = {
+export const PROJECT_COLUMNS = {
   id: projects.id,
   businessId: projects.businessId,
   kind: projects.kind,

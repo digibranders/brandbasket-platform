@@ -1,7 +1,8 @@
 import { ADD_ONS_PATH } from "@brandbasket/shared/lib/billing/add-ons";
 import { CALLS_PATH } from "@/lib/calls/links";
-import { CHATBOT_LEADS_PATH, CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
+import { CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
 import { ASK_FOR_A_CHANGE_PATH, REQUESTS_PATH } from "@/lib/requests/links";
+import { WEBSITE_PATH, WEBSITE_TABS } from "@/lib/website/tabs";
 
 /** The rail's icons by name; components/v2/rail-icon.tsx draws them. */
 export type RailIcon = "overview" | "requests" | "todo" | "website" | "reviews" | "deals" | "profile" | "services" | "billing" | "settings";
@@ -73,19 +74,14 @@ function requestsLink(count: number | undefined, withCalls: boolean): RailLink {
   };
 }
 
-/** The website and its pages. Plan 33 folds these into the website's own tabs. */
-function websiteLink(setupDone: boolean): RailLink {
-  const start: RailTarget = setupDone ? { href: "/project", label: "Your project" } : { href: "/onboarding", label: "Set up your website" };
+/** The website opens on its Progress tab. Its tabs are the Website workspace's; these are the pages that are not tabs. */
+function websiteLink(): RailLink {
   return {
-    href: start.href,
+    href: WEBSITE_PATH,
     label: "Website",
     icon: "website",
     children: [
-      start,
-      { href: "/domain", label: "Your domain" },
-      { href: CHATBOT_LEADS_PATH, label: "Chatbot leads" },
       { href: CHATBOT_NAME_PATH, label: "Chatbot name" },
-      { href: "/content/blog", label: "Blog" },
       { href: "/content/authors", label: "Authors" },
       { href: "/content/categories", label: "Categories" },
     ],
@@ -103,7 +99,7 @@ export function railSections(input: RailInput): readonly RailSection[] {
   const todo: RailLink = { href: TODO_HREF, label: "To do", icon: "todo", ...(input.todoCount > 0 ? { count: input.todoCount } : {}) };
   return [
     { label: null, links: input.hasAccess ? [OVERVIEW, todo, requests] : [OVERVIEW, requests] },
-    ...(input.hasWebsite ? [{ label: "Services", links: [websiteLink(input.websiteSetupDone)] }] : []),
+    ...(input.hasWebsite ? [{ label: "Services", links: [websiteLink()] }] : []),
     ...(input.listingClaim ? [{ label: "Directory", links: [REVIEWS, DEALS] }] : []),
     { label: "Account", links: [PROFILE, SERVICES, BILLING, SETTINGS] },
   ];
@@ -116,7 +112,11 @@ export function isCurrent(pathname: string, href: string): boolean {
 }
 
 export function linkIsCurrent(link: RailLink, pathname: string): boolean {
-  return isCurrent(pathname, link.href) || (link.children ?? []).some((child) => isCurrent(pathname, child.href));
+  return (
+    isCurrent(pathname, link.href) ||
+    (link.href === WEBSITE_PATH && WEBSITE_TABS.some((tab) => isCurrent(pathname, tab.href))) ||
+    (link.children ?? []).some((child) => isCurrent(pathname, child.href))
+  );
 }
 
 /** Everything search can jump to: Ask for a change, every link, and every page inside a group as "Group: Page". */
@@ -124,7 +124,11 @@ export function railTargets(sections: readonly RailSection[]): readonly RailTarg
   return [
     ASK_FOR_A_CHANGE,
     ...sections.flatMap((section) =>
-      section.links.flatMap((link) => [{ href: link.href, label: link.label }, ...(link.children ?? []).map((child) => ({ href: child.href, label: `${link.label}: ${child.label}` }))]),
+      section.links.flatMap((link) => [
+        { href: link.href, label: link.label },
+        ...(link.href === WEBSITE_PATH ? WEBSITE_TABS.slice(1).map((tab) => ({ href: tab.href, label: `${link.label}: ${tab.label}` })) : []),
+        ...(link.children ?? []).map((child) => ({ href: child.href, label: `${link.label}: ${child.label}` })),
+      ]),
     ),
   ];
 }

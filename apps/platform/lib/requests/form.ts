@@ -60,6 +60,35 @@ export function titleFromText(text: string): string {
   return `${title.slice(0, 1).toUpperCase()}${title.slice(1)}`;
 }
 
+/** The page's limit on the Which page box (the form's maxLength and parseAskForm agree). */
+const PAGE_FIELD_LIMIT = 200;
+
+/** What the Ask for a change page starts with when a link came with it (the Pages tab, the preview's Ask for changes). */
+export interface AskDefaults {
+  /** The kind to start on, only when this customer may pick it. */
+  readonly kind: ChangeKind | null;
+  readonly page: string;
+  /** Whether the customer came from the preview, so the page says the preview is waiting. */
+  readonly fromPreview: boolean;
+}
+
+/** Reads the link's query. Repeated or unknown values are ignored, never shown. */
+export function readAskDefaults(
+  searchParams: Readonly<Record<string, string | string[] | undefined>>,
+  options: readonly { readonly value: ChangeKind }[],
+): AskDefaults {
+  const single = (name: string): string | null => {
+    const value = searchParams[name];
+    return typeof value === "string" ? value : null;
+  };
+  const offered = options.find((option) => option.value === single("kind"));
+  return {
+    kind: offered?.value ?? null,
+    page: (single("page") ?? "").trim().slice(0, PAGE_FIELD_LIMIT),
+    fromPreview: single("from") === "preview",
+  };
+}
+
 /** What the form sends, once checked. `kind` is one the customer may pick. */
 export interface AskForChangeInput {
   readonly kind: ChangeKind;
