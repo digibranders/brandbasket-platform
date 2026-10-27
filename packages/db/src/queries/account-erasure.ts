@@ -45,6 +45,7 @@ import {
   practitionerLeave,
   practitioners,
   projectBriefs,
+  projectPreviewImages,
   projects,
   serviceSetup,
   setupCallBookings,
@@ -303,6 +304,8 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(billingProfiles).where(eq(billingProfiles.businessId, businessId));
     await tx.delete(onboardingProgress).where(eq(onboardingProgress.businessId, businessId));
     await tx.delete(projectBriefs).where(eq(projectBriefs.businessId, businessId));
+    await tx.delete(projectPreviewImages).where(eq(projectPreviewImages.businessId, businessId));
+    // project_events needs no line here: staff cannot delete a row of it, and each goes with its project (on delete cascade).
     await tx.delete(projects).where(eq(projects.businessId, businessId));
     await tx.delete(setupCallBookings).where(eq(setupCallBookings.businessId, businessId));
     await tx.delete(serviceSetup).where(eq(serviceSetup.businessId, businessId));

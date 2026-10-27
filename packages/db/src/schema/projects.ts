@@ -66,6 +66,11 @@ export const projects = pgTable(
     // Target of the (project_id, business_id) foreign keys below. Foreign key checks bypass row-level security,
     // so a plain project_id reference would let one tenant attach rows to another tenant's project.
     unique("projects_id_business_id_unique").on(table.id, table.businessId),
+    // A pause reason belongs to a paused project only.
+    check(
+      "projects_hold_reason_check",
+      sql`${table.onHoldReason} is null or (${table.status} = 'on_hold' and char_length(btrim(${table.onHoldReason})) between 3 and 200)`,
+    ),
   ],
 );
 
