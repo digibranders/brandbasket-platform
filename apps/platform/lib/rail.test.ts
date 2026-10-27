@@ -65,6 +65,8 @@ describe("current link", () => {
     const website = railSections(FULL)[1]?.links[0];
     expect(website === undefined ? false : linkIsCurrent(website, "/website/pages")).toBe(true);
     expect(website === undefined ? false : linkIsCurrent(website, "/content/authors")).toBe(true);
+    expect(website === undefined ? false : linkIsCurrent(website, "/content/blog/new")).toBe(true);
+    expect(website === undefined ? false : linkIsCurrent(website, "/oyechats/leads")).toBe(true);
   });
 });
 

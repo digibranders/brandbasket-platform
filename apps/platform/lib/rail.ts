@@ -102,7 +102,11 @@ export function isCurrent(pathname: string, href: string): boolean {
 }
 
 export function linkIsCurrent(link: RailLink, pathname: string): boolean {
-  return isCurrent(pathname, link.href) || (link.children ?? []).some((child) => isCurrent(pathname, child.href));
+  return (
+    isCurrent(pathname, link.href) ||
+    (link.href === WEBSITE_PATH && WEBSITE_TABS.some((tab) => isCurrent(pathname, tab.href))) ||
+    (link.children ?? []).some((child) => isCurrent(pathname, child.href))
+  );
 }
 
 /** Everything search can jump to: Ask for a change, every link, and every page inside a group as "Group: Page". */
