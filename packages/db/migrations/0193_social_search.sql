@@ -80,7 +80,10 @@ GRANT INSERT ON deliverables TO bb_staff;
 --> statement-breakpoint
 GRANT UPDATE (title, caption, due_on, status, link_url, image_key, image_mime, image_bytes, image_width, image_height, image_sha256, published_at, updated_at) ON deliverables TO bb_staff;
 --> statement-breakpoint
-GRANT SELECT, INSERT, UPDATE, DELETE ON monthly_reports TO bb_staff;
+GRANT SELECT, INSERT, DELETE ON monthly_reports TO bb_staff;
+--> statement-breakpoint
+-- A report's business, service and month never change; staff replace the link only.
+GRANT UPDATE (url, updated_by_staff_id, updated_at) ON monthly_reports TO bb_staff;
 --> statement-breakpoint
 -- The ingest route inserts on the staff connection once the site token has proven the business.
 GRANT SELECT, INSERT, DELETE ON site_events TO bb_staff;
@@ -134,7 +137,7 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'A % cannot move from % to %', NEW.kind, OLD.status, NEW.status USING ERRCODE = 'check_violation';
   END IF;
-  IF OLD.status = 'approved' AND NEW.status = 'approved'
+  IF NEW.kind = 'post' AND OLD.status IN ('approved', 'published') AND NEW.status IN ('approved', 'published')
      AND ROW(NEW.title, NEW.caption, NEW.image_sha256, NEW.due_on) IS DISTINCT FROM ROW(OLD.title, OLD.caption, OLD.image_sha256, OLD.due_on) THEN
     RAISE EXCEPTION 'Send an approved post back to awaiting approval before changing it' USING ERRCODE = 'check_violation';
   END IF;

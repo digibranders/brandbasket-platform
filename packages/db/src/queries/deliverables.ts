@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { serviceOfKind, type DeliverableKind, type DeliverableStatus } from "../deliverable-states";
 import { deliverables, monthlyReports, siteEvents, type Deliverable, type MonthlyReport, type SiteEventKind } from "../schema/deliverables";
@@ -265,7 +265,7 @@ export async function listDeliverablesForStaff(db: Database, businessId: string,
   return db
     .select()
     .from(deliverables)
-    .where(and(eq(deliverables.businessId, businessId), or(ne(deliverables.status, "published"), gte(deliverables.dueOn, input.from))))
+    .where(and(eq(deliverables.businessId, businessId), or(ne(deliverables.status, "published"), isNull(deliverables.dueOn), gte(deliverables.dueOn, input.from))))
     .orderBy(desc(deliverables.createdAt), desc(deliverables.id))
     .limit(100);
 }

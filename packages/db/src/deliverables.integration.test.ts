@@ -291,6 +291,15 @@ describe("an approved post", () => {
     await staffUpdate(id, sql`link_url = 'https://example.com/post'`);
   });
 
+  it("cannot be published with changed words, and a published post's words stay fixed", async () => {
+    const id = await rowIn("post", "approved");
+    expect(await sqlState(() => staffUpdate(id, sql`status = 'published', published_at = now(), title = 'Unapproved title'`))).toBe("23514");
+    expect(await statusOf(id)).toBe("approved");
+    await staffUpdate(id, sql`status = 'published', published_at = now()`);
+    expect(await sqlState(() => staffUpdate(id, sql`caption = 'Changed after it went out'`))).toBe("23514");
+    await staffUpdate(id, sql`link_url = 'https://example.com/live'`);
+  });
+
   it("goes back to awaiting approval with the approval cleared, and the owner approves it again", async () => {
     const id = await rowIn("post", "approved");
     await staffUpdate(id, sql`status = 'awaiting_approval', title = 'Changed title'`);
@@ -366,6 +375,7 @@ describe("the checks", () => {
     expect(await insertReport({ month: "2026-10-15" })).toBe("23514");
     expect(await insertReport({ url: "http://example.com/report" })).toBe("23514");
     expect(await insertReport({})).toBeUndefined();
+    expect(await sqlState(async () => { await dbs.staff.db.update(monthlyReports).set({ businessId: otherBusinessId }); })).toBe("42501");
     expect(await insertReport({ url: "https://example.com/second" })).toBe("23505");
     await dbs.staff.db
       .insert(monthlyReports)
