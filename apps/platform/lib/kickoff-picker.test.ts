@@ -77,7 +77,7 @@ it("points to Requests when the times cannot be listed and there is no booking p
   mocks.loadCallSlots.mockResolvedValue({ status: "unavailable" });
   await render(createElement(KickoffPicker, { showLiveBy: true, bookingUrl: null }));
   expect(container.textContent).toBe("We could not load the times. Please try again in a few minutes, or write to us in Requests.");
-  expect(container.querySelector("a")?.getAttribute("href")).toBe("/support");
+  expect(container.querySelector("a")?.getAttribute("href")).toBe("/requests");
   expect(container.querySelector("a")?.textContent).toBe("Requests");
 });
 
