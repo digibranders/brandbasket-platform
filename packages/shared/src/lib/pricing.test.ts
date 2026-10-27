@@ -35,6 +35,10 @@ describe("carePlan", () => {
     expect(formatPrice(carePlan.monthlyCents)).toBe("$75");
     expect(carePlan).not.toHaveProperty("firstTermCents");
   });
+
+  it("promises up to 10 pages", () => {
+    expect(carePlan.includes[0]).toBe("Up to 10 pages, designed for your business");
+  });
 });
 
 describe("changePricing", () => {
