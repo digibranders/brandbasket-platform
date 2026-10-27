@@ -31,15 +31,12 @@ export default async function CategoryPage({
   if (category === null) notFound();
 
   return (
-    <>
-      <h1 className="sr-only">{category.name}</h1>
-      <CategoryEditor
-        key={category.id}
-        category={category}
-        siteHost={hostOf(websiteUrl)}
-        save={saveCategoryAction}
-        remove={deleteCategoryAction}
-      />
-    </>
+    <CategoryEditor
+      key={category.id}
+      category={category}
+      siteHost={hostOf(websiteUrl)}
+      save={saveCategoryAction}
+      remove={deleteCategoryAction}
+    />
   );
 }

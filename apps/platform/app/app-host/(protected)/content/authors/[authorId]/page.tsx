@@ -20,16 +20,13 @@ export default async function AuthorPage({
   if (author === null) notFound();
 
   return (
-    <>
-      <h1 className="sr-only">{author.name}</h1>
-      <AuthorEditor
-        key={author.id}
-        author={author}
-        save={saveAuthorAction}
-        setPhoto={setAuthorPhotoAction}
-        removePhoto={removeAuthorPhotoAction}
-        remove={deleteAuthorAction}
-      />
-    </>
+    <AuthorEditor
+      key={author.id}
+      author={author}
+      save={saveAuthorAction}
+      setPhoto={setAuthorPhotoAction}
+      removePhoto={removeAuthorPhotoAction}
+      remove={deleteAuthorAction}
+    />
   );
 }

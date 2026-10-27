@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState, type ReactElement } from "react";
-import { SearchIcon } from "@brandbasket/shared/ui/icons";
+import { Article, MagnifyingGlass } from "@phosphor-icons/react/dist/ssr";
 import { cn } from "@brandbasket/shared/lib/cn";
 import type { BlogPublishState } from "@/lib/blog-publish-state";
 import type { BlogPostSummary } from "@/lib/server/blog";
-import { BlogEmptyState } from "./blog-empty-state";
+import { EmptyState } from "@/components/v2/page";
 import { PostDate, StatusPill } from "./parts";
 import {
   COL_DATE,
@@ -59,7 +59,7 @@ export function BlogPostsTable({ posts }: { readonly posts: readonly BlogPostSum
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div role="tablist" aria-label="Filter posts" className="flex gap-6 overflow-x-auto">
+        <div role="tablist" aria-label="Filter posts" className="flex gap-1 overflow-x-auto">
           {TABS.map((item) => (
             <button
               key={item.value}
@@ -68,26 +68,24 @@ export function BlogPostsTable({ posts }: { readonly posts: readonly BlogPostSum
               aria-selected={tab === item.value}
               onClick={() => setTab(item.value)}
               className={cn(
-                "shrink-0 border-b-2 pb-1.5 text-sm transition-colors duration-200 ease-calm",
-                tab === item.value
-                  ? "border-ink font-medium text-ink"
-                  : "border-transparent text-ink-soft hover:text-ink",
+                "shrink-0 rounded-lg px-3 py-1.5 text-[0.8125rem] transition-colors duration-200",
+                tab === item.value ? "bg-sunken font-semibold text-ink" : "text-ink-2 hover:text-ink",
               )}
             >
               {item.label}
-              <span className="ml-1.5 tabular-nums text-ink-soft/70">{counts[item.value]}</span>
+              <span className="ml-1.5 tabular-nums text-ink-2">{counts[item.value]}</span>
             </button>
           ))}
         </div>
         <label className="relative block w-full sm:w-64">
           <span className="sr-only">Search posts</span>
-          <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-soft" />
+          <MagnifyingGlass size={16} aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-2" />
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search posts"
-            className="block w-full rounded-full border border-line bg-card py-2 pl-10 pr-4 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent focus:outline-none"
+            className="block w-full rounded-lg border border-ink-2/65 bg-surface py-2 pl-10 pr-4 text-sm text-ink placeholder:text-ink-2 focus:border-ink focus:outline-none"
           />
         </label>
       </div>
@@ -127,13 +125,13 @@ export function BlogPostsTable({ posts }: { readonly posts: readonly BlogPostSum
                     {post.title}
                   </Link>
                 </td>
-                <td className={cn(TD_CLASS, "hidden truncate text-ink-soft lg:table-cell")}>{post.authorName ?? "—"}</td>
-                <td className={cn(TD_CLASS, "truncate text-ink-soft")}>{post.categoryName ?? "—"}</td>
+                <td className={cn(TD_CLASS, "hidden truncate text-ink-soft lg:table-cell")}>{post.authorName ?? "-"}</td>
+                <td className={cn(TD_CLASS, "truncate text-ink-soft")}>{post.categoryName ?? "-"}</td>
                 <td className={TD_CLASS}>
                   <StatusPill state={state} />
                 </td>
                 <td className={cn(TD_CLASS, "whitespace-nowrap tabular-nums text-ink-soft")}>
-                  {post.publishedAt === null || state === "draft" ? "—" : <PostDate time={post.publishedAt} />}
+                  {post.publishedAt === null || state === "draft" ? "-" : <PostDate time={post.publishedAt} />}
                 </td>
                 <td className={cn(TD_CLASS, "whitespace-nowrap tabular-nums text-ink-soft")}>
                   <PostDate time={post.updatedAt} />
@@ -143,10 +141,12 @@ export function BlogPostsTable({ posts }: { readonly posts: readonly BlogPostSum
           </tbody>
         </table>
         {shown.length === 0 ? (
-          <div className="py-10">
-            <BlogEmptyState
+          <div className="py-8">
+            <EmptyState
+              compact
+              icon={needle === "" ? Article : MagnifyingGlass}
               title={needle === "" ? `No ${tab === "draft" ? "drafts" : `${tab} posts`}` : "Nothing found"}
-              body={needle === "" ? "Posts show up here as soon as there are some." : `No posts match “${query.trim()}”.`}
+              text={needle === "" ? "Posts show up here as soon as there are some." : `No posts match “${query.trim()}”.`}
             />
           </div>
         ) : null}

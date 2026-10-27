@@ -38,24 +38,21 @@ export default async function BlogPostEditPage({
   if (post === null) notFound();
 
   return (
-    <>
-      <h1 className="sr-only">{post.title}</h1>
-      <BlogPostEditor
-        // A different post (after Duplicate, say) starts the editor fresh rather than carrying this one's state.
-        key={post.id}
-        post={post}
-        previewHref={websiteUrl === null ? null : `/content/blog/${post.id}/preview`}
-        siteUrl={websiteUrl}
-        categories={categories.map(({ id, name }) => ({ id, name }))}
-        authors={authors.map(({ id, name }) => ({ id, name }))}
-        save={updateBlogPostAction}
-        createCategory={createBlogCategoryAction}
-        createAuthor={createBlogAuthorByNameAction}
-        duplicate={duplicateBlogPostAction}
-        remove={deleteBlogPostAction}
-        setCoverImage={setCoverImageAction}
-        removeCoverImage={removeCoverImageAction}
-      />
-    </>
+    <BlogPostEditor
+      // A different post (after Duplicate, say) starts the editor fresh rather than carrying this one's state.
+      key={post.id}
+      post={post}
+      previewHref={websiteUrl === null ? null : `/content/blog/${post.id}/preview`}
+      siteUrl={websiteUrl}
+      categories={categories.map(({ id, name }) => ({ id, name }))}
+      authors={authors.map(({ id, name }) => ({ id, name }))}
+      save={updateBlogPostAction}
+      createCategory={createBlogCategoryAction}
+      createAuthor={createBlogAuthorByNameAction}
+      duplicate={duplicateBlogPostAction}
+      remove={deleteBlogPostAction}
+      setCoverImage={setCoverImageAction}
+      removeCoverImage={removeCoverImageAction}
+    />
   );
 }
