@@ -1,5 +1,5 @@
 import { eraseChatbotsOfBusiness } from "./chatbots";
-import { and, asc, eq, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { listBusinessProductPhotoIds } from "./directory-business-catalog";
 import { waiveChangeChargesForErasure } from "./change-request-payment";
@@ -23,6 +23,7 @@ import {
   businessModules,
   businessProfiles,
   businesses,
+  deliverables,
   directoryBusinessCategories,
   directoryBusinessFaqs,
   directoryBusinessProducts,
@@ -38,6 +39,7 @@ import {
   leads,
   listingContent,
   mediaAssets,
+  monthlyReports,
   monthlySnapshots,
   onboardingProgress,
   patients,
@@ -51,6 +53,7 @@ import {
   services,
   sessions,
   setupInvites,
+  siteEvents,
   staffMembers,
   subscriptions,
   userPrivacySettings,
@@ -272,7 +275,12 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
       .where(eq(mediaAssets.businessId, businessId));
     // A product's photo is a file too, at the key its ids build.
     const productPhotoKeys = (await listBusinessProductPhotoIds(tx, businessId)).map((photoId) => ({ key: `t/${businessId}/${photoId}/display` }));
-    const storageKeys = [...pictureKeys, ...mediaKeys, ...productPhotoKeys].map((row) => row.key);
+    // A post's picture is a file too, at the key its row holds.
+    const deliverableKeys = await tx
+      .select({ key: sql<string>`${deliverables.imageKey}` })
+      .from(deliverables)
+      .where(and(eq(deliverables.businessId, businessId), isNotNull(deliverables.imageKey)));
+    const storageKeys = [...pictureKeys, ...mediaKeys, ...productPhotoKeys, ...deliverableKeys].map((row) => row.key);
     // A video lives on Vimeo, not on our disk: the caller deletes it there once the rows are gone.
     const vimeoIds = (
       await tx.select({ id: directoryVideos.vimeoId }).from(directoryVideos).where(eq(directoryVideos.businessId, businessId))
@@ -308,6 +316,9 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(serviceSetup).where(eq(serviceSetup.businessId, businessId));
     await tx.delete(activityEvents).where(eq(activityEvents.businessId, businessId));
     await tx.delete(monthlySnapshots).where(eq(monthlySnapshots.businessId, businessId));
+    await tx.delete(deliverables).where(eq(deliverables.businessId, businessId));
+    await tx.delete(monthlyReports).where(eq(monthlyReports.businessId, businessId));
+    await tx.delete(siteEvents).where(eq(siteEvents.businessId, businessId));
     await tx.delete(domains).where(eq(domains.businessId, businessId));
     await tx.delete(mediaAssets).where(eq(mediaAssets.businessId, businessId));
     // The chatbots OyeChats runs for the business, their webhook secrets and the visitors' details they collected.
