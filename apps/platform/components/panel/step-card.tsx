@@ -1,24 +1,27 @@
 import type { ReactElement, ReactNode } from "react";
-import { formatStepNumber } from "@brandbasket/shared/lib/format";
-import { ONBOARDING_STEPS, stepInfo, type OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { stepInfo, type OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
+import { LIFT } from "@/components/v2/classes";
 
-interface StepHeadingProps {
+interface StepCardProps {
   readonly step: OnboardingStepKey;
   /** Replaces the step's usual one-line description. */
-  readonly children?: ReactNode;
+  readonly intro?: ReactNode;
+  readonly children: ReactNode;
 }
 
-/** The top of each onboarding step: its number, its title and what it asks for. */
-export function StepHeading({ step, children }: StepHeadingProps): ReactElement {
+/** The one raised card of a setup step: the step's title and what it asks for, then its form. */
+export function StepCard({ step, intro, children }: StepCardProps): ReactElement {
   const info = stepInfo(step);
-  const index = ONBOARDING_STEPS.findIndex((candidate) => candidate.key === step);
   return (
-    <header className="mb-8">
-      <p className="text-[0.8125rem] font-semibold tabular-nums text-accent-deep">
-        Step {formatStepNumber(index)} of {String(ONBOARDING_STEPS.length).padStart(2, "0")}
-      </p>
-      <h2 className="mt-2 font-serif text-3xl sm:text-4xl">{info.title}</h2>
-      <div className="mt-2 max-w-2xl leading-relaxed text-ink-soft">{children ?? <p>{info.blurb}</p>}</div>
-    </header>
+    <section aria-labelledby={`${step}-step-title`} className={cn(LIFT, "min-w-0")}>
+      <header className="border-b border-line px-5 py-5 md:px-8">
+        <h2 id={`${step}-step-title`} className="font-display text-[1.25rem] font-semibold leading-tight tracking-[-0.025em] text-ink">
+          {info.title}
+        </h2>
+        <div className="mt-1.5 max-w-2xl text-[0.84375rem] leading-relaxed text-ink-2">{intro ?? <p>{info.blurb}</p>}</div>
+      </header>
+      {children}
+    </section>
   );
 }
