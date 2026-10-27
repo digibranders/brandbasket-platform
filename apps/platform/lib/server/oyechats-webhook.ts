@@ -20,7 +20,10 @@ function alertChatbotLead(businessId: string): void {
  * What an OyeChats delivery came to. `refused` is one answer for an unknown bot, a missing signature and a wrong one, so
  * the response never says which bot ids exist.
  */
-export type OyeChatsWebhookResult = { readonly kind: "recorded" } | { readonly kind: "ignored" } | { readonly kind: "refused" };
+export type OyeChatsWebhookResult =
+  | { readonly kind: "recorded"; readonly businessId: string }
+  | { readonly kind: "ignored" }
+  | { readonly kind: "refused" };
 
 const REFUSED: OyeChatsWebhookResult = { kind: "refused" };
 
@@ -53,7 +56,7 @@ export async function handleOyeChatsWebhook(rawBody: string, signature: string |
         capturedAt: event.occurredAt,
       });
       alertChatbotLead(target.businessId);
-      return { kind: "recorded" };
+      return { kind: "recorded", businessId: target.businessId };
     case "qualification": {
       const rated = await applyChatbotQualification(staffDb, {
         chatbotId: target.chatbotId,
@@ -61,7 +64,7 @@ export async function handleOyeChatsWebhook(rawBody: string, signature: string |
         tier: event.tier,
         score: event.score,
       });
-      return rated ? { kind: "recorded" } : { kind: "ignored" };
+      return rated ? { kind: "recorded", businessId: target.businessId } : { kind: "ignored" };
     }
     case "ignored":
       return { kind: "ignored" };

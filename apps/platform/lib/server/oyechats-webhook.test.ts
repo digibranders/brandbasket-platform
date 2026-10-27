@@ -42,7 +42,7 @@ describe("handleOyeChatsWebhook", () => {
   it("records a signed lead for the business that owns the bot, taking the business from our own record", async () => {
     const body = lead();
 
-    expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "recorded" });
+    expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "recorded", businessId: "business-1" });
 
     expect(findChatbotWebhookTarget).toHaveBeenCalledWith(staffDb, 41);
     expect(recordChatbotLead).toHaveBeenCalledWith(staffDb, {
@@ -59,7 +59,7 @@ describe("handleOyeChatsWebhook", () => {
 
   it("posts a Teams card for a new lead that names the client and none of the visitor's details", async () => {
     const body = lead();
-    expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "recorded" });
+    expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "recorded", businessId: "business-1" });
     expect(alertTeams).toHaveBeenCalledTimes(1);
     const [destination, message] = vi.mocked(alertTeams).mock.calls[0] ?? [];
     expect(destination).toBe("enquiries");
@@ -71,7 +71,7 @@ describe("handleOyeChatsWebhook", () => {
   it("rates a lead from a qualification event", async () => {
     const body = JSON.stringify({ event: "tier_transition", bot_id: 41, timestamp: "2026-10-16T10:00:00+00:00", data: { session_id: "sess-1", new_tier: "sql", score: 80 } });
 
-    expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "recorded" });
+    expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "recorded", businessId: "business-1" });
 
     expect(applyChatbotQualification).toHaveBeenCalledWith(staffDb, { chatbotId: "chatbot-1", sessionId: "sess-1", tier: "sql", score: 80 });
     expect(recordChatbotLead).not.toHaveBeenCalled();
