@@ -2,7 +2,9 @@ import { Plus } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
+import { BookCallButton } from "@/components/calls/book-call-button";
 import { LIFT, SOFT_BUTTON } from "@/components/v2/classes";
+import type { BookCallOptions } from "@/lib/calls/form";
 import { ASK_FOR_A_CHANGE_PATH, listHref } from "@/lib/requests/links";
 import { splitRows, type RequestFilter, type RequestRow } from "@/lib/requests/rows";
 import { RequestList } from "./request-list";
@@ -18,10 +20,12 @@ interface RequestsViewProps {
   readonly includedLine: string | null;
   /** The open request's pane, already drawn. */
   readonly detail: ReactNode;
+  /** What Book a call needs, or null when calls are not offered (the first look, or no booking link). */
+  readonly calls?: BookCallOptions | null;
 }
 
 /** The Requests page: a list on the left and the open request on the right, one raised surface. One column on a phone. */
-export function RequestsView({ rows, listed, filter, selectedId, explicit, includedLine, detail }: RequestsViewProps): ReactElement {
+export function RequestsView({ rows, listed, filter, selectedId, explicit, includedLine, detail, calls = null }: RequestsViewProps): ReactElement {
   const counts = splitRows(rows);
   return (
     <div className="mx-auto grid w-full max-w-[68rem] gap-5">
@@ -30,10 +34,13 @@ export function RequestsView({ rows, listed, filter, selectedId, explicit, inclu
           <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.035em] text-ink">Requests</h1>
           <p className="mt-2 text-[0.84375rem] text-ink-2">Ask for any change and follow it here.{includedLine === null ? "" : ` ${includedLine}`}</p>
         </div>
-        <Link href={ASK_FOR_A_CHANGE_PATH} className={SOFT_BUTTON}>
-          <Plus size={16} aria-hidden="true" />
-          Ask for a change
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {calls === null ? null : <BookCallButton {...calls} />}
+          <Link href={ASK_FOR_A_CHANGE_PATH} className={SOFT_BUTTON}>
+            <Plus size={16} aria-hidden="true" />
+            Ask for a change
+          </Link>
+        </div>
       </header>
       {rows.length === 0 ? (
         <p className="text-sm text-ink-2">No requests yet. Ask for a change and you can follow it here.</p>
