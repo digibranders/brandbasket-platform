@@ -150,3 +150,24 @@ export function chatbotLeadTeamsCard(lead: { readonly clientUrl: string }): Team
   });
 }
 
+export function paymentFailedTeamsCard(failure: {
+  /** Already formatted, such as "₹2,999". */
+  readonly amount: string;
+  /** Whether the failure was matched to a client and recorded on their payments. */
+  readonly matched: boolean;
+  readonly reason: string;
+  readonly providerPaymentId: string;
+  readonly consoleUrl: string;
+}): TeamsMessage {
+  return teamsCard({
+    title: `Payment failed: ${failure.amount}`,
+    subtitle: failure.matched ? "A client's payment did not go through" : "Not matched to a client. Find it in Razorpay.",
+    facts: [
+      { name: "Reason", value: failure.reason },
+      { name: "Razorpay payment", value: failure.providerPaymentId },
+    ],
+    open: { label: "Open in the console", url: failure.consoleUrl },
+  });
+}
+
+

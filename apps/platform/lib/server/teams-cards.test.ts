@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { chatbotLeadTeamsCard, leadTeamsCard, signupTeamsCard, supportReplyTeamsCard, supportTicketTeamsCard, systemErrorTeamsCard } from "./teams-cards";
+import {
+  chatbotLeadTeamsCard,
+  leadTeamsCard,
+  paymentFailedTeamsCard,
+  signupTeamsCard,
+  supportReplyTeamsCard,
+  supportTicketTeamsCard,
+  systemErrorTeamsCard,
+} from "./teams-cards";
 
 type Block = { type: string; text?: string; facts?: { title: string; value: string }[] };
 const parts = (message: ReturnType<typeof leadTeamsCard>): { body: Block[]; actions?: { title: string; url: string }[] } =>
@@ -89,3 +97,30 @@ describe("the Teams cards carry what the alert emails carry", () => {
     expect(card.actions).toEqual([{ type: "Action.OpenUrl", title: "Open the client", url: "https://console.example/clients/5" }]);
   });
 });
+
+describe("the payment failure card", () => {
+  it("says what failed, why, the Razorpay id and links to the client", () => {
+    const card = parts(
+      paymentFailedTeamsCard({
+        amount: "₹2,999",
+        matched: true,
+        reason: "Payment was declined by the bank",
+        providerPaymentId: "pay_failed_1",
+        consoleUrl: "https://console.example/clients/b1/billing",
+      }),
+    );
+    expect(card.body[0]?.text).toBe("Payment failed: ₹2,999");
+    expect(card.body[1]?.text).toBe("A client's payment did not go through");
+    expect(card.body[2]?.facts).toEqual([
+      { title: "Reason", value: "Payment was declined by the bank" },
+      { title: "Razorpay payment", value: "pay_failed_1" },
+    ]);
+    expect(card.actions).toEqual([{ type: "Action.OpenUrl", title: "Open in the console", url: "https://console.example/clients/b1/billing" }]);
+  });
+
+  it("says when the failure could not be matched to a client", () => {
+    const card = parts(paymentFailedTeamsCard({ amount: "$65", matched: false, reason: "Razorpay did not say why", providerPaymentId: "pay_2", consoleUrl: "https://console.example/payments" }));
+    expect(card.body[1]?.text).toBe("Not matched to a client. Find it in Razorpay.");
+  });
+});
+
