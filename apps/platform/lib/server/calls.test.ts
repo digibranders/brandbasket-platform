@@ -182,10 +182,16 @@ describe("cancelTeamCallFor", () => {
     expect(cancelCallBooking).not.toHaveBeenCalled();
   });
 
-  it("says gone when the call was cancelled between the check and the update", async () => {
-    vi.mocked(findTeamCall).mockResolvedValue(stored());
+  it("says gone when the call changed between the check and the update and is not cancelled", async () => {
+    vi.mocked(findTeamCall).mockResolvedValueOnce(stored()).mockResolvedValueOnce(stored({ status: "held" }));
     vi.mocked(cancelTeamCall).mockResolvedValue(false);
     expect(await cancelTeamCallFor(tenant, "call-1", NOW)).toEqual({ ok: false, reason: "gone" });
+  });
+
+  it("counts the cancellation as done when Cal.com's webhook cancelled the call first", async () => {
+    vi.mocked(findTeamCall).mockResolvedValueOnce(stored()).mockResolvedValueOnce(stored({ status: "cancelled" }));
+    vi.mocked(cancelTeamCall).mockResolvedValue(false);
+    expect(await cancelTeamCallFor(tenant, "call-1", NOW)).toEqual({ ok: true });
   });
 });
 

@@ -150,7 +150,8 @@ export type CancelTeamCallResult = { readonly ok: true } | { readonly ok: false;
 
 /**
  * Cancels a call that has not started: the booking with Cal.com first, so a call that is still on the host's calendar is
- * never shown as cancelled, then the call. `gone` is a call that is not there, is cancelled, or has started.
+ * never shown as cancelled, then the call. `gone` is a call that is not there, is cancelled, or has started; a call that
+ * Cal.com's webhook cancelled while this ran counts as cancelled by this.
  */
 export async function cancelTeamCallFor(tenant: TenantContext, callId: string, now: Date): Promise<CancelTeamCallResult> {
   try {
@@ -161,7 +162,10 @@ export async function cancelTeamCallFor(tenant: TenantContext, callId: string, n
       if (url !== null) await cancelCallBooking(url, call.providerUri);
     }
     const cancelled = await withTenantScope(getAppDb(), tenant, (tx) => cancelTeamCall(tx, { id: call.id, businessId: tenant.businessId, now }));
-    return cancelled ? { ok: true } : { ok: false, reason: "gone" };
+    if (cancelled) return { ok: true };
+    // Cal.com's own cancellation webhook can mark the call cancelled between our Cal.com request and this update.
+    const latest = await withTenantScope(getAppDb(), tenant, (tx) => findTeamCall(tx, tenant.businessId, callId));
+    return latest?.status === "cancelled" ? { ok: true } : { ok: false, reason: "gone" };
   } catch (error) {
     console.error("[calls] could not cancel the call", errorLogInfo(error));
     return { ok: false, reason: "failed" };
