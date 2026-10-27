@@ -1,0 +1,58 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "payload": false,
+  "workspaces": {
+    "apps/platform": {
+      "entry": [
+        "proxy.ts",
+        "instrumentation*.ts",
+        "sentry.*.config.ts",
+        "next.config.ts",
+        "scripts/*.ts",
+        "app/**/*.{ts,tsx}"
+      ],
+      "project": [
+        "**/*.{ts,tsx}",
+        "!.next/**"
+      ],
+      "ignore": [
+        "payload.config.ts",
+        "next-env.d.ts"
+      ]
+    },
+    "apps/admin": {
+      "entry": [
+        "app/**/*.{ts,tsx}",
+        "proxy.ts",
+        "instrumentation*.ts",
+        "next.config.ts",
+        "scripts/*.ts"
+      ],
+      "project": [
+        "**/*.{ts,tsx}",
+        "!.next/**"
+      ],
+      "ignore": [
+        "next-env.d.ts"
+      ]
+    },
+    "packages/*": {
+      "entry": [
+        "src/index.ts",
+        "src/**/index.ts",
+        "scripts/**/*.{ts,mjs}"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "scripts/**/*.{ts,mjs}"
+      ]
+    }
+  },
+  "ignore": [
+    "templates/**",
+    "scripts/**"
+  ],
+  "ignoreDependencies": [
+    ".*"
+  ]
+}
