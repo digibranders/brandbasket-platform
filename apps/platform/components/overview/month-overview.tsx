@@ -26,6 +26,8 @@ interface MonthOverviewProps {
   readonly now: Date;
   /** The website's build card while the website is not live, else null. */
   readonly buildCard: ReactNode | null;
+  /** The customer has a website that is not live yet, so the line under the greeting says we are setting up. */
+  readonly settingUp: boolean;
   readonly bookingUrl: string | null;
   /** The reasons a call can be about for this customer, and whether an invitation can reach them (Book a call). */
   readonly callOptions: BookCallOptions["options"];
@@ -80,7 +82,7 @@ function NeedsYou({ rows, count }: { readonly rows: readonly NeedsYouRow[]; read
 }
 
 /** Overview once the first look is over: does anything need me, what did I get this month, what did you do. */
-export function MonthOverview({ firstName, businessName, data, now, buildCard, bookingUrl, callOptions, canBook }: MonthOverviewProps): ReactElement {
+export function MonthOverview({ firstName, businessName, data, now, buildCard, settingUp, bookingUrl, callOptions, canBook }: MonthOverviewProps): ReactElement {
   const month = monthName(now);
   // A quote to accept or a change to check is a conversation waiting on the customer, so it comes before the To do items.
   const rows = [...data.requests, ...data.todo.filter((item) => !item.done).map(toRow)];
@@ -103,7 +105,7 @@ export function MonthOverview({ firstName, businessName, data, now, buildCard, b
   return (
     <PageFrame
       title={`${greetingFor(now)}, ${firstName}.`}
-      lede={sublineFor(data.open, buildCard !== null)}
+      lede={sublineFor(data.open, settingUp)}
       action={
         <>
           <Link href={ASK_FOR_A_CHANGE_PATH} className={SOFT_BUTTON}>
