@@ -6,13 +6,14 @@ import { billingCurrencyForPhone } from "@brandbasket/shared/lib/billing/currenc
 import { leadValuesFrom, parseLeadForm } from "@brandbasket/shared/lib/lead-form";
 import type { LeadFormState } from "@brandbasket/shared/lib/lead-form-fields";
 import { getStaffDb } from "@/lib/server/db";
+import { recordStaffAction } from "@/lib/server/activity";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 
 const PROBLEM_MESSAGE = "That didn't save. Try again, and tell an admin if it keeps happening.";
 
 /** Staff adding a lead that arrived by phone or in person, validated exactly like the public form. */
 export async function createLeadAction(_previous: LeadFormState, formData: FormData): Promise<LeadFormState> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
 
   const parsed = parseLeadForm(formData);
   if (!parsed.success) {
@@ -28,5 +29,6 @@ export async function createLeadAction(_previous: LeadFormState, formData: FormD
     return { status: "error", message: PROBLEM_MESSAGE, field: null, values: leadValuesFrom(formData) };
   }
 
+  await recordStaffAction(staff, { businessId: null, kind: "lead.created", summary: "Added an enquiry", data: { leadId } });
   redirect(`/leads/${leadId}`);
 }
