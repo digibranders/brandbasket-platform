@@ -39,6 +39,7 @@ export * from "./rate-limits";
 export * from "./referrals";
 export * from "./setup-invites";
 export * from "./staff";
+export * from "./staff-invites";
 export * from "./breach-register";
 export * from "./consent-records";
 export * from "./privacy-requests";
