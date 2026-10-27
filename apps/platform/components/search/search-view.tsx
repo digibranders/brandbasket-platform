@@ -42,7 +42,7 @@ export function SearchView({ data }: { readonly data: SearchData }): ReactElemen
         <div>
           <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.035em] text-ink">Search</h1>
           {summary.pageOne === null ? null : (
-            <p className="mt-2 text-[0.84375rem] text-ink-2">{`${month}: ${summary.pageOne.figure} searches show you on Google's first page.`}</p>
+            <p className="mt-2 text-[0.84375rem] text-ink-2">{summary.pageOne.figure === "1" ? `${month}: 1 search shows you on Google's first page.` : `${month}: ${summary.pageOne.figure} searches show you on Google's first page.`}</p>
           )}
         </div>
         {reportUrl === null ? null : (
