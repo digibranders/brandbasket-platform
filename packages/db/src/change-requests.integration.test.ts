@@ -165,6 +165,22 @@ describe("create_change_request", () => {
     expect(await captureErrorText(asOwner((tx) => tx.execute(sql`select create_change_request(${ticketId}::uuid, 'website', null)`)))).toContain("change_requests_ticket_idx");
   });
 
+  it("refuses a ticket that is not new, so an old closed ticket cannot be given a request", async () => {
+    for (const status of ["closed", "triaged"]) {
+      counter += 1;
+      const ticket = await createSupportTicket(dbs.app.db, {
+        userId: OWNER,
+        businessId,
+        category: "website_change",
+        subject: "An old question",
+        description: "This was sorted out last year.",
+        submissionKey: `old-ticket-${counter}-abcdefgh`,
+      });
+      await dbs.staff.db.execute(sql`update support_tickets set status = ${status}, version = version + 1 where id = ${ticket.id}::uuid`);
+      expect(await captureErrorText(asOwner((tx) => tx.execute(sql`select create_change_request(${ticket.id}::uuid, 'website', null)`)))).toContain("change_request_not_allowed");
+    }
+  });
+
   it("refuses a kind that is not one of the five", async () => {
     const ticket = await createSupportTicket(dbs.app.db, {
       userId: OWNER,

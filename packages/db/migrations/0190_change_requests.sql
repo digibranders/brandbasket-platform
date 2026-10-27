@@ -228,7 +228,8 @@ DECLARE
   new_id uuid := gen_random_uuid();
 BEGIN
   SELECT * INTO t FROM public.support_tickets WHERE id = p_ticket_id;
-  IF NOT FOUND OR t.requester_user_id IS DISTINCT FROM public.app_current_user_id() OR t.business_id IS DISTINCT FROM public.app_current_business_id()
+  -- Only a ticket made a moment ago ('new') takes a request, so an old closed ticket cannot be pulled back into the queue.
+  IF NOT FOUND OR t.status <> 'new' OR t.requester_user_id IS DISTINCT FROM public.app_current_user_id() OR t.business_id IS DISTINCT FROM public.app_current_business_id()
      OR NOT EXISTS (SELECT 1 FROM public.business_members m WHERE m.business_id = t.business_id AND m.user_id = t.requester_user_id) THEN
     RAISE EXCEPTION 'change_request_not_allowed' USING ERRCODE = 'insufficient_privilege';
   END IF;
