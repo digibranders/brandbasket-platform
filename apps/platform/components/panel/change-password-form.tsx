@@ -3,9 +3,8 @@
 import { useActionState, useState, type ReactElement } from "react";
 import { EyeIcon, EyeOffIcon } from "@brandbasket/shared/ui/icons";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
-import { Button } from "@brandbasket/shared/ui/panel/button";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
-import { DARK_BUTTON_SHAPE } from "@/components/v2/classes";
+import { DARK_BUTTON_SHAPE, SOFT_BUTTON } from "@/components/v2/classes";
 import { initialChangePasswordState, initialRevokeOtherSessionsState, type ChangePasswordFormState, type RevokeOtherSessionsState } from "@/lib/account-settings-form";
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
 
@@ -149,7 +148,9 @@ function SessionRevocationRetry({ action, noticeDismissed }: {
         Your password is changed, but your other devices could not be signed out. You can try signing them out again.
       </p>
       {state.status === "error" && !isPending ? <p role="alert" className="text-sm text-accent-deep">{state.message}</p> : null}
-      <Button type="submit" disabled={isPending} aria-busy={isPending}>{isPending ? "Signing out…" : "Sign out other devices"}</Button>
+      <button type="submit" disabled={isPending} aria-busy={isPending} className={`${SOFT_BUTTON} disabled:opacity-55`}>
+        {isPending ? "Signing out…" : "Sign out other devices"}
+      </button>
     </form>
   );
 }

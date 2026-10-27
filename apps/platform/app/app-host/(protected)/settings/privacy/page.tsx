@@ -5,7 +5,7 @@ import { findNominee } from "@brandbasket/db";
 import { displayPhone } from "@brandbasket/shared/server/phone-display";
 import { NomineeForm } from "@/components/panel/nominee-form";
 import { SOFT_BUTTON } from "@/components/v2/classes";
-import { PageHeader, PageSection } from "@/components/v2/page";
+import { PageFrame, PageSection } from "@/components/v2/page";
 import { legalLinksFor } from "@/lib/legal-links";
 import { supportEmailOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
@@ -25,20 +25,19 @@ export default async function PrivacySettingsPage(): Promise<ReactElement> {
   const nominee = await findNominee(getAppDb(), user.id);
 
   return (
-    <div className="mx-auto grid w-full max-w-[44rem] gap-10">
-      <PageHeader
-        title="Your privacy"
-        lede={
-          <>
-            What we hold about you, and what you can do about it. How we use it is in the{" "}
-            <a href={legalLinks.privacy} className="link-underline text-ink">
-              privacy notice
-            </a>
-            .
-          </>
-        }
-      />
-
+    <PageFrame
+      title="Your privacy"
+      width="form"
+      lede={
+        <>
+          What we hold about you, and what you can do about it. How we use it is in the{" "}
+          <a href={legalLinks.privacy} className="font-semibold text-ink underline underline-offset-[3px]">
+            privacy notice
+          </a>
+          .
+        </>
+      }
+    >
       <PageSection id="download" title="Download your data">
         <p className="max-w-xl text-sm leading-relaxed text-ink-2">
           A copy of your account, your business&rsquo;s details, what you have been billed, your support requests, where you signed in from and who we
@@ -63,7 +62,7 @@ export default async function PrivacySettingsPage(): Promise<ReactElement> {
       <PageSection id="requests" title="Correct, delete or complain">
         <p className="max-w-xl text-sm leading-relaxed text-ink-2">
           You can change your password and see your name and number on the{" "}
-          <a href="/settings" className="link-underline text-ink">
+          <a href="/settings" className="font-semibold text-ink underline underline-offset-[3px]">
             Settings
           </a>{" "}
           page. To correct something else, have your data deleted, or make a complaint, send us a request. We check it is you with a code emailed to the address you give and reply within 30 days.
@@ -72,11 +71,11 @@ export default async function PrivacySettingsPage(): Promise<ReactElement> {
           <Link href={legalLinks.privacyRequest} className={SOFT_BUTTON}>
             Make a privacy request
           </Link>
-          <a href={`mailto:${supportEmail}`} className="link-underline text-sm text-ink">
+          <a href={`mailto:${supportEmail}`} className="font-semibold text-ink underline underline-offset-[3px]">
             Or write to us at {supportEmail}
           </a>
         </div>
       </PageSection>
-    </div>
+    </PageFrame>
   );
 }
