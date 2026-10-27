@@ -142,6 +142,22 @@ describe("the trigger that writes the history", () => {
     expect(await eventStatuses()).toEqual(["onboarding", "submitted"]);
   });
 
+  it("does not let the customer role attach the definer-rights trigger function to a table of its own", async () => {
+    const state = await sqlState(async () => {
+      await dbs.app.db.execute(sql`create temp table fake_projects (id uuid, business_id uuid, status project_status, on_hold_reason text)`);
+      await dbs.app.db.execute(sql`create trigger exploit after insert on fake_projects for each row execute function public.projects_record_event()`);
+    });
+    expect(state).toBe("42501");
+  });
+
+  it("stores a padded pause reason trimmed, so a long padded reason cannot abort the pause", async () => {
+    await setStatus("building");
+    const padded = `   ${"a".repeat(198)}   `;
+    await dbs.staff.db.update(projects).set({ status: "on_hold", onHoldReason: padded }).where(eq(projects.id, projectId));
+    const rows = await dbs.owner.db.select({ reason: projectEvents.reason }).from(projectEvents).where(eq(projectEvents.status, "on_hold"));
+    expect(rows[0]?.reason).toBe("a".repeat(198));
+  });
+
   it("keeps the pause reason on the on_hold event only", async () => {
     await setStatus("on_hold", "Waiting for your logo");
     await setStatus("building");

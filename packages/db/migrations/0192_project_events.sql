@@ -59,14 +59,21 @@ CREATE FUNCTION public.projects_record_event() RETURNS trigger
   SET search_path TO 'pg_catalog'
 AS $$
 BEGIN
+  -- A definer-rights trigger function must only ever run for projects: refuse a trigger someone attached to another table.
+  IF TG_RELID <> 'public.projects'::pg_catalog.regclass THEN
+    RAISE EXCEPTION 'projects_record_event runs only on projects';
+  END IF;
   IF TG_OP = 'INSERT' OR NEW.status IS DISTINCT FROM OLD.status THEN
     INSERT INTO public.project_events (id, project_id, business_id, status, reason, occurred_at)
     VALUES (pg_catalog.gen_random_uuid(), NEW.id, NEW.business_id, NEW.status,
-            CASE WHEN NEW.status = 'on_hold' THEN NEW.on_hold_reason ELSE NULL END, pg_catalog.now());
+            CASE WHEN NEW.status = 'on_hold' THEN pg_catalog.btrim(NEW.on_hold_reason) ELSE NULL END, pg_catalog.now());
   END IF;
   RETURN NEW;
 END
 $$;
+--> statement-breakpoint
+-- Creating a trigger needs EXECUTE on its function, so without this any role could attach the definer function to a table of its own.
+REVOKE EXECUTE ON FUNCTION public.projects_record_event() FROM PUBLIC;
 --> statement-breakpoint
 CREATE TRIGGER projects_record_event
   AFTER INSERT OR UPDATE OF status ON projects
@@ -79,4 +86,7 @@ UNION ALL SELECT gen_random_uuid(), p.id, p.business_id, 'submitted', NULL, p.on
 UNION ALL SELECT gen_random_uuid(), p.id, p.business_id, 'preview', NULL, p.preview_sent_at FROM projects p WHERE p.preview_sent_at IS NOT NULL
 UNION ALL SELECT gen_random_uuid(), p.id, p.business_id, 'live', NULL, p.launched_at FROM projects p WHERE p.launched_at IS NOT NULL
 UNION ALL SELECT gen_random_uuid(), p.id, p.business_id, p.status, p.on_hold_reason, p.updated_at FROM projects p
-  WHERE p.status NOT IN ('onboarding', 'submitted', 'preview', 'live');
+  WHERE NOT (p.status = 'onboarding'
+    OR (p.status = 'submitted' AND p.onboarding_submitted_at IS NOT NULL)
+    OR (p.status = 'preview' AND p.preview_sent_at IS NOT NULL)
+    OR (p.status = 'live' AND p.launched_at IS NOT NULL));
