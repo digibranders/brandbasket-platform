@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { LIFT } from "@/components/v2/classes";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { getLiveWebsite } from "@/lib/server/onboarding";
 import { PRODUCT_ROWS, SITE_PAGES } from "@/lib/website/pages-map";
 import { askAboutHref } from "@/lib/website/tabs";
-import { cn } from "@brandbasket/shared/lib/cn";
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
 
 export const metadata: Metadata = { title: "Website pages" };
@@ -19,14 +17,14 @@ export default async function WebsitePagesPage(): Promise<ReactElement> {
   const siteHref = (path: string): string | null => (live === null ? null : safeExternalHref(`https://${live.hostname}${path}`));
 
   return (
-    <div className="grid w-full max-w-[44rem] gap-6">
-      <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.035em] text-ink">Pages</h1>
+    <div className="grid w-full max-w-[44rem] gap-8">
+      <h1 className="sr-only">Pages</h1>
 
-      <ul className={cn(LIFT, "divide-y divide-line")}>
+      <ul className="divide-y divide-line border-y border-line">
         {SITE_PAGES.map((page) => {
           const href = siteHref(page.path);
           return (
-            <li key={page.name} className="flex items-center justify-between gap-4 px-6 py-4">
+            <li key={page.name} className="flex items-center justify-between gap-4 py-4">
               <div className="min-w-0">
                 <p className="font-medium text-ink">
                   {href === null ? (
@@ -47,9 +45,9 @@ export default async function WebsitePagesPage(): Promise<ReactElement> {
         })}
       </ul>
 
-      <ul className={cn(LIFT, "divide-y divide-line")}>
+      <ul className="divide-y divide-line border-y border-line">
         {PRODUCT_ROWS.map((row) => (
-          <li key={row.label} className="px-6 py-4">
+          <li key={row.label} className="py-4">
             <Link href={row.href} className="link-underline font-medium text-ink">
               {row.label}
             </Link>
