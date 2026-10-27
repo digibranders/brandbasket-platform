@@ -1,9 +1,9 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactElement } from "react";
+import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { z } from "zod";
 import { SUPPORT_ATTACHMENT_LIMIT, SUPPORT_ATTACHMENT_MAX_BYTES } from "@brandbasket/shared/lib/support";
-import { Image as ImageIcon, X } from "@phosphor-icons/react/dist/ssr";
+import { Image as ImageIcon, Paperclip, X } from "@phosphor-icons/react/dist/ssr";
 import { SOFT_BUTTON } from "@/components/v2/classes";
 
 export interface SupportAttachmentsHandle {
@@ -18,6 +18,8 @@ interface Preview {
   readonly error: string | null;
 }
 
+const HELPER = "Up to 3 images, 4 MB each (PNG, JPEG, WebP). Hide any personal information before uploading.";
+
 const uploadResult = z.object({
   attachments: z.array(z.object({ id: z.uuid() })).min(1).max(SUPPORT_ATTACHMENT_LIMIT),
 });
@@ -28,13 +30,22 @@ export const SupportAttachments = forwardRef<
     readonly onChange: (ids: readonly string[]) => void;
     readonly onBusy: (busy: boolean) => void;
     readonly disabled?: boolean;
+    /**
+     * The one-line variant for a reply bar: the picker is a paperclip button inside the bar, `children` (the field and the send
+     * button) sit beside it, attached images are small chips above, and the size and privacy note shows only while an image is
+     * attached or the paperclip has focus. Without it the widget keeps the full block the Ask for a change form uses.
+     */
+    readonly compact?: boolean;
+    readonly children?: ReactNode;
   }
->(function SupportAttachments({ onChange, onBusy, disabled = false }, ref): ReactElement {
+>(function SupportAttachments({ onChange, onBusy, disabled = false, compact = false, children }, ref): ReactElement {
   const [previews, setPreviews] = useState<readonly Preview[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const urls = useRef(new Set<string>());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachFocused, setAttachFocused] = useState(false);
+  const helperId = useId();
 
   useEffect(() => {
     const allocated = urls.current;
@@ -149,6 +160,85 @@ export const SupportAttachments = forwardRef<
 
   const reachedLimit = previews.length >= SUPPORT_ATTACHMENT_LIMIT;
 
+  const fileInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept="image/png,image/jpeg,image/webp"
+      multiple
+      disabled={busy || disabled || reachedLimit}
+      className="sr-only"
+      tabIndex={-1}
+      aria-hidden="true"
+      onChange={(event) => {
+        void upload(event.currentTarget.files);
+        event.currentTarget.value = "";
+      }}
+    />
+  );
+  const progress = (
+    <p role="status" aria-live="polite" className={compact ? "text-sm text-error empty:hidden" : "text-sm text-error"}>
+      {busy ? "Uploading screenshots…" : error ?? ""}
+    </p>
+  );
+
+  if (compact) {
+    const showHelper = previews.length > 0 || attachFocused;
+    return (
+      <div className="grid gap-2">
+        {previews.length > 0 ? (
+          <ul className="flex flex-wrap gap-2">
+            {previews.map((item) => (
+              <li
+                key={item.key}
+                title={item.error ?? item.name}
+                className={`flex h-8 max-w-full items-center gap-2 rounded-lg bg-sunken pl-1 pr-1 text-xs ${item.error === null ? "text-ink" : "text-error"}`}
+              >
+                {/* Object URLs are local previews. Uploaded screenshots never have public URLs. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={item.url} alt="" className="size-6 shrink-0 rounded-md object-cover" />
+                <span className="min-w-0 max-w-40 truncate">{item.id === null && item.error === null ? "Uploading…" : item.name}</span>
+                <button
+                  type="button"
+                  disabled={busy || disabled}
+                  onClick={() => void remove(item)}
+                  aria-label={`Remove screenshot ${item.name}`}
+                  className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-ink-2 transition-colors duration-200 hover:bg-line hover:text-ink motion-reduce:transition-none disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <X size={12} weight="bold" aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {progress}
+        <div className="flex items-end gap-2">
+          {fileInput}
+          <button
+            type="button"
+            disabled={busy || disabled || reachedLimit}
+            onClick={() => fileInputRef.current?.click()}
+            onFocus={() => setAttachFocused(true)}
+            onBlur={() => setAttachFocused(false)}
+            aria-label="Attach screenshots"
+            aria-describedby={showHelper ? helperId : undefined}
+            title="Attach screenshots"
+            className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-ink-2 transition-colors duration-200 hover:bg-sunken hover:text-ink motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Paperclip size={18} aria-hidden="true" />
+          </button>
+          {children}
+        </div>
+        {showHelper ? (
+          <p id={helperId} className="text-xs text-ink-2">
+            {reachedLimit ? "Maximum 3 screenshots attached. " : ""}
+            {HELPER}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -160,20 +250,7 @@ export const SupportAttachments = forwardRef<
         </span>
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        multiple
-        disabled={busy || disabled || reachedLimit}
-        className="sr-only"
-        tabIndex={-1}
-        aria-hidden="true"
-        onChange={(event) => {
-          void upload(event.currentTarget.files);
-          event.currentTarget.value = "";
-        }}
-      />
+      {fileInput}
 
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -229,12 +306,8 @@ export const SupportAttachments = forwardRef<
         </ul>
       ) : null}
 
-      <p className="text-xs text-ink-2">
-        Up to 3 images, 4 MB each (PNG, JPEG, WebP). Hide any personal information before uploading.
-      </p>
-      <p role="status" aria-live="polite" className="text-sm text-error">
-        {busy ? "Uploading screenshots…" : error ?? ""}
-      </p>
+      <p className="text-xs text-ink-2">{HELPER}</p>
+      {progress}
     </div>
   );
 });
