@@ -1,4 +1,6 @@
-import { handleCalcomWebhook } from "@/lib/server/calcom-webhook";
+import { handleCalcomWebhook, type CalcomWebhookResult } from "@/lib/server/calcom-webhook";
+import { noteWebhook, type WebhookOutcome } from "@/lib/server/webhook-log";
+import { failureReason } from "@/lib/webhook-event";
 import { BodyTooLargeError, readLimitedBody } from "@/lib/server/read-limited-body";
 import { noteSecurityEvent } from "@/lib/server/security-events";
 
@@ -7,6 +9,25 @@ const MAX_BODY_BYTES = 256 * 1024;
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+}
+
+/** What the console says about each answer the handler gives. */
+function outcomeOf(result: CalcomWebhookResult): WebhookOutcome {
+  switch (result.kind) {
+    case "moved":
+    case "removed":
+      return { result: "handled" };
+    case "ignored":
+      return { result: "ignored" };
+    case "refused":
+      return { result: "bad_signature" };
+    case "unconfigured":
+      return { result: "failed", error: "CALCOM_WEBHOOK_SECRET is not set" };
+    default: {
+      const unhandled: never = result;
+      throw new Error(`Unhandled Cal.com result ${JSON.stringify(unhandled)}`);
+    }
+  }
 }
 
 /**
@@ -24,7 +45,15 @@ export async function POST(request: Request): Promise<Response> {
     throw error;
   }
 
-  const result = await handleCalcomWebhook(body, request.headers.get("x-cal-signature-256"), new Date());
+  let result: CalcomWebhookResult;
+  try {
+    result = await handleCalcomWebhook(body, request.headers.get("x-cal-signature-256"), new Date());
+  } catch (error) {
+    await noteWebhook("calcom", body, { result: "failed", error: failureReason(error) });
+    throw error;
+  }
+  // shortcut: Cal.com rows carry no business id; return it from handleCalcomWebhook when staff need the link.
+  await noteWebhook("calcom", body, outcomeOf(result));
   if (result.kind === "unconfigured") {
     console.error("[calcom-webhook] a delivery arrived but CALCOM_WEBHOOK_SECRET is not set");
     return json({ error: "not configured" }, 503);
