@@ -1,6 +1,6 @@
-import { and, asc, count, eq, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNotNull, lte, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import { businessMembers, businesses, payments, users } from "../schema";
+import { businessMembers, businesses, leads, payments, users } from "../schema";
 import { PAYMENT_COLUMNS, type Payment } from "./billing";
 
 type Runner = Database;
@@ -19,6 +19,17 @@ export interface PaymentAlertBase {
   readonly owner: AlertPerson;
   /** Which captured payment of the business this is, counting this one: 1 is the customer's first. */
   readonly captured: number;
+}
+
+async function findLeadPhone(db: Runner, businessId: string): Promise<string | null> {
+  const rows = await db
+    .select({ phone: leads.phone })
+    .from(leads)
+    .where(and(eq(leads.businessId, businessId), isNotNull(leads.phone)))
+    .orderBy(desc(leads.createdAt))
+    .limit(1);
+  const phone = rows[0]?.phone?.trim();
+  return phone ? phone : null;
 }
 
 /** The business and its earliest owner, by business id. Null when there is no such business. */
@@ -41,7 +52,10 @@ export async function findBusinessAlertDetails(
     .orderBy(asc(businessMembers.createdAt), asc(businessMembers.userId))
     .limit(1);
   const owner = owners[0];
-  return { business, owner: owner === undefined ? { name: null, email: null, phone: null } : { name: owner.name, email: owner.email, phone: owner.phone } };
+  const accountPhone = owner?.phone?.trim() ? owner.phone : null;
+  // An account made before numbers were kept has none; the number they gave when they signed up is on their lead.
+  const phone = accountPhone ?? (await findLeadPhone(db, businessId));
+  return { business, owner: owner === undefined ? { name: null, email: null, phone } : { name: owner.name, email: owner.email, phone } };
 }
 
 export async function findPaymentAlertBase(db: Runner, paymentId: string): Promise<PaymentAlertBase | null> {

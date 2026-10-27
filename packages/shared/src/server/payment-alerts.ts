@@ -1,7 +1,6 @@
 import "server-only";
 import {
   findAddOnSubscriptionForPayment,
-  findBillingProfile,
   findBusinessAlertDetails,
   findChargeByPaymentId,
   findPaymentAlertBase,
@@ -13,27 +12,23 @@ import {
 } from "@brandbasket/db";
 import { addOnById, isMonthlyAddOnId } from "../lib/billing/add-ons";
 import { displayPhone } from "./phone-display";
-import { paymentTeamsCard, planStatusTeamsCard, type PaymentCardInput, type PaymentCardLine, type PlanStatusAlert } from "../lib/payment-alert-card";
+import { paymentTeamsCard, planStatusTeamsCard, type PlanStatusAlert } from "../lib/payment-alert-card";
 import { sendTeamsAlert } from "./teams-alerts";
 
-/** What was bought, as lines for the card: the services a plan payment billed, the add-on, or the one-off charge. */
-async function linesFor(db: Database, base: NonNullable<Awaited<ReturnType<typeof findPaymentAlertBase>>>): Promise<{ lines: PaymentCardLine[]; code: PaymentCardInput["code"] }> {
+/** What was bought, by name: the services a plan payment billed, the add-on, or the one-off charge's description. */
+async function servicesFor(db: Database, base: NonNullable<Awaited<ReturnType<typeof findPaymentAlertBase>>>): Promise<string[]> {
   const { payment } = base;
+  const serviceName = (id: string): string => (isMonthlyAddOnId(id) ? addOnById(id).title : id);
   if (payment.kind === "add_on") {
     const addOn = await findAddOnSubscriptionForPayment(db, payment.id);
-    if (addOn === null) return { lines: [], code: null };
-    return { lines: [{ title: isMonthlyAddOnId(addOn.addOn) ? addOnById(addOn.addOn).title : addOn.addOn, listCents: addOn.listAmountCents, offerCents: addOn.offerDiscountAmountCents }], code: null };
+    return addOn === null ? [] : [serviceName(addOn.addOn)];
   }
   if (payment.kind === "charge" || payment.kind === "extra_publish") {
     const charge = await findChargeByPaymentId(db, payment.businessId, payment.id);
-    return { lines: charge === null ? [] : [{ title: charge.description, listCents: charge.amountCents, offerCents: 0 }], code: null };
+    return charge === null ? [] : [charge.description];
   }
   const basis = await findPaymentInvoiceBasis(db, payment.id);
-  if (basis === null) return { lines: [], code: null };
-  return {
-    lines: basis.lines.map((line) => ({ title: isMonthlyAddOnId(line.addOn) ? addOnById(line.addOn).title : line.addOn, listCents: line.listAmountCents, offerCents: line.offerDiscountAmountCents })),
-    code: basis.code === undefined ? null : { code: basis.code, takesOffCents: basis.discountAmountCents - basis.retentionDiscountCents },
-  };
+  return basis === null ? [] : basis.lines.map((line) => serviceName(line.addOn));
 }
 
 /**
@@ -46,19 +41,11 @@ export async function announcePayment(db: Database, secret: string, paymentId: s
     const base = await findPaymentAlertBase(db, paymentId);
     if (base === null) return;
     const { payment, business, owner } = base;
-    const [{ lines, code }, subscription, method, invoice, billing] = await Promise.all([
-      linesFor(db, base),
-      payment.subscriptionId === null ? null : findSubscriptionById(db, payment.subscriptionId),
-      findPaymentForInvoice(db, paymentId),
-      findTaxInvoiceByPaymentId(db, paymentId),
-      findBillingProfile(db, payment.businessId),
-    ]);
-    const planPayment = payment.kind === "initial" || payment.kind === "renewal" || payment.kind === "reactivation";
+    const [services, method, invoice] = await Promise.all([servicesFor(db, base), findPaymentForInvoice(db, paymentId), findTaxInvoiceByPaymentId(db, paymentId)]);
     const card = paymentTeamsCard({
       kind: payment.kind,
       amountCents: payment.amountCents,
       currency: payment.currency,
-      paidAt: payment.paidAt,
       attentionReason: payment.attentionReason,
       paymentNumber: base.captured,
       provider: payment.provider,
@@ -66,12 +53,8 @@ export async function announcePayment(db: Database, secret: string, paymentId: s
       method,
       customer: { name: owner.name, email: owner.email, phone: owner.phone === null ? null : displayPhone(owner.phone).text },
       business: { name: business.name, websiteUrl: business.websiteUrl },
-      lines,
-      code,
-      adCreditCents: payment.kind === "initial" && subscription !== null ? subscription.adCreditCents : 0,
-      paidThrough: planPayment && subscription !== null ? subscription.paidThroughAt : null,
-      invoice: invoice === null ? null : { number: invoice.number, totalCents: invoice.totalCents, gstCents: invoice.cgstCents + invoice.sgstCents + invoice.igstCents },
-      billing: billing === null ? null : { legalName: billing.legalName, gstin: billing.gstin },
+      services,
+      invoice: invoice === null ? null : { number: invoice.number, gstCents: invoice.cgstCents + invoice.sgstCents + invoice.igstCents },
       consoleUrl: new URL(`/clients/${business.id}`, consoleOrigin).toString(),
     });
     await sendTeamsAlert(db, secret, "payments", card);
