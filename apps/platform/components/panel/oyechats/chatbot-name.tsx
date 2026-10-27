@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition, type ReactElement } from "react";
 import { renameChatbotAction } from "@/app/app-host/(protected)/oyechats/actions";
+import { DARK_BUTTON, SOFT_BUTTON } from "@/components/v2/classes";
 
 /**
  * An assistant's name with a small Rename button. Opening it shows the name in a box; saving changes the name on this page.
@@ -16,14 +17,14 @@ export function ChatbotName({ chatbotId, name }: { readonly chatbotId: string; r
   if (!editing) {
     return (
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h2 className="panel-section">{name}</h2>
+        <h2 className="font-display text-[1.0625rem] font-semibold tracking-[-0.02em] text-ink">{name}</h2>
         <button
           type="button"
           onClick={() => {
             setMessage(null);
             setEditing(true);
           }}
-          className="link-underline cursor-pointer text-sm text-ink-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+          className={SOFT_BUTTON}
         >
           Rename<span className="sr-only"> {name}</span>
         </button>
@@ -47,7 +48,7 @@ export function ChatbotName({ chatbotId, name }: { readonly chatbotId: string; r
         });
       }}
     >
-      <label className="block text-sm font-medium text-ink">
+      <label className="block text-[0.8125rem] font-semibold text-ink">
         Assistant name
         <input
           ref={input}
@@ -58,11 +59,11 @@ export function ChatbotName({ chatbotId, name }: { readonly chatbotId: string; r
           autoFocus
           autoComplete="off"
           aria-describedby={message === null ? undefined : `${chatbotId}-rename-message`}
-          className="mt-1 block w-full rounded-control border border-line bg-card px-3 py-2 text-base text-ink focus-visible:outline-2 focus-visible:outline-accent"
+          className="mt-1.5 block w-full rounded-control border border-ink-2/65 bg-card px-3.5 py-2.5 text-[0.9375rem] text-ink hover:border-ink-2 focus:border-ink focus:outline-none"
         />
       </label>
       {message === null ? null : (
-        <p id={`${chatbotId}-rename-message`} role="alert" className="mt-2 text-sm text-accent-deep">
+        <p id={`${chatbotId}-rename-message`} role="alert" className="mt-2 text-sm text-error">
           {message}
         </p>
       )}
@@ -70,7 +71,7 @@ export function ChatbotName({ chatbotId, name }: { readonly chatbotId: string; r
         <button
           type="submit"
           disabled={pending}
-          className="cursor-pointer rounded-control bg-ink px-4 py-2 text-sm font-medium text-card transition-opacity duration-200 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className={DARK_BUTTON}
         >
           {pending ? "Saving" : "Save name"}
         </button>
@@ -81,7 +82,7 @@ export function ChatbotName({ chatbotId, name }: { readonly chatbotId: string; r
             setMessage(null);
             setEditing(false);
           }}
-          className="cursor-pointer text-sm text-ink-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className={`${SOFT_BUTTON} disabled:cursor-not-allowed disabled:opacity-45`}
         >
           Cancel
         </button>
