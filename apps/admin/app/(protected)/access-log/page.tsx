@@ -28,6 +28,8 @@ const ACTION_LABELS: Readonly<Record<StaffAccessAction, string>> = {
   "directory.view": "Opened the directory",
   "invoice.view": "Downloaded an invoice",
   "invoice.export": "Exported the invoice register",
+  "payment.list_view": "Viewed payments",
+  "payment.export": "Exported payments",
   "breach.view": "Opened the breach register",
   "breach.log": "Logged a breach",
   "breach.update": "Updated a breach",
