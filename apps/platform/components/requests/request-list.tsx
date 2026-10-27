@@ -35,7 +35,7 @@ export function RequestList({ rows, filter, selectedId, counts }: RequestListPro
         ))}
       </nav>
       {rows.length === 0 ? (
-        <p className="px-3.5 py-4 text-[0.84375rem] text-ink-2">{filter === "open" ? "Nothing is open." : "Nothing is done yet."}</p>
+        <p className="px-3.5 py-4 text-[0.84375rem] text-ink-2 @2xl:hidden">{filter === "open" ? "Nothing is open." : "Nothing is done yet."}</p>
       ) : (
         <ul>
           {rows.map((row) => (

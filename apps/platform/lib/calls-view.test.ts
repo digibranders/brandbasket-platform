@@ -43,7 +43,9 @@ it("heads the page Calls with a Book a call button, and says there are none yet"
   expect(html).toContain(">Calls<");
   expect(html).toContain("What we agreed on each call.");
   expect(html).toContain(">Book a call<");
-  expect(html).toContain("No calls yet. Book one when you want to talk something through.");
+  expect(html).toContain(">No calls yet</h2>");
+  expect(html).toContain("Book one when you want to talk something through, and what we agree is written here afterwards.");
+  expect(html.match(/>Book a call</g)).toHaveLength(2);
   expect(html).not.toContain("Coming up");
   expect(html).not.toContain("Past calls");
 });
