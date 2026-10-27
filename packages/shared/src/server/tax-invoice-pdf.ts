@@ -4,7 +4,7 @@ import { amountInWords } from "@brandbasket/billing/amount-in-words";
 import { gstStateCodeOf } from "@brandbasket/billing/gst-states";
 import type { TaxInvoice, TaxInvoiceLineRecord, TaxInvoicePartyRecord } from "@brandbasket/db";
 import { stateName } from "@brandbasket/db/india-states";
-import { PDFDocument, PDFString, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import { PDFDocument, PDFString, rgb, type PDFFont, type PDFImage, type PDFPage, type RGB } from "pdf-lib";
 import { deploymentBrandName } from "../lib/deployment-brand";
 import { businessDetails } from "../lib/site-config";
 import { BRANDBASKET_LETTERHEAD } from "./brandbasket-letterhead";
@@ -178,16 +178,23 @@ export function hexColor(hex: string): ReturnType<typeof rgb> {
   return rgb(Number.parseInt(match[1] ?? "0", 16) / 255, Number.parseInt(match[2] ?? "0", 16) / 255, Number.parseInt(match[3] ?? "0", 16) / 255);
 }
 
-/** The letterhead: the wordmark on the left, "TAX INVOICE" on the right, both resting on one line. Returns the y below. */
-function header(page: PDFPage, fonts: Fonts, continued: boolean, options: TaxInvoiceRenderOptions): number {
+/**
+ * The letterhead: the logo on the left, "TAX INVOICE" on the right, both resting on one line. Returns the y below. It is
+ * Brandbasket's PNG (`logo`) unless the options name a vector letterhead of their own.
+ */
+function header(page: PDFPage, fonts: Fonts, continued: boolean, options: TaxInvoiceRenderOptions, logo: PDFImage): number {
   const logoHeight = 9.5 * MM;
   const headBottom = TOP - 34;
-  const letterhead = options.letterhead ?? BRANDBASKET_LETTERHEAD;
-  const scale = logoHeight / letterhead.height;
-  const color = hexColor(letterhead.colorHex);
-  for (const path of letterhead.paths) {
-    const [d, fill] = typeof path === "string" ? [path, color] : [path.d, hexColor(path.colorHex)];
-    page.drawSvgPath(d, { x: LEFT, y: headBottom + logoHeight, scale, color: fill });
+  const letterhead = options.letterhead;
+  if (letterhead === undefined) {
+    page.drawImage(logo, { x: LEFT, y: headBottom, width: (logoHeight * logo.width) / logo.height, height: logoHeight });
+  } else {
+    const scale = logoHeight / letterhead.height;
+    const color = hexColor(letterhead.colorHex);
+    for (const path of letterhead.paths) {
+      const [d, fill] = typeof path === "string" ? [path, color] : [path.d, hexColor(path.colorHex)];
+      page.drawSvgPath(d, { x: LEFT, y: headBottom + logoHeight, scale, color: fill });
+    }
   }
   spaced(page, "Tax invoice", RIGHT, TOP - 15.5, fonts.bold, 19, 0.04, INK, "right");
   spaced(page, continued ? "Continued" : "Original for recipient", RIGHT, TOP - 31, fonts.regular, 7.6, 0.1, INK_SOFT, "right");
@@ -245,7 +252,7 @@ export interface TaxInvoiceRenderOptions {
   /** The name the PDF files itself under (its title and creator): "Brandbasket" unless the caller names another. */
   readonly brandName?: string;
   /**
-   * A letterhead to draw in place of Brandbasket's own: the logo's SVG paths, the height of the viewBox they are
+   * A letterhead to draw in place of Brandbasket's own PNG logo: the logo's SVG paths, the height of the viewBox they are
    * drawn in, and the colour to fill them (a hex like "#0C1E2E"). The company on the invoice (name, GSTIN, address) is
    * the stored snapshot's and never changes; this is only the name the customer knows it by.
    */
@@ -505,9 +512,9 @@ function footer(page: PDFPage, doc: PDFDocument, fonts: Fonts, options: TaxInvoi
 }
 
 /** A page after the first: the letterhead marked "Continued", and the invoice number. Returns the y below. */
-function continuationPage(doc: PDFDocument, invoice: TaxInvoice, fonts: Fonts, options: TaxInvoiceRenderOptions): { readonly page: PDFPage; readonly top: number } {
+function continuationPage(doc: PDFDocument, invoice: TaxInvoice, fonts: Fonts, options: TaxInvoiceRenderOptions, logo: PDFImage): { readonly page: PDFPage; readonly top: number } {
   const page = doc.addPage([PAGE.width, PAGE.height]);
-  const top = header(page, fonts, true, options);
+  const top = header(page, fonts, true, options, logo);
   page.drawLine({ start: { x: LEFT, y: top }, end: { x: RIGHT, y: top }, thickness: HAIRLINE, color: INK });
   label(page, "Invoice number", LEFT, top - 15, fonts);
   text(page, invoice.number, LEFT, top - 31, fonts.semibold, 9.6);
@@ -519,11 +526,11 @@ function continuationPage(doc: PDFDocument, invoice: TaxInvoice, fonts: Fonts, o
  * do not fit carry on to a continuation page, and the totals and declaration always end the invoice. Every page of
  * an invoice that runs to more than one says "Page n of N".
  */
-function drawInvoice(doc: PDFDocument, invoice: TaxInvoice, fonts: Fonts, options: TaxInvoiceRenderOptions): void {
+function drawInvoice(doc: PDFDocument, invoice: TaxInvoice, fonts: Fonts, options: TaxInvoiceRenderOptions, logo: PDFImage): void {
   const pages: PDFPage[] = [];
   let page = doc.addPage([PAGE.width, PAGE.height]);
   pages.push(page);
-  let y = header(page, fonts, false, options);
+  let y = header(page, fonts, false, options, logo);
   y = facts(page, invoice, y, fonts);
   y = parties(page, doc, invoice, y, fonts, options);
 
@@ -531,7 +538,7 @@ function drawInvoice(doc: PDFDocument, invoice: TaxInvoice, fonts: Fonts, option
   y = tableHead(page, columns, y, fonts);
   for (const row of invoice.lines.map((line) => rowLayout(line, descriptionWidth, fonts))) {
     if (y - row.height < FOOTER_TOP) {
-      const next = continuationPage(doc, invoice, fonts, options);
+      const next = continuationPage(doc, invoice, fonts, options, logo);
       page = next.page;
       pages.push(page);
       y = tableHead(page, columns, next.top, fonts);
@@ -539,7 +546,7 @@ function drawInvoice(doc: PDFDocument, invoice: TaxInvoice, fonts: Fonts, option
     y = tableRow(page, row, columns, y, fonts);
   }
   if (y - settleHeight(invoice, fonts) < FOOTER_TOP) {
-    const next = continuationPage(doc, invoice, fonts, options);
+    const next = continuationPage(doc, invoice, fonts, options, logo);
     page = next.page;
     pages.push(page);
     y = next.top;
@@ -566,6 +573,7 @@ export async function renderTaxInvoicesPdf(invoices: readonly TaxInvoice[], opti
     semibold: await doc.embedFont(HANKEN_SEMIBOLD, { subset: true }),
     bold: await doc.embedFont(HANKEN_BOLD, { subset: true }),
   };
-  for (const invoice of invoices) drawInvoice(doc, invoice, fonts, options);
+  const logo = await doc.embedPng(BRANDBASKET_LETTERHEAD.png);
+  for (const invoice of invoices) drawInvoice(doc, invoice, fonts, options, logo);
   return doc.save();
 }

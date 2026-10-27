@@ -101,6 +101,78 @@ describe("createBrevoTransport timeout", () => {
   });
 });
 
+describe("createBrevoTransport retry", () => {
+  const timeoutError = (): DOMException => new DOMException("The operation was aborted due to timeout", "TimeoutError");
+  const ok = (): Response => new Response("{}", { status: 201 });
+
+  function transportWith(responses: ReadonlyArray<() => Response | Promise<Response>>): { send: () => Promise<void>; fetchFn: ReturnType<typeof vi.fn> } {
+    const queue = [...responses];
+    const fetchFn = vi.fn(async () => {
+      const next = queue.shift();
+      if (next === undefined) throw new Error("unexpected extra request");
+      return next();
+    });
+    const transport = createBrevoTransport({ apiKey: "k", fetchFn: fetchFn as unknown as typeof fetch, retryDelayMs: 0 });
+    return { send: () => transport.send(sampleMessage), fetchFn };
+  }
+
+  it("retries once after a timeout and succeeds", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { send, fetchFn } = transportWith([() => { throw timeoutError(); }, ok]);
+    await expect(send()).resolves.toBeUndefined();
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("attempt 1 of 2"), expect.anything());
+    error.mockRestore();
+  });
+
+  it("retries once after a network error", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { send, fetchFn } = transportWith([() => { throw new TypeError("fetch failed"); }, ok]);
+    await expect(send()).resolves.toBeUndefined();
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    error.mockRestore();
+  });
+
+  it("retries once after a 500 and after a 429", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    for (const status of [500, 429]) {
+      const { send, fetchFn } = transportWith([() => new Response("busy", { status }), ok]);
+      await expect(send()).resolves.toBeUndefined();
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+    }
+    error.mockRestore();
+  });
+
+  it("gives up after two timeouts and throws the last error", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { send, fetchFn } = transportWith([() => { throw timeoutError(); }, () => { throw timeoutError(); }]);
+    await expect(send()).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    error.mockRestore();
+  });
+
+  it("does not retry a 401 or any other 4xx", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    for (const status of [400, 401, 403]) {
+      const { send, fetchFn } = transportWith([() => new Response("nope", { status }), ok]);
+      await expect(send()).rejects.toThrow(BrevoDeliveryError);
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+    }
+    error.mockRestore();
+  });
+
+  it("falls back to the outbox when both attempts time out", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const rows: Record<string, unknown>[] = [];
+    const db = { insert: vi.fn(() => ({ values: vi.fn(async (row: Record<string, unknown>) => { rows.push(row); }) })) } as unknown as Parameters<typeof createDualTransport>[1];
+    const { send } = transportWith([() => { throw timeoutError(); }, () => { throw timeoutError(); }]);
+    await createDualTransport({ send }, db).send(sampleMessage);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ transport: "outbox" });
+    error.mockRestore();
+  });
+});
+
 describe("createDualTransport", () => {
   it("calls brevo send and writes to database outbox", async () => {
     const brevoSend = vi.fn(async () => {});

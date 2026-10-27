@@ -1,26 +1,20 @@
 import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
-import { formatMoney } from "@brandbasket/shared/lib/money";
 import { FreeListingButton } from "@/components/panel/membership/free-listing-button";
-import { OrderSummary } from "@/components/panel/membership/order-summary";
-import { PackageCard } from "@/components/panel/membership/package-card";
-import { MembershipPayForm } from "@/components/panel/membership/membership-pay-form";
+import { CheckoutLedger } from "@/components/panel/membership/checkout-ledger";
 import { MembershipCheckout } from "@/components/panel/membership/membership-checkout";
 import { sellsFreeListing } from "@/lib/brand";
 import {
   MEMBER_HOME,
   isWaitingOnPayment,
   MEMBERSHIP_SERVICES_PARAM,
-  membershipHrefWithServices,
-  orderSummary,
   readMembershipPaymentNotice,
-  servicesAfterToggle,
   type MembershipTier,
 } from "@/lib/membership";
 import { getCustomerBusinessEntry, isAwaitingMembership, requireCustomerAccess } from "@/lib/server/customer-access";
 import { loadMembershipCheckout } from "@/lib/server/membership-checkout";
 import { requestBrand } from "@/lib/server/request-brand";
-import { chooseFreeListing, startMembership } from "@/app/app-host/(protected)/plan/actions";
+import { chooseFreeListing } from "@/app/app-host/(protected)/plan/actions";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { readBundleSelection, WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
 
@@ -49,8 +43,9 @@ function readSelectedServices(params: Readonly<Record<string, string | string[] 
  * An owner who chose the plan at sign-up is held here (requireCustomerAccess) and sees it without a dashboard around
  * it.
  *
- * A coupon or an affiliate code may be applied to a single service before paying; the Pay button then shows the discounted
- * price. Every figure on the page comes from orderSummary, which prices the basket with the functions checkout charges by.
+ * The services are chosen on the page itself (checkout-ledger.tsx), which prices every choice in the browser with the
+ * functions checkout charges by; the address here only says where the choice starts. A coupon or an affiliate code may be
+ * applied before paying; the Pay button then shows the discounted price.
  *
  * Back from Razorpay the confirmation may not have reached us yet: `?payment=received` says so and keeps checking,
  * for as long as the account really has a checkout that has not settled (unsettledCheckout).
@@ -70,71 +65,40 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   const { plan, services: selected } = view;
   const brand = await requestBrand();
 
-  // Only an account with something to pay is shown the summary and the Pay button: one whose payment is on its way, or under
+  // Only an account with something to pay is shown the choice and the Pay button: one whose payment is on its way, or under
   // review, is told so by the checkout instead.
   const payable = plan !== null && !waiting && !billing.paymentUnderReview;
-  const pageHref = (selection: readonly MonthlyAddOnId[]): string => membershipHrefWithServices(tier, selection);
-  const paying = payable
-    ? orderSummary(
-        {
-          planInitialAmountCents: plan.initialAmountCents,
-          services: selected,
-          currency: plan.currency,
-          taxRateBasisPoints: plan.taxRateBasisPoints,
-          forfeited: view.forfeited,
-          hasEverPaid: view.hasEverPaid,
-        },
-        view.discount?.amountCents ?? 0,
-      )
-    : null;
 
   return (
-    <div className="grid gap-x-12 gap-y-8 pb-16 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:pb-0">
-      <div className="min-w-0 space-y-10">
-        <h1 className="sr-only">Checkout</h1>
-
-        {/* The services to choose from: shown until the first payment, before the way to pay. */}
-        {view.offer.kind === "available" && plan !== null && paying !== null ? (
-          <div className="max-w-xl">
-            <PackageCard selected={selected} lines={paying.lines} hrefFor={pageHref} currency={plan.currency} />
-          </div>
-        ) : null}
-
-        {/* Why there is nothing to pay, when there is not: the code and the GST details are under Pay in the summary. */}
-        {payable ? null : <MembershipCheckout view={view} notice={notice} billing={billing} />}
-      </div>
-
-      {/* Today's payment, following the page down beside it on a wide screen and last on a phone. */}
-      {plan !== null && paying !== null ? (
-        <aside
-          aria-label="Payment"
-          // Following the page down, and scrolling inside itself if it is taller than the window. While the billing form is
-          // open it is too tall for that to be comfortable, so the summary lets go and scrolls with the page instead.
-          className="lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overscroll-contain lg:has-[#billing-details-form]:static lg:has-[#billing-details-form]:max-h-none lg:has-[#billing-details-form]:overflow-visible"
-        >
-          <OrderSummary
-            tier={tier}
-            view={{ ...view, plan }}
-            parts={paying}
-            removeHref={(service) => pageHref(servicesAfterToggle(selected, service))}
-          >
-            <MembershipCheckout view={view} notice={notice} billing={billing} />
-          </OrderSummary>
-        </aside>
-      ) : null}
-
-      {/* On a phone the Pay button floats at the bottom, always in reach; the grid is its parent so it holds from the first screen. */}
-      {plan === null || paying === null ? null : (
-        <div className="pointer-events-none sticky bottom-0 z-10 pb-4 lg:hidden">
-          <div className="pointer-events-auto [&_button]:shadow-[0_10px_28px_-10px_rgb(20_20_30/0.55)]">
-            <MembershipPayForm action={startMembership} amount={formatMoney(paying.totalCents, plan.currency)} tier={tier} services={selected} />
-          </div>
+    <div className="space-y-10">
+      {payable ? (
+        <CheckoutLedger
+          tier={tier}
+          initialServices={selected}
+          choosable={view.offer.kind === "available"}
+          pricing={{
+            planInitialAmountCents: plan.initialAmountCents,
+            currency: plan.currency,
+            taxRateBasisPoints: plan.taxRateBasisPoints,
+            forfeited: view.forfeited,
+            hasEverPaid: view.hasEverPaid,
+          }}
+          initialTermMonths={plan.initialTermMonths}
+          code={view.discount === null ? null : { code: view.discount.code, stated: view.discount.stated, months: view.discount.months }}
+          lapsedCode={view.lapsedCode}
+          billingDetails={view.billingDetails}
+          paymentFailed={notice === "failed"}
+        />
+      ) : (
+        <div className="max-w-xl">
+          <h1 className="sr-only">Checkout</h1>
+          <MembershipCheckout view={view} notice={notice} billing={billing} />
         </div>
       )}
 
       {/* Not while we wait to hear about a payment just made: the plan is about to open. */}
       {held && sellsFreeListing(brand) && (!waiting || billing.paymentUnderReview) ? (
-        <form action={chooseFreeListing} className="max-w-xl border-t border-line pt-6 lg:col-span-2">
+        <form action={chooseFreeListing} className="max-w-xl border-t border-line pt-6">
           <FreeListingButton />
         </form>
       ) : null}

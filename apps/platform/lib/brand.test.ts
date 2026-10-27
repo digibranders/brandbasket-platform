@@ -18,6 +18,6 @@ describe("the brand", () => {
 
   it("writes to support@brandbasket.in and draws the Brandbasket logo", () => {
     expect(supportEmailOf(BRAND)).toBe("support@brandbasket.in");
-    expect(logoOf(BRAND)).toMatchObject({ name: "Brandbasket", siteUrl: "https://brandbasket.in", email: "support@brandbasket.in", white: "/brand/brandbasket-logo-white.svg" });
+    expect(logoOf(BRAND)).toMatchObject({ name: "Brandbasket", siteUrl: "https://brandbasket.in", email: "support@brandbasket.in", onLight: "/brand/brandbasket-logo-light.svg", onDark: "/brand/brandbasket-logo-dark.svg" });
   });
 });

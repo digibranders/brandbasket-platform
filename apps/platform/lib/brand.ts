@@ -20,8 +20,8 @@ export interface Brand {
   readonly privacyEmail: string;
   /** Where the logo's name links to on the sign-in screens. */
   readonly siteUrl: string;
-  /** The logo, in white and dark, with its size. */
-  readonly logo: { readonly white: string; readonly dark: string; readonly width: number; readonly height: number };
+  /** The logo for light and for dark backgrounds, with its size. */
+  readonly logo: { readonly onLight: string; readonly onDark: string; readonly width: number; readonly height: number };
   /** The plans offered at sign-up, in the order they are shown. */
   readonly joinChoices: readonly JoinChoice[];
   /** What the product is, in a sentence or two: said by the logo on the checkout page when it is pressed. */
@@ -35,7 +35,7 @@ export const BRAND: Brand = {
   contactEmail: "support@brandbasket.in",
   privacyEmail: "support@brandbasket.in",
   siteUrl: "https://brandbasket.in",
-  logo: { white: "/brand/brandbasket-logo-white.svg", dark: "/brand/brandbasket-logo-dark.svg", width: 182, height: 32 },
+  logo: { onLight: "/brand/brandbasket-logo-light.svg", onDark: "/brand/brandbasket-logo-dark.svg", width: 190, height: 32 },
   joinChoices: ["managed"],
   about: "We build your business website and look after it every month: design, hosting and care, with marketing services you can add as you grow.",
 };
