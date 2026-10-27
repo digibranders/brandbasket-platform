@@ -1,5 +1,6 @@
 import { countChatbotLeadsSince, countIncludedEdits, listActivityEvents, listMonthlySnapshots, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { loadNextCall } from "./calls";
 import { getAppDb } from "./db";
 import { getLiveWebsite, getProjectOverview } from "./onboarding";
 import { loadOverview } from "./overview";
@@ -8,6 +9,7 @@ import { loadTodo } from "./todo";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn() }));
+vi.mock("./calls", () => ({ loadNextCall: vi.fn() }));
 vi.mock("./onboarding", () => ({ getLiveWebsite: vi.fn(), getProjectOverview: vi.fn() }));
 vi.mock("./todo", () => ({ loadTodo: vi.fn() }));
 vi.mock("./requests", () => ({ loadRequestNeeds: vi.fn() }));
@@ -34,6 +36,7 @@ beforeEach(() => {
   vi.mocked(countChatbotLeadsSince).mockResolvedValue(0);
   vi.mocked(loadRequestNeeds).mockResolvedValue([]);
   vi.mocked(countIncludedEdits).mockResolvedValue(0);
+  vi.mocked(loadNextCall).mockResolvedValue(null);
 });
 
 describe("loadOverview", () => {
@@ -148,6 +151,14 @@ describe("loadOverview", () => {
 
       expect(data.nextPayment).toBeNull();
     });
+  });
+
+  it("carries the time of the next call after the kickoff, for the signed-in business", async () => {
+    vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+    vi.mocked(loadNextCall).mockResolvedValue("Wed 2 Dec, 14:00");
+    const data = await loadOverview(tenant, noBilling, now);
+    expect(data.nextCall).toBe("Wed 2 Dec, 14:00");
+    expect(loadNextCall).toHaveBeenCalledWith(tenant, now);
   });
 
   it("adds the quotes to accept and the changes to check to what needs the customer, ahead of the To do items", async () => {

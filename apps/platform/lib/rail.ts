@@ -1,4 +1,5 @@
 import { ADD_ONS_PATH } from "@brandbasket/shared/lib/billing/add-ons";
+import { CALLS_PATH } from "@/lib/calls/links";
 import { CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
 import { ASK_FOR_A_CHANGE_PATH, REQUESTS_PATH } from "@/lib/requests/links";
 import { WEBSITE_PATH, WEBSITE_TABS } from "@/lib/website/tabs";
@@ -59,9 +60,18 @@ const DEALS: RailLink = { href: DEALS_HREF, label: "Deals", icon: "deals" };
 /** Ask for a change, the first thing search offers (plan 28 section 2). */
 export const ASK_FOR_A_CHANGE: RailTarget = { href: ASK_FOR_A_CHANGE_PATH, label: "Ask for a change" };
 
-/** Requests, with the number of things waiting on the customer beside it. */
-function requestsLink(count: number | undefined): RailLink {
-  return { href: REQUESTS_PATH, label: "Requests", icon: "requests", ...(count !== undefined && count > 0 ? { count } : {}) };
+/**
+ * Requests, with the number of things waiting on the customer beside it. Calls sits under it (plan 28 section 7) once the
+ * kickoff call has happened: the first look has one call only, and it is booked from Overview.
+ */
+function requestsLink(count: number | undefined, withCalls: boolean): RailLink {
+  return {
+    href: REQUESTS_PATH,
+    label: "Requests",
+    icon: "requests",
+    ...(count !== undefined && count > 0 ? { count } : {}),
+    ...(withCalls ? { children: [{ href: CALLS_PATH, label: "Calls" }] } : {}),
+  };
 }
 
 /** The website opens on its Progress tab. Its tabs are the Website workspace's; these are the pages that are not tabs. */
@@ -79,7 +89,7 @@ function websiteLink(): RailLink {
 }
 
 export function railSections(input: RailInput): readonly RailSection[] {
-  const requests = requestsLink(input.requestsCount);
+  const requests = requestsLink(input.requestsCount, input.hasAccess && !input.quiet);
   if (input.quiet) {
     return [
       { label: null, links: [OVERVIEW, requests] },

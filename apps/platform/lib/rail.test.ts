@@ -53,6 +53,27 @@ describe("railSections", () => {
   });
 });
 
+describe("Calls under Requests", () => {
+  const requests = (input: Parameters<typeof railSections>[0]) => railSections(input)[0]?.links.find((link) => link.label === "Requests");
+
+  it("appears once the kickoff call has happened, and keeps Requests lit on its page", () => {
+    expect(requests(FULL)?.children).toEqual([{ href: "/requests/calls", label: "Calls" }]);
+    const link = requests(FULL);
+    expect(link === undefined ? false : linkIsCurrent(link, "/requests/calls")).toBe(true);
+    expect(isCurrent("/requests/calls", "/requests/calls")).toBe(true);
+  });
+
+  it("is not there during the first look, when the kickoff is the only call, nor for an account that has not paid", () => {
+    expect(requests({ ...FULL, quiet: true })?.children).toBeUndefined();
+    expect(requests({ ...FULL, hasAccess: false })?.children).toBeUndefined();
+  });
+
+  it("is something search can jump to", () => {
+    expect(searchRail(railSections(FULL), "calls").map((target) => target.href)).toEqual(["/requests/calls"]);
+    expect(searchRail(railSections({ ...FULL, quiet: true }), "calls")).toEqual([]);
+  });
+});
+
 describe("current link", () => {
   it("matches Overview exactly and the rest by path", () => {
     expect(isCurrent("/", "/")).toBe(true);

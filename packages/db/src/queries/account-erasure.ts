@@ -49,6 +49,7 @@ import {
   projects,
   serviceSetup,
   setupCallBookings,
+  teamCalls,
   services,
   sessions,
   setupInvites,
@@ -308,6 +309,7 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     // project_events needs no line here: staff cannot delete a row of it, and each goes with its project (on delete cascade).
     await tx.delete(projects).where(eq(projects.businessId, businessId));
     await tx.delete(setupCallBookings).where(eq(setupCallBookings.businessId, businessId));
+    await tx.delete(teamCalls).where(eq(teamCalls.businessId, businessId));
     await tx.delete(serviceSetup).where(eq(serviceSetup.businessId, businessId));
     await tx.delete(activityEvents).where(eq(activityEvents.businessId, businessId));
     await tx.delete(monthlySnapshots).where(eq(monthlySnapshots.businessId, businessId));
