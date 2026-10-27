@@ -72,6 +72,12 @@ describe("SearchView", () => {
     expect(html).not.toContain(">0<");
   });
 
+  it("keeps a line under the title when no figure was measured", () => {
+    const html = render(data({ summary: { pageOne: null, pages: [], listings: [] } }));
+    expect(html).toContain("How you appear in Google searches, and the work we do on it.");
+    expect(render(data())).not.toContain("How you appear in Google searches");
+  });
+
   it("with nothing at all to show, is one empty state with Ask for a change as its action", () => {
     const html = render(data({ summary: { pageOne: null, pages: [], listings: [] } }));
     expect(html).toContain("No search work to show yet");

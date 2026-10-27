@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
-import { isCurrent, linkIsCurrent, railSections, searchRail } from "@/lib/rail";
+import { isCurrent, linkIsCurrent, menuChildren, railSections, searchRail } from "@/lib/rail";
 import { WEBSITE_PATH } from "@/lib/website/tabs";
 
 const FULL = { quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, todoCount: 3 } as const;
@@ -125,6 +125,29 @@ describe("current link", () => {
     expect(website === undefined ? false : linkIsCurrent(website, "/content/authors")).toBe(true);
     expect(website === undefined ? false : linkIsCurrent(website, "/content/blog/new")).toBe(true);
     expect(website === undefined ? false : linkIsCurrent(website, "/oyechats/leads")).toBe(true);
+  });
+});
+
+describe("menuChildren", () => {
+  const link = (label: string) => railSections(FULL).flatMap((section) => section.links).find((candidate) => candidate.label === label);
+
+  it("lists the Website tabs that are not Progress, then its other pages", () => {
+    const website = link("Website");
+    expect(website === undefined ? [] : menuChildren(website).map((child) => child.label)).toEqual([
+      "Pages",
+      "Blog",
+      "Chatbot leads",
+      "Chatbot name",
+      "Authors",
+      "Categories",
+    ]);
+  });
+
+  it("lists only the pages a link names for the rest", () => {
+    const requests = link("Requests");
+    expect(requests === undefined ? [] : menuChildren(requests).map((child) => child.label)).toEqual(["Calls"]);
+    const billing = link("Billing");
+    expect(billing === undefined ? ["x"] : menuChildren(billing)).toEqual([]);
   });
 });
 

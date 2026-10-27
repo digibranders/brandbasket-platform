@@ -34,10 +34,11 @@ export function AskForm({ options, submissionKey, defaultKind, defaultPage = "",
   const [uploading, setUploading] = useState(false);
   const attachments = useRef<SupportAttachmentsHandle>(null);
   const status = useRef<HTMLParagraphElement>(null);
+  const body = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
   useEffect(() => {
-    if (state.status === "error") status.current?.focus();
+    if (state.status === "error") (state.field === "body" ? body : status).current?.focus();
     if (state.status === "saved" && state.ticketId !== null) router.push(requestHref(state.ticketId));
   }, [state, router]);
 
@@ -47,7 +48,7 @@ export function AskForm({ options, submissionKey, defaultKind, defaultPage = "",
 
   const bodyProblem = state.status === "error" && state.field === "body" ? state.message : null;
   return (
-    <form action={action} onPaste={paste} className="grid gap-5">
+    <form action={action} onPaste={paste} noValidate className="grid gap-5">
       <input type="hidden" name="submissionKey" value={submissionKey} />
       {ids.map((id) => (
         <input key={id} type="hidden" name="attachmentIds" value={id} />
@@ -85,6 +86,7 @@ export function AskForm({ options, submissionKey, defaultKind, defaultPage = "",
         </label>
         <textarea
           id="ask-body"
+          ref={body}
           name="body"
           required
           rows={6}
@@ -94,7 +96,6 @@ export function AskForm({ options, submissionKey, defaultKind, defaultPage = "",
           placeholder="Tell us what to change. A screenshot helps."
           aria-invalid={bodyProblem !== null}
           aria-describedby={bodyProblem === null ? undefined : "ask-body-error"}
-          onChange={(event) => event.target.setCustomValidity(event.target.value.trim() === "" ? "Say what you want changed." : "")}
           className={INPUT}
         />
         {bodyProblem === null ? null : (

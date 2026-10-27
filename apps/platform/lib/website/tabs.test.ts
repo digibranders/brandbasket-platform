@@ -16,8 +16,19 @@ describe("currentTab", () => {
     expect(currentTab("/content/blog/new")?.label).toBe("Blog");
   });
 
-  it("marks no tab on the authors pages", () => {
-    expect(currentTab("/content/authors")).toBeNull();
+  it("marks Blog on the authors and categories pages, which are blog settings", () => {
+    for (const path of ["/content/authors", "/content/authors/new", "/content/categories", "/content/categories/abc"]) {
+      expect(currentTab(path)?.label).toBe("Blog");
+    }
+  });
+
+  it("marks Chatbot leads on the chatbot's own pages", () => {
+    for (const path of ["/oyechats", "/oyechats/name", "/oyechats/leads"]) expect(currentTab(path)?.label).toBe("Chatbot leads");
+  });
+
+  it("marks no tab on pages the tabs do not cover", () => {
+    expect(currentTab("/content/authorship")).toBeNull();
+    expect(currentTab("/billing")).toBeNull();
   });
 });
 

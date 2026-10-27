@@ -88,6 +88,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
         bookingUrl={callState.url}
         callOptions={kindOptions(data.services)}
         canBook={!isPhoneAccountEmail(user.email)}
+        settingUp={billing.hasWebsite && liveWebsite === null}
         buildCard={
           showsBuildCard ? <NextStepCard step={step} buildStageIndex={buildStageIndex} /> : null
         }

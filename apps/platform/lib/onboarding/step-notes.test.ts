@@ -7,8 +7,14 @@ describe("step notes", () => {
     for (const { key } of ONBOARDING_STEPS) expect(stepNotes(key).length).toBeGreaterThan(0);
   });
 
+  it("does not tell a customer who has paid to pay", () => {
+    const paid = stepNotes("review", { paid: true }).map((note) => `${note.answer} ${note.use}`).join(" ");
+    expect(paid).not.toMatch(/pay/i);
+    expect(stepNotes("review").map((note) => note.use).join(" ")).toMatch(/Once you pay/);
+  });
+
   it("uses no em or en dashes", () => {
-    const text = Object.values(STEP_NOTES).flatMap((notes) => notes.map((note) => `${note.answer} ${note.use}`)).join(" ");
+    const text = [...Object.values(STEP_NOTES).flat(), ...stepNotes("review", { paid: true })].map((note) => `${note.answer} ${note.use}`).join(" ");
     expect(text).not.toMatch(/[–—]/);
   });
 });

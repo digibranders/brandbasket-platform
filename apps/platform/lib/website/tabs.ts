@@ -8,17 +8,22 @@ export const WEBSITE_LEADS_PATH = "/oyechats/leads";
 export interface WebsiteTab {
   readonly href: string;
   readonly label: string;
+  /** Other paths (and the pages under them) that belong to this tab, so it stays marked there. */
+  readonly alsoOwns?: readonly string[];
 }
 export const WEBSITE_TABS: readonly WebsiteTab[] = [
   { href: WEBSITE_PATH, label: "Progress" },
   { href: WEBSITE_PAGES_PATH, label: "Pages" },
-  { href: WEBSITE_BLOG_PATH, label: "Blog" },
-  { href: WEBSITE_LEADS_PATH, label: "Chatbot leads" },
+  // Authors and categories are blog settings.
+  { href: WEBSITE_BLOG_PATH, label: "Blog", alsoOwns: ["/content/authors", "/content/categories"] },
+  // The chatbot's own page and its name sit with its leads.
+  { href: WEBSITE_LEADS_PATH, label: "Chatbot leads", alsoOwns: ["/oyechats"] },
 ];
 
-/** The tab a path belongs to: Progress only on /website itself; Blog also for authors and categories pages is NOT assumed, they show no tab. */
+/** The tab a path belongs to: Progress only on /website itself; the others on their own path, the pages under it and what they also own. */
 export function currentTab(pathname: string): WebsiteTab | null {
-  return WEBSITE_TABS.find((tab) => (tab.href === WEBSITE_PATH ? pathname === WEBSITE_PATH : pathname === tab.href || pathname.startsWith(`${tab.href}/`))) ?? null;
+  const under = (base: string): boolean => pathname === base || pathname.startsWith(`${base}/`);
+  return WEBSITE_TABS.find((tab) => (tab.href === WEBSITE_PATH ? pathname === WEBSITE_PATH : [tab.href, ...(tab.alsoOwns ?? [])].some(under))) ?? null;
 }
 
 /** The Ask for a change form with Website chosen and a page filled in, for the preview's "Ask for changes" and the Pages tab. */

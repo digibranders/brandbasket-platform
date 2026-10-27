@@ -32,6 +32,12 @@ describe("greetingFor and sublineFor", () => {
     expect(sublineFor(1)).toBe("Everything is running. 1 thing needs you.");
     expect(sublineFor(4)).toBe("Everything is running. 4 things need you.");
   });
+
+  it("does not claim everything is running while the website is still being built", () => {
+    expect(sublineFor(0, true)).toBe("We are setting things up. Nothing needs you.");
+    expect(sublineFor(1, true)).toBe("We are setting things up. 1 thing needs you.");
+    expect(sublineFor(4, true)).toBe("We are setting things up. 4 things need you.");
+  });
 });
 
 describe("resultLines", () => {

@@ -117,6 +117,11 @@ export function linkIsCurrent(link: RailLink, pathname: string): boolean {
   );
 }
 
+/** The pages inside a link, for search and the phone menu: the Website tabs after Progress (the desktop page shows them as tabs), then the link's own. */
+export function menuChildren(link: RailLink): readonly RailTarget[] {
+  return [...(link.href === WEBSITE_PATH ? WEBSITE_TABS.slice(1) : []), ...(link.children ?? [])];
+}
+
 /** Everything search can jump to: Ask for a change, every link, and every page inside a group as "Group: Page". */
 export function railTargets(sections: readonly RailSection[]): readonly RailTarget[] {
   return [
@@ -124,8 +129,7 @@ export function railTargets(sections: readonly RailSection[]): readonly RailTarg
     ...sections.flatMap((section) =>
       section.links.flatMap((link) => [
         { href: link.href, label: link.label },
-        ...(link.href === WEBSITE_PATH ? WEBSITE_TABS.slice(1).map((tab) => ({ href: tab.href, label: `${link.label}: ${tab.label}` })) : []),
-        ...(link.children ?? []).map((child) => ({ href: child.href, label: `${link.label}: ${child.label}` })),
+        ...menuChildren(link).map((child) => ({ href: child.href, label: `${link.label}: ${child.label}` })),
       ]),
     ),
   ];
