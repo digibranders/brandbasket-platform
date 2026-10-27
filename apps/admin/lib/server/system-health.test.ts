@@ -1,9 +1,18 @@
-import { countActiveErrorIssues, listRecentEmails, type StoredEmail } from "@brandbasket/db";
+import { countActiveErrorIssues, deliveryHealth, type DeliveryHealth } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readSystemHealth, SYSTEM_SOURCES, type SystemSource } from "./system-health";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@brandbasket/db", () => ({ countActiveErrorIssues: vi.fn(), listRecentEmails: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ countActiveErrorIssues: vi.fn(), deliveryHealth: vi.fn() }));
+
+const QUIET = { total: 0, failed: 0, lastOkAt: null, lastFailedAt: null };
+const HEALTH: DeliveryHealth = {
+  razorpay: { total: 38, failed: 0, lastOkAt: new Date("2026-11-30T04:28:00.000Z"), lastFailedAt: null },
+  calcom: QUIET,
+  oyechats: QUIET,
+  brevo: { total: 81, failed: 2, lastOkAt: new Date("2026-11-30T03:28:00.000Z"), lastFailedAt: new Date("2026-11-30T04:28:00.000Z") },
+  teams: { total: 15, failed: 0, lastOkAt: new Date("2026-11-30T04:28:00.000Z"), lastFailedAt: null },
+};
 vi.mock("./db", () => ({ getStaffDb: () => ({}) }));
 
 // 15:28 on Monday 30 November 2026 in India.
@@ -27,23 +36,27 @@ describe("readSystemHealth", () => {
     ]);
   });
 
-  it("says when the last email went out, and how many errors are open", async () => {
-    vi.mocked(listRecentEmails).mockResolvedValue([{ createdAt: new Date("2026-11-30T04:10:00.000Z") } as StoredEmail]);
+  it("lists every delivery source over the last 24 hours, then the open errors", async () => {
+    vi.mocked(deliveryHealth).mockResolvedValue(HEALTH);
     vi.mocked(countActiveErrorIssues).mockResolvedValue(2);
     expect(await readSystemHealth(NOW, SYSTEM_SOURCES)).toEqual([
-      { key: "email", label: "Email", state: "ok", detail: "last 09:40" },
+      { key: "razorpay", label: "Razorpay payments", state: "ok", detail: "last 09:58" },
+      { key: "calcom", label: "Cal.com bookings", state: "ok", detail: "none in 24 hours" },
+      { key: "oyechats", label: "OyeChats leads", state: "ok", detail: "none in 24 hours" },
+      { key: "brevo", label: "Brevo email", state: "bad", detail: "2 not sent" },
+      { key: "teams", label: "Teams alerts", state: "ok", detail: "all sent" },
       { key: "errors", label: "Website errors", state: "bad", detail: "2 open" },
     ]);
   });
 
-  it("uses a date for an email sent before today, and says when nothing went out", async () => {
-    vi.mocked(listRecentEmails).mockResolvedValueOnce([{ createdAt: new Date("2026-11-27T04:10:00.000Z") } as StoredEmail]);
+  it("reads the delivery figures once for all five sources, from 24 hours before now", async () => {
+    vi.mocked(deliveryHealth).mockClear();
+    vi.mocked(deliveryHealth).mockResolvedValue(HEALTH);
     vi.mocked(countActiveErrorIssues).mockResolvedValue(0);
-    const lines = await readSystemHealth(NOW, SYSTEM_SOURCES);
-    expect(lines.map((line) => line.detail)).toEqual(["last 27 Nov", "0 new"]);
-
-    vi.mocked(listRecentEmails).mockResolvedValueOnce([]);
-    const quiet = await readSystemHealth(NOW, SYSTEM_SOURCES);
-    expect(quiet[0]?.detail).toBe("nothing sent yet");
+    // A moment no other test uses, so the per-render cache cannot answer from an earlier test.
+    const later = new Date("2026-11-30T10:00:00.000Z");
+    await readSystemHealth(later, SYSTEM_SOURCES);
+    expect(deliveryHealth).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(deliveryHealth).mock.calls[0]?.[1]).toEqual(new Date("2026-11-29T10:00:00.000Z"));
   });
 });

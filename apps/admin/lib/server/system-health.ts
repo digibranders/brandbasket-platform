@@ -1,7 +1,7 @@
 import "server-only";
-import { countActiveErrorIssues, listRecentEmails } from "@brandbasket/db";
+import { countActiveErrorIssues, deliveryHealth, type DeliveryHealth, type DeliverySource } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
-import { clock, shortDate, todayRange } from "@/lib/team-time";
+import { DELIVERY_LABELS, DELIVERY_ORDER, deliveryLine } from "@/lib/system-health-lines";
 import { getStaffDb } from "./db";
 
 export type SystemState = "ok" | "warn" | "bad";
@@ -21,21 +21,6 @@ export interface SystemSource {
   readonly read: (now: Date) => Promise<Pick<SystemLine, "state" | "detail">>;
 }
 
-/** A clock for something that happened today, a date for anything older. */
-function when(date: Date, now: Date): string {
-  return date.getTime() >= todayRange(now).start.getTime() ? clock(date) : shortDate(date);
-}
-
-const email: SystemSource = {
-  key: "email",
-  label: "Email",
-  read: async (now) => {
-    const [latest] = await listRecentEmails(getStaffDb(), 1);
-    // shortcut: email_messages has no delivery status yet, so this can only say when mail last went out; Phase 6 adds failures.
-    return latest === undefined ? { state: "ok", detail: "nothing sent yet" } : { state: "ok", detail: `last ${when(latest.createdAt, now)}` };
-  },
-};
-
 const errors: SystemSource = {
   key: "errors",
   label: "Website errors",
@@ -45,8 +30,24 @@ const errors: SystemSource = {
   },
 };
 
-/** Phase 6 adds the Razorpay, Cal.com, OyeChats and Teams sources to this list; the page draws whatever it holds. */
-export const SYSTEM_SOURCES: readonly SystemSource[] = [email, errors];
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** One delivery read per Today render, shared by the five delivery sources that ask for the same moment. */
+let lastHealth: { readonly atMs: number; readonly health: Promise<DeliveryHealth> } | null = null;
+
+function healthAt(now: Date): Promise<DeliveryHealth> {
+  if (lastHealth?.atMs !== now.getTime()) {
+    lastHealth = { atMs: now.getTime(), health: deliveryHealth(getStaffDb(), new Date(now.getTime() - DAY_MS)) };
+  }
+  return lastHealth.health;
+}
+
+function deliverySource(source: DeliverySource): SystemSource {
+  return { key: source, label: DELIVERY_LABELS[source], read: async (now) => deliveryLine(source, (await healthAt(now))[source], now) };
+}
+
+/** Every delivery source over the last 24 hours, then the open website errors; the page draws whatever this holds. */
+export const SYSTEM_SOURCES: readonly SystemSource[] = [...DELIVERY_ORDER.map(deliverySource), errors];
 
 /** Every source's line, in list order. One source failing never hides the others. */
 export async function readSystemHealth(now: Date = new Date(), sources: readonly SystemSource[] = SYSTEM_SOURCES): Promise<readonly SystemLine[]> {
