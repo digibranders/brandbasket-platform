@@ -43,6 +43,7 @@ vi.mock("./add-ons", () => ({ basketDeps: vi.fn(() => ({ deps: true })) }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 vi.mock("./keep-plan", () => ({ restoreKeptPlan: vi.fn(async () => true) }));
 vi.mock("./charges", () => ({ recordRazorpayChargePayment: vi.fn() }));
+vi.mock("./payment-failure", () => ({ recordRazorpayPaymentFailure: vi.fn() }));
 // A transaction that is also its own savepoint: both run the callback straight away.
 vi.mock("./db", () => {
   const db = { transaction: (fn: (tx: unknown) => unknown) => fn(db) };
@@ -75,6 +76,7 @@ import { moveProviderAfterDiscountEnds } from "@brandbasket/shared/server/basket
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "@brandbasket/shared/server/billing-activation";
 import { recordRazorpayChargePayment } from "./charges";
+import { recordRazorpayPaymentFailure } from "./payment-failure";
 import { restoreKeptPlan } from "./keep-plan";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { handleRazorpayWebhookEvent } from "./razorpay-webhook-handler";
@@ -115,6 +117,25 @@ describe("handleRazorpayWebhookEvent", () => {
     expect(activateFirstPayment).not.toHaveBeenCalled();
     expect(activateRenewalPayment).not.toHaveBeenCalled();
     expect(updateSubscriptionProviderStatus).not.toHaveBeenCalled();
+  });
+
+  it("hands a failed payment to the failure path and touches no subscription", async () => {
+    const event = {
+      kind: "payment-failed",
+      paymentId: "pay_failed_1",
+      amountCents: 299_900,
+      currency: "INR",
+      failedAt: new Date("2026-11-28T04:30:00.000Z"),
+      orderId: null,
+      businessId: null,
+      failureReason: "Payment was declined by the bank",
+    } as const;
+
+    await handleRazorpayWebhookEvent(event);
+
+    expect(recordRazorpayPaymentFailure).toHaveBeenCalledWith(event);
+    expect(findSubscriptionByProviderId).not.toHaveBeenCalled();
+    expect(activateRenewalPayment).not.toHaveBeenCalled();
   });
 
   it("activates a renewal when the subscription already has an activatedAt", async () => {
