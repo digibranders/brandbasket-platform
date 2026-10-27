@@ -1,6 +1,6 @@
 "use server";
 
-import { appendSupportReplyWithOutcome, consumeRateLimit, createSupportTicketWithOutcome, getSupportTicket, getSupportUnreadCount, listSupportTickets, markSupportTicketRead, SupportQueryError } from "@brandbasket/db";
+import { appendSupportReplyWithOutcome, createSupportTicketWithOutcome, getSupportTicket, getSupportUnreadCount, listSupportTickets, markSupportTicketRead, SupportQueryError } from "@brandbasket/db";
 import { z } from "zod";
 import type { SupportCategory, SupportStatus } from "@brandbasket/shared/lib/support";
 import { parseSupportTicketForm, supportReplySchema } from "@brandbasket/shared/lib/support-form";
@@ -8,23 +8,13 @@ import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { INITIAL_SUPPORT_STATE, supportFormError, type SupportFormState } from "@/lib/support-form-state";
-import { getAppDb, getStaffDb } from "@/lib/server/db";
+import { getAppDb } from "@/lib/server/db";
 import { getSupportAccess } from "@/lib/server/support-access";
 import { requestBrand } from "@/lib/server/request-brand";
 import { reportServerError } from "@/lib/server/error-report";
+import { supportRateLimit } from "@/lib/server/support-limits";
 import { canCreateSupportRequest } from "@/lib/server/support-rollout";
 import { sendSupportReplyAlert, sendSupportTicketAlert } from "@/lib/server/support-alerts";
-
-async function blocked(userId: string, reply: boolean): Promise<string | null> {
-  const rules = reply ? [{ key: "reply", limit: 30, windowSeconds: 3600 }] : [
-    { key: "create-short", limit: 5, windowSeconds: 600 }, { key: "create-day", limit: 20, windowSeconds: 86400 },
-  ];
-  for (const rule of rules) {
-    const result = await consumeRateLimit(getStaffDb(), `support:${rule.key}:${userId}`, rule);
-    if (!result.allowed) return `Please wait ${result.retryAfterSeconds} seconds before sending another request.`;
-  }
-  return null;
-}
 
 async function failure(error: unknown): Promise<SupportFormState> {
   unstable_rethrow(error);
@@ -41,12 +31,13 @@ export async function createSupportRequest(_previous: SupportFormState, form: Fo
     const access = await getSupportAccess();
     if (access === null) return supportFormError("Your session has ended. Sign in again to send your request.");
     if (!canCreateSupportRequest(access.user.id)) return supportFormError("New requests are temporarily unavailable. Existing conversations are still available in My requests.");
-    const limit = await blocked(access.user.id, false);
+    const limit = await supportRateLimit(access.user.id, false);
     if (limit !== null) return supportFormError(limit);
     const { ticket, created } = await createSupportTicketWithOutcome(getAppDb(), { ...parsed.data, userId: access.user.id, businessId: access.businessId });
     // A retried submission returns the saved ticket; staff were already told the first time.
     if (created) void sendSupportTicketAlert(ticket, parsed.data, access).catch((err) => console.error("[support-alert]", err));
     revalidatePath("/support");
+    revalidatePath("/requests");
     return { ...INITIAL_SUPPORT_STATE, status: "saved", ticketId: ticket.id, reference: ticket.displayRef, message: "Your request has been received." };
   } catch (error) { return failure(error); }
 }
@@ -59,11 +50,11 @@ export async function replyToSupportRequest(_previous: SupportFormState, form: F
   try {
     const access = await getSupportAccess();
     if (access === null) return supportFormError("Your session has ended. Sign in again to send your reply.");
-    const limit = await blocked(access.user.id, true);
+    const limit = await supportRateLimit(access.user.id, true);
     if (limit !== null) return supportFormError(limit);
     const { created } = await appendSupportReplyWithOutcome(getAppDb(), { ...parsed.data, userId: access.user.id, ticketId });
     if (created) void sendSupportReplyAlert(getAppDb(), ticketId, parsed.data, access).catch((err) => console.error("[support-alert]", err));
-    revalidatePath(`/support/${ticketId}`); revalidatePath("/support");
+    revalidatePath(`/support/${ticketId}`); revalidatePath("/support"); revalidatePath("/requests");
     return { ...INITIAL_SUPPORT_STATE, status: "saved", message: "Reply sent.", ticketId };
   } catch (error) { return failure(error); }
 }
@@ -187,6 +178,8 @@ export async function acknowledgeSupportReplies(ticketId: string, messageId: str
     if (access === null) return false;
     await markSupportTicketRead(getAppDb(), access.user.id, ticketId, messageId);
     revalidatePath("/support");
+    // Reading a reply clears its line in the bell, which is drawn by the dashboard's layout.
+    revalidatePath("/requests");
     return true;
   } catch (error) {
     unstable_rethrow(error);
