@@ -18,7 +18,7 @@ export type WorkNotice = (typeof WORK_NOTICES)[number];
 export const WORK_NOTICE_TEXT: Readonly<Record<WorkNotice, { readonly text: string; readonly ok: boolean }>> = {
   added: { text: "Added.", ok: true },
   saved: { text: "Saved.", ok: true },
-  moved: { text: "Done.", ok: true },
+  moved: { text: "Updated.", ok: true },
   deleted: { text: "Deleted.", ok: true },
   "report-saved": { text: "Report link saved.", ok: true },
   "report-removed": { text: "Report link removed.", ok: true },
