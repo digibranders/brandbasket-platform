@@ -1,8 +1,8 @@
 import "server-only";
 import { BRAND, type Brand } from "@/lib/brand";
 import { BRANDBASKET_LETTERHEAD } from "@brandbasket/shared/server/brandbasket-letterhead";
-import { hexColor, INK, INK_SOFT, RULE } from "@brandbasket/shared/server/tax-invoice-pdf";
-import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
+import { INK, INK_SOFT, RULE } from "@brandbasket/shared/server/tax-invoice-pdf";
+import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import type { ReceiptDocument } from "@/lib/billing/receipt-document";
 
 /** A4 in PDF points. */
@@ -99,25 +99,19 @@ function drawBlock(page: PDFPage, fonts: Fonts, label: string, lines: readonly s
 }
 
 /** The logo, its wordmark resting on `baseline`. */
-function drawLetterhead(page: PDFPage, baseline: number): void {
-  const { paths, height, colorHex } = BRANDBASKET_LETTERHEAD;
-  const scale = LOGO_HEIGHT / height;
-  // The wordmark's baseline sits 37.1 units down the 55-unit logo; drawSvgPath's y is the logo's top edge.
-  const top = baseline + 37.1 * scale;
-  for (const path of paths) {
-    const [d, fill] = typeof path === "string" ? [path, hexColor(colorHex)] : [path.d, hexColor(path.colorHex)];
-    page.drawSvgPath(d, { x: MARGIN, y: top, scale, color: fill });
-  }
+function drawLetterhead(page: PDFPage, logo: PDFImage, baseline: number): void {
+  // The wordmark's baseline sits 3 of the logo's 60 units above its bottom edge.
+  page.drawImage(logo, { x: MARGIN, y: baseline - LOGO_HEIGHT * 0.05, width: (LOGO_HEIGHT * logo.width) / logo.height, height: LOGO_HEIGHT });
 }
 
-function drawReceipt(page: PDFPage, fonts: Fonts, receipt: ReceiptDocument): void {
+function drawReceipt(page: PDFPage, fonts: Fonts, logo: PDFImage, receipt: ReceiptDocument): void {
   // A PDF page has no background of its own, and viewers in dark mode show that as black, which hides the dark
   // text. Painting the page white keeps a receipt readable (and printable) in every viewer.
   page.drawRectangle({ x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT, color: PAPER });
   const right = PAGE_WIDTH - MARGIN;
   let y = PAGE_HEIGHT - MARGIN - 8;
 
-  drawLetterhead(page, y);
+  drawLetterhead(page, logo, y);
   drawRightAligned(page, receipt.title, right, y, { font: fonts.bold, size: 18 });
   y -= 20;
   drawRightAligned(page, `Issued ${receipt.issuedOn}`, right, y, { font: fonts.regular, size: 9.5, color: INK_SOFT });
@@ -177,12 +171,13 @@ export async function renderReceiptsPdf(receipts: readonly ReceiptDocument[], br
     regular: await pdf.embedFont(StandardFonts.Helvetica),
     bold: await pdf.embedFont(StandardFonts.HelveticaBold),
   };
+  const logo = await pdf.embedPng(BRANDBASKET_LETTERHEAD.png);
   pdf.setTitle(receipts.length === 1 ? `${brand.name} ${first.title}` : `${brand.name} receipts`);
   pdf.setAuthor(brand.name);
   pdf.setCreator(brand.name);
 
   for (const receipt of receipts) {
-    drawReceipt(pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]), fonts, receipt);
+    drawReceipt(pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]), fonts, logo, receipt);
   }
   return pdf.save();
 }
