@@ -81,6 +81,8 @@ function revalidateClient(businessId: string): void {
   revalidatePath("/");
   revalidatePath("/clients");
   revalidatePath(`/clients/${businessId}`);
+  // Every tab under the client's address shows parts of what an action changes.
+  revalidatePath(`/clients/${businessId}`, "layout");
 }
 
 /**

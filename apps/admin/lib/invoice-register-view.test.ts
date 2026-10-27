@@ -151,7 +151,7 @@ describe("missingRegisterRow", () => {
       businessId: "biz-1",
       businessName: "Riverside Dental",
       detail: "₹3,539 on 9 October 2026",
-      href: "/clients/biz-1#tax-invoices",
+      href: "/clients/biz-1/billing#tax-invoices",
     });
   });
 });

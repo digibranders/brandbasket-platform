@@ -31,6 +31,7 @@ export async function issueMissingInvoiceAction(formData: FormData): Promise<voi
   const paymentId = readId(formData.get("paymentId"), "The invoice's payment");
   const notice = await issueClientMissingInvoice(businessId, paymentId, new Date(), user.id);
   revalidatePath(`/clients/${businessId}`);
+  revalidatePath(`/clients/${businessId}`, "layout");
   revalidatePath("/invoices");
   redirect(invoiceNoticeHref(businessId, notice));
 }
@@ -52,5 +53,6 @@ export async function saveClientBillingDetailsAction(
   await saveBillingProfile(getStaffDb(), { businessId, ...parsed.details });
   logBillingEvent("info", "billing-details-saved-by-staff", { businessId, savedBy: user.id });
   revalidatePath(`/clients/${businessId}`);
+  revalidatePath(`/clients/${businessId}`, "layout");
   return { status: "saved" };
 }

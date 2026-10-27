@@ -202,7 +202,7 @@ describe("add-on purchases in attentionItems", () => {
 
   it("links to the client's Add-ons section and names the business", () => {
     const [item] = attentionItems({ ...noAttention(), addOns: [toContact({ id: "s1", businessId: "oak", businessName: "Oak Cafe" })] });
-    expect(item).toMatchObject({ kind: "add-on", key: "add-on:subscription:s1", subjectId: "oak", href: "/clients/oak#add-ons", name: "Oak Cafe", at: NOW });
+    expect(item).toMatchObject({ kind: "add-on", key: "add-on:subscription:s1", subjectId: "oak", href: "/clients/oak/services#add-ons", name: "Oak Cafe", at: NOW });
   });
 
   it("comes after money and before previews and leads, oldest purchase first", () => {

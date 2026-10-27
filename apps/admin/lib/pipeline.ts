@@ -122,7 +122,7 @@ export function attentionItems({ flagged, addOns, waiting, newLeads, now }: Atte
         key: `add-on:${purchase.kind}:${purchase.id}`,
         kind: "add-on",
         subjectId: purchase.businessId,
-        href: `/clients/${purchase.businessId}#add-ons`,
+        href: `/clients/${purchase.businessId}/services#add-ons`,
         name: purchase.businessName,
         reason: addOnReason(purchase),
         at: purchase.at,
