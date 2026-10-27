@@ -11,6 +11,7 @@ import { ReferralCodeForm } from "@/components/panel/referral-code-form";
 import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, CHECKOUT_STEPS } from "@/lib/checkout-plans";
 import { ledgerRows, ledgerSummary, type LedgerCode, type LedgerPricing, type LedgerRow } from "@/lib/checkout-ledger";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
+import { useOpeningPayment } from "@/lib/billing/opening-payment";
 import { initialMembershipFormState, membershipHrefWithServices, renewalTerms, servicesAfterToggle, type MembershipTier } from "@/lib/membership";
 
 interface CheckoutLedgerProps {
@@ -69,6 +70,7 @@ export function CheckoutLedger({
   const monthlyOf = (id: MonthlyAddOnId): string => money(bundleLines([id], pricing.currency)[0]?.listCents ?? 0);
 
   const [payState, payAction, isPending] = useActionState(startMembership, initialMembershipFormState);
+  const opening = useOpeningPayment(isPending, payState);
   const payError = payState.status === "error" && !isPending ? payState.message : null;
   const errorRef = useRef<HTMLParagraphElement>(null);
   // On a phone the Pay button is in the bottom bar and the message is up in the card: bring it into view.
@@ -83,7 +85,7 @@ export function CheckoutLedger({
     window.history.replaceState(null, "", membershipHrefWithServices(tier, next));
   }
 
-  const payLabel = isPending ? "Opening payment…" : `Pay ${total}`;
+  const payLabel = opening ? "Opening payment…" : `Pay ${total}`;
   const payClasses =
     "rounded-[0.625rem] bg-ink font-display font-semibold text-white transition-colors duration-200 hover:bg-ink-raised active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none";
 
@@ -179,8 +181,8 @@ export function CheckoutLedger({
             ))}
             <button
               type="submit"
-              disabled={isPending}
-              aria-busy={isPending}
+              disabled={opening}
+              aria-busy={opening}
               aria-describedby={payError === null ? undefined : "membership-error"}
               className={`mt-4 w-full p-4 text-base max-[860px]:hidden ${payClasses}`}
             >
@@ -270,7 +272,7 @@ export function CheckoutLedger({
           <span className="block text-xs text-ink-2">Due today</span>
           <span className="font-figure text-[1.375rem] font-medium tracking-[-0.04em]">{total}</span>
         </div>
-        <button type="submit" form="checkout-pay" disabled={isPending} aria-busy={isPending} className={`px-6 py-3.5 text-base ${payClasses}`}>
+        <button type="submit" form="checkout-pay" disabled={opening} aria-busy={opening} className={`px-6 py-3.5 text-base ${payClasses}`}>
           {payLabel}
         </button>
       </div>

@@ -4,6 +4,7 @@ import { useActionState, type ReactElement, type ReactNode } from "react";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { ArrowIcon } from "@brandbasket/shared/ui/icons";
 import { Button } from "@brandbasket/shared/ui/panel/button";
+import { useOpeningPayment } from "@/lib/billing/opening-payment";
 import { initialReactivateFormState, type ReactivateFormState } from "@/lib/billing/reactivate-form";
 
 interface ReactivatePlanProps {
@@ -22,12 +23,13 @@ interface ReactivatePlanProps {
 
 /**
  * Billing's plan card for a customer whose plan has lapsed: what restarting costs today and the one button that does
- * it. A customer who cancelled themselves chooses their services first (`children`), and the press posts the choice. Disabled while the payment is being opened, so a double press opens one payment. A refusal is shown under it
+ * it. A customer who cancelled themselves chooses their services first (`children`), and the press posts the choice. Disabled from the press until the payment has opened, so a double press opens one payment. A refusal is shown under it
  * and announced again each time, because the alert unmounts while the action runs.
  */
 export function ReactivatePlan({ planName, monthlyAmount, priceNote, action, services, children }: ReactivatePlanProps): ReactElement {
   const [state, formAction, isPending] = useActionState(action, initialReactivateFormState);
   const message = state.status === "error" && !isPending ? state.message : null;
+  const opening = useOpeningPayment(isPending, state);
 
   return (
     <section aria-labelledby="reactivate-heading" className="rounded-card border border-line bg-card p-6 sm:p-7">
@@ -60,12 +62,12 @@ export function ReactivatePlan({ planName, monthlyAmount, priceNote, action, ser
         {services?.map((service) => <input key={service} type="hidden" name="service" value={service} />)}
         <Button
           type="submit"
-          disabled={isPending}
-          aria-busy={isPending}
+          disabled={opening}
+          aria-busy={opening}
           aria-describedby={message === null ? undefined : "reactivate-error"}
           className="group"
         >
-          {isPending ? "Opening payment…" : `Reactivate for ${monthlyAmount}`}
+          {opening ? "Opening payment…" : `Reactivate for ${monthlyAmount}`}
           <ArrowIcon className="size-4 shrink-0 transition-transform duration-300 ease-calm group-hover:translate-x-1" />
         </Button>
         {message === null ? null : (
