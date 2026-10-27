@@ -39,7 +39,7 @@ export const loadRequests = cache(async (tenant: TenantContext, hasWebsite: bool
   const now = new Date();
   const allowed = includedEditsAllowed(hasWebsite);
   const [items, used] = await withTenantScope(getAppDb(), tenant, (tx) =>
-    Promise.all([listRequestItems(tx, tenant.userId), allowed === 0 ? Promise.resolve(0) : countIncludedEdits(tx, tenant.businessId, monthBoundsIst(now))]),
+    Promise.all([listRequestItems(tx, tenant.userId, tenant.businessId), allowed === 0 ? Promise.resolve(0) : countIncludedEdits(tx, tenant.businessId, monthBoundsIst(now))]),
   );
   return { items, includedUsed: used, includedAllowed: allowed };
 });
@@ -50,13 +50,13 @@ export const loadRequests = cache(async (tenant: TenantContext, hasWebsite: bool
  */
 export const loadRequestNeeds = cache(
   async (tenant: TenantContext): Promise<readonly RequestNeed[]> =>
-    quietly("requests", "the requests waiting on you", [] as readonly RequestNeed[], () => withTenantScope(getAppDb(), tenant, (tx) => listRequestNeeds(tx, tenant.userId))),
+    quietly("requests", "the requests waiting on you", [] as readonly RequestNeed[], () => withTenantScope(getAppDb(), tenant, (tx) => listRequestNeeds(tx, tenant.userId, tenant.businessId))),
 );
 
 /** Replies from the team the person has not read, for the bell. A failed read shows none. */
 export const loadUnreadReplies = cache(
   async (tenant: TenantContext): Promise<readonly UnreadReply[]> =>
-    quietly("requests", "the unread replies", [] as readonly UnreadReply[], () => withTenantScope(getAppDb(), tenant, (tx) => listUnreadReplies(tx, tenant.userId))),
+    quietly("requests", "the unread replies", [] as readonly UnreadReply[], () => withTenantScope(getAppDb(), tenant, (tx) => listUnreadReplies(tx, tenant.userId, tenant.businessId))),
 );
 
 /** One conversation: its messages and screenshots, and the change details with their dates when it is a request for a change. */
@@ -68,10 +68,10 @@ export interface RequestDetail {
   readonly events: readonly ChangeEventView[];
 }
 
-/** Null when the person has no such conversation (someone else's, or an id that is not one). */
+/** Null when the person has no such conversation here (someone else's, another business's, or an id that is not one). */
 export async function loadRequestDetail(tenant: TenantContext, ticketId: string): Promise<RequestDetail | null> {
   const [thread, change] = await Promise.all([
-    getSupportTicket(getAppDb(), tenant.userId, ticketId),
+    getSupportTicket(getAppDb(), tenant.userId, ticketId, tenant.businessId),
     withTenantScope(getAppDb(), tenant, (tx) => getChangeWithEvents(tx, ticketId)),
   ]);
   if (thread === null) return null;

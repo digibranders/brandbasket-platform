@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, inArray, lt, notInArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ChangeState } from "../change-states";
 import { isPhoneAccountEmail } from "../phone-account";
@@ -143,11 +143,19 @@ export interface RequestListItem {
 const MAX_LIST = 100;
 
 /**
+ * The person's own tickets that belong to this business, plus their plain questions that name no business. A ticket of
+ * another business the person also belongs to is not part of this business's Requests.
+ */
+function ownTicketsOfBusiness(userId: string, businessId: string): SQL | undefined {
+  return and(eq(supportTickets.requesterUserId, userId), or(eq(supportTickets.businessId, businessId), isNull(supportTickets.businessId)));
+}
+
+/**
  * The signed-in person's conversations for the business, newest activity first. Run it inside `withTenantScope`: the tickets
  * are the person's own (user scope) and the change details are the business's (tenant scope), and with only the user in
  * scope every request would read as a plain question.
  */
-export async function listRequestItems(db: ScopedTransaction, userId: string, limit = MAX_LIST): Promise<RequestListItem[]> {
+export async function listRequestItems(db: ScopedTransaction, userId: string, businessId: string, limit = MAX_LIST): Promise<RequestListItem[]> {
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIST) throw new RangeError(`The Requests list holds 1 to ${MAX_LIST} rows, received ${limit}`);
   const rows = await db
     .select({
@@ -159,7 +167,7 @@ export async function listRequestItems(db: ScopedTransaction, userId: string, li
     .from(supportTickets)
     .leftJoin(changeRequests, eq(changeRequests.ticketId, supportTickets.id))
     .leftJoin(charges, eq(charges.id, changeRequests.chargeId))
-    .where(eq(supportTickets.requesterUserId, userId))
+    .where(ownTicketsOfBusiness(userId, businessId))
     .orderBy(desc(supportTickets.lastActivityAt), desc(supportTickets.id))
     .limit(limit);
   return rows.map((row) => ({
@@ -227,12 +235,12 @@ export interface RequestNeed {
 }
 
 /** What the signed-in person has to act on, oldest first. Run inside `withTenantScope`. */
-export async function listRequestNeeds(db: ScopedTransaction, userId: string): Promise<RequestNeed[]> {
+export async function listRequestNeeds(db: ScopedTransaction, userId: string, businessId: string): Promise<RequestNeed[]> {
   const rows = await db
     .select({ ticket: supportTickets, change: changeRequests })
     .from(changeRequests)
     .innerJoin(supportTickets, eq(supportTickets.id, changeRequests.ticketId))
-    .where(and(eq(supportTickets.requesterUserId, userId), inArray(changeRequests.state, ["quoted", "preview"])))
+    .where(and(ownTicketsOfBusiness(userId, businessId), eq(changeRequests.businessId, businessId), inArray(changeRequests.state, ["quoted", "preview"])))
     .orderBy(asc(changeRequests.updatedAt), asc(changeRequests.id));
   return rows.flatMap((row): RequestNeed[] => {
     const view = toChangeView(row.change, null);
@@ -248,12 +256,12 @@ export interface UnreadReply {
 }
 
 /** The newest conversations with an unread reply, for the bell. Run inside `withTenantScope`, or with the person's user scope. */
-export async function listUnreadReplies(db: Runner, userId: string, limit = 5): Promise<UnreadReply[]> {
+export async function listUnreadReplies(db: Runner, userId: string, businessId: string, limit = 5): Promise<UnreadReply[]> {
   if (!Number.isInteger(limit) || limit < 1 || limit > 20) throw new RangeError(`The bell lists 1 to 20 unread replies, received ${limit}`);
   const rows = await db
     .select({ ticketId: supportTickets.id, subject: supportTickets.subject })
     .from(supportTickets)
-    .where(and(eq(supportTickets.requesterUserId, userId), unreadCondition(userId)))
+    .where(and(ownTicketsOfBusiness(userId, businessId), unreadCondition(userId)))
     .orderBy(desc(supportTickets.lastActivityAt), desc(supportTickets.id))
     .limit(limit);
   return rows;

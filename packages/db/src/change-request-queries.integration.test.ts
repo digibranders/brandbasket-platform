@@ -164,7 +164,7 @@ describe("listRequestItems", () => {
     const first = await ask({ subject: "Change the main photo" });
     const question = await createSupportTicket(dbs.app.db, { userId: OWNER, businessId, category: "general", subject: "A question", description: "How do I change my password?", submissionKey: key() });
     const second = await ask({ subject: "Add an Implants page", kind: "billing" });
-    const items = await asOwner((tx) => listRequestItems(tx, OWNER));
+    const items = await asOwner((tx) => listRequestItems(tx, OWNER, businessId));
     expect(items.map((item) => [item.subject, item.change?.kind ?? null])).toEqual([
       ["Add an Implants page", "billing"],
       ["A question", null],
@@ -176,23 +176,48 @@ describe("listRequestItems", () => {
 
   it("shows a stranger nothing, and a second member of the business none of the first member's conversations", async () => {
     await ask();
-    expect(await asOtherOwner((tx) => listRequestItems(tx, OTHER_OWNER))).toEqual([]);
-    expect(await asSecond((tx) => listRequestItems(tx, SECOND))).toEqual([]);
+    expect(await asOtherOwner((tx) => listRequestItems(tx, OTHER_OWNER, otherBusinessId))).toEqual([]);
+    expect(await asSecond((tx) => listRequestItems(tx, SECOND, businessId))).toEqual([]);
   });
 
   it("reads the quote, and flags a reply the person has not read", async () => {
     const { ticket } = await ask();
     const requestId = await requestIdOf(ticket.id);
     await dbs.staff.db.update(changeRequests).set({ ...QUOTE, state: "quoted" }).where(eq(changeRequests.id, requestId));
-    expect((await asOwner((tx) => listRequestItems(tx, OWNER)))[0]?.unread).toBe(false);
+    expect((await asOwner((tx) => listRequestItems(tx, OWNER, businessId)))[0]?.unread).toBe(false);
     await appendSupportMessageByStaff(dbs.staff.db, { staffUserId: STAFF, ticketId: ticket.id, body: "A new page takes about 3 hours.", visibility: "public", submissionKey: key() });
-    const [item] = await asOwner((tx) => listRequestItems(tx, OWNER));
+    const [item] = await asOwner((tx) => listRequestItems(tx, OWNER, businessId));
     expect(item?.unread).toBe(true);
     expect(item?.change?.quote).toEqual({ what: "New page", hours: 3, unitCents: 50_000, amountCents: 150_000, currency: "INR", workingDays: 5, quotedAt: QUOTE.quotedAt });
   });
 
   it("is checked for its size", async () => {
-    await expect(asOwner((tx) => listRequestItems(tx, OWNER, 0))).rejects.toThrow(RangeError);
+    await expect(asOwner((tx) => listRequestItems(tx, OWNER, businessId, 0))).rejects.toThrow(RangeError);
+  });
+});
+
+describe("a person in two businesses", () => {
+  const inBusiness = <T>(id: string, work: Parameters<typeof withTenantScope<T>>[2]) => withTenantScope(dbs.app.db, { userId: OWNER, businessId: id }, work);
+
+  it("sees only the active business's requests, needs and unread replies, and cannot open the other's ticket", async () => {
+    await dbs.staff.db.insert(businessMembers).values({ businessId: otherBusinessId, userId: OWNER, role: "owner" });
+    const mine = await ask({ subject: "In A" });
+    const theirs = await ask({ subject: "In B", business: otherBusinessId });
+    const question = await createSupportTicket(dbs.app.db, { userId: OWNER, businessId: null, category: "general", subject: "No business", description: "A question that names no business.", submissionKey: key() });
+    for (const ticket of [mine.ticket, theirs.ticket]) {
+      await dbs.staff.db.update(changeRequests).set({ ...QUOTE, state: "quoted" }).where(eq(changeRequests.id, await requestIdOf(ticket.id)));
+      await appendSupportMessageByStaff(dbs.staff.db, { staffUserId: STAFF, ticketId: ticket.id, body: "A new page takes about 3 hours.", visibility: "public", submissionKey: key() });
+    }
+
+    const subjectsOf = async (id: string) => (await inBusiness(id, (tx) => listRequestItems(tx, OWNER, id))).map((item) => item.subject).sort();
+    expect(await subjectsOf(businessId)).toEqual(["In A", "No business"]);
+    expect(await subjectsOf(otherBusinessId)).toEqual(["In B", "No business"]);
+    expect((await inBusiness(businessId, (tx) => listRequestNeeds(tx, OWNER, businessId))).map((need) => need.subject)).toEqual(["In A"]);
+    expect((await inBusiness(businessId, (tx) => listUnreadReplies(tx, OWNER, businessId))).map((reply) => reply.subject)).toEqual(["In A"]);
+
+    expect(await getSupportTicket(dbs.app.db, OWNER, theirs.ticket.id, businessId)).toBeNull();
+    expect((await getSupportTicket(dbs.app.db, OWNER, mine.ticket.id, businessId))?.ticket.id).toBe(mine.ticket.id);
+    expect((await getSupportTicket(dbs.app.db, OWNER, question.id, businessId))?.ticket.id).toBe(question.id);
   });
 });
 
@@ -214,7 +239,7 @@ describe("getChangeWithEvents", () => {
     await appendSupportMessageByStaff(dbs.staff.db, { staffUserId: STAFF, ticketId: old.id, body: "Done, thanks.", visibility: "public", submissionKey: key() });
     const detail = await getSupportTicket(dbs.app.db, OWNER, old.id);
     expect(detail?.messages.map((message) => message.authorRole)).toEqual(["customer", "staff"]);
-    const [item] = await asOwner((tx) => listRequestItems(tx, OWNER));
+    const [item] = await asOwner((tx) => listRequestItems(tx, OWNER, businessId));
     expect(item).toMatchObject({ ticketId: old.id, change: null, unread: true });
   });
 });
@@ -270,13 +295,13 @@ describe("listRequestNeeds", () => {
     const checkId = await requestIdOf(toCheck.ticket.id);
     await dbs.staff.db.update(changeRequests).set({ coverage: "free", state: "in_progress" }).where(eq(changeRequests.id, checkId));
     await dbs.staff.db.update(changeRequests).set({ state: "preview" }).where(eq(changeRequests.id, checkId));
-    const needs = await asOwner((tx) => listRequestNeeds(tx, OWNER));
+    const needs = await asOwner((tx) => listRequestNeeds(tx, OWNER, businessId));
     expect(needs.map((need) => [need.subject, need.state])).toEqual([
       ["Add an Implants page", "quoted"],
       ["Change the main photo", "preview"],
     ]);
     expect(needs[0]?.quote?.amountCents).toBe(150_000);
-    expect(await asOtherOwner((tx) => listRequestNeeds(tx, OTHER_OWNER))).toEqual([]);
+    expect(await asOtherOwner((tx) => listRequestNeeds(tx, OTHER_OWNER, otherBusinessId))).toEqual([]);
   });
 });
 
@@ -284,17 +309,17 @@ describe("listUnreadReplies", () => {
   it("lists the conversations the team has replied to that the person has not read, and none once they have", async () => {
     const first = await ask({ subject: "Change the main photo" });
     const second = await ask({ subject: "Add an Implants page" });
-    expect(await asOwner((tx) => listUnreadReplies(tx, OWNER))).toEqual([]);
+    expect(await asOwner((tx) => listUnreadReplies(tx, OWNER, businessId))).toEqual([]);
     const reply = await appendSupportMessageByStaff(dbs.staff.db, { staffUserId: STAFF, ticketId: second.ticket.id, body: "A new page takes about 3 hours.", visibility: "public", submissionKey: key() });
     await appendSupportMessageByStaff(dbs.staff.db, { staffUserId: STAFF, ticketId: first.ticket.id, body: "An internal note.", visibility: "internal", submissionKey: key() });
-    expect(await asOwner((tx) => listUnreadReplies(tx, OWNER))).toEqual([{ ticketId: second.ticket.id, subject: "Add an Implants page" }]);
+    expect(await asOwner((tx) => listUnreadReplies(tx, OWNER, businessId))).toEqual([{ ticketId: second.ticket.id, subject: "Add an Implants page" }]);
     await markSupportTicketRead(dbs.app.db, OWNER, second.ticket.id, reply.id);
-    expect(await asOwner((tx) => listUnreadReplies(tx, OWNER))).toEqual([]);
-    expect(await asOtherOwner((tx) => listUnreadReplies(tx, OTHER_OWNER))).toEqual([]);
+    expect(await asOwner((tx) => listUnreadReplies(tx, OWNER, businessId))).toEqual([]);
+    expect(await asOtherOwner((tx) => listUnreadReplies(tx, OTHER_OWNER, otherBusinessId))).toEqual([]);
   });
 
   it("is checked for its size", async () => {
-    await expect(asOwner((tx) => listUnreadReplies(tx, OWNER, 0))).rejects.toThrow(RangeError);
+    await expect(asOwner((tx) => listUnreadReplies(tx, OWNER, businessId, 0))).rejects.toThrow(RangeError);
   });
 });
 

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, count, desc, eq, gt, inArray, isNull, lt, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import type { Database } from "../client";
 import { isChangeKind, type ChangeKind } from "../change-states";
@@ -148,10 +148,11 @@ export async function listSupportTickets(db: Database, userId: string, options: 
   });
 }
 export interface SupportTicketDetail { readonly ticket: SupportTicket; readonly messages: SupportMessage[]; readonly attachments: SupportAttachment[] }
-export async function getSupportTicket(db: Database, userId: string, ticketId: string): Promise<SupportTicketDetail | null> {
+/** With `businessId`, a ticket of another business is not found (plain questions that name no business still are). */
+export async function getSupportTicket(db: Database, userId: string, ticketId: string, businessId?: string): Promise<SupportTicketDetail | null> {
   assertSupportUuid(ticketId, "Ticket ID");
   return withUserScope(db, userId, async (tx) => {
-    const [ticket] = await tx.select().from(supportTickets).where(and(eq(supportTickets.id, ticketId), eq(supportTickets.requesterUserId, userId))).limit(1);
+    const [ticket] = await tx.select().from(supportTickets).where(and(eq(supportTickets.id, ticketId), eq(supportTickets.requesterUserId, userId), businessId === undefined ? undefined : or(eq(supportTickets.businessId, businessId), isNull(supportTickets.businessId)))).limit(1);
     if (!ticket) return null;
     const messages = await tx.select().from(supportMessages).where(and(eq(supportMessages.ticketId, ticketId), eq(supportMessages.visibility, "public"))).orderBy(supportMessages.id);
     const attachments = await tx.select().from(supportAttachments).where(and(eq(supportAttachments.ticketId, ticketId), eq(supportAttachments.state, "attached"))).orderBy(supportAttachments.id);

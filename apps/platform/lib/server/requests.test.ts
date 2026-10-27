@@ -30,7 +30,7 @@ describe("loadRequests", () => {
     vi.mocked(listRequestItems).mockResolvedValue([]);
     vi.mocked(countIncludedEdits).mockResolvedValue(1);
     const data = await loadRequests(freshTenant(), true);
-    expect(listRequestItems).toHaveBeenCalledWith(appTx, "user-a");
+    expect(listRequestItems).toHaveBeenCalledWith(appTx, "user-a", "business-1");
     const [, businessId, window] = vi.mocked(countIncludedEdits).mock.calls[0] ?? [];
     expect(businessId).toBe("business-1");
     expect(window?.from.getTime()).toBeLessThanOrEqual(Date.now());
@@ -57,7 +57,7 @@ describe("loadRequestNeeds", () => {
     const needs = [{ ticketId: "t1", subject: "Add an Implants page", kind: "website", state: "quoted", quote: null, acceptedAt: null, updatedAt: new Date() }];
     vi.mocked(listRequestNeeds).mockResolvedValue(needs as never);
     expect(await loadRequestNeeds(freshTenant())).toEqual(needs);
-    expect(listRequestNeeds).toHaveBeenCalledWith(appTx, "user-a");
+    expect(listRequestNeeds).toHaveBeenCalledWith(appTx, "user-a", "business-1");
   });
 
   it("shows nothing, and logs once, when it cannot be read", async () => {
@@ -74,7 +74,7 @@ describe("loadUnreadReplies", () => {
   it("returns the replies the person has not read, and none when the read fails", async () => {
     vi.mocked(listUnreadReplies).mockResolvedValue([{ ticketId: "t1", subject: "Add an Implants page" }]);
     expect(await loadUnreadReplies(freshTenant())).toEqual([{ ticketId: "t1", subject: "Add an Implants page" }]);
-    expect(listUnreadReplies).toHaveBeenCalledWith(appTx, "user-a");
+    expect(listUnreadReplies).toHaveBeenCalledWith(appTx, "user-a", "business-1");
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.mocked(listUnreadReplies).mockRejectedValue(new Error("db down"));
     expect(await loadUnreadReplies(freshTenant())).toEqual([]);
@@ -88,7 +88,7 @@ describe("loadRequestDetail", () => {
     vi.mocked(getSupportTicket).mockResolvedValue({ ticket: { id: "t1" }, messages: [{ id: "m1" }], attachments: [] } as never);
     vi.mocked(getChangeWithEvents).mockResolvedValue({ change: { id: "c1" }, events: [{ state: "requested" }] } as never);
     const detail = await loadRequestDetail(freshTenant(), "t1");
-    expect(getSupportTicket).toHaveBeenCalledWith(appDb, "user-a", "t1");
+    expect(getSupportTicket).toHaveBeenCalledWith(appDb, "user-a", "t1", "business-1");
     expect(detail).toMatchObject({ ticket: { id: "t1" }, change: { id: "c1" }, events: [{ state: "requested" }] });
   });
 
