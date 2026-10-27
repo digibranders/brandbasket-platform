@@ -175,7 +175,7 @@ async function seedClosedAccount(withSupport = false, withChangeQuote = false): 
     const [request] = await db.select({ id: changeRequests.id }).from(changeRequests).where(eq(changeRequests.ticketId, ticket.id));
     if (request === undefined) throw new Error("No request was made");
     await sendChangeQuote(dbs.staff.db, { requestId: request.id, staffId: STAFF_ID, what: "New page", hours: 2, workingDays: 3, unitCents: 50_000, currency: "INR", now: NOW });
-    chargeId = (await acceptChangeQuote(dbs.staff.db, { requestId: request.id, businessId, taxRateBasisPoints: 1800, now: NOW })).chargeId;
+    chargeId = (await acceptChangeQuote(dbs.staff.db, { userId: USER_ID, requestId: request.id, businessId, taxRateBasisPoints: 1800, now: NOW })).chargeId;
   }
 
   const closure = await openAccountClosure(dbs.staff.db, { userId: USER_ID, businessId, now: CLOSED_AT, eraseAfter: ERASE_AFTER });

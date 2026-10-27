@@ -15,10 +15,10 @@ beforeEach(() => {
 });
 
 describe("openQuoteCharge", () => {
-  it("opens the charge for the session's business at the plan's GST rate, on the staff connection", async () => {
+  it("opens the charge for the session's person and business at the plan's GST rate, on the staff connection", async () => {
     const result = await openQuoteCharge({ tenant, billing: { plan: { taxRateBasisPoints: 1800 } } as never }, "request-1", NOW);
     expect(result).toEqual({ chargeId: "charge-1" });
-    expect(acceptChangeQuote).toHaveBeenCalledWith({ kind: "staff-db" }, { requestId: "request-1", businessId: "business-1", taxRateBasisPoints: 1800, now: NOW });
+    expect(acceptChangeQuote).toHaveBeenCalledWith({ kind: "staff-db" }, { requestId: "request-1", userId: "user-1", businessId: "business-1", taxRateBasisPoints: 1800, now: NOW });
   });
 
   it("refuses when there is no plan to take the GST rate from, and opens nothing", async () => {

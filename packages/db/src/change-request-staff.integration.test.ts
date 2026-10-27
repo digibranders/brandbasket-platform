@@ -174,7 +174,7 @@ describe("sendChangeQuote", () => {
   it("gives back the charge of a quote the customer had accepted, when the quote is replaced", async () => {
     const { requestId } = await ask();
     await sendChangeQuote(dbs.staff.db, quoteInput(requestId));
-    const accepted = await acceptChangeQuote(dbs.staff.db, { requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
+    const accepted = await acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
     const view = await sendChangeQuote(dbs.staff.db, quoteInput(requestId, { hours: 4 }));
     expect(view).toMatchObject({ chargeId: null, acceptedAt: null });
     const charge = await findChargeForBusiness(dbs.staff.db, businessId, accepted.chargeId);
@@ -212,7 +212,7 @@ describe("moveChangeAsStaff", () => {
   it("declines with a reason the customer reads, and gives back an unpaid charge", async () => {
     const { requestId } = await ask();
     await sendChangeQuote(dbs.staff.db, quoteInput(requestId));
-    const accepted = await acceptChangeQuote(dbs.staff.db, { requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
+    const accepted = await acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
     const view = await moveChangeAsStaff(dbs.staff.db, { requestId, staffId: STAFF, to: "declined", reason: "  We do not build online shops.  ", now: NOW });
     expect(view).toMatchObject({ state: "declined", closedReason: "We do not build online shops." });
     expect((await findChargeForBusiness(dbs.staff.db, businessId, accepted.chargeId))?.status).toBe("waived");
@@ -230,7 +230,7 @@ describe("acceptChangeQuote", () => {
   it("turns the quote into a charge for the hours, in the plan's money, with no staff member named", async () => {
     const { requestId } = await ask();
     await sendChangeQuote(dbs.staff.db, quoteInput(requestId));
-    const accepted = await acceptChangeQuote(dbs.staff.db, { requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
+    const accepted = await acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
     expect(accepted.opened).toBe(true);
     const charge = await findChargeForBusiness(dbs.staff.db, businessId, accepted.chargeId);
     expect(charge).toMatchObject({
@@ -251,8 +251,8 @@ describe("acceptChangeQuote", () => {
     const { requestId } = await ask();
     await sendChangeQuote(dbs.staff.db, quoteInput(requestId));
     const results = await Promise.all([
-      acceptChangeQuote(dbs.staff.db, { requestId, businessId, taxRateBasisPoints: 1800, now: NOW }),
-      acceptChangeQuote(dbs.staff.db, { requestId, businessId, taxRateBasisPoints: 1800, now: NOW }),
+      acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId, taxRateBasisPoints: 1800, now: NOW }),
+      acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId, taxRateBasisPoints: 1800, now: NOW }),
     ]);
     expect(results[0].chargeId).toBe(results[1].chargeId);
     expect(results.map((result) => result.opened).sort()).toEqual([false, true]);
@@ -262,20 +262,29 @@ describe("acceptChangeQuote", () => {
   it("opens a new charge when staff waived the first one", async () => {
     const { requestId } = await ask();
     await sendChangeQuote(dbs.staff.db, quoteInput(requestId));
-    const first = await acceptChangeQuote(dbs.staff.db, { requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
+    const first = await acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
     await dbs.staff.db.update(charges).set({ status: "waived", waivedAt: NOW, waivedByStaffId: STAFF }).where(eq(charges.id, first.chargeId));
-    const second = await acceptChangeQuote(dbs.staff.db, { requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
+    const second = await acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
     expect(second.chargeId).not.toBe(first.chargeId);
     expect(second.opened).toBe(true);
   });
 
   it("refuses another business's request, a request with no quote, and one that is not found", async () => {
     const { requestId } = await ask();
-    expect(await codeOf(acceptChangeQuote(dbs.staff.db, { requestId, businessId, taxRateBasisPoints: 1800, now: NOW }))).toBe("wrong_state");
+    expect(await codeOf(acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId, taxRateBasisPoints: 1800, now: NOW }))).toBe("wrong_state");
     await sendChangeQuote(dbs.staff.db, quoteInput(requestId));
-    expect(await codeOf(acceptChangeQuote(dbs.staff.db, { requestId, businessId: otherBusinessId, taxRateBasisPoints: 1800, now: NOW }))).toBe("not_found");
-    expect(await codeOf(acceptChangeQuote(dbs.staff.db, { requestId: "00000000-0000-4000-8000-000000000000", businessId, taxRateBasisPoints: 1800, now: NOW }))).toBe("not_found");
+    expect(await codeOf(acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId: otherBusinessId, taxRateBasisPoints: 1800, now: NOW }))).toBe("not_found");
+    expect(await codeOf(acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId: "00000000-0000-4000-8000-000000000000", businessId, taxRateBasisPoints: 1800, now: NOW }))).toBe("not_found");
     expect(await dbs.staff.db.select().from(charges)).toEqual([]);
+  });
+
+  it("refuses a member of the business who is not the person who asked, and opens nothing", async () => {
+    const { requestId } = await ask();
+    await sendChangeQuote(dbs.staff.db, quoteInput(requestId));
+    await dbs.staff.db.insert(businessMembers).values({ businessId, userId: NOT_STAFF, role: "editor" });
+    expect(await codeOf(acceptChangeQuote(dbs.staff.db, { userId: NOT_STAFF, requestId, businessId, taxRateBasisPoints: 1800, now: NOW }))).toBe("not_found");
+    expect(await dbs.staff.db.select().from(charges)).toEqual([]);
+    expect(await rowOf(requestId)).toMatchObject({ state: "quoted", chargeId: null, acceptedAt: null });
   });
 });
 
@@ -286,7 +295,7 @@ describe("paying for a quote", () => {
   it("starts the change in the same moment the payment is recorded", async () => {
     const { requestId } = await ask();
     await sendChangeQuote(dbs.staff.db, quoteInput(requestId));
-    const { chargeId } = await acceptChangeQuote(dbs.staff.db, { requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
+    const { chargeId } = await acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
     expect((await pay(chargeId)).outcome).toBe("paid");
     expect((await rowOf(requestId)).state).toBe("in_progress");
     const events = await dbs.staff.db.select().from(changeRequestEvents).where(eq(changeRequestEvents.changeRequestId, requestId));
@@ -296,7 +305,7 @@ describe("paying for a quote", () => {
   it("does not start it when the money does not match the charge", async () => {
     const { requestId } = await ask();
     await sendChangeQuote(dbs.staff.db, quoteInput(requestId));
-    const { chargeId } = await acceptChangeQuote(dbs.staff.db, { requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
+    const { chargeId } = await acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
     expect((await pay(chargeId, 100_000)).outcome).toBe("amount-mismatch");
     expect((await rowOf(requestId)).state).toBe("quoted");
   });
@@ -314,7 +323,7 @@ describe("paying for a quote", () => {
   it("is safe to run when the payment arrives twice", async () => {
     const { requestId } = await ask();
     await sendChangeQuote(dbs.staff.db, quoteInput(requestId));
-    const { chargeId } = await acceptChangeQuote(dbs.staff.db, { requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
+    const { chargeId } = await acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
     await pay(chargeId);
     const again = await pay(chargeId);
     expect(again.alreadyRecorded).toBe(true);
@@ -327,7 +336,7 @@ describe("a quote changed while its payment arrives", () => {
     for (let round = 0; round < 8; round += 1) {
       const { requestId } = await ask();
       await sendChangeQuote(dbs.staff.db, quoteInput(requestId));
-      const { chargeId } = await acceptChangeQuote(dbs.staff.db, { requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
+      const { chargeId } = await acceptChangeQuote(dbs.staff.db, { userId: OWNER, requestId, businessId, taxRateBasisPoints: 1800, now: NOW });
       const outcomes = await Promise.allSettled([
         sendChangeQuote(dbs.staff.db, quoteInput(requestId, { hours: 2 })),
         recordChargePayment(dbs.staff.db, { chargeId, businessId, provider: "fake", providerPaymentId: `fake_race_${round}`, amountCents: 150_000, currency: "INR", paidAt: NOW, now: NOW }),

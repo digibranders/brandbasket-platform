@@ -4,6 +4,7 @@ import { canMoveChange } from "../change-states";
 import { changeRequests, type ChangeRequest } from "../schema/change-requests";
 import { charges } from "../schema/billing";
 import { staffMembers } from "../schema/staff";
+import { supportTickets } from "../schema/support";
 import { withUserScope, type ScopedTransaction } from "../scope";
 import { lockBusinessForBilling } from "./billing";
 import { ChangeRequestError, countIncludedEdits, toChangeView, type ChangeView } from "./change-requests";
@@ -172,6 +173,8 @@ export async function moveChangeAsStaff(db: Database, input: MoveAsStaffInput): 
 
 export interface AcceptQuoteInput {
   readonly requestId: string;
+  /** From the signed-in customer's session: only the person who asked for the change can say yes to its quote. */
+  readonly userId: string;
   /** From the signed-in customer's session, never from the request. */
   readonly businessId: string;
   /** The plan's GST rate, recorded on the charge. */
@@ -194,6 +197,12 @@ export async function acceptChangeQuote(db: Database, input: AcceptQuoteInput): 
       .for("update")
       .limit(1);
     if (row === undefined) throw new ChangeRequestError("not_found", "The change request could not be found.");
+    const [ticket] = await tx
+      .select({ id: supportTickets.id })
+      .from(supportTickets)
+      .where(and(eq(supportTickets.id, row.ticketId), eq(supportTickets.requesterUserId, input.userId)))
+      .limit(1);
+    if (ticket === undefined) throw new ChangeRequestError("not_found", "The change request could not be found.");
     const quote = toChangeView(row, null).quote;
     if (row.state !== "quoted" || row.coverage !== "paid" || quote === null) throw new ChangeRequestError("wrong_state", "There is no quote to accept.");
     if (row.chargeId !== null) {
