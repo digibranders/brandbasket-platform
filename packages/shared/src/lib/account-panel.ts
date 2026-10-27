@@ -28,11 +28,30 @@ export interface AccountPanel {
   readonly siteStatus: SiteStatus;
 }
 
+/** A request that needs the customer, or has news, as the bell reads it. */
+export interface RequestNoticeInput {
+  readonly ticketId: string;
+  readonly subject: string;
+  /** `quote` a quote to answer, `payment` an accepted quote to pay, `check` a change to look at, `reply` a reply to read. */
+  readonly kind: "quote" | "payment" | "check" | "reply";
+}
+
+const REQUEST_NOTICE_WORDS: Readonly<Record<RequestNoticeInput["kind"], string>> = {
+  quote: "Quote waiting",
+  payment: "Payment waiting",
+  check: "Ready to check",
+  reply: "New reply",
+};
+
+const NOTICE_SUBJECT_LIMIT = 60;
+
 export interface NoticeInput {
   readonly banner: BillingBannerModel | null;
   /** Null when onboarding has never started, so no project row exists yet. */
   readonly projectStatus: ProjectStatus | null;
   readonly nextStep: NextStep;
+  /** The requests with something for the customer. Left out, the bell says nothing about requests. */
+  readonly requests?: readonly RequestNoticeInput[];
 }
 
 /**
@@ -43,7 +62,7 @@ export interface NoticeInput {
  *
  * Kept pure and separate from lib/server/account-panel.ts so the mapping can be tested without a database.
  */
-export function noticesFrom({ banner, projectStatus, nextStep }: NoticeInput): readonly Notice[] {
+export function noticesFrom({ banner, projectStatus, nextStep, requests = [] }: NoticeInput): readonly Notice[] {
   const notices: Notice[] = [];
 
   if (banner !== null) {
@@ -88,6 +107,17 @@ export function noticesFrom({ banner, projectStatus, nextStep }: NoticeInput): r
       text: "Finish setting up your website",
       href: "/onboarding",
       actionable: true,
+    });
+  }
+
+  for (const request of requests) {
+    const subject = request.subject.length > NOTICE_SUBJECT_LIMIT ? `${request.subject.slice(0, NOTICE_SUBJECT_LIMIT).trimEnd()}...` : request.subject;
+    notices.push({
+      id: `request-${request.kind}-${request.ticketId}`,
+      text: `${REQUEST_NOTICE_WORDS[request.kind]}: ${subject}`,
+      // The Requests page (apps/platform/lib/requests/links.ts), spelled out because this file is shared with the console.
+      href: `/requests?open=${request.ticketId}`,
+      actionable: request.kind !== "reply",
     });
   }
 

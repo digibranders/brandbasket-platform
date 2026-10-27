@@ -10,6 +10,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./change-states": "./src/change-states.ts",
     "./geo-catalog-rules": "./src/geo-catalog-rules.ts",
     "./india-states": "./src/india-states.ts",
     "./local-env": "./src/local-env.ts",

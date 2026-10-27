@@ -60,7 +60,7 @@ export function KickoffPicker({ showLiveBy, bookingUrl }: KickoffPickerProps): R
     return bookingUrl === null ? (
       <p className="text-sm text-ink-2">
         We could not load the times. Please try again in a few minutes, or write to us in{" "}
-        <Link href="/support" className="font-semibold text-ink underline underline-offset-4">
+        <Link href="/requests" className="font-semibold text-ink underline underline-offset-4">
           Requests
         </Link>
         .

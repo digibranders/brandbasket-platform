@@ -87,7 +87,7 @@ export function TodoList({ items, answers, focus }: TodoListProps): ReactElement
           </ul>
           <p className="text-[0.8125rem] text-ink-2">
             Anything you cannot find? Bring it to a call or write to us in{" "}
-            <Link href="/support" className="font-semibold text-ink underline underline-offset-[3px]">
+            <Link href="/requests" className="font-semibold text-ink underline underline-offset-[3px]">
               Requests
             </Link>
             .

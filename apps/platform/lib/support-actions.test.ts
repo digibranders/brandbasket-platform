@@ -55,6 +55,7 @@ describe("support submissions", () => {
     const messageId = "00000000-0000-4000-8000-000000000002";
     expect(await acknowledgeSupportReplies(ticketId, messageId)).toBe(true);
     expect(mocks.read).toHaveBeenCalledWith({}, "signed-in-person", ticketId, messageId);
+    expect(mocks.revalidate).toHaveBeenCalledWith("/requests");
   });
   it("refuses malformed receipts and signed-out reads", async () => {
     expect(await acknowledgeSupportReplies("-".repeat(36), "-".repeat(36))).toBe(false);

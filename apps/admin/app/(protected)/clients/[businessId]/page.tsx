@@ -84,6 +84,8 @@ import { Avatar } from "@/components/console/avatar";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { KickoffCallSection } from "@/components/console/kickoff-call-section";
+import { RequestsSection } from "@/components/console/requests-section";
+import { readMailOutcome, readRequestActionNotice } from "@/lib/request-notices";
 import { Notice } from "@/components/console/notice";
 import { PLAN_TIER_LABELS } from "@brandbasket/shared/lib/billing/plan-tier";
 import { PageHeader } from "@/components/console/page-header";
@@ -638,6 +640,8 @@ export default async function ClientPage({
   const chargesNotice = readStaffChargeNotice(sp.charges);
   const websiteNotice = sp.website === "saved" || sp.website === "invalid" ? sp.website : null;
   const updatesNotice = sp.updates === "added" || sp.updates === "removed" || sp.updates === "invalid" ? sp.updates : null;
+  const requestsNotice = readRequestActionNotice(sp.requests);
+  const requestsMail = readMailOutcome(sp.mail);
   const numbersNotice = sp.numbers === "saved" || sp.numbers === "invalid" || sp.numbers === "not-bought" ? sp.numbers : null;
   const featuresNotice = readBusinessModuleNotice(sp.features);
   const listingNotice = readListingNotice(sp.listing, sp.listingField);
@@ -833,6 +837,8 @@ export default async function ClientPage({
         </Section>
 
         <KickoffCallSection businessId={businessId} />
+
+        <RequestsSection businessId={businessId} notice={requestsNotice} mail={requestsMail} />
 
         <UpdatesSection businessId={businessId} notice={updatesNotice} />
 

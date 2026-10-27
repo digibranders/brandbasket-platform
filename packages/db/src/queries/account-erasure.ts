@@ -2,6 +2,7 @@ import { eraseChatbotsOfBusiness } from "./chatbots";
 import { and, asc, eq, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { listBusinessProductPhotoIds } from "./directory-business-catalog";
+import { waiveChangeChargesForErasure } from "./change-request-payment";
 import { eraseSupportDataForUser } from "./support";
 import type { ScopedTransaction } from "../scope";
 import {
@@ -277,7 +278,10 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
       await tx.select({ id: directoryVideos.vimeoId }).from(directoryVideos).where(eq(directoryVideos.businessId, businessId))
     ).map((row) => row.id);
 
-    // Private objects must already be purged; pending manifests prevent account scrubbing.
+    // Private objects must already be purged; pending manifests prevent account scrubbing. A ticket's change request and
+    // its history go with it (ON DELETE CASCADE from support_tickets), so nothing more is deleted for them here
+    // except that their open change_hours charges are let go first: a late payment must not find a request to start.
+    await waiveChangeChargesForErasure(tx, { userId, businessId, now });
     await eraseSupportDataForUser(tx, userId);
 
     // Children before parents: bookings point at patients, practitioners and services.

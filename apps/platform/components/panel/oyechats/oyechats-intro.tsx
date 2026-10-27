@@ -8,7 +8,7 @@ export function OyeChatsIntro(): ReactElement {
     <>
       <p className="mt-3 inline-flex items-center rounded-full bg-success/10 px-3 py-1 text-sm font-medium text-success">{OYECHATS_INCLUDED_LABEL}</p>
       <p className="mt-4 text-ink-soft">
-        Need something changed? <Link href="/support" className="link-underline text-ink">Ask the team</Link>.
+        Need something changed? <Link href="/requests/new" className="link-underline text-ink">Ask the team</Link>.
       </p>
     </>
   );

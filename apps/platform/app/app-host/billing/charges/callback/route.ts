@@ -1,4 +1,4 @@
-import { AD_RETURN_PARAM, chargeKindOfReturn, chargeReturnHref } from "@/lib/billing/charge-notices";
+import { AD_RETURN_PARAM, CHANGE_TICKET_PARAM, changeTicketOfReturn, chargeKindOfReturn, chargeReturnHref } from "@/lib/billing/charge-notices";
 import { appOriginForHostHeader } from "@/lib/server/request-brand";
 
 /**
@@ -9,8 +9,11 @@ import { appOriginForHostHeader } from "@/lib/server/request-brand";
 export async function POST(request: Request): Promise<Response> {
   const failed = await hasRazorpayError(request);
   // The pay page marks a won ad spot's or a move up's return address; anything else returns to Billing.
-  const kind = chargeKindOfReturn(new URL(request.url).searchParams.get(AD_RETURN_PARAM));
-  return Response.redirect(new URL(chargeReturnHref(kind, failed ? "failed" : "processing"), appOriginForHostHeader(request.headers.get("host"))), 303);
+  const params = new URL(request.url).searchParams;
+  const kind = chargeKindOfReturn(params.get(AD_RETURN_PARAM));
+  // A change quote's pay page also names the request's ticket, so the page opens the request that was paid (old links have none).
+  const href = chargeReturnHref(kind, failed ? "failed" : "processing", changeTicketOfReturn(params.get(CHANGE_TICKET_PARAM)));
+  return Response.redirect(new URL(href, appOriginForHostHeader(request.headers.get("host"))), 303);
 }
 
 async function hasRazorpayError(request: Request): Promise<boolean> {

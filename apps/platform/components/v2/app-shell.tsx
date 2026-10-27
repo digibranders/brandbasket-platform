@@ -11,6 +11,7 @@ import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getClientListingState } from "@/lib/server/listing";
 import { getLiveWebsite, getProjectOverview } from "@/lib/server/onboarding";
 import { requestBrand } from "@/lib/server/request-brand";
+import { loadRequestNeeds } from "@/lib/server/requests";
 import { quietly } from "@/lib/server/quietly";
 import { getSetupCallState } from "@/lib/server/setup-call";
 import { signOut } from "@/lib/server/sign-out";
@@ -55,6 +56,8 @@ export async function AppShell({ userName, userEmail, businessId, children }: Ap
   // taking the shell down.
   const todoCount =
     quiet || !billing.hasAccess ? 0 : await quietly("app-shell", "the To do count", 0, async () => (await loadTodo(tenant)).open);
+  // Quotes to answer and changes to check. The loader shows none rather than failing, so the shell always draws.
+  const requestsCount = (await loadRequestNeeds(tenant)).length;
   const sections = railSections({
     quiet,
     hasAccess: billing.hasAccess,
@@ -63,6 +66,7 @@ export async function AppShell({ userName, userEmail, businessId, children }: Ap
     websiteSetupDone: websiteSent,
     listingClaim: listing.claim,
     todoCount,
+    requestsCount,
   });
   const logo = logoOf(brand);
   const menu: AccountMenu = {

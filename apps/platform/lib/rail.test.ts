@@ -91,6 +91,30 @@ describe("the To do link", () => {
   });
 });
 
+describe("the Requests link", () => {
+  const find = (requestsCount: number | undefined, quiet = false) =>
+    railSections({ ...FULL, quiet, requestsCount }).flatMap((section) => section.links).find((link) => link.label === "Requests");
+
+  it("opens the Requests page and shows the number of things waiting on the customer", () => {
+    expect(find(2)).toMatchObject({ href: "/requests", icon: "requests", count: 2 });
+  });
+
+  it("drops the number when nothing waits, or when it is not known", () => {
+    expect(find(0)?.count).toBeUndefined();
+    expect(find(undefined)?.count).toBeUndefined();
+  });
+
+  it("is in the quiet rail before the call too, with its number", () => {
+    expect(find(1, true)).toMatchObject({ href: "/requests", count: 1 });
+  });
+
+  it("opens the form from search as Ask for a change, and counts Requests as current on the form's page", () => {
+    const sections = railSections(FULL);
+    expect(searchRail(sections, "")[0]).toEqual({ href: "/requests/new", label: "Ask for a change" });
+    expect(isCurrent("/requests/new", "/requests")).toBe(true);
+  });
+});
+
 describe("browser safety", () => {
   it("keeps the rail model free of server code", () => {
     const source = readFileSync(new URL("./rail.ts", import.meta.url), "utf8");

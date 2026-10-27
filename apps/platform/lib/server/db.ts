@@ -63,6 +63,10 @@ export function getAppDb(): Database {
  *   charges (a paid extra, a week of a listing tag). Customers never write charges or directory_promotions through
  *   their own connection; the business id comes only from the session, the price only from the server, and a week
  *   is only ever written by the payment confirmation.
+ * - lib/server/change-quote.ts, which opens the `change_hours` charge for a quote the signed-in customer accepted on the
+ *   Requests page. Customers never write charges through their own connection; the business id comes only from the
+ *   session, the price only from the stored quote, the GST rate from the customer's own plan, and the work only starts
+ *   when the payment is recorded (recordChargePayment).
  * - lib/server/listing-pictures.ts (POST /api/listing-pictures and the Photos page's Remove), which stores and
  *   removes a free listing account's own pictures. Customers never write directory_pictures through their own
  *   connection; the business id comes only from the session, the slot is one of three fixed names, and the file is

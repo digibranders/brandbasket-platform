@@ -7,6 +7,7 @@ export * from "./auth";
 export * from "./billing";
 export * from "./business-facts";
 export * from "./businesses";
+export * from "./change-requests";
 export * from "./chatbots";
 export * from "./client-activity";
 export * from "./currency";

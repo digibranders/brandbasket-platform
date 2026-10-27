@@ -1,11 +1,14 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eraseClosedAccount, erasedBusinessSlug, erasedUserEmail, findErasureBlock, listClosuresDueForErasure } from "./queries/account-erasure";
-import { beginSupportAccountErasure, createSupportTicket, markSupportAttachmentPurged, stageSupportAttachment } from "./queries/support";
+import { beginSupportAccountErasure, createSupportTicket, createSupportTicketWithOutcome, markSupportAttachmentPurged, stageSupportAttachment } from "./queries/support";
+import { acceptChangeQuote, sendChangeQuote } from "./queries/change-request-staff";
+import { findChargeForBusiness, recordChargePayment } from "./queries/charges";
 import { openAccountClosure, restoreAccountClosure } from "./queries/account-closures";
 import { findActivePlan, insertSubscription, recordPaymentAndActivate, type Plan } from "./queries/billing";
 import { insertTaxInvoice } from "./queries/tax-invoices";
 import { supportAttachments } from "./schema/support";
+import { changeRequests } from "./schema/change-requests";
 import { accountClosures, accountOtps, accounts, addOnSubscriptions, billingProfiles, businessMembers, businesses, payments, sessions, staffMembers, subscriptions, userPrivacySettings, users, verifications } from "./schema";
 import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
 
@@ -33,7 +36,7 @@ async function count(table: string, where = "true"): Promise<number> {
 }
 
 /** A closed account with something in every kind of table the erase touches or keeps. */
-async function seedClosedAccount(withSupport = false): Promise<{ closureId: string; subscriptionId: string }> {
+async function seedClosedAccount(withSupport = false, withChangeQuote = false): Promise<{ closureId: string; subscriptionId: string; chargeId: string }> {
   const db = dbs.owner.db;
   await db.insert(users).values({ id: USER_ID, name: "Meera Iyer", email: "meera@example.com", emailVerified: true, phoneNumber: "+919820099999", phoneNumberVerified: true });
   await db.insert(sessions).values({ id: "s1", token: "tok", expiresAt: NOW, userId: USER_ID });
@@ -157,8 +160,26 @@ async function seedClosedAccount(withSupport = false): Promise<{ closureId: stri
     await createSupportTicket(dbs.app.db, {userId:USER_ID,businessId,category:"bug",subject:"Private account screenshot",description:"Remove this private account screenshot.",submissionKey:"private-erasure-test",attachmentIds:[attachmentId]});
   }
 
+  // A change request the customer accepted a quote for: its charge is open and unpaid.
+  let chargeId = "";
+  if (withChangeQuote) {
+    const { ticket } = await createSupportTicketWithOutcome(dbs.app.db, {
+      userId: USER_ID,
+      businessId,
+      category: "website_change",
+      subject: "Add an Implants page",
+      description: "Please add a page about implants.",
+      submissionKey: "erasure-change-request-abcdefgh",
+      changeRequest: { kind: "website", page: "Home" },
+    });
+    const [request] = await db.select({ id: changeRequests.id }).from(changeRequests).where(eq(changeRequests.ticketId, ticket.id));
+    if (request === undefined) throw new Error("No request was made");
+    await sendChangeQuote(dbs.staff.db, { requestId: request.id, staffId: STAFF_ID, what: "New page", hours: 2, workingDays: 3, unitCents: 50_000, currency: "INR", now: NOW });
+    chargeId = (await acceptChangeQuote(dbs.staff.db, { userId: USER_ID, requestId: request.id, businessId, taxRateBasisPoints: 1800, now: NOW })).chargeId;
+  }
+
   const closure = await openAccountClosure(dbs.staff.db, { userId: USER_ID, businessId, now: CLOSED_AT, eraseAfter: ERASE_AFTER });
-  return { closureId: closure.id, subscriptionId: subscription.id };
+  return { closureId: closure.id, subscriptionId: subscription.id, chargeId };
 }
 
 beforeEach(async () => {
@@ -269,6 +290,18 @@ describe("eraseClosedAccount", () => {
       expect(
         outcome.storageKeys.every((key) => !key.startsWith("support/")),
       ).toBe(true);
+  });
+
+  it("lets go of the open charge of a change quote that goes with the account, so a late payment starts nothing", async () => {
+    const { closureId, chargeId } = await seedClosedAccount(false, true);
+    expect(await count("change_requests")).toBe(1);
+
+    expect((await eraseClosedAccount(dbs.staff.db, { closureId, now: NOW })).kind).toBe("erased");
+
+    expect(await count("change_requests")).toBe(0);
+    expect(await findChargeForBusiness(dbs.staff.db, businessId, chargeId)).toMatchObject({ status: "waived", paymentId: null });
+    const late = await recordChargePayment(dbs.staff.db, { chargeId, businessId, provider: "fake", providerPaymentId: "fake_late_1", amountCents: 100_000, currency: "INR", paidAt: NOW, now: NOW });
+    expect(late.outcome).not.toBe("paid");
   });
 
   it("does nothing a second time", async () => {
@@ -429,7 +462,7 @@ describe("what the erase knows about", () => {
   /** Tables the erase empties for the business. */
   const ERASED = [
     "activity_events", "appointment_services", "appointment_settings", "appointments", "billing_profiles", "booking_otps", "business_announcements", "business_closures",
-    "business_hours", "business_members", "business_modules", "business_profiles", "chatbot_leads", "chatbots", "directory_business_categories", "directory_business_faqs",
+    "business_hours", "business_members", "business_modules", "business_profiles", "change_requests", "chatbot_leads", "chatbots", "directory_business_categories", "directory_business_faqs",
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
     "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "monthly_snapshots", "onboarding_progress",
     "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "projects", "service_setup", "services",
