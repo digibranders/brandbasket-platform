@@ -26,10 +26,11 @@ export function greetingFor(now: Date): string {
   return "Good evening";
 }
 
-/** The line under the greeting. */
-export function sublineFor(open: number): string {
-  if (open === 0) return "Everything is running. Nothing needs you.";
-  return open === 1 ? "Everything is running. 1 thing needs you." : `Everything is running. ${open} things need you.`;
+/** The line under the greeting. While the website is still being built, nothing is "running" yet, so it says we are setting up. */
+export function sublineFor(open: number, settingUp = false): string {
+  const state = settingUp ? "We are setting things up." : "Everything is running.";
+  if (open === 0) return `${state} Nothing needs you.`;
+  return open === 1 ? `${state} 1 thing needs you.` : `${state} ${open} things need you.`;
 }
 
 /** A month's figures as the page reads them (monthly_snapshots without the bookkeeping). Null means not measured. */

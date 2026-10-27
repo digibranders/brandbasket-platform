@@ -6,7 +6,7 @@ import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { currentTab, WEBSITE_TABS } from "@/lib/website/tabs";
 
-/** The four tabs. A client child only for the path; it imports nothing from the server. On the Chatbot name, Authors and Categories pages no tab is marked. */
+/** The four tabs. A client child only for the path; it imports nothing from the server. */
 export function WebsiteTabs(): ReactElement {
   const current = currentTab(usePathname());
   return (

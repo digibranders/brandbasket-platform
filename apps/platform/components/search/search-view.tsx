@@ -35,7 +35,7 @@ export function SearchView({ data }: { readonly data: SearchData }): ReactElemen
       title="Search"
       lede={
         summary.pageOne === null
-          ? undefined
+          ? "How you appear in Google searches, and the work we do on it."
           : summary.pageOne.figure === "1"
             ? `${month}: 1 search shows you on Google's first page.`
             : `${month}: ${summary.pageOne.figure} searches show you on Google's first page.`

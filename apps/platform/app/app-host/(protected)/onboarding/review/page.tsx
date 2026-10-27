@@ -29,6 +29,7 @@ import { paymentReturnView, readPaymentReturn } from "@brandbasket/shared/lib/bi
 import { cn } from "@brandbasket/shared/lib/cn";
 import { firstMissing, onboardingChecklist, type ChecklistItem } from "@brandbasket/shared/lib/onboarding/checklist";
 import { checklistInputFrom } from "@/lib/onboarding/snapshot";
+import { sentHeading } from "@/lib/onboarding/review-copy";
 import { onboardingStepHref, type OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import { loadBillingDetailsView } from "@/lib/server/billing-details";
@@ -114,6 +115,7 @@ function ReferralPanel({
 function PaymentPanel({
   step,
   checklist,
+  missingCount,
   discount,
   currency,
   lapsedCode,
@@ -121,6 +123,8 @@ function PaymentPanel({
 }: {
   readonly step: PaymentStep;
   readonly checklist: readonly ChecklistItem[];
+  /** How many checklist lines are still open. */
+  readonly missingCount: number;
   readonly discount: PlanDiscount | null;
   readonly currency: MoneyCurrency;
   readonly lapsedCode: string | null;
@@ -162,16 +166,10 @@ function PaymentPanel({
       );
     case "send":
       return (
-        <PaymentSection
-          heading={
-            step.missing === null
-              ? "Payment received"
-              : "Payment received, one thing is missing before we can start"
-          }
-        >
+        <PaymentSection heading={sentHeading(missingCount)}>
           {step.missing === null ? (
             <p className="leading-relaxed text-ink-2">Thank you. Send it to us and we’ll start building.</p>
-          ) : (
+          ) : missingCount === 1 ? (
             <p role="status" className="rounded-lg bg-rattan-wash px-4 py-3 text-rattan-ink">
               We still need {step.missing.label.charAt(0).toLowerCase()}
               {step.missing.label.slice(1)}.{" "}
@@ -179,6 +177,10 @@ function PaymentPanel({
                 Add it now
               </Link>
               , then send it to us here. You won’t pay again.
+            </p>
+          ) : (
+            <p role="status" className="rounded-lg bg-rattan-wash px-4 py-3 text-rattan-ink">
+              Add what is marked below, then send it to us here. You won’t pay again.
             </p>
           )}
           <Checklist items={checklist} />
@@ -326,6 +328,7 @@ export default async function ReviewStepPage({ searchParams }: ReviewStepPagePro
             <PaymentPanel
               step={step}
               checklist={checklist}
+              missingCount={checklist.filter((item) => !item.passed).length}
               discount={discount}
               currency={billing.plan?.currency ?? "USD"}
               lapsedCode={lapsedCode}
@@ -334,7 +337,7 @@ export default async function ReviewStepPage({ searchParams }: ReviewStepPagePro
           )}
         </>
       }
-      aside={<StepAside step="review" />}
+      aside={<StepAside step="review" paid={billing.status === "paid"} />}
     />
   );
 }

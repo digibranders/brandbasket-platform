@@ -3,7 +3,7 @@
  * components/sign-in/sign-in.css): a very faint 45 degree cross weave and one soft glow, with the launch-path lines
  * taking turns. It is drawn once on the whole frame, so it also shows in the margin around the form panel and the two
  * halves read as one surface. Every colour is a theme token (amber stands in for the CMS's rattan), fainter shades mix
- * it toward transparent. The panel is decoration, so the resting colour of a line has no contrast minimum.
+ * it toward transparent. The lines are read as text, so their resting colour keeps 4.5:1 on the dark ground (white at 55% is about 6:1).
  */
 @media (min-width: 64rem) {
   .frame {
@@ -32,7 +32,7 @@
  * Six lines make a 12 second loop. Without motion nothing moves and only the last line is highlighted.
  */
 .line {
-  color: color-mix(in srgb, white 14%, transparent);
+  color: color-mix(in srgb, white 55%, transparent);
 }
 
 .line:last-child {
@@ -69,7 +69,7 @@
 
 @keyframes line-turn {
   0% {
-    color: color-mix(in srgb, white 14%, transparent);
+    color: color-mix(in srgb, white 55%, transparent);
     transform: none;
   }
   4%,
@@ -79,7 +79,7 @@
   }
   20%,
   100% {
-    color: color-mix(in srgb, white 14%, transparent);
+    color: color-mix(in srgb, white 55%, transparent);
     transform: none;
   }
 }

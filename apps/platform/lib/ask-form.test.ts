@@ -55,3 +55,9 @@ it("changes nothing when opened with no post", () => {
 it("never uses a dash in what it says", () => {
   expect(render(["website", "social", "search"]).replace(/<[^>]+>/g, " ")).not.toMatch(/[–—]/);
 });
+
+it("leaves an empty box to our own inline message, not the browser's bubble", () => {
+  const html = render(["website"]);
+  expect(html).toMatch(/<form[^>]*noValidate/);
+  expect(html).not.toContain("Please fill in");
+});

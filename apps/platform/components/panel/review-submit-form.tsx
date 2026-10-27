@@ -6,7 +6,7 @@ import { StepFormError, StepSubmit, useStepForm, type StepAction } from "@/compo
 
 interface ReviewSubmitFormProps {
   readonly action: StepAction;
-  /** False while the checklist shows something missing; the server checks again either way. */
+  /** False while the checklist shows something missing: the button is held back and says why. The server checks again either way. */
   readonly ready: boolean;
   /** The button, e.g. "Pay $75 and send" or "Send it to us". */
   readonly label: string;
@@ -25,7 +25,7 @@ export function ReviewSubmitForm({ action, ready, label, pendingLabel, note }: R
   return (
     <form ref={formRef} action={formAction} className="space-y-4">
       <StepFormError controls={controls} errorRef={errorRef} />
-      <StepSubmit controls={controls} label={opening ? pendingLabel : label} pendingLabel={pendingLabel} disabled={opening}>
+      <StepSubmit controls={controls} label={opening ? pendingLabel : label} pendingLabel={pendingLabel} disabled={opening || !ready} soft={!ready}>
         {ready ? null : <p className="text-[0.8125rem] text-ink-2">Finish the steps above first.</p>}
       </StepSubmit>
       {note === undefined ? null : <div className="max-w-xl text-[0.8125rem] leading-relaxed text-ink-2">{note}</div>}
