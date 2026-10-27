@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { AffiliateForm, BLANK_AFFILIATE } from "@/components/affiliate-forms";
 import { PageHeader } from "@/components/console/page-header";
-import { requireStaffAccess } from "@/lib/server/staff-access";
+import { requireStaffCan } from "@/lib/server/staff-role";
 import { createAffiliateAction } from "./actions";
 
 export const metadata: Metadata = { title: "New affiliate" };
 
 export default async function NewAffiliatePage(): Promise<ReactElement> {
-  await requireStaffAccess();
+  await requireStaffCan("money");
   return (
     <>
       <PageHeader

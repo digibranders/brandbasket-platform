@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { leadTeamsCard, supportReplyTeamsCard, supportTicketTeamsCard, systemErrorTeamsCard } from "./teams-cards";
+import {
+  chatbotLeadTeamsCard,
+  leadTeamsCard,
+  paymentFailedTeamsCard,
+  signupTeamsCard,
+  supportReplyTeamsCard,
+  supportTicketTeamsCard,
+  systemErrorTeamsCard,
+} from "./teams-cards";
 
 type Block = { type: string; text?: string; facts?: { title: string; value: string }[] };
 const parts = (message: ReturnType<typeof leadTeamsCard>): { body: Block[]; actions?: { title: string; url: string }[] } =>
@@ -23,6 +31,12 @@ describe("the Teams cards carry what the alert emails carry", () => {
     const card = parts(leadTeamsCard({ name: "A", businessName: "B", businessType: "Cafe", email: "a@example.com", phone: null, message: null, leadUrl: "https://console.example/leads/8" }));
     expect(card.body.map((block) => block.type)).toEqual(["TextBlock", "TextBlock", "FactSet"]);
     expect(card.body[2]?.facts?.map((fact) => fact.title)).toEqual(["Business type", "Email"]);
+  });
+
+  it("shows what a website visitor picked and their city, after the business type", () => {
+    const card = parts(leadTeamsCard({ name: "Neha", businessName: "Green Leaf Cafe", businessType: "Not given", wants: "Website, Social & Ads", city: "Pune", email: "neha@example.com", phone: null, message: null, leadUrl: "https://console.example/leads/9" }));
+    expect(card.body[2]?.facts?.map((fact) => fact.title)).toEqual(["Business type", "Wants", "City", "Email"]);
+    expect(card.body[2]?.facts?.[1]?.value).toBe("Website, Social & Ads");
   });
 
   it("names a bug report by its kind and subject, with the reporter, the details and the browser", () => {
@@ -68,4 +82,45 @@ describe("the Teams cards carry what the alert emails carry", () => {
     ]);
     expect(card.actions?.[0]?.title).toBe("Open the error reports");
   });
+
+  it("tells the team about a sign-up that has not paid, with a link to the enquiry", () => {
+    const card = parts(signupTeamsCard({ name: "Arun Kumar", businessName: "Kumar Opticals", email: "arun@example.com", phone: "+91 98201 11111", plan: "Managed Website", leadUrl: "https://console.example/leads/3" }));
+    expect(card.body[0]?.text).toBe("New sign-up: Kumar Opticals");
+    expect(card.body[1]?.text).toBe("Arun Kumar opened an account and has not paid yet");
+    expect(card.body[2]?.facts?.map((fact) => fact.title)).toEqual(["Chose", "Email", "Phone"]);
+    expect(card.actions).toEqual([{ type: "Action.OpenUrl", title: "Open the enquiry", url: "https://console.example/leads/3" }]);
+  });
+
+  it("tells the team about a chatbot lead without any of the visitor's details", () => {
+    const card = parts(chatbotLeadTeamsCard({ clientUrl: "https://console.example/clients/5" }));
+    expect(card.body.map((block) => block.text)).toEqual(["New chatbot lead", "A visitor left their details with a client's chatbot"]);
+    expect(card.actions).toEqual([{ type: "Action.OpenUrl", title: "Open the client", url: "https://console.example/clients/5" }]);
+  });
 });
+
+describe("the payment failure card", () => {
+  it("says what failed, why, the Razorpay id and links to the client", () => {
+    const card = parts(
+      paymentFailedTeamsCard({
+        amount: "₹2,999",
+        matched: true,
+        reason: "Payment was declined by the bank",
+        providerPaymentId: "pay_failed_1",
+        consoleUrl: "https://console.example/clients/b1/billing",
+      }),
+    );
+    expect(card.body[0]?.text).toBe("Payment failed: ₹2,999");
+    expect(card.body[1]?.text).toBe("A client's payment did not go through");
+    expect(card.body[2]?.facts).toEqual([
+      { title: "Reason", value: "Payment was declined by the bank" },
+      { title: "Razorpay payment", value: "pay_failed_1" },
+    ]);
+    expect(card.actions).toEqual([{ type: "Action.OpenUrl", title: "Open in the console", url: "https://console.example/clients/b1/billing" }]);
+  });
+
+  it("says when the failure could not be matched to a client", () => {
+    const card = parts(paymentFailedTeamsCard({ amount: "$65", matched: false, reason: "Razorpay did not say why", providerPaymentId: "pay_2", consoleUrl: "https://console.example/payments" }));
+    expect(card.body[1]?.text).toBe("Not matched to a client. Find it in Razorpay.");
+  });
+});
+

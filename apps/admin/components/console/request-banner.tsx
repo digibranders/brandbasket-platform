@@ -15,7 +15,7 @@ export async function RequestBanner({ ticketId, businessId }: { readonly ticketI
     <p className="mt-6 max-w-2xl text-sm">
       This is a request for a change: {stateLabel(found.change.state)}.{" "}
       {businessId === null ? null : (
-        <Link href={`/clients/${businessId}#requests`} className="text-accent underline">
+        <Link href={`/clients/${businessId}/requests`} className="text-accent underline">
           Send a quote or move it along on the client page
         </Link>
       )}

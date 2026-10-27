@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { parseHoldForm, websiteMoveHref, type WebsiteMoveNotice } from "@/lib/website-form";
+import { recordStaffAction } from "@/lib/server/activity";
 import { getStaffDb } from "@/lib/server/db";
 import { takePreviewPicture } from "@/lib/server/project-preview";
 import { requireStaffAccess } from "@/lib/server/staff-access";
@@ -58,30 +59,36 @@ async function logAndFinish(staffUserId: string, businessId: string, action: str
 
 /** Staff start the work on a project that was sent to us. */
 export async function startBuildingAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const staff = await requireStaffAccess();
+  const { user } = staff;
   const businessId = readBusinessId(formData);
   const refused = await attempt(() => startBuilding(getStaffDb(), { businessId, staffId: user.id }, new Date()));
   if (refused !== null) finish(businessId, refused);
+  await recordStaffAction(staff, { businessId, kind: "project.building", summary: "Started building the website" });
   await logAndFinish(user.id, businessId, "website.building", "building");
 }
 
 /** Staff pause the build with a reason the customer reads exactly as typed. */
 export async function putOnHoldAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const staff = await requireStaffAccess();
+  const { user } = staff;
   const businessId = readBusinessId(formData);
   const hold = parseHoldForm(formData.get("reason"));
   if (!hold.success) finish(businessId, "invalid");
   const refused = await attempt(() => putOnHold(getStaffDb(), { businessId, staffId: user.id, reason: hold.reason }, new Date()));
   if (refused !== null) finish(businessId, refused);
+  await recordStaffAction(staff, { businessId, kind: "project.put_on_hold", summary: "Put the website build on hold", data: { reason: hold.reason } });
   await logAndFinish(user.id, businessId, "website.hold", "paused");
 }
 
 /** Staff take a paused build back to the stage before the pause. */
 export async function resumeBuildingAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const staff = await requireStaffAccess();
+  const { user } = staff;
   const businessId = readBusinessId(formData);
   const refused = await attempt(() => resumeBuilding(getStaffDb(), { businessId, staffId: user.id }, new Date()));
   if (refused !== null) finish(businessId, refused);
+  await recordStaffAction(staff, { businessId, kind: "project.resumed", summary: "Resumed the website build" });
   await logAndFinish(user.id, businessId, "website.resume", "resumed");
 }
 

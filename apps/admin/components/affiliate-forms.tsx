@@ -89,7 +89,7 @@ function FormMessage({
       id={ERROR_ID}
       role="alert"
       tabIndex={-1}
-      className="border-l-2 border-accent py-1 pl-4 text-sm text-accent outline-none"
+      className="border-l-2 border-error py-1 pl-4 text-sm text-error outline-none"
     >
       {state.message}
     </p>
@@ -456,7 +456,7 @@ export function CancelEarningButton({ action }: { readonly action: AffiliateActi
         {isPending ? "…" : "Cancel"}
       </button>
       {state.status === "error" && !isPending ? (
-        <span role="alert" className="ml-2 text-xs text-accent">
+        <span role="alert" className="ml-2 text-xs text-error">
           {state.message}
         </span>
       ) : null}

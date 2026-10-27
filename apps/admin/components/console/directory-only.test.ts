@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { DirectoryOnly } from "./directory-only";
@@ -10,10 +11,10 @@ vi.mock("next/navigation", () => ({
 
 describe("DirectoryOnly", () => {
   it("shows the section where the deployment runs the directory", () => {
-    expect(renderToStaticMarkup(<DirectoryOnly directory>Ads</DirectoryOnly>)).toBe("Ads");
+    expect(renderToStaticMarkup(createElement(DirectoryOnly, { directory: true }, "Ads"))).toBe("Ads");
   });
 
   it("answers as a page that does not exist where it does not (Brandbasket)", () => {
-    expect(() => renderToStaticMarkup(<DirectoryOnly directory={false}>Ads</DirectoryOnly>)).toThrow("NEXT_NOT_FOUND");
+    expect(() => renderToStaticMarkup(createElement(DirectoryOnly, { directory: false }, "Ads"))).toThrow("NEXT_NOT_FOUND");
   });
 });

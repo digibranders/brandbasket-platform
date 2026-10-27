@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 import { businesses } from "./businesses";
@@ -17,6 +18,13 @@ export const leadStatus = pgEnum("lead_status", [
   "lost",
 ]);
 export type LeadStatus = (typeof leadStatus.enumValues)[number];
+
+/**
+ * Where an enquiry came from. The website's form is `website_form`, or `pricing_page` when the visitor arrived with plans
+ * picked in the basket; `signup` is an account opened on the dashboard; `staff` is one a staff member typed in after a call.
+ */
+export const leadSource = pgEnum("lead_source", ["website_form", "pricing_page", "signup", "staff"]);
+export type LeadSource = (typeof leadSource.enumValues)[number];
 
 export const leads = pgTable(
   "leads",
@@ -45,6 +53,15 @@ export const leads = pgTable(
      */
     attachedByStaffId: text("attached_by_staff_id").references(() => staffMembers.userId),
     attachedAt: timestamp("attached_at", { withTimezone: true }),
+    /** Where the enquiry came from. Leads from before this column are `website_form` unless they signed up on the dashboard. */
+    source: leadSource("source").notNull().default("website_form"),
+    /** The website's plan ids the visitor had picked ("website", "growth", "search"); empty for a general enquiry. */
+    plans: text("plans").array().notNull().default(sql`'{}'::text[]`),
+    city: text("city"),
+    /** The website page the form was sent from, as a path. */
+    page: text("page"),
+    /** The staff member who owns this enquiry; null while nobody does. */
+    assignedStaffId: text("assigned_staff_id").references(() => staffMembers.userId),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

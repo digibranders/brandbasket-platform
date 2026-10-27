@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { removeTeamsUrl, saveTeamsUrl, testTeamsUrl } from "@/lib/server/teams-admin";
+import { recordStaffAction } from "@/lib/server/activity";
 import { removeTeamsWebhookAction, saveTeamsWebhookAction, testTeamsWebhookAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
@@ -11,6 +12,7 @@ vi.mock("@/lib/server/staff-access", () => ({ requireStaffAccess: vi.fn() }));
 vi.mock("@/lib/server/staff-role", () => ({ requireStaffCan: vi.fn() }));
 vi.mock("@/lib/server/settings-admin", () => ({ saveSetupCallUrl: vi.fn() }));
 vi.mock("@/lib/server/teams-admin", () => ({ saveTeamsUrl: vi.fn(), removeTeamsUrl: vi.fn(), testTeamsUrl: vi.fn() }));
+vi.mock("@/lib/server/activity", () => ({ recordStaffAction: vi.fn() }));
 
 const ADDRESS = "https://prod-12.centralindia.logic.azure.com/workflows/abc/triggers/manual/paths/invoke?sig=hush";
 const STAFF = { user: { id: "staff-1", email: "owner@example.com" } } as unknown as Awaited<ReturnType<typeof requireStaffCan>>;
@@ -34,24 +36,33 @@ describe("saveTeamsWebhookAction", () => {
     await expect(saveTeamsWebhookAction(form({ teamsDestination: "support", teamsUrl: ADDRESS }))).rejects.toThrow("redirect:/settings?saved=teams-saved#teams");
     expect(requireStaffCan).toHaveBeenCalledWith("integrations");
     expect(saveTeamsUrl).toHaveBeenCalledWith({ destination: "support", url: ADDRESS, staffUserId: "staff-1" }, expect.any(Date));
+    expect(recordStaffAction).toHaveBeenCalledWith(STAFF, {
+      businessId: null,
+      kind: "settings.teams_saved",
+      summary: "Saved a Teams channel",
+      data: { destination: "support" },
+    });
   });
 
   it("saves nothing for an address that is not a Teams webhook, and names the problem", async () => {
     await expect(saveTeamsWebhookAction(form({ teamsDestination: "support", teamsUrl: "https://example.com/hook" }))).rejects.toThrow("redirect:/settings?saved=teams-not-a-teams-address#teams");
     await expect(saveTeamsWebhookAction(form({ teamsDestination: "support", teamsUrl: "http://prod-1.logic.azure.com/x" }))).rejects.toThrow("teams-not-secure");
     expect(saveTeamsUrl).not.toHaveBeenCalled();
+    expect(recordStaffAction).not.toHaveBeenCalled();
   });
 
   it("treats an empty box as nothing pasted rather than as removing the address", async () => {
     await expect(saveTeamsWebhookAction(form({ teamsDestination: "system", teamsUrl: "  " }))).rejects.toThrow("teams-nothing-pasted");
     expect(saveTeamsUrl).not.toHaveBeenCalled();
     expect(removeTeamsUrl).not.toHaveBeenCalled();
+    expect(recordStaffAction).not.toHaveBeenCalled();
   });
 
   it("refuses a channel that does not exist, whatever the form posted", async () => {
     await expect(saveTeamsWebhookAction(form({ teamsDestination: "billing", teamsUrl: ADDRESS }))).rejects.toThrow("redirect:/settings");
     await expect(saveTeamsWebhookAction(form({ teamsUrl: ADDRESS }))).rejects.toThrow("redirect:/settings");
     expect(saveTeamsUrl).not.toHaveBeenCalled();
+    expect(recordStaffAction).not.toHaveBeenCalled();
   });
 });
 
@@ -60,6 +71,12 @@ describe("removeTeamsWebhookAction", () => {
     await expect(removeTeamsWebhookAction(form({ teamsDestination: "enquiries" }))).rejects.toThrow("redirect:/settings?saved=teams-removed#teams");
     expect(requireStaffCan).toHaveBeenCalledWith("integrations");
     expect(removeTeamsUrl).toHaveBeenCalledWith("enquiries");
+    expect(recordStaffAction).toHaveBeenCalledWith(STAFF, {
+      businessId: null,
+      kind: "settings.teams_removed",
+      summary: "Removed a Teams channel",
+      data: { destination: "enquiries" },
+    });
   });
 });
 
@@ -68,5 +85,11 @@ describe("testTeamsWebhookAction", () => {
     vi.mocked(testTeamsUrl).mockResolvedValue(result);
     await expect(testTeamsWebhookAction(form({ teamsDestination: "system" }))).rejects.toThrow(`redirect:/settings?saved=teams-test-${result}#teams`);
     expect(testTeamsUrl).toHaveBeenCalledWith("system", { email: "owner@example.com" }, expect.any(Date));
+    expect(recordStaffAction).toHaveBeenCalledWith(STAFF, {
+      businessId: null,
+      kind: "settings.teams_tested",
+      summary: "Sent a test card to a Teams channel",
+      data: { destination: "system", result },
+    });
   });
 });

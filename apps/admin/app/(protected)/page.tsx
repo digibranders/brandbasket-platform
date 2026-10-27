@@ -1,73 +1,49 @@
-import { listAddOnsToContact, listClients, listLeads, listPaymentsNeedingAttention } from "@brandbasket/db";
+import { UserPlus } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { countPayingClients } from "@brandbasket/shared/lib/billing/client-payment";
 import { firstName } from "@brandbasket/shared/lib/names";
-import { FocusMode, type FocusItem } from "@/components/console/focus-mode";
-import { JourneyMap, stageHref } from "@/components/console/journey-map";
-import { JourneyRows } from "@/components/console/journey-rows";
-import { attentionBySubject, attentionItems, journeySubjects } from "@/lib/pipeline";
-import { getStaffDb } from "@/lib/server/db";
+import { buttonSecondary } from "@/components/console/buttons";
+import { Figures } from "@/components/console/figures";
+import { PageHeader } from "@/components/console/page-header";
+import { CallsToday } from "@/components/today/calls-today";
+import { NeedsSomeone } from "@/components/today/needs-someone";
+import { Systems } from "@/components/today/systems";
 import { requireStaffAccess } from "@/lib/server/staff-access";
-import { clientsWaitingOnUs } from "@/lib/waiting-clients";
+import { loadTodayPage } from "@/lib/server/today";
+import { greeting, todayRange } from "@/lib/team-time";
+import { todaySummary } from "@/lib/today-queue";
 
-export const metadata: Metadata = { title: "Journey" };
+export const metadata: Metadata = { title: "Today" };
 
-/** Flagged payments read for the map; far more than are ever open at once, so none goes unringed. */
-const FLAGGED_READ_LIMIT = 100;
-
-/** Add-on purchases waiting for a first contact; read in full for the same reason. */
-const ADD_ONS_READ_LIMIT = 100;
-
-export default async function JourneyPage(): Promise<ReactElement> {
+/** Everything that needs a person, the business at a glance, today's calls and whether every system is working. */
+export default async function TodayPage(): Promise<ReactElement> {
   const { user } = await requireStaffAccess();
-  const db = getStaffDb();
   const now = new Date();
-  const [clients, leads, flagged, addOns] = await Promise.all([
-    listClients(db),
-    listLeads(db, {}),
-    listPaymentsNeedingAttention(db, { limit: FLAGGED_READ_LIMIT }),
-    listAddOnsToContact(db, ADD_ONS_READ_LIMIT),
-  ]);
-
-  const items = attentionItems({
-    flagged,
-    addOns,
-    waiting: clientsWaitingOnUs(clients, now),
-    newLeads: leads.filter((lead) => lead.status === "new"),
-    now,
-  });
-  const journey = journeySubjects(clients, leads, attentionBySubject(items));
-  const focusItems: FocusItem[] = items.map((item) => ({
-    key: item.key,
-    kind: item.kind,
-    subjectId: item.subjectId,
-    href: item.href,
-    name: item.name,
-    reason: item.reason,
-    at: item.at?.toISOString() ?? null,
-  }));
+  const endOfToday = todayRange(now).end;
+  const today = await loadTodayPage(now);
+  const late = today.items.filter((item) => item.dueAt !== null && item.dueAt.getTime() < now.getTime()).length;
 
   return (
-    <FocusMode
-      items={focusItems}
-      paying={countPayingClients(clients, now)}
-      greeting={
-        <h1 className="heading-display text-[clamp(2.4rem,5.5vw,3.5rem)] font-normal">
-          Hello, <em>{firstName(user.name)}.</em>
-        </h1>
-      }
-    >
-      <JourneyMap journey={journey} />
-      <JourneyRows journey={journey} />
-      {journey.paused === 0 ? null : (
-        <p className="mt-6 text-sm tabular-nums text-ink-soft">
-          <Link href={stageHref("paused")} className="link-underline">
-            Paused · {journey.paused}
+    <div className="grid gap-[1.125rem]">
+      <PageHeader
+        title={`${greeting(now)}, ${firstName(user.name)}.`}
+        meta={todaySummary(now, today.items.length, late)}
+        action={
+          <Link href="/leads/new" className={buttonSecondary}>
+            <UserPlus size={16} aria-hidden="true" />
+            Add enquiry
           </Link>
-        </p>
-      )}
-    </FocusMode>
+        }
+      />
+      <Figures items={today.figures} />
+      <div className="grid items-start gap-[1.375rem] lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <NeedsSomeone items={today.items} now={now} endOfToday={endOfToday} />
+        <div className="grid content-start gap-[1.375rem]">
+          <CallsToday calls={today.calls} now={now} />
+          <Systems lines={today.systems} />
+        </div>
+      </div>
+    </div>
   );
 }

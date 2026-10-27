@@ -3,7 +3,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { users, businesses, businessMembers, staffMembers, accountClosures } from "./schema";
 import { supportAttachments, supportMessages, supportTickets } from "./schema/support";
 import { appendSupportReply, appendSupportReplyWithOutcome, beginSupportAccountErasure, claimSupportTicketsDueRetention, createSupportTicket, createSupportTicketWithOutcome, eraseSupportDataForUser, finalizeSupportTicketRetention, getSupportTicket, getSupportUnreadCount, markSupportAttachmentPurged, markSupportTicketRead, stageSupportAttachment } from "./queries/support";
-import { appendSupportMessageByStaff, appendSupportMessageByStaffWithOutcome, updateSupportTicketByStaff } from "./queries/support-staff";
+import {
+  appendSupportMessageByStaff,
+  appendSupportMessageByStaffWithOutcome,
+  countSupportTicketsAwaitingStaff,
+  listSupportTicketsForStaff,
+  updateSupportTicketByStaff,
+} from "./queries/support-staff";
 import { captureErrorText, openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 import { withUserScope } from "./scope";
 
@@ -141,6 +147,33 @@ describe("support ownership and lifecycle under real database roles", () => {
     expect(await getSupportTicket(dbs.app.db, USER, closed.id)).toBeNull();
     await appendSupportReply(dbs.app.db, { userId: USER, ticketId: resolved.id, body: "The issue returned after your fix.", submissionKey: "reopen-resolved-1234" });
     expect((await getSupportTicket(dbs.app.db, USER, resolved.id))?.ticket.status).toBe("triaged");
+  });
+});
+
+describe("the staff queue count", () => {
+  it("counts new, triaged and in-progress requests, and nothing waiting on the customer or finished", async () => {
+    const waitingOnUs = await createSupportTicket(dbs.app.db, input);
+    const waitingOnThem = await createSupportTicket(dbs.app.db, { ...input, subject: "Second problem", submissionKey: "submission-234567" });
+    const finished = await createSupportTicket(dbs.app.db, { ...input, subject: "Third problem", submissionKey: "submission-345678" });
+    await dbs.staff.db.update(supportTickets).set({ status: "in_progress", version: waitingOnUs.version + 1 }).where(eq(supportTickets.id, waitingOnUs.id));
+    await dbs.staff.db.update(supportTickets).set({ status: "waiting_on_you", version: waitingOnThem.version + 1 }).where(eq(supportTickets.id, waitingOnThem.id));
+    await dbs.staff.db.update(supportTickets).set({ status: "resolved", version: finished.version + 1 }).where(eq(supportTickets.id, finished.id));
+    expect(await countSupportTicketsAwaitingStaff(dbs.staff.db)).toBe(1);
+  });
+});
+
+describe("listSupportTicketsForStaff by business", () => {
+  it("lists only the tickets of the business asked for", async () => {
+    const ofBusiness = await createSupportTicket(dbs.app.db, { ...input, userId: OTHER, businessId, submissionKey: "business-ticket-1234" });
+    const noBusiness = await createSupportTicket(dbs.app.db, input);
+    const page = await listSupportTicketsForStaff(dbs.staff.db, { businessId });
+    expect(page.items.map((ticket) => ticket.id)).toEqual([ofBusiness.id]);
+    expect(page.items.some((ticket) => ticket.id === noBusiness.id)).toBe(false);
+    expect((await listSupportTicketsForStaff(dbs.staff.db, { businessId: "01a0f71b-8402-7d48-a90a-000000000000" })).items).toEqual([]);
+  });
+
+  it("refuses a business id that is not one", async () => {
+    await expect(listSupportTicketsForStaff(dbs.staff.db, { businessId: "nope" })).rejects.toThrow(/Business ID/);
   });
 });
 

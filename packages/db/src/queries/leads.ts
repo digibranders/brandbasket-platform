@@ -10,6 +10,7 @@ import {
   subscriptions,
   users,
   type BillingCurrency,
+  type LeadSource,
   type LeadStatus,
 } from "../schema";
 
@@ -37,6 +38,13 @@ export interface NewLead {
    */
   readonly currency: BillingCurrency;
   readonly message: string | null;
+  /** Where it came from; the database's default is `website_form`. */
+  readonly source?: LeadSource;
+  /** The website plan ids picked in the basket ("website", "growth", "search"). */
+  readonly plans?: readonly string[];
+  readonly city?: string | null;
+  /** The website page the form was sent from, as a path. */
+  readonly page?: string | null;
 }
 
 export interface Lead {
@@ -54,6 +62,12 @@ export interface Lead {
   /** Set only when staff attached an existing account to this lead's business by hand. */
   readonly attachedByStaffId: string | null;
   readonly attachedAt: Date | null;
+  readonly source: LeadSource;
+  readonly plans: readonly string[];
+  readonly city: string | null;
+  readonly page: string | null;
+  /** The staff member who owns this enquiry, or null. */
+  readonly assignedStaffId: string | null;
   readonly createdAt: Date;
 }
 
@@ -71,6 +85,11 @@ const LEAD_COLUMNS = {
   businessId: leads.businessId,
   attachedByStaffId: leads.attachedByStaffId,
   attachedAt: leads.attachedAt,
+  source: leads.source,
+  plans: leads.plans,
+  city: leads.city,
+  page: leads.page,
+  assignedStaffId: leads.assignedStaffId,
   createdAt: leads.createdAt,
 } as const;
 
@@ -80,7 +99,7 @@ const LEAD_COLUMNS = {
  */
 export async function createLead(db: Database, lead: NewLead): Promise<{ readonly id: string }> {
   const id = uuidv7();
-  await db.insert(leads).values({ ...lead, id });
+  await db.insert(leads).values({ ...lead, plans: lead.plans === undefined ? undefined : [...lead.plans], id });
   return { id };
 }
 
@@ -144,6 +163,7 @@ export async function recordSignupLead(db: Database, signup: SignupLead): Promis
       currency,
       message: null,
       status: "account_created",
+      source: "signup",
       notes: note,
       businessId: signup.businessId,
     });
@@ -327,4 +347,61 @@ export async function changeLeadCurrency(
     return "changed";
   });
 }
+
+/** Enquiries waiting for someone to get in touch: new ones, and accounts opened that have not paid. */
+export const LEAD_STATUSES_TO_CONTACT = ["new", "account_created"] as const satisfies readonly LeadStatus[];
+
+/** How many enquiries are waiting for someone to get in touch (the console rail's Enquiries count). */
+export async function countLeadsToContact(db: Database): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(leads)
+    .where(inArray(leads.status, [...LEAD_STATUSES_TO_CONTACT]));
+  return rows[0]?.count ?? 0;
+}
+
+/**
+ * Gives an enquiry to a staff member, or to nobody (null). Returns false when the lead does not exist. The caller checks
+ * the staff member is active; the foreign key only checks they are on the staff table.
+ */
+export async function assignLead(db: Database, leadId: string, staffUserId: string | null): Promise<boolean> {
+  const updated = await db.update(leads).set({ assignedStaffId: staffUserId }).where(eq(leads.id, leadId)).returning({ id: leads.id });
+  return updated.length > 0;
+}
+
+/** One setup link sent for a lead, without its token. */
+export interface LeadInvite {
+  readonly id: string;
+  readonly createdAt: Date;
+  readonly expiresAt: Date;
+  readonly redeemedAt: Date | null;
+  readonly revokedAt: Date | null;
+}
+
+/** Every setup link sent for a lead, newest first. */
+export async function listLeadInvites(db: Database, leadId: string): Promise<readonly LeadInvite[]> {
+  return db
+    .select({
+      id: setupInvites.id,
+      createdAt: setupInvites.createdAt,
+      expiresAt: setupInvites.expiresAt,
+      redeemedAt: setupInvites.redeemedAt,
+      revokedAt: setupInvites.revokedAt,
+    })
+    .from(setupInvites)
+    .where(eq(setupInvites.leadId, leadId))
+    .orderBy(desc(setupInvites.createdAt), desc(setupInvites.id));
+}
+
+/** When the newest enquiry from the website's forms arrived, or null when none has: shows staff whether the form reaches us. */
+export async function findLatestWebsiteLeadAt(db: Runner): Promise<Date | null> {
+  const rows = await db
+    .select({ at: leads.createdAt })
+    .from(leads)
+    .where(inArray(leads.source, ["website_form", "pricing_page"]))
+    .orderBy(desc(leads.createdAt))
+    .limit(1);
+  return rows[0]?.at ?? null;
+}
+
 

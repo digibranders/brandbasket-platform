@@ -73,6 +73,12 @@ export function formatIstTime(date: Date): string {
   return `${new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(date)} IST`;
 }
 
+/** A link that starts a phone call, from a number as people write it ("+91 98200 11111"). Null when there are no digits to dial. */
+export function telUrl(phone: string | null | undefined): string | null {
+  const dialable = phone?.replace(/[^\d+]/g, "") ?? "";
+  return /\d/.test(dialable) ? `tel:${dialable}` : null;
+}
+
 /** What one alert says. Everything optional is left out of the card when empty. */
 export interface TeamsCardInput {
   readonly title: string;
@@ -81,6 +87,8 @@ export interface TeamsCardInput {
   /** A longer text, such as an enquiry's message. */
   readonly text?: string | null;
   readonly open?: { readonly label: string; readonly url: string } | null;
+  /** More buttons after the open button, such as a call. */
+  readonly buttons?: readonly { readonly label: string; readonly url: string }[];
 }
 
 const MAX_TITLE = 200;
@@ -119,6 +127,16 @@ export function teamsCard(input: TeamsCardInput): TeamsMessage {
     version: "1.4",
     body,
   };
-  if (input.open) content.actions = [{ type: "Action.OpenUrl", title: input.open.label, url: input.open.url }];
+  const buttons = [...(input.open ? [input.open] : []), ...(input.buttons ?? [])];
+  if (buttons.length > 0) content.actions = buttons.map((button) => ({ type: "Action.OpenUrl", title: button.label, url: button.url }));
   return { type: "message", attachments: [{ contentType: "application/vnd.microsoft.card.adaptive", contentUrl: null, content }] };
 }
+
+/** The first line of a card (its title), for the console's list of alerts. "Alert" when the card has none. */
+export function teamsCardTitle(message: TeamsMessage): string {
+  const body = message.attachments[0].content.body;
+  const first: unknown = Array.isArray(body) ? body[0] : undefined;
+  const text = typeof first === "object" && first !== null ? (first as Record<string, unknown>).text : undefined;
+  return typeof text === "string" && text.trim() !== "" ? text.trim().slice(0, 200) : "Alert";
+}
+

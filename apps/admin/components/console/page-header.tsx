@@ -3,14 +3,14 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { BackLink } from "./back-link";
 
 interface PageHeaderProps {
-  /** Newsreader headline. Wrap a phrase in `<em>` for the italic burgundy emphasis. */
+  /** The page's title, in the display face. */
   readonly title: ReactNode;
   readonly back?: { readonly href: string; readonly label: string };
   /** An avatar or mark shown before the title on record pages. */
   readonly lead?: ReactNode;
-  /** One quiet line under the title: who, where, when. */
+  /** One quiet line under the title: who, where, when, how many. */
   readonly meta?: ReactNode;
-  /** The page's primary action, top right. */
+  /** The page's actions, top right. At most one of them is the dark button. */
   readonly action?: ReactNode;
   /** Anything that belongs to the header itself, such as a stage track. */
   readonly children?: ReactNode;
@@ -20,15 +20,15 @@ export function PageHeader({ title, back, lead, meta, action, children }: PageHe
   return (
     <header>
       {back === undefined ? null : <BackLink href={back.href} label={back.label} />}
-      <div className={cn("flex flex-wrap items-end justify-between gap-x-8 gap-y-5", back !== undefined && "mt-5")}>
-        <div className="flex min-w-0 items-center gap-5">
+      <div className={cn("flex flex-wrap items-end justify-between gap-x-6 gap-y-4", back !== undefined && "mt-4")}>
+        <div className="flex min-w-0 items-center gap-4">
           {lead}
           <div className="min-w-0">
-            <h1 className="heading-display text-[clamp(2.25rem,5vw,3.25rem)] font-normal">{title}</h1>
-            {meta === undefined ? null : <p className="mt-2 text-sm tabular-nums text-ink-soft">{meta}</p>}
+            <h1 className="font-display text-[1.625rem] font-semibold leading-[1.05] tracking-[-0.035em] text-ink">{title}</h1>
+            {meta === undefined ? null : <p className="mt-1.5 text-sm tabular-nums text-ink-2">{meta}</p>}
           </div>
         </div>
-        {action === undefined ? null : <div className="flex shrink-0 flex-wrap items-center gap-3">{action}</div>}
+        {action === undefined ? null : <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}
       </div>
       {children}
     </header>

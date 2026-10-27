@@ -1,5 +1,5 @@
 import { formatMoney, type MoneyCurrency } from "./money";
-import { formatIstTime, teamsCard, type TeamsMessage } from "./teams-webhook";
+import { formatIstTime, teamsCard, telUrl, type TeamsMessage } from "./teams-webhook";
 
 /*
  * The Teams card for a payment (docs/plans/28-teams-alert-catalogue.md): who paid, what for, how, and where to open them.
@@ -91,7 +91,14 @@ export function paymentTeamsCard(input: PaymentCardInput): TeamsMessage {
     ],
     text: attention === null ? null : (ATTENTION_LABELS[attention] ?? attention),
     open: { label: "Open the client", url: input.consoleUrl },
+    buttons: callButton(input.customer.phone),
   });
+}
+
+/** A "Call now" button for the customer's number, or none when there is no number. */
+function callButton(phone: string | null): { label: string; url: string }[] {
+  const url = telUrl(phone);
+  return url === null ? [] : [{ label: "Call now", url }];
 }
 
 /** The plan states staff are told about: a charge Razorpay is retrying, billing that stopped, and a plan that ended. */
@@ -131,5 +138,6 @@ export function planStatusTeamsCard(input: PlanStatusCardInput): TeamsMessage {
     ],
     text: PLAN_STATUS_TEXT[input.status],
     open: { label: "Open the client", url: input.consoleUrl },
+    buttons: callButton(input.customer.phone),
   });
 }

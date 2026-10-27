@@ -177,10 +177,10 @@ describe("the Invoices page", () => {
     expect(last).toContain('href="/invoices?month=2999-11"');
   });
 
-  it("keeps the list out of a table, as the console's design asks", async () => {
+  it("shows the list as a table, as the console's design asks", async () => {
     vi.mocked(listTaxInvoicesIssuedBetween).mockResolvedValue([invoiceOf({ id: "inv-1", serial: 1 })]);
     const html = render(await InvoicesPage({ searchParams: search("2026-10") }));
-    expect(html).not.toMatch(/<table|<tr|<td/);
+    expect(html).toMatch(/<table|<tr|<td/);
   });
 
   it("says plainly when the month has no invoices, and shows no missing section when none are missing", async () => {
@@ -201,8 +201,8 @@ describe("the Invoices page", () => {
     const html = render(await InvoicesPage({ searchParams: search("2026-10") }));
     const text = visibleText(html);
 
-    expect(html).toContain('href="/clients/biz-1#tax-invoices"');
-    expect(html).toContain('href="/clients/biz-2#tax-invoices"');
+    expect(html).toContain('href="/clients/biz-1/billing#tax-invoices"');
+    expect(html).toContain('href="/clients/biz-2/billing#tax-invoices"');
     expect(text).toContain("Riverside Dental");
     expect(text).toContain("₹3,539 on 9 October 2026");
     expect(text).toContain("2 to issue");

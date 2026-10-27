@@ -1,7 +1,7 @@
 import type { Database } from "@brandbasket/db";
 import type { EmailMessage } from "./message";
 import { emailSenderDefaults } from "./brand";
-import { createOutboxTransport, OUTBOX_TRANSPORT_NAME, recordOutboxCopy, type EmailTransport } from "./outbox";
+import { createOutboxTransport, recordOutboxCopy, type EmailTransport } from "./outbox";
 
 export interface BrevoSender {
   readonly email: string;
@@ -25,8 +25,6 @@ export const BREVO_TIMEOUT_MS = 10_000;
 /** One try plus one retry: a timed out request is usually a blip, and a customer is waiting on the code. */
 export const BREVO_MAX_ATTEMPTS = 2;
 export const BREVO_RETRY_DELAY_MS = 500;
-/** Transport name stored on an outbox row that records a message Brevo could not deliver. */
-export const BREVO_FALLBACK_TRANSPORT_NAME = OUTBOX_TRANSPORT_NAME;
 
 export class BrevoDeliveryError extends Error {
   readonly statusCode: number;
@@ -48,6 +46,38 @@ export class EmailConfigurationError extends Error {
   }
 }
 
+/** What Brevo said when it took a message: its id, to find the message in Brevo's own logs. */
+export interface BrevoReceipt {
+  readonly providerMessageId: string | null;
+}
+
+/** A transport that sends through Brevo and answers with Brevo's receipt. */
+export interface BrevoTransport {
+  readonly send: (message: EmailMessage) => Promise<BrevoReceipt>;
+}
+
+const MAX_FAILURE_LENGTH = 300;
+
+/** Brevo's id from its reply (`{ "messageId": "<...>" }`), or null when the reply has none. */
+function messageIdOf(answer: unknown): string | null {
+  if (typeof answer !== "object" || answer === null) return null;
+  const id = (answer as Record<string, unknown>).messageId;
+  return typeof id === "string" && id !== "" ? id : null;
+}
+
+/**
+ * Why a message did not go, for the outbox row and the console. Brevo's own answer is kept (it says which address or
+ * field it refused); a thrown error's message is not, as it can carry the request.
+ */
+export function emailFailureSummary(error: unknown): string {
+  if (error instanceof BrevoDeliveryError) {
+    const body = error.responseBody.trim().replace(/\s+/g, " ");
+    return `Brevo answered ${error.statusCode}${body === "" ? "" : `: ${body}`}`.slice(0, MAX_FAILURE_LENGTH);
+  }
+  if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) return "Brevo did not answer in time";
+  return "Brevo could not be reached";
+}
+
 /** A timeout, a network error, a 5xx or a 429 may pass on a second try; any other 4xx (bad key, sender, blocked) will not. */
 function isRetryable(error: unknown): boolean {
   if (!(error instanceof BrevoDeliveryError)) return true;
@@ -59,14 +89,14 @@ type EmailEnvironment = Readonly<Record<string, string | undefined>>;
 /**
  * Delivers transactional emails via the Brevo REST API (v3).
  */
-export function createBrevoTransport(config: BrevoConfig): EmailTransport {
+export function createBrevoTransport(config: BrevoConfig): BrevoTransport {
   const fetcher = config.fetchFn ?? fetch;
   const fallback = emailSenderDefaults().from;
   const senderEmail = config.defaultSender?.email ?? fallback.email;
   const senderName = config.defaultSender?.name ?? fallback.name;
 
   return {
-    send: async (message: EmailMessage): Promise<void> => {
+    send: async (message: EmailMessage): Promise<BrevoReceipt> => {
       const payload: Record<string, unknown> = {
         sender: {
           email: senderEmail,
@@ -112,7 +142,7 @@ export function createBrevoTransport(config: BrevoConfig): EmailTransport {
               errorText,
             );
           }
-          return;
+          return { providerMessageId: messageIdOf(await response.json().catch(() => null)) };
         } catch (error) {
           const willRetry = attempt < BREVO_MAX_ATTEMPTS && isRetryable(error);
           console.error(
@@ -128,24 +158,29 @@ export function createBrevoTransport(config: BrevoConfig): EmailTransport {
 }
 
 /**
- * Delivers live through Brevo and records a copy in the database outbox for staff. If Brevo fails (rejected, unreachable
- * or timed out) the message is recorded in the outbox as undelivered instead, so staff still see it, and the failure is
- * logged rather than thrown: an email must never fail the request that triggered it. Only if the outbox write also
- * fails does the error reach the caller.
+ * Delivers live through Brevo and records a copy in the database outbox for staff, with what became of it. If Brevo
+ * fails (rejected, unreachable or timed out) the copy is recorded as failed with the reason, so staff see it and can send
+ * it again, and the failure is logged rather than thrown: an email must never fail the request that triggered it. Only
+ * if the outbox write also fails does the error reach the caller.
  */
-export function createDualTransport(brevoTransport: EmailTransport, db: Database): EmailTransport {
+export function createDualTransport(
+  brevoTransport: { readonly send: (message: EmailMessage) => Promise<BrevoReceipt | void> },
+  db: Database,
+): EmailTransport {
   return {
     send: async (message: EmailMessage): Promise<void> => {
+      let receipt: BrevoReceipt | void;
       try {
-        await brevoTransport.send(message);
+        receipt = await brevoTransport.send(message);
       } catch (error) {
-        console.error("[email] Brevo delivery failed; recording the message in the outbox instead", error);
-        await recordOutboxCopy(db, message, BREVO_FALLBACK_TRANSPORT_NAME);
+        console.error("[email] Brevo delivery failed; recording the message as failed", error);
+        await recordOutboxCopy(db, message, "brevo", {}, { status: "failed", error: emailFailureSummary(error) });
         return;
       }
 
       try {
-        await recordOutboxCopy(db, message, "brevo");
+        const providerMessageId = typeof receipt === "object" && receipt !== null ? receipt.providerMessageId : null;
+        await recordOutboxCopy(db, message, "brevo", {}, { status: "sent", providerMessageId });
       } catch (error) {
         console.warn("[email] Brevo email sent but recording to outbox table failed", error);
       }
@@ -159,7 +194,7 @@ export function createDualTransport(brevoTransport: EmailTransport, db: Database
  * when it is unset). ALERTS_FROM_EMAIL, ALERTS_FROM_NAME and SUPPORT_ALERT_EMAIL, when set, win over the defaults;
  * BRANDBASKET_MAIL_FROM wins over ALERTS_FROM_EMAIL.
  */
-function brevoFromEnv(env: EmailEnvironment, replyTo?: BrevoSender, fetchFn?: typeof fetch): EmailTransport | null {
+function brevoFromEnv(env: EmailEnvironment, replyTo?: BrevoSender, fetchFn?: typeof fetch): BrevoTransport | null {
   const apiKey = env.BREVO_API_KEY?.trim();
   if (!apiKey) return null;
   const defaults = emailSenderDefaults();
@@ -182,7 +217,7 @@ function brevoFromEnv(env: EmailEnvironment, replyTo?: BrevoSender, fetchFn?: ty
 export function createEmailDelivery(
   env: EmailEnvironment = process.env,
   options?: { readonly fetchFn?: typeof fetch },
-): EmailTransport | null {
+): BrevoTransport | null {
   return brevoFromEnv(env, undefined, options?.fetchFn);
 }
 

@@ -18,21 +18,25 @@ function names(body: string): string[] {
 }
 
 const brand = block('html[data-brand="brandbasket"]');
-const customer = block('html[data-brand="brandbasket"][data-app="customer"]');
+const v2 = block('html[data-brand="brandbasket"]:is([data-app="customer"], [data-app="console"])');
 
-describe("the customer dashboard's palette", () => {
-  it("has its own block", () => {
-    expect(customer).not.toBe("");
+describe("the v2 palette for the customer dashboard and the staff console", () => {
+  it("has one block, for both apps", () => {
+    expect(v2).not.toBe("");
   });
 
   it("sets every colour and font the Brandbasket block sets, so nothing of the old look leaks through", () => {
-    const remapped = names(customer);
+    const remapped = names(v2);
     for (const name of names(brand)) expect(remapped).toContain(name);
   });
 
   it("drops the old navy and Figtree", () => {
-    expect(customer.toLowerCase()).not.toContain("#0c1e2e");
-    expect(customer).not.toContain("figtree");
+    expect(v2.toLowerCase()).not.toContain("#0c1e2e");
+    expect(v2).not.toContain("figtree");
+  });
+
+  it("leaves no rule keyed to the customer app alone", () => {
+    expect(css).not.toContain('html[data-brand="brandbasket"][data-app="customer"]');
   });
 
   it("defines the v2 tokens the new screens use", () => {

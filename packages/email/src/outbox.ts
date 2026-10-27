@@ -20,12 +20,22 @@ function storedMessage(message: EmailMessage, options: OutboxOptions): EmailMess
   return message.outboxCopy ?? message;
 }
 
-/** Writes the outbox row for a message, using its redacted copy when it has one. */
+/** What became of a message: sent by Brevo (with Brevo's id), kept locally, or not taken by Brevo (with the reason). */
+export interface EmailDeliveryResult {
+  readonly status: "sent" | "local_only" | "failed";
+  readonly providerMessageId?: string | null;
+  readonly error?: string | null;
+}
+
+const KEPT_LOCALLY: EmailDeliveryResult = { status: "local_only" };
+
+/** Writes the outbox row for a message, using its redacted copy when it has one, and what became of it. */
 export async function recordOutboxCopy(
   db: Database | ScopedTransaction,
   message: EmailMessage,
   transport: string,
   options: OutboxOptions = {},
+  result: EmailDeliveryResult = KEPT_LOCALLY,
 ): Promise<void> {
   const stored = storedMessage(message, options);
   await recordEmail(db, {
@@ -35,6 +45,10 @@ export async function recordOutboxCopy(
     bodyText: stored.bodyText,
     bodyHtml: stored.bodyHtml,
     transport,
+    status: result.status,
+    providerMessageId: result.providerMessageId ?? null,
+    error: result.error ?? null,
+    bodyRedacted: stored !== message,
   });
 }
 

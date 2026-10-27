@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import type { ReferralFormState } from "@/components/referral-code-form";
 import { retireReferralCodeFor } from "@/lib/server/referral-admin";
-import { requireStaffAccess } from "@/lib/server/staff-access";
+import { recordStaffAction } from "@/lib/server/activity";
+import { requireStaffCan } from "@/lib/server/staff-role";
 
 /**
  * Saves the parts of a code that may still change: whether it is active, when it expires, and how many may redeem
@@ -18,11 +19,12 @@ export async function retireReferralCodeAction(
   _previous: ReferralFormState,
   formData: FormData,
 ): Promise<ReferralFormState> {
-  await requireStaffAccess();
+  const staff = await requireStaffCan("money");
   const outcome = await retireReferralCodeFor({ codeId, formData });
   if (outcome.kind === "refused") {
     return { status: "error", message: outcome.refusal.message, field: outcome.refusal.field, values: {} };
   }
+  await recordStaffAction(staff, { businessId: null, kind: "coupon.updated", summary: "Saved a code's settings", data: { codeId } });
   revalidatePath(`/coupons/${codeId}`);
   revalidatePath("/coupons");
   revalidatePath("/affiliates", "layout");

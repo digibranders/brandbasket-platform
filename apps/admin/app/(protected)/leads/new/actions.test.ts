@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess, type GrantedStaff } from "@/lib/server/staff-access";
+import { recordStaffAction } from "@/lib/server/activity";
 import { createLeadAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
@@ -13,6 +14,7 @@ vi.mock("@brandbasket/db", async () => {
 });
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("@/lib/server/staff-access", () => ({ requireStaffAccess: vi.fn() }));
+vi.mock("@/lib/server/activity", () => ({ recordStaffAction: vi.fn() }));
 
 const DB = { name: "staff-db" } as unknown as ReturnType<typeof getStaffDb>;
 const STAFF = { user: { id: "staff-1" }, staff: { userId: "staff-1", role: "support" } } as unknown as GrantedStaff;
@@ -49,6 +51,7 @@ describe("createLeadAction", () => {
   it("adds a lead with an email and no phone number, billed in USD since nothing places it in India", async () => {
     await expect(createLeadAction(IDLE, form(POSTED))).rejects.toThrow(`redirect:/leads/${LEAD_ID}`);
     expect(createLead).toHaveBeenCalledWith(DB, expect.objectContaining({ email: "asha@example.com", phone: null, currency: "USD" }));
+    expect(recordStaffAction).toHaveBeenCalledWith(STAFF, { businessId: null, kind: "lead.created", summary: "Added an enquiry", data: { leadId: LEAD_ID } });
   });
 
   it("still keeps a phone number when one is given, and bills an Indian number in INR", async () => {
@@ -66,5 +69,10 @@ describe("createLeadAction", () => {
     const outcome = await createLeadAction(IDLE, form({ ...POSTED, phone: "call me" }));
     expect(outcome).toMatchObject({ status: "error", field: "phone" });
     expect(createLead).not.toHaveBeenCalled();
+  });
+
+  it("records a lead staff typed in as added after a call", async () => {
+    await expect(createLeadAction(IDLE, form(POSTED))).rejects.toThrow("redirect:/leads/");
+    expect(createLead).toHaveBeenCalledWith(DB, expect.objectContaining({ source: "staff" }));
   });
 });

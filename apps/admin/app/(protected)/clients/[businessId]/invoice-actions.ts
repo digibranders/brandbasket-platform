@@ -11,6 +11,7 @@ import { submittedValues } from "@/lib/form-values";
 import { invoiceNoticeHref } from "@/lib/invoice-notices";
 import { getStaffDb } from "@/lib/server/db";
 import { issueClientMissingInvoice } from "@/lib/server/invoices-admin";
+import { recordStaffAction } from "@/lib/server/activity";
 import { requireStaffCan } from "@/lib/server/staff-role";
 
 const idSchema = z.uuid();
@@ -26,11 +27,14 @@ function readId(value: FormDataEntryValue | null, what: string): string {
  * missing an invoice for; the work and its refusals are in issueClientMissingInvoice.
  */
 export async function issueMissingInvoiceAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffCan("money");
+  const staff = await requireStaffCan("money");
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The invoice's business");
   const paymentId = readId(formData.get("paymentId"), "The invoice's payment");
   const notice = await issueClientMissingInvoice(businessId, paymentId, new Date(), user.id);
+  await recordStaffAction(staff, { businessId, kind: "invoice.issued", summary: "Issued a missing tax invoice", data: { paymentId, result: notice } });
   revalidatePath(`/clients/${businessId}`);
+  revalidatePath(`/clients/${businessId}`, "layout");
   revalidatePath("/invoices");
   redirect(invoiceNoticeHref(businessId, notice));
 }
@@ -45,12 +49,16 @@ export async function saveClientBillingDetailsAction(
   _previous: StaffBillingDetailsState,
   formData: FormData,
 ): Promise<StaffBillingDetailsState> {
-  const { user } = await requireStaffCan("money");
+  const staff = await requireStaffCan("money");
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The billing details' business");
   const parsed = parseBillingDetails(formData);
   if (!parsed.ok) return { status: "error", ...firstBillingDetailsProblem(parsed.errors), values: submittedValues(formData) };
   await saveBillingProfile(getStaffDb(), { businessId, ...parsed.details });
   logBillingEvent("info", "billing-details-saved-by-staff", { businessId, savedBy: user.id });
+  // The summary never carries the details themselves: they are a customer's name, GSTIN and address.
+  await recordStaffAction(staff, { businessId, kind: "billing.details_saved", summary: "Saved the billing details" });
   revalidatePath(`/clients/${businessId}`);
+  revalidatePath(`/clients/${businessId}`, "layout");
   return { status: "saved" };
 }

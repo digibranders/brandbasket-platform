@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { findClientDetail, findMediaForStaff, listClients } from "./queries/clients";
+import { findClientDetail, findMediaForStaff, listBusinessMembersForStaff, listClients, renameBusinessOwner } from "./queries/clients";
 import { insertMediaAsset, newMediaAssetId, softDeleteMediaAsset } from "./queries/media";
 import {
   markStepComplete,
@@ -13,6 +13,7 @@ import {
 import { submitProject } from "./queries/projects";
 import { businesses, businessMembers, payments, plans, projects, users, type PaymentKind, type PaymentStatus } from "./schema";
 import { insertSubscription } from "./queries/billing";
+import { openAccountClosure } from "./queries/account-closures";
 import { phoneAccountEmail } from "./phone-account";
 import { withTenantScope, type ScopedTransaction } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
@@ -309,3 +310,71 @@ describe("findMediaForStaff", () => {
     expect(await findMediaForStaff(dbs.staff.db, mediaId)).toBeNull();
   });
 });
+
+describe("listClients include (contract C3b)", () => {
+  it("lists paying businesses by default and any mix of paying, not paid and leaving when asked", async () => {
+    const [unpaid] = await dbs.staff.db
+      .insert(businesses)
+      .values({ slug: "not-paid-yet", name: "Not Paid Yet", currency: "INR" })
+      .returning({ id: businesses.id });
+    if (unpaid === undefined) throw new Error("Seed business was not inserted");
+    const names = async (include?: readonly ("paying" | "not_paid" | "leaving")[]): Promise<string[]> =>
+      (await listClients(dbs.staff.db, include === undefined ? undefined : { include })).map((client) => client.businessName);
+
+    expect(await names()).toEqual(["Harbour Bakery"]);
+    expect(await listClients(dbs.staff.db, {})).toEqual(await listClients(dbs.staff.db));
+    expect(await names(["not_paid"])).toEqual(["Not Paid Yet"]);
+    expect(await names(["paying", "not_paid"])).toEqual(["Not Paid Yet", "Harbour Bakery"]);
+    expect(await names(["leaving"])).toEqual([]);
+    expect(await names([])).toEqual([]);
+
+    const notPaid = (await listClients(dbs.staff.db, { include: ["not_paid"] }))[0];
+    expect(notPaid?.billing.firstPayment).toBeNull();
+
+    await openAccountClosure(dbs.staff.db, {
+      userId: OWNER,
+      businessId,
+      now: new Date("2026-10-01T09:00:00.000Z"),
+      eraseAfter: new Date("2026-10-31T09:00:00.000Z"),
+    });
+    expect(await names(["leaving"])).toEqual(["Harbour Bakery"]);
+    expect(await names(["not_paid", "leaving"])).toEqual(["Not Paid Yet", "Harbour Bakery"]);
+    // A leaving business that paid is still paying: the default list does not change.
+    expect(await names()).toEqual(["Harbour Bakery"]);
+  });
+});
+
+describe("a business's members", () => {
+  it("lists the owner and editors, oldest first, hiding a phone account's placeholder email", async () => {
+    await dbs.staff.db.insert(users).values({ id: "editor-1", name: "Sam Editor", email: phoneAccountEmail("+919820012345"), phoneNumber: "+919820012345" });
+    await dbs.staff.db.insert(businessMembers).values({ businessId, userId: "editor-1", role: "editor" });
+
+    const members = await listBusinessMembersForStaff(dbs.staff.db, businessId);
+    expect(members.map((member) => [member.userId, member.role, member.email, member.phone])).toEqual([
+      [OWNER, "owner", "riley@example.com", null],
+      ["editor-1", "editor", null, "+919820012345"],
+    ]);
+    expect(await listBusinessMembersForStaff(dbs.staff.db, "not-a-uuid")).toEqual([]);
+  });
+
+  it("renames the owner of this business only", async () => {
+    expect(await renameBusinessOwner(dbs.staff.db, { businessId, userId: OWNER, name: "Riley Fernandes" })).toBe(true);
+    expect((await findClientDetail(dbs.staff.db, businessId))?.owner?.name).toBe("Riley Fernandes");
+
+    await dbs.staff.db.insert(users).values({ id: "editor-2", name: "Kim Editor", email: "kim@example.com" });
+    await dbs.staff.db.insert(businessMembers).values({ businessId, userId: "editor-2", role: "editor" });
+    expect(await renameBusinessOwner(dbs.staff.db, { businessId, userId: "editor-2", name: "Not The Owner" })).toBe(false);
+    expect(await renameBusinessOwner(dbs.staff.db, { businessId: "not-a-uuid", userId: OWNER, name: "X" })).toBe(false);
+  });
+});
+
+describe("a refunded first payment", () => {
+  it("keeps the business a paying client with its first payment", async () => {
+    await dbs.owner.db.update(payments).set({ status: "refunded" }).where(eq(payments.businessId, businessId));
+    const client = (await listClients(dbs.staff.db)).find((row) => row.businessId === businessId);
+    expect(client?.businessName).toBe("Harbour Bakery");
+    expect(client?.billing.firstPayment).not.toBeNull();
+  });
+});
+
+

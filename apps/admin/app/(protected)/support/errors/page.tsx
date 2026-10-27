@@ -4,19 +4,23 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { listErrorIssues, type ErrorIssueStatus } from "@brandbasket/db";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { LIFT } from "@/components/console/classes";
 import { FilterPills } from "@/components/console/filter-pills";
-import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
+import { EmptyLine } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
+import { StatusPill, type PillTone } from "@/components/console/status-pill";
+import { TABLE, TD, TD_NUM, TD_TIME, TH } from "@/components/console/table";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 
-export const metadata: Metadata = { title: "Automatic errors" };
+export const metadata: Metadata = { title: "Errors" };
 const STATUS_LABELS: Record<ErrorIssueStatus, string> = { new: "New", investigating: "Investigating", resolved: "Resolved", ignored: "Ignored" };
+const STATUS_TONES: Record<ErrorIssueStatus, PillTone> = { new: "problem", investigating: "progress", resolved: "done", ignored: "todo" };
 
 export default async function AutomaticErrorsPage({ searchParams }: { readonly searchParams: Promise<{ readonly status?: string; readonly page?: string }> }): Promise<ReactElement> {
   await requireStaffAccess();
   const search = await searchParams;
-  const status = search.status !== undefined && Object.hasOwn(STATUS_LABELS, search.status) ? search.status as ErrorIssueStatus : undefined;
+  const status = search.status !== undefined && Object.hasOwn(STATUS_LABELS, search.status) ? (search.status as ErrorIssueStatus) : undefined;
   const parsedPage = Number(search.page ?? 1);
   const page = Number.isSafeInteger(parsedPage) ? Math.max(1, Math.min(400, parsedPage)) : 1;
   const { issues, total } = await listErrorIssues(getStaffDb(), { status, page });
@@ -24,25 +28,78 @@ export default async function AutomaticErrorsPage({ searchParams }: { readonly s
   const pageHref = (nextPage: number): string => `/support/errors?${new URLSearchParams({ ...(status === undefined ? {} : { status }), page: String(nextPage) })}`;
   return (
     <>
-      <PageHeader title="Automatic errors" back={{ href: "/support", label: "Support" }} meta={`${total.toLocaleString("en-IN")} grouped ${total === 1 ? "issue" : "issues"}`} />
-      <div className="mt-8">
-        <FilterPills label="Support views" options={[{ href: "/support", label: "User tickets", current: false }, { href: "/support/errors", label: "Automatic errors", current: true }]} />
+      <PageHeader title="Errors" lead={`${total.toLocaleString("en-IN")} grouped ${total === 1 ? "issue" : "issues"}. Unexpected failures captured by ${adminBrand().name}.`} />
+      <div className="mt-6">
+        <FilterPills
+          label="Filter errors"
+          options={[
+            { href: "/support/errors", label: "All", current: status === undefined },
+            ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ href: `/support/errors?status=${value}`, label, current: status === value })),
+          ]}
+        />
       </div>
-      <div className="mt-5">
-        <FilterPills label="Filter automatic errors" options={[{ href: "/support/errors", label: "All", current: status === undefined }, ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ href: `/support/errors?status=${value}`, label, current: status === value }))]} />
-      </div>
-      <p className="mt-5 max-w-2xl text-sm text-ink-soft">Unexpected failures captured by {adminBrand().name}. Counts include anonymous reports; affected users estimate signed-in users only.</p>
-      {issues.length === 0 ? <EmptyLine>No automatic errors in this view.</EmptyLine> : (
-        <HairlineList label="Automatic error issues">
-          {issues.map((issue) => (
-            <HairlineRow key={issue.id} href={`/support/errors/${issue.id}`} title={`${issue.errorClass} · ${issue.route}`} sub={`${STATUS_LABELS[issue.status]} · ${issue.app} · ${issue.operation.replaceAll("_", " ")} · ${issue.occurrenceCount.toLocaleString("en-IN")} occurrences`} meta={<span className="text-sm tabular-nums text-ink-soft">~{issue.affectedUsers.count.toLocaleString("en-IN")}{issue.affectedUsers.saturated ? "+" : ""} signed-in users</span>} trail={<LocalDateTime iso={issue.lastSeenAt.toISOString()} variant="timestamp" />} />
-          ))}
-        </HairlineList>
+      {issues.length === 0 ? (
+        <div className="mt-6">
+          <EmptyLine>No errors in this view.</EmptyLine>
+        </div>
+      ) : (
+        <section aria-label="Error issues" className={`${LIFT} mt-6 overflow-x-auto px-4`}>
+          <table className={TABLE}>
+            <thead>
+              <tr>
+                <th className={TH}>Error</th>
+                <th className={TH}>Where</th>
+                <th className={TH}>Status</th>
+                <th className={`${TH} text-right`}>Occurrences</th>
+                <th className={`${TH} text-right`}>Signed-in users</th>
+                <th className={TH}>Last seen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {issues.map((issue) => (
+                <tr key={issue.id}>
+                  <td className={TD}>
+                    <Link href={`/support/errors/${issue.id}`} className="font-semibold underline-offset-4 hover:underline">
+                      {issue.errorClass}
+                    </Link>
+                    <span className="mt-0.5 block text-xs text-ink-2">{issue.operation.replaceAll("_", " ")}</span>
+                  </td>
+                  <td className={TD}>
+                    <span className="break-all">{issue.route}</span>
+                    <span className="mt-0.5 block text-xs text-ink-2">{issue.app}</span>
+                  </td>
+                  <td className={TD}>
+                    <StatusPill tone={STATUS_TONES[issue.status]}>{STATUS_LABELS[issue.status]}</StatusPill>
+                  </td>
+                  <td className={TD_NUM}>{issue.occurrenceCount.toLocaleString("en-IN")}</td>
+                  <td className={TD_NUM}>
+                    ~{issue.affectedUsers.count.toLocaleString("en-IN")}
+                    {issue.affectedUsers.saturated ? "+" : ""}
+                  </td>
+                  <td className={TD_TIME}>
+                    <LocalDateTime iso={issue.lastSeenAt.toISOString()} variant="timestamp" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       )}
-      <nav aria-label="Automatic errors pages" className="mt-8 flex flex-wrap items-center gap-5 text-sm tabular-nums">
-        {page > 1 ? <Link className="hover:text-accent" href={pageHref(page - 1)}>Newer</Link> : null}
-        <span className="text-ink-soft">Page {page} of {pages}</span>
-        {page < pages && page < 400 ? <Link className="hover:text-accent" href={pageHref(page + 1)}>Older</Link> : null}
+      <p className="mt-4 text-sm text-ink-2">Counts include anonymous reports; signed-in users is an estimate.</p>
+      <nav aria-label="Error pages" className="mt-6 flex flex-wrap items-center gap-5 text-sm tabular-nums">
+        {page > 1 ? (
+          <Link className="font-semibold hover:underline" href={pageHref(page - 1)}>
+            Newer
+          </Link>
+        ) : null}
+        <span className="text-ink-2">
+          Page {page} of {pages}
+        </span>
+        {page < pages && page < 400 ? (
+          <Link className="font-semibold hover:underline" href={pageHref(page + 1)}>
+            Older
+          </Link>
+        ) : null}
       </nav>
     </>
   );

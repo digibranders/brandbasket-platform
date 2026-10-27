@@ -1930,7 +1930,7 @@ export interface BusinessDetails {
    */
   readonly stateCode: string;
   readonly gstNumber: string;
-  /** Display form, e.g. "+91 789 789 6607". */
+  /** Display form, e.g. "+91 866 861 0953". */
   readonly phone: string;
   /** tel: form, digits and a leading plus only. */
   readonly phoneHref: string;
@@ -1949,8 +1949,8 @@ export const businessDetails: BusinessDetails = {
   ],
   stateCode: "mh",
   gstNumber: "27AAICD9268J1Z0",
-  phone: "+91 789 789 6607",
-  phoneHref: "+917897896607",
+  phone: "+91 866 861 0953",
+  phoneHref: "+918668610953",
   email: "hello@fynix.digital",
   website: "https://fynix.digital",
 };
@@ -4380,7 +4380,7 @@ const invoice: TaxInvoice = {
     addressLines: ["Office No. 2617, 26th Floor, Solus Building,", "Hiranandani Estate, Ghodbunder Road,", "Thane West, Maharashtra 400607, India"],
     stateCode: "mh",
     email: "hello@fynix.digital",
-    phone: "+91 789 789 6607",
+    phone: "+91 866 861 0953",
   },
   recipient: {
     legalName: "QA Premium Business",

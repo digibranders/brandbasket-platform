@@ -1,36 +1,34 @@
-import { listAddOnsToContact, listClients, listPaymentsNeedingAttention } from "@brandbasket/db";
+import { listAddOnsToContact, listClients, listLiveServiceLines, listOpenClosures, listPaymentsNeedingAttention } from "@brandbasket/db";
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactElement } from "react";
-import { clientPaymentState, type ClientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
-import { PLAN_TIER_LABELS } from "@brandbasket/shared/lib/billing/plan-tier";
-import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
-import { PROJECT_STATUS_LABELS } from "@brandbasket/shared/lib/project-status";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { SearchIcon } from "@brandbasket/shared/ui/icons";
-import { Avatar, ringFor } from "@/components/console/avatar";
+import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { FilterPills } from "@/components/console/filter-pills";
-import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
+import { EmptyLine } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
-import { MiniTrack } from "@/components/console/stage-track";
-import { StatusDot, type StatusTone } from "@/components/console/status-dot";
+import { StatusPill } from "@/components/console/status-pill";
+import { TABLE, TD, TD_NUM, TD_TIME, TH } from "@/components/console/table";
+import { ServiceTags } from "@/components/service-tags";
+import { CLIENT_ROW_STAGE_LABELS, CLIENT_ROW_STAGE_TONES, clientRowStage, servicesByBusiness, type ClientRowStage } from "@/lib/client-rows";
 import { matchesClientSearch } from "@/lib/client-search";
-import { attentionBySubject, attentionItems, clientStage, JOURNEY_STAGE_LABELS, type JourneyStage } from "@/lib/pipeline";
+import { attentionBySubject, attentionItems } from "@/lib/pipeline";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { clientsWaitingOnUs } from "@/lib/waiting-clients";
 
 export const metadata: Metadata = { title: "Clients" };
 
-/** Leads are not clients yet, so the Clients filter starts at setting up. */
-type ClientStage = Exclude<JourneyStage, "lead"> | "paused";
-const CLIENT_STAGES: readonly ClientStage[] = ["setup", "building", "preview", "live", "paused"];
+const ROW_STAGES: readonly ClientRowStage[] = ["not-paid", "setup", "building", "preview", "live", "paused", "leaving"];
 
-function readStage(value: string | string[] | undefined): ClientStage | null {
+function readStage(value: string | string[] | undefined): ClientRowStage | null {
   const raw = Array.isArray(value) ? value[0] : value;
-  return (CLIENT_STAGES as readonly string[]).includes(raw ?? "") ? (raw as ClientStage) : null;
+  return (ROW_STAGES as readonly string[]).includes(raw ?? "") ? (raw as ClientRowStage) : null;
 }
 
-/** An address that keeps the filters and the search already chosen when it changes one of them. */
-function clientsHref(stage: ClientStage | null, search: string): string {
+/** An address that keeps the filter and the search already chosen when it changes one of them. */
+function clientsHref(stage: ClientRowStage | null, search: string): string {
   const query = new URLSearchParams();
   if (stage !== null) query.set("stage", stage);
   if (search !== "") query.set("q", search);
@@ -38,22 +36,8 @@ function clientsHref(stage: ClientStage | null, search: string): string {
   return text === "" ? "/clients" : `/clients?${text}`;
 }
 
-function stageLabel(stage: ClientStage): string {
-  return stage === "paused" ? "Paused" : JOURNEY_STAGE_LABELS[stage];
-}
-
-const PAYMENT_DOTS: Readonly<Record<ClientPaymentState["kind"], { readonly tone: StatusTone; readonly label: string }>> = {
-  paid: { tone: "done", label: "Paid" },
-  lapsed: { tone: "problem", label: "Lapsed" },
-  "checkout-open": { tone: "waiting", label: "Checkout started" },
-  "not-paid": { tone: "quiet", label: "Not paid" },
-};
-
-/** Flagged payments read to ring avatars; far more than are ever open at once. */
-const FLAGGED_READ_LIMIT = 100;
-
-/** Add-on purchases waiting for a first contact, read the same way. */
-const ADD_ONS_READ_LIMIT = 100;
+/** Flagged payments and add-on purchases read for the Next column; far more than are ever open at once. */
+const ATTENTION_READ_LIMIT = 100;
 
 export default async function ClientsPage({
   searchParams,
@@ -67,38 +51,41 @@ export default async function ClientsPage({
   const search = rawSearch.toLowerCase();
   const db = getStaffDb();
   const now = new Date();
-  const [clients, flagged, addOns] = await Promise.all([
-    listClients(db),
-    listPaymentsNeedingAttention(db, { limit: FLAGGED_READ_LIMIT }),
-    listAddOnsToContact(db, ADD_ONS_READ_LIMIT),
+  const [clients, closures, flagged, addOns] = await Promise.all([
+    listClients(db, { include: ["paying", "not_paid", "leaving"] }),
+    listOpenClosures(db),
+    listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }),
+    listAddOnsToContact(db, ATTENTION_READ_LIMIT),
   ]);
-  const attention = attentionBySubject(
-    attentionItems({ flagged, addOns, waiting: clientsWaitingOnUs(clients, now), newLeads: [], now }),
-  );
+  const services = servicesByBusiness(await listLiveServiceLines(db, clients.map((client) => client.businessId)));
+  const closing = new Map(closures.map((closure) => [closure.businessId, closure]));
+  const attention = attentionBySubject(attentionItems({ flagged, addOns, waiting: clientsWaitingOnUs(clients, now), newLeads: [], now }));
 
-  const found = clients.filter((client) => matchesClientSearch(client, search));
-  const visible = stage === null ? found : found.filter((client) => clientStage(client) === stage);
-  const countOf = (option: ClientStage): number => found.filter((client) => clientStage(client) === option).length;
+  const rows = clients.map((client) => ({ client, stage: clientRowStage(client, closing.has(client.businessId)) }));
+  const found = rows.filter((row) => matchesClientSearch(row.client, search));
+  const visible = stage === null ? found : found.filter((row) => row.stage === stage);
+  const countOf = (option: ClientRowStage): number => found.filter((row) => row.stage === option).length;
+  const paying = rows.filter((row) => row.client.billing.firstPayment !== null).length;
 
   return (
     <>
-      <PageHeader title="Clients" meta={`${clients.length} with a dashboard`} />
+      <PageHeader title="Clients" meta={`${paying} paying · ${rows.length - paying} signed up, not paid`} />
 
-      <div className="mt-10 space-y-4">
+      <div className="mt-8 space-y-4">
         <form action="/clients" role="search" className="w-full sm:w-80">
           {stage === null ? null : <input type="hidden" name="stage" value={stage} />}
           <label htmlFor="clients-search" className="sr-only">
             Search clients
           </label>
           <div className="relative">
-            <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-ink-soft" />
+            <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-2" />
             <input
               id="clients-search"
               name="q"
               type="search"
               defaultValue={rawSearch}
               placeholder="Business, owner, email or phone"
-              className="block w-full rounded-full border border-ink-soft/65 bg-card py-2.5 pl-11 pr-4 text-sm text-ink transition-[border-color,box-shadow] duration-300 ease-calm placeholder:text-ink-soft/80 focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/10"
+              className="block w-full rounded-lg border border-ink-2/65 bg-surface py-2 pl-10 pr-3 text-sm text-ink placeholder:text-ink-2"
             />
           </div>
         </form>
@@ -106,14 +93,21 @@ export default async function ClientsPage({
           label="Filter by stage"
           options={[
             { href: clientsHref(null, rawSearch), label: "All", count: found.length, current: stage === null },
-            ...CLIENT_STAGES.map((option) => ({
+            ...ROW_STAGES.map((option) => ({
               href: clientsHref(option, rawSearch),
-              label: stageLabel(option),
+              label: CLIENT_ROW_STAGE_LABELS[option],
               count: countOf(option),
               current: stage === option,
             })),
           ]}
         />
+        {stage === "leaving" ? (
+          <p className="text-sm text-ink-2">
+            <Link href="/leaving" className="font-semibold text-ink underline underline-offset-4">
+              Why people leave
+            </Link>
+          </p>
+        ) : null}
       </div>
 
       {visible.length === 0 ? (
@@ -122,43 +116,60 @@ export default async function ClientsPage({
             ? "No clients yet."
             : rawSearch !== "" && found.length === 0
               ? `No client matches “${rawSearch}”.`
-              : stage === null
-              ? "Nobody is on that plan yet."
-              : `Nobody is at ${stageLabel(stage).toLowerCase()} right now.`}
+              : "Nobody here right now."}
         </EmptyLine>
       ) : (
-        <HairlineList label="Clients">
-          {visible.map((client) => {
-            const needs = attention.get(client.businessId);
-            const payment = PAYMENT_DOTS[clientPaymentState(client.billing, now).kind];
-            return (
-              <HairlineRow
-                key={client.businessId}
-                href={`/clients/${client.businessId}`}
-                lead={<Avatar id={client.businessId} name={client.businessName} ring={ringFor(needs?.kind)} />}
-                title={client.businessName}
-                sub={[
-                  client.owner?.name ?? "No owner",
-                  PLAN_TIER_LABELS[client.tier],
-                  client.project === null ? PROJECT_STATUS_LABELS.onboarding : PROJECT_STATUS_LABELS[client.project.status],
-                  BILLING_CURRENCY_LABELS[client.currency],
-                ].join(" · ")}
-                meta={<MiniTrack stage={clientStage(client)} />}
-                trail={
-                  needs === undefined ? (
-                    <StatusDot tone={payment.tone} label={payment.label} />
-                  ) : (
-                    <StatusDot
-                      tone={needs.kind === "due" || needs.kind === "add-on" ? "waiting" : "problem"}
-                      // The row's trail is one short line, so an add-on says the least that is useful here; the Journey gives the full reason.
-                      label={needs.kind === "add-on" ? "Add-on to set up" : needs.reason}
-                    />
-                  )
-                }
-              />
-            );
-          })}
-        </HairlineList>
+        <table className={`${TABLE} mt-6`}>
+          <thead>
+            <tr>
+              <th className={TH}>Business</th>
+              <th className={TH}>Services</th>
+              <th className={TH}>Stage</th>
+              <th className={`${TH} text-right`}>Monthly</th>
+              <th className={TH}>Next</th>
+              <th className={TH}>Paid through</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map(({ client, stage: rowStage }) => {
+              const needs = attention.get(client.businessId);
+              const service = services.get(client.businessId);
+              const closure = closing.get(client.businessId);
+              const paidThrough = client.billing.subscription?.paidThroughAt ?? null;
+              return (
+                <tr key={client.businessId}>
+                  <td className={TD}>
+                    <Link href={`/clients/${client.businessId}`} className="font-semibold hover:underline">
+                      {client.businessName}
+                    </Link>
+                    <small className="block text-xs text-ink-2">{client.owner?.name ?? "No owner"}</small>
+                  </td>
+                  <td className={TD}>
+                    <ServiceTags addOns={service?.addOns ?? []} />
+                  </td>
+                  <td className={TD}>
+                    <StatusPill tone={CLIENT_ROW_STAGE_TONES[rowStage]}>{CLIENT_ROW_STAGE_LABELS[rowStage]}</StatusPill>
+                  </td>
+                  <td className={TD_NUM}>{service === undefined || service.monthlyCents === 0 ? "None" : formatMoney(service.monthlyCents, client.currency)}</td>
+                  <td className={TD}>
+                    {closure !== undefined ? (
+                      <>
+                        Erased on <LocalDate iso={closure.eraseAfter.toISOString()} /> unless restored
+                      </>
+                    ) : needs !== undefined ? (
+                      <b className="font-semibold">{needs.kind === "add-on" ? "Add-on to set up" : needs.reason}</b>
+                    ) : rowStage === "not-paid" ? (
+                      <span className="text-ink-2">Follow up on sign-up</span>
+                    ) : (
+                      <span className="text-ink-2">None</span>
+                    )}
+                  </td>
+                  <td className={TD_TIME}>{paidThrough === null ? "None" : <LocalDate iso={paidThrough.toISOString()} />}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
     </>
   );

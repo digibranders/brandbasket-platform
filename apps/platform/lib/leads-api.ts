@@ -52,6 +52,32 @@ export const leadApiRequestSchema = z.object({
 
 export type LeadApiRequest = z.infer<typeof leadApiRequestSchema>;
 
+/** The plan ids the website's basket sends (brandbasket-website lib/pricing.ts PLAN_IDS). */
+export const WEBSITE_PLAN_IDS = ["website", "growth", "search"] as const;
+
+/**
+ * An enquiry from the website's contact and pricing form (brandbasket-website app/api/contact/route.ts), posted after the
+ * website has validated it, screened it for bots and emailed it to the team inbox. Lengths are the website's own caps
+ * with room to spare.
+ */
+export const contactEnquiryRequestSchema = z.object({
+  kind: z.literal("contact"),
+  contact: z.object({
+    name: z.string().trim().min(1).max(120),
+    business: z.string().trim().min(1).max(120),
+    email: z.email().max(254),
+    phone: z.string().max(40),
+    city: z.string().max(120),
+    plans: z.array(z.enum(WEBSITE_PLAN_IDS)).max(WEBSITE_PLAN_IDS.length),
+    message: z.string().max(MAX_FIELD_LENGTH),
+    page: z.string().max(200).nullable(),
+  }),
+  clientIp: z.string().min(1).max(MAX_CLIENT_IP_LENGTH),
+  noticeVersion: z.string().min(1).max(MAX_NOTICE_VERSION_LENGTH),
+});
+
+export type ContactEnquiryRequest = z.infer<typeof contactEnquiryRequestSchema>;
+
 const LEAD_FORM_FIELDS = ["name", "businessName", "email", "phone", "phoneCountry", "businessType", "message"] as const;
 
 export const leadApiResponseSchema = z.discriminatedUnion("status", [

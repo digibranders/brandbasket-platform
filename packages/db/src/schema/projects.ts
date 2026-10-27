@@ -16,6 +16,7 @@ import { uuidv7 } from "uuidv7";
 import { users } from "./auth";
 import { businesses } from "./businesses";
 import { createdAt, updatedAt } from "./columns";
+import { staffMembers } from "./staff";
 
 /** The build's state machine. See docs/superpowers/specs/2026-09-15-brandbasket-platform-design.md §5.3. */
 export const projectStatus = pgEnum("project_status", [
@@ -55,6 +56,8 @@ export const projects = pgTable(
     revisionRoundsIncluded: integer("revision_rounds_included").notNull().default(2),
     revisionRoundsGranted: integer("revision_rounds_granted").notNull().default(0),
     launchedAt: timestamp("launched_at", { withTimezone: true }),
+    /** The staff member building it; null until someone is assigned on the console's Projects board. */
+    assignedStaffId: text("assigned_staff_id").references(() => staffMembers.userId),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

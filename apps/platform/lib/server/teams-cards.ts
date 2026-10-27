@@ -10,6 +10,9 @@ export function leadTeamsCard(lead: {
   readonly name: string;
   readonly businessName: string;
   readonly businessType: string;
+  /** The plans picked on the website, by name; null when none. */
+  readonly wants?: string | null;
+  readonly city?: string | null;
   readonly email: string;
   readonly phone: string | null;
   readonly message: string | null;
@@ -20,6 +23,8 @@ export function leadTeamsCard(lead: {
     subtitle: `${lead.name} got in touch`,
     facts: [
       { name: "Business type", value: lead.businessType },
+      { name: "Wants", value: lead.wants ?? null },
+      { name: "City", value: lead.city ?? null },
       { name: "Email", value: lead.email },
       { name: "Phone", value: lead.phone },
     ],
@@ -110,3 +115,59 @@ export function systemErrorTeamsCard(report: {
     open: { label: "Open the error reports", url: report.adminUrl },
   });
 }
+
+/** Someone opened an account on the dashboard. It is a lead until they pay. */
+export function signupTeamsCard(signup: {
+  readonly name: string;
+  readonly businessName: string;
+  readonly email: string;
+  readonly phone: string | null;
+  /** The plan they chose on the form, by name; null when none. */
+  readonly plan: string | null;
+  readonly leadUrl: string;
+}): TeamsMessage {
+  return teamsCard({
+    title: `New sign-up: ${signup.businessName}`,
+    subtitle: `${signup.name} opened an account and has not paid yet`,
+    facts: [
+      { name: "Chose", value: signup.plan },
+      { name: "Email", value: signup.email },
+      { name: "Phone", value: signup.phone },
+    ],
+    open: { label: "Open the enquiry", url: signup.leadUrl },
+  });
+}
+
+/**
+ * A visitor left their details with a client's chatbot. The details belong to the client, so the card carries none of
+ * them: only a link to the client in the console.
+ */
+export function chatbotLeadTeamsCard(lead: { readonly clientUrl: string }): TeamsMessage {
+  return teamsCard({
+    title: "New chatbot lead",
+    subtitle: "A visitor left their details with a client's chatbot",
+    open: { label: "Open the client", url: lead.clientUrl },
+  });
+}
+
+export function paymentFailedTeamsCard(failure: {
+  /** Already formatted, such as "₹2,999". */
+  readonly amount: string;
+  /** Whether the failure was matched to a client and recorded on their payments. */
+  readonly matched: boolean;
+  readonly reason: string;
+  readonly providerPaymentId: string;
+  readonly consoleUrl: string;
+}): TeamsMessage {
+  return teamsCard({
+    title: `Payment failed: ${failure.amount}`,
+    subtitle: failure.matched ? "A client's payment did not go through" : "Not matched to a client. Find it in Razorpay.",
+    facts: [
+      { name: "Reason", value: failure.reason },
+      { name: "Razorpay payment", value: failure.providerPaymentId },
+    ],
+    open: { label: "Open in the console", url: failure.consoleUrl },
+  });
+}
+
+

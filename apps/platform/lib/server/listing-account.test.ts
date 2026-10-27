@@ -14,6 +14,7 @@ import {
 import { LEGAL_TEXT_VERSION } from "@brandbasket/shared/lib/privacy/notice-version";
 import type { JoinInput } from "@/lib/join-form";
 import { confirmAccountEmailCode, requestAccountEmailCode } from "./account-email-code";
+import { alertSignupLead } from "./signup-alert";
 import { getAuth } from "./auth";
 import { getStaffDb } from "./db";
 import { announceCustomerToTeams } from "./teams";
@@ -35,6 +36,7 @@ vi.mock("./customer-sign-in", async () => {
   };
 });
 vi.mock("./account-email-code", () => ({ requestAccountEmailCode: vi.fn(), confirmAccountEmailCode: vi.fn() }));
+vi.mock("./signup-alert", () => ({ alertSignupLead: vi.fn() }));
 vi.mock("@brandbasket/auth", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/auth")>("@brandbasket/auth");
   return { AccountAlreadyExistsError: actual.AccountAlreadyExistsError, createVerifiedEmailAccountWithGrant: vi.fn() };
@@ -152,6 +154,11 @@ describe("createListingAccount", () => {
     expect(setUserPhoneNumber).toHaveBeenCalledWith(DB, "user-2", E164);
     expect(recordSignupLead).toHaveBeenCalledWith(DB, expect.objectContaining({ businessId: "business-1", phone: E164 }));
     expect(announceCustomerToTeams).toHaveBeenCalledWith(expect.objectContaining({ businessId: "business-1", event: "signed_up" }));
+  });
+
+  it("tells Teams about the sign-up, pointing at the lead it recorded", async () => {
+    expect(await createListingAccount(WITH_CODE)).toEqual({ kind: "created" });
+    expect(alertSignupLead).toHaveBeenCalledWith({ leadId: "lead-1", name: "Meera Shah", businessName: "Smile Dental", email: EMAIL, phone: E164, plan: "Managed Website" });
   });
 
   it("opens nothing, and spends no code, for a mobile number that is not real or that another account holds", async () => {

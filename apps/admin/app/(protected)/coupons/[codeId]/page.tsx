@@ -21,7 +21,7 @@ import { Section } from "@/components/console/section";
 import { StatusDot } from "@/components/console/status-dot";
 import { getStaffDb } from "@/lib/server/db";
 import { referralWorth } from "@/lib/server/referral-admin";
-import { requireStaffAccess } from "@/lib/server/staff-access";
+import { requireStaffCan } from "@/lib/server/staff-role";
 import { retireReferralCodeAction } from "./actions";
 import { deleteReferralCodeAction } from "./delete-actions";
 
@@ -40,7 +40,7 @@ function dateInputValue(when: Date | null): string {
 
 /** One code, a coupon or an affiliate's: what it means in money today, who is on it, and what may still change. */
 export default async function CodePage({ params }: CodePageProps): Promise<ReactElement> {
-  await requireStaffAccess();
+  await requireStaffCan("money");
   const { codeId } = await params;
   const staffDb = getStaffDb();
   const code = await findReferralCodeById(staffDb, codeId);
@@ -74,7 +74,7 @@ export default async function CodePage({ params }: CodePageProps): Promise<React
       />
 
       {worth === null ? (
-        <p className="mt-8 max-w-2xl border-l-2 border-accent py-1 pl-4 text-accent">
+        <p className="mt-8 max-w-2xl border-l-2 border-error py-1 pl-4 text-error">
           This code takes off as much as the cheapest {code.currency} service costs, so there is nothing left to charge.
         </p>
       ) : (

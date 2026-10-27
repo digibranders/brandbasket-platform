@@ -1,9 +1,12 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
+  extendAccountClosure,
+  findOpenClosureForBusiness,
   findOpenClosureForUser,
   insertExitFeedback,
   listExitFeedback,
+  listOpenClosures,
   markCancelRequested,
   openAccountClosure,
   restoreAccountClosure,
@@ -217,3 +220,29 @@ describe("a subscription of a leaving business", () => {
     expect((await dbs.owner.db.select().from(accountClosures).where(eq(accountClosures.userId, USER_ID))).length).toBe(0);
   });
 });
+
+describe("open closures for staff", () => {
+  it("lists open closures soonest erase first, and leaves out restored ones", async () => {
+    await openAccountClosure(dbs.staff.db, { userId: USER_ID, businessId, now: NOW, eraseAfter: ERASE_AFTER });
+    expect(await listOpenClosures(dbs.staff.db)).toEqual([{ businessId, requestedAt: NOW, eraseAfter: ERASE_AFTER }]);
+    await restoreAccountClosure(dbs.staff.db, { userId: USER_ID, now: NOW });
+    expect(await listOpenClosures(dbs.staff.db)).toEqual([]);
+  });
+
+  it("finds a business's open closure, and none for an id that is not one", async () => {
+    expect(await findOpenClosureForBusiness(dbs.staff.db, businessId)).toBeNull();
+    await openAccountClosure(dbs.staff.db, { userId: USER_ID, businessId, now: NOW, eraseAfter: ERASE_AFTER });
+    expect((await findOpenClosureForBusiness(dbs.staff.db, businessId))?.eraseAfter).toEqual(ERASE_AFTER);
+    expect(await findOpenClosureForBusiness(dbs.staff.db, "not-a-uuid")).toBeNull();
+  });
+
+  it("moves the erase date out by whole days, only for an open closure and only by 1 to 90 days", async () => {
+    expect(await extendAccountClosure(dbs.staff.db, { businessId, days: 30 })).toBe(false);
+    await openAccountClosure(dbs.staff.db, { userId: USER_ID, businessId, now: NOW, eraseAfter: ERASE_AFTER });
+    expect(await extendAccountClosure(dbs.staff.db, { businessId, days: 30 })).toBe(true);
+    expect((await findOpenClosureForBusiness(dbs.staff.db, businessId))?.eraseAfter).toEqual(new Date("2026-12-05T12:00:00.000Z"));
+    expect(await extendAccountClosure(dbs.staff.db, { businessId, days: 0 })).toBe(false);
+    expect(await extendAccountClosure(dbs.staff.db, { businessId, days: 91 })).toBe(false);
+  });
+});
+

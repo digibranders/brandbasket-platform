@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import { StaffShell } from "@/components/console/staff-shell";
+import { ConsoleShell } from "@/components/console/console-shell";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 
 interface AdminProtectedLayoutProps {
@@ -9,8 +9,8 @@ interface AdminProtectedLayoutProps {
 export default async function AdminProtectedLayout({ children }: AdminProtectedLayoutProps): Promise<ReactElement> {
   const { user, staff } = await requireStaffAccess();
   return (
-    <StaffShell userName={user.name} userEmail={user.email} role={staff.role}>
+    <ConsoleShell userName={user.name} role={staff.role}>
       {children}
-    </StaffShell>
+    </ConsoleShell>
   );
 }

@@ -33,6 +33,7 @@ import { resolveListingAddress } from "@/lib/server/page-address";
 import { getStaffDb } from "@/lib/server/db";
 import { processStaffAdPicture, StaffAdPictureError } from "@/lib/server/staff-ad-picture";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { requireStaffCan } from "@/lib/server/staff-role";
 
 /*
  * The Ads page's actions. Row forms post the row's id and the view they were shown in, so the redirect lands back on
@@ -97,7 +98,7 @@ export async function approveTaglineAction(formData: FormData): Promise<void> {
 
 /** Sets a category's weekly prices; both are required. */
 export async function savePriceAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const { user } = await requireStaffCan("money");
   const category = formData.get("category");
   const top = parseAdRupees(formData.get("top"));
   const side = parseAdRupees(formData.get("side"));
@@ -110,7 +111,7 @@ export async function savePriceAction(formData: FormData): Promise<void> {
 
 /** Closes a category to new bids. */
 export async function removePriceAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  await requireStaffCan("money");
   const category = formData.get("category");
   if (typeof category !== "string") back({ section: "prices" }, "unchanged");
   const done = await removeDirectoryAdPrice(getStaffDb(), category);
@@ -130,7 +131,7 @@ function spotScope(placement: "home" | "profile", category: FormDataEntryValue |
 
 /** Sets the weekly price of the home page, or of one category's business pages. */
 export async function saveSpotPriceAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const { user } = await requireStaffCan("money");
   const placement = readSpotPlacement(formData.get("placement"));
   const weekPaise = parseAdRupees(formData.get("price"));
   const scopeSlug = placement === null ? null : spotScope(placement, formData.get("category"));
@@ -141,7 +142,7 @@ export async function saveSpotPriceAction(formData: FormData): Promise<void> {
 
 /** Closes the home page, or one category's business pages, to new bids. */
 export async function removeSpotPriceAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  await requireStaffCan("money");
   const placement = readSpotPlacement(formData.get("placement"));
   const scopeSlug = placement === null ? null : spotScope(placement, formData.get("category"));
   if (placement === null || scopeSlug === null) back({ section: "prices" }, "unchanged");

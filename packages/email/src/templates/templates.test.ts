@@ -17,6 +17,7 @@ import { securityEventAlertEmail, staffAccessReviewEmail } from "./security-aler
 import { previewReadyEmail } from "./preview-ready";
 import { previewRevisionsRequestedEmail } from "./preview-revisions-requested";
 import { setupLinkEmail } from "./setup-link";
+import { staffInviteEmail } from "./staff-invite";
 import { signupCodeEmail } from "./signup-code";
 import { supportReplyAlertEmail } from "./support-reply-alert";
 import { supportTicketAlertEmail } from "./support-ticket-alert";
@@ -102,6 +103,29 @@ describe("setupLinkEmail", () => {
   it("includes the link in both bodies", () => {
     expect(email.bodyText).toContain("http://app.localhost:3000/setup/token-123");
     expect(email.bodyHtml).toContain('href="http://app.localhost:3000/setup/token-123"');
+  });
+});
+
+describe("staffInviteEmail", () => {
+  const email = staffInviteEmail({
+    to: "nikhil@brandbasket.in",
+    roleLabel: "Support",
+    inviterName: "Riya Kapoor",
+    acceptUrl: "http://console.localhost:3199/staff-invite/token-123",
+    expiresInDays: 3,
+  });
+
+  it("says who invited them, with which role, and how long the link lasts", () => {
+    expect(email.subject).toBe("Join the Brandbasket staff console");
+    expect(email.template).toBe("staff-invite");
+    expect(email.bodyText).toContain("Riya Kapoor invited you to the Brandbasket staff console as Support.");
+    expect(email.bodyText).toContain("3 days");
+  });
+
+  it("includes the link in both bodies but not in the outbox copy", () => {
+    expect(email.bodyText).toContain("http://console.localhost:3199/staff-invite/token-123");
+    expect(email.bodyHtml).toContain('href="http://console.localhost:3199/staff-invite/token-123"');
+    expect(JSON.stringify(email.outboxCopy)).not.toContain("token-123");
   });
 });
 

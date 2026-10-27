@@ -3,13 +3,13 @@ import type { ReactElement } from "react";
 import { PageHeader } from "@/components/console/page-header";
 import { NewReferralCodeForm } from "@/components/referral-code-form";
 import { priceBases } from "@/lib/server/price-bases";
-import { requireStaffAccess } from "@/lib/server/staff-access";
+import { requireStaffCan } from "@/lib/server/staff-role";
 import { createCouponAction } from "./actions";
 
 export const metadata: Metadata = { title: "New coupon" };
 
 export default async function NewCouponPage(): Promise<ReactElement> {
-  await requireStaffAccess();
+  await requireStaffCan("money");
   return (
     <>
       <PageHeader

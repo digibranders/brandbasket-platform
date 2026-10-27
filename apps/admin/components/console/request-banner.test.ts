@@ -15,7 +15,7 @@ it("says a ticket is a request for a change, where it is, and links to the clien
   vi.mocked(getChangeWithEvents).mockResolvedValue({ change: { state: "quoted" }, events: [] } as never);
   const html = renderToStaticMarkup((await RequestBanner({ ticketId: "t1", businessId: BUSINESS })) as never);
   expect(html).toContain("This is a request for a change: Quote sent (customer sees: Quoted).");
-  expect(html).toContain(`href="/clients/${BUSINESS}#requests"`);
+  expect(html).toContain(`href="/clients/${BUSINESS}/requests"`);
 });
 
 it("shows nothing for a plain ticket, and no link for a ticket with no business", async () => {

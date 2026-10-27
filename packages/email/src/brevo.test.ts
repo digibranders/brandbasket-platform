@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BrevoDeliveryError, createAppEmailTransport, createBrevoTransport, createDualTransport, createEmailDelivery } from "./brevo";
+import { BrevoDeliveryError, type BrevoReceipt, createAppEmailTransport, createBrevoTransport, createDualTransport, createEmailDelivery, emailFailureSummary } from "./brevo";
 import type { EmailMessage } from "./message";
 
 const sampleMessage: EmailMessage = {
@@ -42,6 +42,17 @@ describe("createBrevoTransport", () => {
     expect(body.subject).toBe(sampleMessage.subject);
     expect(body.htmlContent).toBe(sampleMessage.bodyHtml);
     expect(body.textContent).toBe(sampleMessage.bodyText);
+  });
+
+  it("answers with Brevo's message id", async () => {
+    const mockFetch = vi.fn(async () => new Response(JSON.stringify({ messageId: "<test-msg-123>" }), { status: 201 })) as unknown as typeof fetch;
+    const transport = createBrevoTransport({ apiKey: "test-api-key", fetchFn: mockFetch });
+    expect(await transport.send(sampleMessage)).toEqual({ providerMessageId: "<test-msg-123>" });
+  });
+
+  it("answers with no id when Brevo's reply is not JSON", async () => {
+    const mockFetch = vi.fn(async () => new Response("ok", { status: 201 })) as unknown as typeof fetch;
+    expect(await createBrevoTransport({ apiKey: "k", fetchFn: mockFetch }).send(sampleMessage)).toEqual({ providerMessageId: null });
   });
 
   it("throws BrevoDeliveryError on API error response", async () => {
@@ -105,7 +116,7 @@ describe("createBrevoTransport retry", () => {
   const timeoutError = (): DOMException => new DOMException("The operation was aborted due to timeout", "TimeoutError");
   const ok = (): Response => new Response("{}", { status: 201 });
 
-  function transportWith(responses: ReadonlyArray<() => Response | Promise<Response>>): { send: () => Promise<void>; fetchFn: ReturnType<typeof vi.fn> } {
+  function transportWith(responses: ReadonlyArray<() => Response | Promise<Response>>): { send: () => Promise<BrevoReceipt>; fetchFn: ReturnType<typeof vi.fn> } {
     const queue = [...responses];
     const fetchFn = vi.fn(async () => {
       const next = queue.shift();
@@ -119,7 +130,7 @@ describe("createBrevoTransport retry", () => {
   it("retries once after a timeout and succeeds", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const { send, fetchFn } = transportWith([() => { throw timeoutError(); }, ok]);
-    await expect(send()).resolves.toBeUndefined();
+    await expect(send()).resolves.toEqual({ providerMessageId: null });
     expect(fetchFn).toHaveBeenCalledTimes(2);
     expect(error).toHaveBeenCalledWith(expect.stringContaining("attempt 1 of 2"), expect.anything());
     error.mockRestore();
@@ -128,7 +139,7 @@ describe("createBrevoTransport retry", () => {
   it("retries once after a network error", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const { send, fetchFn } = transportWith([() => { throw new TypeError("fetch failed"); }, ok]);
-    await expect(send()).resolves.toBeUndefined();
+    await expect(send()).resolves.toEqual({ providerMessageId: null });
     expect(fetchFn).toHaveBeenCalledTimes(2);
     error.mockRestore();
   });
@@ -137,7 +148,7 @@ describe("createBrevoTransport retry", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     for (const status of [500, 429]) {
       const { send, fetchFn } = transportWith([() => new Response("busy", { status }), ok]);
-      await expect(send()).resolves.toBeUndefined();
+      await expect(send()).resolves.toEqual({ providerMessageId: null });
       expect(fetchFn).toHaveBeenCalledTimes(2);
     }
     error.mockRestore();
@@ -161,14 +172,14 @@ describe("createBrevoTransport retry", () => {
     error.mockRestore();
   });
 
-  it("falls back to the outbox when both attempts time out", async () => {
+  it("records the message as failed when both attempts time out", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const rows: Record<string, unknown>[] = [];
     const db = { insert: vi.fn(() => ({ values: vi.fn(async (row: Record<string, unknown>) => { rows.push(row); }) })) } as unknown as Parameters<typeof createDualTransport>[1];
     const { send } = transportWith([() => { throw timeoutError(); }, () => { throw timeoutError(); }]);
     await createDualTransport({ send }, db).send(sampleMessage);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ transport: "outbox" });
+    expect(rows[0]).toMatchObject({ transport: "brevo", status: "failed", error: "Brevo did not answer in time" });
     error.mockRestore();
   });
 });
@@ -218,14 +229,22 @@ describe("createDualTransport", () => {
     expect(JSON.stringify(rows)).not.toContain("4242");
   });
 
-  it("does not fail when Brevo fails, and records the message as undelivered in the outbox", async () => {
+  it("does not fail when Brevo fails, and records the message as failed with the reason", async () => {
     const { db, rows } = outboxDb();
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     await expect(createDualTransport({ send: async () => { throw new BrevoDeliveryError("down", 503, "") }}, db).send(sampleMessage)).resolves.toBeUndefined();
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ transport: "outbox", bodyText: sampleMessage.bodyText });
+    expect(rows[0]).toMatchObject({ transport: "brevo", status: "failed", error: "Brevo answered 503", bodyText: sampleMessage.bodyText });
     expect(error).toHaveBeenCalled();
     error.mockRestore();
+  });
+
+  it("records a sent message with Brevo's id, and says whether the body kept is redacted", async () => {
+    const { db, rows } = outboxDb();
+    await createDualTransport({ send: async () => ({ providerMessageId: "<id-1>" }) }, db).send(sampleMessage);
+    await createDualTransport({ send: async () => ({ providerMessageId: null }) }, db).send({ ...sampleMessage, outboxCopy: { subject: "s", bodyText: "r", bodyHtml: "<p>r</p>" } });
+    expect(rows[0]).toMatchObject({ transport: "brevo", status: "sent", providerMessageId: "<id-1>", bodyRedacted: false });
+    expect(rows[1]).toMatchObject({ status: "sent", providerMessageId: null, bodyRedacted: true });
   });
 
   it("throws only when both Brevo and the outbox fail", async () => {
@@ -313,5 +332,17 @@ describe("who mail comes from", () => {
     const body = await sentBody({ ALERTS_FROM_EMAIL: "no-reply@brandbasket.in", ALERTS_FROM_NAME: "Brandbasket", SUPPORT_ALERT_EMAIL: "care@brandbasket.in" });
     expect(body.sender).toEqual({ email: "no-reply@brandbasket.in", name: "Brandbasket" });
     expect(body.replyTo).toMatchObject({ email: "care@brandbasket.in" });
+  });
+});
+
+describe("emailFailureSummary", () => {
+  it("names Brevo's answer, a timeout, or an unreachable Brevo, without the message text", () => {
+    expect(emailFailureSummary(new BrevoDeliveryError("x", 400, '{"code":"invalid_parameter","message":"email is not valid"}'))).toBe(
+      'Brevo answered 400: {"code":"invalid_parameter","message":"email is not valid"}',
+    );
+    expect(emailFailureSummary(new BrevoDeliveryError("x", 503, "  "))).toBe("Brevo answered 503");
+    expect(emailFailureSummary(Object.assign(new Error("t"), { name: "TimeoutError" }))).toBe("Brevo did not answer in time");
+    expect(emailFailureSummary(new Error("ECONNRESET"))).toBe("Brevo could not be reached");
+    expect(emailFailureSummary(new BrevoDeliveryError("x", 400, "y".repeat(500)))).toHaveLength(300);
   });
 });

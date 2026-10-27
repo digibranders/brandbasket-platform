@@ -8,6 +8,8 @@ export * from "./queries/project-website";
 export * from "./queries/support-staff";
 export * from "./queries/error-issues";
 export * from "./queries/support-ticket-error-links";
+export * from "./queries/deliveries";
+export * from "./queries/staff-payments";
 export { assertValidRule, consumeRateLimit, windowStartFor, type RateLimitResult, type RateLimitRule } from "./rate-limit";
 export {
   BillingBusinessNotFoundError,
@@ -34,6 +36,7 @@ export {
   isUnappliedReason,
   listPaymentsForBusiness,
   listPaymentsNeedingAttention,
+  sumCapturedPaymentsBetween,
   listReceiptsForBusiness,
   findCurrentPaymentMethod,
   findLatestPaymentMethod,
@@ -61,6 +64,7 @@ export {
   type PaymentAttentionFlag,
   type PaymentAttentionResolution,
   type PaymentNeedingAttention,
+  type CollectedAmount,
   type Plan,
   type Receipt,
   type PaymentMethodDetails,
@@ -150,17 +154,30 @@ export {
 } from "./queries/discount-plans";
 export { listMembershipsForUser, type BusinessMembership } from "./queries/memberships";
 export {
+  addStaffMember,
+  countActiveAdmins,
   countPlatformRecords,
   findActiveStaffMember,
   findActiveStaffUserIdByEmail,
+  findStaffMember,
+  findStaffMemberByEmail,
+  listStaffRoster,
+  setStaffRole,
+  switchOffStaffMember,
+  switchOnStaffMember,
   type ActiveStaffMember,
   type PlatformCounts,
+  type StaffMemberState,
+  type StaffRosterRow,
 } from "./queries/staff";
 export {
   findEmail,
+  listEmailDeliveries,
   listRecentEmails,
   purgeOldEmailMessages,
   recordEmail,
+  SIGN_IN_LINK_TEMPLATES,
+  updateEmailDelivery,
   type RecordedEmail,
   type StoredEmail,
 } from "./queries/emails";
@@ -174,8 +191,24 @@ export {
   type SetupInvite,
 } from "./queries/invites";
 export {
+  claimStaffInvite,
+  createStaffInvite,
+  findOpenStaffInvite,
+  findUsableStaffInvite,
+  listOpenStaffInvites,
+  type CreatedStaffInvite,
+  type NewStaffInvite,
+  type StaffInvite,
+} from "./queries/staff-invites";
+export {
+  assignLead,
   changeLeadCurrency,
+  countLeadsToContact,
   createLead,
+  findLatestWebsiteLeadAt,
+  LEAD_STATUSES_TO_CONTACT,
+  listLeadInvites,
+  type LeadInvite,
   isBillingStarted,
   type LeadCurrencyChange,
   findLead,
@@ -286,6 +319,24 @@ export {
   type ProjectPreviewSent,
   type ProjectSubmission,
 } from "./queries/projects";
+export { canMoveProject, PROJECT_MOVE_FROM, type ProjectMove } from "./queries/project-moves";
+export {
+  assignProjectBuilder,
+  cancelProject,
+  countCallsBetween,
+  countLateProjects,
+  findOpenProjectForStaff,
+  grantRevisionRound,
+  listOpenProjectsForStaff,
+  listSetupCallsForStaff,
+  ProjectBuilderNotStaffError,
+  ProjectMoveRefusedError,
+  SETUP_STEPS_TOTAL,
+  type MovedProject,
+  type StaffCallRow,
+  type StaffProjectControls,
+  type StaffProjectRow,
+} from "./queries/project-staff";
 export {
   findBusinessWebsiteUrl,
   InvalidWebsiteUrlError,
@@ -754,11 +805,13 @@ export { clearSiteSetting, findSiteSetting, findSiteSettingWithEditor, saveSiteS
 export {
   clearSetupCallHeld,
   findSetupCallBooking,
+  listSetupCallsBetween,
   markSetupCallHeld,
   moveSetupCallBooking,
   recordSetupCallBooking,
   removeSetupCallBooking,
   saveSetupCallSummary,
+  type BookedCall,
 } from "./queries/setup-calls";
 export * from "./queries/team-calls";
 export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
@@ -810,12 +863,14 @@ export {
   isPackageOfferForfeited,
   findPackageOfferForfeitedAt,
   listAdCreditDue,
+  listLiveServiceLines,
   removeBundledAddOnsOf,
   renewalBundledLines,
   saveProviderBundlePlan,
   setPendingOfferDiscounts,
   type AdCreditDue,
   type BundlePlanKey,
+  type LiveServiceLine,
   type NewAddedAddOn,
   type NewBundledAddOn,
   type OpenedBundledAddOn,
@@ -853,6 +908,7 @@ export {
   findTaxInvoiceById,
   findTaxInvoiceByPaymentId,
   findTaxInvoiceForBusiness,
+  findTaxInvoicesByNumber,
   insertTaxInvoice,
   isInvoiceablePayment,
   listMissingTaxInvoices,
@@ -906,13 +962,23 @@ export {
   type TenantScope,
 } from "./scope";
 export {
+  listActivityForBusiness,
+  listRecentActivity,
+  recordActivity,
+  type ActivityInput,
+  type ActivityRow,
+} from "./queries/activity";
+export {
   findClientDetail,
   findMediaForStaff,
+  listBusinessMembersForStaff,
   listClients,
+  renameBusinessOwner,
   type ClientBilling,
   type ClientDetail,
   type ClientFirstPayment,
   type ClientHours,
+  type ClientListInclude,
   type ClientManualPayment,
   type ClientMedia,
   type ClientOwner,
@@ -920,6 +986,7 @@ export {
   type ClientService,
   type ClientSubscription,
   type ClientSummary,
+  type StaffBusinessMember,
   type StaffMediaFile,
 } from "./queries/clients";
 export {
@@ -1180,19 +1247,26 @@ export {
   type ErasureSkipReason,
 } from "./queries/account-erasure";
 export {
+  extendAccountClosure,
+  findOpenClosureForBusiness,
   findOpenClosureForUser,
   insertExitFeedback,
   listExitFeedback,
+  listOpenClosures,
   markCancelRequested,
+  MAX_CLOSURE_EXTENSION_DAYS,
   openAccountClosure,
   restoreAccountClosure,
   restoreAccountClosureForBusiness,
   summariseExitFeedback,
+  summariseOpenClosures,
   type AccountClosure,
   type ExitFeedbackRow,
   type ExitFeedbackSummary,
   type NewAccountClosure,
   type NewExitFeedback,
+  type OpenClosure,
+  type OpenClosureSummary,
 } from "./queries/account-closures";
 export {
   claimAccountOtpAttempt,
@@ -1248,10 +1322,13 @@ export {
   tallyStaffAccessSince,
   type StaffAccessTally,
   listRecentStaffAccess,
+  listStaffAccessPage,
   recordStaffAccess,
   STAFF_ACCESS_ACTIONS,
+  STAFF_ACCESS_PAGE_SIZE,
   type StaffAccessAction,
   type StaffAccessEntry,
+  type StaffAccessFilter,
   type StoredStaffAccess,
 } from "./queries/staff-access-log";
 export {
