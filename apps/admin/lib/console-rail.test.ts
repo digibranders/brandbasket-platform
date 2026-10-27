@@ -7,7 +7,7 @@ describe("railFor", () => {
   it("gives an admin every entry, in order", () => {
     expect(labels("admin")).toEqual([
       [null, ["Today"]],
-      ["Work", ["Enquiries", "Clients", "Requests"]],
+      ["Work", ["Enquiries", "Clients", "Projects", "Requests", "Calls"]],
       ["Money", ["Invoices", "Prices", "Coupons", "Affiliates", "Ad credit"]],
       ["System", ["Outbox", "Errors", "Settings", "Compliance"]],
     ]);
@@ -27,7 +27,17 @@ describe("railFor", () => {
 
   it("puts a count on Today, Enquiries and Requests only", () => {
     const counted = CONSOLE_RAIL.flatMap((section) => section.links).filter((link) => link.countKey !== undefined).map((link) => link.countKey);
-    expect(counted).toEqual(["today", "leads", "requests"]);
+    expect(counted).toEqual(["today", "leads", "projects", "requests", "calls"]);
+  });
+});
+
+describe("Phase 4 rail entries", () => {
+  it("shows Projects and Calls to every role, with their count tones", () => {
+    for (const role of ["support", "finance", "admin"] as const) {
+      const work = railFor(role).find((section) => section.label === "Work");
+      expect(work?.links.find((link) => link.href === "/projects")).toMatchObject({ label: "Projects", icon: "projects", countKey: "projects", countTone: "alert" });
+      expect(work?.links.find((link) => link.href === "/calls")).toMatchObject({ label: "Calls", icon: "calls", countKey: "calls", countTone: "quiet" });
+    }
   });
 });
 

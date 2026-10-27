@@ -1,7 +1,8 @@
 import "server-only";
-import { countLeadsToContact, countSupportTicketsAwaitingStaff } from "@brandbasket/db";
+import { countCallsBetween, countLateProjects, countLeadsToContact, countSupportTicketsAwaitingStaff } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import type { RailCountKey, RailCounts } from "@/lib/console-rail";
+import { todayRange } from "@/lib/team-time";
 import { getStaffDb } from "./db";
 import { countTodayItems } from "./today";
 
@@ -18,15 +19,21 @@ export async function countOrNothing(key: RailCountKey, read: () => Promise<numb
 /** The numbers beside the rail's entries (plan 41, contract C2). A phase that adds a count adds one entry here. */
 export async function readRailCounts(): Promise<RailCounts> {
   const db = getStaffDb();
-  const [today, leads, requests] = await Promise.all([
+  const now = new Date();
+  const today = todayRange(now);
+  const [todayItems, leads, requests, projects, calls] = await Promise.all([
     countOrNothing("today", () => countTodayItems()),
     countOrNothing("leads", () => countLeadsToContact(db)),
     countOrNothing("requests", () => countSupportTicketsAwaitingStaff(db)),
+    countOrNothing("projects", () => countLateProjects(db, now)),
+    countOrNothing("calls", () => countCallsBetween(db, today.start, today.end)),
   ]);
   const read: readonly (readonly [RailCountKey, number | undefined])[] = [
-    ["today", today],
+    ["today", todayItems],
     ["leads", leads],
     ["requests", requests],
+    ["projects", projects],
+    ["calls", calls],
   ];
   const counts: Partial<Record<RailCountKey, number>> = {};
   for (const [key, value] of read) if (value !== undefined) counts[key] = value;

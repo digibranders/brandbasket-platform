@@ -34,7 +34,9 @@ export const CONSOLE_RAIL: readonly ConsoleRailSection[] = [
     links: [
       { href: "/leads", label: "Enquiries", icon: "leads", countKey: "leads" },
       { href: "/clients", label: "Clients", icon: "clients" },
+      { href: "/projects", label: "Projects", icon: "projects", countKey: "projects", countTone: "alert" },
       { href: "/support", label: "Requests", icon: "requests", countKey: "requests" },
+      { href: "/calls", label: "Calls", icon: "calls", countKey: "calls", countTone: "quiet" },
     ],
   },
   {
