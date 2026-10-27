@@ -69,19 +69,8 @@ export function ownPictureHref(pictureId: string): string {
   return `/listing-pictures/${pictureId}`;
 }
 
-/** Where the owner's own product photo is served from, on the app host. */
-export function ownProductPhotoHref(photoId: string): string {
-  return `/product-photos/${photoId}`;
-}
-
-export const PHOTOS_NOTICE_KEYS = ["removed", "invalid"] as const;
+const PHOTOS_NOTICE_KEYS = ["removed", "invalid"] as const;
 export type PhotosNotice = (typeof PHOTOS_NOTICE_KEYS)[number];
-
-/** What the page says after an action. Fixed messages only: the query parameter picks one, nothing more. */
-export const PHOTOS_NOTICES: Readonly<Record<PhotosNotice, { readonly text: string; readonly ok: boolean }>> = {
-  removed: { text: "Removed. It stops showing within a minute.", ok: true },
-  invalid: { text: "That didn't work. Reload the page and try again.", ok: false },
-};
 
 export function readPhotosNotice(value: string | readonly string[] | undefined): PhotosNotice | null {
   const raw = typeof value === "string" ? value : value?.[0];

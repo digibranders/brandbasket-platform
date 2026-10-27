@@ -4,9 +4,6 @@
  */
 export {
   ADD_ONS,
-  ADD_ONS_PATH,
-  addOnById,
-  addOnPrice,
   type AddOn,
   type AddOnId,
 } from "@brandbasket/shared/lib/billing/add-ons";

@@ -6,8 +6,6 @@
  */
 import { z } from "zod";
 
-export const LEADS_API_PATH = "/api/leads";
-
 /** The header carrying the shared secret, as `Bearer <LEADS_API_TOKEN>`. */
 export const LEADS_API_AUTH_HEADER = "authorization";
 

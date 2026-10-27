@@ -19,10 +19,10 @@ import { placeIdSchema } from "./directory-api";
  * `listing_removal` (a business listing) are complaints about what the local directory shows, due in 15 days under the IT
  * Rules; the Report links on the website open the form with one of them chosen and `about` filled in.
  */
-export const PUBLIC_REQUEST_KINDS = ["access", "correction", "erasure", "nomination", "grievance", "content_report", "listing_removal"] as const;
+const PUBLIC_REQUEST_KINDS = ["access", "correction", "erasure", "nomination", "grievance", "content_report", "listing_removal"] as const;
 
 /** The longest page address `about` may be. */
-export const REQUEST_ABOUT_MAX_LENGTH = 500;
+const REQUEST_ABOUT_MAX_LENGTH = 500;
 export type PublicRequestKind = (typeof PUBLIC_REQUEST_KINDS)[number];
 
 export const REQUEST_NAME_MAX_LENGTH = 200;
@@ -66,14 +66,14 @@ export type PrivacyRequestField = (typeof PRIVACY_REQUEST_FIELDS)[number];
  * What a deletion is about: one review or one comment by its id, or (`business`, by its place id) everything the visitor
  * posted on one business page: their review there and their comments on its reviews.
  */
-export const contributionTargetSchema = z.discriminatedUnion("kind", [
+const contributionTargetSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.enum(["review", "comment"]), id: z.uuid() }),
   z.object({ kind: z.literal("business"), id: placeIdSchema }),
 ]);
 export type ContributionTarget = z.infer<typeof contributionTargetSchema>;
 
 /** The most review ids one page may ask about: a page shows 20 reviews; the rest is headroom. */
-export const OWN_CONTRIBUTIONS_MAX_REVIEWS = 50;
+const OWN_CONTRIBUTIONS_MAX_REVIEWS = 50;
 
 /**
  * `POST /api/privacy-requests/contribution/mine` (added 2026-10-13): which of a page's reviews, and which comments on them,

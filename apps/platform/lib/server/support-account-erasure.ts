@@ -5,7 +5,7 @@ import type {
   ErasureSkipReason,
 } from "@brandbasket/db";
 import type { DeletingSupportAttachment } from "@brandbasket/shared/server/support-attachment-maintenance";
-export class PrivateSupportErasureError extends Error {
+class PrivateSupportErasureError extends Error {
   constructor(readonly failedObjects: number) {
     super(
       `Account erasure retained its deletion manifest because ${failedObjects} private support screenshot(s) could not be purged.`,
