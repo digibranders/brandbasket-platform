@@ -14,11 +14,13 @@ import { getStaffDb } from "@/lib/server/db";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { closePrivacyRequestAction, logPrivacyRequestAction, updatePrivacyRequestAction } from "./actions";
+import { buttonSmall } from "@/components/console/buttons";
+import { fieldClasses } from "@/components/console/field-styles";
 
 export const metadata: Metadata = { title: "Privacy requests" };
 
-const INPUT = "mt-1.5 block w-full rounded-control border border-ink-soft/65 bg-white px-3 py-2 text-sm text-ink focus:border-accent";
-const BUTTON = "rounded-full border border-ink-soft/65 px-3.5 py-1.5 text-sm font-medium text-ink transition-colors duration-300 ease-calm hover:border-accent hover:text-accent-deep";
+const INPUT = fieldClasses;
+const BUTTON = buttonSmall;
 
 const KIND_OPTIONS: readonly SelectOption[] = Object.entries(REQUEST_KIND_LABELS).map(([value, label]) => ({ value, label }));
 const OUTCOME_OPTIONS: readonly SelectOption[] = Object.entries(REQUEST_OUTCOME_LABELS).map(([value, label]) => ({ value, label }));
