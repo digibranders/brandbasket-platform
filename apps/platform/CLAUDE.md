@@ -14,7 +14,7 @@ The app at app.brandbasket.in: sign-up and sign-in, onboarding, the business das
 
 | Path under `app/app-host/` | Holds |
 |---|---|
-| `(protected)/` | Signed-in dashboard: onboarding, business, content (blog, authors, categories), billing, services, upgrade, care, premium, appointments, patients, leads, reviews, deals, photos, monitoring, project, changelog, settings, to do, requests (and `requests/new`, the Ask for a change form) |
+| `(protected)/` | Signed-in dashboard: onboarding, business, content (blog, authors, categories), billing, services, upgrade, care, premium, appointments, patients, leads, reviews, deals, photos, monitoring, project, changelog, settings, to do, requests (and `requests/new`, the Ask for a change form, and `requests/calls`, the Calls page) |
 | `(support)/support` | Old support links: the list and a ticket redirect to Requests |
 | `login`, `join`, `forgot-password`, `reset-password/[token]`, `confirm-email/[token]`, `setup/[token]`, `restore-account` | Account entry points |
 | `billing/*` | Pay and confirm pages for plans, charges and services |

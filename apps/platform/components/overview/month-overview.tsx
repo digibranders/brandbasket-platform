@@ -2,7 +2,9 @@ import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 import { includedEditsUsedLine } from "@brandbasket/shared/lib/change-requests";
 import { cn } from "@brandbasket/shared/lib/cn";
+import { BookCallButton } from "@/components/calls/book-call-button";
 import { dayMonth } from "@/lib/call-dates";
+import type { BookCallOptions } from "@/lib/calls/form";
 import { SERVICE_NAMES } from "@/lib/first-look";
 import { greetingFor, monthName, sublineFor } from "@/lib/overview";
 import { ASK_FOR_A_CHANGE_PATH } from "@/lib/requests/links";
@@ -23,6 +25,9 @@ interface MonthOverviewProps {
   /** The website's build card while the website is not live, else null. */
   readonly buildCard: ReactNode | null;
   readonly bookingUrl: string | null;
+  /** The reasons a call can be about for this customer, and whether an invitation can reach them (Book a call). */
+  readonly callOptions: BookCallOptions["options"];
+  readonly canBook: boolean;
 }
 
 /** A website item opens its page; a Social or Search item opens its form on the To do page. */
@@ -71,7 +76,7 @@ function NeedsYou({ rows, count }: { readonly rows: readonly NeedsYouRow[]; read
 }
 
 /** Overview once the first look is over: does anything need me, what did I get this month, what did you do. */
-export function MonthOverview({ firstName, businessName, data, now, buildCard, bookingUrl }: MonthOverviewProps): ReactElement {
+export function MonthOverview({ firstName, businessName, data, now, buildCard, bookingUrl, callOptions, canBook }: MonthOverviewProps): ReactElement {
   const month = monthName(now);
   // A quote to accept or a change to check is a conversation waiting on the customer, so it comes before the To do items.
   const rows = [...data.requests, ...data.todo.filter((item) => !item.done).map(toRow)];
@@ -88,11 +93,7 @@ export function MonthOverview({ firstName, businessName, data, now, buildCard, b
           <Link href={ASK_FOR_A_CHANGE_PATH} className={SOFT_BUTTON}>
             Ask for a change
           </Link>
-          {bookingUrl === null ? null : (
-            <a href={bookingUrl} target="_blank" rel="noopener noreferrer" className={SOFT_BUTTON}>
-              Book a call
-            </a>
-          )}
+          {bookingUrl === null ? null : <BookCallButton options={callOptions} bookingUrl={bookingUrl} canBook={canBook} />}
         </div>
       </header>
 
@@ -136,12 +137,18 @@ export function MonthOverview({ firstName, businessName, data, now, buildCard, b
               </ul>
             )}
           </section>
-          {data.included === null && data.nextPayment === null ? null : (
+          {data.included === null && data.nextPayment === null && data.nextCall === null ? null : (
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[0.84375rem]">
               {data.included === null ? null : (
                 <>
                   <dt className="text-ink-2">Included edits this month</dt>
                   <dd className="text-right font-figure font-semibold tabular-nums text-ink">{includedEditsUsedLine(data.included.used, data.included.allowed)}</dd>
+                </>
+              )}
+              {data.nextCall === null ? null : (
+                <>
+                  <dt className="text-ink-2">Next call</dt>
+                  <dd className="text-right font-figure font-semibold tabular-nums text-ink">{data.nextCall}</dd>
                 </>
               )}
               {data.nextPayment === null ? null : (

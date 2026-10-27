@@ -7,6 +7,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/app/app-host/(protected)/requests/move-actions", () => ({ approveChangeAction: vi.fn(), declineQuoteAction: vi.fn(), reopenRequestAction: vi.fn() }));
 vi.mock("@/app/app-host/(protected)/requests/pay-actions", () => ({ acceptQuoteAction: vi.fn() }));
 vi.mock("@/app/app-host/(protected)/billing/actions", () => ({ payChargeAction: vi.fn() }));
+vi.mock("@/app/app-host/(protected)/requests/calls/actions", () => ({ bookCallAction: vi.fn() }));
+vi.mock("@/app/app-host/(protected)/setup-call-actions", () => ({ loadCallSlots: vi.fn() }));
 vi.mock("@/app/app-host/(support)/support/actions", () => ({ replyToSupportRequest: vi.fn(), acknowledgeSupportReplies: vi.fn() }));
 
 import { RequestDetail } from "@/components/requests/request-detail";
@@ -41,9 +43,11 @@ function change(overrides: Partial<ChangeView> = {}): ChangeView {
   };
 }
 
-function render(detail: Partial<RequestDetailData>, notice: { ok: boolean; text: string } | null = null): string {
+const CALLS = { options: [{ value: "website", label: "Website" }, { value: "other", label: "Something else" }] as const, bookingUrl: "https://cal.com/brandbasket/call", canBook: true };
+
+function render(detail: Partial<RequestDetailData>, notice: { ok: boolean; text: string } | null = null, calls: typeof CALLS | null = null): string {
   const full: RequestDetailData = { ticket: ticket(), messages: [message], attachments: [], change: null, events: [], ...detail };
-  return renderToStaticMarkup(createElement(RequestDetail, { detail: full, now: NOW, submissionKey: "reply-key-12345678", notice })).replaceAll("<!-- -->", "");
+  return renderToStaticMarkup(createElement(RequestDetail, { detail: full, now: NOW, submissionKey: "reply-key-12345678", notice, calls })).replaceAll("<!-- -->", "");
 }
 
 const dark = (html: string): number => html.split(DARK_BUTTON).length - 1;
@@ -86,4 +90,10 @@ it("says a closed conversation is closed and offers a new request instead of a r
 it("announces what just happened, as an alert when it is a problem", () => {
   expect(render({ change: change() }, { ok: false, text: "That did not work. Please try again." })).toContain('role="alert"');
   expect(render({ change: change() }, { ok: true, text: "Payment received. We have started on your change." })).toContain('role="status"');
+});
+
+it("offers 'Talk about it on a call' in the header when calls are open, and not on a closed conversation or when they are not", () => {
+  expect(render({ change: change() }, null, CALLS)).toContain(">Talk about it on a call</button>");
+  expect(render({ change: change() }, null, null)).not.toContain("Talk about it on a call");
+  expect(render({ ticket: ticket({ status: "closed" }) }, null, CALLS)).not.toContain("Talk about it on a call");
 });

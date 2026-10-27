@@ -119,6 +119,10 @@ export const setupCallBookings = pgTable(
     heldAt: timestamp("held_at", { withTimezone: true }),
     /** The staff member who marked it. */
     heldByStaffId: text("held_by_staff_id").references(() => users.id),
+    /** What was agreed on the call, written by staff once it is held (plan 32). All three are set together. */
+    summary: text("summary"),
+    summaryAt: timestamp("summary_at", { withTimezone: true }),
+    summaryByStaffId: text("summary_by_staff_id").references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -130,6 +134,10 @@ export const setupCallBookings = pgTable(
       sql`(${table.startsAt} is null and ${table.endsAt} is null) or (${table.startsAt} is not null and ${table.endsAt} is not null and ${table.endsAt} > ${table.startsAt})`,
     ),
     check("setup_call_bookings_held_check", sql`(${table.heldAt} is null) = (${table.heldByStaffId} is null)`),
+    check(
+      "setup_call_bookings_summary_check",
+      sql`(${table.summary} is null) = (${table.summaryAt} is null) and (${table.summary} is null) = (${table.summaryByStaffId} is null) and (${table.summary} is null or (${table.heldAt} is not null and char_length(btrim(${table.summary})) between 3 and 600))`,
+    ),
   ],
 );
 export type SetupCallBooking = typeof setupCallBookings.$inferSelect;

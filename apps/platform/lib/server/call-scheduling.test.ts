@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BOOKING_WINDOW_DAYS, bookCallSlot, calcomPage, cancelCallBooking, listCallSlots } from "./call-scheduling";
+import { BOOKING_WINDOW_DAYS, bookCallSlot, calcomBookingMetadata, calcomPage, cancelCallBooking, listCallSlots, readSlotStart, readTimeZone } from "./call-scheduling";
 
 vi.mock("server-only", () => ({}));
 
@@ -77,5 +77,50 @@ describe("cancelCallBooking", () => {
     await cancelCallBooking(URL.replace("calendly.com", "cal.com"), "https://api.calendly.com/scheduled_events/E1/invitees/I1");
     await cancelCallBooking(URL.replace("calendly.com", "cal.com"), "https://api.cal.com/v2/bookings/abc/../../me");
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("calcomBookingMetadata", () => {
+  it("calls a booking with no purpose the kickoff, as every booking was before calls existed", () => {
+    expect(calcomBookingMetadata(INVITEE)).toEqual({ source: "dashboard", businessId: "b1", purpose: "kickoff" });
+  });
+
+  it("carries the purpose, the reason and the customer's note, so the host sees why the call was booked", () => {
+    expect(calcomBookingMetadata({ ...INVITEE, purpose: "call", reason: "social", note: "Ads for braces in January" })).toEqual({
+      source: "dashboard",
+      businessId: "b1",
+      purpose: "call",
+      reason: "social",
+      note: "Ads for braces in January",
+    });
+  });
+
+  it("leaves out an empty note and cuts a long one to Cal.com's 500 characters", () => {
+    expect(calcomBookingMetadata({ ...INVITEE, purpose: "call", reason: "other", note: "" })).not.toHaveProperty("note");
+    expect(calcomBookingMetadata({ ...INVITEE, purpose: "call", reason: "other", note: null })).not.toHaveProperty("note");
+    expect(calcomBookingMetadata({ ...INVITEE, purpose: "call", reason: "other", note: "x".repeat(600) }).note).toHaveLength(500);
+  });
+});
+
+describe("readSlotStart", () => {
+  it("accepts a time still ahead and inside the booking window", () => {
+    expect(readSlotStart("2026-10-17T05:00:00.000Z", NOW)).toEqual(new Date("2026-10-17T05:00:00.000Z"));
+  });
+
+  it("refuses a time in the past, beyond the window, not a time, or not text", () => {
+    expect(readSlotStart("2026-10-16T07:59:00.000Z", NOW)).toBeNull();
+    expect(readSlotStart(NOW.toISOString(), NOW)).toBeNull();
+    expect(readSlotStart(new Date(NOW.getTime() + (BOOKING_WINDOW_DAYS + 1) * 86_400_000).toISOString(), NOW)).toBeNull();
+    expect(readSlotStart("tomorrow", NOW)).toBeNull();
+    expect(readSlotStart(12, NOW)).toBeNull();
+  });
+});
+
+describe("readTimeZone", () => {
+  it("keeps a real time zone and falls back to UTC for anything else", () => {
+    expect(readTimeZone("Asia/Kolkata")).toBe("Asia/Kolkata");
+    expect(readTimeZone("Not/AZone")).toBe("UTC");
+    expect(readTimeZone("x".repeat(65))).toBe("UTC");
+    expect(readTimeZone(undefined)).toBe("UTC");
   });
 });
