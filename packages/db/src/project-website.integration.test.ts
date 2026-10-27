@@ -1,7 +1,21 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  findPreviewImage,
+  findPreviewImageInfo,
+  listProjectEvents,
+  PauseReasonInvalidError,
+  ProjectCannotBePausedError,
+  ProjectCannotStartBuildingError,
+  ProjectNotPausedError,
+  PROJECT_STATUSES_PAUSABLE,
+  resumeProject,
+  savePreviewImage,
+  setProjectBuilding,
+  setProjectOnHold,
+} from "./queries/project-website";
 import { submitProject } from "./queries/projects";
-import { businesses, businessMembers, projectEvents, projectPreviewImages, projects, users, type ProjectStatus } from "./schema";
+import { businesses, businessMembers, projectEvents, projectPreviewImages, projects, projectStatus, users, type ProjectStatus } from "./schema";
 import { withTenantScope, type ScopedTransaction } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
@@ -146,5 +160,173 @@ describe("the pause reason rule", () => {
     expect(await sqlState(() => setStatus("on_hold", "  ab  "))).toBe("23514");
     expect(await sqlState(() => setStatus("on_hold", "x".repeat(201)))).toBe("23514");
     expect(await sqlState(() => setStatus("on_hold", "abc"))).toBeUndefined();
+  });
+});
+
+/** Puts the project in `status` through the staff connection; a paused project gets a reason, as the database requires. */
+async function put(status: ProjectStatus): Promise<void> {
+  await setStatus(status, status === "on_hold" ? "Waiting for your logo" : null);
+}
+
+async function eventCount(): Promise<number> {
+  return (await eventStatuses()).length;
+}
+
+async function projectRow(): Promise<{ status: ProjectStatus; onHoldReason: string | null }> {
+  const [row] = await dbs.owner.db.select({ status: projects.status, onHoldReason: projects.onHoldReason }).from(projects).where(eq(projects.id, projectId));
+  if (row === undefined) throw new Error("The seed project is missing");
+  return row;
+}
+
+describe("the staff moves, from every status", () => {
+  const ALL = projectStatus.enumValues;
+  const moves: readonly { readonly name: string; readonly from: readonly ProjectStatus[]; readonly to: (from: ProjectStatus) => ProjectStatus; readonly error: new (...args: never[]) => Error; readonly run: () => Promise<unknown> }[] = [
+    { name: "setProjectBuilding", from: ["submitted"], to: () => "building", error: ProjectCannotStartBuildingError, run: () => setProjectBuilding(dbs.staff.db, { businessId }) },
+    { name: "setProjectOnHold", from: PROJECT_STATUSES_PAUSABLE, to: () => "on_hold", error: ProjectCannotBePausedError, run: () => setProjectOnHold(dbs.staff.db, { businessId, reason: "Waiting for your logo" }) },
+    { name: "resumeProject", from: ["on_hold"], to: () => "building", error: ProjectNotPausedError, run: () => resumeProject(dbs.staff.db, { businessId }) },
+  ];
+
+  for (const move of moves) {
+    for (const from of ALL) {
+      const allowed = move.from.includes(from);
+      it(`${move.name} from ${from} ${allowed ? "moves the project and writes one event" : "throws and writes none"}`, async () => {
+        await put(from);
+        const before = await eventCount();
+        if (allowed) {
+          await move.run();
+          expect(await eventCount()).toBe(before + 1);
+        } else {
+          await expect(move.run()).rejects.toBeInstanceOf(move.error);
+          expect(await eventCount()).toBe(before);
+          expect((await projectRow()).status).toBe(from);
+        }
+      });
+    }
+  }
+
+  it("works inside a transaction on the staff connection", async () => {
+    await put("submitted");
+    await dbs.staff.db.transaction((tx) => setProjectBuilding(tx, { businessId }));
+    expect((await projectRow()).status).toBe("building");
+  });
+});
+
+describe("pausing", () => {
+  it("trims the reason, and keeps it on the project and its event", async () => {
+    await put("building");
+    const project = await setProjectOnHold(dbs.staff.db, { businessId, reason: "  Waiting for your logo  " });
+    expect(project).toMatchObject({ status: "on_hold", onHoldReason: "Waiting for your logo" });
+    const events = await asOwner((tx) => listProjectEvents(tx, projectId));
+    expect(events.at(-1)).toMatchObject({ status: "on_hold", reason: "Waiting for your logo" });
+  });
+
+  it("refuses a reason of 2 or 201 characters before the database sees it, and accepts 3 and 200", async () => {
+    await put("building");
+    const before = await eventCount();
+    for (const reason of ["ab", "  ab  ", "   ", "x".repeat(201)]) {
+      await expect(setProjectOnHold(dbs.staff.db, { businessId, reason })).rejects.toBeInstanceOf(PauseReasonInvalidError);
+    }
+    expect(await eventCount()).toBe(before);
+    expect((await projectRow()).status).toBe("building");
+
+    await setProjectOnHold(dbs.staff.db, { businessId, reason: "x".repeat(200) });
+    await resumeProject(dbs.staff.db, { businessId });
+    await setProjectOnHold(dbs.staff.db, { businessId, reason: "abc" });
+    expect((await projectRow()).status).toBe("on_hold");
+  });
+
+  it("leaves one on_hold event when two staff pause at once", async () => {
+    await put("building");
+    const results = await Promise.allSettled([
+      setProjectOnHold(dbs.staff.db, { businessId, reason: "Waiting for your logo" }),
+      setProjectOnHold(dbs.staff.db, { businessId, reason: "Waiting for your photos" }),
+    ]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+    expect(rejected?.reason).toBeInstanceOf(ProjectCannotBePausedError);
+    expect((await eventStatuses()).filter((status) => status === "on_hold")).toHaveLength(1);
+  });
+});
+
+describe("resuming", () => {
+  const cases: readonly { readonly from: ProjectStatus; readonly lands: ProjectStatus }[] = [
+    { from: "submitted", lands: "building" },
+    { from: "building", lands: "building" },
+    { from: "revisions", lands: "revisions" },
+    { from: "preview", lands: "preview" },
+  ];
+  for (const { from, lands } of cases) {
+    it(`returns a project paused from ${from} to ${lands} and clears the reason`, async () => {
+      await dbs.staff.db.update(projects).set({ previewUrl: "https://preview.example.com", previewSentAt: NOW }).where(eq(projects.id, projectId));
+      await put(from);
+      await setProjectOnHold(dbs.staff.db, { businessId, reason: "Waiting for your logo" });
+      const resumed = await resumeProject(dbs.staff.db, { businessId });
+      expect(resumed).toMatchObject({ status: lands, onHoldReason: null });
+      expect(await projectRow()).toEqual({ status: lands, onHoldReason: null });
+    });
+  }
+
+  it("goes back to the latest status before the latest pause after several", async () => {
+    await put("submitted");
+    await setProjectOnHold(dbs.staff.db, { businessId, reason: "Waiting for your logo" });
+    await resumeProject(dbs.staff.db, { businessId });
+    await put("revisions");
+    await setProjectOnHold(dbs.staff.db, { businessId, reason: "Waiting for your photos" });
+    expect((await resumeProject(dbs.staff.db, { businessId })).status).toBe("revisions");
+  });
+
+  it("falls back to building when the history has nothing before the pause", async () => {
+    await put("on_hold");
+    await dbs.owner.db.execute(sql`delete from project_events where project_id = ${projectId} and status <> 'on_hold'`);
+    expect((await resumeProject(dbs.staff.db, { businessId })).status).toBe("building");
+  });
+
+  it("lets only one of two staff resume at once", async () => {
+    await put("revisions");
+    await setProjectOnHold(dbs.staff.db, { businessId, reason: "Waiting for your logo" });
+    const results = await Promise.allSettled([resumeProject(dbs.staff.db, { businessId }), resumeProject(dbs.staff.db, { businessId })]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect((await eventStatuses()).filter((status) => status === "revisions")).toHaveLength(2);
+  });
+});
+
+describe("listProjectEvents", () => {
+  it("lists a project's history oldest first, and nothing of another business's", async () => {
+    await asOwner((tx) => submitProject(tx, { projectId, now: NOW }));
+    await setProjectBuilding(dbs.staff.db, { businessId });
+    await setProjectOnHold(dbs.staff.db, { businessId, reason: "Waiting for your logo" });
+    const events = await asOwner((tx) => listProjectEvents(tx, projectId));
+    expect(events.map((event) => event.status)).toEqual(["onboarding", "submitted", "building", "on_hold"]);
+    expect(events.map((event) => event.occurredAt.getTime())).toEqual([...events.map((event) => event.occurredAt.getTime())].sort((a, b) => a - b));
+    expect(await asOtherOwner((tx) => listProjectEvents(tx, projectId))).toEqual([]);
+  });
+});
+
+describe("the preview picture", () => {
+  const base = () => ({ projectId, businessId, previewUrl: "https://preview.example.com", width: 1280, height: 800 });
+
+  it("keeps one row per project, with the newer bytes", async () => {
+    await savePreviewImage(dbs.staff.db, { ...base(), image: Buffer.from("first") });
+    await savePreviewImage(dbs.staff.db, { ...base(), previewUrl: "https://preview.example.com/v2", image: Buffer.from("second") });
+    expect(await dbs.owner.db.select().from(projectPreviewImages)).toHaveLength(1);
+    const found = await asOwner((tx) => findPreviewImage(tx));
+    expect(found?.previewUrl).toBe("https://preview.example.com/v2");
+    expect(found?.image.toString()).toBe("second");
+    expect(await asOwner((tx) => findPreviewImageInfo(tx))).toEqual({ previewUrl: "https://preview.example.com/v2", capturedAt: found?.capturedAt });
+  });
+
+  it("returns null when there is none, and for another business's picture", async () => {
+    expect(await asOwner((tx) => findPreviewImage(tx))).toBeNull();
+    expect(await asOwner((tx) => findPreviewImageInfo(tx))).toBeNull();
+    await savePreviewImage(dbs.staff.db, { ...base(), image: Buffer.from("first") });
+    expect(await asOtherOwner((tx) => findPreviewImage(tx))).toBeNull();
+    expect(await asOtherOwner((tx) => findPreviewImageInfo(tx))).toBeNull();
+  });
+
+  it("is refused by the database over 1 MB, and the old picture stays", async () => {
+    await savePreviewImage(dbs.staff.db, { ...base(), image: Buffer.from("first") });
+    expect(await sqlState(() => savePreviewImage(dbs.staff.db, { ...base(), image: Buffer.alloc(1_048_577) }))).toBe("23514");
+    expect((await asOwner((tx) => findPreviewImage(tx)))?.image.toString()).toBe("first");
+    expect(await sqlState(() => savePreviewImage(dbs.staff.db, { ...base(), image: Buffer.alloc(1_048_576, 1) }))).toBeUndefined();
   });
 });
