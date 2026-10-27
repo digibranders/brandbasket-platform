@@ -25,6 +25,8 @@ interface ReferralCodeFormProps {
   readonly lapsedCode?: string | null;
   /** A shorter field and button, for a page where the code is a side matter next to the price (the plan pages). */
   readonly compact?: boolean;
+  /** The page already names the field above it (a disclosure's title): the label stays for screen readers only, without "(optional)". */
+  readonly labelHidden?: boolean;
 }
 
 const FIELD_NAME = "referralCode";
@@ -51,6 +53,7 @@ export function ReferralCodeForm({
   label = "Have a referral code?",
   lapsedCode = null,
   compact = false,
+  labelHidden = false,
 }: ReferralCodeFormProps): ReactElement {
   const worth = discount === null ? null : describeDiscount(discount, currency);
   return discount === null ? (
@@ -61,7 +64,7 @@ export function ReferralCodeForm({
           full price applies. You can try another code.
         </p>
       )}
-      <ApplyForm action={applyAction} label={label} compact={compact} />
+      <ApplyForm action={applyAction} label={label} compact={compact} labelHidden={labelHidden} />
     </div>
   ) : (
     <RemovableCode action={removeAction}>
@@ -71,16 +74,26 @@ export function ReferralCodeForm({
   );
 }
 
-function ApplyForm({ action, label, compact }: { readonly action: StepAction; readonly label: string; readonly compact: boolean }): ReactElement {
+function ApplyForm({
+  action,
+  label,
+  compact,
+  labelHidden,
+}: {
+  readonly action: StepAction;
+  readonly label: string;
+  readonly compact: boolean;
+  readonly labelHidden: boolean;
+}): ReactElement {
   const { formRef, errorRef, formAction, controls } = useStepForm(action);
   return (
     <form ref={formRef} action={formAction} className="space-y-3">
       <StepFormError controls={controls} errorRef={errorRef} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
-          <label htmlFor={`field-${FIELD_NAME}`} className="block text-sm font-medium">
+          <label htmlFor={`field-${FIELD_NAME}`} className={labelHidden ? "sr-only" : "block text-sm font-medium"}>
             {label}
-            <span className="font-normal text-ink-soft"> (optional)</span>
+            {labelHidden ? null : <span className="font-normal text-ink-soft"> (optional)</span>}
           </label>
           <input
             id={`field-${FIELD_NAME}`}
