@@ -45,6 +45,15 @@ export function weekBounds(now: Date): { readonly from: string; readonly to: str
   return { from, to: addDays(from, 6) };
 }
 
+/** The days Social & Ads and Search load: this India month, stretched to the end of the week when that week runs into the next. */
+export function postWindow(now: Date): { readonly from: string; readonly to: string } {
+  const from = monthKey(now);
+  const [year = 0, month = 0] = from.split("-").map(Number);
+  const monthEnd = addDays(new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10), -1);
+  const weekEnd = weekBounds(now).to;
+  return { from, to: weekEnd > monthEnd ? weekEnd : monthEnd };
+}
+
 const byDueDate = (a: PostView, b: PostView): number => a.dueOn.localeCompare(b.dueOn) || a.id.localeCompare(b.id);
 
 /** `waiting` is every post awaiting approval; `thisWeek` is every post due this India week, whatever its status. */

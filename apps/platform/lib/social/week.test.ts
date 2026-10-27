@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { approveAllLabel, dueDate, dueLabel, monthLine, needsOkBy, postPosition, splitPosts, statusWord, waitingHeadline, weekBounds, type PostView } from "@/lib/social/week";
+import { approveAllLabel, dueDate, dueLabel, monthLine, needsOkBy, postPosition, splitPosts, statusWord, waitingHeadline, postWindow, weekBounds, type PostView } from "@/lib/social/week";
 
 function post(id: string, dueOn: string, status: PostView["status"] = "planned"): PostView {
   return { id, title: `Post ${id}`, caption: null, dueOn, status, hasImage: false, linkUrl: null };
@@ -101,5 +101,19 @@ describe("monthLine", () => {
   it("is null when the month has no posts", () => {
     expect(monthLine([post("d", "2026-10-31", "published")], now)).toBeNull();
     expect(monthLine([], now)).toBeNull();
+  });
+});
+
+describe("postWindow", () => {
+  it("runs from the first of the month to the month's last day", () => {
+    expect(postWindow(new Date("2026-11-10T06:00:00.000Z"))).toEqual({ from: "2026-11-01", to: "2026-11-30" });
+  });
+
+  it("runs to the end of the week when that week crosses into the next month", () => {
+    expect(postWindow(new Date("2026-11-30T06:00:00.000Z"))).toEqual({ from: "2026-11-01", to: "2026-12-06" });
+  });
+
+  it("uses the India month, so 00:30 on the 1st is already the new month", () => {
+    expect(postWindow(new Date("2026-11-30T19:00:00.000Z"))).toEqual({ from: "2026-12-01", to: "2026-12-31" });
   });
 });
