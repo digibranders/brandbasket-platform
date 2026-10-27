@@ -1,5 +1,5 @@
 import "server-only";
-import { findFirstPayment, findLiveBundledAddOns, listBoughtSetupServices, withTenantScope } from "@brandbasket/db";
+import { findFirstPayment, findLiveBundledAddOns, listBoughtSetupServices, withTenantScope, type Payment } from "@brandbasket/db";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
@@ -13,6 +13,13 @@ export interface FirstPaymentView {
   readonly amount: string;
   readonly paidOn: string;
   readonly receiptHref: string;
+}
+
+/** A first payment as the reassurance line shows it; null while it has no paid date. */
+export function firstPaymentView(row: Pick<Payment, "id" | "amountCents" | "currency" | "paidAt"> | null): FirstPaymentView | null {
+  return row === null || row.paidAt === null
+    ? null
+    : { amount: formatMoney(row.amountCents, row.currency), paidOn: dayMonth(row.paidAt), receiptHref: receiptDownloadHref([row.id]) };
 }
 
 export interface FirstLookData {
@@ -53,11 +60,7 @@ export async function loadFirstLook(tenant: TenantContext): Promise<FirstLookDat
   const db = getAppDb();
   const services = await loadServicesBought(tenant);
   const payment = await withTenantScope(db, tenant, (tx) => findFirstPayment(tx, tenant.businessId))
-    .then((row): FirstPaymentView | null =>
-      row === null || row.paidAt === null
-        ? null
-        : { amount: formatMoney(row.amountCents, row.currency), paidOn: dayMonth(row.paidAt), receiptHref: receiptDownloadHref([row.id]) },
-    )
+    .then(firstPaymentView)
     .catch((error: unknown) => {
       console.error("[first-look] could not read the first payment", errorLogInfo(error));
       return null;
