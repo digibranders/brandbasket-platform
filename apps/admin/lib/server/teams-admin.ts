@@ -1,6 +1,15 @@
 import "server-only";
 import { TEAMS_DESTINATIONS, type TeamsDestination } from "@brandbasket/shared/lib/teams-webhook";
-import { clearTeamsHook, loadTeamsHookState, saveTeamsHook, sendTeamsTest, type TeamsHookState, type TeamsTestResult } from "@brandbasket/shared/server/teams-alerts";
+import {
+  clearTeamsHook,
+  loadTeamsHookState,
+  resendTeamsAlert,
+  saveTeamsHook,
+  sendTeamsTest,
+  type TeamsHookState,
+  type TeamsResendResult,
+  type TeamsTestResult,
+} from "@brandbasket/shared/server/teams-alerts";
 import { getStaffDb } from "./db";
 import { serverEnv } from "./env";
 
@@ -23,3 +32,9 @@ export async function removeTeamsUrl(destination: TeamsDestination): Promise<voi
 export function testTeamsUrl(destination: TeamsDestination, by: { readonly email: string }, now: Date): Promise<TeamsTestResult> {
   return sendTeamsTest(getStaffDb(), serverEnv().BETTER_AUTH_SECRET, destination, { email: by.email, now });
 }
+
+/** Sends a noted alert that did not go through to its channel again. */
+export function resendFailedAlert(deliveryId: string, now: Date): Promise<TeamsResendResult> {
+  return resendTeamsAlert(getStaffDb(), serverEnv().BETTER_AUTH_SECRET, deliveryId, now);
+}
+
