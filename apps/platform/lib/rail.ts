@@ -1,7 +1,7 @@
 import { ADD_ONS_PATH } from "@brandbasket/shared/lib/billing/add-ons";
 import { CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
 import { ASK_FOR_A_CHANGE_PATH, REQUESTS_PATH } from "@/lib/requests/links";
-import { WEBSITE_PATH } from "@/lib/website/tabs";
+import { WEBSITE_PATH, WEBSITE_TABS } from "@/lib/website/tabs";
 
 /** The rail's icons by name; components/v2/rail-icon.tsx draws them. */
 export type RailIcon = "overview" | "requests" | "todo" | "website" | "reviews" | "deals" | "profile" | "services" | "billing" | "settings";
@@ -110,7 +110,11 @@ export function railTargets(sections: readonly RailSection[]): readonly RailTarg
   return [
     ASK_FOR_A_CHANGE,
     ...sections.flatMap((section) =>
-      section.links.flatMap((link) => [{ href: link.href, label: link.label }, ...(link.children ?? []).map((child) => ({ href: child.href, label: `${link.label}: ${child.label}` }))]),
+      section.links.flatMap((link) => [
+        { href: link.href, label: link.label },
+        ...(link.href === WEBSITE_PATH ? WEBSITE_TABS.slice(1).map((tab) => ({ href: tab.href, label: `${link.label}: ${tab.label}` })) : []),
+        ...(link.children ?? []).map((child) => ({ href: child.href, label: `${link.label}: ${child.label}` })),
+      ]),
     ),
   ];
 }

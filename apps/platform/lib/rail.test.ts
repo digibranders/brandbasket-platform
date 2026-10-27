@@ -73,6 +73,8 @@ describe("searchRail", () => {
     const sections = railSections(FULL);
     expect(searchRail(sections, "")[0]?.label).toBe("Ask for a change");
     expect(searchRail(sections, "AUTHORS").map((target) => target.label)).toEqual(["Website: Authors"]);
+    expect(searchRail(sections, "chatbot leads").map((target) => target.href)).toEqual(["/oyechats/leads"]);
+    expect(searchRail(sections, "website: blog").map((target) => target.href)).toEqual(["/content/blog"]);
   });
 });
 
