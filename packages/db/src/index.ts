@@ -694,6 +694,7 @@ export {
   applyChatbotQualification,
   ChatbotBotIdTakenError,
   countChatbotLeadsForBusiness,
+  countChatbotLeadsSince,
   eraseChatbotsOfBusiness,
   findChatbotLeadForBusiness,
   findChatbotOperatorAccess,
@@ -747,7 +748,17 @@ export {
   type RecordedAddOnPayment,
 } from "./queries/add-ons";
 export { clearSiteSetting, findSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "./queries/site-settings";
-export { findSetupCallBooking, moveSetupCallBooking, recordSetupCallBooking, removeSetupCallBooking } from "./queries/setup-calls";
+export {
+  clearSetupCallHeld,
+  findSetupCallBooking,
+  markSetupCallHeld,
+  moveSetupCallBooking,
+  recordSetupCallBooking,
+  removeSetupCallBooking,
+} from "./queries/setup-calls";
+export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
+export { addActivityEvent, listActivityEvents, removeActivityEvent } from "./queries/activity-events";
+export { listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
 export {
   activateBundledAddOns,
   BundledAddOnNotPossibleError,

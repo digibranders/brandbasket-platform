@@ -8,6 +8,7 @@ export * from "./billing";
 export * from "./business-facts";
 export * from "./businesses";
 export * from "./chatbots";
+export * from "./client-activity";
 export * from "./currency";
 export * from "./directory";
 export * from "./directory-ads";

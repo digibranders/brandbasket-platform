@@ -23,6 +23,8 @@ export interface SetupCallBookingView {
   /** The meeting's time, once the booking page has reported it; null until then. */
   readonly startsAtIso: string | null;
   readonly endsAtIso: string | null;
+  /** When staff marked the call held; null until then. */
+  readonly heldAtIso: string | null;
 }
 
 /**
@@ -44,6 +46,7 @@ export const getSetupCallState = cache(async (tenant: TenantContext): Promise<Se
         bookedAtIso: row.bookedAt.toISOString(),
         startsAtIso: row.startsAt?.toISOString() ?? null,
         endsAtIso: row.endsAt?.toISOString() ?? null,
+        heldAtIso: row.heldAt?.toISOString() ?? null,
       },
     };
   } catch (error) {

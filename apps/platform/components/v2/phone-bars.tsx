@@ -9,6 +9,7 @@ import { AccountBar } from "@brandbasket/shared/ui/panel/account-bar";
 import { WordmarkLogo, type BrandLogo } from "@brandbasket/shared/ui/logo";
 import { isCurrent, linkIsCurrent, type RailSection } from "@/lib/rail";
 import { CommandSearch } from "./command-search";
+import { CountPill } from "./count-pill";
 import type { AccountMenu } from "./rail";
 import { RailIconMark } from "./rail-icon";
 
@@ -48,7 +49,10 @@ export function PhoneBars({ sections, logo, menu, signOut }: PhoneBarsProps): Re
           const current = linkIsCurrent(link, pathname);
           return (
             <Link key={link.href} href={link.href} aria-current={isCurrent(pathname, link.href) ? "page" : undefined} className={cn("grid justify-items-center gap-0.5 text-[0.6875rem] font-semibold", current ? "text-ink" : "text-ink-2")}>
-              <RailIconMark name={link.icon} current={current} />
+              <span className="relative">
+                <RailIconMark name={link.icon} current={current} />
+                <CountPill count={link.count} current={current} className="absolute -right-3 -top-1.5" />
+              </span>
               {link.label}
             </Link>
           );

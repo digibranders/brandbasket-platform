@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { setupCallBookings, type SetupCallBooking } from "../schema";
@@ -53,11 +53,64 @@ export async function moveSetupCallBooking(
 }
 
 /**
- * Forgets a booked call its booking service says was cancelled, so the dashboard asks for a time again. True when one was
- * removed. A booking the dashboard replaced is no longer stored under its old address, so its cancel removes nothing.
- * Staff connection.
+ * Forgets a booked call its booking service says was cancelled, so the dashboard asks for a time again. A call staff
+ * already marked held keeps its row and its held mark (the call happened; only the booking is gone), so only the booking
+ * address and times are cleared. True when a row was removed or cleared. A booking the dashboard replaced is no longer
+ * stored under its old address, so its cancel finds nothing. Staff connection.
  */
 export async function removeSetupCallBooking(db: Runner, inviteeUri: string): Promise<boolean> {
-  const removed = await db.delete(setupCallBookings).where(eq(setupCallBookings.inviteeUri, inviteeUri)).returning({ id: setupCallBookings.id });
-  return removed.length > 0;
+  const cleared = await db
+    .update(setupCallBookings)
+    .set({ inviteeUri: null, startsAt: null, endsAt: null, updatedAt: sql`now()` })
+    .where(and(eq(setupCallBookings.inviteeUri, inviteeUri), isNotNull(setupCallBookings.heldAt)))
+    .returning({ id: setupCallBookings.id });
+  const removed = await db
+    .delete(setupCallBookings)
+    .where(and(eq(setupCallBookings.inviteeUri, inviteeUri), isNull(setupCallBookings.heldAt)))
+    .returning({ id: setupCallBookings.id });
+  return cleared.length + removed.length > 0;
+}
+
+/**
+ * Staff mark the kickoff call as held. A business that never booked through the dashboard (the call happened by phone)
+ * gets a row with no times, so the mark still has somewhere to live. Staff connection. True when the row now says held.
+ */
+export async function markSetupCallHeld(db: Runner, input: { readonly businessId: string; readonly staffId: string; readonly now: Date }): Promise<boolean> {
+  const rows = await db
+    .insert(setupCallBookings)
+    .values({ businessId: input.businessId, bookedAt: input.now, heldAt: input.now, heldByStaffId: input.staffId })
+    .onConflictDoUpdate({
+      target: setupCallBookings.businessId,
+      set: { heldAt: input.now, heldByStaffId: input.staffId, updatedAt: input.now },
+    })
+    .returning({ id: setupCallBookings.id });
+  return rows.length > 0;
+}
+
+/**
+ * Undoes the mark. A row made only for a phone call (no booking address, no times) has nothing left once it is unmarked,
+ * so it is deleted; a booked call keeps its booking. True when a call was held and no longer is. Staff connection.
+ * The mark is cleared first so the customer role, which may not touch it, is refused by the guard trigger and never
+ * reaches the delete.
+ */
+export async function clearSetupCallHeld(db: Runner, businessId: string, now: Date): Promise<boolean> {
+  const rows = await db
+    .update(setupCallBookings)
+    .set({ heldAt: null, heldByStaffId: null, updatedAt: now })
+    .where(and(eq(setupCallBookings.businessId, businessId), isNotNull(setupCallBookings.heldAt)))
+    .returning({ inviteeUri: setupCallBookings.inviteeUri, startsAt: setupCallBookings.startsAt });
+  const row = rows[0];
+  if (row !== undefined && row.inviteeUri === null && row.startsAt === null) {
+    await db
+      .delete(setupCallBookings)
+      .where(
+        and(
+          eq(setupCallBookings.businessId, businessId),
+          isNull(setupCallBookings.heldAt),
+          isNull(setupCallBookings.inviteeUri),
+          isNull(setupCallBookings.startsAt),
+        ),
+      );
+  }
+  return rows.length > 0;
 }

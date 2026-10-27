@@ -1,5 +1,5 @@
 import "server-only";
-import { findFirstPayment, findLiveBundledAddOns, withTenantScope } from "@brandbasket/db";
+import { findFirstPayment, findLiveBundledAddOns, listBoughtSetupServices, withTenantScope } from "@brandbasket/db";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
@@ -20,18 +20,38 @@ export interface FirstLookData {
   readonly payment: FirstPaymentView | null;
 }
 
+/** The services the plan pays for now. A failed read shows none, so a page still draws. */
+export async function loadServicesBought(tenant: TenantContext): Promise<readonly ServiceKey[]> {
+  return withTenantScope(getAppDb(), tenant, (tx) => findLiveBundledAddOns(tx, tenant.businessId))
+    .then(servicesBought)
+    .catch((error: unknown) => {
+      console.error("[first-look] could not read the services", errorLogInfo(error));
+      return [] as readonly ServiceKey[];
+    });
+}
+
+/**
+ * The services the To do page, Overview and the console all agree on: the website the plan pays for, and Social and Search
+ * by the one rule in the db package (taken with the plan or bought later). Null when the read failed, so a caller can tell
+ * that from a business with no services; a page treats null as none and still draws.
+ */
+export async function loadSetupServices(tenant: TenantContext): Promise<readonly ServiceKey[] | null> {
+  return withTenantScope(getAppDb(), tenant, async (tx) => {
+    const [live, setup] = await Promise.all([findLiveBundledAddOns(tx, tenant.businessId), listBoughtSetupServices(tx, tenant.businessId)]);
+    return [...servicesBought(live).filter((service) => service === "website"), ...setup];
+  }).catch((error: unknown) => {
+    console.error("[first-look] could not read the services", errorLogInfo(error));
+    return null;
+  });
+}
+
 /**
  * The services bought and the first payment, read as the customer. Neither may break the page: a failed payment read
  * only hides the paid line, and a failed services read shows the call without the per-service lists.
  */
 export async function loadFirstLook(tenant: TenantContext): Promise<FirstLookData> {
   const db = getAppDb();
-  const services = await withTenantScope(db, tenant, (tx) => findLiveBundledAddOns(tx, tenant.businessId))
-    .then(servicesBought)
-    .catch((error: unknown) => {
-      console.error("[first-look] could not read the services", errorLogInfo(error));
-      return [] as readonly ServiceKey[];
-    });
+  const services = await loadServicesBought(tenant);
   const payment = await withTenantScope(db, tenant, (tx) => findFirstPayment(tx, tenant.businessId))
     .then((row): FirstPaymentView | null =>
       row === null || row.paidAt === null

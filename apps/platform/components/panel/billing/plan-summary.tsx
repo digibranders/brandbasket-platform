@@ -8,6 +8,7 @@ import { changesNote, renewalCharge } from "@brandbasket/shared/lib/billing/term
 import { nextBundledNetCents, nextDiscountCents } from "@brandbasket/shared/lib/billing/bundle";
 import { planLabel } from "@brandbasket/shared/lib/billing/receipt-title";
 import { formatMoney } from "@brandbasket/shared/lib/money";
+import { subscriptionEnding } from "@/lib/billing/payments-continue";
 import { carePlan } from "@brandbasket/shared/lib/pricing";
 
 interface PlanSummaryProps {
@@ -41,9 +42,7 @@ function NextPaymentCaption({
   readonly progress: PeriodProgress;
 }): ReactNode {
   const end = <LocalDate iso={progress.end.toISOString()} />;
-  // Cancelled at the provider, or asked to end with the paid period (leaving) and not yet closed there: either way the
-  // plan ends on its date and nothing more is taken.
-  if (subscription.status === "cancelled" || subscription.cancelRequestedAt !== null) {
+  if (subscriptionEnding(subscription)) {
     return <>No more payments. Your plan ends on {end}.</>;
   }
   if (subscription.provider === "manual") return <>We’ll arrange your next payment with you directly.</>;

@@ -8,6 +8,7 @@ import {
   accountClosures,
   accountOtps,
   accounts,
+  activityEvents,
   addOnSubscriptions,
   appointmentServices,
   appointmentSettings,
@@ -36,6 +37,7 @@ import {
   leads,
   listingContent,
   mediaAssets,
+  monthlySnapshots,
   onboardingProgress,
   patients,
   practitionerHours,
@@ -43,6 +45,7 @@ import {
   practitioners,
   projectBriefs,
   projects,
+  serviceSetup,
   setupCallBookings,
   services,
   sessions,
@@ -298,6 +301,9 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(projectBriefs).where(eq(projectBriefs.businessId, businessId));
     await tx.delete(projects).where(eq(projects.businessId, businessId));
     await tx.delete(setupCallBookings).where(eq(setupCallBookings.businessId, businessId));
+    await tx.delete(serviceSetup).where(eq(serviceSetup.businessId, businessId));
+    await tx.delete(activityEvents).where(eq(activityEvents.businessId, businessId));
+    await tx.delete(monthlySnapshots).where(eq(monthlySnapshots.businessId, businessId));
     await tx.delete(domains).where(eq(domains.businessId, businessId));
     await tx.delete(mediaAssets).where(eq(mediaAssets.businessId, businessId));
     // The chatbots OyeChats runs for the business, their webhook secrets and the visitors' details they collected.

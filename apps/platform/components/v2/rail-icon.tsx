@@ -1,11 +1,12 @@
 import type { Icon } from "@phosphor-icons/react";
-import { ChatText, GearSix, GlobeSimple, Receipt, SquaresFour, Stack, Star, Storefront, Tag } from "@phosphor-icons/react/dist/ssr";
+import { CheckSquare, ChatText, GearSix, GlobeSimple, Receipt, SquaresFour, Stack, Star, Storefront, Tag } from "@phosphor-icons/react/dist/ssr";
 import type { ReactElement } from "react";
 import type { RailIcon } from "@/lib/rail";
 
 const ICONS: Readonly<Record<RailIcon, Icon>> = {
   overview: SquaresFour,
   requests: ChatText,
+  todo: CheckSquare,
   website: GlobeSimple,
   reviews: Star,
   deals: Tag,

@@ -13,6 +13,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
+import { users } from "./auth";
 import { businesses } from "./businesses";
 import { createdAt, updatedAt } from "./columns";
 
@@ -114,6 +115,10 @@ export const setupCallBookings = pgTable(
     /** When the meeting starts and ends. Null until the booking page has reported it. Set together. */
     startsAt: timestamp("starts_at", { withTimezone: true }),
     endsAt: timestamp("ends_at", { withTimezone: true }),
+    /** When staff marked the call as held. Ends the customer's first look (apps/platform/lib/first-look.ts). Null until then. */
+    heldAt: timestamp("held_at", { withTimezone: true }),
+    /** The staff member who marked it. */
+    heldByStaffId: text("held_by_staff_id").references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -124,6 +129,7 @@ export const setupCallBookings = pgTable(
       "setup_call_bookings_time_check",
       sql`(${table.startsAt} is null and ${table.endsAt} is null) or (${table.startsAt} is not null and ${table.endsAt} is not null and ${table.endsAt} > ${table.startsAt})`,
     ),
+    check("setup_call_bookings_held_check", sql`(${table.heldAt} is null) = (${table.heldByStaffId} is null)`),
   ],
 );
 export type SetupCallBooking = typeof setupCallBookings.$inferSelect;

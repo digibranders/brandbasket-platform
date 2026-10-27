@@ -228,6 +228,22 @@ describe("eraseClosedAccount", () => {
     expect(staff?.name).toBe("Staff");
   });
 
+  it("erases the saved answers, updates and monthly numbers of the closed business and leaves another business's", async () => {
+    const { closureId } = await seedClosedAccount();
+    const [control] = await dbs.owner.db.insert(businesses).values({ slug: "birch-dental", name: "Birch Dental", currency: "INR" }).returning({ id: businesses.id });
+    const controlId = control?.id ?? "";
+    for (const id of [businessId, controlId]) {
+      await dbs.owner.db.execute(sql.raw(`insert into service_setup (id, business_id, service) values (gen_random_uuid(), '${id}', 'social')`));
+      await dbs.owner.db.execute(sql.raw(`insert into activity_events (id, business_id, title) values (gen_random_uuid(), '${id}', 'Ads narrowed to 4 km')`));
+      await dbs.owner.db.execute(sql.raw(`insert into monthly_snapshots (id, business_id, service, month) values (gen_random_uuid(), '${id}', 'social', '2026-10-01')`));
+    }
+    expect((await eraseClosedAccount(dbs.staff.db, { closureId, now: NOW })).kind).toBe("erased");
+    for (const table of ["service_setup", "activity_events", "monthly_snapshots"]) {
+      expect(await count(table, `business_id = '${businessId}'`), `${table} of the closed business`).toBe(0);
+      expect(await count(table, `business_id = '${controlId}'`), `${table} of the other business`).toBe(1);
+    }
+  });
+
   it("refuses account scrubbing until private support objects are purged, then removes their content", async () => {
     const { closureId } = await seedClosedAccount(true);
     const attachmentId = "00000000-0000-7000-8000-000000000099";
@@ -412,11 +428,11 @@ describe("what the erase knows about", () => {
   ];
   /** Tables the erase empties for the business. */
   const ERASED = [
-    "appointment_services", "appointment_settings", "appointments", "billing_profiles", "booking_otps", "business_announcements", "business_closures",
+    "activity_events", "appointment_services", "appointment_settings", "appointments", "billing_profiles", "booking_otps", "business_announcements", "business_closures",
     "business_hours", "business_members", "business_modules", "business_profiles", "chatbot_leads", "chatbots", "directory_business_categories", "directory_business_faqs",
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
-    "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "onboarding_progress",
-    "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "projects", "services",
+    "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "monthly_snapshots", "onboarding_progress",
+    "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "projects", "service_setup", "services",
     "setup_call_bookings", "setup_invites", "support_tickets",
   ];
 

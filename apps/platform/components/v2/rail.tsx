@@ -10,6 +10,7 @@ import { AccountBar, type AccountBarAccount } from "@brandbasket/shared/ui/panel
 import { WordmarkLogo, type BrandLogo } from "@brandbasket/shared/ui/logo";
 import { isCurrent, linkIsCurrent, type RailSection } from "@/lib/rail";
 import { CommandSearch } from "./command-search";
+import { CountPill } from "./count-pill";
 import { RailIconMark } from "./rail-icon";
 
 /** What the account menu needs, the same for the rail and the phone menu. */
@@ -68,6 +69,7 @@ export function Rail({ sections, logo, menu, signOut }: RailProps): ReactElement
                 >
                   <RailIconMark name={link.icon} current={current} />
                   {link.label}
+                  <CountPill count={link.count} current={current} className="ml-auto" />
                 </Link>
                 {current && link.children !== undefined ? (
                   <ul className="mb-1 ml-[2.375rem] mt-0.5 grid gap-0.5">
