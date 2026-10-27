@@ -11,6 +11,7 @@ import {
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { DARK_BUTTON_SHAPE } from "@/components/v2/classes";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { initialDeleteAccountState, type DeleteAccountState } from "@/lib/account-settings-form";
 import { ACCOUNT_CLOSURE_GRACE_DAYS } from "@/lib/account-closure-grace";
@@ -115,7 +116,7 @@ export function DeleteAccountFlow({ deleteAccount, planEndsAt, addOnsRunning, pa
         />
         <p className="mt-2 text-sm text-ink-soft">We keep this without your name, to get better.</p>
         <div className="mt-7 flex flex-wrap items-center gap-4">
-          <SubmitButton disabled={reason === null}>Continue</SubmitButton>
+          <SubmitButton disabled={reason === null} className={DARK_BUTTON_SHAPE}>Continue</SubmitButton>
           <Link href="/settings" className="link-underline text-sm">
             Keep my account
           </Link>
@@ -187,7 +188,7 @@ export function DeleteAccountFlow({ deleteAccount, planEndsAt, addOnsRunning, pa
         </p>
       )}
       <div className="mt-7 flex flex-wrap items-center gap-4">
-        <SubmitButton disabled={deletePending}>{deletePending ? "Deleting…" : "Delete my account"}</SubmitButton>
+        <SubmitButton disabled={deletePending} className={DARK_BUTTON_SHAPE}>{deletePending ? "Deleting…" : "Delete my account"}</SubmitButton>
         <Link href="/settings" className="link-underline text-sm">
           Keep my account
         </Link>
