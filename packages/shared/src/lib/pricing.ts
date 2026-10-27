@@ -42,7 +42,7 @@ export const carePlan = {
   /** Charged from the first payment, which covers the first month, and every month after. */
   monthlyCents: 7_500,
   includes: [
-    "Up to 5 pages, designed for your business",
+    "Up to 10 pages, designed for your business",
     "Hosting and SSL certificate",
     "Security and software updates",
     "Google Business Profile setup",

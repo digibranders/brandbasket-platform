@@ -24,7 +24,7 @@ export interface IncludedItem {
 
 export const WEBSITE_INCLUDED: readonly IncludedItem[] = [
   { icon: "design", text: "Professional design" },
-  { icon: "pages", text: "Up to 5 pages" },
+  { icon: "pages", text: "Up to 10 pages" },
   { icon: "mobile", text: "Mobile-friendly (works on all devices)" },
   { icon: "enquiries", text: "Enquiry forms and click-to-call" },
   { icon: "local-seo", text: "Local SEO foundation" },

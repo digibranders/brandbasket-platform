@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { ADD_ONS, addOnById, addOnPrice, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS } from "./add-ons";
 
 describe("services catalogue", () => {
+  it("describes the Managed Website as up to 10 pages and the Local SEO plan as up to 5 pages optimised a month", () => {
+    expect(addOnById("managed-website").line).toContain("website of up to 10 pages");
+    expect(addOnById("local-seo-aeo").line).toContain("up to 5 pages optimised a month");
+  });
+
   it("sells Managed Website, Social Media and Ads and Local SEO + AEO, monthly, in the order the website lists them", () => {
     expect(ADD_ONS.map((addOn) => [addOn.id, addOn.title, addOn.billing])).toEqual([
       ["managed-website", "Managed Website", "monthly"],
