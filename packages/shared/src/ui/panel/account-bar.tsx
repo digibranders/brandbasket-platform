@@ -5,7 +5,6 @@ import { useCallback, useEffect, useId, useRef, useState, type ReactElement, typ
 import {
   BellIcon,
   BookIcon,
-  ChatIcon,
   CopyIcon,
   EllipsisIcon,
   HomeIcon,
@@ -13,14 +12,11 @@ import {
   ScrollTextIcon,
   SettingsIcon,
   SignOutIcon,
-  SmileIcon,
   TickIcon,
 } from "@brandbasket/shared/ui/icons";
 import { cn } from "../../lib/cn";
-import { clientBrandName } from "../../lib/deployment-brand";
 import { initialsOf } from "../../lib/names";
 import { actionableCount, siteStatusLine, type AccountPanel } from "../../lib/account-panel";
-import { useSupportLauncher } from "./support-context";
 
 export interface AccountBarAccount {
   readonly name: string;
@@ -40,10 +36,11 @@ interface AccountBarProps {
   readonly dark: boolean;
   /** Where "Docs" goes — the marketing site, which is a separate app. */
   readonly docsUrl: string;
-  /** Where "Feedback" and "Help" send mail until a real change-request feature exists. */
-  readonly contactEmail: string;
-  /** The product's name in the Feedback mail's subject. */
-  readonly brandName?: string;
+  /**
+   * Where "Help" goes: the app's own place to ask (the customer dashboard's Ask for a change form), or a `mailto:` address
+   * for a surface that has none. A `mailto:` opens the mail program, so it is not opened in a new tab.
+   */
+  readonly helpHref: string;
   /** Which way the popovers open: "top" in the sidebar footer, "bottom" in the mobile header. */
   readonly placement?: "top" | "bottom";
 }
@@ -247,11 +244,9 @@ export function AccountBar({ signOut, account,
   panel,
   dark,
   docsUrl,
-  contactEmail,
-  brandName = clientBrandName(),
+  helpHref,
   placement = "top",
 }: AccountBarProps): ReactElement {
-  const support = useSupportLauncher();
   const {
     open: menuOpen,
     setOpen: setMenuOpen,
@@ -321,18 +316,6 @@ export function AccountBar({ signOut, account,
               <MenuLink href={account.href} icon={<SettingsIcon className="size-4" />} label="Settings" dark={dark} onSelect={closeMenu} />
             )}
 
-            {support === null ? <MenuLink
-              href={`mailto:${contactEmail}?subject=${encodeURIComponent(`Feedback on ${brandName}`)}`}
-              external
-              icon={<SmileIcon className="size-4" />}
-              label="Feedback"
-              dark={dark}
-              onSelect={closeMenu}
-            /> : (
-              <button data-menu-item role="menuitem" type="button" className={menuItemClass(dark)} onClick={() => { closeMenu(); support.open(null, menuTriggerRef.current); }}>
-                <span>Feedback</span><SmileIcon aria-hidden="true" className="size-4" />
-              </button>
-            )}
             {panel?.liveWebsiteUrl == null ? null : (
               <MenuLink
                 href={panel.liveWebsiteUrl}
@@ -347,26 +330,19 @@ export function AccountBar({ signOut, account,
               <MenuLink
                 href="/changelog"
                 icon={<ScrollTextIcon className="size-4" />}
-                label="Changelog"
+                label="What’s new"
                 dark={dark}
                 onSelect={closeMenu}
               />
             )}
-            {support === null ? <MenuLink
-              href={`mailto:${contactEmail}?subject=${encodeURIComponent("Help with my website")}`}
-              external
+            <MenuLink
+              href={helpHref}
+              external={helpHref.startsWith("mailto:")}
               icon={<LifebuoyIcon className="size-4" />}
               label="Help"
               dark={dark}
               onSelect={closeMenu}
-            /> : (
-              <>
-                <button data-menu-item role="menuitem" type="button" className={menuItemClass(dark)} onClick={() => { closeMenu(); support.open("support", menuTriggerRef.current); }}>
-                  <span>Help</span><LifebuoyIcon aria-hidden="true" className="size-4" />
-                </button>
-                <MenuLink href="/support" icon={<ChatIcon className="size-4" />} label="My requests" dark={dark} onSelect={closeMenu} />
-              </>
-            )}
+            />
             <MenuLink
               href={docsUrl}
               external
@@ -378,7 +354,7 @@ export function AccountBar({ signOut, account,
 
             <form action={signOut} className={cn("border-t", dark ? "border-white/10" : "border-line")}>
               <button data-menu-item role="menuitem" type="submit" className={menuItemClass(dark)}>
-                <span>Log out</span>
+                <span>Sign out</span>
                 <span aria-hidden="true" className="shrink-0 opacity-70">
                   <SignOutIcon className="size-4" />
                 </span>

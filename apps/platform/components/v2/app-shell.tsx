@@ -10,6 +10,7 @@ import { getAccountPanel } from "@/lib/server/account-panel";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getClientListingState } from "@/lib/server/listing";
 import { getLiveWebsite, getProjectOverview } from "@/lib/server/onboarding";
+import { ASK_FOR_A_CHANGE_PATH } from "@/lib/requests/links";
 import { requestBrand } from "@/lib/server/request-brand";
 import { loadRequestNeeds } from "@/lib/server/requests";
 import { quietly } from "@/lib/server/quietly";
@@ -82,8 +83,8 @@ export async function AppShell({ userName, userEmail, businessId, children }: Ap
     account: { name: userName, email: userEmail, href: "/settings", ...(businessId === null ? {} : { businessId }) },
     panel,
     docsUrl: logo.siteUrl ?? `${siteConfig.url}/faq`,
-    contactEmail: logo.email ?? siteConfig.email,
-    brandName: logo.name,
+    // Every question lands in Requests, where the reply and its date are tracked.
+    helpHref: `${ASK_FOR_A_CHANGE_PATH}?kind=other`,
   };
 
   return (

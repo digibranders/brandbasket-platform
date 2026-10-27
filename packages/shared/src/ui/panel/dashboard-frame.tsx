@@ -64,8 +64,8 @@ export function DashboardFrame({
     panel,
     dark,
     docsUrl: brand.siteUrl ?? `${siteConfig.url}/faq`,
-    contactEmail: brand.email ?? siteConfig.email,
-    brandName: brand.name,
+    // These shells (the affiliate portal, a free listing, the old support pages) have no place to ask in the dashboard, so Help is mail.
+    helpHref: `mailto:${brand.email ?? siteConfig.email}?subject=${encodeURIComponent("Help with my website")}`,
   };
   return (
     <div className={cn("dashboard-type flex min-h-dvh flex-col lg:flex-row", dark ? "bg-dark-surface" : "bg-paper-deep")}>
