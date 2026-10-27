@@ -356,7 +356,11 @@ describe("moveChangeAsCustomer", () => {
     await dbs.staff.db.update(changeRequests).set({ ...QUOTE, state: "quoted" }).where(eq(changeRequests.id, requestId));
     expect(await asOwner((tx) => moveChangeAsCustomer(tx, requestId, "decline"))).toBe("withdrawn");
     expect(await asOwner((tx) => moveChangeAsCustomer(tx, requestId, "reopen"))).toBe("quoted");
-    await dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId));
+    // Staff cover it themselves; a paid quote starts only when its charge is paid.
+    await dbs.staff.db
+      .update(changeRequests)
+      .set({ coverage: "free", state: "in_progress", quoteWhat: null, quoteHours: null, quoteUnitCents: null, quoteAmountCents: null, quoteCurrency: null, quoteWorkingDays: null, quotedAt: null })
+      .where(eq(changeRequests.id, requestId));
     await dbs.staff.db.update(changeRequests).set({ state: "preview" }).where(eq(changeRequests.id, requestId));
     expect(await asOwner((tx) => moveChangeAsCustomer(tx, requestId, "approve"))).toBe("approved");
     expect(await asOwner((tx) => moveChangeAsCustomer(tx, requestId, "reopen"))).toBe("revisions");

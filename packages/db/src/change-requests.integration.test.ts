@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { CHANGE_STATES, canMoveChange, type ChangeState } from "./change-states";
-import { insertCharge, waiveCharge } from "./queries/charges";
+import { insertCharge, recordChargePayment, waiveCharge } from "./queries/charges";
 import { appendSupportReply, beginSupportAccountErasure, claimSupportTicketsDueRetention, createSupportTicket, eraseSupportDataForUser } from "./queries/support";
 import { insertBusiness } from "./queries/onboarding";
 import { accountClosures, businessMembers, changeRequestEvents, changeRequests, staffMembers, supportTickets, users } from "./schema";
@@ -192,7 +192,9 @@ describe("the rules every writer follows", () => {
         } catch (error) {
           allowed = false;
           const text = (error as { cause?: { message?: string } }).cause?.message ?? "";
-          if (!text.includes("cannot move from")) wrong.push(`${from} to ${to} failed for another reason: ${text}`);
+          // The arrow is open but the paid quote has no paid charge yet: the move is refused for that, not for the arrows.
+          if (text.includes("starts when its charge is paid")) allowed = true;
+          else if (!text.includes("cannot move from")) wrong.push(`${from} to ${to} failed for another reason: ${text}`);
         }
         if (allowed !== canMoveChange(from, to)) wrong.push(`${from} to ${to}: database ${allowed ? "allows" : "refuses"}, CHANGE_MOVES says the opposite`);
       }
@@ -214,9 +216,8 @@ describe("the rules every writer follows", () => {
 
   it("fixes the price and the cover once work has started, and never changes who or what it is about", async () => {
     const { requestId } = await makeRequest();
-    await quote(requestId);
-    await dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId));
-    expect(await captureErrorText(dbs.staff.db.update(changeRequests).set({ quoteHours: 4, quoteAmountCents: 200_000 }).where(eq(changeRequests.id, requestId)))).toContain("fixed once work has started");
+    await dbs.staff.db.update(changeRequests).set({ coverage: "free", state: "in_progress" }).where(eq(changeRequests.id, requestId));
+    expect(await captureErrorText(dbs.staff.db.update(changeRequests).set({ coverage: "included" }).where(eq(changeRequests.id, requestId)))).toContain("fixed once work has started");
     expect(await captureErrorText(dbs.staff.db.update(changeRequests).set({ kind: "billing" }).where(eq(changeRequests.id, requestId)))).toContain("identity cannot change");
     expect(await captureErrorText(dbs.staff.db.update(changeRequests).set({ businessId: otherBusinessId }).where(eq(changeRequests.id, requestId)))).toContain("identity cannot change");
   });
@@ -224,7 +225,7 @@ describe("the rules every writer follows", () => {
   it("keeps a dated line for every state, with who moved it", async () => {
     const { requestId } = await makeRequest();
     await asStaff((tx) => tx.update(changeRequests).set({ ...QUOTE, state: "quoted" }).where(eq(changeRequests.id, requestId)));
-    await dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId));
+    await startWork(requestId);
     const events = await dbs.staff.db.select().from(changeRequestEvents).where(eq(changeRequestEvents.changeRequestId, requestId)).orderBy(changeRequestEvents.at);
     expect(events.map((event) => [event.state, event.actorUserId])).toEqual([
       ["requested", OWNER],
@@ -245,7 +246,7 @@ describe("the rules every writer follows", () => {
     const status = async (): Promise<string | undefined> => (await dbs.staff.db.select({ status: supportTickets.status }).from(supportTickets).where(eq(supportTickets.id, ticketId)))[0]?.status;
     expect(await status()).toBe("new");
     await quote(requestId);
-    await dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId));
+    await startWork(requestId);
     expect(await status()).toBe("new");
     await dbs.staff.db.update(changeRequests).set({ state: "shipped" }).where(eq(changeRequests.id, requestId));
     expect(await status()).toBe("resolved");
@@ -258,7 +259,7 @@ describe("a reply on a change that is ready to check", () => {
   it("sends it back to the team as a fix to make", async () => {
     const { ticketId, requestId } = await makeRequest();
     await quote(requestId);
-    await dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId));
+    await startWork(requestId);
     await dbs.staff.db.update(changeRequests).set({ state: "preview" }).where(eq(changeRequests.id, requestId));
     await appendSupportReply(dbs.app.db, { userId: OWNER, ticketId, body: "The heading should say Dental implants.", submissionKey: "reply-in-preview-abcdefgh" });
     expect(await stateOf(requestId)).toBe("revisions");
@@ -328,6 +329,17 @@ describe("change_request_customer_move", () => {
   });
 });
 
+/** Starts a quoted request the way a payment does: the customer accepts, the charge is opened, and its payment starts the work. */
+async function startWork(requestId: string): Promise<void> {
+  counter += 1;
+  const chargeId = await openCharge();
+  await dbs.staff.db.update(changeRequests).set({ state: "quoted", acceptedAt: new Date(), chargeId }).where(eq(changeRequests.id, requestId));
+  await recordChargePayment(dbs.staff.db, { chargeId, businessId, provider: "fake", providerPaymentId: `fake_pay_start_${counter}`, amountCents: 150_000, currency: "INR", paidAt: new Date(), now: new Date() });
+}
+
+/** What starting work with no quote clears (see startChangeWithoutQuote). */
+const NO_QUOTE_FIELDS = { quoteWhat: null, quoteHours: null, quoteUnitCents: null, quoteAmountCents: null, quoteCurrency: null, quoteWorkingDays: null, quotedAt: null, acceptedAt: null, chargeId: null };
+
 /** An open change_hours charge, as accepting a quote opens one; `overrides` lets a test make the wrong kind of charge. */
 async function openCharge(overrides: Partial<Parameters<typeof insertCharge>[1]> = {}): Promise<string> {
   const charge = await insertCharge(dbs.staff.db, {
@@ -385,6 +397,21 @@ describe("the charge a request is paid with", () => {
     const text = await captureErrorText(dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId)));
     expect(text).toContain("paid");
     expect(await stateOf(requestId)).toBe("quoted");
+  });
+
+  it("does not let work start on a paid quote the customer has not accepted, so there is no charge to be paid", async () => {
+    const { requestId } = await makeRequest();
+    await dbs.staff.db.update(changeRequests).set({ ...QUOTE, state: "quoted" }).where(eq(changeRequests.id, requestId));
+    const text = await captureErrorText(dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId)));
+    expect(text).toContain("paid");
+    expect(await stateOf(requestId)).toBe("quoted");
+  });
+
+  it("still starts work with no charge once staff cover the request as free or included", async () => {
+    const { requestId } = await makeRequest();
+    await quote(requestId);
+    await dbs.staff.db.update(changeRequests).set({ coverage: "free", state: "in_progress", ...NO_QUOTE_FIELDS }).where(eq(changeRequests.id, requestId));
+    expect(await stateOf(requestId)).toBe("in_progress");
   });
 
   it("does not let a quote with an open charge be declined or withdrawn until the charge is let go", async () => {

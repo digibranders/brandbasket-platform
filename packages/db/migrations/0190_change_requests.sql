@@ -135,7 +135,7 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'A change request cannot move from % to %', OLD.state, NEW.state USING ERRCODE = 'check_violation';
   END IF;
-  IF NEW.state <> OLD.state AND NEW.state = 'in_progress' AND NEW.charge_id IS NOT NULL
+  IF NEW.state <> OLD.state AND NEW.state = 'in_progress' AND (NEW.charge_id IS NOT NULL OR NEW.coverage = 'paid')
      AND NOT EXISTS (SELECT 1 FROM public.charges c WHERE c.id = NEW.charge_id AND c.status = 'paid') THEN
     RAISE EXCEPTION 'Work on an accepted quote starts when its charge is paid' USING ERRCODE = 'check_violation';
   END IF;
