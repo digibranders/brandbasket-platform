@@ -30,6 +30,8 @@ export function kindOptions(services: readonly ServiceKey[]): readonly { readonl
 }
 
 const TITLE_LIMIT = 60;
+const MIN_TITLE = 3;
+const FALLBACK_TITLE = "Request";
 /** Three ASCII dots, so a cut title reads as cut. */
 const ELLIPSIS = "...";
 
@@ -53,6 +55,8 @@ export function titleFromText(text: string): string {
   }
   title = title.replace(/[\s,;:.!?]+$/u, "");
   if (cutShort) title += ELLIPSIS;
+  // The ticket subject must be at least 3 characters, so a title that was all punctuation falls back to the text as written.
+  if (title.length < MIN_TITLE) title = whole.slice(0, TITLE_LIMIT).trim() || FALLBACK_TITLE;
   return `${title.slice(0, 1).toUpperCase()}${title.slice(1)}`;
 }
 
@@ -76,7 +80,7 @@ export function parseAskForm(form: FormData, allowedKinds: readonly ChangeKind[]
   const schema = z.strictObject({
     kind: z.string("Choose what this is about.").refine((value): value is ChangeKind => (allowedKinds as readonly string[]).includes(value), "Choose what this is about."),
     page: z.string().trim().max(200, "Keep the page to 200 characters or fewer.").optional(),
-    body: z.string("Say what you want changed.").trim().min(10, "Say what you want changed, in at least 10 characters.").max(5000, "Keep it to 5,000 characters or fewer."),
+    body: z.string("Say what you want changed.").trim().min(10, "Say what you want changed, in at least 10 characters.").regex(/[\p{L}\p{N}]/u, "Say what you want changed, in at least 10 characters.").max(5000, "Keep it to 5,000 characters or fewer."),
     attachmentIds: z
       .array(z.uuid("One of the screenshots could not be used. Remove it and try again."))
       .max(SUPPORT_ATTACHMENT_LIMIT, `Attach up to ${SUPPORT_ATTACHMENT_LIMIT} screenshots.`)

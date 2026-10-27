@@ -47,6 +47,14 @@ describe("titleFromText", () => {
     expect(titleFromText("Can you change my GST number?")).toBe("Can you change my GST number");
   });
 
+  it("never returns an empty or too-short title, even for text that is only punctuation", () => {
+    expect(titleFromText("??????????")).toBe("??????????");
+    expect(titleFromText("..........")).toBe("..........");
+    expect(titleFromText("a!!!!!!!!!!")).toBe("A!!!!!!!!!!");
+    expect(titleFromText("")).toBe("Request");
+    expect(titleFromText("   ")).toBe("Request");
+  });
+
   it("falls back to the whole text when the first sentence is tiny", () => {
     expect(titleFromText("Hi. Please change the opening hours on my site")).toBe("Hi. Please change the opening hours on my site");
   });
@@ -75,6 +83,14 @@ describe("parseAskForm", () => {
   it("asks for more words, and caps them", () => {
     expect(parseAskForm(form({ kind: "other", body: "Short", submissionKey: KEY }), ALL)).toEqual({ success: false, field: "body", message: "Say what you want changed, in at least 10 characters." });
     expect(parseAskForm(form({ kind: "other", body: "x".repeat(5001), submissionKey: KEY }), ALL)).toMatchObject({ success: false, field: "body" });
+  });
+
+  it("asks for more words when the text has no letter or digit", () => {
+    const tooShort = { success: false, field: "body", message: "Say what you want changed, in at least 10 characters." };
+    expect(parseAskForm(form({ kind: "other", body: "??????????", submissionKey: KEY }), ALL)).toEqual(tooShort);
+    expect(parseAskForm(form({ kind: "other", body: " . . . . . . . . . . . ", submissionKey: KEY }), ALL)).toEqual(tooShort);
+    expect(parseAskForm(form({ kind: "other", body: "1234567890", submissionKey: KEY }), ALL)).toMatchObject({ success: true });
+    expect(parseAskForm(form({ kind: "other", body: "नमस्ते कृपया बदलें", submissionKey: KEY }), ALL)).toMatchObject({ success: true });
   });
 
   it("allows up to three distinct screenshots", () => {
