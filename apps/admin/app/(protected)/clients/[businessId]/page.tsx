@@ -839,7 +839,7 @@ export default async function ClientPage({
 
         <KickoffCallSection businessId={businessId} />
 
-        <WebsiteSection businessId={businessId} staffId={user.id} notice={sp.website} />
+        <WebsiteSection businessId={businessId} staffId={user.id} notice={sp.build} />
 
         <RequestsSection businessId={businessId} notice={requestsNotice} mail={requestsMail} />
 

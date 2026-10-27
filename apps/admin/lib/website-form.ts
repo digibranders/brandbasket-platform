@@ -29,7 +29,7 @@ export const WEBSITE_MOVE_NOTICES: Readonly<Record<WebsiteMoveNotice, { readonly
 };
 
 export function websiteMoveHref(businessId: string, notice: WebsiteMoveNotice): string {
-  return `/clients/${businessId}?website=${notice}#website`;
+  return `/clients/${businessId}?build=${notice}#website-build`;
 }
 
 export function readWebsiteMoveNotice(value: string | string[] | undefined): WebsiteMoveNotice | null {

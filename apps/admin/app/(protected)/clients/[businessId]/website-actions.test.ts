@@ -26,7 +26,7 @@ const PROJECT = "01a0f71b-8402-7d48-a90a-207e8c8a8777";
 const STAFF = { user: { id: "staff-1" }, staff: { userId: "staff-1", role: "support" } } as unknown as GrantedStaff;
 const DB = { db: true } as never;
 const LOG = (action: string) => ({ staffUserId: "staff-1", action, targetType: "business", targetId: BUSINESS, businessId: BUSINESS });
-const back = (notice: string) => `redirect:/clients/${BUSINESS}?website=${notice}#website`;
+const back = (notice: string) => `redirect:/clients/${BUSINESS}?build=${notice}#website-build`;
 
 function form(entries: Record<string, string>): FormData {
   const data = new FormData();

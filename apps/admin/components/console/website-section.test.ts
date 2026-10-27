@@ -57,7 +57,7 @@ describe("WebsiteSection buttons", () => {
   ] as const)("shows %s with the buttons %j", async (status, expected) => {
     vi.mocked(loadWebsiteBuild).mockResolvedValue({ project: project(status), picture: null });
     const html = await render();
-    expect(html).toContain('id="website"');
+    expect(html).toContain('id="website-build"');
     expect(html).toContain("Website build");
     expect(buttons(html)).toEqual(expected);
     expect(html.includes("Nothing to do here")).toBe(expected.length === 0);

@@ -76,7 +76,7 @@ export async function WebsiteSection({
   const fresh = project === null ? null : currentPicture(project, picture);
 
   return (
-    <Section title="Website build" id="website">
+    <Section title="Website build" id="website-build">
       {moved === null ? null : (
         <Notice tone={WEBSITE_MOVE_NOTICES[moved].ok ? "ok" : "problem"} className="mb-6">
           {WEBSITE_MOVE_NOTICES[moved].text}
