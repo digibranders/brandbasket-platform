@@ -6,7 +6,8 @@ import { findReferralCodeById } from "@brandbasket/db";
 import type { ReferralFormState } from "@/components/referral-code-form";
 import { getStaffDb } from "@/lib/server/db";
 import { deleteReferralCodeFor } from "@/lib/server/referral-admin";
-import { requireStaffAccess } from "@/lib/server/staff-access";
+import { recordStaffAction } from "@/lib/server/activity";
+import { requireStaffCan } from "@/lib/server/staff-role";
 
 /**
  * Deletes a code for good. The confirmation tick and the "nobody is on it" rule are both enforced in
@@ -21,12 +22,13 @@ export async function deleteReferralCodeAction(
   _previous: ReferralFormState,
   formData: FormData,
 ): Promise<ReferralFormState> {
-  await requireStaffAccess();
+  const staff = await requireStaffCan("money");
   const code = await findReferralCodeById(getStaffDb(), codeId);
   const outcome = await deleteReferralCodeFor({ codeId, formData });
   if (outcome.kind === "refused") {
     return { status: "error", message: outcome.refusal.message, field: outcome.refusal.field, values: {} };
   }
+  await recordStaffAction(staff, { businessId: null, kind: "coupon.deleted", summary: "Deleted a code", data: { codeId } });
   const back = code?.affiliateId == null ? "/coupons" : `/affiliates/${code.affiliateId}`;
   revalidatePath(back);
   redirect(back);
