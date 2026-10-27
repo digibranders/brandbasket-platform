@@ -4,7 +4,7 @@ export interface RetainedSupportAttachment extends DeletingSupportAttachment {
   readonly ticketId: string | null;
 }
 /** Closed tickets are kept 24 months after closing (the approved retention schedule, M1 in docs/privacy/PRIVACY-PLAN.md). */
-export const SUPPORT_TICKET_RETENTION_MONTHS = 24;
+const SUPPORT_TICKET_RETENTION_MONTHS = 24;
 
 /**
  * How many months closed tickets are kept: the schedule's 24 unless SUPPORT_TICKET_RETENTION_MONTHS sets another whole

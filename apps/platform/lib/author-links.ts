@@ -44,7 +44,3 @@ export function parseAuthorLink(raw: string): AuthorLinkResult {
   if ((url.protocol !== "http:" && url.protocol !== "https:") || !url.hostname.includes(".")) return { ok: false };
   return { ok: true, value: url.href };
 }
-
-export function emptyAuthorLinks(): AuthorLinks {
-  return { website: null, instagram: null, facebook: null, linkedin: null, x: null };
-}

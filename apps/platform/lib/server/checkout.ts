@@ -58,7 +58,7 @@ export class UnsafeCheckoutUrlError extends Error {
 }
 
 /** The provider was asked to reopen one subscription and answered with another. */
-export class CheckoutMismatchError extends Error {
+class CheckoutMismatchError extends Error {
   constructor() {
     super("The billing provider reopened a different subscription from the one it was asked for.");
     this.name = "CheckoutMismatchError";

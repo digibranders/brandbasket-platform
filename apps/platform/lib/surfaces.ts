@@ -17,7 +17,7 @@ export interface SurfaceOrigins {
 }
 
 /** Route folders under app/ that hold each dashboard. They are only reachable through their own host. */
-export const SURFACE_PATH_PREFIX = {
+const SURFACE_PATH_PREFIX = {
   app: "/app-host",
 } as const;
 

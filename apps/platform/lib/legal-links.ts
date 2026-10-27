@@ -2,10 +2,10 @@ import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import type { Brand } from "@/lib/brand";
 
 /** The Terms and the Privacy Notice live on the website. Browser-safe, so client forms can link to them. */
-export const TERMS_HREF = new URL("/terms", siteConfig.url).toString();
-export const PRIVACY_HREF = new URL("/privacy", siteConfig.url).toString();
+const TERMS_HREF = new URL("/terms", siteConfig.url).toString();
+const PRIVACY_HREF = new URL("/privacy", siteConfig.url).toString();
 /** The form on the website for asking to see, correct or delete data, or to make a complaint. */
-export const PRIVACY_REQUEST_HREF = new URL("/privacy/request", siteConfig.url).toString();
+const PRIVACY_REQUEST_HREF = new URL("/privacy/request", siteConfig.url).toString();
 
 export interface LegalLinks {
   readonly terms: string;

@@ -6,11 +6,11 @@ import { META_DESCRIPTION_MAX_LENGTH, META_TITLE_MAX_LENGTH } from "./blog-seo";
  * customer can see and change in the editor.
  */
 
-export const SEARCH_TITLE_MIN_LENGTH = 30;
-export const SEARCH_DESCRIPTION_MIN_LENGTH = 70;
-export const RECOMMENDED_MIN_WORDS = 300;
+const SEARCH_TITLE_MIN_LENGTH = 30;
+const SEARCH_DESCRIPTION_MIN_LENGTH = 70;
+const RECOMMENDED_MIN_WORDS = 300;
 /** Past this an address gets hard to read and share. */
-export const ADDRESS_MAX_LENGTH = 60;
+const ADDRESS_MAX_LENGTH = 60;
 
 export interface SeoHealthInput {
   /** The search title as it will be shown: typed, or the post title. */

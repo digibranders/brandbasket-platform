@@ -58,7 +58,7 @@ export type NewPasswordParseResult =
   | { readonly success: false; readonly message: string };
 
 /** The new password, typed twice: at least the minimum length, and the same both times. */
-export function parseNewPassword(formData: FormData): NewPasswordParseResult {
+function parseNewPassword(formData: FormData): NewPasswordParseResult {
   const result = resetSchema.safeParse({
     password: textValue(formData, "password"),
     confirmPassword: textValue(formData, "confirmPassword"),

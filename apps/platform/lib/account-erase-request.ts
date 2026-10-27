@@ -1,6 +1,6 @@
 /** One run erases at most this many accounts, so a backlog cannot hold a request open for ever. */
 export const ERASE_RUN_DEFAULT_LIMIT = 25;
-export const ERASE_RUN_MAX_LIMIT = 100;
+const ERASE_RUN_MAX_LIMIT = 100;
 
 export interface EraseRunRequest {
   readonly dryRun: boolean;

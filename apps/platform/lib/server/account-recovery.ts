@@ -27,8 +27,6 @@ const RESET_REQUESTS_PER_EMAIL: RateLimitRule = { limit: 3, windowSeconds: ONE_H
 const RESET_ATTEMPTS_PER_CLIENT: RateLimitRule = { limit: 10, windowSeconds: ONE_HOUR_SECONDS };
 /** Per network: opening a confirmation link, which a mail scanner may do before the owner does. */
 const CONFIRM_ATTEMPTS_PER_CLIENT: RateLimitRule = { limit: 30, windowSeconds: ONE_HOUR_SECONDS };
-/** Per address: asking for the confirmation email again. */
-const CONFIRM_RESENDS_PER_EMAIL: RateLimitRule = { limit: 3, windowSeconds: ONE_HOUR_SECONDS };
 
 async function clientIp(): Promise<string> {
   return clientIpFrom(await headers());
@@ -127,22 +125,3 @@ export async function confirmEmail(token: string): Promise<EmailConfirmationOutc
 }
 
 export type ConfirmationSendOutcome = "sent" | "limited" | "failed";
-
-/**
- * Emails the confirmation link to `email`, which the caller has established is the address of an account that has
- * not confirmed it (a sign-up just made, or the signed-in customer). A failure is logged and reported, never thrown:
- * the account exists either way and the dashboard offers to send the link again.
- */
-export async function sendEmailConfirmation(email: string): Promise<ConfirmationSendOutcome> {
-  // A placeholder address (an account opened with a mobile number) has nothing to confirm and nobody to write to.
-  if (isPhoneAccountEmail(email)) return "failed";
-  try {
-    const budget = await consumeRateLimit(getAppDb(), `confirm-email-send:email:${email}`, CONFIRM_RESENDS_PER_EMAIL);
-    if (!budget.allowed) return "limited";
-    await getAuth().api.sendVerificationEmail({ body: { email } });
-    return "sent";
-  } catch (error) {
-    console.error("An email confirmation link could not be sent.", errorLogInfo(error));
-    return "failed";
-  }
-}

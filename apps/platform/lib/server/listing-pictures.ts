@@ -2,10 +2,8 @@ import "server-only";
 import {
   findBusinessKind,
   findClaimForBusiness,
-  listDirectoryPictures,
   newDirectoryPictureId,
   recordDirectoryPicture,
-  removeDirectoryPictures,
   withTenantScope,
   type Database,
   type DirectoryClaim,
@@ -13,12 +11,10 @@ import {
   type DirectoryPictureStatus,
 } from "@brandbasket/db";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
-import { GALLERY_SLOTS, PICTURE_KIND_SLOTS, PICTURE_SHAPES, type PictureKind } from "@brandbasket/shared/lib/directory/pictures";
+import { GALLERY_SLOTS, PICTURE_SHAPES } from "@brandbasket/shared/lib/directory/pictures";
 import { deleteMediaFiles, mediaStorageKey, type MediaStorage } from "@brandbasket/shared/server/media-storage";
 import { pictureCopyKey } from "@brandbasket/shared/server/media-keys";
-import { NO_LISTING_MESSAGE, slotPictures, type SlotPictures } from "@/lib/photos-view";
-import type { GrantedCustomer } from "./customer-access";
-import { getAppDb } from "./db";
+import { NO_LISTING_MESSAGE, type SlotPictures } from "@/lib/photos-view";
 import { makePictureCopies, processUpload, UploadRejectedError, type ProcessedUpload, type UploadRejection } from "./media-upload";
 
 /*
@@ -147,24 +143,8 @@ export async function storePictureCopies(storage: MediaStorage, displayKey: stri
   }
 }
 
-/** Removes the business's listing photo, or its ad picture in both shapes: rows first, then the files. */
-export async function removeListingPictures(deps: ListingPictureDeps, tenant: TenantContext, kind: PictureKind, now: Date): Promise<void> {
-  const keys = await removeDirectoryPictures(deps.staffDb, { businessId: tenant.businessId, slots: PICTURE_KIND_SLOTS[kind], now });
-  await deleteMediaFiles(deps.storage, keys);
-}
-
 export interface PhotosPage {
   /** Null for an account that has not added or claimed a business yet. */
   readonly claim: DirectoryClaim | null;
   readonly slots: Readonly<Record<DirectoryPictureSlot, SlotPictures>>;
-}
-
-/** Everything the Photos page shows the signed-in listing account, read through its own tenant scope. */
-export async function getPhotosPage(customer: Pick<GrantedCustomer, "tenant">): Promise<PhotosPage> {
-  const { tenant } = customer;
-  return withTenantScope(getAppDb(), tenant, async (tx) => {
-    const claim = await findClaimForBusiness(tx, tenant.businessId);
-    const pictures = await listDirectoryPictures(tx, tenant.businessId);
-    return { claim, slots: slotPictures(pictures) };
-  });
 }

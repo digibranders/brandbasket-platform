@@ -6,7 +6,7 @@ import { getAppDb } from "./db";
 import { serverEnv } from "./env";
 
 /** The page on a client site that renders a draft. Every client site made from our template has it. */
-export const CLIENT_SITE_PREVIEW_PATH = "/blog/preview";
+const CLIENT_SITE_PREVIEW_PATH = "/blog/preview";
 
 /**
  * The key preview links are signed with. The auth secret, not a new one: it is already on every deployment, and the

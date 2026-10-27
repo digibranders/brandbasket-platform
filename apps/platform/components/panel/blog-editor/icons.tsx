@@ -122,14 +122,6 @@ export function CaretGlyph(props: GlyphProps): ReactElement {
   );
 }
 
-export function CrossGlyph(props: GlyphProps): ReactElement {
-  return (
-    <Glyph {...props}>
-      <path d="m4 4 8 8M12 4l-8 8" />
-    </Glyph>
-  );
-}
-
 export function DotsGlyph(props: GlyphProps): ReactElement {
   return (
     <Glyph {...props}>

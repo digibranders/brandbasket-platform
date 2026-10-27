@@ -181,7 +181,7 @@ export function isFakeBillingProvider(): boolean {
 }
 
 /** How many payments the receipts list shows, and so the most one receipts download can include. */
-export const RECEIPTS_SHOWN = MAX_RECEIPTS_PER_DOWNLOAD;
+const RECEIPTS_SHOWN = MAX_RECEIPTS_PER_DOWNLOAD;
 
 /** The signed-in customer's payments with the term each bought, newest first, read through row-level security. */
 export async function listCustomerReceipts(customer: Pick<GrantedCustomer, "tenant">): Promise<Receipt[]> {
