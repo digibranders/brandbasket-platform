@@ -1,23 +1,8 @@
-Unused files (18)
-apps/platform/components/panel/appointments/appointments-nav-refresh.tsx
-apps/platform/components/panel/billing/billing-details-prompt.tsx
-apps/platform/components/panel/call-slot-picker.tsx
-apps/platform/components/panel/kickoff-call-card.tsx
-apps/platform/components/panel/launch-path.tsx
-apps/platform/components/panel/listing/listing-promotion.tsx
-apps/platform/components/panel/paid-badge.tsx
-apps/platform/components/panel/plan-mark.tsx
-apps/platform/components/panel/preview-review-actions.tsx
-apps/platform/components/panel/stage-disclosure.tsx
-apps/platform/components/panel/support/support-button.tsx
-apps/platform/components/panel/support/support-reply.tsx
-apps/platform/components/panel/team-call-card.tsx
-apps/platform/lib/billing/add-on-form.ts
-apps/platform/lib/billing/add-on-label.ts
-apps/platform/lib/project-response-notices.ts
-apps/platform/lib/server/claim-link.ts
-apps/platform/lib/stale-deploy.ts
-Unused exports (155)
+Unused files (3)
+apps/platform/components/panel/membership/included-list.tsx
+apps/platform/lib/business-details-fields.ts
+apps/platform/lib/checkout-included.ts
+Unused exports (139)
 apps/admin/components/affiliate-forms.tsx: initialAffiliateFormState
 apps/admin/components/console/buttons.ts: buttonGold
 apps/admin/components/console/dock.tsx: centerActiveItem
@@ -37,95 +22,81 @@ apps/admin/lib/server/staff-ad-picture.ts: MAX_STAFF_AD_PICTURE_BYTES
 apps/admin/lib/server/staff-role.ts: NO_ACCESS_PATH
 apps/admin/lib/staff-ad-crop.ts: MIN_SOURCE_FRACTION, AUTO_QUALITIES, AUTO_TARGET_BYTES
 apps/admin/lib/staff-ad-form.ts: STAFF_AD_FIELDS, STAFF_AD_EDIT_FIELDS
-apps/platform/app/app-host/(protected)/appointments/errors.ts: ALREADY_UPDATED_MESSAGE, NOT_FOUND_MESSAGE, NOT_STARTED_MESSAGE, DOCTOR_NOT_FREE_MESSAGE
-apps/platform/app/app-host/(protected)/appointments/new/add-booking-outcome.ts: SLOT_TAKEN_MESSAGE, PATIENT_BUSY_MESSAGE, SLOT_PAST_MESSAGE, SLOT_CLOSED_MESSAGE, DOCTOR_NOT_FOUND_MESSAGE
 apps/platform/app/app-host/(protected)/details/errors.ts: CLOSURE_NOT_FOUND_MESSAGE, CLOSURE_PAST_MESSAGE
-apps/platform/app/app-host/(protected)/listing/errors.ts: LISTING_MISSING_MESSAGE
-apps/platform/app/app-host/(protected)/patients/errors.ts: MODULE_OFF_MESSAGE
 apps/platform/app/app-host/(protected)/setup-call-actions.ts: recordSetupCallBooked
-apps/platform/components/panel/appointments/doctors-list.tsx: DoctorAvatar
 apps/platform/components/panel/blog-editor/author-avatar.tsx: initialsOf
 apps/platform/components/panel/blog-editor/icons.tsx: CrossGlyph
-apps/platform/components/panel/business/pick-steps.tsx: OPTION_CLASSES
+apps/platform/components/panel/form/panel-form.tsx: PanelFormGroup
 apps/platform/components/panel/onboarding-summary.tsx: ServicesList
-apps/platform/components/panel/patients/report-column-chart.tsx: ReportLegend
 apps/platform/components/panel/project-timeline.tsx: ProjectTimeline
 apps/platform/components/requests/thread.tsx: TEAM_NAME
 apps/platform/lib/account-entry.ts: readPlanParam
 apps/platform/lib/account-erase-request.ts: ERASE_RUN_DEFAULT_LIMIT, ERASE_RUN_MAX_LIMIT
 apps/platform/lib/account-recovery-form.ts: parseNewPassword
 apps/platform/lib/account-settings-form.ts: parseExitDetails
-apps/platform/lib/ad-preview-families.ts: DIRECTORY_FAMILIES, groupedServices
-apps/platform/lib/add-ons.ts: addOnById, addOnPrice
-apps/platform/lib/advertise-results.ts: weekDays
-apps/platform/lib/advertise-view.ts: marketPageHref
+apps/platform/lib/add-ons.ts: ADD_ONS_PATH, addOnById, addOnPrice
+apps/platform/lib/advertise-results.ts: weekDays, formatClickRate
 apps/platform/lib/affiliate-dashboard.ts: moneyFigure
-apps/platform/lib/appointments/view-params.ts: MAX_CUSTOM_RANGE_DAYS, CUSTOM_RANGE_ORDER_MESSAGE, CUSTOM_RANGE_TOO_LONG_MESSAGE
 apps/platform/lib/author-links.ts: emptyAuthorLinks
 apps/platform/lib/billing/drop-service.ts: PACKAGE_ENDS
+apps/platform/lib/billing/opening-payment.ts: nextOpeningPayment
 apps/platform/lib/billing/receipt-download.ts: RECEIPTS_DOWNLOAD_PATH
 apps/platform/lib/blog-editor-fields.ts: toLocalInputValue
 apps/platform/lib/blog-html.ts: lexicalOutline
 apps/platform/lib/blog-seo-health.ts: SEARCH_TITLE_MIN_LENGTH, SEARCH_DESCRIPTION_MIN_LENGTH, RECOMMENDED_MIN_WORDS, ADDRESS_MAX_LENGTH
-apps/platform/lib/business-listing-form.ts: BUSINESS_LISTING_FIELDS, isDirectoryDistrict, cityOfArea, districtAreaOptions, listingCategoryOptions
-apps/platform/lib/business-profile-notices.ts: BUSINESS_PROFILE_PATH, PROFILE_NOTICES
-apps/platform/lib/catalog-form.ts: SERVICE_FORM_FIELDS, PRODUCT_FORM_FIELDS, FAQ_FORM_FIELDS, parsePriceInr
-apps/platform/lib/celebration.ts: WELCOME_PARAM, wantsWelcome, withoutWelcome, CONFETTI_COLOURS, PIECES_PER_CANNON, LIFETIME_FRAMES, FADE_FRAMES, createPieces, stepPieces, opacityAt
+apps/platform/lib/business-profile-fields.ts: CONTACT_OPTIONS, CONTACT_OPTION_LABELS, CONTACT_OPTION_NEEDS, PAYMENT_METHODS, PAYMENT_METHOD_LABELS, PRODUCT_AVAILABILITIES, PRODUCT_AVAILABILITY_LABELS, CATALOG_MAX_ITEMS, ITEM_NAME_MAX_LENGTH, ITEM_DESCRIPTION_MAX_LENGTH, SERVICE_DESCRIPTION_MAX_LENGTH, SERVICE_SUMMARY_MAX_LENGTH, ITEM_CATEGORY_MAX_LENGTH, ITEM_AREA_MAX_LENGTH, ITEM_PRICE_MAX_INR, FAQ_MAX_ITEMS, FAQ_QUESTION_MAX_LENGTH, FAQ_ANSWER_MAX_LENGTH, LICENCES_MAX, LICENCE_MAX_LENGTH, SERVICE_AREA_MAX_LENGTH, DIRECTIONS_NOTE_MAX_LENGTH, HOLIDAY_HOURS_MAX_LENGTH, EMAIL_MAX_LENGTH, ESTABLISHED_YEAR_MIN, YES_VALUE
 apps/platform/lib/chatbots-view.ts: leadContactLines, leadInitial
-apps/platform/lib/checkout-included.ts: WEBSITE_INCLUDED, MAINTENANCE_INCLUDED
+apps/platform/lib/checkout-ledger.ts: codeDiscountCents
 apps/platform/lib/directory-api.ts: DIRECTORY_RATINGS_PATH, DIRECTORY_REVIEWS_PATH, DIRECTORY_REVIEW_OTP_PATH, DIRECTORY_REVIEW_CONFIRM_PATH, DIRECTORY_ENQUIRIES_PATH, DIRECTORY_REVIEW_HELPFUL_PATH, DIRECTORY_COMMENT_OTP_PATH, DIRECTORY_COMMENT_CONFIRM_PATH, MIN_REVIEWS_FOR_STARS, COMMENTS_SHOWN_PER_REVIEW, LISTING_KEY_PATTERN, PLACE_ID_PATTERN, reviewHighlightIdSchema, publicCommentSchema, publicReviewSchema, DIRECTORY_ERROR_CODES, OWNER_ACCESS_PATH, OWNER_REPLIES_PATH, VISITOR_HANDOFF_PATH, DIRECTORY_STATUS_PATH, POPULAR_MIN_AVERAGE, POPULAR_MIN_REVIEWS, TRENDING_MIN_SCORE, TRENDING_MIN_GROWTH, TRENDING_CONTACT_WEIGHT, EARNED_TAGS, PAID_TAGS, DIRECTORY_EVENTS_PATH, DIRECTORY_SIGNALS_PATH, PAID_TAG_IDS, paidTagIdSchema, PAID_TAG_MARKER, DIRECTORY_ADS_PATH, DIRECTORY_JOIN_PATH, DIRECTORY_CLAIM_SIGNATURE_PARAM, DIRECTORY_CLAIM_ID_PARAM, claimedBusinessName, claimSignaturePayload, DIRECTORY_AD_MARKER, DIRECTORY_SIDE_AD_SPOTS, DIRECTORY_HOME_AD_SPOTS, AD_TAGLINE_MAX_LENGTH, AD_MARKET_PATTERN, AD_LINK_MAX_LENGTH, AD_LINK_PATTERN, adLinkSchema, HOME_AD_MARKET_SLUG, DIRECTORY_AD_PLACEMENTS, DIRECTORY_AD_EVENT_KINDS, DIRECTORY_AD_EVENTS_PATH, DIRECTORY_PICTURES_PATH, DIRECTORY_PICTURE_SIZES, DIRECTORY_GALLERY_PATH, MAX_GALLERY_PHOTOS, MAX_GALLERY_VIDEOS, galleryVideoSchema
 apps/platform/lib/first-look.ts: HELD_GRACE_MS
 apps/platform/lib/leads-api.ts: LEADS_API_PATH
-apps/platform/lib/leads.ts: LEADS_WINDOW_DAYS, placementListingKey, businessRef, leadsTabHref
+apps/platform/lib/leads.ts: LEADS_PER_PAGE, LEADS_WINDOW_DAYS, placementListingKey, businessRef, requestedLeadsPage, leadsPaging, leadSerialNumber, leadWhatsAppUrl, leadsWindowStart, requestedLeadsTab, leadsTabHref, leadsLede
 apps/platform/lib/legal-links.ts: TERMS_HREF, PRIVACY_HREF, PRIVACY_REQUEST_HREF
-apps/platform/lib/listing-address.ts: cityOptions, areaOptions
-apps/platform/lib/listing-location.ts: elsewhereCitySlug, isOpenedDistrict, OPENED_DISTRICTS, PIN_CODE_PATTERN, pinCodeProblem, pinLookupOf, keptLocality
-apps/platform/lib/listing-sections.ts: clientListingSections
-apps/platform/lib/listing/promotion-notices.ts: PROMOTION_NOTICES, readPromotionNotice
 apps/platform/lib/membership.ts: MEMBERSHIP_TIERS, membershipPriceParts
 apps/platform/lib/onboarding/business-form.ts: PROFILE_TEXT_FIELDS, GOOGLE_LINK_MESSAGE, GOOGLE_HOST_MESSAGE, ROUND_THE_CLOCK_MESSAGE
 apps/platform/lib/onboarding/form-state.ts: formValues
-apps/platform/lib/owner-replies.ts: OWNER_REPLY_TOO_LONG_MESSAGE
+apps/platform/lib/onboarding/step-notes.ts: STEP_NOTES
+apps/platform/lib/owner-replies.ts: OWNER_REPLY_MAX_LENGTH, OWNER_REPLY_MISSING_MESSAGE, OWNER_REPLY_TOO_LONG_MESSAGE, REVIEWS_PATH, REVIEWS_PER_PAGE, requestedReviewFilter
 apps/platform/lib/panel-form-state.ts: formValues
-apps/platform/lib/photos-editor.ts: readableSize
-apps/platform/lib/photos-view.ts: hasAnyPicture, PHOTOS_NOTICE_KEYS, PHOTOS_NOTICES, readPhotosNotice
+apps/platform/lib/photos-view.ts: shownPicture, kindStatus, hasAnyPicture, ownPictureHref, ownProductPhotoHref, PHOTOS_NOTICE_KEYS, PHOTOS_NOTICES, readPhotosNotice
 apps/platform/lib/post-path.ts: DEFAULT_POST_PATH
 apps/platform/lib/preview-link.ts: PREVIEW_LINK_SECONDS, previewSignature
 apps/platform/lib/privacy-request-alerts.ts: privacyRequestsConsoleUrl, dueDayWords
 apps/platform/lib/privacy-requests-api.ts: PUBLIC_REQUEST_KINDS, REQUEST_ABOUT_MAX_LENGTH, contributionTargetSchema, OWN_CONTRIBUTIONS_MAX_REVIEWS
 apps/platform/lib/rail.ts: ASK_FOR_A_CHANGE, railTargets
 apps/platform/lib/ready-items.ts: READY_ITEMS
+apps/platform/lib/reply-bar.ts: REPLY_MAX_HEIGHT_PX
 apps/platform/lib/request-error.ts: requestErrorOperation
 apps/platform/lib/requests/form.ts: pickKind
 apps/platform/lib/requests/status.ts: readyByDay, canReopen
 apps/platform/lib/security-review.ts: REVIEW_HOURS, STAFF_ACCESS_LIMITS, staffAccessFindings
 apps/platform/lib/sentry-scrub.ts: stripQuery
 apps/platform/lib/server/account-export.ts: ACCOUNT_EXPORT_FORMAT, ACCOUNT_EXPORT_NOT_INCLUDED
-apps/platform/lib/server/add-ons.ts: ADD_ON_CHECKOUT_RATE_LIMIT, loadWelcomeServices
+apps/platform/lib/server/account-recovery.ts: sendEmailConfirmation
+apps/platform/lib/server/add-ons.ts: ADD_ON_CHECKOUT_RATE_LIMIT
 apps/platform/lib/server/billing.ts: razorpayKeySecret, RECEIPTS_SHOWN
 apps/platform/lib/server/blog-preview-link.ts: CLIENT_SITE_PREVIEW_PATH
 apps/platform/lib/server/blog-preview-token.ts: BLOG_PREVIEW_TTL_MS
 apps/platform/lib/server/blog-taxonomy.ts: toBlogAuthor, toBlogCategory
-apps/platform/lib/server/business-modules.ts: getNewAppointmentCount
 apps/platform/lib/server/calcom-webhook.ts: verifyCalcomSignature, parseCalcomEvent
 apps/platform/lib/server/call-scheduling.ts: calcomBookingMetadata, BOOKING_WINDOW_DAYS, calcomPage
 apps/platform/lib/server/checkout.ts: UnsafeCheckoutUrlError, CheckoutMismatchError
-apps/platform/lib/server/clinic-booking.ts: checkReceptionDate, buildClinicDay, resolveClinicSlot
-apps/platform/lib/server/customer-access.ts: CustomerBusinessMissingError, LISTING_ACCOUNT_HOME, awaitedMembershipTier
+apps/platform/lib/server/clinic-calendars.ts: buildPractitionerCalendars
+apps/platform/lib/server/customer-access.ts: CustomerBusinessMissingError, LISTING_ACCOUNT_HOME, ADVERTISE_PATH, awaitedMembershipTier
 apps/platform/lib/server/customer-sign-in-form.ts: parseAccountIdentifier
-apps/platform/lib/server/directory-ads.ts: AD_CHARGE_PRICING, settleDueAds
+apps/platform/lib/server/directory-ads.ts: AD_CHARGE_PRICING, settleDueAds, getAdvertisePage, saveCustomerBid, saveCustomerTagline
 apps/platform/lib/server/directory-fields.ts: NAME_MISSING_MESSAGE, NAME_TOO_LONG_MESSAGE, PHONE_MISSING_MESSAGE, TEXT_TOO_LONG_MESSAGE, HIGHLIGHT_UNKNOWN_MESSAGE, TOO_MANY_HIGHLIGHTS_MESSAGE, MESSAGE_TOO_LONG_MESSAGE, COMMENT_MISSING_MESSAGE, COMMENT_TOO_LONG_MESSAGE, ADULT_REVIEW_MESSAGE, ADULT_COMMENT_MESSAGE, PAGE_PROBLEM_MESSAGE
 apps/platform/lib/server/directory-gallery.ts: galleryEntryOf
 apps/platform/lib/server/directory-intake.ts: parseDirectoryAsk, parseNamedBusiness, parseReviewsPage, reviewOtpResponse, reviewConfirmResponse, reviewHelpfulResponse, commentOtpResponse, enquiryResponse, parsePictureWidth
 apps/platform/lib/server/directory-review-actions.ts: HELPFUL_ONCE_A_WEEK_RULE, HELPFUL_IP_HOURLY_RULE
 apps/platform/lib/server/directory-signals.ts: DIRECTORY_TIME_ZONE
 apps/platform/lib/server/discount-plans.ts: UnevenPlanDiscountError
+apps/platform/lib/server/env.ts: googleBusinessCredentials
 apps/platform/lib/server/first-look.ts: loadServicesBought
-apps/platform/lib/server/google-business.ts: MAX_IMPORTED_LOCATIONS
-apps/platform/lib/server/google-import-cookie.ts: readGoogleImport
-apps/platform/lib/server/google-import-seal.ts: SEALED_IMPORT_MAX_LENGTH
+apps/platform/lib/server/listing-pictures.ts: removeListingPictures, getPhotosPage
 apps/platform/lib/server/listing-video-request.ts: NO_LISTING_FOR_VIDEO_MESSAGE
-apps/platform/lib/server/listing-videos.ts: VIDEO_UNAVAILABLE_MESSAGE, VIDEO_UPLOAD_RATE_LIMIT
+apps/platform/lib/server/listing-videos.ts: VIDEO_UNAVAILABLE_MESSAGE, VIDEO_UPLOAD_RATE_LIMIT, removeListingVideo, setFeaturedListingVideo, getOwnVideos
+apps/platform/lib/server/live-preview.ts: livePreviewBase
 apps/platform/lib/server/media-upload.ts: MAX_IMAGE_DIMENSION, MAX_UPLOAD_BYTES, MAX_INPUT_PIXELS, MAX_CONCURRENT_DECODES, MAX_WAITING_DECODES, ACCEPTED_FORMATS_MESSAGE
 apps/platform/lib/server/onboarding-media.ts: MEDIA_UPLOAD_RATE_LIMIT, PHOTO_LIMIT_MESSAGE
 apps/platform/lib/server/onboarding.ts: LOCKED_PROBLEM
@@ -133,7 +104,7 @@ apps/platform/lib/server/open-listings-api.ts: toTuple
 apps/platform/lib/server/oyechats-api.ts: oyechatsApiOrigin, parseLeadListPage, parseConversation, resetOyeChatsCache
 apps/platform/lib/server/panel-form-errors.ts: GENERIC_ERROR_MESSAGE, CHECK_VIOLATION_MESSAGE, isCheckViolation
 apps/platform/lib/server/privacy-request-intake.ts: otpResponse, confirmResponse, deletionResponse
-apps/platform/lib/server/product-photos.ts: NO_SUCH_PRODUCT_MESSAGE
+apps/platform/lib/server/product-photos.ts: NO_SUCH_PRODUCT_MESSAGE, removeProductPhoto, deleteProductPhotoFiles
 apps/platform/lib/server/referrals.ts: REFERRAL_RATE_LIMIT, isOwnAffiliateCode
 apps/platform/lib/server/require-admin-host.ts: isAdminHostRequest
 apps/platform/lib/server/security-events.ts: SECURITY_EVENTS
@@ -141,6 +112,7 @@ apps/platform/lib/server/site-api.ts: newSiteApiToken
 apps/platform/lib/server/site-cors.ts: SITE_OFFLINE_MESSAGE
 apps/platform/lib/server/site-info.ts: DEFAULT_SITE_TIME_ZONE
 apps/platform/lib/server/staff-access.ts: requireStaffAccess
+apps/platform/lib/server/support-access.ts: requireSupportAccess
 apps/platform/lib/server/support-account-erasure.ts: PrivateSupportErasureError
 apps/platform/lib/server/support-attachment-maintenance.ts: maintainSupportAttachments
 apps/platform/lib/server/support-retention.ts: SUPPORT_TICKET_RETENTION_MONTHS
@@ -152,18 +124,15 @@ apps/platform/lib/social/week.ts: dueDate, weekBounds
 apps/platform/lib/support-paste.ts: pastedImageFiles
 apps/platform/lib/surfaces.ts: SURFACE_PATH_PREFIX, isLocalHost
 apps/platform/lib/uploads/content-media-upload-client.ts: CONTENT_MEDIA_UPLOAD_ROUTE
-apps/platform/lib/uploads/crop-geometry.ts: MAX_CROP_ZOOM, largestCrop
 apps/platform/lib/uploads/file-name.ts: MAX_FILE_NAME_LENGTH
 apps/platform/lib/uploads/limits.ts: UPLOAD_BUSINESS_ID_HEADER
 apps/platform/lib/uploads/resize-plan.ts: SMALL_ENOUGH_BYTES, UPLOAD_TARGET_BYTES, MIN_SHRINK_DIMENSION
-apps/platform/lib/uploads/review-text.ts: formatBytes
-apps/platform/lib/uploads/upload-client.ts: UPLOAD_ROUTE, LISTING_PICTURE_ROUTE, PRODUCT_PHOTO_ROUTE
-apps/platform/lib/uploads/video-upload-client.ts: LISTING_VIDEO_ROUTE, messageForVideoResponse, requestVideoUpload, sendFileToVimeo
+apps/platform/lib/uploads/upload-client.ts: UPLOAD_ROUTE, LISTING_PICTURE_ROUTE, PRODUCT_PHOTO_ROUTE, uploadListingPicture, uploadProductPhoto
 apps/platform/lib/validation/url.ts: MAX_URL_LENGTH
+apps/platform/lib/videos-view.ts: videoTiles, videoStatusText, formatVideoDuration
 apps/platform/lib/website/progress-view.ts: roundsLine
 apps/platform/lib/website/tabs.ts: WEBSITE_PAGES_PATH, WEBSITE_LEADS_PATH
 apps/platform/lib/website/timeline.ts: APPROVE_WITHIN_WORKING_DAYS, LIVE_AFTER_APPROVAL_WORKING_DAYS, REVISION_READY_WORKING_DAYS, LIVE_WITHIN_WORKING_DAYS_OF_CALL, currentStep
-apps/platform/lib/youtube-video.ts: YOUTUBE_THUMBNAIL_ORIGIN
 packages/billing/src/fake-charge-token.ts: FAKE_ORDER_ID_PATTERN
 packages/db/src/india-post.ts: INDIA_POST_HEADER, cleanOfficeName, toSlug, splitCsvLine
 packages/db/src/local-env-template.ts: DEV_DATABASE, TEST_DATABASE, PAYLOAD_DATABASE
@@ -172,8 +141,8 @@ packages/db/src/queries/directory-place-backfill.ts: NoOpenDataPlacesError
 packages/db/src/queries/emails.ts: SIGN_IN_LINK_TEMPLATES, SIGN_IN_LINK_EMAIL_RETENTION_MS, OUTBOX_RETENTION_MS
 packages/db/src/queries/retention.ts: RETENTION_PERIODS, monthsBefore
 packages/db/src/rate-limit.ts: bucketKeyFor
-packages/email/src/brevo.ts: BREVO_API_URL, BREVO_TIMEOUT_MS, BREVO_FALLBACK_TRANSPORT_NAME
-Unused exported types (248)
+packages/email/src/brevo.ts: BREVO_API_URL, BREVO_TIMEOUT_MS, BREVO_MAX_ATTEMPTS, BREVO_RETRY_DELAY_MS, BREVO_FALLBACK_TRANSPORT_NAME
+Unused exported types (214)
 apps/admin/components/client-listing.tsx: ListingPromotionLine
 apps/admin/components/console/avatar.tsx: AvatarRing
 apps/admin/components/console/figures.tsx: FigureItem
@@ -227,39 +196,25 @@ apps/admin/lib/staff-ad-form.ts: StaffAdSpot, StaffAdInput, StaffAdParseResult, 
 apps/admin/lib/tax-invoice-rows.ts: TaxInvoiceRow, MissingInvoiceRow
 apps/admin/lib/updates-form.ts: UpdateParse
 apps/admin/lib/website-form.ts: ParsedHold
-apps/platform/app/app-host/(protected)/appointments/new/add-booking-outcome.ts: AddBookingRefusal, AddBookingDeps
-apps/platform/app/app-host/(protected)/appointments/new/add-booking-params.ts: AddBookingParams
-apps/platform/app/app-host/(protected)/listing/headline.ts: ListingHeadlineInput
-apps/platform/app/app-host/(protected)/patients/view.ts: PageItem, PatientFigures
-apps/platform/components/panel/appointments/add-booking-form.tsx: AddBookingService
-apps/platform/components/panel/blog-editor/blog-empty-state.tsx: EmptyStateArt
-apps/platform/components/panel/business/listing-address-line.tsx: AddressSegment
-apps/platform/components/panel/business/listing-form.tsx: SavedListing
-apps/platform/components/panel/business/pick-steps.tsx: StepProps, OptionListProps
 apps/platform/components/panel/content-step-form.tsx: SavedBrief
 apps/platform/components/panel/form/panel-form.tsx: PanelForm
-apps/platform/components/panel/pictures/picture-card.tsx: PicturePreview
 apps/platform/components/panel/rich-text-editor.tsx: RichTextEditorProps
 apps/platform/components/panel/step-form.tsx: StepForm
-apps/platform/components/panel/support/support-category-select.tsx: SupportCategorySelectProps
 apps/platform/lib/account-entry.ts: EntryRequest
 apps/platform/lib/account-erase-request.ts: EraseRunRequest
 apps/platform/lib/account-erasure-run.ts: ErasureRunOptions, ErasureItemResult, ErasureRunReport
 apps/platform/lib/account-exit-rules.ts: PlanClosure
 apps/platform/lib/account-recovery-form.ts: NewPasswordParseResult, ResetParseResult
 apps/platform/lib/account-settings-form.ts: ChangePasswordParseResult, ExitDetailsParseResult, DeleteParseResult
-apps/platform/lib/ad-preview-families.ts: DirectoryFamily
 apps/platform/lib/add-ons.ts: AddOn, AddOnId
 apps/platform/lib/advertise-results.ts: AdBooking
 apps/platform/lib/affiliate-dashboard.ts: CodeStatus, CashOutShares, MonthRow, MonthRows
 apps/platform/lib/appointments/closure-clashes.ts: ClashCandidate
-apps/platform/lib/appointments/free-doctors.ts: FreeDoctorsInput
-apps/platform/lib/appointments/grid.ts: WeekGrid, WeekGridInput
 apps/platform/lib/appointments/leave-added-state.ts: LeaveAddedState
-apps/platform/lib/appointments/view-ranges.ts: DateRange, DateGroup
 apps/platform/lib/auth-retry.ts: OtpRateLimit
 apps/platform/lib/author-links.ts: AuthorLinkResult
 apps/platform/lib/billing/invoice-title.ts: TitlePart
+apps/platform/lib/billing/opening-payment.ts: OpeningPayment
 apps/platform/lib/billing/pagination.ts: PageWindow
 apps/platform/lib/billing/pay-callback.ts: PayCallback
 apps/platform/lib/billing/payment-method-view.ts: RenewalFacts
@@ -273,48 +228,36 @@ apps/platform/lib/blog-seo-health.ts: SeoHealthInput, SeoHealthGrade
 apps/platform/lib/blog-seo.ts: SeoSource
 apps/platform/lib/blog-slug.ts: SlugResult
 apps/platform/lib/blog-text.ts: OutlineLevel, OutlineHeading
-apps/platform/lib/business-details-fields.ts: BusinessDetailsField
-apps/platform/lib/business-details-form.ts: BusinessDetailsParseResult, BusinessDetailsParseOptions
-apps/platform/lib/business-listing-form.ts: DirectoryDistrict, ListedAtSegment, BusinessListingParseResult
-apps/platform/lib/business-name.ts: BusinessNameResult
-apps/platform/lib/business-profile-notices.ts: NoticeText
+apps/platform/lib/business-profile-fields.ts: ContactOption, PaymentMethod, ProductAvailability
 apps/platform/lib/call-dates.ts: PromiseDates
 apps/platform/lib/calls/form.ts: BookCallRead
 apps/platform/lib/calls/rows.ts: CallInput, KickoffInput
-apps/platform/lib/catalog-form.ts: ItemParseResult
-apps/platform/lib/catalog-words.ts: CatalogWords
-apps/platform/lib/celebration.ts: WelcomeLine, Piece
+apps/platform/lib/calls/slot-view.ts: DayTimes
 apps/platform/lib/changelog.ts: ChangelogEntry
 apps/platform/lib/chatbots-view.ts: LeadRowSource, ConversationNoticeKey, PageItem
-apps/platform/lib/contact-trust-form.ts: SimpleParseResult
-apps/platform/lib/deals.ts: ParsedDeal
+apps/platform/lib/checkout-plans.ts: CheckoutPlanCopy, CheckoutStep
 apps/platform/lib/directory-api.ts: PublicComment, PublicReview, ReviewConfirmRequest, ReviewHelpfulRequest, OwnerReplyPostRequest, OwnerReplyEditRequest, OwnerReplyRemoveRequest, EarnedTagId, PaidTagId, DirectoryEventRequest, DirectoryAdPlacement, DirectoryAdEventKind, GalleryVideo
 apps/platform/lib/domain-page.ts: DomainPageState
-apps/platform/lib/extra-categories-form.ts: ExtraCategoriesParseResult
 apps/platform/lib/first-look-steps.ts: FirstLookStep
 apps/platform/lib/first-look.ts: ServiceLine, FirstLookInput
 apps/platform/lib/join-form.ts: JoinCode, JoinPhone, JoinContact, JoinParseResult
 apps/platform/lib/leads-api.ts: LeadRequestField, LeadApiRequest
-apps/platform/lib/leads.ts: ListingPlacement, LeadsSourceInput
-apps/platform/lib/listing-location.ts: FoundPinLookup
-apps/platform/lib/listing-sections.ts: ClientListingSection
-apps/platform/lib/listing-website.ts: ListingWebsiteResult
-apps/platform/lib/listing/promotion-notices.ts: PromotionNotice
-apps/platform/lib/maps-link.ts: MapsLinkResult
-apps/platform/lib/membership.ts: MembershipPricing, OrderSummaryInput, RenewalTermsPlan, MembershipCheckout
+apps/platform/lib/leads.ts: ListingPlacement, LeadsSourceInput, LeadsSource, LeadsPaging, LeadsTab
+apps/platform/lib/membership.ts: MembershipPricing, RenewalTermsPlan, MembershipCheckout
 apps/platform/lib/onboarding/brand-form.ts: BrandFormContext, PhotoDescription, BrandStepInput
 apps/platform/lib/onboarding/content-form.ts: ContentStepInput
 apps/platform/lib/onboarding/form-state.ts: StepRefusal
-apps/platform/lib/owner-form.ts: OwnerFormCheck
+apps/platform/lib/onboarding/step-notes.ts: StepNote
 apps/platform/lib/owner-replies.ts: OwnerReplyText
-apps/platform/lib/patients/report-range.ts: ReportRange
-apps/platform/lib/photos-view.ts: PhotosNotice
+apps/platform/lib/panel-form-state.ts: PanelFormProblem
+apps/platform/lib/photos-view.ts: PictureState, KindStatus, PhotosNotice
 apps/platform/lib/post-path.ts: ArticleAddressResult
 apps/platform/lib/preview-draft.ts: PreviewDraft, FieldLookup, CheckedLookup, TickedLookup
 apps/platform/lib/privacy-request-alerts.ts: NewRequestAlert, ReminderRun
 apps/platform/lib/privacy-requests-api.ts: PublicRequestKind, PrivacyRequestConfirmRequest, ContributionTarget, OwnContributionsRequest, ContributionDeletionRequest
 apps/platform/lib/project-stages.ts: ProjectStageInput
 apps/platform/lib/rail.ts: RailTarget, RailInput
+apps/platform/lib/reply-bar.ts: SendKeyEvent
 apps/platform/lib/request-error.ts: RequestErrorContext, RequestErrorTargets
 apps/platform/lib/requests/form.ts: AskDefaults, AskForChangeInput, AskParse
 apps/platform/lib/requests/rows.ts: RequestFilters, ViewChoice
@@ -336,7 +279,6 @@ apps/platform/lib/server/blog-taxonomy.ts: BlogCategory, BlogAuthorPhoto, BlogAu
 apps/platform/lib/server/booking-confirm-intake.ts: BookingConfirmIntakeDeps
 apps/platform/lib/server/booking-log.ts: LoggableBookingError
 apps/platform/lib/server/booking-otp-intake.ts: BookingOtpIntakeDeps
-apps/platform/lib/server/business-profile.ts: SaveDetailsOutcome, SaveListingOutcome, SaveExtraCategoriesOutcome, OwnPublishRefusal, PublishOutcome, CatalogOutcome
 apps/platform/lib/server/calcom-webhook.ts: CalcomWebhookResult, CalcomEvent
 apps/platform/lib/server/call-scheduling.ts: CallInvitee, BookedCall, BookResult
 apps/platform/lib/server/calls.ts: CallsData, BookTeamCallResult, BookTeamCallInput, CancelTeamCallResult
@@ -344,10 +286,9 @@ apps/platform/lib/server/charges.ts: RazorpayOrderPaid
 apps/platform/lib/server/chatbot-conversations.ts: LeadConversationOutcome
 apps/platform/lib/server/chatbots.ts: LeadsPage
 apps/platform/lib/server/checkout.ts: CheckoutOutcome
-apps/platform/lib/server/clinic-booking.ts: ReceptionDateCheck, ClinicDayInput, ClinicDay, LoadedClinicDay
 apps/platform/lib/server/clinic-calendars.ts: ClinicCalendars, BuildPractitionerCalendarsInput, LoadClinicCalendarsOptions
 apps/platform/lib/server/customer-sign-in-form.ts: SignInIdentifierMode, AccountIdentifier, IdentifierParseResult, CustomerSignInInput, CustomerSignInParseResult
-apps/platform/lib/server/deals.ts: DealsPage
+apps/platform/lib/server/directory-ads.ts: AdOffer, AdWeek, AdvertisePage
 apps/platform/lib/server/directory-fields.ts: FieldRefusal, FieldResult
 apps/platform/lib/server/directory-gallery.ts: GalleryDeps
 apps/platform/lib/server/directory-intake.ts: RatingsIntakeDeps, StatusIntakeDeps, GalleryIntakeDeps, SignalsIntakeDeps, EventIntakeDeps, AdEventIntakeDeps, ReviewsIntakeDeps, ReviewOtpIntakeDeps, ReviewConfirmIntakeDeps, ReviewHelpfulIntakeDeps, CommentOtpIntakeDeps, EnquiryIntakeDeps, AdsIntakeDeps, PictureIntakeDeps
@@ -355,13 +296,11 @@ apps/platform/lib/server/domain-check.ts: DomainCheck
 apps/platform/lib/server/env.ts: ServerEnv, GoogleBusinessCredentials
 apps/platform/lib/server/first-look.ts: FirstLookData
 apps/platform/lib/server/geo-catalog-api.ts: GeoCatalogApiDeps
-apps/platform/lib/server/google-business.ts: GoogleOAuthConfig, GoogleLocation
 apps/platform/lib/server/keep-plan.ts: KeepPlanOutcome, KeepCheckout
 apps/platform/lib/server/lead-intake.ts: LeadIntakeDeps
 apps/platform/lib/server/listing-account.ts: JoinCodeOutcome, ListingAccountOutcome
 apps/platform/lib/server/listing-picture-request.ts: ListingPictureRequestDeps, ListingPictureResponseBody
-apps/platform/lib/server/listing-pictures.ts: ListingPictureDeps
-apps/platform/lib/server/listing-promotion.ts: ListingPromotionStart
+apps/platform/lib/server/listing-pictures.ts: ListingPictureDeps, PhotosPage
 apps/platform/lib/server/listing-videos.ts: ListingVideoDeps
 apps/platform/lib/server/local-time.ts: LocalInterval
 apps/platform/lib/server/media-upload.ts: ExactImageSize, PictureCopy
@@ -400,26 +339,22 @@ apps/platform/lib/service-setup.ts: SetupField, SetupParse
 apps/platform/lib/setup-form.ts: SetupInput, SetupParseResult
 apps/platform/lib/site-bookings.ts: SiteSlotState, SiteSlot, SiteAvailabilityDay, SiteAvailability, SiteBookingFields, SiteOtpRequest, SiteOtpConfirm, SiteBookingErrorCode
 apps/platform/lib/site-events.ts: SiteEventParse
-apps/platform/lib/social-link.ts: SocialLinkResult
 apps/platform/lib/support-paste.ts: PastedItem, PasteEventLike
 apps/platform/lib/uploads/content-media-upload-client.ts: ContentMediaUploadResult
-apps/platform/lib/uploads/move-picture.ts: MoveResult
 apps/platform/lib/uploads/resize-plan.ts: SourceImage, ResizePlan, Candidate
-apps/platform/lib/uploads/review-text.ts: PictureFacts
-apps/platform/lib/uploads/video-upload-client.ts: VideoUploadResult, WaitState, RequestedVideo, VideoUploadRequestResult, VideoRequest, WaitOptions
 apps/platform/lib/validation/url.ts: HttpsUrlMessages
+apps/platform/lib/videos-view.ts: VideoState, VideoTile, VideosView
+apps/platform/lib/website/bought.ts: BoughtLine
 apps/platform/lib/website/notices.ts: WebsiteNotice
 apps/platform/lib/website/pages-map.ts: SitePage, ProductRow
 apps/platform/lib/website/progress-view.ts: ProgressInput
 apps/platform/lib/website/tabs.ts: WebsiteTab
 apps/platform/lib/website/timeline.ts: TimelineProject, TimelineInput
-apps/platform/lib/where-it-shows.ts: SpotBox
-apps/platform/lib/youtube-video.ts: YoutubeLinkResult
 packages/billing/src/fake-add-on-token.ts: AddOnTokenClaims
 packages/billing/src/fake-charge-token.ts: ChargeTokenClaims
 packages/db/src/local-env-template.ts: LocalEnvSecrets
 packages/db/src/queries/billing.ts: ManualColumns, CurrentPaymentMethodOptions
-packages/db/src/queries/directory-listings.ts: OwnListing
+packages/db/src/queries/directory-listings.ts: ListingButtonsRow, OwnListing
 packages/db/src/queries/directory-refs.ts: DirectoryBusinessColumns
 packages/db/src/queries/plan-upgrades.ts: RenewalAtNewPrice
 Duplicate exports (4)
