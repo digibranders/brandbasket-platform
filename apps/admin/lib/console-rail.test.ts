@@ -7,7 +7,7 @@ describe("railFor", () => {
   it("gives an admin every entry, in order", () => {
     expect(labels("admin")).toEqual([
       [null, ["Today"]],
-      ["Work", ["Enquiries", "Clients", "Requests", "Leaving"]],
+      ["Work", ["Enquiries", "Clients", "Requests"]],
       ["Money", ["Invoices", "Prices", "Coupons", "Affiliates", "Ad credit"]],
       ["System", ["Outbox", "Errors", "Settings", "Compliance"]],
     ]);
@@ -56,3 +56,10 @@ describe("the current entry", () => {
     expect(currentHref(railFor("admin"), "/no-access")).toBeNull();
   });
 });
+
+it("has no Leaving entry: leaving accounts are a Clients filter", () => {
+  for (const role of ["support", "finance", "admin"] as const) {
+    expect(railFor(role).flatMap((section) => section.links).some((link) => link.href === "/leaving")).toBe(false);
+  }
+});
+

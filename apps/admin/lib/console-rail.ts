@@ -35,7 +35,6 @@ export const CONSOLE_RAIL: readonly ConsoleRailSection[] = [
       { href: "/leads", label: "Enquiries", icon: "leads", countKey: "leads" },
       { href: "/clients", label: "Clients", icon: "clients" },
       { href: "/support", label: "Requests", icon: "requests", countKey: "requests" },
-      { href: "/leaving", label: "Leaving", icon: "leaving" },
     ],
   },
   {
