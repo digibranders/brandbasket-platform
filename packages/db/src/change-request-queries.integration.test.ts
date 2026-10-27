@@ -4,6 +4,7 @@ import {
   ChangeRequestError,
   countIncludedEdits,
   findRequestRecipient,
+  findTicketIdOfChangeRequest,
   getChangeRequestForStaff,
   getChangeWithEvents,
   listChangeRequestsForBusiness,
@@ -218,6 +219,15 @@ describe("a person in two businesses", () => {
     expect(await getSupportTicket(dbs.app.db, OWNER, theirs.ticket.id, businessId)).toBeNull();
     expect((await getSupportTicket(dbs.app.db, OWNER, mine.ticket.id, businessId))?.ticket.id).toBe(mine.ticket.id);
     expect((await getSupportTicket(dbs.app.db, OWNER, question.id, businessId))?.ticket.id).toBe(question.id);
+  });
+});
+
+describe("findTicketIdOfChangeRequest", () => {
+  it("gives the ticket of the business's own request, and null for another business's", async () => {
+    const { ticket } = await ask();
+    const requestId = await requestIdOf(ticket.id);
+    expect(await asOwner((tx) => findTicketIdOfChangeRequest(tx, businessId, requestId))).toBe(ticket.id);
+    expect(await asOtherOwner((tx) => findTicketIdOfChangeRequest(tx, otherBusinessId, requestId))).toBeNull();
   });
 });
 

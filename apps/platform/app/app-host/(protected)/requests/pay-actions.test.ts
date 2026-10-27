@@ -5,6 +5,7 @@ import { requireBillingAccess } from "@/lib/server/billing";
 import { openQuoteCharge } from "@/lib/server/change-quote";
 import { redirectForChargePayment } from "@/lib/server/charge-redirect";
 import { startCustomerChargePayment } from "@/lib/server/charges";
+import { loadTicketIdOfRequest } from "@/lib/server/requests";
 import { acceptQuoteAction } from "./pay-actions";
 
 vi.mock("server-only", () => ({}));
@@ -22,11 +23,13 @@ vi.mock("@/lib/server/billing", () => ({ requireBillingAccess: vi.fn() }));
 vi.mock("@/lib/server/change-quote", () => ({ openQuoteCharge: vi.fn() }));
 vi.mock("@/lib/server/charges", () => ({ startCustomerChargePayment: vi.fn() }));
 vi.mock("@/lib/server/charge-redirect", () => ({ redirectForChargePayment: vi.fn() }));
+vi.mock("@/lib/server/requests", () => ({ loadTicketIdOfRequest: vi.fn() }));
 
 const user = { id: "user-1", name: "Priya Shah", email: "priya@example.com", phone: null };
 const tenant = { userId: "user-1", businessId: "business-1", businessName: "Sai Dental Care", role: "owner" };
 const REQUEST = "0192f3c4-0000-7000-8000-000000000001";
 const TICKET = "0192f3c4-0000-7000-8000-000000000002";
+const OTHER_TICKET = "0192f3c4-0000-7000-8000-000000000003";
 
 function form(fields: Record<string, string>): FormData {
   const data = new FormData();
@@ -40,6 +43,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   vi.mocked(requireBillingAccess).mockResolvedValue({ user, tenant, billing: { hasAccess: true, plan: { taxRateBasisPoints: 1800 } } } as never);
+  vi.mocked(loadTicketIdOfRequest).mockResolvedValue(TICKET);
   vi.mocked(openQuoteCharge).mockResolvedValue({ chargeId: "charge-1" });
   vi.mocked(startCustomerChargePayment).mockResolvedValue({ kind: "redirect", url: "https://pay.example/charge-1" });
 });
@@ -56,6 +60,17 @@ describe("acceptQuoteAction", () => {
   it("needs a paid plan, and opens nothing without one", async () => {
     vi.mocked(requireBillingAccess).mockRejectedValue(new Error("billing required"));
     await expect(move(acceptQuoteAction)).rejects.toThrow("billing required");
+    expect(openQuoteCharge).not.toHaveBeenCalled();
+  });
+
+  it("goes back to the request's own ticket, whatever ticket the form names", async () => {
+    vi.mocked(openQuoteCharge).mockRejectedValue(new ChangeRequestError("wrong_state", "There is no quote to accept."));
+    await expect(move(acceptQuoteAction, { requestId: REQUEST, ticketId: OTHER_TICKET })).rejects.toThrow(`redirect:/requests?open=${TICKET}&notice=changed`);
+  });
+
+  it("is a not-found for a request the business does not have, and opens nothing", async () => {
+    vi.mocked(loadTicketIdOfRequest).mockResolvedValue(null);
+    await expect(move(acceptQuoteAction)).rejects.toThrow("notFound");
     expect(openQuoteCharge).not.toHaveBeenCalled();
   });
 

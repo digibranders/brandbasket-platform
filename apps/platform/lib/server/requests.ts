@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import {
   countIncludedEdits,
+  findTicketIdOfChangeRequest,
   getChangeWithEvents,
   getSupportTicket,
   listRequestItems,
@@ -76,4 +77,13 @@ export async function loadRequestDetail(tenant: TenantContext, ticketId: string)
   ]);
   if (thread === null) return null;
   return { ticket: thread.ticket, messages: thread.messages, attachments: thread.attachments, change: change?.change ?? null, events: change?.events ?? [] };
+}
+
+/**
+ * The ticket a change request really belongs to, read for the signed-in business. A form names both ids, but only the request
+ * is acted on, so the ticket it sends the customer back to comes from here, never from the form. Null when the business has
+ * no such request.
+ */
+export async function loadTicketIdOfRequest(tenant: TenantContext, requestId: string): Promise<string | null> {
+  return withTenantScope(getAppDb(), tenant, (tx) => findTicketIdOfChangeRequest(tx, tenant.businessId, requestId));
 }

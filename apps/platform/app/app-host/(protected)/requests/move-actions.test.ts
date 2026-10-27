@@ -2,6 +2,7 @@ import { ChangeRequestError, moveChangeAsCustomer, withTenantScope } from "@bran
 import { revalidatePath } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { loadTicketIdOfRequest } from "@/lib/server/requests";
 import { approveChangeAction, declineQuoteAction, reopenRequestAction } from "./move-actions";
 
 vi.mock("server-only", () => ({}));
@@ -17,7 +18,12 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/server/db", () => ({ getAppDb: vi.fn(() => ({ kind: "app-db" })) }));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
+vi.mock("@/lib/server/requests", () => ({ loadTicketIdOfRequest: vi.fn() }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/db")>()), moveChangeAsCustomer: vi.fn(), withTenantScope: vi.fn() }));
+
+const REQUEST = "0192f3c4-0000-7000-8000-000000000001";
+const TICKET = "0192f3c4-0000-7000-8000-000000000002";
+const OTHER_TICKET = "0192f3c4-0000-7000-8000-000000000003";
 
 const user = { id: "user-1", name: "Priya Shah", email: "priya@example.com", phone: null };
 const tenant = { userId: "user-1", businessId: "business-1", businessName: "Sai Dental Care", role: "owner" };
@@ -34,10 +40,9 @@ beforeEach(() => {
   vi.mocked(requireCustomerAccess).mockResolvedValue({ user, tenant, billing: { hasAccess: true } } as never);
   vi.mocked(withTenantScope).mockImplementation(async (_db, _scope, work) => work({ kind: "tx" } as never));
   vi.mocked(moveChangeAsCustomer).mockResolvedValue("approved");
+  vi.mocked(loadTicketIdOfRequest).mockResolvedValue(TICKET);
 });
 
-const REQUEST = "0192f3c4-0000-7000-8000-000000000001";
-const TICKET = "0192f3c4-0000-7000-8000-000000000002";
 const move = (action: (formData: FormData) => Promise<void>, fields: Record<string, string> = { requestId: REQUEST, ticketId: TICKET }) => action(form(fields));
 
 describe("the customer's own moves", () => {
@@ -51,6 +56,18 @@ describe("the customer's own moves", () => {
     expect(moveChangeAsCustomer).toHaveBeenCalledWith({ kind: "tx" }, REQUEST, expected);
     expect(revalidatePath).toHaveBeenCalledWith("/requests");
     expect(revalidatePath).toHaveBeenCalledWith("/");
+  });
+
+  it("goes back to the request's own ticket, whatever ticket the form names", async () => {
+    await expect(move(approveChangeAction, { requestId: REQUEST, ticketId: OTHER_TICKET })).rejects.toThrow(`redirect:/requests?open=${TICKET}`);
+    expect(loadTicketIdOfRequest).toHaveBeenCalledWith(tenant, REQUEST);
+    expect(moveChangeAsCustomer).toHaveBeenCalledWith({ kind: "tx" }, REQUEST, "approve");
+  });
+
+  it("is a not-found for a request the business does not have, and moves nothing", async () => {
+    vi.mocked(loadTicketIdOfRequest).mockResolvedValue(null);
+    await expect(move(approveChangeAction)).rejects.toThrow("notFound");
+    expect(moveChangeAsCustomer).not.toHaveBeenCalled();
   });
 
   it("is a not-found for an id that is not an id, and moves nothing", async () => {

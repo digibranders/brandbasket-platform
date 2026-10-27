@@ -3,16 +3,20 @@
 import { ChangeRequestError, moveChangeAsCustomer, withTenantScope, type CustomerMove } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { revalidatePath } from "next/cache";
-import { redirect, unstable_rethrow } from "next/navigation";
+import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { requestHref, type RequestNotice } from "@/lib/requests/links";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
 import { readRequestIds } from "@/lib/server/request-form-ids";
+import { loadTicketIdOfRequest } from "@/lib/server/requests";
 
 /** Runs one of the customer's own moves through the database function that checks the business, the state and the 14 days. */
 async function moveAsCustomer(formData: FormData, move: CustomerMove): Promise<never> {
   const { tenant } = await requireCustomerAccess();
-  const { requestId, ticketId } = readRequestIds(formData);
+  const { requestId } = readRequestIds(formData);
+  // The ticket to go back to comes from the request, not the form, so the two cannot disagree.
+  const ticketId = await loadTicketIdOfRequest(tenant, requestId);
+  if (ticketId === null) notFound();
   let notice: RequestNotice | undefined;
   try {
     await withTenantScope(getAppDb(), tenant, (tx) => moveChangeAsCustomer(tx, requestId, move));

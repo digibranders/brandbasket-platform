@@ -202,6 +202,16 @@ export async function getChangeWithEvents(
   return { change: toChangeView(row.change, row.chargeStatus), events };
 }
 
+/** The ticket a change request belongs to, or null when the business has no such request. Works through row-level security. */
+export async function findTicketIdOfChangeRequest(db: Runner, businessId: string, requestId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ ticketId: changeRequests.ticketId })
+    .from(changeRequests)
+    .where(and(eq(changeRequests.id, requestId), eq(changeRequests.businessId, businessId)))
+    .limit(1);
+  return row?.ticketId ?? null;
+}
+
 /**
  * How many included edits the business has used between `from` (inclusive) and `to` (exclusive): requests covered as
  * included that were sent in the window and are still going ahead (one that was declined or withdrawn gives its edit back).
