@@ -77,3 +77,18 @@ it("draws the note under the button for the picked time", async () => {
   await click("14:00");
   expect(container.querySelector('[data-testid="note"]')?.textContent).toBe(`picked ${SLOTS[1]}`);
 });
+
+it("shows three days with weekday over date, then the rest of them under More days, in one scrolling strip", async () => {
+  const fiveDays = [2, 3, 4, 7, 8].map((date) => `2026-12-${String(date).padStart(2, "0")}T04:30:00.000Z`);
+  mocks.loadCallSlots.mockResolvedValue({ status: "ok", slots: fiveDays });
+  await render(picker());
+  const strip = container.querySelector('[role="group"][aria-label="Day"]') as HTMLElement;
+  expect(strip.className).toContain("overflow-x-auto");
+  expect([...strip.querySelectorAll("button")].map((item) => item.textContent)).toEqual(["Wed2", "Thu3", "Fri4", "More days"]);
+  expect(button("Wed2").getAttribute("aria-pressed")).toBe("true");
+  await click("More days");
+  expect([...strip.querySelectorAll("button")].map((item) => item.textContent)).toEqual(["Wed2", "Thu3", "Fri4", "Mon7", "Tue8"]);
+  await click("Mon7");
+  expect(button("Mon7").getAttribute("aria-pressed")).toBe("true");
+  expect(button("Wed2").getAttribute("aria-pressed")).toBe("false");
+});
