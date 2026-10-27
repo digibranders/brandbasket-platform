@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kindOptions, parseAskForm, titleFromText } from "./form";
+import { aboutLine, kindOptions, parseAskForm, pickKind, titleFromText } from "./form";
 
 const KEY = "ask-key-12345678";
 const ALL = ["website", "social", "search", "billing", "other"] as const;
@@ -15,6 +15,27 @@ describe("kindOptions", () => {
     expect(kindOptions(["website", "social"]).map((option) => option.label)).toEqual(["Website", "Social & Ads", "Billing", "Something else"]);
     expect(kindOptions([]).map((option) => option.value)).toEqual(["billing", "other"]);
     expect(kindOptions(["search", "website", "social"]).map((option) => option.value)).toEqual(["website", "social", "search", "billing", "other"]);
+  });
+});
+
+describe("pickKind", () => {
+  const options = kindOptions(["website", "social"]);
+
+  it("takes the requested kind when it is offered", () => {
+    expect(pickKind("social", options)).toBe("social");
+  });
+
+  it("falls back to the first choice for a kind that is not offered, is unknown or is missing", () => {
+    expect(pickKind("search", options)).toBe("website");
+    expect(pickKind("nonsense", options)).toBe("website");
+    expect(pickKind(undefined, options)).toBe("website");
+    expect(pickKind("social", [])).toBeUndefined();
+  });
+});
+
+describe("aboutLine", () => {
+  it("names the post and its day, and leaves the customer room to write", () => {
+    expect(aboutLine("Year-end check-up", "2026-12-01")).toBe('About the post "Year-end check-up" (Tue 1 Dec): ');
   });
 });
 

@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { ASK_FOR_A_CHANGE_PATH, listHref, listRowHref, requestHref, REQUESTS_PATH } from "./links";
+import { ASK_FOR_A_CHANGE_PATH, listHref, listRowHref, requestChangeHref, requestHref, REQUESTS_PATH } from "./links";
 
 it("opens a request on the Requests page, with a notice when there is one", () => {
   expect(REQUESTS_PATH).toBe("/requests");
@@ -11,4 +11,8 @@ it("opens a request on the Requests page, with a notice when there is one", () =
 it("keeps the list a row sits in when it is opened", () => {
   expect(listRowHref("0192f3c4", "done")).toBe("/requests?filter=done&open=0192f3c4");
   expect(listHref("open")).toBe("/requests?filter=open");
+});
+
+it("opens Ask for a change on the Social kind, naming the post", () => {
+  expect(requestChangeHref({ id: "0192f3c4-0000-7000-8000-000000000003" })).toBe("/requests/new?kind=social&about=0192f3c4-0000-7000-8000-000000000003");
 });

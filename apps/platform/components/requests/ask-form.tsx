@@ -18,12 +18,16 @@ interface AskFormProps {
   readonly options: readonly { readonly value: ChangeKind; readonly label: string }[];
   /** A fresh key for this form, so sending it twice by accident makes one request. */
   readonly submissionKey: string;
+  /** The kind to start on (from a post's Change link); the first option when absent. */
+  readonly defaultKind?: ChangeKind | undefined;
+  /** What the box starts with (the line naming a post). */
+  readonly defaultBody?: string | undefined;
 }
 
 /** The form behind "Ask for a change": what it is about, which page for a website change, what to change, up to 3 screenshots. */
-export function AskForm({ options, submissionKey }: AskFormProps): ReactElement {
+export function AskForm({ options, submissionKey, defaultKind, defaultBody }: AskFormProps): ReactElement {
   const [state, action, pending] = useActionState(askForChangeAction, INITIAL_SUPPORT_STATE);
-  const [kind, setKind] = useState<ChangeKind | undefined>(options[0]?.value);
+  const [kind, setKind] = useState<ChangeKind | undefined>(defaultKind ?? options[0]?.value);
   const [ids, setIds] = useState<readonly string[]>([]);
   const [uploading, setUploading] = useState(false);
   const attachments = useRef<SupportAttachmentsHandle>(null);
@@ -82,6 +86,7 @@ export function AskForm({ options, submissionKey }: AskFormProps): ReactElement 
           name="body"
           required
           rows={6}
+          defaultValue={defaultBody}
           maxLength={5000}
           disabled={pending}
           placeholder="Tell us what to change. A screenshot helps."
