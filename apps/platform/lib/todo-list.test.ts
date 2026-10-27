@@ -59,8 +59,21 @@ it("says All set when nothing is open, and still lists the done items", () => {
   expect(html).toContain("Logo and photos");
 });
 
-it("says there is nothing to do for a customer with no items", () => {
-  expect(render([])).toContain("Nothing to do right now.");
+it("says there is nothing to do for a customer with no items, and what would appear", () => {
+  const html = render([]);
+  expect(html).toContain("Nothing to do right now.");
+  expect(html).toContain("If we need anything from you after your kickoff call, it appears here.");
+});
+
+it("sits in the page frame, and draws what it is given beside the list", () => {
+  const withCard = renderToStaticMarkup(
+    createElement(TodoList, { items: [ACCOUNTS], answers: { social: undefined, search: undefined }, buildCard: createElement("p", null, "[build card]") }),
+  );
+  expect(withCard).toContain(">What we still need from you</h1>");
+  expect(withCard).toContain("@container");
+  expect(withCard).toContain("<aside");
+  expect(withCard.indexOf("[build card]")).toBeGreaterThan(withCard.indexOf("Instagram and Facebook pages"));
+  expect(render([ACCOUNTS])).not.toContain("<aside");
 });
 
 it("shows an error next to its field and keeps what was typed", () => {

@@ -5,13 +5,13 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { conversationsAvailable, type LeadTableRow } from "@/lib/chatbots-view";
 import { LeadConversationDialog } from "./lead-conversation-dialog";
 
-const TH = "py-3 pr-4 text-left text-xs font-medium text-ink-soft";
+const TH = "py-3 pr-4 text-left text-xs font-medium text-ink-2";
 const TD = "py-3.5 pr-4 align-middle";
 
 function LeadName({ row, showBot }: { readonly row: LeadTableRow; readonly showBot: boolean }): ReactElement {
   return (
     <>
-      <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-pale text-sm font-semibold text-accent-deep">
+      <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sunken text-sm font-semibold text-ink">
         {row.initial}
       </span>
       <span className="min-w-0">
@@ -46,7 +46,7 @@ export function LeadTable({
 
   return (
     <>
-      <div className="mt-4 max-w-3xl overflow-x-auto">
+      <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <caption className="sr-only">{readable ? "Leads from OyeChats. Select a lead to read the conversation." : "Leads from OyeChats."}</caption>
           <thead>
@@ -69,7 +69,7 @@ export function LeadTable({
               <tr
                 key={row.id}
                 onClick={readable ? () => setOpenId(row.id) : undefined}
-                className={cn("border-b border-line/60", readable && "cursor-pointer transition-colors duration-200 ease-calm hover:bg-paper-deep/50")}
+                className={cn("border-b border-line", readable && "cursor-pointer transition-colors duration-200 hover:bg-sunken/60")}
               >
                 <td className={cn(TD, "tabular-nums text-ink-soft")}>{firstNumber + index}</td>
                 <td className={cn(TD, readable ? undefined : "pr-0")}>

@@ -39,6 +39,13 @@ describe("the Your plan page", () => {
     expect(html).toContain("divide-y divide-line");
   });
 
+  it("sits in the page frame, left-aligned and as wide as the content area", async () => {
+    const html = await render();
+    expect(html).toContain("@container");
+    expect(html).toContain("max-w-[97.5rem]");
+    expect(html).not.toContain("mx-auto");
+  });
+
   it("says a problem with a payment, and says nothing for one that went through", async () => {
     expect(await render({ charge: "failed" })).toContain("That payment didn’t go through");
     expect(await render({ charge: "paid" })).not.toContain("Payment received");

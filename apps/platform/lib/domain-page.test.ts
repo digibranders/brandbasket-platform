@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DomainStatus } from "@brandbasket/db";
-import { domainPageState, moveStepIndex, type DomainPageInput } from "./domain-page";
+import { domainPageState, domainSteps, type DomainPageInput, type DomainPageState } from "./domain-page";
 
 const domain = (status: DomainStatus, hostname = "riverside.com") => ({ hostname, status });
 const base: DomainPageInput = { domain: null, moving: null, isFreeAddress: false, live: false, projectStatus: null };
@@ -44,11 +44,33 @@ describe("domainPageState", () => {
   });
 });
 
-describe("moveStepIndex", () => {
-  it("counts the move's four steps", () => {
-    expect(moveStepIndex("free")).toBe(0);
-    expect(moveStepIndex("move-requested")).toBe(1);
-    expect(moveStepIndex("move-connect")).toBe(2);
-    expect(moveStepIndex("own-live")).toBe(3);
+describe("domainSteps", () => {
+  const statuses = (state: DomainPageState): string[] | null => domainSteps(state)?.map((step) => step.status) ?? null;
+
+  it("has no steps before there is a domain to move, while the website is still being built, or once it is live on the domain", () => {
+    expect(domainSteps("none")).toBeNull();
+    expect(domainSteps("free-building")).toBeNull();
+    expect(domainSteps("own-live")).toBeNull();
+  });
+
+  it("starts a live customer on the free address at the first step", () => {
+    expect(statuses("free")).toEqual(["now", "next", "next", "next"]);
+    expect(domainSteps("free")?.map((step) => step.label)).toEqual(["Send your domain", "We add it", "You connect it", "You’re live"]);
+  });
+
+  it("walks the move: waiting for us, then connecting", () => {
+    expect(statuses("move-requested")).toEqual(["done", "now", "next", "next"]);
+    expect(statuses("move-connect")).toEqual(["done", "done", "now", "next"]);
+  });
+
+  it("starts a customer who chose their own domain in setup at the preview, then follows the same steps", () => {
+    expect(domainSteps("own-not-approved")?.[0]?.label).toBe("Approve your preview");
+    expect(statuses("own-not-approved")).toEqual(["now", "next", "next", "next"]);
+    expect(statuses("own-getting-ready")).toEqual(["done", "now", "next", "next"]);
+    expect(statuses("own-connect")).toEqual(["done", "done", "now", "next"]);
+  });
+
+  it("says what the customer does at their domain company in the connect step", () => {
+    expect(domainSteps("own-connect")?.[2]?.detail).toContain("domain company");
   });
 });

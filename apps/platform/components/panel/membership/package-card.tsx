@@ -1,10 +1,12 @@
 import type { ReactElement } from "react";
-import { TickIcon } from "@brandbasket/shared/ui/icons";
-import { Button, ButtonLink } from "@brandbasket/shared/ui/panel/button";
+import Link from "next/link";
+import { Check, GlobeSimple, MagnifyingGlass, Megaphone } from "@phosphor-icons/react/dist/ssr";
+import type { Icon } from "@phosphor-icons/react";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { SOFT_BUTTON } from "@/components/v2/classes";
 import { addOnPrice, ADD_ONS, type AddOn, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import type { BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
-import { AddOnMark } from "@/components/panel/membership/offer-marks";
 import { servicesAfterToggle } from "@/lib/membership";
 
 interface PackageCardProps {
@@ -16,6 +18,18 @@ interface PackageCardProps {
   readonly hrefFor: (selection: readonly MonthlyAddOnId[]) => string;
   /** The plan's currency: the services are paid with it. */
   readonly currency: MoneyCurrency;
+}
+
+const MARKS: Readonly<Record<AddOn["id"], Icon>> = { "managed-website": GlobeSimple, "digital-growth": Megaphone, "local-seo-aeo": MagnifyingGlass };
+
+/** A service's icon on a soft round mark, the one the rail uses for it. */
+function ServiceMark({ addOn }: { readonly addOn: AddOn["id"] }): ReactElement {
+  const Mark = MARKS[addOn];
+  return (
+    <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-sunken text-ink">
+      <Mark size={20} />
+    </span>
+  );
 }
 
 /**
@@ -43,10 +57,10 @@ function ServiceRow({
   const netCents = line?.netCents ?? listCents;
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-3 py-3.5 sm:gap-x-4 sm:py-4">
-      <AddOnMark addOn={addOn.id} />
+      <ServiceMark addOn={addOn.id} />
       <div className="min-w-[10rem] flex-1">
         <p className="text-[0.9375rem] font-semibold leading-snug text-ink sm:text-base">{addOn.title}</p>
-        <p className="mt-0.5 text-sm leading-snug text-ink-soft">{addOn.line}</p>
+        <p className="mt-0.5 text-sm leading-snug text-ink-2">{addOn.line}</p>
       </div>
       <div className="flex basis-full items-center justify-between gap-4 pl-[3.25rem] sm:basis-auto sm:justify-end sm:pl-0">
         <p className="text-left tabular-nums sm:text-right">
@@ -54,27 +68,27 @@ function ServiceRow({
             {netCents < listCents ? (
               <>
                 <span className="sr-only">was </span>
-                <s className="mr-2 text-xs font-normal text-ink-soft">{formatMoney(listCents, currency)}</s>
+                <s className="mr-2 text-xs font-normal text-ink-2">{formatMoney(listCents, currency)}</s>
               </>
             ) : null}
             {formatMoney(netCents, currency)}
           </span>
-          <span className="block text-xs text-ink-soft">{currency === "INR" ? "a month, GST included" : "a month"}</span>
+          <span className="block text-xs text-ink-2">{currency === "INR" ? "a month, GST included" : "a month"}</span>
         </p>
         {added && isLast ? (
-          <Button type="button" size="sm" variant="secondary" disabled aria-label={`${addOn.title}, added, your only service`} className="min-w-[5.5rem] text-success">
-            <TickIcon className="size-4" />
+          <button type="button" disabled aria-label={`${addOn.title}, added, your only service`} className={cn(SOFT_BUTTON, "min-w-[5.5rem] text-sage-deep disabled:cursor-not-allowed")}>
+            <Check size={14} weight="bold" aria-hidden="true" />
             Added
-          </Button>
+          </button>
         ) : added ? (
-          <ButtonLink href={toggleHref} replace scroll={false} prefetch={false} size="sm" variant="secondary" aria-label={`Remove ${addOn.title}`} className="min-w-[5.5rem] text-success">
-            <TickIcon className="size-4" />
+          <Link href={toggleHref} replace scroll={false} prefetch={false} aria-label={`Remove ${addOn.title}`} className={cn(SOFT_BUTTON, "min-w-[5.5rem] text-sage-deep")}>
+            <Check size={14} weight="bold" aria-hidden="true" />
             Added
-          </ButtonLink>
+          </Link>
         ) : (
-          <ButtonLink href={toggleHref} replace scroll={false} prefetch={false} size="sm" aria-label={`Add ${addOn.title}`} className="min-w-[5.5rem]">
+          <Link href={toggleHref} replace scroll={false} prefetch={false} aria-label={`Add ${addOn.title}`} className={cn(SOFT_BUTTON, "min-w-[5.5rem]")}>
             Add
-          </ButtonLink>
+          </Link>
         )}
       </div>
     </li>
@@ -88,8 +102,8 @@ function ServiceRow({
  */
 export function PackageCard({ selected, lines, hrefFor, currency }: PackageCardProps): ReactElement {
   return (
-    <section aria-label="Services" className="rounded-card border border-ink-soft/40 bg-accent-pale/55 p-4 sm:p-7">
-      <ul className="divide-y divide-ink-soft/25 border-y border-ink-soft/25">
+    <section aria-label="Services">
+      <ul className="divide-y divide-line border-y border-line">
         {ADD_ONS.map((addOn) => {
           const added = selected.includes(addOn.id);
           return (

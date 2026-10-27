@@ -1,8 +1,9 @@
 import type { Plan, Subscription } from "@brandbasket/db";
 import { type Brand } from "@/lib/brand";
 import type { ReactElement, ReactNode } from "react";
-import { ChevronDownIcon, TickIcon } from "@brandbasket/shared/ui/icons";
-import { PageSection } from "@/components/v2/page";
+import { CaretDown, Check } from "@phosphor-icons/react/dist/ssr";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { LIFT } from "@/components/v2/classes";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { billingPeriodProgress, type PeriodProgress } from "@brandbasket/shared/lib/billing/period";
 import { changesNote, renewalCharge } from "@brandbasket/shared/lib/billing/terms";
@@ -76,21 +77,27 @@ function PeriodBar({ progress, children }: { readonly progress: PeriodProgress; 
   );
 }
 
-/** The plan: name, price per month, how far through the paid period the customer is, and what it includes. A section on the page, no box. */
+/** The plan: name, price per month, how far through the paid period the customer is, and what it includes. The page's one raised card. */
 export function PlanSummary({ plan, subscription, now, hasWebsite }: PlanSummaryProps): ReactElement {
   const price = renewalCharge(plan, nextDiscountCents(subscription), nextBundledNetCents(subscription));
   const progress = billingPeriodProgress(subscription, now);
 
   return (
-    <PageSection id="plan" title={planLabel(plan.name)} aside="Monthly">
-      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-        <p className="max-w-md text-[0.84375rem] text-ink-2">{priceNote(plan, nextDiscountCents(subscription), nextBundledNetCents(subscription))}</p>
+    <section aria-labelledby="plan-title" className={cn(LIFT, "p-6 sm:p-7")}>
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <h2 id="plan-title" className="font-display text-[1.125rem] font-semibold tracking-[-0.02em] text-ink">
+          {planLabel(plan.name)}
+        </h2>
+        <span className="rounded-full bg-sunken px-2 py-0.5 text-[0.6875rem] font-semibold text-ink-2">Monthly</span>
+      </div>
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         {price === null ? null : (
           <p className="flex items-baseline gap-1.5">
-            <span className="font-figure text-[1.75rem] font-semibold leading-none tracking-tight tabular-nums text-ink">{price}</span>
-            <span className="text-xs text-ink-2">per month</span>
+            <span className="font-figure text-[2.125rem] font-semibold leading-none tracking-tight tabular-nums text-ink">{price}</span>
+            <span className="text-[0.8125rem] text-ink-2">per month</span>
           </p>
         )}
+        <p className="max-w-xs text-[0.84375rem] text-ink-2">{priceNote(plan, nextDiscountCents(subscription), nextBundledNetCents(subscription))}</p>
       </div>
 
       {progress === null ? null : (
@@ -100,15 +107,15 @@ export function PlanSummary({ plan, subscription, now, hasWebsite }: PlanSummary
       )}
 
       {hasWebsite ? (
-        <details className="group mt-6 border-t border-line pt-3">
+        <details className="group mt-6 border-t border-line pt-4">
           <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[0.8125rem] font-semibold text-ink transition-colors duration-200 hover:text-ink-2 [&::-webkit-details-marker]:hidden">
             What’s included
-            <ChevronDownIcon className="size-3.5 transition-transform duration-200 group-open:rotate-180" />
+            <CaretDown size={14} aria-hidden="true" className="transition-transform duration-200 group-open:rotate-180" />
           </summary>
           <ul className="mt-4 grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
             {carePlan.includes.map((item) => (
-              <li key={item} className="flex gap-2 text-xs text-ink">
-                <TickIcon className="mt-px size-3.5 shrink-0 text-sage" />
+              <li key={item} className="flex gap-2 text-[0.8125rem] text-ink">
+                <Check size={14} weight="bold" aria-hidden="true" className="mt-0.5 shrink-0 text-sage" />
                 {item}
               </li>
             ))}
@@ -116,6 +123,6 @@ export function PlanSummary({ plan, subscription, now, hasWebsite }: PlanSummary
           <p className="mt-4 text-xs leading-relaxed text-ink-2">{changesNote(plan)}</p>
         </details>
       ) : null}
-    </PageSection>
+    </section>
   );
 }

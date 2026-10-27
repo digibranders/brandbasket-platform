@@ -14,6 +14,7 @@ import {
 } from "@brandbasket/shared/lib/onboarding/hours";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
+import { SOFT_BUTTON } from "@/components/v2/classes";
 
 interface DayState {
   readonly mode: DayMode;
@@ -91,7 +92,11 @@ export function HoursEditor({ initial, invalidField, errorId, bare = false, rend
         <button
           type="button"
           onClick={copyMondayToWeekdays}
-          className="text-[0.8125rem] font-semibold text-ink-2 underline underline-offset-[3px] transition-colors duration-200 hover:text-ink"
+          className={
+            bare
+              ? SOFT_BUTTON
+              : "text-[0.8125rem] font-semibold text-ink-2 underline underline-offset-[3px] transition-colors duration-200 hover:text-ink"
+          }
         >
           Use Monday’s hours for every weekday
         </button>
@@ -103,7 +108,7 @@ export function HoursEditor({ initial, invalidField, errorId, bare = false, rend
         </p>
       )}
 
-      <div className={cn("mt-3 divide-y divide-line", bare ? undefined : "border-y border-line")}>
+      <div className="mt-3 divide-y divide-line border-y border-line">
         {WEEKDAYS.map((label, day) => {
           const state = days[day] ?? NOT_SET;
           const modeName = dayModeField(day);
@@ -116,7 +121,7 @@ export function HoursEditor({ initial, invalidField, errorId, bare = false, rend
           return (
             <div
               key={label}
-              className={cn("grid grid-cols-[6.5rem_1fr] items-end gap-3 py-3 sm:grid-cols-[7rem_11rem_1fr_1fr]", bare && "px-4")}
+              className="grid grid-cols-[6.5rem_1fr] items-end gap-3 py-3 sm:grid-cols-[7rem_11rem_1fr_1fr]"
             >
               <span className="self-center text-sm font-medium">{label}</span>
               <div className="text-xs text-ink-soft">

@@ -1,8 +1,10 @@
+import { Tag } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactElement } from "react";
-import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
-import { BlogEmptyState } from "@/components/panel/blog-editor/blog-empty-state";
 import { CategoriesTable } from "@/components/panel/blog-editor/categories-table";
+import { DARK_BUTTON } from "@/components/v2/classes";
+import { ActionRow, EmptyState, PageSection } from "@/components/v2/page";
 import { getBlogCategoriesWithStats } from "@/lib/server/blog-taxonomy";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
 
@@ -12,36 +14,35 @@ export const metadata: Metadata = { title: "Categories" };
 export default async function CategoriesPage(): Promise<ReactElement> {
   await requireWebsiteClient();
   const categories = await getBlogCategoriesWithStats();
+
+  if (categories.length === 0) {
+    return (
+      <EmptyState
+        icon={Tag}
+        title="No categories yet"
+        text="Group your posts by topic, so readers can find more of what they like."
+        action={
+          <Link href="/content/categories/new" className={DARK_BUTTON}>
+            Add a category
+          </Link>
+        }
+      />
+    );
+  }
+
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-        <div>
-          <h1 className="panel-title">Categories</h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            {categories.length === 1 ? "1 category" : `${categories.length} categories`} · each gets its own page on
-            your website
-          </p>
-        </div>
-        <ButtonLink href="/content/categories/new" size="sm">
-          New category
-        </ButtonLink>
-      </div>
-      <div className="mt-8">
-        {categories.length === 0 ? (
-          <BlogEmptyState
-            art="stack"
-            title="No categories yet"
-            body="Group your posts by topic, so readers can find more of what they like."
-            action={
-              <ButtonLink href="/content/categories/new" size="sm">
-                Add a category
-              </ButtonLink>
-            }
-          />
-        ) : (
-          <CategoriesTable categories={categories} />
-        )}
-      </div>
+      <ActionRow
+        text={`${categories.length === 1 ? "1 category" : `${categories.length} categories`} · each gets its own page on your website`}
+        action={
+          <Link href="/content/categories/new" className={DARK_BUTTON}>
+            New category
+          </Link>
+        }
+      />
+      <PageSection id="categories" title="Categories">
+        <CategoriesTable categories={categories} />
+      </PageSection>
     </>
   );
 }
