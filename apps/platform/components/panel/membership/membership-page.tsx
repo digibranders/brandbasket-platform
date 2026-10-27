@@ -7,7 +7,6 @@ import { PackageCard } from "@/components/panel/membership/package-card";
 import { MembershipPayForm } from "@/components/panel/membership/membership-pay-form";
 import { MembershipCheckout } from "@/components/panel/membership/membership-checkout";
 import { sellsFreeListing } from "@/lib/brand";
-import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
 import {
   MEMBER_HOME,
   isWaitingOnPayment,
@@ -61,9 +60,8 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   const entry = await getCustomerBusinessEntry(tenant.userId, tenant.businessId);
   const params = await searchParams;
   const notice = readMembershipPaymentNotice(params);
-  // Already a member, by this payment or an earlier one: their dashboard is where they belong. Sent back from the
-  // provider (`?payment=received`), it is this payment that opened the plan, so the dashboard greets them with the poppers.
-  if (entry.kind !== "listing") redirect(notice === "received" ? MEMBER_WELCOME_HREF : MEMBER_HOME);
+  // Already a member, by this payment or an earlier one: their dashboard is where they belong.
+  if (entry.kind !== "listing") redirect(MEMBER_HOME);
 
   const held = isAwaitingMembership(entry);
   const waiting = isWaitingOnPayment(billing.subscription, notice);
