@@ -116,7 +116,9 @@ export function websiteTimeline(input: TimelineInput): readonly TimelineStep[] {
   const buildStarted = last(events, "building") ?? last(events, "submitted") ?? project.onboardingSubmittedAt;
   const buildDoneWhen =
     buildStarted !== null && project.previewSentAt !== null
-      ? `${dayMonth(buildStarted)} to ${dayMonth(project.previewSentAt)}`
+      ? dayMonth(buildStarted) === dayMonth(project.previewSentAt)
+        ? dayMonth(buildStarted)
+        : `${dayMonth(buildStarted)} to ${dayMonth(project.previewSentAt)}`
       : project.previewSentAt !== null
         ? shortDay(day(project.previewSentAt))
         : "";

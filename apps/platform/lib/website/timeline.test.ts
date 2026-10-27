@@ -57,6 +57,17 @@ describe("websiteTimeline", () => {
     expect(row(steps, "live").when).toBe("By Thu 5 Nov");
   });
 
+  it("shows a single day when the build started and ended on the same day", () => {
+    const steps = websiteTimeline(
+      input({
+        project: project({ status: "preview", previewSentAt: at("2026-10-28T09:00:00.000Z") }),
+        events: [event("building", "2026-10-28T04:30:00.000Z")],
+        now: at("2026-10-28T10:00:00.000Z"),
+      }),
+    );
+    expect(row(steps, "build").when).toBe("28 Oct");
+  });
+
   it("tells a submitted project that we start within 48 hours of the call", () => {
     const steps = websiteTimeline(
       input({
