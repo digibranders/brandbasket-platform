@@ -177,7 +177,7 @@ it("shows the next payment date alone when the amount is unknown", () => {
   expect(html).not.toContain("null");
 });
 
-it("puts the build card first in the left column when one is given", () => {
+it("puts the build card in the aside, after the main column, when one is given", () => {
   const html = renderToStaticMarkup(
     createElement(MonthOverview, {
       firstName: "Priya",
@@ -191,7 +191,26 @@ it("puts the build card first in the left column when one is given", () => {
     }),
   );
   expect(html.indexOf("build-card")).toBeGreaterThan(-1);
-  expect(html.indexOf("build-card")).toBeLessThan(html.indexOf("Needs you"));
+  expect(html.indexOf("build-card")).toBeGreaterThan(html.indexOf("Needs you"));
+  expect(html.indexOf("build-card")).toBeGreaterThan(html.indexOf("<aside"));
+});
+
+it("keeps What we did and the month's numbers in the main column, and what is coming in the aside", () => {
+  const html = render(data({ nextPayment: { date: new Date("2026-12-26T05:00:00.000Z"), amount: "₹30,398" } }));
+  const aside = html.indexOf("<aside");
+  expect(html.indexOf("What we did")).toBeLessThan(aside);
+  expect(html.indexOf("November for Sai Dental Care")).toBeLessThan(aside);
+  expect(html.indexOf("Next payment")).toBeGreaterThan(aside);
+});
+
+it("draws no aside when there is no build card and nothing coming", () => {
+  expect(render(data())).not.toContain("<aside");
+});
+
+it("gives a section with nothing in it its own empty state, not a grey line", () => {
+  const html = render(data());
+  for (const title of ["No numbers yet", "No updates yet"]) expect(html).toContain(title);
+  expect(html.match(/<svg/g)?.length).toBeGreaterThanOrEqual(3);
 });
 
 it("uses no uppercase labels and exactly one dark button", () => {

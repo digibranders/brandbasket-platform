@@ -6,7 +6,7 @@ import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr";
 import { ActionRow, EmptyState, FactRows, PageColumns, PageFrame, PageHeader, PageSection } from "@/components/v2/page";
 
 const render = (element: Parameters<typeof renderToStaticMarkup>[0]): string => renderToStaticMarkup(element);
-/** PageSection needs children, which createElement cannot take as a prop under the lint rule, so it is called as a function. */
+/** PageSection and PageFrame need children, which createElement cannot take as a prop under the lint rule, so they are called as functions. */
 const section = (props: Omit<Parameters<typeof PageSection>[0], "children">, body: string): string => render(PageSection({ ...props, children: body }));
 
 it("opens a page with its title, one line under it and the one action", () => {
@@ -70,7 +70,7 @@ it("draws a tab bar under the title when the page has one, and nothing when it h
 });
 
 it("frames a page: header first, then the blocks, filling the content area from the left up to 1560px", () => {
-  const html = render(createElement(PageFrame, { title: "Requests", lede: "Ask for any change." }, createElement("p", null, "Body")));
+  const html = render(PageFrame({ title: "Requests", lede: "Ask for any change.", children: createElement("p", null, "Body") }));
   expect(html.indexOf("<header")).toBeLessThan(html.indexOf("Body"));
   expect(html).toContain("@container");
   expect(html).toContain("max-w-[97.5rem]");
@@ -80,7 +80,7 @@ it("frames a page: header first, then the blocks, filling the content area from 
 });
 
 it("keeps a form page to a narrow column that still sits on the left", () => {
-  const html = render(createElement(PageFrame, { title: "Ask for a change", width: "form" }, createElement("p", null, "Body")));
+  const html = render(PageFrame({ title: "Ask for a change", width: "form", children: createElement("p", null, "Body") }));
   expect(html).toContain("max-w-[40rem]");
   expect(html).not.toContain("max-w-[97.5rem]");
   expect(html).not.toContain("mx-auto");

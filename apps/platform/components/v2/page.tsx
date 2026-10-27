@@ -51,7 +51,9 @@ export function PageFrame({ width = "page", children, ...header }: PageFrameProp
  * A main column and a right-hand aside (360px, 400px when there is room). The aside drops below the main column when the
  * frame is narrower than 56rem, which is a 1024px window beside the rail, and stays in view while the main column scrolls from xl.
  */
-export function PageColumns({ main, aside }: { readonly main: ReactNode; readonly aside: ReactNode }): ReactElement {
+export function PageColumns({ main, aside }: { readonly main: ReactNode; readonly aside: ReactNode | null }): ReactElement {
+  // A page with nothing for the aside keeps its main column at full width instead of leaving 400px empty.
+  if (aside === null) return <div className={cn(STACK, "min-w-0")}>{main}</div>;
   return (
     <div className="grid items-start gap-6 md:gap-8 @4xl:grid-cols-[minmax(0,1fr)_22.5rem] @5xl:grid-cols-[minmax(0,1fr)_25rem]">
       <div className={cn(STACK, "min-w-0")}>{main}</div>
