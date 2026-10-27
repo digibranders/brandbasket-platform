@@ -10,7 +10,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./password-policy": "./src/password-policy.ts"
+    "./password-policy": "./src/password-policy.ts",
+    "./breached-password": "./scripts/breached-password.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
