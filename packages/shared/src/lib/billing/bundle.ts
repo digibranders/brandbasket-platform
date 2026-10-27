@@ -1,6 +1,8 @@
 import type { BundledAddOn, Subscription } from "@brandbasket/db";
+// The subpath, not the package index: this module reaches client components, and the index pulls in the database.
+import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { MoneyCurrency } from "../money";
-import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "./add-ons";
+import { addOnById, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId } from "./add-ons";
 import { packageLines } from "./packages";
 
 /**
@@ -58,6 +60,31 @@ export function bundleNetCents(lines: readonly Pick<BundleLine, "netCents">[]): 
  */
 export function websiteAloneNetCents(currency: MoneyCurrency): number {
   return bundleNetCents(bundleLines(WEBSITE_ALONE, currency));
+}
+
+/**
+ * What a service the plan holds costs a month, as the page and the console show it: its list price less the package offer it is
+ * billed at from the next renewal. A line added or moved by a change keeps the price it was billed at until that renewal
+ * (`offerDiscountAmountCents`) while the move waits in `pendingOfferDiscountAmountCents`, but the customer is told the amount
+ * they will pay each month, which is the one the provider was told and the Billing page names. Without a move waiting it is
+ * the line's own price. The same arithmetic as the database's next-renewal figure for a line (nextBundledNetCents in
+ * @brandbasket/db), so the cards always add up to the next payment.
+ */
+export function bundledLinePrice(
+  row: Pick<BundledAddOn, "listAmountCents" | "offerDiscountAmountCents" | "pendingOfferDiscountAmountCents" | "taxRateBasisPoints">,
+  currency: MoneyCurrency,
+): AddOnPrice {
+  const discountCents = row.pendingOfferDiscountAmountCents ?? row.offerDiscountAmountCents;
+  const netCents = row.listAmountCents - discountCents;
+  return {
+    currency,
+    listCents: row.listAmountCents,
+    discountCents,
+    offerCents: discountCents,
+    netCents,
+    taxRateBasisPoints: row.taxRateBasisPoints,
+    chargedCents: chargedAmountCents(netCents, 0),
+  };
 }
 
 /**

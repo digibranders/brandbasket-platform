@@ -9,7 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["*.test.ts", "lib/**/*.test.ts", "content/**/*.test.ts", "app/**/*.test.ts"],
+    include: ["*.test.ts", "lib/**/*.test.ts", "content/**/*.test.ts", "app/**/*.test.ts", "components/**/*.test.tsx"],
     // Database-backed tests need a migrated test database; they run under vitest.integration.config.mts.
     exclude: [...configDefaults.exclude, "**/*.integration.test.ts"],
   },

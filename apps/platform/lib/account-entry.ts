@@ -97,7 +97,7 @@ function readLinkServices(params: SearchParams): readonly MonthlyAddOnId[] {
  * The plan an address names (`free` or `managed`; the database's `listing_only` is read too), or null for anything else.
  * A list of the website's services is Managed Website: every service is bought on it.
  */
-export function readPlanParam(value: string): JoinChoice | null {
+function readPlanParam(value: string): JoinChoice | null {
   const named = (Object.keys(PLAN_PARAM_VALUES) as JoinChoice[]).find((choice) => PLAN_PARAM_VALUES[choice] === value);
   if (named !== undefined) return named;
   return namedServices(value).length > 0 ? "managed" : readJoinChoice(value);

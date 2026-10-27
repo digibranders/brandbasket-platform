@@ -47,20 +47,54 @@ export function domainPageState(input: DomainPageInput): DomainPageState {
   return input.projectStatus === "approved" ? "own-getting-ready" : "own-not-approved";
 }
 
-/** The four steps of moving a live site to a domain of its own, for the strip at the top of the page. */
-export const MOVE_STEPS = ["Send your domain", "We add it", "You connect it", "You’re live"] as const;
+export type DomainStepStatus = "done" | "now" | "next";
 
-/** Which step is current, counting from 0, for a state that is part of the move. */
-export function moveStepIndex(state: DomainPageState): number {
+export interface DomainStep {
+  readonly label: string;
+  /** What happens at this step, and what the customer does if it is theirs. */
+  readonly detail: string;
+  readonly status: DomainStepStatus;
+}
+
+const LAST_STEPS = [
+  { label: "We add it", detail: "We set it up on your website. We email you the moment it is time to connect it." },
+  { label: "You connect it", detail: "At your domain company, add the records shown here. It takes a few minutes to a few hours." },
+  { label: "You’re live", detail: "Your website opens at your own domain. Your free address forwards to it." },
+] as const;
+
+/** A live customer on the free address moves by sending their domain; one who chose their own in setup waits for their preview to be approved. */
+const FIRST_STEP = {
+  send: { label: "Send your domain", detail: "Tell us the name you own. Your free address keeps working meanwhile." },
+  approve: { label: "Approve your preview", detail: "Once you approve your website’s preview, we get your domain ready." },
+} as const;
+
+/** The step the customer is on, counting from 0, for a state that is part of getting a domain. NaN when there is no list to show. */
+function currentStep(state: DomainPageState): number {
   switch (state) {
+    case "free":
+    case "own-not-approved":
+      return 0;
     case "move-requested":
+    case "own-getting-ready":
       return 1;
     case "move-connect":
     case "own-connect":
       return 2;
+    case "none":
+    case "free-building":
     case "own-live":
-      return 3;
-    default:
-      return 0;
+      return Number.NaN;
   }
+}
+
+/**
+ * The four steps of getting a domain of your own, each marked done, now or next, for the list beside the page's task. None
+ * while there is nothing to move yet (no address, or a website still being built on the free one) and once the website is live
+ * on the domain, when the page says so instead.
+ */
+export function domainSteps(state: DomainPageState): readonly DomainStep[] | null {
+  const current = currentStep(state);
+  if (Number.isNaN(current)) return null;
+  const first = state === "own-not-approved" || state === "own-getting-ready" || state === "own-connect" ? FIRST_STEP.approve : FIRST_STEP.send;
+  return [first, ...LAST_STEPS].map((step, index) => ({ ...step, status: index < current ? "done" : index === current ? "now" : "next" }));
 }

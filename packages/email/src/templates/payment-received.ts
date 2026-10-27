@@ -23,7 +23,7 @@ export interface PaymentReceivedInput {
   readonly paidAt: Date;
   /** Where the customer downloads the GST invoice for this payment. */
   readonly invoiceUrl: string;
-  /** An absolute address of the dark Brandbasket logo as a PNG (mail apps do not show SVG). */
+  /** An absolute address of the Brandbasket email logo, a 360px wide PNG for a white background (mail apps do not show SVG): the dashboard serves it at /email/email-logo.png. */
   readonly logoUrl: string;
   /** The next charge, or null when there is none to announce. */
   readonly nextPayment: { readonly amountCents: number; readonly dueOn: Date } | null;
@@ -117,7 +117,7 @@ export function paymentReceivedEmail(input: PaymentReceivedInput): EmailMessage 
     '<div style="display:none;max-height:0;overflow:hidden">Thank you. Your GST invoice is ready to download.</div>',
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px">',
     '<table role="presentation" width="520" cellpadding="0" cellspacing="0" style="width:100%;max-width:520px">',
-    `<tr><td style="padding-bottom:36px;border-bottom:3px solid ${HEADER}"><img src="${escapeHtml(logoUrl)}" width="160" alt="${escapeHtml(brand)}" style="display:block;border:0;height:auto"></td></tr>`,
+    `<tr><td style="padding-bottom:36px;border-bottom:3px solid ${HEADER}"><img src="${escapeHtml(logoUrl)}" width="180" alt="${escapeHtml(brand)}" style="display:block;border:0;height:auto"></td></tr>`,
     `<tr><td style="padding:32px 0 6px;font-size:14px;color:${MUTED}">Receipt for ${escapeHtml(input.businessName)}</td></tr>`,
     `<tr><td style="padding:0 0 24px;font-size:24px;line-height:1.3;font-weight:500">We received your payment of ${escapeHtml(total)} on ${escapeHtml(paidOn)}.</td></tr>`,
     `<tr><td style="padding:0 0 28px;font-size:15px;line-height:1.65;color:#2f3f4d;overflow-wrap:anywhere">${escapeHtml(intro)}</td></tr>`,

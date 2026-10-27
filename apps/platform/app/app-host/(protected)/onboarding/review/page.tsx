@@ -4,7 +4,7 @@ import { requestBrand } from "@/lib/server/request-brand";
 import { EmailUs } from "@/components/panel/email-us";
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
-import { TickIcon } from "@brandbasket/shared/ui/icons";
+import { CheckCircle, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import {
   BrandSummary,
   BusinessSummary,
@@ -15,7 +15,9 @@ import {
 import { BillingDetails } from "@/components/panel/billing/billing-details";
 import { PaymentWaiting } from "@/components/panel/payment-waiting";
 import { ReviewSubmitForm } from "@/components/panel/review-submit-form";
-import { StepHeading } from "@/components/panel/step-heading";
+import { StepAside } from "@/components/panel/step-aside";
+import { LIFT, STACK, SOFT_BUTTON } from "@/components/v2/classes";
+import { PageColumns } from "@/components/v2/page";
 import {
   PAYMENT_RECEIVED_MESSAGE,
   PLAN_ENDED_MESSAGE,
@@ -27,6 +29,7 @@ import { paymentReturnView, readPaymentReturn } from "@brandbasket/shared/lib/bi
 import { cn } from "@brandbasket/shared/lib/cn";
 import { firstMissing, onboardingChecklist, type ChecklistItem } from "@brandbasket/shared/lib/onboarding/checklist";
 import { checklistInputFrom } from "@/lib/onboarding/snapshot";
+import { sentHeading } from "@/lib/onboarding/review-copy";
 import { onboardingStepHref, type OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import { loadBillingDetailsView } from "@/lib/server/billing-details";
@@ -43,25 +46,21 @@ export const metadata: Metadata = { title: "Check and send" };
 
 function Checklist({ items }: { readonly items: readonly ChecklistItem[] }): ReactElement {
   return (
-    <ul className="space-y-2">
+    <ul className="divide-y divide-line">
       {items.map((item) => (
-        <li key={item.key} className="flex items-start gap-3">
-          <span
-            aria-hidden="true"
-            className={cn(
-              "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs",
-              item.passed ? "bg-ink text-paper" : "border border-accent-deep text-accent-deep",
-            )}
-          >
-            {item.passed ? <TickIcon className="size-3.5" /> : "!"}
-          </span>
-          <span>
+        <li key={item.key} className="flex items-start gap-3 py-2.5 text-sm first:pt-0 last:pb-0">
+          {item.passed ? (
+            <CheckCircle size={20} weight="fill" aria-hidden="true" className="mt-px shrink-0 text-sage" />
+          ) : (
+            <WarningCircle size={20} aria-hidden="true" className="mt-px shrink-0 text-rattan-ink" />
+          )}
+          <span className="min-w-0">
             {item.label}
             <span className="sr-only">{item.passed ? " (done)" : " (still needed)"}</span>
             {item.passed ? null : (
               <>
                 {" "}
-                <Link href={onboardingStepHref(item.step)} className="link-underline text-sm text-accent-deep">
+                <Link href={onboardingStepHref(item.step)} className="font-semibold text-ink underline underline-offset-4">
                   Add it
                 </Link>
               </>
@@ -81,11 +80,11 @@ function PaymentSection({
   readonly children: ReactNode;
 }): ReactElement {
   return (
-    <section aria-labelledby="payment-heading" className="rounded-card border border-line bg-card p-6 sm:p-8">
-      <h2 id="payment-heading" className="panel-section">
+    <section aria-labelledby="payment-heading" className={cn(LIFT, "min-w-0 p-5 md:p-8")}>
+      <h2 id="payment-heading" className="font-display text-[1.25rem] font-semibold leading-tight tracking-[-0.025em] text-ink">
         {heading}
       </h2>
-      <div className="mt-5 space-y-6">{children}</div>
+      <div className="mt-5 grid gap-6 text-sm">{children}</div>
     </section>
   );
 }
@@ -116,6 +115,7 @@ function ReferralPanel({
 function PaymentPanel({
   step,
   checklist,
+  missingCount,
   discount,
   currency,
   lapsedCode,
@@ -123,6 +123,8 @@ function PaymentPanel({
 }: {
   readonly step: PaymentStep;
   readonly checklist: readonly ChecklistItem[];
+  /** How many checklist lines are still open. */
+  readonly missingCount: number;
   readonly discount: PlanDiscount | null;
   readonly currency: MoneyCurrency;
   readonly lapsedCode: string | null;
@@ -134,7 +136,7 @@ function PaymentPanel({
       return (
         <PaymentSection heading="Pay and send">
           <Checklist items={checklist} />
-          <p className="leading-relaxed">{step.terms}</p>
+          <p className="leading-relaxed text-ink-2">{step.terms}</p>
           {billingDetails === null ? null : <BillingDetails view={billingDetails} variant="checkout" />}
           <ReviewSubmitForm
             action={startCheckout}
@@ -149,7 +151,7 @@ function PaymentPanel({
     case "pay":
       return (
         <PaymentSection heading="Your payment">
-          <p className="leading-relaxed">
+          <p className="leading-relaxed text-ink-2">
             You’ve already sent us your answers. {step.terms}
           </p>
           {billingDetails === null ? null : <BillingDetails view={billingDetails} variant="checkout" />}
@@ -164,23 +166,21 @@ function PaymentPanel({
       );
     case "send":
       return (
-        <PaymentSection
-          heading={
-            step.missing === null
-              ? "Payment received"
-              : "Payment received, one thing is missing before we can start"
-          }
-        >
+        <PaymentSection heading={sentHeading(missingCount)}>
           {step.missing === null ? (
-            <p className="leading-relaxed">Thank you. Send it to us and we’ll start building.</p>
-          ) : (
-            <p role="status" className="rounded-control bg-accent-pale px-4 py-3 text-accent-deep">
+            <p className="leading-relaxed text-ink-2">Thank you. Send it to us and we’ll start building.</p>
+          ) : missingCount === 1 ? (
+            <p role="status" className="rounded-lg bg-rattan-wash px-4 py-3 text-rattan-ink">
               We still need {step.missing.label.charAt(0).toLowerCase()}
               {step.missing.label.slice(1)}.{" "}
-              <Link href={onboardingStepHref(step.missing.step)} className="link-underline font-medium">
+              <Link href={onboardingStepHref(step.missing.step)} className="font-semibold underline underline-offset-4">
                 Add it now
               </Link>
               , then send it to us here. You won’t pay again.
+            </p>
+          ) : (
+            <p role="status" className="rounded-lg bg-rattan-wash px-4 py-3 text-rattan-ink">
+              Add what is marked below, then send it to us here. You won’t pay again.
             </p>
           )}
           <Checklist items={checklist} />
@@ -201,8 +201,8 @@ function PaymentPanel({
     case "reactivate":
       return (
         <PaymentSection heading="Your plan has ended">
-          <p className="leading-relaxed">{PLAN_ENDED_MESSAGE}</p>
-          <Link href={REACTIVATE_HREF} className="link-underline mt-3 inline-block text-ink">
+          <p className="leading-relaxed text-ink-2">{PLAN_ENDED_MESSAGE}</p>
+          <Link href={REACTIVATE_HREF} className={`${SOFT_BUTTON} mt-3 w-fit`}>
             Go to Billing
           </Link>
         </PaymentSection>
@@ -210,7 +210,7 @@ function PaymentPanel({
     case "under-review":
       return (
         <PaymentSection heading="Payment received">
-          <p className="leading-relaxed">
+          <p className="leading-relaxed text-ink-2">
             {PAYMENT_RECEIVED_MESSAGE} If you need us sooner, email <EmailUs />.
           </p>
         </PaymentSection>
@@ -218,7 +218,7 @@ function PaymentPanel({
     case "no-plan":
       return (
         <PaymentSection heading="We can’t take payment just yet">
-          <p className="leading-relaxed">
+          <p className="leading-relaxed text-ink-2">
             Email us at <EmailUs /> and we’ll sort it out. Your answers are all still here.
           </p>
         </PaymentSection>
@@ -270,72 +270,74 @@ export default async function ReviewStepPage({ searchParams }: ReviewStepPagePro
   });
 
   return (
-    <>
-      <StepHeading step="review">
-        <p>
-          {!editable
-            ? "Everything you sent us."
-            : billing.status === "paid"
-              ? "Look it over. Anything you want to change, edit it now, then send it to us."
-              : "Everything look right? You can still change anything. Once you pay, we start building and your answers lock."}
-        </p>
-      </StepHeading>
+    <PageColumns
+      main={
+        <>
+          <p className="text-[0.84375rem] leading-relaxed text-ink-2">
+            {!editable
+              ? "Everything you sent us."
+              : billing.status === "paid"
+                ? "Look it over. Anything you want to change, edit it now, then send it to us."
+                : "Everything look right? You can still change anything. Once you pay, we start building and your answers lock."}
+          </p>
 
-      {readPaymentReturn(payment) === "received" && billing.paymentUnderReview ? (
-        <p role="status" className="mb-5 rounded-control bg-paper-deep px-5 py-4 text-ink">
-          {PAYMENT_RECEIVED_MESSAGE}
-        </p>
-      ) : null}
+          {readPaymentReturn(payment) === "received" && billing.paymentUnderReview ? (
+            <p role="status" className="rounded-lg bg-sunken px-4 py-3 text-sm text-ink">
+              {PAYMENT_RECEIVED_MESSAGE}
+            </p>
+          ) : null}
 
-      {returnView === "confirming" ? (
-        <div className="mb-5">
-          <PaymentWaiting
-            waitKey="review:first-payment"
-            waitingText="We’ve received your payment. Confirming it with the bank…"
-            delayedText="Confirming your payment is taking longer than usual."
-            supportEmail={supportEmailOf(await requestBrand())}
-          />
-        </div>
-      ) : null}
+          {returnView === "confirming" ? (
+            <PaymentWaiting
+              waitKey="review:first-payment"
+              waitingText="We’ve received your payment. Confirming it with the bank…"
+              delayedText="Confirming your payment is taking longer than usual."
+              supportEmail={supportEmailOf(await requestBrand())}
+            />
+          ) : null}
 
-      {returnView === "confirmed" ? (
-        <p role="status" className="mb-5 rounded-control bg-paper-deep px-5 py-4 text-ink">
-          Payment confirmed. Thank you.
-        </p>
-      ) : null}
+          {returnView === "confirmed" ? (
+            <p role="status" className="rounded-lg bg-sunken px-4 py-3 text-sm text-ink">
+              Payment confirmed. Thank you.
+            </p>
+          ) : null}
 
-      {returnView === "failed" && (step.kind === "pay-and-send" || step.kind === "pay") ? (
-        <p role="alert" className="mb-5 rounded-control bg-accent-pale px-5 py-4 text-accent-deep">
-          We couldn’t confirm that payment, so nothing has been recorded. You can try again below.
-        </p>
-      ) : null}
+          {returnView === "failed" && (step.kind === "pay-and-send" || step.kind === "pay") ? (
+            <p role="alert" className="rounded-lg bg-sunken px-4 py-3 text-sm font-semibold text-error">
+              We couldn’t confirm that payment, so nothing has been recorded. You can try again below.
+            </p>
+          ) : null}
 
-      <div className="space-y-5">
-        <SummaryCard title="Your business" editHref={editHref("business")}>
-          <BusinessSummary profile={snapshot.profile} hours={snapshot.hours} />
-        </SummaryCard>
-        <SummaryCard title="What you offer" editHref={editHref("content")}>
-          <ContentSummary services={snapshot.services} brief={snapshot.brief} />
-        </SummaryCard>
-        <SummaryCard title="Logo and photos" editHref={editHref("brand")}>
-          <BrandSummary logo={snapshot.logo} photos={snapshot.photos} />
-        </SummaryCard>
-        <SummaryCard title="Your domain" editHref={editHref("domain")}>
-          <DomainSummary domain={snapshot.domain} />
-        </SummaryCard>
+          <div className={STACK}>
+            <SummaryCard title="Your business" editHref={editHref("business")}>
+              <BusinessSummary profile={snapshot.profile} hours={snapshot.hours} />
+            </SummaryCard>
+            <SummaryCard title="What you offer" editHref={editHref("content")}>
+              <ContentSummary services={snapshot.services} brief={snapshot.brief} />
+            </SummaryCard>
+            <SummaryCard title="Logo and photos" editHref={editHref("brand")}>
+              <BrandSummary logo={snapshot.logo} photos={snapshot.photos} />
+            </SummaryCard>
+            <SummaryCard title="Your domain" editHref={editHref("domain")}>
+              <DomainSummary domain={snapshot.domain} />
+            </SummaryCard>
+          </div>
 
-        {/* Not while the payment just made is being confirmed: there is nothing to pay, and a second press would charge again. */}
-        {returnView === "confirming" ? null : (
-          <PaymentPanel
-            step={step}
-            checklist={checklist}
-            discount={discount}
-            currency={billing.plan?.currency ?? "USD"}
-            lapsedCode={lapsedCode}
-            billingDetails={billingDetails}
-          />
-        )}
-      </div>
-    </>
+          {/* Not while the payment just made is being confirmed: there is nothing to pay, and a second press would charge again. */}
+          {returnView === "confirming" ? null : (
+            <PaymentPanel
+              step={step}
+              checklist={checklist}
+              missingCount={checklist.filter((item) => !item.passed).length}
+              discount={discount}
+              currency={billing.plan?.currency ?? "USD"}
+              lapsedCode={lapsedCode}
+              billingDetails={billingDetails}
+            />
+          )}
+        </>
+      }
+      aside={<StepAside step="review" paid={billing.status === "paid"} />}
+    />
   );
 }

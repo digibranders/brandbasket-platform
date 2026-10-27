@@ -4,12 +4,8 @@ import {
   assignProjectBuilder,
   cancelProject,
   grantRevisionRound,
-  ON_HOLD_REASON_MAX,
   ProjectBuilderNotStaffError,
   ProjectMoveRefusedError,
-  putProjectOnHold,
-  resumeProject,
-  setProjectBuilding,
   type MovedProject,
 } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
@@ -49,33 +45,6 @@ async function attempt(businessId: string, move: () => Promise<MovedProject>): P
     if (error instanceof ProjectBuilderNotStaffError) finish(businessId, "not-staff");
     throw error;
   }
-}
-
-export async function startBuildingAction(formData: FormData): Promise<void> {
-  const staff = await requireStaffAccess();
-  const { businessId, projectId } = readIds(formData);
-  await attempt(businessId, () => setProjectBuilding(getStaffDb(), projectId));
-  await recordStaffAction(staff, { businessId, kind: "project.building", summary: "Started building the website", visibleToClient: true });
-  finish(businessId, "building");
-}
-
-export async function holdProjectAction(formData: FormData): Promise<void> {
-  const staff = await requireStaffAccess();
-  const { businessId, projectId } = readIds(formData);
-  const raw = formData.get("reason");
-  const reason = typeof raw === "string" ? raw.trim() : "";
-  if (reason === "" || reason.length > ON_HOLD_REASON_MAX) finish(businessId, "reason-missing");
-  await attempt(businessId, () => putProjectOnHold(getStaffDb(), projectId, reason));
-  await recordStaffAction(staff, { businessId, kind: "project.put_on_hold", summary: `Put on hold: ${reason}`, visibleToClient: true });
-  finish(businessId, "held");
-}
-
-export async function resumeProjectAction(formData: FormData): Promise<void> {
-  const staff = await requireStaffAccess();
-  const { businessId, projectId } = readIds(formData);
-  await attempt(businessId, () => resumeProject(getStaffDb(), projectId));
-  await recordStaffAction(staff, { businessId, kind: "project.resumed", summary: "Work on the website resumed", visibleToClient: true });
-  finish(businessId, "resumed");
 }
 
 export async function cancelProjectAction(formData: FormData): Promise<void> {

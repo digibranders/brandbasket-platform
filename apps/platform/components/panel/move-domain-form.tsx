@@ -3,6 +3,7 @@
 import { useActionState, type ReactElement } from "react";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { DARK_BUTTON_SHAPE } from "@/components/v2/classes";
 import { STEP_FIELD_CLASSES } from "@/components/panel/step-form";
 import { initialMoveDomainState, type MoveDomainState } from "@/lib/move-domain-state";
 
@@ -18,7 +19,7 @@ export function MoveDomainForm({ action }: MoveDomainFormProps): ReactElement {
   return (
     <form action={formAction} noValidate className="space-y-5">
       <div>
-        <label htmlFor="move-domain" className="block text-sm font-medium">
+        <label htmlFor="move-domain" className="block text-sm font-semibold">
           Your domain
           <RequiredMark />
         </label>
@@ -37,12 +38,12 @@ export function MoveDomainForm({ action }: MoveDomainFormProps): ReactElement {
           aria-describedby="move-domain-hint"
           className={STEP_FIELD_CLASSES}
         />
-        <p id="move-domain-hint" className="mt-1.5 text-sm text-ink-soft">
+        <p id="move-domain-hint" className="mt-1.5 text-[0.8125rem] text-ink-2">
           Paste it however you have it. We only need the name, for example yourbusiness.com.
         </p>
       </div>
 
-      <label className="flex items-start gap-3 rounded-control border border-line bg-paper/60 px-4 py-3">
+      <label className="flex items-start gap-3 text-sm">
         <input
           type="checkbox"
           name="ownerConfirmed"
@@ -57,12 +58,14 @@ export function MoveDomainForm({ action }: MoveDomainFormProps): ReactElement {
       </label>
 
       {error === null ? null : (
-        <p role="alert" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
+        <p role="alert" className="rounded-lg bg-rattan-wash px-4 py-3 text-sm text-rattan-ink">
           {error.message}
         </p>
       )}
 
-      <SubmitButton pendingLabel="Sending…">Send to our team</SubmitButton>
+      <SubmitButton pendingLabel="Sending…" className={DARK_BUTTON_SHAPE}>
+        Send to our team
+      </SubmitButton>
     </form>
   );
 }

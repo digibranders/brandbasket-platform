@@ -41,7 +41,7 @@ export const ADD_ONS: readonly AddOn[] = [
   {
     id: "managed-website",
     title: "Managed Website",
-    line: "A professionally designed website of up to 5 pages, mobile-friendly, with enquiry forms, click-to-call, a local SEO foundation and the OyeChats professional chatbot.",
+    line: "A professionally designed website of up to 10 pages, mobile-friendly, with enquiry forms, click-to-call, a local SEO foundation and the OyeChats professional chatbot.",
     billing: "monthly",
     prices: { INR: 2_999 * MINOR_UNITS_PER_MAJOR, USD: 65 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",

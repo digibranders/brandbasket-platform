@@ -5,8 +5,10 @@ import { DOMAIN_CONNECT_NOTICES, readDomainConnectNotice } from "@brandbasket/sh
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { PROJECT_LAUNCH_NOTICES, readProjectLaunchNotice } from "@brandbasket/shared/lib/project-launch-notices";
 import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@brandbasket/shared/lib/project-preview-notices";
+import { KickoffCallSection } from "@/components/console/kickoff-call-section";
 import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
+import { WebsiteSection } from "@/components/console/website-section";
 import { clientNextStep, previewLateReason } from "@/lib/client-next-step";
 import { ProjectControls } from "@/components/project-controls";
 import { openClientTab } from "@/lib/server/client-page";
@@ -23,7 +25,7 @@ export default async function ClientProjectPage({
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
   const { businessId } = await params;
-  const { client } = await openClientTab(businessId, "project");
+  const { granted, client } = await openClientTab(businessId, "project");
   const sp = await searchParams;
   const previewNotice = readProjectPreviewNotice(sp.preview);
   const launchNotice = readProjectLaunchNotice(sp.launch);
@@ -192,6 +194,8 @@ export default async function ClientProjectPage({
           </ul>
         )}
       </Section>
+      <KickoffCallSection businessId={client.businessId} />
+      <WebsiteSection businessId={client.businessId} staffId={granted.user.id} notice={sp.build} />
     </>
   );
 }

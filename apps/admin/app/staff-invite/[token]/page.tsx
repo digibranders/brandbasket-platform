@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactElement } from "react";
 import { SignOutButton } from "@brandbasket/shared/ui/panel/sign-out-button";
 import { TurnstileScope } from "@brandbasket/shared/ui/turnstile-scope";
@@ -24,9 +25,9 @@ export default async function StaffInvitePage({ params }: { readonly params: Pro
     return (
       <QuietFrame title="Sign in first" lede={`${lede} This email already has an account. Sign in with it, then open this link again.`}>
         <p className="text-center">
-          <a href="/login" className="link-underline font-semibold">
+          <Link href="/login" className="link-underline font-semibold">
             Sign in
-          </a>
+          </Link>
         </p>
       </QuietFrame>
     );

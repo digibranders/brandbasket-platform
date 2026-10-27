@@ -2,13 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type ReactElement } from "react";
-import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { PlusIcon } from "@brandbasket/shared/ui/icons";
 import { MediaThumbnail } from "@/components/panel/media-thumbnail";
 import {
+  InlineError,
+  Required,
+  STEP_BODY_CLASSES,
   STEP_FIELD_CLASSES,
+  STEP_HINT_CLASSES,
+  STEP_LABEL_CLASSES,
+  StepFooter,
   StepFormError,
-  StepSubmit,
+  StepGroup,
   useStepForm,
   type StepAction,
   type StepFormControls,
@@ -52,9 +57,9 @@ interface Progress {
 const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp";
 const UNREACHABLE_MESSAGE = "We couldn't upload that file. Check your connection and try again.";
 const PICKER_CLASSES =
-  "inline-flex cursor-pointer items-center gap-2 rounded-full border border-line px-4 py-2 text-sm transition-colors duration-300 ease-calm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-highlight-deep hover:bg-ink hover:text-paper has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-40 has-[:disabled]:hover:bg-transparent has-[:disabled]:hover:text-ink";
+  "inline-flex h-10 w-fit cursor-pointer items-center gap-2 rounded-lg bg-sunken px-4 text-[0.8125rem] font-semibold text-ink transition-colors duration-200 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-rattan hover:bg-line has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-45 has-[:disabled]:hover:bg-sunken";
 const REMOVE_CLASSES =
-  "rounded-full px-3 py-1.5 text-xs text-ink-soft transition-colors duration-300 ease-calm hover:bg-paper-deep hover:text-ink disabled:opacity-40";
+  "rounded-lg px-3 py-1.5 text-xs font-semibold text-ink-2 transition-colors duration-200 hover:bg-sunken hover:text-ink disabled:opacity-45";
 
 interface PickerProps {
   readonly purpose: Purpose;
@@ -98,11 +103,11 @@ function PhotoCard({ photo, controls, busy, onRemove }: PhotoCardProps): ReactEl
   const name = photoDescriptionField(photo.id);
   const id = `field-${name}`;
   return (
-    <li className="rounded-control border border-line bg-paper/60 p-3">
+    <li className="min-w-0">
       <MediaThumbnail asset={photo} alt={photo.altText ?? ""} />
-      <label htmlFor={id} className="mt-3 block text-sm font-medium">
+      <label htmlFor={id} className={`mt-3 ${STEP_LABEL_CLASSES}`}>
         Describe the photo for people who can’t see it
-        <RequiredMark />
+        <Required />
       </label>
       <textarea
         id={id}
@@ -115,8 +120,9 @@ function PhotoCard({ photo, controls, busy, onRemove }: PhotoCardProps): ReactEl
         className={STEP_FIELD_CLASSES}
         {...controls.fieldStatus(name)}
       />
+      <InlineError controls={controls} match={name} />
       <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="min-w-0 truncate text-xs text-ink-soft" title={photo.originalFilename}>
+        <span className="min-w-0 truncate text-xs text-ink-2" title={photo.originalFilename}>
           {photo.originalFilename}
         </span>
         <button type="button" disabled={busy} onClick={() => onRemove(photo)} className={REMOVE_CLASSES}>
@@ -134,7 +140,7 @@ function PhotoCard({ photo, controls, busy, onRemove }: PhotoCardProps): ReactEl
  */
 export function BrandStepForm({ action, remove, logo, photos }: BrandStepFormProps): ReactElement {
   const router = useRouter();
-  const { formRef, errorRef, formAction, controls } = useStepForm(action);
+  const { formRef, errorRef, formAction, controls } = useStepForm(action, { inline: true });
   const [progress, setProgress] = useState<Progress | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
   const [problems, setProblems] = useState<readonly FileProblem[]>([]);
@@ -201,72 +207,70 @@ export function BrandStepForm({ action, remove, logo, photos }: BrandStepFormPro
   }
 
   return (
-    <form ref={formRef} action={formAction} noValidate className="space-y-8">
-      <section aria-labelledby="brand-logo-heading" className="space-y-3">
-        <h3 id="brand-logo-heading" className="panel-section">
-          Your logo <span className="font-sans text-sm text-ink-soft">(optional)</span>
-        </h3>
-        <p className="text-sm text-ink-soft">No logo yet? That’s fine, we’ll set your name in a clean typeface.</p>
-        {logo === null ? null : (
-          <div className="flex items-end gap-4">
-            <div className="w-44">
-              <MediaThumbnail asset={logo} alt="Your logo" fit="contain" />
+    <form ref={formRef} action={formAction} noValidate className="group/step">
+      <div className={STEP_BODY_CLASSES}>
+        <StepGroup title="Your logo">
+          <p className={STEP_HINT_CLASSES}>
+            <span className="font-medium">(optional)</span> No logo yet? That’s fine, we’ll set your name in a clean typeface.
+          </p>
+          {logo === null ? null : (
+            <div className="flex items-end gap-4">
+              <div className="w-44">
+                <MediaThumbnail asset={logo} alt="Your logo" fit="contain" />
+              </div>
+              <button type="button" disabled={busy} onClick={() => handleRemove(logo)} className={REMOVE_CLASSES}>
+                Remove logo
+              </button>
             </div>
-            <button type="button" disabled={busy} onClick={() => handleRemove(logo)} className={REMOVE_CLASSES}>
-              Remove logo
-            </button>
-          </div>
-        )}
-        <FilePicker
-          purpose="logo"
-          label={logo === null ? "Upload your logo" : "Replace your logo"}
-          disabled={busy}
-          onFiles={handleFiles}
-        />
-      </section>
+          )}
+          <FilePicker
+            purpose="logo"
+            label={logo === null ? "Upload your logo" : "Replace your logo"}
+            disabled={busy}
+            onFiles={handleFiles}
+          />
+        </StepGroup>
 
-      <section aria-labelledby="brand-photos-heading" className="space-y-3">
-        <h3 id="brand-photos-heading" className="panel-section">
-          Photos
-        </h3>
-        <p className="text-sm text-ink-soft">
-          Your place, your team, your work. Up to {MAX_PHOTOS} JPEG, PNG or WebP images. We shrink large photos
-          before sending them, and each needs to come to {MAX_UPLOAD_SIZE_LABEL} or less. You have {photos.length} of{" "}
-          {MAX_PHOTOS}.
+        <StepGroup title="Photos">
+          <p className={STEP_HINT_CLASSES}>
+            Your place, your team, your work. Up to {MAX_PHOTOS} JPEG, PNG or WebP images. We shrink large photos
+            before sending them, and each needs to come to {MAX_UPLOAD_SIZE_LABEL} or less. You have {photos.length} of{" "}
+            {MAX_PHOTOS}.
+          </p>
+          {photos.length === 0 ? null : (
+            <ul className="grid gap-x-5 gap-y-6 sm:grid-cols-2 @3xl:grid-cols-3">
+              {photos.map((photo) => (
+                <PhotoCard key={photo.id} photo={photo} controls={controls} busy={busy} onRemove={handleRemove} />
+              ))}
+            </ul>
+          )}
+          <FilePicker purpose="photo" label="Add photos" disabled={busy || photoSlots === 0} onFiles={handleFiles} />
+        </StepGroup>
+
+        <p aria-live="polite" className="text-sm text-ink-2 empty:hidden">
+          {progress === null
+            ? removing === null
+              ? ""
+              : "Removing…"
+            : progress.total === 1
+              ? "Uploading…"
+              : `Uploading ${progress.done + 1} of ${progress.total}…`}
         </p>
-        {photos.length === 0 ? null : (
-          <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {photos.map((photo) => (
-              <PhotoCard key={photo.id} photo={photo} controls={controls} busy={busy} onRemove={handleRemove} />
+
+        {problems.length === 0 ? null : (
+          <ul role="alert" className="grid gap-2 rounded-lg bg-sunken px-4 py-3 text-sm text-error">
+            {problems.map((problem) => (
+              <li key={problem.key}>
+                <span className="font-semibold">{problem.fileName}:</span> {problem.message}
+              </li>
             ))}
           </ul>
         )}
-        <FilePicker purpose="photo" label="Add photos" disabled={busy || photoSlots === 0} onFiles={handleFiles} />
-      </section>
 
-      <p aria-live="polite" className="text-sm text-ink-soft empty:hidden">
-        {progress === null
-          ? removing === null
-            ? ""
-            : "Removing…"
-          : progress.total === 1
-            ? "Uploading…"
-            : `Uploading ${progress.done + 1} of ${progress.total}…`}
-      </p>
-
-      {problems.length === 0 ? null : (
-        <ul role="alert" className="space-y-2 rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
-          {problems.map((problem) => (
-            <li key={problem.key}>
-              <span className="font-medium">{problem.fileName}:</span> {problem.message}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <StepFormError controls={controls} errorRef={errorRef} />
-      {hasImage ? null : <p className="text-sm text-ink-soft">Add your logo or at least one photo to continue.</p>}
-      <StepSubmit controls={controls} label="Save and continue" pendingLabel="Saving…" disabled={!hasImage} />
+        <StepFormError controls={controls} errorRef={errorRef} />
+        {hasImage ? null : <p className="text-sm text-ink-2">Add your logo or at least one photo to continue.</p>}
+      </div>
+      <StepFooter controls={controls} label="Save and continue" pendingLabel="Saving…" step="brand" note="Saved when you continue." disabled={!hasImage} />
     </form>
   );
 }

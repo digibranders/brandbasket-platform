@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefCallback } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@brandbasket/shared/lib/cn";
+import { SOFT_BUTTON } from "@/components/v2/classes";
 import {
   PREVIEW_DRAFT_MESSAGE,
   PREVIEW_READY_MESSAGE,
@@ -163,7 +164,7 @@ function WithPreview({ source, base, section, children }: WithPreviewProps): Rea
   const close = useCallback((): void => setOpen(false), []);
 
   return (
-    <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_23rem] xl:gap-12">
+    <div className="xl:grid xl:grid-cols-[minmax(0,42rem)_22.5rem] xl:gap-8">
       {/* A click can change a field without an input event (the hours editor's copy button), so it is watched too. */}
       <div ref={formsRef} onInput={sendSoon} onChange={sendSoon} onClick={sendSoon} className="min-w-0">
         {children}
@@ -196,14 +197,14 @@ function WithPreview({ source, base, section, children }: WithPreviewProps): Rea
           )
         : null}
 
-      <div className="sticky bottom-0 z-30 mt-8 border-t border-line bg-paper py-3 max-lg:bottom-[calc(3.75rem+env(safe-area-inset-bottom))] xl:hidden">
+      <div className="sticky bottom-0 z-30 mt-8 border-t border-line bg-bg py-3 max-lg:bottom-[calc(3.75rem+env(safe-area-inset-bottom))] xl:hidden">
         <button
           type="button"
           onClick={() => {
             setSheetView("phone");
             setOpen(true);
           }}
-          className="rounded-full border border-ink/40 px-5 py-2 text-sm font-semibold transition-colors duration-300 ease-calm hover:border-ink"
+          className={SOFT_BUTTON}
         >
           Preview
         </button>
@@ -252,11 +253,11 @@ function PreviewPanel({ source, attachFrame, view, onView, sheet, onClose }: Pre
   const scale = size.width === 0 ? 1 : Math.min(1, size.width / logical);
 
   return (
-    <div className={cn("flex flex-col gap-3", sheet && "fixed inset-0 z-[100] bg-paper p-4")}>
+    <div className={cn("flex flex-col gap-3", sheet && "fixed inset-0 z-[100] bg-bg p-4")}>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-ink-soft">Preview</p>
+        <p className="font-display text-[0.9375rem] font-semibold tracking-[-0.01em] text-ink">Preview</p>
         <div className="flex items-center gap-4">
-          <div role="group" aria-label="Preview size" className="inline-flex rounded-full border border-line p-0.5 text-xs font-semibold">
+          <div role="group" aria-label="Preview size" className="inline-flex rounded-lg bg-sunken p-0.5 text-xs font-semibold">
             {(["phone", "desktop"] as const).map((option) => (
               <button
                 key={option}
@@ -264,8 +265,8 @@ function PreviewPanel({ source, attachFrame, view, onView, sheet, onClose }: Pre
                 aria-pressed={view === option}
                 onClick={() => onView(option)}
                 className={cn(
-                  "rounded-full px-3 py-1 capitalize transition-colors duration-300 ease-calm",
-                  view === option ? "bg-ink text-paper" : "text-ink-soft hover:text-ink",
+                  "rounded-md px-3 py-1 capitalize transition-colors duration-200",
+                  view === option ? "bg-ink text-white" : "text-ink-2 hover:text-ink",
                 )}
               >
                 {option}
@@ -273,7 +274,7 @@ function PreviewPanel({ source, attachFrame, view, onView, sheet, onClose }: Pre
             ))}
           </div>
           {sheet ? (
-            <button type="button" onClick={onClose} className="link-underline text-sm font-semibold">
+            <button type="button" onClick={onClose} className={SOFT_BUTTON}>
               Back to editing
             </button>
           ) : null}
@@ -282,7 +283,7 @@ function PreviewPanel({ source, attachFrame, view, onView, sheet, onClose }: Pre
 
       <div
         ref={stageRef}
-        className={cn("relative overflow-hidden rounded-xl border border-line bg-white", sheet ? "min-h-0 flex-1" : "h-[calc(100dvh-9rem)]")}
+        className={cn("relative overflow-hidden rounded-lift bg-white shadow-lift", sheet ? "min-h-0 flex-1" : "h-[calc(100dvh-9rem)]")}
       >
         <iframe
           ref={attachFrame}

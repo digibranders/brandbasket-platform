@@ -10,23 +10,23 @@ The app at app.brandbasket.in: sign-up and sign-in, onboarding, the business das
 
 - `/api/*` is not rewritten, so API routes answer on any dashboard host.
 - Payload's `/admin` UI (`app/(payload)/admin`) is refused with a 404; nobody signs in to Payload. Its REST and GraphQL routes under `app/(payload)/api` sit outside the proxy and 404 on every host but the admin one through `requireAdminHost` (`lib/server/require-admin-host.ts`).
-- Directory-only paths go to the not-found screen while `BRAND.showsListing` is `false` (`lib/brand.ts`).
+- The directory and clinic pages (Listing, Leads, Reviews, Deals, Advertise, Business, Appointments, Patients) and their public endpoints were removed in plan 35. Their addresses reach the dashboard's missing-page route like any unknown path.
 
 | Path under `app/app-host/` | Holds |
 |---|---|
-| `(protected)/` | Signed-in dashboard: onboarding, business, content (blog, authors, categories), billing, services, upgrade, care, premium, appointments, patients, leads, reviews, deals, photos, monitoring, project, changelog, settings |
-| `(support)/support` | Support tickets |
+| `(protected)/` | Signed-in dashboard: overview (`page.tsx`), to do, requests (and `requests/new`, the Ask for a change form, and `requests/calls`, the Calls page), website (and `website/pages`), social, search, onboarding, domain, OyeChats, content (blog, authors, categories), details (Business profile), billing, services (Your plan), plan (checkout before the first payment), settings (and `settings/privacy`, `settings/delete`), changelog (What's new). `monitoring` and `project` only redirect |
+| `(support)/support` | Old support links: the list and a ticket redirect to Requests; `actions.ts` keeps the reply and read-receipt actions Requests uses |
 | `login`, `join`, `forgot-password`, `reset-password/[token]`, `confirm-email/[token]`, `setup/[token]`, `restore-account` | Account entry points |
-| `billing/*` | Pay and confirm pages for plans, charges and services |
+| `billing/*` | Pay and confirm pages for plans, charges and services, and the receipts download |
 | `affiliate/` | Affiliate portal and setup |
 
-`app/api/` holds the public endpoints: `site/*` (called by client websites with a site token: info, availability, bookings, posts, media), `leads`, `pricing`, `webhooks/razorpay`, `webhooks/oyechats`, `webhooks/calcom`, upload routes, privacy requests, error reports and the dormant `directory/*` routes.
+`app/api/` holds the public endpoints: `site/*` (called by client websites with a site token: info, events, posts, media), `leads`, `pricing`, `webhooks/razorpay`, `webhooks/oyechats`, `webhooks/calcom`, upload routes (including `product-photos`), privacy requests and error reports.
 
 ## Server code
 
-- Business logic lives in `lib/server/` (one file per concern, about 145 of them). Pages and actions stay thin and call into it. Shared domain logic used by both apps belongs in `packages/shared/src/server`.
+- Business logic lives in `lib/server/` (one file per concern, about 130 of them). Pages and actions stay thin and call into it. Shared domain logic used by both apps belongs in `packages/shared/src/server`.
 - Server actions are `actions.ts` files (a few sections use `commands.ts`) beside the route that uses them, marked `"use server"`.
-- Access guards: `requireCustomerAccess`, `requireBillingAccess`, `requireWebsiteAccess` (billing plus the Managed Website service, for blog, details and media writes), `requireWebsiteClient` (the website's pages: onboarding, project, domain, OyeChats, content, details), `requireSupportAccess`, `requireAffiliateAccess`, `requireAppointmentsModule`, and the ownership checks `requireOwnedBlogPost` and `requireOwnedTaxonomyDoc`. Call the right one at the top of every page and action.
+- Access guards: `requireCustomerAccess`, `requireBillingAccess`, `requireWebsiteAccess` (billing plus the Managed Website service, for blog, details and media writes), `requireWebsiteClient` (the website's pages: onboarding, project, domain, OyeChats, content, details), `requireAffiliateAccess`, and the ownership checks `requireOwnedBlogPost` and `requireOwnedTaxonomyDoc`. Call the right one at the top of every page and action.
 - Connections (`lib/server/db.ts`, `lib/server/public-db.ts`):
   - `getAppDb()`: customer work under row-level security. Scope with `withUserScope` or `withTenantScope`.
   - `getPublicDb()`: lead intake only (`POST /api/leads`). That role can only insert leads, rate-limit rows and outbox messages.
@@ -36,7 +36,8 @@ The app at app.brandbasket.in: sign-up and sign-in, onboarding, the business das
 ## UI
 
 - Tokens come from `packages/shared/src/styles/theme.css`. Shared pieces are in `@brandbasket/shared/ui/panel` and `@brandbasket/shared/ui/forms`; app-only pieces are in `components/panel/`.
-- Follow `DESIGN.md`, including its "Not allowed" list.
+- Follow `DESIGN.md`, including its "Not allowed" list and its list of pages still on the older style. Build every new or reworked screen with `components/v2/page.tsx` and `components/v2/classes.ts`.
+- Every signed-in page sits in `PageFrame` from `components/v2/page.tsx` (gutters, width, header, rhythm, columns, empty states): `docs/page-frame.md`.
 
 ## Commands (from this folder)
 

@@ -9,6 +9,7 @@ import { SUPPORT_STATUS_LABELS } from "@brandbasket/shared/lib/support";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
+import { RequestBanner } from "@/components/console/request-banner";
 import { FactList, Section } from "@/components/console/section";
 import { StatusPill, type PillTone } from "@/components/console/status-pill";
 import { replyClockFromMessages, waitingLabel, type RequestQueue } from "@/lib/reply-clock";
@@ -47,6 +48,7 @@ export default async function StaffTicketPage({ params, searchParams }: { readon
       meta={<span className="inline-flex flex-wrap items-center gap-2">{`${ticket.displayRef} · ${SUPPORT_STATUS_LABELS[ticket.status]} · ${STAFF_SUPPORT_CATEGORY_LABELS[ticket.category]}`}<StatusPill tone={pill.tone}>{waiting === null ? pill.label : `${pill.label} · ${waiting.text}`}</StatusPill></span>}
     />
     {opened.success ? <Notice tone={opened.data === "emailed" || opened.data === "replayed" ? "ok" : "problem"} className="mt-4">{OPENED_REQUEST_MESSAGES[opened.data]}</Notice> : null}
+    <RequestBanner ticketId={ticket.id} businessId={ticket.businessId} />
     <div className="mt-10">
       <Section title="Requester"><FactList items={[{ label: "Name", value: requester?.name ?? "Account unavailable" }, { label: "Contact", value: requester?.contact ?? null }, { label: "Business", value: requester?.businessName ?? "No business selected" }, { label: "Received", value: <LocalDateTime iso={ticket.createdAt.toISOString()} variant="timestamp" /> }]} /></Section>
       <Section title="Conversation">

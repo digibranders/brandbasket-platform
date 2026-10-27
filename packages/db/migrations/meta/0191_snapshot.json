@@ -1,6 +1,6 @@
 {
-  "id": "722f089f-e95f-4ef2-8ff3-cbfd6ee287a9",
-  "prevId": "22e02dfc-75fb-4bfe-930d-049067de1fa6",
+  "id": "a50171d7-ed4d-41b3-83c7-3235d60dd194",
+  "prevId": "874cf8b1-8582-4e9c-910a-b4eb766ea6e2",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -305,125 +305,6 @@
         "account_otps_attempts_check": {
           "name": "account_otps_attempts_check",
           "value": "\"account_otps\".\"attempts\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.activity_events": {
-      "name": "activity_events",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "business_id": {
-          "name": "business_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "actor_kind": {
-          "name": "actor_kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_id": {
-          "name": "actor_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "summary": {
-          "name": "summary",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "data": {
-          "name": "data",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "visible_to_client": {
-          "name": "visible_to_client",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "activity_events_business_created_idx": {
-          "name": "activity_events_business_created_idx",
-          "columns": [
-            {
-              "expression": "business_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "activity_events_business_id_businesses_id_fk": {
-          "name": "activity_events_business_id_businesses_id_fk",
-          "tableFrom": "activity_events",
-          "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "activity_events_actor_kind_check": {
-          "name": "activity_events_actor_kind_check",
-          "value": "\"activity_events\".\"actor_kind\" in ('staff', 'client', 'system', 'provider')"
-        },
-        "activity_events_kind_check": {
-          "name": "activity_events_kind_check",
-          "value": "char_length(\"activity_events\".\"kind\") between 1 and 64"
-        },
-        "activity_events_summary_check": {
-          "name": "activity_events_summary_check",
-          "value": "char_length(\"activity_events\".\"summary\") between 1 and 300"
         }
       },
       "isRLSEnabled": false
@@ -3171,7 +3052,7 @@
         },
         "charges_status_check": {
           "name": "charges_status_check",
-          "value": "case \"charges\".\"status\"\n        when 'open' then \"charges\".\"payment_id\" is null and \"charges\".\"paid_at\" is null and \"charges\".\"waived_at\" is null\n        when 'paid' then \"charges\".\"payment_id\" is not null and \"charges\".\"paid_at\" is not null and \"charges\".\"waived_at\" is null\n        else \"charges\".\"payment_id\" is null and \"charges\".\"paid_at\" is null and \"charges\".\"waived_at\" is not null and (\"charges\".\"waived_by_staff_id\" is not null or \"charges\".\"kind\" in ('directory_ad', 'plan_upgrade', 'add_on'))\n      end"
+          "value": "case \"charges\".\"status\"\n        when 'open' then \"charges\".\"payment_id\" is null and \"charges\".\"paid_at\" is null and \"charges\".\"waived_at\" is null\n        when 'paid' then \"charges\".\"payment_id\" is not null and \"charges\".\"paid_at\" is not null and \"charges\".\"waived_at\" is null\n        else \"charges\".\"payment_id\" is null and \"charges\".\"paid_at\" is null and \"charges\".\"waived_at\" is not null and (\"charges\".\"waived_by_staff_id\" is not null or \"charges\".\"kind\" in ('directory_ad', 'plan_upgrade', 'add_on', 'change_hours'))\n      end"
         }
       },
       "isRLSEnabled": false
@@ -3329,30 +3210,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "refunded_at": {
-          "name": "refunded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refunded_by_staff_id": {
-          "name": "refunded_by_staff_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refunded_amount_cents": {
-          "name": "refunded_amount_cents",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_reason": {
-          "name": "refund_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "invoice_basis": {
           "name": "invoice_basis",
           "type": "jsonb",
@@ -3479,19 +3336,6 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "payments_refunded_by_staff_id_users_id_fk": {
-          "name": "payments_refunded_by_staff_id_users_id_fk",
-          "tableFrom": "payments",
-          "tableTo": "users",
-          "columnsFrom": [
-            "refunded_by_staff_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3521,18 +3365,6 @@
         "payments_card_last4_check": {
           "name": "payments_card_last4_check",
           "value": "\"payments\".\"card_last4\" is null or \"payments\".\"card_last4\" ~ '^[0-9]{4}$'"
-        },
-        "payments_refund_details_check": {
-          "name": "payments_refund_details_check",
-          "value": "(\"payments\".\"refunded_at\" is null) = (\"payments\".\"refunded_by_staff_id\" is null) and (\"payments\".\"refunded_at\" is null) = (\"payments\".\"refunded_amount_cents\" is null) and (\"payments\".\"refunded_at\" is null) = (\"payments\".\"refund_reason\" is null) and (\"payments\".\"refunded_at\" is null or \"payments\".\"status\" = 'refunded')"
-        },
-        "payments_refund_amount_check": {
-          "name": "payments_refund_amount_check",
-          "value": "\"payments\".\"refunded_amount_cents\" is null or \"payments\".\"refunded_amount_cents\" between 1 and \"payments\".\"amount_cents\""
-        },
-        "payments_refund_reason_check": {
-          "name": "payments_refund_reason_check",
-          "value": "\"payments\".\"refund_reason\" is null or char_length(\"payments\".\"refund_reason\") between 3 and 300"
         }
       },
       "isRLSEnabled": false
@@ -5095,6 +4927,379 @@
       },
       "isRLSEnabled": false
     },
+    "public.change_request_events": {
+      "name": "change_request_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "change_request_id": {
+          "name": "change_request_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "at": {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "change_request_events_request_idx": {
+          "name": "change_request_events_request_idx",
+          "columns": [
+            {
+              "expression": "change_request_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "change_request_events_change_request_id_change_requests_id_fk": {
+          "name": "change_request_events_change_request_id_change_requests_id_fk",
+          "tableFrom": "change_request_events",
+          "tableTo": "change_requests",
+          "columnsFrom": [
+            "change_request_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "change_request_events_actor_user_id_users_id_fk": {
+          "name": "change_request_events_actor_user_id_users_id_fk",
+          "tableFrom": "change_request_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "actor_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "change_request_events_state_check": {
+          "name": "change_request_events_state_check",
+          "value": "\"change_request_events\".\"state\" in ('requested', 'quoted', 'in_progress', 'preview', 'revisions', 'approved', 'shipped', 'declined', 'withdrawn')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.change_requests": {
+      "name": "change_requests",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ticket_id": {
+          "name": "ticket_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "page": {
+          "name": "page",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'requested'"
+        },
+        "coverage": {
+          "name": "coverage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'undecided'"
+        },
+        "quote_what": {
+          "name": "quote_what",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quote_hours": {
+          "name": "quote_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quote_unit_cents": {
+          "name": "quote_unit_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quote_amount_cents": {
+          "name": "quote_amount_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quote_currency": {
+          "name": "quote_currency",
+          "type": "billing_currency",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quote_working_days": {
+          "name": "quote_working_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quoted_at": {
+          "name": "quoted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "charge_id": {
+          "name": "charge_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_reason": {
+          "name": "closed_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "change_requests_ticket_idx": {
+          "name": "change_requests_ticket_idx",
+          "columns": [
+            {
+              "expression": "ticket_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "change_requests_business_idx": {
+          "name": "change_requests_business_idx",
+          "columns": [
+            {
+              "expression": "business_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "change_requests_state_idx": {
+          "name": "change_requests_state_idx",
+          "columns": [
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "change_requests_ticket_id_support_tickets_id_fk": {
+          "name": "change_requests_ticket_id_support_tickets_id_fk",
+          "tableFrom": "change_requests",
+          "tableTo": "support_tickets",
+          "columnsFrom": [
+            "ticket_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "change_requests_business_id_businesses_id_fk": {
+          "name": "change_requests_business_id_businesses_id_fk",
+          "tableFrom": "change_requests",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "change_requests_charge_id_charges_id_fk": {
+          "name": "change_requests_charge_id_charges_id_fk",
+          "tableFrom": "change_requests",
+          "tableTo": "charges",
+          "columnsFrom": [
+            "charge_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "change_requests_kind_check": {
+          "name": "change_requests_kind_check",
+          "value": "\"change_requests\".\"kind\" in ('website', 'social', 'search', 'billing', 'other')"
+        },
+        "change_requests_page_check": {
+          "name": "change_requests_page_check",
+          "value": "\"change_requests\".\"page\" is null or char_length(btrim(\"change_requests\".\"page\")) between 1 and 200"
+        },
+        "change_requests_state_check": {
+          "name": "change_requests_state_check",
+          "value": "\"change_requests\".\"state\" in ('requested', 'quoted', 'in_progress', 'preview', 'revisions', 'approved', 'shipped', 'declined', 'withdrawn')"
+        },
+        "change_requests_coverage_check": {
+          "name": "change_requests_coverage_check",
+          "value": "\"change_requests\".\"coverage\" in ('undecided', 'included', 'free', 'paid')"
+        },
+        "change_requests_quote_whole_check": {
+          "name": "change_requests_quote_whole_check",
+          "value": "num_nonnulls(\"change_requests\".\"quote_what\", \"change_requests\".\"quote_hours\", \"change_requests\".\"quote_unit_cents\", \"change_requests\".\"quote_amount_cents\", \"change_requests\".\"quote_currency\", \"change_requests\".\"quote_working_days\", \"change_requests\".\"quoted_at\") in (0, 7)"
+        },
+        "change_requests_quote_values_check": {
+          "name": "change_requests_quote_values_check",
+          "value": "\"change_requests\".\"quote_hours\" is null or (\"change_requests\".\"quote_hours\" between 1 and 40 and \"change_requests\".\"quote_unit_cents\" >= 1 and \"change_requests\".\"quote_amount_cents\" = \"change_requests\".\"quote_hours\" * \"change_requests\".\"quote_unit_cents\" and \"change_requests\".\"quote_working_days\" between 1 and 30 and char_length(btrim(\"change_requests\".\"quote_what\")) between 3 and 80)"
+        },
+        "change_requests_coverage_quote_check": {
+          "name": "change_requests_coverage_quote_check",
+          "value": "(\"change_requests\".\"coverage\" = 'paid') = (\"change_requests\".\"quote_hours\" is not null)"
+        },
+        "change_requests_decided_check": {
+          "name": "change_requests_decided_check",
+          "value": "\"change_requests\".\"coverage\" <> 'undecided' or \"change_requests\".\"state\" in ('requested', 'declined', 'withdrawn')"
+        },
+        "change_requests_quoted_check": {
+          "name": "change_requests_quoted_check",
+          "value": "\"change_requests\".\"state\" <> 'quoted' or \"change_requests\".\"coverage\" = 'paid'"
+        },
+        "change_requests_charge_check": {
+          "name": "change_requests_charge_check",
+          "value": "(\"change_requests\".\"charge_id\" is null) = (\"change_requests\".\"accepted_at\" is null)"
+        },
+        "change_requests_reason_check": {
+          "name": "change_requests_reason_check",
+          "value": "\"change_requests\".\"closed_reason\" is null or (\"change_requests\".\"state\" = 'declined' and char_length(btrim(\"change_requests\".\"closed_reason\")) between 3 and 300)"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.chatbot_leads": {
       "name": "chatbot_leads",
       "schema": "",
@@ -5447,6 +5652,385 @@
         "chatbots_website_url_check": {
           "name": "chatbots_website_url_check",
           "value": "\"chatbots\".\"website_url\" is null or \"chatbots\".\"website_url\" ~ '^https?://[^[:space:]]{1,255}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.activity_events": {
+      "name": "activity_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "service": {
+          "name": "service",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_by_staff_id": {
+          "name": "created_by_staff_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "activity_events_business_idx": {
+          "name": "activity_events_business_idx",
+          "columns": [
+            {
+              "expression": "business_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "activity_events_business_id_businesses_id_fk": {
+          "name": "activity_events_business_id_businesses_id_fk",
+          "tableFrom": "activity_events",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "activity_events_created_by_staff_id_users_id_fk": {
+          "name": "activity_events_created_by_staff_id_users_id_fk",
+          "tableFrom": "activity_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by_staff_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "activity_events_service_check": {
+          "name": "activity_events_service_check",
+          "value": "\"activity_events\".\"service\" is null or \"activity_events\".\"service\" in ('website', 'social', 'search')"
+        },
+        "activity_events_title_trim_check": {
+          "name": "activity_events_title_trim_check",
+          "value": "char_length(btrim(\"activity_events\".\"title\")) between 3 and 140"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.monthly_snapshots": {
+      "name": "monthly_snapshots",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "service": {
+          "name": "service",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "month": {
+          "name": "month",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ad_spend_cents": {
+          "name": "ad_spend_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ad_budget_cents": {
+          "name": "ad_budget_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ad_enquiries": {
+          "name": "ad_enquiries",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "posts_published": {
+          "name": "posts_published",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "posts_planned": {
+          "name": "posts_planned",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "keywords_page_one": {
+          "name": "keywords_page_one",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "keywords_page_one_prev": {
+          "name": "keywords_page_one_prev",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by_staff_id": {
+          "name": "updated_by_staff_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "monthly_snapshots_business_service_month_idx": {
+          "name": "monthly_snapshots_business_service_month_idx",
+          "columns": [
+            {
+              "expression": "business_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "service",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "monthly_snapshots_business_id_businesses_id_fk": {
+          "name": "monthly_snapshots_business_id_businesses_id_fk",
+          "tableFrom": "monthly_snapshots",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "monthly_snapshots_updated_by_staff_id_users_id_fk": {
+          "name": "monthly_snapshots_updated_by_staff_id_users_id_fk",
+          "tableFrom": "monthly_snapshots",
+          "tableTo": "users",
+          "columnsFrom": [
+            "updated_by_staff_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "monthly_snapshots_service_check": {
+          "name": "monthly_snapshots_service_check",
+          "value": "\"monthly_snapshots\".\"service\" in ('social', 'search')"
+        },
+        "monthly_snapshots_month_check": {
+          "name": "monthly_snapshots_month_check",
+          "value": "extract(day from \"monthly_snapshots\".\"month\") = 1"
+        },
+        "monthly_snapshots_figures_check": {
+          "name": "monthly_snapshots_figures_check",
+          "value": "coalesce(\"monthly_snapshots\".\"ad_spend_cents\", 0) >= 0 and coalesce(\"monthly_snapshots\".\"ad_budget_cents\", 0) >= 0 and coalesce(\"monthly_snapshots\".\"ad_enquiries\", 0) >= 0\n        and coalesce(\"monthly_snapshots\".\"posts_published\", 0) >= 0 and coalesce(\"monthly_snapshots\".\"posts_planned\", 0) >= 0\n        and coalesce(\"monthly_snapshots\".\"keywords_page_one\", 0) >= 0 and coalesce(\"monthly_snapshots\".\"keywords_page_one_prev\", 0) >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.service_setup": {
+      "name": "service_setup",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "service": {
+          "name": "service",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "answers": {
+          "name": "answers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "service_setup_business_service_idx": {
+          "name": "service_setup_business_service_idx",
+          "columns": [
+            {
+              "expression": "business_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "service",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "service_setup_business_id_businesses_id_fk": {
+          "name": "service_setup_business_id_businesses_id_fk",
+          "tableFrom": "service_setup",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "service_setup_service_check": {
+          "name": "service_setup_service_check",
+          "value": "\"service_setup\".\"service\" in ('social', 'search')"
+        },
+        "service_setup_answers_check": {
+          "name": "service_setup_answers_check",
+          "value": "jsonb_typeof(\"service_setup\".\"answers\") = 'object' and pg_column_size(\"service_setup\".\"answers\") <= 8192"
         }
       },
       "isRLSEnabled": false
@@ -11271,39 +11855,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "source": {
-          "name": "source",
-          "type": "lead_source",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'website_form'"
-        },
-        "plans": {
-          "name": "plans",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
-        "city": {
-          "name": "city",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "page": {
-          "name": "page",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "assigned_staff_id": {
-          "name": "assigned_staff_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -11362,19 +11913,6 @@
           "tableTo": "staff_members",
           "columnsFrom": [
             "attached_by_staff_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "leads_assigned_staff_id_staff_members_user_id_fk": {
-          "name": "leads_assigned_staff_id_staff_members_user_id_fk",
-          "tableFrom": "leads",
-          "tableTo": "staff_members",
-          "columnsFrom": [
-            "assigned_staff_id"
           ],
           "columnsTo": [
             "user_id"
@@ -12817,19 +13355,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "assigned_staff_id": {
-          "name": "assigned_staff_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status_before_hold": {
-          "name": "status_before_hold",
-          "type": "project_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -12876,19 +13401,6 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "projects_assigned_staff_id_staff_members_user_id_fk": {
-          "name": "projects_assigned_staff_id_staff_members_user_id_fk",
-          "tableFrom": "projects",
-          "tableTo": "staff_members",
-          "columnsFrom": [
-            "assigned_staff_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -12903,12 +13415,7 @@
         }
       },
       "policies": {},
-      "checkConstraints": {
-        "projects_status_before_hold_check": {
-          "name": "projects_status_before_hold_check",
-          "value": "\"projects\".\"status\" = 'on_hold' or \"projects\".\"status_before_hold\" is null"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.setup_call_bookings": {
@@ -12949,6 +13456,36 @@
         "ends_at": {
           "name": "ends_at",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "held_at": {
+          "name": "held_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "held_by_staff_id": {
+          "name": "held_by_staff_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "summary_at": {
+          "name": "summary_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "summary_by_staff_id": {
+          "name": "summary_by_staff_id",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -12997,6 +13534,32 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "setup_call_bookings_held_by_staff_id_users_id_fk": {
+          "name": "setup_call_bookings_held_by_staff_id_users_id_fk",
+          "tableFrom": "setup_call_bookings",
+          "tableTo": "users",
+          "columnsFrom": [
+            "held_by_staff_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "setup_call_bookings_summary_by_staff_id_users_id_fk": {
+          "name": "setup_call_bookings_summary_by_staff_id_users_id_fk",
+          "tableFrom": "setup_call_bookings",
+          "tableTo": "users",
+          "columnsFrom": [
+            "summary_by_staff_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -13010,6 +13573,14 @@
         "setup_call_bookings_time_check": {
           "name": "setup_call_bookings_time_check",
           "value": "(\"setup_call_bookings\".\"starts_at\" is null and \"setup_call_bookings\".\"ends_at\" is null) or (\"setup_call_bookings\".\"starts_at\" is not null and \"setup_call_bookings\".\"ends_at\" is not null and \"setup_call_bookings\".\"ends_at\" > \"setup_call_bookings\".\"starts_at\")"
+        },
+        "setup_call_bookings_held_check": {
+          "name": "setup_call_bookings_held_check",
+          "value": "(\"setup_call_bookings\".\"held_at\" is null) = (\"setup_call_bookings\".\"held_by_staff_id\" is null)"
+        },
+        "setup_call_bookings_summary_check": {
+          "name": "setup_call_bookings_summary_check",
+          "value": "(\"setup_call_bookings\".\"summary\" is null) = (\"setup_call_bookings\".\"summary_at\" is null) and (\"setup_call_bookings\".\"summary\" is null) = (\"setup_call_bookings\".\"summary_by_staff_id\" is null) and (\"setup_call_bookings\".\"summary\" is null or (\"setup_call_bookings\".\"held_at\" is not null and char_length(btrim(\"setup_call_bookings\".\"summary\")) between 3 and 600))"
         }
       },
       "isRLSEnabled": false
@@ -15811,6 +16382,239 @@
       },
       "isRLSEnabled": false
     },
+    "public.team_calls": {
+      "name": "team_calls",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'booked'"
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'dashboard'"
+        },
+        "starts_at": {
+          "name": "starts_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ends_at": {
+          "name": "ends_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_uri": {
+          "name": "provider_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "held_at": {
+          "name": "held_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "held_by_staff_id": {
+          "name": "held_by_staff_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "summary_at": {
+          "name": "summary_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "summary_by_staff_id": {
+          "name": "summary_by_staff_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "team_calls_business_idx": {
+          "name": "team_calls_business_idx",
+          "columns": [
+            {
+              "expression": "business_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "starts_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "team_calls_provider_idx": {
+          "name": "team_calls_provider_idx",
+          "columns": [
+            {
+              "expression": "provider_uri",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "team_calls_business_id_businesses_id_fk": {
+          "name": "team_calls_business_id_businesses_id_fk",
+          "tableFrom": "team_calls",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "team_calls_held_by_staff_id_users_id_fk": {
+          "name": "team_calls_held_by_staff_id_users_id_fk",
+          "tableFrom": "team_calls",
+          "tableTo": "users",
+          "columnsFrom": [
+            "held_by_staff_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "team_calls_summary_by_staff_id_users_id_fk": {
+          "name": "team_calls_summary_by_staff_id_users_id_fk",
+          "tableFrom": "team_calls",
+          "tableTo": "users",
+          "columnsFrom": [
+            "summary_by_staff_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "team_calls_reason_check": {
+          "name": "team_calls_reason_check",
+          "value": "\"team_calls\".\"reason\" in ('website', 'social', 'search', 'billing', 'other')"
+        },
+        "team_calls_status_check": {
+          "name": "team_calls_status_check",
+          "value": "\"team_calls\".\"status\" in ('booked', 'held', 'cancelled')"
+        },
+        "team_calls_source_check": {
+          "name": "team_calls_source_check",
+          "value": "\"team_calls\".\"source\" in ('dashboard', 'booking_page')"
+        },
+        "team_calls_note_check": {
+          "name": "team_calls_note_check",
+          "value": "\"team_calls\".\"note\" is null or char_length(btrim(\"team_calls\".\"note\")) between 1 and 500"
+        },
+        "team_calls_time_check": {
+          "name": "team_calls_time_check",
+          "value": "\"team_calls\".\"ends_at\" > \"team_calls\".\"starts_at\""
+        },
+        "team_calls_provider_check": {
+          "name": "team_calls_provider_check",
+          "value": "\"team_calls\".\"provider_uri\" is null or char_length(\"team_calls\".\"provider_uri\") <= 300"
+        },
+        "team_calls_held_check": {
+          "name": "team_calls_held_check",
+          "value": "(\"team_calls\".\"status\" = 'held') = (\"team_calls\".\"held_at\" is not null) and (\"team_calls\".\"held_at\" is null) = (\"team_calls\".\"held_by_staff_id\" is null)"
+        },
+        "team_calls_cancelled_check": {
+          "name": "team_calls_cancelled_check",
+          "value": "(\"team_calls\".\"status\" = 'cancelled') = (\"team_calls\".\"cancelled_at\" is not null)"
+        },
+        "team_calls_summary_check": {
+          "name": "team_calls_summary_check",
+          "value": "(\"team_calls\".\"summary\" is null) = (\"team_calls\".\"summary_at\" is null) and (\"team_calls\".\"summary\" is null) = (\"team_calls\".\"summary_by_staff_id\" is null) and (\"team_calls\".\"summary\" is null or (\"team_calls\".\"status\" = 'held' and char_length(btrim(\"team_calls\".\"summary\")) between 3 and 600))"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.error_event_receipts": {
       "name": "error_event_receipts",
       "schema": "",
@@ -16648,16 +17452,6 @@
       "values": [
         "on",
         "off"
-      ]
-    },
-    "public.lead_source": {
-      "name": "lead_source",
-      "schema": "public",
-      "values": [
-        "website_form",
-        "pricing_page",
-        "signup",
-        "staff"
       ]
     },
     "public.lead_status": {

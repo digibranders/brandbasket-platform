@@ -120,6 +120,45 @@ describe("startCustomerChargePayment", () => {
     await expect(startCustomerChargePayment(CUSTOMER, CHARGE_ID)).resolves.toMatchObject({ kind: "razorpay", orderId: "order_1" });
   });
 
+  it("reuses the Razorpay order already opened for the charge instead of opening another", async () => {
+    const razorpay = provider({ name: "razorpay", startChargePayment: vi.fn().mockResolvedValue({ providerOrderId: "order_2", redirectTo: null }) });
+    vi.mocked(getBillingProvider).mockReturnValue(razorpay);
+    vi.mocked(findChargeForBusiness).mockResolvedValue({ ...CHARGE, provider: "razorpay", providerOrderId: "order_1" });
+
+    await expect(startCustomerChargePayment(CUSTOMER, CHARGE_ID)).resolves.toMatchObject({ kind: "razorpay", orderId: "order_1" });
+    expect(razorpay.startChargePayment).not.toHaveBeenCalled();
+    expect(setChargeProviderOrder).not.toHaveBeenCalled();
+  });
+
+  it("opens one provider order when Pay is pressed twice, and sends both presses to it", async () => {
+    const razorpay = provider({ name: "razorpay", startChargePayment: vi.fn().mockResolvedValue({ providerOrderId: "order_1", redirectTo: null }) });
+    vi.mocked(getBillingProvider).mockReturnValue(razorpay);
+    let stored: Charge = CHARGE;
+    vi.mocked(findChargeForBusiness).mockImplementation(async () => stored);
+    vi.mocked(setChargeProviderOrder).mockImplementation(async (_db, input) => {
+      stored = { ...CHARGE, provider: input.provider, providerOrderId: input.providerOrderId };
+      return true;
+    });
+
+    const first = await startCustomerChargePayment(CUSTOMER, CHARGE_ID);
+    const second = await startCustomerChargePayment(CUSTOMER, CHARGE_ID);
+
+    expect([first, second]).toMatchObject([{ orderId: "order_1" }, { orderId: "order_1" }]);
+    expect(razorpay.startChargePayment).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens one order when two presses race: the one that loses the claim uses the winner's order", async () => {
+    const razorpay = provider({ name: "razorpay", startChargePayment: vi.fn().mockResolvedValue({ providerOrderId: "order_B", redirectTo: null }) });
+    vi.mocked(getBillingProvider).mockReturnValue(razorpay);
+    vi.mocked(findChargeForBusiness)
+      .mockResolvedValueOnce(CHARGE)
+      .mockResolvedValueOnce({ ...CHARGE, provider: "razorpay", providerOrderId: "order_A" });
+    vi.mocked(setChargeProviderOrder).mockResolvedValue(false);
+
+    await expect(startCustomerChargePayment(CUSTOMER, CHARGE_ID)).resolves.toMatchObject({ kind: "razorpay", orderId: "order_A" });
+    expect(setChargeProviderOrder).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ onlyIfUnset: true }));
+  });
+
   it("finds nothing for another business's charge, and nothing to pay for a settled one", async () => {
     vi.mocked(findChargeForBusiness).mockResolvedValueOnce(null);
     await expect(startCustomerChargePayment(CUSTOMER, CHARGE_ID)).resolves.toEqual({ kind: "not-found" });

@@ -180,6 +180,7 @@ export async function resolvePaymentAttentionAction(formData: FormData): Promise
 /** Sends a client the link to their preview build, by email and on their own dashboard. */
 export async function sendPreviewAction(formData: FormData): Promise<void> {
   const staff = await requireStaffAccess();
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "Send a preview's business");
 
   const parsedUrl = previewUrlSchema.safeParse(formData.get("previewUrl"));
@@ -187,7 +188,7 @@ export async function sendPreviewAction(formData: FormData): Promise<void> {
 
   let notified: OwnerNotification;
   try {
-    notified = await sendProjectPreview(getStaffDb(), { businessId, previewUrl: parsedUrl.data }, new Date());
+    notified = await sendProjectPreview(getStaffDb(), { businessId, previewUrl: parsedUrl.data, staffId: user.id }, new Date());
   } catch (error) {
     if (error instanceof ProjectNotReadyForPreviewError) redirect(projectPreviewNoticeHref(businessId, "not-ready"));
     if (error instanceof ProjectPreviewRecipientMissingError) redirect(projectPreviewNoticeHref(businessId, "no-owner"));

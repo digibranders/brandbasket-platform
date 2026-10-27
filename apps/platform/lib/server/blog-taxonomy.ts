@@ -135,7 +135,7 @@ function photoOf(value: unknown): BlogAuthorPhoto | null {
   return id === null ? null : { id, url: `/content-media/${id}` };
 }
 
-export function toBlogAuthor(doc: RawTaxonomyDoc): BlogAuthor {
+function toBlogAuthor(doc: RawTaxonomyDoc): BlogAuthor {
   const links = Object.fromEntries(AUTHOR_LINK_KINDS.map((kind) => [kind, textOrNull(doc[kind])])) as AuthorLinks;
   return {
     id: String(doc.id),
@@ -201,7 +201,7 @@ function updatedAtOf(doc: RawTaxonomyDoc): number {
   return Number.isNaN(updated) ? 0 : updated;
 }
 
-export function toBlogCategory(doc: RawTaxonomyDoc): BlogCategory {
+function toBlogCategory(doc: RawTaxonomyDoc): BlogCategory {
   return {
     id: String(doc.id),
     name: stringOr(doc.name, ""),

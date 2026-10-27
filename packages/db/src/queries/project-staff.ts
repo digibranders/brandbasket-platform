@@ -8,9 +8,6 @@ import { isUuid } from "./tenant";
 /** A staff write across tenants: the plain staff connection, or a transaction opened on it. */
 type Runner = Database | ScopedTransaction;
 
-/** The longest hold reason staff may type; the client sees it on their dashboard. */
-export const ON_HOLD_REASON_MAX = 200;
-
 export class ProjectMoveRefusedError extends Error {
   readonly move: ProjectMove;
 
@@ -40,53 +37,12 @@ function onlyRow(rows: readonly MovedProject[], move: ProjectMove, projectId: st
   return row;
 }
 
-/** Moves a submitted build to building. The status list is the gate: anything else matches no row and throws. */
-export async function setProjectBuilding(db: Runner, projectId: string): Promise<MovedProject> {
-  if (!isUuid(projectId)) throw new ProjectMoveRefusedError("start-building", projectId);
-  const rows = await db
-    .update(projects)
-    .set({ status: "building" })
-    .where(and(eq(projects.id, projectId), startsFrom("start-building")))
-    .returning(MOVED);
-  return onlyRow(rows, "start-building", projectId);
-}
-
-/**
- * Puts an open build on hold with the reason the client will see, and remembers its status so Resume can return it
- * there. In an UPDATE every right-hand side reads the row as it was, so status_before_hold takes the old status.
- */
-export async function putProjectOnHold(db: Runner, projectId: string, reason: string): Promise<MovedProject> {
-  const trimmed = reason.trim();
-  if (!isUuid(projectId) || trimmed === "" || trimmed.length > ON_HOLD_REASON_MAX) throw new ProjectMoveRefusedError("hold", projectId);
-  const rows = await db
-    .update(projects)
-    .set({ status: "on_hold", onHoldReason: trimmed, statusBeforeHold: sql`${projects.status}` })
-    .where(and(eq(projects.id, projectId), startsFrom("hold")))
-    .returning(MOVED);
-  return onlyRow(rows, "hold", projectId);
-}
-
-/** Returns a held build to where it was. A hold recorded before status_before_hold existed resumes into building. */
-export async function resumeProject(db: Runner, projectId: string): Promise<MovedProject> {
-  if (!isUuid(projectId)) throw new ProjectMoveRefusedError("resume", projectId);
-  const rows = await db
-    .update(projects)
-    .set({
-      status: sql`coalesce(${projects.statusBeforeHold}, 'building'::project_status)`,
-      onHoldReason: null,
-      statusBeforeHold: null,
-    })
-    .where(and(eq(projects.id, projectId), startsFrom("resume")))
-    .returning(MOVED);
-  return onlyRow(rows, "resume", projectId);
-}
-
 /** Cancels an open build. It does not touch the client's plan or billing; staff handle that separately. */
 export async function cancelProject(db: Runner, projectId: string): Promise<MovedProject> {
   if (!isUuid(projectId)) throw new ProjectMoveRefusedError("cancel", projectId);
   const rows = await db
     .update(projects)
-    .set({ status: "cancelled", statusBeforeHold: null })
+    .set({ status: "cancelled", onHoldReason: null })
     .where(and(eq(projects.id, projectId), startsFrom("cancel")))
     .returning(MOVED);
   return onlyRow(rows, "cancel", projectId);

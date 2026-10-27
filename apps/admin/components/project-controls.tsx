@@ -1,4 +1,4 @@
-import { canMoveProject, findOpenProjectForStaff, listAssignableSupportStaff, ON_HOLD_REASON_MAX } from "@brandbasket/db";
+import { canMoveProject, findOpenProjectForStaff, listAssignableSupportStaff } from "@brandbasket/db";
 import type { ReactElement } from "react";
 import { buttonDanger, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, labelClasses } from "@/components/console/field-styles";
@@ -11,9 +11,6 @@ import {
   assignBuilderAction,
   cancelProjectAction,
   grantRoundAction,
-  holdProjectAction,
-  resumeProjectAction,
-  startBuildingAction,
 } from "@/app/(protected)/clients/[businessId]/project/actions";
 
 interface ProjectControlsProps {
@@ -22,7 +19,7 @@ interface ProjectControlsProps {
   readonly notice: string | string[] | undefined;
 }
 
-/** Hand moves on the business's open build: start building, hold, resume, builder, extra round, cancel. */
+/** Hand moves on the business's open build: builder, extra round, cancel. Start, hold and resume are in the website build section. */
 export async function ProjectControls({ businessId, notice }: ProjectControlsProps): Promise<ReactElement | null> {
   const db = getStaffDb();
   const [project, staff] = await Promise.all([findOpenProjectForStaff(db, businessId), listAssignableSupportStaff(db)]);
@@ -47,18 +44,6 @@ export async function ProjectControls({ businessId, notice }: ProjectControlsPro
         ) : null}
 
         <div className="flex flex-wrap gap-2">
-          {canMoveProject("start-building", project.status) ? (
-            <form action={startBuildingAction}>
-              {ids}
-              <button type="submit" className={buttonSecondary}>Start building</button>
-            </form>
-          ) : null}
-          {canMoveProject("resume", project.status) ? (
-            <form action={resumeProjectAction}>
-              {ids}
-              <button type="submit" className={buttonSecondary}>Resume</button>
-            </form>
-          ) : null}
           {canMoveProject("grant-round", project.status) ? (
             <form action={grantRoundAction}>
               {ids}
@@ -93,22 +78,6 @@ export async function ProjectControls({ businessId, notice }: ProjectControlsPro
               Save builder
             </button>
           </form>
-        ) : null}
-
-        {canMoveProject("hold", project.status) ? (
-          <details className="max-w-md">
-            <summary className="cursor-pointer text-sm font-semibold text-ink">Put on hold</summary>
-            <form action={holdProjectAction} className="mt-3 grid gap-2">
-              {ids}
-              <label htmlFor="hold-reason" className={labelClasses}>
-                Reason the client will see
-              </label>
-              <input id="hold-reason" name="reason" required maxLength={ON_HOLD_REASON_MAX} placeholder="Waiting for your photos" className={fieldClasses} />
-              <button type="submit" className={`${buttonSecondary} justify-self-start`}>
-                Put on hold
-              </button>
-            </form>
-          </details>
         ) : null}
 
         {canMoveProject("cancel", project.status) ? (

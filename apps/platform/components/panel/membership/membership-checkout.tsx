@@ -3,13 +3,10 @@ import { supportEmailOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { EmailUs } from "@/components/panel/email-us";
 import { PAYMENT_RECEIVED_MESSAGE } from "@brandbasket/shared/lib/billing/payment-step";
-import { BillingDetails } from "@/components/panel/billing/billing-details";
 import { PaymentWaiting } from "@/components/panel/payment-waiting";
-import { ReferralCodeForm } from "@/components/panel/referral-code-form";
 import { isWaitingOnPayment, unsettledCheckout, type MembershipPaymentNotice } from "@/lib/membership";
 import type { GrantedCustomer } from "@/lib/server/customer-access";
 import type { MembershipCheckoutView } from "@/lib/server/membership-checkout";
-import { applyMembershipCode, removeMembershipCode } from "@/app/app-host/(protected)/plan/actions";
 
 interface MembershipCheckoutProps {
   readonly view: MembershipCheckoutView;
@@ -19,14 +16,14 @@ interface MembershipCheckoutProps {
 }
 
 /**
- * What goes with the Pay button on the plan's page, for a free listing account: a code and the invoice details, or, when
- * the account cannot pay, the reason. The order summary draws the Pay button itself (membership-page.tsx).
+ * What the plan's page says instead of the checkout when the account cannot pay: its payment is on its way, is under review,
+ * or no plan is on sale. The checkout itself, with the code and the invoice details, is checkout-ledger.tsx.
  *
  * An account whose payment is on its way, or under review, is told so and offered nothing to pay: a second payment
  * for the same plan would only be refused.
  */
-export async function MembershipCheckout({ view, notice, billing }: MembershipCheckoutProps): Promise<ReactElement> {
-  const { plan, discount, lapsedCode, billingDetails } = view;
+export async function MembershipCheckout({ view, notice, billing }: MembershipCheckoutProps): Promise<ReactElement | null> {
+  const { plan } = view;
   // Only an account with a checkout open can be waiting to hear about a payment: the address alone is not believed.
   const checkout = unsettledCheckout(billing.subscription);
   const waiting = checkout !== null && isWaitingOnPayment(billing.subscription, notice);
@@ -55,23 +52,6 @@ export async function MembershipCheckout({ view, notice, billing }: MembershipCh
       </p>
     );
   }
-  return (
-    <div className="max-w-xl space-y-6">
-      {notice === "failed" ? (
-        <p role="alert" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
-          We couldn&rsquo;t confirm that payment, so nothing has been recorded. You can try again below.
-        </p>
-      ) : null}
-      <ReferralCodeForm
-        applyAction={applyMembershipCode.bind(null, view.services)}
-        removeAction={removeMembershipCode}
-        discount={discount}
-        currency={plan.currency}
-        label="Have a code?"
-        lapsedCode={lapsedCode}
-        compact
-      />
-      {billingDetails === null ? null : <BillingDetails view={billingDetails} variant="checkout" />}
-    </div>
-  );
+  // An account that can pay is shown the checkout, not this.
+  return null;
 }

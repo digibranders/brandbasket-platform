@@ -28,6 +28,37 @@ const RETRYING_BANNER: BillingBannerModel = {
   action: { href: "/billing", label: "See Billing" },
 };
 
+describe("noticesFrom, requests", () => {
+  const ask = (requests: Parameters<typeof noticesFrom>[0]["requests"]) => noticesFrom({ banner: null, projectStatus: "live", nextStep: { kind: "live", hostname: "x.com" }, requests });
+
+  it("lists a quote to answer, a payment to make and a change to check as things to do, each opening its request", () => {
+    expect(
+      ask([
+        { ticketId: "t1", subject: "Add an Implants page", kind: "quote" },
+        { ticketId: "t2", subject: "Change the main photo", kind: "check" },
+        { ticketId: "t3", subject: "Footer", kind: "payment" },
+      ]),
+    ).toEqual([
+      { id: "request-quote-t1", text: "Quote waiting: Add an Implants page", href: "/requests?open=t1", actionable: true },
+      { id: "request-check-t2", text: "Ready to check: Change the main photo", href: "/requests?open=t2", actionable: true },
+      { id: "request-payment-t3", text: "Payment waiting: Footer", href: "/requests?open=t3", actionable: true },
+    ]);
+  });
+
+  it("lists a reply to read without lighting the dot", () => {
+    const notices = ask([{ ticketId: "t1", subject: "Add an Implants page", kind: "reply" }]);
+    expect(notices).toEqual([{ id: "request-reply-t1", text: "New reply: Add an Implants page", href: "/requests?open=t1", actionable: false }]);
+    expect(actionableCount(notices)).toBe(0);
+  });
+
+  it("shortens a long title, and says nothing about requests when none are given", () => {
+    const [notice] = ask([{ ticketId: "t1", subject: "x".repeat(100), kind: "quote" }]);
+    expect(notice?.text.length).toBeLessThan(80);
+    expect(notice?.text.endsWith("...")).toBe(true);
+    expect(ask(undefined)).toEqual([]);
+  });
+});
+
 describe("noticesFrom", () => {
   it("is empty for a paid customer whose site is live and settled", () => {
     expect(noticesFrom({ banner: null, projectStatus: "live", nextStep: { kind: "live", hostname: "x.com" } })).toEqual(
@@ -57,9 +88,9 @@ describe("noticesFrom", () => {
     expect(notice?.actionable).toBe(false);
   });
 
-  it("asks the customer to review a preview", () => {
+  it("asks the customer to review a preview, on the Website page", () => {
     const [notice] = noticesFrom({ banner: null, projectStatus: "preview", nextStep: NO_STEP });
-    expect(notice).toMatchObject({ id: "preview-ready", href: "/project", actionable: true });
+    expect(notice).toMatchObject({ id: "preview-ready", href: "/website", actionable: true });
   });
 
   it.each([
@@ -67,9 +98,9 @@ describe("noticesFrom", () => {
     ["building", "building"],
     ["revisions", "revisions"],
     ["on_hold", "on-hold"],
-  ] as const)("reports %s as something we are doing, not something they must do", (status, id) => {
+  ] as const)("reports %s as something we are doing, not something they must do, on the Website page", (status, id) => {
     const [notice] = noticesFrom({ banner: null, projectStatus: status, nextStep: NO_STEP });
-    expect(notice).toMatchObject({ id, actionable: false });
+    expect(notice).toMatchObject({ id, href: "/website", actionable: false });
   });
 
   it.each(["start-onboarding", "continue-onboarding"] as const)("chases unfinished setup (%s)", (kind) => {

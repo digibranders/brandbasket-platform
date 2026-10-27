@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, type ReactElement } from "react";
-import { Button } from "@brandbasket/shared/ui/panel/button";
-import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
-import { PlusIcon } from "@brandbasket/shared/ui/icons";
+import { Plus } from "@phosphor-icons/react/dist/ssr";
+import { useState, type ReactElement, type ReactNode } from "react";
+import { Required, STEP_FIELD_CLASSES, STEP_HINT_CLASSES, STEP_LABEL_CLASSES } from "@/components/panel/step-form";
+import { SOFT_BUTTON } from "@/components/v2/classes";
 import { MAX_SERVICES, type ServiceInput } from "@/lib/onboarding/content-form";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 
@@ -26,6 +26,8 @@ interface ServiceListEditorProps {
   /** The form field an error is about, e.g. "services.2.name". */
   readonly invalidField: string | null;
   readonly errorId: string;
+  /** A message to show under a service's row (or under the list, for the index it is given), when the form refused something in it. */
+  readonly renderError?: (index: number) => ReactNode;
 }
 
 interface EditorState {
@@ -44,16 +46,14 @@ function rowFrom(id: number, service?: ServiceInput): Row {
   };
 }
 
-const FIELD_CLASSES =
-  "mt-1.5 block w-full rounded-control border border-ink-soft/65 bg-paper px-3 py-2.5 text-base tabular-nums transition-colors duration-300 ease-calm placeholder:text-ink-soft/80 focus:border-accent";
 const SMALL_BUTTON =
-  "rounded-full px-3 py-1.5 text-xs text-ink-soft transition-colors duration-300 ease-calm hover:bg-paper-deep hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent";
+  "rounded-lg px-3 py-1.5 text-xs font-semibold text-ink-2 transition-colors duration-200 hover:bg-sunken hover:text-ink disabled:opacity-45 disabled:hover:bg-transparent";
 
 /**
  * Add, remove and reorder services. Each row posts as services.{position}.name|summary|price, plus
  * services.{position}.id for a saved service, so reordering and editing keep each service's identity.
  */
-export function ServiceListEditor({ initial, invalidField, errorId, currency }: ServiceListEditorProps): ReactElement {
+export function ServiceListEditor({ initial, invalidField, errorId, currency, renderError }: ServiceListEditorProps): ReactElement {
   const [state, setState] = useState<EditorState>(() => {
     const rows = initial.length > 0 ? initial.map((service, index) => rowFrom(index, service)) : [rowFrom(0)];
     return { rows, nextId: rows.length };
@@ -92,14 +92,14 @@ export function ServiceListEditor({ initial, invalidField, errorId, currency }: 
 
   return (
     <fieldset>
-      <legend className="text-sm font-medium">Your services</legend>
-      <p className="mt-1 text-sm text-ink-soft">The things customers come to you for. Add as many as you like, up to {MAX_SERVICES}.</p>
+      <legend className="p-0 font-display text-[0.9375rem] font-semibold tracking-[-0.01em] text-ink">Your services</legend>
+      <p className={`mt-1 ${STEP_HINT_CLASSES}`}>The things customers come to you for. Add as many as you like, up to {MAX_SERVICES}.</p>
 
-      <ol className="mt-4 space-y-3">
+      <ol className="mt-4 divide-y divide-line border-y border-line">
         {rows.map((row, index) => (
-          <li key={row.id} className="rounded-control border border-line bg-paper/60 p-4">
+          <li key={row.id} className="py-4">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[0.8125rem] font-medium tabular-nums text-ink-soft">Service {index + 1}</span>
+              <span className="font-figure text-xs font-medium tabular-nums text-ink-2">Service {index + 1}</span>
               <span className="flex items-center gap-1">
                 <button type="button" onClick={() => move(index, -1)} disabled={index === 0} className={SMALL_BUTTON}>
                   Move up
@@ -127,9 +127,9 @@ export function ServiceListEditor({ initial, invalidField, errorId, currency }: 
               <input type="hidden" name={`services.${index}.id`} value={row.serviceId} />
             )}
             <div className="mt-3 grid gap-3 sm:grid-cols-[2fr_1fr]">
-              <label className="block text-sm">
+              <label className={STEP_LABEL_CLASSES}>
                 Name
-                <RequiredMark />
+                <Required />
                 <input
                   name={`services.${index}.name`}
                   value={row.name}
@@ -137,42 +137,43 @@ export function ServiceListEditor({ initial, invalidField, errorId, currency }: 
                   onChange={(event) => update(row.id, { name: event.target.value })}
                   maxLength={80}
                   placeholder="Teeth whitening"
-                  className={FIELD_CLASSES}
+                  className={STEP_FIELD_CLASSES}
                   {...invalid(`services.${index}.name`)}
                 />
               </label>
-              <label className="block text-sm">
-                Price <span className="text-ink-soft">(optional)</span>
+              <label className={STEP_LABEL_CLASSES}>
+                Price <span className="font-medium text-ink-2">(optional)</span>
                 <input
                   name={`services.${index}.price`}
                   value={row.price}
                   onChange={(event) => update(row.id, { price: event.target.value })}
                   maxLength={60}
                   placeholder={currency === null ? "Optional" : PRICE_PLACEHOLDERS[currency]}
-                  className={FIELD_CLASSES}
+                  className={STEP_FIELD_CLASSES}
                   {...invalid(`services.${index}.price`)}
                 />
               </label>
             </div>
-            <label className="mt-3 block text-sm">
-              A sentence about it <span className="text-ink-soft">(optional)</span>
+            <label className={`mt-3 ${STEP_LABEL_CLASSES}`}>
+              A sentence about it <span className="font-medium text-ink-2">(optional)</span>
               <input
                 name={`services.${index}.summary`}
                 value={row.summary}
                 onChange={(event) => update(row.id, { summary: event.target.value })}
                 maxLength={240}
-                className={FIELD_CLASSES}
+                className={STEP_FIELD_CLASSES}
                 {...invalid(`services.${index}.summary`)}
               />
             </label>
+            {renderError === undefined ? null : renderError(index)}
           </li>
         ))}
       </ol>
 
-      <Button type="button" size="sm" variant="secondary" onClick={addRow} disabled={rows.length >= MAX_SERVICES} className="mt-3">
-        <PlusIcon className="size-4" />
+      <button type="button" onClick={addRow} disabled={rows.length >= MAX_SERVICES} className={`${SOFT_BUTTON} mt-4 h-10 px-4`}>
+        <Plus size={16} aria-hidden="true" />
         Add another service
-      </Button>
+      </button>
     </fieldset>
   );
 }

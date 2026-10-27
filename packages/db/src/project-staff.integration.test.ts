@@ -12,9 +12,6 @@ import {
   listSetupCallsForStaff,
   ProjectBuilderNotStaffError,
   ProjectMoveRefusedError,
-  putProjectOnHold,
-  resumeProject,
-  setProjectBuilding,
 } from "./queries/project-staff";
 import { businesses, businessMembers, projects, staffMembers, users, type ProjectStatus } from "./schema";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
@@ -63,53 +60,11 @@ beforeEach(async () => {
   projectId = project.id;
 });
 
-describe("setProjectBuilding", () => {
-  it("moves a submitted build to building", async () => {
-    await setProjectStatus("submitted");
-    await expect(setProjectBuilding(dbs.staff.db, projectId)).resolves.toMatchObject({ id: projectId, businessId, status: "building" });
-  });
-
-  it("refuses a build still in onboarding and changes nothing", async () => {
-    await expect(setProjectBuilding(dbs.staff.db, projectId)).rejects.toBeInstanceOf(ProjectMoveRefusedError);
-    expect((await readProject()).status).toBe("onboarding");
-  });
-});
-
-describe("putProjectOnHold and resumeProject", () => {
-  it("holds a build with its reason and remembers where it was, then resumes it there", async () => {
-    await setProjectStatus("building");
-    await expect(putProjectOnHold(dbs.staff.db, projectId, "  Waiting for photos  ")).resolves.toMatchObject({ status: "on_hold" });
-    expect(await readProject()).toMatchObject({ status: "on_hold", onHoldReason: "Waiting for photos", statusBeforeHold: "building" });
-
-    await expect(resumeProject(dbs.staff.db, projectId)).resolves.toMatchObject({ status: "building" });
-    expect(await readProject()).toMatchObject({ status: "building", onHoldReason: null, statusBeforeHold: null });
-  });
-
-  it("resumes a build held before this column existed into building", async () => {
-    await dbs.staff.db.update(projects).set({ status: "on_hold", onHoldReason: "Old hold" }).where(eq(projects.id, projectId));
-    await expect(resumeProject(dbs.staff.db, projectId)).resolves.toMatchObject({ status: "building" });
-  });
-
-  it("refuses an empty reason, a reason over 200 characters, and a second hold", async () => {
-    await setProjectStatus("building");
-    await expect(putProjectOnHold(dbs.staff.db, projectId, "   ")).rejects.toBeInstanceOf(ProjectMoveRefusedError);
-    await expect(putProjectOnHold(dbs.staff.db, projectId, "x".repeat(201))).rejects.toBeInstanceOf(ProjectMoveRefusedError);
-    await putProjectOnHold(dbs.staff.db, projectId, "Waiting for photos");
-    await expect(putProjectOnHold(dbs.staff.db, projectId, "Again")).rejects.toBeInstanceOf(ProjectMoveRefusedError);
-  });
-
-  it("refuses to resume a build that is not on hold", async () => {
-    await setProjectStatus("building");
-    await expect(resumeProject(dbs.staff.db, projectId)).rejects.toBeInstanceOf(ProjectMoveRefusedError);
-  });
-});
-
 describe("cancelProject", () => {
-  it("cancels a build on hold and clears where it was", async () => {
-    await setProjectStatus("building");
-    await putProjectOnHold(dbs.staff.db, projectId, "Client stopped replying");
+  it("cancels a build on hold", async () => {
+    await dbs.staff.db.update(projects).set({ status: "on_hold", onHoldReason: "Client stopped replying" }).where(eq(projects.id, projectId));
     await expect(cancelProject(dbs.staff.db, projectId)).resolves.toMatchObject({ status: "cancelled" });
-    expect(await readProject()).toMatchObject({ status: "cancelled", statusBeforeHold: null });
+    expect(await readProject()).toMatchObject({ status: "cancelled", onHoldReason: null });
   });
 
   it("refuses a live build", async () => {

@@ -1,9 +1,11 @@
 "use client";
 
+import { Check, Copy } from "@phosphor-icons/react/dist/ssr";
 import { useActionState, useState, type ReactElement, type ReactNode } from "react";
-import { CopyIcon, TickIcon } from "@brandbasket/shared/ui/icons";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import type { DnsRecord, DnsStatus } from "@brandbasket/shared/lib/onboarding/domain-dns";
+import { DARK_BUTTON_SHAPE, SOFT_BUTTON } from "@/components/v2/classes";
 import { initialConnectDomainState, type ConnectDomainState } from "@/lib/connect-domain-state";
 
 interface ConnectDomainCardProps {
@@ -17,9 +19,9 @@ interface ConnectDomainCardProps {
 }
 
 const VERDICTS: Readonly<Record<DnsStatus, { readonly tone: string; readonly text: string }>> = {
-  connected: { tone: "bg-paper-deep text-ink", text: "Your domain is connected. We’ll take it from here and put your website live." },
-  pending: { tone: "bg-paper-deep text-ink", text: "Not there yet. Changes at your domain company can take anywhere from a few minutes to a few hours. Check again soon." },
-  elsewhere: { tone: "bg-accent-pale text-accent-deep", text: "Your domain still points somewhere else. Check the values above match exactly, and remove any older record for the same name." },
+  connected: { tone: "bg-sage-wash text-sage-deep", text: "Your domain is connected. We’ll take it from here and put your website live." },
+  pending: { tone: "bg-sunken text-ink", text: "Not there yet. Changes at your domain company can take anywhere from a few minutes to a few hours. Check again soon." },
+  elsewhere: { tone: "bg-rattan-wash text-rattan-ink", text: "Your domain still points somewhere else. Check the values above match exactly, and remove any older record for the same name." },
 };
 
 const STATUS_LABEL: Readonly<Record<DnsStatus, string>> = { connected: "Connected", pending: "Not yet", elsewhere: "Points elsewhere" };
@@ -51,123 +53,126 @@ function CopyButton({ value, label }: { readonly value: string; readonly label: 
     <button
       type="button"
       aria-label={state === "failed" ? `Couldn’t copy ${label}` : `Copy ${label}`}
-      title={state === "copied" ? "Copied" : state === "failed" ? "Couldn’t copy" : "Copy"}
       onClick={() => {
         void copyText(value).then((ok) => {
           setState(ok ? "copied" : "failed");
           window.setTimeout(() => setState("idle"), 1800);
         });
       }}
-      className={`shrink-0 rounded-control p-1 transition-colors duration-300 ease-calm hover:text-ink ${state === "failed" ? "text-accent-deep" : state === "copied" ? "text-success" : "text-ink-soft"}`}
+      className={cn(SOFT_BUTTON, "h-8 w-[5.25rem] shrink-0")}
     >
-      {state === "copied" ? <TickIcon className="size-4" /> : <CopyIcon className="size-4" />}
+      {state === "copied" ? <Check size={14} weight="bold" aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+      <span aria-live="polite">{state === "copied" ? "Copied" : state === "failed" ? "Try again" : "Copy"}</span>
     </button>
   );
 }
 
-/** A value that can be copied: the text in a code chip with a copy icon beside it. */
-function CopyCell({ value, label }: { readonly value: string; readonly label: string }): ReactElement {
+/** One field of a record: its label, the value to type in, and a button that copies it. */
+function RecordField({ label, value, copyLabel }: { readonly label: string; readonly value: string; readonly copyLabel: string }): ReactElement {
   return (
-    <span className="inline-flex items-center gap-1">
-      <code className="rounded-control bg-paper-deep px-2 py-1 text-sm text-ink">{value}</code>
-      <CopyButton value={value} label={label} />
-    </span>
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[3.75rem_minmax(0,1fr)_auto]">
+      <dt className="col-span-2 text-[0.8125rem] text-ink-2 sm:col-span-1">{label}</dt>
+      <dd className="min-w-0 break-all font-figure text-sm text-ink">{value}</dd>
+      <CopyButton value={value} label={copyLabel} />
+    </div>
+  );
+}
+
+/** One DNS record to add: its type, then the name and the content, each with its own copy button. */
+function RecordRow({ record }: { readonly record: DnsRecord }): ReactElement {
+  return (
+    <li className="grid gap-3 py-4 first:pt-0 last:pb-0">
+      <p className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <span className="font-display text-[0.9375rem] font-semibold tracking-[-0.01em] text-ink">{record.type} record</span>
+        <span className="text-xs text-ink-2">{record.type === "CNAME" ? "Proxy: DNS only. TTL: Auto." : "TTL: Auto."}</span>
+      </p>
+      <dl className="grid gap-2.5">
+        <RecordField label="Name" value={record.host} copyLabel={`name for the ${record.type} record`} />
+        <RecordField label="Content" value={record.value} copyLabel={`content for the ${record.type} record`} />
+      </dl>
+    </li>
+  );
+}
+
+/** A numbered instruction: the number in a small mark, the words beside it, and anything that belongs to it under them. */
+function Instruction({ number, title, children }: { readonly number: number; readonly title: ReactNode; readonly children?: ReactNode }): ReactElement {
+  return (
+    <li className="grid grid-cols-[1.625rem_minmax(0,1fr)] gap-3">
+      <span aria-hidden="true" className="grid size-[1.625rem] place-items-center rounded-full bg-sunken text-[0.8125rem] tabular-nums text-ink">
+        {number}
+      </span>
+      <div className="min-w-0">
+        <p className="pt-0.5 text-sm leading-relaxed text-ink">{title}</p>
+        {children === undefined ? null : <div className="mt-4">{children}</div>}
+      </div>
+    </li>
   );
 }
 
 /**
- * What a customer with their own domain does once their website is approved: the two settings to change at the company
- * they bought it from, shown with copy buttons, and a button that looks up their DNS and says how far it has got.
- * The records come from the domain stored for the business; the check reads nothing from this form.
+ * What a customer with their own domain does once their website is approved: three things to do at the company they bought
+ * it from, the records to add with a copy button on each value, and a button that looks up their DNS and says how far it has
+ * got. The records come from the domain stored for the business; the check reads nothing from this form.
  */
 export function ConnectDomainCard({ hostname, records, checkAction, emailUs, alreadyConnected }: ConnectDomainCardProps): ReactElement {
   const [state, formAction] = useActionState(checkAction, initialConnectDomainState);
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm leading-relaxed text-ink-soft">
-        Sign in to your domain registrar, the company you bought <span className="font-medium text-ink">{hostname}</span> from, and
-        open its DNS settings. Add {records.length === 1 ? "this record" : "these records"}. Leave everything else as it is,
-        especially anything about email.
-      </p>
+    <div className="grid gap-5">
+      <ol className="grid gap-6">
+        <Instruction
+          number={1}
+          title={
+            <>
+              Sign in to your domain registrar, the company you bought <span className="font-semibold">{hostname}</span> from, and open its DNS settings.
+            </>
+          }
+        />
+        <Instruction number={2} title={<>Add {records.length === 1 ? "this record" : "these records"}. Leave everything else as it is, especially anything about email.</>}>
+          <ul aria-label={`DNS records to add for ${hostname}`} className="divide-y divide-line">
+            {records.map((record) => (
+              <RecordRow key={`${record.type}-${record.host}`} record={record} />
+            ))}
+          </ul>
+          <p className="mt-4 text-xs leading-relaxed text-ink-2">“Proxy status” only exists on Cloudflare: set it to DNS only (grey cloud). Leave TTL on Auto, or the lowest value you can.</p>
+        </Instruction>
+        <Instruction number={3} title="Come back here and check. It can take a few minutes to a few hours.">
+          <form action={formAction}>
+            <SubmitButton pendingLabel="Checking…" className={DARK_BUTTON_SHAPE}>
+              Check my domain
+            </SubmitButton>
+          </form>
+        </Instruction>
+      </ol>
 
-      <div className="overflow-x-auto rounded-control border border-line">
-        <table className="w-full border-collapse whitespace-nowrap text-left text-sm">
-          <caption className="sr-only">DNS records to add for {hostname}</caption>
-          <thead>
-            <tr className="border-b border-line text-xs text-ink-soft">
-              <th scope="col" className="px-2 py-2 font-medium">Type</th>
-              <th scope="col" className="px-2 py-2 font-medium">Name</th>
-              <th scope="col" className="px-2 py-2 font-medium">Content</th>
-              <th scope="col" className="px-2 py-2 font-medium">Proxy</th>
-              <th scope="col" className="px-2 py-2 font-medium">TTL</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {records.map((record) => {
-              return (
-                <tr key={`${record.type}-${record.host}`}>
-                  <td className="px-2 py-3 font-medium">{record.type}</td>
-                  <td className="px-2 py-3">
-                    <CopyCell value={record.host} label={`name for the ${record.type} record`} />
-                  </td>
-                  <td className="px-2 py-3">
-                    <CopyCell value={record.value} label={`content for the ${record.type} record`} />
-                  </td>
-                  <td className="px-2 py-3 text-ink-soft">DNS only</td>
-                  <td className="px-2 py-3 text-ink-soft">Auto</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-xs text-ink-soft">
-        Same as in your registrar’s DNS table. “Proxy status” only exists on Cloudflare: set it to DNS only (grey cloud). Leave TTL on Auto, or the lowest value you can.
-      </p>
-
-      <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-ink-soft">
-        <li>If your registrar already has a record for the same name, change it to these values rather than adding a second one.</li>
-        <li>If your registrar won’t take <code className="text-ink">@</code> as a host, leave it blank or type your domain.</li>
-        <li>Changes can take a few minutes to a few hours. Once connected, your site may take a few more minutes to open securely.</li>
-        <li>If your domain already shows a website, it switches to your new one as soon as this takes effect.</li>
-      </ul>
-      <form action={formAction} className="flex flex-wrap items-center gap-3">
-        <SubmitButton size="sm" pendingLabel="Checking…">
-          Check my domain
-        </SubmitButton>
-      </form>
-
-      <div aria-live="polite">
+      <div aria-live="polite" className="grid gap-2">
         {state.status === "idle" && alreadyConnected ? (
-          <p role="status" className={`rounded-control px-4 py-3 text-sm ${VERDICTS.connected.tone}`}>
+          <p role="status" className={cn("rounded-lg px-4 py-3 text-sm", VERDICTS.connected.tone)}>
             {VERDICTS.connected.text}
           </p>
         ) : null}
         {state.status === "checked" ? (
-          <p role="status" className={`rounded-control px-4 py-3 text-sm ${VERDICTS[state.overall].tone}`}>
-            {VERDICTS[state.overall].text}
-          </p>
-        ) : null}
-        {state.status === "checked" ? (
-          <ul className="mt-2 space-y-0.5 text-xs text-ink-soft">
-            {state.records.map((record) => (
-              <li key={record.host}>
-                <code>{record.host}</code>: {STATUS_LABEL[record.status]}
-              </li>
-            ))}
-          </ul>
+          <>
+            <p role="status" className={cn("rounded-lg px-4 py-3 text-sm", VERDICTS[state.overall].tone)}>
+              {VERDICTS[state.overall].text}
+            </p>
+            <ul className="grid gap-0.5 text-xs text-ink-2">
+              {state.records.map((record) => (
+                <li key={record.host}>
+                  <code className="font-figure text-ink">{record.host}</code>: {STATUS_LABEL[record.status]}
+                </li>
+              ))}
+            </ul>
+          </>
         ) : null}
         {state.status === "error" ? (
-          <p role="alert" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
+          <p role="alert" className="rounded-lg bg-rattan-wash px-4 py-3 text-sm text-rattan-ink">
             {state.message}
           </p>
         ) : null}
       </div>
 
-      <p className="text-sm text-ink-soft">
-        Stuck? Tell us which company you bought it from and we’ll walk you through it: {emailUs}.
-      </p>
+      <p className="text-[0.8125rem] text-ink-2">Stuck? Tell us which company you bought it from and we’ll walk you through it: {emailUs}.</p>
     </div>
   );
 }

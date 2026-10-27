@@ -1,5 +1,4 @@
 import "server-only";
-import { randomBytes } from "node:crypto";
 import { getPayload } from "payload";
 import { hasWebsiteService } from "@brandbasket/billing";
 import { findBillingState } from "@brandbasket/db";
@@ -19,13 +18,6 @@ export type { SitePost } from "@/lib/site-post";
  * Content is read from Payload's database. Whether the website may be shown at all is read from the main database
  * (siteHasAccess): a business whose plan has ended gets nothing from this API, so its website goes down with its plan.
  */
-
-/** 32 bytes of hex. Long enough that guessing is hopeless, short enough to paste into an env var. */
-const TOKEN_BYTES = 32;
-
-export function newSiteApiToken(): string {
-  return randomBytes(TOKEN_BYTES).toString("hex");
-}
 
 interface RawTenant {
   readonly businessId?: unknown;

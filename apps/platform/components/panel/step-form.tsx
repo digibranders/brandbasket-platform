@@ -1,6 +1,8 @@
 "use client";
 
+import { CaretLeft, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
@@ -14,16 +16,43 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { DARK_BUTTON_SHAPE, SOFT_BUTTON } from "@/components/v2/classes";
+import { onboardingStepHref, stepBefore, type OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
 import { echoedValue, initialStepFormState, type StepFormState } from "@/lib/onboarding/form-state";
 
 export type StepAction = (state: StepFormState, formData: FormData) => Promise<StepFormState>;
 
 export const STEP_FIELD_CLASSES =
-  "mt-1.5 block w-full rounded-control border border-ink-soft/65 bg-paper px-3 py-2.5 text-base text-ink tabular-nums transition-colors duration-300 ease-calm placeholder:text-ink-soft/80 focus:border-accent aria-[invalid=true]:border-accent-deep";
+  "mt-1.5 block w-full rounded-control border border-ink-2/65 bg-surface px-3.5 py-2.5 text-base text-ink transition-colors duration-200 placeholder:text-ink-2/80 focus:border-ink aria-[invalid=true]:border-error md:text-sm";
 
 /** The same field a size down (less padding, smaller type), for a side matter beside something larger. */
 export const STEP_FIELD_COMPACT_CLASSES =
-  "mt-1.5 block w-full rounded-control border border-ink-soft/65 bg-paper px-3 py-1.5 text-[0.9375rem] text-ink tabular-nums transition-colors duration-300 ease-calm placeholder:text-ink-soft/80 focus:border-accent aria-[invalid=true]:border-accent-deep";
+  "mt-1.5 block w-full rounded-control border border-ink-2/65 bg-surface px-3 py-1.5 text-base text-ink transition-colors duration-200 placeholder:text-ink-2/80 focus:border-ink aria-[invalid=true]:border-error md:text-[0.8125rem]";
+
+/** A field's label, and the line of help under it. */
+export const STEP_LABEL_CLASSES = "block text-[0.8125rem] font-semibold text-ink";
+export const STEP_HINT_CLASSES = "mt-0.5 text-[0.8125rem] leading-relaxed text-ink-2";
+
+/** The padding of a step's fields inside the card, above its sticky footer. */
+export const STEP_BODY_CLASSES = "grid gap-6 px-5 py-6 md:px-8 md:py-7";
+
+/** The asterisk after a required field's label, in the accent so it is easy to find. */
+export function Required(): ReactElement {
+  return <RequiredMark className="text-rattan-ink" />;
+}
+
+/** A group of fields inside a step's card: a title, then the fields, with a hairline between one group and the next. */
+export function StepGroup({ title, hint, children }: { readonly title: string; readonly hint?: ReactNode; readonly children: ReactNode }): ReactElement {
+  return (
+    <div className="border-t border-line pt-6 first:border-t-0 first:pt-0">
+      <fieldset className="grid min-w-0 gap-5">
+        <legend className="mb-4 p-0 font-display text-[0.9375rem] font-semibold tracking-[-0.01em] text-ink">{title}</legend>
+        {hint === undefined ? null : <p className="-mt-1 text-[0.8125rem] leading-relaxed text-ink-2">{hint}</p>}
+        {children}
+      </fieldset>
+    </div>
+  );
+}
 
 /** The server accepts a link only when it starts with https:// and has something after it (any letter case). */
 export const HTTPS_LINK_PATTERN = "[Hh][Tt][Tt][Pp][Ss]://\\S.*";
@@ -35,6 +64,8 @@ export type FieldStatus = { readonly "aria-invalid"?: true; readonly "aria-descr
 /** What the fields of a step form render from. Holds no refs, so it can be handed to child components. */
 export interface StepFormControls {
   readonly errorId: string;
+  /** The form draws a refused field's message under the field (InlineError); otherwise StepFormError shows it. */
+  readonly inline: boolean;
   readonly state: StepFormState;
   readonly isPending: boolean;
   /** The message to show now: hidden while a new attempt is being sent. */
@@ -57,7 +88,7 @@ export interface StepForm {
  * The server-action form pattern every onboarding step shares, after get-started-flow: values echoed back on
  * error, the failing field focused and marked, and the message announced.
  */
-export function useStepForm(action: StepAction): StepForm {
+export function useStepForm(action: StepAction, { inline = false }: { readonly inline?: boolean } = {}): StepForm {
   const [state, formAction, isPending] = useActionState(action, initialStepFormState);
   const errorId = `step-form-error-${useId()}`;
   const formRef = useRef<HTMLFormElement>(null);
@@ -80,6 +111,7 @@ export function useStepForm(action: StepAction): StepForm {
     formAction,
     controls: {
       errorId,
+      inline,
       state,
       isPending,
       errorMessage,
@@ -96,6 +128,24 @@ interface StepFormErrorProps {
   readonly errorRef: RefObject<HTMLDivElement | null>;
 }
 
+/** The message of a refused save, drawn under the field it is about (see InlineError); StepFormError steps aside while one is on show. */
+export function InlineError({ controls, match }: { readonly controls: StepFormControls; readonly match: string | RegExp }): ReactElement | null {
+  const { errorMessage, invalidField, inline } = controls;
+  if (!inline || errorMessage === null || invalidField === null) return null;
+  if (typeof match === "string" ? match !== invalidField : !match.test(invalidField)) return null;
+  return (
+    <p data-inline-error="" role="alert" className="mt-1.5 flex items-start gap-1.5 text-[0.8125rem] font-semibold leading-snug text-error">
+      <WarningCircle size={16} weight="fill" aria-hidden="true" className="mt-px shrink-0" />
+      <span>{errorMessage}</span>
+    </p>
+  );
+}
+
+/**
+ * The message for the form as a whole, or for a field that has no place of its own to show it. A form with the
+ * `group/step` class hides it while an InlineError is on show; the field still points at it (aria-describedby), and a
+ * hidden element can be a description, so the message is read once, by the alert under the field.
+ */
 export function StepFormError({ controls, errorRef }: StepFormErrorProps): ReactElement | null {
   const { errorMessage, state } = controls;
   if (errorMessage === null) return null;
@@ -106,17 +156,20 @@ export function StepFormError({ controls, errorRef }: StepFormErrorProps): React
       id={controls.errorId}
       role="alert"
       tabIndex={-1}
-      className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep outline-none"
+      className="flex items-start gap-2 rounded-lg bg-sunken px-4 py-3 text-sm font-semibold text-error outline-none group-has-[[data-inline-error]]/step:hidden"
     >
-      {errorMessage}
-      {fixHref === undefined ? null : (
-        <>
-          {" "}
-          <Link href={fixHref} className="link-underline font-medium">
-            Go to that step
-          </Link>
-        </>
-      )}
+      <WarningCircle size={18} weight="fill" aria-hidden="true" className="mt-px shrink-0" />
+      <p>
+        {errorMessage}
+        {fixHref === undefined ? null : (
+          <>
+            {" "}
+            <Link href={fixHref} className="font-semibold text-ink underline underline-offset-4">
+              Go to that step
+            </Link>
+          </>
+        )}
+      </p>
     </div>
   );
 }
@@ -128,19 +181,56 @@ interface StepSubmitProps {
   readonly children?: ReactNode;
   /** A reason to hold the button back that the fields cannot express (a step that needs an upload first). */
   readonly disabled?: boolean;
+  /** A soft fill instead of the dark button, for a second form on a screen that already has its one dark button. */
+  readonly soft?: boolean;
 }
 
 /**
  * The step's submit button. It stays disabled until the form's required fields hold valid values (see
  * SubmitButton), while the action runs, and for any reason the step passes in `disabled`.
  */
-export function StepSubmit({ controls, label, pendingLabel, children, disabled = false }: StepSubmitProps): ReactElement {
+export function StepSubmit({ controls, label, pendingLabel, children, disabled = false, soft = false }: StepSubmitProps): ReactElement {
   return (
     <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center">
-      <SubmitButton disabled={disabled || controls.isPending} pendingLabel={pendingLabel} className="w-full sm:w-auto">
+      <SubmitButton disabled={disabled || controls.isPending} pendingLabel={pendingLabel} className={cn(DARK_BUTTON_SHAPE, soft && "bg-sunken! text-ink! hover:bg-line!", "w-full sm:w-auto")}>
         {label}
       </SubmitButton>
       {children}
+    </div>
+  );
+}
+
+interface StepFooterProps {
+  readonly controls: StepFormControls;
+  readonly label: string;
+  readonly pendingLabel: string;
+  /** The step this footer closes: Back goes to the one before it, and the first step has no Back. */
+  readonly step: OnboardingStepKey;
+  /** A short line between the buttons, hidden on a phone. */
+  readonly note?: string;
+  /** A reason to hold the button back that the fields cannot express (a step that needs an upload first). */
+  readonly disabled?: boolean;
+}
+
+/**
+ * The bar at the foot of a step's card: Back on the left, the save button on the right, in view while the fields scroll.
+ * It must sit inside the form, so the button knows when the form is complete and when it is running. On a phone it sits
+ * above the tab bar.
+ */
+export function StepFooter({ controls, label, pendingLabel, step, note, disabled = false }: StepFooterProps): ReactElement {
+  const previous = stepBefore(step);
+  return (
+    <div className="sticky bottom-[calc(2.875rem+max(0.5rem,env(safe-area-inset-bottom)))] z-10 flex items-center gap-3 rounded-b-lift border-t border-line bg-surface px-5 py-3 md:px-8 lg:bottom-0">
+      {previous === null ? null : (
+        <Link href={onboardingStepHref(previous)} className={cn(SOFT_BUTTON, "h-11! px-4!")}>
+          <CaretLeft size={16} aria-hidden="true" />
+          Back
+        </Link>
+      )}
+      {note === undefined ? null : <p className="hidden min-w-0 flex-1 text-xs text-ink-2 sm:block">{note}</p>}
+      <SubmitButton disabled={disabled || controls.isPending} pendingLabel={pendingLabel} className={cn(DARK_BUTTON_SHAPE, "ml-auto")}>
+        {label}
+      </SubmitButton>
     </div>
   );
 }
@@ -212,17 +302,18 @@ export function StepTextField({
   } as const;
   return (
     <div className={className}>
-      <label htmlFor={id} className="block text-sm font-medium">
+      <label htmlFor={id} className={STEP_LABEL_CLASSES}>
         {label}
-        {required ? <RequiredMark /> : null}
-        {optional ? <span className="font-normal text-ink-soft"> (optional)</span> : null}
+        {required ? <Required /> : null}
+        {optional ? <span className="font-medium text-ink-2"> (optional)</span> : null}
       </label>
-      {hint === undefined ? null : <p className="mt-0.5 text-sm text-ink-soft">{hint}</p>}
+      {hint === undefined ? null : <p className={STEP_HINT_CLASSES}>{hint}</p>}
       {rule === undefined ? (
         <input {...shared} type={type} />
       ) : (
         <RuleInput {...shared} rule={rule} type={type === "email" ? "text" : type} />
       )}
+      <InlineError controls={controls} match={name} />
     </div>
   );
 }
@@ -254,11 +345,11 @@ export function StepTextArea({
   const id = `${controls.errorId}-field-${name}`;
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium">
+      <label htmlFor={id} className={STEP_LABEL_CLASSES}>
         {label}
-        {required ? <RequiredMark /> : <span className="font-normal text-ink-soft"> (optional)</span>}
+        {required ? <Required /> : <span className="font-medium text-ink-2"> (optional)</span>}
       </label>
-      {hint === undefined ? null : <p className="mt-0.5 text-sm text-ink-soft">{hint}</p>}
+      {hint === undefined ? null : <p className={STEP_HINT_CLASSES}>{hint}</p>}
       <textarea
         id={id}
         name={name}
@@ -270,6 +361,7 @@ export function StepTextArea({
         className={STEP_FIELD_CLASSES}
         {...controls.fieldStatus(name)}
       />
+      <InlineError controls={controls} match={name} />
     </div>
   );
 }

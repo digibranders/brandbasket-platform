@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { DeleteAccountFlow } from "@/components/panel/delete-account-flow";
+import { SOFT_BUTTON } from "@/components/v2/classes";
+import { PageFrame } from "@/components/v2/page";
 import { planClosureFor } from "@/lib/account-exit-rules";
 import { hasRunningAddOnsFor, loadPackageEndsFor } from "@/lib/server/account-exit";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
@@ -23,19 +25,22 @@ export default async function DeleteAccountPage(): Promise<ReactElement> {
   const [addOnsRunning, packageEnds] = await Promise.all([hasRunningAddOnsFor(customer), loadPackageEndsFor(customer)]);
 
   return (
-    <>
-      <Link href="/settings" className="link-underline text-sm">
-        Settings
-      </Link>
-      <h1 className="panel-title mt-4">Delete account</h1>
-      <div className="mt-10">
-        <DeleteAccountFlow
-          deleteAccount={deleteAccountAction}
-          planEndsAt={planEndsAt(billing.subscription, new Date())}
-          addOnsRunning={addOnsRunning}
-          packageEnds={packageEnds}
-        />
-      </div>
-    </>
+    <PageFrame
+      title="Delete account"
+      lede="Close your account and end your plan."
+      width="form"
+      action={
+        <Link href="/settings" className={SOFT_BUTTON}>
+          Back to Settings
+        </Link>
+      }
+    >
+      <DeleteAccountFlow
+        deleteAccount={deleteAccountAction}
+        planEndsAt={planEndsAt(billing.subscription, new Date())}
+        addOnsRunning={addOnsRunning}
+        packageEnds={packageEnds}
+      />
+    </PageFrame>
   );
 }

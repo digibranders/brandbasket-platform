@@ -8,7 +8,7 @@ import { emailTeamInboxDefault, staffAccessReviewEmail, type EmailTransport, typ
  * runs it. The limits are per staff member per day, set well above a normal day's work.
  */
 
-export const REVIEW_HOURS = 24;
+const REVIEW_HOURS = 24;
 
 interface Limit {
   readonly action: string;
@@ -18,7 +18,7 @@ interface Limit {
   readonly what: string;
 }
 
-export const STAFF_ACCESS_LIMITS: readonly Limit[] = [
+const STAFF_ACCESS_LIMITS: readonly Limit[] = [
   { action: "invoice.export", result: "ok", atLeast: 4, what: "Exported the invoice register" },
   { action: "staff.sign_in", result: "failed", atLeast: 5, what: "Failed to sign in" },
   { action: "access.denied", result: "denied", atLeast: 5, what: "Was refused a page that needs a higher role" },

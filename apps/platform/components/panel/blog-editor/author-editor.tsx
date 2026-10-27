@@ -183,7 +183,7 @@ export function AuthorEditor({ author, save, setPhoto, removePhoto, remove }: Au
 
   return (
     <div className="-mt-4">
-      <div className="sticky top-0 z-30 -mx-5 border-b border-line/70 bg-paper/90 px-5 py-4 backdrop-blur-md sm:-mx-8 sm:px-8">
+      <div className="sticky top-0 z-30 -mx-6 border-b border-line/70 bg-paper/90 px-6 py-4 backdrop-blur-md md:-mx-8 md:px-8 xl:-mx-10 xl:px-10">
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
           <div className="flex min-w-0 items-center gap-3">
             <Link

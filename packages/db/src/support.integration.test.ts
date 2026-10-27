@@ -3,7 +3,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { users, businesses, businessMembers, staffMembers, accountClosures } from "./schema";
 import { supportAttachments, supportMessages, supportTickets } from "./schema/support";
 import { appendSupportReply, appendSupportReplyWithOutcome, beginSupportAccountErasure, claimSupportTicketsDueRetention, createSupportTicket, createSupportTicketWithOutcome, eraseSupportDataForUser, finalizeSupportTicketRetention, getSupportTicket, getSupportUnreadCount, markSupportAttachmentPurged, markSupportTicketRead, stageSupportAttachment } from "./queries/support";
-import { appendSupportMessageByStaff, countSupportTicketsAwaitingStaff, listSupportTicketsForStaff, updateSupportTicketByStaff } from "./queries/support-staff";
+import {
+  appendSupportMessageByStaff,
+  appendSupportMessageByStaffWithOutcome,
+  countSupportTicketsAwaitingStaff,
+  listSupportTicketsForStaff,
+  updateSupportTicketByStaff,
+} from "./queries/support-staff";
 import { captureErrorText, openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 import { withUserScope } from "./scope";
 
@@ -171,3 +177,14 @@ describe("listSupportTicketsForStaff by business", () => {
   });
 });
 
+describe("staff replies", () => {
+  it("tells a first reply from a replay of the same submission, so a customer is told once", async () => {
+    const ticket = await createSupportTicket(dbs.app.db, input);
+    const reply = { staffUserId: STAFF, ticketId: ticket.id, body: "We are on it.", visibility: "public" as const, submissionKey: "staff-outcome-123456" };
+    const first = await appendSupportMessageByStaffWithOutcome(dbs.staff.db, reply);
+    const replay = await appendSupportMessageByStaffWithOutcome(dbs.staff.db, reply);
+    expect([first.created, replay.created]).toEqual([true, false]);
+    expect(replay.message.id).toBe(first.message.id);
+    await expect(appendSupportMessageByStaffWithOutcome(dbs.staff.db, { ...reply, body: "A different reply." })).rejects.toThrow(/submission key/i);
+  });
+});

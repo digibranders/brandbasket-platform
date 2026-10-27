@@ -18,12 +18,6 @@ export type UploadPurpose = (typeof UPLOAD_PURPOSES)[number];
 /** The header carrying the original file name, percent-encoded because header values are Latin-1 only. */
 export const UPLOAD_FILE_NAME_HEADER = "X-File-Name";
 
-/** The header carrying which business a `media` upload belongs to (see collections/Media.ts's `businessId` field
- * and app/api/admin-content-media/route.ts). Only ever trusted from a staff session — the single-admin model gives
- * staff blanket access to every business, so a staff-supplied businessId here is not a privilege-escalation risk
- * the way a customer-supplied one would be. */
-export const UPLOAD_BUSINESS_ID_HEADER = "X-Business-Id";
-
 export const TOO_LARGE_MESSAGE = `That file is larger than ${MAX_UPLOAD_SIZE_LABEL}. Please upload a smaller image.`;
 
 export function isAcceptedUploadType(type: string): type is AcceptedUploadType {

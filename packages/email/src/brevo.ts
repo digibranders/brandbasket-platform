@@ -15,11 +15,16 @@ export interface BrevoConfig {
   readonly fetchFn?: typeof fetch;
   /** How long one delivery request may take before it is abandoned. */
   readonly timeoutMs?: number;
+  /** Pause before the second attempt after a retryable failure. */
+  readonly retryDelayMs?: number;
 }
 
 export const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 /** A slow Brevo must not hold a customer's request open, so every delivery is cut off after this long. */
 export const BREVO_TIMEOUT_MS = 10_000;
+/** One try plus one retry: a timed out request is usually a blip, and a customer is waiting on the code. */
+export const BREVO_MAX_ATTEMPTS = 2;
+export const BREVO_RETRY_DELAY_MS = 500;
 
 export class BrevoDeliveryError extends Error {
   readonly statusCode: number;
@@ -73,6 +78,12 @@ export function emailFailureSummary(error: unknown): string {
   return "Brevo could not be reached";
 }
 
+/** A timeout, a network error, a 5xx or a 429 may pass on a second try; any other 4xx (bad key, sender, blocked) will not. */
+function isRetryable(error: unknown): boolean {
+  if (!(error instanceof BrevoDeliveryError)) return true;
+  return error.statusCode >= 500 || error.statusCode === 429;
+}
+
 type EmailEnvironment = Readonly<Record<string, string | undefined>>;
 
 /**
@@ -108,27 +119,40 @@ export function createBrevoTransport(config: BrevoConfig): BrevoTransport {
         };
       }
 
-      const response = await fetcher(BREVO_API_URL, {
-        method: "POST",
-        headers: {
-          "api-key": config.apiKey,
-          "content-type": "application/json",
-          accept: "application/json",
-        },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(config.timeoutMs ?? BREVO_TIMEOUT_MS),
-      });
+      // Brevo's /smtp/email takes no idempotency key, so a retry after a response that timed out could send the message twice.
+      // For a verification code that is harmless; the first attempt's failure is logged either way.
+      for (let attempt = 1; ; attempt += 1) {
+        try {
+          const response = await fetcher(BREVO_API_URL, {
+            method: "POST",
+            headers: {
+              "api-key": config.apiKey,
+              "content-type": "application/json",
+              accept: "application/json",
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(config.timeoutMs ?? BREVO_TIMEOUT_MS),
+          });
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => "");
-        throw new BrevoDeliveryError(
-          `Brevo email delivery failed with status ${response.status}: ${errorText}`,
-          response.status,
-          errorText,
-        );
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => "");
+            throw new BrevoDeliveryError(
+              `Brevo email delivery failed with status ${response.status}: ${errorText}`,
+              response.status,
+              errorText,
+            );
+          }
+          return { providerMessageId: messageIdOf(await response.json().catch(() => null)) };
+        } catch (error) {
+          const willRetry = attempt < BREVO_MAX_ATTEMPTS && isRetryable(error);
+          console.error(
+            `[email] Brevo attempt ${attempt} of ${BREVO_MAX_ATTEMPTS} failed${willRetry ? "; retrying" : ""}`,
+            error,
+          );
+          if (!willRetry) throw error;
+          await new Promise((resolve) => setTimeout(resolve, config.retryDelayMs ?? BREVO_RETRY_DELAY_MS));
+        }
       }
-
-      return { providerMessageId: messageIdOf(await response.json().catch(() => null)) };
     },
   };
 }

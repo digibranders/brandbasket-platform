@@ -1,6 +1,6 @@
 # brandbasket-platform
 
-The customer dashboard and staff console behind Brandbasket's Local Business plans. A business owner signs up with an email address, picks **Care** or **Premium**, pays, then manages their website, content, appointments, billing and support. Staff run the same data from a separate console. `README.md` has local setup; `docs/` has operations and deployment runbooks.
+The customer dashboard and staff console behind Brandbasket's Local Business plans. A business owner signs up with an email address, picks Managed Website, pays, then manages their website, social and search work, billing and requests. Staff run the same data from a separate console. `README.md` has local setup; `docs/` has operations and deployment runbooks.
 
 Stack: pnpm 10 workspace · Node 24 · Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · zod · PostgreSQL with row-level security · Drizzle · Better Auth · Payload CMS · Razorpay · Brevo · Sentry · Vitest.
 
@@ -44,7 +44,7 @@ The scope is still `@brandbasket/*`; renaming it is planned.
 
 ## Dormant code
 
-Directory and listing features and the free plan are still in the tree but switched off: `BRAND.showsListing` is `false` in `apps/platform/lib/brand.ts`, and `proxy.ts` sends those paths to the not-found screen. Do not build on them without asking.
+The dashboard's directory and clinic pages and the public directory and booking endpoints were removed in plan 35. Still in the tree and switched off: the free-listing account type (`signup_choice = listing_only`, a business of kind `listing`), the directory and clinic tables and queries in `packages/db`, and the console's directory sections. Do not build on them without asking.
 
 ## Tests
 

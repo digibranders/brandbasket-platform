@@ -743,7 +743,7 @@ describe("paymentReceivedEmail", () => {
     totalCents: 353_882,
     paidAt: new Date("2026-10-15T08:00:00Z"),
     invoiceUrl: "https://app.brandbasket.in/billing/invoices/0192f3c4",
-    logoUrl: "https://app.brandbasket.in/brand/brandbasket-logo-dark.png",
+    logoUrl: "https://app.brandbasket.in/email/email-logo.png",
     nextPayment: { amountCents: 353_882, dueOn: new Date("2026-11-15T08:00:00Z") },
   } as const;
 

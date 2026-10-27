@@ -42,7 +42,7 @@ export interface StepProblem {
   readonly fixHref?: string;
 }
 
-export const LOCKED_PROBLEM: StepProblem = { message: ONBOARDING_LOCKED_MESSAGE, field: null };
+const LOCKED_PROBLEM: StepProblem = { message: ONBOARDING_LOCKED_MESSAGE, field: null };
 
 /** Reads everything the customer has sent so far. Takes the caller's tenant-scoped transaction. */
 export async function readOnboardingSnapshot(tx: ScopedTransaction): Promise<OnboardingSnapshot> {

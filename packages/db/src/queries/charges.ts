@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import {
@@ -13,6 +13,7 @@ import {
   type PaymentMethodDetails,
   type UnappliedPaymentReason,
 } from "./billing";
+import { startPaidChangeRequest } from "./change-request-payment";
 import { markDirectoryAdWinPaid } from "./directory-ads";
 import { startDirectoryPromotionForCharge } from "./directory-promotions";
 import { applyPaidBundledAddOn, bundledAddOnStillApplies, dropBundledAddOnOfCharge } from "./bundled-add-ons";
@@ -229,9 +230,10 @@ export async function findChargeByProviderOrder(
 }
 
 /**
- * Records the provider's id for a new online payment attempt on an open charge, replacing any earlier attempt's.
- * False when the charge is not open any more (paid or waived meanwhile), so the caller does not send the customer
- * to pay it. Staff connection only.
+ * Records the provider's id for a new online payment attempt on an open charge, replacing any earlier attempt's, or with
+ * `onlyIfUnset` only when the charge has no attempt yet (so two presses at once keep the first order).
+ * False when the charge is not open any more (paid or waived meanwhile) or, with `onlyIfUnset`, already has an order,
+ * so the caller does not send the customer to pay a replaced order. Staff connection only.
  */
 export async function setChargeProviderOrder(
   db: Runner,
@@ -240,12 +242,20 @@ export async function setChargeProviderOrder(
     readonly businessId: string;
     readonly provider: BillingProviderName;
     readonly providerOrderId: string;
+    readonly onlyIfUnset?: boolean;
   },
 ): Promise<boolean> {
   const rows = await db
     .update(charges)
     .set({ provider: input.provider, providerOrderId: input.providerOrderId })
-    .where(and(eq(charges.id, input.chargeId), eq(charges.businessId, input.businessId), eq(charges.status, "open")))
+    .where(
+      and(
+        eq(charges.id, input.chargeId),
+        eq(charges.businessId, input.businessId),
+        eq(charges.status, "open"),
+        input.onlyIfUnset === true ? isNull(charges.providerOrderId) : undefined,
+      ),
+    )
     .returning({ id: charges.id });
   return rows.length > 0;
 }
@@ -426,6 +436,8 @@ export async function recordChargePayment(db: Runner, input: ChargePayment): Pro
       if (charge.kind === "plan_upgrade") await applyPaidPlanUpgrade(tx, input.chargeId, input.paidAt);
       // A paid add-on is on from this moment, and the next renewal's amount is raised in the same transaction.
       if (charge.kind === "add_on") await applyPaidBundledAddOn(tx, input.chargeId, input.paidAt);
+      // A paid change quote starts its change request in the same transaction, so the money and the start never disagree.
+      if (charge.kind === "change_hours") await startPaidChangeRequest(tx, input.chargeId);
       // A paid press release starts its status row, waiting for the team, in the same transaction as the money.
       if (charge.kind === "press_release") {
         await tx

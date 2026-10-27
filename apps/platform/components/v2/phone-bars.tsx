@@ -7,8 +7,9 @@ import { useEffect, useRef, useState, type ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { AccountBar } from "@brandbasket/shared/ui/panel/account-bar";
 import { WordmarkLogo, type BrandLogo } from "@brandbasket/shared/ui/logo";
-import { isCurrent, linkIsCurrent, type RailSection } from "@/lib/rail";
+import { isCurrent, linkIsCurrent, menuChildren, type RailSection } from "@/lib/rail";
 import { CommandSearch } from "./command-search";
+import { CountPill } from "./count-pill";
 import type { AccountMenu } from "./rail";
 import { RailIconMark } from "./rail-icon";
 
@@ -36,7 +37,7 @@ export function PhoneBars({ sections, logo, menu, signOut }: PhoneBarsProps): Re
 
   return (
     <>
-      <header className="flex items-center justify-between bg-bg px-5 pb-2 pt-3 lg:hidden">
+      <header className="flex items-center justify-between bg-bg px-6 pb-2 pt-3 lg:hidden">
         <WordmarkLogo href="/" brand={logo} />
         <button type="button" onClick={() => setSearching(true)} aria-label="Search" className="grid size-10 place-items-center rounded-full text-ink transition-colors duration-200 hover:bg-sunken">
           <MagnifyingGlass size={22} aria-hidden="true" />
@@ -48,7 +49,10 @@ export function PhoneBars({ sections, logo, menu, signOut }: PhoneBarsProps): Re
           const current = linkIsCurrent(link, pathname);
           return (
             <Link key={link.href} href={link.href} aria-current={isCurrent(pathname, link.href) ? "page" : undefined} className={cn("grid justify-items-center gap-0.5 text-[0.6875rem] font-semibold", current ? "text-ink" : "text-ink-2")}>
-              <RailIconMark name={link.icon} current={current} />
+              <span className="relative">
+                <RailIconMark name={link.icon} current={current} />
+                <CountPill count={link.count} current={current} className="absolute -right-3 -top-1.5" />
+              </span>
               {link.label}
             </Link>
           );
@@ -84,12 +88,29 @@ export function PhoneBars({ sections, logo, menu, signOut }: PhoneBarsProps): Re
           {sections.map((section) => (
             <nav key={section.label ?? "main"} aria-label={section.label ?? "Main"} className="grid gap-0.5">
               {section.label === null ? null : <p className="px-3 pb-1 pt-3 text-xs text-ink-2">{section.label}</p>}
-              {section.links.flatMap((link) => [link, ...(link.children ?? []).map((child) => ({ ...child, icon: link.icon }))]).map((target) => (
-                <Link key={target.href + target.label} href={target.href} aria-current={isCurrent(pathname, target.href) ? "page" : undefined} className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm", isCurrent(pathname, target.href) ? "bg-sunken font-semibold" : "text-ink")}>
-                  <RailIconMark name={target.icon} current={isCurrent(pathname, target.href)} />
-                  {target.label}
-                </Link>
-              ))}
+              {section.links.map((link) => {
+                const here = isCurrent(pathname, link.href);
+                const children = menuChildren(link);
+                return (
+                  <div key={link.href + link.label}>
+                    <Link href={link.href} aria-current={here ? "page" : undefined} className={cn("flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm", here ? "bg-sunken font-semibold" : "text-ink")}>
+                      <RailIconMark name={link.icon} current={here} />
+                      {link.label}
+                    </Link>
+                    {children.length === 0 ? null : (
+                      <ul className="ml-[2.375rem] grid gap-0.5">
+                        {children.map((child) => (
+                          <li key={child.href + child.label}>
+                            <Link href={child.href} aria-current={isCurrent(pathname, child.href) ? "page" : undefined} className={cn("block rounded-md px-2.5 py-2 text-[0.8125rem]", isCurrent(pathname, child.href) ? "bg-sunken font-semibold text-ink" : "text-ink-2")}>
+                              {child.label}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
             </nav>
           ))}
           <div className="mt-auto">

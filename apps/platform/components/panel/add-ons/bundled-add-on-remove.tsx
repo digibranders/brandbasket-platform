@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ReactElement } from "react";
-import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SOFT_BUTTON } from "@/components/v2/classes";
 import type { DropCopy } from "@/lib/billing/drop-service";
 import { PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
@@ -56,22 +56,22 @@ export function BundledAddOnRemove({ addOn, title, endsOn, copy, headingId, acti
 
   if (!asking) {
     return (
-      <Button ref={openerRef} type="button" variant="secondary" size="sm" aria-label={`Remove ${title}`} onClick={() => setAsking(true)}>
+      <button ref={openerRef} type="button" className={SOFT_BUTTON} aria-label={`Remove ${title}`} onClick={() => setAsking(true)}>
         Remove
-      </Button>
+      </button>
     );
   }
 
   return (
-    <div className="max-w-sm space-y-3 sm:text-right">
+    <div className="max-w-sm space-y-3">
       <div role="group" aria-labelledby={questionId} className="space-y-1.5 text-sm">
         <p id={questionId} ref={questionRef} tabIndex={-1} className="text-ink outline-none">
           Remove {title}? It stays until {endsOn}, then stops.
         </p>
-        <p id={keepsId} className="tabular-nums text-ink-soft">
+        <p id={keepsId} className="tabular-nums text-ink-2">
           {copy.keeps}
         </p>
-        <p id={monthlyId} className="tabular-nums text-ink-soft">
+        <p id={monthlyId} className="tabular-nums text-ink-2">
           {copy.monthly}
         </p>
         {copy.websiteOffline === null ? null : (
@@ -85,15 +85,13 @@ export function BundledAddOnRemove({ addOn, title, endsOn, copy, headingId, acti
           </p>
         )}
       </div>
-      <form ref={formRef} action={formAction} className="flex flex-wrap items-center gap-3 sm:justify-end">
+      <form ref={formRef} action={formAction} className="flex flex-wrap items-center gap-3">
         <input type="hidden" name="addOn" value={addOn} />
         {controls.saved ? null : (
           <>
-            <Button
+            <button
               type="submit"
-              variant="secondary"
-              size="sm"
-              className="text-accent-deep! hover:bg-accent-pale!"
+              className={`${SOFT_BUTTON} text-error! disabled:opacity-55`}
               disabled={controls.isPending}
               aria-busy={controls.isPending}
               aria-describedby={[keepsId, monthlyId, copy.websiteOffline === null ? null : websiteOfflineId, copy.packageEnds === null ? null : packageEndsId]
@@ -102,11 +100,10 @@ export function BundledAddOnRemove({ addOn, title, endsOn, copy, headingId, acti
               aria-label={controls.isPending ? `Removing ${title}` : `Yes, remove ${title}`}
             >
               {controls.isPending ? "Removing…" : "Yes, remove"}
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
-              variant="quiet"
-              size="sm"
+              className="text-[0.8125rem] font-semibold text-ink-2 underline underline-offset-[3px] transition-colors duration-200 hover:text-ink disabled:opacity-55"
               disabled={controls.isPending}
               aria-label={`Keep it: don't remove ${title}`}
               onClick={() => {
@@ -115,7 +112,7 @@ export function BundledAddOnRemove({ addOn, title, endsOn, copy, headingId, acti
               }}
             >
               Keep it
-            </Button>
+            </button>
           </>
         )}
         <PanelFormStatus controls={controls} statusRef={statusRef} savedText={`${title} stops on ${endsOn}.`} />

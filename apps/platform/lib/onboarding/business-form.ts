@@ -15,7 +15,7 @@ import { isDayMode, type OpeningHours } from "@brandbasket/shared/lib/onboarding
 
 const TIME_OF_DAY = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-export const PROFILE_TEXT_FIELDS = [
+const PROFILE_TEXT_FIELDS = [
   "tagline",
   "addressLine1",
   "addressLine2",
@@ -37,7 +37,7 @@ function optionalLine(max: number, tooLong: string) {
 export const GOOGLE_LINK_MESSAGE = "Paste the full link to your Google Business Profile, starting https://";
 export const GOOGLE_HOST_MESSAGE =
   "That doesn't look like a Google Maps link. Find your business in Google Maps, tap Share and copy the link.";
-export const ROUND_THE_CLOCK_MESSAGE = "For round-the-clock opening, choose Open 24 hours.";
+const ROUND_THE_CLOCK_MESSAGE = "For round-the-clock opening, choose Open 24 hours.";
 
 const googleUrl = blankOr(
   httpsUrl({ invalid: GOOGLE_LINK_MESSAGE, tooLong: "That link is too long. Paste the Share link from Google Maps instead." }).refine(

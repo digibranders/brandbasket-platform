@@ -1,11 +1,15 @@
+import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eraseClosedAccount, erasedBusinessSlug, erasedUserEmail, findErasureBlock, listClosuresDueForErasure } from "./queries/account-erasure";
-import { beginSupportAccountErasure, createSupportTicket, markSupportAttachmentPurged, stageSupportAttachment } from "./queries/support";
+import { beginSupportAccountErasure, createSupportTicket, createSupportTicketWithOutcome, markSupportAttachmentPurged, stageSupportAttachment } from "./queries/support";
+import { acceptChangeQuote, sendChangeQuote } from "./queries/change-request-staff";
+import { findChargeForBusiness, recordChargePayment } from "./queries/charges";
 import { openAccountClosure, restoreAccountClosure } from "./queries/account-closures";
 import { findActivePlan, insertSubscription, recordPaymentAndActivate, type Plan } from "./queries/billing";
 import { insertTaxInvoice } from "./queries/tax-invoices";
 import { supportAttachments } from "./schema/support";
+import { changeRequests } from "./schema/change-requests";
 import { accountClosures, accountOtps, accounts, addOnSubscriptions, billingProfiles, businessMembers, businesses, payments, sessions, staffMembers, subscriptions, userPrivacySettings, users, verifications } from "./schema";
 import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
 
@@ -33,7 +37,7 @@ async function count(table: string, where = "true"): Promise<number> {
 }
 
 /** A closed account with something in every kind of table the erase touches or keeps. */
-async function seedClosedAccount(withSupport = false): Promise<{ closureId: string; subscriptionId: string }> {
+async function seedClosedAccount(withSupport = false, withChangeQuote = false): Promise<{ closureId: string; subscriptionId: string; chargeId: string }> {
   const db = dbs.owner.db;
   await db.insert(users).values({ id: USER_ID, name: "Meera Iyer", email: "meera@example.com", emailVerified: true, phoneNumber: "+919820099999", phoneNumberVerified: true });
   await db.insert(sessions).values({ id: "s1", token: "tok", expiresAt: NOW, userId: USER_ID });
@@ -66,6 +70,7 @@ async function seedClosedAccount(withSupport = false): Promise<{ closureId: stri
   await raw(`insert into directory_claims (id, business_id, listing_key, business_name, phone) values ('${id(7)}', '${businessId}', 'physio/mh/thane/aster-physio', 'Aster Physio', '+919820099999')`);
   await raw(`insert into directory_business_profiles (business_id, street_address, phone) values ('${businessId}', '1 Road', '+919820099999')`);
   await raw(`insert into projects (id, business_id) values ('${id(8)}', '${businessId}')`);
+  await raw(`insert into project_preview_images (project_id, business_id, preview_url, content_type, width, height, image) values ('${id(8)}', '${businessId}', 'https://aster-preview.example.com', 'image/webp', 1280, 800, '\\x01')`);
   await raw(`insert into domains (id, business_id, hostname) values ('${id(9)}', '${businessId}', 'aster.example')`);
   await raw(`insert into email_messages (id, to_address, subject, template, body_text, body_html, transport) values ('${id(10)}', 'meera@example.com', 's', 't', 'b', '<p>b</p>', 'outbox')`);
   await raw(`insert into email_messages (id, to_address, subject, template, body_text, body_html, transport) values ('${id(11)}', 'someone-else@example.com', 's', 't', 'b', '<p>b</p>', 'outbox')`);
@@ -157,8 +162,26 @@ async function seedClosedAccount(withSupport = false): Promise<{ closureId: stri
     await createSupportTicket(dbs.app.db, {userId:USER_ID,businessId,category:"bug",subject:"Private account screenshot",description:"Remove this private account screenshot.",submissionKey:"private-erasure-test",attachmentIds:[attachmentId]});
   }
 
+  // A change request the customer accepted a quote for: its charge is open and unpaid.
+  let chargeId = "";
+  if (withChangeQuote) {
+    const { ticket } = await createSupportTicketWithOutcome(dbs.app.db, {
+      userId: USER_ID,
+      businessId,
+      category: "website_change",
+      subject: "Add an Implants page",
+      description: "Please add a page about implants.",
+      submissionKey: "erasure-change-request-abcdefgh",
+      changeRequest: { kind: "website", page: "Home" },
+    });
+    const [request] = await db.select({ id: changeRequests.id }).from(changeRequests).where(eq(changeRequests.ticketId, ticket.id));
+    if (request === undefined) throw new Error("No request was made");
+    await sendChangeQuote(dbs.staff.db, { requestId: request.id, staffId: STAFF_ID, what: "New page", hours: 2, workingDays: 3, unitCents: 50_000, currency: "INR", now: NOW });
+    chargeId = (await acceptChangeQuote(dbs.staff.db, { userId: USER_ID, requestId: request.id, businessId, taxRateBasisPoints: 1800, now: NOW })).chargeId;
+  }
+
   const closure = await openAccountClosure(dbs.staff.db, { userId: USER_ID, businessId, now: CLOSED_AT, eraseAfter: ERASE_AFTER });
-  return { closureId: closure.id, subscriptionId: subscription.id };
+  return { closureId: closure.id, subscriptionId: subscription.id, chargeId };
 }
 
 beforeEach(async () => {
@@ -194,7 +217,7 @@ describe("eraseClosedAccount", () => {
     expect(outcome.storageKeys.every((key) => key.startsWith(`t/${businessId}/`))).toBe(true);
     expect(outcome.vimeoIds).toEqual(["123456789"]);
 
-    for (const table of ["patients", "practitioners", "leads", "setup_invites", "media_assets", "directory_pictures", "directory_videos", "directory_claims", "directory_business_profiles", "projects", "domains", "business_members"]) {
+    for (const table of ["patients", "practitioners", "leads", "setup_invites", "media_assets", "directory_pictures", "directory_videos", "directory_claims", "directory_business_profiles", "projects", "project_events", "project_preview_images", "domains", "business_members"]) {
       expect(await count(table, table === "business_members" ? `business_id = '${businessId}'` : "true"), table).toBe(0);
     }
     expect(await count("email_messages", "to_address = 'meera@example.com'")).toBe(0);
@@ -228,6 +251,43 @@ describe("eraseClosedAccount", () => {
     expect(staff?.name).toBe("Staff");
   });
 
+  it("erases the saved answers, updates, monthly numbers, deliverables, reports, site events and calls of the closed business and leaves another business's, and hands back the post pictures", async () => {
+    const { closureId } = await seedClosedAccount();
+    const [control] = await dbs.owner.db.insert(businesses).values({ slug: "birch-dental", name: "Birch Dental", currency: "INR" }).returning({ id: businesses.id });
+    const controlId = control?.id ?? "";
+    const postIds: Record<string, string> = { [businessId]: randomUUID(), [controlId]: randomUUID() };
+    for (const id of [businessId, controlId]) {
+      await dbs.owner.db.execute(sql.raw(`insert into service_setup (id, business_id, service) values (gen_random_uuid(), '${id}', 'social')`));
+      await dbs.owner.db.execute(sql.raw(`insert into activity_events (id, business_id, title) values (gen_random_uuid(), '${id}', 'Ads narrowed to 4 km')`));
+      await dbs.owner.db.execute(sql.raw(`insert into business_activity (id, business_id, actor_kind, kind, summary) values (gen_random_uuid(), '${id}', 'staff', 'payment.refunded', 'Marked a payment refunded')`));
+      await dbs.owner.db.execute(sql.raw(`insert into monthly_snapshots (id, business_id, service, month) values (gen_random_uuid(), '${id}', 'social', '2026-10-01')`));
+      await dbs.owner.db.execute(sql.raw(`insert into monthly_reports (id, business_id, service, month, url) values (gen_random_uuid(), '${id}', 'social', '2026-10-01', 'https://example.com/report')`));
+      await dbs.owner.db.execute(sql.raw(`insert into site_events (id, business_id, kind) values (gen_random_uuid(), '${id}', 'call')`));
+      await dbs.owner.db.execute(
+        sql.raw(
+          `insert into deliverables (id, business_id, service, kind, title, due_on, image_key, image_mime, image_bytes, image_width, image_height, image_sha256)
+           values ('${postIds[id]}', '${id}', 'social', 'post', 'Diwali offer post', '2026-11-01', 'deliverables/${postIds[id]}/display', 'image/jpeg', 1000, 1080, 1080, 'abc')`,
+        ),
+      );
+      await dbs.owner.db.execute(sql.raw(`insert into deliverables (id, business_id, service, kind, title) values (gen_random_uuid(), '${id}', 'search', 'page', 'Faster home page')`));
+      await dbs.owner.db.execute(
+        sql.raw(`insert into team_calls (id, business_id, reason, starts_at, ends_at) values (gen_random_uuid(), '${id}', 'billing', '2026-12-02T08:30:00Z', '2026-12-02T09:00:00Z')`),
+      );
+    }
+    const outcome = await eraseClosedAccount(dbs.staff.db, { closureId, now: NOW });
+    expect(outcome.kind).toBe("erased");
+    if (outcome.kind === "erased") {
+      expect(outcome.storageKeys).toContain(`deliverables/${postIds[businessId]}/display`);
+      expect(outcome.storageKeys).not.toContain(`deliverables/${postIds[controlId]}/display`);
+    }
+    for (const table of ["service_setup", "activity_events", "business_activity", "monthly_snapshots", "monthly_reports", "site_events", "team_calls"]) {
+      expect(await count(table, `business_id = '${businessId}'`), `${table} of the closed business`).toBe(0);
+      expect(await count(table, `business_id = '${controlId}'`), `${table} of the other business`).toBe(1);
+    }
+    expect(await count("deliverables", `business_id = '${businessId}'`)).toBe(0);
+    expect(await count("deliverables", `business_id = '${controlId}'`)).toBe(2);
+  });
+
   it("refuses account scrubbing until private support objects are purged, then removes their content", async () => {
     const { closureId } = await seedClosedAccount(true);
     const attachmentId = "00000000-0000-7000-8000-000000000099";
@@ -253,6 +313,18 @@ describe("eraseClosedAccount", () => {
       expect(
         outcome.storageKeys.every((key) => !key.startsWith("support/")),
       ).toBe(true);
+  });
+
+  it("lets go of the open charge of a change quote that goes with the account, so a late payment starts nothing", async () => {
+    const { closureId, chargeId } = await seedClosedAccount(false, true);
+    expect(await count("change_requests")).toBe(1);
+
+    expect((await eraseClosedAccount(dbs.staff.db, { closureId, now: NOW })).kind).toBe("erased");
+
+    expect(await count("change_requests")).toBe(0);
+    expect(await findChargeForBusiness(dbs.staff.db, businessId, chargeId)).toMatchObject({ status: "waived", paymentId: null });
+    const late = await recordChargePayment(dbs.staff.db, { chargeId, businessId, provider: "fake", providerPaymentId: "fake_late_1", amountCents: 100_000, currency: "INR", paidAt: NOW, now: NOW });
+    expect(late.outcome).not.toBe("paid");
   });
 
   it("does nothing a second time", async () => {
@@ -412,12 +484,12 @@ describe("what the erase knows about", () => {
   ];
   /** Tables the erase empties for the business. */
   const ERASED = [
-    "activity_events", "appointment_services", "appointment_settings", "appointments", "billing_profiles", "booking_otps", "business_announcements", "business_closures",
-    "business_hours", "business_members", "business_modules", "business_profiles", "change_requests", "chatbot_leads", "chatbots", "directory_business_categories", "directory_business_faqs",
+    "activity_events", "appointment_services", "appointment_settings", "appointments", "billing_profiles", "booking_otps", "business_activity", "business_announcements", "business_closures",
+    "business_hours", "business_members", "business_modules", "business_profiles", "change_requests", "chatbot_leads", "chatbots", "deliverables", "directory_business_categories", "directory_business_faqs",
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
-    "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "monthly_snapshots", "onboarding_progress",
-    "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "projects", "service_setup", "services",
-    "setup_call_bookings", "setup_invites", "support_tickets",
+    "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "monthly_reports", "monthly_snapshots", "onboarding_progress",
+    "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_preview_images", "projects", "service_setup", "services",
+    "setup_call_bookings", "setup_invites", "site_events", "support_tickets", "team_calls",
   ];
 
   it("sorts every table that points at a business into erased or kept, so a new one cannot be forgotten", async () => {

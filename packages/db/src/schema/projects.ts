@@ -13,6 +13,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
+import { users } from "./auth";
 import { businesses } from "./businesses";
 import { createdAt, updatedAt } from "./columns";
 import { staffMembers } from "./staff";
@@ -57,13 +58,10 @@ export const projects = pgTable(
     launchedAt: timestamp("launched_at", { withTimezone: true }),
     /** The staff member building it; null until someone is assigned on the console's Projects board. */
     assignedStaffId: text("assigned_staff_id").references(() => staffMembers.userId),
-    /** Where the build was when staff put it on hold, so Resume returns it there. Null unless on hold. */
-    statusBeforeHold: projectStatus("status_before_hold"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
-    check("projects_status_before_hold_check", sql`${table.status} = 'on_hold' or ${table.statusBeforeHold} is null`),
     // One open project per business; finished and cancelled ones accumulate.
     uniqueIndex("projects_one_open_per_business_idx")
       .on(table.businessId)
@@ -71,6 +69,11 @@ export const projects = pgTable(
     // Target of the (project_id, business_id) foreign keys below. Foreign key checks bypass row-level security,
     // so a plain project_id reference would let one tenant attach rows to another tenant's project.
     unique("projects_id_business_id_unique").on(table.id, table.businessId),
+    // A pause reason belongs to a paused project only.
+    check(
+      "projects_hold_reason_check",
+      sql`${table.onHoldReason} is null or (${table.status} = 'on_hold' and char_length(btrim(${table.onHoldReason})) between 3 and 200)`,
+    ),
   ],
 );
 
@@ -120,6 +123,14 @@ export const setupCallBookings = pgTable(
     /** When the meeting starts and ends. Null until the booking page has reported it. Set together. */
     startsAt: timestamp("starts_at", { withTimezone: true }),
     endsAt: timestamp("ends_at", { withTimezone: true }),
+    /** When staff marked the call as held. Ends the customer's first look (apps/platform/lib/first-look.ts). Null until then. */
+    heldAt: timestamp("held_at", { withTimezone: true }),
+    /** The staff member who marked it. */
+    heldByStaffId: text("held_by_staff_id").references(() => users.id),
+    /** What was agreed on the call, written by staff once it is held (plan 32). All three are set together. */
+    summary: text("summary"),
+    summaryAt: timestamp("summary_at", { withTimezone: true }),
+    summaryByStaffId: text("summary_by_staff_id").references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -129,6 +140,11 @@ export const setupCallBookings = pgTable(
     check(
       "setup_call_bookings_time_check",
       sql`(${table.startsAt} is null and ${table.endsAt} is null) or (${table.startsAt} is not null and ${table.endsAt} is not null and ${table.endsAt} > ${table.startsAt})`,
+    ),
+    check("setup_call_bookings_held_check", sql`(${table.heldAt} is null) = (${table.heldByStaffId} is null)`),
+    check(
+      "setup_call_bookings_summary_check",
+      sql`(${table.summary} is null) = (${table.summaryAt} is null) and (${table.summary} is null) = (${table.summaryByStaffId} is null) and (${table.summary} is null or (${table.heldAt} is not null and char_length(btrim(${table.summary})) between 3 and 600))`,
     ),
   ],
 );

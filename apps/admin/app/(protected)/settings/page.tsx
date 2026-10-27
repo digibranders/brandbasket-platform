@@ -91,7 +91,7 @@ export default async function SettingsPage({
       <Section id="website-form" title="Website form" aside={latestWebsiteLead === null ? "Nothing received yet" : "Reaching us"}>
         {latestWebsiteLead === null ? (
           <Quiet>
-            No enquiry has come in from the website's forms yet. If the website is live, check that its PLATFORM_LEADS_URL and LEADS_API_TOKEN are set in
+            No enquiry has come in from the website&apos;s forms yet. If the website is live, check that its PLATFORM_LEADS_URL and LEADS_API_TOKEN are set in
             Vercel; until then enquiries reach the email inbox only.
           </Quiet>
         ) : (

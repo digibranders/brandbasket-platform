@@ -3,13 +3,13 @@ import { PROJECT_MOVE_NOTICES, projectMoveNoticeHref, readProjectMoveNotice } fr
 
 describe("project move notices", () => {
   it("links back to the client's Project tab with the notice", () => {
-    expect(projectMoveNoticeHref("b1", "held")).toBe("/clients/b1/project?move=held");
+    expect(projectMoveNoticeHref("b1", "cancelled")).toBe("/clients/b1/project?move=cancelled");
   });
 
   it("reads only a known notice, never free text", () => {
-    expect(readProjectMoveNotice("held")).toBe("held");
+    expect(readProjectMoveNotice("cancelled")).toBe("cancelled");
     expect(readProjectMoveNotice("<script>")).toBeNull();
-    expect(readProjectMoveNotice(["held"])).toBeNull();
+    expect(readProjectMoveNotice(["cancelled"])).toBeNull();
     expect(readProjectMoveNotice(undefined)).toBeNull();
   });
 

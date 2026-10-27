@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
@@ -83,15 +84,15 @@ describe("createProxy", () => {
   });
 
 
-  it("shows the dashboard no directory-only page: those paths get the dashboard's not-found screen", () => {
+  it("treats the removed directory and clinic paths like any other path: the dashboard's missing-page route answers them", () => {
+    const removed = ["/deals", "/business", "/photos", "/listing", "/advertise", "/reviews", "/leads", "/appointments", "/patients"];
     const proxy = createProxy({ app: "http://localbusiness.localhost:3000" });
-    for (const path of ["/deals", "/business", "/listing", "/advertise", "/reviews", "/leads", "/deals/new"]) {
+    for (const path of removed) {
       const response = proxy(request(`http://localbusiness.localhost:3000${path}`, "localbusiness.localhost:3000"));
-      expect(isRewrite(response), path).toBe(true);
-      expect(getRewrittenUrl(response), path).toBe("http://localbusiness.localhost:3000/app-host/not-here");
+      expect(getRewrittenUrl(response), path).toBe(`http://localbusiness.localhost:3000/app-host${path}`);
+      expect(existsSync(new URL(`./app/app-host/(protected)${path}/page.tsx`, import.meta.url)), `${path} has no page`).toBe(false);
     }
-    const billing = proxy(request("http://localbusiness.localhost:3000/billing", "localbusiness.localhost:3000"));
-    expect(getRewrittenUrl(billing)).toBe("http://localbusiness.localhost:3000/app-host/billing");
+    expect(existsSync(new URL("./app/app-host/[...missing]/page.tsx", import.meta.url))).toBe(true);
   });
 
   it("rewrites a media URL on the app host to the app-host media route", () => {

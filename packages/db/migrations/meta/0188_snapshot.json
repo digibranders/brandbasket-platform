@@ -1,5 +1,5 @@
 {
-  "id": "4f6bb569-a4d8-44eb-8c49-5a6a7232b47e",
+  "id": "616027ce-c2b0-4fd8-9f4c-9030e7091733",
   "prevId": "93420010-cb6b-45f2-8861-546ed45d2931",
   "version": "7",
   "dialect": "postgresql",
@@ -5279,6 +5279,381 @@
         "chatbots_website_url_check": {
           "name": "chatbots_website_url_check",
           "value": "\"chatbots\".\"website_url\" is null or \"chatbots\".\"website_url\" ~ '^https?://[^[:space:]]{1,255}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.activity_events": {
+      "name": "activity_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "service": {
+          "name": "service",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_by_staff_id": {
+          "name": "created_by_staff_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "activity_events_business_idx": {
+          "name": "activity_events_business_idx",
+          "columns": [
+            {
+              "expression": "business_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "activity_events_business_id_businesses_id_fk": {
+          "name": "activity_events_business_id_businesses_id_fk",
+          "tableFrom": "activity_events",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "activity_events_created_by_staff_id_users_id_fk": {
+          "name": "activity_events_created_by_staff_id_users_id_fk",
+          "tableFrom": "activity_events",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by_staff_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "activity_events_service_check": {
+          "name": "activity_events_service_check",
+          "value": "\"activity_events\".\"service\" is null or \"activity_events\".\"service\" in ('website', 'social', 'search')"
+        },
+        "activity_events_title_check": {
+          "name": "activity_events_title_check",
+          "value": "char_length(\"activity_events\".\"title\") between 3 and 140"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.monthly_snapshots": {
+      "name": "monthly_snapshots",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "service": {
+          "name": "service",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "month": {
+          "name": "month",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ad_spend_cents": {
+          "name": "ad_spend_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ad_budget_cents": {
+          "name": "ad_budget_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ad_enquiries": {
+          "name": "ad_enquiries",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "posts_published": {
+          "name": "posts_published",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "posts_planned": {
+          "name": "posts_planned",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "keywords_page_one": {
+          "name": "keywords_page_one",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "keywords_page_one_prev": {
+          "name": "keywords_page_one_prev",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by_staff_id": {
+          "name": "updated_by_staff_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "monthly_snapshots_business_service_month_idx": {
+          "name": "monthly_snapshots_business_service_month_idx",
+          "columns": [
+            {
+              "expression": "business_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "service",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "monthly_snapshots_business_id_businesses_id_fk": {
+          "name": "monthly_snapshots_business_id_businesses_id_fk",
+          "tableFrom": "monthly_snapshots",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "monthly_snapshots_updated_by_staff_id_users_id_fk": {
+          "name": "monthly_snapshots_updated_by_staff_id_users_id_fk",
+          "tableFrom": "monthly_snapshots",
+          "tableTo": "users",
+          "columnsFrom": [
+            "updated_by_staff_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "monthly_snapshots_service_check": {
+          "name": "monthly_snapshots_service_check",
+          "value": "\"monthly_snapshots\".\"service\" in ('social', 'search')"
+        },
+        "monthly_snapshots_month_check": {
+          "name": "monthly_snapshots_month_check",
+          "value": "extract(day from \"monthly_snapshots\".\"month\") = 1"
+        },
+        "monthly_snapshots_figures_check": {
+          "name": "monthly_snapshots_figures_check",
+          "value": "coalesce(\"monthly_snapshots\".\"ad_spend_cents\", 0) >= 0 and coalesce(\"monthly_snapshots\".\"ad_budget_cents\", 0) >= 0 and coalesce(\"monthly_snapshots\".\"ad_enquiries\", 0) >= 0\n        and coalesce(\"monthly_snapshots\".\"posts_published\", 0) >= 0 and coalesce(\"monthly_snapshots\".\"posts_planned\", 0) >= 0\n        and coalesce(\"monthly_snapshots\".\"keywords_page_one\", 0) >= 0 and coalesce(\"monthly_snapshots\".\"keywords_page_one_prev\", 0) >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.service_setup": {
+      "name": "service_setup",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "service": {
+          "name": "service",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "answers": {
+          "name": "answers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "service_setup_business_service_idx": {
+          "name": "service_setup_business_service_idx",
+          "columns": [
+            {
+              "expression": "business_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "service",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "service_setup_business_id_businesses_id_fk": {
+          "name": "service_setup_business_id_businesses_id_fk",
+          "tableFrom": "service_setup",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "service_setup_service_check": {
+          "name": "service_setup_service_check",
+          "value": "\"service_setup\".\"service\" in ('social', 'search')"
         }
       },
       "isRLSEnabled": false
@@ -11103,39 +11478,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "source": {
-          "name": "source",
-          "type": "lead_source",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'website_form'"
-        },
-        "plans": {
-          "name": "plans",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
-        "city": {
-          "name": "city",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "page": {
-          "name": "page",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "assigned_staff_id": {
-          "name": "assigned_staff_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -11194,19 +11536,6 @@
           "tableTo": "staff_members",
           "columnsFrom": [
             "attached_by_staff_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "leads_assigned_staff_id_staff_members_user_id_fk": {
-          "name": "leads_assigned_staff_id_staff_members_user_id_fk",
-          "tableFrom": "leads",
-          "tableTo": "staff_members",
-          "columnsFrom": [
-            "assigned_staff_id"
           ],
           "columnsTo": [
             "user_id"
@@ -12753,6 +13082,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "held_at": {
+          "name": "held_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "held_by_staff_id": {
+          "name": "held_by_staff_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -12792,6 +13133,19 @@
           "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "setup_call_bookings_held_by_staff_id_users_id_fk": {
+          "name": "setup_call_bookings_held_by_staff_id_users_id_fk",
+          "tableFrom": "setup_call_bookings",
+          "tableTo": "users",
+          "columnsFrom": [
+            "held_by_staff_id"
           ],
           "columnsTo": [
             "id"
@@ -16449,16 +16803,6 @@
       "values": [
         "on",
         "off"
-      ]
-    },
-    "public.lead_source": {
-      "name": "lead_source",
-      "schema": "public",
-      "values": [
-        "website_form",
-        "pricing_page",
-        "signup",
-        "staff"
       ]
     },
     "public.lead_status": {

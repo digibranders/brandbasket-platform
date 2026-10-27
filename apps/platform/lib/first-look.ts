@@ -26,23 +26,48 @@ export function servicesBought(lines: readonly ServiceLine[]): readonly ServiceK
   return MONTHLY_ADD_ON_IDS.filter((id) => paid.has(id)).map((id) => SERVICE_OF[id]);
 }
 
-/**
- * Whether the account is still in its first look (plan 28 section 3): it has paid and is current, the website is not
- * live and the setup has not been sent, and the kickoff call has not happened yet. An account that has not paid or
- * has lapsed never gets the first look. shortcut: a call counts as held once its end time has passed, so a missed call
- * also ends the first look; plan 30 replaces this with the team marking the call as held. A booked call with no end
- * time (a booking page that did not report one) keeps the first look open until the website is sent.
- */
-export function inFirstLook(input: {
+/** How long after a call's end time the first look stays open when staff have not marked it held. */
+const HELD_GRACE_MS = 2 * 24 * 3_600_000;
+
+export interface FirstLookInput {
   readonly hasAccess: boolean;
   readonly websiteLive: boolean;
   readonly setupSent: boolean;
+  readonly callHeld: boolean;
   readonly callEndsAtIso: string | null;
   readonly nowMs: number;
-}): boolean {
+}
+
+/**
+ * The facts inFirstLook needs, read from what the shell and the home page both load (billing, the live website, the
+ * project, the call state). One place, so the rail and the page cannot disagree about whether the first look is over.
+ */
+export function firstLookInput(facts: {
+  readonly hasAccess: boolean;
+  readonly liveWebsite: unknown;
+  readonly project: { readonly onboardingSubmittedAt: Date | null } | null;
+  readonly callState: { readonly booking: { readonly heldAtIso: string | null; readonly endsAtIso: string | null } | null; readonly readAtMs: number };
+}): FirstLookInput {
+  return {
+    hasAccess: facts.hasAccess,
+    websiteLive: facts.liveWebsite !== null,
+    setupSent: facts.project?.onboardingSubmittedAt != null,
+    callHeld: facts.callState.booking?.heldAtIso != null,
+    callEndsAtIso: facts.callState.booking?.endsAtIso ?? null,
+    nowMs: facts.callState.readAtMs,
+  };
+}
+
+/**
+ * Whether the account is still in its first look (plan 28 section 3): it has paid, the website has not been sent or
+ * launched, and the kickoff call has not been held. Staff mark a call held in the console. If nobody does, the first look
+ * ends two days after the call's end time. A booked call with no end time (a booking page that did not report one) keeps
+ * the first look open until staff mark it or the website is sent. An account that has not paid, or has lapsed, never gets it.
+ */
+export function inFirstLook(input: FirstLookInput): boolean {
   if (!input.hasAccess) return false;
-  if (input.websiteLive || input.setupSent) return false;
-  return input.callEndsAtIso === null || Date.parse(input.callEndsAtIso) > input.nowMs;
+  if (input.websiteLive || input.setupSent || input.callHeld) return false;
+  return input.callEndsAtIso === null || Date.parse(input.callEndsAtIso) + HELD_GRACE_MS > input.nowMs;
 }
 
 /** "A", "A and B", "A, B and C". */

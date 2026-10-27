@@ -30,7 +30,7 @@ export type ProductPhotoOutcome =
       readonly retryAfterSeconds?: number;
     };
 
-export const NO_SUCH_PRODUCT_MESSAGE = "We couldn't find that product. Reload the page and try again.";
+const NO_SUCH_PRODUCT_MESSAGE = "We couldn't find that product. Reload the page and try again.";
 
 /**
  * One photo for one product: checked, cut to a square and re-encoded, stored, then put on the product. The file is

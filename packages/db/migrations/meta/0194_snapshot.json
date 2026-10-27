@@ -1,6 +1,6 @@
 {
-  "id": "03f0eb89-3db8-417c-b3e4-db6fa0ad56b4",
-  "prevId": "691e49e1-daef-4021-951b-dc0e1b0583c7",
+  "id": "4f6bb569-a4d8-44eb-8c49-5a6a7232b47e",
+  "prevId": "ebfabe35-8226-4548-adeb-9b013abb8f92",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -71,10 +71,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"account_closures\".\"restored_at\" is null and \"account_closures\".\"erased_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "account_closures_erase_after_idx": {
           "name": "account_closures_erase_after_idx",
@@ -87,37 +87,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "account_closures_user_id_users_id_fk": {
           "name": "account_closures_user_id_users_id_fk",
           "tableFrom": "account_closures",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "account_closures_business_id_businesses_id_fk": {
           "name": "account_closures_business_id_businesses_id_fk",
           "tableFrom": "account_closures",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -197,9 +197,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -284,9 +284,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -305,125 +305,6 @@
         "account_otps_attempts_check": {
           "name": "account_otps_attempts_check",
           "value": "\"account_otps\".\"attempts\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.activity_events": {
-      "name": "activity_events",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "business_id": {
-          "name": "business_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "actor_kind": {
-          "name": "actor_kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_id": {
-          "name": "actor_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "summary": {
-          "name": "summary",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "data": {
-          "name": "data",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "visible_to_client": {
-          "name": "visible_to_client",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "activity_events_business_created_idx": {
-          "name": "activity_events_business_created_idx",
-          "columns": [
-            {
-              "expression": "business_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        }
-      },
-      "foreignKeys": {
-        "activity_events_business_id_businesses_id_fk": {
-          "name": "activity_events_business_id_businesses_id_fk",
-          "tableFrom": "activity_events",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "tableTo": "businesses",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "activity_events_actor_kind_check": {
-          "name": "activity_events_actor_kind_check",
-          "value": "\"activity_events\".\"actor_kind\" in ('staff', 'client', 'system', 'provider')"
-        },
-        "activity_events_kind_check": {
-          "name": "activity_events_kind_check",
-          "value": "char_length(\"activity_events\".\"kind\") between 1 and 64"
-        },
-        "activity_events_summary_check": {
-          "name": "activity_events_summary_check",
-          "value": "char_length(\"activity_events\".\"summary\") between 1 and 300"
         }
       },
       "isRLSEnabled": false
@@ -463,50 +344,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "add_on_payments_payment_id_payments_id_fk": {
           "name": "add_on_payments_payment_id_payments_id_fk",
           "tableFrom": "add_on_payments",
+          "tableTo": "payments",
           "columnsFrom": [
             "payment_id"
           ],
-          "tableTo": "payments",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "add_on_payments_add_on_subscription_id_add_on_subscriptions_id_fk": {
           "name": "add_on_payments_add_on_subscription_id_add_on_subscriptions_id_fk",
           "tableFrom": "add_on_payments",
+          "tableTo": "add_on_subscriptions",
           "columnsFrom": [
             "add_on_subscription_id"
           ],
-          "tableTo": "add_on_subscriptions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "add_on_payments_business_id_businesses_id_fk": {
           "name": "add_on_payments_business_id_businesses_id_fk",
           "tableFrom": "add_on_payments",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -607,9 +488,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -824,9 +705,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "add_on_subscriptions_one_billing_idx": {
           "name": "add_on_subscriptions_one_billing_idx",
@@ -845,10 +726,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"add_on_subscriptions\".\"status\" in ('scheduled', 'active', 'past_due', 'halted') and \"add_on_subscriptions\".\"end_kind\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "add_on_subscriptions_one_checkout_idx": {
           "name": "add_on_subscriptions_one_checkout_idx",
@@ -867,10 +748,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"add_on_subscriptions\".\"status\" = 'incomplete'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "add_on_subscriptions_business_idx": {
           "name": "add_on_subscriptions_business_idx",
@@ -889,63 +770,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "add_on_subscriptions_business_id_businesses_id_fk": {
           "name": "add_on_subscriptions_business_id_businesses_id_fk",
           "tableFrom": "add_on_subscriptions",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "add_on_subscriptions_end_requested_by_staff_id_users_id_fk": {
           "name": "add_on_subscriptions_end_requested_by_staff_id_users_id_fk",
           "tableFrom": "add_on_subscriptions",
+          "tableTo": "users",
           "columnsFrom": [
             "end_requested_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "add_on_subscriptions_contacted_by_staff_id_users_id_fk": {
           "name": "add_on_subscriptions_contacted_by_staff_id_users_id_fk",
           "tableFrom": "add_on_subscriptions",
+          "tableTo": "users",
           "columnsFrom": [
             "contacted_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "add_on_subscriptions_continues_id_fk": {
           "name": "add_on_subscriptions_continues_id_fk",
           "tableFrom": "add_on_subscriptions",
+          "tableTo": "add_on_subscriptions",
           "columnsFrom": [
             "continues_id"
           ],
-          "tableTo": "add_on_subscriptions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1131,10 +1012,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"bundled_add_ons\".\"status\" in ('pending', 'active')",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "bundled_add_ons_charge_idx": {
           "name": "bundled_add_ons_charge_idx",
@@ -1147,10 +1028,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"bundled_add_ons\".\"charge_id\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "bundled_add_ons_business_idx": {
           "name": "bundled_add_ons_business_idx",
@@ -1169,76 +1050,76 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "bundled_add_ons_business_id_businesses_id_fk": {
           "name": "bundled_add_ons_business_id_businesses_id_fk",
           "tableFrom": "bundled_add_ons",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "bundled_add_ons_subscription_id_subscriptions_id_fk": {
           "name": "bundled_add_ons_subscription_id_subscriptions_id_fk",
           "tableFrom": "bundled_add_ons",
+          "tableTo": "subscriptions",
           "columnsFrom": [
             "subscription_id"
           ],
-          "tableTo": "subscriptions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "bundled_add_ons_charge_id_charges_id_fk": {
           "name": "bundled_add_ons_charge_id_charges_id_fk",
           "tableFrom": "bundled_add_ons",
+          "tableTo": "charges",
           "columnsFrom": [
             "charge_id"
           ],
-          "tableTo": "charges",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "bundled_add_ons_added_by_staff_id_users_id_fk": {
           "name": "bundled_add_ons_added_by_staff_id_users_id_fk",
           "tableFrom": "bundled_add_ons",
+          "tableTo": "users",
           "columnsFrom": [
             "added_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "bundled_add_ons_contacted_by_staff_id_users_id_fk": {
           "name": "bundled_add_ons_contacted_by_staff_id_users_id_fk",
           "tableFrom": "bundled_add_ons",
+          "tableTo": "users",
           "columnsFrom": [
             "contacted_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1318,9 +1199,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "press_releases_business_idx": {
           "name": "press_releases_business_idx",
@@ -1339,50 +1220,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "press_releases_business_id_businesses_id_fk": {
           "name": "press_releases_business_id_businesses_id_fk",
           "tableFrom": "press_releases",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "press_releases_charge_id_charges_id_fk": {
           "name": "press_releases_charge_id_charges_id_fk",
           "tableFrom": "press_releases",
+          "tableTo": "charges",
           "columnsFrom": [
             "charge_id"
           ],
-          "tableTo": "charges",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "press_releases_status_changed_by_staff_id_users_id_fk": {
           "name": "press_releases_status_changed_by_staff_id_users_id_fk",
           "tableFrom": "press_releases",
+          "tableTo": "users",
           "columnsFrom": [
             "status_changed_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1496,9 +1377,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "affiliate_earnings_affiliate_idx": {
           "name": "affiliate_earnings_affiliate_idx",
@@ -1517,89 +1398,89 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "affiliate_earnings_affiliate_id_affiliates_id_fk": {
           "name": "affiliate_earnings_affiliate_id_affiliates_id_fk",
           "tableFrom": "affiliate_earnings",
+          "tableTo": "affiliates",
           "columnsFrom": [
             "affiliate_id"
           ],
-          "tableTo": "affiliates",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "affiliate_earnings_referral_code_id_referral_codes_id_fk": {
           "name": "affiliate_earnings_referral_code_id_referral_codes_id_fk",
           "tableFrom": "affiliate_earnings",
+          "tableTo": "referral_codes",
           "columnsFrom": [
             "referral_code_id"
           ],
-          "tableTo": "referral_codes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "affiliate_earnings_business_id_businesses_id_fk": {
           "name": "affiliate_earnings_business_id_businesses_id_fk",
           "tableFrom": "affiliate_earnings",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "affiliate_earnings_payment_id_payments_id_fk": {
           "name": "affiliate_earnings_payment_id_payments_id_fk",
           "tableFrom": "affiliate_earnings",
+          "tableTo": "payments",
           "columnsFrom": [
             "payment_id"
           ],
-          "tableTo": "payments",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "affiliate_earnings_payout_id_affiliate_payouts_id_fk": {
           "name": "affiliate_earnings_payout_id_affiliate_payouts_id_fk",
           "tableFrom": "affiliate_earnings",
+          "tableTo": "affiliate_payouts",
           "columnsFrom": [
             "payout_id"
           ],
-          "tableTo": "affiliate_payouts",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "affiliate_earnings_cancelled_by_staff_id_users_id_fk": {
           "name": "affiliate_earnings_cancelled_by_staff_id_users_id_fk",
           "tableFrom": "affiliate_earnings",
+          "tableTo": "users",
           "columnsFrom": [
             "cancelled_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1703,37 +1584,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "affiliate_payouts_affiliate_id_affiliates_id_fk": {
           "name": "affiliate_payouts_affiliate_id_affiliates_id_fk",
           "tableFrom": "affiliate_payouts",
+          "tableTo": "affiliates",
           "columnsFrom": [
             "affiliate_id"
           ],
-          "tableTo": "affiliates",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "affiliate_payouts_recorded_by_staff_id_users_id_fk": {
           "name": "affiliate_payouts_recorded_by_staff_id_users_id_fk",
           "tableFrom": "affiliate_payouts",
+          "tableTo": "users",
           "columnsFrom": [
             "recorded_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1815,35 +1696,35 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "appointment_services_business_id_businesses_id_fk": {
           "name": "appointment_services_business_id_businesses_id_fk",
           "tableFrom": "appointment_services",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "appointment_services_business_id_id_unique": {
           "name": "appointment_services_business_id_id_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "business_id",
             "id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1912,15 +1793,15 @@
         "appointment_settings_business_id_businesses_id_fk": {
           "name": "appointment_settings_business_id_businesses_id_fk",
           "tableFrom": "appointment_settings",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2124,9 +2005,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "appointments_business_id_created_at_idx": {
           "name": "appointments_business_id_created_at_idx",
@@ -2145,9 +2026,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "appointments_practitioner_id_starts_at_idx": {
           "name": "appointments_practitioner_id_starts_at_idx",
@@ -2166,10 +2047,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"appointments\".\"status\" <> 'cancelled'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "appointments_business_id_starts_at_idx": {
           "name": "appointments_business_id_starts_at_idx",
@@ -2188,9 +2069,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "appointments_business_id_patient_id_idx": {
           "name": "appointments_business_id_patient_id_idx",
@@ -2209,82 +2090,82 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "appointments_business_id_businesses_id_fk": {
           "name": "appointments_business_id_businesses_id_fk",
           "tableFrom": "appointments",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "appointments_handled_by_user_id_users_id_fk": {
           "name": "appointments_handled_by_user_id_users_id_fk",
           "tableFrom": "appointments",
+          "tableTo": "users",
           "columnsFrom": [
             "handled_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "appointments_service_business_fk": {
           "name": "appointments_service_business_fk",
           "tableFrom": "appointments",
+          "tableTo": "appointment_services",
           "columnsFrom": [
             "business_id",
             "service_id"
           ],
-          "tableTo": "appointment_services",
           "columnsTo": [
             "business_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "appointments_practitioner_business_fk": {
           "name": "appointments_practitioner_business_fk",
           "tableFrom": "appointments",
+          "tableTo": "practitioners",
           "columnsFrom": [
             "business_id",
             "practitioner_id"
           ],
-          "tableTo": "practitioners",
           "columnsTo": [
             "business_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "appointments_patient_business_fk": {
           "name": "appointments_patient_business_fk",
           "tableFrom": "appointments",
+          "tableTo": "patients",
           "columnsFrom": [
             "business_id",
             "patient_id"
           ],
-          "tableTo": "patients",
           "columnsTo": [
             "business_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2425,24 +2306,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "booking_otps_business_id_businesses_id_fk": {
           "name": "booking_otps_business_id_businesses_id_fk",
           "tableFrom": "booking_otps",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2565,24 +2446,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "accounts_user_id_users_id_fk": {
           "name": "accounts_user_id_users_id_fk",
           "tableFrom": "accounts",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2658,34 +2539,34 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "sessions_user_id_users_id_fk": {
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "sessions_token_unique": {
           "name": "sessions_token_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "token"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -2761,17 +2642,17 @@
       "uniqueConstraints": {
         "users_email_unique": {
           "name": "users_email_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "email"
-          ],
-          "nullsNotDistinct": false
+          ]
         },
         "users_phone_number_unique": {
           "name": "users_phone_number_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "phone_number"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -2842,9 +2723,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -2998,9 +2879,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "charges_payment_id_idx": {
           "name": "charges_payment_id_idx",
@@ -3013,9 +2894,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "charges_provider_order_idx": {
           "name": "charges_provider_order_idx",
@@ -3034,9 +2915,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "charges_one_open_blog_unlock_idx": {
           "name": "charges_one_open_blog_unlock_idx",
@@ -3049,10 +2930,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"charges\".\"kind\" = 'blog_posts' and \"charges\".\"status\" = 'open'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "charges_one_open_plan_upgrade_idx": {
           "name": "charges_one_open_plan_upgrade_idx",
@@ -3065,10 +2946,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"charges\".\"kind\" = 'plan_upgrade' and \"charges\".\"status\" = 'open'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "charges_one_open_listing_promotion_idx": {
           "name": "charges_one_open_listing_promotion_idx",
@@ -3081,64 +2962,64 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"charges\".\"kind\" = 'listing_promotion' and \"charges\".\"status\" = 'open'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "charges_business_id_businesses_id_fk": {
           "name": "charges_business_id_businesses_id_fk",
           "tableFrom": "charges",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "charges_created_by_staff_id_users_id_fk": {
           "name": "charges_created_by_staff_id_users_id_fk",
           "tableFrom": "charges",
+          "tableTo": "users",
           "columnsFrom": [
             "created_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "charges_payment_id_payments_id_fk": {
           "name": "charges_payment_id_payments_id_fk",
           "tableFrom": "charges",
+          "tableTo": "payments",
           "columnsFrom": [
             "payment_id"
           ],
-          "tableTo": "payments",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "charges_waived_by_staff_id_users_id_fk": {
           "name": "charges_waived_by_staff_id_users_id_fk",
           "tableFrom": "charges",
+          "tableTo": "users",
           "columnsFrom": [
             "waived_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3329,30 +3210,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "refunded_at": {
-          "name": "refunded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refunded_by_staff_id": {
-          "name": "refunded_by_staff_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refunded_amount_cents": {
-          "name": "refunded_amount_cents",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_reason": {
-          "name": "refund_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "invoice_basis": {
           "name": "invoice_basis",
           "type": "jsonb",
@@ -3385,9 +3242,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "payments_business_id_idx": {
           "name": "payments_business_id_idx",
@@ -3406,9 +3263,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "payments_needing_attention_idx": {
           "name": "payments_needing_attention_idx",
@@ -3421,77 +3278,64 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"payments\".\"attention_reason\" is not null and \"payments\".\"attention_resolved_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "payments_business_id_businesses_id_fk": {
           "name": "payments_business_id_businesses_id_fk",
           "tableFrom": "payments",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "payments_subscription_id_subscriptions_id_fk": {
           "name": "payments_subscription_id_subscriptions_id_fk",
           "tableFrom": "payments",
+          "tableTo": "subscriptions",
           "columnsFrom": [
             "subscription_id"
           ],
-          "tableTo": "subscriptions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "payments_attention_resolved_by_staff_id_users_id_fk": {
           "name": "payments_attention_resolved_by_staff_id_users_id_fk",
           "tableFrom": "payments",
+          "tableTo": "users",
           "columnsFrom": [
             "attention_resolved_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "payments_recorded_by_staff_id_users_id_fk": {
           "name": "payments_recorded_by_staff_id_users_id_fk",
           "tableFrom": "payments",
+          "tableTo": "users",
           "columnsFrom": [
             "recorded_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
-        },
-        "payments_refunded_by_staff_id_users_id_fk": {
-          "name": "payments_refunded_by_staff_id_users_id_fk",
-          "tableFrom": "payments",
-          "columnsFrom": [
-            "refunded_by_staff_id"
-          ],
-          "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3521,18 +3365,6 @@
         "payments_card_last4_check": {
           "name": "payments_card_last4_check",
           "value": "\"payments\".\"card_last4\" is null or \"payments\".\"card_last4\" ~ '^[0-9]{4}$'"
-        },
-        "payments_refund_details_check": {
-          "name": "payments_refund_details_check",
-          "value": "(\"payments\".\"refunded_at\" is null) = (\"payments\".\"refunded_by_staff_id\" is null) and (\"payments\".\"refunded_at\" is null) = (\"payments\".\"refunded_amount_cents\" is null) and (\"payments\".\"refunded_at\" is null) = (\"payments\".\"refund_reason\" is null) and (\"payments\".\"refunded_at\" is null or \"payments\".\"status\" = 'refunded')"
-        },
-        "payments_refund_amount_check": {
-          "name": "payments_refund_amount_check",
-          "value": "\"payments\".\"refunded_amount_cents\" is null or \"payments\".\"refunded_amount_cents\" between 1 and \"payments\".\"amount_cents\""
-        },
-        "payments_refund_reason_check": {
-          "name": "payments_refund_reason_check",
-          "value": "\"payments\".\"refund_reason\" is null or char_length(\"payments\".\"refund_reason\") between 3 and 300"
         }
       },
       "isRLSEnabled": false
@@ -3605,37 +3437,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "plan_price_changes_new_plan_id_plans_id_fk": {
           "name": "plan_price_changes_new_plan_id_plans_id_fk",
           "tableFrom": "plan_price_changes",
+          "tableTo": "plans",
           "columnsFrom": [
             "new_plan_id"
           ],
-          "tableTo": "plans",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "plan_price_changes_changed_by_staff_id_users_id_fk": {
           "name": "plan_price_changes_changed_by_staff_id_users_id_fk",
           "tableFrom": "plan_price_changes",
+          "tableTo": "users",
           "columnsFrom": [
             "changed_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3803,9 +3635,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "plan_upgrades_business_id_idx": {
           "name": "plan_upgrades_business_id_idx",
@@ -3824,9 +3656,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "plan_upgrades_subscription_id_idx": {
           "name": "plan_upgrades_subscription_id_idx",
@@ -3839,9 +3671,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "plan_upgrades_one_in_flight_idx": {
           "name": "plan_upgrades_one_in_flight_idx",
@@ -3854,90 +3686,90 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"plan_upgrades\".\"status\" in ('open', 'paid', 'scheduled')",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "plan_upgrades_business_id_businesses_id_fk": {
           "name": "plan_upgrades_business_id_businesses_id_fk",
           "tableFrom": "plan_upgrades",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "plan_upgrades_subscription_id_subscriptions_id_fk": {
           "name": "plan_upgrades_subscription_id_subscriptions_id_fk",
           "tableFrom": "plan_upgrades",
+          "tableTo": "subscriptions",
           "columnsFrom": [
             "subscription_id"
           ],
-          "tableTo": "subscriptions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "plan_upgrades_from_plan_id_plans_id_fk": {
           "name": "plan_upgrades_from_plan_id_plans_id_fk",
           "tableFrom": "plan_upgrades",
+          "tableTo": "plans",
           "columnsFrom": [
             "from_plan_id"
           ],
-          "tableTo": "plans",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "plan_upgrades_to_plan_id_plans_id_fk": {
           "name": "plan_upgrades_to_plan_id_plans_id_fk",
           "tableFrom": "plan_upgrades",
+          "tableTo": "plans",
           "columnsFrom": [
             "to_plan_id"
           ],
-          "tableTo": "plans",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "plan_upgrades_created_by_staff_id_users_id_fk": {
           "name": "plan_upgrades_created_by_staff_id_users_id_fk",
           "tableFrom": "plan_upgrades",
+          "tableTo": "users",
           "columnsFrom": [
             "created_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "plan_upgrades_charge_id_charges_id_fk": {
           "name": "plan_upgrades_charge_id_charges_id_fk",
           "tableFrom": "plan_upgrades",
+          "tableTo": "charges",
           "columnsFrom": [
             "charge_id"
           ],
-          "tableTo": "charges",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4110,10 +3942,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"plans\".\"active\"",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -4121,10 +3953,10 @@
       "uniqueConstraints": {
         "plans_code_unique": {
           "name": "plans_code_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "code"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -4203,24 +4035,24 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "provider_bundle_plans_plan_id_plans_id_fk": {
           "name": "provider_bundle_plans_plan_id_plans_id_fk",
           "tableFrom": "provider_bundle_plans",
+          "tableTo": "plans",
           "columnsFrom": [
             "plan_id"
           ],
-          "tableTo": "plans",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4305,24 +4137,24 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "provider_discount_plans_plan_id_plans_id_fk": {
           "name": "provider_discount_plans_plan_id_plans_id_fk",
           "tableFrom": "provider_discount_plans",
+          "tableTo": "plans",
           "columnsFrom": [
             "plan_id"
           ],
-          "tableTo": "plans",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4541,9 +4373,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "subscriptions_one_live_per_business_idx": {
           "name": "subscriptions_one_live_per_business_idx",
@@ -4556,10 +4388,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"subscriptions\".\"status\" <> 'cancelled' and \"subscriptions\".\"continues_id\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "subscriptions_one_successor_idx": {
           "name": "subscriptions_one_successor_idx",
@@ -4572,10 +4404,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"subscriptions\".\"status\" <> 'cancelled'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "subscriptions_business_id_idx": {
           "name": "subscriptions_business_id_idx",
@@ -4588,76 +4420,76 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "subscriptions_business_id_businesses_id_fk": {
           "name": "subscriptions_business_id_businesses_id_fk",
           "tableFrom": "subscriptions",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "subscriptions_plan_id_plans_id_fk": {
           "name": "subscriptions_plan_id_plans_id_fk",
           "tableFrom": "subscriptions",
+          "tableTo": "plans",
           "columnsFrom": [
             "plan_id"
           ],
-          "tableTo": "plans",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "subscriptions_referral_code_id_referral_codes_id_fk": {
           "name": "subscriptions_referral_code_id_referral_codes_id_fk",
           "tableFrom": "subscriptions",
+          "tableTo": "referral_codes",
           "columnsFrom": [
             "referral_code_id"
           ],
-          "tableTo": "referral_codes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "subscriptions_pending_plan_id_plans_id_fk": {
           "name": "subscriptions_pending_plan_id_plans_id_fk",
           "tableFrom": "subscriptions",
+          "tableTo": "plans",
           "columnsFrom": [
             "pending_plan_id"
           ],
-          "tableTo": "plans",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "subscriptions_continues_id_fk": {
           "name": "subscriptions_continues_id_fk",
           "tableFrom": "subscriptions",
+          "tableTo": "subscriptions",
           "columnsFrom": [
             "continues_id"
           ],
-          "tableTo": "subscriptions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4732,15 +4564,15 @@
         "business_announcements_business_id_businesses_id_fk": {
           "name": "business_announcements_business_id_businesses_id_fk",
           "tableFrom": "business_announcements",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4834,24 +4666,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "business_closures_business_id_businesses_id_fk": {
           "name": "business_closures_business_id_businesses_id_fk",
           "tableFrom": "business_closures",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4916,37 +4748,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "business_members_business_id_businesses_id_fk": {
           "name": "business_members_business_id_businesses_id_fk",
           "tableFrom": "business_members",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "business_members_user_id_users_id_fk": {
           "name": "business_members_user_id_users_id_fk",
           "tableFrom": "business_members",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -5057,25 +4889,25 @@
         "businesses_referral_code_id_referral_codes_id_fk": {
           "name": "businesses_referral_code_id_referral_codes_id_fk",
           "tableFrom": "businesses",
+          "tableTo": "referral_codes",
           "columnsFrom": [
             "referral_code_id"
           ],
-          "tableTo": "referral_codes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "businesses_slug_unique": {
           "name": "businesses_slug_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "slug"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -5192,9 +5024,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "chatbot_leads_business_idx": {
           "name": "chatbot_leads_business_idx",
@@ -5213,37 +5045,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "chatbot_leads_chatbot_id_chatbots_id_fk": {
           "name": "chatbot_leads_chatbot_id_chatbots_id_fk",
           "tableFrom": "chatbot_leads",
+          "tableTo": "chatbots",
           "columnsFrom": [
             "chatbot_id"
           ],
-          "tableTo": "chatbots",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "chatbot_leads_business_id_businesses_id_fk": {
           "name": "chatbot_leads_business_id_businesses_id_fk",
           "tableFrom": "chatbot_leads",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -5296,15 +5128,15 @@
         "chatbot_webhook_secrets_chatbot_id_chatbots_id_fk": {
           "name": "chatbot_webhook_secrets_chatbot_id_chatbots_id_fk",
           "tableFrom": "chatbot_webhook_secrets",
+          "tableTo": "chatbots",
           "columnsFrom": [
             "chatbot_id"
           ],
-          "tableTo": "chatbots",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -5391,9 +5223,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "chatbots_business_idx": {
           "name": "chatbots_business_idx",
@@ -5412,24 +5244,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "chatbots_business_id_businesses_id_fk": {
           "name": "chatbots_business_id_businesses_id_fk",
           "tableFrom": "chatbots",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -5447,230 +5279,6 @@
         "chatbots_website_url_check": {
           "name": "chatbots_website_url_check",
           "value": "\"chatbots\".\"website_url\" is null or \"chatbots\".\"website_url\" ~ '^https?://[^[:space:]]{1,255}$'"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.alert_deliveries": {
-      "name": "alert_deliveries",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "destination": {
-          "name": "destination",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result": {
-          "name": "result",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "card": {
-          "name": "card",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "attempts": {
-          "name": "attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_attempt_at": {
-          "name": "last_attempt_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "alert_deliveries_created_at_idx": {
-          "name": "alert_deliveries_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "alert_deliveries_destination_check": {
-          "name": "alert_deliveries_destination_check",
-          "value": "\"alert_deliveries\".\"destination\" in ('enquiries', 'support', 'system')"
-        },
-        "alert_deliveries_result_check": {
-          "name": "alert_deliveries_result_check",
-          "value": "\"alert_deliveries\".\"result\" in ('sent', 'rejected', 'unreachable', 'unreadable')"
-        },
-        "alert_deliveries_title_check": {
-          "name": "alert_deliveries_title_check",
-          "value": "char_length(\"alert_deliveries\".\"title\") between 1 and 200"
-        },
-        "alert_deliveries_attempts_check": {
-          "name": "alert_deliveries_attempts_check",
-          "value": "\"alert_deliveries\".\"attempts\" >= 1"
-        },
-        "alert_deliveries_card_check": {
-          "name": "alert_deliveries_card_check",
-          "value": "\"alert_deliveries\".\"result\" <> 'sent' or \"alert_deliveries\".\"card\" is null"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.webhook_events": {
-      "name": "webhook_events",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "event_type": {
-          "name": "event_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result": {
-          "name": "result",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "error": {
-          "name": "error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "business_id": {
-          "name": "business_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "body_sha256": {
-          "name": "body_sha256",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "body_bytes": {
-          "name": "body_bytes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "received_at": {
-          "name": "received_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "webhook_events_received_at_idx": {
-          "name": "webhook_events_received_at_idx",
-          "columns": [
-            {
-              "expression": "received_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        }
-      },
-      "foreignKeys": {
-        "webhook_events_business_id_businesses_id_fk": {
-          "name": "webhook_events_business_id_businesses_id_fk",
-          "tableFrom": "webhook_events",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "tableTo": "businesses",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "webhook_events_source_check": {
-          "name": "webhook_events_source_check",
-          "value": "\"webhook_events\".\"source\" in ('razorpay', 'calcom', 'oyechats')"
-        },
-        "webhook_events_result_check": {
-          "name": "webhook_events_result_check",
-          "value": "\"webhook_events\".\"result\" in ('handled', 'ignored', 'failed', 'bad_signature')"
-        },
-        "webhook_events_event_type_check": {
-          "name": "webhook_events_event_type_check",
-          "value": "char_length(\"webhook_events\".\"event_type\") between 1 and 64"
-        },
-        "webhook_events_error_check": {
-          "name": "webhook_events_error_check",
-          "value": "\"webhook_events\".\"error\" is null or char_length(\"webhook_events\".\"error\") <= 300"
-        },
-        "webhook_events_body_sha256_check": {
-          "name": "webhook_events_body_sha256_check",
-          "value": "\"webhook_events\".\"body_sha256\" ~ '^[0-9a-f]{64}$'"
-        },
-        "webhook_events_body_bytes_check": {
-          "name": "webhook_events_body_bytes_check",
-          "value": "\"webhook_events\".\"body_bytes\" >= 0"
         }
       },
       "isRLSEnabled": false
@@ -5791,52 +5399,52 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_listings\".\"place_id\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_listings_business_id_businesses_id_fk": {
           "name": "directory_listings_business_id_businesses_id_fk",
           "tableFrom": "directory_listings",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_listings_place_id_directory_places_id_fk": {
           "name": "directory_listings_place_id_directory_places_id_fk",
           "tableFrom": "directory_listings",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "directory_listings_address_key": {
           "name": "directory_listings_address_key",
+          "nullsNotDistinct": false,
           "columns": [
             "category_slug",
             "state_code",
             "city_slug",
             "area_slug",
             "slug"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -5971,15 +5579,15 @@
         "listing_content_business_id_directory_listings_business_id_fk": {
           "name": "listing_content_business_id_directory_listings_business_id_fk",
           "tableFrom": "listing_content",
+          "tableTo": "directory_listings",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "directory_listings",
           "columnsTo": [
             "business_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6121,9 +5729,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_ad_bids_auction_idx": {
           "name": "directory_ad_bids_auction_idx",
@@ -6160,49 +5768,49 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_ad_bids_business_id_businesses_id_fk": {
           "name": "directory_ad_bids_business_id_businesses_id_fk",
           "tableFrom": "directory_ad_bids",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_ad_bids_place_id_directory_places_id_fk": {
           "name": "directory_ad_bids_place_id_directory_places_id_fk",
           "tableFrom": "directory_ad_bids",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "directory_ad_bids_business_placement_week_key": {
           "name": "directory_ad_bids_business_placement_week_key",
+          "nullsNotDistinct": false,
           "columns": [
             "business_id",
             "placement",
             "week_start"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -6275,24 +5883,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_ad_daily_counts_place_id_directory_places_id_fk": {
           "name": "directory_ad_daily_counts_place_id_directory_places_id_fk",
           "tableFrom": "directory_ad_daily_counts",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -6357,15 +5965,15 @@
         "directory_ad_prices_updated_by_user_id_users_id_fk": {
           "name": "directory_ad_prices_updated_by_user_id_users_id_fk",
           "tableFrom": "directory_ad_prices",
+          "tableTo": "users",
           "columnsFrom": [
             "updated_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6425,15 +6033,15 @@
         "directory_ad_spot_prices_updated_by_user_id_users_id_fk": {
           "name": "directory_ad_spot_prices_updated_by_user_id_users_id_fk",
           "tableFrom": "directory_ad_spot_prices",
+          "tableTo": "users",
           "columnsFrom": [
             "updated_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -6629,10 +6237,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_ad_wins\".\"status\" <> 'lapsed'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_ad_wins_market_week_idx": {
           "name": "directory_ad_wins_market_week_idx",
@@ -6663,9 +6271,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_ad_wins_status_pay_by_idx": {
           "name": "directory_ad_wins_status_pay_by_idx",
@@ -6684,9 +6292,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_ad_wins_business_id_idx": {
           "name": "directory_ad_wins_business_id_idx",
@@ -6705,9 +6313,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_ad_wins_place_id_idx": {
           "name": "directory_ad_wins_place_id_idx",
@@ -6720,80 +6328,80 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_ad_wins_bid_id_directory_ad_bids_id_fk": {
           "name": "directory_ad_wins_bid_id_directory_ad_bids_id_fk",
           "tableFrom": "directory_ad_wins",
+          "tableTo": "directory_ad_bids",
           "columnsFrom": [
             "bid_id"
           ],
-          "tableTo": "directory_ad_bids",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_ad_wins_business_id_businesses_id_fk": {
           "name": "directory_ad_wins_business_id_businesses_id_fk",
           "tableFrom": "directory_ad_wins",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_ad_wins_place_id_directory_places_id_fk": {
           "name": "directory_ad_wins_place_id_directory_places_id_fk",
           "tableFrom": "directory_ad_wins",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_ad_wins_charge_id_charges_id_fk": {
           "name": "directory_ad_wins_charge_id_charges_id_fk",
           "tableFrom": "directory_ad_wins",
+          "tableTo": "charges",
           "columnsFrom": [
             "charge_id"
           ],
-          "tableTo": "charges",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "directory_ad_wins_bid_id_key": {
           "name": "directory_ad_wins_bid_id_key",
+          "nullsNotDistinct": false,
           "columns": [
             "bid_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         },
         "directory_ad_wins_charge_id_key": {
           "name": "directory_ad_wins_charge_id_key",
+          "nullsNotDistinct": false,
           "columns": [
             "charge_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -6955,10 +6563,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_claims\".\"status\" = 'approved'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_claims_place_id_idx": {
           "name": "directory_claims_place_id_idx",
@@ -6971,9 +6579,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_claims_place_id_approved_idx": {
           "name": "directory_claims_place_id_approved_idx",
@@ -6986,10 +6594,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_claims\".\"place_id\" is not null and \"directory_claims\".\"status\" = 'approved'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_claims_status_created_at_idx": {
           "name": "directory_claims_status_created_at_idx",
@@ -7008,73 +6616,73 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_claims_business_id_businesses_id_fk": {
           "name": "directory_claims_business_id_businesses_id_fk",
           "tableFrom": "directory_claims",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_claims_place_id_directory_places_id_fk": {
           "name": "directory_claims_place_id_directory_places_id_fk",
           "tableFrom": "directory_claims",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_claims_pincode_india_pincodes_pincode_fk": {
           "name": "directory_claims_pincode_india_pincodes_pincode_fk",
           "tableFrom": "directory_claims",
+          "tableTo": "india_pincodes",
           "columnsFrom": [
             "pincode"
           ],
-          "tableTo": "india_pincodes",
           "columnsTo": [
             "pincode"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "directory_claims_decided_by_user_id_users_id_fk": {
           "name": "directory_claims_decided_by_user_id_users_id_fk",
           "tableFrom": "directory_claims",
+          "tableTo": "users",
           "columnsFrom": [
             "decided_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "directory_claims_business_id_key": {
           "name": "directory_claims_business_id_key",
+          "nullsNotDistinct": false,
           "columns": [
             "business_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -7197,15 +6805,15 @@
         "directory_staff_ad_pictures_uploaded_by_user_id_users_id_fk": {
           "name": "directory_staff_ad_pictures_uploaded_by_user_id_users_id_fk",
           "tableFrom": "directory_staff_ad_pictures",
+          "tableTo": "users",
           "columnsFrom": [
             "uploaded_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -7393,10 +7001,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_staff_ads\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_staff_ads_week_start_idx": {
           "name": "directory_staff_ads_week_start_idx",
@@ -7409,63 +7017,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_staff_ads_place_id_directory_places_id_fk": {
           "name": "directory_staff_ads_place_id_directory_places_id_fk",
           "tableFrom": "directory_staff_ads",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_staff_ads_picture_id_directory_staff_ad_pictures_id_fk": {
           "name": "directory_staff_ads_picture_id_directory_staff_ad_pictures_id_fk",
           "tableFrom": "directory_staff_ads",
+          "tableTo": "directory_staff_ad_pictures",
           "columnsFrom": [
             "picture_id"
           ],
-          "tableTo": "directory_staff_ad_pictures",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_staff_ads_placed_by_user_id_users_id_fk": {
           "name": "directory_staff_ads_placed_by_user_id_users_id_fk",
           "tableFrom": "directory_staff_ads",
+          "tableTo": "users",
           "columnsFrom": [
             "placed_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_staff_ads_removed_by_user_id_users_id_fk": {
           "name": "directory_staff_ads_removed_by_user_id_users_id_fk",
           "tableFrom": "directory_staff_ads",
+          "tableTo": "users",
           "columnsFrom": [
             "removed_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -7587,24 +7195,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_business_faqs_business_id_businesses_id_fk": {
           "name": "directory_business_faqs_business_id_businesses_id_fk",
           "tableFrom": "directory_business_faqs",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -7749,9 +7357,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_business_products_photo_id_idx": {
           "name": "directory_business_products_photo_id_idx",
@@ -7764,25 +7372,25 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_business_products\".\"photo_id\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_business_products_business_id_businesses_id_fk": {
           "name": "directory_business_products_business_id_businesses_id_fk",
           "tableFrom": "directory_business_products",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -7918,24 +7526,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_business_services_business_id_businesses_id_fk": {
           "name": "directory_business_services_business_id_businesses_id_fk",
           "tableFrom": "directory_business_services",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -8012,15 +7620,15 @@
         "directory_business_categories_business_id_businesses_id_fk": {
           "name": "directory_business_categories_business_id_businesses_id_fk",
           "tableFrom": "directory_business_categories",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -8231,15 +7839,15 @@
         "directory_business_profiles_business_id_businesses_id_fk": {
           "name": "directory_business_profiles_business_id_businesses_id_fk",
           "tableFrom": "directory_business_profiles",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -8451,10 +8059,10 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_deals\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_deals_on_show_idx": {
           "name": "directory_deals_on_show_idx",
@@ -8473,51 +8081,51 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_deals\".\"status\" = 'live' and \"directory_deals\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_deals_business_id_businesses_id_fk": {
           "name": "directory_deals_business_id_businesses_id_fk",
           "tableFrom": "directory_deals",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_deals_created_by_user_id_users_id_fk": {
           "name": "directory_deals_created_by_user_id_users_id_fk",
           "tableFrom": "directory_deals",
+          "tableTo": "users",
           "columnsFrom": [
             "created_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_deals_taken_down_by_user_id_users_id_fk": {
           "name": "directory_deals_taken_down_by_user_id_users_id_fk",
           "tableFrom": "directory_deals",
+          "tableTo": "users",
           "columnsFrom": [
             "taken_down_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -8642,8 +8250,8 @@
           "primaryKey": false,
           "notNull": false,
           "generated": {
-            "type": "stored",
-            "as": "setweight(to_tsvector('simple', f_unaccent(coalesce(name, ''))), 'A') || setweight(to_tsvector('simple', replace(category_slug, '-', ' ')), 'B') || setweight(to_tsvector('simple', replace(area_slug || ' ' || city_slug, '-', ' ')), 'C')"
+            "as": "setweight(to_tsvector('simple', f_unaccent(coalesce(name, ''))), 'A') || setweight(to_tsvector('simple', replace(category_slug, '-', ' ')), 'B') || setweight(to_tsvector('simple', replace(area_slug || ' ' || city_slug, '-', ' ')), 'C')",
+            "type": "stored"
           }
         },
         "created_at": {
@@ -8685,9 +8293,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_open_listings_search_idx": {
           "name": "directory_open_listings_search_idx",
@@ -8700,39 +8308,39 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "gin",
-          "concurrently": false
+          "with": {}
         },
         "directory_open_listings_name_trgm_idx": {
           "name": "directory_open_listings_name_trgm_idx",
           "columns": [
             {
               "expression": "lower(f_unaccent(\"name\")) gin_trgm_ops",
-              "isExpression": true,
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "gin",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_open_listings_place_id_directory_places_id_fk": {
           "name": "directory_open_listings_place_id_directory_places_id_fk",
           "tableFrom": "directory_open_listings",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -8795,24 +8403,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_place_legacy_keys_place_id_directory_places_id_fk": {
           "name": "directory_place_legacy_keys_place_id_directory_places_id_fk",
           "tableFrom": "directory_place_legacy_keys",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -8903,37 +8511,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_place_url_changes_place_id_directory_places_id_fk": {
           "name": "directory_place_url_changes_place_id_directory_places_id_fk",
           "tableFrom": "directory_place_url_changes",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_place_url_changes_changed_by_user_id_users_id_fk": {
           "name": "directory_place_url_changes_changed_by_user_id_users_id_fk",
           "tableFrom": "directory_place_url_changes",
+          "tableTo": "users",
           "columnsFrom": [
             "changed_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -9015,10 +8623,10 @@
       "uniqueConstraints": {
         "directory_places_source_ref_key": {
           "name": "directory_places_source_ref_key",
+          "nullsNotDistinct": false,
           "columns": [
             "source_ref"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -9163,10 +8771,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_pictures\".\"status\" = 'approved' and \"directory_pictures\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_pictures_one_waiting_per_slot_idx": {
           "name": "directory_pictures_one_waiting_per_slot_idx",
@@ -9185,10 +8793,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_pictures\".\"status\" <> 'approved' and \"directory_pictures\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_pictures_status_created_at_idx": {
           "name": "directory_pictures_status_created_at_idx",
@@ -9207,51 +8815,51 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_pictures\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_pictures_business_id_businesses_id_fk": {
           "name": "directory_pictures_business_id_businesses_id_fk",
           "tableFrom": "directory_pictures",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_pictures_decided_by_user_id_users_id_fk": {
           "name": "directory_pictures_decided_by_user_id_users_id_fk",
           "tableFrom": "directory_pictures",
+          "tableTo": "users",
           "columnsFrom": [
             "decided_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_pictures_uploaded_by_user_id_users_id_fk": {
           "name": "directory_pictures_uploaded_by_user_id_users_id_fk",
           "tableFrom": "directory_pictures",
+          "tableTo": "users",
           "columnsFrom": [
             "uploaded_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -9402,10 +9010,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_videos\".\"status\" = 'approved' and \"directory_videos\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_videos_one_waiting_per_slot_idx": {
           "name": "directory_videos_one_waiting_per_slot_idx",
@@ -9424,10 +9032,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_videos\".\"status\" <> 'approved' and \"directory_videos\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_videos_one_featured_idx": {
           "name": "directory_videos_one_featured_idx",
@@ -9440,10 +9048,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_videos\".\"featured\" and \"directory_videos\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_videos_vimeo_id_idx": {
           "name": "directory_videos_vimeo_id_idx",
@@ -9456,10 +9064,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_videos\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_videos_status_created_at_idx": {
           "name": "directory_videos_status_created_at_idx",
@@ -9478,51 +9086,51 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_videos\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_videos_business_id_businesses_id_fk": {
           "name": "directory_videos_business_id_businesses_id_fk",
           "tableFrom": "directory_videos",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_videos_decided_by_user_id_users_id_fk": {
           "name": "directory_videos_decided_by_user_id_users_id_fk",
           "tableFrom": "directory_videos",
+          "tableTo": "users",
           "columnsFrom": [
             "decided_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_videos_uploaded_by_user_id_users_id_fk": {
           "name": "directory_videos_uploaded_by_user_id_users_id_fk",
           "tableFrom": "directory_videos",
+          "tableTo": "users",
           "columnsFrom": [
             "uploaded_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -9649,9 +9257,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_promotions_ends_at_idx": {
           "name": "directory_promotions_ends_at_idx",
@@ -9664,55 +9272,55 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_promotions_business_id_businesses_id_fk": {
           "name": "directory_promotions_business_id_businesses_id_fk",
           "tableFrom": "directory_promotions",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_promotions_charge_id_charges_id_fk": {
           "name": "directory_promotions_charge_id_charges_id_fk",
           "tableFrom": "directory_promotions",
+          "tableTo": "charges",
           "columnsFrom": [
             "charge_id"
           ],
-          "tableTo": "charges",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "directory_promotions_charge_id_key": {
           "name": "directory_promotions_charge_id_key",
+          "nullsNotDistinct": false,
           "columns": [
             "charge_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         },
         "directory_promotions_business_id_starts_at_key": {
           "name": "directory_promotions_business_id_starts_at_key",
+          "nullsNotDistinct": false,
           "columns": [
             "business_id",
             "starts_at"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -9784,10 +9392,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_daily_counts\".\"place_id\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_daily_counts_day_idx": {
           "name": "directory_daily_counts_day_idx",
@@ -9800,36 +9408,36 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_daily_counts_place_id_directory_places_id_fk": {
           "name": "directory_daily_counts_place_id_directory_places_id_fk",
           "tableFrom": "directory_daily_counts",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "directory_daily_counts_listing_key_day_kind_key": {
           "name": "directory_daily_counts_listing_key_day_kind_key",
+          "nullsNotDistinct": false,
           "columns": [
             "listing_key",
             "day",
             "kind"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -9972,9 +9580,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_enquiries_place_id_idx": {
           "name": "directory_enquiries_place_id_idx",
@@ -9987,37 +9595,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_enquiries_place_id_directory_places_id_fk": {
           "name": "directory_enquiries_place_id_directory_places_id_fk",
           "tableFrom": "directory_enquiries",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_enquiries_handled_by_user_id_users_id_fk": {
           "name": "directory_enquiries_handled_by_user_id_users_id_fk",
           "tableFrom": "directory_enquiries",
+          "tableTo": "users",
           "columnsFrom": [
             "handled_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -10167,9 +9775,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_review_comments_created_at_idx": {
           "name": "directory_review_comments_created_at_idx",
@@ -10182,50 +9790,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_review_comments_review_id_directory_reviews_id_fk": {
           "name": "directory_review_comments_review_id_directory_reviews_id_fk",
           "tableFrom": "directory_review_comments",
+          "tableTo": "directory_reviews",
           "columnsFrom": [
             "review_id"
           ],
-          "tableTo": "directory_reviews",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_review_comments_owner_user_id_users_id_fk": {
           "name": "directory_review_comments_owner_user_id_users_id_fk",
           "tableFrom": "directory_review_comments",
+          "tableTo": "users",
           "columnsFrom": [
             "owner_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_review_comments_hidden_by_user_id_users_id_fk": {
           "name": "directory_review_comments_hidden_by_user_id_users_id_fk",
           "tableFrom": "directory_review_comments",
+          "tableTo": "users",
           "columnsFrom": [
             "hidden_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -10340,37 +9948,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_review_otps_place_id_directory_places_id_fk": {
           "name": "directory_review_otps_place_id_directory_places_id_fk",
           "tableFrom": "directory_review_otps",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_review_otps_review_id_directory_reviews_id_fk": {
           "name": "directory_review_otps_review_id_directory_reviews_id_fk",
           "tableFrom": "directory_review_otps",
+          "tableTo": "directory_reviews",
           "columnsFrom": [
             "review_id"
           ],
-          "tableTo": "directory_reviews",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -10526,9 +10134,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_reviews_place_id_idx": {
           "name": "directory_reviews_place_id_idx",
@@ -10547,9 +10155,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_reviews_place_id_phone_idx": {
           "name": "directory_reviews_place_id_phone_idx",
@@ -10568,10 +10176,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_reviews\".\"place_id\" is not null and \"directory_reviews\".\"status\" = 'published'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "directory_reviews_created_at_idx": {
           "name": "directory_reviews_created_at_idx",
@@ -10584,48 +10192,48 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_reviews_place_id_directory_places_id_fk": {
           "name": "directory_reviews_place_id_directory_places_id_fk",
           "tableFrom": "directory_reviews",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_reviews_hidden_by_user_id_users_id_fk": {
           "name": "directory_reviews_hidden_by_user_id_users_id_fk",
           "tableFrom": "directory_reviews",
+          "tableTo": "users",
           "columnsFrom": [
             "hidden_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "directory_reviews_listing_key_phone_key": {
           "name": "directory_reviews_listing_key_phone_key",
+          "nullsNotDistinct": false,
           "columns": [
             "listing_key",
             "phone"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -10740,9 +10348,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "directory_verifications_place_id_idx": {
           "name": "directory_verifications_place_id_idx",
@@ -10755,38 +10363,38 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"directory_verifications\".\"place_id\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "directory_verifications_place_id_directory_places_id_fk": {
           "name": "directory_verifications_place_id_directory_places_id_fk",
           "tableFrom": "directory_verifications",
+          "tableTo": "directory_places",
           "columnsFrom": [
             "place_id"
           ],
-          "tableTo": "directory_places",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "directory_verifications_verified_by_user_id_users_id_fk": {
           "name": "directory_verifications_verified_by_user_id_users_id_fk",
           "tableFrom": "directory_verifications",
+          "tableTo": "users",
           "columnsFrom": [
             "verified_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -10857,9 +10465,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -10867,10 +10475,10 @@
       "uniqueConstraints": {
         "directory_visitors_phone_unique": {
           "name": "directory_visitors_phone_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "phone"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -10932,46 +10540,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'local_only'"
-        },
-        "provider_message_id": {
-          "name": "provider_message_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "error": {
-          "name": "error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "attempts": {
-          "name": "attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "last_attempt_at": {
-          "name": "last_attempt_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "body_redacted": {
-          "name": "body_redacted",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -10992,29 +10560,16 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "email_messages_status_check": {
-          "name": "email_messages_status_check",
-          "value": "\"email_messages\".\"status\" in ('sent', 'local_only', 'failed')"
-        },
-        "email_messages_error_check": {
-          "name": "email_messages_error_check",
-          "value": "\"email_messages\".\"error\" is null or char_length(\"email_messages\".\"error\") <= 300"
-        },
-        "email_messages_attempts_check": {
-          "name": "email_messages_attempts_check",
-          "value": "\"email_messages\".\"attempts\" >= 1"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.geo_areas": {
@@ -11117,35 +10672,35 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "geo_areas_district_id_geo_districts_id_fk": {
           "name": "geo_areas_district_id_geo_districts_id_fk",
           "tableFrom": "geo_areas",
+          "tableTo": "geo_districts",
           "columnsFrom": [
             "district_id"
           ],
-          "tableTo": "geo_districts",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "geo_areas_district_slug_key": {
           "name": "geo_areas_district_slug_key",
+          "nullsNotDistinct": false,
           "columns": [
             "district_id",
             "slug"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -11268,9 +10823,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -11278,10 +10833,10 @@
       "uniqueConstraints": {
         "geo_categories_slug_key": {
           "name": "geo_categories_slug_key",
+          "nullsNotDistinct": false,
           "columns": [
             "slug"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -11364,11 +10919,11 @@
       "uniqueConstraints": {
         "geo_districts_state_slug_key": {
           "name": "geo_districts_state_slug_key",
+          "nullsNotDistinct": false,
           "columns": [
             "state_code",
             "slug"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -11614,50 +11169,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "leads_business_id_businesses_id_fk": {
           "name": "leads_business_id_businesses_id_fk",
           "tableFrom": "leads",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "leads_attached_by_staff_id_staff_members_user_id_fk": {
           "name": "leads_attached_by_staff_id_staff_members_user_id_fk",
           "tableFrom": "leads",
+          "tableTo": "staff_members",
           "columnsFrom": [
             "attached_by_staff_id"
           ],
-          "tableTo": "staff_members",
           "columnsTo": [
             "user_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "leads_assigned_staff_id_staff_members_user_id_fk": {
           "name": "leads_assigned_staff_id_staff_members_user_id_fk",
           "tableFrom": "leads",
+          "tableTo": "staff_members",
           "columnsFrom": [
             "assigned_staff_id"
           ],
-          "tableTo": "staff_members",
           "columnsTo": [
             "user_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -11788,48 +11343,48 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "media_assets_business_id_businesses_id_fk": {
           "name": "media_assets_business_id_businesses_id_fk",
           "tableFrom": "media_assets",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "media_assets_uploaded_by_user_id_users_id_fk": {
           "name": "media_assets_uploaded_by_user_id_users_id_fk",
           "tableFrom": "media_assets",
+          "tableTo": "users",
           "columnsFrom": [
             "uploaded_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "media_assets_id_business_id_unique": {
           "name": "media_assets_id_business_id_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "id",
             "business_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -11883,28 +11438,28 @@
         "business_modules_business_id_businesses_id_fk": {
           "name": "business_modules_business_id_businesses_id_fk",
           "tableFrom": "business_modules",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "business_modules_changed_by_user_id_users_id_fk": {
           "name": "business_modules_changed_by_user_id_users_id_fk",
           "tableFrom": "business_modules",
+          "tableTo": "users",
           "columnsFrom": [
             "changed_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -11982,24 +11537,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "business_hours_business_id_businesses_id_fk": {
           "name": "business_hours_business_id_businesses_id_fk",
           "tableFrom": "business_hours",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -12118,15 +11673,15 @@
         "business_profiles_business_id_businesses_id_fk": {
           "name": "business_profiles_business_id_businesses_id_fk",
           "tableFrom": "business_profiles",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -12205,16 +11760,16 @@
           "columns": [
             {
               "expression": "lower(\"hostname\")",
-              "isExpression": true,
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"domains\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "domains_one_primary_per_business_idx": {
           "name": "domains_one_primary_per_business_idx",
@@ -12227,25 +11782,25 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"domains\".\"is_primary\" and \"domains\".\"removed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "domains_business_id_businesses_id_fk": {
           "name": "domains_business_id_businesses_id_fk",
           "tableFrom": "domains",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -12302,30 +11857,30 @@
         "project_briefs_business_id_businesses_id_fk": {
           "name": "project_briefs_business_id_businesses_id_fk",
           "tableFrom": "project_briefs",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "project_briefs_project_business_fk": {
           "name": "project_briefs_project_business_fk",
           "tableFrom": "project_briefs",
+          "tableTo": "projects",
           "columnsFrom": [
             "project_id",
             "business_id"
           ],
-          "tableTo": "projects",
           "columnsTo": [
             "id",
             "business_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -12413,24 +11968,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "services_business_id_businesses_id_fk": {
           "name": "services_business_id_businesses_id_fk",
           "tableFrom": "services",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -12513,44 +12068,44 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"patients\".\"alt_phone\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "patients_business_id_businesses_id_fk": {
           "name": "patients_business_id_businesses_id_fk",
           "tableFrom": "patients",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "patients_business_id_id_key": {
           "name": "patients_business_id_id_key",
+          "nullsNotDistinct": false,
           "columns": [
             "business_id",
             "id"
-          ],
-          "nullsNotDistinct": false
+          ]
         },
         "patients_business_id_phone_key": {
           "name": "patients_business_id_phone_key",
+          "nullsNotDistinct": false,
           "columns": [
             "business_id",
             "phone"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -12641,39 +12196,39 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "practitioner_hours_business_id_businesses_id_fk": {
           "name": "practitioner_hours_business_id_businesses_id_fk",
           "tableFrom": "practitioner_hours",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "practitioner_hours_practitioner_business_fk": {
           "name": "practitioner_hours_practitioner_business_fk",
           "tableFrom": "practitioner_hours",
+          "tableTo": "practitioners",
           "columnsFrom": [
             "business_id",
             "practitioner_id"
           ],
-          "tableTo": "practitioners",
           "columnsTo": [
             "business_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -12757,39 +12312,39 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "practitioner_leave_business_id_businesses_id_fk": {
           "name": "practitioner_leave_business_id_businesses_id_fk",
           "tableFrom": "practitioner_leave",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "practitioner_leave_practitioner_business_fk": {
           "name": "practitioner_leave_practitioner_business_fk",
           "tableFrom": "practitioner_leave",
+          "tableTo": "practitioners",
           "columnsFrom": [
             "business_id",
             "practitioner_id"
           ],
-          "tableTo": "practitioners",
           "columnsTo": [
             "business_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -12886,35 +12441,35 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "practitioners_business_id_businesses_id_fk": {
           "name": "practitioners_business_id_businesses_id_fk",
           "tableFrom": "practitioners",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "practitioners_business_id_id_key": {
           "name": "practitioners_business_id_id_key",
+          "nullsNotDistinct": false,
           "columns": [
             "business_id",
             "id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -12972,30 +12527,30 @@
         "onboarding_progress_business_id_businesses_id_fk": {
           "name": "onboarding_progress_business_id_businesses_id_fk",
           "tableFrom": "onboarding_progress",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "onboarding_progress_project_business_fk": {
           "name": "onboarding_progress_project_business_fk",
           "tableFrom": "onboarding_progress",
+          "tableTo": "projects",
           "columnsFrom": [
             "project_id",
             "business_id"
           ],
-          "tableTo": "projects",
           "columnsTo": [
             "id",
             "business_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -13094,19 +12649,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "assigned_staff_id": {
-          "name": "assigned_staff_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status_before_hold": {
-          "name": "status_before_hold",
-          "type": "project_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -13134,58 +12676,40 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"projects\".\"status\" not in ('live', 'cancelled')",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "projects_business_id_businesses_id_fk": {
           "name": "projects_business_id_businesses_id_fk",
           "tableFrom": "projects",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
-        },
-        "projects_assigned_staff_id_staff_members_user_id_fk": {
-          "name": "projects_assigned_staff_id_staff_members_user_id_fk",
-          "tableFrom": "projects",
-          "columnsFrom": [
-            "assigned_staff_id"
-          ],
-          "tableTo": "staff_members",
-          "columnsTo": [
-            "user_id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "projects_id_business_id_unique": {
           "name": "projects_id_business_id_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "id",
             "business_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
-      "checkConstraints": {
-        "projects_status_before_hold_check": {
-          "name": "projects_status_before_hold_check",
-          "value": "\"projects\".\"status\" = 'on_hold' or \"projects\".\"status_before_hold\" is null"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.setup_call_bookings": {
@@ -13256,24 +12780,24 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "setup_call_bookings_business_id_businesses_id_fk": {
           "name": "setup_call_bookings_business_id_businesses_id_fk",
           "tableFrom": "setup_call_bookings",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -13447,45 +12971,45 @@
         "affiliates_user_id_users_id_fk": {
           "name": "affiliates_user_id_users_id_fk",
           "tableFrom": "affiliates",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         },
         "affiliates_created_by_staff_id_users_id_fk": {
           "name": "affiliates_created_by_staff_id_users_id_fk",
           "tableFrom": "affiliates",
+          "tableTo": "users",
           "columnsFrom": [
             "created_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "affiliates_user_id_unique": {
           "name": "affiliates_user_id_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "user_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         },
         "affiliates_login_token_hash_unique": {
           "name": "affiliates_login_token_hash_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "login_token_hash"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -13630,9 +13154,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "referral_codes_affiliate_idx": {
           "name": "referral_codes_affiliate_idx",
@@ -13645,47 +13169,47 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "referral_codes_affiliate_id_affiliates_id_fk": {
           "name": "referral_codes_affiliate_id_affiliates_id_fk",
           "tableFrom": "referral_codes",
+          "tableTo": "affiliates",
           "columnsFrom": [
             "affiliate_id"
           ],
-          "tableTo": "affiliates",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "referral_codes_created_by_staff_id_users_id_fk": {
           "name": "referral_codes_created_by_staff_id_users_id_fk",
           "tableFrom": "referral_codes",
+          "tableTo": "users",
           "columnsFrom": [
             "created_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "referral_codes_code_unique": {
           "name": "referral_codes_code_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "code"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -13793,60 +13317,60 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "setup_invites_lead_id_leads_id_fk": {
           "name": "setup_invites_lead_id_leads_id_fk",
           "tableFrom": "setup_invites",
+          "tableTo": "leads",
           "columnsFrom": [
             "lead_id"
           ],
-          "tableTo": "leads",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "setup_invites_created_by_staff_id_staff_members_user_id_fk": {
           "name": "setup_invites_created_by_staff_id_staff_members_user_id_fk",
           "tableFrom": "setup_invites",
+          "tableTo": "staff_members",
           "columnsFrom": [
             "created_by_staff_id"
           ],
-          "tableTo": "staff_members",
           "columnsTo": [
             "user_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "setup_invites_business_id_businesses_id_fk": {
           "name": "setup_invites_business_id_businesses_id_fk",
           "tableFrom": "setup_invites",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "setup_invites_token_hash_unique": {
           "name": "setup_invites_token_hash_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "token_hash"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -13890,15 +13414,15 @@
         "staff_members_user_id_users_id_fk": {
           "name": "staff_members_user_id_users_id_fk",
           "tableFrom": "staff_members",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -13908,125 +13432,6 @@
         "staff_members_role_check": {
           "name": "staff_members_role_check",
           "value": "\"staff_members\".\"role\" in ('support', 'finance', 'admin')"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.staff_invites": {
-      "name": "staff_invites",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "role": {
-          "name": "role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "token_hash": {
-          "name": "token_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "accepted_at": {
-          "name": "accepted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "revoked_at": {
-          "name": "revoked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "invited_by": {
-          "name": "invited_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "staff_invites_email_idx": {
-          "name": "staff_invites_email_idx",
-          "columns": [
-            {
-              "expression": "email",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        }
-      },
-      "foreignKeys": {
-        "staff_invites_invited_by_staff_members_user_id_fk": {
-          "name": "staff_invites_invited_by_staff_members_user_id_fk",
-          "tableFrom": "staff_invites",
-          "columnsFrom": [
-            "invited_by"
-          ],
-          "tableTo": "staff_members",
-          "columnsTo": [
-            "user_id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "staff_invites_token_hash_unique": {
-          "name": "staff_invites_token_hash_unique",
-          "columns": [
-            "token_hash"
-          ],
-          "nullsNotDistinct": false
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "staff_invites_role_check": {
-          "name": "staff_invites_role_check",
-          "value": "\"staff_invites\".\"role\" in ('support', 'finance', 'admin')"
-        },
-        "staff_invites_email_check": {
-          "name": "staff_invites_email_check",
-          "value": "\"staff_invites\".\"email\" = lower(btrim(\"staff_invites\".\"email\")) and char_length(\"staff_invites\".\"email\") between 3 and 254"
-        },
-        "staff_invites_used_once_check": {
-          "name": "staff_invites_used_once_check",
-          "value": "not (\"staff_invites\".\"accepted_at\" is not null and \"staff_invites\".\"revoked_at\" is not null)"
         }
       },
       "isRLSEnabled": false
@@ -14118,24 +13523,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "breach_register_recorded_by_users_id_fk": {
           "name": "breach_register_recorded_by_users_id_fk",
           "tableFrom": "breach_register",
+          "tableTo": "users",
           "columnsFrom": [
             "recorded_by"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -14261,9 +13666,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -14369,9 +13774,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -14530,9 +13935,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "privacy_requests_status_due_idx": {
           "name": "privacy_requests_status_due_idx",
@@ -14551,24 +13956,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "privacy_requests_handled_by_users_id_fk": {
           "name": "privacy_requests_handled_by_users_id_fk",
           "tableFrom": "privacy_requests",
+          "tableTo": "users",
           "columnsFrom": [
             "handled_by"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -14657,15 +14062,15 @@
         "user_privacy_settings_user_id_users_id_fk": {
           "name": "user_privacy_settings_user_id_users_id_fk",
           "tableFrom": "user_privacy_settings",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -14762,9 +14167,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "staff_access_log_staff_created_at_idx": {
           "name": "staff_access_log_staff_created_at_idx",
@@ -14783,24 +14188,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "staff_access_log_staff_user_id_users_id_fk": {
           "name": "staff_access_log_staff_user_id_users_id_fk",
           "tableFrom": "staff_access_log",
+          "tableTo": "users",
           "columnsFrom": [
             "staff_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -14899,15 +14304,15 @@
         "billing_profiles_business_id_businesses_id_fk": {
           "name": "billing_profiles_business_id_businesses_id_fk",
           "tableFrom": "billing_profiles",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -15159,9 +14564,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "tax_invoices_number_idx": {
           "name": "tax_invoices_number_idx",
@@ -15174,9 +14579,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "tax_invoices_series_serial_idx": {
           "name": "tax_invoices_series_serial_idx",
@@ -15201,9 +14606,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "tax_invoices_business_id_idx": {
           "name": "tax_invoices_business_id_idx",
@@ -15222,37 +14627,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "tax_invoices_business_id_businesses_id_fk": {
           "name": "tax_invoices_business_id_businesses_id_fk",
           "tableFrom": "tax_invoices",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "tax_invoices_payment_id_payments_id_fk": {
           "name": "tax_invoices_payment_id_payments_id_fk",
           "tableFrom": "tax_invoices",
+          "tableTo": "payments",
           "columnsFrom": [
             "payment_id"
           ],
-          "tableTo": "payments",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -15445,9 +14850,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "support_attachments_expiry_idx": {
           "name": "support_attachments_expiry_idx",
@@ -15466,62 +14871,62 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "support_attachments_uploaded_by_user_id_users_id_fk": {
           "name": "support_attachments_uploaded_by_user_id_users_id_fk",
           "tableFrom": "support_attachments",
+          "tableTo": "users",
           "columnsFrom": [
             "uploaded_by_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "support_attachments_ticket_id_support_tickets_id_fk": {
           "name": "support_attachments_ticket_id_support_tickets_id_fk",
           "tableFrom": "support_attachments",
+          "tableTo": "support_tickets",
           "columnsFrom": [
             "ticket_id"
           ],
-          "tableTo": "support_tickets",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "support_attachments_message_ticket_fk": {
           "name": "support_attachments_message_ticket_fk",
           "tableFrom": "support_attachments",
+          "tableTo": "support_messages",
           "columnsFrom": [
             "message_id",
             "ticket_id"
           ],
-          "tableTo": "support_messages",
           "columnsTo": [
             "id",
             "ticket_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "support_attachments_storage_key_unique": {
           "name": "support_attachments_storage_key_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "storage_key"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -15614,37 +15019,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "support_events_ticket_id_support_tickets_id_fk": {
           "name": "support_events_ticket_id_support_tickets_id_fk",
           "tableFrom": "support_events",
+          "tableTo": "support_tickets",
           "columnsFrom": [
             "ticket_id"
           ],
-          "tableTo": "support_tickets",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "support_events_actor_user_id_users_id_fk": {
           "name": "support_events_actor_user_id_users_id_fk",
           "tableFrom": "support_events",
+          "tableTo": "users",
           "columnsFrom": [
             "actor_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -15745,56 +15150,56 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "support_messages_ticket_id_support_tickets_id_fk": {
           "name": "support_messages_ticket_id_support_tickets_id_fk",
           "tableFrom": "support_messages",
+          "tableTo": "support_tickets",
           "columnsFrom": [
             "ticket_id"
           ],
-          "tableTo": "support_tickets",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "support_messages_author_user_id_users_id_fk": {
           "name": "support_messages_author_user_id_users_id_fk",
           "tableFrom": "support_messages",
+          "tableTo": "users",
           "columnsFrom": [
             "author_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "support_messages_id_ticket_unique": {
           "name": "support_messages_id_ticket_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "id",
             "ticket_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         },
         "support_messages_author_submission_unique": {
           "name": "support_messages_author_submission_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "author_user_id",
             "submission_key"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -15857,43 +15262,43 @@
         "support_read_states_ticket_id_support_tickets_id_fk": {
           "name": "support_read_states_ticket_id_support_tickets_id_fk",
           "tableFrom": "support_read_states",
+          "tableTo": "support_tickets",
           "columnsFrom": [
             "ticket_id"
           ],
-          "tableTo": "support_tickets",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "support_read_states_user_id_users_id_fk": {
           "name": "support_read_states_user_id_users_id_fk",
           "tableFrom": "support_read_states",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "support_read_states_message_ticket_fk": {
           "name": "support_read_states_message_ticket_fk",
           "tableFrom": "support_read_states",
+          "tableTo": "support_messages",
           "columnsFrom": [
             "last_read_message_id",
             "ticket_id"
           ],
-          "tableTo": "support_messages",
           "columnsTo": [
             "id",
             "ticket_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -16038,9 +15443,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "support_tickets_queue_idx": {
           "name": "support_tickets_queue_idx",
@@ -16059,9 +15464,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "support_tickets_status_activity_idx": {
           "name": "support_tickets_status_activity_idx",
@@ -16080,9 +15485,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "support_tickets_category_id_idx": {
           "name": "support_tickets_category_id_idx",
@@ -16101,9 +15506,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "support_tickets_assignee_idx": {
           "name": "support_tickets_assignee_idx",
@@ -16122,68 +15527,68 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "support_tickets_requester_user_id_users_id_fk": {
           "name": "support_tickets_requester_user_id_users_id_fk",
           "tableFrom": "support_tickets",
+          "tableTo": "users",
           "columnsFrom": [
             "requester_user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "support_tickets_business_id_businesses_id_fk": {
           "name": "support_tickets_business_id_businesses_id_fk",
           "tableFrom": "support_tickets",
+          "tableTo": "businesses",
           "columnsFrom": [
             "business_id"
           ],
-          "tableTo": "businesses",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "support_tickets_assignee_staff_id_staff_members_user_id_fk": {
           "name": "support_tickets_assignee_staff_id_staff_members_user_id_fk",
           "tableFrom": "support_tickets",
+          "tableTo": "staff_members",
           "columnsFrom": [
             "assignee_staff_id"
           ],
-          "tableTo": "staff_members",
           "columnsTo": [
             "user_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "support_tickets_display_ref_unique": {
           "name": "support_tickets_display_ref_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "display_ref"
-          ],
-          "nullsNotDistinct": false
+          ]
         },
         "support_tickets_requester_submission_unique": {
           "name": "support_tickets_requester_submission_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "requester_user_id",
             "submission_key"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -16237,9 +15642,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -16380,9 +15785,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "error_issues_status_idx": {
           "name": "error_issues_status_idx",
@@ -16395,34 +15800,34 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "error_issues_assignee_staff_id_staff_members_user_id_fk": {
           "name": "error_issues_assignee_staff_id_staff_members_user_id_fk",
           "tableFrom": "error_issues",
+          "tableTo": "staff_members",
           "columnsFrom": [
             "assignee_staff_id"
           ],
-          "tableTo": "staff_members",
           "columnsTo": [
             "user_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "error_issues_fingerprint_unique": {
           "name": "error_issues_fingerprint_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "fingerprint"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -16509,41 +15914,41 @@
         "support_ticket_error_links_ticket_id_support_tickets_id_fk": {
           "name": "support_ticket_error_links_ticket_id_support_tickets_id_fk",
           "tableFrom": "support_ticket_error_links",
+          "tableTo": "support_tickets",
           "columnsFrom": [
             "ticket_id"
           ],
-          "tableTo": "support_tickets",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "support_ticket_error_links_issue_id_error_issues_id_fk": {
           "name": "support_ticket_error_links_issue_id_error_issues_id_fk",
           "tableFrom": "support_ticket_error_links",
+          "tableTo": "error_issues",
           "columnsFrom": [
             "issue_id"
           ],
-          "tableTo": "error_issues",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "support_ticket_error_links_linked_by_staff_id_staff_members_user_id_fk": {
           "name": "support_ticket_error_links_linked_by_staff_id_staff_members_user_id_fk",
           "tableFrom": "support_ticket_error_links",
+          "tableTo": "staff_members",
           "columnsFrom": [
             "linked_by_staff_id"
           ],
-          "tableTo": "staff_members",
           "columnsTo": [
             "user_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -16595,15 +16000,15 @@
         "site_settings_updated_by_staff_id_users_id_fk": {
           "name": "site_settings_updated_by_staff_id_users_id_fk",
           "tableFrom": "site_settings",
+          "tableTo": "users",
           "columnsFrom": [
             "updated_by_staff_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -17211,10 +16616,10 @@
     }
   },
   "schemas": {},
-  "views": {},
   "sequences": {},
   "roles": {},
   "policies": {},
+  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},

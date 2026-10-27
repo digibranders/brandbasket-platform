@@ -1,13 +1,28 @@
 import type { ReactElement } from "react";
 import { requestBrand } from "@/lib/server/request-brand";
-import type { AddOn } from "@brandbasket/shared/lib/billing/add-ons";
+import type { AddOn, AddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { cn } from "@brandbasket/shared/lib/cn";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { addBundledAddOnAction, removeBundledAddOnAction } from "@/app/app-host/(protected)/services/actions";
 import { BundledAddOnAdd } from "@/components/panel/add-ons/bundled-add-on-add";
 import { BundledAddOnRemove } from "@/components/panel/add-ons/bundled-add-on-remove";
-import { addOnDate, planStartsAgain } from "@/lib/billing/add-on-copy";
+import { SERVICE_DOT } from "@/components/v2/classes";
+import { addOnDate, addOnStatus, planStartsAgain, type AddOnStatus } from "@/lib/billing/add-on-copy";
 import { dropCopy } from "@/lib/billing/drop-service";
 import type { AddOnOffer, AddOnPageEntry } from "@/lib/server/add-ons";
+
+/** A service's colour square before its name, the same one Overview and the rail use. */
+const SERVICE_COLOUR: Readonly<Record<AddOnId, string>> = {
+  "managed-website": SERVICE_DOT.website,
+  "digital-growth": SERVICE_DOT.social,
+  "local-seo-aeo": SERVICE_DOT.search,
+};
+
+const STATUS_TONE: Readonly<Record<AddOnStatus["tone"], string>> = {
+  on: "bg-sage-wash text-sage-deep",
+  ending: "bg-rattan-wash text-rattan-ink",
+  off: "bg-sunken text-ink-2",
+};
 
 interface AddOnRowProps {
   readonly addOn: AddOn;
@@ -17,7 +32,7 @@ interface AddOnRowProps {
 }
 
 /**
- * One service: what it is and where it runs on the left, its price and where it stands on the right. One in the plan's
+ * One service: what it is and where it runs on the left, its price beside it, and where it stands with what can be done about it on the right. One in the plan's
  * payment can be taken out from the next billing date (never the last one: that is cancelling), and one that is ending
  * kept; one that is not can be added for the rest of the paid month, or says how to ask for it. The state line is a live
  * region that is always in the page, so the change after Remove is announced.
@@ -34,10 +49,11 @@ export async function AddOnRow({ addOn, entry, canAdd }: AddOnRowProps): Promise
         : entry.joinsOn !== null
           ? `${addOn.title} is on. It joins your monthly payment from ${addOnDate(entry.joinsOn)}.`
           : "Included in your monthly plan payment.";
+  const status = addOnStatus(entry);
   const writeToUs = (
-    <p className="text-sm text-ink-soft">
+    <p className="text-sm text-ink-2">
       To add it to your monthly payment, write to us at{" "}
-      <a href={`mailto:${brand.contactEmail}?subject=${encodeURIComponent(`Add ${addOn.title}`)}`} className="link-underline text-ink">
+      <a href={`mailto:${brand.contactEmail}?subject=${encodeURIComponent(`Add ${addOn.title}`)}`} className="font-semibold text-ink underline underline-offset-[3px]">
         {brand.contactEmail}
       </a>
       .
@@ -45,55 +61,55 @@ export async function AddOnRow({ addOn, entry, canAdd }: AddOnRowProps): Promise
   );
 
   return (
-    <li className="py-8">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-10">
-        <div className="min-w-0">
-          <h2 id={headingId} tabIndex={-1} className="panel-section outline-none">
+    <li className="grid gap-5 py-6 md:grid-cols-[minmax(0,1fr)_11rem_minmax(14rem,22rem)] md:gap-8">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h2 id={headingId} tabIndex={-1} className="inline-flex items-center gap-2.5 font-display text-[1.0625rem] font-semibold tracking-[-0.015em] text-ink outline-none">
+            <span aria-hidden="true" className={cn("size-2 rounded-[2px]", SERVICE_COLOUR[addOn.id])} />
             {addOn.title}
           </h2>
-          <p className="mt-1.5 max-w-md text-sm text-ink-soft">{addOn.line}</p>
-          {addOn.platforms === undefined ? null : (
-            <ul aria-label={`${addOn.title} runs on`} className="mt-4 flex flex-wrap gap-2">
-              {addOn.platforms.map((platform) => (
-                <li key={platform} className="rounded-full bg-paper-deep px-3 py-1 text-xs text-ink-soft">
-                  {platform}
-                </li>
-              ))}
-            </ul>
-          )}
+          <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold", STATUS_TONE[status.tone])}>{status.word}</span>
         </div>
-        <div className="flex shrink-0 flex-col gap-4 sm:max-w-xs sm:items-end sm:text-right">
-          <div>
-            {price.discountCents > 0 ? (
-              <p className="text-sm tabular-nums text-ink-soft line-through">{formatMoney(price.listCents, price.currency)}</p>
-            ) : null}
-            <p className="text-2xl font-semibold tabular-nums">{formatMoney(price.netCents, price.currency)}</p>
-            <p className="mt-0.5 text-sm text-ink-soft">{addOn.extra === undefined ? addOn.unit : `${addOn.unit} ${addOn.extra}`}</p>
-          </div>
-          <p role="status" className="text-sm tabular-nums text-ink-soft empty:hidden">
-            {stateLine}
-          </p>
-          {entry.kind === "available" ? (
-            <AvailableAddOn addOn={addOn} entry={entry} canAdd={canAdd} headingId={headingId} contactEmail={brand.contactEmail} writeToUs={writeToUs} />
-          ) : entry.endsOn !== null && entry.keepable && canAdd ? (
-            <BundledAddOnAdd
-              addOn={addOn.id}
-              title={addOn.title}
-              savedText={`${addOn.title} stays. Your monthly payment does not change.`}
-              headingId={headingId}
-              action={addBundledAddOnAction}
-            />
-          ) : entry.endsOn === null && entry.nextBillingOn !== null && entry.drop !== null ? (
-            <BundledAddOnRemove
-              addOn={addOn.id}
-              title={addOn.title}
-              endsOn={addOnDate(entry.nextBillingOn)}
-              copy={dropCopy(entry.drop, addOnDate(entry.nextBillingOn))}
-              headingId={headingId}
-              action={removeBundledAddOnAction}
-            />
-          ) : null}
-        </div>
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-2">{addOn.line}</p>
+        {addOn.platforms === undefined ? null : (
+          <ul aria-label={`${addOn.title} runs on`} className="mt-3 flex flex-wrap gap-2">
+            {addOn.platforms.map((platform) => (
+              <li key={platform} className="rounded-full bg-sunken px-3 py-1 text-xs text-ink-2">
+                {platform}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div>
+        {price.discountCents > 0 ? <p className="font-figure text-[0.8125rem] tabular-nums text-ink-2 line-through">{formatMoney(price.listCents, price.currency)}</p> : null}
+        <p className="font-figure text-[1.375rem] font-semibold tabular-nums text-ink">{formatMoney(price.netCents, price.currency)}</p>
+        <p className="mt-0.5 text-[0.8125rem] text-ink-2">{addOn.extra === undefined ? addOn.unit : `${addOn.unit} ${addOn.extra}`}</p>
+      </div>
+      <div className="grid content-start justify-items-start gap-3">
+        <p role="status" className="text-sm leading-relaxed text-ink-2 empty:hidden">
+          {stateLine}
+        </p>
+        {entry.kind === "available" ? (
+          <AvailableAddOn addOn={addOn} entry={entry} canAdd={canAdd} headingId={headingId} contactEmail={brand.contactEmail} writeToUs={writeToUs} />
+        ) : entry.endsOn !== null && entry.keepable && canAdd ? (
+          <BundledAddOnAdd
+            addOn={addOn.id}
+            title={addOn.title}
+            savedText={`${addOn.title} stays. Your monthly payment does not change.`}
+            headingId={headingId}
+            action={addBundledAddOnAction}
+          />
+        ) : entry.endsOn === null && entry.nextBillingOn !== null && entry.drop !== null ? (
+          <BundledAddOnRemove
+            addOn={addOn.id}
+            title={addOn.title}
+            endsOn={addOnDate(entry.nextBillingOn)}
+            copy={dropCopy(entry.drop, addOnDate(entry.nextBillingOn))}
+            headingId={headingId}
+            action={removeBundledAddOnAction}
+          />
+        ) : null}
       </div>
     </li>
   );
@@ -121,7 +137,7 @@ function AvailableAddOn({ addOn, entry, canAdd, headingId, contactEmail, writeTo
   switch (offer.kind) {
     case "quote":
       return (
-        <div className="space-y-3 sm:text-right">
+        <div className="space-y-3">
           {canAdd ? (
             <BundledAddOnAdd
             addOn={addOn.id}
@@ -131,27 +147,27 @@ function AvailableAddOn({ addOn, entry, canAdd, headingId, contactEmail, writeTo
               action={addBundledAddOnAction}
             />
           ) : null}
-          <p className="max-w-xs text-sm tabular-nums text-ink-soft">{quoteLine(offer, entry.price)}</p>
+          <p className="max-w-xs text-sm leading-relaxed tabular-nums text-ink-2">{quoteLine(offer, entry.price)}</p>
         </div>
       );
     case "renewal-due":
       return offer.renewsOn === null ? (
         writeToUs
       ) : (
-        <p className="text-sm text-ink-soft">Your payment is due within the hour. Add it after {addOnDate(offer.renewsOn)}.</p>
+        <p className="text-sm text-ink-2">Your payment is due within the hour. Add it after {addOnDate(offer.renewsOn)}.</p>
       );
     case "manual":
       return (
-        <p className="text-sm text-ink-soft">
+        <p className="text-sm text-ink-2">
           You pay us by bank transfer, so write to{" "}
-          <a href={`mailto:${contactEmail}?subject=${encodeURIComponent(`Add ${addOn.title}`)}`} className="link-underline text-ink">
+          <a href={`mailto:${contactEmail}?subject=${encodeURIComponent(`Add ${addOn.title}`)}`} className="font-semibold text-ink underline underline-offset-[3px]">
             {contactEmail}
           </a>{" "}
           and we&apos;ll add it.
         </p>
       );
     case "plan-kept":
-      return <p className="text-sm text-ink-soft">{planStartsAgain(offer.startsOn)}</p>;
+      return <p className="text-sm text-ink-2">{planStartsAgain(offer.startsOn)}</p>;
     case "write":
       return writeToUs;
     default: {

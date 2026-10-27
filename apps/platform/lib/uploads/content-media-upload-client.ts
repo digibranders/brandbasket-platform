@@ -4,7 +4,7 @@ import { prepareImageForUpload } from "./prepare-image";
 /** `POST /api/content-media-uploads`'s own two response shapes. */
 type UploadResponseBody = { readonly media: { readonly id: string } } | { readonly error: string };
 
-export const CONTENT_MEDIA_UPLOAD_ROUTE = "/api/content-media-uploads";
+const CONTENT_MEDIA_UPLOAD_ROUTE = "/api/content-media-uploads";
 
 export type ContentMediaUploadResult =
   | { readonly ok: true; readonly mediaId: string }

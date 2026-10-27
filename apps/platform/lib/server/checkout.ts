@@ -58,7 +58,7 @@ export class UnsafeCheckoutUrlError extends Error {
 }
 
 /** The provider was asked to reopen one subscription and answered with another. */
-export class CheckoutMismatchError extends Error {
+class CheckoutMismatchError extends Error {
   constructor() {
     super("The billing provider reopened a different subscription from the one it was asked for.");
     this.name = "CheckoutMismatchError";
@@ -139,6 +139,7 @@ function checkedUrl(started: StartedCheckout): string {
  * still the one the decision saw and records the new one (cancelling the stale checkout it replaces in the same
  * transaction). If that check fails, or recording fails, the subscription just opened at the provider is an orphan:
  * it is cancelled there and logged. A replaced checkout is cancelled at the provider only after the commit.
+ * Returns null when the check failed (another press, or tab, got there first), so the caller can look again.
  */
 async function openNewCheckout(
   customer: GrantedCustomer,
@@ -146,7 +147,7 @@ async function openNewCheckout(
   planned: PlannedCheckout,
   replacing: Subscription | null,
   now: Date,
-): Promise<CheckoutOutcome> {
+): Promise<CheckoutOutcome | null> {
   const { user, tenant } = customer;
   const { discount } = planned;
   const discountAmountCents = discount?.amountCents ?? 0;
@@ -224,7 +225,7 @@ async function openNewCheckout(
   if (!recorded) {
     logBillingEvent("warn", "checkout-orphaned", { ...orphanFields, reason: "changed-meanwhile" });
     await cancelAtProvider(provider, orphan);
-    return refused(CHANGED_MEANWHILE);
+    return null;
   }
 
   if (replacing !== null) {
@@ -343,6 +344,10 @@ function basketKey(addOnIds: readonly string[], netCents: number, adCreditCents:
  * under the lock). A business that has paid before and lapsed is reactivating and buys the basket it lapsed with instead
  * (loadReactivationBasket), whatever `chosen` says, unless it cancelled the plan itself: then it buys `chosen`, at list.
  * A code is priced against the basket's package net, so it comes off once, after the package offer.
+ *
+ * Pressing Pay twice at once opens two subscriptions at the provider, and only the first to record stays. The other
+ * cancels its own and looks again (`lookAgain`, once), which now finds the first press's checkout and sends the customer
+ * to it, instead of telling them something changed. Only if the business moves again is the customer asked to retry.
  */
 async function openPlanCheckout(
   customer: GrantedCustomer,
@@ -350,10 +355,13 @@ async function openPlanCheckout(
   paidHref: string,
   tier: PlanTier | null,
   chosen: readonly MonthlyAddOnId[],
+  lookAgain: boolean = true,
 ): Promise<CheckoutOutcome> {
   if (chosen.length === 0 && customer.billing.status !== "lapsed") return refused(NO_SERVICES);
   const { tenant } = customer;
   const provider = getBillingProvider();
+  const changedMeanwhile = async (): Promise<CheckoutOutcome> =>
+    lookAgain ? openPlanCheckout(customer, now, paidHref, tier, chosen, false) : refused(CHANGED_MEANWHILE);
   const first = await getStaffDb().transaction(async (tx): Promise<DecisionStep> => {
     await lockBusinessForBilling(tx, tenant.businessId);
     const state = await findBillingState(tx, tenant.businessId);
@@ -436,14 +444,14 @@ async function openPlanCheckout(
       return { kind: "redirect", url: checkedUrl(started) };
     }
     case "create":
-      return openNewCheckout(customer, provider, planned, null, now);
+      return (await openNewCheckout(customer, provider, planned, null, now)) ?? changedMeanwhile();
     case "replace": {
       // decideCheckout only replaces the newest subscription, so it is the one the decision saw.
       const stale = planned.latest;
       if (stale === null || stale.id !== decision.staleSubscriptionId) {
         throw new Error(`Checkout decided to replace ${decision.staleSubscriptionId}, which is not the newest subscription`);
       }
-      return openNewCheckout(customer, provider, planned, stale, now);
+      return (await openNewCheckout(customer, provider, planned, stale, now)) ?? changedMeanwhile();
     }
     default: {
       const unhandled: never = decision;

@@ -565,7 +565,7 @@ export const charges = pgTable(
       sql`case ${table.status}
         when 'open' then ${table.paymentId} is null and ${table.paidAt} is null and ${table.waivedAt} is null
         when 'paid' then ${table.paymentId} is not null and ${table.paidAt} is not null and ${table.waivedAt} is null
-        else ${table.paymentId} is null and ${table.paidAt} is null and ${table.waivedAt} is not null and (${table.waivedByStaffId} is not null or ${table.kind} in ('directory_ad', 'plan_upgrade', 'add_on'))
+        else ${table.paymentId} is null and ${table.paidAt} is null and ${table.waivedAt} is not null and (${table.waivedByStaffId} is not null or ${table.kind} in ('directory_ad', 'plan_upgrade', 'add_on', 'change_hours'))
       end`,
     ),
   ],

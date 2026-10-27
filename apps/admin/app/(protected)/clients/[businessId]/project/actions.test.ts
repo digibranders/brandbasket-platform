@@ -3,10 +3,6 @@ import {
   cancelProject,
   grantRevisionRound,
   ProjectBuilderNotStaffError,
-  ProjectMoveRefusedError,
-  putProjectOnHold,
-  resumeProject,
-  setProjectBuilding,
 } from "@brandbasket/db";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,9 +13,6 @@ import {
   assignBuilderAction,
   cancelProjectAction,
   grantRoundAction,
-  holdProjectAction,
-  resumeProjectAction,
-  startBuildingAction,
 } from "./actions";
 
 vi.mock("server-only", () => ({}));
@@ -29,9 +22,6 @@ vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     ...actual,
-    setProjectBuilding: vi.fn(),
-    putProjectOnHold: vi.fn(),
-    resumeProject: vi.fn(),
     cancelProject: vi.fn(),
     assignProjectBuilder: vi.fn(),
     grantRevisionRound: vi.fn(),
@@ -61,46 +51,6 @@ beforeEach(() => {
   vi.mocked(getStaffDb).mockReturnValue(DB);
   vi.mocked(redirect).mockImplementation((url: string) => {
     throw new Error(`redirect:${url}`);
-  });
-});
-
-describe("startBuildingAction", () => {
-  it("moves the build, records it for the client, and says so", async () => {
-    vi.mocked(setProjectBuilding).mockResolvedValue(MOVED);
-    await expect(startBuildingAction(form(IDS))).rejects.toThrow(`redirect:/clients/${BUSINESS}/project?move=building`);
-    expect(setProjectBuilding).toHaveBeenCalledWith(DB, PROJECT);
-    expect(recordStaffAction).toHaveBeenCalledWith(STAFF, expect.objectContaining({ businessId: BUSINESS, kind: "project.building", visibleToClient: true }));
-  });
-
-  it("says nothing changed when the database refuses the move", async () => {
-    vi.mocked(setProjectBuilding).mockRejectedValue(new ProjectMoveRefusedError("start-building", PROJECT));
-    await expect(startBuildingAction(form(IDS))).rejects.toThrow("move=refused");
-    expect(recordStaffAction).not.toHaveBeenCalled();
-  });
-});
-
-describe("holdProjectAction", () => {
-  it("asks for a reason before touching the build", async () => {
-    await expect(holdProjectAction(form({ ...IDS, reason: "   " }))).rejects.toThrow("move=reason-missing");
-    expect(putProjectOnHold).not.toHaveBeenCalled();
-  });
-
-  it("holds with the trimmed reason and records it for the client", async () => {
-    vi.mocked(putProjectOnHold).mockResolvedValue({ ...MOVED, status: "on_hold" });
-    await expect(holdProjectAction(form({ ...IDS, reason: " Waiting for photos " }))).rejects.toThrow("move=held");
-    expect(putProjectOnHold).toHaveBeenCalledWith(DB, PROJECT, "Waiting for photos");
-    expect(recordStaffAction).toHaveBeenCalledWith(
-      STAFF,
-      expect.objectContaining({ kind: "project.put_on_hold", summary: "Put on hold: Waiting for photos", visibleToClient: true }),
-    );
-  });
-});
-
-describe("resumeProjectAction", () => {
-  it("resumes the build", async () => {
-    vi.mocked(resumeProject).mockResolvedValue(MOVED);
-    await expect(resumeProjectAction(form(IDS))).rejects.toThrow("move=resumed");
-    expect(resumeProject).toHaveBeenCalledWith(DB, PROJECT);
   });
 });
 
@@ -143,6 +93,6 @@ describe("grantRoundAction", () => {
 
 describe("ids", () => {
   it("refuses a business id that is not a uuid", async () => {
-    await expect(startBuildingAction(form({ businessId: "nope", projectId: PROJECT }))).rejects.toThrow("must be a valid id");
+    await expect(cancelProjectAction(form({ businessId: "nope", projectId: PROJECT }))).rejects.toThrow("must be a valid id");
   });
 });

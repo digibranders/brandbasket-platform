@@ -5,16 +5,13 @@ import { useEffect, useRef, useState, type ReactElement } from "react";
 import { CLOSURE_NOTE_MAX_LENGTH } from "@brandbasket/shared/lib/business-facts/closures";
 import { formatStoredDate } from "@brandbasket/shared/lib/format";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
-import { Button } from "@brandbasket/shared/ui/panel/button";
-import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { BookingClashList } from "@/components/panel/appointments/booking-clash-list";
-import {
-  FIELD_CLASSES,
-  MAX_DATE,
-  PanelFormStatus,
-  usePanelForm,
-  type PanelFormAction,
-} from "@/components/panel/form/panel-form";
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr";
+import { SECTION_TITLE, SOFT_BUTTON } from "@/components/v2/classes";
+import { EmptyState } from "@/components/v2/page";
+import { MAX_DATE, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
+import { DETAILS_FIELD, DETAILS_LABEL } from "./field-classes";
+import { SaveButton } from "./save-button";
 
 interface ClosuresPanelProps {
   /** Upcoming closures only (packages/shared's upcomingClosures), soonest first. */
@@ -29,6 +26,8 @@ interface ClosuresPanelProps {
    */
   /** The section heading. Defaults to "Closures". */
   readonly heading?: string;
+  /** One line under the heading saying what the section does. */
+  readonly note?: string;
   /** What one row is called in its Remove button's label ("Remove closure 3 October 2026"). Defaults to "closure". */
   readonly itemNoun?: string;
   /** The hidden field naming the row a Remove button removes. Defaults to "closureId". */
@@ -50,17 +49,17 @@ function clockLabel(time: string): string {
   return minutes === 0 ? `${twelve} ${suffix}` : `${twelve}:${String(minutes).padStart(2, "0")} ${suffix}`;
 }
 
-/** What the business does on these days: "Closed all day", or "Open 10 am – 2 pm" for a half day. */
+/** What the business does on these days: "Closed all day", or "Open 10 am to 2 pm" for a half day. */
 function closureHours(closure: ClosureRow): string {
   return typeof closure.opensAt === "string" && typeof closure.closesAt === "string"
-    ? `Open ${clockLabel(closure.opensAt)} – ${clockLabel(closure.closesAt)}`
+    ? `Open ${clockLabel(closure.opensAt)} to ${clockLabel(closure.closesAt)}`
     : "Closed all day";
 }
 
-/** "3 October 2026" for a single day, "3–5 October 2026" for a range. */
+/** "3 October 2026" for a single day, "3 October 2026 to 5 October 2026" for a range. */
 function closureRange(closure: ClosureRow): string {
   if (closure.startsOn === closure.endsOn) return formatStoredDate(closure.startsOn);
-  return `${formatStoredDate(closure.startsOn)} – ${formatStoredDate(closure.endsOn)}`;
+  return `${formatStoredDate(closure.startsOn)} to ${formatStoredDate(closure.endsOn)}`;
 }
 
 function ClosureItem({
@@ -90,22 +89,21 @@ function ClosureItem({
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 py-3">
       <div>
-        <p className="text-sm font-medium tabular-nums">{closureRange(closure)}</p>
-        {closure.note === null ? null : <p className="mt-0.5 text-sm text-ink-soft">{closure.note}</p>}
-        {withHours ? <p className="mt-0.5 text-sm text-ink-soft">{closureHours(closure)}</p> : null}
+        <p className="font-figure text-sm font-semibold tabular-nums text-ink">{closureRange(closure)}</p>
+        {closure.note === null ? null : <p className="mt-0.5 text-sm text-ink-2">{closure.note}</p>}
+        {withHours ? <p className="mt-0.5 text-sm text-ink-2">{closureHours(closure)}</p> : null}
       </div>
       <form ref={formRef} action={formAction} className="flex items-center gap-3">
         <input type="hidden" name={idField} value={closure.id} />
-        <Button
+        <button
           type="submit"
-          variant="secondary"
-          size="sm"
+          className={`${SOFT_BUTTON} disabled:opacity-55`}
           disabled={controls.isPending}
           aria-busy={controls.isPending}
           aria-label={`Remove ${itemNoun} ${closureRange(closure)}`}
         >
           {controls.isPending ? "Removing…" : "Remove"}
-        </Button>
+        </button>
         <PanelFormStatus controls={controls} statusRef={statusRef} />
       </form>
     </li>
@@ -121,6 +119,7 @@ export function ClosuresPanel({
   addAction,
   deleteAction,
   heading = "Closures",
+  note,
   itemNoun = "closure",
   idField = "closureId",
   idPrefix = "closure",
@@ -133,139 +132,142 @@ export function ClosuresPanel({
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   return (
-    <div className="space-y-6">
-      <h2 ref={headingRef} tabIndex={-1} className="panel-section outline-none">
+    <section aria-labelledby={`${idPrefix}-title`}>
+      <h2 id={`${idPrefix}-title`} ref={headingRef} tabIndex={-1} className={`${SECTION_TITLE} outline-none`}>
         {heading}
       </h2>
+      <div className="space-y-5 pt-4">
+        {note === undefined ? null : <p className="text-[0.84375rem] leading-relaxed text-ink-2">{note}</p>}
 
-      <form ref={formRef} action={formAction} className="space-y-4">
-        {Object.entries(addFields).map(([name, value]) => (
-          <input key={name} type="hidden" name={name} value={value} />
-        ))}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <label htmlFor={`${idPrefix}-startsOn`} className="block text-sm font-medium">
-              First day
-              <RequiredMark />
-            </label>
-            <input
-              id={`${idPrefix}-startsOn`}
-              name="startsOn"
-              type="date"
-              max={MAX_DATE}
-              required
-              defaultValue={controls.valueOf("startsOn", "")}
-              className={FIELD_CLASSES}
-              {...controls.fieldStatus("startsOn")}
-            />
-          </div>
-          <div>
-            <label htmlFor={`${idPrefix}-endsOn`} className="block text-sm font-medium">
-              Last day
-              <RequiredMark />
-            </label>
-            <input
-              id={`${idPrefix}-endsOn`}
-              name="endsOn"
-              type="date"
-              min={today}
-              max={MAX_DATE}
-              required
-              defaultValue={controls.valueOf("endsOn", "")}
-              className={FIELD_CLASSES}
-              {...controls.fieldStatus("endsOn")}
-            />
-          </div>
-          <div>
-            <label htmlFor={`${idPrefix}-note`} className="block text-sm font-medium">
-              {withHours ? "Reason" : "Note"} <span className="font-normal text-ink-soft">(optional)</span>
-            </label>
-            <input
-              id={`${idPrefix}-note`}
-              name="note"
-              type="text"
-              maxLength={CLOSURE_NOTE_MAX_LENGTH}
-              placeholder={notePlaceholder}
-              defaultValue={controls.valueOf("note", "")}
-              className={FIELD_CLASSES}
-              {...controls.fieldStatus("note")}
-            />
-          </div>
-        </div>
-        {withHours ? (
-          <fieldset className="space-y-3">
-            <legend className="text-sm font-medium">On these days</legend>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              <label className="flex items-center gap-2">
-                <input type="radio" name="kind" value="closed" checked={kind === "closed"} onChange={() => setKind("closed")} />
-                Closed all day
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="radio" name="kind" value="hours" checked={kind === "hours"} onChange={() => setKind("hours")} />
-                Different hours, such as a half day
-              </label>
-            </div>
-            {kind === "hours" ? (
-              <div className="grid max-w-md gap-4 sm:grid-cols-2">
-                <div>
-                  <label htmlFor={`${idPrefix}-opensAt`} className="block text-sm font-medium">
-                    Opens
-                    <RequiredMark />
-                  </label>
-                  <input
-                    id={`${idPrefix}-opensAt`}
-                    name="opensAt"
-                    type="time"
-                    required
-                    defaultValue={controls.valueOf("opensAt", "")}
-                    className={FIELD_CLASSES}
-                    {...controls.fieldStatus("opensAt")}
-                  />
-                </div>
-                <div>
-                  <label htmlFor={`${idPrefix}-closesAt`} className="block text-sm font-medium">
-                    Closes
-                    <RequiredMark />
-                  </label>
-                  <input
-                    id={`${idPrefix}-closesAt`}
-                    name="closesAt"
-                    type="time"
-                    required
-                    defaultValue={controls.valueOf("closesAt", "")}
-                    className={FIELD_CLASSES}
-                    {...controls.fieldStatus("closesAt")}
-                  />
-                </div>
-              </div>
-            ) : null}
-          </fieldset>
-        ) : null}
-        <div className="flex items-center gap-4">
-          <SubmitButton size="sm" disabled={controls.isPending} pendingLabel="Adding…">
-            Add
-          </SubmitButton>
-          <PanelFormStatus controls={controls} statusRef={statusRef} />
-        </div>
-      </form>
-
-      <BookingClashList controls={controls} noun={itemNoun} />
-
-      {closures.length === 0 ? null : (
-        <ul className="divide-y divide-line border-t border-line">
-          {closures.map((closure) => (
-            <ClosureItem
-              key={closure.id}
-              closure={closure}
-              deleteAction={deleteAction}
-              idField={idField}
-              itemNoun={itemNoun}
-              withHours={withHours}
-              onRemoved={() => headingRef.current?.focus()}
-            />
+        <form ref={formRef} action={formAction} className="space-y-4">
+          {Object.entries(addFields).map(([name, value]) => (
+            <input key={name} type="hidden" name={name} value={value} />
           ))}
-        </ul>
-      )}
-    </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label htmlFor={`${idPrefix}-startsOn`} className={DETAILS_LABEL}>
+                First day
+                <RequiredMark />
+              </label>
+              <input
+                id={`${idPrefix}-startsOn`}
+                name="startsOn"
+                type="date"
+                max={MAX_DATE}
+                required
+                defaultValue={controls.valueOf("startsOn", "")}
+                className={DETAILS_FIELD}
+                {...controls.fieldStatus("startsOn")}
+              />
+            </div>
+            <div>
+              <label htmlFor={`${idPrefix}-endsOn`} className={DETAILS_LABEL}>
+                Last day
+                <RequiredMark />
+              </label>
+              <input
+                id={`${idPrefix}-endsOn`}
+                name="endsOn"
+                type="date"
+                min={today}
+                max={MAX_DATE}
+                required
+                defaultValue={controls.valueOf("endsOn", "")}
+                className={DETAILS_FIELD}
+                {...controls.fieldStatus("endsOn")}
+              />
+            </div>
+            <div>
+              <label htmlFor={`${idPrefix}-note`} className={DETAILS_LABEL}>
+                {withHours ? "Reason" : "Note"} <span className="font-normal text-ink-2">(optional)</span>
+              </label>
+              <input
+                id={`${idPrefix}-note`}
+                name="note"
+                type="text"
+                maxLength={CLOSURE_NOTE_MAX_LENGTH}
+                placeholder={notePlaceholder}
+                defaultValue={controls.valueOf("note", "")}
+                className={DETAILS_FIELD}
+                {...controls.fieldStatus("note")}
+              />
+            </div>
+          </div>
+          {withHours ? (
+            <fieldset className="space-y-3">
+              <legend className={DETAILS_LABEL}>On these days</legend>
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink">
+                <label className="flex items-center gap-2">
+                  <input type="radio" name="kind" value="closed" checked={kind === "closed"} onChange={() => setKind("closed")} />
+                  Closed all day
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="radio" name="kind" value="hours" checked={kind === "hours"} onChange={() => setKind("hours")} />
+                  Different hours, such as a half day
+                </label>
+              </div>
+              {kind === "hours" ? (
+                <div className="grid max-w-md gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor={`${idPrefix}-opensAt`} className={DETAILS_LABEL}>
+                      Opens
+                      <RequiredMark />
+                    </label>
+                    <input
+                      id={`${idPrefix}-opensAt`}
+                      name="opensAt"
+                      type="time"
+                      required
+                      defaultValue={controls.valueOf("opensAt", "")}
+                      className={DETAILS_FIELD}
+                      {...controls.fieldStatus("opensAt")}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor={`${idPrefix}-closesAt`} className={DETAILS_LABEL}>
+                      Closes
+                      <RequiredMark />
+                    </label>
+                    <input
+                      id={`${idPrefix}-closesAt`}
+                      name="closesAt"
+                      type="time"
+                      required
+                      defaultValue={controls.valueOf("closesAt", "")}
+                      className={DETAILS_FIELD}
+                      {...controls.fieldStatus("closesAt")}
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </fieldset>
+          ) : null}
+          <div className="flex items-center gap-4">
+            <SaveButton label="Add" pendingLabel="Adding…" />
+            <PanelFormStatus controls={controls} statusRef={statusRef} />
+          </div>
+        </form>
+
+        <BookingClashList controls={controls} noun={itemNoun} />
+
+        {closures.length === 0 ? (
+          <EmptyState compact icon={CalendarBlank} title={`No ${itemNoun}s coming up`} text={`The ${itemNoun}s you add appear here until they have passed.`} />
+        ) : (
+          <ul className="divide-y divide-line border-y border-line">
+            {closures.map((closure) => (
+              <ClosureItem
+                key={closure.id}
+                closure={closure}
+                deleteAction={deleteAction}
+                idField={idField}
+                itemNoun={itemNoun}
+                withHours={withHours}
+                onRemoved={() => headingRef.current?.focus()}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }

@@ -86,7 +86,7 @@ function nonBlank(value: unknown): string | null {
 }
 
 /** Where a client website fetches a published post's image; public, unlike the dashboard's `/content-media/<id>`. */
-export const SITE_MEDIA_PATH_PREFIX = "/api/site/media/";
+const SITE_MEDIA_PATH_PREFIX = "/api/site/media/";
 
 /** Null unless the relation was resolved (depth ≥ 1) to a document carrying both fields. */
 function categoryOf(value: unknown): SitePostCategory | null {

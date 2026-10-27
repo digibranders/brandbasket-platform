@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { billingPeriodProgress, nextPaymentDate } from "./period";
+import { billingPeriodProgress, inFirstTerm, nextPaymentDate } from "./period";
 
 const utc = (iso: string): Date => new Date(`${iso}T00:00:00Z`);
 
@@ -18,6 +18,18 @@ describe("nextPaymentDate", () => {
 
   it("is null when nothing has been paid through", () => {
     expect(nextPaymentDate({ commitmentEndsAt: null, paidThroughAt: null }, utc("2026-10-16"))).toBeNull();
+  });
+});
+
+describe("inFirstTerm", () => {
+  it("is true while the paid-up-front term runs", () => {
+    expect(inFirstTerm({ commitmentEndsAt: utc("2026-10-01") }, utc("2026-09-11"))).toBe(true);
+  });
+
+  it("is false from the day the term ends, and when no term was recorded", () => {
+    expect(inFirstTerm({ commitmentEndsAt: utc("2026-10-01") }, utc("2026-10-01"))).toBe(false);
+    expect(inFirstTerm({ commitmentEndsAt: utc("2026-10-01") }, utc("2026-10-16"))).toBe(false);
+    expect(inFirstTerm({ commitmentEndsAt: null }, utc("2026-10-16"))).toBe(false);
   });
 });
 

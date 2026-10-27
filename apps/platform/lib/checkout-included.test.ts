@@ -5,7 +5,7 @@ describe("what the checkout lists as included", () => {
   it("lists the website's six points and the maintenance's five, each with its own icon", () => {
     expect(WEBSITE_INCLUDED.map((item) => item.text)).toEqual([
       "Professional design",
-      "Up to 5 pages",
+      "Up to 10 pages",
       "Mobile-friendly (works on all devices)",
       "Enquiry forms and click-to-call",
       "Local SEO foundation",

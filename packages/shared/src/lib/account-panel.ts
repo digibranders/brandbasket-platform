@@ -28,22 +28,41 @@ export interface AccountPanel {
   readonly siteStatus: SiteStatus;
 }
 
+/** A request that needs the customer, or has news, as the bell reads it. */
+export interface RequestNoticeInput {
+  readonly ticketId: string;
+  readonly subject: string;
+  /** `quote` a quote to answer, `payment` an accepted quote to pay, `check` a change to look at, `reply` a reply to read. */
+  readonly kind: "quote" | "payment" | "check" | "reply";
+}
+
+const REQUEST_NOTICE_WORDS: Readonly<Record<RequestNoticeInput["kind"], string>> = {
+  quote: "Quote waiting",
+  payment: "Payment waiting",
+  check: "Ready to check",
+  reply: "New reply",
+};
+
+const NOTICE_SUBJECT_LIMIT = 60;
+
 export interface NoticeInput {
   readonly banner: BillingBannerModel | null;
   /** Null when onboarding has never started, so no project row exists yet. */
   readonly projectStatus: ProjectStatus | null;
   readonly nextStep: NextStep;
+  /** The requests with something for the customer. Left out, the bell says nothing about requests. */
+  readonly requests?: readonly RequestNoticeInput[];
 }
 
 /**
  * Every notice is a *current state*, never an event: each one is true for exactly as long as its condition holds.
- * That is why nothing here is stored and nothing can be marked read — a dot that could be dismissed while the
+ * That is why nothing here is stored and nothing can be marked read. A dot that could be dismissed while the
  * payment behind it is still due would be a lie. The price of that honesty is that notices cannot be dismissed
  * one by one, which is right for this set, since none of them should be.
  *
  * Kept pure and separate from lib/server/account-panel.ts so the mapping can be tested without a database.
  */
-export function noticesFrom({ banner, projectStatus, nextStep }: NoticeInput): readonly Notice[] {
+export function noticesFrom({ banner, projectStatus, nextStep, requests = [] }: NoticeInput): readonly Notice[] {
   const notices: Notice[] = [];
 
   if (banner !== null) {
@@ -65,17 +84,17 @@ export function noticesFrom({ banner, projectStatus, nextStep }: NoticeInput): r
 
   switch (projectStatus) {
     case "preview":
-      notices.push({ id: "preview-ready", text: "Your preview is ready to review", href: "/project", actionable: true });
+      notices.push({ id: "preview-ready", text: "Your preview is ready to review", href: "/website", actionable: true });
       break;
     case "submitted":
     case "building":
-      notices.push({ id: "building", text: "We’re building your website", href: "/project", actionable: false });
+      notices.push({ id: "building", text: "We’re building your website", href: "/website", actionable: false });
       break;
     case "revisions":
-      notices.push({ id: "revisions", text: "We’re making your changes", href: "/project", actionable: false });
+      notices.push({ id: "revisions", text: "We’re making your changes", href: "/website", actionable: false });
       break;
     case "on_hold":
-      notices.push({ id: "on-hold", text: "Your build is paused", href: "/project", actionable: false });
+      notices.push({ id: "on-hold", text: "Your build is paused", href: "/website", actionable: false });
       break;
     default:
       break;
@@ -88,6 +107,17 @@ export function noticesFrom({ banner, projectStatus, nextStep }: NoticeInput): r
       text: "Finish setting up your website",
       href: "/onboarding",
       actionable: true,
+    });
+  }
+
+  for (const request of requests) {
+    const subject = request.subject.length > NOTICE_SUBJECT_LIMIT ? `${request.subject.slice(0, NOTICE_SUBJECT_LIMIT).trimEnd()}...` : request.subject;
+    notices.push({
+      id: `request-${request.kind}-${request.ticketId}`,
+      text: `${REQUEST_NOTICE_WORDS[request.kind]}: ${subject}`,
+      // The Requests page (apps/platform/lib/requests/links.ts), spelled out because this file is shared with the console.
+      href: `/requests?open=${request.ticketId}`,
+      actionable: request.kind !== "reply",
     });
   }
 

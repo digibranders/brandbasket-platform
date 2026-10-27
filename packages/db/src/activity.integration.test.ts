@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { listActivityForBusiness, listRecentActivity, recordActivity } from "./queries/activity";
-import { activityEvents, businesses, businessMembers, users } from "./schema";
+import { businessActivity, businesses, businessMembers, users } from "./schema";
 import { withTenantScope } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
@@ -60,14 +60,14 @@ describe("activity", () => {
     await recordActivity(dbs.staff.db, { businessId, actorKind: "staff", actorId: "staff-1", kind: "a.visible", summary: "Shown to the client", visibleToClient: true });
     await recordActivity(dbs.staff.db, { businessId: otherBusinessId, actorKind: "staff", actorId: "staff-1", kind: "b.visible", summary: "Shown to the other client", visibleToClient: true });
 
-    const seen = await withTenantScope(dbs.app.db, { userId: OWNER, businessId }, (tx) => tx.select({ kind: activityEvents.kind }).from(activityEvents));
+    const seen = await withTenantScope(dbs.app.db, { userId: OWNER, businessId }, (tx) => tx.select({ kind: businessActivity.kind }).from(businessActivity));
     expect(seen.map((row) => row.kind)).toEqual(["a.visible"]);
   });
 
   it("refuses a write from the customer's role", async () => {
     await expect(
       withTenantScope(dbs.app.db, { userId: OWNER, businessId }, (tx) =>
-        tx.insert(activityEvents).values({ businessId, actorKind: "client", actorId: OWNER, kind: "x.y", summary: "Not allowed" }),
+        tx.insert(businessActivity).values({ businessId, actorKind: "client", actorId: OWNER, kind: "x.y", summary: "Not allowed" }),
       ),
     ).rejects.toThrow();
   });

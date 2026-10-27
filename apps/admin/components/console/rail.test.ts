@@ -11,7 +11,7 @@ import { Rail } from "./rail";
 
 let root: Root;
 let container: HTMLDivElement;
-const logo = { name: "Brandbasket", white: "/brand/brandbasket-logo-white.svg", dark: "/brand/brandbasket-logo.svg", width: 160, height: 32 };
+const logo = { name: "Brandbasket", onLight: "/brand/brandbasket-logo-light.svg", onDark: "/brand/brandbasket-logo-dark.svg", width: 160, height: 32 };
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });

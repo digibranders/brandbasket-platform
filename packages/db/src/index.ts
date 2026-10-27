@@ -2,6 +2,9 @@ export { createDatabase, type Database, type DatabaseHandle, type DatabaseOption
 export * from "./schema/support";
 export * from "./schema/error-issues";
 export * from "./queries/support";
+export * from "./queries/change-requests";
+export * from "./queries/change-request-staff";
+export * from "./queries/project-website";
 export * from "./queries/support-staff";
 export * from "./queries/error-issues";
 export * from "./queries/support-ticket-error-links";
@@ -326,12 +329,8 @@ export {
   grantRevisionRound,
   listOpenProjectsForStaff,
   listSetupCallsForStaff,
-  ON_HOLD_REASON_MAX,
   ProjectBuilderNotStaffError,
   ProjectMoveRefusedError,
-  putProjectOnHold,
-  resumeProject,
-  setProjectBuilding,
   SETUP_STEPS_TOTAL,
   type MovedProject,
   type StaffCallRow,
@@ -749,6 +748,7 @@ export {
   applyChatbotQualification,
   ChatbotBotIdTakenError,
   countChatbotLeadsForBusiness,
+  countChatbotLeadsSince,
   eraseChatbotsOfBusiness,
   findChatbotLeadForBusiness,
   findChatbotOperatorAccess,
@@ -803,13 +803,43 @@ export {
 } from "./queries/add-ons";
 export { clearSiteSetting, findSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "./queries/site-settings";
 export {
+  clearSetupCallHeld,
   findSetupCallBooking,
   listSetupCallsBetween,
+  markSetupCallHeld,
   moveSetupCallBooking,
   recordSetupCallBooking,
   removeSetupCallBooking,
+  saveSetupCallSummary,
   type BookedCall,
 } from "./queries/setup-calls";
+export * from "./queries/team-calls";
+export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
+export { addActivityEvent, listActivityEvents, removeActivityEvent } from "./queries/activity-events";
+export { listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
+export {
+  approveDeliverables,
+  countSiteEvents,
+  DeliverableError,
+  deleteDeliverable,
+  findDeliverableForBusiness,
+  findDeliverableForStaff,
+  insertDeliverable,
+  latestMonthlyReport,
+  listDeliverablesForBusiness,
+  listDeliverablesForStaff,
+  listMonthlyReportsForStaff,
+  listWaitingPosts,
+  moveDeliverable,
+  recordSiteEvent,
+  removeMonthlyReport,
+  updateDeliverableFields,
+  upsertMonthlyReport,
+  type DeliverableErrorCode,
+  type NewDeliverable,
+  type StoredPicture,
+} from "./queries/deliverables";
+export type { DeliverableKind, DeliverableStatus } from "./deliverable-states";
 export {
   activateBundledAddOns,
   BundledAddOnNotPossibleError,

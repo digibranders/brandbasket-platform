@@ -46,7 +46,7 @@ export function BrandAbout({ brand, about }: BrandAboutProps): ReactElement {
       >
         {/* A plain img: the file is an SVG, which next/image would only pass through. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={brand.dark} alt="" width={brand.width} height={brand.height} className="h-7 w-auto sm:h-8" />
+        <img src={brand.onLight} alt="" width={brand.width} height={brand.height} className="h-7 w-auto sm:h-8" />
       </button>
       {open ? (
         <div

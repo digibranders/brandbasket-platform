@@ -36,38 +36,24 @@ export function getAppDb(): Database {
  *   with and whether the package offer is given up. They write nothing. The business id comes only from the session; the
  *   provider callbacks in billing.ts look a subscription or charge up by the provider's own id, to tell whose webhook or
  *   confirmation it is.
- * - app/api/site/info/route.ts, app/api/site/availability/route.ts, lib/server/booking-otp.ts (POST
- *   /api/site/bookings/otp) and lib/server/booking-confirm.ts (POST /api/site/bookings/confirm), because the site
- *   token has already proven the business, so there is no customer session to scope a connection under -- and the
- *   public role can't read module settings, services, opening hours or existing appointments, all of which these
- *   need before they read or write anything.
- * - The local directory's routes, called by the marketing website's server with LEADS_API_TOKEN:
- *   app/api/directory/ratings/route.ts, app/api/directory/reviews/route.ts, app/api/directory/reviews/otp/route.ts,
- *   app/api/directory/reviews/confirm/route.ts, app/api/directory/enquiries/route.ts,
- *   app/api/directory/status/route.ts, app/api/directory/events/route.ts, app/api/directory/signals/route.ts,
- *   app/api/directory/open-listings/route.ts and app/api/directory/open-listings/version/route.ts,
- *   through lib/server/directory-reviews.ts, lib/server/directory-enquiries.ts, lib/server/directory-verifications.ts,
- *   lib/server/directory-signals.ts and lib/server/open-listings-api.ts. A directory listing is not a platform
- *   business, so there is no tenant to scope under, and the directory tables are staff-only (0055, 0057, 0059).
- * - lib/server/clinic-booking.ts and app/app-host/(protected)/appointments/new/actions.ts (reception's Add booking),
- *   which read every doctor's calendar for one day and book through bookSlot, so a hand-added booking takes the
- *   same lock and overlap rules as an online one. The business id comes only from the signed-in customer's session,
- *   never from the request; the patient and service are first checked through the customer's own tenant scope.
+ * - app/api/site/info/route.ts and app/api/site/events/route.ts, because the site token has already proven the business, so
+ *   there is no customer session to scope a connection under -- and the public role can't read the module settings and
+ *   services these need before they read anything.
  * - lib/server/add-ons.ts, which opens and records the customer's own add-on subscriptions and press release charges
  *   (and, through packages/shared, pauses and cancels them). Customers never write add_on_subscriptions or charges
  *   through their own connection; the business id comes only from the session, the price only from the server (the
  *   catalogue for a new purchase, the stored row for a resume), and a row is only ever activated by the payment
  *   confirmation. The Services page itself is read through the customer's own tenant scope, except the code on the
  *   customer's own subscription, read by the subscription's stored code id for its terms (customers cannot read codes).
- * - lib/server/charges.ts and lib/server/listing-promotion.ts, which open and record the customer's own one-off
- *   charges (a paid extra, a week of a listing tag). Customers never write charges or directory_promotions through
- *   their own connection; the business id comes only from the session, the price only from the server, and a week
- *   is only ever written by the payment confirmation.
- * - lib/server/listing-pictures.ts (POST /api/listing-pictures and the Photos page's Remove), which stores and
- *   removes a free listing account's own pictures. Customers never write directory_pictures through their own
- *   connection; the business id comes only from the session, the slot is one of three fixed names, and the file is
- *   re-encoded to the slot's size before it is stored. It also serves GET /api/directory/pictures/<id> to the
- *   marketing website, like the other directory routes above.
+ * - lib/server/charges.ts, which opens and records the customer's own one-off charges (a paid extra). Customers never
+ *   write charges through their own connection; the business id comes only from the session, the price only from the
+ *   server, and a charge is only ever activated by the payment confirmation.
+ * - lib/server/change-quote.ts, which opens the `change_hours` charge for a quote the signed-in customer accepted on the
+ *   Requests page. Customers never write charges through their own connection; the business id comes only from the
+ *   session, the price only from the stored quote, the GST rate from the customer's own plan, and the work only starts
+ *   when the payment is recorded (recordChargePayment).
+ * - lib/server/listing-pictures.ts (the Remove of a free listing account's own pictures, and serving one to its owner).
+ *   Customers never write directory_pictures through their own connection; the business id comes only from the session.
  * - lib/server/account-email-code.ts (the code emailed to open an account): whoever asks has no session yet, and
  *   account_otps is staff-only (0073). It writes and reads those codes and the rate-limit counters, nothing else.
  * - lib/server/oyechats-webhook.ts (POST /api/webhooks/oyechats), which records the leads OyeChats reports for a chatbot.

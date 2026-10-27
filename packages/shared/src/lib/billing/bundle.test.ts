@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  bundledLinePrice,
   bundleLines,
   bundleNetCents,
   nextBundledNetCents,
@@ -198,5 +199,44 @@ describe("reactivationBasketOf", () => {
       adCreditCents: 0,
       cancelled: false,
     });
+  });
+});
+
+describe("bundledLinePrice", () => {
+  const social = { listAmountCents: 999_900, offerDiscountAmountCents: 99_910, taxRateBasisPoints: 1_800 };
+
+  it("is the price the line is billed at now when no move is waiting", () => {
+    expect(bundledLinePrice({ ...social, pendingOfferDiscountAmountCents: null }, "INR")).toEqual({
+      currency: "INR",
+      listCents: 999_900,
+      discountCents: 99_910,
+      offerCents: 99_910,
+      netCents: 899_990,
+      taxRateBasisPoints: 1_800,
+      chargedCents: 899_990,
+    });
+  });
+
+  it("is the price from the next bill when a move to another package is waiting, which is what the customer will pay each month", () => {
+    // Website + Social moved to all three: Social goes from 10% to 20% off at the next renewal.
+    expect(bundledLinePrice({ ...social, pendingOfferDiscountAmountCents: 199_980 }, "INR")).toMatchObject({
+      discountCents: 199_980,
+      offerCents: 199_980,
+      netCents: 799_920,
+      chargedCents: 799_920,
+    });
+  });
+
+  it("is list when the move is to no package, and 0 pending is not mistaken for none", () => {
+    expect(bundledLinePrice({ ...social, pendingOfferDiscountAmountCents: 0 }, "INR")).toMatchObject({ discountCents: 0, netCents: 999_900 });
+  });
+
+  it("adds up, for the whole basket, to the amount the next renewal takes", () => {
+    const lines = [
+      { listAmountCents: 299_900, offerDiscountAmountCents: 0, pendingOfferDiscountAmountCents: 59_980, taxRateBasisPoints: 1_800 },
+      { ...social, pendingOfferDiscountAmountCents: 199_980 },
+      { listAmountCents: 2_499_900, offerDiscountAmountCents: 499_940, pendingOfferDiscountAmountCents: null, taxRateBasisPoints: 1_800 },
+    ];
+    expect(bundleNetCents(lines.map((line) => bundledLinePrice(line, "INR")))).toBe(3_039_800);
   });
 });

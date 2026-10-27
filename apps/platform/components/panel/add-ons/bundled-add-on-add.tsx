@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactElement } from "react";
-import { Button } from "@brandbasket/shared/ui/panel/button";
+import { SOFT_BUTTON } from "@/components/v2/classes";
 import { PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
 
 interface BundledAddOnAddProps {
@@ -29,12 +29,18 @@ export function BundledAddOnAdd({ addOn, title, savedText, headingId, action }: 
   const { formRef, statusRef, formAction, controls } = usePanelForm(focusHeadingAfter);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-wrap items-center gap-3 sm:justify-end">
+    <form ref={formRef} action={formAction} className="flex flex-wrap items-center gap-3">
       <input type="hidden" name="addOn" value={addOn} />
       {controls.saved ? null : (
-        <Button type="submit" size="sm" disabled={controls.isPending} aria-busy={controls.isPending} aria-label={controls.isPending ? `Adding ${title}` : `Add ${title}`}>
+        <button
+          type="submit"
+          className={`${SOFT_BUTTON} disabled:opacity-55`}
+          disabled={controls.isPending}
+          aria-busy={controls.isPending}
+          aria-label={controls.isPending ? `Adding ${title}` : `Add ${title}`}
+        >
           {controls.isPending ? "Adding…" : "Add"}
-        </Button>
+        </button>
       )}
       <PanelFormStatus controls={controls} statusRef={statusRef} savedText={savedText} />
     </form>

@@ -1,0 +1,219 @@
+Unused files (2)
+apps/admin/components/console/directory-only.test.tsx
+apps/platform/components/panel/membership/included-list.tsx
+Unused exports (25)
+apps/admin/components/affiliate-forms.tsx: initialAffiliateFormState
+apps/admin/components/console/buttons.ts: buttonGold
+apps/admin/components/referral-code-form.tsx: initialReferralFormState
+apps/admin/lib/deliverable-form.ts: isRealDate, HTTPS_ADDRESS_MAX
+apps/admin/lib/directory-view.ts: DIRECTORY_SECTIONS, ENQUIRY_FILTERS, REVIEW_FILTERS, DIRECTORY_STATE_CODE
+apps/admin/lib/server/email.ts: realDeployment
+apps/admin/lib/server/invites.ts: INVITE_EXPIRY_DAYS
+apps/admin/lib/server/staff-role.ts: NO_ACCESS_PATH
+apps/admin/lib/staff-ad-crop.ts: MIN_SOURCE_FRACTION, AUTO_QUALITIES, AUTO_TARGET_BYTES
+apps/admin/lib/staff-ad-form.ts: STAFF_AD_FIELDS, STAFF_AD_EDIT_FIELDS
+apps/platform/components/panel/onboarding-summary.tsx: ServicesList
+apps/platform/components/panel/project-timeline.tsx: ProjectTimeline
+apps/platform/lib/business-profile-fields.ts: CONTACT_OPTIONS, CONTACT_OPTION_LABELS, CONTACT_OPTION_NEEDS, PAYMENT_METHODS, PAYMENT_METHOD_LABELS, PRODUCT_AVAILABILITIES, PRODUCT_AVAILABILITY_LABELS, CATALOG_MAX_ITEMS, ITEM_NAME_MAX_LENGTH, ITEM_DESCRIPTION_MAX_LENGTH, SERVICE_DESCRIPTION_MAX_LENGTH, SERVICE_SUMMARY_MAX_LENGTH, ITEM_CATEGORY_MAX_LENGTH, ITEM_AREA_MAX_LENGTH, ITEM_PRICE_MAX_INR, FAQ_MAX_ITEMS, FAQ_QUESTION_MAX_LENGTH, FAQ_ANSWER_MAX_LENGTH, LICENCES_MAX, LICENCE_MAX_LENGTH, SERVICE_AREA_MAX_LENGTH, DIRECTIONS_NOTE_MAX_LENGTH, HOLIDAY_HOURS_MAX_LENGTH, EMAIL_MAX_LENGTH, ESTABLISHED_YEAR_MIN, YES_VALUE
+apps/platform/lib/directory-api.ts: DIRECTORY_RATINGS_PATH, DIRECTORY_REVIEWS_PATH, DIRECTORY_REVIEW_OTP_PATH, DIRECTORY_REVIEW_CONFIRM_PATH, DIRECTORY_ENQUIRIES_PATH, DIRECTORY_REVIEW_HELPFUL_PATH, DIRECTORY_COMMENT_OTP_PATH, DIRECTORY_COMMENT_CONFIRM_PATH, MIN_REVIEWS_FOR_STARS, REVIEWS_PAGE_SIZE, LISTING_KEY_PATTERN, listingKeySchema, reviewHighlightIdSchema, ratingSummarySchema, ratingsResponseSchema, publicCommentSchema, publicReviewSchema, reviewsResponseSchema, reviewConfirmRequestSchema, DIRECTORY_ERROR_CODES, reviewOtpResponseSchema, reviewConfirmResponseSchema, enquiryResponseSchema, reviewHelpfulRequestSchema, reviewHelpfulResponseSchema, OWNER_ACCESS_PATH, OWNER_REPLIES_PATH, VISITOR_HANDOFF_PATH, visitorHandoffResponseSchema, ownerAccessResponseSchema, ownerReplyPostRequestSchema, ownerReplyEditRequestSchema, ownerReplyRemoveRequestSchema, ownerReplyResponseSchema, DIRECTORY_STATUS_PATH, listingStatusSchema, statusResponseSchema, POPULAR_MIN_AVERAGE, POPULAR_MIN_REVIEWS, EARNED_TAGS, DIRECTORY_EVENTS_PATH, DIRECTORY_SIGNALS_PATH, directoryEventRequestSchema, directoryEventResponseSchema, paidTagIdSchema, listingSignalsSchema, signalsResponseSchema, DIRECTORY_ADS_PATH, DIRECTORY_JOIN_PATH, DIRECTORY_CLAIM_SIGNATURE_PARAM, DIRECTORY_CLAIM_ID_PARAM, claimedBusinessName, claimSignaturePayload, DIRECTORY_AD_MARKER, AD_TAGLINE_MAX_LENGTH, AD_MARKET_PATTERN, adMarketSchema, AD_LINK_MAX_LENGTH, AD_LINK_PATTERN, adLinkSchema, directoryAdSchema, adsResponseSchema, DIRECTORY_AD_EVENTS_PATH, directoryAdEventRequestSchema, DIRECTORY_PICTURES_PATH, DIRECTORY_PICTURE_SIZES, DIRECTORY_GALLERY_PATH, MAX_GALLERY_VIDEOS, galleryVideoSchema, galleryEntrySchema, galleryResponseSchema
+apps/platform/lib/owner-replies.ts: OWNER_REPLY_MAX_LENGTH, REVIEWS_PATH, REVIEWS_PER_PAGE
+apps/platform/lib/server/directory-fields.ts: NAME_MISSING_MESSAGE, NAME_TOO_LONG_MESSAGE, PHONE_MISSING_MESSAGE, TEXT_TOO_LONG_MESSAGE, HIGHLIGHT_UNKNOWN_MESSAGE, TOO_MANY_HIGHLIGHTS_MESSAGE, MESSAGE_TOO_LONG_MESSAGE, COMMENT_MISSING_MESSAGE, COMMENT_TOO_LONG_MESSAGE, ADULT_REVIEW_MESSAGE, ADULT_COMMENT_MESSAGE, PAGE_PROBLEM_MESSAGE, UNKNOWN_BUSINESS_MESSAGE, parseReviewFields, parseCommentFields, parseEnquiryFields
+apps/platform/lib/server/first-look.ts: loadServicesBought
+apps/platform/lib/website/tabs.ts: WEBSITE_PAGES_PATH, WEBSITE_LEADS_PATH
+packages/billing/src/fake-charge-token.ts: FAKE_ORDER_ID_PATTERN
+packages/db/src/india-post.ts: INDIA_POST_HEADER
+packages/db/src/local-env-template.ts: DEV_DATABASE, TEST_DATABASE, PAYLOAD_DATABASE
+packages/db/src/migrator.ts: MigrationFailedError
+packages/db/src/queries/emails.ts: SIGN_IN_LINK_TEMPLATES, SIGN_IN_LINK_EMAIL_RETENTION_MS, OUTBOX_RETENTION_MS
+packages/db/src/queries/retention.ts: RETENTION_PERIODS, monthsBefore
+packages/email/src/brevo.ts: BREVO_API_URL, BREVO_TIMEOUT_MS, BREVO_MAX_ATTEMPTS, BREVO_RETRY_DELAY_MS, BREVO_FALLBACK_TRANSPORT_NAME
+Unused exported types (184)
+apps/admin/components/client-listing.tsx: ListingPromotionLine
+apps/admin/components/console/avatar.tsx: AvatarRing
+apps/admin/components/console/figures.tsx: FigureItem
+apps/admin/components/console/filter-pills.tsx: FilterOption
+apps/admin/components/console/numbers-section.tsx: NumbersNotice
+apps/admin/components/console/updates-section.tsx: UpdatesNotice
+apps/admin/components/place-ad-form.tsx: PlaceAdOption
+apps/admin/components/referral-code-form.tsx: CodeAffiliate
+apps/admin/components/web-address.tsx: WebAddressPlace
+apps/admin/lib/ad-credit-due.ts: AdCreditDueRow
+apps/admin/lib/avatar.ts: AvatarTone
+apps/admin/lib/brand.ts: AdminBrand
+apps/admin/lib/business-address.ts: AddressedPlace
+apps/admin/lib/call-form.ts: SummaryRead, StaffCallRow
+apps/admin/lib/chatbot-form.ts: OperatorKeyChange
+apps/admin/lib/client-add-ons.ts: BundledRowContext
+apps/admin/lib/client-attention.ts: AttentionSection
+apps/admin/lib/deliverable-form.ts: DeliverableParse, SendablePost
+apps/admin/lib/directory-view.ts: DirectorySection, DirectoryViewParam, VerificationInput, VerificationParseResult
+apps/admin/lib/geo-forms.ts: DistrictAdd, DistrictSave, AreaFields, AreaAdd, AreaSave, CategoryFields, CategoryAdd, CategorySave
+apps/admin/lib/geography-view.ts: Paged
+apps/admin/lib/invoice-register-view.ts: MonthLink, MonthLinks, RegisterRowView, LabelledValue, RegisterTotalsView, MissingRegisterRowView
+apps/admin/lib/journey-layout.ts: MapSpot, Placed, PlacedBand
+apps/admin/lib/numbers-form.ts: NumbersParse
+apps/admin/lib/report-form.ts: ReportParse
+apps/admin/lib/request-controls.ts: StaffControls
+apps/admin/lib/request-form.ts: QuoteFormInput, QuoteParse, ReasonParse
+apps/admin/lib/server/add-ons-admin.ts: ClientAddOns, MarkContactedOutcome, PressReleaseStatusOutcome
+apps/admin/lib/server/affiliate-admin.ts: LoginLinkOutcome
+apps/admin/lib/server/billing-admin.ts: ManualCarriedCode, FlaggedPaymentResolution, ManualPaymentOutcome
+apps/admin/lib/server/charges-admin.ts: AddChargeOutcome, MarkChargePaidOutcome
+apps/admin/lib/server/env.ts: ServerEnv
+apps/admin/lib/server/geocode.ts: AreaToLocate
+apps/admin/lib/server/lead-updates.ts: LeadDetailsResult
+apps/admin/lib/server/payload-tenant-sync.ts: TenantSyncInput
+apps/admin/lib/server/preview-screenshot.ts: Screenshot, CaptureOptions
+apps/admin/lib/server/project-launch.ts: LaunchProjectInput
+apps/admin/lib/server/project-preview.ts: SendProjectPreviewInput
+apps/admin/lib/server/referral-admin.ts: NewReferralCodeInput, ReferralRetirementInput, ReferralWorth, ReferralDeletionInput
+apps/admin/lib/server/request-pricing.ts: RequestPricing
+apps/admin/lib/server/settings-admin.ts: SetupCallSetting
+apps/admin/lib/server/sign-in.ts: SignInOutcome
+apps/admin/lib/server/staff-access-log.ts: StaffAccessLogInput
+apps/admin/lib/server/staff-ad-picture.ts: StaffAdPictureSize
+apps/admin/lib/server/support-admin-actions.ts: StaffSupportActionDependencies, StaffSupportActions
+apps/admin/lib/server/website-moves.ts: WebsiteMove
+apps/admin/lib/service-packages.ts: CatalogueRow, PackageRow
+apps/admin/lib/settings-notices.ts: SettingsNotice
+apps/admin/lib/staff-ad-form.ts: StaffAdSpot, StaffAdInput, StaffAdParseResult, StaffAdEditInput, StaffAdEditParseResult
+apps/admin/lib/tax-invoice-rows.ts: TaxInvoiceRow, MissingInvoiceRow
+apps/admin/lib/updates-form.ts: UpdateParse
+apps/admin/lib/website-form.ts: ParsedHold
+apps/platform/components/panel/content-step-form.tsx: SavedBrief
+apps/platform/components/panel/form/panel-form.tsx: PanelForm
+apps/platform/components/panel/rich-text-editor.tsx: RichTextEditorProps
+apps/platform/components/panel/step-form.tsx: StepForm
+apps/platform/lib/account-entry.ts: EntryRequest
+apps/platform/lib/account-erase-request.ts: EraseRunRequest
+apps/platform/lib/account-erasure-run.ts: ErasureRunOptions, ErasureItemResult, ErasureRunReport
+apps/platform/lib/account-exit-rules.ts: PlanClosure
+apps/platform/lib/account-recovery-form.ts: NewPasswordParseResult, ResetParseResult
+apps/platform/lib/account-settings-form.ts: ChangePasswordParseResult, ExitDetailsParseResult, DeleteParseResult
+apps/platform/lib/add-ons.ts: AddOn, AddOnId
+apps/platform/lib/affiliate-dashboard.ts: CodeStatus, CashOutShares, MonthRow, MonthRows
+apps/platform/lib/appointments/leave-added-state.ts: LeaveAddedState
+apps/platform/lib/auth-retry.ts: OtpRateLimit
+apps/platform/lib/author-links.ts: AuthorLinkResult
+apps/platform/lib/billing/invoice-title.ts: TitlePart
+apps/platform/lib/billing/pagination.ts: PageWindow
+apps/platform/lib/billing/pay-callback.ts: PayCallback
+apps/platform/lib/billing/payment-method-view.ts: RenewalFacts
+apps/platform/lib/billing/public-prices.ts: PublicService, PublicPackage, PublicPricing
+apps/platform/lib/billing/razorpay-checkout-options.ts: RazorpayCheckoutInput
+apps/platform/lib/billing/receipt-download.ts: ReceiptSelection
+apps/platform/lib/blog-author-fields.ts: CleanBlogAuthor, CleanBlogAuthorResult
+apps/platform/lib/blog-category-fields.ts: CleanBlogCategory, CleanBlogCategoryResult
+apps/platform/lib/blog-html.ts: OutlineHeading, OutlineLevel
+apps/platform/lib/blog-seo-health.ts: SeoHealthGrade
+apps/platform/lib/blog-slug.ts: SlugResult
+apps/platform/lib/blog-text.ts: OutlineLevel, OutlineHeading
+apps/platform/lib/business-profile-fields.ts: ContactOption, PaymentMethod, ProductAvailability
+apps/platform/lib/call-dates.ts: PromiseDates
+apps/platform/lib/calls/form.ts: BookCallRead
+apps/platform/lib/calls/rows.ts: KickoffInput
+apps/platform/lib/calls/slot-view.ts: DayTimes
+apps/platform/lib/changelog.ts: ChangelogEntry
+apps/platform/lib/chatbots-view.ts: ConversationNoticeKey, PageItem
+apps/platform/lib/checkout-included.ts: IncludedIcon, IncludedItem
+apps/platform/lib/checkout-plans.ts: CheckoutPlanCopy, CheckoutStep
+apps/platform/lib/directory-api.ts: RatingSummary, RatingsResponse, PublicComment, PublicReview, ReviewsResponse, ReviewConfirmRequest, DirectoryError, ReviewOtpResponse, ReviewConfirmResponse, EnquiryResponse, ReviewHelpfulRequest, ReviewHelpfulResponse, VisitorHandoffResponse, OwnerAccessResponse, OwnerReplyPostRequest, OwnerReplyEditRequest, OwnerReplyRemoveRequest, OwnerReplyResponse, ListingStatus, StatusResponse, EarnedTagId, PaidTagId, DirectoryEventKind, DirectoryEventRequest, ListingSignals, SignalsResponse, DirectoryAd, AdsResponse, DirectoryAdPlacement, DirectoryAdEventKind, DirectoryAdEventRequest, GalleryVideo, GalleryEntry, GalleryResponse
+apps/platform/lib/first-look-steps.ts: FirstLookStep
+apps/platform/lib/first-look.ts: ServiceLine, FirstLookInput
+apps/platform/lib/join-form.ts: JoinCode, JoinPhone, JoinContact, JoinParseResult
+apps/platform/lib/leads-api.ts: LeadRequestField, LeadApiRequest
+apps/platform/lib/membership.ts: MembershipPricing, RenewalTermsPlan, MembershipCheckout
+apps/platform/lib/onboarding/brand-form.ts: BrandFormContext, PhotoDescription, BrandStepInput
+apps/platform/lib/onboarding/content-form.ts: ContentStepInput
+apps/platform/lib/onboarding/form-state.ts: StepRefusal
+apps/platform/lib/onboarding/step-notes.ts: StepNote
+apps/platform/lib/owner-replies.ts: OwnerReplyText
+apps/platform/lib/panel-form-state.ts: PanelFormProblem
+apps/platform/lib/photos-view.ts: PictureState, KindStatus, PhotosNotice
+apps/platform/lib/post-path.ts: ArticleAddressResult
+apps/platform/lib/preview-draft.ts: PreviewDraft, CheckedLookup, TickedLookup
+apps/platform/lib/privacy-request-alerts.ts: NewRequestAlert, ReminderRun
+apps/platform/lib/privacy-requests-api.ts: PublicRequestKind, PrivacyRequestConfirmRequest, ContributionTarget, OwnContributionsRequest, ContributionDeletionRequest
+apps/platform/lib/project-stages.ts: ProjectStageInput
+apps/platform/lib/reply-bar.ts: SendKeyEvent
+apps/platform/lib/request-error.ts: RequestErrorContext, RequestErrorTargets
+apps/platform/lib/requests/form.ts: AskDefaults, AskForChangeInput, AskParse
+apps/platform/lib/requests/rows.ts: RequestFilters, ViewChoice
+apps/platform/lib/server/account-email-code.ts: AccountEmailCodeRequest, AccountEmailCodeRequestOutcome, AccountEmailCodeConfirmation, AccountEmailCodeConfirmOutcome
+apps/platform/lib/server/account-exit.ts: CloseAccountOutcome
+apps/platform/lib/server/account-export.ts: AccountExportInput, AccountExportDatabases
+apps/platform/lib/server/account-panel.ts: AccountPanel
+apps/platform/lib/server/account-recovery.ts: ResetRequestOutcome, PasswordResetOutcome, EmailConfirmationOutcome, ConfirmationSendOutcome
+apps/platform/lib/server/account-security.ts: ChangePasswordOutcome
+apps/platform/lib/server/add-ons.ts: AddOnsPage
+apps/platform/lib/server/affiliate-access.ts: AffiliateAccess
+apps/platform/lib/server/affiliate-dashboard.ts: AffiliateDashboard
+apps/platform/lib/server/affiliate-setup.ts: AffiliateAccount
+apps/platform/lib/server/billing.ts: ReactivationView
+apps/platform/lib/server/blog-preview-token.ts: BlogPreviewClaims
+apps/platform/lib/server/blog-taxonomy.ts: BlogCategory, BlogAuthorPhoto, BlogAuthor
+apps/platform/lib/server/calcom-webhook.ts: CalcomWebhookResult, CalcomEvent
+apps/platform/lib/server/call-scheduling.ts: CallInvitee, BookedCall, BookResult
+apps/platform/lib/server/calls.ts: CallsData, BookTeamCallResult, BookTeamCallInput, CancelTeamCallResult
+apps/platform/lib/server/charges.ts: RazorpayOrderPaid
+apps/platform/lib/server/chatbot-conversations.ts: LeadConversationOutcome
+apps/platform/lib/server/chatbots.ts: LeadsPage
+apps/platform/lib/server/checkout.ts: CheckoutOutcome
+apps/platform/lib/server/customer-sign-in-form.ts: SignInIdentifierMode, AccountIdentifier, IdentifierParseResult, CustomerSignInInput, CustomerSignInParseResult
+apps/platform/lib/server/directory-fields.ts: FieldRefusal, FieldResult, ReviewInput, CommentInput, EnquiryInput
+apps/platform/lib/server/directory-visitor.ts: VisitorSession, ResolvedVisitor
+apps/platform/lib/server/domain-check.ts: DomainCheck
+apps/platform/lib/server/env.ts: ServerEnv, GoogleBusinessCredentials
+apps/platform/lib/server/first-look.ts: FirstLookData
+apps/platform/lib/server/keep-plan.ts: KeepPlanOutcome, KeepCheckout
+apps/platform/lib/server/listing-account.ts: JoinCodeOutcome, ListingAccountOutcome
+apps/platform/lib/server/listing-pictures.ts: ListingPictureDeps, UploadedPicture, ListingPictureRefusal, ListingPictureOutcome, PhotosPage
+apps/platform/lib/server/media-upload.ts: ExactImageSize, PictureCopy
+apps/platform/lib/server/nominee.ts: NomineeParse
+apps/platform/lib/server/onboarding-media.ts: OnboardingMediaDeps
+apps/platform/lib/server/onboarding.ts: StepWork, StepErrorDescriber
+apps/platform/lib/server/oyechats-api.ts: ConversationResult, OyeChatsAccess
+apps/platform/lib/server/oyechats-webhook.ts: OyeChatsWebhookResult
+apps/platform/lib/server/payload-media-serving.ts: MediaSharing
+apps/platform/lib/server/payload-tenant-sync.ts: TenantSyncInput
+apps/platform/lib/server/picture-copy-backfill.ts: BackfillPicture, BackfillReport
+apps/platform/lib/server/privacy-request-fields.ts: PrivacyRequestFieldResult
+apps/platform/lib/server/privacy-request-intake.ts: PrivacyRequestOtpIntakeDeps, PrivacyRequestConfirmIntakeDeps, ContributionDeletionIntakeDeps, OwnContributionsIntakeDeps
+apps/platform/lib/server/product-photo-request.ts: ProductPhotoResponseBody
+apps/platform/lib/server/product-photos.ts: ProductPhotoDeps
+apps/platform/lib/server/project-response.ts: RespondToPreviewInput
+apps/platform/lib/server/referrals.ts: ReferralOutcome, CodeBasis
+apps/platform/lib/server/requests.ts: RequestsData
+apps/platform/lib/server/security-events.ts: SecurityEventKind
+apps/platform/lib/server/semaphore.ts: Semaphore, SemaphoreOptions
+apps/platform/lib/server/setup-call.ts: SetupCallState, SetupCallBookingView
+apps/platform/lib/server/setup.ts: RequestHeaders, SetupAccount
+apps/platform/lib/server/sign-in.ts: SignInOutcome
+apps/platform/lib/server/site-info.ts: BuildSiteInfoInput
+apps/platform/lib/server/staff-access.ts: GrantedStaff
+apps/platform/lib/server/support-attachment-maintenance.ts: SupportMaintenanceResult
+apps/platform/lib/server/support-retention.ts: RetainedSupportAttachment
+apps/platform/lib/server/support-uploads.ts: ProcessedSupportImage
+apps/platform/lib/server/upload-request.ts: UploadResponseBody, UploadLimit
+apps/platform/lib/server/website.ts: WebsiteData
+apps/platform/lib/service-setup.ts: SetupField, SetupParse
+apps/platform/lib/setup-form.ts: SetupInput, SetupParseResult
+apps/platform/lib/site-events.ts: SiteEventParse
+apps/platform/lib/uploads/content-media-upload-client.ts: ContentMediaUploadResult
+apps/platform/lib/uploads/resize-plan.ts: SourceImage, ResizePlan, Candidate
+apps/platform/lib/validation/url.ts: HttpsUrlMessages
+apps/platform/lib/website/notices.ts: WebsiteNotice
+apps/platform/lib/website/pages-map.ts: SitePage, ProductRow
+apps/platform/lib/website/tabs.ts: WebsiteTab
+packages/billing/src/fake-add-on-token.ts: AddOnTokenClaims
+packages/billing/src/fake-charge-token.ts: ChargeTokenClaims
+packages/db/src/local-env-template.ts: LocalEnvSecrets
+packages/db/src/queries/billing.ts: ManualColumns, CurrentPaymentMethodOptions
+packages/db/src/queries/directory-listings.ts: ListingButtonsRow, OwnListing
+packages/db/src/queries/directory-refs.ts: DirectoryBusinessColumns
+packages/db/src/queries/plan-upgrades.ts: RenewalAtNewPrice
+Duplicate exports (4)
+apps/platform/lib/server/customer-access.ts: LISTING_PAGE_PATH, LISTING_ACCOUNT_HOME
+packages/billing/src/referral.ts: BASIS_POINTS_PER_WHOLE, MAX_REWARD_BASIS_POINTS
+packages/db/src/queries/directory.ts: MAX_DIRECTORY_RATING_KEYS, MAX_DIRECTORY_STATUS_KEYS, MAX_DIRECTORY_SIGNAL_KEYS
+packages/shared/src/lib/billing/payment-step.ts: BILLING_HREF, REACTIVATE_HREF

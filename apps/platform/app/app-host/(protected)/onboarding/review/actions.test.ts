@@ -32,11 +32,11 @@ beforeEach(() => {
 });
 
 describe("submitOnboarding", () => {
-  it("sends a paid client with the Managed Website service to its project", async () => {
+  it("sends a paid client with the Managed Website service to the Website page", async () => {
     vi.mocked(requireBillingAccess).mockResolvedValue(granted(true));
     vi.mocked(submitOnboardingFor).mockResolvedValue(null);
 
-    await expect(submitOnboarding({ status: "idle" }, new FormData())).rejects.toThrow("redirect:/project");
+    await expect(submitOnboarding({ status: "idle" }, new FormData())).rejects.toThrow("redirect:/website");
     expect(submitOnboardingFor).toHaveBeenCalledOnce();
   });
 

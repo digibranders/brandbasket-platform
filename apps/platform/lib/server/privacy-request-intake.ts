@@ -82,7 +82,7 @@ function fakeEmailHint(rawEmail: string): string {
   return emailHint(rawEmail.trim().toLowerCase());
 }
 
-export function otpResponse(outcome: PrivacyRequestOtpOutcome): Response {
+function otpResponse(outcome: PrivacyRequestOtpOutcome): Response {
   switch (outcome.kind) {
     case "otp_sent": {
       const body: PrivacyRequestOtpResponse = { status: "otp_sent", otpId: outcome.otpId, expiresInSeconds: outcome.expiresInSeconds, emailHint: outcome.emailHint };
@@ -101,7 +101,7 @@ export function otpResponse(outcome: PrivacyRequestOtpOutcome): Response {
   }
 }
 
-export function confirmResponse(outcome: PrivacyRequestConfirmOutcome): Response {
+function confirmResponse(outcome: PrivacyRequestConfirmOutcome): Response {
   switch (outcome.kind) {
     case "received": {
       const body: PrivacyRequestConfirmResponse = { status: "received", reference: outcome.reference, dueAt: outcome.dueAt.toISOString() };
@@ -173,7 +173,7 @@ export async function handlePrivacyRequestConfirm(request: Request, deps: Privac
   return confirmResponse(await deps.confirmOtp(otpId, code, clientIp, deps.now()));
 }
 
-export function deletionResponse(outcome: ContributionDeletionOutcome): Response {
+function deletionResponse(outcome: ContributionDeletionOutcome): Response {
   switch (outcome.kind) {
     case "deleted": {
       const body: ContributionDeletionResponse = { status: "deleted", reference: outcome.reference };

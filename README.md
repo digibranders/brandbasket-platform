@@ -1,12 +1,12 @@
 # Brandbasket platform
 
 The customer dashboard and staff console behind Brandbasket's Local Business plans. A business owner creates an
-account with their **email address**, chooses **Care** or **Premium**, pays, and manages their website, chatbot,
+account with their **email address**, chooses Managed Website, pays, and manages their website, chatbot,
 billing and support from the dashboard. Brandbasket staff run the same data from a separate staff console.
 
 It lives at `app.brandbasket.in`, on Brandbasket's own server, with its own database, its own staff console and its own secrets.
-It still carries dormant code (directory and listing features, the free plan) that a later clean-up removes: the dashboard
-sells Care and Premium only, and registers owners by email. Nothing is ever sent to a phone: every code is emailed.
+It still carries some dormant code (the free-listing account type and the directory tables, see `CLAUDE.md`): the dashboard
+sells Managed Website and its services only, and registers owners by email. Nothing is ever sent to a phone: every code is emailed.
 
 Built with Next.js 16 (App Router), TypeScript, Tailwind CSS 4, zod, PostgreSQL, Drizzle and Better Auth, in a pnpm
 workspace. The Brandbasket marketing site (`brandbasket.in`) is a separate repository.
@@ -47,7 +47,7 @@ Payload pushes schema changes itself.
 ## Accounts and email
 
 - **Create account** (`/login?new=1`): business name, your name, email, password (at least 8 characters, with a letter, a number and a symbol), the Terms
-  box, and a plan (Care or Premium). A 6-digit code is emailed to the address (10 minutes, 5 tries, rate limited per
+  box, and a plan (Managed Website). A 6-digit code is emailed to the address (10 minutes, 5 tries, rate limited per
   network, per address and overall); the account is opened only once it is entered, with the address already confirmed.
   The owner then pays on the plan's page and lands on the dashboard.
 - **Sign in**: email and password. **Forgot password**: a one-time link by email.

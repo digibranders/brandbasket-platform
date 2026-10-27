@@ -283,6 +283,11 @@ describe("clientBundledAddOnRows", () => {
     expect(clientBundledAddOnRows([bundled({ listAmountCents: 999_900, netAmountCents: 999_900 })], "INR", context)[0]?.price).toBe("₹9,999 a month, GST included, billed with the monthly payment");
   });
 
+  it("names the price from the next renewal when a move to another package waits on the line", () => {
+    const moving = bundled({ listAmountCents: 999_900, offerDiscountAmountCents: 99_910, netAmountCents: 899_990, pendingOfferDiscountAmountCents: 199_980 });
+    expect(clientBundledAddOnRows([moving], "INR", context)[0]?.price).toBe("₹7,999.20 a month, GST included, package price, billed with the monthly payment");
+  });
+
   it("offers no removal while the client has asked to close their account", () => {
     expect(clientBundledAddOnRows([bundled()], "INR", { ...context, cancelRequested: true })[0]).toMatchObject({ canRemove: false, endsOnText: null });
   });

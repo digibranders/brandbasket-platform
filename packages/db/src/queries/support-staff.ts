@@ -151,6 +151,10 @@ export interface AppendSupportMessageByStaffInput {
   readonly attachmentIds?: readonly string[]; readonly submissionKey: string;
 }
 export async function appendSupportMessageByStaff(db: Database, input: AppendSupportMessageByStaffInput): Promise<SupportMessage> {
+  return (await appendSupportMessageByStaffWithOutcome(db, input)).message;
+}
+/** `created` is false for a replay of a message already saved under the same submission key, so callers act on a new message only once. */
+export async function appendSupportMessageByStaffWithOutcome(db: Database, input: AppendSupportMessageByStaffInput): Promise<{ readonly message: SupportMessage; readonly created: boolean }> {
   assertSupportUuid(input.ticketId, "Ticket ID"); assertSupportSubmissionKey(input.submissionKey);
   if (input.visibility !== "public" && input.visibility !== "internal") throw new SupportQueryError("invalid_input", "Invalid message visibility.");
   const body = supportText(input.body, "Message", 1, 5000), attachmentIds = normalizeSupportAttachmentIds(input.attachmentIds);
@@ -160,7 +164,7 @@ export async function appendSupportMessageByStaff(db: Database, input: AppendSup
     const [existing] = await tx.select().from(supportMessages).where(and(eq(supportMessages.authorUserId, input.staffUserId), eq(supportMessages.submissionKey, input.submissionKey))).limit(1);
     if (existing) {
       if (existing.submissionHash !== submissionHash) throw new SupportQueryError("conflict", "This submission key was already used for a different message.");
-      return existing;
+      return { message: existing, created: false };
     }
     const [ticket] = await tx.select().from(supportTickets).where(eq(supportTickets.id, input.ticketId)).for("update").limit(1);
     if (!ticket) throw new SupportQueryError("not_found", "Support ticket was not found.");
@@ -169,7 +173,7 @@ export async function appendSupportMessageByStaff(db: Database, input: AppendSup
     const [message] = await tx.insert(supportMessages).values({ ticketId: ticket.id, authorRole: "staff", authorUserId: input.staffUserId, body, visibility: input.visibility, submissionKey: input.submissionKey, submissionHash }).returning();
     if (!message) throw new SupportQueryError("conflict", "The staff message could not be created.");
     await claimSupportAttachments(tx, input.staffUserId, ticket.id, message.id, attachmentIds);
-    return message;
+    return { message, created: true };
   });
 }
 

@@ -15,6 +15,7 @@ function json(body: unknown, status: number): Response {
 function outcomeOf(result: CalcomWebhookResult): WebhookOutcome {
   switch (result.kind) {
     case "moved":
+    case "recorded":
     case "removed":
       return { result: "handled" };
     case "ignored":
@@ -31,8 +32,8 @@ function outcomeOf(result: CalcomWebhookResult): WebhookOutcome {
 }
 
 /**
- * Cal.com's server-to-server notice that a booking was cancelled or rescheduled (staff add this address as a webhook in
- * Cal.com, with the secret that is CALCOM_WEBHOOK_SECRET here). Answers 200 once the signature is valid, even for an event
+ * Cal.com's server-to-server notice that a booking was created, cancelled or rescheduled (staff add this address as a webhook
+ * in Cal.com with those three events ticked, and the secret that is CALCOM_WEBHOOK_SECRET here). Answers 200 once the signature is valid, even for an event
  * or a booking this app does not act on, so Cal.com does not retry it; an unsigned or wrongly signed delivery gets 401, and
  * a server with no secret set answers 503 rather than act on something it cannot check.
  */

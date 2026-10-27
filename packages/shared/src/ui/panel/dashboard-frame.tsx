@@ -64,8 +64,8 @@ export function DashboardFrame({
     panel,
     dark,
     docsUrl: brand.siteUrl ?? `${siteConfig.url}/faq`,
-    contactEmail: brand.email ?? siteConfig.email,
-    brandName: brand.name,
+    // These shells (the affiliate portal, a free listing, the old support pages) have no place to ask in the dashboard, so Help is mail.
+    helpHref: `mailto:${brand.email ?? siteConfig.email}?subject=${encodeURIComponent("Help with my website")}`,
   };
   return (
     <div className={cn("dashboard-type flex min-h-dvh flex-col lg:flex-row", dark ? "bg-dark-surface" : "bg-paper-deep")}>
@@ -77,7 +77,7 @@ export function DashboardFrame({
       >
         <div className="flex items-center justify-between gap-3 lg:px-2.5">
           <div className="flex flex-col gap-1.5">
-            {/* The website's wordmark, the same as on the sign-in screens: white on the dark sidebar. */}
+            {/* The website's wordmark, the same as on the sign-in screens: the dark-background version on the dark sidebar. */}
             <WordmarkLogo href="/" tone={dark ? "light" : "accent"} brand={brand} />
             {plan === undefined ? null : <PlanChip plan={plan} dark={dark} />}
           </div>

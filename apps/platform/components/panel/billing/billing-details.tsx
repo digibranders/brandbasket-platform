@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { stateName } from "@brandbasket/shared/lib/directory/india-states";
-import { Button } from "@brandbasket/shared/ui/panel/button";
-import { SectionHeading, Surface } from "@brandbasket/shared/ui/panel/surface";
+import { PageSection } from "@/components/v2/page";
+import { SOFT_BUTTON } from "@/components/v2/classes";
 import { saveBillingDetailsAction } from "@/app/app-host/(protected)/billing/actions";
 import { BillingDetailsForm, SAVED_TEXT } from "@/components/panel/billing/billing-details-form";
 import type { PanelFormAction } from "@/components/panel/form/panel-form";
@@ -11,8 +11,11 @@ import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 
 interface BillingDetailsProps {
   readonly view: BillingDetailsView;
-  /** "card" on Billing; "checkout" above a pay button, where a customer with no details yet sees the form open. */
-  readonly variant: "card" | "checkout";
+  /**
+   * "card" on Billing; "checkout" above a pay button, where the optional form starts folded away; "ledger" is "checkout"
+   * without its own heading, for a page that already titles it (the plan page's disclosure).
+   */
+  readonly variant: "card" | "checkout" | "ledger";
 }
 
 /**
@@ -22,8 +25,9 @@ interface BillingDetailsProps {
  */
 export function BillingDetails({ view, variant }: BillingDetailsProps): ReactElement {
   const { saved } = view;
-  // On a checkout page the optional form starts folded away, so the way to pay is not buried under it.
-  const [editing, setEditing] = useState(saved === null && variant === "card");
+  const inCheckout = variant !== "card";
+  // The form starts folded away: on a checkout page so the way to pay is not buried under it, on Billing so the payments are not pushed down the page.
+  const [editing, setEditing] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const statusRef = useRef<HTMLParagraphElement>(null);
   // Saving closes the form, which removes the Save button that had focus. Focus goes to the line that says it saved,
@@ -41,26 +45,26 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
   };
 
   const facts =
-    saved === null ? null : variant === "card" ? (
-      <dl className="mt-5 grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
+    saved === null ? null : !inCheckout ? (
+      <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
         <Fact label="Billed to" value={saved.legalName} />
         <Fact label="GSTIN" value={saved.gstin ?? "Not given"} />
         <Fact label="Address" value={saved.address} />
         <Fact label="State" value={stateName(saved.stateCode) ?? saved.stateCode} />
       </dl>
     ) : (
-      <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+      <p className="mt-2 text-sm leading-relaxed text-ink-2">
         Your GST invoice goes to <span className="text-ink">{saved.legalName}</span>
         {saved.gstin === null ? "" : `, GSTIN ${saved.gstin}`}.
       </p>
     );
 
-  const foldedAway = saved === null && variant === "checkout" && !editing;
+  const foldedAway = saved === null && inCheckout && !editing;
 
   const intro =
     saved === null && !foldedAway ? (
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
-        {variant === "card"
+      <p className={`max-w-2xl text-sm leading-relaxed text-ink-2 ${inCheckout ? "mt-3" : ""}`}>
+        {!inCheckout
           ? "Add your billing address, and your GSTIN if you have one, to get GST invoices in the right name. They apply to invoices issued after you save them."
           : "Optional. Add your billing address, and your GSTIN if you have one, for your GST invoice. You can pay without it."}
       </p>
@@ -73,29 +77,32 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
       {/* The region is always in the page, so a screen reader is watching it when the line arrives. */}
       <div role="status" aria-live="polite">
         {justSaved ? (
-          <p ref={statusRef} tabIndex={-1} className="mt-4 text-sm text-ink-soft outline-none">
+          <p ref={statusRef} tabIndex={-1} className="mt-4 text-sm text-ink-2 outline-none">
             {SAVED_TEXT}
           </p>
         ) : null}
       </div>
-      {saved === null && variant === "checkout" ? (
+      {saved === null && !inCheckout ? (
+        <button type="button" className={`${SOFT_BUTTON} mt-4`} aria-expanded={editing} aria-controls="billing-details-form" onClick={() => setEditing(!editing)}>
+          {editing ? "Close" : "Add billing details"}
+        </button>
+      ) : null}
+      {saved === null && inCheckout ? (
         // The same control opens and folds the form: pressing it again puts the form away.
         <button
           type="button"
           aria-expanded={editing}
           aria-controls="billing-details-form"
           onClick={() => setEditing(!editing)}
-          className="mt-1 text-sm text-ink-soft underline decoration-line underline-offset-4 transition-colors duration-300 ease-calm hover:text-ink"
+          className="mt-1 text-sm text-ink-2 underline decoration-line underline-offset-4 transition-colors duration-300 ease-calm hover:text-ink"
         >
           {editing ? "Hide GST billing details" : "Add your GST billing details (optional)"}
         </button>
       ) : null}
       {saved === null ? null : (
-        <Button
+        <button
           type="button"
-          size="sm"
-          variant="secondary"
-          className="mt-5"
+          className={`${SOFT_BUTTON} mt-5`}
           aria-expanded={editing}
           aria-controls="billing-details-form"
           onClick={() => {
@@ -104,11 +111,11 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
           }}
         >
           {editing ? "Close" : "Edit billing details"}
-        </Button>
+        </button>
       )}
       {editing ? (
-        <div id="billing-details-form" className={saved === null ? "mt-4" : "mt-6 border-t border-line pt-6"}>
-          <BillingDetailsForm view={view} action={saveAndClose} layout={variant === "card" ? "wide" : "narrow"} />
+        <div id="billing-details-form" className={saved === null && inCheckout ? "mt-4" : "mt-6 border-t border-line pt-6"}>
+          <BillingDetailsForm view={view} action={saveAndClose} layout={inCheckout ? "narrow" : "wide"} />
         </div>
       ) : null}
     </>
@@ -116,13 +123,12 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
 
   if (variant === "card") {
     return (
-      <Surface labelledBy="billing-details">
-        <SectionHeading id="billing-details">Billing details</SectionHeading>
+      <PageSection id="billing-details" title="Billing details">
         {body}
-      </Surface>
+      </PageSection>
     );
   }
-  return <CheckoutSection>{body}</CheckoutSection>;
+  return variant === "ledger" ? <>{body}</> : <CheckoutSection>{body}</CheckoutSection>;
 }
 
 /** The checkout page's block: a quiet heading and a hairline above, so it reads as part of paying, not a second form page. */
@@ -140,7 +146,7 @@ function CheckoutSection({ children }: { readonly children: ReactNode }): ReactE
 function Fact({ label, value }: { readonly label: string; readonly value: string }): ReactElement {
   return (
     <div className="min-w-0">
-      <dt className="text-ink-soft">{label}</dt>
+      <dt className="text-ink-2">{label}</dt>
       <dd className="mt-1 break-words text-ink">{value}</dd>
     </div>
   );

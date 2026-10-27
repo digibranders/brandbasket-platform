@@ -1,7 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
-import { activityEvents, type ActivityActorKind } from "../schema";
+import { businessActivity, type ActivityActorKind } from "../schema";
 import { isUuid } from "./tenant";
 
 type Runner = Database | ScopedTransaction;
@@ -24,20 +24,20 @@ export interface ActivityRow extends Required<Omit<ActivityInput, "data" | "visi
 }
 
 const ROW_COLUMNS = {
-  id: activityEvents.id,
-  businessId: activityEvents.businessId,
-  actorKind: activityEvents.actorKind,
-  actorId: activityEvents.actorId,
-  kind: activityEvents.kind,
-  summary: activityEvents.summary,
-  data: activityEvents.data,
-  visibleToClient: activityEvents.visibleToClient,
-  createdAt: activityEvents.createdAt,
+  id: businessActivity.id,
+  businessId: businessActivity.businessId,
+  actorKind: businessActivity.actorKind,
+  actorId: businessActivity.actorId,
+  kind: businessActivity.kind,
+  summary: businessActivity.summary,
+  data: businessActivity.data,
+  visibleToClient: businessActivity.visibleToClient,
+  createdAt: businessActivity.createdAt,
 } as const;
 
 /** Writes one line of a business's history (or a system-wide one, with no business). */
 export async function recordActivity(db: Runner, input: ActivityInput): Promise<void> {
-  await db.insert(activityEvents).values({
+  await db.insert(businessActivity).values({
     businessId: input.businessId,
     actorKind: input.actorKind,
     actorId: input.actorId,
@@ -53,13 +53,13 @@ export async function listActivityForBusiness(db: Runner, businessId: string, li
   if (!isUuid(businessId)) return [];
   return db
     .select(ROW_COLUMNS)
-    .from(activityEvents)
-    .where(eq(activityEvents.businessId, businessId))
-    .orderBy(desc(activityEvents.createdAt), desc(activityEvents.id))
+    .from(businessActivity)
+    .where(eq(businessActivity.businessId, businessId))
+    .orderBy(desc(businessActivity.createdAt), desc(businessActivity.id))
     .limit(limit);
 }
 
 /** Everything recorded lately, across every business, newest first. Staff connection only. */
 export async function listRecentActivity(db: Runner, limit: number): Promise<readonly ActivityRow[]> {
-  return db.select(ROW_COLUMNS).from(activityEvents).orderBy(desc(activityEvents.createdAt), desc(activityEvents.id)).limit(limit);
+  return db.select(ROW_COLUMNS).from(businessActivity).orderBy(desc(businessActivity.createdAt), desc(businessActivity.id)).limit(limit);
 }

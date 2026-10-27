@@ -4,9 +4,10 @@ import { useEffect, useState, type ReactElement } from "react";
 import { ANNOUNCEMENT_MAX_LENGTH, type Announcement } from "@brandbasket/shared/lib/business-facts/announcement";
 import { formatStoredDate } from "@brandbasket/shared/lib/format";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
-import { Button } from "@brandbasket/shared/ui/panel/button";
-import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
-import { FIELD_CLASSES, MAX_DATE, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
+import { SOFT_BUTTON } from "@/components/v2/classes";
+import { MAX_DATE, PanelFormStatus, usePanelForm, type PanelFormAction } from "@/components/panel/form/panel-form";
+import { DETAILS_FIELD, DETAILS_LABEL } from "./field-classes";
+import { SaveButton } from "./save-button";
 
 interface AnnouncementPanelProps {
   readonly announcement: Announcement | null;
@@ -45,9 +46,9 @@ function RemoveForm({
 
   return (
     <form ref={formRef} action={formAction} className="flex items-center gap-3">
-      <Button type="submit" variant="secondary" size="sm" disabled={controls.isPending} aria-busy={controls.isPending}>
+      <button type="submit" className={`${SOFT_BUTTON} disabled:opacity-55`} disabled={controls.isPending} aria-busy={controls.isPending}>
         {controls.isPending ? "Removing…" : "Remove"}
-      </Button>
+      </button>
       <PanelFormStatus controls={controls} statusRef={statusRef} />
     </form>
   );
@@ -69,14 +70,14 @@ export function AnnouncementPanel({
     <div className="space-y-5">
       {announcement === null ? null : (
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="text-sm font-medium">{announcementStatus(announcement, today)}</p>
+          <p className="text-sm font-semibold text-ink">{announcementStatus(announcement, today)}</p>
           <RemoveForm clearAction={clearAction} onRemoved={() => setMessage("")} />
         </div>
       )}
 
       <form ref={formRef} action={formAction} className="space-y-4">
         <div>
-          <label htmlFor="announcement-message" className="block text-sm font-medium">
+          <label htmlFor="announcement-message" className={DETAILS_LABEL}>
             Message
             <RequiredMark />
           </label>
@@ -88,17 +89,17 @@ export function AnnouncementPanel({
             maxLength={ANNOUNCEMENT_MAX_LENGTH}
             required
             placeholder="Closed for Diwali, back Nov 3"
-            className={FIELD_CLASSES}
+            className={DETAILS_FIELD}
             {...controls.fieldStatus("message")}
           />
-          <p className="mt-1 text-xs tabular-nums text-ink-soft">
+          <p className="mt-1 text-xs tabular-nums text-ink-2">
             {message.length}/{ANNOUNCEMENT_MAX_LENGTH}
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="announcement-startsOn" className="block text-sm font-medium">
+            <label htmlFor="announcement-startsOn" className={DETAILS_LABEL}>
               Starts
               <RequiredMark />
             </label>
@@ -109,12 +110,12 @@ export function AnnouncementPanel({
               max={MAX_DATE}
               required
               defaultValue={controls.valueOf("startsOn", announcement?.startsOn ?? defaultStartsOn)}
-              className={FIELD_CLASSES}
+              className={DETAILS_FIELD}
               {...controls.fieldStatus("startsOn")}
             />
           </div>
           <div>
-            <label htmlFor="announcement-endsOn" className="block text-sm font-medium">
+            <label htmlFor="announcement-endsOn" className={DETAILS_LABEL}>
               Ends
               <RequiredMark />
             </label>
@@ -125,16 +126,14 @@ export function AnnouncementPanel({
               max={MAX_DATE}
               required
               defaultValue={controls.valueOf("endsOn", announcement?.endsOn ?? defaultEndsOn)}
-              className={FIELD_CLASSES}
+              className={DETAILS_FIELD}
               {...controls.fieldStatus("endsOn")}
             />
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <SubmitButton size="sm" disabled={controls.isPending} pendingLabel="Saving…">
-            Save
-          </SubmitButton>
+          <SaveButton label="Save" pendingLabel="Saving…" startKey={JSON.stringify(announcement)} />
           <PanelFormStatus controls={controls} statusRef={statusRef} />
         </div>
       </form>

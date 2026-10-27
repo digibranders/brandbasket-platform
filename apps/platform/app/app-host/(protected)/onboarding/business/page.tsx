@@ -3,7 +3,9 @@ import { headers } from "next/headers";
 import type { ReactElement } from "react";
 import { BusinessStepForm, type SavedBusinessProfile } from "@/components/panel/business-step-form";
 import { BusinessSummary, SummaryCard } from "@/components/panel/onboarding-summary";
-import { StepHeading } from "@/components/panel/step-heading";
+import { StepAside } from "@/components/panel/step-aside";
+import { StepCard } from "@/components/panel/step-card";
+import { PageColumns } from "@/components/v2/page";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { getOnboardingSnapshot } from "@/lib/server/onboarding";
 import { phoneCountryOptions } from "@brandbasket/shared/server/phone-countries";
@@ -18,12 +20,14 @@ export default async function BusinessStepPage(): Promise<ReactElement> {
 
   if (snapshot.locked) {
     return (
-      <>
-        <StepHeading step="business" />
-        <SummaryCard title="Your business">
-          <BusinessSummary profile={snapshot.profile} hours={snapshot.hours} />
-        </SummaryCard>
-      </>
+      <PageColumns
+        main={
+          <SummaryCard title="Your business">
+            <BusinessSummary profile={snapshot.profile} hours={snapshot.hours} />
+          </SummaryCard>
+        }
+        aside={<StepAside step="business" />}
+      />
     );
   }
 
@@ -48,17 +52,19 @@ export default async function BusinessStepPage(): Promise<ReactElement> {
   };
 
   return (
-    <>
-      <StepHeading step="business" />
-      <div className="rounded-card border border-line bg-card p-6 sm:p-8">
-        <BusinessStepForm
-          action={saveBusinessStep}
-          profile={profile}
-          hours={snapshot.hours}
-          phoneCountries={phoneCountryOptions()}
-          defaultPhoneCountry={defaultPhoneCountry}
-        />
-      </div>
-    </>
+    <PageColumns
+      main={
+        <StepCard step="business">
+          <BusinessStepForm
+            action={saveBusinessStep}
+            profile={profile}
+            hours={snapshot.hours}
+            phoneCountries={phoneCountryOptions()}
+            defaultPhoneCountry={defaultPhoneCountry}
+          />
+        </StepCard>
+      }
+      aside={<StepAside step="business" />}
+    />
   );
 }
