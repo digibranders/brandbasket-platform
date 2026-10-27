@@ -7,6 +7,9 @@ import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { applyMembershipCode, removeMembershipCode, startMembership } from "@/app/app-host/(protected)/plan/actions";
 import { BillingDetails } from "@/components/panel/billing/billing-details";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { STACK } from "@/components/v2/classes";
+import { PageHeader } from "@/components/v2/page";
 import { ReferralCodeForm } from "@/components/panel/referral-code-form";
 import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, checkoutSteps } from "@/lib/checkout-plans";
 import { ledgerRows, ledgerSummary, type LedgerCode, type LedgerPricing, type LedgerRow } from "@/lib/checkout-ledger";
@@ -90,17 +93,16 @@ export function CheckoutLedger({
     "rounded-[0.625rem] bg-ink font-display font-semibold text-white transition-colors duration-200 hover:bg-ink-raised active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none";
 
   return (
-    <div className="max-[860px]:pb-24">
-      <h1 className="font-display text-[clamp(1.875rem,4vw,2.5rem)] font-semibold leading-[1.08] tracking-[-0.035em] text-ink">{CHECKOUT_COPY.title}</h1>
-      <p className="mt-2 text-ink-2">{CHECKOUT_COPY.lead}</p>
+    <div className={cn(STACK, "max-[860px]:pb-24")}>
+      <PageHeader title={CHECKOUT_COPY.title} lede={CHECKOUT_COPY.lead} />
 
       {paymentFailed ? (
-        <p role="alert" className="mt-5 rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
+        <p role="alert" className="rounded-lg bg-rattan-wash px-4 py-3 text-sm text-rattan-ink">
           We couldn&rsquo;t confirm that payment, so nothing has been recorded. You can try again below.
         </p>
       ) : null}
 
-      <div className="mt-7 grid items-start gap-8 min-[861px]:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)] min-[861px]:gap-12">
+      <div className="grid items-start gap-8 min-[861px]:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)] min-[861px]:gap-12">
         <section aria-label="Choose your plans" className="rounded-lift bg-surface p-6 shadow-lift sm:p-[1.625rem]">
           {choosable ? (
             <>

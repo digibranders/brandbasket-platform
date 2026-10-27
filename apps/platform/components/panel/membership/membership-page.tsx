@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import { FreeListingButton } from "@/components/panel/membership/free-listing-button";
 import { CheckoutLedger } from "@/components/panel/membership/checkout-ledger";
 import { MembershipCheckout } from "@/components/panel/membership/membership-checkout";
+import { STACK } from "@/components/v2/classes";
 import { sellsFreeListing } from "@/lib/brand";
 import {
   MEMBER_HOME,
@@ -70,7 +71,7 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   const payable = plan !== null && !waiting && !billing.paymentUnderReview;
 
   return (
-    <div className="space-y-10">
+    <div className={STACK}>
       {payable ? (
         <CheckoutLedger
           tier={tier}
@@ -98,7 +99,7 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
 
       {/* Not while we wait to hear about a payment just made: the plan is about to open. */}
       {held && sellsFreeListing(brand) && (!waiting || billing.paymentUnderReview) ? (
-        <form action={chooseFreeListing} className="max-w-xl border-t border-line pt-6">
+        <form action={chooseFreeListing} className="max-w-xl">
           <FreeListingButton />
         </form>
       ) : null}
