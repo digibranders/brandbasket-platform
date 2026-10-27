@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import type { BillingBannerModel } from "@brandbasket/shared/lib/billing/payment-step";
 import type { NextStep } from "@brandbasket/shared/lib/next-step";
 import type { OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
+import { PageFrame } from "@/components/v2/page";
 import { BillingBanner } from "./billing-banner";
 import { NextStepCard } from "./next-step-card";
 import { PrepareChecklist } from "./prepare-checklist";
@@ -33,14 +34,10 @@ interface UnpaidHomeProps {
 export function UnpaidHome({ firstName, banner, step, buildStageIndex, completedSteps }: UnpaidHomeProps): ReactElement {
   const settingUp = step.kind === "start-onboarding" || step.kind === "continue-onboarding";
   return (
-    <div className="mx-auto grid w-full max-w-[68rem] gap-6">
-      <header>
-        <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.035em] text-ink">Hello, {firstName}.</h1>
-        <p className="mt-2 text-[0.84375rem] text-ink-2">{SUBTITLES[step.kind]}</p>
-      </header>
+    <PageFrame title={`Hello, ${firstName}.`} lede={SUBTITLES[step.kind]}>
       {banner === null ? null : <BillingBanner banner={banner} />}
       <NextStepCard step={step} buildStageIndex={buildStageIndex} />
       {settingUp ? <PrepareChecklist completedSteps={completedSteps} /> : null}
-    </div>
+    </PageFrame>
   );
 }
