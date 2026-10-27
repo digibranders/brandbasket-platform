@@ -117,7 +117,7 @@ function BuilderHead({
 }
 
 /**
- * The signature body lines of the builder (matching builder-illustration.tsx).
+ * The signature body lines of the builder.
  * Exactly two smooth, purposeful curves with ZERO overlapping or intersecting strokes:
  * 1. Left shoulder curving naturally downward from the collar.
  * 2. Right shoulder & back curving smoothly down to the base.
@@ -495,7 +495,7 @@ const DRAWINGS: Readonly<Record<string, () => ReactElement>> = {
  *
  * Copied from the marketing website (fynix-website/components/changelog-art.tsx) so the dashboard shows the same
  * builder, drawn by the same code, rather than a lookalike. Keep the two in step by hand: the repositories share no
- * build, so a change to one will not reach the other (builder-illustration.tsx is kept the same way).
+ * build, so a change to one will not reach the other.
  *
  * Each changelog date features the exact same builder character (curly hair, round spectacles,
  * hand-drawn line weight), while their behavior, actions, and surrounding elements

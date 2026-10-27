@@ -6,6 +6,7 @@ import { EmptyState } from "@brandbasket/shared/ui/panel/empty-state";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { cn } from "@brandbasket/shared/lib/cn";
+import { SOFT_BUTTON } from "@/components/v2/classes";
 import { payChargeAction } from "@/app/app-host/(protected)/billing/actions";
 import type { BillingMonth, BillLine } from "@/lib/billing/billing-months";
 import { splitInvoiceNumber } from "@/lib/billing/invoice-title";
@@ -16,11 +17,11 @@ import type { ReceiptRow, ReceiptTone } from "@/lib/billing/receipt-rows";
 type Tone = ReceiptTone | "due";
 
 const TONES: Readonly<Record<Tone, string>> = {
-  paid: "bg-accent-pale text-accent-deep",
-  due: "bg-ink text-paper",
-  review: "bg-paper-deep text-ink",
-  refunded: "text-ink-soft ring-1 ring-line",
-  failed: "text-ink-soft ring-1 ring-line",
+  paid: "bg-sage-wash text-sage-deep",
+  due: "bg-rattan-wash text-rattan-ink",
+  review: "bg-sunken text-ink",
+  refunded: "bg-sunken text-ink-2",
+  failed: "bg-sunken text-ink-2",
 };
 
 function StatusPill({ tone, label, detail }: { readonly tone: Tone; readonly label: string; readonly detail: string | null }): ReactElement {
@@ -42,7 +43,7 @@ function LineBadge({ due }: { readonly due: boolean }): ReactElement {
       aria-hidden="true"
       className={cn(
         "flex size-10 shrink-0 items-center justify-center rounded-full",
-        due ? "bg-paper-deep text-ink" : "bg-accent-pale text-accent-deep",
+        due ? "bg-rattan-wash text-rattan-ink" : "bg-sage-wash text-sage-deep",
       )}
     >
       {due ? <ClockIcon className="size-5" /> : <DocumentIcon className="size-5" />}
@@ -105,13 +106,13 @@ function PayButton({ chargeId, title }: { readonly chargeId: string; readonly ti
  * rest. Amounts and the last column sit flush right, everything else flush left.
  */
 const COLUMNS = {
-  serial: { width: "w-16", cell: "pl-6 pr-2 tabular-nums text-ink-soft" },
+  serial: { width: "w-12", cell: "pl-0 pr-2 tabular-nums text-ink-soft" },
   item: { width: "", cell: "pr-6" },
   date: { width: "w-[16%]", cell: "pr-6 tabular-nums" },
   status: { width: "w-[12%]", cell: "pr-6" },
   amount: { width: "w-[11%]", cell: "pr-6 text-right" },
   plan: { width: "w-[15%]", cell: "pr-6" },
-  action: { width: "w-[12%]", cell: "pr-6 text-right" },
+  action: { width: "w-[12%]", cell: "pr-0 text-right" },
 } as const;
 
 const HEAD_CELL = "py-3.5 align-middle font-medium";
@@ -123,8 +124,7 @@ interface PagerProps {
   readonly onPage: (page: number) => void;
 }
 
-const PAGER_BUTTON =
-  "inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-4 py-2 text-sm font-semibold transition-colors duration-300 ease-calm hover:bg-paper-deep disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-card";
+const PAGER_BUTTON = `${SOFT_BUTTON} disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-sunken`;
 
 /** Previous and next, and the page numbers between them. */
 function Pager({ page, pageCount, onPage }: PagerProps): ReactElement {
@@ -303,7 +303,7 @@ function SerialBadge({ serial }: { readonly serial: number }): ReactElement {
 function MobileLine({ line, serial }: LineProps): ReactElement {
   if (line.kind === "due") {
     return (
-      <li className="flex items-start gap-3 p-4">
+      <li className="flex items-start gap-3 py-4">
         <SerialBadge serial={serial} />
         <LineBadge due />
         <div className="min-w-0 flex-1">
@@ -325,7 +325,7 @@ function MobileLine({ line, serial }: LineProps): ReactElement {
   }
   const { row } = line;
   return (
-    <li className="flex items-start gap-3 p-4">
+    <li className="flex items-start gap-3 py-4">
       <SerialBadge serial={serial} />
       <LineBadge due={false} />
       <div className="min-w-0 flex-1">
@@ -382,24 +382,18 @@ export function MonthlyBilling({ months, lede = DEFAULT_LEDE, emptyBody = DEFAUL
 
   return (
     <section aria-labelledby="billing-months-heading">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 border-b border-line pb-5">
-        <div className="min-w-0">
-          <h2 id="billing-months-heading" className="panel-section">
-            Monthly billing
-          </h2>
-          <p className="mt-1 text-sm text-ink-soft">{lede}</p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-line pb-2.5">
+        <h2 id="billing-months-heading" className="font-display text-[0.9375rem] font-semibold tracking-[-0.01em] text-ink">
+          Monthly billing
+        </h2>
         {hasDownloads ? (
-          <a
-            href={receiptDownloadHref(null)}
-            download
-            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-line bg-card px-5 py-2.5 text-sm font-semibold transition-colors duration-300 ease-calm hover:bg-paper-deep"
-          >
+          <a href={receiptDownloadHref(null)} download className={SOFT_BUTTON}>
             <DownloadIcon className="size-4" />
             Download all<span className="sr-only"> invoices and receipts</span>
           </a>
         ) : null}
       </div>
+      <p className="mt-3 max-w-2xl text-[0.84375rem] text-ink-2">{lede}</p>
 
       {months.length === 0 ? (
         <EmptyState
@@ -409,7 +403,7 @@ export function MonthlyBilling({ months, lede = DEFAULT_LEDE, emptyBody = DEFAUL
         />
       ) : (
         <>
-          <div className="mt-6 hidden overflow-hidden rounded-card border border-line bg-card xl:block">
+          <div className="mt-5 hidden xl:block">
             <table className="w-full table-fixed text-left text-[0.8125rem]">
               <colgroup>
                 <col className={COLUMNS.serial.width} />
@@ -420,7 +414,7 @@ export function MonthlyBilling({ months, lede = DEFAULT_LEDE, emptyBody = DEFAUL
                 <col className={COLUMNS.plan.width} />
                 <col className={COLUMNS.action.width} />
               </colgroup>
-              <thead className="bg-paper-deep/50 text-xs text-ink-soft">
+              <thead className="border-b border-line text-xs text-ink-2">
                 <tr>
                   <th scope="col" className={cn(HEAD_CELL, COLUMNS.serial.cell)}>
                     S.No.
@@ -447,8 +441,8 @@ export function MonthlyBilling({ months, lede = DEFAULT_LEDE, emptyBody = DEFAUL
               </thead>
               {pageMonths.map((month) => (
                 <tbody key={month.key} id={`month-${month.key}`} className="divide-y divide-line border-t border-line">
-                  <tr className="bg-paper/70">
-                    <th scope="colgroup" colSpan={4} className="py-3 pl-6 pr-6 text-left">
+                  <tr>
+                    <th scope="colgroup" colSpan={4} className="py-3 pl-0 pr-6 text-left">
                       <MonthToggle
                         month={month}
                         controls={`month-${month.key}`}
@@ -477,10 +471,10 @@ export function MonthlyBilling({ months, lede = DEFAULT_LEDE, emptyBody = DEFAUL
 
           <div className="mt-5 space-y-5 xl:hidden">
             {pageMonths.map((month) => (
-              <section key={month.key} aria-label={month.label} className="overflow-hidden rounded-card border border-line bg-card">
+              <section key={month.key} aria-label={month.label} className="border-t border-line first:border-t-0">
                 <div
                   className={cn(
-                    "flex items-baseline justify-between gap-3 bg-paper/70 px-4 py-3",
+                    "flex items-baseline justify-between gap-3 py-3",
                     isOpen(month.key) && "border-b border-line",
                   )}
                 >

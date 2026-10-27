@@ -5,9 +5,6 @@ import { BrandProvider } from "@/components/panel/brand-provider";
 import { brandbasketFontVariables } from "@/lib/brandbasket-font";
 import { requestBrand } from "@/lib/server/request-brand";
 import { requireSurfaceHost } from "@/lib/server/surface-host";
-import { SupportProvider } from "@/components/panel/support/support-provider";
-import { canCreateSupportRequest } from "@/lib/server/support-rollout";
-import { getSessionUser } from "@/lib/server/session";
 
 // A root layout (see components/dashboard-root.tsx for why): this app no longer has a single shared
 // app/layout.tsx, so metadataBase/applicationName/viewport must be supplied here, same as before the split.
@@ -32,6 +29,9 @@ interface AppHostLayoutProps {
 export default async function AppHostLayout({ children }: AppHostLayoutProps): Promise<ReactElement> {
   await requireSurfaceHost("app");
   const brand = await requestBrand();
-  const userId = process.env.BRANDBASKET_SUPPORT_MODE === "internal" ? (await getSessionUser())?.id ?? null : null;
-  return <DashboardRoot brand={{ id: "brandbasket", className: brandbasketFontVariables }} app="customer"><BrandProvider brand={brand}><SupportProvider canCreate={canCreateSupportRequest(userId)}>{children}</SupportProvider></BrandProvider></DashboardRoot>;
+  return (
+    <DashboardRoot brand={{ id: "brandbasket", className: brandbasketFontVariables }} app="customer">
+      <BrandProvider brand={brand}>{children}</BrandProvider>
+    </DashboardRoot>
+  );
 }

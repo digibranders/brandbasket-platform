@@ -1,12 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
-import { DEALS_PATH } from "@/lib/deals";
-import { REVIEWS_PATH } from "@/lib/owner-replies";
 import { isCurrent, linkIsCurrent, railSections, searchRail } from "@/lib/rail";
 import { WEBSITE_PATH } from "@/lib/website/tabs";
 
-const FULL = { quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, listingClaim: false, todoCount: 3 } as const;
+const FULL = { quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, todoCount: 3 } as const;
 
 const shape = (input: Parameters<typeof railSections>[0]) =>
   railSections(input).map((section) => [section.label, section.links.map((link) => link.label)]);
@@ -48,8 +46,9 @@ describe("railSections", () => {
     expect(shape({ ...FULL, hasWebsite: false }).map(([label]) => label)).toEqual([null, "Account"]);
   });
 
-  it("keeps Reviews and Deals for a member with a claimed listing", () => {
-    expect(shape({ ...FULL, listingClaim: true })[2]).toEqual(["Directory", ["Reviews", "Deals"]]);
+  it("has no Directory section: the dashboard has no directory pages", () => {
+    expect(shape(FULL).map(([label]) => label)).not.toContain("Directory");
+    expect(railSections(FULL).flatMap((section) => section.links).map((link) => link.href)).not.toContain("/reviews");
   });
 });
 
@@ -141,7 +140,7 @@ describe("searchRail", () => {
 
 describe("the To do link", () => {
   const find = (todoCount: number, quiet: boolean) =>
-    railSections({ quiet, hasAccess: true, hasWebsite: true, websiteSetupDone: false, listingClaim: false, todoCount })[0]?.links.find((link) => link.label === "To do");
+    railSections({ quiet, hasAccess: true, hasWebsite: true, websiteSetupDone: false, todoCount })[0]?.links.find((link) => link.label === "To do");
 
   it("shows after the call with the number of open items", () => {
     expect(find(3, false)).toMatchObject({ href: "/todo", icon: "todo", count: 3 });
@@ -156,7 +155,7 @@ describe("the To do link", () => {
   });
 
   it("can be found by search", () => {
-    const sections = railSections({ quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, listingClaim: false, todoCount: 2 });
+    const sections = railSections({ quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, todoCount: 2 });
     expect(searchRail(sections, "to do").map((target) => target.label)).toContain("To do");
   });
 });
@@ -190,14 +189,9 @@ describe("browser safety", () => {
     const source = readFileSync(new URL("./rail.ts", import.meta.url), "utf8");
     const imports = [...source.matchAll(/^import\s+(type\s+)?[^;]*?from\s+"([^"]+)"/gm)].map((match) => ({ typeOnly: match[1] !== undefined, spec: match[2] ?? "" }));
     const banned = imports.filter(
-      ({ typeOnly, spec }) => spec === "@/lib/deals" || spec === "@/lib/owner-replies" || spec.startsWith("@/lib/server/") || (spec === "@brandbasket/db" && !typeOnly),
+      ({ typeOnly, spec }) => spec.startsWith("@/lib/server/") || (spec === "@brandbasket/db" && !typeOnly),
     );
     expect(banned, "rail.ts is bundled into client components").toEqual([]);
-  });
-
-  it("uses the same paths as the pages", () => {
-    const directory = railSections({ quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, listingClaim: true, todoCount: 0 }).find((section) => section.label === "Directory");
-    expect(directory?.links.map((link) => link.href)).toEqual([REVIEWS_PATH, DEALS_PATH]);
   });
 
   it("points Social & Ads and Search at pages that exist", () => {

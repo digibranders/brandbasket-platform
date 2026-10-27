@@ -3,8 +3,8 @@
 import { useActionState, useState, type ReactElement } from "react";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
-import { Button } from "@brandbasket/shared/ui/panel/button";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { DARK_BUTTON_SHAPE, SOFT_BUTTON } from "@/components/v2/classes";
 import { NOMINEE_NAME_MAX_LENGTH, NOMINEE_PHONE_MAX_LENGTH, initialNomineeState, type NomineeFormState } from "@/lib/privacy-settings-form";
 
 interface NomineeFormProps {
@@ -89,31 +89,31 @@ export function NomineeForm({ save, clear, current }: NomineeFormProps): ReactEl
         </p>
 
         {errorMessage === null ? null : (
-          <p id={ERROR_ID} role="alert" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
+          <p id={ERROR_ID} role="alert" className="rounded-lg bg-rattan-wash px-4 py-3 text-sm text-rattan-ink">
             {errorMessage}
           </p>
         )}
         {state.status === "saved" && !isPending && !noticeDismissed ? (
-          <p role="status" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
+          <p role="status" className="rounded-lg bg-rattan-wash px-4 py-3 text-sm text-rattan-ink">
             Saved.
           </p>
         ) : null}
         {cleared && !noticeDismissed ? (
-          <p role="status" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
+          <p role="status" className="rounded-lg bg-rattan-wash px-4 py-3 text-sm text-rattan-ink">
             Your nominee is removed.
           </p>
         ) : null}
 
-        <SubmitButton disabled={isPending}>
+        <SubmitButton disabled={isPending} className={DARK_BUTTON_SHAPE}>
           {isPending ? "Saving…" : current === null || cleared ? "Name this person" : "Save changes"}
         </SubmitButton>
       </form>
 
       {current !== null && !cleared ? (
         <form action={clearAction} aria-busy={isClearing}>
-          <Button type="submit" variant="secondary" size="sm" disabled={isClearing || isPending} aria-busy={isClearing}>
+          <button type="submit" className={`${SOFT_BUTTON} disabled:opacity-55`} disabled={isClearing || isPending} aria-busy={isClearing}>
             {isClearing ? "Removing…" : "Remove my nominee"}
-          </Button>
+          </button>
         </form>
       ) : null}
     </div>

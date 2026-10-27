@@ -13,7 +13,6 @@ vi.mock("@/components/v2/phone-bars", () => ({ PhoneBars: () => null }));
 vi.mock("@/lib/brand", () => ({ logoOf: () => ({ name: "Brandbasket", siteUrl: null, email: null }) }));
 vi.mock("@/lib/server/request-brand", () => ({ requestBrand: vi.fn(async () => ({})) }));
 vi.mock("@/lib/server/account-panel", () => ({ getAccountPanel: vi.fn(async () => ({})) }));
-vi.mock("@/lib/server/listing", () => ({ getClientListingState: vi.fn(async () => ({ ownListing: false, claim: false })) }));
 vi.mock("@/lib/server/sign-out", () => ({ signOut: vi.fn() }));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("@/lib/server/onboarding", () => ({ getLiveWebsite: vi.fn(), getProjectOverview: vi.fn() }));
@@ -35,7 +34,7 @@ function callHeld(held: boolean): void {
 }
 
 async function railSections(): Promise<readonly RailSection[]> {
-  const shell = await AppShell({ userName: "Asha", userEmail: "asha@example.com", businessId: null, children: null });
+  const shell = await AppShell({ userName: "Asha", userEmail: "asha@example.com", children: null });
   const [rail] = (shell.props as { children: ReactElement<{ sections: readonly RailSection[] }>[] }).children;
   return rail?.props.sections ?? [];
 }
@@ -104,5 +103,13 @@ describe("AppShell's To do count", () => {
   it("passes on a redirect thrown while reading the To do", async () => {
     vi.mocked(loadTodo).mockRejectedValue(redirect);
     await expect(railSections()).rejects.toBe(redirect);
+  });
+});
+
+describe("AppShell's access", () => {
+  it("lets a free listing account in, so Settings and Billing are not sent to a page that no longer exists", async () => {
+    vi.mocked(loadTodo).mockResolvedValue({ services: ["website"], items: [], open: 0, answers: { social: undefined, search: undefined } });
+    await railSections();
+    expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow" });
   });
 });
