@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import { bookCallAction } from "@/app/app-host/(protected)/requests/calls/actions";
 import { SlotPicker, type PickerOutcome } from "@/components/calls/slot-picker";
-import { SOFT_BUTTON } from "@/components/v2/classes";
+import { DARK_BUTTON, SOFT_BUTTON } from "@/components/v2/classes";
 import { BRAND_TIME_ZONE } from "@/lib/call-dates";
 import type { BookCallOptions } from "@/lib/calls/form";
 import { defaultReasonOf } from "@/lib/calls/slot-view";
@@ -17,11 +17,13 @@ const INPUT =
 
 const LINK_BUTTON = "text-[0.8125rem] font-semibold text-ink-2 underline underline-offset-[3px] transition-colors duration-200 hover:text-ink";
 
+const LOOKS = { button: SOFT_BUTTON, primary: DARK_BUTTON, link: LINK_BUTTON } as const;
+
 interface BookCallButtonProps extends BookCallOptions {
   /** The words on the button. */
   readonly label?: string;
-  /** A soft button (the default) or a plain link-looking button. */
-  readonly look?: "button" | "link";
+  /** A soft button (the default), a plain link-looking button, or the screen's one dark button. */
+  readonly look?: "button" | "link" | "primary";
   readonly defaultReason?: CallReason;
   readonly defaultNote?: string;
   /** Set when the customer is changing the time of a call: the new time replaces it. */
@@ -52,7 +54,7 @@ export function BookCallButton({ options, bookingUrl, canBook, label = "Book a c
   const title = replacing === null ? "Book a call" : "Change your call";
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={look === "link" ? LINK_BUTTON : SOFT_BUTTON}>
+      <button type="button" onClick={() => setOpen(true)} className={LOOKS[look]}>
         {label}
       </button>
       <dialog

@@ -37,6 +37,7 @@ The app at app.brandbasket.in: sign-up and sign-in, onboarding, the business das
 
 - Tokens come from `packages/shared/src/styles/theme.css`. Shared pieces are in `@brandbasket/shared/ui/panel` and `@brandbasket/shared/ui/forms`; app-only pieces are in `components/panel/`.
 - Follow `DESIGN.md`, including its "Not allowed" list.
+- Every signed-in page sits in `PageFrame` from `components/v2/page.tsx` (gutters, width, header, rhythm, columns, empty states): `docs/page-frame.md`.
 
 ## Commands (from this folder)
 

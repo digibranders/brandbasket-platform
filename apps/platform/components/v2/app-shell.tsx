@@ -75,7 +75,7 @@ export async function AppShell({ userName, userEmail, children }: AppShellProps)
       <div className="flex min-w-0 flex-1 flex-col">
         <PhoneBars sections={sections} logo={logo} menu={menu} signOut={signOut} />
         <div className="relative isolate flex min-w-0 flex-1 flex-col overflow-clip bg-bg lg:my-2 lg:mr-2 lg:rounded-lift">
-          <main id="main" className="min-w-0 flex-1 px-5 pb-28 pt-4 sm:px-8 lg:pb-16 lg:pt-10">
+          <main id="main" className="min-w-0 flex-1 px-6 pb-28 pt-4 md:px-8 lg:pb-16 lg:pt-10 xl:px-10">
             {children}
           </main>
         </div>

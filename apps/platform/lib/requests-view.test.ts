@@ -72,16 +72,25 @@ it("writes each row's title, status word and kind and date, and says when there 
 
 it("shows the request in the right-hand pane, and on a phone only when the address asked for it", () => {
   expect(render()).toContain("THE OPEN REQUEST");
-  expect(render({ explicit: false })).toMatch(/<div class="min-w-0 lg:block hidden">/);
+  expect(render({ explicit: false })).toMatch(/<div class="min-w-0 @2xl:block hidden">/);
   const asked = render({ explicit: true });
-  expect(asked).toMatch(/<div class="min-w-0 lg:block block">/);
+  expect(asked).toMatch(/<div class="min-w-0 @2xl:block block">/);
   expect(asked).toContain("All requests");
 });
 
-it("says there are no requests yet instead of drawing an empty list", () => {
+it("says there are no requests yet instead of drawing an empty list, with the one dark button to ask", () => {
   const html = render({ rows: [], listed: [], selectedId: null, detail: null });
-  expect(html).toContain("No requests yet. Ask for a change and you can follow it here.");
+  expect(html).toContain(">No requests yet</h2>");
+  expect(html).toContain("Ask for a change and follow it here, from our first reply to the day it is done.");
   expect(html).not.toContain("Show requests");
+  expect(html.split(DARK_BUTTON).length - 1).toBe(1);
+  expect(html.match(/href="\/requests\/new"/g)).toHaveLength(2);
+});
+
+it("fills the right-hand pane with a word when the list has nothing to open", () => {
+  const html = render({ listed: [], detail: null });
+  expect(html).toContain("Nothing is open.");
+  expect(html).toContain("Ask for a change and you can follow it here.");
 });
 
 it("says nothing is open or done in a list with nothing in it", () => {

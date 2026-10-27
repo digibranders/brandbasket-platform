@@ -21,7 +21,7 @@ interface RequestListProps {
 /** The list on the left: Open and Done above, then a row for each request with its title, its status word and its kind and date. */
 export function RequestList({ rows, filter, selectedId, counts }: RequestListProps): ReactElement {
   return (
-    <div className="border-line lg:border-r">
+    <div>
       <nav aria-label="Show requests" className="flex flex-wrap gap-1.5 border-b border-line px-3 py-2.5">
         {(["open", "done"] as const).map((value) => (
           <Link
@@ -35,7 +35,7 @@ export function RequestList({ rows, filter, selectedId, counts }: RequestListPro
         ))}
       </nav>
       {rows.length === 0 ? (
-        <p className="px-3.5 py-4 text-[0.84375rem] text-ink-2">{filter === "open" ? "Nothing is open." : "Nothing is done yet."}</p>
+        <p className="px-3.5 py-4 text-[0.84375rem] text-ink-2 @2xl:hidden">{filter === "open" ? "Nothing is open." : "Nothing is done yet."}</p>
       ) : (
         <ul>
           {rows.map((row) => (
