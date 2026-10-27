@@ -34,13 +34,28 @@ export interface CheckoutStep {
   readonly note: string;
 }
 
-/** "What happens next", in order. */
-export const CHECKOUT_STEPS: readonly CheckoutStep[] = [
-  { title: "You pay", note: "Secure payment" },
-  { title: "Book your kickoff call", note: "30 minutes, video" },
+const PAY_STEP: CheckoutStep = { title: "You pay", note: "Secure payment" };
+const KICKOFF_STEP: CheckoutStep = { title: "Book your kickoff call", note: "30 minutes, video" };
+
+/** "What happens next" for a basket with the Managed Website: the build, then the launch. */
+const WEBSITE_STEPS: readonly CheckoutStep[] = [
+  PAY_STEP,
+  KICKOFF_STEP,
   { title: "We start building", note: "Within 48 hours of the call" },
   { title: "Your website is live", note: "Within 7 working days of the call" },
 ];
+
+/** "What happens next" for a basket without it (Social & Ads and/or Search): there is no website to build. */
+const NO_WEBSITE_STEPS: readonly CheckoutStep[] = [
+  PAY_STEP,
+  KICKOFF_STEP,
+  { title: "We start on your plan", note: "Within 48 hours of the call" },
+];
+
+/** "What happens next", in order, for the plans in the basket. */
+export function checkoutSteps(services: readonly MonthlyAddOnId[]): readonly CheckoutStep[] {
+  return services.includes("managed-website") ? WEBSITE_STEPS : NO_WEBSITE_STEPS;
+}
 
 /** What the package offers are worth for two and for three plans, as whole-number percentages: "10" and "20". */
 function offerPercent(planCount: number): string {
