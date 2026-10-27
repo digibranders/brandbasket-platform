@@ -1,7 +1,10 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
+  assignProjectBuilder,
   cancelProject,
+  grantRevisionRound,
+  ProjectBuilderNotStaffError,
   ProjectMoveRefusedError,
   putProjectOnHold,
   resumeProject,
@@ -110,5 +113,42 @@ describe("cancelProject", () => {
 
   it("refuses an id that is not a uuid without touching the database", async () => {
     await expect(cancelProject(dbs.staff.db, "not-a-uuid")).rejects.toBeInstanceOf(ProjectMoveRefusedError);
+  });
+});
+
+describe("assignProjectBuilder", () => {
+  it("assigns an active staff member, and clears the builder with null", async () => {
+    await setProjectStatus("building");
+    await assignProjectBuilder(dbs.staff.db, projectId, BUILDER);
+    expect((await readProject()).assignedStaffId).toBe(BUILDER);
+
+    await assignProjectBuilder(dbs.staff.db, projectId, null);
+    expect((await readProject()).assignedStaffId).toBeNull();
+  });
+
+  it("refuses someone who is not active staff", async () => {
+    await setProjectStatus("building");
+    await expect(assignProjectBuilder(dbs.staff.db, projectId, OWNER)).rejects.toBeInstanceOf(ProjectBuilderNotStaffError);
+    await dbs.staff.db.update(staffMembers).set({ active: false }).where(eq(staffMembers.userId, BUILDER));
+    await expect(assignProjectBuilder(dbs.staff.db, projectId, BUILDER)).rejects.toBeInstanceOf(ProjectBuilderNotStaffError);
+  });
+
+  it("refuses a cancelled build", async () => {
+    await setProjectStatus("cancelled");
+    await expect(assignProjectBuilder(dbs.staff.db, projectId, BUILDER)).rejects.toBeInstanceOf(ProjectMoveRefusedError);
+  });
+});
+
+describe("grantRevisionRound", () => {
+  it("adds one to the rounds included once a preview has gone out", async () => {
+    await setProjectStatus("revisions");
+    await grantRevisionRound(dbs.staff.db, projectId);
+    expect((await readProject()).revisionRoundsIncluded).toBe(3);
+  });
+
+  it("refuses a build that has not had a preview yet", async () => {
+    await setProjectStatus("building");
+    await expect(grantRevisionRound(dbs.staff.db, projectId)).rejects.toBeInstanceOf(ProjectMoveRefusedError);
+    expect((await readProject()).revisionRoundsIncluded).toBe(2);
   });
 });

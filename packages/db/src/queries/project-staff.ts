@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
-import { projects, type ProjectStatus } from "../schema";
+import { projects, staffMembers, type ProjectStatus } from "../schema";
 import { PROJECT_MOVE_FROM, type ProjectMove } from "./project-moves";
 import { isUuid } from "./tenant";
 
@@ -90,4 +90,44 @@ export async function cancelProject(db: Runner, projectId: string): Promise<Move
     .where(and(eq(projects.id, projectId), startsFrom("cancel")))
     .returning(MOVED);
   return onlyRow(rows, "cancel", projectId);
+}
+
+export class ProjectBuilderNotStaffError extends Error {
+  constructor(userId: string) {
+    super(`User ${userId} is not active staff, so they cannot be a builder.`);
+    this.name = "ProjectBuilderNotStaffError";
+  }
+}
+
+/** Sets who is building an open project, or clears it with null. Only an active staff member can be assigned. */
+export async function assignProjectBuilder(db: Runner, projectId: string, staffUserId: string | null): Promise<MovedProject> {
+  if (!isUuid(projectId)) throw new ProjectMoveRefusedError("assign", projectId);
+  if (staffUserId !== null) {
+    const [staff] = await db
+      .select({ userId: staffMembers.userId })
+      .from(staffMembers)
+      .where(and(eq(staffMembers.userId, staffUserId), eq(staffMembers.active, true)))
+      .limit(1);
+    if (staff === undefined) throw new ProjectBuilderNotStaffError(staffUserId);
+  }
+  const rows = await db
+    .update(projects)
+    .set({ assignedStaffId: staffUserId })
+    .where(and(eq(projects.id, projectId), startsFrom("assign")))
+    .returning(MOVED);
+  return onlyRow(rows, "assign", projectId);
+}
+
+/**
+ * Gives the client one more round of changes than their plan includes. The allowance is revision_rounds_included;
+ * revision_rounds_granted counts the rounds the client has already asked for (requestProjectRevisions adds to it).
+ */
+export async function grantRevisionRound(db: Runner, projectId: string): Promise<MovedProject> {
+  if (!isUuid(projectId)) throw new ProjectMoveRefusedError("grant-round", projectId);
+  const rows = await db
+    .update(projects)
+    .set({ revisionRoundsIncluded: sql`${projects.revisionRoundsIncluded} + 1` })
+    .where(and(eq(projects.id, projectId), startsFrom("grant-round")))
+    .returning(MOVED);
+  return onlyRow(rows, "grant-round", projectId);
 }

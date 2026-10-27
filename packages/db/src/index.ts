@@ -292,8 +292,11 @@ export {
 } from "./queries/projects";
 export { canMoveProject, PROJECT_MOVE_FROM, type ProjectMove } from "./queries/project-moves";
 export {
+  assignProjectBuilder,
   cancelProject,
+  grantRevisionRound,
   ON_HOLD_REASON_MAX,
+  ProjectBuilderNotStaffError,
   ProjectMoveRefusedError,
   putProjectOnHold,
   resumeProject,
