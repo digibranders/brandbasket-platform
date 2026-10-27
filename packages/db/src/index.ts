@@ -3,6 +3,7 @@ export * from "./schema/support";
 export * from "./schema/error-issues";
 export * from "./queries/support";
 export * from "./queries/change-requests";
+export * from "./queries/change-request-staff";
 export * from "./queries/support-staff";
 export * from "./queries/error-issues";
 export * from "./queries/support-ticket-error-links";

@@ -13,6 +13,7 @@ import {
   type PaymentMethodDetails,
   type UnappliedPaymentReason,
 } from "./billing";
+import { startPaidChangeRequest } from "./change-request-payment";
 import { markDirectoryAdWinPaid } from "./directory-ads";
 import { startDirectoryPromotionForCharge } from "./directory-promotions";
 import { applyPaidBundledAddOn, bundledAddOnStillApplies, dropBundledAddOnOfCharge } from "./bundled-add-ons";
@@ -426,6 +427,8 @@ export async function recordChargePayment(db: Runner, input: ChargePayment): Pro
       if (charge.kind === "plan_upgrade") await applyPaidPlanUpgrade(tx, input.chargeId, input.paidAt);
       // A paid add-on is on from this moment, and the next renewal's amount is raised in the same transaction.
       if (charge.kind === "add_on") await applyPaidBundledAddOn(tx, input.chargeId, input.paidAt);
+      // A paid change quote starts its change request in the same transaction, so the money and the start never disagree.
+      if (charge.kind === "change_hours") await startPaidChangeRequest(tx, input.chargeId);
       // A paid press release starts its status row, waiting for the team, in the same transaction as the money.
       if (charge.kind === "press_release") {
         await tx
