@@ -7,7 +7,7 @@ const TICKET = "0192f3c4-1111-7000-8000-000000000001";
 const ISSUE = "0192f3c4-1111-7000-8000-000000000002";
 function form(values: Record<string, string>): FormData { const data = new FormData(); for (const [key, value] of Object.entries(values)) data.set(key, value); return data; }
 function fixture() {
-  const deps = { requireStaff: vi.fn().mockResolvedValue({ user: { id: "actual-staff" } }), updateTicket: vi.fn().mockResolvedValue(undefined), appendMessage: vi.fn().mockResolvedValue(undefined), linkError: vi.fn().mockResolvedValue(undefined), unlinkError: vi.fn().mockResolvedValue(undefined), revalidate: vi.fn(), reportUnexpected: vi.fn().mockResolvedValue(ISSUE) };
+  const deps = { requireStaff: vi.fn().mockResolvedValue({ user: { id: "actual-staff" } }), updateTicket: vi.fn().mockResolvedValue(undefined), appendMessage: vi.fn().mockResolvedValue({ created: true }), linkError: vi.fn().mockResolvedValue(undefined), unlinkError: vi.fn().mockResolvedValue(undefined), revalidate: vi.fn(), reportUnexpected: vi.fn().mockResolvedValue(ISSUE) };
   return { deps, actions: createStaffSupportActions(deps) };
 }
 describe("staff support action authorization and state", () => {
@@ -52,5 +52,34 @@ describe("staff support action authorization and state", () => {
     const result = await actions.message(TICKET, form({ body: "Staff reply", visibility: "public", submissionKey: "staff-key-123" }));
     expect(result.submissionKey).toMatch(/^[0-9a-f-]{36}$/);
     expect(deps.revalidate).toHaveBeenCalledWith(TICKET);
+  });
+  it("emails the requester about a new public reply, and says so", async () => {
+    const { deps, actions } = fixture();
+    const notifyReply = vi.fn().mockResolvedValue("emailed");
+    const withMail = createStaffSupportActions({ ...deps, notifyReply });
+    const result = await withMail.message(TICKET, form({ body: "We are on it.", visibility: "public", submissionKey: "staff-key-123" }));
+    expect(notifyReply).toHaveBeenCalledWith({ ticketId: TICKET, body: "We are on it." });
+    expect(result).toMatchObject({ kind: "saved", message: "Reply added to the requester’s ticket. They were emailed." });
+    expect(actions).toBeDefined();
+  });
+
+  it("says when the requester could not be emailed, and keeps the reply", async () => {
+    const { deps } = fixture();
+    const withMail = createStaffSupportActions({ ...deps, notifyReply: vi.fn().mockResolvedValue("no-email") });
+    expect((await withMail.message(TICKET, form({ body: "We are on it.", visibility: "public", submissionKey: "staff-key-123" }))).message).toContain("They have no email address, so tell them another way.");
+    const failing = createStaffSupportActions({ ...deps, notifyReply: vi.fn().mockResolvedValue("failed") });
+    expect((await failing.message(TICKET, form({ body: "We are on it.", visibility: "public", submissionKey: "staff-key-124" }))).message).toContain("The email could not be sent.");
+  });
+
+  it("emails nobody for an internal note, for a replay of a reply already saved, or when no one is set to be told", async () => {
+    const { deps, actions } = fixture();
+    const notifyReply = vi.fn().mockResolvedValue("emailed");
+    const withMail = createStaffSupportActions({ ...deps, notifyReply });
+    await withMail.message(TICKET, form({ body: "Only for us.", visibility: "internal", submissionKey: "staff-key-125" }));
+    deps.appendMessage.mockResolvedValue({ created: false });
+    await withMail.message(TICKET, form({ body: "We are on it.", visibility: "public", submissionKey: "staff-key-126" }));
+    expect(notifyReply).not.toHaveBeenCalled();
+    deps.appendMessage.mockResolvedValue({ created: true });
+    expect((await actions.message(TICKET, form({ body: "We are on it.", visibility: "public", submissionKey: "staff-key-127" }))).message).toBe("Reply added to the requester’s ticket.");
   });
 });

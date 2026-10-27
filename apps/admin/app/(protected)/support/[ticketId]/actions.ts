@@ -1,9 +1,10 @@
 "use server";
 
-import { appendSupportMessageByStaff, linkSupportTicketError, unlinkSupportTicketError, updateSupportTicketByStaff } from "@brandbasket/db";
+import { appendSupportMessageByStaffWithOutcome, linkSupportTicketError, unlinkSupportTicketError, updateSupportTicketByStaff } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { getStaffDb } from "@/lib/server/db";
 import { reportServerError } from "@/lib/server/error-report";
+import { notifyRequester } from "@/lib/server/request-notify";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { createStaffSupportActions } from "@/lib/server/support-admin-actions";
 import type { StaffSupportActionState } from "@/lib/support-admin-state";
@@ -11,7 +12,8 @@ import type { StaffSupportActionState } from "@/lib/support-admin-state";
 const actions = createStaffSupportActions({
   requireStaff: requireStaffAccess,
   updateTicket: (input) => updateSupportTicketByStaff(getStaffDb(), input),
-  appendMessage: (input) => appendSupportMessageByStaff(getStaffDb(), input),
+  appendMessage: (input) => appendSupportMessageByStaffWithOutcome(getStaffDb(), input),
+  notifyReply: ({ ticketId, body }) => notifyRequester(getStaffDb(), ticketId, { kind: "reply", body }),
   linkError: (input) => linkSupportTicketError(getStaffDb(), input),
   unlinkError: (input) => unlinkSupportTicketError(getStaffDb(), input),
   revalidate: (ticketId) => { revalidatePath("/support"); revalidatePath(`/support/${ticketId}`); },
