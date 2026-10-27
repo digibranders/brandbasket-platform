@@ -178,6 +178,16 @@ export {
   type SetupInvite,
 } from "./queries/invites";
 export {
+  claimStaffInvite,
+  createStaffInvite,
+  findOpenStaffInvite,
+  findUsableStaffInvite,
+  listOpenStaffInvites,
+  type CreatedStaffInvite,
+  type NewStaffInvite,
+  type StaffInvite,
+} from "./queries/staff-invites";
+export {
   assignLead,
   changeLeadCurrency,
   countLeadsToContact,
