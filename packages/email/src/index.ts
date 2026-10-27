@@ -38,8 +38,11 @@ export {
   createDualTransport,
   createEmailDelivery,
   EmailConfigurationError,
+  emailFailureSummary,
   type BrevoConfig,
+  type BrevoReceipt,
   type BrevoSender,
+  type BrevoTransport,
 } from "./brevo";
 export {
   privacyRequestAlertEmail,

@@ -86,7 +86,7 @@ describe("support alerts in the email outbox", () => {
     const failing = { send: async () => { throw new BrevoDeliveryError("Brevo down", 503, ""); } };
     await expect(createDualTransport(failing, dbs.staff.db).send(replyAlert)).resolves.toBeUndefined();
     const [row] = await listRecentEmails(dbs.staff.db, 10);
-    expect(row?.transport).toBe("outbox");
+    expect(row).toMatchObject({ transport: "brevo", status: "failed", error: "Brevo answered 503" });
     expect(JSON.stringify(row)).not.toContain("Still failing");
     error.mockRestore();
   });
