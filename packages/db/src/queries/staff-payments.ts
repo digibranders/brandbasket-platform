@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "../client";
 import {
@@ -228,4 +228,22 @@ export async function countPaymentsNeedingStaff(db: Database, failedSince: Date)
   return rows[0]?.count ?? 0;
 }
 
+/** `term` as an ILIKE pattern matching it anywhere, with its own wildcards escaped. */
+function likeContains(term: string): string {
+  return `%${term.replace(/[\\%_]/g, (match) => `\\${match}`)}%`;
+}
 
+/** Payments whose provider payment id or client name contains `term`, in any case, newest first. The console search. */
+export async function findPaymentsForSearch(db: Database, term: string, limit: number): Promise<StaffPaymentRow[]> {
+  assertLimit(limit);
+  const pattern = likeContains(term);
+  return db
+    .select(STAFF_PAYMENT_COLUMNS)
+    .from(payments)
+    .innerJoin(businesses, eq(businesses.id, payments.businessId))
+    .leftJoin(recorder, eq(recorder.id, payments.recordedByStaffId))
+    .leftJoin(taxInvoices, eq(taxInvoices.paymentId, payments.id))
+    .where(or(ilike(payments.providerPaymentId, pattern), ilike(businesses.name, pattern)))
+    .orderBy(desc(happenedAt), desc(payments.id))
+    .limit(limit);
+}

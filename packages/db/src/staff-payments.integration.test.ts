@@ -5,6 +5,7 @@ import { findFirstPayment, listReceiptsForBusiness } from "./queries/billing";
 import { createReferralCode } from "./queries/referrals";
 import {
   countPaymentsNeedingStaff,
+  findPaymentsForSearch,
   listPaymentsForClient,
   listPaymentsForStaff,
   markPaymentRefunded,
@@ -266,5 +267,14 @@ describe("refunds and failures elsewhere in billing", () => {
   });
 });
 
+describe("findPaymentsForSearch", () => {
+  it("finds payments by provider payment id or client name, in any case, newest first, with wildcards read as text", async () => {
+    await insertPayment({ providerPaymentId: "pay_ABC123" });
+    await insertPayment({ providerPaymentId: "pay_other", paidAt: NOV_12, createdAt: NOV_12 });
 
-
+    const ids = async (term: string) => (await findPaymentsForSearch(dbs.staff.db, term, 8)).map((row) => row.providerPaymentId);
+    expect(await ids("abc1")).toEqual(["pay_ABC123"]);
+    expect(await ids("om sweets")).toEqual(["pay_other", "pay_ABC123"]);
+    expect(await ids("pay%")).toEqual([]);
+  });
+});

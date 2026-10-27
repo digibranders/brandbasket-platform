@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { clientHits, invoiceHits, leadHits, normaliseSearchTerm, requestHits, SEARCH_LIMIT_PER_KIND } from "./console-search";
+import type { StaffPaymentRow } from "@brandbasket/db";
+import { clientHits, invoiceHits, leadHits, normaliseSearchTerm, paymentHits, requestHits, SEARCH_LIMIT_PER_KIND } from "./console-search";
 
 vi.mock("server-only", () => ({}));
 
@@ -44,3 +45,33 @@ describe("hits", () => {
     expect(clientHits(many, "bakery")).toHaveLength(SEARCH_LIMIT_PER_KIND);
   });
 });
+
+describe("paymentHits", () => {
+  it("lists payments as the database found them and opens each on the client's Billing tab", () => {
+    const failed: StaffPaymentRow = {
+      id: "p1",
+      businessId: "b1",
+      businessName: "Om Sweets",
+      provider: "razorpay",
+      providerPaymentId: "pay_failed_1",
+      kind: "renewal",
+      amountCents: 299_900,
+      currency: "INR",
+      status: "failed",
+      paidAt: null,
+      createdAt: new Date("2026-11-28T04:30:00.000Z"),
+      method: null,
+      failureReason: "Card declined",
+      attentionReason: null,
+      attentionResolvedAt: null,
+      recordedByName: null,
+      refundedAmountCents: null,
+      refundReason: null,
+      invoiceNumber: null,
+    };
+    expect(paymentHits([failed])).toEqual([
+      { kind: "payment", label: "Om Sweets · ₹2,999", sub: "pay_failed_1 · Failed", href: "/clients/b1/billing#payment-p1" },
+    ]);
+  });
+});
+

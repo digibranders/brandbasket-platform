@@ -1,7 +1,9 @@
-import type { ClientSummary, Lead, SupportTicket, TaxInvoice } from "@brandbasket/db";
+import type { ClientSummary, Lead, StaffPaymentRow, SupportTicket, TaxInvoice } from "@brandbasket/db";
 import { LEAD_STATUS_LABELS } from "@brandbasket/shared/lib/lead-status";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { matchesClientSearch } from "@/lib/client-search";
 import { matchesLeadSearch } from "@/lib/lead-search";
+import { paymentStatus } from "@/lib/payments-view";
 import type { SearchHit } from "./console-search-kinds";
 
 /** How many results of each kind the search shows. */
@@ -41,3 +43,14 @@ export function invoiceHits(invoices: readonly (Pick<TaxInvoice, "id" | "number"
     .slice(0, SEARCH_LIMIT_PER_KIND)
     .map((invoice) => ({ kind: "invoice", label: invoice.number, sub: invoice.recipient.legalName, href: `/invoices?month=${invoice.issuedOn.slice(0, 7)}` }));
 }
+
+/** Payments the database already matched on provider payment id or client name; each opens its row on the client's Billing tab. */
+export function paymentHits(rows: readonly StaffPaymentRow[]): SearchHit[] {
+  return rows.slice(0, SEARCH_LIMIT_PER_KIND).map((row) => ({
+    kind: "payment",
+    label: `${row.businessName} · ${formatMoney(row.amountCents, row.currency)}`,
+    sub: `${row.providerPaymentId} · ${paymentStatus(row).label}`,
+    href: `/clients/${row.businessId}/billing#payment-${row.id}`,
+  }));
+}
+

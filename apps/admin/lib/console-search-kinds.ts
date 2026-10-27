@@ -1,5 +1,5 @@
 /** What the console's search can find, in the order the results are listed. */
-export const SEARCH_KINDS = ["client", "enquiry", "request", "invoice"] as const;
+export const SEARCH_KINDS = ["client", "enquiry", "request", "invoice", "payment"] as const;
 export type SearchKind = (typeof SEARCH_KINDS)[number];
 
 export const SEARCH_KIND_LABELS: Readonly<Record<SearchKind, string>> = {
@@ -7,6 +7,7 @@ export const SEARCH_KIND_LABELS: Readonly<Record<SearchKind, string>> = {
   enquiry: "Enquiries",
   request: "Requests",
   invoice: "Invoices",
+  payment: "Payments",
 };
 
 /** One result: what it is, a line to show, a quieter line under it, and where it opens. */
