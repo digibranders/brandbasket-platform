@@ -290,6 +290,7 @@ export {
   type ProjectPreviewSent,
   type ProjectSubmission,
 } from "./queries/projects";
+export { canMoveProject, PROJECT_MOVE_FROM, type ProjectMove } from "./queries/project-moves";
 export {
   findBusinessWebsiteUrl,
   InvalidWebsiteUrlError,
