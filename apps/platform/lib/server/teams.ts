@@ -1,6 +1,8 @@
 import "server-only";
 import type { TeamsDestination, TeamsMessage } from "@brandbasket/shared/lib/teams-webhook";
+import type { CustomerCardInput } from "@brandbasket/shared/lib/customer-alert-card";
 import type { PlanStatusAlert } from "@brandbasket/shared/lib/payment-alert-card";
+import { announceCustomerEvent } from "@brandbasket/shared/server/customer-alerts";
 import { registerBillingErrorAlerts } from "@brandbasket/shared/server/billing-error-alerts";
 import { announcePayment, announcePlanStatus } from "@brandbasket/shared/server/payment-alerts";
 import { sendTeamsAlert } from "@brandbasket/shared/server/teams-alerts";
@@ -55,5 +57,17 @@ export function startBillingErrorAlerts(): void {
     registerBillingErrorAlerts((message) => alertTeams("system", message), serverEnv().ADMIN_ORIGIN);
   } catch (error) {
     console.error("[teams-alert] Billing error alerts could not start.", error instanceof Error ? error.name : "error");
+  }
+}
+
+/**
+ * Tells the Customers channel that a customer signed up, sent their website details or closed the account. Call it after the
+ * change has committed. Best-effort: it never throws.
+ */
+export async function announceCustomerToTeams(event: Pick<CustomerCardInput, "event" | "facts" | "text"> & { readonly businessId: string }): Promise<void> {
+  try {
+    await announceCustomerEvent(getStaffDb(), serverEnv().BETTER_AUTH_SECRET, event, serverEnv().ADMIN_ORIGIN);
+  } catch (error) {
+    console.error("[teams-alert] A customer event could not be announced.", { event: event.event, error: error instanceof Error ? error.name : "error" });
   }
 }

@@ -22,6 +22,8 @@ import {
   recordAddOnClosure,
   stopAddOnsAtProvider,
 } from "@brandbasket/shared/server/add-on-ends";
+import { EXIT_REASON_OPTIONS } from "@brandbasket/shared/lib/account-exit";
+import { formatIstTime } from "@brandbasket/shared/lib/teams-webhook";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import type { ExitDetails } from "@/lib/account-settings-form";
@@ -30,6 +32,7 @@ import { getBillingProvider } from "./billing";
 import { checkPasswordFor } from "./account-security";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
+import { announceCustomerToTeams } from "./teams";
 
 /** Closing an account is cheap to ask for and consequential to finish, so the budget is small but never a trap. */
 const EXIT_STEPS_PER_USER: RateLimitRule = { limit: 20, windowSeconds: 60 * 60 };
@@ -191,6 +194,16 @@ export async function closeAccountFor(
     }
     throw error;
   }
+  void announceCustomerToTeams({
+    businessId,
+    event: "account_closed",
+    facts: [
+      { name: "Reason", value: EXIT_REASON_OPTIONS.find((option) => option.value === input.reason)?.label },
+      { name: "Plan paid until", value: subscription?.paidThroughAt ? formatIstTime(subscription.paidThroughAt) : null },
+      { name: "Erased after", value: formatIstTime(eraseAfterFor(subscription, now)) },
+    ],
+    text: input.comment,
+  });
   return { kind: "closed" };
 }
 

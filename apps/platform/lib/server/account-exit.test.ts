@@ -27,6 +27,7 @@ import { checkPasswordFor } from "./account-security";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
+import { announceCustomerToTeams } from "./teams";
 
 // Database doubles: the rows' own rules (one end per row, the lock) are proven in packages/db, and the add-on planning
 // in packages/shared. What is checked here is the order of closing an account: every provider call happens before the
@@ -35,6 +36,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./account-security", () => ({ checkPasswordFor: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
+vi.mock("./teams", () => ({ announceCustomerToTeams: vi.fn() }));
 vi.mock("@brandbasket/db", () => ({
   ACCOUNT_CLOSURE_GRACE_DAYS: 30,
   cancelStaleSubscription: vi.fn(),
@@ -164,6 +166,9 @@ describe("closeAccountFor with add-ons", () => {
     expect(atPeriodEnd).not.toHaveBeenCalled();
     expect(cancelNow).not.toHaveBeenCalled();
     expect(openAccountClosure).toHaveBeenCalledTimes(1);
+    expect(announceCustomerToTeams).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ businessId: expect.any(String), event: "account_closed" }),
+    );
   });
 
   it("stops an active add-on at the end of the month it has paid for, then records a cancel by the customer", async () => {

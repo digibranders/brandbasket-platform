@@ -40,7 +40,7 @@ describe("readTeamsWebhookUrl", () => {
 
 describe("destinations", () => {
   it("names a setting for each destination and recognises only those", () => {
-    expect(TEAMS_DESTINATIONS.map(teamsSettingKey)).toEqual(["teams_webhook_enquiries", "teams_webhook_payments", "teams_webhook_support", "teams_webhook_system"]);
+    expect(TEAMS_DESTINATIONS.map(teamsSettingKey)).toEqual(["teams_webhook_enquiries", "teams_webhook_payments", "teams_webhook_customers", "teams_webhook_support", "teams_webhook_system"]);
     expect(isTeamsDestination("support")).toBe(true);
     expect(isTeamsDestination("billing")).toBe(false);
     expect(isTeamsDestination(undefined)).toBe(false);
