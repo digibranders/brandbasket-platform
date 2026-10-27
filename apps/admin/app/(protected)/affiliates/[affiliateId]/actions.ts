@@ -6,7 +6,6 @@ import { submittedValues } from "@/lib/form-values";
 import type { LoginLinkState } from "@/components/affiliate-login-link";
 import { cancelEarningFor, issueLoginLinkFor, recordPayoutFor, updateAffiliateFor } from "@/lib/server/affiliate-admin";
 import { serverEnv } from "@/lib/server/env";
-import { requireStaffAccess } from "@/lib/server/staff-access";
 import { recordStaffAction } from "@/lib/server/activity";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { formatMoney } from "@brandbasket/shared/lib/money";
@@ -27,7 +26,7 @@ export async function updateAffiliateAction(
   _previous: AffiliateFormState,
   formData: FormData,
 ): Promise<AffiliateFormState> {
-  const staff = await requireStaffAccess();
+  const staff = await requireStaffCan("money");
   const outcome = await updateAffiliateFor({ affiliateId, formData });
   if (outcome.kind === "refused") return { status: "error", ...outcome.refusal, values: submittedValues(formData) };
   await recordStaffAction(staff, { businessId: null, kind: "affiliate.updated", summary: "Saved an affiliate's details", data: { affiliateId } });
@@ -76,7 +75,7 @@ export async function cancelEarningAction(affiliateId: string, earningId: string
  * affiliate comes from the page.
  */
 export async function issueLoginLinkAction(affiliateId: string): Promise<LoginLinkState> {
-  const staff = await requireStaffAccess();
+  const staff = await requireStaffCan("money");
   const outcome = await issueLoginLinkFor({ affiliateId, appOrigin: serverEnv().APP_ORIGIN });
   refresh(affiliateId);
   if (outcome.kind === "refused") return { status: "error", message: outcome.refusal.message };

@@ -28,7 +28,7 @@ import { Section } from "@/components/console/section";
 import { StatusDot, type StatusTone } from "@/components/console/status-dot";
 import { describeAffiliateReward, describeRewardCycles, findAffiliate, payoutToday } from "@/lib/server/affiliate-admin";
 import { getStaffDb } from "@/lib/server/db";
-import { requireStaffAccess } from "@/lib/server/staff-access";
+import { requireStaffCan } from "@/lib/server/staff-role";
 import { cancelEarningAction, issueLoginLinkAction, recordPayoutAction, updateAffiliateAction } from "./actions";
 
 export const metadata: Metadata = { title: "Affiliate" };
@@ -78,7 +78,7 @@ function formValues(affiliate: Affiliate): AffiliateFormValues {
  * to choose a password (the Sign-in section).
  */
 export default async function AffiliatePage({ params }: AffiliatePageProps): Promise<ReactElement> {
-  await requireStaffAccess();
+  await requireStaffCan("money");
   const { affiliateId } = await params;
   const affiliate = await findAffiliate(affiliateId);
   if (affiliate === null) notFound();
