@@ -30,6 +30,7 @@ export {
 } from "./templates/preview-revisions-requested";
 export { signupCodeEmail, type SignupCodeInput } from "./templates/signup-code";
 export { setupLinkEmail, type SetupLinkInput } from "./templates/setup-link";
+export { staffInviteEmail, type StaffInviteInput } from "./templates/staff-invite";
 export { websiteLiveEmail, type WebsiteLiveInput } from "./templates/website-live";
 export {
   BrevoDeliveryError,
