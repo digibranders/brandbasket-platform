@@ -60,6 +60,7 @@ import { DomainSwitchRecipientMissingError, switchDomain } from "@/lib/server/do
 import { ProjectLaunchDomainMissingError, ProjectLaunchRecipientMissingError, launchProject } from "@/lib/server/project-launch";
 import { ProjectPreviewRecipientMissingError, sendProjectPreview, type OwnerNotification } from "@/lib/server/project-preview";
 import { rotateSiteApiToken } from "@/lib/server/site-token";
+import { recordStaffAction } from "@/lib/server/activity";
 import { placeIdForAddress } from "@/lib/server/page-address";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { requireStaffCan } from "@/lib/server/staff-role";
@@ -90,7 +91,8 @@ function revalidateClient(businessId: string): void {
  * amount is always the business's plan price, and who recorded it is the signed-in superadmin.
  */
 export async function recordManualPaymentAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffCan("money");
+  const staff = await requireStaffCan("money");
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "Record a manual payment's business");
   const now = new Date();
 
@@ -98,6 +100,7 @@ export async function recordManualPaymentAction(formData: FormData): Promise<voi
   if (!form.ok) redirect(manualPaymentNoticeHref(businessId, form.problem));
 
   const outcome = await recordManualFirstPayment({ businessId, staffUserId: user.id, ...form.details }, now);
+  await recordStaffAction(staff, { businessId, kind: "payment.manual_recorded", summary: "Recorded a manual payment", data: { result: outcome.kind } });
   revalidateClient(businessId);
   redirect(manualPaymentNoticeHref(businessId, outcome.kind));
 }
@@ -107,19 +110,22 @@ export async function recordManualPaymentAction(formData: FormData): Promise<voi
  * price typed here. The customer sees it under To pay on their Billing page straight away.
  */
 export async function addChargeAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffCan("money");
+  const staff = await requireStaffCan("money");
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The charge's business");
   const form = parseChargeForm(formData);
   if (!form.ok) redirect(staffChargeNoticeHref(businessId, form.problem));
 
   const outcome = await addClientCharge({ businessId, staffUserId: user.id, request: form.request });
+  await recordStaffAction(staff, { businessId, kind: "charge.added", summary: "Added a charge", data: { result: outcome.kind } });
   revalidateClient(businessId);
   redirect(staffChargeNoticeHref(businessId, outcome.kind === "added" ? "added" : "no-plan"));
 }
 
 /** Records a bank transfer that pays one of the client's open charges, for the charge's own amount. */
 export async function markChargePaidAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffCan("money");
+  const staff = await requireStaffCan("money");
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The charge's business");
   const chargeId = readId(formData.get("chargeId"), "The charge");
   const now = new Date();
@@ -127,6 +133,7 @@ export async function markChargePaidAction(formData: FormData): Promise<void> {
   if (!form.ok) redirect(staffChargeNoticeHref(businessId, form.problem));
 
   const outcome = await markClientChargePaid({ businessId, chargeId, staffUserId: user.id, details: form.details }, now);
+  await recordStaffAction(staff, { businessId, kind: "charge.marked_paid", summary: "Marked a charge paid", data: { chargeId, result: outcome } });
   revalidateClient(businessId);
   switch (outcome) {
     case "paid":
@@ -147,21 +154,25 @@ export async function markChargePaidAction(formData: FormData): Promise<void> {
 
 /** Waives one of the client's open charges: it leaves their To pay list and is never charged. */
 export async function waiveChargeAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffCan("money");
+  const staff = await requireStaffCan("money");
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The charge's business");
   const chargeId = readId(formData.get("chargeId"), "The charge");
   const waived = await waiveClientCharge({ businessId, chargeId, staffUserId: user.id }, new Date());
+  await recordStaffAction(staff, { businessId, kind: "charge.waived", summary: "Waived a charge", data: { chargeId, result: waived ? "waived" : "not-open" } });
   revalidateClient(businessId);
   redirect(staffChargeNoticeHref(businessId, waived ? "waived" : "not-open"));
 }
 
 /** Marks a flagged payment as dealt with. */
 export async function resolvePaymentAttentionAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffCan("money");
+  const staff = await requireStaffCan("money");
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The flagged payment's business");
   const paymentId = readId(formData.get("paymentId"), "The flagged payment");
 
   const resolved = await resolveFlaggedPayment({ paymentId, businessId, staffUserId: user.id }, new Date());
+  await recordStaffAction(staff, { businessId, kind: "payment.attention_resolved", summary: "Marked a flagged payment sorted", data: { paymentId, result: resolved ? "resolved" : "unchanged" } });
   revalidateClient(businessId);
   redirect(manualPaymentNoticeHref(businessId, resolved ? "attention-resolved" : "attention-unchanged"));
 }
@@ -405,10 +416,12 @@ export async function removeClientTrustedAction(formData: FormData): Promise<voi
  * page is about (`businessId`) and the place (`placeId`).
  */
 export async function changeWebAddressAction(_previous: WebAddressFormState, formData: FormData): Promise<WebAddressFormState> {
-  const { user } = await requireStaffAccess();
+  const staff = await requireStaffAccess();
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The web address's business");
   const outcome = await changeWebAddress({ formData, staffUserId: user.id, now: new Date() });
   if (outcome.status === "changed") {
+    await recordStaffAction(staff, { businessId, kind: "listing.web_address_changed", summary: "Changed the listing's web address" });
     revalidateClient(businessId);
     revalidatePath("/ads");
   }
