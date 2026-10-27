@@ -3,6 +3,7 @@ import {
   AD_RETURN_PARAM,
   PRESS_RELEASE_RETURN_VALUE,
   ADD_ON_RETURN_VALUE,
+  CHANGE_RETURN_VALUE,
   chargeKindOfReturn,
   chargeNoticeHref,
   chargeReturnHref,
@@ -44,6 +45,11 @@ describe("chargeReturnHref", () => {
     for (const notice of notices) expect(chargeReturnHref("add_on", notice), notice).toBe(`/services?charge=${notice}`);
   });
 
+  it("returns a change quote's charge to Requests, for every outcome", () => {
+    const notices: readonly ChargeNotice[] = ["paid", "processing", "failed", "duplicate", "review", "stale", "not-open"];
+    for (const notice of notices) expect(chargeReturnHref("change_hours", notice), notice).toBe(`/requests?charge=${notice}`);
+  });
+
   it("returns a plan upgrade or a press release to Billing like any other charge, for every outcome", () => {
     const notices: readonly ChargeNotice[] = ["paid", "processing", "failed", "duplicate", "review", "stale", "not-open"];
     for (const kind of ["plan_upgrade", "press_release"]) {
@@ -59,6 +65,7 @@ describe("chargeKindOfReturn", () => {
     expect(chargeKindOfReturn("upgrade")).toBe("plan_upgrade");
     expect(chargeKindOfReturn(PRESS_RELEASE_RETURN_VALUE)).toBe("press_release");
     expect(chargeKindOfReturn(ADD_ON_RETURN_VALUE)).toBe("add_on");
+    expect(chargeKindOfReturn(CHANGE_RETURN_VALUE)).toBe("change_hours");
   });
 
   it("treats anything else as an ordinary charge", () => {

@@ -9,6 +9,7 @@ import { RazorpayCheckoutScreen } from "@/components/panel/razorpay-checkout-scr
 import {
   ADD_ON_RETURN_VALUE,
   AD_RETURN_PARAM,
+  CHANGE_RETURN_VALUE,
   AD_RETURN_VALUE,
   PRESS_RELEASE_RETURN_VALUE,
   UPGRADE_RETURN_VALUE,
@@ -46,12 +47,13 @@ export default async function ChargePayPage({ params }: ChargePayPageProps): Pro
   if (charge.provider !== "razorpay" || charge.providerOrderId === null) redirect("/billing");
 
   const label = chargeLabel(charge);
-  // A won ad spot returns to Advertise, a move up to Upgrade, and a press release or an add-on to Services, not Billing (see the callback route).
+  // A won ad spot returns to Advertise, a move up to Upgrade, a press release or an add-on to Services, and a change quote to Requests, not Billing (see the callback route).
   const callbackUrl = new URL("/billing/charges/callback", await requestAppOrigin());
   if (charge.kind === "directory_ad") callbackUrl.searchParams.set(AD_RETURN_PARAM, AD_RETURN_VALUE);
   if (charge.kind === "plan_upgrade") callbackUrl.searchParams.set(AD_RETURN_PARAM, UPGRADE_RETURN_VALUE);
   if (charge.kind === "press_release") callbackUrl.searchParams.set(AD_RETURN_PARAM, PRESS_RELEASE_RETURN_VALUE);
   if (charge.kind === "add_on") callbackUrl.searchParams.set(AD_RETURN_PARAM, ADD_ON_RETURN_VALUE);
+  if (charge.kind === "change_hours") callbackUrl.searchParams.set(AD_RETURN_PARAM, CHANGE_RETURN_VALUE);
 
   return (
     <RazorpayCheckoutScreen

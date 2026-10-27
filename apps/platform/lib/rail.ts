@@ -1,5 +1,6 @@
 import { ADD_ONS_PATH } from "@brandbasket/shared/lib/billing/add-ons";
 import { CHATBOT_LEADS_PATH, CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
+import { ASK_FOR_A_CHANGE_PATH, REQUESTS_PATH } from "@/lib/requests/links";
 
 /** The rail's icons by name; components/v2/rail-icon.tsx draws them. */
 export type RailIcon = "overview" | "requests" | "todo" | "website" | "reviews" | "deals" | "profile" | "services" | "billing" | "settings";
@@ -36,6 +37,8 @@ export interface RailInput {
   readonly listingClaim: boolean;
   /** Items the customer still owes us (lib/todo.ts openCount). */
   readonly todoCount: number;
+  /** Quotes to answer and changes to check (lib/server/requests.ts loadRequestNeeds). Left out, there is no number. */
+  readonly requestsCount?: number;
 }
 
 /** Plain strings, not imported from lib/deals.ts and lib/owner-replies.ts: those pull the database driver into the browser bundle, and this file is bundled into client components. lib/rail.test.ts pins them to the real paths. */
@@ -44,7 +47,6 @@ const REVIEWS_HREF = "/reviews";
 const TODO_HREF = "/todo";
 
 const OVERVIEW: RailLink = { href: "/", label: "Overview", icon: "overview" };
-const REQUESTS: RailLink = { href: "/support", label: "Requests", icon: "requests" };
 const PROFILE: RailLink = { href: "/details", label: "Business profile", icon: "profile" };
 /** The add-ons page, named for what it holds so it never reads like the Services section above it. */
 const SERVICES: RailLink = { href: ADD_ONS_PATH, label: "Your plan", icon: "services" };
@@ -53,8 +55,13 @@ const SETTINGS: RailLink = { href: "/settings", label: "Settings", icon: "settin
 const REVIEWS: RailLink = { href: REVIEWS_HREF, label: "Reviews", icon: "reviews" };
 const DEALS: RailLink = { href: DEALS_HREF, label: "Deals", icon: "deals" };
 
-/** Ask for a change, the first thing search offers (plan 28 section 2). Requests until plan 31 gives it its own form. */
-export const ASK_FOR_A_CHANGE: RailTarget = { href: "/support", label: "Ask for a change" };
+/** Ask for a change, the first thing search offers (plan 28 section 2). */
+export const ASK_FOR_A_CHANGE: RailTarget = { href: ASK_FOR_A_CHANGE_PATH, label: "Ask for a change" };
+
+/** Requests, with the number of things waiting on the customer beside it. */
+function requestsLink(count: number | undefined): RailLink {
+  return { href: REQUESTS_PATH, label: "Requests", icon: "requests", ...(count !== undefined && count > 0 ? { count } : {}) };
+}
 
 /** The website and its pages. Plan 33 folds these into the website's own tabs. */
 function websiteLink(setupDone: boolean): RailLink {
@@ -76,15 +83,16 @@ function websiteLink(setupDone: boolean): RailLink {
 }
 
 export function railSections(input: RailInput): readonly RailSection[] {
+  const requests = requestsLink(input.requestsCount);
   if (input.quiet) {
     return [
-      { label: null, links: [OVERVIEW, REQUESTS] },
+      { label: null, links: [OVERVIEW, requests] },
       { label: "Account", links: [BILLING, SETTINGS] },
     ];
   }
   const todo: RailLink = { href: TODO_HREF, label: "To do", icon: "todo", ...(input.todoCount > 0 ? { count: input.todoCount } : {}) };
   return [
-    { label: null, links: input.hasAccess ? [OVERVIEW, todo, REQUESTS] : [OVERVIEW, REQUESTS] },
+    { label: null, links: input.hasAccess ? [OVERVIEW, todo, requests] : [OVERVIEW, requests] },
     ...(input.hasWebsite ? [{ label: "Services", links: [websiteLink(input.websiteSetupDone)] }] : []),
     ...(input.listingClaim ? [{ label: "Directory", links: [REVIEWS, DEALS] }] : []),
     { label: "Account", links: [PROFILE, SERVICES, BILLING, SETTINGS] },
