@@ -201,8 +201,8 @@ describe("the Invoices page", () => {
     const html = render(await InvoicesPage({ searchParams: search("2026-10") }));
     const text = visibleText(html);
 
-    expect(html).toContain('href="/clients/biz-1#tax-invoices"');
-    expect(html).toContain('href="/clients/biz-2#tax-invoices"');
+    expect(html).toContain('href="/clients/biz-1/billing#tax-invoices"');
+    expect(html).toContain('href="/clients/biz-2/billing#tax-invoices"');
     expect(text).toContain("Riverside Dental");
     expect(text).toContain("₹3,539 on 9 October 2026");
     expect(text).toContain("2 to issue");
