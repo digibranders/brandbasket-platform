@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph, receiptQuote, receiptRows } from "../receipt";
 
 /**
  * What happened to a customer's request, in the five words the dashboard uses (Quoted, In progress, Ready to check, Done)
@@ -33,6 +34,16 @@ const SUBJECT_WORD: Readonly<Record<ChangeRequestUpdate["kind"], string>> = {
   closed: "Closed",
 };
 
+/** The small label above the heading in the email. */
+const KICKER: Readonly<Record<ChangeRequestUpdate["kind"], string>> = {
+  reply: "New reply",
+  quote: "Quote",
+  started: "In progress",
+  ready: "Ready to check",
+  done: "Done",
+  closed: "Closed",
+};
+
 function sentences(title: string, update: ChangeRequestUpdate): readonly string[] {
   switch (update.kind) {
     case "reply":
@@ -50,6 +61,27 @@ function sentences(title: string, update: ChangeRequestUpdate): readonly string[
   }
 }
 
+/** The card's content: the greeting, what happened, the team's words or the quote in rows, and the button. */
+function htmlBlocks(greeting: string, title: string, update: ChangeRequestUpdate, url: string): string[] {
+  const hello = receiptParagraph(greeting);
+  const open = receiptButton(url, "Open your request");
+  switch (update.kind) {
+    case "reply":
+      return [hello, ...sentences(title, update).map(receiptParagraph), receiptQuote(update.body), open];
+    case "quote": {
+      const [intro, , , accept] = sentences(title, update);
+      const rows = [
+        { label: "Work", value: update.line },
+        { label: "Total", value: update.total, strong: true },
+        ...(update.note ? [{ label: "Note", value: update.note }] : []),
+      ];
+      return [hello, receiptParagraph(intro ?? ""), receiptRows(rows), receiptParagraph(accept ?? ""), open];
+    }
+    default:
+      return [hello, ...sentences(title, update).map(receiptParagraph), open];
+  }
+}
+
 /** The email a customer gets when the team replies, quotes, starts, asks them to check, finishes or closes their request. */
 export function changeRequestUpdateEmail(input: ChangeRequestUpdateInput): EmailMessage {
   const url = assertWebUrl(input.requestUrl, "requestUrl");
@@ -61,18 +93,12 @@ export function changeRequestUpdateEmail(input: ChangeRequestUpdateInput): Email
   const subject = sanitizeHeaderValue(`${SUBJECT_WORD[input.update.kind]}: ${input.title}`);
 
   const text = [greeting, "", ...lines, ...(reply === null ? [] : ["", reply]), "", `Open your request: ${url}`];
-  const html = [
-    escapeHtml(greeting),
-    ...lines.map((line) => escapeHtml(line)),
-    ...(reply === null ? [] : [`<span style="display:block;padding:12px;background:#efe4d6;border-radius:8px;white-space:pre-wrap">${escapeHtml(reply)}</span>`]),
-    `<a href="${escapeHtml(url)}">Open your request</a>`,
-  ];
 
   return {
     to: sanitizeHeaderValue(input.to),
     subject,
     template: `change-request-${input.update.kind}`,
     bodyText: text.join("\n"),
-    bodyHtml: htmlDocument(subject, html),
+    bodyHtml: receiptDocument({ title: subject, kicker: KICKER[input.update.kind], heading: subject, body: htmlBlocks(greeting, input.title, input.update, url) }),
   };
 }

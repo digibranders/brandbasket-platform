@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph, receiptQuote, receiptRows } from "../receipt";
 
 export interface LeadReceivedInput {
   readonly to: string;
@@ -29,9 +30,20 @@ export function leadReceivedEmail(input: LeadReceivedInput): EmailMessage {
     subject: sanitizeHeaderValue(`New lead: ${input.businessName}`),
     template: "lead-received",
     bodyText: lines.join("\n"),
-    bodyHtml: htmlDocument(`New lead: ${input.businessName}`, [
-      ...lines.slice(0, -1).map((line) => escapeHtml(line)),
-      `<a href="${escapeHtml(leadUrl)}">Open the lead</a> (${escapeHtml(leadUrl)})`,
-    ]),
+    bodyHtml: receiptDocument({
+      title: `New lead: ${input.businessName}`,
+      kicker: "New lead",
+      heading: input.businessName,
+      body: [
+        receiptParagraph(lines[0] ?? ""),
+        receiptRows([
+          { label: "Business type", value: input.businessType },
+          { label: "Email", value: input.email },
+          { label: "Phone", value: input.phone ?? "not given" },
+        ]),
+        input.message === null ? receiptParagraph("No message.") : receiptQuote(input.message),
+        receiptButton(leadUrl, "Open the lead"),
+      ],
+    }),
   };
 }

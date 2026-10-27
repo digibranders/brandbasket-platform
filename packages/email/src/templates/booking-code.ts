@@ -1,4 +1,5 @@
-import { escapeHtml, htmlDocument, sanitizeHeaderValue, withheldCodeCopy, type EmailMessage } from "../message";
+import { sanitizeHeaderValue, withheldCodeCopy, type EmailMessage } from "../message";
+import { receiptCode, receiptDocument, receiptParagraph } from "../receipt";
 import { emailBrandName } from "../brand";
 
 export interface BookingCodeInput {
@@ -27,12 +28,13 @@ export function bookingCodeEmail(input: BookingCodeInput): EmailMessage {
     subject,
     template: "booking-code",
     bodyText: [intro, input.code, validity, ignore].join("\n\n"),
-    bodyHtml: htmlDocument(subject, [
-      escapeHtml(intro),
-      `<span style="display:inline-block;font-size:28px;font-weight:600;letter-spacing:0.3em;font-variant-numeric:tabular-nums">${escapeHtml(input.code)}</span>`,
-      escapeHtml(validity),
-      escapeHtml(ignore),
-    ]),
+    bodyHtml: receiptDocument({
+      title: subject,
+      kicker: "Confirmation code",
+      heading: subject,
+      body: [receiptParagraph(intro), receiptCode(input.code), receiptParagraph(validity)],
+      footer: [ignore],
+    }),
     outboxCopy: withheldCodeCopy(subject, [intro, validity, ignore]),
   };
 }

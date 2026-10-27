@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 import { emailBrandName } from "../brand";
 
 export interface DomainMovedInput {
@@ -22,10 +23,11 @@ export function domainMovedEmail(input: DomainMovedInput): EmailMessage {
     subject: `Your ${brand} website has moved to your own domain`,
     template: "domain-moved",
     bodyText: lines.join("\n\n"),
-    bodyHtml: htmlDocument(`Your ${brand} website has moved to your own domain`, [
-      escapeHtml(intro),
-      `<a href="${escapeHtml(websiteUrl)}">${escapeHtml(websiteUrl)}</a>`,
-      escapeHtml(outro),
-    ]),
+    bodyHtml: receiptDocument({
+      title: `Your ${brand} website has moved to your own domain`,
+      kicker: "Your own domain",
+      heading: `Your ${brand} website has moved to your own domain`,
+      body: [receiptParagraph(intro), receiptButton(websiteUrl, `Visit ${new URL(websiteUrl).host}`), receiptParagraph(outro)],
+    }),
   };
 }

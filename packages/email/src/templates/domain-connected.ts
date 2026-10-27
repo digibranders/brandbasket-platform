@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 
 export interface DomainConnectedInput {
   readonly to: string;
@@ -21,10 +22,11 @@ export function domainConnectedEmail(input: DomainConnectedInput): EmailMessage 
     subject: sanitizeHeaderValue(`${input.businessName}'s domain is connected`),
     template: "domain-connected",
     bodyText: lines.join("\n"),
-    bodyHtml: htmlDocument(`${input.businessName}'s domain is connected`, [
-      escapeHtml(lines[0] ?? ""),
-      escapeHtml(lines[1] ?? ""),
-      `<a href="${escapeHtml(clientUrl)}">Open the client</a> (${escapeHtml(clientUrl)})`,
-    ]),
+    bodyHtml: receiptDocument({
+      title: `${input.businessName}'s domain is connected`,
+      kicker: "Domain connected",
+      heading: `${input.businessName}'s domain is connected`,
+      body: [receiptParagraph(lines[0] ?? ""), receiptParagraph(lines[1] ?? ""), receiptButton(clientUrl, "Open the client")],
+    }),
   };
 }

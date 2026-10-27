@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 
 export interface PreviewRevisionsRequestedInput {
   readonly to: string;
@@ -23,9 +24,11 @@ export function previewRevisionsRequestedEmail(input: PreviewRevisionsRequestedI
     subject: sanitizeHeaderValue(`${input.businessName} asked for changes`),
     template: "preview-revisions-requested",
     bodyText: lines.join("\n"),
-    bodyHtml: htmlDocument(`${input.businessName} asked for changes`, [
-      ...lines.slice(0, -1).map((line) => escapeHtml(line)),
-      `<a href="${escapeHtml(clientUrl)}">Open the client</a> (${escapeHtml(clientUrl)})`,
-    ]),
+    bodyHtml: receiptDocument({
+      title: `${input.businessName} asked for changes`,
+      kicker: "Changes requested",
+      heading: `${input.businessName} asked for changes`,
+      body: [receiptParagraph(lines[0] ?? ""), receiptParagraph(lines[1] ?? ""), receiptButton(clientUrl, "Open the client")],
+    }),
   };
 }

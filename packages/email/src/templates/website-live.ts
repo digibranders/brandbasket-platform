@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 import { emailBrandName } from "../brand";
 
 export interface WebsiteLiveInput {
@@ -20,10 +21,11 @@ export function websiteLiveEmail(input: WebsiteLiveInput): EmailMessage {
     subject: `Your ${brand} website is live`,
     template: "website-live",
     bodyText: lines.join("\n\n"),
-    bodyHtml: htmlDocument(`Your ${brand} website is live`, [
-      escapeHtml(intro),
-      `<a href="${escapeHtml(websiteUrl)}">${escapeHtml(websiteUrl)}</a>`,
-      escapeHtml(outro),
-    ]),
+    bodyHtml: receiptDocument({
+      title: `Your ${brand} website is live`,
+      kicker: "Website live",
+      heading: `Your ${brand} website is live`,
+      body: [receiptParagraph(intro), receiptButton(websiteUrl, `Visit ${new URL(websiteUrl).host}`), receiptParagraph(outro)],
+    }),
   };
 }

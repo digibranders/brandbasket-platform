@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph, receiptQuote, receiptRows } from "../receipt";
 import { emailBrandName } from "../brand";
 
 export interface ListingEnquiryInput {
@@ -26,9 +27,16 @@ export function listingEnquiryEmail(input: ListingEnquiryInput): EmailMessage {
     subject: sanitizeHeaderValue(title),
     template: "listing-enquiry",
     bodyText: [...lines, `See all your enquiries: ${dashboardUrl}`].join("\n"),
-    bodyHtml: htmlDocument(title, [
-      ...lines.map((line) => escapeHtml(line)),
-      `<a href="${escapeHtml(dashboardUrl)}">See all your enquiries</a>`,
-    ]),
+    bodyHtml: receiptDocument({
+      title,
+      kicker: "New enquiry",
+      heading: title,
+      body: [
+        receiptParagraph(lines[0] ?? ""),
+        receiptRows([{ label: "Phone", value: input.visitorPhone }]),
+        input.message === null ? receiptParagraph("They left no message.") : receiptQuote(input.message),
+        receiptButton(dashboardUrl, "See all your enquiries"),
+      ],
+    }),
   };
 }

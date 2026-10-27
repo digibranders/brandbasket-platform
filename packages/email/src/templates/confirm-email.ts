@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, withheldLinkCopy, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, withheldLinkCopy, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 import { emailBrandName } from "../brand";
 
 export interface ConfirmEmailInput {
@@ -23,12 +24,17 @@ export function confirmEmailEmail(input: ConfirmEmailInput): EmailMessage {
     bodyText: [`Confirm this is your email address, so we can confirm your business on ${brand}:`, confirmUrl, validity, ignore].join(
       "\n\n",
     ),
-    bodyHtml: htmlDocument(`Confirm your email for ${brand}`, [
-      escapeHtml(`Confirm this is your email address, so we can confirm your business on ${brand}.`),
-      `<a href="${escapeHtml(confirmUrl)}">Confirm my email</a>`,
-      escapeHtml(validity),
-      escapeHtml(ignore),
-    ]),
+    bodyHtml: receiptDocument({
+      title: `Confirm your email for ${brand}`,
+      kicker: "Confirm your email",
+      heading: `Confirm your email for ${brand}`,
+      body: [
+        receiptParagraph(`Confirm this is your email address, so we can confirm your business on ${brand}.`),
+        receiptButton(confirmUrl, "Confirm my email"),
+        receiptParagraph(validity),
+      ],
+      footer: [ignore],
+    }),
     outboxCopy: withheldLinkCopy(`Confirm your email for ${brand}`, [
       `Confirm this is your email address, so we can confirm your business on ${brand}.`,
       validity,

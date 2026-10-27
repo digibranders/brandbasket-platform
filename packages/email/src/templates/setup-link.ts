@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, withheldLinkCopy, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, withheldLinkCopy, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 import { emailBrandName } from "../brand";
 
 export interface SetupLinkInput {
@@ -26,12 +27,17 @@ export function setupLinkEmail(input: SetupLinkInput): EmailMessage {
     subject: `Set up your ${brand} account`,
     template: "setup-link",
     bodyText: lines.join("\n\n"),
-    bodyHtml: htmlDocument(`Set up your ${brand} account`, [
-      escapeHtml(`Thanks for talking to us about ${input.businessName}.`),
-      `<a href="${escapeHtml(setupUrl)}">Set your password</a>`,
-      escapeHtml(validity),
-      escapeHtml("If you didn't expect this email, you can ignore it."),
-    ]),
+    bodyHtml: receiptDocument({
+      title: `Set up your ${brand} account`,
+      kicker: "Set up your account",
+      heading: `Set up your ${brand} account`,
+      body: [
+        receiptParagraph(`Thanks for talking to us about ${input.businessName}.`),
+        receiptButton(setupUrl, "Set your password"),
+        receiptParagraph(validity),
+      ],
+      footer: ["If you didn't expect this email, you can ignore it."],
+    }),
     outboxCopy: withheldLinkCopy(`Set up your ${brand} account`, [
       `Thanks for talking to us about ${input.businessName}.`,
       validity,

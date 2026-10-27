@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph, receiptRows } from "../receipt";
 
 /*
  * Two emails to the person who answers privacy requests (the Grievance Officer's mailbox). Neither carries a name, a number,
@@ -25,18 +26,24 @@ export function privacyRequestAlertEmail(input: PrivacyRequestAlertInput): Email
     "",
     `Open it in the console: ${consoleUrl}`,
   ];
-  const html = [
-    `<strong>Reference:</strong> ${escapeHtml(input.reference)}`,
-    `<strong>Kind:</strong> ${escapeHtml(input.kindLabel)}`,
-    `<strong>Reply due by:</strong> ${escapeHtml(input.dueDay)}`,
-    `<a href="${escapeHtml(consoleUrl)}" style="display:inline-block;padding:10px 20px;background:#2a0d10;color:#f6efe6;text-decoration:none;border-radius:20px;font-weight:600">Open privacy requests</a>`,
-  ];
   return {
     to: sanitizeHeaderValue(input.to),
     subject: sanitizeHeaderValue(`New privacy request ${input.reference} (${input.kindLabel})`),
     template: "privacy-request-alert",
     bodyText: text.join("\n"),
-    bodyHtml: htmlDocument(`New privacy request ${input.reference}`, html),
+    bodyHtml: receiptDocument({
+      title: `New privacy request ${input.reference}`,
+      kicker: "Privacy request",
+      heading: `New privacy request ${input.reference}`,
+      body: [
+        receiptRows([
+          { label: "Reference", value: input.reference },
+          { label: "Kind", value: input.kindLabel },
+          { label: "Reply due by", value: input.dueDay },
+        ]),
+        receiptButton(consoleUrl, "Open privacy requests"),
+      ],
+    }),
   };
 }
 
@@ -88,19 +95,23 @@ export function privacyRequestsDueEmail(input: PrivacyRequestsDueInput): EmailMe
     "",
     `Open them in the console: ${consoleUrl}`,
   ];
-  const rows = input.items
-    .map((item) => `<li><strong>${STAGE_WORDS[item.stage]}:</strong> ${escapeHtml(item.reference)} (${escapeHtml(item.kindLabel)}), ${escapeHtml(whenWords(item))}</li>`)
-    .join("");
-  const html = [
-    "These privacy requests are still open and close to, or past, their due date:",
-    `<ul style="margin:0;padding-left:20px">${rows}</ul>`,
-    `<a href="${escapeHtml(consoleUrl)}" style="display:inline-block;padding:10px 20px;background:#2a0d10;color:#f6efe6;text-decoration:none;border-radius:20px;font-weight:600">Open privacy requests</a>`,
-  ];
   return {
     to: sanitizeHeaderValue(input.to),
     subject: sanitizeHeaderValue(subject),
     template: "privacy-requests-due",
     bodyText: text.join("\n"),
-    bodyHtml: htmlDocument("Privacy requests due", html),
+    bodyHtml: receiptDocument({
+      title: "Privacy requests due",
+      kicker: "Privacy requests due",
+      heading: "Privacy requests due",
+      body: [
+        receiptParagraph("These privacy requests are still open and close to, or past, their due date:"),
+        receiptRows(
+          input.items.map((item) => ({ label: STAGE_WORDS[item.stage], value: `${item.reference} (${item.kindLabel}), ${whenWords(item)}`, strong: item.stage === "overdue" })),
+          { labelWidth: 96 },
+        ),
+        receiptButton(consoleUrl, "Open privacy requests"),
+      ],
+    }),
   };
 }

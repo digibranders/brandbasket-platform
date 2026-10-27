@@ -1,4 +1,5 @@
 import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph, receiptQuote, receiptRows, type ReceiptRow } from "../receipt";
 
 export interface SupportTicketAlertInput {
   readonly to: string;
@@ -60,45 +61,26 @@ export function supportTicketAlertEmail(input: SupportTicketAlertInput): EmailMe
     textLines.push("", `View in Admin Console: ${adminUrl}`);
   }
 
-  const htmlParagraphs: string[] = [
-    `<strong>Ticket Reference:</strong> ${escapeHtml(input.reference)}`,
-    `<strong>Category:</strong> ${escapeHtml(input.categoryLabel)}`,
-    `<strong>Subject:</strong> ${escapeHtml(input.subject)}`,
-    `<strong>Requester:</strong> ${escapeHtml(requester)}`,
+  const rows: ReceiptRow[] = [
+    { label: "Reference", value: input.reference },
+    { label: "Category", value: input.categoryLabel },
+    { label: "Subject", value: input.subject },
+    { label: "Requester", value: requester },
+    ...(input.requesterPhone ? [{ label: "Phone", value: input.requesterPhone }] : []),
+    ...(input.businessName ? [{ label: "Business", value: `${input.businessName} (ID: ${input.businessId ?? "n/a"})` }] : []),
+    ...(input.browserDevice ? [{ label: "Browser / device", value: input.browserDevice }] : []),
+    ...(input.attachmentCount && input.attachmentCount > 0 ? [{ label: "Attachments", value: `${input.attachmentCount} screenshot(s) attached` }] : []),
   ];
-
-  if (input.requesterPhone) {
-    htmlParagraphs.push(`<strong>Phone:</strong> ${escapeHtml(input.requesterPhone)}`);
-  }
-  if (input.businessName) {
-    htmlParagraphs.push(`<strong>Business:</strong> ${escapeHtml(input.businessName)} (ID: ${escapeHtml(input.businessId ?? "n/a")})`);
-  }
-  if (input.browserDevice) {
-    htmlParagraphs.push(`<strong>Browser / Device:</strong> ${escapeHtml(input.browserDevice)}`);
-  }
-  if (input.attachmentCount && input.attachmentCount > 0) {
-    htmlParagraphs.push(`<strong>Attachments:</strong> ${input.attachmentCount} screenshot(s) attached`);
-  }
-
-  htmlParagraphs.push(
-    `<strong>Message:</strong><br /><div style="margin-top:8px;padding:12px;background:#efe4d6;border-radius:8px;white-space:pre-wrap">${escapeHtml(input.description)}</div>`,
-  );
-
-  if (input.details && Object.keys(input.details).length > 0) {
-    const detailRows = Object.entries(input.details)
-      .filter(([, v]) => Boolean(v))
-      .map(([k, v]) => `<li><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</li>`)
-      .join("");
-    if (detailRows) {
-      htmlParagraphs.push(`<strong>Category Details:</strong><ul>${detailRows}</ul>`);
-    }
-  }
-
-  if (adminUrl) {
-    htmlParagraphs.push(
-      `<a href="${escapeHtml(adminUrl)}" style="display:inline-block;padding:10px 20px;background:#2a0d10;color:#f6efe6;text-decoration:none;border-radius:20px;font-weight:600">Open in Admin Console</a>`,
-    );
-  }
+  const detailRows: ReceiptRow[] = Object.entries(input.details ?? {})
+    .filter(([, value]) => Boolean(value))
+    .map(([label, value]) => ({ label, value }));
+  const htmlBlocks = [
+    receiptRows(rows, { labelWidth: 130 }),
+    receiptParagraph("Message:"),
+    receiptQuote(input.description),
+    ...(detailRows.length > 0 ? [receiptParagraph("Category details:"), receiptRows(detailRows, { labelWidth: 130 })] : []),
+    ...(adminUrl ? [receiptButton(adminUrl, "Open in Admin Console")] : []),
+  ];
 
   // The outbox copy keeps no customer text: no subject, message, name, email or phone.
   const status = input.statusLabel ?? "New";
@@ -120,7 +102,12 @@ export function supportTicketAlertEmail(input: SupportTicketAlertInput): EmailMe
     subject: sanitizeHeaderValue(`[${input.categoryLabel}] ${input.subject} (${input.reference})`),
     template: "support-ticket-alert",
     bodyText: textLines.join("\n"),
-    bodyHtml: htmlDocument(`New Support Request: ${input.subject}`, htmlParagraphs),
+    bodyHtml: receiptDocument({
+      title: `New Support Request: ${input.subject}`,
+      kicker: "Support request",
+      heading: `New support request: ${input.subject}`,
+      body: htmlBlocks,
+    }),
     outboxCopy: {
       subject: sanitizeHeaderValue(`[${input.categoryLabel}] New support request (${input.reference})`),
       bodyText: outboxText.join("\n"),

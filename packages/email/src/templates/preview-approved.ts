@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 
 export interface PreviewApprovedInput {
   readonly to: string;
@@ -16,9 +17,11 @@ export function previewApprovedEmail(input: PreviewApprovedInput): EmailMessage 
     subject: sanitizeHeaderValue(`${input.businessName} approved their preview`),
     template: "preview-approved",
     bodyText: lines.join("\n"),
-    bodyHtml: htmlDocument(`${input.businessName} approved their preview`, [
-      escapeHtml(lines[0] ?? ""),
-      `<a href="${escapeHtml(clientUrl)}">Open the client</a> (${escapeHtml(clientUrl)})`,
-    ]),
+    bodyHtml: receiptDocument({
+      title: `${input.businessName} approved their preview`,
+      kicker: "Preview approved",
+      heading: `${input.businessName} approved their preview`,
+      body: [receiptParagraph(lines[0] ?? ""), receiptButton(clientUrl, "Open the client")],
+    }),
   };
 }
