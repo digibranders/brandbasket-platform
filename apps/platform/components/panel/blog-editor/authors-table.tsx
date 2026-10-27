@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useState, type ReactElement } from "react";
-import { SearchIcon } from "@brandbasket/shared/ui/icons";
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr";
 import { cn } from "@brandbasket/shared/lib/cn";
 import type { BlogAuthorWithStats } from "@/lib/server/blog-taxonomy";
 import { AuthorAvatar } from "./author-avatar";
-import { BlogEmptyState } from "./blog-empty-state";
+import { EmptyState } from "@/components/v2/page";
 import { PostDate } from "./parts";
 import {
   COL_DATE,
@@ -35,13 +35,13 @@ export function AuthorsTable({ authors }: { readonly authors: readonly BlogAutho
     <div>
       <label className="relative ml-auto block w-full sm:w-64">
         <span className="sr-only">Search authors</span>
-        <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-soft" />
+        <MagnifyingGlass size={16} aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-2" />
         <input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search authors"
-          className="block w-full rounded-full border border-line bg-card py-2 pl-10 pr-4 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent focus:outline-none"
+          className="block w-full rounded-lg border border-ink-2/65 bg-surface py-2 pl-10 pr-4 text-sm text-ink placeholder:text-ink-2 focus:border-ink focus:outline-none"
         />
       </label>
 
@@ -88,18 +88,18 @@ export function AuthorsTable({ authors }: { readonly authors: readonly BlogAutho
                   {author.draftCount > 0 ? ` · ${author.draftCount} draft${author.draftCount === 1 ? "" : "s"}` : null}
                 </td>
                 <td className={cn(TD_CLASS, "whitespace-nowrap tabular-nums text-ink-soft")}>
-                  {author.lastPublishedAt === null ? "—" : <PostDate time={author.lastPublishedAt} />}
+                  {author.lastPublishedAt === null ? "-" : <PostDate time={author.lastPublishedAt} />}
                 </td>
                 <td className={cn(TD_CLASS, "whitespace-nowrap tabular-nums text-ink-soft")}>
-                  {author.updatedAt === 0 ? "—" : <PostDate time={author.updatedAt} />}
+                  {author.updatedAt === 0 ? "-" : <PostDate time={author.updatedAt} />}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         {shown.length === 0 ? (
-          <div className="py-10">
-            <BlogEmptyState art="name" title="Nothing found" body={`No authors match “${query.trim()}”.`} />
+          <div className="py-8">
+            <EmptyState compact icon={MagnifyingGlass} title="Nothing found" text={`No authors match “${query.trim()}”.`} />
           </div>
         ) : null}
       </div>

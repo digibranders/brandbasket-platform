@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState, type ReactElement } from "react";
-import { SearchIcon } from "@brandbasket/shared/ui/icons";
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr";
 import type { BlogCategoryWithStats } from "@/lib/server/blog-taxonomy";
-import { BlogEmptyState } from "./blog-empty-state";
+import { EmptyState } from "@/components/v2/page";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { PostDate } from "./parts";
 import {
@@ -34,13 +34,13 @@ export function CategoriesTable({ categories }: { readonly categories: readonly 
     <div>
       <label className="relative ml-auto block w-full sm:w-64">
         <span className="sr-only">Search categories</span>
-        <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-soft" />
+        <MagnifyingGlass size={16} aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-2" />
         <input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search categories"
-          className="block w-full rounded-full border border-line bg-card py-2 pl-10 pr-4 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent focus:outline-none"
+          className="block w-full rounded-lg border border-ink-2/65 bg-surface py-2 pl-10 pr-4 text-sm text-ink placeholder:text-ink-2 focus:border-ink focus:outline-none"
         />
       </label>
 
@@ -80,15 +80,15 @@ export function CategoriesTable({ categories }: { readonly categories: readonly 
                     : null}
                 </td>
                 <td className={cn(TD_CLASS, "whitespace-nowrap tabular-nums text-ink-soft")}>
-                  {category.updatedAt === 0 ? "—" : <PostDate time={category.updatedAt} />}
+                  {category.updatedAt === 0 ? "-" : <PostDate time={category.updatedAt} />}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         {shown.length === 0 ? (
-          <div className="py-10">
-            <BlogEmptyState art="stack" title="Nothing found" body={`No categories match “${query.trim()}”.`} />
+          <div className="py-8">
+            <EmptyState compact icon={MagnifyingGlass} title="Nothing found" text={`No categories match “${query.trim()}”.`} />
           </div>
         ) : null}
       </div>

@@ -3,6 +3,9 @@
 import { useActionState, type ReactElement } from "react";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { INPUT_CLASS } from "@/components/panel/blog-editor/parts";
+import { DARK_BUTTON_SHAPE } from "@/components/v2/classes";
+import { PageSection } from "@/components/v2/page";
 import { createBlogPostAction, type BlogFormResult } from "../actions";
 
 const initialState: BlogFormResult = { ok: true };
@@ -15,28 +18,21 @@ export default function NewBlogPostPage(): ReactElement {
   const [state, formAction] = useActionState(createBlogPostAction, initialState);
 
   return (
-    <>
-      <h1 className="panel-title">New post</h1>
-      <form action={formAction} className="mt-8 max-w-xl rounded-card border border-line bg-card p-6 sm:p-8">
-        <label htmlFor="title" className="text-sm font-medium">
+    <PageSection id="new-post" title="New post">
+      <form action={formAction} className="max-w-xl">
+        <label htmlFor="title" className="mb-1.5 block text-[0.8125rem] font-semibold text-ink">
           Title <RequiredMark />
         </label>
-        <input
-          id="title"
-          name="title"
-          required
-          maxLength={200}
-          className="mt-1.5 block w-full rounded-control border border-ink-soft/65 bg-paper px-3 py-2.5 text-base text-ink transition-colors duration-300 ease-calm focus:border-accent"
-        />
+        <input id="title" name="title" required maxLength={200} aria-invalid={state.ok ? undefined : true} aria-describedby={state.ok ? undefined : "title-error"} className={INPUT_CLASS} />
         {state.ok ? null : (
-          <p role="alert" className="mt-2 text-sm text-accent-deep">
+          <p id="title-error" role="alert" className="mt-2 text-sm text-error">
             {state.message}
           </p>
         )}
-        <SubmitButton size="sm" pendingLabel="Creating…" className="mt-4">
+        <SubmitButton pendingLabel="Creating…" className={`${DARK_BUTTON_SHAPE} mt-5`}>
           Create post
         </SubmitButton>
       </form>
-    </>
+    </PageSection>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { useActionState, type ReactElement } from "react";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
@@ -7,6 +8,8 @@ import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { AUTHOR_NAME_MAX_LENGTH } from "@/lib/blog-author-fields";
 import { INPUT_CLASS } from "@/components/panel/blog-editor/parts";
+import { DARK_BUTTON_SHAPE } from "@/components/v2/classes";
+import { PageSection } from "@/components/v2/page";
 import { createAuthorAction, type AuthorFormResult } from "../actions";
 
 const initialState: AuthorFormResult = { ok: true };
@@ -16,12 +19,17 @@ export default function NewAuthorPage(): ReactElement {
   const [state, formAction] = useActionState(createAuthorAction, initialState);
 
   return (
-    <div className="max-w-xl">
-      <Link href="/content/authors" className="text-sm text-ink-soft transition-colors duration-200 ease-calm hover:text-ink">
-        ← Authors
-      </Link>
-      <h1 className="panel-title mt-2">New author</h1>
-      <form action={formAction} className="mt-8">
+    <PageSection
+      id="new-author"
+      title="New author"
+      aside={
+        <Link href="/content/authors" className="inline-flex items-center gap-1 font-semibold text-ink">
+          <ArrowLeft size={14} aria-hidden="true" />
+          Authors
+        </Link>
+      }
+    >
+      <form action={formAction} className="max-w-xl">
         <label htmlFor="name" className="mb-1.5 block text-[0.8125rem] font-semibold text-ink">
           Name <RequiredMark />
         </label>
@@ -34,17 +42,19 @@ export default function NewAuthorPage(): ReactElement {
           autoFocus
           placeholder="e.g. Asha Rao"
           autoComplete="off"
+          aria-invalid={state.ok ? undefined : true}
+          aria-describedby={state.ok ? undefined : "name-error"}
           className={INPUT_CLASS}
         />
         {state.ok ? null : (
-          <p role="alert" className="mt-2 text-sm text-accent-deep">
+          <p id="name-error" role="alert" className="mt-2 text-sm text-error">
             {state.message}
           </p>
         )}
-        <SubmitButton size="sm" pendingLabel="Creating…" className="mt-5">
+        <SubmitButton pendingLabel="Creating…" className={`${DARK_BUTTON_SHAPE} mt-5`}>
           Create author
         </SubmitButton>
       </form>
-    </div>
+    </PageSection>
   );
 }

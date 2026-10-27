@@ -8,23 +8,20 @@ import { CaretGlyph } from "./icons";
 /** Small building blocks the post list and the post editor share. */
 
 export const INPUT_CLASS =
-  "block w-full rounded-control border border-line bg-card px-3.5 py-2.5 text-[0.9375rem] text-ink transition-colors duration-200 ease-calm placeholder:text-ink-soft/60 hover:border-ink-soft/40 focus:border-accent focus:outline-none";
+  "block w-full rounded-control border border-ink-2/65 bg-card px-3.5 py-2.5 text-[0.9375rem] text-ink transition-colors duration-200 ease-calm placeholder:text-ink-2 hover:border-ink-2 focus:border-ink focus:outline-none";
 
 const STATE_TONES: Readonly<Record<BlogPublishState, string>> = {
-  draft: "border-line text-ink-soft",
-  scheduled: "border-ink/15 bg-paper-deep text-ink",
-  published: "border-accent/15 bg-accent-pale text-accent-deep",
+  draft: "bg-sunken text-ink-2",
+  scheduled: "bg-rattan-wash text-rattan-ink",
+  published: "bg-sage-wash text-sage-deep",
 };
 
-/**
- * A post's status as a small, quiet capsule: sentence case, no dot, no letter-spacing. A draft is only outlined, a
- * scheduled post sits on paper, a published one takes the soft burgundy tint.
- */
+/** A post's status as a soft chip with its word: a draft is grey, a scheduled post amber, a published one green. No outline. */
 export function StatusPill({ state }: { readonly state: BlogPublishState }): ReactElement {
   return (
     <span
       className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium leading-5",
+        "inline-flex items-center whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold leading-5",
         STATE_TONES[state],
       )}
     >

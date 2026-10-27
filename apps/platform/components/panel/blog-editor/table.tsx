@@ -8,11 +8,11 @@ import { cn } from "@brandbasket/shared/lib/cn";
  * text starts where the column starts.
  */
 export const TABLE_CLASS = "w-full table-fixed text-left text-sm";
-export const TABLE_HEAD_ROW_CLASS = "border-b border-line text-xs text-ink-soft";
+export const TABLE_HEAD_ROW_CLASS = "border-b border-line text-xs text-ink-2";
 export const TH_CLASS = "py-3 pr-6 text-left font-medium";
 export const TD_CLASS = "py-3.5 pr-6 align-middle";
 export const TABLE_ROW_CLASS =
-  "relative border-b border-line/60 transition-colors duration-200 ease-calm hover:bg-paper-deep/50";
+  "relative border-b border-line transition-colors duration-200 hover:bg-sunken/60";
 /** Column widths shared by the three tables, as classes for <col>. */
 export const COL_SERIAL = "w-14";
 export const COL_DATE = "w-32";
