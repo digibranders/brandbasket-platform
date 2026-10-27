@@ -1,18 +1,21 @@
 "use client";
 
+import { Check } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition, type ReactElement, type ReactNode } from "react";
 import { loadCallSlots } from "@/app/app-host/(protected)/setup-call-actions";
 import { groupSlotsByDay } from "@brandbasket/shared/lib/call-slots";
 import { cn } from "@brandbasket/shared/lib/cn";
-import { BRAND_TIME_ZONE, slotDay, slotLabel, slotTime } from "@/lib/call-dates";
+import { BRAND_TIME_ZONE, slotDay, slotTime } from "@/lib/call-dates";
 import { MAX_UPCOMING_CALLS } from "@/lib/calls/rows";
+import { bookButtonLabel, splitDayTimes } from "@/lib/calls/slot-view";
 import { DARK_BUTTON } from "@/components/v2/classes";
 
 /** Days shown before More days. */
 const DAYS_SHOWN = 3;
 
-const CHIP = "inline-flex flex-col items-center justify-center rounded-lg transition-colors duration-200 active:translate-y-px";
+const CHIP = "inline-flex min-w-0 flex-col items-center justify-center rounded-lg motion-safe:transition-colors motion-safe:duration-200 active:translate-y-px";
+const DAY_CHIP = cn(CHIP, "h-14 w-[4.25rem] shrink-0 snap-start");
 
 type Slots = { readonly kind: "loading" } | { readonly kind: "ready"; readonly slots: readonly string[] } | { readonly kind: "unavailable" };
 
@@ -34,12 +37,14 @@ interface SlotPickerProps {
   readonly book: (slotIso: string) => Promise<PickerOutcome>;
   /** Called after a booking worked. */
   readonly onBooked: () => void;
+  /** Drawn between the times and the button (the Book a call sheet puts the reason and the note here). */
+  readonly details?: ReactNode;
   /** A line under the button once a time is picked or not (the kickoff says when the website can be live). */
   readonly note?: (slotIso: string | null) => ReactNode;
 }
 
 /** The next open days and their times, in India, and one button that books the picked time. Shared by the kickoff call and later calls. */
-export function SlotPicker({ bookingUrl, book, onBooked, note }: SlotPickerProps): ReactElement {
+export function SlotPicker({ bookingUrl, book, onBooked, details, note }: SlotPickerProps): ReactElement {
   const [slots, setSlots] = useState<Slots>({ kind: "loading" });
   const [day, setDay] = useState<string | null>(null);
   const [slot, setSlot] = useState<string | null>(null);
@@ -65,8 +70,8 @@ export function SlotPicker({ bookingUrl, book, onBooked, note }: SlotPickerProps
   if (slots.kind === "loading") {
     return (
       <div role="status" aria-label="Loading times" className="grid gap-2">
-        <div className="h-12 animate-pulse rounded-lg bg-sunken" />
-        <div className="h-9 animate-pulse rounded-lg bg-sunken" />
+        <div className="h-12 motion-safe:animate-pulse rounded-lg bg-sunken" />
+        <div className="h-9 motion-safe:animate-pulse rounded-lg bg-sunken" />
       </div>
     );
   }
@@ -119,10 +124,16 @@ export function SlotPicker({ bookingUrl, book, onBooked, note }: SlotPickerProps
     });
   };
 
+  const { morning, afternoon } = splitDayTimes(times);
+  const timeGroups = [
+    { id: "morning", title: "Morning", times: morning },
+    { id: "afternoon", title: "Afternoon", times: afternoon },
+  ].filter((group) => group.times.length > 0);
+
   return (
-    <div className="grid gap-3">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
       <p className="text-[0.8125rem] font-semibold text-ink-2">Pick a day, times in India</p>
-      <div role="group" aria-label="Day" className="grid grid-cols-4 gap-1.5">
+      <div role="group" aria-label="Day" className="flex snap-x gap-1.5 overflow-x-auto overscroll-x-contain pb-1">
         {shownDays.map((key) => {
           const first = days.get(key)?.[0] ?? `${key}T06:30:00.000Z`;
           const picked = key === activeDay;
@@ -135,34 +146,45 @@ export function SlotPicker({ bookingUrl, book, onBooked, note }: SlotPickerProps
                 setDay(key);
                 setSlot(null);
               }}
-              className={cn(CHIP, "h-12", picked ? "bg-ink text-white" : "bg-sunken text-ink hover:bg-line")}
+              className={cn(DAY_CHIP, picked ? "bg-ink text-white" : "bg-sunken text-ink hover:bg-line")}
             >
               <span className="text-xs">{slotDay(first)}</span>
-              <span className="text-sm font-semibold tabular-nums">{Number(key.slice(8))}</span>
+              <span className="font-figure text-base font-semibold tabular-nums">{Number(key.slice(8))}</span>
             </button>
           );
         })}
         {allDays || dayKeys.length <= DAYS_SHOWN ? null : (
-          <button type="button" onClick={() => setAllDays(true)} className={cn(CHIP, "h-12 bg-sunken text-[0.8125rem] font-semibold text-ink-2 hover:bg-line")}>
+          <button type="button" onClick={() => setAllDays(true)} className={cn(DAY_CHIP, "bg-sunken px-1 text-center text-[0.8125rem] font-semibold leading-tight text-ink-2 hover:bg-line")}>
             More days
           </button>
         )}
       </div>
-      <div role="group" aria-label="Time" className="grid grid-cols-4 gap-1.5">
-        {times.map((iso) => (
-          <button
-            key={iso}
-            type="button"
-            aria-pressed={iso === slot}
-            onClick={() => setSlot(iso)}
-            className={cn(CHIP, "h-9 font-figure text-[0.8125rem]", iso === slot ? "bg-rattan text-ink" : "bg-sunken text-ink hover:bg-line")}
-          >
-            {slotTime(iso)}
-          </button>
+      <div role="group" aria-label="Time" className="grid min-w-0 gap-3">
+        {timeGroups.map((group) => (
+          <div key={group.id} role="group" aria-labelledby={`slot-${group.id}`} className="grid min-w-0 gap-1.5">
+            <p id={`slot-${group.id}`} className="text-xs font-semibold text-ink-2">
+              {group.title}
+            </p>
+            <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-1.5">
+              {group.times.map((iso) => (
+                <button
+                  key={iso}
+                  type="button"
+                  aria-pressed={iso === slot}
+                  onClick={() => setSlot(iso)}
+                  className={cn(CHIP, "h-10 flex-row gap-1.5 font-figure text-[0.8125rem]", iso === slot ? "bg-rattan font-semibold text-ink" : "bg-sunken text-ink hover:bg-line")}
+                >
+                  {iso === slot ? <Check size={14} aria-hidden="true" /> : null}
+                  {slotTime(iso)}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
-      <button type="button" disabled={slot === null || booking} onClick={submit} className={cn(DARK_BUTTON, "mt-1 w-full")}>
-        {booking ? "Booking…" : slot === null ? "Pick a time" : `Book ${slotLabel(slot)}`}
+      {details}
+      <button type="button" disabled={slot === null || booking} onClick={submit} className={cn(DARK_BUTTON, "w-full")}>
+        {bookButtonLabel(slot, booking)}
       </button>
       {problem === null ? null : (
         <p role="alert" className="text-sm text-error">
