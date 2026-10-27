@@ -294,14 +294,23 @@ export { canMoveProject, PROJECT_MOVE_FROM, type ProjectMove } from "./queries/p
 export {
   assignProjectBuilder,
   cancelProject,
+  countCallsBetween,
+  countLateProjects,
+  findOpenProjectForStaff,
   grantRevisionRound,
+  listOpenProjectsForStaff,
+  listSetupCallsForStaff,
   ON_HOLD_REASON_MAX,
   ProjectBuilderNotStaffError,
   ProjectMoveRefusedError,
   putProjectOnHold,
   resumeProject,
   setProjectBuilding,
+  SETUP_STEPS_TOTAL,
   type MovedProject,
+  type StaffCallRow,
+  type StaffProjectControls,
+  type StaffProjectRow,
 } from "./queries/project-staff";
 export {
   findBusinessWebsiteUrl,

@@ -1,7 +1,7 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, ne, notInArray, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
-import { projects, staffMembers, type ProjectStatus } from "../schema";
+import { businesses, onboardingProgress, projects, setupCallBookings, staffMembers, users, type ProjectStatus } from "../schema";
 import { PROJECT_MOVE_FROM, type ProjectMove } from "./project-moves";
 import { isUuid } from "./tenant";
 
@@ -130,4 +130,140 @@ export async function grantRevisionRound(db: Runner, projectId: string): Promise
     .where(and(eq(projects.id, projectId), startsFrom("grant-round")))
     .returning(MOVED);
   return onlyRow(rows, "grant-round", projectId);
+}
+
+const CLOSED_STATUSES: readonly ProjectStatus[] = ["live", "cancelled"];
+/** Statuses whose first preview is promised by sla_due_at: the clock runs until the preview goes out. */
+const CLOCK_RUNNING: readonly ProjectStatus[] = ["submitted", "building"];
+
+/** One card on the console's Projects board. */
+export interface StaffProjectRow {
+  readonly projectId: string;
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly status: ProjectStatus;
+  readonly slaDueAt: Date | null;
+  readonly previewSentAt: Date | null;
+  readonly launchedAt: Date | null;
+  readonly onHoldReason: string | null;
+  readonly revisionRoundsIncluded: number;
+  /** Rounds the client has asked for (revision_rounds_granted). */
+  readonly revisionRoundsUsed: number;
+  readonly builderId: string | null;
+  readonly builderName: string | null;
+  readonly callStartsAt: Date | null;
+}
+
+/**
+ * Every open build, and every build that went live on or after monthStart, with its business, builder and kickoff
+ * call. Earliest promise first; builds with no promise date (not sent yet, or past the first preview) come last.
+ */
+export async function listOpenProjectsForStaff(db: Database, monthStart: Date): Promise<StaffProjectRow[]> {
+  return db
+    .select({
+      projectId: projects.id,
+      businessId: projects.businessId,
+      businessName: businesses.name,
+      status: projects.status,
+      slaDueAt: projects.slaDueAt,
+      previewSentAt: projects.previewSentAt,
+      launchedAt: projects.launchedAt,
+      onHoldReason: projects.onHoldReason,
+      revisionRoundsIncluded: projects.revisionRoundsIncluded,
+      revisionRoundsUsed: projects.revisionRoundsGranted,
+      builderId: projects.assignedStaffId,
+      builderName: users.name,
+      callStartsAt: setupCallBookings.startsAt,
+    })
+    .from(projects)
+    .innerJoin(businesses, eq(businesses.id, projects.businessId))
+    .leftJoin(users, eq(users.id, projects.assignedStaffId))
+    .leftJoin(setupCallBookings, eq(setupCallBookings.businessId, projects.businessId))
+    .where(and(ne(projects.status, "cancelled"), or(ne(projects.status, "live"), gte(projects.launchedAt, monthStart))))
+    .orderBy(asc(projects.slaDueAt), asc(businesses.name));
+}
+
+/** What the Project tab's Build controls need about a business's open build. */
+export interface StaffProjectControls {
+  readonly id: string;
+  readonly businessId: string;
+  readonly status: ProjectStatus;
+  readonly onHoldReason: string | null;
+  readonly revisionRoundsIncluded: number;
+  readonly revisionRoundsUsed: number;
+  readonly assignedStaffId: string | null;
+}
+
+/** The business's open build, or null when it has none (live, cancelled, or never started). */
+export async function findOpenProjectForStaff(db: Database, businessId: string): Promise<StaffProjectControls | null> {
+  if (!isUuid(businessId)) return null;
+  const [row] = await db
+    .select({
+      id: projects.id,
+      businessId: projects.businessId,
+      status: projects.status,
+      onHoldReason: projects.onHoldReason,
+      revisionRoundsIncluded: projects.revisionRoundsIncluded,
+      revisionRoundsUsed: projects.revisionRoundsGranted,
+      assignedStaffId: projects.assignedStaffId,
+    })
+    .from(projects)
+    .where(and(eq(projects.businessId, businessId), notInArray(projects.status, [...CLOSED_STATUSES])))
+    .limit(1);
+  return row ?? null;
+}
+
+/** One kickoff call on the console's Calls page. */
+export interface StaffCallRow {
+  readonly businessId: string;
+  readonly businessName: string;
+  /** Null when the booking page reported that a call was booked but not when. */
+  readonly startsAt: Date | null;
+  readonly endsAt: Date | null;
+  /** How many of the four answer steps (business, content, brand, domain) the open build has done. */
+  readonly setupDone: number;
+}
+
+/** The website's four answer steps; "review" is the send step and does not count. */
+export const SETUP_STEPS_TOTAL = 4;
+
+/** Kickoff calls starting in [from, until), plus every booking with no reported time. Earliest first, no-time last. */
+export async function listSetupCallsForStaff(db: Database, from: Date, until: Date): Promise<StaffCallRow[]> {
+  return db
+    .select({
+      businessId: setupCallBookings.businessId,
+      businessName: businesses.name,
+      startsAt: setupCallBookings.startsAt,
+      endsAt: setupCallBookings.endsAt,
+      setupDone: sql<number>`(
+        select count(*)::int from ${onboardingProgress} op
+        join ${projects} p on p.id = op.project_id
+        where op.business_id = ${setupCallBookings.businessId}
+          and op.completed_at is not null
+          and op.step <> 'review'
+          and p.status not in ('live', 'cancelled')
+      )`,
+    })
+    .from(setupCallBookings)
+    .innerJoin(businesses, eq(businesses.id, setupCallBookings.businessId))
+    .where(or(isNull(setupCallBookings.startsAt), and(gte(setupCallBookings.startsAt, from), lt(setupCallBookings.startsAt, until))))
+    .orderBy(asc(setupCallBookings.startsAt), asc(businesses.name));
+}
+
+/** Builds whose first preview was promised before now and has not gone out. */
+export async function countLateProjects(db: Database, now: Date): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(projects)
+    .where(and(inArray(projects.status, [...CLOCK_RUNNING]), lt(projects.slaDueAt, now)));
+  return row?.count ?? 0;
+}
+
+/** Kickoff calls starting in [from, until). */
+export async function countCallsBetween(db: Database, from: Date, until: Date): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(setupCallBookings)
+    .where(and(gte(setupCallBookings.startsAt, from), lt(setupCallBookings.startsAt, until)));
+  return row?.count ?? 0;
 }

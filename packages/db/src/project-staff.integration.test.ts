@@ -1,9 +1,15 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { onboardingProgress, setupCallBookings } from "./schema";
 import {
   assignProjectBuilder,
   cancelProject,
+  countCallsBetween,
+  countLateProjects,
+  findOpenProjectForStaff,
   grantRevisionRound,
+  listOpenProjectsForStaff,
+  listSetupCallsForStaff,
   ProjectBuilderNotStaffError,
   ProjectMoveRefusedError,
   putProjectOnHold,
@@ -150,5 +156,113 @@ describe("grantRevisionRound", () => {
     await setProjectStatus("building");
     await expect(grantRevisionRound(dbs.staff.db, projectId)).rejects.toBeInstanceOf(ProjectMoveRefusedError);
     expect((await readProject()).revisionRoundsIncluded).toBe(2);
+  });
+});
+
+const NOW = new Date("2026-11-30T06:00:00.000Z");
+const MONTH_START = new Date("2026-10-31T18:30:00.000Z");
+
+describe("listOpenProjectsForStaff", () => {
+  it("returns open builds with the business, builder, due date and call time", async () => {
+    await setProjectStatus("building");
+    await dbs.staff.db
+      .update(projects)
+      .set({ slaDueAt: new Date("2026-11-28T06:00:00.000Z"), assignedStaffId: BUILDER })
+      .where(eq(projects.id, projectId));
+    await dbs.staff.db.insert(setupCallBookings).values({
+      businessId,
+      startsAt: new Date("2026-11-18T06:00:00.000Z"),
+      endsAt: new Date("2026-11-18T06:30:00.000Z"),
+    });
+
+    const rows = await listOpenProjectsForStaff(dbs.staff.db, MONTH_START);
+    expect(rows).toEqual([
+      expect.objectContaining({
+        projectId,
+        businessId,
+        businessName: "Harbour Bakery",
+        status: "building",
+        slaDueAt: new Date("2026-11-28T06:00:00.000Z"),
+        builderId: BUILDER,
+        builderName: "Rohit Builder",
+        callStartsAt: new Date("2026-11-18T06:00:00.000Z"),
+        revisionRoundsIncluded: 2,
+        revisionRoundsUsed: 0,
+      }),
+    ]);
+  });
+
+  it("leaves out cancelled builds and builds that went live before this month", async () => {
+    await setProjectStatus("cancelled");
+    expect(await listOpenProjectsForStaff(dbs.staff.db, MONTH_START)).toEqual([]);
+
+    await dbs.staff.db.update(projects).set({ status: "live", launchedAt: new Date("2026-10-20T06:00:00.000Z") }).where(eq(projects.id, projectId));
+    expect(await listOpenProjectsForStaff(dbs.staff.db, MONTH_START)).toEqual([]);
+
+    await dbs.staff.db.update(projects).set({ launchedAt: new Date("2026-11-21T06:00:00.000Z") }).where(eq(projects.id, projectId));
+    expect(await listOpenProjectsForStaff(dbs.staff.db, MONTH_START)).toHaveLength(1);
+  });
+});
+
+describe("findOpenProjectForStaff", () => {
+  it("reads the open build's controls, and nothing once it is live", async () => {
+    await setProjectStatus("revisions");
+    await expect(findOpenProjectForStaff(dbs.staff.db, businessId)).resolves.toMatchObject({
+      id: projectId,
+      status: "revisions",
+      revisionRoundsIncluded: 2,
+      revisionRoundsUsed: 0,
+      assignedStaffId: null,
+      onHoldReason: null,
+    });
+    await setProjectStatus("live");
+    await expect(findOpenProjectForStaff(dbs.staff.db, businessId)).resolves.toBeNull();
+  });
+});
+
+describe("listSetupCallsForStaff", () => {
+  it("lists calls in the window with how many of the four setup steps are done", async () => {
+    await dbs.staff.db.insert(setupCallBookings).values({
+      businessId,
+      startsAt: new Date("2026-11-30T06:00:00.000Z"),
+      endsAt: new Date("2026-11-30T06:30:00.000Z"),
+    });
+    await dbs.staff.db.insert(onboardingProgress).values([
+      { projectId, businessId, step: "business", completedAt: NOW },
+      { projectId, businessId, step: "content", completedAt: NOW },
+      { projectId, businessId, step: "brand", completedAt: null },
+      { projectId, businessId, step: "review", completedAt: NOW },
+    ]);
+
+    const rows = await listSetupCallsForStaff(dbs.staff.db, new Date("2026-11-23T00:00:00.000Z"), new Date("2026-12-28T00:00:00.000Z"));
+    expect(rows).toEqual([
+      expect.objectContaining({ businessId, businessName: "Harbour Bakery", startsAt: new Date("2026-11-30T06:00:00.000Z"), setupDone: 2 }),
+    ]);
+  });
+
+  it("keeps a booking with no reported time, and drops calls outside the window", async () => {
+    await dbs.staff.db.insert(setupCallBookings).values({ businessId });
+    const rows = await listSetupCallsForStaff(dbs.staff.db, new Date("2026-11-23T00:00:00.000Z"), new Date("2026-12-28T00:00:00.000Z"));
+    expect(rows).toEqual([expect.objectContaining({ businessId, startsAt: null, setupDone: 0 })]);
+
+    await dbs.staff.db.update(setupCallBookings).set({ startsAt: new Date("2026-10-01T06:00:00.000Z"), endsAt: new Date("2026-10-01T06:30:00.000Z") });
+    expect(await listSetupCallsForStaff(dbs.staff.db, new Date("2026-11-23T00:00:00.000Z"), new Date("2026-12-28T00:00:00.000Z"))).toEqual([]);
+  });
+});
+
+describe("counts", () => {
+  it("counts builds past their preview date, and calls in a time range", async () => {
+    await setProjectStatus("building");
+    await dbs.staff.db.update(projects).set({ slaDueAt: new Date("2026-11-28T06:00:00.000Z") }).where(eq(projects.id, projectId));
+    await expect(countLateProjects(dbs.staff.db, NOW)).resolves.toBe(1);
+    await expect(countLateProjects(dbs.staff.db, new Date("2026-11-27T06:00:00.000Z"))).resolves.toBe(0);
+
+    await dbs.staff.db.insert(setupCallBookings).values({
+      businessId,
+      startsAt: new Date("2026-11-30T06:00:00.000Z"),
+      endsAt: new Date("2026-11-30T06:30:00.000Z"),
+    });
+    await expect(countCallsBetween(dbs.staff.db, new Date("2026-11-29T18:30:00.000Z"), new Date("2026-11-30T18:30:00.000Z"))).resolves.toBe(1);
+    await expect(countCallsBetween(dbs.staff.db, new Date("2026-11-30T18:30:00.000Z"), new Date("2026-12-01T18:30:00.000Z"))).resolves.toBe(0);
   });
 });
