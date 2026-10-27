@@ -35,6 +35,7 @@ import { getRazorpayProvider } from "./billing";
 import { recordRazorpayChargePayment } from "./charges";
 import { getStaffDb } from "./db";
 import { restoreKeptPlan } from "./keep-plan";
+import { announcePaymentToTeams } from "./teams";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 
 /** A free listing business this charge turned into a website client: it needs its Payload tenant once committed. */
@@ -126,6 +127,12 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
 
   // Filled inside the transaction when this payment was the last month of a code's discount: the provider is moved once it commits.
   const discountEndedFor: string[] = [];
+  // Payments this delivery recorded for the first time: Teams is told about each once the transaction has committed.
+  const announce: string[] = [];
+  const noted = <T extends { readonly payment: { readonly id: string }; readonly alreadyRecorded: boolean }>(recorded: T): T => {
+    if (!recorded.alreadyRecorded) announce.push(recorded.payment.id);
+    return recorded;
+  };
   const newMember = await getStaffDb()
     .transaction(async (tx): Promise<NewMember | null> => {
       // Unlocked read, unavoidable: we don't know which business to lock until we know the subscription. Only
@@ -159,7 +166,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       // on one buys nothing, and activating it would also collide with the business's live subscription, so it is kept
       // for staff to refund, as the test checkout does.
       if (subscription.status === "cancelled") {
-        await recordUnappliedPayment(tx, {
+        noted(await recordUnappliedPayment(tx, {
           businessId: subscription.businessId,
           subscriptionId: subscription.id,
           provider: "razorpay",
@@ -171,7 +178,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           reason: "checkout_replaced",
           now: new Date(),
           method: event.method,
-        });
+        }));
         logBillingEvent("warn", "confirmation-refused", {
           businessId: subscription.businessId,
           subscriptionId: subscription.id,
@@ -264,7 +271,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
             : subscription.discountAmountCents;
       const renewalAtNewDiscount = !renewalAtNewPrice && appliedDiscountCents !== subscription.discountAmountCents;
       if (!renewalAtNewPrice && !renewalAtPendingAddOns && (plan === null || plan === undefined || expectedAmount !== event.amountCents || plan.currency !== event.currency)) {
-        await recordUnappliedPayment(tx, {
+        noted(await recordUnappliedPayment(tx, {
           businessId: subscription.businessId,
           subscriptionId: subscription.id,
           provider: "razorpay",
@@ -276,7 +283,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           reason: "amount_mismatch",
           now: new Date(),
           method: event.method,
-        });
+        }));
         logBillingEvent("warn", "confirmation-refused", {
           businessId: subscription.businessId,
           subscriptionId: subscription.id,
@@ -302,6 +309,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
             paidThroughAt: event.currentEnd,
             method: event.method,
           });
+          noted(reactivation);
           if (reactivation.discountEnded) discountEndedFor.push(subscription.id);
           return null;
         }
@@ -316,6 +324,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           discountAmountCents: subscription.discountAmountCents,
           method: event.method,
         });
+        noted(activation);
         if (activation.discountEnded) discountEndedFor.push(subscription.id);
         return activation.openedMembership === null ? null : { businessId: subscription.businessId, ...activation.openedMembership };
       } else {
@@ -369,6 +378,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           providerStatus: "active",
           method: event.method,
         });
+        noted(renewal);
         if (renewal.discountEnded) discountEndedFor.push(subscription.id);
         // The first renewal at Premium's price is the move completing: the subscription now names Premium. A redelivery
         // of the same payment recorded nothing new and leaves the subscription as the first delivery left it.
@@ -418,6 +428,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       throw error;
     });
 
+  for (const paymentId of announce) void announcePaymentToTeams(paymentId);
   if (newMember !== null) await syncTenantForBusiness({ businessId: newMember.businessId, name: newMember.businessName });
   // The last month of a code's discount was just paid: the provider bills the basket without it from the next renewal.
   for (const subscriptionId of discountEndedFor) await moveProviderAfterDiscountEnds(basketDeps(), subscriptionId, new Date());
@@ -461,6 +472,8 @@ async function handleAddOnStatus(event: StatusEvent, addOn: AddOnSubscription): 
  */
 async function handleAddOnCharge(event: ChargedEvent, initial: AddOnSubscription): Promise<void> {
   const provider = getRazorpayProvider();
+  // The payments this delivery recorded for the first time: Teams is told about each once the transaction has committed.
+  const announce: string[] = [];
   const toCancel = await getStaffDb()
     .transaction(async (tx): Promise<readonly ProviderSubscriptionRef[]> => {
       await lockBusinessForBilling(tx, initial.businessId);
@@ -493,13 +506,15 @@ async function handleAddOnCharge(event: ChargedEvent, initial: AddOnSubscription
         });
 
       if (addOn.chargedAmountCents !== event.amountCents || addOn.currency !== event.currency) {
-        await recordUnappliedAddOnPayment(tx, { ...record, reason: "amount_mismatch", now: new Date() });
+        const unapplied = await recordUnappliedAddOnPayment(tx, { ...record, reason: "amount_mismatch", now: new Date() });
+        if (!unapplied.alreadyRecorded) announce.push(unapplied.payment.id);
         refused("amount_mismatch");
         return [];
       }
 
       const applied = await applyAddOnPayment(tx, record, new Date());
       if (applied.kind === "refused") refused(applied.reason);
+      if (applied.kind !== "already-recorded" && applied.paymentId !== null) announce.push(applied.paymentId);
       return applied.cancelAtProvider;
     })
     .catch((error: unknown) => {
@@ -514,6 +529,7 @@ async function handleAddOnCharge(event: ChargedEvent, initial: AddOnSubscription
       throw error;
     });
 
+  for (const paymentId of announce) void announcePaymentToTeams(paymentId);
   for (const target of toCancel) {
     await cancelAtProvider(provider, {
       businessId: initial.businessId,

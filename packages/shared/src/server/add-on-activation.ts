@@ -47,14 +47,20 @@ export type RefusedAddOnPaymentReason = "already_paid" | "checkout_replaced";
 
 export type AppliedAddOnPayment =
   /** The payment is recorded, the add-on is open and invoiced. Cancel the halted rows it replaced. */
-  | { readonly kind: "applied"; readonly cancelAtProvider: readonly ProviderSubscriptionRef[] }
+  | { readonly kind: "applied"; readonly paymentId: string; readonly cancelAtProvider: readonly ProviderSubscriptionRef[] }
   /** The payment had been recorded before (a redelivery or a second click). Nothing was written, nothing to cancel. */
   | { readonly kind: "already-recorded"; readonly cancelAtProvider: readonly [] }
   /**
    * The money is kept for staff as an unapplied payment and nothing was opened. This row's own subscription is named
    * so the caller stops it at the provider: left running it would take a further payment next month for nothing.
    */
-  | { readonly kind: "refused"; readonly reason: RefusedAddOnPaymentReason; readonly cancelAtProvider: readonly ProviderSubscriptionRef[] };
+  | {
+      readonly kind: "refused";
+      readonly reason: RefusedAddOnPaymentReason;
+      /** The unapplied payment that was just recorded, for the caller to announce; null when it had been recorded before. */
+      readonly paymentId: string | null;
+      readonly cancelAtProvider: readonly ProviderSubscriptionRef[];
+    };
 
 /**
  * Applies a captured add-on payment inside the caller's staff transaction, for both the Razorpay webhook and the fake
@@ -74,15 +80,15 @@ export async function applyAddOnPayment(tx: ScopedTransaction, record: AddOnPaym
     const recorded = await tx.transaction((attempt) => activateAddOnPayment(attempt, record));
     return recorded.alreadyRecorded
       ? { kind: "already-recorded", cancelAtProvider: [] }
-      : { kind: "applied", cancelAtProvider: recorded.predecessorsToCancel };
+      : { kind: "applied", paymentId: recorded.payment.id, cancelAtProvider: recorded.predecessorsToCancel };
   } catch (error) {
     const reason = refusedReasonFor(error);
     if (reason === null) throw error;
     const row = await lockAddOnSubscription(tx, record.addOnSubscriptionId);
     if (row === null) throw new AddOnSubscriptionNotFoundError(record.addOnSubscriptionId);
-    await recordUnappliedAddOnPayment(tx, { ...record, reason, now });
+    const unapplied = await recordUnappliedAddOnPayment(tx, { ...record, reason, now });
     if (reason === "already_paid") await markAddOnCancelled(tx, row.id, now);
-    return { kind: "refused", reason, cancelAtProvider: [{ provider: row.provider, providerSubscriptionId: row.providerSubscriptionId }] };
+    return { kind: "refused", reason, paymentId: unapplied.alreadyRecorded ? null : unapplied.payment.id, cancelAtProvider: [{ provider: row.provider, providerSubscriptionId: row.providerSubscriptionId }] };
   }
 }
 

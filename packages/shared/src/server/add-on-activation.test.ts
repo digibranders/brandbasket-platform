@@ -103,7 +103,7 @@ describe("applyAddOnPayment", () => {
     const result = await applyAddOnPayment(outer, RECORD, NOW);
 
     expect(recordAddOnPayment).toHaveBeenCalledWith(attempt, RECORD);
-    expect(result).toEqual({ kind: "applied", cancelAtProvider: predecessorsToCancel });
+    expect(result).toEqual({ kind: "applied", paymentId: "payment_1", cancelAtProvider: predecessorsToCancel });
     expect(recordUnappliedAddOnPayment).not.toHaveBeenCalled();
   });
 
@@ -116,6 +116,7 @@ describe("applyAddOnPayment", () => {
   it("keeps money for an add-on already billing as already_paid, cancels this row, and names its own subscription", async () => {
     vi.mocked(recordAddOnPayment).mockRejectedValue(new AddOnAlreadyBillingError("addon_sub_1", "addon_sub_0"));
     vi.mocked(lockAddOnSubscription).mockResolvedValue(OWN_ROW);
+    vi.mocked(recordUnappliedAddOnPayment).mockResolvedValue({ payment: PAYMENT, alreadyRecorded: false });
 
     const result = await applyAddOnPayment(outer, RECORD, NOW);
 
@@ -124,6 +125,7 @@ describe("applyAddOnPayment", () => {
     expect(result).toEqual({
       kind: "refused",
       reason: "already_paid",
+      paymentId: "payment_1",
       cancelAtProvider: [{ provider: "razorpay", providerSubscriptionId: "sub_rzp_own" }],
     });
   });
@@ -131,6 +133,7 @@ describe("applyAddOnPayment", () => {
   it("keeps money for a replaced checkout as checkout_replaced, names its subscription, and leaves the row alone", async () => {
     vi.mocked(recordAddOnPayment).mockRejectedValue(new AddOnSubscriptionNotPayableError("addon_sub_1"));
     vi.mocked(lockAddOnSubscription).mockResolvedValue(OWN_ROW);
+    vi.mocked(recordUnappliedAddOnPayment).mockResolvedValue({ payment: PAYMENT, alreadyRecorded: false });
 
     const result = await applyAddOnPayment(outer, RECORD, NOW);
 
@@ -139,6 +142,7 @@ describe("applyAddOnPayment", () => {
     expect(result).toEqual({
       kind: "refused",
       reason: "checkout_replaced",
+      paymentId: "payment_1",
       cancelAtProvider: [{ provider: "razorpay", providerSubscriptionId: "sub_rzp_own" }],
     });
   });
