@@ -1,5 +1,6 @@
 import { countCallsBetween, countLateProjects, countLeadsToContact, countSupportTicketsAwaitingStaff } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { countFailedDeliveries24h } from "./deliveries";
 import { readPaymentsCount } from "./payments-count";
 import { countOrNothing, readRailCounts } from "./rail-counts";
 import { countTodayItems } from "./today";
@@ -8,18 +9,26 @@ vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 vi.mock("./today", () => ({ countTodayItems: vi.fn() }));
 vi.mock("./payments-count", () => ({ readPaymentsCount: vi.fn() }));
+vi.mock("./deliveries", () => ({ countFailedDeliveries24h: vi.fn() }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
-  return { ...actual, countCallsBetween: vi.fn(), countLateProjects: vi.fn(), countLeadsToContact: vi.fn(), countSupportTicketsAwaitingStaff: vi.fn() };
+  return {
+    ...actual,
+    countLeadsToContact: vi.fn(),
+    countSupportTicketsAwaitingStaff: vi.fn(),
+    countLateProjects: vi.fn(),
+    countCallsBetween: vi.fn(),
+  };
 });
 
 beforeEach(() => {
   vi.mocked(countTodayItems).mockResolvedValue(5);
-  vi.mocked(countLeadsToContact).mockResolvedValue(4);
+  vi.mocked(countLeadsToContact).mockResolvedValue(2);
   vi.mocked(countSupportTicketsAwaitingStaff).mockResolvedValue(3);
   vi.mocked(countLateProjects).mockResolvedValue(1);
-  vi.mocked(countCallsBetween).mockResolvedValue(2);
-  vi.mocked(readPaymentsCount).mockResolvedValue(6);
+  vi.mocked(countCallsBetween).mockResolvedValue(4);
+  vi.mocked(readPaymentsCount).mockResolvedValue(2);
+  vi.mocked(countFailedDeliveries24h).mockResolvedValue(3);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 afterEach(() => {
@@ -38,18 +47,12 @@ describe("countOrNothing", () => {
 });
 
 describe("readRailCounts", () => {
-  it("reads every count, payments included", async () => {
-    expect(await readRailCounts()).toEqual({ today: 5, leads: 4, requests: 3, projects: 1, calls: 2, payments: 6 });
-  });
-
-  it("counts calls between India midnight and the next", async () => {
-    await readRailCounts();
-    const [, from, until] = vi.mocked(countCallsBetween).mock.calls[0] ?? [];
-    expect((until as Date).getTime() - (from as Date).getTime()).toBe(86_400_000);
+  it("reads every count", async () => {
+    expect(await readRailCounts()).toEqual({ today: 5, leads: 2, requests: 3, projects: 1, calls: 4, payments: 2, deliveries: 3 });
   });
 
   it("leaves out a count it could not read and keeps the rest", async () => {
-    vi.mocked(readPaymentsCount).mockRejectedValue(new Error("database down"));
-    expect(await readRailCounts()).toEqual({ today: 5, leads: 4, requests: 3, projects: 1, calls: 2 });
+    vi.mocked(countFailedDeliveries24h).mockRejectedValue(new Error("database down"));
+    expect(await readRailCounts()).toEqual({ today: 5, leads: 2, requests: 3, projects: 1, calls: 4, payments: 2 });
   });
 });

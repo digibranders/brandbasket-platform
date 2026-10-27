@@ -9,14 +9,14 @@ describe("railFor", () => {
       [null, ["Today"]],
       ["Work", ["Enquiries", "Clients", "Projects", "Requests", "Calls"]],
       ["Money", ["Payments", "Invoices", "Prices", "Coupons", "Affiliates", "Ad credit"]],
-      ["System", ["Outbox", "Errors", "Settings", "Compliance"]],
+      ["System", ["Deliveries", "Errors", "Settings", "Compliance"]],
     ]);
   });
 
   it("hides money pages and compliance from support", () => {
     const support = labels("support");
     expect(support[2]).toEqual(["Money", ["Ad credit"]]);
-    expect(support[3]).toEqual(["System", ["Outbox", "Errors", "Settings"]]);
+    expect(support[3]).toEqual(["System", ["Deliveries", "Errors", "Settings"]]);
   });
 
   it("gives finance the money pages but not compliance", () => {
@@ -27,7 +27,7 @@ describe("railFor", () => {
 
   it("puts a count on Today, Enquiries and Requests only", () => {
     const counted = CONSOLE_RAIL.flatMap((section) => section.links).filter((link) => link.countKey !== undefined).map((link) => link.countKey);
-    expect(counted).toEqual(["today", "leads", "projects", "requests", "calls", "payments"]);
+    expect(counted).toEqual(["today", "leads", "projects", "requests", "calls", "payments", "deliveries"]);
   });
 });
 
@@ -78,6 +78,12 @@ describe("the Money section after Phase 5", () => {
     const money = railFor("finance").find((section) => section.label === "Money");
     expect(money?.links[0]).toMatchObject({ href: "/payments", label: "Payments", icon: "payments", countKey: "payments", needs: "money" });
   });
+});
+
+it("links Deliveries with a red count of failed deliveries, and no longer links the outbox", () => {
+  const system = CONSOLE_RAIL.find((section) => section.label === "System");
+  expect(system?.links.find((link) => link.href === "/deliveries")).toEqual({ href: "/deliveries", label: "Deliveries", icon: "deliveries", countKey: "deliveries", countTone: "alert" });
+  expect(system?.links.some((link) => link.href === "/outbox")).toBe(false);
 });
 
 

@@ -53,7 +53,7 @@ export const CONSOLE_RAIL: readonly ConsoleRailSection[] = [
   {
     label: "System",
     links: [
-      { href: "/outbox", label: "Outbox", icon: "outbox" },
+      { href: "/deliveries", label: "Deliveries", icon: "deliveries", countKey: "deliveries", countTone: "alert" },
       { href: "/support/errors", label: "Errors", icon: "errors" },
       { href: "/settings", label: "Settings", icon: "settings" },
       { href: "/access-log", label: "Compliance", icon: "compliance", needs: "oversight" },
