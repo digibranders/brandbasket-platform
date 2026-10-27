@@ -73,7 +73,7 @@ describe("loadTodayItems", () => {
 
   it("asks only for requests nobody has answered", async () => {
     await loadTodayItems(NOW);
-    expect(listSupportTicketsForStaff).toHaveBeenCalledWith({}, { status: "new", limit: 25 });
+    expect(listSupportTicketsForStaff).toHaveBeenCalledWith({}, { queue: "needs_reply", limit: 25 });
     expect(listErrorIssues).toHaveBeenCalledWith({}, { status: "new" });
   });
 });

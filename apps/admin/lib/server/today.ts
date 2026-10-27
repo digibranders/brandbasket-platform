@@ -60,7 +60,7 @@ async function readQueueSources(): Promise<QueueSources> {
     guarded("leads", () => listLeads(db, {}), []),
     guarded("flagged payments", () => listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }), []),
     guarded("add-ons to contact", () => listAddOnsToContact(db, ATTENTION_READ_LIMIT), []),
-    guarded("new requests", async () => (await listSupportTicketsForStaff(db, { status: "new", limit: NEW_TICKETS_READ_LIMIT })).items, []),
+    guarded("requests needing a reply", async () => (await listSupportTicketsForStaff(db, { queue: "needs_reply", limit: NEW_TICKETS_READ_LIMIT })).items, []),
     guarded("new errors", async () => (await listErrorIssues(db, { status: "new" })).issues, []),
   ]);
   return { clients, leads, flagged, addOns, newTickets, newErrors };
