@@ -1,14 +1,20 @@
+import { Globe } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactElement } from "react";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { cn } from "@brandbasket/shared/lib/cn";
+import { DARK_BUTTON } from "@/components/v2/classes";
+import { EmptyState, PageColumns } from "@/components/v2/page";
 import { AddressCard } from "@/components/website/address-card";
+import { BoughtSection } from "@/components/website/bought-section";
 import { ProgressCard } from "@/components/website/preview-card";
 import { Timeline } from "@/components/website/timeline";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { loadWebsite } from "@/lib/server/website";
 import { addressCardView, siteAddress } from "@/lib/website/address";
 import { readWebsiteNotice, WEBSITE_NOTICES } from "@/lib/website/notices";
+import { askAboutHref } from "@/lib/website/tabs";
 
 export const metadata: Metadata = { title: "Your website" };
 
@@ -33,32 +39,52 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
     projectStatus: project?.status ?? null,
   });
 
+  const noticeLine =
+    notice === null ? null : (
+      <p role={WEBSITE_NOTICES[notice].ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", WEBSITE_NOTICES[notice].ok ? "text-sage-deep" : "text-error")}>
+        {WEBSITE_NOTICES[notice].text}
+      </p>
+    );
+  const showsTimeline = data.steps.length > 0 && view.kind !== "none";
+  const hasAside = showsTimeline || addressCard !== null || data.bought.length > 0;
+
   return (
-    <>
-      <h1 className="sr-only">Progress</h1>
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
-        <div className="grid gap-4">
-          {notice === null ? null : (
-            <p role={WEBSITE_NOTICES[notice].ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", WEBSITE_NOTICES[notice].ok ? "text-sage-deep" : "text-error")}>
-              {WEBSITE_NOTICES[notice].text}
-            </p>
+    <PageColumns
+      main={
+        <>
+          {noticeLine}
+          {view.kind === "none" ? (
+            <EmptyState
+              icon={Globe}
+              title={view.title}
+              text="When there is a website or a big change to build, you can follow it here."
+              action={
+                <Link href={askAboutHref("")} className={DARK_BUTTON}>
+                  Ask for a change
+                </Link>
+              }
+            />
+          ) : (
+            <ProgressCard
+              view={view}
+              pictureUrl={data.pictureUrl}
+              previewUrl={project?.previewUrl ?? null}
+              address={address}
+              businessName={tenant.businessName}
+              liveHostname={live?.hostname ?? null}
+            />
           )}
-          <ProgressCard
-            view={view}
-            pictureUrl={data.pictureUrl}
-            previewUrl={project?.previewUrl ?? null}
-            address={address}
-            businessName={tenant.businessName}
-            liveHostname={live?.hostname ?? null}
-          />
-        </div>
-        {data.steps.length === 0 && addressCard === null ? null : (
-          <div className="grid gap-8">
-            {data.steps.length === 0 || view.kind === "none" ? null : <Timeline steps={data.steps} />}
+        </>
+      }
+      aside={
+        hasAside ? (
+          <>
+            {showsTimeline ? <Timeline steps={data.steps} /> : null}
             {addressCard === null ? null : <AddressCard view={addressCard} />}
-          </div>
-        )}
-      </div>
-    </>
+            {data.bought.length === 0 ? null : <BoughtSection rows={data.bought} payment={data.payment} />}
+          </>
+        ) : null
+      }
+    />
   );
 }
