@@ -10,6 +10,28 @@ export interface CallInvitee {
   readonly timeZone: string;
   /** Sent with the booking so the service's own records can be matched back to the business. */
   readonly businessId: string;
+  /** What the booking is for. A booking made without one is the kickoff call. */
+  readonly purpose?: "kickoff" | "call";
+  /** For a "call": what it is about, and the customer's note, so the host sees both in Cal.com and the webhook can record them. */
+  readonly reason?: string;
+  readonly note?: string | null;
+}
+
+/** Cal.com keeps a metadata value up to 500 characters. */
+const CALCOM_METADATA_VALUE_LIMIT = 500;
+
+/**
+ * What the dashboard writes into a Cal.com booking's metadata. The webhook reads it back (BOOKING_CREATED) to tell the kickoff
+ * call from a later call; a booking from before calls existed has no purpose, and the webhook treats that as the kickoff.
+ */
+export function calcomBookingMetadata(invitee: CallInvitee): Record<string, string> {
+  return {
+    source: "dashboard",
+    businessId: invitee.businessId,
+    purpose: invitee.purpose ?? "kickoff",
+    ...(invitee.reason === undefined ? {} : { reason: invitee.reason }),
+    ...(invitee.note === undefined || invitee.note === null || invitee.note === "" ? {} : { note: invitee.note.slice(0, CALCOM_METADATA_VALUE_LIMIT) }),
+  };
 }
 
 export interface BookedCall {
@@ -224,7 +246,7 @@ function calcomScheduler(key: string, page: { readonly username: string; readonl
           username: page.username,
           eventTypeSlug: page.slug,
           attendee: { name: invitee.name, email: invitee.email, timeZone: invitee.timeZone, language: "en" },
-          metadata: { source: "dashboard", businessId: invitee.businessId },
+          metadata: calcomBookingMetadata(invitee),
         });
         return {
           ok: true,
@@ -280,6 +302,24 @@ function schedulerFor(bookingUrl: string): CallScheduler | null {
   const token = process.env.CALENDLY_API_TOKEN?.trim();
   if (token !== undefined && token !== "" && isCalendlyUrl(bookingUrl)) return calendlyScheduler(token, bookingUrl);
   return isRealDeployment({ VERCEL_ENV: process.env.VERCEL_ENV, APP_ORIGIN: process.env.APP_ORIGIN }) ? null : fakeScheduler;
+}
+
+/** The time a browser sent as a slot, if it is a real time still ahead and inside the booking window; null otherwise. */
+export function readSlotStart(value: unknown, now: Date): Date | null {
+  const start = typeof value === "string" ? new Date(value) : null;
+  if (start === null || Number.isNaN(start.getTime()) || start <= now || start.getTime() > now.getTime() + BOOKING_WINDOW_DAYS * DAY_MS) return null;
+  return start;
+}
+
+/** The time zone a browser sent, or UTC when it is not one the runtime knows. */
+export function readTimeZone(value: unknown): string {
+  if (typeof value !== "string" || value.length > 64) return "UTC";
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: value });
+    return value;
+  } catch {
+    return "UTC";
+  }
 }
 
 /** Times that can be booked from a minute from now to the end of the booking window, or null when times are not offered. */
