@@ -29,7 +29,7 @@ export function BundledAddOnAdd({ addOn, title, savedText, headingId, action }: 
   const { formRef, statusRef, formAction, controls } = usePanelForm(focusHeadingAfter);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-wrap items-center gap-3 sm:justify-end">
+    <form ref={formRef} action={formAction} className="flex flex-wrap items-center gap-3">
       <input type="hidden" name="addOn" value={addOn} />
       {controls.saved ? null : (
         <button
