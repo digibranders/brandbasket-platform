@@ -20,10 +20,10 @@ interface ServicePickerProps {
 export function ServicePicker({ selected, currency }: ServicePickerProps): ReactElement {
   return (
     <div className="mt-6 border-t border-line pt-6">
-      <h3 id="reactivate-services-heading" className="panel-section text-base">
+      <h3 id="reactivate-services-heading" className="font-display text-[0.9375rem] font-semibold tracking-[-0.01em] text-ink">
         Choose your services
       </h3>
-      <p className="mt-1 text-sm text-ink-soft">Every service is at its own price when you come back.</p>
+      <p className="mt-1 text-sm text-ink-2">Every service is at its own price when you come back.</p>
       <div className="mt-4 max-w-xl">
         <PackageCard
           selected={selected}
