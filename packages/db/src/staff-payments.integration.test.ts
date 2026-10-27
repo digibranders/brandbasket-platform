@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createAffiliate, insertAffiliateEarning } from "./queries/affiliates";
+import { findFirstPayment, listReceiptsForBusiness } from "./queries/billing";
 import { createReferralCode } from "./queries/referrals";
 import {
   countPaymentsNeedingStaff,
@@ -243,5 +244,27 @@ describe("countPaymentsNeedingStaff", () => {
     expect(await countPaymentsNeedingStaff(dbs.staff.db, NOVEMBER.from)).toBe(2);
   });
 });
+
+describe("refunds and failures elsewhere in billing", () => {
+  it("still finds a refunded first payment as the business's first payment", async () => {
+    const first = await insertPayment({ providerPaymentId: "pay_first" });
+    await dbs.staff.db.update(payments).set({ status: "refunded" }).where(eq(payments.id, first));
+    expect((await findFirstPayment(dbs.staff.db, businessId))?.id).toBe(first);
+  });
+
+  it("keeps failed attempts off the customer's receipts and out of their numbering", async () => {
+    const paid = await insertPayment({ providerPaymentId: "pay_paid", paidAt: NOV_10, createdAt: NOV_10 });
+    await insertPayment({ providerPaymentId: "pay_failed", status: "failed", paidAt: null, createdAt: NOV_12, failureReason: "Card declined" });
+    const refunded = await insertPayment({ providerPaymentId: "pay_refunded", paidAt: NOV_12, createdAt: new Date("2026-11-13T06:30:00.000Z") });
+    await dbs.staff.db.update(payments).set({ status: "refunded" }).where(eq(payments.id, refunded));
+
+    const receipts = await listReceiptsForBusiness(dbs.staff.db, businessId, 50);
+    expect(receipts.map((receipt) => [receipt.id, receipt.sequence])).toEqual([
+      [refunded, 2],
+      [paid, 1],
+    ]);
+  });
+});
+
 
 

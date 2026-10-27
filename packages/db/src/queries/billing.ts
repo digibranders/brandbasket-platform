@@ -1180,7 +1180,8 @@ export interface Receipt extends Payment {
 /** The receipts list with the term each payment bought. Newest first. Works through row-level security. */
 export async function listReceiptsForBusiness(db: Runner, businessId: string, limit: number): Promise<Receipt[]> {
   assertPositiveInteger(limit, "limit");
-  // Numbered over every payment the business has, not just the page being read, so a receipt keeps its number.
+  // Numbered over every receipt the business has (captured or refunded, never a failed attempt), not just the page being
+  // read, so a receipt keeps its number.
   const numbered = db
     .select({
       id: payments.id,
@@ -1189,7 +1190,7 @@ export async function listReceiptsForBusiness(db: Runner, businessId: string, li
         .as("sequence"),
     })
     .from(payments)
-    .where(eq(payments.businessId, businessId))
+    .where(and(eq(payments.businessId, businessId), inArray(payments.status, ["captured", "refunded"])))
     .as("numbered");
   return db
     .select({
@@ -1215,7 +1216,7 @@ export async function listReceiptsForBusiness(db: Runner, businessId: string, li
     .leftJoin(taxInvoices, eq(taxInvoices.paymentId, payments.id))
     .leftJoin(addOnPayments, eq(addOnPayments.paymentId, payments.id))
     .leftJoin(addOnSubscriptions, eq(addOnSubscriptions.id, addOnPayments.addOnSubscriptionId))
-    .where(eq(payments.businessId, businessId))
+    .where(and(eq(payments.businessId, businessId), inArray(payments.status, ["captured", "refunded"])))
     .orderBy(desc(payments.createdAt), desc(payments.id))
     .limit(limit);
 }
@@ -1319,7 +1320,8 @@ export async function findFirstPayment(db: Runner, businessId: string): Promise<
     .where(
       and(
         eq(payments.businessId, businessId),
-        eq(payments.status, "captured"),
+        // A refund marked later does not undo that the business paid: it still has a first payment.
+        inArray(payments.status, ["captured", "refunded"]),
         notInArray(payments.kind, [...PLAN_EXCLUDED_PAYMENT_KINDS]),
         paymentWasApplied(),
       ),

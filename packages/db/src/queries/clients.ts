@@ -191,7 +191,8 @@ async function billingByBusiness(db: Database, businessIds: readonly string[]): 
       .where(
         and(
           inArray(payments.businessId, ids),
-          eq(payments.status, "captured"),
+          // A refund marked later does not undo that the business paid, so it stays a paying client.
+          inArray(payments.status, ["captured", "refunded"]),
           // A paid extra or an add-on says nothing about the plan, so neither is its first payment.
           notInArray(payments.kind, [...PLAN_EXCLUDED_PAYMENT_KINDS]),
           or(isNull(payments.attentionReason), notInArray(payments.attentionReason, [...UNAPPLIED_PAYMENT_REASONS])),

@@ -368,3 +368,13 @@ describe("a business's members", () => {
   });
 });
 
+describe("a refunded first payment", () => {
+  it("keeps the business a paying client with its first payment", async () => {
+    await dbs.owner.db.update(payments).set({ status: "refunded" }).where(eq(payments.businessId, businessId));
+    const client = (await listClients(dbs.staff.db)).find((row) => row.businessId === businessId);
+    expect(client?.businessName).toBe("Harbour Bakery");
+    expect(client?.billing.firstPayment).not.toBeNull();
+  });
+});
+
+
