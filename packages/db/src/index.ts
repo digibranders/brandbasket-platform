@@ -5,6 +5,7 @@ export * from "./queries/support";
 export * from "./queries/support-staff";
 export * from "./queries/error-issues";
 export * from "./queries/support-ticket-error-links";
+export * from "./queries/deliveries";
 export * from "./queries/staff-payments";
 export { assertValidRule, consumeRateLimit, windowStartFor, type RateLimitResult, type RateLimitRule } from "./rate-limit";
 export {
