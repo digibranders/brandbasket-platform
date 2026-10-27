@@ -56,7 +56,7 @@ export interface NoticeInput {
 
 /**
  * Every notice is a *current state*, never an event: each one is true for exactly as long as its condition holds.
- * That is why nothing here is stored and nothing can be marked read — a dot that could be dismissed while the
+ * That is why nothing here is stored and nothing can be marked read. A dot that could be dismissed while the
  * payment behind it is still due would be a lie. The price of that honesty is that notices cannot be dismissed
  * one by one, which is right for this set, since none of them should be.
  *
@@ -84,17 +84,17 @@ export function noticesFrom({ banner, projectStatus, nextStep, requests = [] }: 
 
   switch (projectStatus) {
     case "preview":
-      notices.push({ id: "preview-ready", text: "Your preview is ready to review", href: "/project", actionable: true });
+      notices.push({ id: "preview-ready", text: "Your preview is ready to review", href: "/website", actionable: true });
       break;
     case "submitted":
     case "building":
-      notices.push({ id: "building", text: "We’re building your website", href: "/project", actionable: false });
+      notices.push({ id: "building", text: "We’re building your website", href: "/website", actionable: false });
       break;
     case "revisions":
-      notices.push({ id: "revisions", text: "We’re making your changes", href: "/project", actionable: false });
+      notices.push({ id: "revisions", text: "We’re making your changes", href: "/website", actionable: false });
       break;
     case "on_hold":
-      notices.push({ id: "on-hold", text: "Your build is paused", href: "/project", actionable: false });
+      notices.push({ id: "on-hold", text: "Your build is paused", href: "/website", actionable: false });
       break;
     default:
       break;

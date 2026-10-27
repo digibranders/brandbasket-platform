@@ -4,6 +4,7 @@ export * from "./schema/error-issues";
 export * from "./queries/support";
 export * from "./queries/change-requests";
 export * from "./queries/change-request-staff";
+export * from "./queries/project-website";
 export * from "./queries/support-staff";
 export * from "./queries/error-issues";
 export * from "./queries/support-ticket-error-links";
@@ -757,7 +758,9 @@ export {
   moveSetupCallBooking,
   recordSetupCallBooking,
   removeSetupCallBooking,
+  saveSetupCallSummary,
 } from "./queries/setup-calls";
+export * from "./queries/team-calls";
 export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
 export { addActivityEvent, listActivityEvents, removeActivityEvent } from "./queries/activity-events";
 export { listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";

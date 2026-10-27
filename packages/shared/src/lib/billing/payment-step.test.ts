@@ -185,8 +185,8 @@ describe("billingBanner", () => {
 });
 
 describe("afterPaymentHref", () => {
-  it("lands on the project once it is sent, and on Check and send while it is open", () => {
-    expect(afterPaymentHref(false)).toBe("/project");
+  it("lands on the Website page once it is sent, and on Check and send while it is open", () => {
+    expect(afterPaymentHref(false)).toBe("/website");
     expect(afterPaymentHref(true)).toBe("/onboarding/review");
   });
 });

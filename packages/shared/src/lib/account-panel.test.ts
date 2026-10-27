@@ -88,9 +88,9 @@ describe("noticesFrom", () => {
     expect(notice?.actionable).toBe(false);
   });
 
-  it("asks the customer to review a preview", () => {
+  it("asks the customer to review a preview, on the Website page", () => {
     const [notice] = noticesFrom({ banner: null, projectStatus: "preview", nextStep: NO_STEP });
-    expect(notice).toMatchObject({ id: "preview-ready", href: "/project", actionable: true });
+    expect(notice).toMatchObject({ id: "preview-ready", href: "/website", actionable: true });
   });
 
   it.each([
@@ -98,9 +98,9 @@ describe("noticesFrom", () => {
     ["building", "building"],
     ["revisions", "revisions"],
     ["on_hold", "on-hold"],
-  ] as const)("reports %s as something we are doing, not something they must do", (status, id) => {
+  ] as const)("reports %s as something we are doing, not something they must do, on the Website page", (status, id) => {
     const [notice] = noticesFrom({ banner: null, projectStatus: status, nextStep: NO_STEP });
-    expect(notice).toMatchObject({ id, actionable: false });
+    expect(notice).toMatchObject({ id, href: "/website", actionable: false });
   });
 
   it.each(["start-onboarding", "continue-onboarding"] as const)("chases unfinished setup (%s)", (kind) => {

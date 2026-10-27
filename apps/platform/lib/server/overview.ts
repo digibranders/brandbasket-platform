@@ -11,6 +11,7 @@ import { activityRows, monthKey, monthStart, resultLines, type ActivityRow, type
 import type { ServiceKey } from "@/lib/first-look";
 import type { WebsiteEnquiries } from "@/lib/site-events";
 import { needsYouFrom, type NeedsYouRow } from "@/lib/requests/needs";
+import { loadNextCall } from "./calls";
 import { getAppDb } from "./db";
 import { getLiveWebsite, getProjectOverview, type ProjectOverview } from "./onboarding";
 import { quietly } from "./quietly";
@@ -29,6 +30,8 @@ export interface OverviewData {
   readonly results: readonly ResultLine[];
   readonly activity: readonly ActivityRow[];
   readonly nextPayment: { readonly date: Date; readonly amount: string | null } | null;
+  /** The time of the next call after the kickoff ("Wed 2 Dec, 14:00"), or null when none is booked. */
+  readonly nextCall: string | null;
 }
 
 const toView = (row: SnapshotView): SnapshotView => ({
@@ -68,7 +71,7 @@ export async function loadOverview(tenant: TenantContext, billing: CustomerBilli
   const todo = await loadTodo(tenant);
   const db = getAppDb();
   const allowed = includedEditsAllowed(billing.hasWebsite);
-  const [leads, snapshots, events, overview, live, needs, used, waiting, enquiries] = await Promise.all([
+  const [leads, snapshots, events, overview, live, needs, used, nextCall, waiting, enquiries] = await Promise.all([
     todo.services.includes("website")
       ? quietly("overview", "chatbot leads", 0, () => withTenantScope(db, tenant, (tx) => countChatbotLeadsSince(tx, tenant.businessId, monthStart(now))))
       : Promise.resolve(0),
@@ -80,6 +83,7 @@ export async function loadOverview(tenant: TenantContext, billing: CustomerBilli
     allowed === 0
       ? Promise.resolve(null)
       : quietly("overview", "the included edits", null as number | null, () => withTenantScope(db, tenant, (tx) => countIncludedEdits(tx, tenant.businessId, monthBoundsIst(now)))),
+    loadNextCall(tenant, now),
     todo.services.includes("social")
       ? quietly("overview", "the posts waiting for approval", NO_POSTS_WAITING, () => loadWaitingPostCount(tenant))
       : Promise.resolve(NO_POSTS_WAITING),
@@ -112,5 +116,6 @@ export async function loadOverview(tenant: TenantContext, billing: CustomerBilli
       limit: 6,
     }),
     nextPayment: date === null ? null : { date, amount },
+    nextCall,
   };
 }

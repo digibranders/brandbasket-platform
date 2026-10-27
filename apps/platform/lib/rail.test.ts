@@ -1,8 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
 import { DEALS_PATH } from "@/lib/deals";
 import { REVIEWS_PATH } from "@/lib/owner-replies";
 import { isCurrent, linkIsCurrent, railSections, searchRail } from "@/lib/rail";
+import { WEBSITE_PATH } from "@/lib/website/tabs";
 
 const FULL = { quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, listingClaim: false, todoCount: 3 } as const;
 
@@ -31,11 +33,15 @@ describe("railSections", () => {
     expect(railSections(unpaid).flatMap((section) => section.links).some((link) => link.count !== undefined)).toBe(false);
   });
 
-  it("opens the website on its setup until it is sent, then on the project", () => {
+  it("opens the website on its Progress page whether or not setup is sent, with the pages that are not tabs inside", () => {
     const website = (done: boolean) => railSections({ ...FULL, websiteSetupDone: done })[1]?.links[0];
-    expect(website(false)?.href).toBe("/onboarding");
-    expect(website(false)?.children?.[0]?.label).toBe("Set up your website");
-    expect(website(true)?.href).toBe("/project");
+    expect(website(false)).toMatchObject({ href: WEBSITE_PATH, label: "Website", icon: "website" });
+    expect(website(true)?.href).toBe(WEBSITE_PATH);
+    expect(website(false)?.children?.map((child) => [child.label, child.href])).toEqual([
+      ["Chatbot name", CHATBOT_NAME_PATH],
+      ["Authors", "/content/authors"],
+      ["Categories", "/content/categories"],
+    ]);
   });
 
   it("has no Services section for a plan without the website", () => {
@@ -52,7 +58,7 @@ describe("the Social & Ads and Search links", () => {
 
   it("lists Website, Social & Ads and Search in that order for a customer with all three", () => {
     expect(services({ hasSocial: true, hasSearch: true })?.links.map((link) => [link.label, link.href, link.icon])).toEqual([
-      ["Website", "/onboarding", "website"],
+      ["Website", "/website", "website"],
       ["Social & Ads", "/social", "social"],
       ["Search", "/search", "search"],
     ]);
@@ -85,6 +91,27 @@ describe("the Social & Ads and Search links", () => {
   });
 });
 
+describe("Calls under Requests", () => {
+  const requests = (input: Parameters<typeof railSections>[0]) => railSections(input)[0]?.links.find((link) => link.label === "Requests");
+
+  it("appears once the kickoff call has happened, and keeps Requests lit on its page", () => {
+    expect(requests(FULL)?.children).toEqual([{ href: "/requests/calls", label: "Calls" }]);
+    const link = requests(FULL);
+    expect(link === undefined ? false : linkIsCurrent(link, "/requests/calls")).toBe(true);
+    expect(isCurrent("/requests/calls", "/requests/calls")).toBe(true);
+  });
+
+  it("is not there during the first look, when the kickoff is the only call, nor for an account that has not paid", () => {
+    expect(requests({ ...FULL, quiet: true })?.children).toBeUndefined();
+    expect(requests({ ...FULL, hasAccess: false })?.children).toBeUndefined();
+  });
+
+  it("is something search can jump to", () => {
+    expect(searchRail(railSections(FULL), "calls").map((target) => target.href)).toEqual(["/requests/calls"]);
+    expect(searchRail(railSections({ ...FULL, quiet: true }), "calls")).toEqual([]);
+  });
+});
+
 describe("current link", () => {
   it("matches Overview exactly and the rest by path", () => {
     expect(isCurrent("/", "/")).toBe(true);
@@ -93,9 +120,12 @@ describe("current link", () => {
     expect(isCurrent("/contents", "/content")).toBe(false);
   });
 
-  it("marks the website current on any of its pages", () => {
+  it("marks the website current on any of its pages, tabs or not", () => {
     const website = railSections(FULL)[1]?.links[0];
-    expect(website === undefined ? false : linkIsCurrent(website, "/domain")).toBe(true);
+    expect(website === undefined ? false : linkIsCurrent(website, "/website/pages")).toBe(true);
+    expect(website === undefined ? false : linkIsCurrent(website, "/content/authors")).toBe(true);
+    expect(website === undefined ? false : linkIsCurrent(website, "/content/blog/new")).toBe(true);
+    expect(website === undefined ? false : linkIsCurrent(website, "/oyechats/leads")).toBe(true);
   });
 });
 
@@ -103,7 +133,9 @@ describe("searchRail", () => {
   it("starts with Ask for a change and finds pages inside a group", () => {
     const sections = railSections(FULL);
     expect(searchRail(sections, "")[0]?.label).toBe("Ask for a change");
-    expect(searchRail(sections, "BLOG").map((target) => target.label)).toEqual(["Website: Blog"]);
+    expect(searchRail(sections, "AUTHORS").map((target) => target.label)).toEqual(["Website: Authors"]);
+    expect(searchRail(sections, "chatbot leads").map((target) => target.href)).toEqual(["/oyechats/leads"]);
+    expect(searchRail(sections, "website: blog").map((target) => target.href)).toEqual(["/content/blog"]);
   });
 });
 

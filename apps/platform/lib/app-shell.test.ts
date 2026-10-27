@@ -30,7 +30,7 @@ function grant(hasAccess: boolean): void {
 
 /** The first look is over once staff mark the call held. */
 function callHeld(held: boolean): void {
-  const booking = held ? { bookedAtIso: "", startsAtIso: null, endsAtIso: null, heldAtIso: "2026-10-26T10:00:00.000Z" } : null;
+  const booking = held ? { bookedAtIso: "", startsAtIso: null, endsAtIso: null, heldAtIso: "2026-10-26T10:00:00.000Z", summary: null } : null;
   vi.mocked(getSetupCallState).mockResolvedValue({ url: null, booking, readAtMs: NOW });
 }
 

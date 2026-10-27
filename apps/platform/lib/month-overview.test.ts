@@ -1,6 +1,10 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("@/app/app-host/(protected)/requests/calls/actions", () => ({ bookCallAction: vi.fn() }));
+vi.mock("@/app/app-host/(protected)/setup-call-actions", () => ({ loadCallSlots: vi.fn() }));
 
 import { MonthOverview } from "@/components/overview/month-overview";
 import { DARK_BUTTON } from "@/components/v2/classes";
@@ -36,12 +40,13 @@ function data(overrides: Partial<OverviewData> = {}): OverviewData {
     results: [],
     activity: [],
     nextPayment: null,
+    nextCall: null,
     ...overrides,
   };
 }
 
 /** The overview as the server sends it, with React's text-node separators removed so sentences read whole. */
-function render(overview: OverviewData, extra: { readonly bookingUrl?: string | null } = {}): string {
+function render(overview: OverviewData, extra: { readonly bookingUrl?: string | null; readonly canBook?: boolean } = {}): string {
   return renderToStaticMarkup(
     createElement(MonthOverview, {
       firstName: "Priya",
@@ -50,6 +55,12 @@ function render(overview: OverviewData, extra: { readonly bookingUrl?: string | 
       now: NOW,
       buildCard: null,
       bookingUrl: extra.bookingUrl ?? null,
+      callOptions: [
+        { value: "website", label: "Website" },
+        { value: "billing", label: "Billing" },
+        { value: "other", label: "Something else" },
+      ],
+      canBook: extra.canBook ?? true,
     }),
   ).replaceAll("<!-- -->", "");
 }
@@ -63,12 +74,18 @@ it("greets by name with the subline for the open count, and offers a change requ
   expect(html).not.toContain("Book a call");
 });
 
-it("offers the booking page in a new tab when one is set", () => {
+it("offers the Book a call sheet, not a link to the booking page, when a booking page is set", () => {
   const html = render(data(), { bookingUrl: "https://cal.com/brandbasket/call" });
-  expect(html).toContain("Book a call");
-  expect(html).toContain('href="https://cal.com/brandbasket/call"');
-  expect(html).toContain('target="_blank"');
-  expect(html).toContain('rel="noopener noreferrer"');
+  expect(html).toContain(">Book a call</button>");
+  expect(html).not.toContain('href="https://cal.com/brandbasket/call"');
+  expect(html).not.toContain('target="_blank"');
+});
+
+it("shows the next call beside the next payment, and nothing when none is booked", () => {
+  const html = render(data({ nextCall: "Wed 2 Dec, 14:00" }));
+  expect(html).toContain("Next call");
+  expect(html).toContain("Wed 2 Dec, 14:00");
+  expect(render(data())).not.toContain("Next call");
 });
 
 it("lists at most 4 open items, with See all N to the To do page when there are more", () => {
@@ -169,6 +186,8 @@ it("puts the build card first in the left column when one is given", () => {
       now: NOW,
       buildCard: createElement("div", { id: "build-card" }),
       bookingUrl: null,
+      callOptions: [],
+      canBook: true,
     }),
   );
   expect(html.indexOf("build-card")).toBeGreaterThan(-1);

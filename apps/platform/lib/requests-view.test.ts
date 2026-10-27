@@ -1,6 +1,11 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("@/app/app-host/(protected)/requests/calls/actions", () => ({ bookCallAction: vi.fn() }));
+vi.mock("@/app/app-host/(protected)/setup-call-actions", () => ({ loadCallSlots: vi.fn() }));
+
 import { RequestsView } from "@/components/requests/requests-view";
 import { DARK_BUTTON } from "@/components/v2/classes";
 import type { RequestRow } from "@/lib/requests/rows";
@@ -82,4 +87,11 @@ it("says there are no requests yet instead of drawing an empty list", () => {
 it("says nothing is open or done in a list with nothing in it", () => {
   expect(render({ listed: [] })).toContain("Nothing is open.");
   expect(render({ listed: [], filter: "done" })).toContain("Nothing is done yet.");
+});
+
+it("offers Book a call beside Ask for a change when calls are open, and not otherwise", () => {
+  const calls = { options: [{ value: "website", label: "Website" }] as const, bookingUrl: "https://cal.com/brandbasket/call", canBook: true };
+  expect(render({ calls })).toContain(">Book a call</button>");
+  expect(render({ calls: null })).not.toContain("Book a call");
+  expect(render()).not.toContain("Book a call");
 });

@@ -38,4 +38,10 @@ describe("callInviteHref", () => {
     expect(file).toContain("DTEND:20261019T060000Z");
     expect(file.startsWith("BEGIN:VCALENDAR")).toBe(true);
   });
+
+  it("names the event the kickoff call unless it is given another name", () => {
+    const text = (href: string): string => decodeURIComponent(href.split(",")[1] ?? "");
+    expect(text(callInviteHref("2026-10-19T05:30:00.000Z", "2026-10-19T06:00:00.000Z"))).toContain("SUMMARY:Brandbasket kickoff call");
+    expect(text(callInviteHref("2026-12-02T08:30:00.000Z", "2026-12-02T09:00:00.000Z", "Brandbasket call"))).toContain("SUMMARY:Brandbasket call\r\n");
+  });
 });

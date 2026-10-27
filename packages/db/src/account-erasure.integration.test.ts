@@ -70,6 +70,7 @@ async function seedClosedAccount(withSupport = false, withChangeQuote = false): 
   await raw(`insert into directory_claims (id, business_id, listing_key, business_name, phone) values ('${id(7)}', '${businessId}', 'physio/mh/thane/aster-physio', 'Aster Physio', '+919820099999')`);
   await raw(`insert into directory_business_profiles (business_id, street_address, phone) values ('${businessId}', '1 Road', '+919820099999')`);
   await raw(`insert into projects (id, business_id) values ('${id(8)}', '${businessId}')`);
+  await raw(`insert into project_preview_images (project_id, business_id, preview_url, content_type, width, height, image) values ('${id(8)}', '${businessId}', 'https://aster-preview.example.com', 'image/webp', 1280, 800, '\\x01')`);
   await raw(`insert into domains (id, business_id, hostname) values ('${id(9)}', '${businessId}', 'aster.example')`);
   await raw(`insert into email_messages (id, to_address, subject, template, body_text, body_html, transport) values ('${id(10)}', 'meera@example.com', 's', 't', 'b', '<p>b</p>', 'outbox')`);
   await raw(`insert into email_messages (id, to_address, subject, template, body_text, body_html, transport) values ('${id(11)}', 'someone-else@example.com', 's', 't', 'b', '<p>b</p>', 'outbox')`);
@@ -216,7 +217,7 @@ describe("eraseClosedAccount", () => {
     expect(outcome.storageKeys.every((key) => key.startsWith(`t/${businessId}/`))).toBe(true);
     expect(outcome.vimeoIds).toEqual(["123456789"]);
 
-    for (const table of ["patients", "practitioners", "leads", "setup_invites", "media_assets", "directory_pictures", "directory_videos", "directory_claims", "directory_business_profiles", "projects", "domains", "business_members"]) {
+    for (const table of ["patients", "practitioners", "leads", "setup_invites", "media_assets", "directory_pictures", "directory_videos", "directory_claims", "directory_business_profiles", "projects", "project_events", "project_preview_images", "domains", "business_members"]) {
       expect(await count(table, table === "business_members" ? `business_id = '${businessId}'` : "true"), table).toBe(0);
     }
     expect(await count("email_messages", "to_address = 'meera@example.com'")).toBe(0);
@@ -250,7 +251,7 @@ describe("eraseClosedAccount", () => {
     expect(staff?.name).toBe("Staff");
   });
 
-  it("erases the saved answers, updates, monthly numbers, deliverables, reports and site events of the closed business and leaves another business's, and hands back the post pictures", async () => {
+  it("erases the saved answers, updates, monthly numbers, deliverables, reports, site events and calls of the closed business and leaves another business's, and hands back the post pictures", async () => {
     const { closureId } = await seedClosedAccount();
     const [control] = await dbs.owner.db.insert(businesses).values({ slug: "birch-dental", name: "Birch Dental", currency: "INR" }).returning({ id: businesses.id });
     const controlId = control?.id ?? "";
@@ -268,6 +269,9 @@ describe("eraseClosedAccount", () => {
         ),
       );
       await dbs.owner.db.execute(sql.raw(`insert into deliverables (id, business_id, service, kind, title) values (gen_random_uuid(), '${id}', 'search', 'page', 'Faster home page')`));
+      await dbs.owner.db.execute(
+        sql.raw(`insert into team_calls (id, business_id, reason, starts_at, ends_at) values (gen_random_uuid(), '${id}', 'billing', '2026-12-02T08:30:00Z', '2026-12-02T09:00:00Z')`),
+      );
     }
     const outcome = await eraseClosedAccount(dbs.staff.db, { closureId, now: NOW });
     expect(outcome.kind).toBe("erased");
@@ -275,7 +279,7 @@ describe("eraseClosedAccount", () => {
       expect(outcome.storageKeys).toContain(`deliverables/${postIds[businessId]}/display`);
       expect(outcome.storageKeys).not.toContain(`deliverables/${postIds[controlId]}/display`);
     }
-    for (const table of ["service_setup", "activity_events", "monthly_snapshots", "monthly_reports", "site_events"]) {
+    for (const table of ["service_setup", "activity_events", "monthly_snapshots", "monthly_reports", "site_events", "team_calls"]) {
       expect(await count(table, `business_id = '${businessId}'`), `${table} of the closed business`).toBe(0);
       expect(await count(table, `business_id = '${controlId}'`), `${table} of the other business`).toBe(1);
     }
@@ -483,8 +487,8 @@ describe("what the erase knows about", () => {
     "business_hours", "business_members", "business_modules", "business_profiles", "change_requests", "chatbot_leads", "chatbots", "deliverables", "directory_business_categories", "directory_business_faqs",
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
     "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "monthly_reports", "monthly_snapshots", "onboarding_progress",
-    "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "projects", "service_setup", "services",
-    "setup_call_bookings", "setup_invites", "site_events", "support_tickets",
+    "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_preview_images", "projects", "service_setup", "services",
+    "setup_call_bookings", "setup_invites", "site_events", "support_tickets", "team_calls",
   ];
 
   it("sorts every table that points at a business into erased or kept, so a new one cannot be forgotten", async () => {

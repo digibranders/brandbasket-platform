@@ -8,6 +8,7 @@ import { RequestsView } from "@/components/requests/requests-view";
 import { paymentNoticeLine, readRequestNotice, requestNoticeLine } from "@/lib/requests/notices";
 import { chooseView, includedHeaderLine, requestRows } from "@/lib/requests/rows";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { loadBookCallOptions } from "@/lib/server/calls";
 import { loadRequestDetail, loadRequests } from "@/lib/server/requests";
 
 export const metadata: Metadata = { title: "Requests" };
@@ -24,11 +25,11 @@ interface RequestsPageProps {
 const one = (value: string | readonly string[] | undefined): string | undefined => (typeof value === "string" ? value : undefined);
 
 export default async function RequestsPage({ searchParams }: RequestsPageProps): Promise<ReactElement> {
-  const { tenant, billing } = await requireCustomerAccess();
+  const { user, tenant, billing } = await requireCustomerAccess();
   const params = await searchParams;
   const asked = one(params.open);
   if (asked !== undefined && !z.uuid().safeParse(asked).success) notFound();
-  const data = await loadRequests(tenant, billing.hasWebsite);
+  const [data, calls] = await Promise.all([loadRequests(tenant, billing.hasWebsite), loadBookCallOptions(tenant, billing, user.email)]);
   const rows = requestRows(data.items);
   const view = chooseView(rows, { filter: one(params.filter), open: asked });
   const detail = view.selectedId === null ? null : await loadRequestDetail(tenant, view.selectedId);
@@ -43,6 +44,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps):
       selectedId={view.selectedId}
       explicit={view.explicit}
       includedLine={includedHeaderLine(data.includedUsed, data.includedAllowed)}
+      calls={calls}
       detail={
         detail === null ? null : (
           <RequestDetail
@@ -50,6 +52,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps):
             now={new Date()}
             submissionKey={randomUUID()}
             notice={notice === null ? paymentNoticeLine(params.charge) : requestNoticeLine(notice)}
+            calls={calls}
           />
         )
       }

@@ -8,6 +8,7 @@ import { WelcomeOverview } from "@/components/first-look/welcome-overview";
 import { MonthOverview } from "@/components/overview/month-overview";
 import { firstLookInput, inFirstLook } from "@/lib/first-look";
 import { loadFirstLook } from "@/lib/server/first-look";
+import { kindOptions } from "@/lib/requests/form";
 import { firstName } from "@brandbasket/shared/lib/names";
 import { nextStep } from "@brandbasket/shared/lib/next-step";
 import { projectStageIndex } from "@/lib/project-stages";
@@ -84,6 +85,8 @@ export default async function AppHomePage(): Promise<ReactElement> {
         data={data}
         now={now}
         bookingUrl={callState.url}
+        callOptions={kindOptions(data.services)}
+        canBook={!isPhoneAccountEmail(user.email)}
         buildCard={
           showsBuildCard ? <NextStepCard step={step} buildStageIndex={buildStageIndex} /> : null
         }

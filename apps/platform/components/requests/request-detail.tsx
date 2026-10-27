@@ -2,8 +2,10 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { ticketStatusWord } from "@brandbasket/shared/lib/change-requests";
+import { BookCallButton } from "@/components/calls/book-call-button";
 import { SupportReadReceipt } from "@/components/panel/support/support-read-receipt";
 import { dayMonth } from "@/lib/call-dates";
+import type { BookCallOptions } from "@/lib/calls/form";
 import { KIND_LABELS } from "@/lib/requests/form";
 import { ASK_FOR_A_CHANGE_PATH } from "@/lib/requests/links";
 import { dayIn, nextStep, stepperRows } from "@/lib/requests/status";
@@ -21,10 +23,12 @@ interface RequestDetailProps {
   readonly submissionKey: string;
   /** What just happened, if anything: a refused move or a payment coming back. */
   readonly notice: NoticeLine | null;
+  /** What Book a call needs, or null when calls are not offered. */
+  readonly calls?: BookCallOptions | null;
 }
 
 /** The open request: where it is, what happens next, the conversation, and the reply box. */
-export function RequestDetail({ detail, now, submissionKey, notice }: RequestDetailProps): ReactElement {
+export function RequestDetail({ detail, now, submissionKey, notice, calls = null }: RequestDetailProps): ReactElement {
   const { ticket, change, events } = detail;
   const rows = change === null ? null : stepperRows(change, events);
   const step = change === null ? null : nextStep(change, events, dayIn(now), now);
@@ -41,7 +45,12 @@ export function RequestDetail({ detail, now, submissionKey, notice }: RequestDet
             {kind} · you asked on <span className="font-figure tabular-nums">{dayMonth(ticket.createdAt)}</span>
           </p>
         </div>
-        {change === null ? <span className="shrink-0 rounded-md bg-sunken px-2 py-0.5 text-xs font-semibold text-ink">{ticketStatusWord(ticket.status)}</span> : null}
+        <div className="flex shrink-0 items-start gap-3">
+          {calls === null || ticket.status === "closed" ? null : (
+            <BookCallButton {...calls} look="link" label="Talk about it on a call" defaultReason={change?.kind ?? "other"} defaultNote={`About my request: ${ticket.subject}`} />
+          )}
+          {change === null ? <span className="rounded-md bg-sunken px-2 py-0.5 text-xs font-semibold text-ink">{ticketStatusWord(ticket.status)}</span> : null}
+        </div>
       </header>
       {notice === null ? null : (
         <p role={notice.ok ? "status" : "alert"} className={cn("mx-5 mt-4 text-[0.8125rem] font-semibold", notice.ok ? "text-sage-deep" : "text-error")}>
