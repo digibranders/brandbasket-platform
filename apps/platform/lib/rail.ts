@@ -3,7 +3,7 @@ import { CHATBOT_LEADS_PATH, CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
 import { ASK_FOR_A_CHANGE_PATH, REQUESTS_PATH } from "@/lib/requests/links";
 
 /** The rail's icons by name; components/v2/rail-icon.tsx draws them. */
-export type RailIcon = "overview" | "requests" | "todo" | "website" | "reviews" | "deals" | "profile" | "services" | "billing" | "settings";
+export type RailIcon = "overview" | "requests" | "todo" | "website" | "social" | "search" | "reviews" | "deals" | "profile" | "services" | "billing" | "settings";
 
 export interface RailTarget {
   readonly href: string;
@@ -31,6 +31,9 @@ export interface RailInput {
   readonly hasAccess: boolean;
   /** False for a paid plan without the Managed Website service. */
   readonly hasWebsite: boolean;
+  /** Social & Ads and Search bought (lib/server/todo.ts services). Left out, the link is not shown. */
+  readonly hasSocial?: boolean;
+  readonly hasSearch?: boolean;
   /** Whether the website's setup has been sent (or the site is live). */
   readonly websiteSetupDone: boolean;
   /** A member who claimed a directory listing keeps its Reviews and Deals. */
@@ -45,6 +48,8 @@ export interface RailInput {
 const DEALS_HREF = "/deals";
 const REVIEWS_HREF = "/reviews";
 const TODO_HREF = "/todo";
+const SOCIAL: RailLink = { href: "/social", label: "Social & Ads", icon: "social" };
+const SEARCH: RailLink = { href: "/search", label: "Search", icon: "search" };
 
 const OVERVIEW: RailLink = { href: "/", label: "Overview", icon: "overview" };
 const PROFILE: RailLink = { href: "/details", label: "Business profile", icon: "profile" };
@@ -90,10 +95,11 @@ export function railSections(input: RailInput): readonly RailSection[] {
       { label: "Account", links: [BILLING, SETTINGS] },
     ];
   }
+  const services = [...(input.hasWebsite ? [websiteLink(input.websiteSetupDone)] : []), ...(input.hasSocial === true ? [SOCIAL] : []), ...(input.hasSearch === true ? [SEARCH] : [])];
   const todo: RailLink = { href: TODO_HREF, label: "To do", icon: "todo", ...(input.todoCount > 0 ? { count: input.todoCount } : {}) };
   return [
     { label: null, links: input.hasAccess ? [OVERVIEW, todo, requests] : [OVERVIEW, requests] },
-    ...(input.hasWebsite ? [{ label: "Services", links: [websiteLink(input.websiteSetupDone)] }] : []),
+    ...(services.length > 0 ? [{ label: "Services", links: services }] : []),
     ...(input.listingClaim ? [{ label: "Directory", links: [REVIEWS, DEALS] }] : []),
     { label: "Account", links: [PROFILE, SERVICES, BILLING, SETTINGS] },
   ];
