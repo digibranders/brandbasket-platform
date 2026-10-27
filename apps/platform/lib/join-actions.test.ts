@@ -11,7 +11,7 @@ vi.mock("@/lib/server/request-brand", () => ({ requestBrand: async () => host.br
 vi.mock("@/lib/server/listing-account", () => ({ requestJoinCode: vi.fn(), createListingAccount: vi.fn() }));
 vi.mock("@/lib/server/sign-in", () => ({ signInWithPassword: vi.fn() }));
 vi.mock("@/lib/server/affiliate-access", () => ({ landingForSignedInUser: vi.fn() }));
-vi.mock("@/lib/server/customer-access", () => ({ LISTING_PAGE_PATH: "/business" }));
+vi.mock("@/lib/server/customer-access", () => ({ LISTING_PAGE_PATH: "/details" }));
 
 const otp = { otpId: "existing-challenge", emailHint: "o•••@example.test", confirmRequired: true };
 function form(code: boolean): FormData {

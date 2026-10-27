@@ -124,7 +124,6 @@ export async function addClosureAction(_previous: PanelFormState, formData: Form
   }
 
   revalidatePath("/details");
-  revalidatePath("/business");
   return clashes.length === 0 ? panelFormSavedState : leaveAddedState(clashes);
 }
 
@@ -146,7 +145,6 @@ export async function deleteClosureAction(_previous: PanelFormState, formData: F
     const removed = await withTenantScope(getAppDb(), access.tenant, (tx) => deleteClosure(tx, id.data));
     if (!removed) {
       revalidatePath("/details");
-      revalidatePath("/business");
       return closureNotFoundState(formData);
     }
   } catch (error) {
@@ -156,6 +154,5 @@ export async function deleteClosureAction(_previous: PanelFormState, formData: F
   }
 
   revalidatePath("/details");
-  revalidatePath("/business");
   return panelFormSavedState;
 }
