@@ -22,6 +22,14 @@ describe("firstLookSteps", () => {
     ]);
   });
 
+  it("after the call has been held: the call is done, said as done, with its day", () => {
+    const rows = firstLookSteps({ hasWebsite: true, callStartIso: "2026-10-27T08:30:00.000Z", booked: true, held: true });
+    expect(rows.map((row) => [row.title, row.note, row.state, row.when]).slice(0, 2)).toEqual([
+      ["Kickoff call", "Done", "done", "Tue 27 Oct"],
+      ["We start building", "Within 48 hours of the call", "later", "By Thu 29 Oct"],
+    ]);
+  });
+
   it("without the website: only the call and the start", () => {
     expect(firstLookSteps({ hasWebsite: false, callStartIso: null, booked: false }).map((row) => row.title)).toEqual(["Kickoff call", "We start work"]);
   });

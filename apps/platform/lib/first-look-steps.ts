@@ -10,10 +10,18 @@ export interface FirstLookStep {
 }
 
 /** The rows of What happens next. Dates appear once the call has a time. */
-export function firstLookSteps(input: { readonly hasWebsite: boolean; readonly callStartIso: string | null; readonly booked: boolean }): readonly FirstLookStep[] {
+export function firstLookSteps(input: {
+  readonly hasWebsite: boolean;
+  readonly callStartIso: string | null;
+  readonly booked: boolean;
+  /** Staff have marked the call held: it is said as done, not as booked. */
+  readonly held?: boolean | undefined;
+}): readonly FirstLookStep[] {
   const dates = input.callStartIso === null ? null : promiseDates(input.callStartIso);
   const callDay = input.callStartIso === null ? "" : shortDay(dayKey(input.callStartIso, BRAND_TIME_ZONE));
-  const call: FirstLookStep = input.booked
+  const call: FirstLookStep = input.held === true
+    ? { title: "Kickoff call", note: "Done", when: callDay, state: "done" }
+    : input.booked
     ? { title: "Kickoff call booked", note: "30 minutes, video", when: callDay, state: "done" }
     : { title: "Kickoff call", note: "The time you pick", when: "", state: "now" };
   const startWhen = dates === null ? "" : `By ${shortDay(dates.startBy)}`;
