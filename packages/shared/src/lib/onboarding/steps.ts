@@ -27,6 +27,11 @@ export function stepAfter(step: OnboardingStepKey): OnboardingStepKey | null {
   return ONBOARDING_STEPS[index + 1]?.key ?? null;
 }
 
+export function stepBefore(step: OnboardingStepKey): OnboardingStepKey | null {
+  const index = ONBOARDING_STEPS.findIndex((info) => info.key === step);
+  return ONBOARDING_STEPS[index - 1]?.key ?? null;
+}
+
 /** Where a saved step moves on to: the next step, or the review for the last one. */
 export function hrefAfter(step: OnboardingStepKey): string {
   return onboardingStepHref(stepAfter(step) ?? "review");
