@@ -5,7 +5,7 @@ import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { readInviteeUri } from "@brandbasket/shared/lib/setup-call-link";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { getAppDb } from "./db";
-import { BOOKING_WINDOW_DAYS, bookCallSlot, cancelCallBooking, listCallSlots } from "./call-scheduling";
+import { bookCallSlot, cancelCallBooking, listCallSlots, readSlotStart, readTimeZone } from "./call-scheduling";
 import { getSetupCallUrl } from "./setup-call-link";
 
 /** What the home screen needs to show the kickoff call: where it is booked, and whether and when it has been. */
@@ -25,6 +25,8 @@ export interface SetupCallBookingView {
   readonly endsAtIso: string | null;
   /** When staff marked the call held; null until then. */
   readonly heldAtIso: string | null;
+  /** What staff wrote about what was agreed on the call; null until they have. */
+  readonly summary: string | null;
 }
 
 /**
@@ -47,6 +49,7 @@ export const getSetupCallState = cache(async (tenant: TenantContext): Promise<Se
         startsAtIso: row.startsAt?.toISOString() ?? null,
         endsAtIso: row.endsAt?.toISOString() ?? null,
         heldAtIso: row.heldAt?.toISOString() ?? null,
+        summary: row.summary,
       },
     };
   } catch (error) {
@@ -95,11 +98,9 @@ export async function bookSetupCall(
   timeZone: unknown,
   now: Date,
 ): Promise<BookSetupCallResult> {
-  const start = typeof startIso === "string" ? new Date(startIso) : null;
-  const zone = typeof timeZone === "string" && timeZone.length <= 64 && isTimeZone(timeZone) ? timeZone : "UTC";
-  if (start === null || Number.isNaN(start.getTime()) || start <= now || start.getTime() > now.getTime() + BOOKING_WINDOW_DAYS * 86_400_000) {
-    return { ok: false, reason: "failed" };
-  }
+  const start = readSlotStart(startIso, now);
+  if (start === null) return { ok: false, reason: "failed" };
+  const zone = readTimeZone(timeZone);
   try {
     const url = await getSetupCallUrl();
     // A business changing its time has a booking already; it is cancelled once the new one is made, never before.
@@ -127,14 +128,5 @@ export async function bookSetupCall(
   } catch (error) {
     console.error("[setup-call] could not book the call", errorLogInfo(error));
     return { ok: false, reason: "failed" };
-  }
-}
-
-function isTimeZone(name: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en", { timeZone: name });
-    return true;
-  } catch {
-    return false;
   }
 }
