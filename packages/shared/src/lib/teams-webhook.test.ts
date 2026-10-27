@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTeamsDestination, readTeamsWebhookUrl, teamsCard, teamsSettingKey, TEAMS_DESTINATIONS } from "./teams-webhook";
+import { isTeamsDestination, readTeamsWebhookUrl, teamsCard, teamsSettingKey, telUrl, TEAMS_DESTINATIONS } from "./teams-webhook";
 
 const WORKFLOWS = "https://prod-12.centralindia.logic.azure.com:443/workflows/abc123/triggers/manual/paths/invoke?api-version=2016-06-01&sig=secret";
 
@@ -77,5 +77,18 @@ describe("teamsCard", () => {
     const body = content(teamsCard({ title: "T", text: "x".repeat(5_000), facts: [{ name: "Message", value: "y".repeat(900) }] })).body as { text?: string; facts?: { value: string }[] }[];
     expect(body[2]?.text).toHaveLength(1_500);
     expect(body[1]?.facts?.[0]?.value).toHaveLength(300);
+  });
+});
+
+describe("telUrl", () => {
+  it("makes a dialable link from a number as people write it, and none from text without digits", () => {
+    expect(telUrl("+91 98200 11111")).toBe("tel:+919820011111");
+    expect(telUrl("098200-11111")).toBe("tel:09820011111");
+    for (const bad of [null, undefined, "", "n/a"]) expect(telUrl(bad)).toBeNull();
+  });
+
+  it("adds extra buttons after the open button", () => {
+    const card = teamsCard({ title: "t", open: { label: "Open", url: "https://x.example" }, buttons: [{ label: "Call", url: "tel:+911" }] });
+    expect((card.attachments[0].content as { actions: { title: string }[] }).actions.map((action) => action.title)).toEqual(["Open", "Call"]);
   });
 });

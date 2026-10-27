@@ -38,7 +38,10 @@ describe("paymentTeamsCard", () => {
       "Paid with": "UPI (asha@okhdfc)",
       Invoice: "BB/2026-27/0001",
     });
-    expect(card.actions).toEqual([{ type: "Action.OpenUrl", title: "Open the client", url: "https://console.example/clients/biz-1" }]);
+    expect(card.actions).toEqual([
+      { type: "Action.OpenUrl", title: "Open the client", url: "https://console.example/clients/biz-1" },
+      { type: "Action.OpenUrl", title: "Call now", url: "tel:+919820011111" },
+    ]);
   });
 
   it("names a repeat payment by its kind", () => {
@@ -70,6 +73,7 @@ describe("paymentTeamsCard", () => {
     const usd = { ...BASE, currency: "USD" as const, amountCents: 19_400, invoice: null, customer: { name: null, email: "asha@example.com", phone: null }, business: { name: "Rao Clinic", websiteUrl: null }, method: NO_METHOD };
     expect(parts(usd).body[0]?.text).toBe("New customer paid: $194");
     expect(facts(usd)).toEqual({ Email: "asha@example.com", Paid: "$194", Bought: "Managed Website, Social Media and Ads" });
+    expect(parts(usd).actions?.map((action) => action.title)).toEqual(["Open the client"]);
   });
 });
 
@@ -96,6 +100,12 @@ describe("planStatusTeamsCard", () => {
   it("names the problem, the customer, when access ends and where to open them", () => {
     const card = JSON.stringify(planStatusTeamsCard({ ...base, status: "past_due" }));
     for (const part of ["Payment failed, Razorpay is retrying: Rao Clinic", "Asha Rao", "asha@example.com", "pending", "26 Nov 2026", "Open the client"]) expect(card).toContain(part);
+  });
+
+  it("has a Call button for the customer's number", () => {
+    const actions = (planStatusTeamsCard({ ...base, status: "past_due" }).attachments[0].content as { actions: { title: string; url: string }[] }).actions;
+    expect(actions.map((action) => action.title)).toEqual(["Open the client", "Call now"]);
+    expect(actions[1]?.url).toBe("tel:+919820011111");
   });
 
   it("words each of the three states differently", () => {
