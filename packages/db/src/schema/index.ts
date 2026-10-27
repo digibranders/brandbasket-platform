@@ -10,6 +10,7 @@ export * from "./business-facts";
 export * from "./businesses";
 export * from "./chatbots";
 export * from "./currency";
+export * from "./deliveries";
 export * from "./directory";
 export * from "./directory-ads";
 export * from "./directory-business-catalog";
