@@ -1,8 +1,8 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { staffMembers, users } from "./schema";
-import { appendSupportReply, createSupportTicket } from "./queries/support";
-import { appendSupportMessageByStaff, countSupportQueues, listSupportTicketsForStaff, updateSupportTicketByStaff } from "./queries/support-staff";
+import { businessMembers, businesses, staffMembers, users } from "./schema";
+import { appendSupportReply, createSupportTicket, getSupportTicket } from "./queries/support";
+import { appendSupportMessageByStaff, countSupportQueues, createSupportTicketByStaff, getSupportTicketForStaff, listSupportTicketsForStaff, updateSupportTicketByStaff } from "./queries/support-staff";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
 let dbs: TestDatabases;
@@ -66,5 +66,61 @@ describe("the requests queues", () => {
     await updateSupportTicketByStaff(dbs.staff.db, { staffUserId: STAFF, ticketId: second.id, expectedVersion: second.version, status: "resolved" });
     expect(await countSupportQueues(dbs.staff.db)).toEqual({ needsReply: 1, needsReplyOverADay: 0, waitingOnClient: 0, done: 1 });
     expect((await listSupportTicketsForStaff(dbs.staff.db, { queue: "done" })).items.map((item) => item.id)).toEqual([second.id]);
+  });
+});
+
+describe("a request staff open for a client", () => {
+  const OWNER = "open-owner";
+
+  async function seedBusiness(withOwner: boolean): Promise<string> {
+    const [business] = await dbs.staff.db.insert(businesses).values({ slug: "kavya-salon", name: "Kavya Salon" }).returning();
+    if (!business) throw new Error("Test business was not seeded.");
+    if (withOwner) {
+      await dbs.staff.db.insert(users).values({ id: OWNER, name: "Kavya Nair", email: "owner@kavyasalon.test" });
+      await dbs.staff.db.insert(businessMembers).values({ userId: OWNER, businessId: business.id, role: "owner" });
+    }
+    return business.id;
+  }
+
+  const request = (businessId: string) => ({
+    staffUserId: STAFF,
+    businessId,
+    category: "website_change" as const,
+    subject: "Change the Sunday hours",
+    body: "Asked on the phone: open at 10 on Sundays.",
+    submissionKey: "staff-open-12345",
+  });
+
+  it("opens it for the owner, written by staff, and waits on the client", async () => {
+    const businessId = await seedBusiness(true);
+    const result = await createSupportTicketByStaff(dbs.staff.db, request(businessId));
+    expect(result.created).toBe(true);
+    expect(result.requesterUserId).toBe(OWNER);
+    expect(result.ticket.businessId).toBe(businessId);
+    const asOwner = await getSupportTicket(dbs.app.db, OWNER, result.ticket.id);
+    expect(asOwner?.messages.map((message) => [message.authorRole, message.visibility])).toEqual([["staff", "public"]]);
+    const asStaff = await getSupportTicketForStaff(dbs.staff.db, result.ticket.id);
+    expect(asStaff?.events.map((event) => [event.kind, event.actorUserId])).toEqual([["created", STAFF]]);
+    expect((await listSupportTicketsForStaff(dbs.staff.db, { queue: "waiting_on_client" })).items.map((item) => item.id)).toEqual([result.ticket.id]);
+  });
+
+  it("opens it once for a replayed form, and refuses the same form with other text", async () => {
+    const businessId = await seedBusiness(true);
+    const first = await createSupportTicketByStaff(dbs.staff.db, request(businessId));
+    const replay = await createSupportTicketByStaff(dbs.staff.db, request(businessId));
+    expect(replay.created).toBe(false);
+    expect(replay.ticket.id).toBe(first.ticket.id);
+    await expect(createSupportTicketByStaff(dbs.staff.db, { ...request(businessId), subject: "Something else" })).rejects.toThrow(/already used/i);
+  });
+
+  it("refuses a business with no owner", async () => {
+    const businessId = await seedBusiness(false);
+    await expect(createSupportTicketByStaff(dbs.staff.db, request(businessId))).rejects.toThrow(/no owner/i);
+  });
+
+  it("refuses a staff member who is switched off", async () => {
+    const businessId = await seedBusiness(true);
+    await dbs.staff.db.update(staffMembers).set({ active: false }).where(eq(staffMembers.userId, STAFF));
+    await expect(createSupportTicketByStaff(dbs.staff.db, request(businessId))).rejects.toThrow(/active staff/i);
   });
 });

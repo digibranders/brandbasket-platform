@@ -3,7 +3,7 @@ import { uuidv7 } from "uuidv7";
 import type { Database } from "../client";
 import { users } from "../schema/auth";
 import { staffMembers } from "../schema/staff";
-import { businesses } from "../schema/businesses";
+import { businessMembers, businesses } from "../schema/businesses";
 import { isPhoneAccountEmail } from "../phone-account";
 import { supportAttachments, supportCategory, supportEvents, supportMessages, supportPriority, supportStatus, supportTickets, type SupportCategory, type SupportMessage, type SupportPriority, type SupportStatus, type SupportTicket, type SupportVisibility } from "../schema/support";
 import { withUserScope, type ScopedTransaction } from "../scope";
@@ -191,5 +191,53 @@ export async function countSupportTicketsByStatus(db: Database): Promise<Readonl
   const totals = Object.fromEntries(supportStatus.enumValues.map((status) => [status, 0])) as Record<SupportStatus, number>;
   for (const row of rows) totals[row.status] = row.total;
   return totals;
+}
+
+export interface CreateSupportTicketByStaffInput {
+  readonly staffUserId: string;
+  readonly businessId: string;
+  readonly category: SupportCategory;
+  readonly subject: string;
+  /** What the client asked for, written by staff. It becomes the request's first message, public to the client. */
+  readonly body: string;
+  readonly submissionKey: string;
+}
+export interface CreateSupportTicketByStaffResult {
+  readonly ticket: SupportTicket;
+  /** False when the same form was sent again: callers email and record only once. */
+  readonly created: boolean;
+  readonly requesterUserId: string;
+}
+
+/**
+ * Opens a request on a client's behalf, usually after a call. The requester is the business's first owner (the one who
+ * redeemed the setup link), so the request shows on their dashboard; the first message is the staff member's public note.
+ */
+export async function createSupportTicketByStaff(db: Database, input: CreateSupportTicketByStaffInput): Promise<CreateSupportTicketByStaffResult> {
+  assertSupportSubmissionKey(input.submissionKey);
+  assertSupportUuid(input.businessId, "Business ID");
+  if (!supportCategory.enumValues.includes(input.category)) throw new SupportQueryError("invalid_input", "Invalid support category.");
+  const subject = supportText(input.subject, "Subject", 3, 120);
+  const body = supportText(input.body, "Message", 10, 5000);
+  const submissionHash = supportSubmissionHash({ openedByStaff: true, businessId: input.businessId, category: input.category, subject, body });
+  return withUserScope(db, input.staffUserId, async (tx) => {
+    await assertActiveStaff(tx, input.staffUserId);
+    const [owner] = await tx.select({ userId: businessMembers.userId }).from(businessMembers)
+      .where(and(eq(businessMembers.businessId, input.businessId), eq(businessMembers.role, "owner")))
+      .orderBy(asc(businessMembers.createdAt), asc(businessMembers.userId)).limit(1);
+    if (!owner) throw new SupportQueryError("not_found", "This business has no owner to open a request for.");
+    await lockSupportSubmission(tx, owner.userId, input.submissionKey);
+    const [existing] = await tx.select().from(supportTickets).where(and(eq(supportTickets.requesterUserId, owner.userId), eq(supportTickets.submissionKey, input.submissionKey))).limit(1);
+    if (existing) {
+      if (existing.submissionHash !== submissionHash) throw new SupportQueryError("conflict", "This form was already used for a different request.");
+      return { ticket: existing, created: false, requesterUserId: owner.userId };
+    }
+    const id = uuidv7();
+    await tx.insert(supportTickets).values({ id, displayRef: `FY-${id.replaceAll("-", "").toUpperCase()}`, requesterUserId: owner.userId, businessId: input.businessId, category: input.category, subject, submissionKey: input.submissionKey, submissionHash });
+    await tx.insert(supportMessages).values({ ticketId: id, authorRole: "staff", authorUserId: input.staffUserId, body, visibility: "public", submissionKey: input.submissionKey, submissionHash });
+    const [ticket] = await tx.select().from(supportTickets).where(eq(supportTickets.id, id));
+    if (!ticket) throw new SupportQueryError("not_found", "The new request was not found.");
+    return { ticket, created: true, requesterUserId: owner.userId };
+  });
 }
 
