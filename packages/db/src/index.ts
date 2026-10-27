@@ -151,11 +151,21 @@ export {
 } from "./queries/discount-plans";
 export { listMembershipsForUser, type BusinessMembership } from "./queries/memberships";
 export {
+  addStaffMember,
+  countActiveAdmins,
   countPlatformRecords,
   findActiveStaffMember,
   findActiveStaffUserIdByEmail,
+  findStaffMember,
+  findStaffMemberByEmail,
+  listStaffRoster,
+  setStaffRole,
+  switchOffStaffMember,
+  switchOnStaffMember,
   type ActiveStaffMember,
   type PlatformCounts,
+  type StaffMemberState,
+  type StaffRosterRow,
 } from "./queries/staff";
 export {
   findEmail,
