@@ -1228,12 +1228,14 @@ export {
   restoreAccountClosure,
   restoreAccountClosureForBusiness,
   summariseExitFeedback,
+  summariseOpenClosures,
   type AccountClosure,
   type ExitFeedbackRow,
   type ExitFeedbackSummary,
   type NewAccountClosure,
   type NewExitFeedback,
   type OpenClosure,
+  type OpenClosureSummary,
 } from "./queries/account-closures";
 export {
   claimAccountOtpAttempt,
@@ -1289,10 +1291,13 @@ export {
   tallyStaffAccessSince,
   type StaffAccessTally,
   listRecentStaffAccess,
+  listStaffAccessPage,
   recordStaffAccess,
   STAFF_ACCESS_ACTIONS,
+  STAFF_ACCESS_PAGE_SIZE,
   type StaffAccessAction,
   type StaffAccessEntry,
+  type StaffAccessFilter,
   type StoredStaffAccess,
 } from "./queries/staff-access-log";
 export {

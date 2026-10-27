@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, isNull, sql, type AnyColumn, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, min, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import {
@@ -236,3 +236,19 @@ export async function summariseExitFeedback(db: Runner): Promise<ExitFeedbackSum
     waitingToErase: open[0]?.n ?? 0,
   };
 }
+
+export interface OpenClosureSummary {
+  readonly count: number;
+  /** When the next closing account is erased, or null when none is waiting. */
+  readonly nextEraseAfter: Date | null;
+}
+
+/** How many closed accounts are inside their grace period, for the Compliance page. Use with the staff connection. */
+export async function summariseOpenClosures(db: Runner): Promise<OpenClosureSummary> {
+  const rows = await db
+    .select({ value: count(), next: min(accountClosures.eraseAfter) })
+    .from(accountClosures)
+    .where(and(isNull(accountClosures.restoredAt), isNull(accountClosures.erasedAt)));
+  return { count: Number(rows[0]?.value ?? 0), nextEraseAfter: rows[0]?.next ?? null };
+}
+
