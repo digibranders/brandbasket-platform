@@ -39,6 +39,13 @@ describe("the Settings page", () => {
     expect(html).not.toContain("border border-line");
   });
 
+  it("is one form-width column in the page frame", async () => {
+    const html = await render();
+    expect(html).toContain("@container");
+    expect(html).toContain("max-w-[40rem]");
+    expect(html).not.toContain("mx-auto");
+  });
+
   it("states the account and the business as rows", async () => {
     const html = await render();
     expect(html).toContain(">Priya Test</dd>");

@@ -63,15 +63,15 @@ export function BundledAddOnRemove({ addOn, title, endsOn, copy, headingId, acti
   }
 
   return (
-    <div className="max-w-sm space-y-3 sm:text-right">
+    <div className="max-w-sm space-y-3">
       <div role="group" aria-labelledby={questionId} className="space-y-1.5 text-sm">
         <p id={questionId} ref={questionRef} tabIndex={-1} className="text-ink outline-none">
           Remove {title}? It stays until {endsOn}, then stops.
         </p>
-        <p id={keepsId} className="tabular-nums text-ink-soft">
+        <p id={keepsId} className="tabular-nums text-ink-2">
           {copy.keeps}
         </p>
-        <p id={monthlyId} className="tabular-nums text-ink-soft">
+        <p id={monthlyId} className="tabular-nums text-ink-2">
           {copy.monthly}
         </p>
         {copy.websiteOffline === null ? null : (
@@ -85,7 +85,7 @@ export function BundledAddOnRemove({ addOn, title, endsOn, copy, headingId, acti
           </p>
         )}
       </div>
-      <form ref={formRef} action={formAction} className="flex flex-wrap items-center gap-3 sm:justify-end">
+      <form ref={formRef} action={formAction} className="flex flex-wrap items-center gap-3">
         <input type="hidden" name="addOn" value={addOn} />
         {controls.saved ? null : (
           <>

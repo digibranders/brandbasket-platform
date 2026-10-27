@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { z } from "zod";
 import { AskForm } from "@/components/requests/ask-form";
+import { PageFrame } from "@/components/v2/page";
 import { aboutLine, kindOptions, readAskDefaults } from "@/lib/requests/form";
 import { includedHeaderLine } from "@/lib/requests/rows";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
@@ -37,14 +38,10 @@ export default async function AskForAChangePage({
   const defaults = readAskDefaults(query, options);
   const postLine = post === null || post.kind !== "post" || post.dueOn === null ? null : aboutLine(post.title, post.dueOn);
   const includedLine = data === null ? null : includedHeaderLine(data.includedUsed, data.includedAllowed);
+  const lede = [defaults.fromPreview ? "Your preview is waiting. Tell us what to change." : null, includedLine].filter((line) => line !== null).join(" ");
   return (
-    <div className="mx-auto grid w-full max-w-[34rem] gap-6">
-      <header>
-        <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.035em] text-ink">Ask for a change</h1>
-        {defaults.fromPreview ? <p className="mt-2 text-[0.84375rem] text-ink-2">Your preview is waiting. Tell us what to change.</p> : null}
-        {includedLine === null ? null : <p className="mt-2 text-[0.84375rem] text-ink-2">{includedLine}</p>}
-      </header>
+    <PageFrame title="Ask for a change" lede={lede === "" ? undefined : lede} width="form">
       <AskForm options={options} submissionKey={randomUUID()} defaultKind={defaults.kind ?? undefined} defaultPage={defaults.page} defaultBody={postLine ?? undefined} />
-    </div>
+    </PageFrame>
   );
 }

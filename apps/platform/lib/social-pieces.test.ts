@@ -94,8 +94,10 @@ it("lists the week with each day, the status word and the title", () => {
   expect(html).toContain("Mon 30 Nov");
 });
 
-it("says so when nothing is planned this week", () => {
-  expect(text(createElement(WeekList, { posts: [] }))).toContain("Nothing is planned for this week yet.");
+it("says so when nothing is planned this week, and what will appear", () => {
+  const html = text(createElement(WeekList, { posts: [] }));
+  expect(html).toContain("Nothing is planned for this week yet.");
+  expect(html).toContain("Posts we plan for the week appear here.");
 });
 
 const NOW = new Date("2026-12-01T05:00:00.000Z");
@@ -116,10 +118,21 @@ it("with posts waiting, says how many and by when, shows each and has the one da
   expect(html).not.toContain("No posts are waiting for you.");
 });
 
-it("with nothing waiting, says so and has no dark button", () => {
+it("with nothing waiting, says so, says what will appear, and offers Ask for a change as the one dark button", () => {
   const html = view({ posts: [post({ status: "published" })] });
   expect(html).toContain("No posts are waiting for you.");
-  expect(count(html, DARK_BUTTON)).toBe(0);
+  expect(html).toContain("When a post is ready, it appears here as it will look on Instagram and Facebook");
+  expect(html).not.toContain("Approve");
+  expect(count(html, DARK_BUTTON)).toBe(1);
+  expect(html).toContain('href="/requests/new?kind=social"');
+});
+
+it("sits in the page frame: the title, the month line, and the ads and the week in the aside", () => {
+  const html = view({ ads: { spent: "₹6,240", percent: null, enquiries: null, adMoney: null } });
+  expect(html).toContain(">Social &amp; Ads</h1>");
+  expect(html).toContain("@container");
+  expect(html.indexOf("Ads in December")).toBeGreaterThan(html.indexOf("Approve all 3"));
+  expect(html.indexOf("This week")).toBeGreaterThan(html.indexOf("Ads in December"));
 });
 
 it("shows the ads panel with the figures it has and leaves out a line whose figure is not known", () => {

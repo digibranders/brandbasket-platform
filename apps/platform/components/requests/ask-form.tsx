@@ -58,7 +58,7 @@ export function AskForm({ options, submissionKey, defaultKind, defaultPage = "",
           {options.map((option) => (
             <label
               key={option.value}
-              className="inline-flex h-8 cursor-pointer items-center rounded-lg px-3 text-[0.8125rem] font-semibold text-ink shadow-[0_0_0_1px_var(--color-line)] transition-colors duration-200 has-[:checked]:bg-ink has-[:checked]:text-white has-[:checked]:shadow-none has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-rattan"
+              className="inline-flex h-8 cursor-pointer items-center rounded-lg px-3 text-[0.8125rem] font-semibold text-ink bg-sunken transition-colors duration-200 has-[:checked]:bg-ink has-[:checked]:text-white has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-rattan"
             >
               <input type="radio" name="kind" value={option.value} checked={kind === option.value} onChange={() => setKind(option.value)} className="sr-only" />
               {option.label}

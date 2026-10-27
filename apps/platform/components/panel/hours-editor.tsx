@@ -14,6 +14,7 @@ import {
 } from "@brandbasket/shared/lib/onboarding/hours";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
+import { SOFT_BUTTON } from "@/components/v2/classes";
 
 interface DayState {
   readonly mode: DayMode;
@@ -52,6 +53,12 @@ const CONTROL_CLASSES =
 const MODE_TRIGGER_CLASSES =
   "w-full rounded-control border border-ink-soft/65 bg-paper px-3 py-2 text-sm text-ink transition-colors duration-300 ease-calm focus:border-accent disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-accent-deep";
 
+/** The same two boxes on the Business profile (`bare`), in the dashboard's own look: white inside, an edge dark enough to find. */
+const BARE_CONTROL_CLASSES =
+  "mt-1 block w-full rounded-control border border-ink-2/65 bg-surface px-3 py-2 text-sm tabular-nums text-ink transition-colors duration-200 focus:border-ink disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-error";
+const BARE_MODE_TRIGGER_CLASSES =
+  "w-full rounded-control border border-ink-2/65 bg-surface px-3 py-2 text-sm text-ink transition-colors duration-200 focus:border-ink disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-error";
+
 const MODE_OPTIONS: readonly SelectOption[] = DAY_MODES.map((mode) => ({ value: mode, label: DAY_MODE_LABELS[mode] }));
 
 /**
@@ -89,7 +96,7 @@ export function HoursEditor({ initial, invalidField, errorId, bare = false }: Ho
         <button
           type="button"
           onClick={copyMondayToWeekdays}
-          className="link-underline text-sm text-ink-soft transition-colors hover:text-ink"
+          className={bare ? SOFT_BUTTON : "link-underline text-sm text-ink-soft transition-colors hover:text-ink"}
         >
           Use Monday’s hours for every weekday
         </button>
@@ -101,7 +108,7 @@ export function HoursEditor({ initial, invalidField, errorId, bare = false }: Ho
         </p>
       )}
 
-      <div className={cn("mt-3 divide-y divide-line", bare ? undefined : "rounded-control border border-line bg-paper/60")}>
+      <div className={cn("mt-3 divide-y divide-line", bare ? "border-y border-line" : "rounded-control border border-line bg-paper/60")}>
         {WEEKDAYS.map((label, day) => {
           const state = days[day] ?? NOT_SET;
           const modeName = dayModeField(day);
@@ -114,7 +121,7 @@ export function HoursEditor({ initial, invalidField, errorId, bare = false }: Ho
           return (
             <div
               key={label}
-              className="grid grid-cols-[6.5rem_1fr] items-end gap-3 px-4 py-3 sm:grid-cols-[7rem_11rem_1fr_1fr]"
+              className={cn("grid grid-cols-[6.5rem_1fr] items-end gap-3 py-3 sm:grid-cols-[7rem_11rem_1fr_1fr]", bare ? undefined : "px-4")}
             >
               <span className="self-center text-sm font-medium">{label}</span>
               <div className="text-xs text-ink-soft">
@@ -131,7 +138,7 @@ export function HoursEditor({ initial, invalidField, errorId, bare = false }: Ho
                     if (isDayMode(mode)) update(day, { mode });
                   }}
                   searchable={false}
-                  className={MODE_TRIGGER_CLASSES}
+                  className={bare ? BARE_MODE_TRIGGER_CLASSES : MODE_TRIGGER_CLASSES}
                   wrapperClassName="mt-1"
                   {...invalid(modeName)}
                 />
@@ -147,7 +154,7 @@ export function HoursEditor({ initial, invalidField, errorId, bare = false }: Ho
                       required={isOpen}
                       disabled={!isOpen}
                       onChange={(event) => update(day, { opens: event.target.value })}
-                      className={CONTROL_CLASSES}
+                      className={bare ? BARE_CONTROL_CLASSES : CONTROL_CLASSES}
                       {...invalid(opensName)}
                     />
                   </label>
@@ -162,7 +169,7 @@ export function HoursEditor({ initial, invalidField, errorId, bare = false }: Ho
                       required={isOpen}
                       disabled={!isOpen}
                       onChange={(event) => update(day, { closes: event.target.value })}
-                      className={CONTROL_CLASSES}
+                      className={bare ? BARE_CONTROL_CLASSES : CONTROL_CLASSES}
                       {...invalid(closesName)}
                     />
                   </label>

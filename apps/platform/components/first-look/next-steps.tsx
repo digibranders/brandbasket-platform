@@ -11,10 +11,12 @@ interface NextStepsProps {
   readonly hasWebsite: boolean;
   readonly callStartIso: string | null;
   readonly booked: boolean;
+  /** The call has been held (the To do page): it reads as done. */
+  readonly held?: boolean | undefined;
 }
 
-export function NextSteps({ hasWebsite, callStartIso, booked }: NextStepsProps): ReactElement {
-  const rows = firstLookSteps({ hasWebsite, callStartIso, booked });
+export function NextSteps({ hasWebsite, callStartIso, booked, held }: NextStepsProps): ReactElement {
+  const rows = firstLookSteps({ hasWebsite, callStartIso, booked, held });
   return (
     <section aria-labelledby="next-steps-title">
       <h2 id="next-steps-title" className={SECTION_TITLE}>

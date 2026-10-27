@@ -31,7 +31,7 @@ export function PostCard({ post, position, total, waiting, showApprove }: PostCa
       )}
       <div>
         <p className="font-figure text-xs text-ink-2">{dueLabel(post.dueOn)}</p>
-        {waiting && total > 1 ? <p className="font-figure text-xs text-ink-2 lg:hidden">{postPosition(position, total)}</p> : null}
+        {waiting && total > 1 ? <p className="font-figure text-xs text-ink-2 md:hidden">{postPosition(position, total)}</p> : null}
       </div>
       {post.caption === null ? null : <p className="text-[0.84375rem] leading-snug text-ink">{post.caption}</p>}
       <div className="flex flex-wrap items-center gap-3">

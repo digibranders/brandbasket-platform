@@ -3,7 +3,8 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactElement } from "react";
 import { z } from "zod";
 import { SUPPORT_ATTACHMENT_LIMIT, SUPPORT_ATTACHMENT_MAX_BYTES } from "@brandbasket/shared/lib/support";
-import { PhotoIcon } from "@brandbasket/shared/ui/icons";
+import { Image as ImageIcon, X } from "@phosphor-icons/react/dist/ssr";
+import { SOFT_BUTTON } from "@/components/v2/classes";
 
 export interface SupportAttachmentsHandle {
   readonly addFiles: (files: readonly File[] | FileList) => void;
@@ -151,10 +152,10 @@ export const SupportAttachments = forwardRef<
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="block text-sm font-medium text-ink">
-          Screenshots <span className="font-normal text-ink-soft">(optional)</span>
+        <label className="block text-[0.8125rem] font-semibold text-ink">
+          Screenshots <span className="font-normal text-ink-2">(optional)</span>
         </label>
-        <span className="text-xs tabular-nums text-ink-soft">
+        <span className="text-xs tabular-nums text-ink-2">
           {previews.length}/{SUPPORT_ATTACHMENT_LIMIT}
         </span>
       </div>
@@ -179,12 +180,12 @@ export const SupportAttachments = forwardRef<
           type="button"
           disabled={busy || disabled || reachedLimit}
           onClick={() => fileInputRef.current?.click()}
-          className="inline-flex items-center gap-1.5 rounded-control border border-ink-soft/50 bg-paper px-3 py-1.5 text-xs font-medium text-ink transition-colors duration-200 hover:border-ink hover:bg-paper-deep focus-visible:border-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+          className={`${SOFT_BUTTON} disabled:cursor-not-allowed disabled:opacity-50`}
         >
-          <PhotoIcon className="size-3.5 text-ink-soft" />
+          <ImageIcon size={16} aria-hidden="true" />
           <span>{previews.length === 0 ? "Choose files" : "Add more"}</span>
         </button>
-        <span className="text-xs text-ink-soft">
+        <span className="text-xs text-ink-2">
           {reachedLimit ? "Maximum 3 screenshots attached" : "or paste screenshots from clipboard"}
         </span>
       </div>
@@ -193,7 +194,7 @@ export const SupportAttachments = forwardRef<
         <ul className="flex flex-wrap gap-3 pt-1">
           {previews.map((item) => (
             <li key={item.key} className="w-28">
-              <div className="relative h-20 w-28 overflow-hidden rounded-control border border-line bg-paper-deep shadow-xs">
+              <div className="relative h-20 w-28 overflow-hidden rounded-control bg-sunken">
                 {/* Object URLs are local previews. Uploaded screenshots never have public URLs. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -209,39 +210,29 @@ export const SupportAttachments = forwardRef<
                 <button
                   type="button"
                   disabled={busy || disabled}
-                  className="absolute right-1.5 top-1.5 z-20 flex size-5 items-center justify-center rounded-full bg-ink/80 text-paper shadow-sm backdrop-blur-xs transition-transform hover:scale-110 hover:bg-ink active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer disabled:pointer-events-none disabled:opacity-50"
+                  className="absolute right-1.5 top-1.5 z-20 flex size-5 items-center justify-center rounded-full bg-ink/80 text-paper backdrop-blur-xs transition-transform hover:scale-110 hover:bg-ink active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer disabled:pointer-events-none disabled:opacity-50"
                   onClick={() => void remove(item)}
                   aria-label={`Remove screenshot ${item.name}`}
                   title={`Remove ${item.name}`}
                 >
-                  <svg
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="size-2.5"
-                  >
-                    <path d="m4 4 8 8m0-8-8 8" />
-                  </svg>
+                  <X size={10} weight="bold" aria-hidden="true" />
                 </button>
               </div>
-              <p className="mt-1 truncate text-xs text-ink-soft" title={item.name}>
+              <p className="mt-1 truncate text-xs text-ink-2" title={item.name}>
                 {item.name}
               </p>
               {item.error === null ? null : (
-                <p className="mt-0.5 text-xs text-accent-deep leading-tight">{item.error}</p>
+                <p className="mt-0.5 text-xs text-error leading-tight">{item.error}</p>
               )}
             </li>
           ))}
         </ul>
       ) : null}
 
-      <p className="text-xs text-ink-soft">
+      <p className="text-xs text-ink-2">
         Up to 3 images, 4 MB each (PNG, JPEG, WebP). Hide any personal information before uploading.
       </p>
-      <p role="status" aria-live="polite" className="text-sm text-accent-deep">
+      <p role="status" aria-live="polite" className="text-sm text-error">
         {busy ? "Uploading screenshots…" : error ?? ""}
       </p>
     </div>

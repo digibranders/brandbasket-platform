@@ -5,7 +5,9 @@ import { findAnnouncement, findBusinessTimeZone, findOwnListing, getBusinessHour
 import { addDays, localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { upcomingClosures } from "@brandbasket/shared/lib/business-facts/closures";
 import { fromStoredHours, type OpeningHours } from "@brandbasket/shared/lib/onboarding/hours";
-import { SECTION_TITLE } from "@/components/v2/classes";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { SOFT_BUTTON, STACK } from "@/components/v2/classes";
+import { ActionRow, PageFrame, PageSection } from "@/components/v2/page";
 import { AnnouncementPanel } from "@/components/panel/details/announcement-panel";
 import { ClosuresPanel } from "@/components/panel/details/closures-panel";
 import { HoursPanel } from "@/components/panel/details/hours-panel";
@@ -40,52 +42,51 @@ export default async function DetailsPage(): Promise<ReactElement> {
   const hours = hoursRows.map(fromStoredHours).filter((day): day is OpeningHours => day !== null);
 
   return (
-    <LivePreviewLayout section="about" source={livePreviewSource(listing?.placement.placeId ?? null, new Date())}>
-      <div className="mx-auto grid w-full max-w-[34rem] gap-8">
-        <header className="grid gap-2">
-          <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.035em] text-ink">Business profile</h1>
-          <p className="text-[0.84375rem] text-ink-2">Hours, holidays and the announcement update your website in about a minute.</p>
-        </header>
+    <PageFrame title="Business profile" lede="Hours, holidays and the announcement update your website in about a minute.">
+      <LivePreviewLayout section="about" source={livePreviewSource(listing?.placement.placeId ?? null, new Date())}>
+        <div className={cn(STACK, "max-w-[42rem]")}>
+          <PageSection id="announcement" title="Announcement">
+            <p className="mb-4 text-[0.84375rem] leading-relaxed text-ink-2">A banner across the top of your website, shown between the dates you choose.</p>
+            <AnnouncementPanel
+              announcement={announcement}
+              today={today}
+              defaultStartsOn={today}
+              defaultEndsOn={addDays(today, DEFAULT_ANNOUNCEMENT_DAYS)}
+              saveAction={saveAnnouncementAction}
+              clearAction={clearAnnouncementAction}
+            />
+          </PageSection>
 
-        <section className="grid gap-5">
-          <h2 className={SECTION_TITLE}>Announcement</h2>
-          <AnnouncementPanel
-            announcement={announcement}
-            today={today}
-            defaultStartsOn={today}
-            defaultEndsOn={addDays(today, DEFAULT_ANNOUNCEMENT_DAYS)}
-            saveAction={saveAnnouncementAction}
-            clearAction={clearAnnouncementAction}
-          />
-        </section>
-
-        {/* ClosuresPanel renders its own heading (it owns the focus target after a removal), so it is not wrapped in a SECTION_TITLE. */}
-        <section className="grid gap-5">
+          {/* ClosuresPanel draws its own section and heading (it owns the focus target after a removal). */}
           <ClosuresPanel
             closures={upcomingClosures(closures, today)}
             today={today}
             addAction={addClosureAction}
             deleteAction={deleteClosureAction}
             heading="Holidays"
+            note="Days your website shows you as closed, or open on different hours."
             itemNoun="holiday"
             notePlaceholder="Diwali"
             withHours
           />
-        </section>
 
-        <section className="grid gap-5">
-          <h2 className={SECTION_TITLE}>Opening hours</h2>
-          <HoursPanel hours={hours} action={saveHoursAction} />
-        </section>
+          <PageSection id="hours" title="Opening hours">
+            <p className="mb-4 text-[0.84375rem] leading-relaxed text-ink-2">The hours your website shows to visitors, day by day.</p>
+            <HoursPanel hours={hours} action={saveHoursAction} />
+          </PageSection>
 
-        <section className="grid gap-4">
-          <h2 className={SECTION_TITLE}>Everything else</h2>
-          <p className="text-sm text-ink-soft">Contact details, services, photos and your logo go to the team.</p>
-          <Link href={askAboutHref("Business details")} className="link-underline w-fit text-sm font-medium text-ink">
-            Ask for a change
-          </Link>
-        </section>
-      </div>
-    </LivePreviewLayout>
+          <PageSection id="else" title="Everything else">
+            <ActionRow
+              text="Contact details, services, photos and your logo go to the team."
+              action={
+                <Link href={askAboutHref("Business details")} className={SOFT_BUTTON}>
+                  Ask for a change
+                </Link>
+              }
+            />
+          </PageSection>
+        </div>
+      </LivePreviewLayout>
+    </PageFrame>
   );
 }
