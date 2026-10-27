@@ -25,7 +25,7 @@ export interface ChecklistItem {
  * page showed them, and the domain rule is the customer's own decision: no domain, no build.
  */
 export function onboardingChecklist(input: ChecklistInput): readonly ChecklistItem[] {
-  return [
+  const items: readonly ChecklistItem[] = [
     {
       key: "business-name",
       label: "Your business name",
@@ -63,6 +63,8 @@ export function onboardingChecklist(input: ChecklistInput): readonly ChecklistIt
       passed: input.domain !== null && input.domain.ownerConfirmed,
     },
   ];
+  // With no photos there is nothing to describe, so the line would only be a tick for nothing.
+  return input.photoCount === 0 ? items.filter((item) => item.key !== "photo-descriptions") : items;
 }
 
 /** The first thing still missing, or null when onboarding can be sent. */

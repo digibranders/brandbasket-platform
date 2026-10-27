@@ -24,7 +24,7 @@ export function PaymentMethod({ view, emailUs }: PaymentMethodProps): ReactEleme
       ) : view.kind === "renews" ? (
         <div className="space-y-2 text-sm leading-relaxed text-ink">
           <p className="break-words font-medium">{view.label}</p>
-          <p>Your plan renews on this automatically through Razorpay.</p>
+          <p>Your plan renews automatically through Razorpay.</p>
           <p className="text-ink-2">To pay with a different card or UPI, email us at {emailUs} and we’ll send you a secure Razorpay link to switch.</p>
         </div>
       ) : (

@@ -118,6 +118,11 @@ it("with posts waiting, says how many and by when, shows each and has the one da
   expect(html).not.toContain("No posts are waiting for you.");
 });
 
+it("keeps a line under the title when there is no month line yet", () => {
+  expect(view({ monthLine: null })).toContain("Your posts and ads, and what they have brought in.");
+  expect(view()).not.toContain("Your posts and ads, and what they have brought in.");
+});
+
 it("with nothing waiting, says so, says what will appear, and offers Ask for a change as the one dark button", () => {
   const html = view({ posts: [post({ status: "published" })] });
   expect(html).toContain("No posts are waiting for you.");

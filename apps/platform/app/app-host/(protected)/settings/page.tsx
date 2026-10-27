@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import type { Subscription } from "@brandbasket/db";
 import { nextBundledNetCents, websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import type { CustomerBillingStatus } from "@brandbasket/shared/lib/billing/status";
+import { inFirstTerm } from "@brandbasket/shared/lib/billing/period";
 import { describePlanTerms } from "@brandbasket/shared/lib/billing/terms";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
@@ -36,6 +37,12 @@ function serviceNetCents(
   return reactivationNetCents ?? websiteAloneNetCents(currency);
 }
 
+/** Whether the first payment is behind the customer: a lapsed plan has had one, a paid one once its first term has run out. */
+function pastFirstTerm(status: CustomerBillingStatus, subscription: Subscription | null, now: Date): boolean {
+  if (status === "lapsed") return true;
+  return status === "paid" && subscription !== null && !inFirstTerm(subscription, now);
+}
+
 /** The customer's account at a glance, with the password, signing out and deleting the account. Sections on the page, one dark button (Change password). */
 export default async function SettingsPage(): Promise<ReactElement> {
   const { user, tenant, billing } = await requireCustomerAccess({ listingAccount: "allow" });
@@ -54,7 +61,14 @@ export default async function SettingsPage(): Promise<ReactElement> {
         { label: "Billed in", value: billing.plan === null ? "Not set yet" : BILLING_CURRENCY_LABELS[billing.plan.currency] },
         ...(billing.plan === null
           ? []
-          : [{ label: "Your plan", value: describePlanTerms(billing.plan, serviceNetCents(billing.status, billing.subscription, billing.plan.currency, reactivationNetCents)) }]),
+          : [
+              {
+                label: "Your plan",
+                value: describePlanTerms(billing.plan, serviceNetCents(billing.status, billing.subscription, billing.plan.currency, reactivationNetCents), {
+                  afterFirstTerm: pastFirstTerm(billing.status, billing.subscription, new Date()),
+                }),
+              },
+            ]),
       ];
 
   return (

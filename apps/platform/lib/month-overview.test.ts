@@ -54,6 +54,7 @@ function render(overview: OverviewData, extra: { readonly bookingUrl?: string | 
       data: overview,
       now: NOW,
       buildCard: null,
+      settingUp: false,
       bookingUrl: extra.bookingUrl ?? null,
       callOptions: [
         { value: "website", label: "Website" },
@@ -185,6 +186,7 @@ it("puts the build card in the aside, after the main column, when one is given",
       data: data({ todo: [item(1)] }),
       now: NOW,
       buildCard: createElement("div", { id: "build-card" }),
+      settingUp: true,
       bookingUrl: null,
       callOptions: [],
       canBook: true,
@@ -193,6 +195,8 @@ it("puts the build card in the aside, after the main column, when one is given",
   expect(html.indexOf("build-card")).toBeGreaterThan(-1);
   expect(html.indexOf("build-card")).toBeGreaterThan(html.indexOf("Needs you"));
   expect(html.indexOf("build-card")).toBeGreaterThan(html.indexOf("<aside"));
+  expect(html).toContain("We are setting things up. 1 thing needs you.");
+  expect(html).not.toContain("Everything is running");
 });
 
 it("keeps What we did and the month's numbers in the main column, and what is coming in the aside", () => {

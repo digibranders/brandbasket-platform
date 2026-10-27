@@ -81,6 +81,13 @@ describe("plan wording", () => {
     );
   });
 
+  it("drops the first-payment sentence once the first term is over", () => {
+    expect(describePlanTerms(USD, 0, { afterFirstTerm: true })).toBe("$65 a month. Renews monthly.");
+    expect(describePlanTerms(INR, 0, { afterFirstTerm: true })).toBe("₹2,999 a month, GST included. Renews monthly.");
+    expect(describePlanTerms(LONGER_START, 0, { afterFirstTerm: true })).toBe("$75 a month. Renews monthly.");
+    expect(describePlanTerms(INR, 0, { afterFirstTerm: false })).toBe(describePlanTerms(INR));
+  });
+
   it("spells out a first payment that differs from the monthly price", () => {
     expect(firstPaymentAmount(LONGER_START)).toBe("$225");
     expect(describePlanTerms(LONGER_START)).toBe("$225 covers your first 3 months, then it’s $75 a month.");

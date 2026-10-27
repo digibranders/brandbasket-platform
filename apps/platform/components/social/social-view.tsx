@@ -60,7 +60,7 @@ export function SocialView({ data, notice, now }: SocialViewProps): ReactElement
   return (
     <PageFrame
       title="Social & Ads"
-      lede={data.monthLine ?? undefined}
+      lede={data.monthLine ?? "Your posts and ads, and what they have brought in."}
       action={
         reportUrl === null ? undefined : (
           <a href={reportUrl} target="_blank" rel="noopener noreferrer" className={SOFT_BUTTON}>

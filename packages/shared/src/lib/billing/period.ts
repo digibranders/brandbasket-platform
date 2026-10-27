@@ -11,6 +11,11 @@ export function nextPaymentDate(subscription: ChargeDates, now: Date): Date | nu
   return paidThroughAt;
 }
 
+/** Whether the first payment's term is still running, so the first renewal has not come yet. */
+export function inFirstTerm(subscription: Pick<Subscription, "commitmentEndsAt">, now: Date): boolean {
+  return subscription.commitmentEndsAt !== null && subscription.commitmentEndsAt.getTime() > now.getTime();
+}
+
 /** How far through the period the customer has paid for they are, in whole days. */
 export interface PeriodProgress {
   readonly start: Date;

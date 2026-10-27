@@ -16,7 +16,7 @@ describe("Payment method", () => {
   it("says a renewing plan renews by itself, and that changing the card is a message to us", () => {
     const html = render({ kind: "renews", label: "Visa credit card ending 4242" }).replaceAll("<!-- -->", "");
     expect(html).toContain("Visa credit card ending 4242");
-    expect(html).toContain("Your plan renews on this automatically through Razorpay.");
+    expect(html).toContain("Your plan renews automatically through Razorpay.");
     expect(html).toContain("email us at support@brandbasket.in");
   });
 

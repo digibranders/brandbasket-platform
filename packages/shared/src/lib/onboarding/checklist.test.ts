@@ -47,6 +47,12 @@ describe("onboardingChecklist", () => {
     expect(failing({ ...complete, undescribedPhotoCount: 1 })).toEqual(["photo-descriptions"]);
   });
 
+  it("leaves out the photo line when there are no photos to describe", () => {
+    const keys = (input: ChecklistInput): string[] => onboardingChecklist(input).map((item) => item.key);
+    expect(keys({ ...complete, photoCount: 0, logoCount: 1 })).not.toContain("photo-descriptions");
+    expect(keys(complete)).toContain("photo-descriptions");
+  });
+
   it("needs a domain the customer has confirmed as theirs", () => {
     expect(failing({ ...complete, domain: null })).toEqual(["domain"]);
     expect(failing({ ...complete, domain: { hostname: "bloom.in", ownerConfirmed: false } })).toEqual(["domain"]);

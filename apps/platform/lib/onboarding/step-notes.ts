@@ -14,7 +14,7 @@ export const STEP_NOTES: Readonly<Record<OnboardingStepKey, readonly StepNote[]>
   business: [
     { answer: "Name and tagline", use: "The top of every page and your home page." },
     { answer: "Phone, email and address", use: "Your contact details, with a click-to-call button on phones." },
-    { answer: "Opening hours", use: "Your contact details, so people know when to come." },
+    { answer: "Opening hours", use: "Shown beside your contact details, so people know when you are open." },
   ],
   content: [
     { answer: "Your services", use: "Your services page, one after another in the order you set." },
@@ -36,7 +36,12 @@ export const STEP_NOTES: Readonly<Record<OnboardingStepKey, readonly StepNote[]>
 /** The words above the notes. */
 export const STEP_NOTES_TITLE = "What this is for";
 
-export function stepNotes(step: OnboardingStepKey): readonly StepNote[] {
-  return STEP_NOTES[step];
+/** The review step once the payment is in: there is nothing left to pay, only to send. */
+const REVIEW_NOTES_PAID: readonly StepNote[] = [
+  { answer: "Send it to us", use: "Once you send it, we start building and your answers lock. You can still email us about changes." },
+];
+
+export function stepNotes(step: OnboardingStepKey, options: { readonly paid?: boolean } = {}): readonly StepNote[] {
+  return step === "review" && options.paid === true ? REVIEW_NOTES_PAID : STEP_NOTES[step];
 }
 

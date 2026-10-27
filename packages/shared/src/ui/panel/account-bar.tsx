@@ -114,12 +114,12 @@ function iconButtonClass(dark: boolean, active: boolean): string {
  * sidebar and spill out over the page.
  *
  * It is pulled slightly wider than the bar so the menu reads as its own surface rather than a continuation of it.
- * The desktop figure is the larger of the two: there it has the sidebar's gutters to grow into, whereas on phones
- * the bar already sits a thumb's width from the screen edge.
+ * The desktop figure stays inside the sidebar's 12px gutters, so the panel keeps a margin from the window edge instead of
+ * touching it; on phones the bar already sits a thumb's width from the screen edge.
  */
 function panelClass(dark: boolean, placement: "top" | "bottom"): string {
   return cn(
-    "absolute -inset-x-2 z-30 overflow-hidden rounded-card border shadow-lg lg:-inset-x-3",
+    "absolute -inset-x-2 z-30 overflow-hidden rounded-card border shadow-lg lg:-inset-x-1.5",
     placement === "top" ? "bottom-full mb-2" : "top-full mt-2",
     dark ? "border-white/15 bg-dark-raised" : "border-line bg-card",
   );
