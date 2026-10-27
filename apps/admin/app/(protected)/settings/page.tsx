@@ -11,6 +11,8 @@ import { Notice } from "@/components/console/notice";
 import { SecretInput } from "@/components/console/secret-input";
 import { PageHeader } from "@/components/console/page-header";
 import { Quiet, Section } from "@/components/console/section";
+import { findLatestWebsiteLeadAt } from "@brandbasket/db";
+import { getStaffDb } from "@/lib/server/db";
 import { readSettingsNotice, SETTINGS_NOTICES } from "@/lib/settings-notices";
 import { loadSetupCallSetting } from "@/lib/server/settings-admin";
 import { requireStaffAccess } from "@/lib/server/staff-access";
@@ -27,7 +29,12 @@ export default async function SettingsPage({
 }): Promise<ReactElement> {
   const { staff } = await requireStaffAccess();
   const canSetAlerts = staffCan(staff.role, "integrations");
-  const [setting, params, teams] = await Promise.all([loadSetupCallSetting(), searchParams, canSetAlerts ? loadTeamsStates() : null]);
+  const [setting, params, teams, latestWebsiteLead] = await Promise.all([
+    loadSetupCallSetting(),
+    searchParams,
+    canSetAlerts ? loadTeamsStates() : null,
+    findLatestWebsiteLeadAt(getStaffDb()),
+  ]);
   const notice = readSettingsNotice(params.saved);
 
   return (
@@ -77,6 +84,19 @@ export default async function SettingsPage({
                 · Last changed {setting.changedBy === null ? "" : `by ${setting.changedBy} `}on <LocalDateTime iso={setting.changedAt.toISOString()} variant="timestamp" />
               </>
             )}
+          </p>
+        )}
+      </Section>
+
+      <Section id="website-form" title="Website form" aside={latestWebsiteLead === null ? "Nothing received yet" : "Reaching us"}>
+        {latestWebsiteLead === null ? (
+          <Quiet>
+            No enquiry has come in from the website's forms yet. If the website is live, check that its PLATFORM_LEADS_URL and LEADS_API_TOKEN are set in
+            Vercel; until then enquiries reach the email inbox only.
+          </Quiet>
+        ) : (
+          <p className="text-sm text-ink-2">
+            The last website enquiry arrived on <LocalDateTime iso={latestWebsiteLead.toISOString()} variant="timestamp" />.
           </p>
         )}
       </Section>

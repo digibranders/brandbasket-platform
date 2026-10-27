@@ -393,4 +393,15 @@ export async function listLeadInvites(db: Database, leadId: string): Promise<rea
     .orderBy(desc(setupInvites.createdAt), desc(setupInvites.id));
 }
 
+/** When the newest enquiry from the website's forms arrived, or null when none has: shows staff whether the form reaches us. */
+export async function findLatestWebsiteLeadAt(db: Runner): Promise<Date | null> {
+  const rows = await db
+    .select({ at: leads.createdAt })
+    .from(leads)
+    .where(inArray(leads.source, ["website_form", "pricing_page"]))
+    .orderBy(desc(leads.createdAt))
+    .limit(1);
+  return rows[0]?.at ?? null;
+}
+
 

@@ -202,6 +202,7 @@ export {
   changeLeadCurrency,
   countLeadsToContact,
   createLead,
+  findLatestWebsiteLeadAt,
   LEAD_STATUSES_TO_CONTACT,
   listLeadInvites,
   type LeadInvite,
