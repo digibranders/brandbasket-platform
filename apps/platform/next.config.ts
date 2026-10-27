@@ -53,8 +53,6 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // Browsers ask for /favicon.ico on their own; the icon is the file app/icon.png, served at /icon.png.
-      { source: "/favicon.ico", destination: "/icon.png", permanent: true },
       // The Add-ons page is now Services. A charge paid before the rename can still return to the old address with ?charge=,
       // which a redirect passes through. Redirects run before the proxy, so this holds on the dashboard host.
       { source: "/add-ons", destination: "/services", permanent: true },

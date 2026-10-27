@@ -77,7 +77,7 @@ export function DashboardFrame({
       >
         <div className="flex items-center justify-between gap-3 lg:px-2.5">
           <div className="flex flex-col gap-1.5">
-            {/* The website's wordmark, the same as on the sign-in screens: white on the dark sidebar. */}
+            {/* The website's wordmark, the same as on the sign-in screens: the dark-background version on the dark sidebar. */}
             <WordmarkLogo href="/" tone={dark ? "light" : "accent"} brand={brand} />
             {plan === undefined ? null : <PlanChip plan={plan} dark={dark} />}
           </div>

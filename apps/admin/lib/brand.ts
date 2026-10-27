@@ -21,9 +21,9 @@ export interface AdminBrand {
 const LOGO: BrandLogo = {
   name: "Brandbasket",
   siteUrl: "https://brandbasket.in",
-  white: "/brand/brandbasket-logo-white.svg",
-  dark: "/brand/brandbasket-logo-dark.svg",
-  width: 182,
+  onLight: "/brand/brandbasket-logo-light.svg",
+  onDark: "/brand/brandbasket-logo-dark.svg",
+  width: 190,
   height: 32,
 };
 
