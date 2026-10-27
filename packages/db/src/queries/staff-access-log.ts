@@ -35,6 +35,10 @@ export const STAFF_ACCESS_ACTIONS = [
   "client.people_view",
   "client.closure_restore",
   "client.closure_extend",
+  "staff.invite",
+  "staff.role_change",
+  "staff.deactivate",
+  "staff.reactivate",
 ] as const;
 export type StaffAccessAction = (typeof STAFF_ACCESS_ACTIONS)[number];
 

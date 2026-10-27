@@ -1,10 +1,11 @@
-import { listRecentStaffAccess, type StaffAccessAction } from "@brandbasket/db";
+import { listRecentStaffAccess } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
+import { actionLabel } from "@/lib/access-log-labels";
 import { getStaffDb } from "@/lib/server/db";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { requireStaffCan } from "@/lib/server/staff-role";
@@ -12,42 +13,6 @@ import { requireStaffCan } from "@/lib/server/staff-role";
 export const metadata: Metadata = { title: "Access log" };
 
 const MAX_RECORDS = 200;
-
-/** Typed over every action, so a new one cannot be added to the log without saying what it means here. */
-const ACTION_LABELS: Readonly<Record<StaffAccessAction, string>> = {
-  "staff.sign_in": "Signed in",
-  "access_log.view": "Opened the access log",
-  "access.denied": "Was refused: needs a higher role",
-  "search.run": "Searched the console",
-  "client.view": "Opened a client",
-  "lead.view": "Opened a lead",
-  "lead.export": "Exported enquiries",
-  "outbox.view": "Opened an outbox message",
-  "delivery.view": "Opened a delivery",
-  "email.resend": "Resent an email",
-  "alert.resend": "Resent a Teams alert",
-  "support_ticket.view": "Opened a support request",
-  "support_attachment.view": "Opened a support screenshot",
-  "directory.view": "Opened the directory",
-  "invoice.view": "Downloaded an invoice",
-  "invoice.export": "Exported the invoice register",
-  "payment.list_view": "Viewed payments",
-  "payment.export": "Exported payments",
-  "breach.view": "Opened the breach register",
-  "breach.log": "Logged a breach",
-  "breach.update": "Updated a breach",
-  "privacy_request.view": "Opened the privacy requests",
-  "privacy_request.log": "Logged a privacy request",
-  "privacy_request.update": "Updated a privacy request",
-  "privacy_request.close": "Closed a privacy request",
-  "client.people_view": "Opened client people tab",
-  "client.closure_restore": "Restored leaving account",
-  "client.closure_extend": "Extended leaving account closure",
-};
-
-function labelFor(action: string): string {
-  return ACTION_LABELS[action as StaffAccessAction] ?? action;
-}
 
 export default async function AccessLogPage(): Promise<ReactElement> {
   const { user } = await requireStaffCan("oversight");
@@ -82,7 +47,7 @@ export default async function AccessLogPage(): Promise<ReactElement> {
             >
               <span className="min-w-0">
                 <span className="block font-semibold">
-                  {record.action === "staff.sign_in" && record.result === "failed" ? "Failed sign-in" : labelFor(record.action)}
+                  {record.action === "staff.sign_in" && record.result === "failed" ? "Failed sign-in" : actionLabel(record.action)}
                   {record.result === "denied" ? <span className="ml-2 text-sm font-normal text-accent">refused</span> : null}
                 </span>
                 <span className="mt-0.5 block break-words text-sm text-ink-soft">
