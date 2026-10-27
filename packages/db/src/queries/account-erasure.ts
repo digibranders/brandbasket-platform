@@ -277,7 +277,8 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
       await tx.select({ id: directoryVideos.vimeoId }).from(directoryVideos).where(eq(directoryVideos.businessId, businessId))
     ).map((row) => row.id);
 
-    // Private objects must already be purged; pending manifests prevent account scrubbing.
+    // Private objects must already be purged; pending manifests prevent account scrubbing. A ticket's change request and
+    // its history go with it (ON DELETE CASCADE from support_tickets), so nothing more is deleted for them here.
     await eraseSupportDataForUser(tx, userId);
 
     // Children before parents: bookings point at patients, practitioners and services.

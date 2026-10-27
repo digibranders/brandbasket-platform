@@ -1,0 +1,341 @@
+import { eq, sql } from "drizzle-orm";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { CHANGE_STATES, canMoveChange, type ChangeState } from "./change-states";
+import { insertCharge } from "./queries/charges";
+import { appendSupportReply, beginSupportAccountErasure, createSupportTicket, eraseSupportDataForUser } from "./queries/support";
+import { insertBusiness } from "./queries/onboarding";
+import { accountClosures, businessMembers, changeRequestEvents, changeRequests, staffMembers, supportTickets, users } from "./schema";
+import { withTenantScope, withUserScope } from "./scope";
+import { captureErrorText, openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
+
+const OWNER = "cr-owner";
+const OTHER_OWNER = "cr-other-owner";
+const STAFF = "cr-staff";
+const QUOTE = {
+  coverage: "paid" as const,
+  quoteWhat: "New page",
+  quoteHours: 3,
+  quoteUnitCents: 50_000,
+  quoteAmountCents: 150_000,
+  quoteCurrency: "INR" as const,
+  quoteWorkingDays: 5,
+  quotedAt: new Date("2026-11-28T04:50:00.000Z"),
+};
+
+let dbs: TestDatabases;
+let businessId = "";
+let otherBusinessId = "";
+let counter = 0;
+
+beforeAll(() => {
+  dbs = openTestDatabases();
+});
+
+afterAll(async () => {
+  await dbs?.closeAll();
+});
+
+beforeEach(async () => {
+  await resetTestDatabase(dbs.owner);
+  counter = 0;
+  await dbs.staff.db.insert(users).values([
+    { id: OWNER, name: "Priya Shah", email: `${OWNER}@example.com`, emailVerified: true },
+    { id: OTHER_OWNER, name: "Arjun Rao", email: `${OTHER_OWNER}@example.com`, emailVerified: true },
+    { id: STAFF, name: "Staff Member", email: `${STAFF}@example.com`, emailVerified: true },
+  ]);
+  await dbs.staff.db.insert(staffMembers).values({ userId: STAFF });
+  businessId = (await dbs.staff.db.transaction((tx) => insertBusiness(tx, "Sai Dental Care", "INR"))).id;
+  otherBusinessId = (await dbs.staff.db.transaction((tx) => insertBusiness(tx, "Birch Dental", "INR"))).id;
+  await dbs.staff.db.insert(businessMembers).values([
+    { businessId, userId: OWNER, role: "owner" },
+    { businessId: otherBusinessId, userId: OTHER_OWNER, role: "owner" },
+  ]);
+});
+
+const asOwner = <T>(work: Parameters<typeof withTenantScope<T>>[2]) => withTenantScope(dbs.app.db, { userId: OWNER, businessId }, work);
+const asOtherOwner = <T>(work: Parameters<typeof withTenantScope<T>>[2]) =>
+  withTenantScope(dbs.app.db, { userId: OTHER_OWNER, businessId: otherBusinessId }, work);
+const asStaff = <T>(work: Parameters<typeof withUserScope<T>>[2]) => withUserScope(dbs.staff.db, STAFF, work);
+
+/** Postgres reports a missing privilege as SQLSTATE 42501; drizzle wraps the driver error as `cause`. */
+async function sqlState(run: () => Promise<unknown>): Promise<string | undefined> {
+  try {
+    await run();
+    return undefined;
+  } catch (error) {
+    return (error as { cause?: { code?: string } }).cause?.code;
+  }
+}
+
+/** A ticket from the owner for their business, then the change details through the customer's own door. */
+async function makeRequest(): Promise<{ readonly ticketId: string; readonly requestId: string }> {
+  counter += 1;
+  const ticket = await createSupportTicket(dbs.app.db, {
+    userId: OWNER,
+    businessId,
+    category: "website_change",
+    subject: "Add an Implants page",
+    description: "Please add a page about dental implants.",
+    submissionKey: `request-key-${counter}-abcdefgh`,
+  });
+  const result = await asOwner((tx) => tx.execute<{ id: string }>(sql`select create_change_request(${ticket.id}::uuid, 'website', 'Home') as id`));
+  const requestId = result.rows[0]?.id;
+  if (requestId === undefined) throw new Error("create_change_request returned no id");
+  return { ticketId: ticket.id, requestId };
+}
+
+/** The quote, written the way staff write it. */
+async function quote(requestId: string): Promise<void> {
+  await dbs.staff.db.update(changeRequests).set(QUOTE).where(eq(changeRequests.id, requestId));
+}
+
+/** Puts a request in any state, with the guard switched off for this one transaction, so the matrix can start anywhere. */
+async function forceState(requestId: string, state: ChangeState): Promise<void> {
+  await dbs.owner.db.transaction(async (tx) => {
+    await tx.execute(sql`alter table change_requests disable trigger change_requests_guard`);
+    await tx.execute(sql`update change_requests set state = ${state} where id = ${requestId}`);
+    await tx.execute(sql`alter table change_requests enable trigger change_requests_guard`);
+  });
+}
+
+const stateOf = async (requestId: string): Promise<string | undefined> =>
+  (await dbs.staff.db.select({ state: changeRequests.state }).from(changeRequests).where(eq(changeRequests.id, requestId)))[0]?.state;
+
+describe("what the customer role can do with a change request", () => {
+  it("reads the requests of its own business and no other", async () => {
+    const { requestId } = await makeRequest();
+    expect((await asOwner((tx) => tx.select().from(changeRequests))).map((row) => row.id)).toEqual([requestId]);
+    expect(await asOtherOwner((tx) => tx.select().from(changeRequests))).toEqual([]);
+    expect(await asOtherOwner((tx) => tx.select().from(changeRequestEvents))).toEqual([]);
+  });
+
+  it("starts every request as requested, undecided and unquoted, with a first line in its history", async () => {
+    const { requestId } = await makeRequest();
+    const [row] = await asOwner((tx) => tx.select().from(changeRequests));
+    expect(row).toMatchObject({ id: requestId, kind: "website", page: "Home", state: "requested", coverage: "undecided", quoteHours: null, chargeId: null });
+    const events = await asOwner((tx) => tx.select().from(changeRequestEvents));
+    expect(events.map((event) => [event.state, event.actorUserId])).toEqual([["requested", OWNER]]);
+  });
+
+  it("cannot write a request or its history by any statement", async () => {
+    const { ticketId, requestId } = await makeRequest();
+    const attempts = [
+      sql`update change_requests set state = 'quoted' where id = ${requestId}`,
+      sql`update change_requests set updated_at = now() where id = ${requestId}`,
+      sql`update change_requests set coverage = 'paid' where id = ${requestId}`,
+      sql`delete from change_requests where id = ${requestId}`,
+      sql`insert into change_requests (id, ticket_id, business_id, kind) values (gen_random_uuid(), ${ticketId}, ${businessId}, 'website')`,
+      sql`insert into change_request_events (id, change_request_id, state) values (gen_random_uuid(), ${requestId}, 'shipped')`,
+      sql`update change_request_events set state = 'shipped'`,
+      sql`delete from change_request_events`,
+    ];
+    for (const attempt of attempts) {
+      expect(await sqlState(() => asOwner((tx) => tx.execute(attempt)))).toBe("42501");
+    }
+    expect(await stateOf(requestId)).toBe("requested");
+  });
+
+  it("cannot call the move function on another business's request", async () => {
+    const { requestId } = await makeRequest();
+    await quote(requestId);
+    await dbs.staff.db.update(changeRequests).set({ state: "quoted" }).where(eq(changeRequests.id, requestId));
+    const text = await captureErrorText(asOtherOwner((tx) => tx.execute(sql`select change_request_customer_move(${requestId}::uuid, 'decline')`)));
+    expect(text).toContain("change_request_not_found");
+    expect(await stateOf(requestId)).toBe("quoted");
+  });
+});
+
+describe("create_change_request", () => {
+  it("refuses a ticket that belongs to someone else", async () => {
+    const { ticketId } = await makeRequest();
+    const text = await captureErrorText(asOtherOwner((tx) => tx.execute(sql`select create_change_request(${ticketId}::uuid, 'website', null)`)));
+    expect(text).toContain("change_request_not_allowed");
+  });
+
+  it("refuses a ticket with no business, and a second request on the same ticket", async () => {
+    const plain = await createSupportTicket(dbs.app.db, {
+      userId: OWNER,
+      category: "general",
+      subject: "A question",
+      description: "How do I change my password?",
+      submissionKey: "plain-question-abcdefgh",
+    });
+    expect(await captureErrorText(asOwner((tx) => tx.execute(sql`select create_change_request(${plain.id}::uuid, 'other', null)`)))).toContain("change_request_not_allowed");
+    const { ticketId } = await makeRequest();
+    expect(await captureErrorText(asOwner((tx) => tx.execute(sql`select create_change_request(${ticketId}::uuid, 'website', null)`)))).toContain("change_requests_ticket_idx");
+  });
+
+  it("refuses a kind that is not one of the five", async () => {
+    const ticket = await createSupportTicket(dbs.app.db, {
+      userId: OWNER,
+      businessId,
+      category: "general",
+      subject: "Something else",
+      description: "Please look at this for me.",
+      submissionKey: "odd-kind-abcdefgh",
+    });
+    expect(await captureErrorText(asOwner((tx) => tx.execute(sql`select create_change_request(${ticket.id}::uuid, 'weather', null)`)))).toContain("change_requests_kind_check");
+  });
+});
+
+describe("the rules every writer follows", () => {
+  it("lets staff move a request along every arrow in CHANGE_MOVES and no other, from every state", async () => {
+    const { requestId } = await makeRequest();
+    await quote(requestId);
+    const wrong: string[] = [];
+    for (const from of CHANGE_STATES) {
+      for (const to of CHANGE_STATES) {
+        await forceState(requestId, from);
+        let allowed = true;
+        try {
+          await dbs.staff.db.update(changeRequests).set({ state: to }).where(eq(changeRequests.id, requestId));
+        } catch (error) {
+          allowed = false;
+          const text = (error as { cause?: { message?: string } }).cause?.message ?? "";
+          if (!text.includes("cannot move from")) wrong.push(`${from} to ${to} failed for another reason: ${text}`);
+        }
+        if (allowed !== canMoveChange(from, to)) wrong.push(`${from} to ${to}: database ${allowed ? "allows" : "refuses"}, CHANGE_MOVES says the opposite`);
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it("will not start work on a request nobody has decided to cover", async () => {
+    const { requestId } = await makeRequest();
+    const text = await captureErrorText(dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId)));
+    expect(text).toContain("change_requests_decided_check");
+  });
+
+  it("holds the quote to hours times the hour's price, and all of it or none", async () => {
+    const { requestId } = await makeRequest();
+    expect(await captureErrorText(dbs.staff.db.update(changeRequests).set({ ...QUOTE, quoteAmountCents: 1 }).where(eq(changeRequests.id, requestId)))).toContain("change_requests_quote_values_check");
+    expect(await captureErrorText(dbs.staff.db.update(changeRequests).set({ quoteWhat: "New page" }).where(eq(changeRequests.id, requestId)))).toContain("change_requests_quote_whole_check");
+  });
+
+  it("fixes the price and the cover once work has started, and never changes who or what it is about", async () => {
+    const { requestId } = await makeRequest();
+    await quote(requestId);
+    await dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId));
+    expect(await captureErrorText(dbs.staff.db.update(changeRequests).set({ quoteHours: 4, quoteAmountCents: 200_000 }).where(eq(changeRequests.id, requestId)))).toContain("fixed once work has started");
+    expect(await captureErrorText(dbs.staff.db.update(changeRequests).set({ kind: "billing" }).where(eq(changeRequests.id, requestId)))).toContain("identity cannot change");
+    expect(await captureErrorText(dbs.staff.db.update(changeRequests).set({ businessId: otherBusinessId }).where(eq(changeRequests.id, requestId)))).toContain("identity cannot change");
+  });
+
+  it("keeps a dated line for every state, with who moved it", async () => {
+    const { requestId } = await makeRequest();
+    await asStaff((tx) => tx.update(changeRequests).set({ ...QUOTE, state: "quoted" }).where(eq(changeRequests.id, requestId)));
+    await dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId));
+    const events = await dbs.staff.db.select().from(changeRequestEvents).where(eq(changeRequestEvents.changeRequestId, requestId)).orderBy(changeRequestEvents.at);
+    expect(events.map((event) => [event.state, event.actorUserId])).toEqual([
+      ["requested", OWNER],
+      ["quoted", STAFF],
+      ["in_progress", null],
+    ]);
+  });
+
+  it("records nothing when a change leaves the state as it was", async () => {
+    const { requestId } = await makeRequest();
+    await quote(requestId);
+    await dbs.staff.db.update(changeRequests).set({ quoteWorkingDays: 7, quoteAmountCents: 150_000 }).where(eq(changeRequests.id, requestId));
+    expect(await dbs.staff.db.select().from(changeRequestEvents)).toHaveLength(1);
+  });
+
+  it("takes the ticket out of the staff queue when the request ends, and puts it back when it is reopened", async () => {
+    const { ticketId, requestId } = await makeRequest();
+    const status = async (): Promise<string | undefined> => (await dbs.staff.db.select({ status: supportTickets.status }).from(supportTickets).where(eq(supportTickets.id, ticketId)))[0]?.status;
+    expect(await status()).toBe("new");
+    await quote(requestId);
+    await dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId));
+    expect(await status()).toBe("new");
+    await dbs.staff.db.update(changeRequests).set({ state: "shipped" }).where(eq(changeRequests.id, requestId));
+    expect(await status()).toBe("resolved");
+    await dbs.staff.db.update(changeRequests).set({ state: "revisions" }).where(eq(changeRequests.id, requestId));
+    expect(await status()).toBe("triaged");
+  });
+});
+
+describe("a reply on a change that is ready to check", () => {
+  it("sends it back to the team as a fix to make", async () => {
+    const { ticketId, requestId } = await makeRequest();
+    await quote(requestId);
+    await dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId));
+    await dbs.staff.db.update(changeRequests).set({ state: "preview" }).where(eq(changeRequests.id, requestId));
+    await appendSupportReply(dbs.app.db, { userId: OWNER, ticketId, body: "The heading should say Dental implants.", submissionKey: "reply-in-preview-abcdefgh" });
+    expect(await stateOf(requestId)).toBe("revisions");
+  });
+
+  it("leaves a request alone in every other state", async () => {
+    const { ticketId, requestId } = await makeRequest();
+    await appendSupportReply(dbs.app.db, { userId: OWNER, ticketId, body: "Just checking in on this.", submissionKey: "reply-in-requested-abcdefgh" });
+    expect(await stateOf(requestId)).toBe("requested");
+  });
+});
+
+describe("change_request_customer_move", () => {
+  const move = (requestId: string, action: string) => asOwner((tx) => tx.execute<{ state: string }>(sql`select change_request_customer_move(${requestId}::uuid, ${action}) as state`));
+
+  it("lets the customer say not now to a quote, and take it back within 14 days", async () => {
+    const { requestId } = await makeRequest();
+    await quote(requestId);
+    await dbs.staff.db.update(changeRequests).set({ state: "quoted" }).where(eq(changeRequests.id, requestId));
+    expect((await move(requestId, "decline")).rows[0]?.state).toBe("withdrawn");
+    expect(await stateOf(requestId)).toBe("withdrawn");
+    expect((await move(requestId, "reopen")).rows[0]?.state).toBe("quoted");
+  });
+
+  it("refuses not now once the quote has been accepted and a charge opened", async () => {
+    const { requestId } = await makeRequest();
+    await quote(requestId);
+    const charge = await insertCharge(dbs.staff.db, {
+      businessId,
+      kind: "change_hours",
+      description: "Extra change hours: New page",
+      quantity: 3,
+      unitAmountCents: 50_000,
+      taxRateBasisPoints: 1800,
+      amountCents: 150_000,
+      currency: "INR",
+      createdByStaffId: null,
+    });
+    await dbs.staff.db.update(changeRequests).set({ state: "quoted", acceptedAt: new Date(), chargeId: charge.id }).where(eq(changeRequests.id, requestId));
+    expect(await captureErrorText(move(requestId, "decline"))).toContain("change_request_wrong_state");
+    expect(await stateOf(requestId)).toBe("quoted");
+  });
+
+  it("lets the customer approve a change that is ready to check, and no other", async () => {
+    const { requestId } = await makeRequest();
+    await quote(requestId);
+    expect(await captureErrorText(move(requestId, "approve"))).toContain("change_request_wrong_state");
+    await forceState(requestId, "preview");
+    expect((await move(requestId, "approve")).rows[0]?.state).toBe("approved");
+  });
+
+  it("reopens a finished change as a fix, within 14 days of it being finished", async () => {
+    const { requestId } = await makeRequest();
+    await quote(requestId);
+    await forceState(requestId, "in_progress");
+    await dbs.staff.db.update(changeRequests).set({ state: "shipped" }).where(eq(changeRequests.id, requestId));
+    await dbs.owner.db.execute(sql`update change_request_events set at = now() - interval '15 days' where state = 'shipped'`);
+    expect(await captureErrorText(move(requestId, "reopen"))).toContain("change_request_window_closed");
+    await dbs.owner.db.execute(sql`update change_request_events set at = now() - interval '13 days' where state = 'shipped'`);
+    expect((await move(requestId, "reopen")).rows[0]?.state).toBe("revisions");
+  });
+
+  it("refuses an action it does not know, and a reopen of a request that is not finished", async () => {
+    const { requestId } = await makeRequest();
+    expect(await captureErrorText(move(requestId, "ship"))).toContain("change_request_unknown_action");
+    expect(await captureErrorText(move(requestId, "reopen"))).toContain("change_request_wrong_state");
+  });
+});
+
+describe("erasing an account", () => {
+  it("takes its change requests and their history along with the tickets", async () => {
+    const { requestId } = await makeRequest();
+    await quote(requestId);
+    await dbs.staff.db.insert(accountClosures).values({ userId: OWNER, businessId, requestedAt: new Date(Date.now() - 86_400_000), eraseAfter: new Date(Date.now() - 1000) });
+    await beginSupportAccountErasure(dbs.staff.db, OWNER);
+    await dbs.staff.db.transaction((tx) => eraseSupportDataForUser(tx, OWNER));
+    expect(await dbs.staff.db.select().from(changeRequests)).toEqual([]);
+    expect(await dbs.staff.db.select().from(changeRequestEvents)).toEqual([]);
+  });
+});
