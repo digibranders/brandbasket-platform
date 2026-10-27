@@ -40,7 +40,7 @@ const invoice: TaxInvoice = {
     addressLines: ["Office No. 2617, 26th Floor, Solus Building,", "Hiranandani Estate, Ghodbunder Road,", "Thane West, Maharashtra 400607, India"],
     stateCode: "mh",
     email: "support@brandbasket.in",
-    phone: "+91 789 789 6607",
+    phone: "+91 866 861 0953",
   },
   recipient: {
     legalName: "QA Premium Business",
