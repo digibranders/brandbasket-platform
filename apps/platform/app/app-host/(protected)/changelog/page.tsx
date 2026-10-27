@@ -13,7 +13,7 @@ export default function ChangelogPage(): ReactElement {
         {CHANGELOG_ENTRIES.map((entry, index) => (
           <li key={`${entry.date}-${entry.title}`} className="grid gap-1 py-6 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-8">
             <p className="font-figure text-[0.8125rem] tabular-nums text-ink-2">
-              <time dateTime={entry.date}>{entry.label}</time>
+              <time dateTime={entry.date} className="whitespace-nowrap">{entry.label}</time>
               {index === 0 ? <span className="ml-2 rounded-full bg-rattan-wash px-2 py-0.5 font-sans text-[0.6875rem] font-semibold text-rattan-ink">Latest</span> : null}
             </p>
             <div className="min-w-0 max-w-2xl">
