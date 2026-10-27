@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { StaffPaymentRow } from "@brandbasket/db";
-import { clientHits, invoiceHits, leadHits, normaliseSearchTerm, paymentHits, requestHits, SEARCH_LIMIT_PER_KIND } from "./console-search";
+import { clientHits, emailHits, invoiceHits, leadHits, normaliseSearchTerm, paymentHits, requestHits, SEARCH_LIMIT_PER_KIND } from "./console-search";
 
 vi.mock("server-only", () => ({}));
 
@@ -37,6 +37,12 @@ describe("hits", () => {
     ]);
     expect(invoiceHits([{ id: "i1", number: "FY/26-27/000031", issuedOn: "2026-11-26", recipient: { legalName: "Sai Dental Care" } }])).toEqual([
       { kind: "invoice", label: "FY/26-27/000031", sub: "Sai Dental Care", href: "/invoices?month=2026-11" },
+    ]);
+  });
+
+  it("finds emails by recipient and opens the email's delivery page", () => {
+    expect(emailHits([{ id: "e1", toAddress: "vikram.rao@omsweets", subject: "Your setup link" }])).toEqual([
+      { kind: "email", label: "vikram.rao@omsweets", sub: "Your setup link", href: "/outbox/e1" },
     ]);
   });
 

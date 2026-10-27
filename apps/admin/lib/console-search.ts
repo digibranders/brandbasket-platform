@@ -1,4 +1,4 @@
-import type { ClientSummary, Lead, StaffPaymentRow, SupportTicket, TaxInvoice } from "@brandbasket/db";
+import type { ClientSummary, Lead, StaffPaymentRow, StoredEmail, SupportTicket, TaxInvoice } from "@brandbasket/db";
 import { LEAD_STATUS_LABELS } from "@brandbasket/shared/lib/lead-status";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { matchesClientSearch } from "@/lib/client-search";
@@ -52,5 +52,10 @@ export function paymentHits(rows: readonly StaffPaymentRow[]): SearchHit[] {
     sub: `${row.providerPaymentId} · ${paymentStatus(row).label}`,
     href: `/clients/${row.businessId}/billing#payment-${row.id}`,
   }));
+}
+
+/** Emails the database already matched on recipient, subject or template; each opens its delivery page. */
+export function emailHits(emails: readonly Pick<StoredEmail, "id" | "toAddress" | "subject">[]): SearchHit[] {
+  return emails.slice(0, SEARCH_LIMIT_PER_KIND).map((email) => ({ kind: "email", label: email.toAddress, sub: email.subject, href: `/outbox/${email.id}` }));
 }
 
