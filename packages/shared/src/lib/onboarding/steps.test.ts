@@ -6,6 +6,7 @@ import {
   ONBOARDING_STEPS,
   onboardingStepHref,
   stepAfter,
+  stepBefore,
   stepInfo,
 } from "./steps";
 
@@ -23,6 +24,12 @@ describe("onboarding steps", () => {
     expect(stepAfter("business")).toBe("content");
     expect(stepAfter("domain")).toBe("review");
     expect(stepAfter("review")).toBeNull();
+  });
+
+  it("knows what came before", () => {
+    expect(stepBefore("business")).toBeNull();
+    expect(stepBefore("content")).toBe("business");
+    expect(stepBefore("review")).toBe("domain");
   });
 
   it("continues from the first unanswered step, then the review", () => {

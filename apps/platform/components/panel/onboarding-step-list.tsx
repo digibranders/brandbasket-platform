@@ -1,6 +1,6 @@
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { TickIcon } from "@brandbasket/shared/ui/icons";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { formatStepNumber } from "@brandbasket/shared/lib/format";
 import { ONBOARDING_STEPS, onboardingStepHref, type OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
@@ -10,42 +10,50 @@ interface OnboardingStepListProps {
   readonly completed: readonly OnboardingStepKey[];
 }
 
-/** The five steps, each linked, so people can move between them freely rather than being marched through. */
+/**
+ * The five steps as five bars (the Requests stepper's look): ink once done, rattan for the step the customer is on, soft
+ * for the ones to come. Each is a link, so people can move between steps freely rather than being marched through. On a
+ * phone the names would not fit, so only the current one is written, under the bars.
+ */
 export function OnboardingStepList({ current, completed }: OnboardingStepListProps): ReactElement {
   const done = new Set(completed);
+  const currentIndex = ONBOARDING_STEPS.findIndex((step) => step.key === current);
+  const currentTitle = ONBOARDING_STEPS[currentIndex]?.title ?? "";
 
   return (
-    <nav aria-label="Setup steps">
-      <ol className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0">
+    <nav aria-label="Setup steps" className="grid gap-1">
+      <ol className="grid grid-cols-5 gap-1.5">
         {ONBOARDING_STEPS.map((step, index) => {
           const isCurrent = step.key === current;
           const isDone = done.has(step.key);
           return (
-            <li key={step.key} className="shrink-0">
+            <li key={step.key}>
               <Link
                 href={onboardingStepHref(step.key)}
                 aria-current={isCurrent ? "step" : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-control px-3 py-3 transition-colors duration-300 ease-calm",
-                  isCurrent ? "bg-card ring-1 ring-line" : "hover:bg-paper-deep/60",
-                )}
+                className="group grid gap-2 rounded-md py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rattan"
               >
                 <span
+                  aria-hidden="true"
                   className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-full text-sm tabular-nums",
-                    isDone
-                      ? "bg-ink text-paper"
-                      : isCurrent
-                        ? "bg-accent-pale text-accent-deep"
-                        : "bg-paper-deep text-ink-soft",
+                    "h-1 rounded-full transition-colors duration-200",
+                    isCurrent ? "bg-rattan" : isDone ? "bg-ink" : "bg-sunken group-hover:bg-line",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "flex min-w-0 items-center gap-1.5 text-[0.8125rem] max-sm:sr-only",
+                    isCurrent || isDone ? "font-semibold text-ink" : "font-medium text-ink-2 group-hover:text-ink",
                   )}
                 >
-                  {isDone ? <TickIcon className="size-4" /> : formatStepNumber(index)}
-                </span>
-                <span className="min-w-0">
-                  <span className={cn("block whitespace-nowrap text-sm", isCurrent ? "font-medium" : "text-ink-soft")}>
-                    {step.title}
-                  </span>
+                  {isDone ? (
+                    <CheckCircle size={16} weight="fill" aria-hidden="true" className="shrink-0 text-sage" />
+                  ) : (
+                    <span aria-hidden="true" className="font-figure text-xs tabular-nums">
+                      {formatStepNumber(index)}
+                    </span>
+                  )}
+                  <span className="truncate">{step.title}</span>
                   <span className="sr-only">{isDone ? " (done)" : isCurrent ? " (current step)" : " (to do)"}</span>
                 </span>
               </Link>
@@ -53,6 +61,10 @@ export function OnboardingStepList({ current, completed }: OnboardingStepListPro
           );
         })}
       </ol>
+      <p aria-hidden="true" className="text-[0.8125rem] font-semibold text-ink sm:hidden">
+        Step {formatStepNumber(currentIndex)} of {String(ONBOARDING_STEPS.length).padStart(2, "0")}
+        {`: ${currentTitle}`}
+      </p>
     </nav>
   );
 }

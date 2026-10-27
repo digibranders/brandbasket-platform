@@ -2,16 +2,17 @@ import "server-only";
 import type { BusinessProfile, MediaAsset, PrimaryDomain, ProjectBrief, Service } from "@brandbasket/db";
 
 import Link from "next/link";
-import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
 import type { ReactElement, ReactNode } from "react";
 import { MediaThumbnail } from "@/components/panel/media-thumbnail";
+import { SOFT_BUTTON } from "@/components/v2/classes";
+import { PageSection } from "@/components/v2/page";
 import { WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { describeHours, type OpeningHours } from "@brandbasket/shared/lib/onboarding/hours";
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
 import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
 
-const NOT_GIVEN = <span className="text-ink-soft">Not given</span>;
+const NOT_GIVEN = <span className="text-ink-2">Not given</span>;
 
 interface SummaryCardProps {
   readonly title: string;
@@ -20,27 +21,30 @@ interface SummaryCardProps {
   readonly children: ReactNode;
 }
 
+/** One part of what the customer told us: its title with a hairline under it, and Edit while the answers can still change. */
 export function SummaryCard({ title, editHref, children }: SummaryCardProps): ReactElement {
   return (
-    <section className="rounded-card border border-line bg-card p-6 sm:p-8">
-      <div className="flex items-baseline justify-between gap-4">
-        <h2 className="panel-section">{title}</h2>
-        {editHref === undefined ? null : (
-          <ButtonLink href={editHref} size="sm" variant="secondary">
+    <PageSection
+      id={`summary-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+      title={title}
+      aside={
+        editHref === undefined ? undefined : (
+          <Link href={editHref} className={SOFT_BUTTON}>
             Edit<span className="sr-only"> {title.toLowerCase()}</span>
-          </ButtonLink>
-        )}
-      </div>
-      <div className="mt-5">{children}</div>
-    </section>
+          </Link>
+        )
+      }
+    >
+      {children}
+    </PageSection>
   );
 }
 
 function Row({ label, children }: { readonly label: string; readonly children: ReactNode }): ReactElement {
   return (
-    <div className="grid gap-1 py-2.5 sm:grid-cols-[11rem_1fr] sm:gap-4">
-      <dt className="text-sm text-ink-soft">{label}</dt>
-      <dd className="min-w-0 break-words">{children}</dd>
+    <div className="grid gap-1 py-3 text-sm first:pt-0 sm:grid-cols-[11rem_1fr] sm:gap-4">
+      <dt className="text-[0.8125rem] text-ink-2">{label}</dt>
+      <dd className="min-w-0 break-words text-ink">{children}</dd>
     </div>
   );
 }
@@ -75,7 +79,7 @@ function ExternalLink({ url }: { readonly url: string }): ReactElement {
   const href = safeExternalHref(url);
   if (href === null) return <span className="break-all">{url}</span>;
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="link-underline break-all">
+    <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="break-all underline underline-offset-4">
       {url}
     </a>
   );
@@ -88,9 +92,9 @@ export function BusinessSummary({
   readonly profile: BusinessProfile | null;
   readonly hours: readonly OpeningHours[];
 }): ReactElement {
-  if (profile === null) return <p className="text-ink-soft">Nothing here yet.</p>;
+  if (profile === null) return <p className="text-sm text-ink-2">Nothing here yet.</p>;
   return (
-    <dl className="divide-y divide-line/70">
+    <dl className="divide-y divide-line">
       <Row label="Business name">{profile.displayName}</Row>
       <Row label="Tagline">{orNotGiven(profile.tagline)}</Row>
       <Row label="Description">{multiline(profile.description)}</Row>
@@ -112,7 +116,7 @@ export function BusinessSummary({
           <ul className="space-y-0.5">
             {WEEKDAYS.map((label, dayOfWeek) => (
               <li key={label} className="flex gap-3">
-                <span className="w-24 shrink-0 text-ink-soft">{label}</span>
+                <span className="w-24 shrink-0 text-ink-2">{label}</span>
                 <span>{hoursText(hours.find((day) => day.dayOfWeek === dayOfWeek))}</span>
               </li>
             ))}
@@ -124,16 +128,16 @@ export function BusinessSummary({
 }
 
 export function ServicesList({ services }: { readonly services: readonly Service[] }): ReactElement {
-  if (services.length === 0) return <p className="text-ink-soft">No services yet.</p>;
+  if (services.length === 0) return <p className="text-sm text-ink-2">No services yet.</p>;
   return (
-    <ol className="space-y-3">
+    <ol className="divide-y divide-line border-b border-line">
       {services.map((service) => (
-        <li key={service.id} className="rounded-control border border-line/70 bg-paper/60 px-4 py-3">
-          <p className="flex flex-wrap items-baseline justify-between gap-x-4">
-            <span className="font-medium">{service.name}</span>
-            {service.priceText === null ? null : <span className="text-sm tabular-nums text-ink-soft">{service.priceText}</span>}
+        <li key={service.id} className="py-3 first:pt-0">
+          <p className="flex flex-wrap items-baseline justify-between gap-x-4 text-sm">
+            <span className="font-semibold text-ink">{service.name}</span>
+            {service.priceText === null ? null : <span className="font-figure text-[0.8125rem] tabular-nums text-ink-2">{service.priceText}</span>}
           </p>
-          {service.summary === null ? null : <p className="mt-1 text-sm text-ink-soft">{service.summary}</p>}
+          {service.summary === null ? null : <p className="mt-1 text-[0.8125rem] text-ink-2">{service.summary}</p>}
         </li>
       ))}
     </ol>
@@ -150,7 +154,7 @@ export function ContentSummary({
   return (
     <div className="space-y-5">
       <ServicesList services={services} />
-      <dl className="divide-y divide-line/70">
+      <dl className="divide-y divide-line">
         <Row label="Anything else">{multiline(brief?.notesForBuilder)}</Row>
         <Row label="How it should feel">{multiline(brief?.styleLikes)}</Row>
         <Row label="Websites you like">
@@ -182,9 +186,9 @@ export function BrandSummary({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm text-ink-soft">Logo</h3>
+        <h3 className="text-[0.8125rem] text-ink-2">Logo</h3>
         {logo === null ? (
-          <p className="mt-1">No logo. We’ll set your name in a clean typeface.</p>
+          <p className="mt-1 text-sm">No logo. We’ll set your name in a clean typeface.</p>
         ) : (
           <div className="mt-2 w-40">
             <MediaThumbnail asset={logo} alt="Your logo" fit="contain" />
@@ -192,9 +196,9 @@ export function BrandSummary({
         )}
       </div>
       <div>
-        <h3 className="text-sm text-ink-soft">Photos</h3>
+        <h3 className="text-[0.8125rem] text-ink-2">Photos</h3>
         {photos.length === 0 ? (
-          <p className="mt-1">No photos.</p>
+          <p className="mt-1 text-sm">No photos.</p>
         ) : (
           <ul className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {photos.map((photo) => (
@@ -213,14 +217,14 @@ export function BrandSummary({
 export async function DomainSummary({ domain }: { readonly domain: PrimaryDomain | null }): Promise<ReactElement> {
   const temporary = domain !== null && isTemporarySubdomain(domain.hostname);
   return (
-    <dl className="divide-y divide-line/70">
+    <dl className="divide-y divide-line">
       <Row label="Domain">
         {domain === null ? (
           NOT_GIVEN
         ) : (
           <>
             <span className="font-medium">{domain.hostname}</span>
-            {temporary ? <span className="text-ink-soft"> (free, temporary)</span> : null}
+            {temporary ? <span className="text-ink-2"> (free, temporary)</span> : null}
           </>
         )}
       </Row>
@@ -240,9 +244,9 @@ export async function DomainSummary({ domain }: { readonly domain: PrimaryDomain
 /** Shown on every step, the review and the project page once onboarding has been sent. */
 export function LockedNotice(): ReactElement {
   return (
-    <p role="status" className="rounded-control bg-accent-pale px-5 py-4 text-accent-deep">
+    <p role="status" className="rounded-lg bg-rattan-wash px-4 py-3 text-sm text-rattan-ink">
       You’ve sent this to us, so these answers are locked. To change anything now,{" "}
-      <Link href="/project" className="link-underline font-medium">
+      <Link href="/project" className="font-semibold underline underline-offset-4">
         see Your project
       </Link>
       .
