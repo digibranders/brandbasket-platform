@@ -10,7 +10,7 @@ export const CHATBOT_LEADS_PATH = `${CHATBOT_PATH}/leads`;
 export const CHATBOT_NAME_PATH = `${CHATBOT_PATH}/name`;
 
 /** What the page says about the price: OyeChats comes with the plan, so the customer never sees it as something to buy. */
-export const OYECHATS_INCLUDED_LABEL = "Included in your Care plan";
+export const OYECHATS_INCLUDED_LABEL = "Included in your plan";
 
 const STATUS_LINES: Readonly<Record<ChatbotStatus, { readonly label: string; readonly detail: string }>> = {
   setting_up: { label: "Setting up", detail: "The team is building and training it. You do not need to do anything." },

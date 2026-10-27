@@ -54,11 +54,8 @@ export async function getCustomerBusinessKind(userId: string, businessId: string
   return (await getCustomerBusinessEntry(userId, businessId)).kind;
 }
 
-/**
- * A free listing account's Business profile: its details, photos and listing, and where it is published. Advertise
- * sends an account with no business here.
- */
-export const LISTING_PAGE_PATH = "/business";
+/** The page a free listing account is sent to: the Business profile (hours, holidays, announcement). */
+export const LISTING_PAGE_PATH = "/details";
 
 /**
  * Where a free listing account lands: its Business profile, the first of the only customer pages it has (Business

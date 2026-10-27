@@ -85,7 +85,7 @@ describe("createProxy", () => {
 
 
   it("treats the removed directory and clinic paths like any other path: the dashboard's missing-page route answers them", () => {
-    const removed = ["/deals", "/business", "/listing", "/advertise", "/reviews", "/leads", "/appointments", "/patients"];
+    const removed = ["/deals", "/business", "/photos", "/listing", "/advertise", "/reviews", "/leads", "/appointments", "/patients"];
     const proxy = createProxy({ app: "http://localbusiness.localhost:3000" });
     for (const path of removed) {
       const response = proxy(request(`http://localbusiness.localhost:3000${path}`, "localbusiness.localhost:3000"));

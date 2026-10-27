@@ -115,7 +115,7 @@ beforeEach(() => {
 describe("requireCustomerAccess for free listing accounts", () => {
   it("sends a listing account to its Business profile from a page that has not opted in", async () => {
     vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "listing_only" });
-    await expect(requireCustomerAccess()).rejects.toThrow("redirect:/business");
+    await expect(requireCustomerAccess()).rejects.toThrow("redirect:/details");
     expect(findBillingState).not.toHaveBeenCalled();
   });
 

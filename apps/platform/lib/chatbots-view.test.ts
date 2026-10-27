@@ -33,7 +33,7 @@ describe("chatbotStatusLine", () => {
 
 describe("what the page says about price", () => {
   it("presents OyeChats as part of the plan at no extra cost, never as something to buy", () => {
-    expect(OYECHATS_INCLUDED_LABEL).toBe("Included in your Care plan");
+    expect(OYECHATS_INCLUDED_LABEL).toBe("Included in your plan");
     expect(OYECHATS_INCLUDED_LABEL).not.toMatch(/₹|\$|buy|upgrade|add-on|[\u2013\u2014!]/i);
   });
 });

@@ -8,7 +8,7 @@ import { formatMoney } from "@brandbasket/shared/lib/money";
 import { applyMembershipCode, removeMembershipCode, startMembership } from "@/app/app-host/(protected)/plan/actions";
 import { BillingDetails } from "@/components/panel/billing/billing-details";
 import { ReferralCodeForm } from "@/components/panel/referral-code-form";
-import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, CHECKOUT_STEPS } from "@/lib/checkout-plans";
+import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, checkoutSteps } from "@/lib/checkout-plans";
 import { ledgerRows, ledgerSummary, type LedgerCode, type LedgerPricing, type LedgerRow } from "@/lib/checkout-ledger";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import { useOpeningPayment } from "@/lib/billing/opening-payment";
@@ -248,7 +248,7 @@ export function CheckoutLedger({
               {CHECKOUT_COPY.nextHeading}
             </h2>
             <ol className="mt-3.5">
-              {CHECKOUT_STEPS.map((step, index) => (
+              {checkoutSteps(services).map((step, index) => (
                 <li
                   key={step.title}
                   className="relative grid grid-cols-[28px_1fr] gap-3.5 pb-5 not-last:before:absolute not-last:before:bottom-0 not-last:before:left-[13px] not-last:before:top-7 not-last:before:w-0.5 not-last:before:bg-line"
