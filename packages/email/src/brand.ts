@@ -26,3 +26,11 @@ export function emailSenderDefaults(): { readonly from: EmailAddress; readonly r
 export function emailTeamInboxDefault(): string {
   return "support@brandbasket.in";
 }
+
+/**
+ * Where the logo in the customer emails is served from: a 360px wide PNG for a white background (mail apps do not show SVG),
+ * which the dashboard serves at /email/email-logo.png.
+ */
+export function emailLogoUrl(): string {
+  return "https://app.brandbasket.in/email/email-logo.png";
+}

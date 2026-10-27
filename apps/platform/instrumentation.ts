@@ -11,6 +11,8 @@ export async function register(): Promise<void> {
     // The robot check on the sign-in and sign-up forms stays off, with a note in the log, until its keys are set.
     const { warnIfTurnstileUnconfigured } = await import("@brandbasket/shared/server/turnstile-request");
     warnIfTurnstileUnconfigured();
+    const { startBillingErrorAlerts } = await import("./lib/server/teams");
+    startBillingErrorAlerts();
     await import("./sentry.server.config");
   }
 

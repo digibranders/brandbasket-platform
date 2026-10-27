@@ -18,6 +18,7 @@ import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-chang
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
 import { basketDeps } from "./basket-deps";
 import { getStaffDb } from "./db";
+import { announcePaymentToTeams } from "./teams-admin";
 
 /** How many charges one client page lists. */
 const CHARGES_SHOWN = 50;
@@ -77,11 +78,11 @@ export async function markClientChargePaid(
   },
   now: Date,
 ): Promise<MarkChargePaidOutcome> {
-  const outcome = await getStaffDb().transaction(async (tx) => {
+  const { outcome, newPaymentId } = await getStaffDb().transaction(async (tx): Promise<{ outcome: MarkChargePaidOutcome; newPaymentId: string | null }> => {
     await lockBusinessForBilling(tx, input.businessId);
     const charge = await findChargeForBusiness(tx, input.businessId, input.chargeId);
-    if (charge === null) return "not-found";
-    if (charge.status !== "open") return "not-open";
+    if (charge === null) return { outcome: "not-found", newPaymentId: null };
+    if (charge.status !== "open") return { outcome: "not-open", newPaymentId: null };
     const recorded = await recordChargePaymentWithInvoice(tx, {
       chargeId: charge.id,
       businessId: input.businessId,
@@ -97,8 +98,9 @@ export async function markClientChargePaid(
         receivedOn: input.details.receivedOn,
       },
     });
-    return recorded.outcome;
+    return { outcome: recorded.outcome, newPaymentId: recorded.alreadyRecorded ? null : recorded.payment.id };
   });
+  if (newPaymentId !== null) void announcePaymentToTeams(newPaymentId);
   // A paid add-on is on; the provider is told to bill it from the next renewal, with the payment's transaction committed.
   if (outcome === "paid") await finishAddOnAfterPayment(basketDeps(), { businessId: input.businessId, chargeId: input.chargeId, now });
   return outcome;

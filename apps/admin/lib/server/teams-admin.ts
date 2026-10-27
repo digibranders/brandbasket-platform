@@ -1,6 +1,8 @@
 import "server-only";
-import { TEAMS_DESTINATIONS, type TeamsDestination } from "@brandbasket/shared/lib/teams-webhook";
-import { clearTeamsHook, loadTeamsHookState, saveTeamsHook, sendTeamsTest, type TeamsHookState, type TeamsTestResult } from "@brandbasket/shared/server/teams-alerts";
+import { TEAMS_DESTINATIONS, type TeamsDestination, type TeamsMessage } from "@brandbasket/shared/lib/teams-webhook";
+import { registerBillingErrorAlerts } from "@brandbasket/shared/server/billing-error-alerts";
+import { announcePayment } from "@brandbasket/shared/server/payment-alerts";
+import { clearTeamsHook, loadTeamsHookState, saveTeamsHook, sendTeamsAlert, sendTeamsTest, type TeamsHookState, type TeamsTestResult } from "@brandbasket/shared/server/teams-alerts";
 import { getStaffDb } from "./db";
 import { serverEnv } from "./env";
 
@@ -22,4 +24,33 @@ export async function removeTeamsUrl(destination: TeamsDestination): Promise<voi
 
 export function testTeamsUrl(destination: TeamsDestination, by: { readonly email: string }, now: Date): Promise<TeamsTestResult> {
   return sendTeamsTest(getStaffDb(), serverEnv().BETTER_AUTH_SECRET, destination, { email: by.email, now });
+}
+
+/**
+ * Tells the Payments channel about a payment staff recorded by hand (a bank transfer). Call it after the payment's transaction
+ * has committed, for a payment recorded for the first time. Best-effort: it never throws.
+ */
+export async function announcePaymentToTeams(paymentId: string): Promise<void> {
+  try {
+    await announcePayment(getStaffDb(), serverEnv().BETTER_AUTH_SECRET, paymentId, serverEnv().ADMIN_ORIGIN);
+  } catch (error) {
+    console.error("[teams-alert] A payment could not be announced.", { paymentId, error: error instanceof Error ? error.name : "error" });
+  }
+}
+
+/** Starts telling the System channel about billing errors the console logs (a payment recorded by hand, an invoice). Called once at startup. */
+export function startBillingErrorAlerts(): void {
+  try {
+    const secret = serverEnv().BETTER_AUTH_SECRET;
+    const send = async (message: TeamsMessage): Promise<void> => {
+      try {
+        await sendTeamsAlert(getStaffDb(), secret, "system", message);
+      } catch (error) {
+        console.error("[teams-alert] The system alert could not be sent.", error instanceof Error ? error.name : "error");
+      }
+    };
+    registerBillingErrorAlerts(send, serverEnv().ADMIN_ORIGIN);
+  } catch (error) {
+    console.error("[teams-alert] Billing error alerts could not start.", error instanceof Error ? error.name : "error");
+  }
 }

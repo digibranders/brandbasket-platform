@@ -9,6 +9,8 @@ export async function register(): Promise<void> {
   // The robot check on the staff sign-in stays off, with a note in the log, until its keys are set.
   const { warnIfTurnstileUnconfigured } = await import("@brandbasket/shared/server/turnstile-request");
   warnIfTurnstileUnconfigured();
+  const { startBillingErrorAlerts } = await import("./lib/server/teams-admin");
+  startBillingErrorAlerts();
 }
 
 export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {

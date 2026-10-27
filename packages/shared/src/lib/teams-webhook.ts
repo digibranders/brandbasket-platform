@@ -5,13 +5,15 @@
  */
 
 /** The channels an alert can go to, one webhook address each. */
-export const TEAMS_DESTINATIONS = ["enquiries", "support", "system"] as const;
+export const TEAMS_DESTINATIONS = ["enquiries", "payments", "customers", "support", "system"] as const;
 export type TeamsDestination = (typeof TEAMS_DESTINATIONS)[number];
 
 export const TEAMS_DESTINATION_INFO: Readonly<Record<TeamsDestination, { readonly label: string; readonly posts: string }>> = {
   enquiries: { label: "Website enquiries", posts: "Every new enquiry from the website's forms." },
+  payments: { label: "Payments", posts: "Every payment received (first payment, renewal, reactivation, add-on, one-off charge or one recorded by hand), with the customer's details, and a payment that needs attention or a plan that stops billing." },
+  customers: { label: "Customers and privacy", posts: "New sign-ups, setup details sent, closed accounts and privacy requests." },
   support: { label: "Support, bugs and feedback", posts: "New support requests, bug reports, feedback and suggestions, and a customer's replies." },
-  system: { label: "System errors", posts: "Automatic error reports from the dashboard and the console, at most one per error every 5 minutes." },
+  system: { label: "System errors", posts: "Automatic error reports from the dashboard and the console, and billing errors such as a payment event that failed to process, at most one per error every 5 minutes." },
 };
 
 export function isTeamsDestination(value: unknown): value is TeamsDestination {
@@ -65,6 +67,11 @@ export const TEAMS_URL_PROBLEMS: Readonly<Record<TeamsUrlProblem, string>> = {
   "teams-has-a-login": "Take the user name and password out of the address. A Teams webhook never needs them.",
   "teams-not-a-teams-address": "That is not a Teams webhook address. Copy it from the Workflows flow's \"When a Teams webhook request is received\" step.",
 };
+
+/** "26 Oct 2026, 5:54 pm IST": staff read Teams in India, so every time on a card is in Indian time. */
+export function formatIstTime(date: Date): string {
+  return `${new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(date)} IST`;
+}
 
 /** What one alert says. Everything optional is left out of the card when empty. */
 export interface TeamsCardInput {
