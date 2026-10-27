@@ -414,6 +414,19 @@ describe("the charge a request is paid with", () => {
     expect(await stateOf(requestId)).toBe("in_progress");
   });
 
+  it("keeps the charge and the acceptance once the charge is paid", async () => {
+    const { requestId, chargeId } = await acceptedRequest();
+    await recordChargePayment(dbs.staff.db, { chargeId, businessId, provider: "fake", providerPaymentId: "fake_pay_keep", amountCents: 150_000, currency: "INR", paidAt: new Date(), now: new Date() });
+    expect(await stateOf(requestId)).toBe("in_progress");
+    const update = (set: Partial<typeof changeRequests.$inferInsert>) => captureErrorText(dbs.staff.db.update(changeRequests).set(set).where(eq(changeRequests.id, requestId)));
+    expect(await update({ chargeId: null })).toContain("charge");
+    expect(await update({ acceptedAt: null })).toContain("charge");
+    expect(await update({ chargeId: await openCharge() })).toContain("charge");
+    const [row] = await dbs.staff.db.select({ chargeId: changeRequests.chargeId, acceptedAt: changeRequests.acceptedAt }).from(changeRequests).where(eq(changeRequests.id, requestId));
+    expect(row?.chargeId).toBe(chargeId);
+    expect(row?.acceptedAt).not.toBeNull();
+  });
+
   it("does not let a quote with an open charge be declined or withdrawn until the charge is let go", async () => {
     const { requestId, chargeId } = await acceptedRequest();
     for (const state of ["declined", "withdrawn"] as const) {

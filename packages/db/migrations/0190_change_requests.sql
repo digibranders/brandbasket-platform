@@ -102,6 +102,10 @@ BEGIN
      IS DISTINCT FROM ROW(OLD.id, OLD.ticket_id, OLD.business_id, OLD.kind, OLD.page, OLD.created_at) THEN
     RAISE EXCEPTION 'A change request''s identity cannot change' USING ERRCODE = 'insufficient_privilege';
   END IF;
+  IF OLD.charge_id IS NOT NULL AND (NEW.charge_id IS DISTINCT FROM OLD.charge_id OR NEW.accepted_at IS DISTINCT FROM OLD.accepted_at)
+     AND EXISTS (SELECT 1 FROM public.charges c WHERE c.id = OLD.charge_id AND c.status = 'paid') THEN
+    RAISE EXCEPTION 'The charge and the acceptance of a paid quote cannot change' USING ERRCODE = 'check_violation';
+  END IF;
   IF NEW.charge_id IS DISTINCT FROM OLD.charge_id THEN
     IF OLD.charge_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.charges c WHERE c.id = OLD.charge_id AND c.status = 'open') THEN
       RAISE EXCEPTION 'The open charge of an accepted quote must be paid or let go before the request changes' USING ERRCODE = 'check_violation';
