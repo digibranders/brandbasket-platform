@@ -32,7 +32,7 @@ export function keyOf(year: number, month: number, day: number): string {
 }
 
 /** A calendar file (.ics) for a booked call, as a link a browser can download, so the customer can add it to their own calendar. */
-export function callInviteHref(startIso: string, endIso: string): string {
+export function callInviteHref(startIso: string, endIso: string, title = "Brandbasket kickoff call"): string {
   const stamp = (iso: string): string => new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   const file = [
     "BEGIN:VCALENDAR",
@@ -43,7 +43,7 @@ export function callInviteHref(startIso: string, endIso: string): string {
     `DTSTAMP:${stamp(new Date().toISOString())}`,
     `DTSTART:${stamp(startIso)}`,
     `DTEND:${stamp(endIso)}`,
-    "SUMMARY:Brandbasket kickoff call",
+    `SUMMARY:${title}`,
     "DESCRIPTION:The video link is in your confirmation email.",
     "END:VEVENT",
     "END:VCALENDAR",
