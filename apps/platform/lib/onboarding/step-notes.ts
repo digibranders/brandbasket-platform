@@ -14,7 +14,7 @@ export const STEP_NOTES: Readonly<Record<OnboardingStepKey, readonly StepNote[]>
   business: [
     { answer: "Name and tagline", use: "The top of every page and your home page." },
     { answer: "Phone, email and address", use: "Your contact details, with a click-to-call button on phones." },
-    { answer: "Opening hours", use: "Your contact details, so people know when to come." },
+    { answer: "Opening hours", use: "Shown beside your contact details, so people know when you are open." },
   ],
   content: [
     { answer: "Your services", use: "Your services page, one after another in the order you set." },

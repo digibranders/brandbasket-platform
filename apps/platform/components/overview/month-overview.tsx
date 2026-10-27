@@ -103,7 +103,7 @@ export function MonthOverview({ firstName, businessName, data, now, buildCard, b
   return (
     <PageFrame
       title={`${greetingFor(now)}, ${firstName}.`}
-      lede={sublineFor(data.open)}
+      lede={sublineFor(data.open, buildCard !== null)}
       action={
         <>
           <Link href={ASK_FOR_A_CHANGE_PATH} className={SOFT_BUTTON}>

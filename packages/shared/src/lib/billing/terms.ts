@@ -82,10 +82,13 @@ function monthlyPriceWords(priceCents: number, plan: Pick<Plan, "currency" | "ta
  * covers your first month, then it renews monthly."; a taxed one says the GST is included. Any other start
  * names both amounts: "$195 covers your first 3 months, then it's $65 a month." `bundledAddOnPriceCents` is the services
  * billed as lines on top of the plan's own price, which is the whole price on the services plan (it costs 0 itself).
+ * `afterFirstTerm` is for a customer whose first term is over: the price, then "Renews monthly."
  */
-export function describePlanTerms(plan: TermedPlan, bundledAddOnPriceCents = 0): string {
+export function describePlanTerms(plan: TermedPlan, bundledAddOnPriceCents = 0, options: { readonly afterFirstTerm?: boolean } = {}): string {
   const term = initialTermPhrase(plan.initialTermMonths);
   const recurringCents = plan.recurringAmountCents + bundledAddOnPriceCents;
+  // The first payment is in the past, so the sentence about it would only confuse: say what happens now.
+  if (options.afterFirstTerm === true) return `${monthlyPriceWords(recurringCents, plan)}. Renews monthly.`;
   if (plan.initialTermMonths === 1 && plan.initialAmountCents === plan.recurringAmountCents) {
     return `${monthlyPriceWords(recurringCents, plan)}. Your first payment covers ${term}, then it renews monthly.`;
   }
