@@ -1,5 +1,5 @@
 import "server-only";
-import { countCallsBetween, countLateProjects, countLeadsToContact, countSupportTicketsAwaitingStaff } from "@brandbasket/db";
+import { countCallsBetween, countLateProjects, countLeadsToContact, countSupportQueues } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import type { RailCountKey, RailCounts } from "@/lib/console-rail";
 import { todayRange } from "@/lib/team-time";
@@ -26,7 +26,7 @@ export async function readRailCounts(): Promise<RailCounts> {
   const [today, leads, requests, projects, calls, payments, deliveries] = await Promise.all([
     countOrNothing("today", () => countTodayItems()),
     countOrNothing("leads", () => countLeadsToContact(db)),
-    countOrNothing("requests", () => countSupportTicketsAwaitingStaff(db)),
+    countOrNothing("requests", async () => (await countSupportQueues(db)).needsReply),
     countOrNothing("projects", () => countLateProjects(db, now)),
     countOrNothing("calls", () => countCallsBetween(db, day.start, day.end)),
     countOrNothing("payments", () => readPaymentsCount(now)),
