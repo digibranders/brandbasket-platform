@@ -2,7 +2,13 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createAffiliate, insertAffiliateEarning } from "./queries/affiliates";
 import { createReferralCode } from "./queries/referrals";
-import { markPaymentRefunded, recordFailedPayment } from "./queries/staff-payments";
+import {
+  countPaymentsNeedingStaff,
+  listPaymentsForClient,
+  listPaymentsForStaff,
+  markPaymentRefunded,
+  recordFailedPayment,
+} from "./queries/staff-payments";
 import { affiliateEarnings, businesses, payments, users } from "./schema";
 import { captureErrorText, openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
 
@@ -11,6 +17,8 @@ const NOV_11 = new Date("2026-11-11T06:30:00.000Z");
 const NO_SUCH_BUSINESS = "01920000-0000-7000-8000-000000000999";
 const NOV_10 = new Date("2026-11-10T06:30:00.000Z");
 const NOV_12 = new Date("2026-11-12T06:30:00.000Z");
+const OCT_20 = new Date("2026-10-20T06:30:00.000Z");
+const NOVEMBER = { from: new Date("2026-11-01T00:00:00+05:30"), to: new Date("2026-12-01T00:00:00+05:30") };
 
 let dbs: TestDatabases;
 let businessId = "";
@@ -182,4 +190,58 @@ describe("markPaymentRefunded", () => {
     expect(error).toContain("payments_refund_details_check");
   });
 });
+
+describe("listPaymentsForStaff", () => {
+  it("lists one month's payments, newest first, with the client, who recorded a manual one, and failures", async () => {
+    await insertPayment({ providerPaymentId: "pay_oct", paidAt: OCT_20, createdAt: OCT_20 });
+    await insertPayment({ providerPaymentId: "pay_nov_paid", method: "upi" });
+    await insertPayment({ providerPaymentId: "pay_nov_failed", status: "failed", paidAt: null, createdAt: NOV_11, failureReason: "Card declined" });
+    await insertPayment({
+      providerPaymentId: "manual-1",
+      provider: "manual",
+      manualReference: "NEFT 0921",
+      receivedOn: "2026-11-12",
+      recordedByStaffId: STAFF_USER,
+      paidAt: NOV_12,
+      createdAt: NOV_12,
+    });
+
+    const rows = await listPaymentsForStaff(dbs.staff.db, { ...NOVEMBER, limit: 50 });
+
+    expect(rows.map((row) => row.providerPaymentId)).toEqual(["manual-1", "pay_nov_failed", "pay_nov_paid"]);
+    expect(rows[0]).toMatchObject({ businessName: "Om Sweets", provider: "manual", recordedByName: "Riya Kapoor", invoiceNumber: null });
+    expect(rows[1]).toMatchObject({ status: "failed", paidAt: null, failureReason: "Card declined" });
+    expect(rows[2]).toMatchObject({ status: "captured", method: "upi", refundedAmountCents: null, refundReason: null });
+  });
+
+  it("lists one client's payments, newest first, and no one else's", async () => {
+    const other = await dbs.owner.db.insert(businesses).values({ slug: "kavya-salon", name: "Kavya Salon", currency: "INR" }).returning({ id: businesses.id });
+    await insertPayment({ providerPaymentId: "pay_mine_1" });
+    await insertPayment({ providerPaymentId: "pay_mine_2", paidAt: NOV_12, createdAt: NOV_12 });
+    await insertPayment({ providerPaymentId: "pay_theirs", businessId: other[0]?.id ?? "" });
+
+    const rows = await listPaymentsForClient(dbs.staff.db, businessId, 50);
+
+    expect(rows.map((row) => row.providerPaymentId)).toEqual(["pay_mine_2", "pay_mine_1"]);
+    expect(await listPaymentsForClient(dbs.staff.db, "not-a-uuid", 50)).toEqual([]);
+  });
+});
+
+describe("countPaymentsNeedingStaff", () => {
+  it("counts payments still flagged, from any month, and failures since a date", async () => {
+    await insertPayment({ providerPaymentId: "pay_flagged", attentionReason: "already_paid", attentionRaisedAt: OCT_20, paidAt: OCT_20, createdAt: OCT_20 });
+    await insertPayment({
+      providerPaymentId: "pay_sorted",
+      attentionReason: "already_paid",
+      attentionRaisedAt: OCT_20,
+      attentionResolvedAt: NOV_10,
+      attentionResolvedByStaffId: STAFF_USER,
+    });
+    await insertPayment({ providerPaymentId: "pay_failed_nov", status: "failed", paidAt: null, createdAt: NOV_11 });
+    await insertPayment({ providerPaymentId: "pay_failed_oct", status: "failed", paidAt: null, createdAt: OCT_20 });
+
+    expect(await countPaymentsNeedingStaff(dbs.staff.db, NOVEMBER.from)).toBe(2);
+  });
+});
+
 

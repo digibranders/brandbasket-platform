@@ -1,6 +1,18 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "../client";
-import { affiliateEarnings, businesses, payments, type BillingCurrency, type BillingProviderName, type PaymentKind } from "../schema";
+import {
+  affiliateEarnings,
+  businesses,
+  payments,
+  taxInvoices,
+  users,
+  type BillingCurrency,
+  type BillingProviderName,
+  type PaymentAttentionReason,
+  type PaymentKind,
+  type PaymentStatus,
+} from "../schema";
 import { assertMinorUnits } from "./billing";
 import { isUuid } from "./tenant";
 
@@ -111,4 +123,109 @@ export async function markPaymentRefunded(db: Database, input: PaymentRefundMark
     return { kind: "marked", cancelledEarnings: cancelled.length, paidEarnings: paid.length };
   });
 }
+
+/** One payment as the console lists it. */
+export interface StaffPaymentRow {
+  readonly id: string;
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly provider: BillingProviderName;
+  readonly providerPaymentId: string;
+  readonly kind: PaymentKind;
+  /** Integer minor units of `currency`. */
+  readonly amountCents: number;
+  readonly currency: BillingCurrency;
+  readonly status: PaymentStatus;
+  readonly paidAt: Date | null;
+  readonly createdAt: Date;
+  /** Razorpay's payment method ("upi", "card"), or null. */
+  readonly method: string | null;
+  readonly failureReason: string | null;
+  readonly attentionReason: PaymentAttentionReason | null;
+  readonly attentionResolvedAt: Date | null;
+  /** The staff member who recorded a manual payment, by name. */
+  readonly recordedByName: string | null;
+  readonly refundedAmountCents: number | null;
+  readonly refundReason: string | null;
+  /** The payment's tax invoice number, when it has one. */
+  readonly invoiceNumber: string | null;
+}
+
+const recorder = alias(users, "payment_recorder");
+
+const STAFF_PAYMENT_COLUMNS = {
+  id: payments.id,
+  businessId: payments.businessId,
+  businessName: businesses.name,
+  provider: payments.provider,
+  providerPaymentId: payments.providerPaymentId,
+  kind: payments.kind,
+  amountCents: payments.amountCents,
+  currency: payments.currency,
+  status: payments.status,
+  paidAt: payments.paidAt,
+  createdAt: payments.createdAt,
+  method: payments.method,
+  failureReason: payments.failureReason,
+  attentionReason: payments.attentionReason,
+  attentionResolvedAt: payments.attentionResolvedAt,
+  recordedByName: recorder.name,
+  refundedAmountCents: payments.refundedAmountCents,
+  refundReason: payments.refundReason,
+  invoiceNumber: taxInvoices.number,
+} as const;
+
+/** When a payment happened: when it was paid, or when a failed one was tried. */
+const happenedAt = sql`coalesce(${payments.paidAt}, ${payments.createdAt})`;
+
+function assertLimit(limit: number): void {
+  if (!Number.isInteger(limit) || limit <= 0) throw new Error(`limit must be a positive whole number, received ${limit}`);
+}
+
+/** Every payment that happened in `[from, to)`, across every client, newest first. */
+export async function listPaymentsForStaff(
+  db: Database,
+  range: { readonly from: Date; readonly to: Date; readonly limit: number },
+): Promise<StaffPaymentRow[]> {
+  assertLimit(range.limit);
+  return db
+    .select(STAFF_PAYMENT_COLUMNS)
+    .from(payments)
+    .innerJoin(businesses, eq(businesses.id, payments.businessId))
+    .leftJoin(recorder, eq(recorder.id, payments.recordedByStaffId))
+    .leftJoin(taxInvoices, eq(taxInvoices.paymentId, payments.id))
+    .where(and(sql`${happenedAt} >= ${range.from}`, sql`${happenedAt} < ${range.to}`))
+    .orderBy(desc(happenedAt), desc(payments.id))
+    .limit(range.limit);
+}
+
+/** One client's payments, newest first. */
+export async function listPaymentsForClient(db: Database, businessId: string, limit: number): Promise<StaffPaymentRow[]> {
+  assertLimit(limit);
+  if (!isUuid(businessId)) return [];
+  return db
+    .select(STAFF_PAYMENT_COLUMNS)
+    .from(payments)
+    .innerJoin(businesses, eq(businesses.id, payments.businessId))
+    .leftJoin(recorder, eq(recorder.id, payments.recordedByStaffId))
+    .leftJoin(taxInvoices, eq(taxInvoices.paymentId, payments.id))
+    .where(eq(payments.businessId, businessId))
+    .orderBy(desc(happenedAt), desc(payments.id))
+    .limit(limit);
+}
+
+/** Payments still flagged for staff, from any month, plus payments that failed since `failedSince`. The rail's count. */
+export async function countPaymentsNeedingStaff(db: Database, failedSince: Date): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)`.mapWith(Number) })
+    .from(payments)
+    .where(
+      or(
+        and(isNotNull(payments.attentionReason), isNull(payments.attentionResolvedAt)),
+        and(eq(payments.status, "failed"), gte(payments.createdAt, failedSince)),
+      ),
+    );
+  return rows[0]?.count ?? 0;
+}
+
 
