@@ -69,7 +69,7 @@ export default async function CouponsPage(): Promise<ReactElement> {
                   key={code.id}
                   href={`/coupons/${code.id}`}
                   lead={
-                    <span className="grid size-10 place-items-center rounded-full bg-paper-deep text-accent">
+                    <span className="grid size-10 place-items-center rounded-full bg-sunken text-ink-2">
                       <TagIcon className="size-5" />
                     </span>
                   }

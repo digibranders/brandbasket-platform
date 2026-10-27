@@ -34,7 +34,7 @@ export function PaymentsNeedingAttention({
           <li key={payment.paymentId} className="flex flex-wrap items-start justify-between gap-4 py-4">
             <span className="min-w-0">
               {linkToClient ? (
-                <Link href={`/clients/${payment.businessId}`} className="font-serif text-lg hover:text-accent">
+                <Link href={`/clients/${payment.businessId}`} className="font-display text-[0.9375rem] font-semibold hover:underline">
                   {payment.businessName}
                 </Link>
               ) : null}

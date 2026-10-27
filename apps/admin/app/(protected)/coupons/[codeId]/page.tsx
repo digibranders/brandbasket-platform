@@ -74,7 +74,7 @@ export default async function CodePage({ params }: CodePageProps): Promise<React
       />
 
       {worth === null ? (
-        <p className="mt-8 max-w-2xl border-l-2 border-accent py-1 pl-4 text-accent">
+        <p className="mt-8 max-w-2xl border-l-2 border-error py-1 pl-4 text-error">
           This code takes off as much as the cheapest {code.currency} service costs, so there is nothing left to charge.
         </p>
       ) : (

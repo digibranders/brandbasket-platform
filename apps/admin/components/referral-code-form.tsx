@@ -552,7 +552,7 @@ function FormError({
       id={ERROR_ID}
       role="alert"
       tabIndex={-1}
-      className="border-l-2 border-accent py-1 pl-4 text-sm text-accent outline-none"
+      className="border-l-2 border-error py-1 pl-4 text-sm text-error outline-none"
     >
       {message}
     </p>

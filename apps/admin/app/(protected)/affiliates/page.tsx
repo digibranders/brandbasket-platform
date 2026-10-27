@@ -71,7 +71,7 @@ export default async function AffiliatesPage(): Promise<ReactElement> {
                 key={affiliate.id}
                 href={`/affiliates/${affiliate.id}`}
                 lead={
-                  <span className="grid size-10 place-items-center rounded-full bg-paper-deep text-accent">
+                  <span className="grid size-10 place-items-center rounded-full bg-sunken text-ink-2">
                     <LinkIcon className="size-5" />
                   </span>
                 }

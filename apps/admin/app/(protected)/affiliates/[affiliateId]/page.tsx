@@ -141,7 +141,7 @@ export default async function AffiliatePage({ params }: AffiliatePageProps): Pro
                   key={code.id}
                   href={`/coupons/${code.id}`}
                   lead={
-                    <span className="grid size-10 place-items-center rounded-full bg-paper-deep text-accent">
+                    <span className="grid size-10 place-items-center rounded-full bg-sunken text-ink-2">
                       <TagIcon className="size-5" />
                     </span>
                   }
@@ -193,7 +193,7 @@ export default async function AffiliatePage({ params }: AffiliatePageProps): Pro
                       {affiliate.rewardCycles === null ? "" : ` of ${affiliate.rewardCycles}`}
                     </span>
                   </span>
-                  <span className="w-28 text-right font-serif text-lg tabular-nums">
+                  <span className="w-28 text-right font-figure tabular-nums">
                     {formatMoney(earning.amountCents, earning.currency)}
                   </span>
                   <span className="flex w-36 items-center justify-end gap-3">
@@ -242,7 +242,7 @@ export default async function AffiliatePage({ params }: AffiliatePageProps): Pro
                     )}
                   </span>
                   <span className="text-xs text-ink-soft">{payout.earnings} months</span>
-                  <span className="w-28 text-right font-serif text-lg tabular-nums">
+                  <span className="w-28 text-right font-figure tabular-nums">
                     {formatMoney(payout.amountCents, payout.currency)}
                   </span>
                 </li>
