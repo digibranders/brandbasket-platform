@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describePaymentMethod, paymentTeamsCard, type PaymentCardInput } from "./payment-alert-card";
+import { describePaymentMethod, paymentTeamsCard, planStatusTeamsCard, type PaymentCardInput } from "./payment-alert-card";
 
 type Block = { type: string; text?: string; facts?: { title: string; value: string }[] };
 const parts = (input: PaymentCardInput): { body: Block[]; actions?: { title: string; url: string }[] } =>
@@ -111,5 +111,27 @@ describe("describePaymentMethod", () => {
     expect(describePaymentMethod({ ...NO_METHOD, method: "netbanking" })).toBe("netbanking");
     expect(describePaymentMethod({ ...NO_METHOD, manualReference: "UTR123" })).toBe("Recorded by hand, reference UTR123");
     expect(describePaymentMethod(NO_METHOD)).toBeNull();
+  });
+});
+
+describe("planStatusTeamsCard", () => {
+  const base = {
+    providerStatus: "pending",
+    customer: { name: "Asha Rao", email: "asha@example.com", phone: "+91 98200 11111" },
+    business: { name: "Rao Clinic", websiteUrl: null },
+    paidThrough: new Date("2026-11-26T12:24:17.000Z"),
+    consoleUrl: "https://console.example/clients/biz-1",
+  } as const;
+
+  it("names the problem, the customer, when access ends and where to open them", () => {
+    const card = JSON.stringify(planStatusTeamsCard({ ...base, status: "past_due" }));
+    for (const part of ["Payment failed, Razorpay is retrying: Rao Clinic", "Asha Rao", "asha@example.com", "pending", "26 Nov 2026", "Open the client"]) expect(card).toContain(part);
+  });
+
+  it("words each of the three states differently", () => {
+    const titles = (["past_due", "inactive", "cancelled"] as const).map((status) => JSON.stringify(planStatusTeamsCard({ ...base, status })));
+    expect(new Set(titles).size).toBe(3);
+    expect(titles[1]).toContain("Billing stopped");
+    expect(titles[2]).toContain("Plan ended");
   });
 });

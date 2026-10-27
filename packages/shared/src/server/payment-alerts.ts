@@ -2,6 +2,7 @@ import "server-only";
 import {
   findAddOnSubscriptionForPayment,
   findBillingProfile,
+  findBusinessAlertDetails,
   findChargeByPaymentId,
   findPaymentAlertBase,
   findPaymentForInvoice,
@@ -12,7 +13,7 @@ import {
 } from "@brandbasket/db";
 import { addOnById, isMonthlyAddOnId } from "../lib/billing/add-ons";
 import { displayPhone } from "./phone-display";
-import { paymentTeamsCard, type PaymentCardInput, type PaymentCardLine } from "../lib/payment-alert-card";
+import { paymentTeamsCard, planStatusTeamsCard, type PaymentCardInput, type PaymentCardLine, type PlanStatusAlert } from "../lib/payment-alert-card";
 import { sendTeamsAlert } from "./teams-alerts";
 
 /** What was bought, as lines for the card: the services a plan payment billed, the add-on, or the one-off charge. */
@@ -76,5 +77,33 @@ export async function announcePayment(db: Database, secret: string, paymentId: s
     await sendTeamsAlert(db, secret, "payments", card);
   } catch (error) {
     console.error("[teams-alert] A payment could not be announced.", { paymentId, error: error instanceof Error ? error.name : "error" });
+  }
+}
+
+/**
+ * Tells the Payments channel that a business's plan changed to a state staff should follow up: a charge being retried, billing
+ * that stopped, or a plan that ended. Call it only when the status really changed. Best-effort: it never throws.
+ */
+export async function announcePlanStatus(
+  db: Database,
+  secret: string,
+  change: { readonly businessId: string; readonly subscriptionId: string; readonly status: PlanStatusAlert; readonly providerStatus: string },
+  consoleOrigin: string,
+): Promise<void> {
+  try {
+    const [details, subscription] = await Promise.all([findBusinessAlertDetails(db, change.businessId), findSubscriptionById(db, change.subscriptionId)]);
+    if (details === null) return;
+    const { business, owner } = details;
+    const card = planStatusTeamsCard({
+      status: change.status,
+      providerStatus: change.providerStatus,
+      customer: { name: owner.name, email: owner.email, phone: owner.phone === null ? null : displayPhone(owner.phone).text },
+      business: { name: business.name, websiteUrl: business.websiteUrl },
+      paidThrough: subscription?.paidThroughAt ?? null,
+      consoleUrl: new URL(`/clients/${business.id}`, consoleOrigin).toString(),
+    });
+    await sendTeamsAlert(db, secret, "payments", card);
+  } catch (error) {
+    console.error("[teams-alert] A plan change could not be announced.", { status: change.status, error: error instanceof Error ? error.name : "error" });
   }
 }

@@ -43,7 +43,7 @@ vi.mock("./add-ons", () => ({ basketDeps: vi.fn(() => ({ deps: true })) }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 vi.mock("./keep-plan", () => ({ restoreKeptPlan: vi.fn(async () => true) }));
 vi.mock("./charges", () => ({ recordRazorpayChargePayment: vi.fn() }));
-vi.mock("./teams", () => ({ announcePaymentToTeams: vi.fn(async () => undefined) }));
+vi.mock("./teams", () => ({ announcePaymentToTeams: vi.fn(async () => undefined), announcePlanStatusToTeams: vi.fn(async () => undefined) }));
 // A transaction that is also its own savepoint: both run the callback straight away.
 vi.mock("./db", () => {
   const db = { transaction: (fn: (tx: unknown) => unknown) => fn(db) };
@@ -77,7 +77,7 @@ import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellati
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "@brandbasket/shared/server/billing-activation";
 import { recordRazorpayChargePayment } from "./charges";
 import { restoreKeptPlan } from "./keep-plan";
-import { announcePaymentToTeams } from "./teams";
+import { announcePaymentToTeams, announcePlanStatusToTeams } from "./teams";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { handleRazorpayWebhookEvent } from "./razorpay-webhook-handler";
 
@@ -498,6 +498,27 @@ describe("handleRazorpayWebhookEvent", () => {
       expect.anything(),
       expect.objectContaining({ provider: "razorpay", providerSubscriptionId: "sub_rzp_1", status: "inactive", providerStatus: "halted" }),
     );
+  });
+
+  it.each([
+    ["pending", "past_due"],
+    ["halted", "inactive"],
+    ["cancelled", "cancelled"],
+  ])("tells Teams once when a running plan turns %s", async (providerStatus, status) => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null, status: "active" } as never);
+    fetchSubscriptionStatus.mockResolvedValue(providerStatus);
+    await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus });
+    expect(announcePlanStatusToTeams).toHaveBeenCalledExactlyOnceWith({ businessId: "biz-1", subscriptionId: "sub-1", status, providerStatus });
+  });
+
+  it("stays quiet when the status did not change, or changed to one that needs no follow-up", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null, status: "inactive" } as never);
+    fetchSubscriptionStatus.mockResolvedValue("halted");
+    await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "halted" });
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null, status: "past_due" } as never);
+    fetchSubscriptionStatus.mockResolvedValue("active");
+    await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "active" });
+    expect(announcePlanStatusToTeams).not.toHaveBeenCalled();
   });
 
   it("stores the status Razorpay holds now, not a late event's: a halt delivered after the renewal leaves access alone", async () => {

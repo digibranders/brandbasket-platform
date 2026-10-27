@@ -1,6 +1,8 @@
 import "server-only";
 import type { TeamsDestination, TeamsMessage } from "@brandbasket/shared/lib/teams-webhook";
-import { announcePayment } from "@brandbasket/shared/server/payment-alerts";
+import type { PlanStatusAlert } from "@brandbasket/shared/lib/payment-alert-card";
+import { registerBillingErrorAlerts } from "@brandbasket/shared/server/billing-error-alerts";
+import { announcePayment, announcePlanStatus } from "@brandbasket/shared/server/payment-alerts";
 import { sendTeamsAlert } from "@brandbasket/shared/server/teams-alerts";
 import { serverEnv } from "./env";
 import { getStaffDb } from "./db";
@@ -27,5 +29,31 @@ export async function announcePaymentToTeams(paymentId: string): Promise<void> {
     await announcePayment(getStaffDb(), serverEnv().BETTER_AUTH_SECRET, paymentId, serverEnv().ADMIN_ORIGIN);
   } catch (error) {
     console.error("[teams-alert] A payment could not be announced.", { paymentId, error: error instanceof Error ? error.name : "error" });
+  }
+}
+
+/**
+ * Tells the Payments channel that a plan went into payment retry, stopped billing or ended. Call it only when the status changed.
+ * Best-effort: it never throws.
+ */
+export async function announcePlanStatusToTeams(change: {
+  readonly businessId: string;
+  readonly subscriptionId: string;
+  readonly status: PlanStatusAlert;
+  readonly providerStatus: string;
+}): Promise<void> {
+  try {
+    await announcePlanStatus(getStaffDb(), serverEnv().BETTER_AUTH_SECRET, change, serverEnv().ADMIN_ORIGIN);
+  } catch (error) {
+    console.error("[teams-alert] A plan change could not be announced.", { error: error instanceof Error ? error.name : "error" });
+  }
+}
+
+/** Starts telling the System channel about billing errors (the billing log's error lines). Called once at startup. */
+export function startBillingErrorAlerts(): void {
+  try {
+    registerBillingErrorAlerts((message) => alertTeams("system", message), serverEnv().ADMIN_ORIGIN);
+  } catch (error) {
+    console.error("[teams-alert] Billing error alerts could not start.", error instanceof Error ? error.name : "error");
   }
 }

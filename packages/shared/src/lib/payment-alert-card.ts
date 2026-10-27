@@ -115,3 +115,44 @@ export function paymentTeamsCard(input: PaymentCardInput): TeamsMessage {
     open: { label: "Open the client", url: input.consoleUrl },
   });
 }
+
+/** The plan states staff are told about: a charge Razorpay is retrying, billing that stopped, and a plan that ended. */
+export type PlanStatusAlert = "past_due" | "inactive" | "cancelled";
+
+const PLAN_STATUS_TITLES: Readonly<Record<PlanStatusAlert, string>> = {
+  past_due: "Payment failed, Razorpay is retrying",
+  inactive: "Billing stopped",
+  cancelled: "Plan ended",
+};
+
+const PLAN_STATUS_TEXT: Readonly<Record<PlanStatusAlert, string>> = {
+  past_due: "A renewal charge did not go through. The customer keeps access until the period they paid for runs out. A reminder to update their payment method helps.",
+  inactive: "Razorpay gave up on the charge, or the plan was paused. Access has ended. Reach out to the customer to bring them back.",
+  cancelled: "The plan has ended at Razorpay, whether the customer cancelled or it ran its course.",
+};
+
+export interface PlanStatusCardInput {
+  readonly status: PlanStatusAlert;
+  readonly providerStatus: string;
+  readonly customer: PaymentCardInput["customer"];
+  readonly business: PaymentCardInput["business"];
+  readonly paidThrough: Date | null;
+  readonly consoleUrl: string;
+}
+
+export function planStatusTeamsCard(input: PlanStatusCardInput): TeamsMessage {
+  return teamsCard({
+    title: `${PLAN_STATUS_TITLES[input.status]}: ${input.business.name}`,
+    facts: [
+      { name: "Customer", value: input.customer.name },
+      { name: "Email", value: input.customer.email },
+      { name: "Phone", value: input.customer.phone },
+      { name: "Business", value: input.business.name },
+      { name: "Website", value: input.business.websiteUrl },
+      { name: "Razorpay says", value: input.providerStatus },
+      { name: "Paid until", value: input.paidThrough === null ? null : formatIstTime(input.paidThrough) },
+    ],
+    text: PLAN_STATUS_TEXT[input.status],
+    open: { label: "Open the client", url: input.consoleUrl },
+  });
+}

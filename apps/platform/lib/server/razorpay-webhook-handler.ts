@@ -35,7 +35,7 @@ import { getRazorpayProvider } from "./billing";
 import { recordRazorpayChargePayment } from "./charges";
 import { getStaffDb } from "./db";
 import { restoreKeptPlan } from "./keep-plan";
-import { announcePaymentToTeams } from "./teams";
+import { announcePaymentToTeams, announcePlanStatusToTeams } from "./teams";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 
 /** A free listing business this charge turned into a website client: it needs its Payload tenant once committed. */
@@ -102,13 +102,18 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
     // renewal it was overtaken by, and storing it would cut off a customer who has paid. The event only says the status
     // changed; what it is now is asked of Razorpay. A failure to ask throws, so Razorpay delivers the event again.
     const providerStatus = await getRazorpayProvider().fetchSubscriptionStatus(event.subscriptionId);
+    const status = mapRazorpayStatus(providerStatus);
     await updateSubscriptionProviderStatus(getStaffDb(), {
       provider: "razorpay",
       providerSubscriptionId: event.subscriptionId,
-      status: mapRazorpayStatus(providerStatus),
+      status,
       providerStatus,
       now: new Date(),
     });
+    // Staff are told when a plan starts failing to bill or ends, once per change (a redelivery finds the status already set).
+    if (status !== known.status && (status === "past_due" || status === "inactive" || status === "cancelled")) {
+      void announcePlanStatusToTeams({ businessId: known.businessId, subscriptionId: known.id, status, providerStatus });
+    }
     // The mandate of a kept plan (Keep my plan) is authorised: the account closure is lifted and the plan shows as running.
     if (known.continuesId !== null && mapRazorpayStatus(providerStatus) === "active") {
       await getStaffDb().transaction(async (tx) => {
