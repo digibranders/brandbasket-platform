@@ -15,7 +15,7 @@ import { FactList, Section } from "@/components/console/section";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 
-export const metadata: Metadata = { title: "Automatic error" };
+export const metadata: Metadata = { title: "Error" };
 const statusInput = z.enum(["new", "investigating", "resolved", "ignored"]);
 const STATUS_OPTIONS: readonly SelectOption[] = [
   { value: "new", label: "New" },
@@ -51,8 +51,8 @@ export default async function AutomaticErrorPage({ params, searchParams }: { rea
 
   return (
     <>
-      <PageHeader title={issue.errorClass} back={{ href: "/support/errors", label: "Automatic errors" }} meta={`${issue.app} · ${issue.route}`} />
-      {search.updated === "saved" ? <p role="status" className="mt-6 text-sm text-ink-soft">Status saved.</p> : search.updated === "stale" ? <p role="status" className="mt-6 text-sm text-accent">This issue changed while you reviewed it. Check the latest counts before updating again.</p> : search.updated === "invalid" ? <p role="alert" className="mt-6 text-sm text-accent">Choose a valid status and try again.</p> : null}
+      <PageHeader title={issue.errorClass} back={{ href: "/support/errors", label: "Errors" }} meta={`${issue.app} · ${issue.route}`} />
+      {search.updated === "saved" ? <p role="status" className="mt-6 text-sm text-ink-soft">Status saved.</p> : search.updated === "stale" ? <p role="status" className="mt-6 text-sm text-error">This issue changed while you reviewed it. Check the latest counts before updating again.</p> : search.updated === "invalid" ? <p role="alert" className="mt-6 text-sm text-error">Choose a valid status and try again.</p> : null}
       <div className="mt-10">
         <Section title="Occurrences">
           <FactList items={[
