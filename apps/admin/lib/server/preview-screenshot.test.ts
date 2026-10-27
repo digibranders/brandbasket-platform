@@ -32,7 +32,7 @@ describe("captureScreenshot", () => {
     expect(fetchStub).toHaveBeenCalledTimes(1);
     const [address, init] = fetchStub.mock.calls[0] as [string, RequestInit];
     expect(address).toBe(`https://shots.example/take?url=${encodeURIComponent(PREVIEW)}&w=1280`);
-    expect(init.redirect).toBe("follow");
+    expect(init.redirect).toBe("manual");
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
@@ -81,6 +81,32 @@ describe("captureScreenshot", () => {
     await expect(captureScreenshot(PREVIEW, { fetch: byBytes, template: TEMPLATE })).rejects.toThrow(/too large/i);
   });
 
+  it("stops reading a chunked answer with no length header once it passes 6 MB, and cancels the stream", async () => {
+    const cancel = vi.fn();
+    const chunk = new Uint8Array(1024 * 1024);
+    let sent = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        sent += 1;
+        controller.enqueue(chunk);
+        if (sent > 50) controller.close();
+      },
+      cancel,
+    });
+    const fetchStub = vi.fn().mockResolvedValue(new Response(stream, { headers: { "content-type": "image/png" } }));
+    await expect(captureScreenshot(PREVIEW, { fetch: fetchStub, template: TEMPLATE })).rejects.toThrow(/too large/i);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(sent).toBeLessThan(10);
+  });
+
+  it("accepts a body just under the cap, read as a stream", async () => {
+    const image = await png(100, 60);
+    const padded = Buffer.concat([image, Buffer.alloc(6 * 1024 * 1024 - 1 - image.byteLength)]);
+    const fetchStub = vi.fn().mockResolvedValue(answer(padded, "image/png"));
+    const out = await captureScreenshot(PREVIEW, { fetch: fetchStub, template: TEMPLATE });
+    expect([out.width, out.height]).toEqual([100, 60]);
+  });
+
   it("refuses bytes that are not the picture they claim to be", async () => {
     const fetchStub = vi.fn().mockResolvedValue(answer("not a picture", "image/png"));
     await expect(captureScreenshot(PREVIEW, { fetch: fetchStub, template: TEMPLATE })).rejects.toThrow(PreviewScreenshotError);
@@ -98,5 +124,81 @@ describe("captureScreenshot", () => {
     await expect(captureScreenshot(PREVIEW, { fetch: fetchStub, template: "https://shots.example/take" })).rejects.toThrow(PreviewScreenshotError);
     await expect(captureScreenshot(PREVIEW, { fetch: fetchStub, template: "https://{url}.shots.example/" })).rejects.toThrow(PreviewScreenshotError);
     expect(fetchStub).not.toHaveBeenCalled();
+  });
+
+  describe("redirects", () => {
+    const redirect = (location: string, status = 302): Response => new Response(null, { status, headers: { location } });
+
+    it("follows an https redirect to a public host, then reads the picture", async () => {
+      const fetchStub = vi
+        .fn()
+        .mockResolvedValueOnce(redirect("https://cdn.example.com/x.webp"))
+        .mockResolvedValueOnce(answer(await png(100, 60), "image/png"));
+      const out = await captureScreenshot(PREVIEW, { fetch: fetchStub, template: TEMPLATE });
+      expect(out.width).toBe(100);
+      expect(fetchStub.mock.calls[1]?.[0]).toBe("https://cdn.example.com/x.webp");
+      expect((fetchStub.mock.calls[1]?.[1] as RequestInit).redirect).toBe("manual");
+    });
+
+    it("resolves a relative Location against the current address", async () => {
+      const fetchStub = vi
+        .fn()
+        .mockResolvedValueOnce(redirect("/files/x.png", 301))
+        .mockResolvedValueOnce(answer(await png(100, 60), "image/png"));
+      await captureScreenshot(PREVIEW, { fetch: fetchStub, template: TEMPLATE });
+      expect(fetchStub.mock.calls[1]?.[0]).toBe("https://shots.example/files/x.png");
+    });
+
+    it.each([
+      "http://169.254.169.254/latest/meta-data",
+      "https://127.0.0.1/x",
+      "https://localhost/x",
+      "https://app.localhost/x",
+      "https://db.internal/x",
+      "https://printer.local/x",
+      "https://10.0.0.5/x",
+      "https://172.16.0.1/x",
+      "https://172.31.255.1/x",
+      "https://192.168.1.1/x",
+      "https://0.0.0.0/x",
+      "https://[::1]/x",
+      "https://[::]/x",
+      "https://[fd00::1]/x",
+      "https://[fe80::1]/x",
+      "https://[::ffff:127.0.0.1]/x",
+      "https://2130706433/x",
+    ])("refuses a redirect to %s and does not fetch it", async (location) => {
+      const fetchStub = vi.fn().mockResolvedValue(redirect(location));
+      await expect(captureScreenshot(PREVIEW, { fetch: fetchStub, template: TEMPLATE })).rejects.toThrow(PreviewScreenshotError);
+      expect(fetchStub).toHaveBeenCalledTimes(1);
+    });
+
+    it("allows public addresses next to the blocked ranges", async () => {
+      for (const location of ["https://172.32.0.1/x", "https://11.0.0.1/x", "https://[2606:4700::1]/x"]) {
+        const fetchStub = vi.fn().mockResolvedValueOnce(redirect(location)).mockResolvedValueOnce(answer(await png(10, 10), "image/png"));
+        await captureScreenshot(PREVIEW, { fetch: fetchStub, template: TEMPLATE });
+        expect(fetchStub).toHaveBeenCalledTimes(2);
+      }
+    });
+
+    it("refuses a redirect with no Location", async () => {
+      const fetchStub = vi.fn().mockResolvedValue(new Response(null, { status: 302 }));
+      await expect(captureScreenshot(PREVIEW, { fetch: fetchStub, template: TEMPLATE })).rejects.toThrow(PreviewScreenshotError);
+    });
+
+    it("refuses a chain of 4 redirects, but follows 3", async () => {
+      const hop = (n: number): Response => redirect(`https://cdn.example.com/${n}`);
+      const four = vi.fn().mockImplementation(async () => hop(1));
+      await expect(captureScreenshot(PREVIEW, { fetch: four, template: TEMPLATE })).rejects.toThrow(/redirected too many times/i);
+      expect(four).toHaveBeenCalledTimes(4);
+
+      const three = vi
+        .fn()
+        .mockResolvedValueOnce(hop(1))
+        .mockResolvedValueOnce(hop(2))
+        .mockResolvedValueOnce(hop(3))
+        .mockResolvedValueOnce(answer(await png(10, 10), "image/png"));
+      await expect(captureScreenshot(PREVIEW, { fetch: three, template: TEMPLATE })).resolves.toBeDefined();
+    });
   });
 });
