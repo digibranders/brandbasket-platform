@@ -46,6 +46,7 @@ export * from "./user-privacy-settings";
 export * from "./staff-access-log";
 export * from "./tax-invoices";
 export * from "./support";
+export * from "./team-calls";
 export * from "./error-issues";
 export * from "./support-ticket-error-links";
 export * from "./site-settings";
