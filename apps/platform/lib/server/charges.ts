@@ -48,17 +48,22 @@ export type ChargePaymentStart =
 
 /**
  * Opens a one-time payment for one of the customer's open charges. The charge is read through row-level security,
- * so an id from another business finds nothing. The amount comes from the charge row, never the request, and every
- * attempt records the provider's new order id on the charge (replacing the last one) before the customer is sent
- * to pay, so the payment the provider reports can always be matched back.
+ * so an id from another business finds nothing. The amount comes from the charge row, never the request. A Razorpay
+ * order is opened once per charge: a repeat press (or a second tab) reuses it, because the webhook finds the charge by
+ * the stored order id and a payment made on an order that was replaced would match nothing. The order id is recorded
+ * on the charge before the customer is sent to pay, so the payment the provider reports can always be matched back.
  */
 export async function startCustomerChargePayment(customer: GrantedCustomer, chargeId: string): Promise<ChargePaymentStart> {
   const { tenant, user } = customer;
-  const charge = await withTenantScope(getAppDb(), tenant, (tx) => findChargeForBusiness(tx, tenant.businessId, chargeId));
+  const readCharge = () => withTenantScope(getAppDb(), tenant, (tx) => findChargeForBusiness(tx, tenant.businessId, chargeId));
+  const charge = await readCharge();
   if (charge === null) return { kind: "not-found" };
   if (charge.status !== "open") return { kind: "not-open" };
 
   const provider = getBillingProvider();
+  const existingOrder = razorpayOrderOf(charge, provider.name);
+  if (existingOrder !== null) return { kind: "razorpay", orderId: existingOrder, charge };
+
   const started = await provider.startChargePayment({
     businessId: tenant.businessId,
     businessName: tenant.businessName,
@@ -73,11 +78,22 @@ export async function startCustomerChargePayment(customer: GrantedCustomer, char
     businessId: tenant.businessId,
     provider: provider.name,
     providerOrderId: started.providerOrderId,
+    // Two presses at once each open an order; only the first to record wins and the other goes on with the winner's.
+    ...(provider.name === "razorpay" ? { onlyIfUnset: true } : {}),
   });
-  // Paid or waived in the moment since it was read: send nobody to pay for it.
-  if (!recorded) return { kind: "not-open" };
+  if (!recorded) {
+    if (provider.name !== "razorpay") return { kind: "not-open" };
+    const current = await readCharge();
+    const winner = current !== null && current.status === "open" ? razorpayOrderOf(current, provider.name) : null;
+    return current !== null && winner !== null ? { kind: "razorpay", orderId: winner, charge: current } : { kind: "not-open" };
+  }
   if (started.redirectTo !== null) return { kind: "redirect", url: started.redirectTo };
   return { kind: "razorpay", orderId: started.providerOrderId, charge };
+}
+
+/** The Razorpay order already opened for a charge, or null when there is none (or the provider is not Razorpay). */
+function razorpayOrderOf(charge: Charge, providerName: string): string | null {
+  return providerName === "razorpay" && charge.provider === "razorpay" ? charge.providerOrderId : null;
 }
 
 /** What confirming a charge payment came to, for the page to say. */
