@@ -392,6 +392,16 @@ export const payments = pgTable(
     cardType: text("card_type"),
     cardIssuer: text("card_issuer"),
     upiVpa: text("upi_vpa"),
+    /**
+     * When finance marked the payment refunded. The console moves no money: staff give it back in Razorpay or by bank
+     * first, then record it here. Set together with the three columns below, and only on a refunded payment.
+     */
+    refundedAt: timestamp("refunded_at", { withTimezone: true }),
+    refundedByStaffId: text("refunded_by_staff_id").references(() => users.id),
+    /** What was given back, in minor units: the whole amount or part of it. */
+    refundedAmountCents: integer("refunded_amount_cents"),
+    /** Why, as the staff member wrote it. */
+    refundReason: text("refund_reason"),
     /** What a plan payment was billed as (PaymentInvoiceBasis); see there. */
     invoiceBasis: jsonb("invoice_basis").$type<PaymentInvoiceBasis>(),
     createdAt: createdAt(),
@@ -424,6 +434,20 @@ export const payments = pgTable(
       sql`${table.provider} <> 'manual' or ${table.recordedByStaffId} is not null`,
     ),
     check("payments_card_last4_check", sql`${table.cardLast4} is null or ${table.cardLast4} ~ '^[0-9]{4}$'`),
+    // A refund mark is all four columns or none, and only on a refunded payment. A refunded row without them is allowed:
+    // the status existed before the mark did.
+    check(
+      "payments_refund_details_check",
+      sql`(${table.refundedAt} is null) = (${table.refundedByStaffId} is null) and (${table.refundedAt} is null) = (${table.refundedAmountCents} is null) and (${table.refundedAt} is null) = (${table.refundReason} is null) and (${table.refundedAt} is null or ${table.status} = 'refunded')`,
+    ),
+    check(
+      "payments_refund_amount_check",
+      sql`${table.refundedAmountCents} is null or ${table.refundedAmountCents} between 1 and ${table.amountCents}`,
+    ),
+    check(
+      "payments_refund_reason_check",
+      sql`${table.refundReason} is null or char_length(${table.refundReason}) between 3 and 300`,
+    ),
   ],
 );
 
