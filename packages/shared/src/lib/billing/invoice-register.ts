@@ -109,7 +109,7 @@ function previousMonthOf(month: string): string {
 }
 
 /** Whole paise as rupees with two decimals, worked out from the integer so no float can round a figure. */
-function rupees(cents: number): string {
+export function rupees(cents: number): string {
   const sign = cents < 0 ? "-" : "";
   const absolute = Math.abs(cents);
   return `${sign}${Math.trunc(absolute / 100)}.${String(absolute % 100).padStart(2, "0")}`;
