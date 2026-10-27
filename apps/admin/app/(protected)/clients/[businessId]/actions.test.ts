@@ -15,6 +15,7 @@ import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { changeWebAddress } from "@/lib/server/web-address";
 import { endClientAddOn, markClientAddOnContacted, setClientPressReleaseStatus } from "@/lib/server/add-ons-admin";
 import { getStaffDb } from "@/lib/server/db";
+import { recordStaffAction } from "@/lib/server/activity";
 import {
   addChargeAction,
   changeWebAddressAction,
@@ -61,6 +62,7 @@ vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("@/lib/server/project-launch", () => ({}));
 vi.mock("@/lib/server/project-preview", () => ({}));
 vi.mock("@/lib/server/site-token", () => ({}));
+vi.mock("@/lib/server/activity", () => ({ recordStaffAction: vi.fn() }));
 
 const BUSINESS = "01a0f71b-8402-7d48-a90a-207e8c8a882c";
 const STAFF = { user: { id: "staff-1" }, staff: { userId: "staff-1", role: "finance" } } as unknown as GrantedStaff;
@@ -128,6 +130,7 @@ describe("changeWebAddressAction", () => {
     expect(changeWebAddress).toHaveBeenCalledWith({ formData: data, staffUserId: "staff-1", now: expect.any(Date) });
     expect(revalidatePath).toHaveBeenCalledWith(`/clients/${BUSINESS}`);
     expect(revalidatePath).toHaveBeenCalledWith("/ads");
+    expect(recordStaffAction).toHaveBeenCalledWith(STAFF, { businessId: BUSINESS, kind: "listing.web_address_changed", summary: "Changed the listing's web address" });
   });
 
   it("hands a refusal back to the form and refreshes nothing", async () => {
@@ -135,6 +138,7 @@ describe("changeWebAddressAction", () => {
     vi.mocked(changeWebAddress).mockResolvedValue(refusal);
     expect(await changeWebAddressAction(IDLE, form({ ...POSTED, reason: "no" }))).toEqual(refusal);
     expect(revalidatePath).not.toHaveBeenCalled();
+    expect(recordStaffAction).not.toHaveBeenCalled();
   });
 
   it("throws on a form that does not name the page's business", async () => {

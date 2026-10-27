@@ -131,3 +131,12 @@ export function teamsCard(input: TeamsCardInput): TeamsMessage {
   if (buttons.length > 0) content.actions = buttons.map((button) => ({ type: "Action.OpenUrl", title: button.label, url: button.url }));
   return { type: "message", attachments: [{ contentType: "application/vnd.microsoft.card.adaptive", contentUrl: null, content }] };
 }
+
+/** The first line of a card (its title), for the console's list of alerts. "Alert" when the card has none. */
+export function teamsCardTitle(message: TeamsMessage): string {
+  const body = message.attachments[0].content.body;
+  const first: unknown = Array.isArray(body) ? body[0] : undefined;
+  const text = typeof first === "object" && first !== null ? (first as Record<string, unknown>).text : undefined;
+  return typeof text === "string" && text.trim() !== "" ? text.trim().slice(0, 200) : "Alert";
+}
+

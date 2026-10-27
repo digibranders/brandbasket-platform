@@ -33,6 +33,7 @@ import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellati
 import { basketDeps } from "./add-ons";
 import { getRazorpayProvider } from "./billing";
 import { recordRazorpayChargePayment } from "./charges";
+import { recordRazorpayPaymentFailure } from "./payment-failure";
 import { getStaffDb } from "./db";
 import { restoreKeptPlan } from "./keep-plan";
 import { announcePaymentToTeams, announcePlanStatusToTeams } from "./teams";
@@ -78,6 +79,11 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
 
   if (event.kind === "order-paid") {
     await recordRazorpayChargePayment(event, new Date());
+    return;
+  }
+
+  if (event.kind === "payment-failed") {
+    await recordRazorpayPaymentFailure(event);
     return;
   }
 

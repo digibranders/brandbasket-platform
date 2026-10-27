@@ -13,6 +13,8 @@ is served; each period below is that purpose, written down. The Privacy Policy s
 | Account exit feedback | 12 months | nightly run |
 | Closed support tickets, with notes and screenshots | 24 months after closing | nightly run (`support-retention.ts`) |
 | Outbox emails | 90 days; sign-in links 1 day | nightly run (`emails.ts`) |
+| Webhook records (event, result, body fingerprint; never the body) | 90 days | nightly run (`deliveries.ts`) |
+| Teams alert records (title, result; the card only while unsent) | 90 days | nightly run (`deliveries.ts`) |
 | Closed customer accounts | 30 days after the paid period ends; invoices kept | account erase job (`docs/account-erasure.md`, item M2) |
 | Clinic patients and appointments | until the clinic deletes them, or with the clinic's account | the clinic, the account erase job |
 | Closed privacy requests | 3 years after closing | nightly run |

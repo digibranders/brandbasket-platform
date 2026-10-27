@@ -16,7 +16,7 @@ interface FilterPillsProps {
   readonly options: readonly FilterOption[];
 }
 
-/** A row of links that narrow a list. Counts ride along quietly so the filter doubles as the summary. */
+/** A row of soft chips that narrow a list. Counts ride along so the filter doubles as the summary. */
 export function FilterPills({ label, options }: FilterPillsProps): ReactElement {
   return (
     <FilterPillsRow label={label}>
@@ -26,15 +26,13 @@ export function FilterPills({ label, options }: FilterPillsProps): ReactElement 
           href={option.href}
           aria-current={option.current ? "page" : undefined}
           className={cn(
-            "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors duration-300 ease-calm",
-            option.current ? "bg-ink text-paper" : "text-ink-soft hover:bg-ink/5 hover:text-ink",
+            "inline-flex h-[1.875rem] shrink-0 items-center gap-1.5 rounded-lg px-3 text-[0.8125rem] font-semibold transition-colors duration-200",
+            option.current ? "bg-ink text-white" : "bg-sunken text-ink-2 hover:bg-line hover:text-ink",
           )}
         >
           {option.label}
           {option.count === undefined ? null : (
-            <span className={cn("tabular-nums", option.current ? "text-paper/60" : "text-ink-soft/80")}>
-              {option.count}
-            </span>
+            <span className={cn("font-figure text-[0.71875rem] tabular-nums", option.current ? "text-white/75" : "text-ink-2")}>{option.count}</span>
           )}
         </Link>
       ))}

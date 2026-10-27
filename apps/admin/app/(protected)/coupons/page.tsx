@@ -11,7 +11,7 @@ import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairl
 import { PageHeader } from "@/components/console/page-header";
 import { StatusDot } from "@/components/console/status-dot";
 import { getStaffDb } from "@/lib/server/db";
-import { requireStaffAccess } from "@/lib/server/staff-access";
+import { requireStaffCan } from "@/lib/server/staff-role";
 
 export const metadata: Metadata = { title: "Coupons" };
 
@@ -31,7 +31,7 @@ function retiredReason(
 }
 
 export default async function CouponsPage(): Promise<ReactElement> {
-  await requireStaffAccess();
+  await requireStaffCan("money");
   const codes = await listReferralCodes(getStaffDb(), "coupon", LIST_LIMIT);
   const now = new Date();
   const usable = codes.filter((code) => retiredReason(code, code.redemptions, now) === null).length;
@@ -69,7 +69,7 @@ export default async function CouponsPage(): Promise<ReactElement> {
                   key={code.id}
                   href={`/coupons/${code.id}`}
                   lead={
-                    <span className="grid size-10 place-items-center rounded-full bg-paper-deep text-accent">
+                    <span className="grid size-10 place-items-center rounded-full bg-sunken text-ink-2">
                       <TagIcon className="size-5" />
                     </span>
                   }

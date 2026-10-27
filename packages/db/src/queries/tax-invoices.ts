@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, notExists, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, notExists, sql, type SQL } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import {
@@ -325,3 +325,10 @@ export async function findPaymentForInvoice(db: Runner, paymentId: string): Prom
   if (row === undefined) throw new Error(`Payment ${paymentId} not found`);
   return row;
 }
+
+/** Invoices whose number contains `term` (the console's search), newest first. `%` and `_` in the term are plain characters. */
+export async function findTaxInvoicesByNumber(db: Runner, term: string, limit: number): Promise<TaxInvoice[]> {
+  const pattern = `%${term.replaceAll(/[\\%_]/g, "\\$&")}%`;
+  return db.select().from(taxInvoices).where(ilike(taxInvoices.number, pattern)).orderBy(desc(taxInvoices.issuedOn), desc(taxInvoices.serial)).limit(limit);
+}
+

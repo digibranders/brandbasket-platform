@@ -131,5 +131,5 @@ export interface MissingRegisterRowView {
 
 export function missingRegisterRow({ payment, businessName }: MissingTaxInvoice): MissingRegisterRowView {
   const row = missingInvoiceRow(payment);
-  return { paymentId: row.paymentId, businessId: payment.businessId, businessName, detail: row.summary, href: `/clients/${payment.businessId}#tax-invoices` };
+  return { paymentId: row.paymentId, businessId: payment.businessId, businessName, detail: row.summary, href: `/clients/${payment.businessId}/billing#tax-invoices` };
 }

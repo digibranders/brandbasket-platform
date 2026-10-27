@@ -1,4 +1,4 @@
-import { count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, lt, type SQL } from "drizzle-orm";
 import type { Database } from "../client";
 import { staffAccessLog, users, type StaffAccessResult } from "../schema";
 
@@ -10,14 +10,21 @@ export const STAFF_ACCESS_ACTIONS = [
   "staff.sign_in",
   "access_log.view",
   "access.denied",
+  "search.run",
   "client.view",
   "lead.view",
+  "lead.export",
   "outbox.view",
+  "delivery.view",
+  "email.resend",
+  "alert.resend",
   "support_ticket.view",
   "support_attachment.view",
   "directory.view",
   "invoice.view",
   "invoice.export",
+  "payment.list_view",
+  "payment.export",
   "breach.view",
   "breach.log",
   "breach.update",
@@ -25,6 +32,13 @@ export const STAFF_ACCESS_ACTIONS = [
   "privacy_request.log",
   "privacy_request.update",
   "privacy_request.close",
+  "client.people_view",
+  "client.closure_restore",
+  "client.closure_extend",
+  "staff.invite",
+  "staff.role_change",
+  "staff.deactivate",
+  "staff.reactivate",
 ] as const;
 export type StaffAccessAction = (typeof STAFF_ACCESS_ACTIONS)[number];
 
@@ -120,3 +134,51 @@ export async function tallyStaffAccessSince(db: Database, since: Date): Promise<
     .groupBy(staffAccessLog.staffUserId, users.email, staffAccessLog.action, staffAccessLog.result);
   return rows.map((row) => ({ ...row, count: Number(row.count) }));
 }
+
+export const STAFF_ACCESS_PAGE_SIZE = 50;
+
+/** What the Compliance page narrows the log by. Dates are a half-open window: `from` included, `to` excluded. */
+export interface StaffAccessFilter {
+  readonly staffUserId?: string;
+  readonly action?: string;
+  readonly businessId?: string;
+  readonly from?: Date;
+  readonly to?: Date;
+}
+
+/** One page of the log, newest first, for the Compliance page. `page` counts from 0. */
+export async function listStaffAccessPage(
+  db: Database,
+  filter: StaffAccessFilter,
+  page: number,
+): Promise<{ readonly rows: StoredStaffAccess[]; readonly hasMore: boolean }> {
+  if (!Number.isInteger(page) || page < 0 || page > 10_000) throw new RangeError(`The page must be a whole number from 0 to 10000, received ${page}`);
+  const conditions: SQL[] = [];
+  if (filter.staffUserId !== undefined) conditions.push(eq(staffAccessLog.staffUserId, filter.staffUserId));
+  if (filter.action !== undefined) conditions.push(eq(staffAccessLog.action, filter.action));
+  if (filter.businessId !== undefined) conditions.push(eq(staffAccessLog.businessId, filter.businessId));
+  if (filter.from !== undefined) conditions.push(gte(staffAccessLog.createdAt, filter.from));
+  if (filter.to !== undefined) conditions.push(lt(staffAccessLog.createdAt, filter.to));
+  const rows = await db
+    .select({
+      id: staffAccessLog.id,
+      staffUserId: staffAccessLog.staffUserId,
+      staffEmail: users.email,
+      action: staffAccessLog.action,
+      targetType: staffAccessLog.targetType,
+      targetId: staffAccessLog.targetId,
+      businessId: staffAccessLog.businessId,
+      result: staffAccessLog.result,
+      detail: staffAccessLog.detail,
+      ipAddress: staffAccessLog.ipAddress,
+      createdAt: staffAccessLog.createdAt,
+    })
+    .from(staffAccessLog)
+    .innerJoin(users, eq(users.id, staffAccessLog.staffUserId))
+    .where(conditions.length === 0 ? undefined : and(...conditions))
+    .orderBy(desc(staffAccessLog.createdAt), desc(staffAccessLog.id))
+    .limit(STAFF_ACCESS_PAGE_SIZE + 1)
+    .offset(page * STAFF_ACCESS_PAGE_SIZE);
+  return { rows: rows.slice(0, STAFF_ACCESS_PAGE_SIZE), hasMore: rows.length > STAFF_ACCESS_PAGE_SIZE };
+}
+

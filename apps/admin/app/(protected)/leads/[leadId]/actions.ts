@@ -1,10 +1,12 @@
 "use server";
 
+import { assignLead, listAssignableSupportStaff, setLeadStatusUnlessSystemSet } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { getStaffDb } from "@/lib/server/db";
 import { sendSetupLink } from "@/lib/server/invites";
 import { attachAccountAndSyncTenant } from "@/lib/server/lead-repair";
 import { applyLeadDetails } from "@/lib/server/lead-updates";
+import { recordStaffAction } from "@/lib/server/activity";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 
 function readLeadId(value: FormDataEntryValue | null): string {
@@ -17,16 +19,19 @@ function readLeadId(value: FormDataEntryValue | null): string {
  * of either: applyLeadDetails refuses the first and the database guards the second, whatever the page showed.
  */
 export async function updateLeadDetails(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const leadId = readLeadId(formData.get("leadId"));
   await applyLeadDetails(getStaffDb(), leadId, formData);
+  await recordStaffAction(staff, { businessId: null, kind: "lead.updated", summary: "Updated an enquiry", data: { leadId } });
   revalidatePath(`/leads/${leadId}`);
 }
 
 export async function sendSetupLinkAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const staff = await requireStaffAccess();
+  const { user } = staff;
   const leadId = readLeadId(formData.get("leadId"));
   await sendSetupLink(leadId, user.id);
+  await recordStaffAction(staff, { businessId: null, kind: "lead.setup_link_sent", summary: "Sent the setup link", data: { leadId } });
   revalidatePath(`/leads/${leadId}`);
 }
 
@@ -36,8 +41,42 @@ export async function sendSetupLinkAction(formData: FormData): Promise<void> {
  * so running it twice cannot hand one customer two tenants, and records the staff member who ran it on the lead.
  */
 export async function attachAccountAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const staff = await requireStaffAccess();
+  const { user } = staff;
   const leadId = readLeadId(formData.get("leadId"));
   await attachAccountAndSyncTenant(getStaffDb(), { leadId, attachedByStaffId: user.id });
+  await recordStaffAction(staff, { businessId: null, kind: "lead.account_attached", summary: "Attached an account to an enquiry", data: { leadId } });
   revalidatePath(`/leads/${leadId}`);
 }
+
+/**
+ * Mark talking (`call_done`) and Mark lost (`lost`) in the open enquiry. A lead the system has already moved on (account
+ * created, paid) keeps its status: the database refuses the change.
+ */
+export async function setEnquiryStatusAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffAccess();
+  const leadId = readLeadId(formData.get("leadId"));
+  const status = formData.get("status");
+  if (status !== "call_done" && status !== "lost") throw new Error(`Not an enquiry status: ${String(status)}`);
+  await setLeadStatusUnlessSystemSet(getStaffDb(), leadId, status);
+  await recordStaffAction(staff, { businessId: null, kind: "lead.status_changed", summary: status === "lost" ? "Marked lost" : "Marked talking", data: { leadId, status } });
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/leads");
+}
+
+/** Gives the open enquiry to an active staff member, or to nobody. */
+export async function assignLeadAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffAccess();
+  const leadId = readLeadId(formData.get("leadId"));
+  const raw = formData.get("assignee");
+  const assignee = typeof raw === "string" && raw !== "" ? raw : null;
+  const db = getStaffDb();
+  if (assignee !== null && !(await listAssignableSupportStaff(db)).some((member) => member.userId === assignee)) {
+    throw new Error("Only an active staff member can own an enquiry.");
+  }
+  await assignLead(db, leadId, assignee);
+  await recordStaffAction(staff, { businessId: null, kind: "lead.assigned", summary: assignee === null ? "Took the enquiry off its owner" : "Gave the enquiry an owner", data: { leadId, assignee } });
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/leads");
+}
+

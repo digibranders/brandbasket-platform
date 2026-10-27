@@ -14,6 +14,7 @@ import { Figures } from "@/components/console/figures";
 import { HairlineList, HairlineRow } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
 import { FactList, Quiet, Section } from "@/components/console/section";
+import { TABLE, TD, TD_NUM, TH } from "@/components/console/table";
 import {
   missingRegisterRow,
   monthLabel,
@@ -37,7 +38,7 @@ interface InvoicesPageProps {
 /**
  * The month's tax invoice register for the CA (`?month=2026-10`, the current Indian month by default): totals, every
  * invoice with its PDF, and a CSV. Above it, every payment still missing its invoice across all clients, so a failed
- * invoice shows up here instead of only in a log (D15). Hairline rows that wrap on a phone, not a table (DESIGN.md).
+ * invoice shows up here instead of only in a log (D15). A table, as the console's lists are (DESIGN.md).
  */
 export default async function InvoicesPage({ searchParams }: InvoicesPageProps): Promise<ReactElement> {
   await requireStaffCan("money");
@@ -72,7 +73,7 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps):
 
       <nav aria-label="Month" className="mt-8 flex flex-wrap items-end gap-x-6 gap-y-4">
         {links.previous === null ? null : (
-          <Link href={links.previous.href} className="link-underline inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
+          <Link href={links.previous.href} className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink underline underline-offset-4">
             <ChevronRightIcon className="size-4 rotate-180" />
             <span>
               <span className="sr-only">Previous month: </span>
@@ -99,7 +100,7 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps):
           <GatedSubmitButton className={buttonSecondary}>Show month</GatedSubmitButton>
         </form>
         {links.next === null ? null : (
-          <Link href={links.next.href} className="link-underline inline-flex items-center gap-1.5 text-sm font-semibold text-accent">
+          <Link href={links.next.href} className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink underline underline-offset-4">
             <span>
               <span className="sr-only">Next month: </span>
               {links.next.label}
@@ -157,23 +158,36 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps):
           {rows.length === 0 ? (
             <Quiet>No invoices were issued in {label}.</Quiet>
           ) : (
-            <ul aria-label={`Invoices issued in ${label}`} className="divide-y divide-line">
-              {rows.map((row) => (
-                <li key={row.id} className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 py-4 first:pt-0">
-                  <div className="min-w-0">
-                    <p className="whitespace-nowrap font-medium tabular-nums">{row.number}</p>
-                    <p className="mt-0.5 break-words">{row.customer}</p>
-                    <p className="mt-0.5 break-words text-sm tabular-nums text-ink-soft">{row.detail}</p>
-                  </div>
-                  <div className="flex items-center gap-5">
-                    <span className="font-serif text-lg tabular-nums">{row.total}</span>
-                    <a href={row.downloadHref} aria-label={row.downloadLabel} className="link-underline text-sm font-semibold text-accent">
-                      Download
-                    </a>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="overflow-x-auto">
+              <table aria-label={`Invoices issued in ${label}`} className={TABLE}>
+                <thead>
+                  <tr>
+                    <th className={TH}>Invoice</th>
+                    <th className={TH}>Customer</th>
+                    <th className={TH}>Details</th>
+                    <th className={`${TH} text-right`}>Total</th>
+                    <th className={TH}>
+                      <span className="sr-only">Download</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.id}>
+                      <td className={`${TD} whitespace-nowrap font-medium tabular-nums`}>{row.number}</td>
+                      <td className={`${TD} break-words`}>{row.customer}</td>
+                      <td className={`${TD} break-words text-sm tabular-nums text-ink-2`}>{row.detail}</td>
+                      <td className={TD_NUM}>{row.total}</td>
+                      <td className={`${TD} text-right`}>
+                        <a href={row.downloadHref} aria-label={row.downloadLabel} className="text-sm font-semibold text-ink underline underline-offset-4">
+                          Download
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Section>
       </div>

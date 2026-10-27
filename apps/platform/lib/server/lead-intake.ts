@@ -1,7 +1,9 @@
 import "server-only";
-import { isHoneypotFilled, parseLeadForm, type LeadInput } from "@brandbasket/shared/lib/lead-form";
+import type { NewLead } from "@brandbasket/db";
+import { isHoneypotFilled, parseLeadForm } from "@brandbasket/shared/lib/lead-form";
 import { businessDetails } from "@brandbasket/shared/lib/site-config";
-import { LEAD_REQUEST_FIELDS, leadApiRequestSchema, type LeadApiResponse } from "@/lib/leads-api";
+import { parsePhoneEntry } from "@brandbasket/shared/lib/validation/phone";
+import { contactEnquiryRequestSchema, LEAD_REQUEST_FIELDS, leadApiRequestSchema, type LeadApiResponse } from "@/lib/leads-api";
 import { BodyTooLargeError, readLimitedBody } from "./read-limited-body";
 import { hasValidWebsiteToken } from "./website-api-auth";
 
@@ -13,11 +15,14 @@ const PROBLEM_MESSAGE = `Something went wrong on our end. Try again in a moment,
 
 export type LeadRecordOutcome = "recorded" | "limited" | "failed";
 
+/** What either form stores: a lead without its billing currency, which recordLead works out from the phone number. */
+export type CapturedLead = Omit<NewLead, "currency">;
+
 export interface LeadIntakeDeps {
   /** The shared secret, or null when LEADS_API_TOKEN is not configured (the route then refuses everything). */
   readonly token: string | null;
   /** Rate-limits, stores the lead and tells the team. `noticeVersion` is null from a website that does not send one yet. */
-  readonly record: (input: LeadInput, clientIp: string, noticeVersion: string | null) => Promise<LeadRecordOutcome>;
+  readonly record: (input: CapturedLead, clientIp: string, noticeVersion: string | null) => Promise<LeadRecordOutcome>;
 }
 
 function reply(status: number, body: LeadApiResponse | { readonly error: string }): Response {
@@ -54,6 +59,8 @@ export async function handleLeadRequest(request: Request, deps: LeadIntakeDeps):
     return reply(400, { error: "The body is not valid JSON." });
   }
 
+  if (isContactEnquiry(raw)) return handleContactEnquiry(raw, deps);
+
   const leadRequest = leadApiRequestSchema.safeParse(raw);
   if (!leadRequest.success) return reply(400, { error: "The body is not a lead request." });
 
@@ -69,6 +76,10 @@ export async function handleLeadRequest(request: Request, deps: LeadIntakeDeps):
   if (isHoneypotFilled(formData)) return reply(200, sent);
 
   const outcome = await deps.record(parsed.data, leadRequest.data.clientIp, leadRequest.data.noticeVersion ?? null);
+  return answer(outcome, sent);
+}
+
+function answer(outcome: LeadRecordOutcome, sent: LeadApiResponse): Response {
   switch (outcome) {
     case "recorded":
       return reply(200, sent);
@@ -81,4 +92,37 @@ export async function handleLeadRequest(request: Request, deps: LeadIntakeDeps):
       throw new Error(`Unhandled lead outcome: ${String(unhandled)}`);
     }
   }
+}
+
+function isContactEnquiry(raw: unknown): boolean {
+  return typeof raw === "object" && raw !== null && "kind" in raw && (raw as { readonly kind: unknown }).kind === "contact";
+}
+
+/**
+ * An enquiry from the website's contact and pricing form. The website has already checked it, screened it for bots and
+ * emailed it to the team, so this only stores it: a phone number that does not parse is dropped rather than refused.
+ * Numbers without a country code are read as Indian, because the form is for India; one written with + keeps its own.
+ */
+async function handleContactEnquiry(raw: unknown, deps: LeadIntakeDeps): Promise<Response> {
+  const request = contactEnquiryRequestSchema.safeParse(raw);
+  if (!request.success) return reply(400, { error: "The body is not a contact enquiry." });
+  const { contact, clientIp, noticeVersion } = request.data;
+  const phone = parsePhoneEntry({ country: "IN", number: contact.phone }, null);
+  const email = contact.email.trim().toLowerCase();
+  const city = contact.city.trim();
+  const message = contact.message.trim();
+  const lead: CapturedLead = {
+    name: contact.name,
+    businessName: contact.business,
+    email,
+    phone: phone.success ? phone.e164 : null,
+    businessType: null,
+    message: message === "" ? null : message,
+    source: contact.plans.length > 0 ? "pricing_page" : "website_form",
+    plans: contact.plans,
+    city: city === "" ? null : city,
+    page: contact.page,
+  };
+  const outcome = await deps.record(lead, clientIp, noticeVersion);
+  return answer(outcome, { status: "sent", name: contact.name, email });
 }

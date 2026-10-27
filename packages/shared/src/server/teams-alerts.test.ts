@@ -2,15 +2,19 @@ import type { Database } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { teamsCard } from "../lib/teams-webhook";
 import { sealSecret } from "./secret-seal";
-import { loadTeamsHookState, postToTeams, saveTeamsHook, sendTeamsAlert, sendTeamsTest } from "./teams-alerts";
+import { teamsCardTitle } from "../lib/teams-webhook";
+import { loadTeamsHookState, postToTeams, resendTeamsAlert, saveTeamsHook, sendTeamsAlert, sendTeamsTest } from "./teams-alerts";
 
 vi.mock("server-only", () => ({}));
 
 const queries = vi.hoisted(() => ({
   clearSiteSetting: vi.fn(),
+  findAlertDelivery: vi.fn(),
   findSiteSetting: vi.fn(),
   findSiteSettingWithEditor: vi.fn(),
+  recordAlertDelivery: vi.fn(),
   saveSiteSetting: vi.fn(),
+  updateAlertDelivery: vi.fn(),
 }));
 vi.mock("@brandbasket/db", () => queries);
 
@@ -114,5 +118,61 @@ describe("keeping the address", () => {
     expect(await loadTeamsHookState(DB, SECRET, "support")).toMatchObject({ state: "unreadable" });
     queries.findSiteSettingWithEditor.mockResolvedValueOnce(null);
     expect(await loadTeamsHookState(DB, SECRET, "support")).toEqual({ state: "unset" });
+  });
+});
+
+describe("noting each alert", () => {
+  it("notes a sent alert without its card, and a failed one with the card so it can be sent again", async () => {
+    queries.findSiteSetting.mockResolvedValue(saved());
+    await sendTeamsAlert(DB, SECRET, "enquiries", MESSAGE, vi.fn().mockResolvedValue({ ok: true }));
+    await sendTeamsAlert(DB, SECRET, "enquiries", MESSAGE, vi.fn().mockResolvedValue({ ok: false }));
+    expect(queries.recordAlertDelivery).toHaveBeenNthCalledWith(1, DB, { destination: "enquiries", title: "New enquiry", result: "sent", card: null });
+    expect(queries.recordAlertDelivery).toHaveBeenNthCalledWith(2, DB, { destination: "enquiries", title: "New enquiry", result: "rejected", card: MESSAGE });
+  });
+
+  it("notes an unreadable address, and nothing when no address is saved", async () => {
+    queries.findSiteSetting.mockResolvedValueOnce(saved(URL_TEXT, "another-secret-of-at-least-thirty-two-chars"));
+    await sendTeamsAlert(DB, SECRET, "support", MESSAGE, vi.fn());
+    queries.findSiteSetting.mockResolvedValueOnce(null);
+    await sendTeamsAlert(DB, SECRET, "support", MESSAGE, vi.fn());
+    expect(queries.recordAlertDelivery).toHaveBeenCalledTimes(1);
+    expect(queries.recordAlertDelivery).toHaveBeenCalledWith(DB, expect.objectContaining({ result: "unreadable" }));
+  });
+
+  it("still never throws when the note cannot be written", async () => {
+    queries.findSiteSetting.mockResolvedValue(saved());
+    queries.recordAlertDelivery.mockRejectedValueOnce(new Error("no grant"));
+    await expect(sendTeamsAlert(DB, SECRET, "system", MESSAGE, vi.fn().mockResolvedValue({ ok: true }))).resolves.toBeUndefined();
+  });
+});
+
+describe("resendTeamsAlert", () => {
+  const FAILED = { id: "0198f2c0-0000-7000-8000-0000000000aa", destination: "enquiries", title: "New enquiry", result: "unreachable", card: MESSAGE, attempts: 1 };
+
+  it("posts the stored card to the channel's address and records the result", async () => {
+    queries.findAlertDelivery.mockResolvedValue(FAILED);
+    queries.findSiteSetting.mockResolvedValue(saved());
+    const post = vi.fn().mockResolvedValue({ ok: true });
+    expect(await resendTeamsAlert(DB, SECRET, FAILED.id, NOW, post)).toBe("sent");
+    expect(post).toHaveBeenCalledWith(URL_TEXT, expect.objectContaining({ body: JSON.stringify(MESSAGE) }));
+    expect(queries.updateAlertDelivery).toHaveBeenCalledWith(DB, FAILED.id, { result: "sent", now: NOW });
+  });
+
+  it("refuses an alert that was sent or has no card, and reports a failed retry", async () => {
+    queries.findAlertDelivery.mockResolvedValueOnce({ ...FAILED, result: "sent", card: null });
+    expect(await resendTeamsAlert(DB, SECRET, FAILED.id, NOW, vi.fn())).toBe("refused");
+    queries.findAlertDelivery.mockResolvedValueOnce(null);
+    expect(await resendTeamsAlert(DB, SECRET, FAILED.id, NOW, vi.fn())).toBe("refused");
+    queries.findAlertDelivery.mockResolvedValueOnce(FAILED);
+    queries.findSiteSetting.mockResolvedValueOnce(saved());
+    expect(await resendTeamsAlert(DB, SECRET, FAILED.id, NOW, vi.fn().mockResolvedValue({ ok: false }))).toBe("failed");
+    expect(queries.updateAlertDelivery).toHaveBeenCalledWith(DB, FAILED.id, { result: "rejected", now: NOW });
+  });
+});
+
+describe("teamsCardTitle", () => {
+  it("reads the card's first line, or says Alert when there is none", () => {
+    expect(teamsCardTitle(teamsCard({ title: "New enquiry" }))).toBe("New enquiry");
+    expect(teamsCardTitle({ type: "message", attachments: [{ contentType: "application/vnd.microsoft.card.adaptive", contentUrl: null, content: {} }] })).toBe("Alert");
   });
 });

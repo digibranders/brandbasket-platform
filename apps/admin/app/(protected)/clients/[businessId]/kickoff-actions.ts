@@ -19,7 +19,7 @@ function readBusinessId(formData: FormData): string {
 function finish(businessId: string): never {
   revalidatePath(`/clients/${businessId}`);
   revalidatePath("/clients");
-  redirect(`/clients/${businessId}#kickoff-call`);
+  redirect(`/clients/${businessId}/project#kickoff-call`);
 }
 
 /** Staff mark the kickoff call as held: it ends the customer's first look and opens their To do page and Overview. */

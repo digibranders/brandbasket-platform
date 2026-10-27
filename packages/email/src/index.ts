@@ -31,6 +31,8 @@ export {
 } from "./templates/preview-revisions-requested";
 export { signupCodeEmail, type SignupCodeInput } from "./templates/signup-code";
 export { setupLinkEmail, type SetupLinkInput } from "./templates/setup-link";
+export { supportRequestOpenedEmail, type SupportRequestOpenedInput } from "./templates/support-request-opened";
+export { staffInviteEmail, type StaffInviteInput } from "./templates/staff-invite";
 export { websiteLiveEmail, type WebsiteLiveInput } from "./templates/website-live";
 export {
   BrevoDeliveryError,
@@ -39,8 +41,11 @@ export {
   createDualTransport,
   createEmailDelivery,
   EmailConfigurationError,
+  emailFailureSummary,
   type BrevoConfig,
+  type BrevoReceipt,
   type BrevoSender,
+  type BrevoTransport,
 } from "./brevo";
 export {
   privacyRequestAlertEmail,

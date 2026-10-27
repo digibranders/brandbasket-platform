@@ -109,7 +109,7 @@ function previousMonthOf(month: string): string {
 }
 
 /** Whole paise as rupees with two decimals, worked out from the integer so no float can round a figure. */
-function rupees(cents: number): string {
+export function rupees(cents: number): string {
   const sign = cents < 0 ? "-" : "";
   const absolute = Math.abs(cents);
   return `${sign}${Math.trunc(absolute / 100)}.${String(absolute % 100).padStart(2, "0")}`;
@@ -125,7 +125,7 @@ function quoted(value: string): string {
  * carriage return as a formula, so such a cell gets a leading apostrophe (shown as text, not run). Only text goes through
  * here: the money columns are ours, and a negative round off must stay a number.
  */
-function textCell(value: string): string {
+export function textCell(value: string): string {
   return quoted(/^[=+\-@\t\r]/.test(value) ? `'${value}` : value);
 }
 

@@ -2155,7 +2155,8 @@ export async function readLiveSpotRows(db: Database, market: DirectoryAdMarket, 
           lte(directoryAdWins.paidAt, now),
           businessNotClosing(directoryAdWins.businessId),
         ),
-      ),
+      )
+      .orderBy(asc(directoryAdWins.placement), asc(directoryAdWins.spot)),
     db
       .select({
         placement: directoryStaffAds.placement,

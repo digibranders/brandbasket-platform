@@ -84,6 +84,33 @@ export async function findLiveBundledAddOns(db: Runner, businessId: string): Pro
     .orderBy(asc(bundledAddOns.createdAt), asc(bundledAddOns.id));
 }
 
+export interface LiveServiceLine {
+  readonly businessId: string;
+  readonly addOn: string;
+  readonly netAmountCents: number;
+  readonly status: "pending" | "active" | "removed";
+}
+
+/**
+ * The live lines (`pending` or `active`) of many businesses at once, for the staff Clients table: which services each
+ * has and what they are billed. Same rule as findLiveBundledAddOns. Staff connection.
+ */
+export async function listLiveServiceLines(db: Runner, businessIds: readonly string[]): Promise<readonly LiveServiceLine[]> {
+  const ids = businessIds.filter((id) => isUuid(id));
+  if (ids.length === 0) return [];
+  return db
+    .select({ businessId: bundledAddOns.businessId, addOn: bundledAddOns.addOn, netAmountCents: bundledAddOns.netAmountCents, status: bundledAddOns.status })
+    .from(bundledAddOns)
+    .where(
+      and(
+        inArray(bundledAddOns.businessId, ids),
+        inArray(bundledAddOns.status, ["pending", "active"]),
+        sql`not exists (select 1 from ${subscriptions} where ${subscriptions.id} = ${bundledAddOns.subscriptionId} and ${subscriptions.continuesId} is not null and ${subscriptions.activatedAt} is null)`,
+      ),
+    )
+    .orderBy(asc(bundledAddOns.createdAt), asc(bundledAddOns.id));
+}
+
 /** Turns a subscription's `pending` add-ons `active` and billed, in the transaction that records its first payment. Returns them. */
 export async function activateBundledAddOns(
   db: Runner,

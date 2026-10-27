@@ -188,6 +188,59 @@ describe("parseRazorpayWebhookEvent", () => {
     },
   );
 
+  it("parses a payment.failed event with its order, the business in its notes and why it failed", () => {
+    const body = JSON.stringify({
+      event: "payment.failed",
+      payload: {
+        payment: {
+          entity: {
+            id: "pay_failed_1",
+            amount: 299_900,
+            currency: "INR",
+            status: "failed",
+            created_at: 1_790_000_000,
+            order_id: "order_1",
+            error_code: "BAD_REQUEST_ERROR",
+            error_description: "Payment was declined by the bank",
+            error_reason: "payment_declined",
+            notes: { businessId: "01920000-0000-7000-8000-0000000000b1" },
+          },
+        },
+      },
+    });
+    expect(parseRazorpayWebhookEvent(body)).toEqual({
+      kind: "payment-failed",
+      paymentId: "pay_failed_1",
+      amountCents: 299_900,
+      currency: "INR",
+      failedAt: new Date(1_790_000_000 * 1000),
+      orderId: "order_1",
+      businessId: "01920000-0000-7000-8000-0000000000b1",
+      failureReason: "Payment was declined by the bank",
+    });
+  });
+
+  it("reads a payment.failed event with no order, empty notes and no reason", () => {
+    const body = JSON.stringify({
+      event: "payment.failed",
+      payload: { payment: { entity: { id: "pay_failed_2", amount: 6_500, currency: "USD", status: "failed", created_at: 1_790_000_000, notes: [] } } },
+    });
+    expect(parseRazorpayWebhookEvent(body)).toMatchObject({
+      kind: "payment-failed",
+      orderId: null,
+      businessId: null,
+      failureReason: "Razorpay did not say why",
+    });
+  });
+
+  it("refuses a payment.failed event with the wrong shape, a status that is not failed or an unknown currency", () => {
+    const base = { id: "pay_x", amount: 100, currency: "INR", status: "failed", created_at: 1_790_000_000 };
+    const body = (entity: Record<string, unknown>) => JSON.stringify({ event: "payment.failed", payload: { payment: { entity } } });
+    expect(parseRazorpayWebhookEvent(body({ ...base, id: "" }))).toEqual({ kind: "invalid", reason: "payment.failed payload did not match the expected shape" });
+    expect(parseRazorpayWebhookEvent(body({ ...base, status: "captured" }))).toEqual({ kind: "invalid", reason: "unexpected payment status: captured" });
+    expect(parseRazorpayWebhookEvent(body({ ...base, currency: "EUR" }))).toEqual({ kind: "invalid", reason: "unsupported currency: EUR" });
+  });
+
   it("returns kind unhandled for an event this app does not act on", () => {
     const body = JSON.stringify({ event: "payment.captured", payload: {} });
     expect(parseRazorpayWebhookEvent(body)).toEqual({ kind: "unhandled" });

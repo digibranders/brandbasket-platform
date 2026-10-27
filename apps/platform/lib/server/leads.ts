@@ -3,13 +3,13 @@ import { consumeRateLimit, createLead, recordConsent, type RateLimitRule } from 
 import { billingCurrencyForPhone } from "@brandbasket/shared/lib/billing/currency-for-phone";
 import { createAppEmailTransport, leadReceivedEmail } from "@brandbasket/email";
 import { businessTypeLabel } from "@brandbasket/shared/lib/business-types";
-import type { LeadInput } from "@brandbasket/shared/lib/lead-form";
+import { websitePlanLabels } from "@brandbasket/shared/lib/lead-source";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { displayPhone } from "@brandbasket/shared/server/phone-display";
 import { serverEnv } from "./env";
 import { alertTeams } from "./teams";
 import { leadTeamsCard } from "./teams-cards";
-import type { LeadRecordOutcome } from "./lead-intake";
+import type { CapturedLead, LeadRecordOutcome } from "./lead-intake";
 import { getPublicDb } from "./public-db";
 
 const ONE_HOUR = 60 * 60;
@@ -26,7 +26,7 @@ const PER_EMAIL_RULE: RateLimitRule = { limit: 3, windowSeconds: ONE_HOUR };
  * `noticeVersion` it also keeps proof of the notice the visitor saw (DPDP Act s.5, r.3): a failure to write that proof
  * is logged and never loses the lead.
  */
-export async function recordLead(lead: LeadInput, clientIp: string, noticeVersion: string | null): Promise<LeadRecordOutcome> {
+export async function recordLead(lead: CapturedLead, clientIp: string, noticeVersion: string | null): Promise<LeadRecordOutcome> {
   const db = getPublicDb();
   try {
     for (const check of [
@@ -58,15 +58,20 @@ async function keepNoticeProof(leadId: string, noticeVersion: string): Promise<v
 }
 
 /** The lead is already saved by this point, so a failure here is logged and never shown to the visitor. */
-async function notifyTeam(leadId: string, lead: LeadInput): Promise<void> {
+async function notifyTeam(leadId: string, lead: CapturedLead): Promise<void> {
   const leadUrl = new URL(`/leads/${leadId}`, serverEnv().ADMIN_ORIGIN).toString();
+  // The website's contact form does not ask for a business type.
+  const businessType = lead.businessType === null ? "Not given" : businessTypeLabel(lead.businessType);
+  const wants = lead.plans === undefined || lead.plans.length === 0 ? null : websitePlanLabels(lead.plans).join(", ");
   // Not awaited: the visitor's answer never waits on Teams.
   void alertTeams(
     "enquiries",
     leadTeamsCard({
       name: lead.name,
       businessName: lead.businessName,
-      businessType: businessTypeLabel(lead.businessType),
+      businessType,
+      wants,
+      city: lead.city ?? null,
       email: lead.email,
       phone: lead.phone === null ? null : displayPhone(lead.phone).text,
       message: lead.message,
@@ -86,7 +91,7 @@ async function notifyTeam(leadId: string, lead: LeadInput): Promise<void> {
         to: teamInbox,
         name: lead.name,
         businessName: lead.businessName,
-        businessType: businessTypeLabel(lead.businessType),
+        businessType,
         email: lead.email,
         phone: lead.phone === null ? null : displayPhone(lead.phone).text,
         message: lead.message,

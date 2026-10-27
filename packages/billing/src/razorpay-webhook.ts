@@ -4,7 +4,7 @@ import { billingCurrency, type BillingCurrency, type PaymentMethodDetails } from
 
 /**
  * True when `signature` is the HMAC-SHA256 of the exact raw `body` string, keyed with `webhookSecret`. The caller
- * must pass the untouched request body — re-serialising parsed JSON can reorder keys or change whitespace and
+ * must pass the untouched request body: re-serialising parsed JSON can reorder keys or change whitespace and
  * silently break this check, which is why `parseRazorpayWebhookEvent` takes the same raw string separately rather
  * than being handed an already-parsed object.
  */
@@ -103,6 +103,33 @@ const orderPaidSchema = z.object({
   }),
 });
 
+/** A reason Razorpay gave for a failure, or null when missing or not text. Only the alert and the console read it. */
+const failureText = z.string().trim().min(1).max(300).nullish().catch(null);
+
+/**
+ * A payment attempt that took nothing. Lenient on everything but the money: a failure must never go unrecorded over how
+ * Razorpay worded it. Razorpay sends empty notes as `[]`, which reads as no notes.
+ */
+const paymentFailedSchema = z.object({
+  event: z.literal("payment.failed"),
+  payload: z.object({
+    payment: z.object({
+      entity: z.looseObject({
+        id: z.string().min(1),
+        amount: z.number().int().nonnegative(),
+        currency: z.string(),
+        status: z.string().min(1),
+        created_at: z.number().int().positive(),
+        order_id: z.string().min(1).nullish().catch(null),
+        error_code: failureText,
+        error_description: failureText,
+        error_reason: failureText,
+        notes: z.looseObject({ businessId: z.string().min(1).nullish().catch(null) }).nullish().catch(null),
+      }),
+    }),
+  }),
+});
+
 /**
  * Lifecycle events with no payment attached. Each only says the status changed: the handler asks Razorpay for the
  * current status before storing anything, since Razorpay does not deliver in order. Paused and resumed come from the
@@ -159,22 +186,36 @@ export type RazorpayWebhookEvent =
       readonly paidAt: Date;
       readonly method: PaymentMethodDetails | null;
     }
+  /**
+   * A payment attempt that failed: nothing was taken. Matched to a business by the charge's order id, or by the business
+   * id the payment's notes carry; either may be missing.
+   */
+  | {
+      readonly kind: "payment-failed";
+      readonly paymentId: string;
+      readonly amountCents: number;
+      readonly currency: BillingCurrency;
+      readonly failedAt: Date;
+      readonly orderId: string | null;
+      readonly businessId: string | null;
+      readonly failureReason: string;
+    }
   /** A lifecycle change with no payment attached: mirror `providerStatus` onto the subscription, nothing else. */
   | { readonly kind: "status"; readonly subscriptionId: string; readonly providerStatus: string }
-  /** An event name this app does not act on (e.g. payment.captured) — expected and benign, no logging needed. */
+  /** An event name this app does not act on (e.g. payment.captured): expected and benign, no logging needed. */
   | { readonly kind: "unhandled" }
   /**
    * Malformed JSON, or an event we DO act on (subscription.charged / a status event) whose payload didn't match
    * what we expect, or a charged event reporting a currency outside what this app bills in. `reason` is safe to
-   * log (never includes the raw body). The caller should log this loudly — it likely means a real payment or
+   * log (never includes the raw body). The caller should log this loudly: it likely means a real payment or
    * status change did not get recorded.
    */
   | { readonly kind: "invalid"; readonly reason: string };
 
 /**
  * Reads the webhook event this app acts on out of a raw, already-signature-verified body. Distinguishes three very
- * different "nothing to do" outcomes: `unhandled` (a real event name this app just doesn't subscribe to — expected
- * and benign), `invalid` (malformed JSON, or an event we DO act on whose payload didn't match what we expect —
+ * different "nothing to do" outcomes: `unhandled` (a real event name this app just doesn't subscribe to: expected
+ * and benign), `invalid` (malformed JSON, or an event we DO act on whose payload didn't match what we expect;
  * since the signature already proved this came from Razorpay, this likely means a real payment or status change is
  * about to go unrecorded and should be logged loudly), and the two happy-path kinds. Never throws: the caller
  * should acknowledge the webhook and move on rather than 500 (Razorpay retries a non-2xx response, which would just
@@ -232,6 +273,24 @@ export function parseRazorpayWebhookEvent(body: string): RazorpayWebhookEvent {
       currency: payment.currency,
       paidAt: new Date(payment.created_at * 1000),
       method: readPaymentMethod(payment),
+    };
+  }
+
+  if (eventName.data.event === "payment.failed") {
+    const failed = paymentFailedSchema.safeParse(json);
+    if (!failed.success) return { kind: "invalid", reason: "payment.failed payload did not match the expected shape" };
+    const payment = failed.data.payload.payment.entity;
+    if (payment.status !== "failed") return { kind: "invalid", reason: `unexpected payment status: ${payment.status}` };
+    if (!isCurrency(payment.currency)) return { kind: "invalid", reason: `unsupported currency: ${payment.currency}` };
+    return {
+      kind: "payment-failed",
+      paymentId: payment.id,
+      amountCents: payment.amount,
+      currency: payment.currency,
+      failedAt: new Date(payment.created_at * 1000),
+      orderId: payment.order_id ?? null,
+      businessId: payment.notes?.businessId ?? null,
+      failureReason: payment.error_description ?? payment.error_reason ?? payment.error_code ?? "Razorpay did not say why",
     };
   }
 

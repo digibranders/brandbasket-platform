@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { issueClientMissingInvoice } from "@/lib/server/invoices-admin";
 import { requireStaffAccess, type GrantedStaff } from "@/lib/server/staff-access";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
+import { recordStaffAction } from "@/lib/server/activity";
 import { issueMissingInvoiceAction, saveClientBillingDetailsAction } from "./invoice-actions";
 
 vi.mock("server-only", () => ({}));
@@ -18,6 +19,7 @@ vi.mock("@/lib/server/staff-access", () => ({ requireStaffAccess: vi.fn() }));
 vi.mock("@/lib/server/staff-access-log", () => ({ logStaffAccess: vi.fn() }));
 vi.mock("@/lib/server/invoices-admin", () => ({ issueClientMissingInvoice: vi.fn() }));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
+vi.mock("@/lib/server/activity", () => ({ recordStaffAction: vi.fn() }));
 
 const BUSINESS = "01a0f71b-8402-7d48-a90a-207e8c8a882c";
 const PAYMENT = "01a0f71b-8402-7d48-a90a-207e8c8a8999";
@@ -68,6 +70,7 @@ describe("issueMissingInvoiceAction", () => {
     expect(issueClientMissingInvoice).toHaveBeenCalledWith(BUSINESS, PAYMENT, expect.any(Date), "staff-1");
     expect(revalidatePath).toHaveBeenCalledWith(`/clients/${BUSINESS}`);
     expect(revalidatePath).toHaveBeenCalledWith("/invoices");
+    expect(recordStaffAction).toHaveBeenCalledWith(STAFF, { businessId: BUSINESS, kind: "invoice.issued", summary: "Issued a missing tax invoice", data: { paymentId: PAYMENT, result: "issued" } });
     expect(redirect).toHaveBeenCalledWith(`/clients/${BUSINESS}?invoice=issued#tax-invoices`);
   });
 

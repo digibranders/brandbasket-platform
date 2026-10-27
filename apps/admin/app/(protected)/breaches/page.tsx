@@ -12,11 +12,13 @@ import { getStaffDb } from "@/lib/server/db";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { logBreachAction, updateBreachAction } from "./actions";
+import { buttonSmall } from "@/components/console/buttons";
+import { fieldClasses } from "@/components/console/field-styles";
 
 export const metadata: Metadata = { title: "Breaches" };
 
-const INPUT = "mt-1.5 block w-full rounded-control border border-ink-soft/65 bg-white px-3 py-2 text-sm text-ink focus:border-accent";
-const BUTTON = "rounded-full border border-ink-soft/65 px-3.5 py-1.5 text-sm font-medium text-ink transition-colors duration-300 ease-calm hover:border-accent hover:text-accent-deep";
+const INPUT = fieldClasses;
+const BUTTON = buttonSmall;
 
 const STATE_WORDS: Readonly<Record<BreachDutyState, string>> = {
   done: "Done",
@@ -32,7 +34,7 @@ function Duty({ title, doneAt, deadline, now, doItNow, id }: { readonly title: s
   const worry = state === "overdue" || state === "done_late";
   return (
     <div className="min-w-0">
-      <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{title}</p>
+      <p className="text-xs font-semibold text-ink-2">{title}</p>
       <p className={`mt-1 text-sm font-medium ${worry ? "text-accent-deep" : ""}`}>{STATE_WORDS[state]}</p>
       <p className="mt-0.5 text-sm tabular-nums text-ink-soft">
         {doneAt === null ? (
