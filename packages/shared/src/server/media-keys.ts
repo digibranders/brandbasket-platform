@@ -73,6 +73,15 @@ export function staffAdPictureKey(pictureId: string): string {
   return `staff-ads/${pictureId}/display`;
 }
 
+/**
+ * `deliverables/{deliverableId}/display`: where the picture of a post is stored. Built only from the row's own id; the
+ * database holds the same rule as a check on deliverables.image_key.
+ */
+export function deliverablePictureKey(deliverableId: string): string {
+  if (!UUID_PATTERN.test(deliverableId)) throw new InvalidMediaKeyError("the deliverable id is not a lowercase UUID");
+  return `deliverables/${deliverableId}/display`;
+}
+
 /** Throws unless `key` has the shape of a key mediaStorageKey (or its tests' shorter ones) builds. */
 export function validateMediaKey(key: string): void {
   if (key.length === 0 || key.length > MAX_KEY_LENGTH) throw new InvalidMediaKeyError("wrong length");

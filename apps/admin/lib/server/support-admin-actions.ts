@@ -1,11 +1,15 @@
 import "server-only";
 import { SupportQueryError, type AppendSupportMessageByStaffInput, type UpdateSupportTicketByStaffInput, type SupportTicketErrorLinkInput } from "@brandbasket/db";
+import type { MailOutcome } from "../request-notices";
 import { staffSupportLinkSchema, staffSupportMessageSchema, staffSupportUpdateSchema, type StaffSupportActionState } from "../support-admin-state";
 
 export interface StaffSupportActionDependencies {
   readonly requireStaff: () => Promise<{ readonly user: { readonly id: string } }>;
   readonly updateTicket: (input: UpdateSupportTicketByStaffInput) => Promise<unknown>;
-  readonly appendMessage: (input: AppendSupportMessageByStaffInput) => Promise<unknown>;
+  /** Saves the message; `created` is false for a replay of one already saved, which must not be announced twice. */
+  readonly appendMessage: (input: AppendSupportMessageByStaffInput) => Promise<{ readonly created: boolean }>;
+  /** Tells the requester about a new public reply by email. Left out, nobody is emailed. */
+  readonly notifyReply?: (input: { readonly ticketId: string; readonly body: string }) => Promise<MailOutcome>;
   readonly linkError: (input: SupportTicketErrorLinkInput) => Promise<unknown>;
   readonly unlinkError: (input: SupportTicketErrorLinkInput) => Promise<unknown>;
   readonly revalidate: (ticketId: string) => void | Promise<void>;
@@ -17,6 +21,12 @@ export interface StaffSupportActions {
   readonly message: (ticketId: string, form: FormData) => Promise<StaffSupportActionState>;
   readonly link: (ticketId: string, form: FormData, remove: boolean) => Promise<StaffSupportActionState>;
 }
+
+const MAIL_SENTENCE: Readonly<Record<MailOutcome, string>> = {
+  emailed: "They were emailed.",
+  "no-email": "They have no email address, so tell them another way.",
+  failed: "The email could not be sent. Tell them another way.",
+};
 
 export function createStaffSupportActions(deps: StaffSupportActionDependencies): StaffSupportActions {
   async function failure(error: unknown, staffUserId: string): Promise<StaffSupportActionState> {
@@ -40,8 +50,9 @@ export function createStaffSupportActions(deps: StaffSupportActionDependencies):
       const parsed = staffSupportMessageSchema.safeParse({ ticketId, body: form.get("body"), visibility: form.get("visibility"), submissionKey: form.get("submissionKey") });
       if (!parsed.success) return { kind: "invalid", message: "Write a message of 1 to 5,000 characters and choose who can see it.", field: String(parsed.error.issues[0]?.path[0] ?? "") };
       try {
-        await deps.appendMessage({ ...parsed.data, staffUserId: user.id }); await deps.revalidate(ticketId);
-        return { kind: "saved", message: parsed.data.visibility === "internal" ? "Internal note saved. Only staff can see it." : "Reply added to the requester’s ticket.", submissionKey: crypto.randomUUID() };
+        const { created } = await deps.appendMessage({ ...parsed.data, staffUserId: user.id }); await deps.revalidate(ticketId);
+        const mail = created && parsed.data.visibility === "public" && deps.notifyReply !== undefined ? await deps.notifyReply({ ticketId, body: parsed.data.body }) : null;
+        return { kind: "saved", message: parsed.data.visibility === "internal" ? "Internal note saved. Only staff can see it." : `Reply added to the requester’s ticket.${mail === null ? "" : ` ${MAIL_SENTENCE[mail]}`}`, submissionKey: crypto.randomUUID() };
       } catch (error) { return failure(error, user.id); }
     },
     async link(ticketId, form, remove): Promise<StaffSupportActionState> {

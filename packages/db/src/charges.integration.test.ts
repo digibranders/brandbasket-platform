@@ -334,6 +334,16 @@ describe("online payment attempts", () => {
     await waiveCharge(dbs.staff.db, { chargeId: charge.id, businessId: businessA, staffId: STAFF, now: NOW });
     expect(await setChargeProviderOrder(dbs.staff.db, { ...set, providerOrderId: "order_2" })).toBe(false);
   });
+
+  it("keeps the first order when asked to only set an unset one", async () => {
+    const charge = await insertCharge(dbs.staff.db, hoursCharge(businessA));
+    const set = { chargeId: charge.id, businessId: businessA, provider: "razorpay" as const, onlyIfUnset: true };
+
+    expect(await setChargeProviderOrder(dbs.staff.db, { ...set, providerOrderId: "order_A" })).toBe(true);
+    expect(await setChargeProviderOrder(dbs.staff.db, { ...set, providerOrderId: "order_B" })).toBe(false);
+    expect((await findChargeByProviderOrder(dbs.staff.db, "razorpay", "order_A"))?.id).toBe(charge.id);
+    expect(await findChargeByProviderOrder(dbs.staff.db, "razorpay", "order_B")).toBeNull();
+  });
 });
 
 describe("blog post unlocks", () => {

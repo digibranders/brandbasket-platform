@@ -12,6 +12,7 @@ import { isFakeBillingProvider } from "@/lib/server/billing";
 import { confirmFakeChargePayment, verifyChargePaymentFor, type ChargeConfirmation } from "@/lib/server/charges";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
+import { loadTicketIdOfChangeCharge } from "@/lib/server/requests";
 
 export const metadata: Metadata = {
   title: "Test payment",
@@ -70,13 +71,14 @@ export default async function ChargeTestCheckoutPage({ searchParams }: ChargeCon
   }
   const paymentToken = token;
   const chargeKind = charge.kind;
+  const ticketId = chargeKind === "change_hours" ? await loadTicketIdOfChangeCharge(tenant, charge.id) : undefined;
 
   async function pay(): Promise<void> {
     "use server";
     if (!isFakeBillingProvider()) notFound();
     const customer = await requireCustomerAccess({ listingAccount: "allow" });
     const result = await confirmFakeChargePayment(customer.tenant, { token: paymentToken }, new Date());
-    redirect(chargeReturnHref(chargeKind, NOTICE_AFTER[result]));
+    redirect(chargeReturnHref(chargeKind, NOTICE_AFTER[result], ticketId));
   }
 
   const amount = formatMoney(confirmed.amountCents, confirmed.currency);

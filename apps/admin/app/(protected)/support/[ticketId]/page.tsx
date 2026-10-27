@@ -8,6 +8,7 @@ import { getSupportRequesterContext, getSupportTicketForStaff, listAssignableSup
 import { SUPPORT_STATUS_LABELS } from "@brandbasket/shared/lib/support";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { PageHeader } from "@/components/console/page-header";
+import { RequestBanner } from "@/components/console/request-banner";
 import { FactList, Section } from "@/components/console/section";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
@@ -30,6 +31,7 @@ export default async function StaffTicketPage({ params }: { readonly params: Pro
   const staffName = (id: string): string => staff.find((person) => person.userId === id)?.name ?? "Staff";
   return <>
     <PageHeader title={ticket.subject} back={{ href: "/support", label: "User tickets" }} meta={`${ticket.displayRef} · ${SUPPORT_STATUS_LABELS[ticket.status]} · ${STAFF_SUPPORT_CATEGORY_LABELS[ticket.category]}`} />
+    <RequestBanner ticketId={ticket.id} businessId={ticket.businessId} />
     <div className="mt-10">
       <Section title="Requester"><FactList items={[{ label: "Name", value: requester?.name ?? "Account unavailable" }, { label: "Contact", value: requester?.contact ?? null }, { label: "Business", value: requester?.businessName ?? "No business selected" }, { label: "Received", value: <LocalDateTime iso={ticket.createdAt.toISOString()} variant="timestamp" /> }]} /></Section>
       <Section title="Conversation">

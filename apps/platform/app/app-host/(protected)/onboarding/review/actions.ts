@@ -43,7 +43,7 @@ export async function submitOnboarding(_previous: StepFormState, formData: FormD
   const problem = await submitOnboardingFor(getAppDb(), access.tenant, new Date());
   if (problem !== null) return refusedStepState(problem, formData);
 
-  redirect("/project");
+  redirect("/website");
 }
 
 /**

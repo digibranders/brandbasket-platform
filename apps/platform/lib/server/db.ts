@@ -36,7 +36,7 @@ export function getAppDb(): Database {
  *   with and whether the package offer is given up. They write nothing. The business id comes only from the session; the
  *   provider callbacks in billing.ts look a subscription or charge up by the provider's own id, to tell whose webhook or
  *   confirmation it is.
- * - app/api/site/info/route.ts, app/api/site/availability/route.ts, lib/server/booking-otp.ts (POST
+ * - app/api/site/info/route.ts, app/api/site/events/route.ts, app/api/site/availability/route.ts, lib/server/booking-otp.ts (POST
  *   /api/site/bookings/otp) and lib/server/booking-confirm.ts (POST /api/site/bookings/confirm), because the site
  *   token has already proven the business, so there is no customer session to scope a connection under -- and the
  *   public role can't read module settings, services, opening hours or existing appointments, all of which these
@@ -63,6 +63,10 @@ export function getAppDb(): Database {
  *   charges (a paid extra, a week of a listing tag). Customers never write charges or directory_promotions through
  *   their own connection; the business id comes only from the session, the price only from the server, and a week
  *   is only ever written by the payment confirmation.
+ * - lib/server/change-quote.ts, which opens the `change_hours` charge for a quote the signed-in customer accepted on the
+ *   Requests page. Customers never write charges through their own connection; the business id comes only from the
+ *   session, the price only from the stored quote, the GST rate from the customer's own plan, and the work only starts
+ *   when the payment is recorded (recordChargePayment).
  * - lib/server/listing-pictures.ts (POST /api/listing-pictures and the Photos page's Remove), which stores and
  *   removes a free listing account's own pictures. Customers never write directory_pictures through their own
  *   connection; the business id comes only from the session, the slot is one of three fixed names, and the file is

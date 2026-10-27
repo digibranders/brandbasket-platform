@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InvalidMediaKeyError, isPictureCopyWidth, keysOfPicture, mediaStorageKey, pictureCopyKey, staffAdPictureKey, validateMediaKey } from "./media-keys";
+import { deliverablePictureKey, InvalidMediaKeyError, isPictureCopyWidth, keysOfPicture, mediaStorageKey, pictureCopyKey, staffAdPictureKey, validateMediaKey } from "./media-keys";
 
 const BUSINESS = "0192f3c4-1111-7000-8000-000000000001";
 const MEDIA = "0192f3c4-2222-7000-8000-000000000002";
@@ -42,5 +42,14 @@ describe("picture copies", () => {
     expect(keysOfPicture(key)).toEqual([key, `staff-ads/${MEDIA}/w320`, `staff-ads/${MEDIA}/w640`]);
     expect(() => staffAdPictureKey("../etc/passwd")).toThrow(InvalidMediaKeyError);
     expect(() => staffAdPictureKey(MEDIA.toUpperCase())).toThrow(InvalidMediaKeyError);
+  });
+
+  it("keeps a deliverable's picture under deliverables/, built only from a lowercase UUID, and valid as a storage key", () => {
+    const key = deliverablePictureKey(MEDIA);
+    expect(key).toBe(`deliverables/${MEDIA}/display`);
+    expect(() => validateMediaKey(key)).not.toThrow();
+    expect(keysOfPicture(key)).toEqual([key, `deliverables/${MEDIA}/w320`, `deliverables/${MEDIA}/w640`]);
+    expect(() => deliverablePictureKey("../etc/passwd")).toThrow(InvalidMediaKeyError);
+    expect(() => deliverablePictureKey(MEDIA.toUpperCase())).toThrow(InvalidMediaKeyError);
   });
 });

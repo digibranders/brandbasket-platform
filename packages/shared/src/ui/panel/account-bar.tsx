@@ -270,10 +270,7 @@ export function AccountBar({ signOut, account,
   const bellId = useId();
 
   const closeMenu = useCallback(() => setMenuOpen(false), [setMenuOpen]);
-  const notices = [
-    ...(panel?.notices ?? []),
-    ...(support !== null && support.unread > 0 ? [{ id: "support-replies", text: `Support replies · ${support.unread}`, href: "/support", actionable: true }] : []),
-  ];
+  const notices = panel?.notices ?? [];
   const needsYou = actionableCount(notices);
   // A site that is not live yet has nothing to report, so the menu shows no status line for it.
   const status = panel === null || panel.siteStatus.kind === "not_launched" ? null : siteStatusLine(panel.siteStatus);

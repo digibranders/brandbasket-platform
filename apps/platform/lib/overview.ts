@@ -1,6 +1,7 @@
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { BRAND_TIME_ZONE } from "@/lib/call-dates";
 import type { ServiceKey } from "@/lib/first-look";
+import { websiteEnquiriesLine, type WebsiteEnquiries } from "@/lib/site-events";
 
 /** The first day of the month `now` falls in, in India, as `YYYY-MM-01` (monthly_snapshots.month). */
 export function monthKey(now: Date): string {
@@ -57,11 +58,15 @@ export interface ResultLine {
 export function resultLines(input: {
   readonly services: readonly ServiceKey[];
   readonly chatbotLeads: number;
+  readonly enquiries?: WebsiteEnquiries | null;
   readonly social: SnapshotView | null;
   readonly search: SnapshotView | null;
 }): ResultLine[] {
   const lines: ResultLine[] = [];
-  if (input.services.includes("website") && input.chatbotLeads > 0) {
+  const enquiries = input.services.includes("website") && input.enquiries ? websiteEnquiriesLine(input.enquiries) : null;
+  if (enquiries !== null) {
+    lines.push({ service: "website", ...enquiries });
+  } else if (input.services.includes("website") && input.chatbotLeads > 0) {
     lines.push({
       service: "website",
       figure: String(input.chatbotLeads),
