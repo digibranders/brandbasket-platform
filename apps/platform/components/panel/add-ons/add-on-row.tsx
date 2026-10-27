@@ -48,14 +48,14 @@ export async function AddOnRow({ addOn, entry, canAdd }: AddOnRowProps): Promise
     <li className="py-8">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between sm:gap-10">
         <div className="min-w-0">
-          <h2 id={headingId} tabIndex={-1} className="panel-section outline-none">
+          <h2 id={headingId} tabIndex={-1} className="font-display text-[1.0625rem] font-semibold tracking-[-0.015em] text-ink outline-none">
             {addOn.title}
           </h2>
-          <p className="mt-1.5 max-w-md text-sm text-ink-soft">{addOn.line}</p>
+          <p className="mt-1.5 max-w-md text-sm text-ink-2">{addOn.line}</p>
           {addOn.platforms === undefined ? null : (
             <ul aria-label={`${addOn.title} runs on`} className="mt-4 flex flex-wrap gap-2">
               {addOn.platforms.map((platform) => (
-                <li key={platform} className="rounded-full bg-paper-deep px-3 py-1 text-xs text-ink-soft">
+                <li key={platform} className="rounded-full bg-sunken px-3 py-1 text-xs text-ink-2">
                   {platform}
                 </li>
               ))}
@@ -65,9 +65,9 @@ export async function AddOnRow({ addOn, entry, canAdd }: AddOnRowProps): Promise
         <div className="flex shrink-0 flex-col gap-4 sm:max-w-xs sm:items-end sm:text-right">
           <div>
             {price.discountCents > 0 ? (
-              <p className="text-sm tabular-nums text-ink-soft line-through">{formatMoney(price.listCents, price.currency)}</p>
+              <p className="text-sm tabular-nums text-ink-2 line-through">{formatMoney(price.listCents, price.currency)}</p>
             ) : null}
-            <p className="text-2xl font-semibold tabular-nums">{formatMoney(price.netCents, price.currency)}</p>
+            <p className="font-figure text-[1.375rem] font-semibold tabular-nums text-ink">{formatMoney(price.netCents, price.currency)}</p>
             <p className="mt-0.5 text-sm text-ink-soft">{addOn.extra === undefined ? addOn.unit : `${addOn.unit} ${addOn.extra}`}</p>
           </div>
           <p role="status" className="text-sm tabular-nums text-ink-soft empty:hidden">
