@@ -1,5 +1,6 @@
 import type { AddOnSubscriptionForStaff, BillingCurrency, BundledAddOn, PressRelease } from "@brandbasket/db";
 import { addOnById, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { bundledLinePrice } from "@brandbasket/shared/lib/billing/bundle";
 import { addOnActions, addOnView, type AddOnView } from "@brandbasket/shared/lib/billing/add-on-state";
 import { addOnFactsOf, pickAddOnRows } from "@brandbasket/shared/lib/billing/add-on-rows";
 import { formatCalendarDate } from "@brandbasket/shared/lib/format";
@@ -219,13 +220,15 @@ export function clientBundledAddOnRows(rows: readonly BundledAddOn[], currency: 
     if (!isMonthlyAddOnId(row.addOn)) return [];
     if (row.status === "pending" ? row.chargeId === null : row.activatedAt === null) return [];
     const canRemove = row.status === "active" && row.endRequestedAt === null && !context.cancelRequested && context.keptStartsOn === null;
+    // The price from the next renewal: a move to another package waits on the line until then.
+    const price = bundledLinePrice(row, currency);
     return [
       {
         id: row.id,
         addOn: row.addOn,
         title: addOnById(row.addOn).title,
         ...bundledState(row, currency, context),
-        price: `${formatMoney(row.netAmountCents, currency)} a month${row.taxRateBasisPoints > 0 ? ", GST included" : ""}, ${row.offerDiscountAmountCents > 0 ? "package price, " : ""}billed with the monthly payment`,
+        price: `${formatMoney(price.netCents, currency)} a month${row.taxRateBasisPoints > 0 ? ", GST included" : ""}, ${price.discountCents > 0 ? "package price, " : ""}billed with the monthly payment`,
         needsContact: row.activatedAt !== null && row.contactedAt === null,
         contactedOn: row.contactedAt === null ? null : day(row.contactedAt),
         canRemove,
