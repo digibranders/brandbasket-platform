@@ -66,7 +66,7 @@ export interface ReceivedUpload {
 }
 
 /** How long to wait, in words: "1 minute", "5 minutes". */
-export function retryMinutes(retryAfterSeconds: number): string {
+function retryMinutes(retryAfterSeconds: number): string {
   const minutes = Math.max(1, Math.ceil(retryAfterSeconds / 60));
   return `${minutes} minute${minutes === 1 ? "" : "s"}`;
 }

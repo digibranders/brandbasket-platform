@@ -6,7 +6,7 @@ import { initialTermPhrase } from "@brandbasket/shared/lib/billing/terms";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
 
-export { MEMBERSHIP_TIERS, type MembershipTier } from "@/lib/plan-features";
+export { type MembershipTier } from "@/lib/plan-features";
 
 /*
  * The services bought from the account a sign-up opens (docs/plans/11-platform-plans.md in the BrandBasket

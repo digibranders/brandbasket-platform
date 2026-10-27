@@ -32,7 +32,7 @@ const FRAMEWORK_FIELD = /^\$ACTION/;
 
 /** The text the customer sent, by field name, for echoing back after a refusal. Files and framework fields are
  * left out. Mirrors lib/onboarding/form-state.ts's `formValues`. */
-export function formValues(formData: FormData): Record<string, string> {
+function formValues(formData: FormData): Record<string, string> {
   const values: Record<string, string> = {};
   for (const [name, value] of formData.entries()) {
     if (typeof value !== "string" || FRAMEWORK_FIELD.test(name)) continue;

@@ -24,7 +24,7 @@ export function bearerToken(request: Request): string | null {
 }
 
 /** Deliberately identical for a missing and a wrong token: nothing here tells a caller which it was. */
-export const SITE_UNAUTHORIZED_MESSAGE = "A valid site API token is required.";
+const SITE_UNAUTHORIZED_MESSAGE = "A valid site API token is required.";
 
 export function unauthorized(corsHeaders: Record<string, string>): Response {
   return Response.json(
@@ -34,7 +34,7 @@ export function unauthorized(corsHeaders: Record<string, string>): Response {
 }
 
 /** The answer once a business's plan has ended: the token is good, but its website is not being served. Says so, so a site can show a notice. */
-export const SITE_OFFLINE_MESSAGE = "This website is offline.";
+const SITE_OFFLINE_MESSAGE = "This website is offline.";
 
 export function siteOffline(corsHeaders: Record<string, string>): Response {
   return Response.json(

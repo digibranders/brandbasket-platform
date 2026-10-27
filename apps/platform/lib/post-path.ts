@@ -10,7 +10,7 @@ import { slugFromInput, slugify } from "./blog-slug";
  * The same rules are written out in the client-site template (lib/blog-path.ts there), which re-checks what it gets.
  */
 
-export const DEFAULT_POST_PATH = "blog";
+const DEFAULT_POST_PATH = "blog";
 
 const MAX_PREFIX_LENGTH = 40;
 const SEGMENT = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

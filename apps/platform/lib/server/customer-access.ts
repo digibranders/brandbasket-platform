@@ -63,14 +63,11 @@ export const LISTING_PAGE_PATH = "/details";
  */
 export const LISTING_ACCOUNT_HOME = LISTING_PAGE_PATH;
 
-/** A free listing account's Advertise page: the weekly ad auction. */
-export const ADVERTISE_PATH = "/advertise";
-
 /**
  * The plan a free listing account's owner chose at sign-up and has not paid for yet, or null for an account that is not
  * waiting on one. Such an account has no dashboard until it pays: only that plan's page.
  */
-export function awaitedMembershipTier(entry: BusinessEntry): MembershipTier | null {
+function awaitedMembershipTier(entry: BusinessEntry): MembershipTier | null {
   return entry.kind === "listing" ? membershipTierForChoice(entry.signupChoice) : null;
 }
 
@@ -94,7 +91,7 @@ export interface CustomerAccessOptions {
 }
 
 /** Where the business is sent instead of the page it asked for, or null when the page is its to open. */
-export function accessRedirect(entry: BusinessEntry, options: CustomerAccessOptions): string | null {
+function accessRedirect(entry: BusinessEntry, options: CustomerAccessOptions): string | null {
   const awaited = awaitedMembershipTier(entry);
   if (awaited !== null) return options.membershipCheckout === "allow" ? null : membershipPathFor(awaited);
   if (entry.kind === "listing" && options.listingAccount !== "allow") return LISTING_ACCOUNT_HOME;

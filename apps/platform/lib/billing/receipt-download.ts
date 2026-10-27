@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** Where receipts download from, on the app host. */
-export const RECEIPTS_DOWNLOAD_PATH = "/billing/receipts";
+const RECEIPTS_DOWNLOAD_PATH = "/billing/receipts";
 
 /** The most receipts one download may name: the length of the list the billing page shows. */
 export const MAX_RECEIPTS_PER_DOWNLOAD = 50;

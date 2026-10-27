@@ -9,8 +9,6 @@ export type UploadResult = { readonly ok: true } | { readonly ok: false; readonl
 export const UPLOAD_ROUTE = "/api/uploads";
 /** A free listing account's pictures, one slot a request; under /api/ for the same reason. */
 export const LISTING_PICTURE_ROUTE = "/api/listing-pictures";
-/** A product's photo, one product a request; under /api/ for the same reason. */
-export const PRODUCT_PHOTO_ROUTE = "/api/product-photos";
 /** Also what Vercel answers, as plain text, for a body over its own limit before our route runs. */
 const PAYLOAD_TOO_LARGE = 413;
 const UNREACHABLE_MESSAGE = "We couldn't upload that file. Check your connection and try again.";
@@ -63,12 +61,4 @@ export async function uploadImage(file: File, purpose: UploadPurpose): Promise<U
  */
 export function uploadListingPicture(picture: Blob, slot: DirectoryPictureSlot): Promise<UploadResult> {
   return sendImage(`${LISTING_PICTURE_ROUTE}?slot=${slot}`, picture, {});
-}
-
-/**
- * Sends one product's photo, already cut to a square in the browser. It goes live at once; the page refreshes itself
- * afterwards to show it. Browser only; the result carries a message ready to show.
- */
-export function uploadProductPhoto(photo: Blob, productId: string): Promise<UploadResult> {
-  return sendImage(`${PRODUCT_PHOTO_ROUTE}?product=${encodeURIComponent(productId)}`, photo, {});
 }

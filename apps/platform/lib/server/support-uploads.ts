@@ -10,8 +10,8 @@ import { BodyTooLargeError, readLimitedBody } from "./read-limited-body";
 import { createSemaphore, SemaphoreFullError } from "./semaphore";
 import { refuseUploadEnvelope, refuseUpload } from "./upload-request";
 
-export const SUPPORT_FILE_LIMIT = 4 * 1024 * 1024;
-export const SUPPORT_TOTAL_LIMIT = 3 * SUPPORT_FILE_LIMIT;
+const SUPPORT_FILE_LIMIT = 4 * 1024 * 1024;
+const SUPPORT_TOTAL_LIMIT = 3 * SUPPORT_FILE_LIMIT;
 /** Multipart framing allowance is separate from the 12 MiB aggregate image limit. */
 export const SUPPORT_BODY_LIMIT = SUPPORT_TOTAL_LIMIT + 64 * 1024;
 const MAX_PIXELS = 16_000_000;

@@ -6,11 +6,8 @@ import {
   useContext,
   useEffect,
   useId,
-  useMemo,
   useRef,
-  useState,
   type ReactElement,
-  type ReactNode,
   type RefObject,
 } from "react";
 import { echoedValue, initialPanelFormState, type PanelFormState } from "@/lib/panel-form-state";
@@ -72,18 +69,6 @@ interface PanelFormGroupValue {
 }
 
 const PanelFormGroupContext = createContext<PanelFormGroupValue | null>(null);
-
-/**
- * Opt-in for a page with many small panel forms side by side (the Doctors page: add a doctor, a doctor's name,
- * hours, leave): inside a group only the form submitted last may show "Saved.", so an earlier form's "Saved."
- * cannot linger beside it as though that form had just saved too. Errors are unaffected. Without a group every
- * form behaves exactly as before.
- */
-export function PanelFormGroup({ children }: { readonly children: ReactNode }): ReactElement {
-  const [latest, setLatest] = useState<string | null>(null);
-  const value = useMemo<PanelFormGroupValue>(() => ({ latest, claim: setLatest }), [latest]);
-  return <PanelFormGroupContext.Provider value={value}>{children}</PanelFormGroupContext.Provider>;
-}
 
 /**
  * The server-action form pattern every panel form on a customer dashboard page shares: an error shown right by the

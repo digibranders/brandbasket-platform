@@ -27,7 +27,7 @@ export function servicesBought(lines: readonly ServiceLine[]): readonly ServiceK
 }
 
 /** How long after a call's end time the first look stays open when staff have not marked it held. */
-export const HELD_GRACE_MS = 2 * 24 * 3_600_000;
+const HELD_GRACE_MS = 2 * 24 * 3_600_000;
 
 export interface FirstLookInput {
   readonly hasAccess: boolean;

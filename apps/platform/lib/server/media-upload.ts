@@ -5,7 +5,7 @@ import { MAX_IMAGE_DIMENSION, MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "@/lib/
 import { PICTURE_COPY_WIDTHS, type PictureCopyWidth } from "@brandbasket/shared/server/media-keys";
 import { createSemaphore, SemaphoreFullError } from "./semaphore";
 
-export { MAX_IMAGE_DIMENSION, MAX_UPLOAD_BYTES };
+export { MAX_UPLOAD_BYTES };
 
 const WEBP_QUALITY = 82;
 /**
@@ -36,7 +36,7 @@ export function hasDecodeCapacity(): boolean {
 /** Enough bytes to recognise every accepted format. */
 const SIGNATURE_BYTES = 12;
 
-export const ACCEPTED_FORMATS_MESSAGE = "Please upload a JPEG, PNG or WebP image.";
+const ACCEPTED_FORMATS_MESSAGE = "Please upload a JPEG, PNG or WebP image.";
 
 export type DetectedImageType = "image/jpeg" | "image/png" | "image/webp";
 

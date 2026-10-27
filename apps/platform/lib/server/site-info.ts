@@ -9,7 +9,7 @@ import type { SiteInfo, SiteInfoBooking, SiteInfoClosure, SiteInfoHours, SiteInf
  * Appointments is switched on). Brandbasket serves businesses in India, so this is the right answer far more often than
  * UTC, which would roll "today" over at 5:30 am local time.
  */
-export const DEFAULT_SITE_TIME_ZONE = "Asia/Kolkata";
+const DEFAULT_SITE_TIME_ZONE = "Asia/Kolkata";
 
 export interface BuildSiteInfoInput {
   readonly businessName: string;

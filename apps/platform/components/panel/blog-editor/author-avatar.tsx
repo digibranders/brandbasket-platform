@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 
 /** "Asha Rao" → "AR"; one name gives one letter. */
-export function initialsOf(name: string): string {
+function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter((part) => part !== "");
   const letters = parts.length > 1 ? [parts[0], parts[parts.length - 1]] : parts;
   return letters.map((part) => part?.charAt(0).toUpperCase() ?? "").join("") || "?";
