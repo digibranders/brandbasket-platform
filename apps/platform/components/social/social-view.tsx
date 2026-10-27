@@ -83,7 +83,7 @@ export function SocialView({ data, notice, now }: SocialViewProps): ReactElement
               {waitingHeadline(waiting)}
             </h2>
             {/* One post at a time on a phone (scroll snap); a grid from lg. */}
-            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto lg:grid lg:grid-cols-2 lg:overflow-visible xl:grid-cols-4">
+            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-2 lg:overflow-visible xl:grid-cols-4">
               {waiting.map((post, index) => (
                 <div key={post.id} className="min-w-full snap-center lg:min-w-0">
                   <PostCard post={post} position={index} total={waiting.length} waiting showApprove={false} />
