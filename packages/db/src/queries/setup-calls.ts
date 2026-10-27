@@ -88,7 +88,7 @@ export async function markSetupCallHeld(db: Runner, input: { readonly businessId
 }
 
 /**
- * Undoes the mark. A row made only for a phone call (no booking address, no times) has nothing left once it is unmarked,
+ * Undoes the mark, and the summary with it (only a held call has one). A row made only for a phone call (no booking address, no times) has nothing left once it is unmarked,
  * so it is deleted; a booked call keeps its booking. True when a call was held and no longer is. Staff connection.
  * The mark is cleared first so the customer role, which may not touch it, is refused by the guard trigger and never
  * reaches the delete.
@@ -96,7 +96,7 @@ export async function markSetupCallHeld(db: Runner, input: { readonly businessId
 export async function clearSetupCallHeld(db: Runner, businessId: string, now: Date): Promise<boolean> {
   const rows = await db
     .update(setupCallBookings)
-    .set({ heldAt: null, heldByStaffId: null, updatedAt: now })
+    .set({ heldAt: null, heldByStaffId: null, summary: null, summaryAt: null, summaryByStaffId: null, updatedAt: now })
     .where(and(eq(setupCallBookings.businessId, businessId), isNotNull(setupCallBookings.heldAt)))
     .returning({ inviteeUri: setupCallBookings.inviteeUri, startsAt: setupCallBookings.startsAt });
   const row = rows[0];
@@ -112,5 +112,25 @@ export async function clearSetupCallHeld(db: Runner, businessId: string, now: Da
         ),
       );
   }
+  return rows.length > 0;
+}
+
+/**
+ * Staff write (or, with null, clear) what was agreed on the kickoff call. Only a held call has a summary. True when the held
+ * call was updated. Staff connection.
+ */
+export async function saveSetupCallSummary(
+  db: Runner,
+  input: { readonly businessId: string; readonly staffId: string; readonly summary: string | null; readonly now: Date },
+): Promise<boolean> {
+  const written =
+    input.summary === null
+      ? { summary: null, summaryAt: null, summaryByStaffId: null }
+      : { summary: input.summary, summaryAt: input.now, summaryByStaffId: input.staffId };
+  const rows = await db
+    .update(setupCallBookings)
+    .set({ ...written, updatedAt: input.now })
+    .where(and(eq(setupCallBookings.businessId, input.businessId), isNotNull(setupCallBookings.heldAt)))
+    .returning({ id: setupCallBookings.id });
   return rows.length > 0;
 }
