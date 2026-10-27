@@ -4,6 +4,7 @@ import {
   ChangeRequestError,
   countIncludedEdits,
   findRequestRecipient,
+  findTicketIdOfChangeCharge,
   findTicketIdOfChangeRequest,
   getChangeRequestForStaff,
   getChangeWithEvents,
@@ -13,6 +14,7 @@ import {
   listUnreadReplies,
   moveChangeAsCustomer,
 } from "./queries/change-requests";
+import { insertCharge } from "./queries/charges";
 import { insertBusiness } from "./queries/onboarding";
 import { appendSupportMessageByStaff } from "./queries/support-staff";
 import { createSupportTicket, createSupportTicketWithOutcome, getSupportTicket, markSupportTicketRead } from "./queries/support";
@@ -228,6 +230,28 @@ describe("findTicketIdOfChangeRequest", () => {
     const requestId = await requestIdOf(ticket.id);
     expect(await asOwner((tx) => findTicketIdOfChangeRequest(tx, businessId, requestId))).toBe(ticket.id);
     expect(await asOtherOwner((tx) => findTicketIdOfChangeRequest(tx, otherBusinessId, requestId))).toBeNull();
+  });
+});
+
+describe("findTicketIdOfChangeCharge", () => {
+  it("gives the ticket of the request a charge was opened for, and null for an unlinked charge or another business", async () => {
+    const { ticket } = await ask();
+    const requestId = await requestIdOf(ticket.id);
+    const charge = await insertCharge(dbs.staff.db, {
+      businessId,
+      kind: "change_hours",
+      description: "Extra change hours: New page",
+      quantity: 3,
+      unitAmountCents: 50_000,
+      taxRateBasisPoints: 1800,
+      amountCents: 150_000,
+      currency: "INR",
+      createdByStaffId: null,
+    });
+    expect(await asOwner((tx) => findTicketIdOfChangeCharge(tx, businessId, charge.id))).toBeNull();
+    await dbs.staff.db.update(changeRequests).set({ ...QUOTE, state: "quoted", acceptedAt: new Date(), chargeId: charge.id }).where(eq(changeRequests.id, requestId));
+    expect(await asOwner((tx) => findTicketIdOfChangeCharge(tx, businessId, charge.id))).toBe(ticket.id);
+    expect(await asOtherOwner((tx) => findTicketIdOfChangeCharge(tx, otherBusinessId, charge.id))).toBeNull();
   });
 });
 

@@ -10,6 +10,7 @@ import {
   ADD_ON_RETURN_VALUE,
   AD_RETURN_PARAM,
   CHANGE_RETURN_VALUE,
+  CHANGE_TICKET_PARAM,
   AD_RETURN_VALUE,
   PRESS_RELEASE_RETURN_VALUE,
   UPGRADE_RETURN_VALUE,
@@ -19,6 +20,7 @@ import {
 import { getBillingProvider, razorpayKeyId } from "@/lib/server/billing";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
+import { loadTicketIdOfChangeCharge } from "@/lib/server/requests";
 import { logoOf } from "@/lib/brand";
 import { requestAppOrigin, requestBrand } from "@/lib/server/request-brand";
 
@@ -43,6 +45,8 @@ export default async function ChargePayPage({ params }: ChargePayPageProps): Pro
   const charge = await withTenantScope(getAppDb(), tenant, (tx) => findChargeForBusiness(tx, tenant.businessId, chargeId));
   if (charge === null) notFound();
   // Only a press release has its own page to say so on; the other kinds keep saying it on Billing.
+  // A change quote returns to its own request, so the notice is on the request that was paid.
+  const ticketId = charge.kind === "change_hours" ? await loadTicketIdOfChangeCharge(tenant, chargeId) : undefined;
   if (charge.status !== "open") redirect(charge.kind === "press_release" ? chargeReturnHref(charge.kind, "not-open") : chargeNoticeHref("not-open"));
   if (charge.provider !== "razorpay" || charge.providerOrderId === null) redirect("/billing");
 
@@ -53,7 +57,10 @@ export default async function ChargePayPage({ params }: ChargePayPageProps): Pro
   if (charge.kind === "plan_upgrade") callbackUrl.searchParams.set(AD_RETURN_PARAM, UPGRADE_RETURN_VALUE);
   if (charge.kind === "press_release") callbackUrl.searchParams.set(AD_RETURN_PARAM, PRESS_RELEASE_RETURN_VALUE);
   if (charge.kind === "add_on") callbackUrl.searchParams.set(AD_RETURN_PARAM, ADD_ON_RETURN_VALUE);
-  if (charge.kind === "change_hours") callbackUrl.searchParams.set(AD_RETURN_PARAM, CHANGE_RETURN_VALUE);
+  if (charge.kind === "change_hours") {
+    callbackUrl.searchParams.set(AD_RETURN_PARAM, CHANGE_RETURN_VALUE);
+    if (ticketId !== undefined) callbackUrl.searchParams.set(CHANGE_TICKET_PARAM, ticketId);
+  }
 
   return (
     <RazorpayCheckoutScreen
@@ -64,7 +71,7 @@ export default async function ChargePayPage({ params }: ChargePayPageProps): Pro
       email={user.phone === null ? user.email : null}
       contact={user.phone}
       callbackUrl={callbackUrl.toString()}
-      dismissHref={chargeReturnHref(charge.kind, "failed")}
+      dismissHref={chargeReturnHref(charge.kind, "failed", ticketId)}
     />
   );
 }

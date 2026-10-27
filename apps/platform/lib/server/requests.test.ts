@@ -1,12 +1,13 @@
-import { countIncludedEdits, getChangeWithEvents, getSupportTicket, listRequestItems, listRequestNeeds, listUnreadReplies, withTenantScope } from "@brandbasket/db";
+import { countIncludedEdits, findTicketIdOfChangeCharge, getChangeWithEvents, getSupportTicket, listRequestItems, listRequestNeeds, listUnreadReplies, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getAppDb } from "./db";
-import { loadRequestDetail, loadRequestNeeds, loadRequests, loadUnreadReplies } from "./requests";
+import { loadRequestDetail, loadRequestNeeds, loadRequests, loadTicketIdOfChangeCharge, loadUnreadReplies } from "./requests";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn() }));
 vi.mock("@brandbasket/db", () => ({
   countIncludedEdits: vi.fn(),
+  findTicketIdOfChangeCharge: vi.fn(),
   getChangeWithEvents: vi.fn(),
   getSupportTicket: vi.fn(),
   listRequestItems: vi.fn(),
@@ -102,5 +103,14 @@ describe("loadRequestDetail", () => {
     vi.mocked(getSupportTicket).mockResolvedValue(null);
     vi.mocked(getChangeWithEvents).mockResolvedValue(null);
     expect(await loadRequestDetail(freshTenant(), "t9")).toBeNull();
+  });
+});
+
+describe("loadTicketIdOfChangeCharge", () => {
+  it("gives the ticket of the request the charge was opened for, in the signed-in business, and undefined when there is none", async () => {
+    vi.mocked(findTicketIdOfChangeCharge).mockResolvedValueOnce("ticket-1").mockResolvedValueOnce(null);
+    expect(await loadTicketIdOfChangeCharge(freshTenant(), "charge-1")).toBe("ticket-1");
+    expect(findTicketIdOfChangeCharge).toHaveBeenCalledWith(appTx, "business-1", "charge-1");
+    expect(await loadTicketIdOfChangeCharge(freshTenant(), "charge-2")).toBeUndefined();
   });
 });

@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import {
   countIncludedEdits,
+  findTicketIdOfChangeCharge,
   findTicketIdOfChangeRequest,
   getChangeWithEvents,
   getSupportTicket,
@@ -86,4 +87,9 @@ export async function loadRequestDetail(tenant: TenantContext, ticketId: string)
  */
 export async function loadTicketIdOfRequest(tenant: TenantContext, requestId: string): Promise<string | null> {
   return withTenantScope(getAppDb(), tenant, (tx) => findTicketIdOfChangeRequest(tx, tenant.businessId, requestId));
+}
+
+/** The ticket of the request a `change_hours` charge was opened for, so a payment returns to that request. Undefined when there is none. */
+export async function loadTicketIdOfChangeCharge(tenant: TenantContext, chargeId: string): Promise<string | undefined> {
+  return (await withTenantScope(getAppDb(), tenant, (tx) => findTicketIdOfChangeCharge(tx, tenant.businessId, chargeId))) ?? undefined;
 }

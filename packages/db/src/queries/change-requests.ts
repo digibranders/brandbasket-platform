@@ -212,6 +212,16 @@ export async function findTicketIdOfChangeRequest(db: Runner, businessId: string
   return row?.ticketId ?? null;
 }
 
+/** The ticket of the change request a `change_hours` charge was opened for, or null when the business has no such request. Works through row-level security. */
+export async function findTicketIdOfChangeCharge(db: Runner, businessId: string, chargeId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ ticketId: changeRequests.ticketId })
+    .from(changeRequests)
+    .where(and(eq(changeRequests.chargeId, chargeId), eq(changeRequests.businessId, businessId)))
+    .limit(1);
+  return row?.ticketId ?? null;
+}
+
 /**
  * How many included edits the business has used between `from` (inclusive) and `to` (exclusive): requests covered as
  * included that were sent in the window and are still going ahead (one that was declined or withdrawn gives its edit back).
