@@ -1,15 +1,17 @@
-import { countChatbotLeadsSince, listActivityEvents, listMonthlySnapshots, withTenantScope } from "@brandbasket/db";
+import { countChatbotLeadsSince, countIncludedEdits, listActivityEvents, listMonthlySnapshots, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getAppDb } from "./db";
 import { getLiveWebsite, getProjectOverview } from "./onboarding";
 import { loadOverview } from "./overview";
+import { loadRequestNeeds } from "./requests";
 import { loadTodo } from "./todo";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn() }));
 vi.mock("./onboarding", () => ({ getLiveWebsite: vi.fn(), getProjectOverview: vi.fn() }));
 vi.mock("./todo", () => ({ loadTodo: vi.fn() }));
-vi.mock("@brandbasket/db", () => ({ countChatbotLeadsSince: vi.fn(), listActivityEvents: vi.fn(), listMonthlySnapshots: vi.fn(), withTenantScope: vi.fn() }));
+vi.mock("./requests", () => ({ loadRequestNeeds: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ countChatbotLeadsSince: vi.fn(), countIncludedEdits: vi.fn(), listActivityEvents: vi.fn(), listMonthlySnapshots: vi.fn(), withTenantScope: vi.fn() }));
 
 const appDb = { name: "app-db" } as never;
 const appTx = { name: "app-tx" } as never;
@@ -30,6 +32,8 @@ beforeEach(() => {
   vi.mocked(listActivityEvents).mockResolvedValue([]);
   vi.mocked(listMonthlySnapshots).mockResolvedValue([]);
   vi.mocked(countChatbotLeadsSince).mockResolvedValue(0);
+  vi.mocked(loadRequestNeeds).mockResolvedValue([]);
+  vi.mocked(countIncludedEdits).mockResolvedValue(0);
 });
 
 describe("loadOverview", () => {
@@ -144,5 +148,47 @@ describe("loadOverview", () => {
 
       expect(data.nextPayment).toBeNull();
     });
+  });
+
+  it("adds the quotes to accept and the changes to check to what needs the customer, ahead of the To do items", async () => {
+    vi.mocked(loadTodo).mockResolvedValue({ ...todoFor(["website"]), open: 2 });
+    vi.mocked(loadRequestNeeds).mockResolvedValue([
+      { ticketId: "t1", subject: "Add an Implants page", kind: "website", state: "quoted", quote: { what: "New page", hours: 3, unitCents: 50_000, amountCents: 150_000, currency: "INR", workingDays: 5, quotedAt: now }, acceptedAt: null, updatedAt: now },
+    ]);
+
+    const data = await loadOverview(tenant, noBilling, now);
+
+    expect(data.open).toBe(3);
+    expect(data.requests).toEqual([{ key: "request-t1", label: "Accept a quote: Add an Implants page", hint: "3 hours, ₹1,500", service: "website", href: "/requests?open=t1" }]);
+  });
+
+  it("counts the month's included edits for a plan with the website, in India's month, and none for a plan without it", async () => {
+    vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+    vi.mocked(countIncludedEdits).mockResolvedValue(1);
+
+    const withWebsite = await loadOverview(tenant, { subscription: null, plan: null, hasWebsite: true } as never, now);
+
+    expect(withWebsite.included).toEqual({ used: 1, allowed: 2 });
+    const [, businessId, window] = vi.mocked(countIncludedEdits).mock.calls[0] ?? [];
+    expect(businessId).toBe("business-1");
+    expect(window?.from.toISOString()).toBe("2026-09-30T18:30:00.000Z");
+    expect(window?.to.toISOString()).toBe("2026-10-31T18:30:00.000Z");
+
+    vi.mocked(countIncludedEdits).mockClear();
+    const without = await loadOverview(tenant, { subscription: null, plan: null, hasWebsite: false } as never, now);
+    expect(without.included).toBeNull();
+    expect(countIncludedEdits).not.toHaveBeenCalled();
+  });
+
+  it("leaves the included-edits line out, and logs once, when the count cannot be read", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+    vi.mocked(countIncludedEdits).mockRejectedValue(new Error("db down"));
+
+    const data = await loadOverview(tenant, { subscription: null, plan: null, hasWebsite: true } as never, now);
+
+    expect(data.included).toBeNull();
+    expect(log.mock.calls.map((call) => call[0])).toEqual(["[overview] could not read the included edits"]);
+    log.mockRestore();
   });
 });
