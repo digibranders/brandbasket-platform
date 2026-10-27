@@ -44,7 +44,7 @@ function BrowserFrame({ pictureUrl, previewUrl, address, businessName }: Pick<Pr
         ) : (
           // The picture comes from our own authenticated route and is already sized; next/image would only add a second copy through its optimiser.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={pictureUrl} alt="A picture of your new website" width={1280} height={800} loading="lazy" decoding="async" className="size-full object-cover object-top" />
+          <img src={pictureUrl} alt="Your new website" width={1280} height={800} loading="lazy" decoding="async" className="size-full object-cover object-top" />
         )}
       </div>
     </div>

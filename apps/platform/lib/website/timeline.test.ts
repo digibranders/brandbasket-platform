@@ -156,6 +156,15 @@ describe("websiteTimeline", () => {
     expect(states(steps)).toEqual(["done", "done", "now", "next"]);
   });
 
+  it("promises no dates while a build is on hold, even with a due date and a call on file", () => {
+    const before = websiteTimeline(input({ project: project({ status: "on_hold", slaDueAt: PREVIEW }), now: at("2026-11-03T06:00:00.000Z") }));
+    expect(row(before, "build")).toMatchObject({ state: "now", when: "" });
+    expect(row(before, "live")).toMatchObject({ when: "", note: null });
+    const after = websiteTimeline(input({ project: project({ status: "on_hold", previewSentAt: PREVIEW }), now: at("2026-11-03T06:00:00.000Z") }));
+    expect(row(after, "check")).toMatchObject({ state: "now", when: "" });
+    expect(row(after, "live")).toMatchObject({ when: "", note: null });
+  });
+
   it("shows no date and does not throw without a call or a submission", () => {
     const steps = websiteTimeline(input({ project: project({ status: "onboarding" }), callStartsAt: null }));
     expect(states(steps)).toEqual(["now", "next", "next", "next"]);

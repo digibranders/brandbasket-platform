@@ -77,6 +77,8 @@ export function currentStep(input: TimelineInput): 0 | 1 | 2 | 3 | 4 {
 /** When the site can go live, and what the customer must do for that date to hold. Null when there is no basis for a date. */
 export function liveDate(input: TimelineInput): { readonly liveBy: string; readonly approveBy: string | null } | null {
   const { project, events, callStartsAt } = input;
+  // A paused build has no promise: the dates come back when it is resumed.
+  if (project.status === "on_hold") return null;
   if (project.status === "approved") {
     const approvedAt = last(events, "approved");
     return approvedAt === null ? null : { liveBy: addWorkingDays(day(approvedAt), LIVE_AFTER_APPROVAL_WORKING_DAYS), approveBy: null };
@@ -125,7 +127,7 @@ export function websiteTimeline(input: TimelineInput): readonly TimelineStep[] {
 
   const approvedAt = last(events, "approved");
   const checkWhen =
-    stateOf(2) === "now" ? "Today" : stateOf(2) === "done" ? (approvedAt === null ? "" : shortDay(day(approvedAt))) : "";
+    stateOf(2) === "now" && project.status !== "on_hold" ? "Today" : stateOf(2) === "done" ? (approvedAt === null ? "" : shortDay(day(approvedAt))) : "";
 
   const liveWhen =
     project.status === "live"
@@ -142,7 +144,7 @@ export function websiteTimeline(input: TimelineInput): readonly TimelineStep[] {
       key: "build",
       title: stateOf(1) === "done" ? "We built it" : revising ? "We are making your changes" : "We build your website",
       note: stateOf(1) === "now" && (project.status === "onboarding" || project.status === "submitted") ? "We start within 48 hours of the call" : null,
-      when: stateOf(1) === "done" ? buildDoneWhen : stateOf(1) === "now" && readyBy !== null ? by(readyBy) : "",
+      when: stateOf(1) === "done" ? buildDoneWhen : stateOf(1) === "now" && readyBy !== null && project.status !== "on_hold" ? by(readyBy) : "",
       state: stateOf(1),
     },
     {
@@ -157,7 +159,7 @@ export function websiteTimeline(input: TimelineInput): readonly TimelineStep[] {
       title: "Your website is live",
       note: live !== null && live.approveBy !== null && project.status !== "live" ? `If you approve by ${shortDay(live.approveBy)}` : null,
       when: liveWhen,
-      state: stateOf(3) === "now" && project.status === "live" ? "done" : stateOf(3),
+      state: stateOf(3),
     },
   ];
 }
