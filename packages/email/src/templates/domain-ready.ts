@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 import { emailBrandName } from "../brand";
 
 export interface DomainReadyInput {
@@ -24,11 +25,11 @@ export function domainReadyEmail(input: DomainReadyInput): EmailMessage {
     subject: sanitizeHeaderValue(`Connect ${input.domain} to put your ${brand} website live`),
     template: "domain-ready",
     bodyText: lines.join("\n\n"),
-    bodyHtml: htmlDocument(`Connect ${input.domain} to put your ${brand} website live`, [
-      escapeHtml(intro),
-      escapeHtml(step),
-      `<a href="${escapeHtml(projectUrl)}">${escapeHtml(projectUrl)}</a>`,
-      escapeHtml(outro),
-    ]),
+    bodyHtml: receiptDocument({
+      title: `Connect ${input.domain} to put your ${brand} website live`,
+      kicker: "Connect your domain",
+      heading: `Connect ${input.domain} to put your ${brand} website live`,
+      body: [receiptParagraph(intro), receiptParagraph(step), receiptButton(projectUrl, "Connect my domain"), receiptParagraph(outro)],
+    }),
   };
 }

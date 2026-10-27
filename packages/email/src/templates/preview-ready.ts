@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 import { emailBrandName } from "../brand";
 
 export interface PreviewReadyInput {
@@ -20,10 +21,11 @@ export function previewReadyEmail(input: PreviewReadyInput): EmailMessage {
     subject: `Your ${brand} preview is ready`,
     template: "preview-ready",
     bodyText: lines.join("\n\n"),
-    bodyHtml: htmlDocument(`Your ${brand} preview is ready`, [
-      escapeHtml(intro),
-      `<a href="${escapeHtml(previewUrl)}">${escapeHtml(previewUrl)}</a>`,
-      escapeHtml(outro),
-    ]),
+    bodyHtml: receiptDocument({
+      title: `Your ${brand} preview is ready`,
+      kicker: "Preview ready",
+      heading: `Your ${brand} preview is ready`,
+      body: [receiptParagraph(intro), receiptButton(previewUrl, "Open the preview"), receiptParagraph(outro)],
+    }),
   };
 }

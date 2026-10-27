@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, withheldLinkCopy, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, withheldLinkCopy, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 import { emailBrandName } from "../brand";
 
 export interface PasswordResetInput {
@@ -18,11 +19,13 @@ export function passwordResetEmail(input: PasswordResetInput): EmailMessage {
     subject: `Reset your ${brand} password`,
     template: "password-reset",
     bodyText: [`Choose a new password for your ${brand} account:`, resetUrl, validity, ignore].join("\n\n"),
-    bodyHtml: htmlDocument(`Reset your ${brand} password`, [
-      `<a href="${escapeHtml(resetUrl)}">Choose a new password</a>`,
-      escapeHtml(validity),
-      escapeHtml(ignore),
-    ]),
+    bodyHtml: receiptDocument({
+      title: `Reset your ${brand} password`,
+      kicker: "Password reset",
+      heading: `Reset your ${brand} password`,
+      body: [receiptButton(resetUrl, "Choose a new password"), receiptParagraph(validity)],
+      footer: [ignore],
+    }),
     outboxCopy: withheldLinkCopy(`Reset your ${brand} password`, [validity, ignore]),
   };
 }

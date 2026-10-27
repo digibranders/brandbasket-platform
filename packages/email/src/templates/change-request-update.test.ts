@@ -13,7 +13,8 @@ describe("changeRequestUpdateEmail", () => {
       ['Hi Priya,', "", 'The Brandbasket team replied to "Add an Implants page":', "", "Happy to.", "A new page takes about 3 hours.", "", "Open your request: https://app.brandbasket.in/requests?open=0192f3c4"].join("\n"),
     );
     expect(email.bodyHtml).toContain("white-space:pre-wrap");
-    expect(email.bodyHtml).toContain('<a href="https://app.brandbasket.in/requests?open=0192f3c4">Open your request</a>');
+    expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/requests?open=0192f3c4"');
+    expect(email.bodyHtml).toContain(">Open your request</a>");
   });
 
   it("says what the quote is, what it comes to and when the work is ready after the customer pays", () => {
