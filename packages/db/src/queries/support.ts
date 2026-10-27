@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { and, count, desc, eq, gt, inArray, isNull, lt, sql, type SQL } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import type { Database } from "../client";
+import { isChangeKind, type ChangeKind } from "../change-states";
 import { businessMembers } from "../schema/businesses";
 import { accountClosures } from "../schema/account-closures";
 import { supportAttachments, supportCategory, supportMessages, supportReadStates, supportTickets, type SupportAttachment, type SupportCategory, type SupportDetails, type SupportMessage, type SupportStatus, type SupportTicket } from "../schema/support";
@@ -75,6 +76,13 @@ export interface CreateSupportTicketInput {
   readonly userId: string; readonly businessId?: string | null; readonly category: SupportCategory;
   readonly subject: string; readonly description: string; readonly details?: SupportDetails;
   readonly attachmentIds?: readonly string[]; readonly submissionKey: string;
+  /** Makes the ticket a request for a change (migration 0190): needs a business. Without it the ticket is a plain question. */
+  readonly changeRequest?: { readonly kind: ChangeKind; readonly page?: string | null };
+}
+/** The page a change is about, in the customer's words: trimmed, up to 200 characters, or null when left empty. */
+function changePage(page: string | null | undefined): string | null {
+  const trimmed = supportText(page ?? "", "Page", 0, 200);
+  return trimmed === "" ? null : trimmed;
 }
 export async function createSupportTicket(db: Database, input: CreateSupportTicketInput): Promise<SupportTicket> {
   return (await createSupportTicketWithOutcome(db, input)).ticket;
@@ -87,7 +95,10 @@ export async function createSupportTicketWithOutcome(db: Database, input: Create
   const details = normalizeDetails(input.details), attachmentIds = normalizeSupportAttachmentIds(input.attachmentIds);
   const businessId = input.businessId ?? null;
   if (businessId !== null) assertSupportUuid(businessId, "Business ID");
-  const submissionHash = supportSubmissionHash({ category: input.category, subject, description, details, attachmentIds, businessId });
+  const changeRequest = input.changeRequest === undefined ? null : { kind: input.changeRequest.kind, page: changePage(input.changeRequest.page) };
+  if (changeRequest !== null && (!isChangeKind(changeRequest.kind) || businessId === null)) throw new SupportQueryError("invalid_input", "A change request needs a kind and a business.");
+  // The change details join the hash only when present, so a plain ticket's hash is what it always was.
+  const submissionHash = supportSubmissionHash({ category: input.category, subject, description, details, attachmentIds, businessId, ...(changeRequest === null ? {} : { changeRequest }) });
   return withUserScope(db, input.userId, async (tx) => {
     await lockSupportSubmission(tx, input.userId, input.submissionKey);
     const [existing] = await tx.select().from(supportTickets).where(and(eq(supportTickets.requesterUserId, input.userId), eq(supportTickets.submissionKey, input.submissionKey))).limit(1);
@@ -105,6 +116,7 @@ export async function createSupportTicketWithOutcome(db: Database, input: Create
     const [message] = await tx.insert(supportMessages).values({ ticketId: id, authorRole: "customer", authorUserId: input.userId, body: description, details, submissionKey: input.submissionKey, submissionHash }).returning();
     if (!message) throw new SupportQueryError("conflict", "The initial support message could not be created.");
     await claimSupportAttachments(tx, input.userId, id, message.id, attachmentIds);
+    if (changeRequest !== null) await tx.execute(sql`select create_change_request(${id}::uuid, ${changeRequest.kind}, ${changeRequest.page})`);
     const [result] = await tx.select().from(supportTickets).where(eq(supportTickets.id, id));
     if (!result) throw new SupportQueryError("not_found", "The newly created support ticket was not found.");
     return { ticket: result, created: true };
@@ -118,7 +130,7 @@ export function supportPageLimit(limit = 25): number {
   if (!Number.isInteger(limit) || limit < 1 || limit > 25) throw new SupportQueryError("invalid_input", "Support page size must be between 1 and 25.");
   return limit;
 }
-function unreadCondition(userId: string): SQL {
+export function unreadCondition(userId: string): SQL {
   return sql`exists (select 1 from ${supportMessages} m where m.ticket_id = ${supportTickets.id} and m.author_role = 'staff' and m.visibility = 'public' and m.id > coalesce((select r.last_read_message_id from ${supportReadStates} r where r.ticket_id = ${supportTickets.id} and r.user_id = ${userId}), '00000000-0000-0000-0000-000000000000'::uuid))`;
 }
 export async function listSupportTickets(db: Database, userId: string, options: SupportTicketListOptions = {}): Promise<SupportTicketPage> {
