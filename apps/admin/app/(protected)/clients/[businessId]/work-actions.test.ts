@@ -59,6 +59,7 @@ const STAFF = { user: { id: "staff-1" }, staff: { userId: "staff-1", role: "supp
 const DB = { db: true } as never;
 const NOW = new Date("2026-10-27T06:30:00Z");
 const put = vi.fn();
+const get = vi.fn();
 
 function form(entries: Record<string, string | Blob>): FormData {
   const data = new FormData();
@@ -95,7 +96,7 @@ beforeEach(() => {
   vi.mocked(requireStaffAccess).mockResolvedValue(STAFF);
   vi.mocked(getStaffDb).mockReturnValue(DB);
   vi.mocked(listBoughtServices).mockResolvedValue(["social", "search"]);
-  vi.mocked(getMediaStorage).mockReturnValue({ put } as never);
+  vi.mocked(getMediaStorage).mockReturnValue({ put, get } as never);
   vi.mocked(processPostPicture).mockResolvedValue(PROCESSED);
   vi.mocked(insertDeliverable).mockResolvedValue(row());
   vi.mocked(findDeliverableForStaff).mockResolvedValue(row());
@@ -163,7 +164,7 @@ describe("addDeliverableAction", () => {
     vi.mocked(insertDeliverable).mockRejectedValue(new Error("db down"));
     await expect(addDeliverableAction(form({ ...POST, picture: picture() }))).rejects.toThrow("db down");
     const key = put.mock.calls[0]?.[0] as string;
-    expect(deleteMediaFiles).toHaveBeenCalledWith({ put }, [key]);
+    expect(deleteMediaFiles).toHaveBeenCalledWith({ put, get }, [key]);
     expect(logStaffAccessOrThrow).not.toHaveBeenCalled();
   });
 
@@ -208,7 +209,7 @@ describe("saveDeliverableAction", () => {
   it("maps the database's refusal to locked and removes a new file nothing used", async () => {
     vi.mocked(updateDeliverableFields).mockRejectedValue(new DeliverableError("wrong_state", "no"));
     await expect(saveDeliverableAction(form({ ...SAVE, picture: picture() }))).rejects.toThrow("?work=locked#work");
-    expect(deleteMediaFiles).toHaveBeenCalledWith({ put }, [`deliverables/${ITEM}/display`]);
+    expect(deleteMediaFiles).toHaveBeenCalledWith({ put, get }, [`deliverables/${ITEM}/display`]);
   });
 
   it("stores a replacement under the same key and deletes the old file only when the key differs", async () => {
@@ -216,7 +217,25 @@ describe("saveDeliverableAction", () => {
     await expect(saveDeliverableAction(form({ ...SAVE, picture: picture() }))).rejects.toThrow("?work=saved");
     expect(put).toHaveBeenCalledWith(`deliverables/${ITEM}/display`, PROCESSED.bytes, "image/webp");
     expect(vi.mocked(updateDeliverableFields).mock.calls[0]?.[1].picture).toMatchObject({ id: ITEM, key: `deliverables/${ITEM}/display` });
-    expect(deleteMediaFiles).toHaveBeenCalledWith({ put }, ["deliverables/old/display"]);
+    expect(deleteMediaFiles).toHaveBeenCalledWith({ put, get }, ["deliverables/old/display"]);
+  });
+
+  it("puts the old picture back when a replacement cannot be saved", async () => {
+    const key = `deliverables/${ITEM}/display`;
+    const old = { bytes: new Uint8Array([7, 7, 7]), contentType: "image/webp" };
+    vi.mocked(findDeliverableForStaff).mockResolvedValue(row({ imageKey: key }));
+    get.mockResolvedValue(old);
+    vi.mocked(updateDeliverableFields).mockRejectedValue(new DeliverableError("wrong_state", "no"));
+    await expect(saveDeliverableAction(form({ ...SAVE, picture: picture() }))).rejects.toThrow("?work=locked#work");
+    expect(get).toHaveBeenCalledWith(key);
+    expect(put).toHaveBeenLastCalledWith(key, old.bytes, old.contentType);
+    expect(deleteMediaFiles).not.toHaveBeenCalled();
+  });
+
+  it("does not read the old picture when no new one was sent", async () => {
+    vi.mocked(findDeliverableForStaff).mockResolvedValue(row({ imageKey: `deliverables/${ITEM}/display` }));
+    await expect(saveDeliverableAction(form(SAVE))).rejects.toThrow("?work=saved");
+    expect(get).not.toHaveBeenCalled();
   });
 
   it("does not delete anything when the picture was replaced under the same key", async () => {
@@ -342,7 +361,7 @@ describe("deleteDeliverableAction", () => {
     vi.mocked(deleteDeliverable).mockResolvedValue({ imageKey: `deliverables/${ITEM}/display` });
     await expect(del()).rejects.toThrow(`redirect:/clients/${BUSINESS}?work=deleted#work`);
     expect(deleteDeliverable).toHaveBeenCalledWith(DB, { id: ITEM, businessId: BUSINESS });
-    expect(deleteMediaFiles).toHaveBeenCalledWith({ put }, [`deliverables/${ITEM}/display`]);
+    expect(deleteMediaFiles).toHaveBeenCalledWith({ put, get }, [`deliverables/${ITEM}/display`]);
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith(AUDIT("deliverable.delete"));
   });
 

@@ -61,9 +61,14 @@ async function logAndFinish(staffUserId: string, businessId: string, action: str
 }
 
 /** The picture staff chose, made ready and stored under the deliverable's own key; null when none was sent. */
-async function storePicture(formData: FormData, id: string): Promise<StoredPicture | null> {
+function formHasPicture(formData: FormData): boolean {
   const file = formData.get("picture");
-  if (!(file instanceof File) || file.size === 0) return null;
+  return file instanceof File && file.size > 0;
+}
+
+async function storePicture(formData: FormData, id: string): Promise<StoredPicture | null> {
+  if (!formHasPicture(formData)) return null;
+  const file = formData.get("picture") as File;
   const processed = await processPostPicture(new Uint8Array(await file.arrayBuffer()));
   const key = deliverablePictureKey(id);
   await getMediaStorage().put(key, processed.bytes, processed.mimeType);
@@ -119,6 +124,8 @@ export async function saveDeliverableAction(formData: FormData): Promise<void> {
   if (!parsed.success) finish(businessId, "invalid");
 
   let picture: StoredPicture | null = null;
+  // A replacement overwrites the file under the same key, so keep the old bytes to put back if the row is not saved.
+  const previous = row.kind === "post" && row.imageKey !== null && formHasPicture(formData) ? await getMediaStorage().get(row.imageKey) : null;
   if (row.kind === "post") {
     try {
       picture = await storePicture(formData, id);
@@ -127,9 +134,11 @@ export async function saveDeliverableAction(formData: FormData): Promise<void> {
       finish(businessId, "bad-picture");
     }
   }
-  // A first picture has no old file to fall back on, so it is removed again if the row is not saved.
+  // A first picture is removed again if the row is not saved; a replacement is put back as it was.
   const dropNew = async (): Promise<void> => {
-    if (picture !== null && row.imageKey === null) await deleteMediaFiles(getMediaStorage(), [picture.key]);
+    if (picture === null) return;
+    if (row.imageKey === null) await deleteMediaFiles(getMediaStorage(), [picture.key]);
+    else if (previous !== null) await getMediaStorage().put(picture.key, previous.bytes, previous.contentType);
   };
 
   let saved: Awaited<ReturnType<typeof updateDeliverableFields>>;
