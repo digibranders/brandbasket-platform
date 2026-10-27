@@ -139,7 +139,7 @@ export function websiteTimeline(input: TimelineInput): readonly TimelineStep[] {
     {
       key: "build",
       title: stateOf(1) === "done" ? "We built it" : revising ? "We are making your changes" : "We build your website",
-      note: stateOf(1) === "now" && project.status !== "on_hold" && !revising ? "We start within 48 hours of the call" : null,
+      note: stateOf(1) === "now" && (project.status === "onboarding" || project.status === "submitted") ? "We start within 48 hours of the call" : null,
       when: stateOf(1) === "done" ? buildDoneWhen : stateOf(1) === "now" && readyBy !== null ? by(readyBy) : "",
       state: stateOf(1),
     },

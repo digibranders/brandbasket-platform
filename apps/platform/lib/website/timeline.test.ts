@@ -37,7 +37,7 @@ describe("websiteTimeline", () => {
     expect(row(steps, "live").when).toBe("By Thu 5 Nov");
   });
 
-  it("shows the build with its promise and the start note once the call is held", () => {
+  it("shows the build with its promise, and no start note once building has begun", () => {
     const steps = websiteTimeline(
       input({
         project: project({ status: "building", slaDueAt: PREVIEW }),
@@ -50,11 +50,22 @@ describe("websiteTimeline", () => {
     expect(row(steps, "build")).toEqual({
       key: "build",
       title: "We build your website",
-      note: "We start within 48 hours of the call",
+      note: null,
       when: "By Mon 2 Nov",
       state: "now",
     });
     expect(row(steps, "live").when).toBe("By Thu 5 Nov");
+  });
+
+  it("tells a submitted project that we start within 48 hours of the call", () => {
+    const steps = websiteTimeline(
+      input({
+        project: project({ status: "submitted", slaDueAt: PREVIEW }),
+        events: [event("submitted", "2026-10-27T05:00:00.000Z")],
+        now: at("2026-10-27T06:00:00.000Z"),
+      }),
+    );
+    expect(row(steps, "build").note).toBe("We start within 48 hours of the call");
   });
 
   it("shows the preview day with the approval deadline and the build dates", () => {
