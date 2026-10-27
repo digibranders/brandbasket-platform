@@ -2,42 +2,25 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactElement } from "react";
+import { hrefAfter } from "@/lib/billing/confirm-href";
 import { BrandedAuthScreen } from "@/components/panel/branded-auth-screen";
 import { TestCheckoutForm } from "@/components/panel/test-checkout-form";
-import {
-  afterPaymentHref,
-  PAYMENT_RECEIVED_HREF,
-  PAYMENT_STEP_HREF,
-  reactivationReturnHref,
-} from "@brandbasket/shared/lib/billing/payment-step";
+import { afterPaymentHref, PAYMENT_STEP_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { chargedAmountCents } from "@brandbasket/billing";
 import { describeDiscountedPlanTerms } from "@brandbasket/shared/lib/billing/terms";
 import { formatMoney } from "@brandbasket/shared/lib/money";
-import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
-import {
-  MEMBERSHIP_NAMES,
-  membershipFailedHref,
-  membershipPathFor,
-  membershipReceivedHref,
-  type MembershipTier,
-} from "@/lib/membership";
+import { MEMBERSHIP_NAMES, membershipPathFor, type MembershipTier } from "@/lib/membership";
 import { isOnboardingLocked } from "@/lib/onboarding/snapshot";
 import { isFakeBillingProvider } from "@/lib/server/billing";
 import { getCustomerBusinessKind, requireCustomerAccess, type CustomerAccessOptions } from "@/lib/server/customer-access";
 import { getProjectOverview } from "@/lib/server/onboarding";
-import {
-  confirmFirstPayment,
-  verifyCheckoutFor,
-  type PaymentConfirmation,
-} from "@/lib/server/payment-confirmation";
+import { confirmFirstPayment, verifyCheckoutFor } from "@/lib/server/payment-confirmation";
 
 export const metadata: Metadata = {
   title: "Test payment",
   // The checkout token is in this page's URL; it must not travel to anywhere this page links to.
   referrer: "no-referrer",
 };
-
-const FAILED_HREF = `${PAYMENT_STEP_HREF}?payment=failed`;
 
 /**
  * Open to the account a sign-up opened too: it pays for Managed Website here, before it has a project. The token still
@@ -47,31 +30,6 @@ const PAYING: CustomerAccessOptions = { listingAccount: "allow", membershipCheck
 
 interface ConfirmPageProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-/**
- * Where each confirmation outcome sends the customer. `membership` is the plan a free listing account is buying, or null:
- * such an account has no Check and send to go back to, so a payment that did not open its plan returns it to that
- * plan's page.
- */
-function hrefAfter(result: PaymentConfirmation, membership: MembershipTier | null): string {
-  switch (result.kind) {
-    case "invalid":
-      return membership === null ? FAILED_HREF : membershipFailedHref(membership);
-    case "needs-attention":
-      return membership === null ? PAYMENT_RECEIVED_HREF : membershipReceivedHref(membership);
-    case "membership-opened":
-      return MEMBER_WELCOME_HREF;
-    case "reactivated":
-      return reactivationReturnHref("received");
-    case "paid":
-    case "already-recorded":
-      return afterPaymentHref(result.projectStillOpen);
-    default: {
-      const unhandled: never = result;
-      throw new Error(`Unhandled payment confirmation: ${JSON.stringify(unhandled)}`);
-    }
-  }
 }
 
 /** Where a customer who has already paid belongs: a refreshed confirm page records nothing and just moves on. */

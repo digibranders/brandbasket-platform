@@ -1,24 +1,23 @@
 import type { Metadata } from "next";
-
-import { EmailUs } from "@/components/panel/email-us";
-import type { ReactElement, ReactNode } from "react";
-import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
-import { SignOutButton } from "@brandbasket/shared/ui/panel/sign-out-button";
-import { ChangePasswordForm } from "@/components/panel/change-password-form";
-import { DELETE_ACCOUNT_PATH } from "@/lib/account-settings-form";
-import { PRIVACY_SETTINGS_PATH } from "@/lib/privacy-settings-form";
-import { changePasswordAction, revokeOtherSessionsAction } from "./actions";
-import { SectionHeading, Surface, type SurfaceTone } from "@brandbasket/shared/ui/panel/surface";
-import { findReactivationNetCents } from "@/lib/server/billing";
-import { signOut } from "@/lib/server/sign-out";
+import Link from "next/link";
+import type { ReactElement } from "react";
 import type { Subscription } from "@brandbasket/db";
 import { nextBundledNetCents, websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import type { CustomerBillingStatus } from "@brandbasket/shared/lib/billing/status";
 import { describePlanTerms } from "@brandbasket/shared/lib/billing/terms";
-import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
+import { EmailUs } from "@/components/panel/email-us";
+import { ChangePasswordForm } from "@/components/panel/change-password-form";
+import { SOFT_BUTTON } from "@/components/v2/classes";
+import { ActionRow, FactRows, PageHeader, PageSection } from "@/components/v2/page";
+import { DELETE_ACCOUNT_PATH } from "@/lib/account-settings-form";
+import { PRIVACY_SETTINGS_PATH } from "@/lib/privacy-settings-form";
 import { accountLabel } from "@/lib/server/account-label";
+import { findReactivationNetCents } from "@/lib/server/billing";
 import { getCustomerBusinessKind, requireCustomerAccess } from "@/lib/server/customer-access";
+import { signOut } from "@/lib/server/sign-out";
+import { changePasswordAction, revokeOtherSessionsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -37,121 +36,80 @@ function serviceNetCents(
   return reactivationNetCents ?? websiteAloneNetCents(currency);
 }
 
-function Section({
-  title,
-  tone,
-  children,
-}: {
-  readonly title: string;
-  readonly tone?: SurfaceTone;
-  readonly children: ReactNode;
-}): ReactElement {
-  return (
-    <Surface tone={tone}>
-      <SectionHeading>{title}</SectionHeading>
-      <div className="mt-5">{children}</div>
-    </Surface>
-  );
-}
-
-/**
- * A label above its value. The label is the quiet half: it was the same size as the value it introduces, which
- * left a column of facts with no clear reading order. Quiet by size and colour (13px, ink-soft), not by being a tiny
- * uppercase eyebrow: the label is part of what is read.
- */
-function Facts({ items }: { readonly items: readonly { readonly label: string; readonly value: ReactNode }[] }): ReactElement {
-  return (
-    <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
-      {items.map((item) => (
-        <div key={item.label}>
-          <dt className="text-[0.8125rem] text-ink-soft">{item.label}</dt>
-          <dd className="mt-1.5 break-words text-sm">{item.value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-/** The customer's account at a glance, with the password, signing out and deleting the account. */
+/** The customer's account at a glance, with the password, signing out and deleting the account. Sections on the page, one dark button (Change password). */
 export default async function SettingsPage(): Promise<ReactElement> {
   const { user, tenant, billing } = await requireCustomerAccess({ listingAccount: "allow" });
   const listingAccount = (await getCustomerBusinessKind(tenant.userId, tenant.businessId)) === "listing";
   const reactivationNetCents = await findReactivationNetCents({ tenant, billing });
 
+  // A free listing account has no plan to show: it pays per ad spot, on Billing.
+  const businessFacts = listingAccount
+    ? [
+        // Until its owner adds it on the Listing page, a business carries its owner's name as a stand-in.
+        { label: "Business", value: tenant.businessName === user.name ? "Not added yet" : tenant.businessName },
+        { label: "Account", value: "Free listing on the local directory" },
+      ]
+    : [
+        { label: "Business", value: tenant.businessName },
+        { label: "Billed in", value: billing.plan === null ? "Not set yet" : BILLING_CURRENCY_LABELS[billing.plan.currency] },
+        ...(billing.plan === null
+          ? []
+          : [{ label: "Your plan", value: describePlanTerms(billing.plan, serviceNetCents(billing.status, billing.subscription, billing.plan.currency, reactivationNetCents)) }]),
+      ];
+
   return (
-    <>
-      <h1 className="panel-title">Settings</h1>
-      <p className="mt-2 max-w-2xl text-sm text-ink-soft">Your account and the business it belongs to.</p>
+    <div className="mx-auto grid w-full max-w-[44rem] gap-10">
+      <PageHeader title="Settings" lede="Your account and the business it belongs to." />
 
-      <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <Section title="Your account">
-          <Facts
-            items={[
-              { label: "Name", value: user.name },
-              user.phone === null ? { label: "Email", value: user.email } : { label: "Mobile number", value: accountLabel(user) },
-            ]}
-          />
-        </Section>
+      <PageSection id="account" title="Your account">
+        <FactRows
+          items={[
+            { label: "Name", value: user.name },
+            user.phone === null ? { label: "Email", value: user.email } : { label: "Mobile number", value: accountLabel(user) },
+          ]}
+        />
+      </PageSection>
 
-        {/* A free listing account has no plan to show: it pays per ad spot, on Billing. */}
-        {listingAccount ? (
-          <Section title="Your business">
-            <Facts
-              items={[
-                // Until its owner adds it on the Listing page, a business carries its owner's name as a stand-in.
-                { label: "Business", value: tenant.businessName === user.name ? "Not added yet" : tenant.businessName },
-                { label: "Account", value: "Free listing on the local directory" },
-              ]}
-            />
-          </Section>
-        ) : (
-          <Section title="Your business">
-            <Facts
-              items={[
-                { label: "Business", value: tenant.businessName },
-                {
-                  label: "Billed in",
-                  value: billing.plan === null ? "Not set yet" : BILLING_CURRENCY_LABELS[billing.plan.currency],
-                },
-                ...(billing.plan === null ? [] : [{ label: "Your plan", value: describePlanTerms(billing.plan, serviceNetCents(billing.status, billing.subscription, billing.plan.currency, reactivationNetCents)) }]),
-              ]}
-            />
-          </Section>
-        )}
+      <PageSection id="business" title="Your business">
+        <FactRows items={businessFacts} />
+      </PageSection>
 
-        <Section title="Password">
-          <ChangePasswordForm action={changePasswordAction} revokeAction={revokeOtherSessionsAction} />
-          <p className="mt-6 max-w-xl text-sm leading-relaxed text-ink-soft">
-            To change the {user.phone === null ? "email" : "mobile number"} you sign in with, email us at{" "}
-            <EmailUs />
-            .
-          </p>
-        </Section>
+      <PageSection id="password" title="Password">
+        <ChangePasswordForm action={changePasswordAction} revokeAction={revokeOtherSessionsAction} />
+        <p className="mt-6 max-w-xl text-sm leading-relaxed text-ink-2">
+          To change the {user.phone === null ? "email" : "mobile number"} you sign in with, email us at <EmailUs />.
+        </p>
+      </PageSection>
 
-        <div className="grid content-start gap-4">
-          <Section title="Session" tone="quiet">
-            <SignOutButton signOut={signOut} />
-          </Section>
+      <PageSection id="privacy" title="Your privacy">
+        <ActionRow
+          text="Download your data, name someone to act for you, or ask us to correct or delete it."
+          action={
+            <Link href={PRIVACY_SETTINGS_PATH} className={SOFT_BUTTON}>
+              Your privacy
+            </Link>
+          }
+        />
+      </PageSection>
 
-          <Section title="Your privacy" tone="quiet">
-            <p className="max-w-xl text-sm text-ink-soft">Download your data, name someone to act for you, or ask us to correct or delete it.</p>
-            <div className="mt-5">
-              <ButtonLink href={PRIVACY_SETTINGS_PATH} variant="secondary" size="sm">
-                Your privacy
-              </ButtonLink>
-            </div>
-          </Section>
+      <PageSection id="delete" title="Delete account">
+        <ActionRow
+          text="Close your account and end your plan."
+          action={
+            <Link href={DELETE_ACCOUNT_PATH} className={SOFT_BUTTON}>
+              Delete account
+            </Link>
+          }
+        />
+      </PageSection>
 
-          <Section title="Delete account" tone="quiet">
-            <p className="max-w-xl text-sm text-ink-soft">Close your account and end your plan.</p>
-            <div className="mt-5">
-              <ButtonLink href={DELETE_ACCOUNT_PATH} variant="secondary" size="sm">
-                Delete account
-              </ButtonLink>
-            </div>
-          </Section>
-        </div>
-      </div>
-    </>
+      <PageSection id="session" title="Session">
+        <form action={signOut}>
+          <button type="submit" className={SOFT_BUTTON}>
+            Sign out
+          </button>
+        </form>
+      </PageSection>
+    </div>
   );
 }

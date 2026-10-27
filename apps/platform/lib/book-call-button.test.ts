@@ -104,3 +104,58 @@ it("offers only the booking page to an account that cannot be sent an invitation
   expect(container.querySelector("a")?.getAttribute("href")).toBe("https://cal.com/brandbasket/call");
   expect(mocks.loadCallSlots).not.toHaveBeenCalled();
 });
+
+it("says what the call is, then the day and time, and keeps the reason and the note in a closed disclosure under the times", async () => {
+  await render(sheet());
+  await click("Book a call");
+  const dialog = container.querySelector("dialog") as HTMLDialogElement;
+  const text = dialog.textContent ?? "";
+  const order = ["Book a call", "30 minutes on video. The link comes by email and in a calendar invite.", "Pick a day, times in India", "Morning", "Afternoon", "What is it about? (optional)", "Pick a time"];
+  expect(order.map((part) => text.indexOf(part))).toEqual([...order.map((part) => text.indexOf(part))].sort((a, b) => a - b));
+  expect(order.every((part) => text.includes(part))).toBe(true);
+  expect(text.match(/30 minutes on video/g)).toHaveLength(1);
+  const disclosure = dialog.querySelector("details") as HTMLDetailsElement;
+  expect(disclosure.open).toBe(false);
+  expect(disclosure.querySelector("summary")?.textContent).toBe("What is it about? (optional)");
+  expect(disclosure.querySelectorAll('input[name="call-reason"]')).toHaveLength(OPTIONS.length);
+  expect(disclosure.querySelector("#call-note")).not.toBeNull();
+  expect((disclosure.querySelector('input[value="website"]') as HTMLInputElement).checked).toBe(true);
+});
+
+it("sends the default reason and an empty note when the disclosure was never opened", async () => {
+  mocks.bookCallAction.mockResolvedValue({ ok: true });
+  await render(sheet());
+  await click("Book a call");
+  await click("10:00");
+  await click("Book Wed 2 Dec, 10:00");
+  expect(mocks.bookCallAction).toHaveBeenCalledWith({ startIso: SLOTS[0], timeZone: "Asia/Kolkata", reason: "website", note: "", replaceId: null });
+});
+
+it("puts the times under Morning and Afternoon, and marks the picked one with a check", async () => {
+  await render(sheet());
+  await click("Book a call");
+  const group = (name: string): HTMLElement => container.querySelector(`[role="group"][aria-label="Time"] [role="group"][aria-labelledby="slot-${name}"]`) as HTMLElement;
+  expect([...group("morning").querySelectorAll("button")].map((item) => item.textContent)).toEqual(["10:00"]);
+  expect([...group("afternoon").querySelectorAll("button")].map((item) => item.textContent)).toEqual(["14:00"]);
+  expect(button("14:00").querySelector("svg")).toBeNull();
+  await click("14:00");
+  expect(button("14:00").querySelector("svg")).not.toBeNull();
+  expect(button("14:00").getAttribute("aria-pressed")).toBe("true");
+});
+
+it("has no fixed width inside the sheet that could be wider than a phone", async () => {
+  await render(sheet());
+  await click("Book a call");
+  const dialog = container.querySelector("dialog") as HTMLDialogElement;
+  // The sheet is at most 26rem and never wider than the screen; nothing inside may force it wider.
+  expect(dialog.className).toContain("w-[min(26rem,100%)]");
+  const fixedWidth = /(^|\s)(?:min-|max-)?w-(?:(?!0(?:\s|$))\d|\[(?!min\(|100%))/;
+  const offenders = [...dialog.querySelectorAll("*")].map((element) => element.getAttribute("class") ?? "").filter((value) => fixedWidth.test(value.replace(/\bmax-w-none\b/, "")));
+  // The day buttons are the one fixed width: they sit in a strip that scrolls on its own.
+  const strip = dialog.querySelector('[role="group"][aria-label="Day"]') as HTMLElement;
+  expect(strip.className).toContain("overflow-x-auto");
+  expect(offenders.every((value) => value.includes("w-[4.25rem]") && value.includes("shrink-0"))).toBe(true);
+  expect(dialog.querySelectorAll("[style]")).toHaveLength(0);
+  // The times fill whatever room there is: three across on a phone, four on the full sheet.
+  expect(dialog.querySelector('[aria-labelledby="slot-morning"] > div')?.className).toContain("grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))]");
+});

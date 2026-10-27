@@ -421,9 +421,28 @@ describe("startCheckoutFor", () => {
     expect(events).toEqual(["tx1:begin", "tx1:commit"]);
   });
 
-  it("cancels its own new subscription, records nothing and asks to retry when the business changed meanwhile", async () => {
+  it("sends a second press made at the same moment to the checkout the first one opened, cancelling only its own spare", async () => {
+    // The first press recorded its subscription between this press's two transactions.
+    const winner = subscription({ id: "sub-first-press", createdAt: new Date(NOW.getTime() - 1_000) });
+    vi.mocked(findBillingState).mockResolvedValueOnce(billingState(null)).mockResolvedValue(billingState(winner));
+    vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue(winner);
+
+    const result = await startCheckoutFor(customer, NOW);
+
+    const token = redirectUrl(result).searchParams.get("token") ?? "";
+    await expect(provider.confirmCheckout({ token })).resolves.toMatchObject({ providerSubscriptionId: winner.providerSubscriptionId });
+    expect(openCheckoutSubscription).not.toHaveBeenCalled();
+    expect(cancelled).toHaveBeenCalledTimes(1);
+    expect(cancelled).not.toHaveBeenCalledWith(winner.providerSubscriptionId);
+    expect(events).toEqual([
+      "tx1:begin", "tx1:commit", "provider:start", "tx2:begin", "tx2:commit", "provider:cancel",
+      "tx3:begin", "tx3:commit", "provider:start",
+    ]);
+  });
+
+  it("cancels its own new subscription, records nothing and asks to retry when the business keeps changing", async () => {
     vi.mocked(findBillingState).mockResolvedValue(billingState(null));
-    // A second tab opened a checkout between the two transactions.
+    // Another tab opened a checkout between the two transactions, and then again between the two of the second look.
     vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue(subscription({ id: "sub-other-tab" }));
 
     await expect(startCheckoutFor(customer, NOW)).resolves.toMatchObject({
@@ -431,8 +450,11 @@ describe("startCheckoutFor", () => {
       problem: { message: expect.stringMatching(/try again/) },
     });
     expect(openCheckoutSubscription).not.toHaveBeenCalled();
-    expect(events).toEqual(["tx1:begin", "tx1:commit", "provider:start", "tx2:begin", "tx2:commit", "provider:cancel"]);
-    expect(cancelled).toHaveBeenCalledWith(expect.stringMatching(/^fake_sub_[0-9a-f]{24}$/));
+    expect(events).toEqual([
+      "tx1:begin", "tx1:commit", "provider:start", "tx2:begin", "tx2:commit", "provider:cancel",
+      "tx3:begin", "tx3:commit", "provider:start", "tx4:begin", "tx4:commit", "provider:cancel",
+    ]);
+    expect(cancelled).toHaveBeenCalledTimes(2);
     expect(String(warned.mock.calls[0]?.[0])).toMatch(/^\[brandbasket:billing\] checkout-orphaned .*changed-meanwhile/);
   });
 
@@ -443,8 +465,8 @@ describe("startCheckoutFor", () => {
 
     await expect(startCheckoutFor(customer, NOW)).resolves.toMatchObject({ kind: "refused" });
     expect(openCheckoutSubscription).not.toHaveBeenCalled();
-    // Only the orphan is cancelled, never the checkout that was just paid.
-    expect(cancelled).toHaveBeenCalledTimes(1);
+    // Only the orphans (one per look) are cancelled, never the checkout that was just paid.
+    expect(cancelled).toHaveBeenCalledTimes(2);
     expect(cancelled).not.toHaveBeenCalledWith(stale.providerSubscriptionId);
   });
 
@@ -1077,7 +1099,8 @@ describe("startReactivationFor", () => {
       /** What the second transaction reads of the lapsed subscription, against what the first read. */
       const changesBy = (change: { readonly subscription?: Partial<Subscription>; readonly lines?: (addOn: string) => Partial<BundledAddOn> }): Subscription => {
         const lapsed = lapsedWith(THREE, { adCreditCents: 6_000 });
-        const inSecond = (db: unknown): boolean => (db as { name: string }).name === "tx2";
+        // The recording transaction of each look (tx2, then tx4 when the first look is repeated); tx1 and tx3 decide.
+        const inSecond = (db: unknown): boolean => ["tx2", "tx4"].includes((db as { name: string }).name);
         vi.mocked(findLatestSubscriptionForBusiness).mockImplementation(async (db) => (inSecond(db) ? { ...lapsed, ...change.subscription } : lapsed));
         vi.mocked(findBundledAddOnsForSubscription).mockImplementation(async (db) =>
           THREE.map((addOn) => billedLine(addOn, inSecond(db) ? change.lines?.(addOn) : {})),
@@ -1098,7 +1121,7 @@ describe("startReactivationFor", () => {
 
         expect(openCheckoutSubscription).not.toHaveBeenCalled();
         expect(markPackageOfferForfeited).not.toHaveBeenCalled();
-        expect(cancelled).toHaveBeenCalledTimes(1);
+        expect(cancelled).toHaveBeenCalledTimes(2);
       });
 
       it("opens nothing when the lapsed subscription is paid in the meantime, and leaves that subscription alone", async () => {
@@ -1108,8 +1131,8 @@ describe("startReactivationFor", () => {
 
         expect(openCheckoutSubscription).not.toHaveBeenCalled();
         expect(markPackageOfferForfeited).not.toHaveBeenCalled();
-        // Only the checkout just opened is cancelled at the provider, never the subscription the late payment revived.
-        expect(cancelled).toHaveBeenCalledTimes(1);
+        // Only the checkouts just opened are cancelled at the provider, never the subscription the late payment revived.
+        expect(cancelled).toHaveBeenCalledTimes(2);
         expect(cancelled).not.toHaveBeenCalledWith(lapsed.providerSubscriptionId);
       });
 

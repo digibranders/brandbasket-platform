@@ -16,6 +16,7 @@
     "build": "pnpm --filter @brandbasket/platform --filter @brandbasket/admin build",
     "lint": "pnpm --filter @brandbasket/platform --filter @brandbasket/admin lint",
     "typecheck": "pnpm -r typecheck",
+    "dead-code": "bash scripts/dead-code.sh",
     "test": "pnpm -r test",
     "test:integration": "pnpm db:migrate:test && pnpm -r --workspace-concurrency=1 test:integration",
     "env:init": "pnpm --filter @brandbasket/db env:init",

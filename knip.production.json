@@ -1,0 +1,68 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "payload": false,
+  "vitest": false,
+  "workspaces": {
+    "apps/platform": {
+      "entry": [
+        "proxy.ts",
+        "instrumentation*.ts",
+        "sentry.*.config.ts",
+        "next.config.ts",
+        "scripts/*.ts",
+        "app/**/{page,layout,loading,error,not-found,global-error,global-not-found,route,default,template}.{ts,tsx}",
+        "app/**/actions.ts",
+        "app/**/commands.ts",
+        "lib/testing/**/*.ts"
+      ],
+      "project": [
+        "**/*.{ts,tsx}",
+        "!.next/**",
+        "!**/*.test.{ts,tsx}"
+      ],
+      "ignore": [
+        "payload.config.ts",
+        "next-env.d.ts"
+      ]
+    },
+    "apps/admin": {
+      "entry": [
+        "proxy.ts",
+        "instrumentation*.ts",
+        "next.config.ts",
+        "scripts/*.ts",
+        "app/**/{page,layout,loading,error,not-found,global-error,global-not-found,route,default,template}.{ts,tsx}",
+        "app/**/actions.ts",
+        "app/**/*-actions.ts"
+      ],
+      "project": [
+        "**/*.{ts,tsx}",
+        "!.next/**",
+        "!**/*.test.{ts,tsx}"
+      ],
+      "ignore": [
+        "next-env.d.ts"
+      ]
+    },
+    "packages/*": {
+      "entry": [
+        "src/index.ts",
+        "src/**/index.ts",
+        "scripts/**/*.{ts,mjs}"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "scripts/**/*.{ts,mjs}",
+        "!**/*.test.{ts,tsx}",
+        "!**/*.integration.test.ts"
+      ]
+    }
+  },
+  "ignore": [
+    "templates/**",
+    "scripts/**"
+  ],
+  "ignoreDependencies": [
+    ".*"
+  ]
+}

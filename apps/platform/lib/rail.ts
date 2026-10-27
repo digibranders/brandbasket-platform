@@ -5,7 +5,7 @@ import { ASK_FOR_A_CHANGE_PATH, REQUESTS_PATH } from "@/lib/requests/links";
 import { WEBSITE_PATH, WEBSITE_TABS } from "@/lib/website/tabs";
 
 /** The rail's icons by name; components/v2/rail-icon.tsx draws them. */
-export type RailIcon = "overview" | "requests" | "todo" | "website" | "social" | "search" | "reviews" | "deals" | "profile" | "services" | "billing" | "settings";
+export type RailIcon = "overview" | "requests" | "todo" | "website" | "social" | "search" | "profile" | "services" | "billing" | "settings";
 
 export interface RailTarget {
   readonly href: string;
@@ -38,17 +38,12 @@ export interface RailInput {
   readonly hasSearch?: boolean;
   /** Whether the website's setup has been sent (or the site is live). */
   readonly websiteSetupDone: boolean;
-  /** A member who claimed a directory listing keeps its Reviews and Deals. */
-  readonly listingClaim: boolean;
   /** Items the customer still owes us (lib/todo.ts openCount). */
   readonly todoCount: number;
   /** Quotes to answer and changes to check (lib/server/requests.ts loadRequestNeeds). Left out, there is no number. */
   readonly requestsCount?: number;
 }
 
-/** Plain strings, not imported from lib/deals.ts and lib/owner-replies.ts: those pull the database driver into the browser bundle, and this file is bundled into client components. lib/rail.test.ts pins them to the real paths. */
-const DEALS_HREF = "/deals";
-const REVIEWS_HREF = "/reviews";
 const TODO_HREF = "/todo";
 const SOCIAL: RailLink = { href: "/social", label: "Social & Ads", icon: "social" };
 const SEARCH: RailLink = { href: "/search", label: "Search", icon: "search" };
@@ -59,8 +54,6 @@ const PROFILE: RailLink = { href: "/details", label: "Business profile", icon: "
 const SERVICES: RailLink = { href: ADD_ONS_PATH, label: "Your plan", icon: "services" };
 const BILLING: RailLink = { href: "/billing", label: "Billing", icon: "billing" };
 const SETTINGS: RailLink = { href: "/settings", label: "Settings", icon: "settings" };
-const REVIEWS: RailLink = { href: REVIEWS_HREF, label: "Reviews", icon: "reviews" };
-const DEALS: RailLink = { href: DEALS_HREF, label: "Deals", icon: "deals" };
 
 /** Ask for a change, the first thing search offers (plan 28 section 2). */
 export const ASK_FOR_A_CHANGE: RailTarget = { href: ASK_FOR_A_CHANGE_PATH, label: "Ask for a change" };
@@ -106,7 +99,6 @@ export function railSections(input: RailInput): readonly RailSection[] {
   return [
     { label: null, links: input.hasAccess ? [OVERVIEW, todo, requests] : [OVERVIEW, requests] },
     ...(services.length > 0 ? [{ label: "Services", links: services }] : []),
-    ...(input.listingClaim ? [{ label: "Directory", links: [REVIEWS, DEALS] }] : []),
     { label: "Account", links: [PROFILE, SERVICES, BILLING, SETTINGS] },
   ];
 }

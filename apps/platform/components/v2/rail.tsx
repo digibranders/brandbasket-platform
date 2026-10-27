@@ -18,8 +18,8 @@ export interface AccountMenu {
   readonly account: AccountBarAccount;
   readonly panel: AccountPanel | null;
   readonly docsUrl: string;
-  readonly contactEmail: string;
-  readonly brandName: string;
+  /** Where Help goes: the Ask for a change form. */
+  readonly helpHref: string;
 }
 
 interface RailProps {

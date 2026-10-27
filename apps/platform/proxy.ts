@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { BRAND, isDirectoryOnlyPath } from "@/lib/brand";
 import {
   isPayloadAdminPath,
   readOriginsFromEnv,
@@ -36,12 +35,6 @@ export function createProxy(origins: SurfaceOrigins | null): ProxyHandler {
     // console is apps/admin now, and nobody ever authenticates to Payload itself. Refuse it outright rather than
     // let it appear on the customer host, which is the assumption collections/Media.ts's access block rests on.
     if (isPayloadAdminPath(pathname)) return new NextResponse(null, { status: 404 });
-
-    // The product does not sell the directory listing, so it has no use for the pages that exist only for it: they get the
-    // dashboard's own not-found screen (app/app-host/[...missing]) however the address was reached.
-    if (!BRAND.showsListing && isDirectoryOnlyPath(pathname)) {
-      return rewriteTo(request, rewritePathForSurface(surface, "/not-here"), "");
-    }
 
     return rewriteTo(request, rewritePathForSurface(surface, pathname), search);
   };

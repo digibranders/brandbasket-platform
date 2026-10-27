@@ -5,6 +5,7 @@ import { EyeIcon, EyeOffIcon } from "@brandbasket/shared/ui/icons";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { Button } from "@brandbasket/shared/ui/panel/button";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { DARK_BUTTON_SHAPE } from "@/components/v2/classes";
 import { initialChangePasswordState, initialRevokeOtherSessionsState, type ChangePasswordFormState, type RevokeOtherSessionsState } from "@/lib/account-settings-form";
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
 
@@ -119,7 +120,9 @@ export function ChangePasswordForm({ action, revokeAction }: ChangePasswordFormP
           </p>
         ) : null}
 
-        <SubmitButton disabled={isPending}>{isPending ? "Saving…" : "Change password"}</SubmitButton>
+        <SubmitButton disabled={isPending} className={DARK_BUTTON_SHAPE}>
+          {isPending ? "Saving…" : "Change password"}
+        </SubmitButton>
       </form>
       {state.status === "changed-revoke-failed" && !isPending ? <SessionRevocationRetry action={revokeAction} noticeDismissed={noticeDismissed} /> : null}
     </div>
