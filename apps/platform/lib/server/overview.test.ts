@@ -1,9 +1,10 @@
-import { countChatbotLeadsSince, countIncludedEdits, listActivityEvents, listMonthlySnapshots, withTenantScope } from "@brandbasket/db";
+import { countChatbotLeadsSince, countIncludedEdits, countSiteEvents, listActivityEvents, listMonthlySnapshots, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getAppDb } from "./db";
 import { getLiveWebsite, getProjectOverview } from "./onboarding";
 import { loadOverview } from "./overview";
 import { loadRequestNeeds } from "./requests";
+import { loadWaitingPostCount } from "./social";
 import { loadTodo } from "./todo";
 
 vi.mock("server-only", () => ({}));
@@ -11,7 +12,8 @@ vi.mock("./db", () => ({ getAppDb: vi.fn() }));
 vi.mock("./onboarding", () => ({ getLiveWebsite: vi.fn(), getProjectOverview: vi.fn() }));
 vi.mock("./todo", () => ({ loadTodo: vi.fn() }));
 vi.mock("./requests", () => ({ loadRequestNeeds: vi.fn() }));
-vi.mock("@brandbasket/db", () => ({ countChatbotLeadsSince: vi.fn(), countIncludedEdits: vi.fn(), listActivityEvents: vi.fn(), listMonthlySnapshots: vi.fn(), withTenantScope: vi.fn() }));
+vi.mock("./social", () => ({ loadWaitingPostCount: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ countChatbotLeadsSince: vi.fn(), countIncludedEdits: vi.fn(), countSiteEvents: vi.fn(), listActivityEvents: vi.fn(), listMonthlySnapshots: vi.fn(), withTenantScope: vi.fn() }));
 
 const appDb = { name: "app-db" } as never;
 const appTx = { name: "app-tx" } as never;
@@ -34,6 +36,8 @@ beforeEach(() => {
   vi.mocked(countChatbotLeadsSince).mockResolvedValue(0);
   vi.mocked(loadRequestNeeds).mockResolvedValue([]);
   vi.mocked(countIncludedEdits).mockResolvedValue(0);
+  vi.mocked(countSiteEvents).mockResolvedValue({ call: 0, whatsapp: 0, form: 0 });
+  vi.mocked(loadWaitingPostCount).mockResolvedValue({ count: 0, by: null });
 });
 
 describe("loadOverview", () => {
@@ -190,5 +194,112 @@ describe("loadOverview", () => {
     expect(data.included).toBeNull();
     expect(log.mock.calls.map((call) => call[0])).toEqual(["[overview] could not read the included edits"]);
     log.mockRestore();
+  });
+  describe("posts waiting for approval", () => {
+    it("adds one row at the front of what needs the customer and counts it in open", async () => {
+      vi.mocked(loadTodo).mockResolvedValue({ ...todoFor(["website", "social"]), open: 2 });
+      vi.mocked(loadWaitingPostCount).mockResolvedValue({ count: 4, by: "Tue 1 Dec" });
+      vi.mocked(loadRequestNeeds).mockResolvedValue([
+        { ticketId: "t1", subject: "Add a page", kind: "website", state: "preview", quote: null, acceptedAt: null, updatedAt: now },
+      ]);
+
+      const data = await loadOverview(tenant, noBilling, now);
+
+      expect(data.requests[0]).toEqual({ key: "posts", label: "Approve 4 posts", hint: "by Tue 1 Dec", service: "social", href: "/social" });
+      expect(data.requests).toHaveLength(2);
+      expect(data.open).toBe(4);
+    });
+
+    it("says Approve 1 post for a single post", async () => {
+      vi.mocked(loadTodo).mockResolvedValue(todoFor(["social"]));
+      vi.mocked(loadWaitingPostCount).mockResolvedValue({ count: 1, by: "Tue 1 Dec" });
+
+      const data = await loadOverview(tenant, noBilling, now);
+
+      expect(data.requests.map((row) => row.label)).toEqual(["Approve 1 post"]);
+      expect(data.open).toBe(1);
+    });
+
+    it("adds no row when nothing is waiting", async () => {
+      vi.mocked(loadTodo).mockResolvedValue(todoFor(["social"]));
+
+      const data = await loadOverview(tenant, noBilling, now);
+
+      expect(data.requests).toEqual([]);
+      expect(data.open).toBe(0);
+    });
+
+    it("leaves the row out, and logs once, when the count cannot be read", async () => {
+      const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      vi.mocked(loadTodo).mockResolvedValue(todoFor(["social"]));
+      vi.mocked(loadWaitingPostCount).mockRejectedValue(new Error("db down"));
+
+      const data = await loadOverview(tenant, noBilling, now);
+
+      expect(data.requests).toEqual([]);
+      expect(data.open).toBe(0);
+      expect(log.mock.calls.map((call) => call[0])).toEqual(["[overview] could not read the posts waiting for approval"]);
+      log.mockRestore();
+    });
+
+    it("does not read the posts for a business without Social & Ads", async () => {
+      vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+
+      await loadOverview(tenant, noBilling, now);
+
+      expect(loadWaitingPostCount).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("website enquiries", () => {
+    const octoberStart = new Date("2026-10-01T00:00:00+05:30").getTime();
+
+    it("counts this month and last month in India's months and shows the website line with last month's total", async () => {
+      vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+      vi.mocked(countSiteEvents).mockImplementation(async (_db, _businessId, window) =>
+        window.from.getTime() === octoberStart ? { call: 3, whatsapp: 1, form: 2 } : { call: 2, whatsapp: 0, form: 1 },
+      );
+
+      const data = await loadOverview(tenant, noBilling, now);
+
+      const windows = vi.mocked(countSiteEvents).mock.calls.map(([, businessId, window]) => [businessId, window.from.toISOString(), window.to.toISOString()]);
+      expect(windows).toEqual([
+        ["business-1", "2026-09-30T18:30:00.000Z", "2026-10-31T18:30:00.000Z"],
+        ["business-1", "2026-08-31T18:30:00.000Z", "2026-09-30T18:30:00.000Z"],
+      ]);
+      expect(data.results).toEqual([
+        { service: "website", figure: "6", headline: "people contacted you from your website", detail: "3 calls, 1 WhatsApp, 2 forms, up from 3" },
+      ]);
+    });
+
+    it("keeps today's chatbot line when the site has sent no events", async () => {
+      vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+      vi.mocked(countChatbotLeadsSince).mockResolvedValue(4);
+
+      const data = await loadOverview(tenant, noBilling, now);
+
+      expect(data.results).toEqual([{ service: "website", figure: "4", headline: "people left their details with your chatbot", detail: null }]);
+    });
+
+    it("keeps the chatbot line, and logs once, when the events cannot be read", async () => {
+      const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
+      vi.mocked(countChatbotLeadsSince).mockResolvedValue(4);
+      vi.mocked(countSiteEvents).mockRejectedValue(new Error("db down"));
+
+      const data = await loadOverview(tenant, noBilling, now);
+
+      expect(data.results[0]?.figure).toBe("4");
+      expect(log.mock.calls.map((call) => call[0])).toEqual(["[overview] could not read the website enquiries"]);
+      log.mockRestore();
+    });
+
+    it("does not read the events for a business without the website", async () => {
+      vi.mocked(loadTodo).mockResolvedValue(todoFor(["social"]));
+
+      await loadOverview(tenant, noBilling, now);
+
+      expect(countSiteEvents).not.toHaveBeenCalled();
+    });
   });
 });
