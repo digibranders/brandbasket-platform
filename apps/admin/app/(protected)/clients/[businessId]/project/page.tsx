@@ -8,6 +8,7 @@ import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@brandbasket/
 import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
 import { clientNextStep, previewLateReason } from "@/lib/client-next-step";
+import { ProjectControls } from "@/components/project-controls";
 import { openClientTab } from "@/lib/server/client-page";
 import { getStaffDb } from "@/lib/server/db";
 import { CustomerLink, DNS_STATUS_TEXT, Facts, GoLivePanel, MoveDomainPanel, SendPreviewForm, When } from "../parts";
@@ -104,6 +105,8 @@ export default async function ClientProjectPage({
           </>
         )}
       </Section>
+
+      <ProjectControls businessId={client.businessId} notice={sp.move} />
 
       <Section title="Domain" id={client.movingTo === null && nextStep !== "live" ? "domain" : undefined}>
         {client.domain === null ? (
