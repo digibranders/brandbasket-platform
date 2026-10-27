@@ -292,6 +292,15 @@ export {
 } from "./queries/projects";
 export { canMoveProject, PROJECT_MOVE_FROM, type ProjectMove } from "./queries/project-moves";
 export {
+  cancelProject,
+  ON_HOLD_REASON_MAX,
+  ProjectMoveRefusedError,
+  putProjectOnHold,
+  resumeProject,
+  setProjectBuilding,
+  type MovedProject,
+} from "./queries/project-staff";
+export {
   findBusinessWebsiteUrl,
   InvalidWebsiteUrlError,
   normaliseWebsiteUrl,
