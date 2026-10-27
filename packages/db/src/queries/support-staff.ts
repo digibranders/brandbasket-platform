@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, inArray, lt, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, ilike, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import type { Database } from "../client";
 import { users } from "../schema/auth";
@@ -9,13 +9,37 @@ import { supportAttachments, supportCategory, supportEvents, supportMessages, su
 import { withUserScope, type ScopedTransaction } from "../scope";
 import { assertSupportSubmissionKey, assertSupportUuid, claimSupportAttachments, lockSupportSubmission, normalizeSupportAttachmentIds, supportPageLimit, supportSubmissionHash, supportText, SupportQueryError, type SupportTicketDetail } from "./support";
 
+/** Where a request sits for staff (apps/admin/lib/reply-clock.ts). */
+export type StaffSupportQueue = "needs_reply" | "waiting_on_client" | "done";
 export interface StaffSupportListOptions {
   readonly cursor?: string; readonly limit?: number; readonly status?: SupportStatus; readonly category?: SupportCategory;
   readonly priority?: SupportPriority; readonly assigneeStaffId?: string | null; readonly search?: string;
   /** Only this business's tickets, for the client page's Requests tab. */
   readonly businessId?: string;
+  /** "needs_reply" lists the longest waiting first and has no next page. */
+  readonly queue?: StaffSupportQueue;
 }
-export interface StaffSupportTicketPage { readonly items: SupportTicket[]; readonly nextCursor: string | null }
+export interface StaffSupportTicketListItem extends SupportTicket {
+  readonly businessName: string | null;
+  /** The client's newest message; clients only write public messages. */
+  readonly lastCustomerMessageAt: Date | null;
+  /** The newest public staff reply; internal notes are not replies. */
+  readonly lastStaffReplyAt: Date | null;
+}
+export interface StaffSupportTicketPage { readonly items: StaffSupportTicketListItem[]; readonly nextCursor: string | null }
+
+const lastCustomerMessageAt = sql<Date | null>`(select max(m.created_at) from ${supportMessages} m where m.ticket_id = ${supportTickets.id} and m.author_role = 'customer')`.mapWith(supportMessages.createdAt);
+const lastStaffReplyAt = sql<Date | null>`(select max(m.created_at) from ${supportMessages} m where m.ticket_id = ${supportTickets.id} and m.author_role = 'staff' and m.visibility = 'public')`.mapWith(supportMessages.createdAt);
+const openSql = sql`${supportTickets.status} not in ('resolved', 'closed')`;
+/** The same rule as replyClock in apps/admin/lib/reply-clock.ts. Change both together. */
+const needsReplySql = sql`(${openSql} and ${lastCustomerMessageAt} is not null and (${lastStaffReplyAt} is null or ${lastCustomerMessageAt} > ${lastStaffReplyAt}))`;
+
+function queueCondition(queue: StaffSupportQueue): SQL {
+  if (queue === "needs_reply") return needsReplySql;
+  if (queue === "waiting_on_client") return sql`(${openSql} and not ${needsReplySql})`;
+  return sql`not (${openSql})`;
+}
+
 export async function listSupportTicketsForStaff(db: Database, options: StaffSupportListOptions = {}): Promise<StaffSupportTicketPage> {
   const limit = supportPageLimit(options.limit);
   if (options.cursor) assertSupportUuid(options.cursor, "Cursor");
@@ -23,16 +47,46 @@ export async function listSupportTicketsForStaff(db: Database, options: StaffSup
   const search = options.search?.trim();
   if (search && search.length > 120) throw new SupportQueryError("invalid_input", "Search must be at most 120 characters.");
   const pattern = search ? `%${search.replaceAll(/[\\%_]/g, "\\$&")}%` : undefined;
-  const rows = await db.select().from(supportTickets).where(and(
-    options.cursor ? lt(supportTickets.id, options.cursor) : undefined,
-    options.businessId !== undefined ? eq(supportTickets.businessId, options.businessId) : undefined,
-    options.status ? eq(supportTickets.status, options.status) : undefined,
-    options.category ? eq(supportTickets.category, options.category) : undefined,
-    options.priority ? eq(supportTickets.priority, options.priority) : undefined,
-    options.assigneeStaffId === null ? sql`${supportTickets.assigneeStaffId} is null` : options.assigneeStaffId ? eq(supportTickets.assigneeStaffId, options.assigneeStaffId) : undefined,
-    pattern ? or(ilike(supportTickets.subject, pattern), ilike(supportTickets.displayRef, pattern)) : undefined,
-  )).orderBy(desc(supportTickets.id)).limit(limit + 1);
+  const longestWaitingFirst = options.queue === "needs_reply";
+  const rows = await db
+    .select({ ...getTableColumns(supportTickets), businessName: businesses.name, lastCustomerMessageAt, lastStaffReplyAt })
+    .from(supportTickets)
+    .leftJoin(businesses, eq(supportTickets.businessId, businesses.id))
+    .where(and(
+      options.cursor && !longestWaitingFirst ? lt(supportTickets.id, options.cursor) : undefined,
+      options.businessId !== undefined ? eq(supportTickets.businessId, options.businessId) : undefined,
+      options.status ? eq(supportTickets.status, options.status) : undefined,
+      options.category ? eq(supportTickets.category, options.category) : undefined,
+      options.priority ? eq(supportTickets.priority, options.priority) : undefined,
+      options.assigneeStaffId === null ? sql`${supportTickets.assigneeStaffId} is null` : options.assigneeStaffId ? eq(supportTickets.assigneeStaffId, options.assigneeStaffId) : undefined,
+      pattern ? or(ilike(supportTickets.subject, pattern), ilike(supportTickets.displayRef, pattern)) : undefined,
+      options.queue ? queueCondition(options.queue) : undefined,
+    ))
+    .orderBy(...(longestWaitingFirst ? [asc(lastCustomerMessageAt), asc(supportTickets.id)] : [desc(supportTickets.id)]))
+    .limit(limit + 1);
+  // shortcut: the needs-reply queue shows its longest waiting page only; add a keyset on (waiting since, id) if it ever holds more than a page.
+  if (longestWaitingFirst) return { items: rows.slice(0, limit), nextCursor: null };
   return { items: rows.slice(0, limit), nextCursor: rows.length > limit ? rows[limit - 1]?.id ?? null : null };
+}
+
+export interface StaffSupportQueueCounts {
+  readonly needsReply: number;
+  readonly needsReplyOverADay: number;
+  readonly waitingOnClient: number;
+  readonly done: number;
+}
+
+/** How many requests sit in each queue, for the Requests chips, the header line and the rail count. */
+export async function countSupportQueues(db: Database): Promise<StaffSupportQueueCounts> {
+  const [row] = await db
+    .select({
+      needsReply: sql<number>`count(*) filter (where ${needsReplySql})`.mapWith(Number),
+      needsReplyOverADay: sql<number>`count(*) filter (where ${needsReplySql} and ${lastCustomerMessageAt} < now() - interval '1 day')`.mapWith(Number),
+      waitingOnClient: sql<number>`count(*) filter (where ${openSql} and not ${needsReplySql})`.mapWith(Number),
+      done: sql<number>`count(*) filter (where not (${openSql}))`.mapWith(Number),
+    })
+    .from(supportTickets);
+  return row ?? { needsReply: 0, needsReplyOverADay: 0, waitingOnClient: 0, done: 0 };
 }
 export interface StaffSupportTicketDetail extends SupportTicketDetail { readonly events: (typeof supportEvents.$inferSelect)[] }
 export async function getSupportTicketForStaff(db: Database, ticketId: string): Promise<StaffSupportTicketDetail | null> {
