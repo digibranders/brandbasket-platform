@@ -2,6 +2,7 @@ import {
   findActivePlan,
   findBillingProfile,
   findBillingState,
+  listPaymentsForClient,
   listPaymentsNeedingAttention,
   listPaymentsWithoutTaxInvoice,
   listTaxInvoicesForBusiness,
@@ -16,11 +17,13 @@ import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
 import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { ClientCharges } from "@/components/client-charges";
 import { ClientBillingDetails, ClientTaxInvoices } from "@/components/client-invoicing";
+import { ClientPayments } from "@/components/client-payments";
 import { Notice } from "@/components/console/notice";
 import { Section } from "@/components/console/section";
 import { PaymentsNeedingAttention } from "@/components/payments-needing-attention";
 import { attentionSection } from "@/lib/client-attention";
 import { readInvoiceNotice } from "@/lib/invoice-notices";
+import { readRefundNotice } from "@/lib/refund-form";
 import { loadClientAddOns } from "@/lib/server/add-ons-admin";
 import { loadManualCarriedCode } from "@/lib/server/billing-admin";
 import { listClientCharges } from "@/lib/server/charges-admin";
@@ -29,6 +32,7 @@ import { openClientTab } from "@/lib/server/client-page";
 import { getStaffDb } from "@/lib/server/db";
 import { resolvePaymentAttentionAction } from "../actions";
 import { BillingFacts, ManualPaymentForm } from "../parts";
+import { markPaymentRefundedAction } from "./refund-actions";
 
 export const metadata: Metadata = { title: "Client billing" };
 
@@ -48,7 +52,9 @@ export default async function ClientBillingPage({
   const notice = readManualPaymentNotice(sp.payment);
   const chargesNotice = readStaffChargeNotice(sp.charges);
   const invoiceNotice = readInvoiceNotice(sp.invoice);
+  const refundNotice = readRefundNotice(sp.refund);
   const db = getStaffDb();
+  const payments = await listPaymentsForClient(db, client.businessId, 100);
   const renderedAt = new Date();
   const paymentState = clientPaymentState(client.billing, renderedAt);
   const canRecordPayment = paymentState.kind === "not-paid" || paymentState.kind === "checkout-open" || paymentState.kind === "lapsed";
@@ -93,6 +99,14 @@ export default async function ClientBillingPage({
           <PaymentsNeedingAttention payments={flagged} linkToClient={false} resolveAction={resolvePaymentAttentionAction} />
         </Section>
       )}
+
+      <ClientPayments
+        businessId={client.businessId}
+        payments={payments}
+        canRefund
+        notice={refundNotice}
+        refundAction={markPaymentRefundedAction}
+      />
 
       <Section title="Billing">
         <BillingFacts client={client} state={paymentState} packageFacts={clientAddOns.package} />
