@@ -90,6 +90,7 @@ import { Notice } from "@/components/console/notice";
 import { PLAN_TIER_LABELS } from "@brandbasket/shared/lib/billing/plan-tier";
 import { PageHeader } from "@/components/console/page-header";
 import { UpdatesSection } from "@/components/console/updates-section";
+import { WebsiteSection } from "@/components/console/website-section";
 import { NumbersSection } from "@/components/console/numbers-section";
 import { FactList, Quiet, Section, type Fact } from "@/components/console/section";
 import { StageTrack } from "@/components/console/stage-track";
@@ -837,6 +838,8 @@ export default async function ClientPage({
         </Section>
 
         <KickoffCallSection businessId={businessId} />
+
+        <WebsiteSection businessId={businessId} staffId={user.id} notice={sp.website} />
 
         <RequestsSection businessId={businessId} notice={requestsNotice} mail={requestsMail} />
 

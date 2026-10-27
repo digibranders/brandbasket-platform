@@ -17,13 +17,15 @@ export function parseHoldForm(value: FormDataEntryValue | null): ParsedHold {
   return parsed.success ? { success: true, reason: parsed.data } : { success: false, message: parsed.error.issues[0]?.message ?? "Check the reason." };
 }
 
-export type WebsiteMoveNotice = "building" | "paused" | "resumed" | "invalid" | "not-allowed";
+export type WebsiteMoveNotice = "building" | "paused" | "resumed" | "invalid" | "not-allowed" | "picture-taken" | "picture-failed";
 export const WEBSITE_MOVE_NOTICES: Readonly<Record<WebsiteMoveNotice, { readonly text: string; readonly ok: boolean }>> = {
   building: { text: "Marked as building. The customer sees a dated line.", ok: true },
   paused: { text: "Put on hold. The customer sees your reason.", ok: true },
   resumed: { text: "Resumed. The customer sees a dated line.", ok: true },
   invalid: { text: "Give a reason of 3 to 200 characters.", ok: false },
   "not-allowed": { text: "The project is not at a stage where that move works.", ok: false },
+  "picture-taken": { text: "Picture taken.", ok: true },
+  "picture-failed": { text: "The picture could not be taken. Check the preview link, or try again later.", ok: false },
 };
 
 export function websiteMoveHref(businessId: string, notice: WebsiteMoveNotice): string {

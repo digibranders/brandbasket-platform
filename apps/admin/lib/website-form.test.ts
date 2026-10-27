@@ -33,6 +33,15 @@ describe("website move notices", () => {
     for (const notice of Object.values(WEBSITE_MOVE_NOTICES)) expect(notice.text.length).toBeGreaterThan(0);
   });
 
+  it("has plain picture notices, the first ok and the second not", () => {
+    expect(WEBSITE_MOVE_NOTICES["picture-taken"]).toEqual({ text: "Picture taken.", ok: true });
+    expect(WEBSITE_MOVE_NOTICES["picture-failed"]).toEqual({
+      text: "The picture could not be taken. Check the preview link, or try again later.",
+      ok: false,
+    });
+    expect(readWebsiteMoveNotice("picture-failed")).toBe("picture-failed");
+  });
+
   it("points the console back to the client's Website section", () => {
     expect(websiteMoveHref("biz-1", "paused")).toBe("/clients/biz-1?website=paused#website");
   });
