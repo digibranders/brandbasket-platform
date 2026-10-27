@@ -26,7 +26,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { MONTHLY_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnById, MONTHLY_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
 import { parseChargeForm } from "@brandbasket/shared/lib/billing/charge-form";
 import { staffChargeNoticeHref } from "@brandbasket/shared/lib/billing/charge-notices";
 import { parseManualPaymentForm } from "@brandbasket/shared/lib/billing/manual-payment-form";
@@ -179,7 +179,7 @@ export async function resolvePaymentAttentionAction(formData: FormData): Promise
 
 /** Sends a client the link to their preview build, by email and on their own dashboard. */
 export async function sendPreviewAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "Send a preview's business");
 
   const parsedUrl = previewUrlSchema.safeParse(formData.get("previewUrl"));
@@ -194,13 +194,14 @@ export async function sendPreviewAction(formData: FormData): Promise<void> {
     throw error;
   }
 
+  await recordStaffAction(staff, { businessId, kind: "project.preview_sent", summary: "Sent the preview", data: { previewUrl: parsedUrl.data, notified } });
   revalidateClient(businessId);
   redirect(projectPreviewNoticeHref(businessId, notified === "emailed" ? "sent" : "sent-no-email"));
 }
 
 /** Marks a business live once its build is approved and actually deployed to its real address. */
 export async function markLiveAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "Mark live's business");
 
   let notified: OwnerNotification;
@@ -213,6 +214,7 @@ export async function markLiveAction(formData: FormData): Promise<void> {
     throw error;
   }
 
+  await recordStaffAction(staff, { businessId, kind: "project.marked_live", summary: "Marked the website live", data: { notified } });
   revalidateClient(businessId);
   redirect(projectLaunchNoticeHref(businessId, notified === "emailed" ? "launched" : "launched-no-email"));
 }
@@ -224,16 +226,17 @@ export async function markLiveAction(formData: FormData): Promise<void> {
  * already-public posts only, so staff can see it on the page and paste it into the client's site project.
  */
 export async function rotateSiteApiTokenAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "Rotate a site token's business");
 
   await rotateSiteApiToken(businessId);
+  await recordStaffAction(staff, { businessId, kind: "website.token_rotated", summary: "Replaced the site API token" });
   revalidateClient(businessId);
 }
 
 /** Sets or clears where the client's own website lives, which turns their "Preview on my website" button on or off. */
 export async function setWebsiteUrlAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "The website address's business");
   const raw = formData.get("websiteUrl");
 
@@ -244,6 +247,7 @@ export async function setWebsiteUrlAction(formData: FormData): Promise<void> {
     throw error;
   }
 
+  await recordStaffAction(staff, { businessId, kind: "website.url_saved", summary: "Saved the website address", data: { websiteUrl: typeof raw === "string" && raw !== "" ? raw : null } });
   revalidateClient(businessId);
   redirect(`/clients/${businessId}?website=saved`);
 }
@@ -258,7 +262,7 @@ export async function setWebsiteUrlAction(formData: FormData): Promise<void> {
  * it being unambiguous.
  */
 export async function setTimeZoneAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "The time zone's business");
   const raw = formData.get("timeZone");
   const value = typeof raw === "string" ? raw.trim() : "";
@@ -271,6 +275,7 @@ export async function setTimeZoneAction(formData: FormData): Promise<void> {
       if (error instanceof TimeZoneInUseError) redirect(businessModuleNoticeHref(businessId, "zone-in-use"));
       throw error;
     }
+    await recordStaffAction(staff, { businessId, kind: "features.time_zone_cleared", summary: "Cleared the time zone" });
     revalidateClient(businessId);
     redirect(businessModuleNoticeHref(businessId, "zone-cleared"));
   }
@@ -279,6 +284,7 @@ export async function setTimeZoneAction(formData: FormData): Promise<void> {
   if (canonical === null) redirect(businessModuleNoticeHref(businessId, "bad-zone"));
 
   await setBusinessTimeZone(db, businessId, canonical);
+  await recordStaffAction(staff, { businessId, kind: "features.time_zone_saved", summary: `Set the time zone to ${canonical}` });
   revalidateClient(businessId);
   redirect(businessModuleNoticeHref(businessId, "zone-saved"));
 }
@@ -289,7 +295,8 @@ export async function setTimeZoneAction(formData: FormData): Promise<void> {
  * that and this maps its error to a notice rather than crashing the page.
  */
 export async function setModuleAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const staff = await requireStaffAccess();
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The module's business");
 
   const moduleRaw = formData.get("module");
@@ -317,6 +324,7 @@ export async function setModuleAction(formData: FormData): Promise<void> {
     throw error;
   }
 
+  await recordStaffAction(staff, { businessId, kind: "features.module_changed", summary: `Switched ${moduleRaw} ${enabled ? "on" : "off"}` });
   revalidateClient(businessId);
   redirect(businessModuleNoticeHref(businessId, enabled ? "module-on" : "module-off"));
 }
@@ -328,7 +336,7 @@ export async function setModuleAction(formData: FormData): Promise<void> {
  * and keeps the old listing address as a redirect.
  */
 export async function saveListingPlacementAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "The listing's business");
 
   // A business to take over may be named by its page as it is now, /in/mh/business/<name>/<code>: read as its id.
@@ -353,6 +361,7 @@ export async function saveListingPlacementAction(formData: FormData): Promise<vo
     throw error;
   }
 
+  await recordStaffAction(staff, { businessId, kind: "listing.placement_saved", summary: "Saved the listing placement" });
   revalidateClient(businessId);
   redirect(`/clients/${businessId}?listing=saved#listing`);
 }
@@ -373,7 +382,8 @@ async function clientTagTarget(businessId: string): Promise<{ readonly listingKe
  * one). It shows no number of its own: the website uses the client's own.
  */
 export async function giveClientVerifiedAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const staff = await requireStaffAccess();
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The tags' business");
   const target = await clientTagTarget(businessId);
   const { replaced } = await upsertDirectoryVerification(getStaffDb(), {
@@ -382,6 +392,7 @@ export async function giveClientVerifiedAction(formData: FormData): Promise<void
     staffUserId: user.id,
     now: new Date(),
   });
+  await recordStaffAction(staff, { businessId, kind: "listing.verified", summary: "Gave the listing the Verified tag", data: { result: replaced ? "unchanged" : "verified" } });
   revalidateClient(businessId);
   revalidatePath("/directory");
   redirect(clientTagsHref(businessId, replaced ? "unchanged" : "verified"));
@@ -389,10 +400,12 @@ export async function giveClientVerifiedAction(formData: FormData): Promise<void
 
 /** Gives the client's listing the Trusted tag directly, verifying it first when it is not verified yet. */
 export async function giveClientTrustedAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const staff = await requireStaffAccess();
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The tags' business");
   const target = await clientTagTarget(businessId);
   const changed = await trustDirectoryBusiness(getStaffDb(), { ...target, phone: null, staffUserId: user.id, now: new Date() });
+  await recordStaffAction(staff, { businessId, kind: "listing.trusted", summary: "Gave the listing the Trusted tag", data: { result: changed ? "trusted" : "unchanged" } });
   revalidateClient(businessId);
   revalidatePath("/directory");
   redirect(clientTagsHref(businessId, changed ? "trusted" : "unchanged"));
@@ -400,10 +413,11 @@ export async function giveClientTrustedAction(formData: FormData): Promise<void>
 
 /** Takes the Trusted tag away from the client's listing. It stays verified. */
 export async function removeClientTrustedAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "The tags' business");
   const { listingKey } = await clientTagTarget(businessId);
   const changed = await setDirectoryTrusted(getStaffDb(), listingKey, false, new Date());
+  await recordStaffAction(staff, { businessId, kind: "listing.untrusted", summary: "Took the Trusted tag away", data: { result: changed ? "untrusted" : "unchanged" } });
   revalidateClient(businessId);
   revalidatePath("/directory");
   redirect(clientTagsHref(businessId, changed ? "untrusted" : "unchanged"));
@@ -434,15 +448,18 @@ export async function changeWebAddressAction(_previous: WebAddressFormState, for
  * function does both), so nothing here works out a date.
  */
 export async function endAddOnAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffCan("money");
+  const staff = await requireStaffCan("money");
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The add-on's business");
   const addOnSubscriptionId = readId(formData.get("addOnSubscriptionId"), "The add-on");
   const kind = endKindSchema.parse(formData.get("kind"));
   if (formData.get("confirm") !== "yes") redirect(addOnNoticeHref(businessId, "unconfirmed"));
 
   const outcome = await endClientAddOn({ businessId, addOnSubscriptionId, kind, staffUserId: user.id }, new Date());
+  const notice = noticeForEndOutcome(outcome);
+  await recordStaffAction(staff, { businessId, kind: "add_on.ended", summary: `Asked to ${kind} an add-on`, data: { addOnSubscriptionId, result: notice } });
   revalidateClient(businessId);
-  redirect(addOnNoticeHref(businessId, noticeForEndOutcome(outcome)));
+  redirect(addOnNoticeHref(businessId, notice));
 }
 
 const monthlyAddOnSchema = z.enum(MONTHLY_ADD_ON_IDS);
@@ -452,46 +469,54 @@ const monthlyAddOnSchema = z.enum(MONTHLY_ADD_ON_IDS);
  * ending, after staff confirm they have told the customer. The price is worked out on the server, as for the customer.
  */
 export async function addClientAddOnAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffCan("money");
+  const staff = await requireStaffCan("money");
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The add-on's business");
   const addOn = monthlyAddOnSchema.parse(formData.get("addOn"));
   if (formData.get("confirm") !== "yes") redirect(addOnNoticeHref(businessId, "unconfirmed"));
 
   const started = await addClientAddOn({ businessId, addOn, staffUserId: user.id }, new Date());
+  const notice = noticeForStart(started);
+  await recordStaffAction(staff, { businessId, kind: "add_on.added", summary: `Added ${addOnById(addOn).title}`, data: { addOn, result: notice } });
   revalidateClient(businessId);
-  redirect(addOnNoticeHref(businessId, noticeForStart(started)));
+  redirect(addOnNoticeHref(businessId, notice));
 }
 
 /** Takes an add-on out of the client's plan payment from the next billing date, after staff confirm they told the customer. */
 export async function removeClientAddOnAction(formData: FormData): Promise<void> {
-  await requireStaffCan("money");
+  const staff = await requireStaffCan("money");
   const businessId = readId(formData.get("businessId"), "The add-on's business");
   const addOn = monthlyAddOnSchema.parse(formData.get("addOn"));
   if (formData.get("confirm") !== "yes") redirect(addOnNoticeHref(businessId, "unconfirmed"));
 
   const removal = await removeClientAddOn({ businessId, addOn }, new Date());
+  const notice = noticeForRemoval(removal);
+  await recordStaffAction(staff, { businessId, kind: "add_on.removed", summary: `Removed ${addOnById(addOn).title} from the plan`, data: { addOn, result: notice } });
   revalidateClient(businessId);
-  redirect(addOnNoticeHref(businessId, noticeForRemoval(removal)));
+  redirect(addOnNoticeHref(businessId, notice));
 }
 
 /** Tells the payment provider again to bill an added add-on from the next renewal. Safe to repeat. */
 export async function retryAddOnProviderAction(formData: FormData): Promise<void> {
-  await requireStaffCan("money");
+  const staff = await requireStaffCan("money");
   const businessId = readId(formData.get("businessId"), "The add-on's business");
   const bundledAddOnId = readId(formData.get("bundledAddOnId"), "The add-on");
 
   const move = await retryClientAddOnProvider({ businessId, bundledAddOnId }, new Date());
+  await recordStaffAction(staff, { businessId, kind: "add_on.provider_retried", summary: "Asked the payment provider again to bill an add-on", data: { bundledAddOnId, result: move.kind } });
   revalidateClient(businessId);
   redirect(addOnNoticeHref(businessId, move.kind === "scheduled" ? "provider-told" : move.kind === "failed" ? "provider-still-refusing" : "not-found"));
 }
 
 /** Records that the team has been in touch about a new purchase, which takes it off the Journey. Safe to repeat. */
 export async function markAddOnContactedAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const staff = await requireStaffAccess();
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The purchase's business");
   const addOnSubscriptionId = readId(formData.get("addOnSubscriptionId"), "The purchase");
 
   const outcome = await markClientAddOnContacted({ businessId, addOnSubscriptionId, staffUserId: user.id }, new Date());
+  await recordStaffAction(staff, { businessId, kind: "add_on.contacted", summary: "Marked an add-on purchase as contacted", data: { addOnSubscriptionId, result: outcome } });
   revalidateClient(businessId);
   const notice: AddOnNotice = outcome === "marked" ? "contacted" : outcome === "already" ? "already-contacted" : "not-found";
   redirect(addOnNoticeHref(businessId, notice));
@@ -499,11 +524,13 @@ export async function markAddOnContactedAction(formData: FormData): Promise<void
 
 /** Records that the team has been in touch about an add-on taken with the plan. Safe to repeat. */
 export async function markBundledAddOnContactedAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const staff = await requireStaffAccess();
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The purchase's business");
   const bundledAddOnId = readId(formData.get("bundledAddOnId"), "The purchase");
 
   const outcome = await markClientBundledAddOnContacted({ businessId, bundledAddOnId, staffUserId: user.id }, new Date());
+  await recordStaffAction(staff, { businessId, kind: "add_on.contacted", summary: "Marked an add-on as contacted", data: { bundledAddOnId, result: outcome } });
   revalidateClient(businessId);
   const notice: AddOnNotice = outcome === "marked" ? "contacted" : outcome === "already" ? "already-contacted" : "not-found";
   redirect(addOnNoticeHref(businessId, notice));
@@ -511,12 +538,14 @@ export async function markBundledAddOnContactedAction(formData: FormData): Promi
 
 /** Moves a press release to in progress or published. It never moves one backward, so a stale form changes nothing. */
 export async function setPressReleaseStatusAction(formData: FormData): Promise<void> {
-  const { user } = await requireStaffAccess();
+  const staff = await requireStaffAccess();
+  const { user } = staff;
   const businessId = readId(formData.get("businessId"), "The press release's business");
   const pressReleaseId = readId(formData.get("pressReleaseId"), "The press release");
   const status = pressReleaseStepSchema.parse(formData.get("status"));
 
   const outcome = await setClientPressReleaseStatus({ businessId, pressReleaseId, status, staffUserId: user.id }, new Date());
+  await recordStaffAction(staff, { businessId, kind: "press_release.status_set", summary: `Moved a press release to ${status === "published" ? "published" : "in progress"}`, data: { pressReleaseId, result: outcome } });
   revalidateClient(businessId);
   const notice: AddOnNotice =
     outcome === "changed" ? (status === "published" ? "release-published" : "release-in-progress") : outcome === "unchanged" ? "release-unchanged" : "not-found";
@@ -528,7 +557,7 @@ export async function setPressReleaseStatusAction(formData: FormData): Promise<v
  * DNS for them to change, so it is refused here; the database checks the project is approved and there is a domain.
  */
 export async function markDomainReadyAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "Ready for DNS's business");
   const db = getStaffDb();
 
@@ -547,13 +576,14 @@ export async function markDomainReadyAction(formData: FormData): Promise<void> {
     throw error;
   }
 
+  await recordStaffAction(staff, { businessId, kind: "domain.ready_for_dns", summary: "Asked the customer to connect their domain", data: { result: outcome } });
   revalidateClient(businessId);
   redirect(domainConnectNoticeHref(businessId, outcome === "emailed" ? "ready" : outcome === "no-email" ? "ready-no-email" : "already"));
 }
 
 /** Staff move a live customer's website to the domain they connected: their own domain becomes the main address and they are emailed. */
 export async function switchDomainAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "Switch domain's business");
 
   let notified: OwnerNotification;
@@ -565,6 +595,7 @@ export async function switchDomainAction(formData: FormData): Promise<void> {
     throw error;
   }
 
+  await recordStaffAction(staff, { businessId, kind: "domain.switched", summary: "Switched the website to the customer's domain", data: { notified } });
   revalidateClient(businessId);
   redirect(domainConnectNoticeHref(businessId, notified === "emailed" ? "switched" : "switched-no-email"));
 }
@@ -574,25 +605,27 @@ export async function switchDomainAction(formData: FormData): Promise<void> {
  * the form's hidden id, checked as a UUID; the secret is stored for the webhook to check signatures against and is never shown again.
  */
 export async function addChatbotAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "The chatbot's business");
   const parsed = parseChatbotForm(formData);
   if (!parsed.ok) redirect(chatbotNoticeHref(businessId, parsed.notice));
 
   const outcome = await addClientChatbot(businessId, parsed.bot);
+  await recordStaffAction(staff, { businessId, kind: "chatbot.added", summary: "Added a chatbot", data: { result: outcome } });
   revalidateClient(businessId);
   redirect(chatbotNoticeHref(businessId, outcome));
 }
 
 /** Sets where a chatbot stands, which the customer reads on their Chatbot page. */
 export async function setChatbotStatusAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "The chatbot's business");
   const chatbotId = readId(formData.get("chatbotId"), "The chatbot");
   const status = readChatbotStatus(formData.get("status"));
   if (status === null) redirect(chatbotNoticeHref(businessId, "invalid-status"));
 
   const changed = await setClientChatbotStatus(businessId, chatbotId, status);
+  await recordStaffAction(staff, { businessId, kind: "chatbot.status_set", summary: `Set a chatbot to ${status}`, data: { chatbotId, result: changed ? "status-saved" : "not-found" } });
   revalidateClient(businessId);
   redirect(chatbotNoticeHref(businessId, changed ? "status-saved" : "not-found"));
 }
@@ -602,25 +635,32 @@ export async function setChatbotStatusAction(formData: FormData): Promise<void> 
  * customer a lead's conversation. Like the webhook secret it is stored and never shown again.
  */
 export async function setChatbotOperatorKeyAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "The chatbot's business");
   const chatbotId = readId(formData.get("chatbotId"), "The chatbot");
   const change = parseOperatorKeyForm(formData);
   if (!change.ok) redirect(chatbotNoticeHref(businessId, change.notice));
 
   const saved = await setClientChatbotOperatorKey(businessId, chatbotId, change.operatorKey);
+  await recordStaffAction(staff, {
+    businessId,
+    kind: "chatbot.operator_key_set",
+    summary: change.operatorKey === null ? "Removed a chatbot's operator key" : "Saved a chatbot's operator key",
+    data: { chatbotId, result: saved ? "saved" : "not-found" },
+  });
   revalidateClient(businessId);
   redirect(chatbotNoticeHref(businessId, saved ? (change.operatorKey === null ? "key-cleared" : "key-saved") : "not-found"));
 }
 
 /** Removes a chatbot with its leads and its secret, after the staff member ticks that they mean it. */
 export async function removeChatbotAction(formData: FormData): Promise<void> {
-  await requireStaffAccess();
+  const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "The chatbot's business");
   const chatbotId = readId(formData.get("chatbotId"), "The chatbot");
   if (formData.get("confirm") !== "yes") redirect(chatbotNoticeHref(businessId, "unconfirmed"));
 
   const removed = await removeClientChatbot(businessId, chatbotId);
+  await recordStaffAction(staff, { businessId, kind: "chatbot.removed", summary: "Removed a chatbot", data: { chatbotId, result: removed ? "removed" : "not-found" } });
   revalidateClient(businessId);
   redirect(chatbotNoticeHref(businessId, removed ? "removed" : "not-found"));
 }
