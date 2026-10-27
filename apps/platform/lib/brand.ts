@@ -24,8 +24,6 @@ export interface Brand {
   readonly logo: { readonly white: string; readonly dark: string; readonly width: number; readonly height: number };
   /** The plans offered at sign-up, in the order they are shown. */
   readonly joinChoices: readonly JoinChoice[];
-  /** Whether the plans are sold with the directory listing and what comes with it: they are websites, so no. */
-  readonly showsListing: boolean;
   /** What the product is, in a sentence or two: said by the logo on the checkout page when it is pressed. */
   readonly about: string;
 }
@@ -39,7 +37,6 @@ export const BRAND: Brand = {
   siteUrl: "https://brandbasket.in",
   logo: { white: "/brand/brandbasket-logo-white.svg", dark: "/brand/brandbasket-logo-dark.svg", width: 182, height: 32 },
   joinChoices: ["managed"],
-  showsListing: false,
   about: "We build your business website and look after it every month: design, hosting and care, with marketing services you can add as you grow.",
 };
 
@@ -64,16 +61,4 @@ export function sellsFreeListing(brand: Brand): boolean {
 /** Whether a sign-up choice may be made. The server refuses any other, whatever the form sent. */
 export function offersChoice(brand: Brand, choice: JoinChoice): boolean {
   return brand.joinChoices.includes(choice);
-}
-
-/**
- * Dashboard pages that exist only for the directory listing and what it brings. The product has no listing to put on
- * them, so the proxy answers them with the dashboard's not-found screen: a customer who types one of the addresses
- * meets "Nothing here" rather than a page about a directory they are not on.
- */
-const DIRECTORY_ONLY_PATHS: readonly string[] = ["/business", "/deals", "/listing", "/advertise", "/reviews", "/leads"];
-
-/** Whether a dashboard path is one of the directory-only pages, or anything under one. */
-export function isDirectoryOnlyPath(pathname: string): boolean {
-  return DIRECTORY_ONLY_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
