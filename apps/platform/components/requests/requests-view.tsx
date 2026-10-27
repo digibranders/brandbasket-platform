@@ -55,7 +55,7 @@ export function RequestsView({ rows, listed, filter, selectedId, explicit, inclu
         />
       ) : (
         <div className={cn(LIFT, "grid min-h-[34rem] overflow-hidden @2xl:min-h-[40rem] @2xl:grid-cols-[20.5rem_minmax(0,1fr)]")}>
-          <div className={cn("@2xl:block", explicit ? "hidden" : "block")}>
+          <div className={cn("border-line @2xl:block @2xl:border-r", explicit ? "hidden" : "block")}>
             <RequestList rows={listed} filter={filter} selectedId={selectedId} counts={{ open: counts.open.length, done: counts.done.length }} />
           </div>
           <div className={cn("min-w-0 @2xl:block", explicit ? "block" : "hidden")}>
