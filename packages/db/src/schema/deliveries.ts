@@ -42,7 +42,7 @@ export const webhookEvents = pgTable(
 );
 
 /** The Teams channels an alert can go to. Mirrors TEAMS_DESTINATIONS in packages/shared/src/lib/teams-webhook.ts. */
-export const ALERT_DESTINATIONS = ["enquiries", "support", "system"] as const;
+export const ALERT_DESTINATIONS = ["enquiries", "payments", "customers", "support", "system"] as const;
 export type AlertDestination = (typeof ALERT_DESTINATIONS)[number];
 
 export const ALERT_RESULTS = ["sent", "rejected", "unreachable", "unreadable"] as const;
@@ -68,7 +68,7 @@ export const alertDeliveries = pgTable(
   },
   (table) => [
     index("alert_deliveries_created_at_idx").on(table.createdAt),
-    check("alert_deliveries_destination_check", sql`${table.destination} in ('enquiries', 'support', 'system')`),
+    check("alert_deliveries_destination_check", sql`${table.destination} in ('enquiries', 'payments', 'customers', 'support', 'system')`),
     check("alert_deliveries_result_check", sql`${table.result} in ('sent', 'rejected', 'unreachable', 'unreadable')`),
     check("alert_deliveries_title_check", sql`char_length(${table.title}) between 1 and 200`),
     check("alert_deliveries_attempts_check", sql`${table.attempts} >= 1`),

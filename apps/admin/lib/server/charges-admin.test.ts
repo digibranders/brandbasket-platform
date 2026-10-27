@@ -16,6 +16,7 @@ vi.mock("@brandbasket/db", async () => {
 vi.mock("@brandbasket/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));
 vi.mock("@brandbasket/shared/server/basket-change", () => ({ finishAddOnAfterPayment: vi.fn() }));
 vi.mock("./basket-deps", () => ({ basketDeps: () => ({ name: "basket-deps" }) }));
+vi.mock("./teams-admin", () => ({ announcePaymentToTeams: vi.fn(async () => undefined) }));
 vi.mock("./db", () => ({
   getStaffDb: () => ({ name: "staff-db", transaction: (fn: (tx: unknown) => unknown) => fn({ name: "staff-tx" }) }),
 }));
@@ -23,6 +24,7 @@ vi.mock("./db", () => ({
 import { findBillingState, findChargeForBusiness, insertCharge, lockBusinessForBilling } from "@brandbasket/db";
 import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-change";
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
+import { announcePaymentToTeams } from "./teams-admin";
 import { addClientCharge, markClientChargePaid } from "./charges-admin";
 
 const BUSINESS = "0192f3c4-1111-7000-8000-000000000001";
@@ -95,11 +97,12 @@ describe("markClientChargePaid", () => {
 
   it("records the charge's own amount as a manual payment, under the billing lock", async () => {
     vi.mocked(findChargeForBusiness).mockResolvedValue(OPEN_CHARGE);
-    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "paid", alreadyRecorded: false, payment: {} as never });
+    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "paid", alreadyRecorded: false, payment: { id: "pay-charge-1" } as never });
 
     await expect(
       markClientChargePaid({ businessId: BUSINESS, chargeId: "charge-1", staffUserId: "staff-1", details }, NOW),
     ).resolves.toBe("paid");
+    expect(announcePaymentToTeams).toHaveBeenCalledWith("pay-charge-1");
     expect(lockBusinessForBilling).toHaveBeenCalledWith({ name: "staff-tx" }, BUSINESS);
     expect(recordChargePaymentWithInvoice).toHaveBeenCalledWith(
       { name: "staff-tx" },

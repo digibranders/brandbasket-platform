@@ -7,7 +7,7 @@ CREATE TABLE "alert_deliveries" (
 	"attempts" integer DEFAULT 1 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"last_attempt_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "alert_deliveries_destination_check" CHECK ("alert_deliveries"."destination" in ('enquiries', 'support', 'system')),
+	CONSTRAINT "alert_deliveries_destination_check" CHECK ("alert_deliveries"."destination" in ('enquiries', 'payments', 'customers', 'support', 'system')),
 	CONSTRAINT "alert_deliveries_result_check" CHECK ("alert_deliveries"."result" in ('sent', 'rejected', 'unreachable', 'unreadable')),
 	CONSTRAINT "alert_deliveries_title_check" CHECK (char_length("alert_deliveries"."title") between 1 and 200),
 	CONSTRAINT "alert_deliveries_attempts_check" CHECK ("alert_deliveries"."attempts" >= 1),

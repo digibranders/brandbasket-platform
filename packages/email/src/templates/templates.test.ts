@@ -64,7 +64,8 @@ describe("leadReceivedEmail", () => {
       leadUrl: "http://admin.localhost:3000/leads/0192f3c4",
     });
     expect(withoutPhone.bodyText).toContain("Phone: not given");
-    expect(withoutPhone.bodyHtml).toContain("Phone: not given");
+    expect(withoutPhone.bodyHtml).toContain(">Phone</td>");
+    expect(withoutPhone.bodyHtml).toContain(">not given</td>");
   });
 
   it("escapes HTML in customer-supplied values", () => {

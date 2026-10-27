@@ -14,7 +14,7 @@ vi.mock("@brandbasket/db", async () => {
     flagPaymentForAttention: vi.fn(),
     findPlanById: vi.fn(),
     updateSubscriptionProviderStatus: vi.fn(),
-    recordUnappliedPayment: vi.fn(),
+    recordUnappliedPayment: vi.fn(async () => ({ alreadyRecorded: false, payment: { id: "pay_unapplied" } })),
     lockBusinessForBilling: vi.fn(),
     completePlanUpgradeAtRenewal: vi.fn(),
     completeBundledAddOnChanges: vi.fn(),
@@ -22,17 +22,17 @@ vi.mock("@brandbasket/db", async () => {
     // Not an add-on, unless a test says otherwise.
     findAddOnSubscriptionByProviderId: vi.fn(async () => null),
     updateAddOnStatus: vi.fn(async () => true),
-    recordUnappliedAddOnPayment: vi.fn(),
+    recordUnappliedAddOnPayment: vi.fn(async () => ({ alreadyRecorded: false, payment: { id: "pay_addon_unapplied" } })),
   };
 });
 vi.mock("@brandbasket/shared/server/billing-activation", () => ({
   activateRenewalPayment: vi.fn(async () => ({ alreadyRecorded: false, payment: { id: "pay_row_1" }, discountEnded: false })),
   // A client from a setup link, unless a test says otherwise: nothing to open.
-  activateFirstPayment: vi.fn(async () => ({ openedMembership: null, discountEnded: false })),
-  activateReactivationPayment: vi.fn(async () => ({ alreadyRecorded: false, discountEnded: false })),
+  activateFirstPayment: vi.fn(async () => ({ alreadyRecorded: false, payment: { id: "pay_row_first" }, openedMembership: null, discountEnded: false })),
+  activateReactivationPayment: vi.fn(async () => ({ alreadyRecorded: false, payment: { id: "pay_row_reactivation" }, discountEnded: false })),
 }));
 vi.mock("@brandbasket/shared/server/add-on-activation", () => ({
-  applyAddOnPayment: vi.fn(async () => ({ kind: "applied", cancelAtProvider: [] })),
+  applyAddOnPayment: vi.fn(async () => ({ kind: "applied", paymentId: "pay_row_addon", cancelAtProvider: [] })),
 }));
 vi.mock("@brandbasket/shared/server/provider-cancellation", () => ({ cancelAtProvider: vi.fn(async () => undefined) }));
 vi.mock("@brandbasket/shared/server/basket-change", async (importOriginal) => ({
@@ -44,6 +44,7 @@ vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 vi.mock("./keep-plan", () => ({ restoreKeptPlan: vi.fn(async () => true) }));
 vi.mock("./charges", () => ({ recordRazorpayChargePayment: vi.fn() }));
 vi.mock("./payment-failure", () => ({ recordRazorpayPaymentFailure: vi.fn() }));
+vi.mock("./teams", () => ({ announcePaymentToTeams: vi.fn(async () => undefined), announcePlanStatusToTeams: vi.fn(async () => undefined) }));
 // A transaction that is also its own savepoint: both run the callback straight away.
 vi.mock("./db", () => {
   const db = { transaction: (fn: (tx: unknown) => unknown) => fn(db) };
@@ -78,6 +79,7 @@ import { activateFirstPayment, activateReactivationPayment, activateRenewalPayme
 import { recordRazorpayChargePayment } from "./charges";
 import { recordRazorpayPaymentFailure } from "./payment-failure";
 import { restoreKeptPlan } from "./keep-plan";
+import { announcePaymentToTeams, announcePlanStatusToTeams } from "./teams";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { handleRazorpayWebhookEvent } from "./razorpay-webhook-handler";
 
@@ -519,6 +521,27 @@ describe("handleRazorpayWebhookEvent", () => {
     );
   });
 
+  it.each([
+    ["pending", "past_due"],
+    ["halted", "inactive"],
+    ["cancelled", "cancelled"],
+  ])("tells Teams once when a running plan turns %s", async (providerStatus, status) => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null, status: "active" } as never);
+    fetchSubscriptionStatus.mockResolvedValue(providerStatus);
+    await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus });
+    expect(announcePlanStatusToTeams).toHaveBeenCalledExactlyOnceWith({ businessId: "biz-1", subscriptionId: "sub-1", status, providerStatus });
+  });
+
+  it("stays quiet when the status did not change, or changed to one that needs no follow-up", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null, status: "inactive" } as never);
+    fetchSubscriptionStatus.mockResolvedValue("halted");
+    await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "halted" });
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null, status: "past_due" } as never);
+    fetchSubscriptionStatus.mockResolvedValue("active");
+    await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "active" });
+    expect(announcePlanStatusToTeams).not.toHaveBeenCalled();
+  });
+
   it("stores the status Razorpay holds now, not a late event's: a halt delivered after the renewal leaves access alone", async () => {
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null } as never);
     fetchSubscriptionStatus.mockResolvedValue("active");
@@ -632,7 +655,7 @@ describe("handleRazorpayWebhookEvent", () => {
       discountMonthsLeft: null,
     } as never);
     vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
-    vi.mocked(activateFirstPayment).mockResolvedValueOnce({ openedMembership: { businessName: "Smile Dental" } } as never);
+    vi.mocked(activateFirstPayment).mockResolvedValueOnce({ alreadyRecorded: false, payment: { id: "pay_row_member" }, openedMembership: { businessName: "Smile Dental" } } as never);
 
     await handleRazorpayWebhookEvent({
       kind: "charged",
@@ -1169,7 +1192,7 @@ describe("a code with a length in months", () => {
   it("takes a reactivation at the discount a lapse carried, and moves the provider if that was the last month", async () => {
     vi.mocked(hasEverPaid).mockResolvedValueOnce(true);
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue(held({ activatedAt: null, discountMonthsLeft: 1 }) as never);
-    vi.mocked(activateReactivationPayment).mockResolvedValueOnce({ alreadyRecorded: false, discountEnded: true } as never);
+    vi.mocked(activateReactivationPayment).mockResolvedValueOnce({ alreadyRecorded: false, payment: { id: "pay_row_reactivation" }, discountEnded: true } as never);
 
     await handleRazorpayWebhookEvent(charged(DISCOUNTED_TOTAL));
 
@@ -1684,6 +1707,7 @@ describe("an add-on subscription", () => {
       vi.mocked(applyAddOnPayment).mockResolvedValueOnce({
         kind: "refused",
         reason: "checkout_replaced",
+        paymentId: "pay_addon_unapplied",
         cancelAtProvider: [{ provider: "razorpay", providerSubscriptionId: "sub_rzp_addon" }],
       });
       const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -1707,6 +1731,7 @@ describe("an add-on subscription", () => {
       vi.mocked(applyAddOnPayment).mockResolvedValueOnce({
         kind: "refused",
         reason: "already_paid",
+        paymentId: "pay_addon_unapplied",
         cancelAtProvider: [{ provider: "razorpay", providerSubscriptionId: "sub_rzp_addon" }],
       });
       const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -1764,10 +1789,31 @@ describe("an add-on subscription", () => {
       expect(recordUnappliedAddOnPayment).not.toHaveBeenCalled();
     });
 
+    it("tells Teams about an add-on payment once it is recorded, and not about a redelivery", async () => {
+      isAddOn({ status: "incomplete" });
+      await handleRazorpayWebhookEvent(CHARGE);
+      expect(announcePaymentToTeams).toHaveBeenCalledTimes(1);
+      expect(announcePaymentToTeams).toHaveBeenCalledWith("pay_row_addon");
+
+      vi.mocked(announcePaymentToTeams).mockClear();
+      vi.mocked(applyAddOnPayment).mockResolvedValueOnce({ kind: "already-recorded", cancelAtProvider: [] });
+      await handleRazorpayWebhookEvent(CHARGE);
+      expect(announcePaymentToTeams).not.toHaveBeenCalled();
+    });
+
+    it("tells Teams about money kept for staff on an add-on whose checkout was replaced", async () => {
+      isAddOn({ status: "cancelled" });
+      vi.mocked(applyAddOnPayment).mockResolvedValueOnce({ kind: "refused", reason: "checkout_replaced", paymentId: "pay_addon_unapplied", cancelAtProvider: [] });
+      vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      await handleRazorpayWebhookEvent(CHARGE);
+      expect(announcePaymentToTeams).toHaveBeenCalledWith("pay_addon_unapplied");
+    });
+
     it("cancels the halted rows the payment closed at the provider, once the transaction has committed", async () => {
       isAddOn({ status: "halted" });
       vi.mocked(applyAddOnPayment).mockResolvedValueOnce({
         kind: "applied",
+        paymentId: "pay_row_addon",
         cancelAtProvider: [
           { provider: "razorpay", providerSubscriptionId: "sub_rzp_old_1" },
           { provider: "razorpay", providerSubscriptionId: "sub_rzp_old_2" },
@@ -1968,5 +2014,75 @@ describe("an add-on subscription", () => {
     expect(recordRazorpayChargePayment).toHaveBeenCalledWith(event, expect.any(Date));
     expect(findAddOnSubscriptionByProviderId).not.toHaveBeenCalled();
     expect(applyAddOnPayment).not.toHaveBeenCalled();
+  });
+});
+
+describe("telling Teams about a payment", () => {
+  const SUBSCRIPTION = {
+    id: "sub_row_1",
+    businessId: "biz_1",
+    planId: "plan_1",
+    commitmentEndsAt: new Date("2026-10-01T00:00:00.000Z"),
+    activatedAt: new Date("2026-09-01T00:00:00.000Z"),
+    continuesId: null,
+    discountAmountCents: 0,
+    retentionDiscountCents: 0,
+    pendingPlanId: null,
+    pendingDiscountAmountCents: 0,
+    bundledAddOnNetCents: 0,
+    pendingBundledAddOnNetCents: null,
+    nextDiscountAmountCents: null,
+    discountMonthsLeft: null,
+  } as const;
+  const CHARGED = {
+    kind: "charged",
+    currentStart: null,
+    method: null,
+    subscriptionId: "sub_rzp_1",
+    currentEnd: new Date("2026-11-01T00:00:00.000Z"),
+    paidAt: new Date("2026-10-14T12:00:00.000Z"),
+    paymentId: "pay_1",
+    amountCents: 7_500,
+    currency: "USD",
+  } as const;
+
+  beforeEach(() => {
+    vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
+  });
+
+  it("announces a renewal once it has been recorded", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(SUBSCRIPTION as never);
+    await handleRazorpayWebhookEvent(CHARGED);
+    expect(announcePaymentToTeams).toHaveBeenCalledTimes(1);
+    expect(announcePaymentToTeams).toHaveBeenCalledWith("pay_row_1");
+  });
+
+  it("announces a customer's first payment", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ ...SUBSCRIPTION, activatedAt: null, commitmentEndsAt: null } as never);
+    await handleRazorpayWebhookEvent(CHARGED);
+    expect(announcePaymentToTeams).toHaveBeenCalledWith("pay_row_first");
+  });
+
+  it("does not announce a payment that was delivered before, so a redelivery never repeats the alert", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(SUBSCRIPTION as never);
+    vi.mocked(activateRenewalPayment).mockResolvedValueOnce({ alreadyRecorded: true, payment: { id: "pay_row_1" }, discountEnded: false } as never);
+    await handleRazorpayWebhookEvent(CHARGED);
+    expect(announcePaymentToTeams).not.toHaveBeenCalled();
+  });
+
+  it("announces money that arrived for the wrong amount, which bought nothing", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(SUBSCRIPTION as never);
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    await handleRazorpayWebhookEvent({ ...CHARGED, amountCents: 1 });
+    expect(recordUnappliedPayment).toHaveBeenCalled();
+    expect(announcePaymentToTeams).toHaveBeenCalledWith("pay_unapplied");
+  });
+
+  it("announces nothing when recording the payment fails, since nothing was recorded", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(SUBSCRIPTION as never);
+    vi.mocked(activateRenewalPayment).mockRejectedValueOnce(new Error("database down"));
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await expect(handleRazorpayWebhookEvent(CHARGED)).rejects.toThrow("database down");
+    expect(announcePaymentToTeams).not.toHaveBeenCalled();
   });
 });

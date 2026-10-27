@@ -3,6 +3,7 @@ import { FIRST_PREVIEW_DUE_HOURS } from "@brandbasket/db";
 import { createAppEmailTransport, emailTeamInboxDefault, onboardingSentEmail } from "@brandbasket/email";
 import { serverEnv } from "./env";
 import { getStaffDb } from "./db";
+import { announceCustomerToTeams } from "./teams";
 
 /**
  * Tells the team a customer has sent their website details, so the first-preview clock does not start unnoticed.
@@ -13,6 +14,7 @@ import { getStaffDb } from "./db";
  * customer's details stay there.
  */
 export async function notifyTeamOnboardingSent(businessId: string, businessName: string): Promise<void> {
+  void announceCustomerToTeams({ businessId, event: "setup_sent", facts: [{ name: "First preview due in", value: `${FIRST_PREVIEW_DUE_HOURS} hours` }] });
   try {
     const to = process.env.BRANDBASKET_TEAM_EMAIL?.trim() || emailTeamInboxDefault();
     const clientUrl = new URL(`/clients/${businessId}`, serverEnv().ADMIN_ORIGIN).toString();

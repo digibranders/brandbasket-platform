@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 
 export interface DomainRequestedInput {
   readonly to: string;
@@ -21,10 +22,11 @@ export function domainRequestedEmail(input: DomainRequestedInput): EmailMessage 
     subject: sanitizeHeaderValue(`${input.businessName} wants to move to ${input.domain}`),
     template: "domain-requested",
     bodyText: lines.join("\n"),
-    bodyHtml: htmlDocument(`${input.businessName} wants to move to ${input.domain}`, [
-      escapeHtml(lines[0] ?? ""),
-      escapeHtml(lines[1] ?? ""),
-      `<a href="${escapeHtml(clientUrl)}">Open the client</a> (${escapeHtml(clientUrl)})`,
-    ]),
+    bodyHtml: receiptDocument({
+      title: `${input.businessName} wants to move to ${input.domain}`,
+      kicker: "Domain requested",
+      heading: `${input.businessName} wants to move to ${input.domain}`,
+      body: [receiptParagraph(lines[0] ?? ""), receiptParagraph(lines[1] ?? ""), receiptButton(clientUrl, "Open the client")],
+    }),
   };
 }

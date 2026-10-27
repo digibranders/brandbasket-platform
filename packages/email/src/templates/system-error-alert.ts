@@ -1,4 +1,5 @@
-import { assertWebUrl, escapeHtml, htmlDocument, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptRows, type ReceiptRow } from "../receipt";
 
 export interface SystemErrorAlertInput {
   readonly to: string;
@@ -30,29 +31,27 @@ export function systemErrorAlertEmail(input: SystemErrorAlertInput): EmailMessag
   if (input.browser) textLines.push(`Browser / Environment: ${input.browser}`);
   if (adminUrl) textLines.push("", `View in Admin Errors: ${adminUrl}`);
 
-  const htmlParagraphs: string[] = [
-    `<strong>App:</strong> ${escapeHtml(input.app)}`,
-    `<strong>Severity:</strong> <span style="color:#63001e;font-weight:bold">${escapeHtml(input.severity.toUpperCase())}</span>`,
-    `<strong>Error Class:</strong> ${escapeHtml(input.errorClass)}`,
-    `<strong>Route / Area:</strong> ${escapeHtml(input.route)}`,
-    `<strong>Operation:</strong> ${escapeHtml(input.operation)}`,
+  const rows: ReceiptRow[] = [
+    { label: "App", value: input.app },
+    { label: "Severity", value: input.severity.toUpperCase(), strong: true },
+    { label: "Error class", value: input.errorClass },
+    { label: "Route / area", value: input.route },
+    { label: "Operation", value: input.operation },
+    ...(input.eventId ? [{ label: "Event ID", value: input.eventId }] : []),
+    ...(input.release ? [{ label: "Release", value: input.release }] : []),
+    ...(input.browser ? [{ label: "Browser / environment", value: input.browser }] : []),
   ];
-
-  if (input.eventId) htmlParagraphs.push(`<strong>Event ID:</strong> ${escapeHtml(input.eventId)}`);
-  if (input.release) htmlParagraphs.push(`<strong>Release:</strong> ${escapeHtml(input.release)}`);
-  if (input.browser) htmlParagraphs.push(`<strong>Browser / Environment:</strong> ${escapeHtml(input.browser)}`);
-
-  if (adminUrl) {
-    htmlParagraphs.push(
-      `<a href="${escapeHtml(adminUrl)}" style="display:inline-block;padding:10px 20px;background:#2a0d10;color:#f6efe6;text-decoration:none;border-radius:20px;font-weight:600">Open in Admin Errors</a>`,
-    );
-  }
 
   return {
     to: sanitizeHeaderValue(input.to),
     subject: sanitizeHeaderValue(`[System Error] ${input.errorClass} on ${input.route} (${input.app})`),
     template: "system-error-alert",
     bodyText: textLines.join("\n"),
-    bodyHtml: htmlDocument(`System Error: ${input.errorClass}`, htmlParagraphs),
+    bodyHtml: receiptDocument({
+      title: `System Error: ${input.errorClass}`,
+      kicker: "System error",
+      heading: `System error: ${input.errorClass}`,
+      body: [receiptRows(rows, { labelWidth: 150 }), ...(adminUrl ? [receiptButton(adminUrl, "Open in Admin Errors")] : [])],
+    }),
   };
 }

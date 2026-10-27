@@ -64,7 +64,7 @@ const WEBHOOK_OUTCOMES: Readonly<Record<WebhookResult, DeliveryOutcome>> = { han
 const EMAIL_LABELS: Readonly<Record<EmailStatus, string>> = { sent: "Sent", local_only: "Kept, not sent", failed: "Not sent" };
 const EMAIL_OUTCOMES: Readonly<Record<EmailStatus, DeliveryOutcome>> = { sent: "ok", local_only: "quiet", failed: "failed" };
 const ALERT_LABELS: Readonly<Record<AlertResult, string>> = { sent: "Sent", rejected: "Refused by Teams", unreachable: "Teams not reached", unreadable: "Address unreadable" };
-const CHANNEL_LABELS: Readonly<Record<AlertDestination, string>> = { enquiries: "Enquiries card", support: "Requests card", system: "System card" };
+const CHANNEL_LABELS: Readonly<Record<AlertDestination, string>> = { enquiries: "Enquiries card", payments: "Payments card", customers: "Customers card", support: "Requests card", system: "System card" };
 
 const MAX_SEARCH = 100;
 

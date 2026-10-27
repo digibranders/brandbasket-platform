@@ -6283,7 +6283,7 @@
       "checkConstraints": {
         "alert_deliveries_destination_check": {
           "name": "alert_deliveries_destination_check",
-          "value": "\"alert_deliveries\".\"destination\" in ('enquiries', 'support', 'system')"
+          "value": "\"alert_deliveries\".\"destination\" in ('enquiries', 'payments', 'customers', 'support', 'system')"
         },
         "alert_deliveries_result_check": {
           "name": "alert_deliveries_result_check",

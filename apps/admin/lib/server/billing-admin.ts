@@ -29,6 +29,7 @@ import { type ManualPaymentOutcome } from "@brandbasket/shared/lib/billing/manua
 import { activateFirstPayment, activateReactivationPayment } from "@brandbasket/shared/server/billing-activation";
 import { getStaffDb } from "./db";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
+import { announcePaymentToTeams } from "./teams-admin";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { loadCarriedCode, loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 
@@ -45,6 +46,8 @@ interface ManualPaymentStep {
   readonly replaced: Subscription | null;
   /** Set when the payment turned a free listing account into a website client: it needs its Payload tenant. */
   readonly openedMembership?: OpenedMembership | null;
+  /** The payment this recorded for the first time, to tell Teams about once committed. */
+  readonly newPaymentId?: string | null;
 }
 
 /** What a first payment recorded by hand buys: the website alone, a single service at its list price, as a line. */
@@ -205,7 +208,7 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
     if (state.hasEverPaid) {
       // Reactivation: one month from now of the lines it was opened with, less the code a lapse kept, like a reactivation paid online.
       // The payment counts one of the code's months (activateReactivationPayment).
-      await activateReactivationPayment(tx, {
+      const reactivated = await activateReactivationPayment(tx, {
         businessId,
         subscriptionId: subscription.id,
         plan,
@@ -215,7 +218,7 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
         paidThroughAt: addMonthsUtc(now, 1),
         manual,
       });
-      return { outcome: { kind: "recorded" }, replaced };
+      return { outcome: { kind: "recorded" }, replaced, newPaymentId: reactivated.alreadyRecorded ? null : reactivated.payment.id };
     }
     const activation = await activateFirstPayment(tx, {
       businessId,
@@ -227,8 +230,10 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
       discountAmountCents: discountAmountCents ?? 0,
       manual,
     });
-    return { outcome: { kind: "recorded" }, replaced, openedMembership: activation.openedMembership };
+    return { outcome: { kind: "recorded" }, replaced, openedMembership: activation.openedMembership, newPaymentId: activation.alreadyRecorded ? null : activation.payment.id };
   });
+
+  if (step.newPaymentId != null) void announcePaymentToTeams(step.newPaymentId);
 
   // A free listing account that paid by bank transfer has just become a client, so it gets a client's Payload tenant.
   if (step.openedMembership != null) await syncTenantForBusiness({ businessId, name: step.openedMembership.businessName });

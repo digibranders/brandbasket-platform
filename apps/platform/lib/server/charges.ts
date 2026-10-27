@@ -23,6 +23,7 @@ import { basketDeps } from "./add-ons";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
+import { announcePaymentToTeams } from "./teams";
 
 /** How many open charges the Billing page lists. More than this many unpaid extras at once is not a real case. */
 const OPEN_CHARGES_SHOWN = 20;
@@ -111,7 +112,7 @@ interface RecordInput {
 /** Records a verified charge payment under the business's billing lock, the lock every payment path takes. */
 async function recordVerifiedChargePayment({ confirmed, method, now }: RecordInput): Promise<ChargePaymentOutcome> {
   const provider = getBillingProvider();
-  const outcome = await getStaffDb().transaction(async (tx) => {
+  const { outcome, newPaymentId } = await getStaffDb().transaction(async (tx) => {
     await lockBusinessForBilling(tx, confirmed.businessId);
     const recorded = await recordChargePaymentWithInvoice(tx, {
       chargeId: confirmed.chargeId,
@@ -141,8 +142,10 @@ async function recordVerifiedChargePayment({ confirmed, method, now }: RecordInp
                 : "charge-amount-mismatch",
       });
     }
-    return recorded.outcome;
+    return { outcome: recorded.outcome, newPaymentId: recorded.alreadyRecorded ? null : recorded.payment.id };
   });
+  // Teams is told once the payment has committed, for a payment recorded for the first time.
+  if (newPaymentId !== null) void announcePaymentToTeams(newPaymentId);
   // A paid add-on is on; the provider is told to bill it from the next renewal, with the payment's transaction committed.
   if (outcome === "paid") await finishAddOnAfterPayment(basketDeps(), { businessId: confirmed.businessId, chargeId: confirmed.chargeId, now });
   return outcome;

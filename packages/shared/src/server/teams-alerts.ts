@@ -10,15 +10,11 @@ import {
   type AlertResult,
   type Database,
 } from "@brandbasket/db";
-import { teamsCard, teamsCardTitle, teamsSettingKey, TEAMS_DESTINATION_INFO, type TeamsDestination, type TeamsMessage } from "../lib/teams-webhook";
+import { formatIstTime, teamsCard, teamsCardTitle, teamsSettingKey, TEAMS_DESTINATION_INFO, type TeamsDestination, type TeamsMessage } from "../lib/teams-webhook";
 import { openSecret, sealSecret } from "./secret-seal";
 
 const POST_TIMEOUT_MS = 8_000;
 
-/** "26 Oct 2026, 5:54 pm IST": staff read Teams in India, so the test card says the time the way they do. */
-function istTime(now: Date): string {
-  return `${new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(now)} IST`;
-}
 
 /** What a Teams address is, as the console shows it. The address itself is never returned for display. */
 export type TeamsHookState =
@@ -130,7 +126,7 @@ export async function sendTeamsTest(
     subtitle: TEAMS_DESTINATION_INFO[destination].label,
     facts: [
       { name: "Sent by", value: by.email },
-      { name: "Time", value: istTime(by.now) },
+      { name: "Time", value: formatIstTime(by.now) },
     ],
     text: "If you can read this, alerts of this kind will arrive in this channel.",
   });

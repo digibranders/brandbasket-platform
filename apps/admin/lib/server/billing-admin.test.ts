@@ -34,6 +34,7 @@ import { loadManualCarriedCode, recordManualFirstPayment, resolveFlaggedPayment,
 import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { getStaffDb } from "./db";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
+import { announcePaymentToTeams } from "./teams-admin";
 
 // The real activation runs against a double of recordPaymentAndActivate, whose one-transaction and idempotency
 // guarantees are proven in packages/db. What is checked here is the dates and amounts it is handed, and how the
@@ -42,6 +43,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./billing-provider", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
+vi.mock("./teams-admin", () => ({ announcePaymentToTeams: vi.fn(async () => undefined) }));
 // Invoicing is covered by the payment invoicing integration test; here an invoice failure must not be the logged error.
 vi.mock("@brandbasket/shared/server/tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn(async () => null) }));
 vi.mock("@brandbasket/db", () => {
@@ -349,6 +351,17 @@ describe("recordManualFirstPayment", () => {
     await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
     expect(cancelled).not.toHaveBeenCalled();
     expect(String(logged.mock.calls[0]?.[0])).toMatch(/provider-cancel-failed .*ProviderNotConfigured/);
+  });
+
+  it("tells Teams about a payment recorded by hand, once, and not about one recorded before", async () => {
+    await recordManualFirstPayment(MANUAL, NOW);
+    expect(announcePaymentToTeams).toHaveBeenCalledTimes(1);
+    expect(announcePaymentToTeams).toHaveBeenCalledWith("payment-1");
+
+    vi.mocked(announcePaymentToTeams).mockClear();
+    vi.mocked(recordPaymentAndActivate).mockResolvedValueOnce({ payment: { id: "payment-1" } as Payment, alreadyRecorded: true, leadsMarkedPaid: 0 });
+    await recordManualFirstPayment(MANUAL, NOW);
+    expect(announcePaymentToTeams).not.toHaveBeenCalled();
   });
 
   it("records over a replaced checkout that was never paid, even while its late payment is under review", async () => {

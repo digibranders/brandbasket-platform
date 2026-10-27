@@ -114,14 +114,35 @@ export function describeError(error: unknown): DescribedError {
   return { ...errorLogInfo(error), constraint: constraintOf(error), ...providerErrorInfo(error), errorMessage: safeMessage };
 }
 
+/** Told about every billing line logged at error level (see onBillingError). */
+export type BillingErrorListener = (event: BillingLogEvent, fields: BillingLogFields) => void;
+
+/**
+ * Kept on globalThis: Next bundles the startup hook and the route handlers separately, so a module variable set at startup
+ * would not be the one the handlers see.
+ */
+const LISTENER_KEY = Symbol.for("brandbasket.billingErrorListener");
+type WithListener = { [LISTENER_KEY]?: BillingErrorListener };
+
+/** Registers the one listener told about billing errors (staff alerts); a second call replaces the first. */
+export function onBillingError(listener: BillingErrorListener): void {
+  (globalThis as WithListener)[LISTENER_KEY] = listener;
+}
+
 /**
  * Writes one structured billing log line: the prefix and event name as the message, then a JSON object of fields,
- * so a log search can filter on `event` and `businessId` alike.
+ * so a log search can filter on `event` and `businessId` alike. Error lines are also handed to the registered listener,
+ * which must never be able to break the code that logged.
  */
 export function logBillingEvent(level: "info" | "warn" | "error", event: BillingLogEvent, fields: BillingLogFields): void {
   const line = `${BILLING_LOG_PREFIX} ${event} ${JSON.stringify({ event, ...fields })}`;
   if (level === "error") {
     console.error(line);
+    try {
+      (globalThis as WithListener)[LISTENER_KEY]?.(event, fields);
+    } catch {
+      // An alert that fails is not worth losing the log line or the caller's flow.
+    }
   } else if (level === "warn") {
     console.warn(line);
   } else {

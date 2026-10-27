@@ -25,6 +25,7 @@ import { alertSignupLead } from "./signup-alert";
 import { ipRateLimitKey } from "./ip-key";
 import { getStaffDb } from "./db";
 import { signInCustomer } from "./customer-sign-in";
+import { announceCustomerToTeams } from "./teams";
 
 /*
  * The account sign-up: a business owner opens an account and its business, and is signed in. The account is opened with
@@ -214,6 +215,11 @@ async function recordLeadForSignup(signup: {
       phone: signup.phone,
     });
     alertSignupLead({ leadId: lead.id, name: signup.name, businessName: signup.businessName, email: signup.email, phone: signup.phone, plan: plan === "managed" ? "Managed Website" : null });
+    void announceCustomerToTeams({
+      businessId: signup.businessId,
+      event: "signed_up",
+      facts: [{ name: "Plan chosen", value: membershipTierForChoice(signup.choice) === null ? "None yet" : "Managed Website" }],
+    });
   } catch (error) {
     await reportServerError(error, { app: "platform", operation: "server_action", route: "/join", userId: signup.userId });
   }

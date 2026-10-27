@@ -1382,3 +1382,4 @@ export {
 } from "./queries/privacy-requests";
 export { clearNominee, findNominee, saveNominee, type Nominee } from "./queries/user-privacy-settings";
 export { listExportedSessions, readExportedAccount, readExportedBusiness, type ExportedSession } from "./queries/account-export";
+export { findBusinessAlertDetails, findPaymentAlertBase, type AlertPerson, type PaymentAlertBase } from "./queries/payment-alerts";

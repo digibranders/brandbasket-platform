@@ -1,6 +1,7 @@
 import { createAppEmailTransport, onboardingSentEmail } from "@brandbasket/email";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { notifyTeamOnboardingSent } from "./onboarding-alert";
+import { announceCustomerToTeams } from "./teams";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@brandbasket/db", () => ({ FIRST_PREVIEW_DUE_HOURS: 48 }));
@@ -10,6 +11,7 @@ vi.mock("@brandbasket/email", () => ({
   onboardingSentEmail: vi.fn(),
 }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn(() => ({ name: "staff-db" })) }));
+vi.mock("./teams", () => ({ announceCustomerToTeams: vi.fn() }));
 vi.mock("./env", () => ({ serverEnv: () => ({ ADMIN_ORIGIN: "http://admin.localhost:3001" }) }));
 
 const send = vi.fn();
@@ -41,6 +43,11 @@ describe("notifyTeamOnboardingSent", () => {
       previewDueHours: 48,
     });
     expect(send).toHaveBeenCalledWith(message);
+    expect(announceCustomerToTeams).toHaveBeenCalledWith({
+      businessId: "business-1",
+      event: "setup_sent",
+      facts: [{ name: "First preview due in", value: "48 hours" }],
+    });
   });
 
   it("falls back to the default team inbox when none is configured", async () => {

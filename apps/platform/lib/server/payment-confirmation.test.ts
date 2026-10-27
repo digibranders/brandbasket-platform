@@ -27,6 +27,7 @@ import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
 import { notifyTeamOnboardingSent } from "./onboarding-alert";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
+import { announcePaymentToTeams } from "./teams";
 import { confirmFirstPayment, verifyCheckoutFor } from "./payment-confirmation";
 
 // The database is a double: that the payment, the subscription, the lead and the submission really commit (or roll
@@ -40,6 +41,7 @@ vi.mock("@brandbasket/shared/server/billing-activation", () => ({ activateFirstP
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./onboarding-alert", () => ({ notifyTeamOnboardingSent: vi.fn() }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
+vi.mock("./teams", () => ({ announcePaymentToTeams: vi.fn(async () => undefined) }));
 vi.mock("./onboarding", () => {
   class MockStepRefusedError extends Error {}
   return { sendOnboardingWithin: vi.fn(), StepRefusedError: MockStepRefusedError };
@@ -276,6 +278,32 @@ describe("confirmFirstPayment for the Premium membership", () => {
 
     await confirmFirstPayment(tenant, { token }, NOW);
     expect(syncTenantForBusiness).not.toHaveBeenCalled();
+  });
+});
+
+describe("telling Teams about a confirmed payment", () => {
+  it("announces the payment once, after it has committed", async () => {
+    const { token, providerSubscriptionId } = await checkoutToken();
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(providerSubscriptionId));
+    vi.mocked(announcePaymentToTeams).mockImplementation(async () => {
+      calls.push("teams");
+    });
+
+    await confirmFirstPayment(tenant, { token }, NOW);
+
+    expect(announcePaymentToTeams).toHaveBeenCalledTimes(1);
+    expect(announcePaymentToTeams).toHaveBeenCalledWith("pay-1");
+    expect(calls.indexOf("teams")).toBeGreaterThan(calls.indexOf("send"));
+  });
+
+  it("announces nothing for a payment that was recorded before", async () => {
+    const { token, providerSubscriptionId } = await checkoutToken();
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(providerSubscriptionId));
+    vi.mocked(activateFirstPayment).mockImplementation(async () => ({ payment: { id: "pay-1" } as Payment, alreadyRecorded: true, leadsMarkedPaid: 0, openedMembership: null, discountEnded: false }));
+
+    await confirmFirstPayment(tenant, { token }, NOW);
+
+    expect(announcePaymentToTeams).not.toHaveBeenCalled();
   });
 });
 

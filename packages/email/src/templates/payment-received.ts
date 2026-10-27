@@ -1,5 +1,5 @@
-import { assertWebUrl, escapeHtml, sanitizeHeaderValue, type EmailMessage } from "../message";
-import { emailBrandName } from "../brand";
+import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { receiptButton, receiptDocument, receiptParagraph, receiptRows } from "../receipt";
 
 /** One line of what was paid for. A discount is a line with a negative amount. */
 export interface PaymentReceivedLine {
@@ -29,11 +29,6 @@ export interface PaymentReceivedInput {
   readonly nextPayment: { readonly amountCents: number; readonly dueOn: Date } | null;
 }
 
-const INK = "#0c1e2e";
-const MUTED = "#565d64";
-const LINE = "#e8e7e3";
-const HEADER = "#102234";
-const FONT = "-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
 const MINOR_UNITS_PER_MAJOR = 100;
 const LOCALE = "en-IN";
 const DATE_ZONE = "Asia/Kolkata";
@@ -51,26 +46,12 @@ function longDate(date: Date): string {
   return new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "long", year: "numeric", timeZone: DATE_ZONE }).format(date);
 }
 
-function row(label: string, amount: string, options: { readonly total?: boolean } = {}): string {
-  const border = options.total === true ? `border-top:1px solid ${INK};` : `border-top:1px solid ${LINE};`;
-  const weight = options.total === true ? "font-weight:600;" : "";
-  const labelColor = options.total === true ? "" : `color:${MUTED};`;
-  const padding = options.total === true ? "12px 0" : "10px 0";
-  return [
-    "<tr>",
-    `<td style="padding:${padding};${border}${labelColor}${weight}">${escapeHtml(label)}</td>`,
-    `<td align="right" style="padding:${padding};${border}${weight}white-space:nowrap">${escapeHtml(amount)}</td>`,
-    "</tr>",
-  ].join("");
-}
-
 /**
  * Sent when a payment has been received and recorded: a short receipt with what was paid for, the total, the GST inside it, a
  * button to the tax invoice and the date of the next payment. One template for every kind of payment (the first, a
  * renewal, an add-on); the caller says what each line is called.
  */
 export function paymentReceivedEmail(input: PaymentReceivedInput): EmailMessage {
-  const brand = emailBrandName();
   for (const line of input.lines) assertMinorUnits(line.amountCents, `The amount of "${line.label}"`);
   assertMinorUnits(input.gstCents, "gstCents");
   assertMinorUnits(input.totalCents, "totalCents");
@@ -99,39 +80,24 @@ export function paymentReceivedEmail(input: PaymentReceivedInput): EmailMessage 
     help,
   ].join("\n\n");
 
-  const rows = [
-    ...input.lines.map((line) => row(line.label, money(line.amountCents, input.currency))),
-    row("Total paid", total, { total: true }),
-    row(gstLabel, money(input.gstCents, input.currency)),
-  ].join("\n");
+  const rows = receiptRows(
+    [
+      ...input.lines.map((line) => ({ label: line.label, value: money(line.amountCents, input.currency) })),
+      { label: "Total paid", value: total, strong: true },
+      { label: gstLabel, value: money(input.gstCents, input.currency) },
+    ],
+    { wide: true },
+  );
 
-  const bodyHtml = [
-    "<!doctype html>",
-    '<html lang="en">',
-    "<head>",
-    '<meta charset="utf-8" />',
-    '<meta name="viewport" content="width=device-width, initial-scale=1" />',
-    `<title>${escapeHtml(subject)}</title>`,
-    "</head>",
-    `<body style="margin:0;padding:0;background:#ffffff;font-family:${FONT};color:${INK}">`,
-    '<div style="display:none;max-height:0;overflow:hidden">Thank you. Your GST invoice is ready to download.</div>',
-    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px">',
-    '<table role="presentation" width="520" cellpadding="0" cellspacing="0" style="width:100%;max-width:520px">',
-    `<tr><td style="padding-bottom:36px;border-bottom:3px solid ${HEADER}"><img src="${escapeHtml(logoUrl)}" width="180" alt="${escapeHtml(brand)}" style="display:block;border:0;height:auto"></td></tr>`,
-    `<tr><td style="padding:32px 0 6px;font-size:14px;color:${MUTED}">Receipt for ${escapeHtml(input.businessName)}</td></tr>`,
-    `<tr><td style="padding:0 0 24px;font-size:24px;line-height:1.3;font-weight:500">We received your payment of ${escapeHtml(total)} on ${escapeHtml(paidOn)}.</td></tr>`,
-    `<tr><td style="padding:0 0 28px;font-size:15px;line-height:1.65;color:#2f3f4d;overflow-wrap:anywhere">${escapeHtml(intro)}</td></tr>`,
-    `<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px">`,
-    rows,
-    "</table></td></tr>",
-    `<tr><td style="padding:28px 0 32px"><a href="${escapeHtml(invoiceUrl)}" style="display:inline-block;background:${HEADER};color:#ffffff;font-size:14px;font-weight:500;text-decoration:none;padding:12px 20px;border-radius:6px">Download GST invoice</a></td></tr>`,
-    ...(next === null ? [] : [`<tr><td style="padding:0 0 32px;font-size:14px;line-height:1.65;color:${MUTED}">${escapeHtml(next)}</td></tr>`]),
-    `<tr><td style="padding-top:20px;border-top:1px solid ${LINE};font-size:12px;line-height:1.7;color:#7b8189">Questions? Reply to this email or write to <a href="mailto:support@brandbasket.in" style="color:#7b8189">support@brandbasket.in</a>.<br>${escapeHtml(brand)}</td></tr>`,
-    "</table>",
-    "</td></tr></table>",
-    "</body>",
-    "</html>",
-  ].join("\n");
+  const bodyHtml = receiptDocument({
+    title: subject,
+    kicker: `Receipt for ${input.businessName}`,
+    heading: `We received your payment of ${total} on ${paidOn}.`,
+    body: [receiptParagraph(intro), rows, receiptButton(invoiceUrl, "Download GST invoice"), ...(next === null ? [] : [receiptParagraph(next)])],
+    footer: [help],
+    preheader: "Thank you. Your GST invoice is ready to download.",
+    logoUrl,
+  });
 
   return {
     to: sanitizeHeaderValue(input.to),

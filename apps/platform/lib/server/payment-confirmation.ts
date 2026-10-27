@@ -30,6 +30,7 @@ import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
 import { notifyTeamOnboardingSent } from "./onboarding-alert";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
+import { announcePaymentToTeams } from "./teams";
 
 /**
  * What happened to the onboarding when a first payment was recorded:
@@ -259,6 +260,8 @@ export async function confirmFirstPayment(
 
   // Filled when this payment was the last month of a code's discount: the provider is moved once the transaction commits.
   const discountEndedFor: string[] = [];
+  // The payment this confirmation recorded for the first time: Teams is told once the transaction has committed.
+  const announce: string[] = [];
   const confirmation = await getStaffDb().transaction(async (tx): Promise<PaymentConfirmation> => {
     await lockBusinessForBilling(tx, tenant.businessId);
 
@@ -286,7 +289,7 @@ export async function confirmFirstPayment(
     const verdict = await applicability(tx, tenant.businessId, subscription, confirmed, now);
     if (verdict.kind === "unapplied") {
       const { reason } = verdict;
-      await recordUnappliedPayment(tx, {
+      const unapplied = await recordUnappliedPayment(tx, {
         businessId: tenant.businessId,
         subscriptionId: subscription.id,
         provider: provider.name,
@@ -299,6 +302,7 @@ export async function confirmFirstPayment(
         now,
         ...(confirmed.method === undefined ? {} : { method: confirmed.method }),
       });
+      if (!unapplied.alreadyRecorded) announce.push(unapplied.payment.id);
       logRefusal(withSubscription, reason);
       return NEEDS_ATTENTION;
     }
@@ -315,6 +319,7 @@ export async function confirmFirstPayment(
         paidThroughAt: addMonthsUtc(confirmed.paidAt, 1),
         ...(confirmed.method === undefined ? {} : { method: confirmed.method }),
       });
+      if (!reactivation.alreadyRecorded) announce.push(reactivation.payment.id);
       if (reactivation.discountEnded) discountEndedFor.push(subscription.id);
       return { kind: "reactivated" };
     }
@@ -331,6 +336,7 @@ export async function confirmFirstPayment(
       discountAmountCents: subscription.discountAmountCents,
       ...(confirmed.method === undefined ? {} : { method: confirmed.method }),
     });
+    if (!activation.alreadyRecorded) announce.push(activation.payment.id);
     if (activation.discountEnded) discountEndedFor.push(subscription.id);
 
     if (activation.openedMembership !== null) return { kind: "membership-opened" };
@@ -344,6 +350,7 @@ export async function confirmFirstPayment(
   });
 
   for (const subscriptionId of discountEndedFor) await moveProviderAfterDiscountEnds(basketDeps(), subscriptionId, now);
+  for (const paymentId of announce) void announcePaymentToTeams(paymentId);
   // After the commit, as for a setup link: Payload's database is not ours, and the sync logs rather than throws.
   if (confirmation.kind === "membership-opened") {
     await syncTenantForBusiness({ businessId: tenant.businessId, name: tenant.businessName });
