@@ -28,9 +28,8 @@ export function customerEventTeamsCard(input: CustomerCardInput): TeamsMessage {
     title: `${TITLES[input.event]}: ${input.business.name}`,
     facts: [
       { name: "Customer", value: input.customer.name },
+      { name: "Mobile", value: input.customer.phone },
       { name: "Email", value: input.customer.email },
-      { name: "Phone", value: input.customer.phone },
-      { name: "Business", value: input.business.name },
       { name: "Website", value: input.business.websiteUrl },
       ...(input.facts ?? []),
     ],

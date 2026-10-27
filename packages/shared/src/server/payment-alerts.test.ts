@@ -8,7 +8,6 @@ vi.mock("./teams-alerts", () => ({ sendTeamsAlert: vi.fn(async () => undefined) 
 
 const queries = vi.hoisted(() => ({
   findAddOnSubscriptionForPayment: vi.fn(),
-  findBillingProfile: vi.fn(),
   findChargeByPaymentId: vi.fn(),
   findPaymentAlertBase: vi.fn(),
   findPaymentForInvoice: vi.fn(),
@@ -42,7 +41,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   queries.findPaymentForInvoice.mockResolvedValue({ provider: "razorpay", providerPaymentId: "pay_Qx", method: "upi", cardNetwork: null, cardType: null, cardLast4: null, upiVpa: "asha@okhdfc", manualReference: null });
   queries.findTaxInvoiceByPaymentId.mockResolvedValue({ number: "BB/2026-27/0001", totalCents: 299_900, cgstCents: 22_874, sgstCents: 22_874, igstCents: 0 });
-  queries.findBillingProfile.mockResolvedValue({ legalName: "Rao Clinic LLP", gstin: "27AAPFU0939F1ZV" });
   queries.findSubscriptionById.mockResolvedValue({ id: "sub-1", adCreditCents: 0, paidThroughAt: new Date("2026-11-26T12:24:17.000Z") });
   queries.findPaymentInvoiceBasis.mockResolvedValue({
     netAmountCents: 0,
@@ -57,7 +55,7 @@ describe("announcePayment", () => {
     queries.findPaymentAlertBase.mockResolvedValue(base("initial"));
     await announcePayment(DB, SECRET, "pay-1", ORIGIN);
     const card = sent();
-    for (const part of ["New customer paid: ₹2,999", "Asha Rao", "asha@example.com", "Rao Clinic", "Managed Website", "UPI (asha@okhdfc)", "BB/2026-27/0001", "Rao Clinic LLP, GSTIN 27AAPFU0939F1ZV", "https://console.example/clients/biz-1"]) {
+    for (const part of ["New customer paid: ₹2,999", "Asha Rao", "asha@example.com", "Rao Clinic", "Managed Website", "UPI (asha@okhdfc)", "BB/2026-27/0001", "+91 98200 11111", "https://console.example/clients/biz-1"]) {
       expect(card).toContain(part);
     }
     expect(card).toContain("₹457.48 GST inside");
@@ -76,8 +74,7 @@ describe("announcePayment", () => {
     queries.findChargeByPaymentId.mockResolvedValue({ description: "Extra change hours", amountCents: 285_000 });
     queries.findPaymentForInvoice.mockResolvedValue({ provider: "manual", providerPaymentId: "manual_charge_1", method: null, cardNetwork: null, cardType: null, cardLast4: null, upiVpa: null, manualReference: "NEFT 123" });
     queries.findTaxInvoiceByPaymentId.mockResolvedValue(null);
-    queries.findBillingProfile.mockResolvedValue(null);
-    await announcePayment(DB, SECRET, "pay-1", ORIGIN);
+      await announcePayment(DB, SECRET, "pay-1", ORIGIN);
     const card = sent();
     expect(card).toContain("Extra change hours");
     expect(card).toContain("Recorded by hand, reference NEFT 123");
@@ -98,7 +95,7 @@ describe("announcePayment", () => {
   it("never throws, and logs without the customer's details, when something cannot be read", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
     queries.findPaymentAlertBase.mockResolvedValue(base("initial"));
-    queries.findBillingProfile.mockRejectedValue(new Error("connection lost for asha@example.com"));
+    queries.findTaxInvoiceByPaymentId.mockRejectedValue(new Error("connection lost for asha@example.com"));
     await expect(announcePayment(DB, SECRET, "pay-1", ORIGIN)).resolves.toBeUndefined();
     expect(sendTeamsAlert).not.toHaveBeenCalled();
     expect(JSON.stringify(logged.mock.calls)).toContain("[teams-alert]");

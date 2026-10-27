@@ -32,18 +32,10 @@ const ATTENTION_LABELS: Readonly<Record<string, string>> = {
 /** Attention reasons where the money bought nothing: the title says so instead of "received". */
 const NOTHING_BOUGHT = new Set(["checkout_replaced", "already_paid", "amount_mismatch", "upgrade_not_applied", "add_on_not_applied"]);
 
-export interface PaymentCardLine {
-  readonly title: string;
-  readonly listCents: number;
-  /** What the package offer took off this line, or 0. */
-  readonly offerCents: number;
-}
-
 export interface PaymentCardInput {
   readonly kind: PaymentCardKind;
   readonly amountCents: number;
   readonly currency: MoneyCurrency;
-  readonly paidAt: Date | null;
   readonly attentionReason: string | null;
   /** Which payment of the business this is: 1 for a new customer's first. */
   readonly paymentNumber: number;
@@ -52,14 +44,9 @@ export interface PaymentCardInput {
   readonly method: { readonly method: string | null; readonly cardNetwork: string | null; readonly cardType: string | null; readonly cardLast4: string | null; readonly upiVpa: string | null; readonly manualReference: string | null };
   readonly customer: { readonly name: string | null; readonly email: string | null; readonly phone: string | null };
   readonly business: { readonly name: string; readonly websiteUrl: string | null };
-  readonly lines: readonly PaymentCardLine[];
-  /** The referral or coupon code on the subscription, with what it takes off a month. */
-  readonly code: { readonly code: string; readonly takesOffCents: number } | null;
-  /** The ad money a month this checkout earned, or 0. */
-  readonly adCreditCents: number;
-  readonly paidThrough: Date | null;
-  readonly invoice: { readonly number: string; readonly totalCents: number; readonly gstCents: number } | null;
-  readonly billing: { readonly legalName: string; readonly gstin: string | null } | null;
+  /** What was bought: the services a plan payment billed, the add-on, or the one-off charge's description. */
+  readonly services: readonly string[];
+  readonly invoice: { readonly number: string; readonly gstCents: number } | null;
   readonly consoleUrl: string;
 }
 
@@ -87,29 +74,20 @@ export function paymentTeamsCard(input: PaymentCardInput): TeamsMessage {
     : newCustomer
       ? `New customer paid: ${amount}`
       : `${KIND_LABELS[input.kind]} received: ${amount}`;
-  const offer = input.lines.reduce((total, line) => total + line.offerCents, 0);
-  const gst = input.invoice === null ? null : `${money(input.invoice.gstCents)} GST inside`;
   return teamsCard({
     title,
     subtitle: `${input.business.name}${bought ? `, ${KIND_LABELS[input.kind].toLowerCase()}` : ""}`,
     facts: [
       { name: "Customer", value: input.customer.name },
+      { name: "Mobile", value: input.customer.phone },
       { name: "Email", value: input.customer.email },
-      { name: "Phone", value: input.customer.phone },
-      { name: "Business", value: input.business.name },
       { name: "Website", value: input.business.websiteUrl },
-      { name: "Paid", value: gst === null ? amount : `${amount} (${gst})` },
-      ...input.lines.map((line) => ({ name: line.title, value: money(line.listCents) })),
-      { name: "Package offer", value: offer > 0 ? `-${money(offer)}` : null },
-      { name: input.code === null ? "Code" : `Code ${input.code.code}`, value: input.code !== null && input.code.takesOffCents > 0 ? `-${money(input.code.takesOffCents)} a month` : input.code === null ? null : "No discount" },
-      { name: "Ad money", value: input.adCreditCents > 0 ? `${money(input.adCreditCents)} a month` : null },
-      { name: "Payment", value: input.paymentNumber > 1 ? `Payment number ${input.paymentNumber}` : "The customer's first payment" },
+      { name: "Paid", value: input.invoice === null ? amount : `${amount} (${money(input.invoice.gstCents)} GST inside)` },
+      { name: "Bought", value: input.services.join(", ") },
       { name: "Paid with", value: describePaymentMethod(input.method) },
-      { name: "Paid on", value: input.paidAt === null ? null : formatIstTime(input.paidAt) },
-      { name: "Runs until", value: bought && input.paidThrough !== null ? formatIstTime(input.paidThrough) : null },
-      { name: "Invoice", value: input.invoice === null ? null : `${input.invoice.number}, ${money(input.invoice.totalCents)}` },
-      { name: "Billed to", value: input.billing === null ? null : `${input.billing.legalName}${input.billing.gstin === null ? "" : `, GSTIN ${input.billing.gstin}`}` },
-      { name: "Provider id", value: `${input.provider} ${input.providerPaymentId}` },
+      { name: "Invoice", value: input.invoice?.number },
+      // Only for money that bought nothing: staff need it to find the payment at the provider and refund it.
+      { name: "Provider id", value: bought ? null : `${input.provider} ${input.providerPaymentId}` },
     ],
     text: attention === null ? null : (ATTENTION_LABELS[attention] ?? attention),
     open: { label: "Open the client", url: input.consoleUrl },
@@ -145,9 +123,8 @@ export function planStatusTeamsCard(input: PlanStatusCardInput): TeamsMessage {
     title: `${PLAN_STATUS_TITLES[input.status]}: ${input.business.name}`,
     facts: [
       { name: "Customer", value: input.customer.name },
+      { name: "Mobile", value: input.customer.phone },
       { name: "Email", value: input.customer.email },
-      { name: "Phone", value: input.customer.phone },
-      { name: "Business", value: input.business.name },
       { name: "Website", value: input.business.websiteUrl },
       { name: "Razorpay says", value: input.providerStatus },
       { name: "Paid until", value: input.paidThrough === null ? null : formatIstTime(input.paidThrough) },
