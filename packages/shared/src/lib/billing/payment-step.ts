@@ -220,7 +220,7 @@ export function billingBanner({
 /** Where a payment that could not be applied lands: Check and send, with the "we've received it" message. */
 export const PAYMENT_RECEIVED_HREF = `${PAYMENT_STEP_HREF}?payment=received`;
 
-/** Where a confirmed payment lands: the project once it is sent, otherwise back on Check and send. */
+/** Where a confirmed payment lands: the Website page once it is sent, otherwise back on Check and send. */
 export function afterPaymentHref(projectStillOpen: boolean): string {
-  return projectStillOpen ? PAYMENT_STEP_HREF : "/project";
+  return projectStillOpen ? PAYMENT_STEP_HREF : "/website";
 }

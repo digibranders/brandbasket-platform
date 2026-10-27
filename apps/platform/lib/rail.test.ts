@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
 import { DEALS_PATH } from "@/lib/deals";
 import { REVIEWS_PATH } from "@/lib/owner-replies";
 import { isCurrent, linkIsCurrent, railSections, searchRail } from "@/lib/rail";
+import { WEBSITE_PATH } from "@/lib/website/tabs";
 
 const FULL = { quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, listingClaim: false, todoCount: 3 } as const;
 
@@ -31,11 +33,15 @@ describe("railSections", () => {
     expect(railSections(unpaid).flatMap((section) => section.links).some((link) => link.count !== undefined)).toBe(false);
   });
 
-  it("opens the website on its setup until it is sent, then on the project", () => {
+  it("opens the website on its Progress page whether or not setup is sent, with the pages that are not tabs inside", () => {
     const website = (done: boolean) => railSections({ ...FULL, websiteSetupDone: done })[1]?.links[0];
-    expect(website(false)?.href).toBe("/onboarding");
-    expect(website(false)?.children?.[0]?.label).toBe("Set up your website");
-    expect(website(true)?.href).toBe("/project");
+    expect(website(false)).toMatchObject({ href: WEBSITE_PATH, label: "Website", icon: "website" });
+    expect(website(true)?.href).toBe(WEBSITE_PATH);
+    expect(website(false)?.children?.map((child) => [child.label, child.href])).toEqual([
+      ["Chatbot name", CHATBOT_NAME_PATH],
+      ["Authors", "/content/authors"],
+      ["Categories", "/content/categories"],
+    ]);
   });
 
   it("has no Services section for a plan without the website", () => {
@@ -55,9 +61,10 @@ describe("current link", () => {
     expect(isCurrent("/contents", "/content")).toBe(false);
   });
 
-  it("marks the website current on any of its pages", () => {
+  it("marks the website current on any of its pages, tabs or not", () => {
     const website = railSections(FULL)[1]?.links[0];
-    expect(website === undefined ? false : linkIsCurrent(website, "/domain")).toBe(true);
+    expect(website === undefined ? false : linkIsCurrent(website, "/website/pages")).toBe(true);
+    expect(website === undefined ? false : linkIsCurrent(website, "/content/authors")).toBe(true);
   });
 });
 
@@ -65,7 +72,7 @@ describe("searchRail", () => {
   it("starts with Ask for a change and finds pages inside a group", () => {
     const sections = railSections(FULL);
     expect(searchRail(sections, "")[0]?.label).toBe("Ask for a change");
-    expect(searchRail(sections, "BLOG").map((target) => target.label)).toEqual(["Website: Blog"]);
+    expect(searchRail(sections, "AUTHORS").map((target) => target.label)).toEqual(["Website: Authors"]);
   });
 });
 

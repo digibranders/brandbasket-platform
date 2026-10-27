@@ -1,6 +1,7 @@
 import { ADD_ONS_PATH } from "@brandbasket/shared/lib/billing/add-ons";
-import { CHATBOT_LEADS_PATH, CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
+import { CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
 import { ASK_FOR_A_CHANGE_PATH, REQUESTS_PATH } from "@/lib/requests/links";
+import { WEBSITE_PATH } from "@/lib/website/tabs";
 
 /** The rail's icons by name; components/v2/rail-icon.tsx draws them. */
 export type RailIcon = "overview" | "requests" | "todo" | "website" | "reviews" | "deals" | "profile" | "services" | "billing" | "settings";
@@ -63,19 +64,14 @@ function requestsLink(count: number | undefined): RailLink {
   return { href: REQUESTS_PATH, label: "Requests", icon: "requests", ...(count !== undefined && count > 0 ? { count } : {}) };
 }
 
-/** The website and its pages. Plan 33 folds these into the website's own tabs. */
-function websiteLink(setupDone: boolean): RailLink {
-  const start: RailTarget = setupDone ? { href: "/project", label: "Your project" } : { href: "/onboarding", label: "Set up your website" };
+/** The website opens on its Progress tab. Its tabs are the Website workspace's; these are the pages that are not tabs. */
+function websiteLink(): RailLink {
   return {
-    href: start.href,
+    href: WEBSITE_PATH,
     label: "Website",
     icon: "website",
     children: [
-      start,
-      { href: "/domain", label: "Your domain" },
-      { href: CHATBOT_LEADS_PATH, label: "Chatbot leads" },
       { href: CHATBOT_NAME_PATH, label: "Chatbot name" },
-      { href: "/content/blog", label: "Blog" },
       { href: "/content/authors", label: "Authors" },
       { href: "/content/categories", label: "Categories" },
     ],
@@ -93,7 +89,7 @@ export function railSections(input: RailInput): readonly RailSection[] {
   const todo: RailLink = { href: TODO_HREF, label: "To do", icon: "todo", ...(input.todoCount > 0 ? { count: input.todoCount } : {}) };
   return [
     { label: null, links: input.hasAccess ? [OVERVIEW, todo, requests] : [OVERVIEW, requests] },
-    ...(input.hasWebsite ? [{ label: "Services", links: [websiteLink(input.websiteSetupDone)] }] : []),
+    ...(input.hasWebsite ? [{ label: "Services", links: [websiteLink()] }] : []),
     ...(input.listingClaim ? [{ label: "Directory", links: [REVIEWS, DEALS] }] : []),
     { label: "Account", links: [PROFILE, SERVICES, BILLING, SETTINGS] },
   ];
