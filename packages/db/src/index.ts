@@ -159,9 +159,12 @@ export {
 } from "./queries/staff";
 export {
   findEmail,
+  listEmailDeliveries,
   listRecentEmails,
   purgeOldEmailMessages,
   recordEmail,
+  SIGN_IN_LINK_TEMPLATES,
+  updateEmailDelivery,
   type RecordedEmail,
   type StoredEmail,
 } from "./queries/emails";

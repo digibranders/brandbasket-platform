@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { purgeOldEmailMessages } from "./queries/emails";
+import { findEmail, listEmailDeliveries, purgeOldEmailMessages, recordEmail, updateEmailDelivery } from "./queries/emails";
 import { emailMessages } from "./schema";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
@@ -42,3 +42,25 @@ describe("purgeOldEmailMessages", () => {
     expect(left.map((row) => row.template).sort()).toEqual(["lead-received", "setup-link"]);
   });
 });
+
+describe("email delivery status", () => {
+  const base = { toAddress: "vikram@example.in", subject: "Your setup link", template: "setup-link", bodyText: "b", bodyHtml: "<p>b</p>" };
+
+  it("says sent for a Brevo row and local only for an outbox row when the writer gives no status", async () => {
+    await recordEmail(dbs.staff.db, { ...base, transport: "brevo" });
+    await recordEmail(dbs.staff.db, { ...base, transport: "outbox" });
+    const rows = await listEmailDeliveries(dbs.staff.db, { failedOnly: false, search: null, limit: 10 });
+    expect(rows.map((row) => row.status).sort()).toEqual(["local_only", "sent"]);
+  });
+
+  it("lists failed rows only, searches address, subject and template, and records a resend", async () => {
+    await recordEmail(dbs.staff.db, { ...base, transport: "brevo", status: "failed", error: "Brevo answered 400" });
+    await recordEmail(dbs.staff.db, { ...base, toAddress: "kavya@example.in", subject: "Reply to your request", template: "support-reply", transport: "brevo" });
+    const [failed] = await listEmailDeliveries(dbs.staff.db, { failedOnly: true, search: null, limit: 10 });
+    expect(failed).toMatchObject({ status: "failed", error: "Brevo answered 400", attempts: 1, bodyRedacted: false });
+    expect((await listEmailDeliveries(dbs.staff.db, { failedOnly: false, search: "kavya", limit: 10 })).map((row) => row.template)).toEqual(["support-reply"]);
+    await updateEmailDelivery(dbs.staff.db, failed?.id ?? "", { status: "sent", providerMessageId: "<abc@brevo>", error: null, now: NOW });
+    expect(await findEmail(dbs.staff.db, failed?.id ?? "")).toMatchObject({ status: "sent", providerMessageId: "<abc@brevo>", error: null, attempts: 2, lastAttemptAt: NOW });
+  });
+});
+
