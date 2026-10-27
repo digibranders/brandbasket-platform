@@ -36,7 +36,7 @@ export function getAppDb(): Database {
  *   with and whether the package offer is given up. They write nothing. The business id comes only from the session; the
  *   provider callbacks in billing.ts look a subscription or charge up by the provider's own id, to tell whose webhook or
  *   confirmation it is.
- * - app/api/site/info/route.ts, app/api/site/availability/route.ts, lib/server/booking-otp.ts (POST
+ * - app/api/site/info/route.ts, app/api/site/events/route.ts, app/api/site/availability/route.ts, lib/server/booking-otp.ts (POST
  *   /api/site/bookings/otp) and lib/server/booking-confirm.ts (POST /api/site/bookings/confirm), because the site
  *   token has already proven the business, so there is no customer session to scope a connection under -- and the
  *   public role can't read module settings, services, opening hours or existing appointments, all of which these

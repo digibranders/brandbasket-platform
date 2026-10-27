@@ -18,14 +18,16 @@ interface AskFormProps {
   readonly options: readonly { readonly value: ChangeKind; readonly label: string }[];
   /** A fresh key for this form, so sending it twice by accident makes one request. */
   readonly submissionKey: string;
-  /** The kind to start on, from the link (lib/requests/form.ts readAskDefaults). The first option when left out. */
-  readonly defaultKind?: ChangeKind;
+  /** The kind to start on, from the link (lib/requests/form.ts readAskDefaults) or a post's Change link. The first option when left out. */
+  readonly defaultKind?: ChangeKind | undefined;
   /** The page to fill in, from the link. Empty when left out. */
   readonly defaultPage?: string;
+  /** What the box starts with (the line naming a post). */
+  readonly defaultBody?: string | undefined;
 }
 
 /** The form behind "Ask for a change": what it is about, which page for a website change, what to change, up to 3 screenshots. */
-export function AskForm({ options, submissionKey, defaultKind, defaultPage = "" }: AskFormProps): ReactElement {
+export function AskForm({ options, submissionKey, defaultKind, defaultPage = "", defaultBody }: AskFormProps): ReactElement {
   const [state, action, pending] = useActionState(askForChangeAction, INITIAL_SUPPORT_STATE);
   const [kind, setKind] = useState<ChangeKind | undefined>(defaultKind ?? options[0]?.value);
   const [ids, setIds] = useState<readonly string[]>([]);
@@ -86,6 +88,7 @@ export function AskForm({ options, submissionKey, defaultKind, defaultPage = "" 
           name="body"
           required
           rows={6}
+          defaultValue={defaultBody}
           maxLength={5000}
           disabled={pending}
           placeholder="Tell us what to change. A screenshot helps."

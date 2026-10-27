@@ -51,6 +51,26 @@ describe("resultLines", () => {
     expect(resultLines({ services: ["social"], chatbotLeads: 9, social: null, search: null })).toEqual([]);
   });
 
+  it("uses the website enquiries line when the site sent events", () => {
+    const enquiries = { call: 3, whatsapp: 2, form: 1, chatbot: 4, previous: 0 };
+    expect(resultLines({ services: ["website"], chatbotLeads: 4, enquiries, social: null, search: null })).toEqual([
+      { service: "website", figure: "10", headline: "people contacted you from your website", detail: "3 calls, 2 WhatsApp, 1 form, 4 chatbot" },
+    ]);
+  });
+
+  it("keeps the chatbot line when there are no site events", () => {
+    const enquiries = { call: 0, whatsapp: 0, form: 0, chatbot: 14, previous: 0 };
+    expect(resultLines({ services: ["website"], chatbotLeads: 14, enquiries, social: null, search: null })).toEqual([
+      { service: "website", figure: "14", headline: "people left their details with your chatbot", detail: null },
+    ]);
+    expect(resultLines({ services: ["website"], chatbotLeads: 14, enquiries: null, social: null, search: null })[0]?.headline).toBe("people left their details with your chatbot");
+  });
+
+  it("does not show website enquiries to a customer without the website", () => {
+    const enquiries = { call: 3, whatsapp: 0, form: 0, chatbot: 0, previous: 0 };
+    expect(resultLines({ services: ["social"], chatbotLeads: 0, enquiries, social: null, search: null })).toEqual([]);
+  });
+
   it("writes the ads line with spend and posts", () => {
     const social = { ...blank, adEnquiries: 21, adSpendCents: 624000, adBudgetCents: 1000000, postsPublished: 12 };
     expect(resultLines({ services: ["social"], chatbotLeads: 0, social, search: null })).toEqual([

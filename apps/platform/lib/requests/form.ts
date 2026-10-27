@@ -2,6 +2,7 @@ import type { ChangeKind } from "@brandbasket/db/change-states";
 import { SUPPORT_ATTACHMENT_LIMIT, type SupportCategory } from "@brandbasket/shared/lib/support";
 import { z } from "zod";
 import type { ServiceKey } from "@/lib/first-look";
+import { dueLabel } from "@/lib/social/week";
 
 /** What a request can be about, in the words of the form. */
 export const KIND_LABELS: Readonly<Record<ChangeKind, string>> = {
@@ -27,6 +28,16 @@ const SERVICE_KINDS: readonly ChangeKind[] = ["website", "social", "search"];
 /** The kinds a customer can pick: the services they have bought, then Billing and Something else. */
 export function kindOptions(services: readonly ServiceKey[]): readonly { readonly value: ChangeKind; readonly label: string }[] {
   return KIND_ORDER.filter((kind) => !SERVICE_KINDS.includes(kind) || services.includes(kind as ServiceKey)).map((value) => ({ value, label: KIND_LABELS[value] }));
+}
+
+/** The kind to start on: the one asked for in the address when this customer is offered it, else the first choice. */
+export function pickKind(requested: string | undefined, options: readonly { readonly value: ChangeKind }[]): ChangeKind | undefined {
+  return options.find((option) => option.value === requested)?.value ?? options[0]?.value;
+}
+
+/** What the box starts with when Ask for a change is opened from a post: `About the post "Year-end check-up" (Tue 1 Dec): `. */
+export function aboutLine(title: string, dueOn: string): string {
+  return `About the post "${title}" (${dueLabel(dueOn)}): `;
 }
 
 const TITLE_LIMIT = 60;

@@ -94,6 +94,8 @@ import { PageHeader } from "@/components/console/page-header";
 import { UpdatesSection } from "@/components/console/updates-section";
 import { WebsiteSection } from "@/components/console/website-section";
 import { NumbersSection } from "@/components/console/numbers-section";
+import { WorkSection } from "@/components/console/work-section";
+import { readWorkNotice } from "@/lib/work-notices";
 import { FactList, Quiet, Section, type Fact } from "@/components/console/section";
 import { StageTrack } from "@/components/console/stage-track";
 import { attentionSection } from "@/lib/client-attention";
@@ -647,6 +649,7 @@ export default async function ClientPage({
   const requestsNotice = readRequestActionNotice(sp.requests);
   const requestsMail = readMailOutcome(sp.mail);
   const numbersNotice = sp.numbers === "saved" || sp.numbers === "invalid" || sp.numbers === "not-bought" ? sp.numbers : null;
+  const workNotice = readWorkNotice(sp.work);
   const featuresNotice = readBusinessModuleNotice(sp.features);
   const listingNotice = readListingNotice(sp.listing, sp.listingField);
   const invoiceNotice = readInvoiceNotice(sp.invoice);
@@ -851,6 +854,8 @@ export default async function ClientPage({
         <UpdatesSection businessId={businessId} notice={updatesNotice} />
 
         <NumbersSection businessId={businessId} notice={numbersNotice} />
+
+        <WorkSection businessId={businessId} notice={workNotice} />
 
         <Section title="Setup progress" aside={`${ANSWER_STEPS.filter((step) => done.has(step)).length} of ${ANSWER_STEPS.length} done`}>
           <ul className="grid gap-x-8 gap-y-3 sm:grid-cols-2">

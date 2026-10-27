@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
 import { DEALS_PATH } from "@/lib/deals";
@@ -50,6 +50,44 @@ describe("railSections", () => {
 
   it("keeps Reviews and Deals for a member with a claimed listing", () => {
     expect(shape({ ...FULL, listingClaim: true })[2]).toEqual(["Directory", ["Reviews", "Deals"]]);
+  });
+});
+
+describe("the Social & Ads and Search links", () => {
+  const services = (input: Partial<Parameters<typeof railSections>[0]>) => railSections({ ...FULL, ...input }).find((section) => section.label === "Services");
+
+  it("lists Website, Social & Ads and Search in that order for a customer with all three", () => {
+    expect(services({ hasSocial: true, hasSearch: true })?.links.map((link) => [link.label, link.href, link.icon])).toEqual([
+      ["Website", "/website", "website"],
+      ["Social & Ads", "/social", "social"],
+      ["Search", "/search", "search"],
+    ]);
+  });
+
+  it("has Social & Ads and no Website link for a plan without the website", () => {
+    expect(services({ hasWebsite: false, hasSocial: true })?.links.map((link) => link.label)).toEqual(["Social & Ads"]);
+  });
+
+  it("leaves them out when they are not bought, or not said", () => {
+    expect(services({})?.links.map((link) => link.label)).toEqual(["Website"]);
+    expect(services({ hasWebsite: false })).toBeUndefined();
+  });
+
+  it("is not in the quiet rail before the call", () => {
+    const quiet = railSections({ ...FULL, quiet: true, hasSocial: true, hasSearch: true });
+    expect(quiet.flatMap((section) => section.links).map((link) => link.label)).not.toEqual(expect.arrayContaining(["Social & Ads"]));
+    expect(quiet.some((section) => section.label === "Services")).toBe(false);
+  });
+
+  it("can be found by search", () => {
+    const sections = railSections({ ...FULL, hasSocial: true, hasSearch: true });
+    expect(searchRail(sections, "social").map((target) => target.label)).toEqual(["Social & Ads"]);
+    expect(searchRail(sections, "search").map((target) => target.href)).toEqual(["/search"]);
+  });
+
+  it("counts a page under them as current", () => {
+    expect(isCurrent("/social/anything", "/social")).toBe(true);
+    expect(isCurrent("/searching", "/search")).toBe(false);
   });
 });
 
@@ -160,5 +198,12 @@ describe("browser safety", () => {
   it("uses the same paths as the pages", () => {
     const directory = railSections({ quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, listingClaim: true, todoCount: 0 }).find((section) => section.label === "Directory");
     expect(directory?.links.map((link) => link.href)).toEqual([REVIEWS_PATH, DEALS_PATH]);
+  });
+
+  it("points Social & Ads and Search at pages that exist", () => {
+    const services = railSections({ ...FULL, hasSocial: true, hasSearch: true }).find((section) => section.label === "Services");
+    for (const link of (services?.links ?? []).filter((entry) => entry.icon === "social" || entry.icon === "search")) {
+      expect(existsSync(new URL(`../app/app-host/(protected)${link.href}/page.tsx`, import.meta.url)), link.href).toBe(true);
+    }
   });
 });

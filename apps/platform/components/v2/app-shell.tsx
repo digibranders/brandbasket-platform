@@ -3,7 +3,7 @@ import { unstable_rethrow } from "next/navigation";
 import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { logoOf } from "@/lib/brand";
-import { firstLookInput, inFirstLook } from "@/lib/first-look";
+import { firstLookInput, inFirstLook, type ServiceKey } from "@/lib/first-look";
 import type { ClientListingState } from "@/lib/listing-sections";
 import { railSections } from "@/lib/rail";
 import { getAccountPanel } from "@/lib/server/account-panel";
@@ -26,6 +26,8 @@ interface AppShellProps {
   readonly businessId: string | null;
   readonly children: ReactNode;
 }
+
+const NO_TODO: { readonly open: number; readonly services: readonly ServiceKey[] } = { open: 0, services: [] };
 
 /** A failed read hides the directory items rather than taking the dashboard down. */
 async function readListingNav(): Promise<ClientListingState> {
@@ -53,9 +55,14 @@ export async function AppShell({ userName, userEmail, businessId, children }: Ap
   const websiteSent = liveWebsite !== null || setupSent;
   const quiet = inFirstLook(firstLookInput({ hasAccess: billing.hasAccess, liveWebsite, project: overview.project, callState }));
   // To do is for paid accounts past the first look. The count is a convenience: a failed read shows no number rather than
-  // taking the shell down.
-  const todoCount =
-    quiet || !billing.hasAccess ? 0 : await quietly("app-shell", "the To do count", 0, async () => (await loadTodo(tenant)).open);
+  // taking the shell down. The same cached read says which services were bought, for the rail's Services section.
+  const todo =
+    quiet || !billing.hasAccess
+      ? NO_TODO
+      : await quietly("app-shell", "the To do count", NO_TODO, async () => {
+          const { open, services } = await loadTodo(tenant);
+          return { open, services };
+        });
   // Quotes to answer and changes to check. The loader shows none rather than failing, so the shell always draws.
   const requestsCount = (await loadRequestNeeds(tenant)).length;
   const sections = railSections({
@@ -65,7 +72,9 @@ export async function AppShell({ userName, userEmail, businessId, children }: Ap
     hasWebsite: !billing.hasAccess || billing.hasWebsite,
     websiteSetupDone: websiteSent,
     listingClaim: listing.claim,
-    todoCount,
+    hasSocial: todo.services.includes("social"),
+    hasSearch: todo.services.includes("search"),
+    todoCount: todo.open,
     requestsCount,
   });
   const logo = logoOf(brand);

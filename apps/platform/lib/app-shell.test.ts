@@ -52,6 +52,30 @@ beforeEach(() => {
   vi.mocked(loadTodo).mockResolvedValue({ services: [], items: [], open: 3, answers: { social: undefined, search: undefined } });
 });
 
+describe("AppShell's service links", () => {
+  const serviceLabels = (sections: readonly RailSection[]) => sections.find((section) => section.label === "Services")?.links.map((link) => link.label);
+
+  it("adds Social & Ads and Search for the services bought, from the one To do read", async () => {
+    vi.mocked(loadTodo).mockResolvedValue({ services: ["website", "social", "search"], items: [], open: 0, answers: { social: undefined, search: undefined } });
+    expect(serviceLabels(await railSections())).toEqual(["Website", "Social & Ads", "Search"]);
+    expect(loadTodo).toHaveBeenCalledTimes(1);
+  });
+
+  it("adds only the one bought", async () => {
+    vi.mocked(loadTodo).mockResolvedValue({ services: ["website", "search"], items: [], open: 0, answers: { social: undefined, search: undefined } });
+    expect(serviceLabels(await railSections())).toEqual(["Website", "Search"]);
+  });
+
+  it("adds none for the quiet rail or an account with no access", async () => {
+    vi.mocked(loadTodo).mockResolvedValue({ services: ["social", "search"], items: [], open: 0, answers: { social: undefined, search: undefined } });
+    callHeld(false);
+    expect(serviceLabels(await railSections())).toBeUndefined();
+    callHeld(true);
+    grant(false);
+    expect(serviceLabels(await railSections())).not.toContain("Social & Ads");
+  });
+});
+
 describe("AppShell's To do count", () => {
   it("shows the number of open items once the first look is over", async () => {
     expect(todoLink(await railSections())?.count).toBe(3);

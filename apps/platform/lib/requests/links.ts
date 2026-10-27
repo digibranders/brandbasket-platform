@@ -19,3 +19,8 @@ export function listRowHref(ticketId: string, filter: "open" | "done"): string {
 export function listHref(filter: "open" | "done"): string {
   return `${REQUESTS_PATH}?filter=${filter}`;
 }
+
+/** Ask for a change, opened on Social & Ads and naming one post (the page reads the post itself; the address carries only its id). */
+export function requestChangeHref(post: { readonly id: string }): string {
+  return `${ASK_FOR_A_CHANGE_PATH}?kind=social&about=${post.id}`;
+}

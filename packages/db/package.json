@@ -12,6 +12,7 @@
     ".": "./src/index.ts",
     "./call-reasons": "./src/call-reasons.ts",
     "./change-states": "./src/change-states.ts",
+    "./deliverable-states": "./src/deliverable-states.ts",
     "./geo-catalog-rules": "./src/geo-catalog-rules.ts",
     "./india-states": "./src/india-states.ts",
     "./local-env": "./src/local-env.ts",

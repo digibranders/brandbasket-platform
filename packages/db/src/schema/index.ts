@@ -11,6 +11,7 @@ export * from "./change-requests";
 export * from "./chatbots";
 export * from "./client-activity";
 export * from "./currency";
+export * from "./deliverables";
 export * from "./directory";
 export * from "./directory-ads";
 export * from "./directory-business-catalog";
