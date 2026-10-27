@@ -1,3 +1,11 @@
+-- The system lets go of a change quote's open charge itself when the account that asked for it is erased, as it does a move
+-- up's and an add-on's, so the charge's waived-by rule names change_hours beside them.
+ALTER TABLE "charges" DROP CONSTRAINT "charges_status_check";--> statement-breakpoint
+ALTER TABLE "charges" ADD CONSTRAINT "charges_status_check" CHECK (case "charges"."status"
+        when 'open' then "charges"."payment_id" is null and "charges"."paid_at" is null and "charges"."waived_at" is null
+        when 'paid' then "charges"."payment_id" is not null and "charges"."paid_at" is not null and "charges"."waived_at" is null
+        else "charges"."payment_id" is null and "charges"."paid_at" is null and "charges"."waived_at" is not null and ("charges"."waived_by_staff_id" is not null or "charges"."kind" in ('directory_ad', 'plan_upgrade', 'add_on', 'change_hours'))
+      end);--> statement-breakpoint
 CREATE TABLE "change_request_events" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"change_request_id" uuid NOT NULL,
@@ -94,6 +102,22 @@ BEGIN
      IS DISTINCT FROM ROW(OLD.id, OLD.ticket_id, OLD.business_id, OLD.kind, OLD.page, OLD.created_at) THEN
     RAISE EXCEPTION 'A change request''s identity cannot change' USING ERRCODE = 'insufficient_privilege';
   END IF;
+  IF NEW.charge_id IS DISTINCT FROM OLD.charge_id THEN
+    IF OLD.charge_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.charges c WHERE c.id = OLD.charge_id AND c.status = 'open') THEN
+      RAISE EXCEPTION 'The open charge of an accepted quote must be paid or let go before the request changes' USING ERRCODE = 'check_violation';
+    END IF;
+    IF NEW.charge_id IS NOT NULL THEN
+      PERFORM pg_advisory_xact_lock(hashtextextended('change-charge:' || NEW.charge_id::text, 0));
+      IF NOT EXISTS (SELECT 1 FROM public.charges c WHERE c.id = NEW.charge_id AND c.business_id = NEW.business_id AND c.kind = 'change_hours')
+         OR EXISTS (SELECT 1 FROM public.change_requests o WHERE o.charge_id = NEW.charge_id AND o.id <> NEW.id) THEN
+        RAISE EXCEPTION 'A change request''s charge must be its own business''s change_hours charge, used by no other request' USING ERRCODE = 'check_violation';
+      END IF;
+    END IF;
+  ELSIF OLD.charge_id IS NOT NULL
+     AND ROW(NEW.coverage, NEW.quote_what, NEW.quote_hours, NEW.quote_unit_cents, NEW.quote_amount_cents, NEW.quote_currency, NEW.quote_working_days, NEW.quoted_at)
+     IS DISTINCT FROM ROW(OLD.coverage, OLD.quote_what, OLD.quote_hours, OLD.quote_unit_cents, OLD.quote_amount_cents, OLD.quote_currency, OLD.quote_working_days, OLD.quoted_at) THEN
+    RAISE EXCEPTION 'The price and cover of a change request are fixed while its charge stands' USING ERRCODE = 'check_violation';
+  END IF;
   IF ROW(NEW.coverage, NEW.quote_what, NEW.quote_hours, NEW.quote_unit_cents, NEW.quote_amount_cents, NEW.quote_currency, NEW.quote_working_days, NEW.quoted_at)
      IS DISTINCT FROM ROW(OLD.coverage, OLD.quote_what, OLD.quote_hours, OLD.quote_unit_cents, OLD.quote_amount_cents, OLD.quote_currency, OLD.quote_working_days, OLD.quoted_at)
      AND OLD.state NOT IN ('requested', 'quoted') THEN
@@ -111,6 +135,14 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'A change request cannot move from % to %', OLD.state, NEW.state USING ERRCODE = 'check_violation';
   END IF;
+  IF NEW.state <> OLD.state AND NEW.state = 'in_progress' AND NEW.charge_id IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM public.charges c WHERE c.id = NEW.charge_id AND c.status = 'paid') THEN
+    RAISE EXCEPTION 'Work on an accepted quote starts when its charge is paid' USING ERRCODE = 'check_violation';
+  END IF;
+  IF NEW.state <> OLD.state AND NEW.state IN ('declined', 'withdrawn') AND OLD.charge_id IS NOT NULL
+     AND EXISTS (SELECT 1 FROM public.charges c WHERE c.id = OLD.charge_id AND c.status = 'open') THEN
+    RAISE EXCEPTION 'The open charge of an accepted quote must be let go before the request is closed' USING ERRCODE = 'check_violation';
+  END IF;
   NEW.updated_at := clock_timestamp();
   RETURN NEW;
 END
@@ -121,7 +153,8 @@ CREATE TRIGGER change_requests_guard
   FOR EACH ROW EXECUTE FUNCTION public.change_requests_guard();
 --> statement-breakpoint
 -- Every state a request enters leaves a dated line (the stepper's dates), whoever moved it. When a request ends, its
--- ticket leaves the staff queue (resolved); when it is reopened, the ticket comes back (triaged).
+-- ticket leaves the staff queue (resolved); when it is reopened, the ticket comes back (triaged), even if it was closed
+-- meanwhile, as long as the request ended no more than 14 days ago.
 CREATE OR REPLACE FUNCTION public.change_requests_record()
   RETURNS trigger
   LANGUAGE plpgsql
@@ -139,7 +172,8 @@ BEGIN
         WHERE id = NEW.ticket_id AND status NOT IN ('resolved', 'closed') AND retention_started_at IS NULL;
     ELSIF OLD.state = ANY (finals) AND NOT (NEW.state = ANY (finals)) THEN
       UPDATE public.support_tickets SET status = 'triaged', version = version + 1, updated_at = clock_timestamp()
-        WHERE id = NEW.ticket_id AND status = 'resolved' AND retention_started_at IS NULL;
+        WHERE id = NEW.ticket_id AND retention_started_at IS NULL AND (status = 'resolved' OR (status = 'closed' AND
+          (SELECT max(e.at) FROM public.change_request_events e WHERE e.change_request_id = NEW.id AND e.state = OLD.state) > now() - interval '14 days'));
     END IF;
   END IF;
   RETURN NEW;
@@ -190,7 +224,7 @@ DECLARE
   new_id uuid := gen_random_uuid();
 BEGIN
   SELECT * INTO t FROM public.support_tickets WHERE id = p_ticket_id;
-  IF NOT FOUND OR t.requester_user_id IS DISTINCT FROM public.app_current_user_id() OR t.business_id IS NULL
+  IF NOT FOUND OR t.requester_user_id IS DISTINCT FROM public.app_current_user_id() OR t.business_id IS DISTINCT FROM public.app_current_business_id()
      OR NOT EXISTS (SELECT 1 FROM public.business_members m WHERE m.business_id = t.business_id AND m.user_id = t.requester_user_id) THEN
     RAISE EXCEPTION 'change_request_not_allowed' USING ERRCODE = 'insufficient_privilege';
   END IF;
@@ -218,6 +252,7 @@ DECLARE
 BEGIN
   SELECT * INTO r FROM public.change_requests WHERE id = p_request_id FOR UPDATE;
   IF NOT FOUND OR r.business_id IS DISTINCT FROM public.app_current_business_id()
+     OR NOT EXISTS (SELECT 1 FROM public.support_tickets t WHERE t.id = r.ticket_id AND t.requester_user_id = public.app_current_user_id())
      OR NOT EXISTS (SELECT 1 FROM public.business_members m WHERE m.business_id = r.business_id AND m.user_id = public.app_current_user_id()) THEN
     RAISE EXCEPTION 'change_request_not_found' USING ERRCODE = 'insufficient_privilege';
   END IF;
@@ -250,3 +285,36 @@ $$;
 REVOKE ALL ON FUNCTION public.change_request_customer_move(uuid, text) FROM PUBLIC, bb_app, bb_staff, bb_public;
 --> statement-breakpoint
 GRANT EXECUTE ON FUNCTION public.change_request_customer_move(uuid, text) TO bb_app;
+--> statement-breakpoint
+-- A closed ticket may come back (triaged) only when its change request has been reopened: no other way leaves closed.
+CREATE OR REPLACE FUNCTION support_guard_ticket() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.business_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.business_members WHERE business_id = NEW.business_id AND user_id = NEW.requester_user_id) THEN
+      RAISE EXCEPTION 'Support business must belong to the requester';
+    END IF;
+    IF NEW.status <> 'new' OR NEW.priority <> 'normal' OR NEW.assignee_staff_id IS NOT NULL OR NEW.version <> 1 THEN
+      RAISE EXCEPTION 'Support tickets must begin with default workflow state';
+    END IF;
+  ELSE
+    IF OLD.retention_started_at IS NOT NULL THEN RAISE EXCEPTION 'Support ticket is being removed by retention'; END IF;
+    IF ROW(NEW.id, NEW.requester_user_id, NEW.business_id, NEW.subject, NEW.display_ref, NEW.submission_key, NEW.submission_hash, NEW.created_at)
+       IS DISTINCT FROM ROW(OLD.id, OLD.requester_user_id, OLD.business_id, OLD.subject, OLD.display_ref, OLD.submission_key, OLD.submission_hash, OLD.created_at) THEN
+      RAISE EXCEPTION 'Support ticket identity and submission are immutable';
+    END IF;
+    IF NEW.version <> OLD.version + 1 THEN RAISE EXCEPTION 'Support ticket version must advance exactly once'; END IF;
+    IF NEW.status <> OLD.status AND NOT (
+      (OLD.status = 'new' AND NEW.status IN ('triaged', 'in_progress', 'waiting_on_you', 'resolved', 'closed')) OR
+      (OLD.status = 'triaged' AND NEW.status IN ('in_progress', 'waiting_on_you', 'resolved', 'closed')) OR
+      (OLD.status = 'in_progress' AND NEW.status IN ('triaged', 'waiting_on_you', 'resolved', 'closed')) OR
+      (OLD.status = 'waiting_on_you' AND NEW.status IN ('triaged', 'in_progress', 'resolved', 'closed')) OR
+      (OLD.status = 'resolved' AND NEW.status IN ('triaged', 'in_progress', 'closed')) OR
+      (OLD.status = 'closed' AND NEW.status = 'triaged' AND EXISTS (SELECT 1 FROM public.change_requests r WHERE r.ticket_id = NEW.id AND r.state NOT IN ('approved', 'shipped', 'declined', 'withdrawn')))
+    ) THEN RAISE EXCEPTION 'Invalid support status transition'; END IF;
+  END IF;
+  IF NEW.assignee_staff_id IS NOT NULL AND (TG_OP = 'INSERT' OR NEW.assignee_staff_id IS DISTINCT FROM OLD.assignee_staff_id)
+     AND NOT EXISTS (SELECT 1 FROM public.staff_members WHERE user_id = NEW.assignee_staff_id AND active) THEN
+    RAISE EXCEPTION 'Support assignee must be active staff';
+  END IF;
+  RETURN NEW;
+END $$;

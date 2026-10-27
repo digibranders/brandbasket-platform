@@ -116,7 +116,11 @@ export async function createSupportTicketWithOutcome(db: Database, input: Create
     const [message] = await tx.insert(supportMessages).values({ ticketId: id, authorRole: "customer", authorUserId: input.userId, body: description, details, submissionKey: input.submissionKey, submissionHash }).returning();
     if (!message) throw new SupportQueryError("conflict", "The initial support message could not be created.");
     await claimSupportAttachments(tx, input.userId, id, message.id, attachmentIds);
-    if (changeRequest !== null) await tx.execute(sql`select create_change_request(${id}::uuid, ${changeRequest.kind}, ${changeRequest.page})`);
+    if (changeRequest !== null) {
+      // The member was just checked above; the database function then insists the ticket belongs to the business in scope.
+      await tx.execute(sql`select set_config('app.business_id', ${businessId}, true)`);
+      await tx.execute(sql`select create_change_request(${id}::uuid, ${changeRequest.kind}, ${changeRequest.page})`);
+    }
     const [result] = await tx.select().from(supportTickets).where(eq(supportTickets.id, id));
     if (!result) throw new SupportQueryError("not_found", "The newly created support ticket was not found.");
     return { ticket: result, created: true };
@@ -285,7 +289,9 @@ export interface SupportRetentionClaim { readonly ticketIds: string[]; readonly 
 export async function claimSupportTicketsDueRetention(db: Database, cutoff: Date, limit = 100): Promise<SupportRetentionClaim> {
   if (!Number.isFinite(cutoff.getTime()) || cutoff.getTime() > Date.now()) throw new SupportQueryError("invalid_input", "A past support retention cutoff is required.");
   return db.transaction(async (tx) => {
-    const tickets = await tx.select().from(supportTickets).where(and(eq(supportTickets.status, "closed"), lt(supportTickets.updatedAt, cutoff))).orderBy(supportTickets.updatedAt, supportTickets.id).limit(cleanupLimit(limit)).for("update", { skipLocked: true });
+    const tickets = await tx.select().from(supportTickets).where(and(eq(supportTickets.status, "closed"), lt(supportTickets.updatedAt, cutoff), sql`not exists (
+      select 1 from change_requests r left join charges c on c.id = r.charge_id
+      where r.ticket_id = ${supportTickets.id} and (r.state in ('requested', 'quoted', 'in_progress', 'revisions', 'preview') or c.status = 'open'))`)).orderBy(supportTickets.updatedAt, supportTickets.id).limit(cleanupLimit(limit)).for("update", { skipLocked: true });
     if (tickets.length === 0) return { ticketIds: [], attachments: [] };
     const ticketIds = tickets.map((ticket) => ticket.id);
     for (const ticket of tickets) {

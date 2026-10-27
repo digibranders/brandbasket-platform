@@ -1,8 +1,8 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { CHANGE_STATES, canMoveChange, type ChangeState } from "./change-states";
-import { insertCharge } from "./queries/charges";
-import { appendSupportReply, beginSupportAccountErasure, createSupportTicket, eraseSupportDataForUser } from "./queries/support";
+import { insertCharge, waiveCharge } from "./queries/charges";
+import { appendSupportReply, beginSupportAccountErasure, claimSupportTicketsDueRetention, createSupportTicket, eraseSupportDataForUser } from "./queries/support";
 import { insertBusiness } from "./queries/onboarding";
 import { accountClosures, businessMembers, changeRequestEvents, changeRequests, staffMembers, supportTickets, users } from "./schema";
 import { withTenantScope, withUserScope } from "./scope";
@@ -325,6 +325,154 @@ describe("change_request_customer_move", () => {
     const { requestId } = await makeRequest();
     expect(await captureErrorText(move(requestId, "ship"))).toContain("change_request_unknown_action");
     expect(await captureErrorText(move(requestId, "reopen"))).toContain("change_request_wrong_state");
+  });
+});
+
+/** An open change_hours charge, as accepting a quote opens one; `overrides` lets a test make the wrong kind of charge. */
+async function openCharge(overrides: Partial<Parameters<typeof insertCharge>[1]> = {}): Promise<string> {
+  const charge = await insertCharge(dbs.staff.db, {
+    businessId,
+    kind: "change_hours",
+    description: "Extra change hours: New page",
+    quantity: 3,
+    unitAmountCents: 50_000,
+    taxRateBasisPoints: 1800,
+    amountCents: 150_000,
+    currency: "INR",
+    createdByStaffId: null,
+    ...overrides,
+  });
+  return charge.id;
+}
+
+/** A quoted request the customer has accepted: the charge is open and linked. */
+async function acceptedRequest(): Promise<{ readonly ticketId: string; readonly requestId: string; readonly chargeId: string }> {
+  const made = await makeRequest();
+  await quote(made.requestId);
+  const chargeId = await openCharge();
+  await dbs.staff.db.update(changeRequests).set({ state: "quoted", acceptedAt: new Date(), chargeId }).where(eq(changeRequests.id, made.requestId));
+  return { ...made, chargeId };
+}
+
+describe("the charge a request is paid with", () => {
+  it("must be the business's own change_hours charge, used by no other request", async () => {
+    const { requestId } = await makeRequest();
+    await quote(requestId);
+    const link = (chargeId: string) => dbs.staff.db.update(changeRequests).set({ state: "quoted", acceptedAt: new Date(), chargeId }).where(eq(changeRequests.id, requestId));
+    expect(await captureErrorText(link(await openCharge({ businessId: otherBusinessId })))).toContain("charge");
+    expect(await captureErrorText(link(await openCharge({ kind: "blog_posts" })))).toContain("charge");
+    const taken = await acceptedRequest();
+    expect(await captureErrorText(link(taken.chargeId))).toContain("charge");
+    expect(await stateOf(requestId)).toBe("requested");
+    await link(await openCharge());
+    expect(await stateOf(requestId)).toBe("quoted");
+  });
+
+  it("fixes the quote while the accepted charge stands", async () => {
+    const { requestId, chargeId } = await acceptedRequest();
+    expect(await captureErrorText(dbs.staff.db.update(changeRequests).set({ quoteHours: 4, quoteAmountCents: 200_000 }).where(eq(changeRequests.id, requestId)))).toContain("fixed");
+    expect(await captureErrorText(dbs.staff.db.update(changeRequests).set({ quoteWhat: "Another page" }).where(eq(changeRequests.id, requestId)))).toContain("fixed");
+    // Replacing the quote means letting the charge go first.
+    const clear = { ...QUOTE, quoteHours: 4, quoteAmountCents: 200_000, acceptedAt: null, chargeId: null };
+    expect(await captureErrorText(dbs.staff.db.update(changeRequests).set(clear).where(eq(changeRequests.id, requestId)))).toContain("charge");
+    await waiveCharge(dbs.staff.db, { chargeId, businessId, staffId: STAFF, now: new Date() });
+    await dbs.staff.db.update(changeRequests).set(clear).where(eq(changeRequests.id, requestId));
+    expect(await stateOf(requestId)).toBe("quoted");
+  });
+
+  it("does not let work start on an unpaid charge", async () => {
+    const { requestId } = await acceptedRequest();
+    const text = await captureErrorText(dbs.staff.db.update(changeRequests).set({ state: "in_progress" }).where(eq(changeRequests.id, requestId)));
+    expect(text).toContain("paid");
+    expect(await stateOf(requestId)).toBe("quoted");
+  });
+
+  it("does not let a quote with an open charge be declined or withdrawn until the charge is let go", async () => {
+    const { requestId, chargeId } = await acceptedRequest();
+    for (const state of ["declined", "withdrawn"] as const) {
+      const closedReason = state === "declined" ? "Not something we do" : null;
+      expect(await captureErrorText(dbs.staff.db.update(changeRequests).set({ state, closedReason }).where(eq(changeRequests.id, requestId))), state).toContain("charge");
+    }
+    await waiveCharge(dbs.staff.db, { chargeId, businessId, staffId: STAFF, now: new Date() });
+    await dbs.staff.db.update(changeRequests).set({ state: "declined", closedReason: "Not something we do" }).where(eq(changeRequests.id, requestId));
+    expect(await stateOf(requestId)).toBe("declined");
+  });
+});
+
+describe("who may use the customer's door", () => {
+  it("lets only the person who sent the request move it, not another member of the business", async () => {
+    const { requestId } = await makeRequest();
+    await quote(requestId);
+    await forceState(requestId, "preview");
+    await dbs.staff.db.insert(businessMembers).values({ businessId, userId: OTHER_OWNER, role: "editor" });
+    const asColleague = withTenantScope(dbs.app.db, { userId: OTHER_OWNER, businessId }, (tx) => tx.execute(sql`select change_request_customer_move(${requestId}::uuid, 'approve')`));
+    expect(await captureErrorText(asColleague)).toContain("change_request_not_found");
+    expect(await stateOf(requestId)).toBe("preview");
+  });
+
+  it("makes a request only while signed in to the ticket's own business", async () => {
+    const ticket = await createSupportTicket(dbs.app.db, {
+      userId: OWNER,
+      businessId,
+      category: "website_change",
+      subject: "Add a Staff page",
+      description: "Please add a page about our staff.",
+      submissionKey: "request-key-other-business-abcdefgh",
+    });
+    await dbs.staff.db.insert(businessMembers).values({ businessId: otherBusinessId, userId: OWNER, role: "owner" });
+    const inOtherBusiness = withTenantScope(dbs.app.db, { userId: OWNER, businessId: otherBusinessId }, (tx) => tx.execute(sql`select create_change_request(${ticket.id}::uuid, 'website', 'Home')`));
+    expect(await captureErrorText(inOtherBusiness)).toContain("change_request_not_allowed");
+    expect(await dbs.staff.db.select().from(changeRequests)).toEqual([]);
+  });
+});
+
+describe("reopening a request whose ticket was closed", () => {
+  const closeTicket = (ticketId: string) => dbs.staff.db.execute(sql`update support_tickets set status = 'closed', version = version + 1 where id = ${ticketId}::uuid`);
+  const ticketStatus = async (ticketId: string): Promise<string | undefined> => (await dbs.staff.db.select({ status: supportTickets.status }).from(supportTickets).where(eq(supportTickets.id, ticketId)))[0]?.status;
+
+  it("brings the ticket back inside the 14 days, and leaves it closed after", async () => {
+    for (const [days, expected] of [[13, "triaged"], [15, "closed"]] as const) {
+      const { ticketId, requestId } = await makeRequest();
+      await quote(requestId);
+      await forceState(requestId, "in_progress");
+      await dbs.staff.db.update(changeRequests).set({ state: "shipped" }).where(eq(changeRequests.id, requestId));
+      await closeTicket(ticketId);
+      await dbs.owner.db.execute(sql`update change_request_events set at = now() - make_interval(days => ${days}) where state = 'shipped' and change_request_id = ${requestId}::uuid`);
+      await dbs.staff.db.update(changeRequests).set({ state: "revisions" }).where(eq(changeRequests.id, requestId));
+      expect(await ticketStatus(ticketId), `${days} days`).toBe(expected);
+    }
+  });
+
+  it("never lets a ticket leave closed for any other reason", async () => {
+    const { ticketId, requestId } = await makeRequest();
+    await quote(requestId);
+    await forceState(requestId, "shipped");
+    await closeTicket(ticketId);
+    const text = await captureErrorText(dbs.staff.db.execute(sql`update support_tickets set status = 'triaged', version = version + 1 where id = ${ticketId}::uuid`));
+    expect(text).toContain("Invalid support status transition");
+  });
+});
+
+describe("the support retention purge", () => {
+  it("leaves alone a closed ticket whose request is not over or whose charge is open", async () => {
+    const claimed = async (): Promise<string[]> => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return (await claimSupportTicketsDueRetention(dbs.staff.db, new Date(), 100)).ticketIds;
+    };
+    const close = (ticketId: string) => dbs.staff.db.execute(sql`update support_tickets set status = 'closed', version = version + 1 where id = ${ticketId}::uuid`);
+    const open = await makeRequest();
+    const withCharge = await acceptedRequest();
+    const done = await makeRequest();
+    await quote(done.requestId);
+    await forceState(done.requestId, "shipped");
+    for (const t of [open, withCharge, done]) await close(t.ticketId);
+    // A shipped request that still has an open charge is kept too.
+    const shippedOpen = await acceptedRequest();
+    await dbs.owner.db.execute(sql`alter table change_requests disable trigger change_requests_guard`);
+    await dbs.owner.db.execute(sql`update change_requests set state = 'shipped' where id = ${shippedOpen.requestId}::uuid`);
+    await dbs.owner.db.execute(sql`alter table change_requests enable trigger change_requests_guard`);
+    await close(shippedOpen.ticketId);
+    expect(await claimed()).toEqual([done.ticketId]);
   });
 });
 
