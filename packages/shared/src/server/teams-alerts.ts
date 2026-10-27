@@ -1,6 +1,16 @@
 import "server-only";
-import { clearSiteSetting, findSiteSetting, findSiteSettingWithEditor, saveSiteSetting, type Database } from "@brandbasket/db";
-import { teamsCard, teamsSettingKey, TEAMS_DESTINATION_INFO, type TeamsDestination, type TeamsMessage } from "../lib/teams-webhook";
+import {
+  clearSiteSetting,
+  findAlertDelivery,
+  findSiteSetting,
+  findSiteSettingWithEditor,
+  recordAlertDelivery,
+  saveSiteSetting,
+  updateAlertDelivery,
+  type AlertResult,
+  type Database,
+} from "@brandbasket/db";
+import { teamsCard, teamsCardTitle, teamsSettingKey, TEAMS_DESTINATION_INFO, type TeamsDestination, type TeamsMessage } from "../lib/teams-webhook";
 import { openSecret, sealSecret } from "./secret-seal";
 
 const POST_TIMEOUT_MS = 8_000;
@@ -36,12 +46,6 @@ export async function clearTeamsHook(db: Database, destination: TeamsDestination
   await clearSiteSetting(db, teamsSettingKey(destination));
 }
 
-/** The address for a destination, or null when none is saved or it cannot be read. */
-async function readTeamsUrl(db: Database, secret: string, destination: TeamsDestination): Promise<string | null> {
-  const setting = await findSiteSetting(db, teamsSettingKey(destination));
-  return setting === null ? null : openSecret(secret, setting.value);
-}
-
 export type TeamsPostResult = "sent" | "rejected" | "unreachable";
 
 /**
@@ -63,20 +67,48 @@ export async function postToTeams(url: string, message: TeamsMessage, post: type
   }
 }
 
+/** Notes one alert for the console's Deliveries page. Never throws: a note that cannot be written is logged, without the address. */
+async function noteAlert(db: Database, destination: TeamsDestination, message: TeamsMessage, result: AlertResult): Promise<void> {
+  try {
+    await recordAlertDelivery(db, { destination, title: teamsCardTitle(message), result, card: result === "sent" ? null : { ...message } });
+  } catch (error) {
+    console.error("[teams-alert] The alert could not be noted.", error instanceof Error ? error.name : "error");
+  }
+}
+
 /**
  * Tells a Teams channel about something, if staff have set an address for that kind of alert. Best-effort like every alert:
- * the customer's own action is already done, so a missing address, an unreadable one or a failed post is logged (without
- * the address) and never thrown.
+ * the customer's own action is already done, so an unreadable address or a failed post is logged (without the address)
+ * and noted for the console, and never thrown. With no address saved nothing is attempted and nothing is noted.
  */
 export async function sendTeamsAlert(db: Database, secret: string, destination: TeamsDestination, message: TeamsMessage, post: typeof fetch = fetch): Promise<void> {
   try {
-    const url = await readTeamsUrl(db, secret, destination);
-    if (url === null) return;
-    const result = await postToTeams(url, message, post);
+    const setting = await findSiteSetting(db, teamsSettingKey(destination));
+    if (setting === null) return;
+    const url = openSecret(secret, setting.value);
+    const result: AlertResult = url === null ? "unreadable" : await postToTeams(url, message, post);
     if (result !== "sent") console.error(`[teams-alert] The ${destination} alert was not delivered (${result}).`);
+    await noteAlert(db, destination, message, result);
   } catch (error) {
     console.error(`[teams-alert] The ${destination} alert could not be sent.`, error instanceof Error ? error.name : "error");
   }
+}
+
+export type TeamsResendResult = "sent" | "failed" | "refused";
+
+/**
+ * Sends a noted alert again to its channel's current address, for staff on the Deliveries page. Refuses one that went
+ * through or has no card kept. Records the try either way.
+ */
+export async function resendTeamsAlert(db: Database, secret: string, deliveryId: string, now: Date, post: typeof fetch = fetch): Promise<TeamsResendResult> {
+  const delivery = await findAlertDelivery(db, deliveryId);
+  if (delivery === null || delivery.result === "sent" || delivery.card === null) return "refused";
+  const setting = await findSiteSetting(db, teamsSettingKey(delivery.destination));
+  const url = setting === null ? null : openSecret(secret, setting.value);
+  // The card was written by noteAlert from a TeamsMessage, so it has that shape.
+  const result: AlertResult = url === null ? "unreadable" : await postToTeams(url, delivery.card as unknown as TeamsMessage, post);
+  await updateAlertDelivery(db, deliveryId, { result, now });
+  return result === "sent" ? "sent" : "failed";
 }
 
 export type TeamsTestResult = "sent" | "unset" | "unreadable" | "failed";
