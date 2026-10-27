@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clock, greeting, longDay, monthRange, shortDate, todayRange } from "./team-time";
+import { clock, greeting, isSameTeamDay, longDay, monthRange, shortDate, todayRange, weekdayDate } from "./team-time";
 
 // 09:00 on Monday 30 November 2026 in India.
 const MORNING = new Date("2026-11-30T03:30:00.000Z");
@@ -39,3 +39,17 @@ describe("monthRange", () => {
     expect(monthRange(new Date("2026-12-15T06:00:00.000Z")).end).toEqual(new Date("2026-12-31T18:30:00.000Z"));
   });
 });
+
+describe("weekdayDate", () => {
+  it("writes a short weekday and date in India's time", () => {
+    expect(weekdayDate(new Date("2026-12-01T08:30:00.000Z"))).toBe("Tue 1 Dec");
+  });
+});
+
+describe("isSameTeamDay", () => {
+  it("tells whether two moments fall on the same India day", () => {
+    expect(isSameTeamDay(new Date("2026-11-30T06:00:00.000Z"), new Date("2026-11-30T17:00:00.000Z"))).toBe(true);
+    expect(isSameTeamDay(new Date("2026-11-30T06:00:00.000Z"), new Date("2026-11-30T19:00:00.000Z"))).toBe(false);
+  });
+});
+

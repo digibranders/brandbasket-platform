@@ -50,3 +50,14 @@ export function monthRange(now: Date): TimeRange {
   const next = new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10);
   return { start: zonedTimeToUtc(`${day.slice(0, 7)}-01`, "00:00", TEAM_TIME_ZONE), end: zonedTimeToUtc(next, "00:00", TEAM_TIME_ZONE) };
 }
+
+/** "Tue 1 Dec". */
+export function weekdayDate(date: Date): string {
+  return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: TEAM_TIME_ZONE }).format(date);
+}
+
+/** Whether two moments fall on the same calendar day in India. */
+export function isSameTeamDay(a: Date, b: Date): boolean {
+  return localDateIn(TEAM_TIME_ZONE, a) === localDateIn(TEAM_TIME_ZONE, b);
+}
+
