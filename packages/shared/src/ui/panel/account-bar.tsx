@@ -5,14 +5,12 @@ import { useCallback, useEffect, useId, useRef, useState, type ReactElement, typ
 import {
   BellIcon,
   BookIcon,
-  CopyIcon,
   EllipsisIcon,
   HomeIcon,
   LifebuoyIcon,
   ScrollTextIcon,
   SettingsIcon,
   SignOutIcon,
-  TickIcon,
 } from "@brandbasket/shared/ui/icons";
 import { cn } from "../../lib/cn";
 import { initialsOf } from "../../lib/names";
@@ -23,8 +21,6 @@ export interface AccountBarAccount {
   readonly email: string;
   /** The account page, when the surface has one. Staff have none, so their menu shows no Settings. */
   readonly href?: string;
-  /** The business's Business ID as the owner reads it ("M6T87TF"), once it has one; the menu offers it to copy. */
-  readonly businessId?: string;
 }
 
 interface AccountBarProps {
@@ -38,7 +34,7 @@ interface AccountBarProps {
   readonly docsUrl: string;
   /**
    * Where "Help" goes: the app's own place to ask (the customer dashboard's Ask for a change form), or a `mailto:` address
-   * for a surface that has none. A `mailto:` opens the mail program, so it is not opened in a new tab.
+   * for a surface that has none. A `mailto:` is opened as an external link.
    */
   readonly helpHref: string;
   /** Which way the popovers open: "top" in the sidebar footer, "bottom" in the mobile header. */
@@ -179,67 +175,6 @@ function MenuLink({ href, external, icon, label, dark, onSelect }: MenuRowProps 
   );
 }
 
-/** How long the copy button shows its tick before it offers to copy again. */
-const COPIED_FOR_MS = 2000;
-
-/**
- * The Business ID under the account's address, with a button that copies it: the id an owner reads out on the phone
- * or pastes into a message to us. When the clipboard is not available (an insecure origin, or permission refused) the
- * id is selected instead, so the owner's own copy shortcut takes it.
- */
-function BusinessIdRow({ businessId, dark }: { readonly businessId: string; readonly dark: boolean }): ReactElement {
-  const [copied, setCopied] = useState(false);
-  const idRef = useRef<HTMLSpanElement | null>(null);
-
-  useEffect(() => {
-    if (!copied) return;
-    const timer = window.setTimeout(() => setCopied(false), COPIED_FOR_MS);
-    return () => window.clearTimeout(timer);
-  }, [copied]);
-
-  async function copy(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(businessId);
-      setCopied(true);
-    } catch {
-      const node = idRef.current;
-      const selection = window.getSelection();
-      if (node === null || selection === null) return;
-      const range = document.createRange();
-      range.selectNodeContents(node);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
-  }
-
-  return (
-    <div className={cn("flex items-center gap-3 border-b px-5 py-3", dark ? "border-white/10" : "border-line")}>
-      <div className="min-w-0 flex-1">
-        <p className={cn("text-xs", dark ? "text-paper/80" : "text-ink-soft")}>Business ID</p>
-        <span
-          ref={idRef}
-          className={cn("font-mono text-sm font-semibold tracking-[0.18em] tabular-nums", dark ? "text-paper" : "text-ink")}
-        >
-          {businessId}
-        </span>
-      </div>
-      <button
-        data-menu-item
-        role="menuitem"
-        type="button"
-        onClick={() => void copy()}
-        className={iconButtonClass(dark, copied)}
-      >
-        {copied ? <TickIcon className="size-4" /> : <CopyIcon className="size-4" />}
-        <span className="sr-only">Copy Business ID</span>
-      </button>
-      <span role="status" aria-live="polite" className="sr-only">
-        {copied ? "Business ID copied" : ""}
-      </span>
-    </div>
-  );
-}
-
 export function AccountBar({ signOut, account,
   panel,
   dark,
@@ -311,7 +246,6 @@ export function AccountBar({ signOut, account,
                 {account.email}
               </span>
             </div>
-            {account.businessId === undefined ? null : <BusinessIdRow businessId={account.businessId} dark={dark} />}
             {account.href === undefined ? null : (
               <MenuLink href={account.href} icon={<SettingsIcon className="size-4" />} label="Settings" dark={dark} onSelect={closeMenu} />
             )}
