@@ -336,7 +336,7 @@ describe("adding, removing and retrying an add-on for the client", () => {
   it("reads the day a waiting kept plan starts, and stops offering the row a removal", async () => {
     vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
     vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
-    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, addOn: "local-seo-aeo", status: "active", activatedAt: NOW, billedFrom: NOW, endRequestedAt: null, contactedAt: NOW, createdAt: NOW, netAmountCents: 2_499_900, offerDiscountAmountCents: 0, taxRateBasisPoints: 1_800 }] as never);
+    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, addOn: "local-seo-aeo", status: "active", activatedAt: NOW, billedFrom: NOW, endRequestedAt: null, contactedAt: NOW, createdAt: NOW, listAmountCents: 2_499_900, netAmountCents: 2_499_900, offerDiscountAmountCents: 0, taxRateBasisPoints: 1_800 }] as never);
     vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ paidThroughAt: NOW, cancelRequestedAt: null } as never);
     vi.mocked(findKeptPlanStart).mockResolvedValue(new Date("2026-11-19T00:00:00.000Z"));
 
@@ -349,7 +349,7 @@ describe("adding, removing and retrying an add-on for the client", () => {
   it("shows the amount of an added add-on's open charge", async () => {
     vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
     vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
-    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, addOn: "local-seo-aeo", status: "pending", activatedAt: null, chargeId: "charge-1", contactedAt: null, createdAt: NOW, netAmountCents: 2_499_900, offerDiscountAmountCents: 0, taxRateBasisPoints: 1_800 }] as never);
+    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, addOn: "local-seo-aeo", status: "pending", activatedAt: null, chargeId: "charge-1", contactedAt: null, createdAt: NOW, listAmountCents: 2_499_900, netAmountCents: 2_499_900, offerDiscountAmountCents: 0, taxRateBasisPoints: 1_800 }] as never);
     vi.mocked(findChargeForBusiness).mockResolvedValue({ id: "charge-1", status: "open", amountCents: 1_332_258 } as never);
 
     const loaded = await loadClientAddOns(BUSINESS, NOW);
