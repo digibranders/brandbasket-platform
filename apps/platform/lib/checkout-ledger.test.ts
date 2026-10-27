@@ -12,7 +12,7 @@ const WEBSITE: readonly MonthlyAddOnId[] = ["managed-website"];
 const TWO: readonly MonthlyAddOnId[] = ["managed-website", "digital-growth"];
 const THREE: readonly MonthlyAddOnId[] = ["managed-website", "digital-growth", "local-seo-aeo"];
 
-const PERCENT_CODE: LedgerCode = { code: "SAVE20", months: 3, stated: { kind: "percentage", basisPoints: 2000 } };
+const PERCENT_CODE: LedgerCode = { code: "SAVE20", months: 3, stated: { kind: "percent", basisPoints: 2000 } };
 const FLAT_CODE: LedgerCode = { code: "FLAT500", months: null, stated: { kind: "amount", amountCents: 50_000 } };
 const AFFILIATE_CODE: LedgerCode = { code: "FRIEND", months: null, stated: null };
 
@@ -50,7 +50,7 @@ describe("codeDiscountCents", () => {
 
   it("resolves a percentage against the basket's package net, as the server does", () => {
     const net = bundleNetCents(bundleLines(TWO, "INR"));
-    expect(codeDiscountCents(PERCENT_CODE, TWO, "INR")).toBe(discountCentsFor({ kind: "percentage", basisPoints: 2000 }, net));
+    expect(codeDiscountCents(PERCENT_CODE, TWO, "INR")).toBe(discountCentsFor({ kind: "percent", basisPoints: 2000 }, net));
   });
 
   it("takes a flat amount off whole", () => {
