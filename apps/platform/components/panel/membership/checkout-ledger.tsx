@@ -153,7 +153,7 @@ export function CheckoutLedger({
             <ul>
               {rows.map((row) => (
                 <li key={row.key} className="flex justify-between py-[3px] text-sm text-ink-2">
-                  <span className={TONE[row.tone]}>{row.label}</span>
+                  <span className={row.tone === "save" ? TONE.save : ""}>{row.label}</span>
                   <span className={`${row.tone === "free" ? "" : "font-figure tabular-nums"} ${TONE[row.tone]}`}>{row.amount}</span>
                 </li>
               ))}
