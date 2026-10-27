@@ -30,9 +30,11 @@ export function kindOptions(services: readonly ServiceKey[]): readonly { readonl
 }
 
 const TITLE_LIMIT = 60;
+/** Three ASCII dots, so a cut title reads as cut. */
+const ELLIPSIS = "...";
 
 /**
- * The short name of a request, taken from what the customer wrote: the first sentence, cut at a word if it is long. The form
+ * The short name of a request, taken from what the customer wrote: the first sentence, cut at a word with "..." after it if it is long. The form
  * has no title field, so this is what the list shows.
  */
 export function titleFromText(text: string): string {
@@ -40,12 +42,17 @@ export function titleFromText(text: string): string {
   const firstSentence = whole.split(/(?<=[.!?])\s/)[0] ?? whole;
   // A first sentence of a word or two ("Hi.") says nothing, so the whole text is used instead.
   let title = firstSentence.replace(/[\s.!?]+$/u, "").length >= 8 ? firstSentence : whole;
+  let cutShort = false;
   if (title.length > TITLE_LIMIT) {
-    const cut = title.slice(0, TITLE_LIMIT + 1);
+    // The dots count toward the limit, so the stored title never exceeds it.
+    const room = TITLE_LIMIT - ELLIPSIS.length;
+    const cut = title.slice(0, room + 1);
     const space = cut.lastIndexOf(" ");
-    title = (space > 20 ? cut.slice(0, space) : cut.slice(0, TITLE_LIMIT)).trim();
+    title = (space > 20 ? cut.slice(0, space) : cut.slice(0, room)).trim();
+    cutShort = true;
   }
   title = title.replace(/[\s,;:.!?]+$/u, "");
+  if (cutShort) title += ELLIPSIS;
   return `${title.slice(0, 1).toUpperCase()}${title.slice(1)}`;
 }
 

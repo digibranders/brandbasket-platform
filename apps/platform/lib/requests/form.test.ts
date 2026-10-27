@@ -23,11 +23,23 @@ describe("titleFromText", () => {
     expect(titleFromText("Add an Implants page. Same style as the root canal page, prices from 25,000.")).toBe("Add an Implants page");
   });
 
-  it("cuts a long first sentence at a word, within 60 characters", () => {
+  it("cuts a long first sentence at a word and adds three dots, within 60 characters", () => {
     const title = titleFromText("please change the main photo on the home page to the new one we took last week at the clinic opening");
     expect(title.length).toBeLessThanOrEqual(60);
-    expect(title).toBe("Please change the main photo on the home page to the new one");
-    expect(title.endsWith(" ")).toBe(false);
+    expect(title).toBe("Please change the main photo on the home page to the new...");
+    expect(title.endsWith(" ...")).toBe(false);
+  });
+
+  it("adds no dots when nothing was cut", () => {
+    expect(titleFromText("Please change the main photo on the home page")).toBe("Please change the main photo on the home page");
+    expect(titleFromText("Add an Implants page. Same style as the root canal page, prices from 25,000.")).not.toContain("...");
+  });
+
+  it("drops punctuation before the dots and hard-cuts a long unbroken word", () => {
+    expect(titleFromText("Change the opening hours on the Sunday page, then the Saturday page, then all the rest")).toBe("Change the opening hours on the Sunday page, then the...");
+    const title = titleFromText("a".repeat(100));
+    expect(title).toBe(`A${"a".repeat(56)}...`);
+    expect(title.length).toBe(60);
   });
 
   it("starts with a capital, collapses spaces and lines, and drops trailing punctuation", () => {
