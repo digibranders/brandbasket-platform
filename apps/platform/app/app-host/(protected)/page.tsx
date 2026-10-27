@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { isPhoneAccountEmail } from "@brandbasket/db";
 import { BillingBanner } from "@/components/panel/billing-banner";
+import { PAGE_MAX } from "@/components/v2/classes";
 import { NextStepCard } from "@/components/panel/next-step-card";
 import { UnpaidHome } from "@/components/panel/unpaid-home";
 import { WelcomeOverview } from "@/components/first-look/welcome-overview";
@@ -52,7 +53,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
     return (
       <>
         {banner === null ? null : (
-          <div className="mx-auto mb-5 w-full max-w-[68rem]">
+          <div className={`mb-6 w-full md:mb-8 ${PAGE_MAX}`}>
             <BillingBanner banner={banner} />
           </div>
         )}
@@ -75,7 +76,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
   return (
     <>
       {banner === null ? null : (
-        <div className="mx-auto mb-5 w-full max-w-[68rem]">
+        <div className={`mb-6 w-full md:mb-8 ${PAGE_MAX}`}>
           <BillingBanner banner={banner} />
         </div>
       )}

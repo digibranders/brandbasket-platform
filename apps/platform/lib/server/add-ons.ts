@@ -1,5 +1,4 @@
 import "server-only";
-import { chargedAmountCents } from "@brandbasket/billing";
 import {
   consumeRateLimit,
   findBusinessCurrency,
@@ -7,11 +6,11 @@ import {
   findReferralCodeById,
   isPackageOfferForfeited,
   withTenantScope,
-  type BundledAddOn,
   type RateLimitRule,
   type ScopedTransaction,
 } from "@brandbasket/db";
 import { addOnById, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { bundledLinePrice } from "@brandbasket/shared/lib/billing/bundle";
 import { packageLineWith } from "@brandbasket/shared/lib/billing/packages";
 import {
   findKeptPlanStart,
@@ -42,19 +41,6 @@ const TOO_MANY_ATTEMPTS = "That's a lot of attempts in a short time. Please wait
 
 function refused(message: string): { readonly kind: "refused"; readonly message: string } {
   return { kind: "refused", message };
-}
-
-/** What an add-on taken at the first checkout costs inside the plan's payment, as frozen on it. */
-function bundledPrice(row: BundledAddOn, currency: AddOnPrice["currency"]): AddOnPrice {
-  return {
-    currency,
-    listCents: row.listAmountCents,
-    discountCents: row.offerDiscountAmountCents,
-    offerCents: row.offerDiscountAmountCents,
-    netCents: row.netAmountCents,
-    taxRateBasisPoints: row.taxRateBasisPoints,
-    chargedCents: chargedAmountCents(row.netAmountCents, 0),
-  };
 }
 
 /** The currency the business is billed in, which an add-on is priced in. */
@@ -162,7 +148,7 @@ export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Prom
     return {
       kind: "included",
       addOn,
-      price: bundledPrice(included, currency),
+      price: bundledLinePrice(included, currency),
       endsOn: included.endRequestedAt === null ? null : nextBillingOn,
       nextBillingOn,
       joinsOn: included.billedFrom === null ? nextBillingOn : null,

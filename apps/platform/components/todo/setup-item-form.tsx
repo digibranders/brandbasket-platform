@@ -24,7 +24,7 @@ export function SetupItemForm({ setup, saved }: SetupItemFormProps): ReactElemen
     return typeof value === "string" ? value : typeof value === "number" ? String(value) : "";
   };
   return (
-    <form action={action} className="grid gap-4 px-4 pb-4 pt-1">
+    <form action={action} className="grid max-w-xl gap-4 px-4 pb-4 pt-1">
       <input type="hidden" name="key" value={setup} />
       {SETUP_FIELDS[setup].map((field) => {
         const id = `${setup}-${field.name}`;

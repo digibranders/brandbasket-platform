@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type ReactElement } from "react";
+import { useId, useState, type ReactElement, type ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { dayModeField, WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@brandbasket/shared/lib/onboarding/hours";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
+import { SOFT_BUTTON } from "@/components/v2/classes";
 
 interface DayState {
   readonly mode: DayMode;
@@ -31,6 +32,8 @@ interface HoursEditorProps {
    * already has its own heading for this editor and already keeps sections apart with hairlines rather than
    * boxes. Onboarding's business step keeps the full version. */
   readonly bare?: boolean;
+  /** A message to show under a day's row, when the form refused something in it. */
+  readonly renderError?: (day: number) => ReactNode;
 }
 
 const WEEKEND_START = 5;
@@ -46,11 +49,11 @@ function startingDays(initial: readonly OpeningHours[]): DayState[] {
 }
 
 const CONTROL_CLASSES =
-  "mt-1 block w-full rounded-control border border-ink-soft/65 bg-paper px-3 py-2 text-sm text-ink tabular-nums transition-colors duration-300 ease-calm focus:border-accent disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-accent-deep";
+  "mt-1 block w-full rounded-control border border-ink-2/65 bg-surface px-3 py-2 text-sm text-ink tabular-nums transition-colors duration-200 focus:border-ink disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-error";
 
 /** The day-mode dropdown's trigger: the same box as the time fields beside it, without their top margin. */
 const MODE_TRIGGER_CLASSES =
-  "w-full rounded-control border border-ink-soft/65 bg-paper px-3 py-2 text-sm text-ink transition-colors duration-300 ease-calm focus:border-accent disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-accent-deep";
+  "w-full rounded-control border border-ink-2/65 bg-surface px-3 py-2 text-sm text-ink transition-colors duration-200 focus:border-ink disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-error";
 
 const MODE_OPTIONS: readonly SelectOption[] = DAY_MODES.map((mode) => ({ value: mode, label: DAY_MODE_LABELS[mode] }));
 
@@ -58,7 +61,7 @@ const MODE_OPTIONS: readonly SelectOption[] = DAY_MODES.map((mode) => ({ value: 
  * Opening hours for the week. Each day is Not set, Open, Closed or Open 24 hours; its two times are always shown but only
  * editable, and so sent, on an open day. A closing time earlier than opening is a day that closes after midnight, and says so.
  */
-export function HoursEditor({ initial, invalidField, errorId, bare = false }: HoursEditorProps): ReactElement {
+export function HoursEditor({ initial, invalidField, errorId, bare = false, renderError }: HoursEditorProps): ReactElement {
   const [days, setDays] = useState<DayState[]>(() => startingDays(initial));
   const idPrefix = useId();
 
@@ -82,26 +85,30 @@ export function HoursEditor({ initial, invalidField, errorId, bare = false }: Ho
     <fieldset>
       <div className={cn("flex flex-wrap items-baseline gap-3", bare ? "justify-end" : "justify-between")}>
         {bare ? null : (
-          <legend className="text-sm font-medium">
-            Opening hours <span className="font-normal text-ink-soft">(optional)</span>
+          <legend className="p-0 font-display text-[0.9375rem] font-semibold tracking-[-0.01em] text-ink">
+            Opening hours <span className="font-sans text-[0.8125rem] font-medium text-ink-2">(optional)</span>
           </legend>
         )}
         <button
           type="button"
           onClick={copyMondayToWeekdays}
-          className="link-underline text-sm text-ink-soft transition-colors hover:text-ink"
+          className={
+            bare
+              ? SOFT_BUTTON
+              : "text-[0.8125rem] font-semibold text-ink-2 underline underline-offset-[3px] transition-colors duration-200 hover:text-ink"
+          }
         >
           Use Monday’s hours for every weekday
         </button>
       </div>
       {bare ? null : (
-        <p className="mt-1 text-sm text-ink-soft">
+        <p className="mt-1 text-[0.8125rem] leading-relaxed text-ink-2">
           Leave a day as Not set if you’d rather not show its hours. If you close after midnight, pick the closing
           time as it reads on the clock.
         </p>
       )}
 
-      <div className={cn("mt-3 divide-y divide-line", bare ? undefined : "rounded-control border border-line bg-paper/60")}>
+      <div className="mt-3 divide-y divide-line border-y border-line">
         {WEEKDAYS.map((label, day) => {
           const state = days[day] ?? NOT_SET;
           const modeName = dayModeField(day);
@@ -114,7 +121,7 @@ export function HoursEditor({ initial, invalidField, errorId, bare = false }: Ho
           return (
             <div
               key={label}
-              className="grid grid-cols-[6.5rem_1fr] items-end gap-3 px-4 py-3 sm:grid-cols-[7rem_11rem_1fr_1fr]"
+              className="grid grid-cols-[6.5rem_1fr] items-end gap-3 py-3 sm:grid-cols-[7rem_11rem_1fr_1fr]"
             >
               <span className="self-center text-sm font-medium">{label}</span>
               <div className="text-xs text-ink-soft">
@@ -167,6 +174,7 @@ export function HoursEditor({ initial, invalidField, errorId, bare = false }: Ho
                     />
                   </label>
               </>
+              {renderError === undefined ? null : <div className="col-span-full empty:hidden">{renderError(day)}</div>}
             </div>
           );
         })}

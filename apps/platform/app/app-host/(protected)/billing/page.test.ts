@@ -22,7 +22,7 @@ vi.mock("@/components/panel/email-us", () => ({ EmailUs: () => "support@brandbas
 vi.mock("@/components/panel/billing/plan-summary", () => ({ PlanSummary: () => "[plan summary]", priceNote: () => "₹2,999 a month, GST included." }));
 vi.mock("@/components/panel/billing/payment-method", () => ({ PaymentMethod: () => "[payment method]" }));
 vi.mock("@/components/panel/billing/billing-details", () => ({ BillingDetails: () => "[billing details]" }));
-vi.mock("@/components/panel/billing/monthly-billing", () => ({ MonthlyBilling: () => "[monthly billing]" }));
+vi.mock("@/components/panel/billing/payments-list", () => ({ PaymentsList: () => "[payments]" }));
 vi.mock("@/components/panel/billing/reactivate-plan", () => ({ ReactivatePlan: () => "[reactivate]" }));
 vi.mock("@/components/panel/billing/service-picker", () => ({ ServicePicker: () => "[service picker]" }));
 vi.mock("@/components/panel/payment-waiting", () => ({ PaymentWaiting: () => "[waiting]" }));
@@ -50,12 +50,13 @@ async function render(searchParams: Record<string, string> = {}): Promise<string
 }
 
 describe("the Billing page", () => {
-  it("is one column of sections under the title, with no box around any", async () => {
+  it("puts the plan on the left and the payments in the aside, with no box around any section", async () => {
     const html = await render();
     expect(html).toContain(">Billing</h1>");
     expect(html).toContain("Your plan, and each month’s bill with its invoices and receipts.");
-    expect(html).toContain("[plan summary]");
-    expect(html).toContain("[monthly billing]");
+    expect(html.indexOf("[plan summary]")).toBeGreaterThan(-1);
+    expect(html.indexOf("[payments]")).toBeGreaterThan(html.indexOf("[plan summary]"));
+    expect(html).toMatch(/<aside[^>]*>[^<]*\[payments\]/);
     expect(html).not.toContain("rounded-card");
     expect(html).not.toContain("shadow-lift");
   });

@@ -45,8 +45,10 @@ the rail. Never hand-drawn SVG. The older `@brandbasket/shared/ui/icons` set sta
 ## Layout
 
 Desktop: the dark rail (232px) and the page inset 8px on three sides with a 14px radius. Phones: a light top bar
-with the logo and search, a bottom tab bar, and a Menu sheet for the rest. Content column up to 1088px. Task on the
-left, things to read on the right; one column on phones. Must work at 390px with no sideways scroll.
+with the logo and search, a bottom tab bar, and a Menu sheet for the rest. Every page sits in `PageFrame`: fluid to
+the edge of the content area, up to about 1560px, on the left, with 24px, 32px and 40px gutters (phones, md, xl). Task
+on the left, things to read on the right (`PageColumns`); one column on phones. Must work at 390px with no sideways
+scroll. The rules and an example are in `docs/page-frame.md`.
 
 ## Words
 

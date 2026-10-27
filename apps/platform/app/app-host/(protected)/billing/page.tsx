@@ -13,10 +13,10 @@ import { describePlanTerms, monthlyPaymentAmount } from "@brandbasket/shared/lib
 import { firstIncompleteStep, onboardingStepHref } from "@brandbasket/shared/lib/onboarding/steps";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { BillingDetails } from "@/components/panel/billing/billing-details";
-import { MonthlyBilling } from "@/components/panel/billing/monthly-billing";
+import { PaymentsList } from "@/components/panel/billing/payments-list";
 import { NoticeBanner } from "@/components/panel/notice-banner";
 import { DARK_BUTTON } from "@/components/v2/classes";
-import { PageHeader, PageSection } from "@/components/v2/page";
+import { PageColumns, PageFrame, PageSection } from "@/components/v2/page";
 import { PaymentWaiting } from "@/components/panel/payment-waiting";
 import { PaymentMethod } from "@/components/panel/billing/payment-method";
 import { PlanSummary, priceNote } from "@/components/panel/billing/plan-summary";
@@ -58,13 +58,26 @@ function PaymentMethodSection({
   return <PaymentMethod view={paymentMethodView(method, renews)} emailUs={<EmailUs />} />;
 }
 
-/** The page around every state of Billing: its title, one line under it, then sections one after the other. */
-function BillingFrame({ lede, children }: { readonly lede: ReactNode; readonly children: ReactNode }): ReactElement {
+/**
+ * The page around every state of Billing: its title and line, then any notices across the top, then the columns. The plan and
+ * how it is paid on the left, the payments on the right; a state with no payments leaves the right out.
+ */
+function BillingFrame({
+  lede,
+  notices,
+  main,
+  payments,
+}: {
+  readonly lede: ReactNode;
+  readonly notices?: ReactNode;
+  readonly main: ReactNode;
+  readonly payments: ReactNode | null;
+}): ReactElement {
   return (
-    <div className="mx-auto grid w-full max-w-[52rem] gap-10">
-      <PageHeader title="Billing" lede={lede} />
-      {children}
-    </div>
+    <PageFrame title="Billing" lede={lede}>
+      {notices}
+      <PageColumns main={main} aside={payments} />
+    </PageFrame>
   );
 }
 
@@ -118,56 +131,73 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
       findCustomerPaymentMethod(customer),
     ]);
     return (
-      <BillingFrame lede="What you owe for ad spots you’ve won, and the invoices and receipts for what you’ve paid.">
-        {notice === null ? null : <NoticeBanner {...CHARGE_NOTICES[notice]} />}
-        <PaymentMethodSection method={paymentMethod} renews={false} />
-        <BillingDetailsSection view={billingDetails} />
-        <MonthlyBilling
-          months={billingMonths(receipts, openCharges, brand)}
-          lede="Each month’s ad spots, with a PDF invoice or receipt for every payment."
-          emptyBody="Once your first payment goes through, each month’s ad spots show here, with an invoice or receipt for every payment."
-        />
-      </BillingFrame>
+      <BillingFrame
+        lede="What you owe for ad spots you’ve won, and the invoices and receipts for what you’ve paid."
+        notices={notice === null ? null : <NoticeBanner {...CHARGE_NOTICES[notice]} />}
+        main={
+          <>
+            <PaymentMethodSection method={paymentMethod} renews={false} />
+            <BillingDetailsSection view={billingDetails} />
+          </>
+        }
+        payments={
+          <PaymentsList
+            months={billingMonths(receipts, openCharges, brand)}
+            emptyBody="Once your first payment goes through, each month’s ad spots show here, with an invoice or receipt for every payment."
+          />
+        }
+      />
     );
   }
 
   if (billing.status === "unpaid") {
     if (billing.paymentUnderReview) {
       return (
-        <BillingFrame lede={PAYMENT_RECEIVED_MESSAGE}>
-          <PageSection id="next" title="What happens next">
-            <p className="max-w-xl text-sm leading-relaxed text-ink">
-              There’s nothing more for you to pay. If you need us sooner, email <EmailUs />.
-            </p>
-          </PageSection>
-          <BillingDetailsSection view={billingDetails} />
-          <MonthlyBilling months={billingMonths(receipts, [], brand)} />
-        </BillingFrame>
+        <BillingFrame
+          lede={PAYMENT_RECEIVED_MESSAGE}
+          main={
+            <>
+              <PageSection id="next" title="What happens next">
+                <p className="max-w-xl text-sm leading-relaxed text-ink">
+                  There’s nothing more for you to pay. If you need us sooner, email <EmailUs />.
+                </p>
+              </PageSection>
+              <BillingDetailsSection view={billingDetails} />
+            </>
+          }
+          payments={<PaymentsList months={billingMonths(receipts, [], brand)} />}
+        />
       );
     }
     const { completed } = await getProjectOverview();
     const nextStep = firstIncompleteStep(new Set(completed));
     const ready = nextStep === "review";
     return (
-      <BillingFrame lede="Payment happens at the end of setup.">
-        <PageSection id="paying" title="How paying works">
-          <p className="max-w-xl text-sm leading-relaxed text-ink">
-            Once you’ve told us about your business, you’ll check your answers and pay on the last step, Check and
-            send. Your payment sends everything to us, and we start building.
-          </p>
-          {billing.plan === null ? (
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-2">
-              We can’t take payment in your currency just yet. Email us at <EmailUs /> and we’ll sort it out.
-            </p>
-          ) : (
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-2">{describePlanTerms(billing.plan, websiteAloneNetCents(billing.plan.currency))}</p>
-          )}
-          <Link href={ready ? PAYMENT_STEP_HREF : onboardingStepHref(nextStep)} className={`${DARK_BUTTON} mt-6`}>
-            {ready ? "Go to Check and send" : "Finish setup"}
-          </Link>
-        </PageSection>
-        <BillingDetailsSection view={billingDetails} />
-      </BillingFrame>
+      <BillingFrame
+        lede="Payment happens at the end of setup."
+        main={
+          <>
+            <PageSection id="paying" title="How paying works">
+              <p className="max-w-xl text-sm leading-relaxed text-ink">
+                Once you’ve told us about your business, you’ll check your answers and pay on the last step, Check and
+                send. Your payment sends everything to us, and we start building.
+              </p>
+              {billing.plan === null ? (
+                <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-2">
+                  We can’t take payment in your currency just yet. Email us at <EmailUs /> and we’ll sort it out.
+                </p>
+              ) : (
+                <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-2">{describePlanTerms(billing.plan, websiteAloneNetCents(billing.plan.currency))}</p>
+              )}
+              <Link href={ready ? PAYMENT_STEP_HREF : onboardingStepHref(nextStep)} className={`${DARK_BUTTON} mt-6`}>
+                {ready ? "Go to Check and send" : "Finish setup"}
+              </Link>
+            </PageSection>
+            <BillingDetailsSection view={billingDetails} />
+          </>
+        }
+        payments={null}
+      />
     );
   }
 
@@ -192,48 +222,57 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
   const chargeWaiting = chargeReturn === "processing" && openCharges.length > 0;
   const notice = chargeReturn === "processing" ? (chargeWaiting ? null : "paid") : chargeReturn;
   return (
-    <BillingFrame lede="Your plan, and each month’s bill with its invoices and receipts.">
-      {notice === null ? null : <NoticeBanner {...CHARGE_NOTICES[notice]} />}
-      {chargeWaiting ? (
-        <PaymentWaiting
-          waitKey="billing:charge"
-          waitingText="Thanks, we’re confirming your payment with the bank. This page updates by itself."
-          delayedText="Confirming your payment is taking longer than usual."
-          supportEmail={supportEmailOf(brand)}
-        />
-      ) : null}
-      {billing.renewalFailingUntil === null ? null : <RenewalFailingCard until={billing.renewalFailingUntil} />}
-      {returnView === "confirmed" ? <NoticeBanner {...PAYMENT_CONFIRMED} /> : null}
-      {returnView === "failed" ? <NoticeBanner {...PAYMENT_FAILED} /> : null}
-      {returnView === "confirming" ? (
-        <PaymentWaiting
-          waitKey="billing:plan"
-          waitingText="We’ve received your payment. Confirming it with the bank…"
-          delayedText="Confirming your payment is taking longer than usual."
-          supportEmail={supportEmailOf(brand)}
-        />
-      ) : lapsed && reactivationPlan !== null && reactivation !== null ? (
-        <ReactivatePlan
-          planName={planLabel(reactivationPlan.name)}
-          monthlyAmount={monthlyPaymentAmount(reactivationPlan, reactivation.netCents - reactivation.discountCents)}
-          priceNote={priceNote(reactivationPlan, reactivation.discountCents, reactivation.netCents)}
-          action={reactivateAction}
-          services={reactivation.cancelled ? reactivation.services : null}
-        >
-          {reactivation.cancelled ? <ServicePicker selected={reactivation.services} currency={reactivationPlan.currency} /> : null}
-        </ReactivatePlan>
-      ) : lapsed || plan === null || subscription === null ? (
-        <PageSection id="plan" title="Your plan">
-          <p className="max-w-xl text-sm leading-relaxed text-ink-2">
-            We couldn’t find your plan’s details. Email us at <EmailUs /> and we’ll sort it out.
-          </p>
-        </PageSection>
-      ) : (
-        <PlanSummary plan={plan} subscription={subscription} now={new Date()} hasWebsite={billing.hasWebsite} brand={brand} />
-      )}
-      <PaymentMethodSection method={paymentMethod} renews={renewsAutomatically(billing)} />
-      <BillingDetailsSection view={billingDetails} />
-      <MonthlyBilling months={billingMonths(receipts, openCharges, brand)} />
-    </BillingFrame>
+    <BillingFrame
+      lede="Your plan, and each month’s bill with its invoices and receipts."
+      notices={
+        <>
+          {notice === null ? null : <NoticeBanner {...CHARGE_NOTICES[notice]} />}
+          {chargeWaiting ? (
+            <PaymentWaiting
+              waitKey="billing:charge"
+              waitingText="Thanks, we’re confirming your payment with the bank. This page updates by itself."
+              delayedText="Confirming your payment is taking longer than usual."
+              supportEmail={supportEmailOf(brand)}
+            />
+          ) : null}
+          {billing.renewalFailingUntil === null ? null : <RenewalFailingCard until={billing.renewalFailingUntil} />}
+          {returnView === "confirmed" ? <NoticeBanner {...PAYMENT_CONFIRMED} /> : null}
+          {returnView === "failed" ? <NoticeBanner {...PAYMENT_FAILED} /> : null}
+        </>
+      }
+      main={
+        <>
+          {returnView === "confirming" ? (
+            <PaymentWaiting
+              waitKey="billing:plan"
+              waitingText="We’ve received your payment. Confirming it with the bank…"
+              delayedText="Confirming your payment is taking longer than usual."
+              supportEmail={supportEmailOf(brand)}
+            />
+          ) : lapsed && reactivationPlan !== null && reactivation !== null ? (
+            <ReactivatePlan
+              planName={planLabel(reactivationPlan.name)}
+              monthlyAmount={monthlyPaymentAmount(reactivationPlan, reactivation.netCents - reactivation.discountCents)}
+              priceNote={priceNote(reactivationPlan, reactivation.discountCents, reactivation.netCents)}
+              action={reactivateAction}
+              services={reactivation.cancelled ? reactivation.services : null}
+            >
+              {reactivation.cancelled ? <ServicePicker selected={reactivation.services} currency={reactivationPlan.currency} /> : null}
+            </ReactivatePlan>
+          ) : lapsed || plan === null || subscription === null ? (
+            <PageSection id="plan" title="Your plan">
+              <p className="max-w-xl text-sm leading-relaxed text-ink-2">
+                We couldn’t find your plan’s details. Email us at <EmailUs /> and we’ll sort it out.
+              </p>
+            </PageSection>
+          ) : (
+            <PlanSummary plan={plan} subscription={subscription} now={new Date()} hasWebsite={billing.hasWebsite} brand={brand} />
+          )}
+          <PaymentMethodSection method={paymentMethod} renews={renewsAutomatically(billing)} />
+          <BillingDetailsSection view={billingDetails} />
+        </>
+      }
+      payments={<PaymentsList months={billingMonths(receipts, openCharges, brand)} />}
+    />
   );
 }

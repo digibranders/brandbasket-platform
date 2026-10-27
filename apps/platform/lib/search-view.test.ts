@@ -48,24 +48,43 @@ describe("SearchView", () => {
     expect(html).toContain("Opening hours on Google");
   });
 
-  it("orders the sections: waiting, figure, pages, listings", () => {
+  it("orders the main column: waiting, pages, listings", () => {
     const html = render(data({ waiting: [waitingItem("areas")] }));
-    const at = ["Waiting on you", "Searches on Google&#x27;s first page", "Pages we improved in", "Listings we fixed"].map((text) => html.indexOf(text));
+    const at = ["Waiting on you", "Pages we improved in", "Listings we fixed"].map((text) => html.indexOf(text));
     expect(at.every((index) => index >= 0)).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
-  it("says each empty section in its own line", () => {
+  it("says each empty section in its own line, and what will appear in it", () => {
     const html = render(data({ summary: { pageOne: { figure: "14", detail: null }, pages: [], listings: [] } }));
     expect(html).toContain("No pages finished yet this month.");
+    expect(html).toContain("Each page we improve appears here, with a link to it, once it is finished.");
     expect(html).toContain("No listings fixed yet this month.");
+    expect(html).toContain("each fix appears here");
   });
 
-  it("leaves out the figure section and the month line when no figure was measured, never showing a zero", () => {
-    const html = render(data({ summary: { pageOne: null, pages: [], listings: [] } }));
-    expect(html).not.toContain("Searches on Google&#x27;s first page");
+  it("says no count yet, and when it comes, when no figure was measured, with no month line and never a zero", () => {
+    const html = render(data({ summary: { pageOne: null, pages: [{ id: "p1", title: "Emergency plumber page", dueOn: "2026-11-18", linkUrl: null }], listings: [] } }));
+    expect(html).toContain("Searches on Google&#x27;s first page");
+    expect(html).toContain("No count yet");
+    expect(html).toContain("We count these once a month and add the figure here.");
     expect(html).not.toContain("show you on Google");
     expect(html).not.toContain(">0<");
+  });
+
+  it("with nothing at all to show, is one empty state with Ask for a change as its action", () => {
+    const html = render(data({ summary: { pageOne: null, pages: [], listings: [] } }));
+    expect(html).toContain("No search work to show yet");
+    expect(html).toContain('href="/requests/new?kind=search"');
+    expect(darkButtons(html)).toBe(1);
+    expect(html).not.toContain("Pages we improved in");
+  });
+
+  it("sits in the page frame, with the figure in the aside after the pages and listings", () => {
+    const html = render(data());
+    expect(html).toContain(">Search</h1>");
+    expect(html).toContain("@container");
+    expect(html.indexOf("Searches on Google&#x27;s first page")).toBeGreaterThan(html.indexOf("Listings we fixed"));
   });
 
   it("leaves out the detail line when there is no change to report", () => {

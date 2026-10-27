@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { CHATBOT_LEADS_PATH, pageRangeLabel, paginationItems } from "@/lib/chatbots-view";
 
-const BUTTON = "inline-flex h-9 min-w-9 items-center justify-center rounded-control px-3 text-sm transition-colors duration-200 ease-calm";
+const BUTTON = "inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-3 text-[0.8125rem] transition-colors duration-200";
 
 function pageHref(page: number): string {
   return page === 1 ? CHATBOT_LEADS_PATH : `${CHATBOT_LEADS_PATH}?page=${page}`;
@@ -32,7 +32,7 @@ export function LeadPagination({
       <ul className="flex flex-wrap items-center gap-1">
         <li>
           {page > 1 ? (
-            <Link href={pageHref(page - 1)} className={cn(BUTTON, "text-ink hover:bg-paper-deep")}>
+            <Link href={pageHref(page - 1)} className={cn(BUTTON, "text-ink hover:bg-sunken")}>
               Previous
             </Link>
           ) : (
@@ -48,11 +48,11 @@ export function LeadPagination({
                 ...
               </span>
             ) : item.page === page ? (
-              <span aria-current="page" className={cn(BUTTON, "bg-ink font-medium text-card")}>
+              <span aria-current="page" className={cn(BUTTON, "bg-ink font-semibold text-white")}>
                 {item.page}
               </span>
             ) : (
-              <Link href={pageHref(item.page)} aria-label={`Page ${item.page}`} className={cn(BUTTON, "text-ink hover:bg-paper-deep")}>
+              <Link href={pageHref(item.page)} aria-label={`Page ${item.page}`} className={cn(BUTTON, "text-ink hover:bg-sunken")}>
                 {item.page}
               </Link>
             )}
@@ -60,7 +60,7 @@ export function LeadPagination({
         ))}
         <li>
           {page < pageCount ? (
-            <Link href={pageHref(page + 1)} className={cn(BUTTON, "text-ink hover:bg-paper-deep")}>
+            <Link href={pageHref(page + 1)} className={cn(BUTTON, "text-ink hover:bg-sunken")}>
               Next
             </Link>
           ) : (

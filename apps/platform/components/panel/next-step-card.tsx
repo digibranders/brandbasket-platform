@@ -1,11 +1,12 @@
+import { Check } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
-import { ButtonLink } from "@brandbasket/shared/ui/panel/button";
-import { ArrowIcon, TickIcon } from "@brandbasket/shared/ui/icons";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { cn } from "@brandbasket/shared/lib/cn";
 import type { NextStep } from "@brandbasket/shared/lib/next-step";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
+import { SOFT_BUTTON } from "@/components/v2/classes";
+import { PageSection } from "@/components/v2/page";
 import { PROJECT_STAGES } from "@/lib/project-stages";
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
 
@@ -17,22 +18,7 @@ interface NextStepCardProps {
 
 type ItemState = "done" | "current" | "todo";
 
-function Marker({ state, number }: { readonly state: ItemState; readonly number: number }): ReactElement {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full text-sm tabular-nums",
-        state === "done" && "bg-ink text-paper",
-        state === "current" && "bg-accent-deep text-paper shadow-[0_8px_20px_-10px_rgba(99,0,30,0.8)]",
-        state === "todo" && "border border-line bg-paper text-ink-soft",
-      )}
-    >
-      {state === "done" ? <TickIcon className="size-4" /> : number}
-    </span>
-  );
-}
-
+const MARK: Readonly<Record<ItemState, string>> = { done: "bg-ink text-white", current: "bg-rattan text-ink", todo: "bg-sunken text-ink-2" };
 const STATE_TEXT: Readonly<Record<ItemState, string>> = { done: " (done)", current: " (next)", todo: "" };
 
 interface ListItem {
@@ -40,43 +26,27 @@ interface ListItem {
   readonly title: string;
   readonly detail: string;
   readonly state: ItemState;
-  readonly href?: string;
 }
 
-/** A short numbered list joined by a thin line, as the middle column of the card. */
+/** A short numbered list joined by a thin line: the build's stages, each marked done, now or still to come. */
 function StepList({ label, items }: { readonly label: string; readonly items: readonly ListItem[] }): ReactElement {
   return (
-    <ol aria-label={label} className="relative space-y-4">
-      <span aria-hidden="true" className="absolute bottom-4 left-[1.125rem] top-4 w-px bg-line" />
-      {items.map((item, index) => {
-        const body = (
-          <>
-            <Marker state={item.state} number={index + 1} />
-            <span className="min-w-0 pt-0.5">
-              <span className={cn("block text-sm", item.state === "todo" ? "text-ink" : "font-medium")}>
-                {item.title}
-                <span className="sr-only">{STATE_TEXT[item.state]}</span>
-              </span>
-              <span className="mt-0.5 block text-xs leading-relaxed text-ink-soft">{item.detail}</span>
+    <ol aria-label={label} className="relative grid gap-4">
+      <span aria-hidden="true" className="absolute bottom-3 left-[0.6875rem] top-3 w-px bg-line" />
+      {items.map((item, index) => (
+        <li key={item.key} aria-current={item.state === "current" ? "step" : undefined} className="relative flex gap-3">
+          <span aria-hidden="true" className={cn("relative z-10 grid size-[1.375rem] shrink-0 place-items-center rounded-full text-xs tabular-nums", MARK[item.state])}>
+            {item.state === "done" ? <Check size={12} weight="bold" /> : index + 1}
+          </span>
+          <span className="min-w-0">
+            <span className={cn("block text-sm text-ink", item.state !== "todo" && "font-semibold")}>
+              {item.title}
+              <span className="sr-only">{STATE_TEXT[item.state]}</span>
             </span>
-          </>
-        );
-        return (
-          <li key={item.key}>
-            {item.href === undefined ? (
-              <span className="flex gap-4">{body}</span>
-            ) : (
-              <Link
-                href={item.href}
-                aria-current={item.state === "current" ? "step" : undefined}
-                className="group flex gap-4 rounded-control transition-colors duration-300 ease-calm hover:text-accent-deep"
-              >
-                {body}
-              </Link>
-            )}
-          </li>
-        );
-      })}
+            <span className="block text-xs leading-relaxed text-ink-2">{item.detail}</span>
+          </span>
+        </li>
+      ))}
     </ol>
   );
 }
@@ -102,33 +72,26 @@ interface LayoutProps {
 
 function CardLayout({ eyebrow, heading, children, action, note, list }: LayoutProps): ReactElement {
   return (
-    <section
-      aria-labelledby="next-step-heading"
-      className="grid gap-8 rounded-shell border border-line bg-card p-6 shadow-[0_24px_60px_-48px_rgba(42,13,16,0.6)] sm:p-8 lg:grid-cols-[1.3fr_1fr] xl:items-center"
-    >
-      <div>
-        <p className="text-[0.8125rem] font-semibold text-accent-deep">{eyebrow}</p>
-        <h2 id="next-step-heading" className="mt-3 panel-title">
-          {heading}
-        </h2>
-        {children === undefined ? null : <div className="mt-3 max-w-xl text-sm leading-relaxed text-ink-soft">{children}</div>}
-        {action === undefined && note === undefined ? null : (
-          <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3">
-            {action === undefined ? null : (
-              <ButtonLink
-                href={action.href}
-                className="group shadow-[0_14px_30px_-18px_rgba(42,13,16,0.9)]"
-              >
-                {action.label}
-                <ArrowIcon className="size-4 transition-transform duration-300 ease-calm group-hover:translate-x-1" />
-              </ButtonLink>
-            )}
-            {note === undefined ? null : <p className="text-sm text-ink-soft">{note}</p>}
-          </div>
-        )}
+    <PageSection id="next-step" title="What happens next">
+      <div className="grid gap-5">
+        <div>
+          <p className="text-xs font-semibold text-rattan-ink">{eyebrow}</p>
+          <h3 className="mt-1 font-display text-[1.1875rem] font-semibold leading-snug tracking-[-0.02em] text-ink">{heading}</h3>
+          {children === undefined ? null : <div className="mt-2 text-[0.84375rem] leading-relaxed text-ink-2">{children}</div>}
+          {action === undefined && note === undefined ? null : (
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+              {action === undefined ? null : (
+                <Link href={action.href} className={SOFT_BUTTON}>
+                  {action.label}
+                </Link>
+              )}
+              {note === undefined ? null : <p className="text-[0.8125rem] text-ink-2">{note}</p>}
+            </div>
+          )}
+        </div>
+        {list}
       </div>
-      <div className="lg:border-l lg:border-line lg:pl-8">{list}</div>
-    </section>
+    </PageSection>
   );
 }
 
@@ -181,7 +144,7 @@ export function NextStepCard({ step, buildStageIndex }: NextStepCardProps): Reac
             {href === null ? (
               <span className="font-medium text-ink">{step.hostname}</span>
             ) : (
-              <a href={href} target="_blank" rel="noopener noreferrer" className="link-underline font-medium text-ink">
+              <a href={href} target="_blank" rel="noopener noreferrer" className="font-semibold text-ink underline underline-offset-[3px]">
                 {step.hostname}
               </a>
             )}

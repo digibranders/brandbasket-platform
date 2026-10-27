@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { AddOnRow } from "@/components/panel/add-ons/add-on-row";
 import { NoticeBanner } from "@/components/panel/notice-banner";
 import { PaymentWaiting } from "@/components/panel/payment-waiting";
-import { PageHeader } from "@/components/v2/page";
+import { PageFrame } from "@/components/v2/page";
 import { ADD_ONS } from "@/lib/add-ons";
 import { supportEmailOf } from "@/lib/brand";
 import { CHARGE_NOTICES, readChargeNotice } from "@/lib/billing/charge-notices";
@@ -38,25 +38,26 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps):
   const notice = chargeReturn === "paid" || chargeReturn === "processing" ? null : chargeReturn;
 
   return (
-    <div className="mx-auto w-full max-w-[52rem]">
-      <PageHeader title="Your plan" />
-      <div className="mt-6 grid gap-6 empty:hidden">
-        {notice === null ? null : <NoticeBanner {...CHARGE_NOTICES[notice]} />}
-        {confirming ? (
-          <PaymentWaiting
-            waitKey="add-ons:charge"
-            waitingText="Thanks, we’re confirming your payment with the bank. This page updates by itself."
-            delayedText="Confirming your payment is taking longer than usual."
-            supportEmail={supportEmailOf(brand)}
-          />
-        ) : null}
-      </div>
-      <ul className="mt-6 divide-y divide-line border-y border-line">
+    <PageFrame title="Your plan" lede="Each service, what it costs a month and where it stands.">
+      {notice === null && !confirming ? null : (
+        <div className="grid gap-6">
+          {notice === null ? null : <NoticeBanner {...CHARGE_NOTICES[notice]} />}
+          {confirming ? (
+            <PaymentWaiting
+              waitKey="add-ons:charge"
+              waitingText="Thanks, we’re confirming your payment with the bank. This page updates by itself."
+              delayedText="Confirming your payment is taking longer than usual."
+              supportEmail={supportEmailOf(brand)}
+            />
+          ) : null}
+        </div>
+      )}
+      <ul className="divide-y divide-line border-y border-line">
         {ADD_ONS.map((addOn) => {
           const entry = entryOf.get(addOn.id);
           return entry === undefined ? null : <AddOnRow key={addOn.id} addOn={addOn} entry={entry} canAdd={!confirming} />;
         })}
       </ul>
-    </div>
+    </PageFrame>
   );
 }

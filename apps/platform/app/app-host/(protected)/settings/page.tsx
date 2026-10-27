@@ -10,7 +10,7 @@ import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { EmailUs } from "@/components/panel/email-us";
 import { ChangePasswordForm } from "@/components/panel/change-password-form";
 import { SOFT_BUTTON } from "@/components/v2/classes";
-import { ActionRow, FactRows, PageHeader, PageSection } from "@/components/v2/page";
+import { ActionRow, FactRows, PageFrame, PageSection } from "@/components/v2/page";
 import { DELETE_ACCOUNT_PATH } from "@/lib/account-settings-form";
 import { PRIVACY_SETTINGS_PATH } from "@/lib/privacy-settings-form";
 import { accountLabel } from "@/lib/server/account-label";
@@ -58,9 +58,7 @@ export default async function SettingsPage(): Promise<ReactElement> {
       ];
 
   return (
-    <div className="mx-auto grid w-full max-w-[44rem] gap-10">
-      <PageHeader title="Settings" lede="Your account and the business it belongs to." />
-
+    <PageFrame title="Settings" lede="Your account and the business it belongs to." width="form">
       <PageSection id="account" title="Your account">
         <FactRows
           items={[
@@ -110,6 +108,6 @@ export default async function SettingsPage(): Promise<ReactElement> {
           </button>
         </form>
       </PageSection>
-    </div>
+    </PageFrame>
   );
 }
