@@ -47,4 +47,17 @@ describe("PlanSummary", () => {
     expect(markup(false)).not.toContain("Hosting and SSL certificate");
     expect(markup(false)).not.toContain("hour of changes");
   });
+
+  it("is a section on the page with its title and a hairline, not a box", () => {
+    const html = markup(true);
+    expect(html).toContain('<section aria-labelledby="plan-title"');
+    expect(html).toContain('<h2 id="plan-title"');
+    expect(html).not.toContain("rounded-card");
+    expect(html).not.toContain("bg-card");
+  });
+
+  it("shows the price in figures and the next payment in words", () => {
+    expect(markup(true)).toContain("per month");
+    expect(markup(true)).toContain("Next payment");
+  });
 });

@@ -2,8 +2,8 @@
 
 import { useActionState, type ReactElement, type ReactNode } from "react";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { ArrowIcon } from "@brandbasket/shared/ui/icons";
-import { Button } from "@brandbasket/shared/ui/panel/button";
+import { cn } from "@brandbasket/shared/lib/cn";
+import { DARK_BUTTON, LIFT } from "@/components/v2/classes";
 import { initialReactivateFormState, type ReactivateFormState } from "@/lib/billing/reactivate-form";
 
 interface ReactivatePlanProps {
@@ -30,11 +30,11 @@ export function ReactivatePlan({ planName, monthlyAmount, priceNote, action, ser
   const message = state.status === "error" && !isPending ? state.message : null;
 
   return (
-    <section aria-labelledby="reactivate-heading" className="rounded-card border border-line bg-card p-6 sm:p-7">
-      <h2 id="reactivate-heading" className="panel-section text-base">
+    <section aria-labelledby="reactivate-heading" className={cn(LIFT, "p-6 sm:p-7")}>
+      <h2 id="reactivate-heading" className="font-display text-[1.125rem] font-semibold tracking-[-0.02em] text-ink">
         Your plan has ended
       </h2>
-      <p className="mt-1 max-w-xl text-sm leading-relaxed text-ink-soft">
+      <p className="mt-1 max-w-xl text-sm leading-relaxed text-ink-2">
         Your website and content are safe. Reactivate to bring them back from today. The months you were away aren’t
         charged.
       </p>
@@ -44,35 +44,34 @@ export function ReactivatePlan({ planName, monthlyAmount, priceNote, action, ser
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             <p className="text-sm font-semibold">{planName}</p>
-            <span className="rounded-full bg-accent-pale px-2 py-0.5 text-[0.6875rem] font-semibold text-accent-deep">
+            <span className="rounded-full bg-sunken px-2 py-0.5 text-[0.6875rem] font-semibold text-ink-2">
               Monthly
             </span>
           </div>
-          <p className="mt-1 text-xs text-ink-soft">{priceNote}</p>
+          <p className="mt-1 text-xs text-ink-2">{priceNote}</p>
         </div>
         <p className="flex items-baseline gap-1.5">
-          <span className="font-serif text-3xl leading-none tracking-tight tabular-nums">{monthlyAmount}</span>
-          <span className="text-xs text-ink-soft">per month</span>
+          <span className="font-figure text-[1.75rem] font-semibold leading-none tracking-tight tabular-nums text-ink">{monthlyAmount}</span>
+          <span className="text-xs text-ink-2">per month</span>
         </p>
       </div>
 
       <form action={formAction} className="mt-6">
         {services?.map((service) => <input key={service} type="hidden" name="service" value={service} />)}
-        <Button
+        <button
           type="submit"
           disabled={isPending}
           aria-busy={isPending}
           aria-describedby={message === null ? undefined : "reactivate-error"}
-          className="group"
+          className={DARK_BUTTON}
         >
           {isPending ? "Opening payment…" : `Reactivate for ${monthlyAmount}`}
-          <ArrowIcon className="size-4 shrink-0 transition-transform duration-300 ease-calm group-hover:translate-x-1" />
-        </Button>
+        </button>
         {message === null ? null : (
           <p
             id="reactivate-error"
             role="alert"
-            className="mt-4 max-w-xl rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep"
+            className="mt-4 max-w-xl rounded-lg bg-rattan-wash px-4 py-3 text-sm text-rattan-ink"
           >
             {message}
           </p>

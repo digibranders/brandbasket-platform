@@ -7,6 +7,7 @@ import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
 import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { DARK_BUTTON_SHAPE } from "@/components/v2/classes";
 import { FIELD_PATTERNS } from "@brandbasket/shared/lib/forms/input-rules";
 import { lookupBillingPincodeAction } from "@/app/app-host/(protected)/billing/actions";
 import {
@@ -243,7 +244,7 @@ export function BillingDetailsForm({ view, action, layout }: BillingDetailsFormP
       </fieldset>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <SubmitButton size="sm" pendingLabel="Saving…">
+        <SubmitButton size="sm" pendingLabel="Saving…" className={DARK_BUTTON_SHAPE}>
           Save billing details
         </SubmitButton>
         {/* The one live region. A problem with a field is shown under that field, so here it is read out only. */}

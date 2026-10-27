@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { stateName } from "@brandbasket/shared/lib/directory/india-states";
-import { Button } from "@brandbasket/shared/ui/panel/button";
-import { SectionHeading, Surface } from "@brandbasket/shared/ui/panel/surface";
+import { PageSection } from "@/components/v2/page";
+import { SOFT_BUTTON } from "@/components/v2/classes";
 import { saveBillingDetailsAction } from "@/app/app-host/(protected)/billing/actions";
 import { BillingDetailsForm, SAVED_TEXT } from "@/components/panel/billing/billing-details-form";
 import type { PanelFormAction } from "@/components/panel/form/panel-form";
@@ -42,7 +42,7 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
 
   const facts =
     saved === null ? null : variant === "card" ? (
-      <dl className="mt-5 grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
+      <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
         <Fact label="Billed to" value={saved.legalName} />
         <Fact label="GSTIN" value={saved.gstin ?? "Not given"} />
         <Fact label="Address" value={saved.address} />
@@ -59,7 +59,7 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
 
   const intro =
     saved === null && !foldedAway ? (
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
+      <p className={`max-w-2xl text-sm leading-relaxed text-ink-soft ${variant === "card" ? "" : "mt-3"}`}>
         {variant === "card"
           ? "Add your billing address, and your GSTIN if you have one, to get GST invoices in the right name. They apply to invoices issued after you save them."
           : "Optional. Add your billing address, and your GSTIN if you have one, for your GST invoice. You can pay without it."}
@@ -91,11 +91,9 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
         </button>
       ) : null}
       {saved === null ? null : (
-        <Button
+        <button
           type="button"
-          size="sm"
-          variant="secondary"
-          className="mt-5"
+          className={`${SOFT_BUTTON} mt-5`}
           aria-expanded={editing}
           aria-controls="billing-details-form"
           onClick={() => {
@@ -104,7 +102,7 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
           }}
         >
           {editing ? "Close" : "Edit billing details"}
-        </Button>
+        </button>
       )}
       {editing ? (
         <div id="billing-details-form" className={saved === null ? "mt-4" : "mt-6 border-t border-line pt-6"}>
@@ -116,10 +114,9 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
 
   if (variant === "card") {
     return (
-      <Surface labelledBy="billing-details">
-        <SectionHeading id="billing-details">Billing details</SectionHeading>
+      <PageSection id="billing-details" title="Billing details">
         {body}
-      </Surface>
+      </PageSection>
     );
   }
   return <CheckoutSection>{body}</CheckoutSection>;
