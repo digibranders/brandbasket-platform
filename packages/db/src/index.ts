@@ -767,6 +767,7 @@ export {
   DeliverableError,
   deleteDeliverable,
   findDeliverableForBusiness,
+  findDeliverableForStaff,
   insertDeliverable,
   latestMonthlyReport,
   listDeliverablesForBusiness,

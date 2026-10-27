@@ -7,6 +7,7 @@ import {
   DeliverableError,
   deleteDeliverable,
   findDeliverableForBusiness,
+  findDeliverableForStaff,
   insertDeliverable,
   latestMonthlyReport,
   listDeliverablesForBusiness,
@@ -179,6 +180,14 @@ describe("the staff writers", () => {
     expect(published).toMatchObject({ status: "published", publishedAt: NOW, linkUrl: "https://example.com/post" });
     const page = await add({ kind: "page" });
     expect((await moveDeliverable(dbs.staff.db, { id: page.id, businessId, to: "published", now: NOW })).publishedAt).toEqual(NOW);
+  });
+
+  it("find reads a deliverable of any business by its id, and nothing for an unknown id", async () => {
+    const mine = await add();
+    const theirs = await add({ business: otherBusinessId });
+    expect((await findDeliverableForStaff(dbs.staff.db, mine.id))?.businessId).toBe(businessId);
+    expect((await findDeliverableForStaff(dbs.staff.db, theirs.id))?.businessId).toBe(otherBusinessId);
+    expect(await findDeliverableForStaff(dbs.staff.db, randomUUID())).toBeNull();
   });
 
   it("move refuses approval by staff, and a row of another business as not_found", async () => {

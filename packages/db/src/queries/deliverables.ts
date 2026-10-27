@@ -254,6 +254,12 @@ export async function deleteDeliverable(db: Database, input: { readonly id: stri
   return row ?? null;
 }
 
+/** One deliverable of any business, by id. The console serves a post's picture from it. */
+export async function findDeliverableForStaff(db: Database, id: string): Promise<Deliverable | null> {
+  const [row] = await db.select().from(deliverables).where(eq(deliverables.id, id)).limit(1);
+  return row ?? null;
+}
+
 /** Every service's deliverables for the console: whatever is not published yet, and what is dated `from` or later. Newest first, at most 100. */
 export async function listDeliverablesForStaff(db: Database, businessId: string, input: { readonly from: string }): Promise<Deliverable[]> {
   return db
