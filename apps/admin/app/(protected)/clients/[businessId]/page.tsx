@@ -1,281 +1,89 @@
-import {
-  countAppointments,
-  findActivePlan,
-  findBillingProfile,
-  findBillingState,
-  findBusinessTimeZone,
-  findBusinessWebsiteUrl,
-  findClientDetail,
-  findListingPlacement,
-  findPlaces,
-  hasLiveProject,
-  listEnabledModules,
-  listPaymentsNeedingAttention,
-  listPaymentsWithoutTaxInvoice,
-  listTaxInvoicesForBusiness,
-  listUpcomingDirectoryPromotions,
-  PROJECT_STATUSES_PREVIEWABLE,
-  readDirectoryStatuses,
-} from "@brandbasket/db";
+import { findSetupCallBooking, listActivityForBusiness, listAssignableSupportStaff } from "@brandbasket/db";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
-import { TickIcon } from "@brandbasket/shared/ui/icons";
-import { clientListingKey, readClientTagNotice } from "@/lib/client-tags";
-import { ClientAddOns } from "@/components/client-add-ons";
-import { ClientChatbots } from "@/components/client-chatbots";
-import { ClientCharges } from "@/components/client-charges";
-import { ClientListingTags } from "@/components/client-listing-tags";
-import { ClientBillingDetails, ClientTaxInvoices } from "@/components/client-invoicing";
-import { ClientFeatures } from "@/components/client-features";
-import { ClientListing } from "@/components/client-listing";
-import { readStaffChargeNotice } from "@brandbasket/shared/lib/billing/charge-notices";
-import { loadClientAddOns } from "@/lib/server/add-ons-admin";
-import { serverEnv } from "@/lib/server/env";
-import { loadClientChatbots } from "@/lib/server/chatbots-admin";
-import { readChatbotNotice } from "@/lib/chatbot-form";
-import { listClientCharges } from "@/lib/server/charges-admin";
-import { PaymentsNeedingAttention } from "@/components/payments-needing-attention";
+import { staffCan } from "@brandbasket/shared/lib/access";
 import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
-import { readBusinessModuleNotice } from "@brandbasket/shared/lib/business-module-notices";
-import { MANUAL_PAYMENT_NOTICES, readManualPaymentNotice } from "@brandbasket/shared/lib/billing/manual-payment-notices";
-import { reactivationNetCents, websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
-import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
-import { loadManualCarriedCode } from "@/lib/server/billing-admin";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
-import { formatPromotionDay, promotionStatus, promotionTagDisplay } from "@brandbasket/shared/lib/directory/promotion";
-import { WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
-import { adminBrand } from "@/lib/brand";
-import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
-import { getSiteApiToken } from "@/lib/server/site-token";
-import { DOMAIN_CONNECT_NOTICES, readDomainConnectNotice } from "@brandbasket/shared/lib/domain-connect-notices";
-import { PROJECT_LAUNCH_NOTICES, readProjectLaunchNotice } from "@brandbasket/shared/lib/project-launch-notices";
-import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@brandbasket/shared/lib/project-preview-notices";
 import { ANSWER_STEPS, stepInfo } from "@brandbasket/shared/lib/onboarding/steps";
-import { getStaffDb } from "@/lib/server/db";
 import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
-import { requireStaffAccess } from "@/lib/server/staff-access";
-import { logStaffAccess } from "@/lib/server/staff-access-log";
-import { PROJECT_STATUSES_WAITING_ON_US } from "@brandbasket/shared/lib/project-status";
-import { labelClasses } from "@/components/console/field-styles";
-import { Notice } from "@/components/console/notice";
+import { TickIcon } from "@brandbasket/shared/ui/icons";
+import { ActivityList } from "@/components/activity-list";
+import { buttonPrimary } from "@/components/console/buttons";
+import { LIFT, SECTION_TITLE } from "@/components/console/classes";
 import { Quiet, Section } from "@/components/console/section";
-import { attentionSection } from "@/lib/client-attention";
-import { readAddOnNotice } from "@/lib/add-on-notices";
-import { readInvoiceNotice } from "@/lib/invoice-notices";
-import { lateReason } from "@/lib/pipeline";
-import { clientBillingDetails } from "@/lib/server/client-billing-details";
-import { resolvePaymentAttentionAction } from "./actions";
-import {
-  addressOf,
-  BillingFacts,
-  CustomerLink,
-  DNS_STATUS_TEXT,
-  Facts,
-  GoLivePanel,
-  hoursForDay,
-  ManualPaymentForm,
-  MoveDomainPanel,
-  readListingNotice,
-  SendPreviewForm,
-  SiteApiTokenBlock,
-  WebsiteUrlBlock,
-  When,
-} from "./parts";
+import { overviewNextStep } from "@/lib/client-next-step";
+import { clientTabHref, forwardedNoticeHref } from "@/lib/client-tabs";
+import { loadClientAddOns } from "@/lib/server/add-ons-admin";
+import { openClientTab } from "@/lib/server/client-page";
+import { getStaffDb } from "@/lib/server/db";
+import { BillingFacts, Facts, When } from "./parts";
 
 export const metadata: Metadata = { title: "Client" };
 
-/** How many flagged payments one client page lists. */
-const ATTENTION_SHOWN = 20;
+/** How many lines of history the Overview shows. */
+const RECENT_SHOWN = 6;
 
-const SEND_PREVIEW_STATUSES = new Set(PROJECT_STATUSES_PREVIEWABLE);
-
-export default async function ClientPage({
+export default async function ClientOverviewPage({
   params,
   searchParams,
 }: {
   readonly params: Promise<{ readonly businessId: string }>;
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
-  const { user } = await requireStaffAccess();
   const { businessId } = await params;
-  await logStaffAccess({ staffUserId: user.id, action: "client.view", targetType: "business", targetId: businessId, businessId });
+  const { granted, client } = await openClientTab(businessId, "");
+  // An action redirected here with a notice that belongs to another tab: pass it on with the same query.
+  const forward = forwardedNoticeHref(client.businessId, await searchParams);
+  if (forward !== null) redirect(forward);
+
   const db = getStaffDb();
-  const client = await findClientDetail(db, businessId);
-  if (client === null) notFound();
-  const sp = await searchParams;
-  const notice = readManualPaymentNotice(sp.payment);
-  const previewNotice = readProjectPreviewNotice(sp.preview);
-  const launchNotice = readProjectLaunchNotice(sp.launch);
-  const dnsNotice = readDomainConnectNotice(sp.dns);
-  const paymentState = clientPaymentState(client.billing, new Date());
-  const canRecordPayment =
-    paymentState.kind === "not-paid" || paymentState.kind === "checkout-open" || paymentState.kind === "lapsed";
-  const renderedAt = new Date();
-  const invoiced = client.currency === "INR";
-  const [
-    plan,
-    flagged,
-    siteApiToken,
-    websiteUrl,
-    timeZone,
-    enabledModules,
-    appointmentCounts,
-    charges,
-    billingState,
-    listingPlacement,
-    listingLive,
-    promotions,
-    billingProfile,
-    taxInvoices,
-    missingInvoices,
-    clientAddOns,
-    clientChatbots,
-  ] = await Promise.all([
-    canRecordPayment ? findActivePlan(db, client.currency, client.tier) : Promise.resolve(null),
-    listPaymentsNeedingAttention(db, { businessId: client.businessId, limit: ATTENTION_SHOWN }),
-    getSiteApiToken(client.businessId),
-    findBusinessWebsiteUrl(db, client.businessId),
-    findBusinessTimeZone(db, client.businessId),
-    listEnabledModules(db, client.businessId),
-    countAppointments(db, client.businessId),
-    listClientCharges(client.businessId),
-    findBillingState(db, client.businessId),
-    findListingPlacement(db, client.businessId),
-    hasLiveProject(db, client.businessId),
-    listUpcomingDirectoryPromotions(db, client.businessId, renderedAt),
-    // Only payments in rupees get tax invoices (D1), so a dollar client has nothing to show or correct here.
-    invoiced ? findBillingProfile(db, client.businessId) : Promise.resolve(null),
-    invoiced ? listTaxInvoicesForBusiness(db, client.businessId) : Promise.resolve([]),
-    invoiced ? listPaymentsWithoutTaxInvoice(db, client.businessId) : Promise.resolve([]),
-    loadClientAddOns(client.businessId, renderedAt),
-    loadClientChatbots(client.businessId),
-  ]);
-  // Exactly what recordManualFirstPayment books: the basket they lapsed with, less the code a lapse keeps, else the website at list.
-  const lapsedBasket = plan !== null && paymentState.kind === "lapsed" ? await loadReactivationBasket(db, client.businessId) : null;
-  const carriedCode = plan === null || lapsedBasket === null ? null : await loadManualCarriedCode(db, client.businessId, lapsedBasket, plan.currency);
-  const manualNetCents =
-    plan === null
-      ? 0
-      : lapsedBasket === null
-        ? websiteAloneNetCents(plan.currency)
-        : reactivationNetCents(lapsedBasket, plan.currency) - (carriedCode?.discountCents ?? 0);
-  const chargesNotice = readStaffChargeNotice(sp.charges);
-  const websiteNotice = sp.website === "saved" || sp.website === "invalid" ? sp.website : null;
-  const featuresNotice = readBusinessModuleNotice(sp.features);
-  const listingNotice = readListingNotice(sp.listing, sp.listingField);
-  const invoiceNotice = readInvoiceNotice(sp.invoice);
-  const addOnNotice = readAddOnNotice(sp.addOns);
-  const chatbotNotice = readChatbotNotice(sp.chatbots);
-  const tagsNotice = readClientTagNotice(sp.tags);
-  const listingPlaceId = listingPlacement?.placeId ?? null;
-  // The tags are kept under the listing's place, or under its key until it has one.
-  const listingKey = listingPlacement === null ? null : clientListingKey(listingPlacement);
-  const listingStatus =
-    listingKey === null
-      ? undefined
-      : (await readDirectoryStatuses(db, listingPlaceId === null ? { placeIds: [], unplacedKeys: [listingKey] } : { placeIds: [listingPlaceId], unplacedKeys: [] })).get(
-          listingPlaceId ?? listingKey,
-        );
-  const listingPlace = listingPlaceId === null ? null : ((await findPlaces(db, [listingPlaceId])).get(listingPlaceId) ?? null);
-  const promotion = promotionStatus(promotions, renderedAt);
-  const listingPromotion =
-    promotion.running === null || promotion.endsAt === null
-      ? null
-      : {
-          label: promotionTagDisplay(promotion.running.tag),
-          until: formatPromotionDay(promotion.endsAt),
-          visible: promotion.visible,
-        };
-
-  const { profile, project } = client;
-  const done = new Set(client.completedSteps);
-  const logo = client.media.filter((asset) => asset.purpose === "logo");
-  const photos = client.media.filter((asset) => asset.purpose === "photo");
-
   const now = new Date();
-  // Same rule as the Journey's ring: a promised preview we still owe, past its date.
-  const late =
-    project !== null &&
-    project.slaDueAt !== null &&
-    PROJECT_STATUSES_WAITING_ON_US.includes(project.status) &&
-    project.slaDueAt.getTime() < now.getTime()
-      ? lateReason(project.slaDueAt, now)
-      : null;
-  const nextStep =
-    project === null || project.onboardingSubmittedAt === null
-      ? null
-      : SEND_PREVIEW_STATUSES.has(project.status)
-        ? "preview"
-        : project.status === "approved"
-          ? "live"
-          : null;
-  // One source of truth for the page's single attention section, so a late preview and a missing invoice cannot both claim it.
-  const attention = attentionSection({
-    flaggedCount: flagged.length,
-    previewIsLate: nextStep === "preview" && late !== null,
-    missingInvoiceCount: invoiced ? missingInvoices.length : 0,
-  });
+  const seesMoney = staffCan(granted.staff.role, "money");
+  const [booking, recent, staff, addOns] = await Promise.all([
+    findSetupCallBooking(db, client.businessId),
+    listActivityForBusiness(db, client.businessId, RECENT_SHOWN),
+    listAssignableSupportStaff(db),
+    seesMoney ? loadClientAddOns(client.businessId, now) : Promise.resolve(null),
+  ]);
+  const next = overviewNextStep(client, now);
+  const projectHref = clientTabHref(client.businessId, "project");
+  const done = new Set(client.completedSteps);
 
   return (
-    <>
-      {notice === null && previewNotice === null && launchNotice === null && dnsNotice === null ? null : (
-        <div className="mt-10 space-y-3">
-          {notice === null ? null : (
-            <Notice tone={MANUAL_PAYMENT_NOTICES[notice].ok ? "ok" : "problem"}>{MANUAL_PAYMENT_NOTICES[notice].text}</Notice>
+    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="grid gap-8">
+        <section aria-labelledby="next-step-title" className={`${LIFT} p-5`}>
+          <h2 id="next-step-title" className="font-display text-[0.9375rem] font-semibold text-ink">
+            Next step
+          </h2>
+          {next === null ? (
+            <p className="mt-2 text-sm text-ink-2">Nothing is waiting on us.</p>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-ink">{next.label}</p>
+              <Link href={next.anchor === null ? projectHref : `${projectHref}#${next.anchor}`} className={buttonPrimary}>
+                Open project
+              </Link>
+            </div>
           )}
-          {previewNotice === null ? null : (
-            <Notice tone={PROJECT_PREVIEW_NOTICES[previewNotice].ok ? "ok" : "problem"}>
-              {PROJECT_PREVIEW_NOTICES[previewNotice].text}
-            </Notice>
-          )}
-          {launchNotice === null ? null : (
-            <Notice tone={PROJECT_LAUNCH_NOTICES[launchNotice].ok ? "ok" : "problem"}>
-              {PROJECT_LAUNCH_NOTICES[launchNotice].text}
-            </Notice>
-          )}
-          {dnsNotice === null ? null : (
-            <Notice tone={DOMAIN_CONNECT_NOTICES[dnsNotice].ok ? "ok" : "problem"}>{DOMAIN_CONNECT_NOTICES[dnsNotice].text}</Notice>
-          )}
-        </div>
-      )}
+        </section>
 
-      <div className="mt-12">
-        {flagged.length === 0 ? null : (
-          <Section
-            tone="attention"
-            title={flagged.length === 1 ? "A payment needs attention" : `${flagged.length} payments need attention`}
-            aside="They were told we received it and will be in touch. They aren’t asked to pay again until it’s sorted."
-          >
-            <PaymentsNeedingAttention payments={flagged} linkToClient={false} resolveAction={resolvePaymentAttentionAction} />
-          </Section>
-        )}
+        <section aria-labelledby="recent-title">
+          <h2 id="recent-title" className={`${SECTION_TITLE} flex items-baseline justify-between`}>
+            What happened
+            <Link href={clientTabHref(client.businessId, "activity")} className="text-xs font-semibold text-ink-2 hover:text-ink">
+              All activity
+            </Link>
+          </h2>
+          <div className="mt-2">
+            <ActivityList rows={recent} staffNames={new Map(staff.map((member) => [member.userId, member.name]))} />
+          </div>
+        </section>
+      </div>
 
-        {nextStep === "preview" ? (
-          <Section
-            title="Send a preview"
-            tone={attention === "preview" ? "attention" : "plain"}
-            aside={late === null ? "The next step" : <span className="font-semibold text-accent">{late}</span>}
-          >
-            <SendPreviewForm businessId={client.businessId} />
-          </Section>
-        ) : null}
-        {client.movingTo !== null && client.domain !== null ? (
-          <Section title="Move to their own domain" id="domain" aside="Asked by the customer">
-            <MoveDomainPanel
-              businessId={client.businessId}
-              current={client.domain.hostname}
-              movingTo={client.movingTo}
-              siteUrl={websiteUrl ?? project?.previewUrl ?? null}
-            />
-          </Section>
-        ) : null}
-        {nextStep === "live" ? (
-          <Section title="Go live" id="domain" aside="The next step">
-            <GoLivePanel businessId={client.businessId} domain={client.domain} previewUrl={project?.previewUrl ?? null} />
-          </Section>
-        ) : null}
-
+      <div className="grid gap-8">
         <Section title="Owner">
           <Facts
             items={[
@@ -299,57 +107,36 @@ export default async function ClientPage({
           />
         </Section>
 
-        <Section title="Build">
-          {project === null ? (
-            <Quiet>No project yet.</Quiet>
-          ) : project.onboardingSubmittedAt === null ? (
-            <Quiet>Still filling in their setup. Nothing has been sent to us yet.</Quiet>
+        <Section title="Kickoff call">
+          {booking === null ? (
+            <Quiet>No kickoff call booked yet.</Quiet>
           ) : (
-            <>
-              <Facts
-                items={[
-                  { label: "Sent to us", value: <When date={project.onboardingSubmittedAt} /> },
-                  {
-                    label: "First preview due",
-                    value: project.slaDueAt === null ? null : <When date={project.slaDueAt} />,
-                  },
-                  ...(project.previewUrl === null
-                    ? []
-                    : [
-                        { label: "Preview link", value: <CustomerLink url={project.previewUrl} /> },
-                        {
-                          label: "Preview sent",
-                          value: project.previewSentAt === null ? null : <When date={project.previewSentAt} />,
-                        },
-                      ]),
-                  ...(project.revisionRoundsGranted === 0
-                    ? []
-                    : [{ label: "Revision rounds used", value: String(project.revisionRoundsGranted) }]),
-                  ...(project.launchedAt === null
-                    ? []
-                    : [{ label: "Launched", value: <When date={project.launchedAt} /> }]),
-                ]}
-              />
-              {project.status === "revisions" ? (
-                <p className="mt-6 max-w-xl border-l-2 border-gold-deep py-1 pl-4 text-sm leading-relaxed">
-                  They asked for changes and were pointed at booking a call to go through what to change.
-                </p>
-              ) : null}
-            </>
+            <Facts
+              items={[
+                { label: "Booked on", value: <When date={booking.bookedAt} /> },
+                { label: "Call", value: booking.startsAt === null ? "Time not known yet" : <When date={booking.startsAt} /> },
+              ]}
+            />
           )}
         </Section>
 
-        <Section title="Setup progress" aside={`${ANSWER_STEPS.filter((step) => done.has(step)).length} of ${ANSWER_STEPS.length} done`}>
-          <ul className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+        {addOns === null ? null : (
+          <Section title="Money">
+            <BillingFacts client={client} state={clientPaymentState(client.billing, now)} packageFacts={addOns.package} />
+          </Section>
+        )}
+
+        <Section title="Setup answers" aside={`${ANSWER_STEPS.filter((step) => done.has(step)).length} of ${ANSWER_STEPS.length} done`}>
+          <ul className="grid gap-y-3">
             {ANSWER_STEPS.map((step) => (
               <li key={step} className="flex items-center gap-3">
                 <span
                   aria-hidden="true"
-                  className={`flex size-6 items-center justify-center rounded-full ${done.has(step) ? "bg-accent text-paper" : "ring-2 ring-inset ring-ink-soft/65"}`}
+                  className={`flex size-6 items-center justify-center rounded-full ${done.has(step) ? "bg-ink text-white" : "ring-2 ring-inset ring-ink-2/65"}`}
                 >
                   {done.has(step) ? <TickIcon className="size-3.5" /> : null}
                 </span>
-                <span className={done.has(step) ? "" : "text-ink-soft"}>
+                <span className={done.has(step) ? "" : "text-ink-2"}>
                   {stepInfo(step).title}
                   <span className="sr-only">{done.has(step) ? " (done)" : " (not done)"}</span>
                 </span>
@@ -357,256 +144,7 @@ export default async function ClientPage({
             ))}
           </ul>
         </Section>
-
-        <Section title="Billing">
-          <BillingFacts client={client} state={paymentState} packageFacts={clientAddOns.package} />
-          {canRecordPayment && plan !== null ? (
-            <ManualPaymentForm
-              businessId={client.businessId}
-              plan={plan}
-              netCents={manualNetCents}
-              reactivating={paymentState.kind === "lapsed"}
-              carriedCode={carriedCode === null ? null : { code: carriedCode.code.code, monthsLeft: carriedCode.monthsLeft }}
-            />
-          ) : null}
-          {canRecordPayment && plan === null ? (
-            <p className="mt-6 text-sm text-ink-soft">
-              There is no active plan for {BILLING_CURRENCY_LABELS[client.currency]}, so no payment can be recorded.
-            </p>
-          ) : null}
-        </Section>
-
-        {invoiced ? (
-          <>
-            <ClientBillingDetails
-              businessId={client.businessId}
-              details={clientBillingDetails({ profile: billingProfile, businessName: client.businessName, onboarding: client.profile })}
-            />
-            <ClientTaxInvoices
-              businessId={client.businessId}
-              invoices={taxInvoices}
-              missing={missingInvoices}
-              notice={invoiceNotice}
-              attentionTaken={attention !== "invoices"}
-            />
-          </>
-        ) : null}
-
-        <ClientCharges
-          businessId={client.businessId}
-          charges={charges}
-          plan={billingState?.plan ?? null}
-          notice={chargesNotice}
-        />
-
-        <ClientAddOns
-          businessId={client.businessId}
-          addOns={clientAddOns.addOns}
-          bundledAddOns={clientAddOns.bundledAddOns}
-          pressReleases={clientAddOns.pressReleases}
-          options={clientAddOns.options}
-          notice={addOnNotice}
-          keptStartsOn={clientAddOns.keptStartsOn}
-        />
-
-        <ClientChatbots
-          businessId={client.businessId}
-          chatbots={clientChatbots}
-          notice={chatbotNotice}
-          webhookUrl={`${serverEnv().APP_ORIGIN}/api/webhooks/oyechats`}
-        />
-
-        <Section title="Business details">
-          {profile === null ? (
-            <Quiet>Not filled in yet.</Quiet>
-          ) : (
-            <Facts
-              items={[
-                { label: "Name on the website", value: profile.displayName },
-                { label: "Tagline", value: profile.tagline },
-                { label: "Public phone", value: displayPhoneText(profile.phone) },
-                { label: "Public email", value: profile.email },
-                { label: "Address", value: addressOf(profile) },
-                { label: "Areas they serve", value: profile.serviceAreas },
-                {
-                  label: "Google Business Profile",
-                  value:
-                    profile.googleBusinessUrl === null ? null : <CustomerLink url={profile.googleBusinessUrl} />,
-                },
-                { label: "About the business", value: profile.description },
-              ]}
-            />
-          )}
-        </Section>
-
-        <Section title="Opening hours">
-          {client.hours.length === 0 ? (
-            <Quiet>Not filled in yet.</Quiet>
-          ) : (
-            <dl className="max-w-md divide-y divide-line">
-              {WEEKDAYS.map((label, day) => (
-                <div key={label} className="flex justify-between gap-4 py-2.5">
-                  <dt>{label}</dt>
-                  <dd className="text-right tabular-nums text-ink-soft">{hoursForDay(client.hours, day)}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </Section>
-
-        <Section title="Services" aside={client.services.length === 0 ? undefined : `${client.services.length} listed`}>
-          {client.services.length === 0 ? (
-            <Quiet>None added yet.</Quiet>
-          ) : (
-            <ol className="max-w-2xl divide-y divide-line">
-              {client.services.map((service) => (
-                <li key={service.id} className="py-3 first:pt-0">
-                  <p className="flex flex-wrap justify-between gap-2">
-                    <span className="font-medium">{service.name}</span>
-                    {service.priceText === null ? null : <span className="tabular-nums text-ink-soft">{service.priceText}</span>}
-                  </p>
-                  {service.summary === null ? null : <p className="mt-1 text-sm text-ink-soft">{service.summary}</p>}
-                </li>
-              ))}
-            </ol>
-          )}
-        </Section>
-
-        <Section title="Domain">
-          {client.domain === null ? (
-            <Quiet>Not given yet.</Quiet>
-          ) : isTemporarySubdomain(client.domain.hostname) ? (
-            <Facts
-              items={[
-                { label: "Domain", value: client.domain.hostname },
-                {
-                  label: "Ownership",
-                  value: "Our temporary address, not their own domain yet",
-                },
-              ]}
-            />
-          ) : (
-            <Facts
-              items={[
-                { label: "Domain", value: client.domain.hostname },
-                { label: "DNS", value: DNS_STATUS_TEXT[client.domain.status] ?? client.domain.status },
-                {
-                  label: "Ownership",
-                  value:
-                    client.domain.ownerConfirmedAt === null ? (
-                      "Not confirmed"
-                    ) : (
-                      <>
-                        Confirmed <When date={client.domain.ownerConfirmedAt} />
-                      </>
-                    ),
-                },
-              ]}
-            />
-          )}
-        </Section>
-
-        <Section title="Their website">
-          <div className="max-w-2xl space-y-8">
-            <WebsiteUrlBlock businessId={client.businessId} websiteUrl={websiteUrl} notice={websiteNotice} />
-            <div>
-              <h3 className={labelClasses}>Site API token</h3>
-              <div className="mt-2">
-                <SiteApiTokenBlock businessId={client.businessId} token={siteApiToken} />
-              </div>
-            </div>
-          </div>
-        </Section>
-
-        {adminBrand().sellsDirectory ? (
-          <Section title="Listing" id="listing" aside={adminBrand().directoryName}>
-            <ClientListing
-              businessId={client.businessId}
-              displayName={profile?.displayName ?? client.businessName}
-              placement={listingPlacement}
-              place={listingPlace}
-              live={listingLive}
-              promotion={listingPromotion}
-              notice={listingNotice}
-            />
-            {listingPlacement === null ? null : (
-              <div className="mt-10">
-                <ClientListingTags
-                  businessId={client.businessId}
-                  businessName={profile?.displayName ?? client.businessName}
-                  staffVerified={listingStatus !== undefined}
-                  trusted={listingStatus?.trusted ?? false}
-                  notice={tagsNotice}
-                />
-              </div>
-            )}
-          </Section>
-        ) : null}
-
-        <Section title="Features" id="features" aside="Time zone and modules">
-          <ClientFeatures
-            businessId={client.businessId}
-            timeZone={timeZone}
-            enabledModules={enabledModules}
-            appointmentCounts={appointmentCounts}
-            notice={featuresNotice}
-          />
-        </Section>
-
-        <Section title="Notes for the builder">
-          {client.brief === null ? (
-            <Quiet>Nothing yet.</Quiet>
-          ) : (
-            <Facts
-              items={[
-                { label: "Anything we should know", value: client.brief.notesForBuilder },
-                { label: "How it should feel", value: client.brief.styleLikes },
-                {
-                  label: "Websites they like",
-                  value:
-                    client.brief.referenceUrls.length === 0 ? null : (
-                      <ul className="space-y-1">
-                        {client.brief.referenceUrls.map((url, index) => (
-                          // Links may repeat, so the position is the key.
-                          <li key={index}>
-                            <CustomerLink url={url} />
-                          </li>
-                        ))}
-                      </ul>
-                    ),
-                },
-              ]}
-            />
-          )}
-        </Section>
-
-        <Section title="Logo and photos" aside={client.media.length === 0 ? undefined : `${client.media.length} uploaded`}>
-          {client.media.length === 0 ? (
-            <Quiet>Nothing uploaded yet.</Quiet>
-          ) : (
-            <ul className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-4">
-              {[...logo, ...photos].map((asset) => (
-                <li key={asset.id}>
-                  <a href={`/media/${asset.id}`} target="_blank" rel="noopener noreferrer" className="group block overflow-hidden rounded-2xl">
-                    {/* Served from our own route with staff access checked; next/image would cache it publicly. */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`/media/${asset.id}`}
-                      alt={asset.altText ?? ""}
-                      width={asset.width}
-                      height={asset.height}
-                      loading="lazy"
-                      className="aspect-square w-full bg-paper-deep object-cover transition-transform duration-500 ease-calm group-hover:scale-[1.03]"
-                    />
-                  </a>
-                  <p className="mt-2 text-sm font-medium">{asset.purpose === "logo" ? "Logo" : "Photo"}</p>
-                  <p className="mt-0.5 text-sm text-ink-soft">{asset.altText ?? "No description"}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
       </div>
-    </>
+    </div>
   );
 }
