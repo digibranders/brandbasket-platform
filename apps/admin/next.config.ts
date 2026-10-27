@@ -45,10 +45,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  async redirects() {
-    // Browsers ask for /favicon.ico on their own; the generated icon lives at /icon.
-    return [{ source: "/favicon.ico", destination: "/icon", permanent: true }];
-  },
   // Server actions keep Next's default 1 MB body limit. Raising it for uploads would let anyone make every action
   // request hold more memory, so uploads go to the /api/uploads route handler instead, which counts the bytes itself
   // and stops at 4 MB. The proxy skips /api/, so that body is never copied for it.
