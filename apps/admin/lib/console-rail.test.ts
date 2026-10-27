@@ -9,7 +9,7 @@ describe("railFor", () => {
       [null, ["Today"]],
       ["Work", ["Enquiries", "Clients", "Projects", "Requests", "Calls"]],
       ["Money", ["Payments", "Invoices", "Prices", "Coupons", "Affiliates", "Ad credit"]],
-      ["System", ["Deliveries", "Errors", "Settings", "Compliance"]],
+      ["System", ["Deliveries", "Errors", "Staff", "Settings", "Compliance"]],
     ]);
   });
 
