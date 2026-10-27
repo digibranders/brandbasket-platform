@@ -42,10 +42,11 @@ export const CONSOLE_RAIL: readonly ConsoleRailSection[] = [
   {
     label: "Money",
     links: [
+      { href: "/payments", label: "Payments", icon: "payments", countKey: "payments", needs: "money" },
       { href: "/invoices", label: "Invoices", icon: "invoices", needs: "money" },
       { href: "/pricing", label: "Prices", icon: "prices", needs: "money" },
-      { href: "/coupons", label: "Coupons", icon: "coupons" },
-      { href: "/affiliates", label: "Affiliates", icon: "affiliates" },
+      { href: "/coupons", label: "Coupons", icon: "coupons", needs: "money" },
+      { href: "/affiliates", label: "Affiliates", icon: "affiliates", needs: "money" },
       { href: "/ad-credit", label: "Ad credit", icon: "ad-credit" },
     ],
   },

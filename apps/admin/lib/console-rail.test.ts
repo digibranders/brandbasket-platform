@@ -8,14 +8,14 @@ describe("railFor", () => {
     expect(labels("admin")).toEqual([
       [null, ["Today"]],
       ["Work", ["Enquiries", "Clients", "Projects", "Requests", "Calls"]],
-      ["Money", ["Invoices", "Prices", "Coupons", "Affiliates", "Ad credit"]],
+      ["Money", ["Payments", "Invoices", "Prices", "Coupons", "Affiliates", "Ad credit"]],
       ["System", ["Outbox", "Errors", "Settings", "Compliance"]],
     ]);
   });
 
   it("hides money pages and compliance from support", () => {
     const support = labels("support");
-    expect(support[2]).toEqual(["Money", ["Coupons", "Affiliates", "Ad credit"]]);
+    expect(support[2]).toEqual(["Money", ["Ad credit"]]);
     expect(support[3]).toEqual(["System", ["Outbox", "Errors", "Settings"]]);
   });
 
@@ -27,7 +27,7 @@ describe("railFor", () => {
 
   it("puts a count on Today, Enquiries and Requests only", () => {
     const counted = CONSOLE_RAIL.flatMap((section) => section.links).filter((link) => link.countKey !== undefined).map((link) => link.countKey);
-    expect(counted).toEqual(["today", "leads", "projects", "requests", "calls"]);
+    expect(counted).toEqual(["today", "leads", "projects", "requests", "calls", "payments"]);
   });
 });
 
@@ -72,4 +72,12 @@ it("has no Leaving entry: leaving accounts are a Clients filter", () => {
     expect(railFor(role).flatMap((section) => section.links).some((link) => link.href === "/leaving")).toBe(false);
   }
 });
+
+describe("the Money section after Phase 5", () => {
+  it("shows Payments first, with its count and money access", () => {
+    const money = railFor("finance").find((section) => section.label === "Money");
+    expect(money?.links[0]).toMatchObject({ href: "/payments", label: "Payments", icon: "payments", countKey: "payments", needs: "money" });
+  });
+});
+
 

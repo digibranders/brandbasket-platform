@@ -4,6 +4,7 @@ import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import type { RailCountKey, RailCounts } from "@/lib/console-rail";
 import { todayRange } from "@/lib/team-time";
 import { getStaffDb } from "./db";
+import { readPaymentsCount } from "./payments-count";
 import { countTodayItems } from "./today";
 
 /** One count, or nothing when it cannot be read: the failure is logged and only that count is left off the rail. */
@@ -21,12 +22,13 @@ export async function readRailCounts(): Promise<RailCounts> {
   const db = getStaffDb();
   const now = new Date();
   const today = todayRange(now);
-  const [todayItems, leads, requests, projects, calls] = await Promise.all([
+  const [todayItems, leads, requests, projects, calls, payments] = await Promise.all([
     countOrNothing("today", () => countTodayItems()),
     countOrNothing("leads", () => countLeadsToContact(db)),
     countOrNothing("requests", () => countSupportTicketsAwaitingStaff(db)),
     countOrNothing("projects", () => countLateProjects(db, now)),
     countOrNothing("calls", () => countCallsBetween(db, today.start, today.end)),
+    countOrNothing("payments", () => readPaymentsCount(now)),
   ]);
   const read: readonly (readonly [RailCountKey, number | undefined])[] = [
     ["today", todayItems],
@@ -34,6 +36,7 @@ export async function readRailCounts(): Promise<RailCounts> {
     ["requests", requests],
     ["projects", projects],
     ["calls", calls],
+    ["payments", payments],
   ];
   const counts: Partial<Record<RailCountKey, number>> = {};
   for (const [key, value] of read) if (value !== undefined) counts[key] = value;
