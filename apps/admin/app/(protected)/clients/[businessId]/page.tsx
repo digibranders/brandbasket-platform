@@ -56,18 +56,14 @@ import { getStaffDb } from "@/lib/server/db";
 import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
-import { PROJECT_STATUS_LABELS, PROJECT_STATUSES_WAITING_ON_US } from "@brandbasket/shared/lib/project-status";
-import { Avatar } from "@/components/console/avatar";
+import { PROJECT_STATUSES_WAITING_ON_US } from "@brandbasket/shared/lib/project-status";
 import { labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
-import { PLAN_TIER_LABELS } from "@brandbasket/shared/lib/billing/plan-tier";
-import { PageHeader } from "@/components/console/page-header";
 import { Quiet, Section } from "@/components/console/section";
-import { StageTrack } from "@/components/console/stage-track";
 import { attentionSection } from "@/lib/client-attention";
 import { readAddOnNotice } from "@/lib/add-on-notices";
 import { readInvoiceNotice } from "@/lib/invoice-notices";
-import { clientStage, lateReason } from "@/lib/pipeline";
+import { lateReason } from "@/lib/pipeline";
 import { clientBillingDetails } from "@/lib/server/client-billing-details";
 import { resolvePaymentAttentionAction } from "./actions";
 import {
@@ -197,7 +193,6 @@ export default async function ClientPage({
   const logo = client.media.filter((asset) => asset.purpose === "logo");
   const photos = client.media.filter((asset) => asset.purpose === "photo");
 
-  const stage = clientStage(client);
   const now = new Date();
   // Same rule as the Journey's ring: a promised preview we still owe, past its date.
   const late =
@@ -224,21 +219,6 @@ export default async function ClientPage({
 
   return (
     <>
-      <PageHeader
-        back={{ href: "/clients", label: "Clients" }}
-        lead={<Avatar id={client.businessId} name={client.businessName} size="lg" />}
-        title={client.businessName}
-        meta={
-          <>
-            {client.owner?.name ?? "No owner"} · {PLAN_TIER_LABELS[client.tier]} ·{" "}
-            {project === null ? "No project yet" : PROJECT_STATUS_LABELS[project.status]} · Billed in{" "}
-            {BILLING_CURRENCY_LABELS[client.currency]}
-          </>
-        }
-      >
-        <StageTrack stage={stage} />
-      </PageHeader>
-
       {notice === null && previewNotice === null && launchNotice === null && dnsNotice === null ? null : (
         <div className="mt-10 space-y-3">
           {notice === null ? null : (
