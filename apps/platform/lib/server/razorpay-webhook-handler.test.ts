@@ -521,21 +521,27 @@ describe("handleRazorpayWebhookEvent", () => {
     );
   });
 
-  it.each([
-    ["pending", "past_due"],
-    ["halted", "inactive"],
-    ["cancelled", "cancelled"],
-  ])("tells Teams once when a running plan turns %s", async (providerStatus, status) => {
+  it("tells Teams once when a running plan ends", async () => {
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null, status: "active" } as never);
-    fetchSubscriptionStatus.mockResolvedValue(providerStatus);
-    await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus });
-    expect(announcePlanStatusToTeams).toHaveBeenCalledExactlyOnceWith({ businessId: "biz-1", subscriptionId: "sub-1", status, providerStatus });
+    fetchSubscriptionStatus.mockResolvedValue("cancelled");
+    await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "cancelled" });
+    expect(announcePlanStatusToTeams).toHaveBeenCalledExactlyOnceWith({ businessId: "biz-1", subscriptionId: "sub-1", status: "cancelled", providerStatus: "cancelled" });
   });
 
-  it("stays quiet when the status did not change, or changed to one that needs no follow-up", async () => {
-    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null, status: "inactive" } as never);
-    fetchSubscriptionStatus.mockResolvedValue("halted");
-    await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "halted" });
+  it.each([
+    ["pending", "active"],
+    ["halted", "active"],
+  ])("never tells Teams about a payment that failed: a plan turning %s", async (providerStatus, was) => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null, status: was } as never);
+    fetchSubscriptionStatus.mockResolvedValue(providerStatus);
+    await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus });
+    expect(announcePlanStatusToTeams).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet when the plan had already ended, or came back", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null, status: "cancelled" } as never);
+    fetchSubscriptionStatus.mockResolvedValue("cancelled");
+    await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "cancelled" });
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ id: "sub-1", businessId: "biz-1", continuesId: null, status: "past_due" } as never);
     fetchSubscriptionStatus.mockResolvedValue("active");
     await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_1", providerStatus: "active" });

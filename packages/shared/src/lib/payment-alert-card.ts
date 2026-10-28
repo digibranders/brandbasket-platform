@@ -95,18 +95,12 @@ export function paymentTeamsCard(input: PaymentCardInput): TeamsMessage {
   });
 }
 
-/** The plan states staff are told about: a charge Razorpay is retrying, billing that stopped, and a plan that ended. */
-export type PlanStatusAlert = "past_due" | "inactive" | "cancelled";
+/** The only plan state staff are told about: the plan ended. A failing or stopped payment is never announced. */
+export type PlanStatusAlert = "cancelled";
 
-const PLAN_STATUS_TITLES: Readonly<Record<PlanStatusAlert, string>> = {
-  past_due: "Payment failed, Razorpay is retrying",
-  inactive: "Billing stopped",
-  cancelled: "Plan ended",
-};
+const PLAN_STATUS_TITLES: Readonly<Record<PlanStatusAlert, string>> = { cancelled: "Plan ended" };
 
 const PLAN_STATUS_TEXT: Readonly<Record<PlanStatusAlert, string>> = {
-  past_due: "A renewal charge did not go through. The customer keeps access until the period they paid for runs out. A reminder to update their payment method helps.",
-  inactive: "Razorpay gave up on the charge, or the plan was paused. Access has ended. Reach out to the customer to bring them back.",
   cancelled: "The plan has ended at Razorpay, whether the customer cancelled or it ran its course.",
 };
 

@@ -21,7 +21,6 @@ import { recordAccountTermsConsent } from "./account-consent";
 import { confirmAccountEmailCode, requestAccountEmailCode, type AccountEmailCodeLimited } from "./account-email-code";
 import { getAuth } from "./auth";
 import { reportServerError } from "./error-report";
-import { alertSignupLead } from "./signup-alert";
 import { ipRateLimitKey } from "./ip-key";
 import { getStaffDb } from "./db";
 import { signInCustomer } from "./customer-sign-in";
@@ -204,16 +203,14 @@ async function recordLeadForSignup(signup: {
   readonly phone: string | null;
 }): Promise<void> {
   try {
-    const plan = membershipTierForChoice(signup.choice);
-    const lead = await recordSignupLead(getStaffDb(), {
+    await recordSignupLead(getStaffDb(), {
       name: signup.name,
       businessName: signup.businessName,
       email: signup.email,
       businessId: signup.businessId,
-      plan,
+      plan: membershipTierForChoice(signup.choice),
       phone: signup.phone,
     });
-    alertSignupLead({ leadId: lead.id, name: signup.name, businessName: signup.businessName, email: signup.email, phone: signup.phone, plan: plan === "managed" ? "Managed Website" : null });
   } catch (error) {
     await reportServerError(error, { app: "platform", operation: "server_action", route: "/join", userId: signup.userId });
   }
