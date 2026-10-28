@@ -9,12 +9,17 @@ import { StatusDot } from "@/components/console/status-dot";
 export type LoginLinkState =
   | { readonly status: "idle" }
   | { readonly status: "link"; readonly url: string; readonly expiresAt: string }
+  | { readonly status: "emailed"; readonly to: string }
   | { readonly status: "error"; readonly message: string };
 
 const initialLoginLinkState: LoginLinkState = { status: "idle" };
 
 interface AffiliateLoginLinkProps {
   readonly action: (state: LoginLinkState, formData: FormData) => Promise<LoginLinkState>;
+  /** Makes a link and emails it to the affiliate. */
+  readonly emailAction: (state: LoginLinkState, formData: FormData) => Promise<LoginLinkState>;
+  /** The address the email goes to; null when they have none, which leaves the button out. */
+  readonly emailTo: string | null;
   /** They have chosen a password: they can sign in. */
   readonly signedUp: boolean;
   /** When the link staff last sent stops working, as an ISO time; null when none is open. */
@@ -23,10 +28,12 @@ interface AffiliateLoginLinkProps {
 
 /**
  * The affiliate's sign-in, from staff's side: whether they have one, and a button that makes the link they open to
- * choose a password. The link is shown once, right after it is made, to copy into WhatsApp or an email.
+ * choose a password. It can be emailed to them straight away, or shown once, right after it is made, to copy into
+ * WhatsApp.
  */
-export function AffiliateLoginLink({ action, signedUp, linkExpiresAt }: AffiliateLoginLinkProps): ReactElement {
+export function AffiliateLoginLink({ action, emailAction, emailTo, signedUp, linkExpiresAt }: AffiliateLoginLinkProps): ReactElement {
   const [state, formAction, isPending] = useActionState(action, initialLoginLinkState);
+  const [mailState, mailFormAction, isMailing] = useActionState(emailAction, initialLoginLinkState);
   const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   const linkRef = useRef<HTMLInputElement>(null);
 
@@ -60,11 +67,31 @@ export function AffiliateLoginLink({ action, signedUp, linkExpiresAt }: Affiliat
         ) : null}
       </p>
 
-      <form action={formAction}>
-        <button type="submit" disabled={isPending} className={cn(signedUp || linkExpiresAt !== null ? buttonSecondary : buttonPrimary)}>
-          {isPending ? "Making the link…" : signedUp ? "Send a password link" : linkExpiresAt !== null ? "Make a new link" : "Create sign-in link"}
-        </button>
-      </form>
+      <div className="flex flex-wrap gap-3">
+        <form action={formAction}>
+          <button type="submit" disabled={isPending || isMailing} className={cn(signedUp || linkExpiresAt !== null ? buttonSecondary : buttonPrimary)}>
+            {isPending ? "Making the link…" : signedUp ? "Send a password link" : linkExpiresAt !== null ? "Make a new link" : "Create sign-in link"}
+          </button>
+        </form>
+        {emailTo !== null ? (
+          <form action={mailFormAction}>
+            <button type="submit" disabled={isPending || isMailing} className={signedUp || linkExpiresAt !== null ? buttonSecondary : buttonPrimary}>
+              {isMailing ? "Sending…" : "Email the link"}
+            </button>
+          </form>
+        ) : null}
+      </div>
+
+      {mailState.status === "emailed" && !isMailing ? (
+        <p role="status" className="text-sm text-ink-soft">
+          Sent to {mailState.to}. The link works once and expires in 7 days.
+        </p>
+      ) : null}
+      {mailState.status === "error" && !isMailing ? (
+        <p role="alert" className="border-l-2 border-accent py-1 pl-4 text-sm text-accent">
+          {mailState.message}
+        </p>
+      ) : null}
 
       {state.status === "error" && !isPending ? (
         <p role="alert" className="border-l-2 border-accent py-1 pl-4 text-sm text-accent">

@@ -23,13 +23,14 @@ import { AffiliateLoginLink } from "@/components/affiliate-login-link";
 import { buttonSecondary } from "@/components/console/buttons";
 import { Figures } from "@/components/console/figures";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
+import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
 import { Section } from "@/components/console/section";
 import { StatusDot, type StatusTone } from "@/components/console/status-dot";
 import { describeAffiliateReward, describeRewardCycles, findAffiliate, payoutToday } from "@/lib/server/affiliate-admin";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
-import { cancelEarningAction, issueLoginLinkAction, recordPayoutAction, updateAffiliateAction } from "./actions";
+import { cancelEarningAction, emailLoginLinkAction, issueLoginLinkAction, recordPayoutAction, updateAffiliateAction } from "./actions";
 
 export const metadata: Metadata = { title: "Affiliate" };
 
@@ -37,6 +38,8 @@ const LIST_LIMIT = 200;
 
 interface AffiliatePageProps {
   readonly params: Promise<{ readonly affiliateId: string }>;
+  /** `mail` is set by the new-affiliate form's redirect: whether their sign-in link was emailed. */
+  readonly searchParams: Promise<{ readonly mail?: string }>;
 }
 
 const EARNING_TONE: Readonly<Record<AffiliateEarningStatus, StatusTone>> = {
@@ -77,9 +80,10 @@ function formValues(affiliate: Affiliate): AffiliateFormValues {
  * them. The affiliate can see their codes and money themselves once they have a sign-in; staff make the link they open
  * to choose a password (the Sign-in section).
  */
-export default async function AffiliatePage({ params }: AffiliatePageProps): Promise<ReactElement> {
+export default async function AffiliatePage({ params, searchParams }: AffiliatePageProps): Promise<ReactElement> {
   await requireStaffCan("money");
   const { affiliateId } = await params;
+  const { mail } = await searchParams;
   const affiliate = await findAffiliate(affiliateId);
   if (affiliate === null) notFound();
 
@@ -113,6 +117,17 @@ export default async function AffiliatePage({ params }: AffiliatePageProps): Pro
           </>
         }
       />
+
+      {mail === "sent" && affiliate.email !== null ? (
+        <Notice tone="ok" className="mb-6">
+          Their sign-in link was emailed to {affiliate.email}.
+        </Notice>
+      ) : null}
+      {mail === "failed" ? (
+        <Notice tone="problem" className="mb-6">
+          They were added, but the sign-in email could not be sent. Use Email the link under Sign-in to try again.
+        </Notice>
+      ) : null}
 
       <Figures
         items={[
@@ -254,6 +269,8 @@ export default async function AffiliatePage({ params }: AffiliatePageProps): Pro
         <Section title="Sign-in" aside={login?.signedUp === true ? "Their own dashboard" : undefined}>
           <AffiliateLoginLink
             action={issueLoginLinkAction.bind(null, affiliate.id)}
+            emailAction={emailLoginLinkAction.bind(null, affiliate.id)}
+            emailTo={affiliate.email}
             signedUp={login?.signedUp ?? false}
             linkExpiresAt={login?.linkExpiresAt?.toISOString() ?? null}
           />
