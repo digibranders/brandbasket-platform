@@ -42,7 +42,7 @@ export default async function CompliancePage({
 
   return (
     <>
-      <PageHeader title="Compliance" lead="Who opened or exported personal data in this console, newest first. Review it every week." />
+      <PageHeader title="Compliance" meta="Who opened or exported personal data in this console, newest first. Review it every week." />
 
       <Section title="At a glance">
         <dl className="grid max-w-2xl grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-2 text-sm">

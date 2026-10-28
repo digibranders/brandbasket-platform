@@ -35,7 +35,7 @@ export default async function StaffPage({
 
   return (
     <>
-      <PageHeader title="Staff" lead={`${active} ${active === 1 ? "person" : "people"} · ${invites.length} invited`} />
+      <PageHeader title="Staff" meta={`${active} ${active === 1 ? "person" : "people"} · ${invites.length} invited`} />
       {notice === null ? null : (
         <Notice tone={STAFF_NOTICES[notice].ok ? "ok" : "problem"} className="mt-6">
           {STAFF_NOTICES[notice].text}

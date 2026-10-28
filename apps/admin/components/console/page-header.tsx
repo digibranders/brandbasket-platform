@@ -7,7 +7,7 @@ interface PageHeaderProps {
   readonly title: ReactNode;
   readonly back?: { readonly href: string; readonly label: string };
   /** An avatar or mark shown before the title on record pages. */
-  readonly lead?: ReactNode;
+  readonly lead?: ReactElement;
   /** One quiet line under the title: who, where, when, how many. */
   readonly meta?: ReactNode;
   /** The page's actions, top right. At most one of them is the dark button. */

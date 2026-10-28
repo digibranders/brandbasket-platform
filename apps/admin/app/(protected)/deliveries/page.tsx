@@ -45,7 +45,7 @@ export default async function DeliveriesPage({ searchParams }: { readonly search
     <>
       <PageHeader
         title="Deliveries"
-        lead={`Last 24 hours · ${totals.in} in, ${totals.out} out · ${totals.failed} failed`}
+        meta={`Last 24 hours · ${totals.in} in, ${totals.out} out · ${totals.failed} failed`}
         action={
           totals.failed === 0 ? null : (
             <form action={resendAllFailedAction}>
