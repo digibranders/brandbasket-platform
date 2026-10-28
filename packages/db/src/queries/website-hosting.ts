@@ -15,6 +15,9 @@ export interface HostedSite {
   readonly businessId: string;
   readonly vercelProjectId: string;
   readonly vercelTeamId: string | null;
+  /** Also pause the Vercel project when the website goes offline (default off, see the schema). */
+  readonly hostPause: boolean;
+  /** When the sync took the website offline; null while it is online. */
   readonly pausedAt: Date | null;
   readonly lastError: string | null;
   /** The business has a project that reached `live`: a site that was never launched is never paused. */
@@ -25,6 +28,7 @@ const HOSTED_SITE_COLUMNS = {
   businessId: websiteHosting.businessId,
   vercelProjectId: websiteHosting.vercelProjectId,
   vercelTeamId: websiteHosting.vercelTeamId,
+  hostPause: websiteHosting.hostPause,
   pausedAt: websiteHosting.pausedAt,
   lastError: websiteHosting.lastError,
   hasLiveProject: sql<boolean>`exists (select 1 from ${projects} where ${projects.businessId} = ${websiteHosting.businessId} and ${projects.status} = 'live')`,
@@ -66,7 +70,7 @@ export async function saveWebsiteHosting(db: Runner, input: NewWebsiteHosting): 
 
 export interface HostingSyncResult {
   readonly checkedAt: Date;
-  /** The full new value: the time the project was paused, or null while it runs. */
+  /** The full new value: the time the website was taken offline, or null while it is online. */
   readonly pausedAt: Date | null;
   readonly lastError: string | null;
 }

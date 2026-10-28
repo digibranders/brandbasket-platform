@@ -3,8 +3,8 @@ import { formatCalendarDate, formatTimestamp } from "@brandbasket/shared/lib/for
 import { formatMoney } from "@brandbasket/shared/lib/money";
 
 /*
- * What the Customers channel is told when a client's website is paused because their plan lapsed: who, which plan, why it
- * ended, when and where it was paused. Pure: lib/server/site-hosting.ts reads the billing state, this words it.
+ * What the Customers channel is told when a client's website goes offline because their plan lapsed: who, which plan, why
+ * it ended, when, and what is done at the host. Pure: lib/server/site-hosting.ts reads the billing state, this words it.
  */
 
 const TIME_ZONE = "Asia/Kolkata";
@@ -39,7 +39,7 @@ export interface WebsitePausedAlert {
 
 export function websitePausedAlert(input: {
   readonly state: BillingState | null;
-  readonly site: Pick<HostedSite, "vercelProjectId" | "vercelTeamId">;
+  readonly site: Pick<HostedSite, "vercelProjectId" | "vercelTeamId" | "hostPause">;
   readonly pausedAt: Date;
 }): WebsitePausedAlert {
   const { state, site, pausedAt } = input;
@@ -52,8 +52,11 @@ export function websitePausedAlert(input: {
       { name: "Paid until", value: subscription?.paidThroughAt == null ? null : formatCalendarDate(subscription.paidThroughAt, TIME_ZONE) },
       { name: "Why", value: lapseReason(subscription, pausedAt) },
       { name: "Paused at", value: formatTimestamp(pausedAt, TIME_ZONE) },
-      { name: "Vercel project", value: site.vercelTeamId === null ? site.vercelProjectId : `${site.vercelProjectId} (${site.vercelTeamId})` },
+      { name: "Hosting project", value: site.vercelTeamId === null ? site.vercelProjectId : `${site.vercelProjectId} (${site.vercelTeamId})` },
+      { name: "At the host", value: site.hostPause ? "Paused on Vercel" : "Left running; the website shows its own maintenance page" },
     ],
-    text: "The website is paused on Vercel and visitors no longer see it. It comes back on its own when the client pays.",
+    text: site.hostPause
+      ? "The website is paused on Vercel. It comes back on its own when the client pays."
+      : "The website now shows its maintenance page to visitors. It comes back on its own when the client pays.",
   };
 }

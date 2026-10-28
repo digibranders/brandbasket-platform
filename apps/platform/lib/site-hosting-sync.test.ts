@@ -10,6 +10,7 @@ function site(id: string, overrides: Partial<SyncSite> = {}): SyncSite {
     businessId: id,
     vercelProjectId: `prj_${id}`,
     vercelTeamId: "team_abc",
+    hostPause: true,
     pausedAt: null,
     lastError: null,
     hasLiveProject: true,
@@ -28,45 +29,64 @@ function deps(sites: readonly SyncSite[], overrides: Partial<HostingSyncDeps> = 
 }
 
 describe("runSiteHostingSync", () => {
-  it("pauses a lapsed site and records when", async () => {
+  it("takes a lapsed site offline, pauses its project and records when", async () => {
     const d = deps([site("a", { billing: lapsed })]);
     const report = await runSiteHostingSync(d.value, { now: NOW, dryRun: false });
     expect(d.setPaused).toHaveBeenCalledWith(expect.objectContaining({ businessId: "a" }), true);
     expect(d.record).toHaveBeenCalledWith("a", { checkedAt: NOW, pausedAt: NOW, lastError: null });
-    expect(report.items).toEqual([{ businessId: "a", status: "paused" }]);
+    expect(report.items).toEqual([{ businessId: "a", status: "went-offline" }]);
     expect(report.failed).toBe(0);
   });
 
-  it("tells the team about a site it paused, once, and not about one it unpaused", async () => {
-    const announcePaused = vi.fn<NonNullable<HostingSyncDeps["announcePaused"]>>().mockResolvedValue(undefined);
-    const d = deps([site("a", { billing: lapsed }), site("b", { pausedAt: EARLIER })], { announcePaused });
+  it("tells the team about a site it took offline, once, and not about one that came back", async () => {
+    const announceOffline = vi.fn<NonNullable<HostingSyncDeps["announceOffline"]>>().mockResolvedValue(undefined);
+    const d = deps([site("a", { billing: lapsed }), site("b", { pausedAt: EARLIER })], { announceOffline });
     await runSiteHostingSync(d.value, { now: NOW, dryRun: false });
-    expect(announcePaused).toHaveBeenCalledTimes(1);
-    expect(announcePaused).toHaveBeenCalledWith(expect.objectContaining({ businessId: "a" }), NOW);
+    expect(announceOffline).toHaveBeenCalledTimes(1);
+    expect(announceOffline).toHaveBeenCalledWith(expect.objectContaining({ businessId: "a" }), NOW);
   });
 
   it("does not tell the team in a dry run or when the host refused", async () => {
-    const announcePaused = vi.fn<NonNullable<HostingSyncDeps["announcePaused"]>>().mockResolvedValue(undefined);
-    await runSiteHostingSync(deps([site("a", { billing: lapsed })], { announcePaused }).value, { now: NOW, dryRun: true });
+    const announceOffline = vi.fn<NonNullable<HostingSyncDeps["announceOffline"]>>().mockResolvedValue(undefined);
+    await runSiteHostingSync(deps([site("a", { billing: lapsed })], { announceOffline }).value, { now: NOW, dryRun: true });
     const refuse = vi.fn<HostingSyncDeps["setPaused"]>().mockRejectedValue(new Error("no"));
-    await runSiteHostingSync(deps([site("a", { billing: lapsed })], { announcePaused, setPaused: refuse }).value, { now: NOW, dryRun: false });
-    expect(announcePaused).not.toHaveBeenCalled();
+    await runSiteHostingSync(deps([site("a", { billing: lapsed })], { announceOffline, setPaused: refuse }).value, { now: NOW, dryRun: false });
+    expect(announceOffline).not.toHaveBeenCalled();
   });
 
-  it("keeps the pause and the report when the announcement fails", async () => {
-    const announcePaused = vi.fn<NonNullable<HostingSyncDeps["announcePaused"]>>().mockRejectedValue(new Error("Teams is down"));
-    const d = deps([site("a", { billing: lapsed })], { announcePaused });
+  it("keeps the result and the report when the announcement fails", async () => {
+    const announceOffline = vi.fn<NonNullable<HostingSyncDeps["announceOffline"]>>().mockRejectedValue(new Error("Teams is down"));
+    const d = deps([site("a", { billing: lapsed })], { announceOffline });
     const report = await runSiteHostingSync(d.value, { now: NOW, dryRun: false });
-    expect(report.items).toEqual([{ businessId: "a", status: "paused" }]);
+    expect(report.items).toEqual([{ businessId: "a", status: "went-offline" }]);
     expect(report.failed).toBe(0);
   });
 
-  it("unpauses a site that paid and clears the paused time", async () => {
+  it("leaves the host alone for a site that did not opt in, but still records the lapse and tells the team", async () => {
+    const announceOffline = vi.fn<NonNullable<HostingSyncDeps["announceOffline"]>>().mockResolvedValue(undefined);
+    const d = deps([site("a", { hostPause: false, billing: lapsed })], { announceOffline });
+    const report = await runSiteHostingSync(d.value, { now: NOW, dryRun: false });
+    expect(d.setPaused).not.toHaveBeenCalled();
+    expect(d.record).toHaveBeenCalledWith("a", { checkedAt: NOW, pausedAt: NOW, lastError: null });
+    expect(announceOffline).toHaveBeenCalledWith(expect.objectContaining({ businessId: "a" }), NOW);
+    expect(report.items).toEqual([{ businessId: "a", status: "went-offline" }]);
+    expect(report.failed).toBe(0);
+  });
+
+  it("does not call the host to bring back a site that did not opt in", async () => {
+    const d = deps([site("a", { hostPause: false, pausedAt: EARLIER })]);
+    const report = await runSiteHostingSync(d.value, { now: NOW, dryRun: false });
+    expect(d.setPaused).not.toHaveBeenCalled();
+    expect(d.record).toHaveBeenCalledWith("a", { checkedAt: NOW, pausedAt: null, lastError: null });
+    expect(report.items).toEqual([{ businessId: "a", status: "back-online" }]);
+  });
+
+  it("brings a site that paid back, unpauses its project and clears the offline time", async () => {
     const d = deps([site("a", { pausedAt: EARLIER })]);
     const report = await runSiteHostingSync(d.value, { now: NOW, dryRun: false });
     expect(d.setPaused).toHaveBeenCalledWith(expect.objectContaining({ businessId: "a" }), false);
     expect(d.record).toHaveBeenCalledWith("a", { checkedAt: NOW, pausedAt: null, lastError: null });
-    expect(report.items).toEqual([{ businessId: "a", status: "unpaused" }]);
+    expect(report.items).toEqual([{ businessId: "a", status: "back-online" }]);
   });
 
   it("changes nothing in a dry run", async () => {
@@ -75,12 +95,12 @@ describe("runSiteHostingSync", () => {
     expect(d.setPaused).not.toHaveBeenCalled();
     expect(d.record).not.toHaveBeenCalled();
     expect(report.items).toEqual([
-      { businessId: "a", status: "would-pause" },
-      { businessId: "b", status: "would-unpause" },
+      { businessId: "a", status: "would-go-offline" },
+      { businessId: "b", status: "would-go-online" },
     ]);
   });
 
-  it("keeps the paused state and records the error when the host refuses", async () => {
+  it("keeps the state and records the error when the host refuses", async () => {
     const setPaused = vi.fn<HostingSyncDeps["setPaused"]>().mockRejectedValue(new Error("Vercel answered 403."));
     const d = deps([site("a", { billing: lapsed })], { setPaused });
     const report = await runSiteHostingSync(d.value, { now: NOW, dryRun: false });
@@ -96,10 +116,10 @@ describe("runSiteHostingSync", () => {
       .mockResolvedValueOnce(undefined);
     const d = deps([site("a", { billing: lapsed }), site("b", { billing: lapsed })], { setPaused });
     const report = await runSiteHostingSync(d.value, { now: NOW, dryRun: false });
-    expect(report.items.map((item) => item.status)).toEqual(["failed", "paused"]);
+    expect(report.items.map((item) => item.status)).toEqual(["failed", "went-offline"]);
   });
 
-  it("applies no pause when the brake trips, and says so", async () => {
+  it("takes none offline when the brake trips, and says so", async () => {
     const lapsedSites = ["a", "b", "c", "d"].map((id) => site(id, { billing: lapsed }));
     const d = deps(lapsedSites);
     const report = await runSiteHostingSync(d.value, { now: NOW, dryRun: false });

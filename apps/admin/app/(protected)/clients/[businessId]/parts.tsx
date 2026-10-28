@@ -169,8 +169,9 @@ export function WebsiteUrlBlock({
 }
 
 /**
- * Which Vercel project the client's website runs on. If their plan lapses the hourly sync pauses this project there, and
- * unpauses it when they pay (docs/site-hosting.md). The status line says what the last sync found.
+ * Which Vercel project the client's website runs on. If their plan lapses the hourly sync records it, tells the team and the
+ * site shows its own maintenance page; the project is paused at the host only if it was switched on for this site
+ * (docs/site-hosting.md). The status line says what the last sync found.
  */
 export function HostingBlock({
   businessId,
@@ -226,10 +227,10 @@ export function HostingBlock({
             `Last sync failed: ${hosting.lastError}`
           ) : hosting.pausedAt !== null ? (
             <>
-              Paused since <When date={hosting.pausedAt} />.
+              Offline since <When date={hosting.pausedAt} />.
             </>
           ) : (
-            "Running."
+            "Online."
           )}
         </p>
       )}

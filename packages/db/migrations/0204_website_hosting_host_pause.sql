@@ -1,0 +1,1 @@
+ALTER TABLE "website_hosting" ADD COLUMN "host_pause" boolean DEFAULT false NOT NULL;
