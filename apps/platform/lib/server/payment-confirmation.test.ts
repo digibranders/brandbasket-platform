@@ -27,6 +27,7 @@ import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
 import { notifyTeamOnboardingSent } from "./onboarding-alert";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
+import { syncSiteHostingForBusiness } from "./site-hosting";
 import { announcePaymentToTeams } from "./teams";
 import { confirmFirstPayment, verifyCheckoutFor } from "./payment-confirmation";
 
@@ -41,6 +42,7 @@ vi.mock("@brandbasket/shared/server/billing-activation", () => ({ activateFirstP
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./onboarding-alert", () => ({ notifyTeamOnboardingSent: vi.fn() }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
+vi.mock("./site-hosting", () => ({ syncSiteHostingForBusiness: vi.fn() }));
 vi.mock("./teams", () => ({ announcePaymentToTeams: vi.fn(async () => undefined) }));
 vi.mock("./onboarding", () => {
   class MockStepRefusedError extends Error {}
@@ -520,6 +522,13 @@ describe("confirmFirstPayment", () => {
     expect(sendOnboardingWithin).not.toHaveBeenCalled();
     expect(recordUnappliedPayment).not.toHaveBeenCalled();
     expect(calls).toEqual(["lock", "reactivate"]);
+    // The lapsed client's paused website is brought back now, not at the next hourly run.
+    expect(syncSiteHostingForBusiness).toHaveBeenCalledWith(BUSINESS_ID);
+  });
+
+  it("does not touch the hosting when the confirmation is refused", async () => {
+    await confirmFirstPayment(tenant, { token: "not-a-token" }, NOW);
+    expect(syncSiteHostingForBusiness).not.toHaveBeenCalled();
   });
 
   it("reactivates a package at the price its lines were frozen at, and sets aside a payment at the website's price", async () => {

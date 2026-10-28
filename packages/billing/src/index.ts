@@ -69,6 +69,7 @@ export { wrapRazorpaySdkClient } from "./razorpay-sdk-adapter";
 export { mapRazorpayStatus } from "./status";
 export { chargedAmountCents, GST_BASIS_POINTS, gstInsideCents, NO_TAX, taxableCents } from "./tax";
 export { deriveSiteStatus, type SiteStatus, type SiteStatusInput } from "./site-status";
+export { planHostingActions, type HostedSiteState, type HostingAction, type HostingHold, type HostingPlan } from "./hosting-plan";
 export { addMonthsUtc } from "./term";
 export { BillingRangeError } from "./billing-range-error";
 export { amountInWords } from "./amount-in-words";

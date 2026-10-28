@@ -1,0 +1,12 @@
+# Starts brandbasket-site-hosting.service every hour. Installed, not enabled: enable it once VERCEL_API_TOKEN is set and a
+# dry run has been read (docs/site-hosting.md).
+[Unit]
+Description=Brandbasket hourly hosting sync for lapsed websites
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

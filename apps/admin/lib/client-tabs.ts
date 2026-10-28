@@ -41,6 +41,7 @@ const NOTICE_TABS: Readonly<Partial<Record<string, Exclude<ClientTabSlug, "">>>>
   requests: "requests",
   chatbots: "services",
   website: "website",
+  hosting: "website",
   features: "website",
   listing: "website",
   tags: "website",
