@@ -5,6 +5,7 @@ import { BillingBanner } from "@/components/panel/billing-banner";
 import { PAGE_MAX } from "@/components/v2/classes";
 import { NextStepCard } from "@/components/panel/next-step-card";
 import { UnpaidHome } from "@/components/panel/unpaid-home";
+import { PaymentWelcome } from "@/components/first-look/payment-welcome";
 import { WelcomeOverview } from "@/components/first-look/welcome-overview";
 import { MonthOverview } from "@/components/overview/month-overview";
 import { firstLookInput, inFirstLook } from "@/lib/first-look";
@@ -57,6 +58,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
             <BillingBanner banner={banner} />
           </div>
         )}
+        <PaymentWelcome services={services} />
         <WelcomeOverview
           firstName={firstName(user.name)}
           services={services}

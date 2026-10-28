@@ -81,7 +81,7 @@ them ("With this time, your website can be live by Thu 5 Nov"). New copy goes to
 - More than one raised surface, or more than one dark button, on a screen.
 - Outlined secondary buttons or chips.
 - Colour as the only sign of a state.
-- Modals for confirmation. Dialogs are for search, the phone menu, the add-on checkout and the image cropper.
+- Modals for confirmation. Dialogs are for search, the phone menu, the add-on checkout, the image cropper and the welcome after the first payment.
 - Fonts other than Red Hat; hex values outside the palette above.
 - Em or en dashes in any copy.
 
