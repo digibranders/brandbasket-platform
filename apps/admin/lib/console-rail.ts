@@ -2,9 +2,9 @@ import type { StaffRole } from "@brandbasket/db";
 import { staffCan, type StaffCapability } from "@brandbasket/shared/lib/access";
 
 export type ConsoleRailIcon =
-  | "today" | "leads" | "clients" | "projects" | "requests" | "calls" | "leaving"
+  | "today" | "leads" | "clients" | "projects" | "requests" | "calls"
   | "payments" | "invoices" | "prices" | "coupons" | "affiliates" | "ad-credit"
-  | "deliveries" | "outbox" | "errors" | "staff" | "settings" | "compliance";
+  | "deliveries" | "errors" | "staff" | "settings" | "compliance";
 
 export type RailCountKey = "today" | "leads" | "projects" | "requests" | "calls" | "payments" | "deliveries";
 

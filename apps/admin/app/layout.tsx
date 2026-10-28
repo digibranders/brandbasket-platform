@@ -21,7 +21,7 @@ interface AdminHostLayoutProps {
 }
 
 export default async function AdminHostLayout({ children }: AdminHostLayoutProps): Promise<ReactElement> {
-  // The v2 palette and Red Hat type come from theme.css `[data-app="console"]`, the same block the customer dashboard uses.
+  // The palette and Red Hat type come from the shared theme's `[data-app="console"]` block; console.css adds the gold remap and the reduced-motion rule.
   return (
     <DashboardRoot brand={{ id: "brandbasket", className: brandbasketFontVariables }} app="console">
       {children}

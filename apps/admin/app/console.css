@@ -1,13 +1,11 @@
 /*
- * Staff console surfaces that Tailwind utilities would spell out badly: the dark glass used by the Journey map's focus
- * strip and hover cards, the Journey map's entrance and focus dimming, and the reduced-motion switch for all of it.
- * The palette is theme.css `[data-app="console"]`; this file holds none of its own. Phase 9 deletes the glass and
- * Journey rules with the components that use them.
+ * The console rules Tailwind utilities do not spell. The palette and type come from packages/shared/src/styles/theme.css
+ * `[data-app="console"]`.
  */
 
 /*
  * Older console pages colour small accents with the gold tokens. In v2 they take the rattan accent, at a contrast that
- * holds for text: rattan-ink #8a5524 is 5.6:1 on the page. Phase 9 removes this with the last gold class.
+ * holds for text: rattan-ink #8a5524 is 5.6:1 on the page.
  */
 html[data-brand="brandbasket"][data-app="console"] {
   --color-gold: #c48a47;
@@ -15,76 +13,8 @@ html[data-brand="brandbasket"][data-app="console"] {
   --color-gold-ink: #8a5524;
 }
 
-.glass {
-  background-color: color-mix(in srgb, var(--color-ink) 80%, transparent);
-  -webkit-backdrop-filter: blur(18px) saturate(1.3);
-  backdrop-filter: blur(18px) saturate(1.3);
-  border: 1px solid rgb(255 255 255 / 0.14);
-  color: var(--color-paper);
-}
-
-/* Small glass that sits over other marks (hover cards, menus) needs more body, or what's behind shows through
-   the words. */
-.glass-dense {
-  background-color: var(--color-ink);
-}
-
-.glass :focus-visible {
-  outline-color: var(--color-gold);
-}
-
-/* Without blur, translucent ink over busy content is unreadable, so the glass turns nearly solid. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass {
-    background-color: color-mix(in srgb, var(--color-ink) 92%, transparent);
-  }
-}
-
-/* Avatars arrive one after another, left to right, in the order the map lists them. */
-.journey-rise {
-  animation: journey-rise 0.6s var(--ease-calm) both;
-  animation-delay: calc(var(--i, 0) * 45ms);
-}
-
-@keyframes journey-rise {
-  from {
-    opacity: 0;
-    translate: 0 10px;
-  }
-}
-
-/* Focus mode: everyone who doesn't need us steps back. */
-.journey-spot {
-  transition: opacity 400ms var(--ease-calm);
-}
-
-[data-focus="true"] .journey-spot[data-attention="false"] {
-  opacity: 0.22;
-}
-
-/* A stepped-back client still comes forward when pointed at or tabbed to, so its name and hover card stay readable. */
-[data-focus="true"] .journey-spot[data-attention="false"]:is(:hover, :focus-within) {
-  opacity: 1;
-}
-
-.focus-strip {
-  animation: focus-strip 0.45s var(--ease-calm) both;
-}
-
-@keyframes focus-strip {
-  from {
-    opacity: 0;
-    translate: 0 8px;
-  }
-}
-
+/* With reduced motion on, buttons and rows that carry `console-motion` stop moving. */
 @media (prefers-reduced-motion: reduce) {
-  .journey-rise,
-  .focus-strip {
-    animation: none;
-  }
-
-  .journey-spot,
   .console-motion,
   .console-motion * {
     transition: none !important;

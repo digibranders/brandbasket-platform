@@ -1,7 +1,6 @@
 import type { AddOnToContact, ClientSummary, Lead, LeadStatus, PaymentNeedingAttention, ProjectStatus } from "@brandbasket/db";
 import { addOnById, isAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { LEAD_STATUS_LABELS } from "@brandbasket/shared/lib/lead-status";
-import { PROJECT_STATUS_LABELS } from "@brandbasket/shared/lib/project-status";
 import type { WaitingClient } from "./waiting-clients";
 
 /** The five places a business can be on its way from first enquiry to a live website. */
@@ -186,85 +185,4 @@ export function attentionBySubject(items: readonly AttentionItem[]): ReadonlyMap
     if (!bySubject.has(item.subjectId)) bySubject.set(item.subjectId, item);
   }
   return bySubject;
-}
-
-/** One avatar on the map. */
-export interface JourneySubject {
-  readonly id: string;
-  readonly kind: "client" | "lead";
-  readonly name: string;
-  readonly href: string;
-  /** The finer status inside the stage, e.g. "Changes requested" within Preview. */
-  readonly statusLabel: string;
-  readonly createdAt: Date;
-  readonly attention: AttentionItem | null;
-}
-
-export interface Journey {
-  readonly byStage: Readonly<Record<JourneyStage, readonly JourneySubject[]>>;
-  /** On hold or cancelled: not on the way anywhere, so counted rather than drawn. */
-  readonly paused: number;
-}
-
-function newestFirst(a: JourneySubject, b: JourneySubject): number {
-  return b.createdAt.getTime() - a.createdAt.getTime();
-}
-
-const KIND_RANK: Readonly<Record<AttentionKind, number>> = { payment: 0, "add-on": 1, overdue: 2, due: 3, "new-lead": 4 };
-
-/**
- * Anyone needing attention first, most urgent kind first, so the ringed ones always get a place on the map even when
- * a band overflows; then everyone else, newest first.
- */
-function bandOrder(a: JourneySubject, b: JourneySubject): number {
-  if (a.attention !== null && b.attention !== null) {
-    const byKind = KIND_RANK[a.attention.kind] - KIND_RANK[b.attention.kind];
-    if (byKind !== 0) return byKind;
-    return newestFirst(a, b);
-  }
-  if (a.attention !== null) return -1;
-  if (b.attention !== null) return 1;
-  return newestFirst(a, b);
-}
-
-export function journeySubjects(
-  clients: readonly ClientSummary[],
-  leads: readonly Lead[],
-  attention: ReadonlyMap<string, AttentionItem>,
-): Journey {
-  const byStage: Record<JourneyStage, JourneySubject[]> = { lead: [], setup: [], building: [], preview: [], live: [] };
-  let paused = 0;
-
-  for (const client of clients) {
-    const stage = clientStage(client);
-    if (stage === "paused") {
-      paused += 1;
-      continue;
-    }
-    byStage[stage].push({
-      id: client.businessId,
-      kind: "client",
-      name: client.businessName,
-      href: `/clients/${client.businessId}`,
-      statusLabel: client.project === null ? PROJECT_STATUS_LABELS.onboarding : PROJECT_STATUS_LABELS[client.project.status],
-      createdAt: client.createdAt,
-      attention: attention.get(client.businessId) ?? null,
-    });
-  }
-
-  for (const lead of leads) {
-    if (!isLeadInPipeline(lead)) continue;
-    byStage.lead.push({
-      id: lead.id,
-      kind: "lead",
-      name: lead.businessName,
-      href: `/leads/${lead.id}`,
-      statusLabel: LEAD_STATUS_LABELS[lead.status],
-      createdAt: lead.createdAt,
-      attention: attention.get(lead.id) ?? null,
-    });
-  }
-
-  for (const stage of JOURNEY_STAGES) byStage[stage].sort(bandOrder);
-  return { byStage, paused };
 }
