@@ -182,7 +182,7 @@ export async function RequestsSection({
   const line = notice === null ? null : requestActionLine(notice, mail);
   const waiting = items.filter((item) => item.change.state === "requested").length;
   return (
-    <Section title="Requests" id="requests" aside={waiting === 0 ? undefined : `${waiting} waiting for us`}>
+    <Section title="Change requests" id="requests" aside={waiting === 0 ? undefined : `${waiting} waiting for us`}>
       <p className="max-w-xl text-sm text-ink-soft">
         Changes the customer asked for in their dashboard. Every reply, quote and move here emails them.{" "}
         {allowed === 0 ? "This plan has no included edits." : `Included edits this month: ${includedEditsUsedLine(used, allowed)}.`}
