@@ -28,7 +28,7 @@ export default async function AutomaticErrorsPage({ searchParams }: { readonly s
   const pageHref = (nextPage: number): string => `/support/errors?${new URLSearchParams({ ...(status === undefined ? {} : { status }), page: String(nextPage) })}`;
   return (
     <>
-      <PageHeader title="Errors" lead={`${total.toLocaleString("en-IN")} grouped ${total === 1 ? "issue" : "issues"}. Unexpected failures captured by ${adminBrand().name}.`} />
+      <PageHeader title="Errors" meta={`${total.toLocaleString("en-IN")} grouped ${total === 1 ? "issue" : "issues"}. Unexpected failures captured by ${adminBrand().name}.`} />
       <div className="mt-6">
         <FilterPills
           label="Filter errors"
