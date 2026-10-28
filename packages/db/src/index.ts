@@ -873,6 +873,20 @@ export {
   type ComposeInput,
   type DailyMetricInput,
 } from "./queries/reports";
+export { HIT_CHANNELS, HIT_DEVICES, HIT_KINDS, type HitChannel, type HitDevice, type HitKind } from "./site-hit-lists";
+export {
+  deleteSaltsBefore,
+  deleteSiteHitsBefore,
+  ensureSiteKey,
+  findBusinessBySiteKey,
+  generateSiteKey,
+  getDailySalt,
+  getSiteKey,
+  insertSiteHit,
+  lastSiteHitAt,
+  listSiteHits,
+  type NewSiteHit,
+} from "./queries/site-hits";
 export {
   activateBundledAddOns,
   BundledAddOnNotPossibleError,

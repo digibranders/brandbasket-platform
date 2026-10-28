@@ -55,4 +55,5 @@ export * from "./support";
 export * from "./team-calls";
 export * from "./error-issues";
 export * from "./support-ticket-error-links";
+export * from "./site-hits";
 export * from "./site-settings";

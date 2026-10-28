@@ -62,6 +62,8 @@ import {
   sessions,
   setupInvites,
   siteEvents,
+  siteHits,
+  siteKeys,
   staffMembers,
   subscriptions,
   userPrivacySettings,
@@ -337,6 +339,9 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(metricBreakdowns).where(eq(metricBreakdowns.businessId, businessId));
     await tx.delete(reportSourceRuns).where(eq(reportSourceRuns.businessId, businessId));
     await tx.delete(reportSources).where(eq(reportSources.businessId, businessId));
+    // The first-party site analytics: the hits visitors left on the website, and its public tracking key.
+    await tx.delete(siteHits).where(eq(siteHits.businessId, businessId));
+    await tx.delete(siteKeys).where(eq(siteKeys.businessId, businessId));
     await tx.delete(domains).where(eq(domains.businessId, businessId));
     await tx.delete(mediaAssets).where(eq(mediaAssets.businessId, businessId));
     // The chatbots OyeChats runs for the business, their webhook secrets and the visitors' details they collected.
