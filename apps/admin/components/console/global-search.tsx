@@ -4,6 +4,7 @@ import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactElement } from "react";
+import { useDialogOpen, useSearchShortcut } from "@brandbasket/shared/ui/v2/dialog-hooks";
 import { SEARCH_KIND_LABELS, SEARCH_KINDS, type SearchHit } from "@/lib/console-search-kinds";
 
 /** How long typing must pause before a search is sent. */
@@ -20,7 +21,7 @@ interface GlobalSearchProps {
 /** Search everything: clients, enquiries, requests and invoice numbers. A native dialog, so Escape closes it. */
 export function GlobalSearch({ open, onClose, onShortcut }: GlobalSearchProps): ReactElement {
   const router = useRouter();
-  const dialog = useRef<HTMLDialogElement>(null);
+  const dialog = useDialogOpen(open);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef(0);
   const [query, setQuery] = useState("");
@@ -28,24 +29,7 @@ export function GlobalSearch({ open, onClose, onShortcut }: GlobalSearchProps): 
   const [searched, setSearched] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    const element = dialog.current;
-    if (element === null) return;
-    if (open && !element.open) element.showModal();
-    if (!open && element.open) element.close();
-  }, [open]);
-
-  useEffect(() => {
-    if (onShortcut === undefined) return undefined;
-    const listen = (event: KeyboardEvent): void => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        onShortcut();
-      }
-    };
-    window.addEventListener("keydown", listen);
-    return () => window.removeEventListener("keydown", listen);
-  }, [onShortcut]);
+  useSearchShortcut(onShortcut);
 
   useEffect(
     () => () => {
