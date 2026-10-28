@@ -41,6 +41,7 @@ export * from "./project-events";
 export * from "./projects";
 export * from "./rate-limits";
 export * from "./referrals";
+export * from "./reports";
 export * from "./setup-invites";
 export * from "./staff";
 export * from "./staff-invites";

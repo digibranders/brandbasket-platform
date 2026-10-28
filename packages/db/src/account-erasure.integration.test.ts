@@ -263,6 +263,11 @@ describe("eraseClosedAccount", () => {
       await dbs.owner.db.execute(sql.raw(`insert into monthly_snapshots (id, business_id, service, month) values (gen_random_uuid(), '${id}', 'social', '2026-10-01')`));
       await dbs.owner.db.execute(sql.raw(`insert into monthly_reports (id, business_id, service, month, url) values (gen_random_uuid(), '${id}', 'social', '2026-10-01', 'https://example.com/report')`));
       await dbs.owner.db.execute(sql.raw(`insert into site_events (id, business_id, kind) values (gen_random_uuid(), '${id}', 'call')`));
+      await dbs.owner.db.execute(sql.raw(`insert into metric_daily (id, business_id, metric, day, value) values (gen_random_uuid(), '${id}', 'gsc.clicks', '2026-10-01', 1)`));
+      await dbs.owner.db.execute(sql.raw(`insert into metric_breakdowns (id, business_id, source, month, dimension, rows) values (gen_random_uuid(), '${id}', 'gsc', '2026-10-01', 'query', '[]')`));
+      await dbs.owner.db.execute(sql.raw(`insert into report_documents (id, business_id, service, month, content) values (gen_random_uuid(), '${id}', 'website', '2026-10-01', '{}')`));
+      await dbs.owner.db.execute(sql.raw(`insert into report_source_runs (id, business_id, source, window_start, window_end, ok) values (gen_random_uuid(), '${id}', 'gsc', '2026-10-01', '2026-10-07', true)`));
+      await dbs.owner.db.execute(sql.raw(`insert into report_sources (id, business_id, source, external_id) values (gen_random_uuid(), '${id}', 'gsc', 'sc-domain:example.in')`));
       await dbs.owner.db.execute(
         sql.raw(
           `insert into deliverables (id, business_id, service, kind, title, due_on, image_key, image_mime, image_bytes, image_width, image_height, image_sha256)
@@ -280,7 +285,7 @@ describe("eraseClosedAccount", () => {
       expect(outcome.storageKeys).toContain(`deliverables/${postIds[businessId]}/display`);
       expect(outcome.storageKeys).not.toContain(`deliverables/${postIds[controlId]}/display`);
     }
-    for (const table of ["service_setup", "activity_events", "business_activity", "monthly_snapshots", "monthly_reports", "site_events", "team_calls"]) {
+    for (const table of ["service_setup", "activity_events", "business_activity", "monthly_snapshots", "monthly_reports", "site_events", "team_calls", "metric_daily", "metric_breakdowns", "report_documents", "report_source_runs", "report_sources"]) {
       expect(await count(table, `business_id = '${businessId}'`), `${table} of the closed business`).toBe(0);
       expect(await count(table, `business_id = '${controlId}'`), `${table} of the other business`).toBe(1);
     }
@@ -487,8 +492,8 @@ describe("what the erase knows about", () => {
     "activity_events", "appointment_services", "appointment_settings", "appointments", "billing_profiles", "booking_otps", "business_activity", "business_announcements", "business_closures",
     "business_hours", "business_members", "business_modules", "business_profiles", "change_requests", "chatbot_leads", "chatbots", "deliverables", "directory_business_categories", "directory_business_faqs",
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
-    "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "monthly_reports", "monthly_snapshots", "onboarding_progress",
-    "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_preview_images", "projects", "service_setup", "services",
+    "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "metric_breakdowns", "metric_daily", "monthly_reports", "monthly_snapshots", "onboarding_progress",
+    "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_preview_images", "projects", "report_documents", "report_source_runs", "report_sources", "service_setup", "services",
     "setup_call_bookings", "setup_invites", "site_events", "support_tickets", "team_calls",
   ];
 

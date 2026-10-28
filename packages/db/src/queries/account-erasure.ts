@@ -40,6 +40,8 @@ import {
   leads,
   listingContent,
   mediaAssets,
+  metricBreakdowns,
+  metricDaily,
   monthlyReports,
   monthlySnapshots,
   onboardingProgress,
@@ -50,6 +52,9 @@ import {
   projectBriefs,
   projectPreviewImages,
   projects,
+  reportDocuments,
+  reportSourceRuns,
+  reportSources,
   serviceSetup,
   setupCallBookings,
   teamCalls,
@@ -326,6 +331,12 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(deliverables).where(eq(deliverables.businessId, businessId));
     await tx.delete(monthlyReports).where(eq(monthlyReports.businessId, businessId));
     await tx.delete(siteEvents).where(eq(siteEvents.businessId, businessId));
+    // The monthly reports: the pulled numbers, the connected properties and the reports themselves, sent ones too.
+    await tx.delete(reportDocuments).where(eq(reportDocuments.businessId, businessId));
+    await tx.delete(metricDaily).where(eq(metricDaily.businessId, businessId));
+    await tx.delete(metricBreakdowns).where(eq(metricBreakdowns.businessId, businessId));
+    await tx.delete(reportSourceRuns).where(eq(reportSourceRuns.businessId, businessId));
+    await tx.delete(reportSources).where(eq(reportSources.businessId, businessId));
     await tx.delete(domains).where(eq(domains.businessId, businessId));
     await tx.delete(mediaAssets).where(eq(mediaAssets.businessId, businessId));
     // The chatbots OyeChats runs for the business, their webhook secrets and the visitors' details they collected.

@@ -841,6 +841,39 @@ export {
 } from "./queries/deliverables";
 export type { DeliverableKind, DeliverableStatus } from "./deliverable-states";
 export {
+  canMoveReport,
+  CONNECTED_SOURCES,
+  REPORT_SERVICES,
+  REPORT_SOURCES,
+  REPORT_STATES,
+  SOURCE_STATUSES,
+  type ConnectedSource,
+  type ReportService,
+  type ReportSource,
+  type ReportState,
+  type SourceStatus,
+} from "./report-states";
+export {
+  composeReport,
+  getBreakdown,
+  getReport,
+  listDailyMetrics,
+  listReportSources,
+  listReportsInState,
+  listSentReports,
+  listSourceRuns,
+  moveReport,
+  recordSourceRun,
+  ReportMoveError,
+  setReportSourceStatus,
+  upsertBreakdown,
+  upsertDailyMetrics,
+  upsertReportSource,
+  type BreakdownInput,
+  type ComposeInput,
+  type DailyMetricInput,
+} from "./queries/reports";
+export {
   activateBundledAddOns,
   BundledAddOnNotPossibleError,
   bundledAddOnStillApplies,
