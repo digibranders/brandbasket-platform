@@ -30,7 +30,7 @@ letter-spaced labels.
 ## Icons
 
 Phosphor (`@phosphor-icons/react/dist/ssr`), regular weight, `fill` only for a done check. 16 to 18px in rows, 18px in
-the rail. Never hand-drawn SVG. The older `@brandbasket/shared/ui/icons` set stays on pages not reworked yet.
+the rail. Never hand-drawn SVG. The one exception is OyeChats in the rail, which shows its maker's own mark (`public/brand/oyechats-icon*.png`). The older `@brandbasket/shared/ui/icons` set stays on pages not reworked yet.
 
 ## Surfaces
 

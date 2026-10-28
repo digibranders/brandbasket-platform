@@ -1,5 +1,6 @@
 import "server-only";
 import { MAX_REWARD_BASIS_POINTS } from "@brandbasket/billing";
+import { affiliateLinkEmail } from "@brandbasket/email";
 import {
   billingCurrency,
   cancelAffiliateEarning,
@@ -19,6 +20,7 @@ import { AFFILIATE_LOGIN_LINK_DAYS, affiliateSetupPath } from "@brandbasket/shar
 import { parseMoney } from "@brandbasket/shared/lib/money";
 import { parsePhoneNumberFromString } from "libphonenumber-js/max";
 import { getStaffDb } from "./db";
+import { customerEmailTransport } from "./email";
 
 // The same words in the staff console and on the affiliate's own dashboard, so they live in shared.
 export { describeAffiliateReward, describeRewardCycles } from "@brandbasket/shared/lib/billing/referral-value";
@@ -316,6 +318,36 @@ export async function issueLoginLinkFor(input: {
   }
   if (issued.kind === "no-email") return refused("Add their email first: it is what they sign in with.", "email");
   return refused("That affiliate no longer exists.", null);
+}
+
+export type EmailLinkOutcome =
+  | { readonly kind: "emailed"; readonly to: string }
+  | { readonly kind: "send-failed" }
+  | { readonly kind: "refused"; readonly refusal: AffiliateRefusal };
+
+/**
+ * Makes a fresh sign-in link and emails it to the affiliate's address, so staff never handle the link. A failed send
+ * is an outcome, not a throw: the affiliate already exists, and the failed message is kept in the outbox for staff.
+ */
+export async function emailLoginLinkFor(input: {
+  readonly affiliateId: string;
+  readonly appOrigin: string;
+  readonly now?: Date;
+}): Promise<EmailLinkOutcome> {
+  const db = getStaffDb();
+  const affiliate = await findAffiliateById(db, input.affiliateId);
+  if (affiliate === null) return refused("That affiliate no longer exists.", null);
+  if (affiliate.email === null) return refused("Add their email first: it is what they sign in with.", "email");
+  const link = await issueLoginLinkFor(input);
+  if (link.kind === "refused") return link;
+  try {
+    await customerEmailTransport(db).send(
+      affiliateLinkEmail({ to: affiliate.email, name: affiliate.name, setupUrl: link.url, expiresInDays: AFFILIATE_LOGIN_LINK_DAYS }),
+    );
+  } catch {
+    return { kind: "send-failed" };
+  }
+  return { kind: "emailed", to: affiliate.email };
 }
 
 /** Looks an affiliate up for a page, null when the id is unknown. */

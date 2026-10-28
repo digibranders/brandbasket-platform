@@ -104,7 +104,7 @@ export async function findEmail(db: Database, id: string): Promise<StoredEmail |
 }
 
 /** Templates whose body carried a link that signs someone in. Their outbox rows go after a day. */
-export const SIGN_IN_LINK_TEMPLATES = ["password-reset", "confirm-email", "setup-link", "staff-invite"] as const;
+export const SIGN_IN_LINK_TEMPLATES = ["password-reset", "confirm-email", "setup-link", "staff-invite", "affiliate-link"] as const;
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const SIGN_IN_LINK_EMAIL_RETENTION_MS = DAY_MS;
 export const OUTBOX_RETENTION_MS = 90 * DAY_MS;

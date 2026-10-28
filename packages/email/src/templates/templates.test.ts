@@ -17,6 +17,7 @@ import { securityEventAlertEmail, staffAccessReviewEmail } from "./security-aler
 import { previewReadyEmail } from "./preview-ready";
 import { previewRevisionsRequestedEmail } from "./preview-revisions-requested";
 import { setupLinkEmail } from "./setup-link";
+import { affiliateLinkEmail } from "./affiliate-link";
 import { staffInviteEmail } from "./staff-invite";
 import { signupCodeEmail } from "./signup-code";
 import { supportReplyAlertEmail } from "./support-reply-alert";
@@ -125,6 +126,28 @@ describe("staffInviteEmail", () => {
   it("includes the link in both bodies but not in the outbox copy", () => {
     expect(email.bodyText).toContain("http://console.localhost:3199/staff-invite/token-123");
     expect(email.bodyHtml).toContain('href="http://console.localhost:3199/staff-invite/token-123"');
+    expect(JSON.stringify(email.outboxCopy)).not.toContain("token-123");
+  });
+});
+
+describe("affiliateLinkEmail", () => {
+  const email = affiliateLinkEmail({
+    to: "steve@fynix.digital",
+    name: "Steve Jason",
+    setupUrl: "https://app.brandbasket.in/affiliate/setup/token-123",
+    expiresInDays: 7,
+  });
+
+  it("greets them by name and says how long the link lasts", () => {
+    expect(email.template).toBe("affiliate-link");
+    expect(email.to).toBe("steve@fynix.digital");
+    expect(email.bodyText).toContain("Hi Steve Jason,");
+    expect(email.bodyText).toContain("7 days");
+  });
+
+  it("includes the link in both bodies but not in the outbox copy", () => {
+    expect(email.bodyText).toContain("https://app.brandbasket.in/affiliate/setup/token-123");
+    expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/affiliate/setup/token-123"');
     expect(JSON.stringify(email.outboxCopy)).not.toContain("token-123");
   });
 });

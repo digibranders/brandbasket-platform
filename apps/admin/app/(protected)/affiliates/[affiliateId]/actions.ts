@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { AffiliateFormState } from "@/components/affiliate-forms";
 import { submittedValues } from "@/lib/form-values";
 import type { LoginLinkState } from "@/components/affiliate-login-link";
-import { cancelEarningFor, issueLoginLinkFor, recordPayoutFor, updateAffiliateFor } from "@/lib/server/affiliate-admin";
+import { cancelEarningFor, emailLoginLinkFor, issueLoginLinkFor, recordPayoutFor, updateAffiliateFor } from "@/lib/server/affiliate-admin";
 import { serverEnv } from "@/lib/server/env";
 import { recordStaffAction } from "@/lib/server/activity";
 import { requireStaffCan } from "@/lib/server/staff-role";
@@ -81,4 +81,15 @@ export async function issueLoginLinkAction(affiliateId: string): Promise<LoginLi
   if (outcome.kind === "refused") return { status: "error", message: outcome.refusal.message };
   await recordStaffAction(staff, { businessId: null, kind: "affiliate.login_link_issued", summary: "Made an affiliate sign-in link", data: { affiliateId } });
   return { status: "link", url: outcome.url, expiresAt: outcome.expiresAt.toISOString() };
+}
+
+/** Makes a fresh sign-in link and emails it to the affiliate. Nothing in the posted form is read. */
+export async function emailLoginLinkAction(affiliateId: string): Promise<LoginLinkState> {
+  const staff = await requireStaffCan("money");
+  const outcome = await emailLoginLinkFor({ affiliateId, appOrigin: serverEnv().APP_ORIGIN });
+  refresh(affiliateId);
+  if (outcome.kind === "refused") return { status: "error", message: outcome.refusal.message };
+  if (outcome.kind === "send-failed") return { status: "error", message: "The email could not be sent. Try again, or make a link and send it yourself." };
+  await recordStaffAction(staff, { businessId: null, kind: "affiliate.login_link_emailed", summary: "Emailed an affiliate their sign-in link", data: { affiliateId } });
+  return { status: "emailed", to: outcome.to };
 }
