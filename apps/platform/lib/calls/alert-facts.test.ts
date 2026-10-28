@@ -23,7 +23,7 @@ describe("callTimeText", () => {
 });
 
 describe("callAlert", () => {
-  it("gives a booked kickoff its time, services and meeting link, with a button to join", () => {
+  it("gives a booked kickoff its time, services and meeting link as a line, not a button", () => {
     const alert = callAlert(BASE);
     expect(alert.event).toBe("kickoff_booked");
     expect(alert.facts).toEqual([
@@ -33,7 +33,6 @@ describe("callAlert", () => {
       { name: "Services", value: "Website, Social & Ads and Search" },
       { name: "Meeting link", value: "https://app.cal.com/video/abc" },
     ]);
-    expect(alert.buttons).toEqual([{ label: "Join the call", url: "https://app.cal.com/video/abc" }]);
     expect(alert.text).toBeNull();
   });
 
@@ -49,6 +48,5 @@ describe("callAlert", () => {
     expect(alert.facts.find((fact) => fact.name === "About")?.value).toBe("Social & Ads");
     expect(alert.facts.find((fact) => fact.name === "Meeting link")?.value).toBeNull();
     expect(alert.text).toBe("Customer's note: Ads for braces");
-    expect(alert.buttons).toEqual([]);
   });
 });
