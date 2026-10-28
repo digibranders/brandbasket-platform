@@ -47,3 +47,9 @@ export function hostAllowed(host: string | null, allowed: readonly string[]): bo
 export function istDay(instant: Date): string {
   return new Date(instant.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
 }
+
+/** The instants an Indian calendar day (`YYYY-MM-DD`) spans, from included to excluded: 18:30 UTC the evening before to 18:30 UTC. */
+export function istDayRange(day: string): { readonly from: Date; readonly to: Date } {
+  const from = new Date(Date.parse(`${day}T00:00:00.000Z`) - IST_OFFSET_MS);
+  return { from, to: new Date(from.getTime() + 24 * 60 * 60 * 1000) };
+}

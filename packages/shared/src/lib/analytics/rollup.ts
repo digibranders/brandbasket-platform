@@ -100,3 +100,38 @@ export function monthlyBreakdowns(hits: readonly RollupHit[]): BreakdownRows[] {
   ];
   return lists.filter((list) => list.rows.length > 0);
 }
+
+/** What the older server-side route (`site_events`) counted for a day: taps and form sends a site reported itself. */
+export interface LegacyEnquiryCounts {
+  readonly call: number;
+  readonly whatsapp: number;
+  readonly form: number;
+}
+
+const LEGACY_METRICS: readonly (readonly [OwnDailyMetric, keyof LegacyEnquiryCounts])[] = [
+  ["own.calls", "call"],
+  ["own.whatsapp", "whatsapp"],
+  ["own.form_sends", "form"],
+];
+
+/**
+ * A site that sends its own call, WhatsApp or form events to the older server route, and may also run the script. For
+ * each of the three, the script's count is used when it saw any, and the older count only when it saw none. The two are
+ * never added: a site that reports both ways would be counted twice. (Sites we build mark their forms as server-counted,
+ * so the script sends none and the server's count is used.)
+ */
+export function mergeLegacyEvents(rows: readonly DailyMetricRow[], legacy: LegacyEnquiryCounts): DailyMetricRow[] {
+  return rows.map((row) => {
+    const source = LEGACY_METRICS.find(([metric]) => metric === row.metric)?.[1];
+    return source !== undefined && row.value === 0 && legacy[source] > 0 ? { metric: row.metric, value: legacy[source] } : row;
+  });
+}
+
+/**
+ * For a day on a site that never ran the script: only the three enquiry numbers, and only when the older route counted
+ * something. Without the script nothing else was measured, and a day with no events at all is unmeasured, not zero.
+ */
+export function legacyEnquiryMetrics(legacy: LegacyEnquiryCounts): DailyMetricRow[] {
+  if (legacy.call + legacy.whatsapp + legacy.form === 0) return [];
+  return LEGACY_METRICS.map(([metric, source]) => ({ metric, value: legacy[source] }));
+}

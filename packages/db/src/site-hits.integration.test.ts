@@ -12,10 +12,11 @@ import {
   insertSiteHit,
   lastSiteHitAt,
   listLiveHostnames,
+  listRollupCandidates,
   listSiteHits,
   type NewSiteHit,
 } from "./queries/site-hits";
-import { businessMembers, domains, siteHits, siteKeys, users, visitorSalts } from "./schema";
+import { businessMembers, domains, siteEvents, siteHits, siteKeys, users, visitorSalts } from "./schema";
 import { withTenantScope } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
@@ -205,5 +206,31 @@ describe("live hostnames", () => {
     ]);
     expect(await listLiveHostnames(staff(), businessId)).toEqual(["saidental.in", "www.saidental.in"]);
     expect(await listLiveHostnames(staff(), "019a0000-0000-7000-8000-000000000000")).toEqual([]);
+  });
+});
+
+describe("roll-up candidates", () => {
+  it("lists every business that has sent a hit, with its first, and a business that only used the older route in the window", async () => {
+    const third = (await dbs.staff.db.transaction((tx) => insertBusiness(tx, "Cedar Clinic", "INR"))).id;
+    await insertSiteHit(staff(), hit({ at: at(60) }));
+    await insertSiteHit(staff(), hit({ at: at(10) }));
+    await insertSiteHit(staff(), hit({ at: at(5000), businessId: otherBusinessId }));
+    await staff().insert(siteEvents).values([
+      { businessId: third, kind: "call", occurredAt: at(30) },
+      { businessId: otherBusinessId, kind: "form", occurredAt: at(30) },
+    ]);
+    const rows = await listRollupCandidates(staff(), at(0), at(120));
+    expect(rows.map((row) => [row.businessId, row.firstHitAt])).toEqual(
+      [
+        [businessId, at(10)],
+        [otherBusinessId, at(5000)],
+        [third, null],
+      ].sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+    );
+  });
+
+  it("leaves out a business with no hit ever and no older event in the window", async () => {
+    await staff().insert(siteEvents).values({ businessId, kind: "call", occurredAt: at(9999) });
+    expect(await listRollupCandidates(staff(), at(0), at(120))).toEqual([]);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dailyMetrics, monthlyBreakdowns, OWN_DAILY_METRICS, type RollupHit } from "./rollup";
+import { dailyMetrics, legacyEnquiryMetrics, mergeLegacyEvents, monthlyBreakdowns, OWN_DAILY_METRICS, type RollupHit } from "./rollup";
 
 const at = (minutes: number) => new Date(Date.UTC(2026, 9, 5, 4, 0, 0) + minutes * 60_000);
 function hit(overrides: Partial<Omit<RollupHit, "at">> & Pick<RollupHit, "visitorHash"> & { readonly minute: number }): RollupHit {
@@ -90,5 +90,33 @@ describe("monthlyBreakdowns", () => {
   it("keeps the top ten of a long list", () => {
     const many = Array.from({ length: 15 }, (_, index) => hit({ visitorHash: `v${index}`, minute: index, path: `/p${String(index).padStart(2, "0")}` }));
     expect(monthlyBreakdowns(many).find((entry) => entry.dimension === "page")?.rows).toHaveLength(10);
+  });
+});
+
+describe("events from before the script", () => {
+  const legacy = { call: 3, whatsapp: 0, form: 2 };
+
+  it("fills a count the script did not see from the older server events, and never adds the two", () => {
+    const script = dailyMetrics([hit({ visitorHash: "a", minute: 0 }), hit({ visitorHash: "a", minute: 1, kind: "call" }), hit({ visitorHash: "a", minute: 2, kind: "call" })]);
+    const merged = mergeLegacyEvents(script, legacy);
+    expect(value(merged, "own.calls")).toBe(2);
+    expect(value(merged, "own.form_sends")).toBe(2);
+    expect(value(merged, "own.whatsapp")).toBe(0);
+    expect(value(merged, "own.pageviews")).toBe(1);
+    expect(merged.map((row) => row.metric)).toEqual([...OWN_DAILY_METRICS]);
+  });
+
+  it("leaves the script's numbers alone when there are no older events", () => {
+    const script = dailyMetrics([hit({ visitorHash: "a", minute: 0, kind: "form" })]);
+    expect(mergeLegacyEvents(script, { call: 0, whatsapp: 0, form: 0 })).toEqual(script);
+  });
+
+  it("gives only the three enquiry numbers for a site that never ran the script, and nothing when there were none", () => {
+    expect(legacyEnquiryMetrics(legacy)).toEqual([
+      { metric: "own.calls", value: 3 },
+      { metric: "own.whatsapp", value: 0 },
+      { metric: "own.form_sends", value: 2 },
+    ]);
+    expect(legacyEnquiryMetrics({ call: 0, whatsapp: 0, form: 0 })).toEqual([]);
   });
 });

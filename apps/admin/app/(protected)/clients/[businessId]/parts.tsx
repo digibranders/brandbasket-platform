@@ -19,6 +19,7 @@ import { firstPaymentAmount, initialTermPhrase, monthlyPaymentAmount } from "@br
 import { isPlacementField } from "@brandbasket/shared/lib/directory/placement-form";
 import { formatStoredDate } from "@brandbasket/shared/lib/format";
 import { adminBrand } from "@/lib/brand";
+import { trackingSnippet } from "@/lib/tracking-snippet";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { describeStoredDay } from "@brandbasket/shared/lib/onboarding/hours";
 import { registrableDomain } from "@brandbasket/shared/lib/onboarding/domain-dns";
@@ -35,6 +36,7 @@ import {
   setWebsiteUrlAction,
   switchDomainAction,
 } from "./actions";
+import { createSiteKeyAction } from "./tracking-actions";
 
 /** A moment in the reader's own zone, named. */
 export function When({ date }: { readonly date: Date }): ReactElement {
@@ -75,6 +77,46 @@ export function SiteApiTokenBlock({ businessId, token }: { readonly businessId: 
             : "Replacing it stops their blog, opening hours, announcement and booking requests until the new token is deployed to their site."}
         </p>
       </form>
+    </div>
+  );
+}
+
+/**
+ * The line this business's website adds to report its own visits, taps and form sends to us, with no Google account (plan
+ * 56). The key only names the business, so it is safe in a page. "Last event" is how staff check the install worked: load the
+ * site once, reload this page, and it shows a time.
+ */
+export function TrackingBlock({
+  businessId,
+  siteKey,
+  appOrigin,
+  lastEventAt,
+}: {
+  readonly businessId: string;
+  readonly siteKey: string | null;
+  readonly appOrigin: string;
+  readonly lastEventAt: Date | null;
+}): ReactElement {
+  if (siteKey === null) {
+    return (
+      <form action={createSiteKeyAction}>
+        <Quiet>No tracking key yet. It lets their website report visits, call, WhatsApp and email taps and form sends to us.</Quiet>
+        <input type="hidden" name="businessId" value={businessId} />
+        <button type="submit" className={`${buttonSecondary} mt-4`}>
+          Create tracking key
+        </button>
+      </form>
+    );
+  }
+  const snippet = trackingSnippet({ appOrigin, key: siteKey });
+  return (
+    <div>
+      <div className="flex items-start gap-2 rounded-2xl bg-paper-deep py-2 pl-4 pr-2">
+        <p className="min-w-0 flex-1 break-all py-1 font-mono text-sm">{snippet}</p>
+        <CopyTokenButton value={snippet} what="tracking snippet" />
+      </div>
+      <p className="mt-3 text-sm text-ink-2">{lastEventAt === null ? "No event received yet." : <>Last event received <When date={lastEventAt} />.</>}</p>
+      <p className={hintClasses}>Add it to every page of their site. A site we build also gets data-bb-forms=&quot;server&quot; on the tag, so a form send is not counted twice.</p>
     </div>
   );
 }

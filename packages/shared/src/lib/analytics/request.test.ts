@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countryFrom, hostAllowed, istDay, optedOut, originHost } from "./request";
+import { countryFrom, hostAllowed, istDay, istDayRange, optedOut, originHost } from "./request";
 
 const headers = (entries: Record<string, string>): Pick<Headers, "get"> => new Headers(entries);
 
@@ -72,5 +72,18 @@ describe("istDay", () => {
     expect(istDay(new Date("2026-10-05T18:29:59.000Z"))).toBe("2026-10-05");
     expect(istDay(new Date("2026-10-05T18:30:00.000Z"))).toBe("2026-10-06");
     expect(istDay(new Date("2026-12-31T20:00:00.000Z"))).toBe("2027-01-01");
+  });
+});
+
+describe("istDayRange", () => {
+  it("is the instants an Indian day spans: 18:30 UTC the day before to 18:30 UTC", () => {
+    expect(istDayRange("2026-10-05")).toEqual({ from: new Date("2026-10-04T18:30:00.000Z"), to: new Date("2026-10-05T18:30:00.000Z") });
+  });
+
+  it("agrees with istDay at both ends", () => {
+    const { from, to } = istDayRange("2027-01-01");
+    expect(istDay(from)).toBe("2027-01-01");
+    expect(istDay(new Date(to.getTime() - 1))).toBe("2027-01-01");
+    expect(istDay(to)).toBe("2027-01-02");
   });
 });

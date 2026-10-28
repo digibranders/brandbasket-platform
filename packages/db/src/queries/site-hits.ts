@@ -1,7 +1,7 @@
 import { randomBytes, randomInt } from "node:crypto";
-import { and, asc, eq, gte, isNull, lt, max, sql } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lt, max, min, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import { domains, siteHits, siteKeys, visitorSalts, type SiteHit, type SiteKey } from "../schema";
+import { domains, siteEvents, siteHits, siteKeys, visitorSalts, type SiteHit, type SiteKey } from "../schema";
 import type { ScopedTransaction } from "../scope";
 import type { HitChannel, HitDevice, HitKind } from "../site-hit-lists";
 
@@ -113,4 +113,28 @@ export async function listLiveHostnames(db: Runner, businessId: string): Promise
     .where(and(eq(domains.businessId, businessId), isNull(domains.removedAt)))
     .orderBy(asc(domains.createdAt), asc(domains.hostname));
   return rows.map((row) => row.hostname);
+}
+
+export interface RollupCandidate {
+  readonly businessId: string;
+  /** When the business's script first reported, or null when it never has (it only used the older server route). */
+  readonly firstHitAt: Date | null;
+}
+
+/**
+ * The businesses a night's roll-up looks at: every one that has ever sent a hit (a quiet day is a measured zero for them),
+ * and every one that only used the older `site_events` route inside [from, to). Ordered by business. Staff connection.
+ */
+export async function listRollupCandidates(db: Runner, from: Date, to: Date): Promise<RollupCandidate[]> {
+  const withHits = await db.select({ businessId: siteHits.businessId, firstHitAt: min(siteHits.at) }).from(siteHits).groupBy(siteHits.businessId);
+  const legacy = await db
+    .selectDistinct({ businessId: siteEvents.businessId })
+    .from(siteEvents)
+    .where(and(gte(siteEvents.occurredAt, from), lt(siteEvents.occurredAt, to)));
+  const known = new Set(withHits.map((row) => row.businessId));
+  const rows: RollupCandidate[] = [
+    ...withHits.map((row) => ({ businessId: row.businessId, firstHitAt: row.firstHitAt })),
+    ...legacy.filter((row) => !known.has(row.businessId)).map((row) => ({ businessId: row.businessId, firstHitAt: null })),
+  ];
+  return rows.sort((a, b) => (a.businessId < b.businessId ? -1 : a.businessId > b.businessId ? 1 : 0));
 }

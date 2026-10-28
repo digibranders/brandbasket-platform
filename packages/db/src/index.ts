@@ -885,8 +885,10 @@ export {
   insertSiteHit,
   lastSiteHitAt,
   listLiveHostnames,
+  listRollupCandidates,
   listSiteHits,
   type NewSiteHit,
+  type RollupCandidate,
 } from "./queries/site-hits";
 export {
   activateBundledAddOns,
