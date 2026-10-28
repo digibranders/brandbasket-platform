@@ -9,9 +9,8 @@ const BASE = {
 
 describe("customerEventTeamsCard", () => {
   it("titles each event, lists who the customer is and links to the client", () => {
-    const sign = JSON.stringify(customerEventTeamsCard({ ...BASE, event: "signed_up", facts: [{ name: "Plan chosen", value: "Managed Website" }] }));
-    for (const part of ["New sign-up: Rao Clinic", "Asha Rao", "asha@example.com", "Managed Website", "Open the client", BASE.consoleUrl]) expect(sign).toContain(part);
-    expect(JSON.stringify(customerEventTeamsCard({ ...BASE, event: "setup_sent" }))).toContain("Website details received: Rao Clinic");
+    const sign = JSON.stringify(customerEventTeamsCard({ ...BASE, event: "setup_sent", facts: [{ name: "First preview due in", value: "48 hours" }] }));
+    for (const part of ["Website details received: Rao Clinic", "Asha Rao", "asha@example.com", "48 hours", "Open the client", BASE.consoleUrl]) expect(sign).toContain(part);
     expect(JSON.stringify(customerEventTeamsCard({ ...BASE, event: "account_closed" }))).toContain("Account closed: Rao Clinic");
   });
 
@@ -21,5 +20,13 @@ describe("customerEventTeamsCard", () => {
     expect(card).toContain("Too expensive");
     expect(card).not.toContain("Plan paid until");
     expect(card).not.toContain("Website");
+  });
+
+  it("titles a booked kickoff and puts the meeting link after the button that opens the client", () => {
+    const card = customerEventTeamsCard({ ...BASE, event: "kickoff_booked", buttons: [{ label: "Join the call", url: "https://app.cal.com/video/abc" }] });
+    expect(JSON.stringify(card)).toContain("Kickoff call booked: Rao Clinic");
+    const actions = (card.attachments[0].content.actions ?? []) as { title: string; url: string }[];
+    expect(actions.map((action) => action.title)).toEqual(["Open the client", "Join the call"]);
+    expect(actions[1]?.url).toBe("https://app.cal.com/video/abc");
   });
 });

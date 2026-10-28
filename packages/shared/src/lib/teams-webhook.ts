@@ -79,6 +79,12 @@ export function telUrl(phone: string | null | undefined): string | null {
   return /\d/.test(dialable) ? `tel:${dialable}` : null;
 }
 
+/** A "Call now" button for a number, or none when there are no digits to dial. For TeamsCardInput.buttons. */
+export function callButton(phone: string | null | undefined): { label: string; url: string }[] {
+  const url = telUrl(phone);
+  return url === null ? [] : [{ label: "Call now", url }];
+}
+
 /** What one alert says. Everything optional is left out of the card when empty. */
 export interface TeamsCardInput {
   readonly title: string;

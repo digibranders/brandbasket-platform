@@ -87,8 +87,11 @@ describe("the Teams cards carry what the alert emails carry", () => {
     const card = parts(signupTeamsCard({ name: "Arun Kumar", businessName: "Kumar Opticals", email: "arun@example.com", phone: "+91 98201 11111", plan: "Managed Website", leadUrl: "https://console.example/leads/3" }));
     expect(card.body[0]?.text).toBe("New sign-up: Kumar Opticals");
     expect(card.body[1]?.text).toBe("Arun Kumar opened an account and has not paid yet");
-    expect(card.body[2]?.facts?.map((fact) => fact.title)).toEqual(["Chose", "Email", "Phone"]);
-    expect(card.actions).toEqual([{ type: "Action.OpenUrl", title: "Open the enquiry", url: "https://console.example/leads/3" }]);
+    expect(card.body[2]?.facts?.map((fact) => fact.title)).toEqual(["Customer", "Mobile", "Email", "Plan chosen"]);
+    expect(card.actions).toEqual([
+      { type: "Action.OpenUrl", title: "Open the enquiry", url: "https://console.example/leads/3" },
+      { type: "Action.OpenUrl", title: "Call now", url: "tel:+919820111111" },
+    ]);
   });
 
   it("tells the team about a chatbot lead without any of the visitor's details", () => {

@@ -21,16 +21,16 @@ beforeEach(() => {
 
 describe("announceCustomerEvent", () => {
   it("posts to the Customers channel with the customer and a link to the client", async () => {
-    await announceCustomerEvent(DB, SECRET, { businessId: "biz-1", event: "signed_up" }, "https://console.example");
+    await announceCustomerEvent(DB, SECRET, { businessId: "biz-1", event: "setup_sent" }, "https://console.example");
     expect(sendTeamsAlert).toHaveBeenCalledTimes(1);
     expect(vi.mocked(sendTeamsAlert).mock.calls[0]?.[2]).toBe("customers");
     const card = JSON.stringify(vi.mocked(sendTeamsAlert).mock.calls[0]?.[3]);
-    for (const part of ["New sign-up: Rao Clinic", "asha@example.com", "https://console.example/clients/biz-1"]) expect(card).toContain(part);
+    for (const part of ["Website details received: Rao Clinic", "asha@example.com", "https://console.example/clients/biz-1"]) expect(card).toContain(part);
   });
 
   it("sends nothing for a business that is not there, and never throws", async () => {
     queries.findBusinessAlertDetails.mockResolvedValueOnce(null);
-    await announceCustomerEvent(DB, SECRET, { businessId: "gone", event: "signed_up" }, "https://console.example");
+    await announceCustomerEvent(DB, SECRET, { businessId: "gone", event: "setup_sent" }, "https://console.example");
     expect(sendTeamsAlert).not.toHaveBeenCalled();
 
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
