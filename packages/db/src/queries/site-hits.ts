@@ -1,7 +1,7 @@
 import { randomBytes, randomInt } from "node:crypto";
-import { and, asc, eq, gte, lt, max } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lt, max, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import { siteHits, siteKeys, visitorSalts, type SiteHit, type SiteKey } from "../schema";
+import { domains, siteHits, siteKeys, visitorSalts, type SiteHit, type SiteKey } from "../schema";
 import type { ScopedTransaction } from "../scope";
 import type { HitChannel, HitDevice, HitKind } from "../site-hit-lists";
 
@@ -103,4 +103,14 @@ export async function deleteSiteHitsBefore(db: Runner, cutoff: Date): Promise<nu
 export async function lastSiteHitAt(db: Runner, businessId: string): Promise<Date | null> {
   const [row] = await db.select({ at: max(siteHits.at) }).from(siteHits).where(eq(siteHits.businessId, businessId));
   return row?.at ?? null;
+}
+
+/** The business's hostnames that have not been removed, lower case, oldest first: the hosts a hit may come from. Staff connection. */
+export async function listLiveHostnames(db: Runner, businessId: string): Promise<string[]> {
+  const rows = await db
+    .select({ hostname: sql<string>`lower(${domains.hostname})` })
+    .from(domains)
+    .where(and(eq(domains.businessId, businessId), isNull(domains.removedAt)))
+    .orderBy(asc(domains.createdAt), asc(domains.hostname));
+  return rows.map((row) => row.hostname);
 }

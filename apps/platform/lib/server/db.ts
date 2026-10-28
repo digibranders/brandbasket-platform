@@ -69,6 +69,11 @@ export function getAppDb(): Database {
  *   signed-in customer. The bot comes from a read made through the customer's own tenant scope (and the lead from
  *   findChatbotLeadForBusiness, under row-level security), so only a bot of their own business is ever looked up; the key
  *   is used on the server and never sent to the browser. It reads that one column and writes nothing.
+ * - app/api/t/route.ts (POST /api/t), which stores the page views and taps a customer's website reports. The sender is a
+ *   visitor's browser with no session. A public site key (site_keys, which only names the business and reads nothing)
+ *   proves the business; the page's host must be one of its own, its plan must be live, and per-business and per-visitor
+ *   limits apply. It writes one site_hits row, a daily salt and the rate-limit counters, and reads that business's key,
+ *   hostnames and billing state. No address or user agent is stored; see lib/server/site-hit-handler.ts.
  * - Support submission rate limits, private screenshot lifecycle/closure checks, and the upload/erasure lock.
  *   Requester-owned ticket and attachment metadata use getAppDb with user scope. Staff access only finalizes
  *   private file lifecycle changes and records redacted automatic errors; it does not read customer messages.

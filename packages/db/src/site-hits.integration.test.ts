@@ -11,10 +11,11 @@ import {
   getSiteKey,
   insertSiteHit,
   lastSiteHitAt,
+  listLiveHostnames,
   listSiteHits,
   type NewSiteHit,
 } from "./queries/site-hits";
-import { businessMembers, siteHits, siteKeys, users, visitorSalts } from "./schema";
+import { businessMembers, domains, siteHits, siteKeys, users, visitorSalts } from "./schema";
 import { withTenantScope } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
@@ -191,5 +192,18 @@ describe("site hits", () => {
     await insertSiteHit(staff(), hit({ at: at(30) }));
     await insertSiteHit(staff(), hit({ at: at(99), businessId: otherBusinessId }));
     expect(await lastSiteHitAt(staff(), businessId)).toEqual(at(30));
+  });
+});
+
+describe("live hostnames", () => {
+  it("lists a business's hostnames that have not been removed, and no one else's", async () => {
+    await staff().insert(domains).values([
+      { businessId, hostname: "SaiDental.in" },
+      { businessId, hostname: "old.example", isPrimary: false, removedAt: at(0) },
+      { businessId, hostname: "www.saidental.in", isPrimary: false },
+      { businessId: otherBusinessId, hostname: "birch.example" },
+    ]);
+    expect(await listLiveHostnames(staff(), businessId)).toEqual(["saidental.in", "www.saidental.in"]);
+    expect(await listLiveHostnames(staff(), "019a0000-0000-7000-8000-000000000000")).toEqual([]);
   });
 });

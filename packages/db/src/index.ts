@@ -884,6 +884,7 @@ export {
   getSiteKey,
   insertSiteHit,
   lastSiteHitAt,
+  listLiveHostnames,
   listSiteHits,
   type NewSiteHit,
 } from "./queries/site-hits";
