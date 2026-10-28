@@ -272,6 +272,7 @@ describe("eraseClosedAccount", () => {
       await dbs.owner.db.execute(
         sql.raw(`insert into site_hits (id, business_id, kind, path, channel, device, visitor_hash) values (gen_random_uuid(), '${id}', 'pageview', '/', 'direct', 'desktop', '0123456789abcdef0123456789abcdef')`),
       );
+      await dbs.owner.db.execute(sql.raw(`insert into website_hosting (id, business_id, vercel_project_id) values (gen_random_uuid(), '${id}', 'prj_${id.replaceAll("-", "")}')`));
       await dbs.owner.db.execute(
         sql.raw(
           `insert into deliverables (id, business_id, service, kind, title, due_on, image_key, image_mime, image_bytes, image_width, image_height, image_sha256)
@@ -289,7 +290,7 @@ describe("eraseClosedAccount", () => {
       expect(outcome.storageKeys).toContain(`deliverables/${postIds[businessId]}/display`);
       expect(outcome.storageKeys).not.toContain(`deliverables/${postIds[controlId]}/display`);
     }
-    for (const table of ["service_setup", "activity_events", "business_activity", "monthly_snapshots", "monthly_reports", "site_events", "team_calls", "metric_daily", "metric_breakdowns", "report_documents", "report_source_runs", "report_sources", "site_keys", "site_hits"]) {
+    for (const table of ["service_setup", "activity_events", "business_activity", "monthly_snapshots", "monthly_reports", "site_events", "team_calls", "metric_daily", "metric_breakdowns", "report_documents", "report_source_runs", "report_sources", "site_keys", "site_hits", "website_hosting"]) {
       expect(await count(table, `business_id = '${businessId}'`), `${table} of the closed business`).toBe(0);
       expect(await count(table, `business_id = '${controlId}'`), `${table} of the other business`).toBe(1);
     }
@@ -498,7 +499,7 @@ describe("what the erase knows about", () => {
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
     "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "metric_breakdowns", "metric_daily", "monthly_reports", "monthly_snapshots", "onboarding_progress",
     "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_preview_images", "projects", "report_documents", "report_source_runs", "report_sources", "service_setup", "services",
-    "setup_call_bookings", "setup_invites", "site_events", "site_hits", "site_keys", "support_tickets", "team_calls",
+    "setup_call_bookings", "setup_invites", "site_events", "site_hits", "site_keys", "support_tickets", "team_calls", "website_hosting",
   ];
 
   it("sorts every table that points at a business into erased or kept, so a new one cannot be forgotten", async () => {

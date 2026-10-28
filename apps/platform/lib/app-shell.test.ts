@@ -46,13 +46,13 @@ describe("AppShell's service links", () => {
 
   it("adds Social & Ads and Search for the services bought, from the one To do read", async () => {
     vi.mocked(loadTodo).mockResolvedValue({ services: ["website", "social", "search"], items: [], open: 0, answers: { social: undefined, search: undefined } });
-    expect(serviceLabels(await railSections())).toEqual(["Website", "Social & Ads", "Search"]);
+    expect(serviceLabels(await railSections())).toEqual(["Website", "OyeChats", "Social & Ads", "Search"]);
     expect(loadTodo).toHaveBeenCalledTimes(1);
   });
 
   it("adds only the one bought", async () => {
     vi.mocked(loadTodo).mockResolvedValue({ services: ["website", "search"], items: [], open: 0, answers: { social: undefined, search: undefined } });
-    expect(serviceLabels(await railSections())).toEqual(["Website", "Search"]);
+    expect(serviceLabels(await railSections())).toEqual(["Website", "OyeChats", "Search"]);
   });
 
   it("adds none for an account with no access", async () => {

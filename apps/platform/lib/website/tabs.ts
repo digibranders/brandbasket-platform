@@ -1,9 +1,8 @@
 export const WEBSITE_PATH = "/website";
 export const WEBSITE_PAGES_PATH = "/website/pages";
 export const WEBSITE_PREVIEW_IMAGE_PATH = "/website/preview-image";
-/** Paths owned by other pages that the tabs point at. Plain strings; lib/rail.test.ts pins the Chatbot one to the real path. */
+/** Paths owned by other pages that the tabs point at. Plain strings. */
 export const WEBSITE_BLOG_PATH = "/content/blog";
-export const WEBSITE_LEADS_PATH = "/oyechats/leads";
 
 export interface WebsiteTab {
   readonly href: string;
@@ -16,8 +15,6 @@ export const WEBSITE_TABS: readonly WebsiteTab[] = [
   { href: WEBSITE_PAGES_PATH, label: "Pages" },
   // Authors and categories are blog settings.
   { href: WEBSITE_BLOG_PATH, label: "Blog", alsoOwns: ["/content/authors", "/content/categories"] },
-  // The chatbot's own page and its name sit with its leads.
-  { href: WEBSITE_LEADS_PATH, label: "Chatbot leads", alsoOwns: ["/oyechats"] },
 ];
 
 /** The tab a path belongs to: Progress only on /website itself; the others on their own path, the pages under it and what they also own. */

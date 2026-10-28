@@ -14,6 +14,11 @@ describe("customerEventTeamsCard", () => {
     expect(JSON.stringify(customerEventTeamsCard({ ...BASE, event: "account_closed" }))).toContain("Account closed: Rao Clinic");
   });
 
+  it("titles a website taken offline and lists the facts it was given", () => {
+    const card = JSON.stringify(customerEventTeamsCard({ ...BASE, event: "website_paused", facts: [{ name: "Why", value: "The paid month ended" }] }));
+    for (const part of ["Website taken offline: Rao Clinic", "The paid month ended", "Open the client"]) expect(card).toContain(part);
+  });
+
   it("carries the customer's own words and leaves empty facts out", () => {
     const card = JSON.stringify(customerEventTeamsCard({ ...BASE, event: "account_closed", facts: [{ name: "Reason", value: "Too expensive" }, { name: "Plan paid until", value: null }], text: "Prices went up." }));
     expect(card).toContain("Prices went up.");

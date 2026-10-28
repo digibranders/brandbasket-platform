@@ -1,11 +1,11 @@
-import { countChatbotLeadsForBusiness, listChatbotLeadsForBusiness, listChatbotsForBusiness, renameChatbot, withTenantScope } from "@brandbasket/db";
+import { countChatbotLeadsForBusiness, countChatbotLeadsSince, listChatbotLeadsForBusiness, listChatbotsForBusiness, renameChatbot, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LEADS_PER_PAGE, loadChatbots, loadLeadsPage, renameCustomerChatbot } from "./chatbots";
 import { getAppDb } from "./db";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn() }));
-vi.mock("@brandbasket/db", () => ({ countChatbotLeadsForBusiness: vi.fn(), listChatbotLeadsForBusiness: vi.fn(), listChatbotsForBusiness: vi.fn(), renameChatbot: vi.fn(), withTenantScope: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ countChatbotLeadsForBusiness: vi.fn(), countChatbotLeadsSince: vi.fn(), listChatbotLeadsForBusiness: vi.fn(), listChatbotsForBusiness: vi.fn(), renameChatbot: vi.fn(), withTenantScope: vi.fn() }));
 
 const appDb = { name: "app-db" } as never;
 const appTx = { name: "app-tx" } as never;
@@ -45,6 +45,16 @@ describe("loadLeadsPage", () => {
     expect(countChatbotLeadsForBusiness).toHaveBeenCalledWith(appTx, "business-1");
     expect(listChatbotLeadsForBusiness).toHaveBeenCalledWith(appTx, "business-1", LEADS_PER_PAGE, 10);
     expect(LEADS_PER_PAGE).toBe(10);
+  });
+
+  it("counts the leads of the last 7 and the last 30 days for the figures", async () => {
+    vi.mocked(countChatbotLeadsForBusiness).mockResolvedValue(23);
+    vi.mocked(countChatbotLeadsSince).mockResolvedValueOnce(3).mockResolvedValueOnce(9);
+
+    const now = new Date("2026-10-28T10:00:00Z");
+    expect(await loadLeadsPage({ tenant }, 1, now)).toMatchObject({ lastWeek: 3, lastMonth: 9 });
+    expect(countChatbotLeadsSince).toHaveBeenNthCalledWith(1, appTx, "business-1", new Date("2026-10-21T10:00:00Z"));
+    expect(countChatbotLeadsSince).toHaveBeenNthCalledWith(2, appTx, "business-1", new Date("2026-09-28T10:00:00Z"));
   });
 
   it("gives the last page for a request past the end, and the first for one before the start or not a whole number", async () => {

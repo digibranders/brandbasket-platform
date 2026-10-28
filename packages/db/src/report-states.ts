@@ -1,5 +1,5 @@
 /**
- * A monthly report's life, in the database's own words (migration 0201). No imports, so the console, the jobs, the
+ * A monthly report's life, in the database's own words (migration 0202). No imports, so the console, the jobs, the
  * schema and the tests read one list. The arrows are exactly the ones the `report_documents_guard` trigger allows:
  * reports.integration.test.ts walks every pair against it. `sent` is final: a sent report is never edited.
  */

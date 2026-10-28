@@ -1,11 +1,11 @@
 import { ADD_ONS_PATH } from "@brandbasket/shared/lib/billing/add-ons";
 import { CALLS_PATH } from "@/lib/calls/links";
-import { CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
+import { CHATBOT_PATH } from "@/lib/chatbots-view";
 import { ASK_FOR_A_CHANGE_PATH, REQUESTS_PATH } from "@/lib/requests/links";
 import { WEBSITE_PATH, WEBSITE_TABS } from "@/lib/website/tabs";
 
 /** The rail's icons by name; components/v2/rail-icon.tsx draws them. */
-export type RailIcon = "overview" | "requests" | "todo" | "website" | "social" | "search" | "profile" | "services" | "billing" | "settings";
+export type RailIcon = "overview" | "requests" | "todo" | "website" | "chatbot" | "social" | "search" | "profile" | "services" | "billing" | "settings";
 
 export interface RailTarget {
   readonly href: string;
@@ -43,6 +43,8 @@ export interface RailInput {
 }
 
 const TODO_HREF = "/todo";
+/** OyeChats comes with the website, so it sits under Services beside it. */
+const OYECHATS: RailLink = { href: CHATBOT_PATH, label: "OyeChats", icon: "chatbot" };
 const SOCIAL: RailLink = { href: "/social", label: "Social & Ads", icon: "social" };
 const SEARCH: RailLink = { href: "/search", label: "Search", icon: "search" };
 
@@ -77,7 +79,6 @@ function websiteLink(): RailLink {
     label: "Website",
     icon: "website",
     children: [
-      { href: CHATBOT_NAME_PATH, label: "Chatbot name" },
       { href: "/content/authors", label: "Authors" },
       { href: "/content/categories", label: "Categories" },
     ],
@@ -86,7 +87,7 @@ function websiteLink(): RailLink {
 
 export function railSections(input: RailInput): readonly RailSection[] {
   const requests = requestsLink(input.requestsCount, input.hasAccess);
-  const services = [...(input.hasWebsite ? [websiteLink()] : []), ...(input.hasSocial === true ? [SOCIAL] : []), ...(input.hasSearch === true ? [SEARCH] : [])];
+  const services = [...(input.hasWebsite ? [websiteLink(), OYECHATS] : []), ...(input.hasSocial === true ? [SOCIAL] : []), ...(input.hasSearch === true ? [SEARCH] : [])];
   const todo: RailLink = { href: TODO_HREF, label: "To do", icon: "todo", ...(input.todoCount > 0 ? { count: input.todoCount } : {}) };
   return [
     { label: null, links: input.hasAccess ? [OVERVIEW, todo, requests] : [OVERVIEW, requests] },

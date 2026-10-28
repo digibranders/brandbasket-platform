@@ -20,7 +20,7 @@ counsel; do not switch it on for customers before that is answered and the priva
 |---|---|
 | The script | `apps/platform/public/t/v1.js`, served at `/t/v1.js` (cached for an hour). Tests: `apps/platform/lib/tracker/v1.test.ts`, including a 3 KB gzip budget |
 | The ingest route | `POST /api/t`: `app/api/t/route.ts`, decisions in `lib/server/site-hit-handler.ts`, connections in `lib/server/site-hit-deps.ts` |
-| The store | `site_keys`, `site_hits`, `visitor_salts` (migration 0202), queries in `packages/db/src/queries/site-hits.ts` |
+| The store | `site_keys`, `site_hits`, `visitor_salts` (migration 0203), queries in `packages/db/src/queries/site-hits.ts` |
 | The pure rules | `packages/shared/src/lib/analytics/` |
 | The nightly roll-up | `POST /api/internal/roll-up-site-analytics`, run by `brandbasket-site-rollup.timer` |
 | The install panel | The client's Website tab in the console: Site tracking |

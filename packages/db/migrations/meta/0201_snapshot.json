@@ -1,5 +1,5 @@
 {
-  "id": "ed84195e-afbf-442a-bad7-3813cf12942d",
+  "id": "8116d63c-e780-4572-8eac-4c08e0735ace",
   "prevId": "03f0eb89-3db8-417c-b3e4-db6fa0ad56b4",
   "version": "7",
   "dialect": "postgresql",
@@ -15228,679 +15228,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.metric_breakdowns": {
-      "name": "metric_breakdowns",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "business_id": {
-          "name": "business_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "month": {
-          "name": "month",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dimension": {
-          "name": "dimension",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "rows": {
-          "name": "rows",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fetched_at": {
-          "name": "fetched_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "metric_breakdowns_business_source_month_dimension_idx": {
-          "name": "metric_breakdowns_business_source_month_dimension_idx",
-          "columns": [
-            {
-              "expression": "business_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "source",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "month",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "dimension",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "metric_breakdowns_business_id_businesses_id_fk": {
-          "name": "metric_breakdowns_business_id_businesses_id_fk",
-          "tableFrom": "metric_breakdowns",
-          "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "metric_breakdowns_source_check": {
-          "name": "metric_breakdowns_source_check",
-          "value": "\"metric_breakdowns\".\"source\" in ('own', 'gsc', 'ga4')"
-        },
-        "metric_breakdowns_month_check": {
-          "name": "metric_breakdowns_month_check",
-          "value": "extract(day from \"metric_breakdowns\".\"month\") = 1"
-        },
-        "metric_breakdowns_dimension_check": {
-          "name": "metric_breakdowns_dimension_check",
-          "value": "\"metric_breakdowns\".\"dimension\" ~ '^[a-z_]{1,30}$'"
-        },
-        "metric_breakdowns_rows_check": {
-          "name": "metric_breakdowns_rows_check",
-          "value": "jsonb_typeof(\"metric_breakdowns\".\"rows\") = 'array' and jsonb_array_length(\"metric_breakdowns\".\"rows\") <= 100 and pg_column_size(\"metric_breakdowns\".\"rows\") <= 65536"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.metric_daily": {
-      "name": "metric_daily",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "business_id": {
-          "name": "business_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "metric": {
-          "name": "metric",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "day": {
-          "name": "day",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value": {
-          "name": "value",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fetched_at": {
-          "name": "fetched_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "metric_daily_business_metric_day_idx": {
-          "name": "metric_daily_business_metric_day_idx",
-          "columns": [
-            {
-              "expression": "business_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "metric",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "day",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "metric_daily_business_id_businesses_id_fk": {
-          "name": "metric_daily_business_id_businesses_id_fk",
-          "tableFrom": "metric_daily",
-          "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "metric_daily_metric_check": {
-          "name": "metric_daily_metric_check",
-          "value": "\"metric_daily\".\"metric\" ~ '^(own|gsc|ga4)\\.[a-z0-9_]{1,40}$'"
-        },
-        "metric_daily_value_check": {
-          "name": "metric_daily_value_check",
-          "value": "\"metric_daily\".\"value\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.report_documents": {
-      "name": "report_documents",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "business_id": {
-          "name": "business_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "service": {
-          "name": "service",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "month": {
-          "name": "month",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "state": {
-          "name": "state",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'draft'"
-        },
-        "content": {
-          "name": "content",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "content_version": {
-          "name": "content_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "pdf_key": {
-          "name": "pdf_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "composed_at": {
-          "name": "composed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "reviewed_by_staff_id": {
-          "name": "reviewed_by_staff_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reviewed_at": {
-          "name": "reviewed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sent_at": {
-          "name": "sent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "report_documents_business_service_month_idx": {
-          "name": "report_documents_business_service_month_idx",
-          "columns": [
-            {
-              "expression": "business_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "service",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "month",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "report_documents_state_idx": {
-          "name": "report_documents_state_idx",
-          "columns": [
-            {
-              "expression": "state",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "month",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "report_documents_business_id_businesses_id_fk": {
-          "name": "report_documents_business_id_businesses_id_fk",
-          "tableFrom": "report_documents",
-          "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "report_documents_reviewed_by_staff_id_users_id_fk": {
-          "name": "report_documents_reviewed_by_staff_id_users_id_fk",
-          "tableFrom": "report_documents",
-          "tableTo": "users",
-          "columnsFrom": [
-            "reviewed_by_staff_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "report_documents_service_check": {
-          "name": "report_documents_service_check",
-          "value": "\"report_documents\".\"service\" in ('website', 'social', 'search')"
-        },
-        "report_documents_month_check": {
-          "name": "report_documents_month_check",
-          "value": "extract(day from \"report_documents\".\"month\") = 1"
-        },
-        "report_documents_state_check": {
-          "name": "report_documents_state_check",
-          "value": "\"report_documents\".\"state\" in ('draft', 'held', 'approved', 'sent')"
-        },
-        "report_documents_content_check": {
-          "name": "report_documents_content_check",
-          "value": "jsonb_typeof(\"report_documents\".\"content\") = 'object' and pg_column_size(\"report_documents\".\"content\") <= 262144"
-        },
-        "report_documents_version_check": {
-          "name": "report_documents_version_check",
-          "value": "\"report_documents\".\"content_version\" >= 1"
-        },
-        "report_documents_pdf_key_check": {
-          "name": "report_documents_pdf_key_check",
-          "value": "\"report_documents\".\"pdf_key\" is null or \"report_documents\".\"pdf_key\" = 'reports/' || \"report_documents\".\"id\" || '.pdf'"
-        },
-        "report_documents_approved_check": {
-          "name": "report_documents_approved_check",
-          "value": "\"report_documents\".\"state\" not in ('approved', 'sent') or \"report_documents\".\"reviewed_at\" is not null"
-        },
-        "report_documents_sent_check": {
-          "name": "report_documents_sent_check",
-          "value": "(\"report_documents\".\"state\" = 'sent') = (\"report_documents\".\"sent_at\" is not null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.report_source_runs": {
-      "name": "report_source_runs",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "business_id": {
-          "name": "business_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "window_start": {
-          "name": "window_start",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "window_end": {
-          "name": "window_end",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ok": {
-          "name": "ok",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "error": {
-          "name": "error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ran_at": {
-          "name": "ran_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "report_source_runs_business_idx": {
-          "name": "report_source_runs_business_idx",
-          "columns": [
-            {
-              "expression": "business_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "source",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "window_end",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "report_source_runs_business_id_businesses_id_fk": {
-          "name": "report_source_runs_business_id_businesses_id_fk",
-          "tableFrom": "report_source_runs",
-          "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "report_source_runs_source_check": {
-          "name": "report_source_runs_source_check",
-          "value": "\"report_source_runs\".\"source\" in ('own', 'gsc', 'ga4')"
-        },
-        "report_source_runs_window_check": {
-          "name": "report_source_runs_window_check",
-          "value": "\"report_source_runs\".\"window_end\" >= \"report_source_runs\".\"window_start\""
-        },
-        "report_source_runs_error_check": {
-          "name": "report_source_runs_error_check",
-          "value": "\"report_source_runs\".\"ok\" = (\"report_source_runs\".\"error\" is null) and (\"report_source_runs\".\"error\" is null or char_length(\"report_source_runs\".\"error\") <= 300)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.report_sources": {
-      "name": "report_sources",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "business_id": {
-          "name": "business_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "external_id": {
-          "name": "external_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "last_ok_at": {
-          "name": "last_ok_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "last_error": {
-          "name": "last_error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "report_sources_business_source_idx": {
-          "name": "report_sources_business_source_idx",
-          "columns": [
-            {
-              "expression": "business_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "source",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "report_sources_business_id_businesses_id_fk": {
-          "name": "report_sources_business_id_businesses_id_fk",
-          "tableFrom": "report_sources",
-          "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "report_sources_source_check": {
-          "name": "report_sources_source_check",
-          "value": "\"report_sources\".\"source\" in ('gsc', 'ga4')"
-        },
-        "report_sources_status_check": {
-          "name": "report_sources_status_check",
-          "value": "\"report_sources\".\"status\" in ('pending', 'connected', 'access_lost')"
-        },
-        "report_sources_external_id_check": {
-          "name": "report_sources_external_id_check",
-          "value": "char_length(btrim(\"report_sources\".\"external_id\")) between 1 and 200"
-        },
-        "report_sources_error_check": {
-          "name": "report_sources_error_check",
-          "value": "\"report_sources\".\"last_error\" is null or char_length(\"report_sources\".\"last_error\") <= 300"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.setup_invites": {
       "name": "setup_invites",
       "schema": "",
@@ -19035,6 +18362,110 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.website_hosting": {
+      "name": "website_hosting",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vercel_project_id": {
+          "name": "vercel_project_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vercel_team_id": {
+          "name": "vercel_team_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "paused_at": {
+          "name": "paused_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_checked_at": {
+          "name": "last_checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "website_hosting_business_id_businesses_id_fk": {
+          "name": "website_hosting_business_id_businesses_id_fk",
+          "tableFrom": "website_hosting",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "website_hosting_business_id_unique": {
+          "name": "website_hosting_business_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "business_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "website_hosting_project_id_check": {
+          "name": "website_hosting_project_id_check",
+          "value": "\"website_hosting\".\"vercel_project_id\" ~ '^prj_[A-Za-z0-9]+$' and char_length(\"website_hosting\".\"vercel_project_id\") <= 64"
+        },
+        "website_hosting_team_id_check": {
+          "name": "website_hosting_team_id_check",
+          "value": "\"website_hosting\".\"vercel_team_id\" is null or (\"website_hosting\".\"vercel_team_id\" ~ '^team_[A-Za-z0-9]+$' and char_length(\"website_hosting\".\"vercel_team_id\") <= 64)"
+        },
+        "website_hosting_last_error_check": {
+          "name": "website_hosting_last_error_check",
+          "value": "\"website_hosting\".\"last_error\" is null or char_length(\"website_hosting\".\"last_error\") <= 500"
+        }
+      },
       "isRLSEnabled": false
     }
   },

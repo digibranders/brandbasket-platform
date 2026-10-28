@@ -1,6 +1,6 @@
 {
-  "id": "2f63867f-57fb-4b34-aac6-768181da35a4",
-  "prevId": "ed84195e-afbf-442a-bad7-3813cf12942d",
+  "id": "deb34e85-9d78-4d23-a382-1246197af32a",
+  "prevId": "8116d63c-e780-4572-8eac-4c08e0735ace",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -18985,337 +18985,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.site_hits": {
-      "name": "site_hits",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "business_id": {
-          "name": "business_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "at": {
-          "name": "at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "path": {
-          "name": "path",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "referrer_host": {
-          "name": "referrer_host",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "channel": {
-          "name": "channel",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "utm_source": {
-          "name": "utm_source",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "utm_medium": {
-          "name": "utm_medium",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "utm_campaign": {
-          "name": "utm_campaign",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "device": {
-          "name": "device",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "country": {
-          "name": "country",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "label": {
-          "name": "label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "visitor_hash": {
-          "name": "visitor_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "engaged_ms": {
-          "name": "engaged_ms",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "scroll_pct": {
-          "name": "scroll_pct",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "site_hits_business_at_idx": {
-          "name": "site_hits_business_at_idx",
-          "columns": [
-            {
-              "expression": "business_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "site_hits_at_idx": {
-          "name": "site_hits_at_idx",
-          "columns": [
-            {
-              "expression": "at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "site_hits_business_id_businesses_id_fk": {
-          "name": "site_hits_business_id_businesses_id_fk",
-          "tableFrom": "site_hits",
-          "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "site_hits_kind_check": {
-          "name": "site_hits_kind_check",
-          "value": "\"site_hits\".\"kind\" in ('pageview', 'engagement', 'call', 'whatsapp', 'email', 'directions', 'social', 'outbound', 'download', 'form', 'custom')"
-        },
-        "site_hits_channel_check": {
-          "name": "site_hits_channel_check",
-          "value": "\"site_hits\".\"channel\" in ('direct', 'search', 'social', 'email', 'ai', 'paid', 'referral')"
-        },
-        "site_hits_device_check": {
-          "name": "site_hits_device_check",
-          "value": "\"site_hits\".\"device\" in ('mobile', 'tablet', 'desktop')"
-        },
-        "site_hits_path_check": {
-          "name": "site_hits_path_check",
-          "value": "char_length(\"site_hits\".\"path\") between 1 and 200 and \"site_hits\".\"path\" like '/%'"
-        },
-        "site_hits_referrer_check": {
-          "name": "site_hits_referrer_check",
-          "value": "\"site_hits\".\"referrer_host\" is null or char_length(\"site_hits\".\"referrer_host\") <= 100"
-        },
-        "site_hits_utm_check": {
-          "name": "site_hits_utm_check",
-          "value": "coalesce(char_length(\"site_hits\".\"utm_source\"), 0) <= 60 and coalesce(char_length(\"site_hits\".\"utm_medium\"), 0) <= 60 and coalesce(char_length(\"site_hits\".\"utm_campaign\"), 0) <= 60"
-        },
-        "site_hits_country_check": {
-          "name": "site_hits_country_check",
-          "value": "\"site_hits\".\"country\" is null or \"site_hits\".\"country\" ~ '^[A-Z]{2}$'"
-        },
-        "site_hits_label_check": {
-          "name": "site_hits_label_check",
-          "value": "\"site_hits\".\"label\" is null or char_length(\"site_hits\".\"label\") <= 100"
-        },
-        "site_hits_visitor_check": {
-          "name": "site_hits_visitor_check",
-          "value": "\"site_hits\".\"visitor_hash\" ~ '^[0-9a-f]{32}$'"
-        },
-        "site_hits_engaged_check": {
-          "name": "site_hits_engaged_check",
-          "value": "\"site_hits\".\"engaged_ms\" is null or \"site_hits\".\"engaged_ms\" between 0 and 1800000"
-        },
-        "site_hits_scroll_check": {
-          "name": "site_hits_scroll_check",
-          "value": "\"site_hits\".\"scroll_pct\" is null or \"site_hits\".\"scroll_pct\" between 0 and 100"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.site_keys": {
-      "name": "site_keys",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "business_id": {
-          "name": "business_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "site_keys_business_idx": {
-          "name": "site_keys_business_idx",
-          "columns": [
-            {
-              "expression": "business_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "site_keys_key_idx": {
-          "name": "site_keys_key_idx",
-          "columns": [
-            {
-              "expression": "key",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "site_keys_business_id_businesses_id_fk": {
-          "name": "site_keys_business_id_businesses_id_fk",
-          "tableFrom": "site_keys",
-          "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "site_keys_key_check": {
-          "name": "site_keys_key_check",
-          "value": "\"site_keys\".\"key\" ~ '^bbk_[A-Za-z0-9]{16,40}$'"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.visitor_salts": {
-      "name": "visitor_salts",
-      "schema": "",
-      "columns": {
-        "day": {
-          "name": "day",
-          "type": "date",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "salt": {
-          "name": "salt",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "visitor_salts_salt_check": {
-          "name": "visitor_salts_salt_check",
-          "value": "char_length(\"visitor_salts\".\"salt\") >= 32"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.site_settings": {
       "name": "site_settings",
       "schema": "",
@@ -19366,6 +19035,110 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.website_hosting": {
+      "name": "website_hosting",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "business_id": {
+          "name": "business_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vercel_project_id": {
+          "name": "vercel_project_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vercel_team_id": {
+          "name": "vercel_team_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "paused_at": {
+          "name": "paused_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_checked_at": {
+          "name": "last_checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "website_hosting_business_id_businesses_id_fk": {
+          "name": "website_hosting_business_id_businesses_id_fk",
+          "tableFrom": "website_hosting",
+          "tableTo": "businesses",
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "website_hosting_business_id_unique": {
+          "name": "website_hosting_business_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "business_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "website_hosting_project_id_check": {
+          "name": "website_hosting_project_id_check",
+          "value": "\"website_hosting\".\"vercel_project_id\" ~ '^prj_[A-Za-z0-9]+$' and char_length(\"website_hosting\".\"vercel_project_id\") <= 64"
+        },
+        "website_hosting_team_id_check": {
+          "name": "website_hosting_team_id_check",
+          "value": "\"website_hosting\".\"vercel_team_id\" is null or (\"website_hosting\".\"vercel_team_id\" ~ '^team_[A-Za-z0-9]+$' and char_length(\"website_hosting\".\"vercel_team_id\") <= 64)"
+        },
+        "website_hosting_last_error_check": {
+          "name": "website_hosting_last_error_check",
+          "value": "\"website_hosting\".\"last_error\" is null or char_length(\"website_hosting\".\"last_error\") <= 500"
+        }
+      },
       "isRLSEnabled": false
     }
   },

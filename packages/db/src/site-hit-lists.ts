@@ -1,5 +1,5 @@
 /**
- * The words a stored site hit may hold, in the database's own words (migration 0202). No imports, so the schema, the
+ * The words a stored site hit may hold, in the database's own words (migration 0203). No imports, so the schema, the
  * queries and the tests read one list. packages/shared keeps its own copies for the tracking script (which must not
  * import this package); packages/shared/src/lib/analytics/lists.test.ts fails if the two drift.
  */

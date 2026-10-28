@@ -1,12 +1,12 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
-import { CHATBOT_LEADS_PATH, pageRangeLabel, paginationItems } from "@/lib/chatbots-view";
+import { CHATBOT_PATH, pageRangeLabel, paginationItems } from "@/lib/chatbots-view";
 
 const BUTTON = "inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-3 text-[0.8125rem] transition-colors duration-200";
 
 function pageHref(page: number): string {
-  return page === 1 ? CHATBOT_LEADS_PATH : `${CHATBOT_LEADS_PATH}?page=${page}`;
+  return page === 1 ? CHATBOT_PATH : `${CHATBOT_PATH}?page=${page}`;
 }
 
 /**

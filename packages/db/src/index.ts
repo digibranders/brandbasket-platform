@@ -1319,6 +1319,14 @@ export {
   type OpenClosureSummary,
 } from "./queries/account-closures";
 export {
+  listHostedSites,
+  recordHostingSync,
+  saveWebsiteHosting,
+  type HostedSite,
+  type HostingSyncResult,
+  type NewWebsiteHosting,
+} from "./queries/website-hosting";
+export {
   claimAccountOtpAttempt,
   consumeAccountOtp,
   createAccountOtp,

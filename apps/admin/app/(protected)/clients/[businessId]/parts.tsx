@@ -1,4 +1,4 @@
-import { type ClientDetail, type ClientHours, type DomainStatus, type Plan } from "@brandbasket/db";
+import { type ClientDetail, type ClientHours, type DomainStatus, type HostedSite, type Plan } from "@brandbasket/db";
 import type { ReactElement } from "react";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
@@ -32,6 +32,7 @@ import {
   markLiveAction,
   recordManualPaymentAction,
   rotateSiteApiTokenAction,
+  saveWebsiteHostingAction,
   sendPreviewAction,
   setWebsiteUrlAction,
   switchDomainAction,
@@ -161,6 +162,75 @@ export function WebsiteUrlBlock({
       {notice === null ? null : (
         <p role="status" className={notice === "invalid" ? "mt-2 text-sm text-accent" : "mt-2 text-sm text-ink-soft"}>
           {notice === "invalid" ? "Use an https:// address with no path, like https://their-site.vercel.app." : "Saved."}
+        </p>
+      )}
+    </form>
+  );
+}
+
+/**
+ * Which Vercel project the client's website runs on. If their plan lapses the hourly sync pauses this project there, and
+ * unpauses it when they pay (docs/site-hosting.md). The status line says what the last sync found.
+ */
+export function HostingBlock({
+  businessId,
+  hosting,
+  notice,
+}: {
+  readonly businessId: string;
+  readonly hosting: HostedSite | null;
+  readonly notice: "saved" | "invalid" | null;
+}): ReactElement {
+  return (
+    <form action={saveWebsiteHostingAction}>
+      <input type="hidden" name="businessId" value={businessId} />
+      <label htmlFor="vercel-project-id" className={labelClasses}>
+        Vercel project
+      </label>
+      <p className={hintClasses}>The project id from its Settings on Vercel, like prj_abc123, and the team id like team_abc123 if it has one.</p>
+      <div className="flex flex-wrap items-end gap-3">
+        <input
+          id="vercel-project-id"
+          name="vercelProjectId"
+          type="text"
+          placeholder="prj_"
+          defaultValue={hosting?.vercelProjectId ?? ""}
+          aria-invalid={notice === "invalid" ? true : undefined}
+          autoComplete="off"
+          spellCheck={false}
+          className={`${fieldClasses} min-w-0 flex-1 basis-56`}
+        />
+        <input
+          name="vercelTeamId"
+          type="text"
+          placeholder="team_"
+          aria-label="Vercel team"
+          defaultValue={hosting?.vercelTeamId ?? ""}
+          aria-invalid={notice === "invalid" ? true : undefined}
+          autoComplete="off"
+          spellCheck={false}
+          className={`${fieldClasses} min-w-0 flex-1 basis-56`}
+        />
+        <GatedSubmitButton className={buttonSecondary} pendingLabel="Saving…">
+          Save
+        </GatedSubmitButton>
+      </div>
+      {notice === null ? null : (
+        <p role="status" className={notice === "invalid" ? "mt-2 text-sm text-accent" : "mt-2 text-sm text-ink-soft"}>
+          {notice === "invalid" ? "Use the project id (prj_…) and, if given, the team id (team_…)." : "Saved."}
+        </p>
+      )}
+      {hosting === null ? null : (
+        <p className="mt-2 text-sm text-ink-soft">
+          {hosting.lastError !== null ? (
+            `Last sync failed: ${hosting.lastError}`
+          ) : hosting.pausedAt !== null ? (
+            <>
+              Paused since <When date={hosting.pausedAt} />.
+            </>
+          ) : (
+            "Running."
+          )}
         </p>
       )}
     </form>
