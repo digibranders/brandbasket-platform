@@ -6,6 +6,7 @@ import {
   findPlaces,
   hasLiveProject,
   listEnabledModules,
+  listHostedSites,
   listUpcomingDirectoryPromotions,
   readDirectoryStatuses,
 } from "@brandbasket/db";
@@ -25,7 +26,7 @@ import { clientListingKey, readClientTagNotice } from "@/lib/client-tags";
 import { openClientTab } from "@/lib/server/client-page";
 import { getStaffDb } from "@/lib/server/db";
 import { getSiteApiToken } from "@/lib/server/site-token";
-import { addressOf, CustomerLink, Facts, hoursForDay, readListingNotice, SiteApiTokenBlock, WebsiteUrlBlock } from "../parts";
+import { addressOf, CustomerLink, Facts, HostingBlock, hoursForDay, readListingNotice, SiteApiTokenBlock, WebsiteUrlBlock } from "../parts";
 
 export const metadata: Metadata = { title: "Client website" };
 
@@ -41,9 +42,10 @@ export default async function ClientWebsitePage({
   const sp = await searchParams;
   const db = getStaffDb();
   const renderedAt = new Date();
-  const [siteApiToken, websiteUrl, timeZone, enabledModules, appointmentCounts, listingPlacement, listingLive, promotions] = await Promise.all([
+  const [siteApiToken, websiteUrl, hostedSites, timeZone, enabledModules, appointmentCounts, listingPlacement, listingLive, promotions] = await Promise.all([
     getSiteApiToken(client.businessId),
     findBusinessWebsiteUrl(db, client.businessId),
+    listHostedSites(db, client.businessId),
     findBusinessTimeZone(db, client.businessId),
     listEnabledModules(db, client.businessId),
     countAppointments(db, client.businessId),
@@ -52,6 +54,7 @@ export default async function ClientWebsitePage({
     listUpcomingDirectoryPromotions(db, client.businessId, renderedAt),
   ]);
   const websiteNotice = sp.website === "saved" || sp.website === "invalid" ? sp.website : null;
+  const hostingNotice = sp.hosting === "saved" || sp.hosting === "invalid" ? sp.hosting : null;
   const featuresNotice = readBusinessModuleNotice(sp.features);
   const listingNotice = readListingNotice(sp.listing, sp.listingField);
   const tagsNotice = readClientTagNotice(sp.tags);
@@ -77,6 +80,7 @@ export default async function ClientWebsitePage({
       <Section title="Their website">
         <div className="max-w-2xl space-y-8">
           <WebsiteUrlBlock businessId={client.businessId} websiteUrl={websiteUrl} notice={websiteNotice} />
+          <HostingBlock businessId={client.businessId} hosting={hostedSites[0] ?? null} notice={hostingNotice} />
           <div>
             <h3 className={labelClasses}>Site API token</h3>
             <div className="mt-2">

@@ -263,6 +263,7 @@ describe("eraseClosedAccount", () => {
       await dbs.owner.db.execute(sql.raw(`insert into monthly_snapshots (id, business_id, service, month) values (gen_random_uuid(), '${id}', 'social', '2026-10-01')`));
       await dbs.owner.db.execute(sql.raw(`insert into monthly_reports (id, business_id, service, month, url) values (gen_random_uuid(), '${id}', 'social', '2026-10-01', 'https://example.com/report')`));
       await dbs.owner.db.execute(sql.raw(`insert into site_events (id, business_id, kind) values (gen_random_uuid(), '${id}', 'call')`));
+      await dbs.owner.db.execute(sql.raw(`insert into website_hosting (id, business_id, vercel_project_id) values (gen_random_uuid(), '${id}', 'prj_${id.replaceAll("-", "")}')`));
       await dbs.owner.db.execute(
         sql.raw(
           `insert into deliverables (id, business_id, service, kind, title, due_on, image_key, image_mime, image_bytes, image_width, image_height, image_sha256)
@@ -280,7 +281,7 @@ describe("eraseClosedAccount", () => {
       expect(outcome.storageKeys).toContain(`deliverables/${postIds[businessId]}/display`);
       expect(outcome.storageKeys).not.toContain(`deliverables/${postIds[controlId]}/display`);
     }
-    for (const table of ["service_setup", "activity_events", "business_activity", "monthly_snapshots", "monthly_reports", "site_events", "team_calls"]) {
+    for (const table of ["service_setup", "activity_events", "business_activity", "monthly_snapshots", "monthly_reports", "site_events", "team_calls", "website_hosting"]) {
       expect(await count(table, `business_id = '${businessId}'`), `${table} of the closed business`).toBe(0);
       expect(await count(table, `business_id = '${controlId}'`), `${table} of the other business`).toBe(1);
     }
@@ -489,7 +490,7 @@ describe("what the erase knows about", () => {
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
     "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "monthly_reports", "monthly_snapshots", "onboarding_progress",
     "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_preview_images", "projects", "service_setup", "services",
-    "setup_call_bookings", "setup_invites", "site_events", "support_tickets", "team_calls",
+    "setup_call_bookings", "setup_invites", "site_events", "support_tickets", "team_calls", "website_hosting",
   ];
 
   it("sorts every table that points at a business into erased or kept, so a new one cannot be forgotten", async () => {

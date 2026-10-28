@@ -52,7 +52,8 @@ scroll. The rules and an example are in `docs/page-frame.md`.
 
 The rail (`lib/rail.ts`, drawn by `components/v2/rail.tsx`) has three groups. The first holds Overview, To do (paid
 accounts) and Requests, with Calls under Requests (paid accounts). "Services" holds Website (with
-Chatbot name, Authors and Categories under it), Social & Ads and Search, each shown only when the account has it.
+Authors and Categories under it), OyeChats (the website's assistant, its leads and its name, with the Website), Social & Ads and
+Search, each shown only when the account has it.
 "Account" holds Business profile, Your plan, Billing and Settings. The whole rail shows from the first day, before the kickoff
 call: only Overview's content changes until the call has happened. The account menu in the rail footer (and the Menu sheet on phones) holds
 Settings, Home page (when the site is live), What's new, Help (it opens Ask for a change), Docs and Sign out.

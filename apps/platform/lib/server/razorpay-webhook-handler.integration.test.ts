@@ -41,6 +41,7 @@ vi.mock("./db", () => ({
 }));
 vi.mock("./billing", () => ({ getRazorpayProvider: () => ({ name: "razorpay", fetchSubscriptionStatus: vi.fn() }) }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
+vi.mock("./site-hosting", () => ({ syncSiteHostingForBusiness: vi.fn() }));
 vi.mock("./charges", () => ({ recordRazorpayChargePayment: vi.fn() }));
 
 import { handleRazorpayWebhookEvent } from "./razorpay-webhook-handler";

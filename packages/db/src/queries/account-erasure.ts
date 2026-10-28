@@ -62,6 +62,7 @@ import {
   userPrivacySettings,
   users,
   verifications,
+  websiteHosting,
 } from "../schema";
 
 /*
@@ -326,6 +327,8 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(deliverables).where(eq(deliverables.businessId, businessId));
     await tx.delete(monthlyReports).where(eq(monthlyReports.businessId, businessId));
     await tx.delete(siteEvents).where(eq(siteEvents.businessId, businessId));
+    // Which hosting project their website ran on. The project itself is the team's to remove on Vercel.
+    await tx.delete(websiteHosting).where(eq(websiteHosting.businessId, businessId));
     await tx.delete(domains).where(eq(domains.businessId, businessId));
     await tx.delete(mediaAssets).where(eq(mediaAssets.businessId, businessId));
     // The chatbots OyeChats runs for the business, their webhook secrets and the visitors' details they collected.

@@ -14,6 +14,7 @@ import {
   ProjectNotApprovedError,
   ProjectNotReadyForPreviewError,
   saveListingPlacement,
+  saveWebsiteHosting,
   setBusinessModule,
   setBusinessTimeZone,
   setBusinessWebsiteUrl,
@@ -39,6 +40,7 @@ import { domainConnectNoticeHref } from "@brandbasket/shared/lib/domain-connect-
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { projectLaunchNoticeHref } from "@brandbasket/shared/lib/project-launch-notices";
 import { projectPreviewNoticeHref } from "@brandbasket/shared/lib/project-preview-notices";
+import { parseHostingForm } from "@/lib/hosting-form";
 import { chatbotNoticeHref, parseChatbotForm, parseOperatorKeyForm, readChatbotStatus } from "@/lib/chatbot-form";
 import { addClientChatbot, removeClientChatbot, setClientChatbotOperatorKey, setClientChatbotStatus } from "@/lib/server/chatbots-admin";
 import { addOnNoticeHref, noticeForEndOutcome, noticeForRemoval, noticeForStart, type AddOnNotice } from "@/lib/add-on-notices";
@@ -251,6 +253,24 @@ export async function setWebsiteUrlAction(formData: FormData): Promise<void> {
   await recordStaffAction(staff, { businessId, kind: "website.url_saved", summary: "Saved the website address", data: { websiteUrl: typeof raw === "string" && raw !== "" ? raw : null } });
   revalidateClient(businessId);
   redirect(`/clients/${businessId}?website=saved`);
+}
+
+/** Saves which Vercel project the client's website runs on, so the hourly sync can pause it if their plan lapses. */
+export async function saveWebsiteHostingAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "The hosting's business");
+  const hosting = parseHostingForm(formData.get("vercelProjectId"), formData.get("vercelTeamId"));
+  if (!hosting.success) redirect(`/clients/${businessId}?hosting=invalid`);
+
+  await saveWebsiteHosting(getStaffDb(), { businessId, vercelProjectId: hosting.vercelProjectId, vercelTeamId: hosting.vercelTeamId });
+  await recordStaffAction(staff, {
+    businessId,
+    kind: "website.hosting_saved",
+    summary: "Saved the hosting project",
+    data: { vercelProjectId: hosting.vercelProjectId, vercelTeamId: hosting.vercelTeamId },
+  });
+  revalidateClient(businessId);
+  redirect(`/clients/${businessId}?hosting=saved`);
 }
 
 /**

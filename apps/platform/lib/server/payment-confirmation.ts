@@ -30,6 +30,7 @@ import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
 import { notifyTeamOnboardingSent } from "./onboarding-alert";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
+import { syncSiteHostingForBusiness } from "./site-hosting";
 import { announcePaymentToTeams } from "./teams";
 
 /**
@@ -355,6 +356,8 @@ export async function confirmFirstPayment(
   if (confirmation.kind === "membership-opened") {
     await syncTenantForBusiness({ businessId: tenant.businessId, name: tenant.businessName });
   }
+  // A lapsed client who pays again gets their paused website back now, not at the next hourly run.
+  if (confirmation.kind === "reactivated") await syncSiteHostingForBusiness(tenant.businessId);
   // Paying is what sent their details here, so the team hears of it now, after the commit.
   if (confirmation.kind === "paid" && confirmation.submission === "sent") {
     await notifyTeamOnboardingSent(tenant.businessId, tenant.businessName);

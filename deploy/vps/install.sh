@@ -22,7 +22,7 @@
 #   autodeploy  the release and autodeploy scripts, the shared lock library and the minute timer (first deploy of main); it
 #               refuses to enable the timer unless GitHub accepts the deploy key (git ls-remote as brandbasket)
 #   ci          user bbci, the 8 GB sandbox disk, the sandbox, its ufw loopback rule, and the CI timer (ci/install-ci.sh)
-#   backups     backup, restore test, maintenance and erase units; the timers are enabled once a backup has succeeded
+#   backups     backup, restore test, maintenance, erase and hosting-sync units; the timers are enabled once a backup has succeeded
 #
 # What it will not do: touch a file whose resolved path is not under a Brandbasket prefix (install-lib.sh guard); change, restart
 # or reload anything of Firstfold's, except `nginx reload` after `nginx -t` passes, the marker-delimited block in ufw's
@@ -405,7 +405,8 @@ step_backups() {
   verify_units "$HERE/systemd/brandbasket-backup.service" "$HERE/systemd/brandbasket-backup.timer" \
     "$HERE/systemd/brandbasket-restore-test.service" "$HERE/systemd/brandbasket-restore-test.timer" \
     "$HERE/systemd/brandbasket-maintenance.service" "$HERE/systemd/brandbasket-maintenance.timer" \
-    "$HERE/systemd/brandbasket-erase.service" "$HERE/systemd/brandbasket-erase.timer"
+    "$HERE/systemd/brandbasket-erase.service" "$HERE/systemd/brandbasket-erase.timer" \
+    "$HERE/systemd/brandbasket-site-hosting.service" "$HERE/systemd/brandbasket-site-hosting.timer"
   say "== programs"
   dir 0700 root:root /etc/brandbasket
   dir 0700 root:root /var/backups/brandbasket
@@ -414,12 +415,13 @@ step_backups() {
   put 0755 "$HERE/backup/brandbasket-restore-test" /usr/local/sbin/brandbasket-restore-test
   put 0700 "$HERE/backup/offsite.sh" /etc/brandbasket/offsite.sh
   put 0755 "$REPO/scripts/server/run-erase-job.sh" /usr/local/sbin/brandbasket-erase-job
+  put 0755 "$REPO/scripts/server/run-site-hosting-job.sh" /usr/local/sbin/brandbasket-site-hosting-job
   say "== units"
-  for f in brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-erase; do
+  for f in brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-erase brandbasket-site-hosting; do
     put 0644 "$HERE/systemd/$f.service" "$UNIT_DIR/$f.service"
     put 0644 "$HERE/systemd/$f.timer" "$UNIT_DIR/$f.timer"
   done
-  install_failure_alerts brandbasket-backup brandbasket-restore-test brandbasket-maintenance
+  install_failure_alerts brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-site-hosting
   act "systemctl daemon-reload" systemctl daemon-reload
   say "== timers"
   if [[ -f /var/lib/brandbasket/last-backup-ok && -f /var/lib/brandbasket/last-offsite-ok ]]; then
@@ -432,6 +434,7 @@ step_backups() {
   if [[ -d "$SRV/current-platform" ]]; then enable_units brandbasket-maintenance.timer
   else say "  maintenance timer: not enabled until the first deploy has created $SRV/current-platform"; fi
   say "  brandbasket-erase.timer: installed, NOT enabled. It deletes customer data; the owner decides: systemctl enable --now brandbasket-erase.timer"
+  say "  brandbasket-site-hosting.timer: installed, NOT enabled. It pauses lapsed websites; set VERCEL_API_TOKEN, read a --dry-run, then: systemctl enable --now brandbasket-site-hosting.timer"
 }
 
 # --- main -----------------------------------------------------------------------------------------------------------------

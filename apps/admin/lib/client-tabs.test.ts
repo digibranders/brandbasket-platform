@@ -40,6 +40,7 @@ describe("forwardedNoticeHref", () => {
     expect(forwardedNoticeHref(ID, { chatbots: "removed" })).toBe(`/clients/${ID}/services?chatbots=removed`);
     expect(forwardedNoticeHref(ID, { listing: "invalid", listingField: "citySlug" })).toBe(`/clients/${ID}/website?listing=invalid&listingField=citySlug`);
     expect(forwardedNoticeHref(ID, { features: "zone-saved" })).toBe(`/clients/${ID}/website?features=zone-saved`);
+    expect(forwardedNoticeHref(ID, { hosting: "saved" })).toBe(`/clients/${ID}/website?hosting=saved`);
   });
 
   it("is null when the query names no notice", () => {

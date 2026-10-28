@@ -1,0 +1,42 @@
+# The hourly hosting sync (docs/site-hosting.md): POSTs to the dashboard's own /api/internal/sync-site-hosting on 127.0.0.1 with the
+# bearer token from the environment file. It pauses the hosting project of a client whose website has ended and unpauses it
+# when they pay. Installed by deploy/vps/install.sh backups but NOT enabled: it takes websites offline, so starting the timer is
+# the owner's call, after VERCEL_API_TOKEN is set and a dry run has been read. SITE_HOSTING_SYNC_TOKEN is in
+# /srv/brandbasket/shared/platform.env.local (make-env-files.sh generates it). brandbasket-site-hosting-job keeps the token out
+# of the process list. It writes nothing itself (the app does the pausing), so this unit has no writable paths. Dry run by hand:
+#   runuser -u brandbasket -- /usr/local/sbin/brandbasket-site-hosting-job --env-file /srv/brandbasket/shared/platform.env.local --dry-run
+[Unit]
+Description=Brandbasket hourly hosting sync for lapsed websites
+After=brandbasket-app.service
+
+[Service]
+Type=oneshot
+User=brandbasket
+Group=brandbasket
+ExecStart=/usr/local/sbin/brandbasket-site-hosting-job --env-file /srv/brandbasket/shared/platform.env.local
+TimeoutStartSec=10min
+SyslogIdentifier=brandbasket-site-hosting
+# Sandbox (Firstfold's app hardening): read-only system, writable only where this unit writes, no privileges, no unneeded
+# syscalls. Firstfold's folders, its env files, keys and backups do not exist for this unit (InaccessiblePaths; the "-" ignores
+# a path that is not there).
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+CapabilityBoundingSet=
+UMask=0077
+InaccessiblePaths=-/srv/firstfold -/srv/firstfold-website -/srv/firstfold-media -/srv/firstfold-ci -/etc/firstfold -/var/backups -/var/lib/firstfold -/var/lib/firstfold-ci

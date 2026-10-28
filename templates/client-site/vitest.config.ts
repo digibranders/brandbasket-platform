@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 /**
@@ -10,5 +11,5 @@ const fromPlatform = createRequire(new URL("../../apps/platform/package.json", i
 const pkg = (name: string): string => dirname(fromPlatform.resolve(`${name}/package.json`));
 
 export default defineConfig({
-  resolve: { alias: { "react-dom": pkg("react-dom"), react: pkg("react") } },
+  resolve: { alias: { "@": dirname(fileURLToPath(import.meta.url)), "react-dom": pkg("react-dom"), react: pkg("react") } },
 });

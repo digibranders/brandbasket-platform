@@ -60,6 +60,7 @@ PAYLOAD_SECRET="$(openssl rand -hex 32)"
 ACCOUNT_CODE_SECRET="$(openssl rand -hex 32)"
 RAZORPAY_WEBHOOK_SECRET="$(openssl rand -hex 32)"
 ACCOUNT_ERASE_TOKEN="$(openssl rand -hex 32)"
+SITE_HOSTING_SYNC_TOKEN="$(openssl rand -hex 32)"
 
 mkdir -p "$SHARED"
 ( umask 077
@@ -80,6 +81,10 @@ BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
 PAYLOAD_SECRET=$PAYLOAD_SECRET
 ACCOUNT_CODE_SECRET=$ACCOUNT_CODE_SECRET
 ACCOUNT_ERASE_TOKEN=$ACCOUNT_ERASE_TOKEN
+SITE_HOSTING_SYNC_TOKEN=$SITE_HOSTING_SYNC_TOKEN
+
+# FILL_ME: Vercel API token (Digibranders team) for the hourly hosting job that pauses a lapsed client's website.
+VERCEL_API_TOKEN=
 
 # FILL_ME: Brevo API key (v3), after the brandbasket.in domain is authenticated in Brevo.
 BREVO_API_KEY=

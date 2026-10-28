@@ -6,8 +6,6 @@ import type { ChatbotStatus } from "@brandbasket/db";
  */
 
 export const CHATBOT_PATH = "/oyechats";
-export const CHATBOT_LEADS_PATH = `${CHATBOT_PATH}/leads`;
-export const CHATBOT_NAME_PATH = `${CHATBOT_PATH}/name`;
 
 /** What the page says about the price: OyeChats comes with the plan, so the customer never sees it as something to buy. */
 export const OYECHATS_INCLUDED_LABEL = "Included in your plan";
@@ -17,6 +15,19 @@ const STATUS_LINES: Readonly<Record<ChatbotStatus, { readonly label: string; rea
   live: { label: "Live", detail: "It is answering visitors on your site." },
   paused: { label: "Paused", detail: "It is switched off for now. Ask the team to turn it back on." },
 };
+
+/** How warm OyeChats rates a lead, in the words the page uses: "sql" is a visitor ready to talk to sales, "sal" one worth a follow-up, "mql" one who is only interested. */
+const WARMTH: Readonly<Record<string, string>> = { sql: "Hot", sal: "Warm", mql: "Cool" };
+
+/** A lead's warmth as a word, or null when OyeChats has not rated it yet (or sent a rating this page does not know). */
+export function leadWarmth(tier: string | null): string | null {
+  return tier === null ? null : (WARMTH[tier.toLowerCase()] ?? null);
+}
+
+/** The day a lead left their details, "28 Oct 2026", in India time like the rest of the dashboard's calls and dates. */
+export function leadCapturedLabel(capturedAt: Date): string {
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }).format(capturedAt);
+}
 
 /** A bot's status as a short label and a sentence under it. */
 export function chatbotStatusLine(status: ChatbotStatus): { readonly label: string; readonly detail: string } {
@@ -50,6 +61,12 @@ export interface LeadTableRow {
   readonly title: string;
   /** The rest of what they left (email, phone), shown at the top of the pop-up. */
   readonly lines: readonly string[];
+  readonly email: string | null;
+  readonly phone: string | null;
+  /** "Hot", "Warm" or "Cool"; null until OyeChats rates the lead. */
+  readonly warmth: string | null;
+  /** The day they left their details, "28 Oct 2026". */
+  readonly captured: string;
   readonly initial: string;
   readonly company: string | null;
   readonly botName: string | null;
@@ -76,6 +93,7 @@ export interface LeadRowSource {
   readonly email: string | null;
   readonly phone: string | null;
   readonly company: string | null;
+  readonly tier: string | null;
   readonly capturedAt: Date;
 }
 
@@ -95,6 +113,10 @@ export function buildLeadRows(
       id: lead.id,
       title: contact.title,
       lines: contact.lines.filter((line) => line !== lead.company),
+      email: lead.email,
+      phone: lead.phone,
+      warmth: leadWarmth(lead.tier),
+      captured: leadCapturedLabel(lead.capturedAt),
       initial: leadInitial(contact.title),
       company: lead.company,
       botName: botNames.get(lead.chatbotId) ?? null,

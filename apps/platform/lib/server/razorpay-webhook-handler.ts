@@ -38,6 +38,7 @@ import { getStaffDb } from "./db";
 import { restoreKeptPlan } from "./keep-plan";
 import { announcePaymentToTeams, announcePlanStatusToTeams } from "./teams";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
+import { syncSiteHostingForBusiness } from "./site-hosting";
 
 /** A free listing business this charge turned into a website client: it needs its Payload tenant once committed. */
 interface NewMember extends OpenedMembership {
@@ -140,6 +141,8 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
   const discountEndedFor: string[] = [];
   // Payments this delivery recorded for the first time: Teams is told about each once the transaction has committed.
   const announce: string[] = [];
+  // Businesses whose lapsed plan this charge brought back: their paused website is unpaused once the transaction commits.
+  const resumedBusinesses = new Set<string>();
   const noted = <T extends { readonly payment: { readonly id: string }; readonly alreadyRecorded: boolean }>(recorded: T): T => {
     if (!recorded.alreadyRecorded) announce.push(recorded.payment.id);
     return recorded;
@@ -322,6 +325,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           });
           noted(reactivation);
           if (reactivation.discountEnded) discountEndedFor.push(subscription.id);
+          resumedBusinesses.add(subscription.businessId);
           return null;
         }
         const activation = await activateFirstPayment(tx, {
@@ -391,6 +395,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         });
         noted(renewal);
         if (renewal.discountEnded) discountEndedFor.push(subscription.id);
+        resumedBusinesses.add(subscription.businessId);
         // The first renewal at Premium's price is the move completing: the subscription now names Premium. A redelivery
         // of the same payment recorded nothing new and leaves the subscription as the first delivery left it.
         if (renewalAtPendingAddOns && !renewal.alreadyRecorded) {
@@ -443,6 +448,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
   if (newMember !== null) await syncTenantForBusiness({ businessId: newMember.businessId, name: newMember.businessName });
   // The last month of a code's discount was just paid: the provider bills the basket without it from the next renewal.
   for (const subscriptionId of discountEndedFor) await moveProviderAfterDiscountEnds(basketDeps(), subscriptionId, new Date());
+  for (const businessId of resumedBusinesses) await syncSiteHostingForBusiness(businessId);
 }
 
 /**
