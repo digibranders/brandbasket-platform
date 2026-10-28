@@ -20,7 +20,7 @@ export default async function NewAffiliatePage(): Promise<ReactElement> {
         }
         meta="Add their codes next."
       />
-      <div className="mt-10 border-t border-line pt-10">
+      <div className="mt-10 max-w-2xl border-t border-line pt-10">
         <AffiliateForm action={createAffiliateAction} initial={BLANK_AFFILIATE} editing={false} />
       </div>
     </>
