@@ -15,7 +15,7 @@ export function ClientTabs({ tabs }: { readonly tabs: readonly ClientTabLink[] }
   const pathname = usePathname();
   const overview = tabs[0]?.href;
   return (
-    <nav aria-label="Client sections" className="mt-6 flex gap-1 overflow-x-auto border-b border-line">
+    <nav aria-label="Client sections" className="mt-6 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line">
       {tabs.map((tab) => {
         const current = tab.href === overview ? pathname === tab.href : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
         return (
@@ -24,8 +24,10 @@ export function ClientTabs({ tabs }: { readonly tabs: readonly ClientTabLink[] }
             href={tab.href}
             aria-current={current ? "page" : undefined}
             className={cn(
-              "-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-semibold transition-colors duration-200",
-              current ? "border-ink text-ink" : "border-transparent text-ink-2 hover:text-ink",
+              // The current mark is an inset shadow, not a border pulled down over the rule: a child that overflows by a pixel
+              // makes the scrolling bar grow a vertical scrollbar.
+              "whitespace-nowrap px-3 py-2.5 text-sm font-semibold transition-colors duration-200",
+              current ? "text-ink shadow-[inset_0_-2px_0_0_var(--color-ink)]" : "text-ink-2 hover:text-ink",
             )}
           >
             {tab.label}
