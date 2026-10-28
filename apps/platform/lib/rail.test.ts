@@ -4,20 +4,13 @@ import { CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
 import { isCurrent, linkIsCurrent, menuChildren, railSections, searchRail } from "@/lib/rail";
 import { WEBSITE_PATH } from "@/lib/website/tabs";
 
-const FULL = { quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, todoCount: 3 } as const;
+const FULL = { hasAccess: true, hasWebsite: true, websiteSetupDone: false, todoCount: 3 } as const;
 
 const shape = (input: Parameters<typeof railSections>[0]) =>
   railSections(input).map((section) => [section.label, section.links.map((link) => link.label)]);
 
 describe("railSections", () => {
-  it("shows only what a new customer can use until the kickoff call", () => {
-    expect(shape({ ...FULL, quiet: true })).toEqual([
-      [null, ["Overview", "Requests"]],
-      ["Account", ["Billing", "Settings"]],
-    ]);
-  });
-
-  it("adds the website and the account pages after the call", () => {
+  it("shows the whole rail from the first day, before the kickoff call", () => {
     expect(shape(FULL)).toEqual([
       [null, ["Overview", "To do", "Requests"]],
       ["Services", ["Website"]],
@@ -72,12 +65,6 @@ describe("the Social & Ads and Search links", () => {
     expect(services({ hasWebsite: false })).toBeUndefined();
   });
 
-  it("is not in the quiet rail before the call", () => {
-    const quiet = railSections({ ...FULL, quiet: true, hasSocial: true, hasSearch: true });
-    expect(quiet.flatMap((section) => section.links).map((link) => link.label)).not.toEqual(expect.arrayContaining(["Social & Ads"]));
-    expect(quiet.some((section) => section.label === "Services")).toBe(false);
-  });
-
   it("can be found by search", () => {
     const sections = railSections({ ...FULL, hasSocial: true, hasSearch: true });
     expect(searchRail(sections, "social").map((target) => target.label)).toEqual(["Social & Ads"]);
@@ -93,21 +80,19 @@ describe("the Social & Ads and Search links", () => {
 describe("Calls under Requests", () => {
   const requests = (input: Parameters<typeof railSections>[0]) => railSections(input)[0]?.links.find((link) => link.label === "Requests");
 
-  it("appears once the kickoff call has happened, and keeps Requests lit on its page", () => {
+  it("appears for a paid account, and keeps Requests lit on its page", () => {
     expect(requests(FULL)?.children).toEqual([{ href: "/requests/calls", label: "Calls" }]);
     const link = requests(FULL);
     expect(link === undefined ? false : linkIsCurrent(link, "/requests/calls")).toBe(true);
     expect(isCurrent("/requests/calls", "/requests/calls")).toBe(true);
   });
 
-  it("is not there during the first look, when the kickoff is the only call, nor for an account that has not paid", () => {
-    expect(requests({ ...FULL, quiet: true })?.children).toBeUndefined();
+  it("is not there for an account that has not paid", () => {
     expect(requests({ ...FULL, hasAccess: false })?.children).toBeUndefined();
   });
 
   it("is something search can jump to", () => {
     expect(searchRail(railSections(FULL), "calls").map((target) => target.href)).toEqual(["/requests/calls"]);
-    expect(searchRail(railSections({ ...FULL, quiet: true }), "calls")).toEqual([]);
   });
 });
 
@@ -162,30 +147,26 @@ describe("searchRail", () => {
 });
 
 describe("the To do link", () => {
-  const find = (todoCount: number, quiet: boolean) =>
-    railSections({ quiet, hasAccess: true, hasWebsite: true, websiteSetupDone: false, todoCount })[0]?.links.find((link) => link.label === "To do");
+  const find = (todoCount: number) =>
+    railSections({ hasAccess: true, hasWebsite: true, websiteSetupDone: false, todoCount })[0]?.links.find((link) => link.label === "To do");
 
-  it("shows after the call with the number of open items", () => {
-    expect(find(3, false)).toMatchObject({ href: "/todo", icon: "todo", count: 3 });
+  it("shows for a paid account with the number of open items", () => {
+    expect(find(3)).toMatchObject({ href: "/todo", icon: "todo", count: 3 });
   });
 
   it("drops the number when nothing is open", () => {
-    expect(find(0, false)?.count).toBeUndefined();
-  });
-
-  it("is not in the quiet rail before the call", () => {
-    expect(find(3, true)).toBeUndefined();
+    expect(find(0)?.count).toBeUndefined();
   });
 
   it("can be found by search", () => {
-    const sections = railSections({ quiet: false, hasAccess: true, hasWebsite: true, websiteSetupDone: false, todoCount: 2 });
+    const sections = railSections({ hasAccess: true, hasWebsite: true, websiteSetupDone: false, todoCount: 2 });
     expect(searchRail(sections, "to do").map((target) => target.label)).toContain("To do");
   });
 });
 
 describe("the Requests link", () => {
-  const find = (requestsCount: number | undefined, quiet = false) =>
-    railSections({ ...FULL, quiet, requestsCount }).flatMap((section) => section.links).find((link) => link.label === "Requests");
+  const find = (requestsCount: number | undefined) =>
+    railSections({ ...FULL, requestsCount }).flatMap((section) => section.links).find((link) => link.label === "Requests");
 
   it("opens the Requests page and shows the number of things waiting on the customer", () => {
     expect(find(2)).toMatchObject({ href: "/requests", icon: "requests", count: 2 });
@@ -194,10 +175,6 @@ describe("the Requests link", () => {
   it("drops the number when nothing waits, or when it is not known", () => {
     expect(find(0)?.count).toBeUndefined();
     expect(find(undefined)?.count).toBeUndefined();
-  });
-
-  it("is in the quiet rail before the call too, with its number", () => {
-    expect(find(1, true)).toMatchObject({ href: "/requests", count: 1 });
   });
 
   it("opens the form from search as Ask for a change, and counts Requests as current on the form's page", () => {
