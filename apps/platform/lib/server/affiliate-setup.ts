@@ -1,7 +1,7 @@
 import "server-only";
 import { AccountAlreadyExistsError, createAccountWithGrant } from "@brandbasket/auth";
 import { passwordPolicyProblem } from "@brandbasket/auth/password-policy";
-import { claimAffiliateLoginLink, findAffiliateLoginInvite, resetAffiliateCredentialPassword, type AffiliateLoginInvite } from "@brandbasket/db";
+import { claimAffiliateLoginLink, findAffiliateLoginInvite, findUserByEmail, resetAffiliateCredentialPassword, type AffiliateLoginInvite } from "@brandbasket/db";
 import { headers } from "next/headers";
 import { clientIpFrom } from "@brandbasket/shared/lib/client-ip";
 import { recordAccountTermsConsent } from "./account-consent";
@@ -35,6 +35,11 @@ export async function findAffiliateInviteForToken(token: string): Promise<Affili
   const budget = await withinSetupViewBudget();
   if (!budget.allowed) return { kind: "limited", retryAfterSeconds: budget.retryAfterSeconds };
   return findAffiliateLoginInvite(getStaffDb(), token);
+}
+
+/** Whether the invite's address already belongs to an account (a customer's, say): they link it instead of making one. */
+export async function inviteEmailHasAccount(email: string): Promise<boolean> {
+  return (await findUserByEmail(getStaffDb(), normaliseEmail(email))) !== null;
 }
 
 export interface AffiliateAccount {

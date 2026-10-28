@@ -32,12 +32,17 @@ export async function requireAffiliateAccess(): Promise<{ readonly user: Session
   return { user: access.user, affiliate: access.affiliate };
 }
 
+/** Whether the user also has a business: their affiliate page then opens inside their own dashboard. */
+export async function isAlsoCustomer(userId: string): Promise<boolean> {
+  return (await listMembershipsForUser(getAppDb(), userId)).length > 0;
+}
+
 /**
  * Where a user who has just signed in lands: their affiliate dashboard when that is all they are, and the home page
  * otherwise (a business owner who is also an affiliate lands in their business, and can open /affiliate from the
  * address).
  */
 export async function landingForSignedInUser(userId: string): Promise<string> {
-  if ((await listMembershipsForUser(getAppDb(), userId)).length > 0) return "/";
+  if (await isAlsoCustomer(userId)) return "/";
   return (await findAffiliateByUserId(getStaffDb(), userId)) === null ? "/" : AFFILIATE_PATH;
 }
