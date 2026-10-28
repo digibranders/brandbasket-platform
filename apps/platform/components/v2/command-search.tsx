@@ -3,7 +3,8 @@
 import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactElement } from "react";
+import { useState, type ReactElement } from "react";
+import { useDialogOpen, useSearchShortcut } from "@brandbasket/shared/ui/v2/dialog-hooks";
 import { searchRail, type RailSection } from "@/lib/rail";
 
 interface CommandSearchProps {
@@ -17,28 +18,11 @@ interface CommandSearchProps {
 /** Jump to any page. A native dialog: Escape closes it and focus returns where it was. */
 export function CommandSearch({ sections, open, onClose, onShortcut }: CommandSearchProps): ReactElement {
   const router = useRouter();
-  const dialog = useRef<HTMLDialogElement>(null);
+  const dialog = useDialogOpen(open);
   const [query, setQuery] = useState("");
   const results = searchRail(sections, query);
 
-  useEffect(() => {
-    const element = dialog.current;
-    if (element === null) return;
-    if (open && !element.open) element.showModal();
-    if (!open && element.open) element.close();
-  }, [open]);
-
-  useEffect(() => {
-    if (onShortcut === undefined) return;
-    const listen = (event: KeyboardEvent): void => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        onShortcut();
-      }
-    };
-    window.addEventListener("keydown", listen);
-    return () => window.removeEventListener("keydown", listen);
-  }, [onShortcut]);
+  useSearchShortcut(onShortcut);
 
   const close = (): void => {
     setQuery("");
