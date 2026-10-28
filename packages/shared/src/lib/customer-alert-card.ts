@@ -2,10 +2,10 @@ import { teamsCard, type TeamsMessage } from "./teams-webhook";
 
 /*
  * The Teams card for something that happened to a customer's account: they signed up, sent their website details, closed
- * the account, or booked or changed a call. Pure: the announcer (server/customer-alerts.ts) gathers the facts, this words them.
+ * the account, booked or changed a call, or their unpaid plan took the website offline. Pure: the announcer (server/customer-alerts.ts) gathers the facts, this words them.
  */
 
-export type CustomerEvent = "setup_sent" | "account_closed" | "kickoff_booked" | "kickoff_changed" | "call_booked" | "call_changed";
+export type CustomerEvent = "setup_sent" | "account_closed" | "kickoff_booked" | "kickoff_changed" | "call_booked" | "call_changed" | "website_paused";
 
 const TITLES: Readonly<Record<CustomerEvent, string>> = {
   setup_sent: "Website details received",
@@ -14,6 +14,7 @@ const TITLES: Readonly<Record<CustomerEvent, string>> = {
   kickoff_changed: "Kickoff call changed",
   call_booked: "Call booked",
   call_changed: "Call changed",
+  website_paused: "Website taken offline",
 };
 
 export interface CustomerCardInput {

@@ -37,6 +37,30 @@ describe("runSiteHostingSync", () => {
     expect(report.failed).toBe(0);
   });
 
+  it("tells the team about a site it paused, once, and not about one it unpaused", async () => {
+    const announcePaused = vi.fn<NonNullable<HostingSyncDeps["announcePaused"]>>().mockResolvedValue(undefined);
+    const d = deps([site("a", { billing: lapsed }), site("b", { pausedAt: EARLIER })], { announcePaused });
+    await runSiteHostingSync(d.value, { now: NOW, dryRun: false });
+    expect(announcePaused).toHaveBeenCalledTimes(1);
+    expect(announcePaused).toHaveBeenCalledWith(expect.objectContaining({ businessId: "a" }), NOW);
+  });
+
+  it("does not tell the team in a dry run or when the host refused", async () => {
+    const announcePaused = vi.fn<NonNullable<HostingSyncDeps["announcePaused"]>>().mockResolvedValue(undefined);
+    await runSiteHostingSync(deps([site("a", { billing: lapsed })], { announcePaused }).value, { now: NOW, dryRun: true });
+    const refuse = vi.fn<HostingSyncDeps["setPaused"]>().mockRejectedValue(new Error("no"));
+    await runSiteHostingSync(deps([site("a", { billing: lapsed })], { announcePaused, setPaused: refuse }).value, { now: NOW, dryRun: false });
+    expect(announcePaused).not.toHaveBeenCalled();
+  });
+
+  it("keeps the pause and the report when the announcement fails", async () => {
+    const announcePaused = vi.fn<NonNullable<HostingSyncDeps["announcePaused"]>>().mockRejectedValue(new Error("Teams is down"));
+    const d = deps([site("a", { billing: lapsed })], { announcePaused });
+    const report = await runSiteHostingSync(d.value, { now: NOW, dryRun: false });
+    expect(report.items).toEqual([{ businessId: "a", status: "paused" }]);
+    expect(report.failed).toBe(0);
+  });
+
   it("unpauses a site that paid and clears the paused time", async () => {
     const d = deps([site("a", { pausedAt: EARLIER })]);
     const report = await runSiteHostingSync(d.value, { now: NOW, dryRun: false });
