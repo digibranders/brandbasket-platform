@@ -7,7 +7,7 @@ The parts every Brandbasket client website needs to read its content from the pl
 | `lib/brandbasket.ts` | `brandbasketGet(path)`: calls `/api/site/*` with the site token and returns `ok`, `offline` or `error`. |
 | `components/maintenance.tsx` | The full-page "under maintenance" notice, with the Brandbasket builder typing at his laptop, glancing up now and then (`components/builder.tsx`). |
 | `app/layout.tsx` | Example root layout: shows the notice instead of every page while the plan has ended. |
-| `proxy.ts` | Answers every request with the notice as a 503 (with `Retry-After` and `noindex`) while the plan has ended, so the site's own API routes and form posts are covered too. Uses `lib/offline-check.ts` (the answer kept for a minute) and `lib/maintenance-response.ts`. |
+| `proxy.ts` | Answers every request with the notice as a 503 (with `Retry-After` and `noindex`) while the plan has ended, so the site's own API routes and form posts are covered too. Uses `lib/offline-check.ts` (the answer kept for a minute) and `lib/maintenance-response.ts` (the notice as plain HTML, because Next refuses `react-dom/server` inside the proxy). |
 
 ## Environment
 

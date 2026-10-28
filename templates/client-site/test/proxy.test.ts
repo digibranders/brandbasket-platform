@@ -30,8 +30,14 @@ describe("maintenanceResponse", () => {
     expect(html).toContain("Riverside Dental is taking a short break");
   });
 
+  it("escapes a business name that carries markup, and shows no links", async () => {
+    const html = await maintenanceResponse("<script>x</script>").text();
+    expect(html).not.toContain("<script>x");
+    expect(html).not.toContain("<a ");
+  });
+
   it("falls back to the plain headline without a name", async () => {
-    expect(await maintenanceResponse().text()).toContain("We&#x27;ll be back soon");
+    expect(await maintenanceResponse().text()).toContain("We'll be back soon");
   });
 });
 
@@ -39,6 +45,12 @@ describe("isSiteOffline", () => {
   it("is true when the platform says the plan has ended", async () => {
     fetchMock.mockResolvedValue(OFFLINE());
     await expect(isSiteOffline(0)).resolves.toBe(true);
+  });
+
+  it("is never offline outside production when no site token is set", async () => {
+    delete process.env.BRANDBASKET_SITE_TOKEN;
+    await expect(isSiteOffline(0)).resolves.toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("is false while the plan runs", async () => {
