@@ -116,7 +116,7 @@ export default async function AffiliatePage({ params }: AffiliatePageProps): Pro
 
       <Figures
         items={[
-          { value: describeAffiliateReward(affiliate), label: "Earns", note: describeRewardCycles(affiliate.rewardCycles) },
+          { value: describeAffiliateReward(affiliate), label: "Earns", note: describeRewardCycles(affiliate.rewardCycles), long: true },
           { value: members.length, label: "Members" },
           { value: owedFigure, label: "Owed", emphasis: owing.length > 0 },
           { value: paidFigure, label: "Paid" },
