@@ -1,6 +1,3 @@
 /** Class strings every reworked console screen shares (apps/admin/DESIGN.md "Surfaces"). */
 
-/** The one raised surface on a screen. */
-export const LIFT = "rounded-lift bg-surface shadow-lift";
-/** A section that sits on the page: its title with the hairline under it. */
-export const SECTION_TITLE = "border-b border-line pb-2.5 font-display text-[0.9375rem] font-semibold tracking-[-0.01em] text-ink";
+export { LIFT, SECTION_TITLE } from "@brandbasket/shared/ui/v2/classes";
