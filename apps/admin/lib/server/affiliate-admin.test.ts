@@ -1,6 +1,8 @@
 import {
   cancelAffiliateEarning,
   createAffiliate,
+  findAffiliateById,
+  issueAffiliateLoginLink,
   listAffiliateCodeCurrencies,
   recordAffiliatePayout,
   updateAffiliate,
@@ -13,21 +15,27 @@ import {
   createAffiliateFor,
   describeAffiliateReward,
   describeRewardCycles,
+  emailLoginLinkFor,
   payoutToday,
   recordPayoutFor,
   updateAffiliateFor,
   type AffiliateAdminOutcome,
+  type EmailLinkOutcome,
 } from "./affiliate-admin";
 import { getStaffDb } from "./db";
+import { customerEmailTransport } from "./email";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
+vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     ...actual,
     cancelAffiliateEarning: vi.fn(),
     createAffiliate: vi.fn(),
+    findAffiliateById: vi.fn(),
+    issueAffiliateLoginLink: vi.fn(),
     listAffiliateCodeCurrencies: vi.fn(),
     recordAffiliatePayout: vi.fn(),
     updateAffiliate: vi.fn(),
@@ -46,7 +54,7 @@ function form(fields: Record<string, string>): FormData {
 
 const ASHA = { name: "Asha Nair", phone: "98765 43210", email: "", rewardKind: "amount", rewardValue: "200", rewardCurrency: "INR", notes: "" };
 
-function refusalOf(outcome: AffiliateAdminOutcome): { message: string; field: string | null } {
+function refusalOf(outcome: AffiliateAdminOutcome | EmailLinkOutcome): { message: string; field: string | null } {
   if (outcome.kind !== "refused") throw new Error(`expected a refusal, got ${JSON.stringify(outcome)}`);
   return outcome.refusal;
 }
@@ -222,5 +230,42 @@ describe("describeAffiliateReward", () => {
     expect(describeAffiliateReward({ reward: { kind: "amount", amountCents: 20_000 }, rewardCurrency: "INR" })).toBe("₹200 a month");
     expect(describeAffiliateReward({ reward: { kind: "percent", basisPoints: 750 }, rewardCurrency: null })).toBe("7.5% of each payment");
     expect(describeAffiliateReward({ reward: { kind: "amount", amountCents: 0 }, rewardCurrency: "INR" })).toBe("Nothing");
+  });
+});
+
+describe("emailLoginLinkFor", () => {
+  const send = vi.fn();
+  const input = { affiliateId: AFFILIATE_ID, appOrigin: "https://app.brandbasket.in", now: NOW };
+
+  beforeEach(() => {
+    send.mockResolvedValue(undefined);
+    vi.mocked(customerEmailTransport).mockReturnValue({ send } as unknown as ReturnType<typeof customerEmailTransport>);
+    vi.mocked(findAffiliateById).mockResolvedValue({ id: AFFILIATE_ID, name: "Steve Jason", email: "steve@fynix.digital" } as unknown as Affiliate);
+    vi.mocked(issueAffiliateLoginLink).mockResolvedValue({ kind: "issued", token: "tok-123", expiresAt: new Date("2026-11-04T00:00:00.000Z") });
+  });
+
+  it("emails the one-time link to the affiliate's address", async () => {
+    await expect(emailLoginLinkFor(input)).resolves.toEqual({ kind: "emailed", to: "steve@fynix.digital" });
+    expect(send).toHaveBeenCalledOnce();
+    const message = send.mock.calls[0]?.[0] as { to: string; bodyText: string };
+    expect(message.to).toBe("steve@fynix.digital");
+    expect(message.bodyText).toContain("https://app.brandbasket.in/affiliate/setup/tok-123");
+  });
+
+  it("refuses, and makes no link, when they have no email", async () => {
+    vi.mocked(findAffiliateById).mockResolvedValue({ id: AFFILIATE_ID, name: "Steve Jason", email: null } as unknown as Affiliate);
+    expect(refusalOf(await emailLoginLinkFor(input)).field).toBe("email");
+    expect(issueAffiliateLoginLink).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("refuses an affiliate that no longer exists", async () => {
+    vi.mocked(findAffiliateById).mockResolvedValue(null);
+    expect(refusalOf(await emailLoginLinkFor(input)).message).toMatch(/no longer exists/);
+  });
+
+  it("reports a failed send instead of throwing", async () => {
+    send.mockRejectedValue(new Error("Brevo is down"));
+    await expect(emailLoginLinkFor(input)).resolves.toEqual({ kind: "send-failed" });
   });
 });

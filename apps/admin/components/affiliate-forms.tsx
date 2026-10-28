@@ -176,7 +176,7 @@ export function AffiliateForm({
   const emailRequired = phoneTyped.trim() === "";
 
   return (
-    <form ref={formRef} action={formAction} noValidate className="max-w-2xl space-y-6">
+    <form ref={formRef} action={formAction} noValidate className="@container space-y-6">
       <FormMessage state={state} isPending={isPending} errorRef={errorRef} />
 
       <Field id="affiliate-name" label="Name" required>
@@ -193,7 +193,7 @@ export function AffiliateForm({
         />
       </Field>
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid gap-6 @md:grid-cols-2">
         <Field id="affiliate-phone" label="Phone" hint="Phone or email, at least one." required={phoneRequired}>
           <RuleInput
             rule="phone"

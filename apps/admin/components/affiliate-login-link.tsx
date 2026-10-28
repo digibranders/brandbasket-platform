@@ -1,20 +1,24 @@
 "use client";
 
 import { useActionState, useRef, useState, type ReactElement } from "react";
-import { cn } from "@brandbasket/shared/lib/cn";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
-import { StatusDot } from "@/components/console/status-dot";
+import { StatusPill } from "@/components/console/status-pill";
 
 export type LoginLinkState =
   | { readonly status: "idle" }
   | { readonly status: "link"; readonly url: string; readonly expiresAt: string }
+  | { readonly status: "emailed"; readonly to: string }
   | { readonly status: "error"; readonly message: string };
 
 const initialLoginLinkState: LoginLinkState = { status: "idle" };
 
 interface AffiliateLoginLinkProps {
   readonly action: (state: LoginLinkState, formData: FormData) => Promise<LoginLinkState>;
+  /** Makes a link and emails it to the affiliate. */
+  readonly emailAction: (state: LoginLinkState, formData: FormData) => Promise<LoginLinkState>;
+  /** The address the email goes to; null when they have none, which leaves the button out. */
+  readonly emailTo: string | null;
   /** They have chosen a password: they can sign in. */
   readonly signedUp: boolean;
   /** When the link staff last sent stops working, as an ISO time; null when none is open. */
@@ -23,10 +27,12 @@ interface AffiliateLoginLinkProps {
 
 /**
  * The affiliate's sign-in, from staff's side: whether they have one, and a button that makes the link they open to
- * choose a password. The link is shown once, right after it is made, to copy into WhatsApp or an email.
+ * choose a password. It can be emailed to them straight away, or shown once, right after it is made, to copy into
+ * WhatsApp.
  */
-export function AffiliateLoginLink({ action, signedUp, linkExpiresAt }: AffiliateLoginLinkProps): ReactElement {
+export function AffiliateLoginLink({ action, emailAction, emailTo, signedUp, linkExpiresAt }: AffiliateLoginLinkProps): ReactElement {
   const [state, formAction, isPending] = useActionState(action, initialLoginLinkState);
+  const [mailState, mailFormAction, isMailing] = useActionState(emailAction, initialLoginLinkState);
   const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   const linkRef = useRef<HTMLInputElement>(null);
 
@@ -42,29 +48,52 @@ export function AffiliateLoginLink({ action, signedUp, linkExpiresAt }: Affiliat
   }
 
   const standing = signedUp ? (
-    <StatusDot tone="done" label="Can sign in" />
+    <StatusPill tone="done">Can sign in</StatusPill>
   ) : linkExpiresAt !== null ? (
-    <StatusDot tone="waiting" label="Link sent, not used yet" />
+    <StatusPill tone="wait">Link sent, not used yet</StatusPill>
   ) : (
-    <StatusDot tone="quiet" label="No sign-in yet" />
+    <StatusPill tone="todo">No sign-in yet</StatusPill>
   );
+  const hasLink = signedUp || linkExpiresAt !== null;
+  const busy = isPending || isMailing;
 
   return (
-    <div className="max-w-xl space-y-5">
-      <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+    <div className="space-y-4">
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
         {standing}
         {!signedUp && linkExpiresAt !== null ? (
-          <span className="text-sm text-ink-soft">
+          <span className="text-sm text-ink-2">
             Open until <LocalDate iso={linkExpiresAt} />
           </span>
         ) : null}
       </p>
 
-      <form action={formAction}>
-        <button type="submit" disabled={isPending} className={cn(signedUp || linkExpiresAt !== null ? buttonSecondary : buttonPrimary)}>
-          {isPending ? "Making the link…" : signedUp ? "Send a password link" : linkExpiresAt !== null ? "Make a new link" : "Create sign-in link"}
-        </button>
-      </form>
+      <div className="flex flex-wrap gap-2">
+        {emailTo !== null ? (
+          <form action={mailFormAction}>
+            <button type="submit" disabled={busy} className={hasLink ? buttonSecondary : buttonPrimary}>
+              {isMailing ? "Sending…" : "Email the link"}
+            </button>
+          </form>
+        ) : null}
+        <form action={formAction}>
+          <button type="submit" disabled={busy} className={hasLink || emailTo !== null ? buttonSecondary : buttonPrimary}>
+            {isPending ? "Making the link…" : signedUp ? "Send a password link" : linkExpiresAt !== null ? "Make a new link" : "Create sign-in link"}
+          </button>
+        </form>
+      </div>
+      {emailTo !== null ? <p className="text-sm text-ink-2">Email goes to {emailTo}.</p> : null}
+
+      {mailState.status === "emailed" && !isMailing ? (
+        <p role="status" className="border-l-2 border-sage py-1 pl-4 text-sm text-ink">
+          Sent to {mailState.to}. The link works once and expires in 7 days.
+        </p>
+      ) : null}
+      {mailState.status === "error" && !isMailing ? (
+        <p role="alert" className="border-l-2 border-accent py-1 pl-4 text-sm text-accent">
+          {mailState.message}
+        </p>
+      ) : null}
 
       {state.status === "error" && !isPending ? (
         <p role="alert" className="border-l-2 border-accent py-1 pl-4 text-sm text-accent">
@@ -73,24 +102,24 @@ export function AffiliateLoginLink({ action, signedUp, linkExpiresAt }: Affiliat
       ) : null}
 
       {state.status === "link" && !isPending ? (
-        <div className="space-y-3">
-          <label htmlFor="affiliate-login-link" className="block text-sm font-medium text-ink-soft">
+        <div className="space-y-2 rounded-[0.625rem] bg-sunken p-3.5">
+          <label htmlFor="affiliate-login-link" className="block text-sm font-medium text-ink">
             Send them this link
           </label>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex gap-2">
             <input
               id="affiliate-login-link"
               ref={linkRef}
               readOnly
               value={state.url}
               onFocus={(event) => event.currentTarget.select()}
-              className="min-w-0 flex-1 rounded-control border border-ink-soft/65 bg-white px-4 py-2.5 text-sm text-ink"
+              className="min-w-0 flex-1 rounded-[0.625rem] border border-ink-soft/65 bg-white px-3 py-2 text-sm text-ink"
             />
             <button type="button" onClick={() => void copy(state.url)} className={buttonSecondary}>
               {copied === "copied" ? "Copied" : "Copy link"}
             </button>
           </div>
-          <p role="status" className="text-sm text-ink-soft">
+          <p role="status" className="text-sm text-ink-2">
             {copied === "failed" ? "Couldn’t copy. The link is selected: copy it by hand. " : null}
             It works once and expires in 7 days. You won’t see it again, so copy it now.
           </p>
