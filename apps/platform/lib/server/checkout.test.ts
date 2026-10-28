@@ -30,6 +30,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import type { OnboardingSnapshot } from "@/lib/onboarding/snapshot";
 import { getBillingProvider } from "./billing";
+import { billingDetailsMissing } from "./billing-details";
 import { CHECKOUT_RATE_LIMIT, startCheckoutFor, startMembershipCheckoutFor, startReactivationFor, UnsafeCheckoutUrlError } from "./checkout";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
@@ -41,6 +42,7 @@ import { readOnboardingSnapshot } from "./onboarding";
 // is only ever called with no transaction open, and what each decision and each failure turns into.
 vi.mock("server-only", () => ({}));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
+vi.mock("./billing-details", () => ({ billingDetailsMissing: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
 vi.mock("./discount-plans", () => ({ ensureDiscountPlan: vi.fn() }));
 vi.mock("./onboarding", () => ({
@@ -203,6 +205,7 @@ beforeEach(() => {
     },
   } as unknown as Database);
   vi.mocked(consumeRateLimit).mockResolvedValue({ allowed: true, remaining: 9, retryAfterSeconds: 0 });
+  vi.mocked(billingDetailsMissing).mockResolvedValue(false);
   vi.mocked(withTenantScope).mockImplementation(async (_db, _scope, work) => work(appTx));
   vi.mocked(readOnboardingSnapshot).mockResolvedValue(COMPLETE);
   newest(null);
@@ -266,6 +269,16 @@ describe("startCheckoutFor", () => {
 
     const result = await startCheckoutFor(customer, NOW);
     expect(result).toMatchObject({ kind: "refused", problem: { message: expect.stringMatching(/attempts/) } });
+    expect(readOnboardingSnapshot).not.toHaveBeenCalled();
+    expect(events).toEqual([]);
+  });
+
+  it("refuses a business billed in rupees that has saved no billing details, and opens nothing", async () => {
+    vi.mocked(billingDetailsMissing).mockResolvedValue(true);
+
+    const result = await startCheckoutFor(customer, NOW);
+
+    expect(result).toMatchObject({ kind: "refused", problem: { message: expect.stringMatching(/billing details/) } });
     expect(readOnboardingSnapshot).not.toHaveBeenCalled();
     expect(events).toEqual([]);
   });
@@ -538,6 +551,17 @@ describe("startMembershipCheckoutFor", () => {
     vi.mocked(findBillingState).mockResolvedValue(billingState(null, { currency: "INR", plan: INR_PLAN }));
     // A free listing account has no project and has answered nothing.
     vi.mocked(readOnboardingSnapshot).mockResolvedValue({ ...COMPLETE, project: null, locked: false, completed: [], domain: null, logo: null });
+  });
+
+  it("refuses a free listing account billed in rupees that has saved no billing details, and opens nothing", async () => {
+    vi.mocked(billingDetailsMissing).mockResolvedValue(true);
+
+    const result = await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE);
+
+    expect(result).toMatchObject({ kind: "refused", problem: { message: expect.stringMatching(/billing details/), field: null } });
+    expect(billingDetailsMissing).toHaveBeenCalledWith(owner);
+    expect(events).toEqual([]);
+    expect(openCheckoutSubscription).not.toHaveBeenCalled();
   });
 
   it("opens the plan's checkout for a free listing account that has no project and no answers", async () => {

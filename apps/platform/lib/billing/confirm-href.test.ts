@@ -15,12 +15,12 @@ const kinds: readonly PaymentConfirmation[] = [
 ];
 
 describe("where a confirmed payment sends the customer", () => {
-  it("lands a plan the payment opened on Overview, with nothing added to the address", () => {
-    expect(hrefAfter({ kind: "membership-opened" }, null)).toBe("/");
+  it("lands a plan the payment opened on Overview, with the welcome switched on", () => {
+    expect(hrefAfter({ kind: "membership-opened" }, null)).toBe("/?welcome=1");
   });
 
-  it("never adds the old welcome parameter, whatever the outcome", () => {
-    for (const result of kinds) {
+  it("asks for the welcome only when a payment has just opened the plan", () => {
+    for (const result of kinds.filter((each) => each.kind !== "membership-opened")) {
       for (const membership of [null, "managed"] as const) expect(hrefAfter(result, membership)).not.toContain("welcome");
     }
   });

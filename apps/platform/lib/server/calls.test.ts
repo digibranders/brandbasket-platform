@@ -1,5 +1,6 @@
 import { cancelTeamCall, findTeamCall, listTeamCalls, recordTeamCall, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { announceCallBooked } from "./call-alert";
 import { bookCallSlot, cancelCallBooking } from "./call-scheduling";
 import { bookTeamCall, callsAreOpen, cancelTeamCallFor, loadBookCallOptions, loadCalls, loadNextCall } from "./calls";
 import { loadSetupServices } from "./first-look";
@@ -13,6 +14,7 @@ vi.mock("./db", () => ({ getAppDb: vi.fn(() => ({ kind: "app-db" })) }));
 vi.mock("./onboarding", () => ({ getProjectOverview: vi.fn(), getLiveWebsite: vi.fn() }));
 vi.mock("./first-look", () => ({ loadSetupServices: vi.fn() }));
 vi.mock("./setup-call", () => ({ getSetupCallState: vi.fn() }));
+vi.mock("./call-alert", () => ({ announceCallBooked: vi.fn() }));
 vi.mock("./setup-call-link", () => ({ getSetupCallUrl: vi.fn() }));
 vi.mock("./call-scheduling", async (importOriginal) => ({ ...(await importOriginal<typeof import("./call-scheduling")>()), bookCallSlot: vi.fn(), cancelCallBooking: vi.fn() }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({
@@ -54,7 +56,7 @@ beforeEach(() => {
   vi.mocked(listTeamCalls).mockResolvedValue([]);
   vi.mocked(bookCallSlot).mockResolvedValue({
     ok: true,
-    call: { startsAt: new Date(START), endsAt: new Date("2026-12-02T09:00:00.000Z"), inviteeUri: "https://api.cal.com/v2/bookings/new" },
+    call: { startsAt: new Date(START), endsAt: new Date("2026-12-02T09:00:00.000Z"), inviteeUri: "https://api.cal.com/v2/bookings/new", meetingUrl: "https://app.cal.com/video/abc" },
   });
   vi.mocked(recordTeamCall).mockResolvedValue({ id: "call-2", created: true });
   vi.mocked(cancelTeamCall).mockResolvedValue(true);
@@ -64,6 +66,32 @@ beforeEach(() => {
 const input = (overrides: Record<string, unknown> = {}) => ({ startIso: START, timeZone: "Asia/Kolkata", reason: "social" as const, note: "Ads for braces", replaceId: null, ...overrides });
 
 describe("bookTeamCall", () => {
+  it("tells Teams about the call, with what it is about, the customer's note and the meeting link", async () => {
+    await bookTeamCall(tenant, invitee, input(), NOW);
+    expect(announceCallBooked).toHaveBeenCalledWith({
+      tenant,
+      kind: "call",
+      startsAt: new Date(START),
+      endsAt: new Date("2026-12-02T09:00:00.000Z"),
+      replaced: null,
+      meetingUrl: "https://app.cal.com/video/abc",
+      reason: "social",
+      note: "Ads for braces",
+    });
+  });
+
+  it("says a moved call replaced the earlier one", async () => {
+    vi.mocked(listTeamCalls).mockResolvedValue([stored({ startsAt: new Date("2026-12-03T08:30:00.000Z"), endsAt: new Date("2026-12-03T09:00:00.000Z") })]);
+    await bookTeamCall(tenant, invitee, input({ replaceId: "call-1" }), NOW);
+    expect(announceCallBooked).toHaveBeenCalledWith(expect.objectContaining({ replaced: { startsAt: new Date("2026-12-03T08:30:00.000Z"), endsAt: new Date("2026-12-03T09:00:00.000Z") } }));
+  });
+
+  it("tells Teams nothing when the call could not be booked", async () => {
+    vi.mocked(bookCallSlot).mockResolvedValue({ ok: false, reason: "taken" });
+    await bookTeamCall(tenant, invitee, input(), NOW);
+    expect(announceCallBooked).not.toHaveBeenCalled();
+  });
+
   it("books the time with Cal.com, saying it is a call and why, and records it for the signed-in business", async () => {
     const result = await bookTeamCall(tenant, invitee, input(), NOW);
     expect(result).toEqual({ ok: true, startsAtIso: START, endsAtIso: "2026-12-02T09:00:00.000Z" });

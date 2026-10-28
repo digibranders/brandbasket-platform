@@ -42,3 +42,13 @@ export async function loadBillingDetailsView(
     }),
   };
 }
+
+/**
+ * Whether this business is billed in rupees and has saved no billing details yet. Its first tax invoice is made out from
+ * them and cannot be changed once issued, so a checkout waits for them. A business that gets no tax invoice never lacks them.
+ */
+export async function billingDetailsMissing(customer: Pick<GrantedCustomer, "tenant" | "billing">): Promise<boolean> {
+  if (!(await billedInRupees(customer))) return false;
+  const { tenant } = customer;
+  return (await withTenantScope(getAppDb(), tenant, (tx) => findBillingProfile(tx, tenant.businessId))) === null;
+}

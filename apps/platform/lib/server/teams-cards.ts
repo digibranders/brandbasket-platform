@@ -1,4 +1,4 @@
-import { teamsCard, type TeamsMessage } from "@brandbasket/shared/lib/teams-webhook";
+import { callButton, teamsCard, type TeamsMessage } from "@brandbasket/shared/lib/teams-webhook";
 
 /*
  * The Teams cards for the platform's alerts. They carry what the alert emails carry (owner, 2026-10-26: "full, like the
@@ -130,11 +130,13 @@ export function signupTeamsCard(signup: {
     title: `New sign-up: ${signup.businessName}`,
     subtitle: `${signup.name} opened an account and has not paid yet`,
     facts: [
-      { name: "Chose", value: signup.plan },
+      { name: "Customer", value: signup.name },
+      { name: "Mobile", value: signup.phone },
       { name: "Email", value: signup.email },
-      { name: "Phone", value: signup.phone },
+      { name: "Plan chosen", value: signup.plan },
     ],
     open: { label: "Open the enquiry", url: signup.leadUrl },
+    buttons: callButton(signup.phone),
   });
 }
 

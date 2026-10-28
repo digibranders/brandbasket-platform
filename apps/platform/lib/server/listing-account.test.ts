@@ -17,13 +17,11 @@ import { confirmAccountEmailCode, requestAccountEmailCode } from "./account-emai
 import { alertSignupLead } from "./signup-alert";
 import { getAuth } from "./auth";
 import { getStaffDb } from "./db";
-import { announceCustomerToTeams } from "./teams";
 import { createListingAccount, requestJoinCode } from "./listing-account";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ headers: vi.fn(async () => new Headers({ "x-forwarded-for": "203.0.113.9" })) }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
-vi.mock("./teams", () => ({ announceCustomerToTeams: vi.fn() }));
 vi.mock("./auth", () => ({ getAuth: vi.fn() }));
 // Signing in goes straight through to Better Auth here (customer-sign-in.test.ts covers the wrapper), so these tests check the sign-in itself.
 vi.mock("./customer-sign-in", async () => {
@@ -153,7 +151,6 @@ describe("createListingAccount", () => {
     expect(await createListingAccount(WITH_CODE)).toEqual({ kind: "created" });
     expect(setUserPhoneNumber).toHaveBeenCalledWith(DB, "user-2", E164);
     expect(recordSignupLead).toHaveBeenCalledWith(DB, expect.objectContaining({ businessId: "business-1", phone: E164 }));
-    expect(announceCustomerToTeams).toHaveBeenCalledWith(expect.objectContaining({ businessId: "business-1", event: "signed_up" }));
   });
 
   it("tells Teams about the sign-up, pointing at the lead it recorded", async () => {

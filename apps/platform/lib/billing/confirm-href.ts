@@ -1,5 +1,6 @@
 import { afterPaymentHref, PAYMENT_RECEIVED_HREF, PAYMENT_STEP_HREF, reactivationReturnHref } from "@brandbasket/shared/lib/billing/payment-step";
-import { MEMBER_HOME, membershipFailedHref, membershipReceivedHref, type MembershipTier } from "@/lib/membership";
+import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
+import { membershipFailedHref, membershipReceivedHref, type MembershipTier } from "@/lib/membership";
 import type { PaymentConfirmation } from "@/lib/server/payment-confirmation";
 
 const FAILED_HREF = `${PAYMENT_STEP_HREF}?payment=failed`;
@@ -16,8 +17,8 @@ export function hrefAfter(result: PaymentConfirmation, membership: MembershipTie
     case "needs-attention":
       return membership === null ? PAYMENT_RECEIVED_HREF : membershipReceivedHref(membership);
     case "membership-opened":
-      // The Welcome overview is what an account sees until its kickoff call has happened, so a new plan lands on Overview with nothing added to the address.
-      return MEMBER_HOME;
+      // A new plan lands on Overview, which greets it with the welcome popup while the address carries the welcome parameter.
+      return MEMBER_WELCOME_HREF;
     case "reactivated":
       return reactivationReturnHref("received");
     case "paid":

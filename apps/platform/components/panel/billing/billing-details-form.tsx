@@ -39,13 +39,19 @@ interface BillingDetailsFormProps {
 /** What a pincode lookup told the form, for the line under the pincode field. */
 type PincodeNote = { readonly kind: "found"; readonly place: string } | { readonly kind: "not-found" } | null;
 
+interface BillingFieldsetProps {
+  readonly controls: PanelFormControls;
+  readonly view: BillingDetailsView;
+  readonly layout: "wide" | "narrow";
+}
+
 /**
- * The billing details form. A checkbox opens the GSTIN and the legal name; without it an invoice goes to the business's
+ * The billing details fields, for a form that is somewhere else: the one below, or a checkout's Pay form, which saves them
+ * and pays in one press. A checkbox opens the GSTIN and the legal name; without it an invoice goes to the business's
  * name. The pincode fills the state and suggests the city, and a GSTIN fixes the state itself. Its fields are controlled
  * so those fills can happen, and so a refused save keeps what was typed. The server checks everything again.
  */
-export function BillingDetailsForm({ view, action, layout }: BillingDetailsFormProps): ReactElement {
-  const { formRef, statusRef, formAction, controls } = usePanelForm(action);
+export function BillingFieldset({ controls, view, layout }: BillingFieldsetProps): ReactElement {
   const { start, businessName } = view;
   const [hasGstin, setHasGstin] = useState(start.gstin !== "");
   const [gstin, setGstin] = useState(start.gstin);
@@ -104,7 +110,7 @@ export function BillingDetailsForm({ view, action, layout }: BillingDetailsFormP
   }, [hasGstin, gstinChecked]);
 
   return (
-    <form ref={formRef} action={formAction} noValidate className="max-w-xl space-y-5">
+    <div className="space-y-5">
       <div>
         <label className="flex items-start gap-3 text-sm font-medium text-ink">
           <input
@@ -242,7 +248,16 @@ export function BillingDetailsForm({ view, action, layout }: BillingDetailsFormP
           </p>
         )}
       </fieldset>
+    </div>
+  );
+}
 
+/** The billing details on their own: the fields and a Save button, for the Billing page and the onboarding page's payment step. */
+export function BillingDetailsForm({ view, action, layout }: BillingDetailsFormProps): ReactElement {
+  const { formRef, statusRef, formAction, controls } = usePanelForm(action);
+  return (
+    <form ref={formRef} action={formAction} noValidate className="max-w-xl space-y-5">
+      <BillingFieldset controls={controls} view={view} layout={layout} />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <SubmitButton size="sm" pendingLabel="Saving…" className={DARK_BUTTON_SHAPE}>
           Save billing details

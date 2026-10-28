@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { saveBillingDetailsAction } from "@/app/app-host/(protected)/billing/actions";
+import { panelFormErrorState, type PanelFormState } from "@/lib/panel-form-state";
 import { MEMBER_HOME, MEMBERSHIP_PATH, readMembershipCallbackTier, type MembershipFormState } from "@/lib/membership";
 import { offersChoice, sellsFreeListing } from "@/lib/brand";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
@@ -24,22 +26,41 @@ function revalidatePlanPages(): void {
 const UNKNOWN_PLAN_MESSAGE = "We couldn't tell which plan that was. Reload the page and try again.";
 
 /**
- * Buy Managed Website: starts its first payment. What is read from the posted form is which plan's page the
- * button was on, and which services the payment is for; both are checked here; whether this business may pay, and what for, is decided on the server
- * in startMembershipCheckoutFor. On success the owner is sent to the provider's checkout, and the payment's
- * confirmation opens the membership.
+ * Opens the first payment from a posted plan form and sends the owner to the provider's checkout. What is read from the form
+ * is which plan's page the button was on, and which services the payment is for; both are checked here; whether this
+ * business may pay, and what for, is decided on the server in startMembershipCheckoutFor. Returns only the message of a
+ * refusal: on success the owner has been redirected, and the payment's confirmation opens the membership.
  */
-export async function startMembership(_previous: MembershipFormState, formData: FormData): Promise<MembershipFormState> {
+async function openMembershipPayment(formData: FormData): Promise<string> {
   const tier = readMembershipCallbackTier(typeof formData.get("tier") === "string" ? String(formData.get("tier")) : null);
-  if (tier === null) return { status: "error", message: UNKNOWN_PLAN_MESSAGE };
-  if (!offersChoice(await requestBrand(), tier)) return { status: "error", message: UNKNOWN_PLAN_MESSAGE };
+  if (tier === null) return UNKNOWN_PLAN_MESSAGE;
+  if (!offersChoice(await requestBrand(), tier)) return UNKNOWN_PLAN_MESSAGE;
   const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
   // The services on the page are the whole subscription. Only catalogue ids survive the read; what each costs, and whether
   // they are a package, is decided on the server in startMembershipCheckoutFor.
   const services = readBundleSelection(formData.getAll("service").filter((value): value is string => typeof value === "string"));
   const outcome = await startMembershipCheckoutFor(customer, new Date(), tier, services);
-  if (outcome.kind === "refused") return { status: "error", message: outcome.problem.message };
+  if (outcome.kind === "refused") return outcome.problem.message;
   redirect(outcome.url);
+}
+
+/** Buy Managed Website for a business that gets no tax invoice (billed in dollars): Pay posts the plan and its services. */
+export async function startMembership(_previous: MembershipFormState, formData: FormData): Promise<MembershipFormState> {
+  return { status: "error", message: await openMembershipPayment(formData) };
+}
+
+/**
+ * Buy Managed Website for a business billed in rupees, whose first invoice is made out from its billing details and cannot
+ * be changed once issued. The details are part of the Pay form: when it carries them they are saved first (the same checks
+ * as the Billing page, so a refused field comes back to sit under its input), and when the details were already saved the
+ * form carries none. Either way startMembershipCheckoutFor refuses a business with no saved details, whatever was posted.
+ */
+export async function startMembershipWithBilling(previous: PanelFormState, formData: FormData): Promise<PanelFormState> {
+  if (formData.has("addressLine1")) {
+    const saved = await saveBillingDetailsAction(previous, formData);
+    if (saved.status === "error") return saved;
+  }
+  return panelFormErrorState({ message: await openMembershipPayment(formData), field: null }, formData);
 }
 
 /** The basket the page bound to the action: at most the catalogue's services, as short strings. Anything else reads as no basket. */

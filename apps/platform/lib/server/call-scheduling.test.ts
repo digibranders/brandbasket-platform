@@ -44,6 +44,36 @@ describe("the local call scheduler", () => {
   });
 });
 
+describe("booking through Cal.com", () => {
+  const CAL_URL = "https://cal.com/steve-brandbasket/30min";
+  const booking = (data: Record<string, unknown>) =>
+    vi.fn(async () => new Response(JSON.stringify({ status: "success", data: { uid: "u1", start: "2026-10-28T10:00:00.000Z", end: "2026-10-28T10:30:00.000Z", ...data } }), { status: 201 }));
+
+  beforeEach(() => {
+    vi.stubEnv("CALCOM_API_KEY", "test-key");
+    vi.stubEnv("CALENDLY_API_TOKEN", "");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("returns the meeting address Cal.com made for the booking", async () => {
+    vi.stubGlobal("fetch", booking({ meetingUrl: "https://app.cal.com/video/u1" }));
+    const booked = await bookCallSlot(CAL_URL, "2026-10-28T10:00:00.000Z", INVITEE);
+    expect(booked?.ok && booked.call.meetingUrl).toBe("https://app.cal.com/video/u1");
+  });
+
+  it("falls back to a location that is a web address, and to none for anything else", async () => {
+    vi.stubGlobal("fetch", booking({ location: "https://meet.google.com/abc-defg-hij" }));
+    const withLink = await bookCallSlot(CAL_URL, "2026-10-28T10:00:00.000Z", INVITEE);
+    expect(withLink?.ok && withLink.call.meetingUrl).toBe("https://meet.google.com/abc-defg-hij");
+    vi.stubGlobal("fetch", booking({ location: "In person at the office" }));
+    const without = await bookCallSlot(CAL_URL, "2026-10-28T10:00:00.000Z", INVITEE);
+    expect(without?.ok && without.call.meetingUrl).toBeNull();
+  });
+});
+
 describe("calcomPage", () => {
   it("reads the user and event from a cal.com link", () => {
     expect(calcomPage("https://cal.com/steve-brandbasket/30min")).toEqual({ username: "steve-brandbasket", slug: "30min" });

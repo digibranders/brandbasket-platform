@@ -4,7 +4,6 @@ import { AppShell } from "@/components/v2/app-shell";
 import type { RailSection } from "@/lib/rail";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getLiveWebsite, getProjectOverview } from "@/lib/server/onboarding";
-import { getSetupCallState } from "@/lib/server/setup-call";
 import { loadTodo } from "@/lib/server/todo";
 
 vi.mock("server-only", () => ({}));
@@ -16,21 +15,13 @@ vi.mock("@/lib/server/account-panel", () => ({ getAccountPanel: vi.fn(async () =
 vi.mock("@/lib/server/sign-out", () => ({ signOut: vi.fn() }));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("@/lib/server/onboarding", () => ({ getLiveWebsite: vi.fn(), getProjectOverview: vi.fn() }));
-vi.mock("@/lib/server/setup-call", () => ({ getSetupCallState: vi.fn() }));
 vi.mock("@/lib/server/todo", () => ({ loadTodo: vi.fn() }));
 
 const tenant = { userId: "user-1", businessId: "business-1", businessName: "Cafe", role: "owner" };
-const NOW = Date.parse("2026-10-27T10:00:00Z");
 const redirect = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/login;307;" });
 
 function grant(hasAccess: boolean): void {
   vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { name: "Asha" }, tenant, billing: { hasAccess, hasWebsite: true } } as never);
-}
-
-/** The first look is over once staff mark the call held. */
-function callHeld(held: boolean): void {
-  const booking = held ? { bookedAtIso: "", startsAtIso: null, endsAtIso: null, heldAtIso: "2026-10-26T10:00:00.000Z", summary: null } : null;
-  vi.mocked(getSetupCallState).mockResolvedValue({ url: null, booking, readAtMs: NOW });
 }
 
 async function railSections(): Promise<readonly RailSection[]> {
@@ -45,7 +36,6 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   grant(true);
-  callHeld(true);
   vi.mocked(getProjectOverview).mockResolvedValue({ project: null, completed: [] });
   vi.mocked(getLiveWebsite).mockResolvedValue(null);
   vi.mocked(loadTodo).mockResolvedValue({ services: [], items: [], open: 3, answers: { social: undefined, search: undefined } });
@@ -65,25 +55,16 @@ describe("AppShell's service links", () => {
     expect(serviceLabels(await railSections())).toEqual(["Website", "Search"]);
   });
 
-  it("adds none for the quiet rail or an account with no access", async () => {
+  it("adds none for an account with no access", async () => {
     vi.mocked(loadTodo).mockResolvedValue({ services: ["social", "search"], items: [], open: 0, answers: { social: undefined, search: undefined } });
-    callHeld(false);
-    expect(serviceLabels(await railSections())).toBeUndefined();
-    callHeld(true);
     grant(false);
     expect(serviceLabels(await railSections())).not.toContain("Social & Ads");
   });
 });
 
 describe("AppShell's To do count", () => {
-  it("shows the number of open items once the first look is over", async () => {
+  it("shows the number of open items for a paid account, before or after the kickoff call", async () => {
     expect(todoLink(await railSections())?.count).toBe(3);
-  });
-
-  it("does not read the To do for the quiet rail", async () => {
-    callHeld(false);
-    expect(todoLink(await railSections())).toBeUndefined();
-    expect(loadTodo).not.toHaveBeenCalled();
   });
 
   it("does not read the To do for an account with no access, and gives it no To do link", async () => {

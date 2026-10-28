@@ -11,7 +11,7 @@ import { sendTeamsAlert } from "./teams-alerts";
 export async function announceCustomerEvent(
   db: Database,
   secret: string,
-  event: Pick<CustomerCardInput, "event" | "facts" | "text"> & { readonly businessId: string },
+  event: Pick<CustomerCardInput, "event" | "facts" | "text" | "buttons"> & { readonly businessId: string },
   consoleOrigin: string,
 ): Promise<void> {
   try {
@@ -24,6 +24,7 @@ export async function announceCustomerEvent(
       business: { name: business.name, websiteUrl: business.websiteUrl },
       facts: event.facts,
       text: event.text,
+      ...(event.buttons === undefined ? {} : { buttons: event.buttons }),
       consoleUrl: new URL(`/clients/${business.id}`, consoleOrigin).toString(),
     });
     await sendTeamsAlert(db, secret, "customers", card);

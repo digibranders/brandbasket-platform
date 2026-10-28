@@ -11,23 +11,21 @@ import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 
 interface BillingDetailsProps {
   readonly view: BillingDetailsView;
-  /**
-   * "card" on Billing; "checkout" above a pay button, where the optional form starts folded away; "ledger" is "checkout"
-   * without its own heading, for a page that already titles it (the plan page's disclosure).
-   */
-  readonly variant: "card" | "checkout" | "ledger";
+  /** "card" on Billing; "checkout" above a pay button, where the form starts open because payment waits for details. */
+  readonly variant: "card" | "checkout";
 }
 
 /**
  * The billing details for GST invoices: what is saved, and the form to add or change them. Open on the form until
  * details are saved; after a save the form closes, the facts show what was saved, and one line says what the save
- * changes. Edit opens the form again. On a checkout page the form is not in the way of paying: details are optional.
+ * changes. Edit opens the form again. On a checkout page the form starts open and payment waits for saved details: the
+ * first tax invoice is made out from them and cannot be changed once issued.
  */
 export function BillingDetails({ view, variant }: BillingDetailsProps): ReactElement {
   const { saved } = view;
   const inCheckout = variant !== "card";
-  // The form starts folded away: on a checkout page so the way to pay is not buried under it, on Billing so the payments are not pushed down the page.
-  const [editing, setEditing] = useState(false);
+  // The form starts open on a checkout page, where payment waits for it, and folded away on Billing so the payments are not pushed down the page.
+  const [editing, setEditing] = useState(saved === null && inCheckout);
   const [justSaved, setJustSaved] = useState(false);
   const statusRef = useRef<HTMLParagraphElement>(null);
   // Saving closes the form, which removes the Save button that had focus. Focus goes to the line that says it saved,
@@ -59,14 +57,12 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
       </p>
     );
 
-  const foldedAway = saved === null && inCheckout && !editing;
-
   const intro =
-    saved === null && !foldedAway ? (
+    saved === null ? (
       <p className={`max-w-2xl text-sm leading-relaxed text-ink-2 ${inCheckout ? "mt-3" : ""}`}>
         {!inCheckout
           ? "Add your billing address, and your GSTIN if you have one, to get GST invoices in the right name. They apply to invoices issued after you save them."
-          : "Optional. Add your billing address, and your GSTIN if you have one, for your GST invoice. You can pay without it."}
+          : "Add your billing address, and your GSTIN if you have one. Your GST invoice is made out from them and cannot be changed once it is issued."}
       </p>
     ) : null;
 
@@ -85,18 +81,6 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
       {saved === null && !inCheckout ? (
         <button type="button" className={`${SOFT_BUTTON} mt-4`} aria-expanded={editing} aria-controls="billing-details-form" onClick={() => setEditing(!editing)}>
           {editing ? "Close" : "Add billing details"}
-        </button>
-      ) : null}
-      {saved === null && inCheckout ? (
-        // The same control opens and folds the form: pressing it again puts the form away.
-        <button
-          type="button"
-          aria-expanded={editing}
-          aria-controls="billing-details-form"
-          onClick={() => setEditing(!editing)}
-          className="mt-1 text-sm text-ink-2 underline decoration-line underline-offset-4 transition-colors duration-300 ease-calm hover:text-ink"
-        >
-          {editing ? "Hide GST billing details" : "Add your GST billing details (optional)"}
         </button>
       ) : null}
       {saved === null ? null : (
@@ -128,7 +112,7 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
       </PageSection>
     );
   }
-  return variant === "ledger" ? <>{body}</> : <CheckoutSection>{body}</CheckoutSection>;
+  return <CheckoutSection>{body}</CheckoutSection>;
 }
 
 /** The checkout page's block: a quiet heading and a hairline above, so it reads as part of paying, not a second form page. */

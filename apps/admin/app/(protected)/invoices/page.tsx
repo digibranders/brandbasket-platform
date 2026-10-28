@@ -2,7 +2,7 @@ import { listMissingTaxInvoices, listTaxInvoicesIssuedBetween } from "@brandbask
 import { monthRange, registerInvoiceOf, registerTotals } from "@brandbasket/shared/lib/billing/invoice-register";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
-import { ChevronRightIcon, DownloadIcon } from "@brandbasket/shared/ui/icons";
+import { DownloadIcon } from "@brandbasket/shared/ui/icons";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -64,23 +64,30 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps):
         title="Invoices"
         meta={`${label}, by the day each invoice was issued`}
         action={
-          <a href={links.exportHref} className={buttonPrimary}>
-            <DownloadIcon className="size-4" />
-            Download CSV
-          </a>
+          <>
+            {links.previous === null ? null : (
+              <Link href={links.previous.href} className={buttonSecondary}>
+                <span aria-hidden="true">‹ </span>
+                <span className="sr-only">Previous month: </span>
+                {links.previous.label}
+              </Link>
+            )}
+            {links.next === null ? null : (
+              <Link href={links.next.href} className={buttonSecondary}>
+                <span className="sr-only">Next month: </span>
+                {links.next.label}
+                <span aria-hidden="true"> ›</span>
+              </Link>
+            )}
+            <a href={links.exportHref} className={buttonPrimary}>
+              <DownloadIcon className="size-4" />
+              Download CSV
+            </a>
+          </>
         }
       />
 
-      <nav aria-label="Month" className="mt-8 flex flex-wrap items-end gap-x-6 gap-y-4">
-        {links.previous === null ? null : (
-          <Link href={links.previous.href} className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink underline underline-offset-4">
-            <ChevronRightIcon className="size-4 rotate-180" />
-            <span>
-              <span className="sr-only">Previous month: </span>
-              {links.previous.label}
-            </span>
-          </Link>
-        )}
+      <nav aria-label="Month" className="mt-8">
         <form action="/invoices" method="get" className="flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="register-month" className={labelClasses}>
@@ -99,15 +106,6 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps):
           </div>
           <GatedSubmitButton className={buttonSecondary}>Show month</GatedSubmitButton>
         </form>
-        {links.next === null ? null : (
-          <Link href={links.next.href} className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink underline underline-offset-4">
-            <span>
-              <span className="sr-only">Next month: </span>
-              {links.next.label}
-            </span>
-            <ChevronRightIcon className="size-4" />
-          </Link>
-        )}
       </nav>
 
       {missingRows.length === 0 ? null : (

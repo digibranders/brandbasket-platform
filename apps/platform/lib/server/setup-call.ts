@@ -5,6 +5,7 @@ import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { readInviteeUri } from "@brandbasket/shared/lib/setup-call-link";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { getAppDb } from "./db";
+import { announceCallBooked } from "./call-alert";
 import { bookCallSlot, cancelCallBooking, listCallSlots, readSlotStart, readTimeZone } from "./call-scheduling";
 import { getSetupCallUrl } from "./setup-call-link";
 
@@ -124,6 +125,14 @@ export async function bookSetupCall(
         console.error("[setup-call] could not cancel the earlier booking", errorLogInfo(error));
       });
     }
+    void announceCallBooked({
+      tenant,
+      kind: "kickoff",
+      startsAt: result.call.startsAt,
+      endsAt: result.call.endsAt,
+      replaced: previousAhead && previous.startsAt != null ? { startsAt: previous.startsAt, endsAt: previous.endsAt ?? previous.startsAt } : null,
+      meetingUrl: result.call.meetingUrl,
+    });
     return { ok: true, startsAtIso: result.call.startsAt.toISOString(), endsAtIso: result.call.endsAt.toISOString() };
   } catch (error) {
     console.error("[setup-call] could not book the call", errorLogInfo(error));

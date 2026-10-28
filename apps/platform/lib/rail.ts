@@ -27,8 +27,6 @@ export interface RailSection {
 }
 
 export interface RailInput {
-  /** Until the kickoff call has happened (lib/first-look.ts inFirstLook): only what a new customer can use. */
-  readonly quiet: boolean;
   /** Whether the plan is paid and running (billing.hasAccess). To do is for paid accounts only. */
   readonly hasAccess: boolean;
   /** False for a paid plan without the Managed Website service. */
@@ -59,8 +57,8 @@ const SETTINGS: RailLink = { href: "/settings", label: "Settings", icon: "settin
 export const ASK_FOR_A_CHANGE: RailTarget = { href: ASK_FOR_A_CHANGE_PATH, label: "Ask for a change" };
 
 /**
- * Requests, with the number of things waiting on the customer beside it. Calls sits under it (plan 28 section 7) once the
- * kickoff call has happened: the first look has one call only, and it is booked from Overview.
+ * Requests, with the number of things waiting on the customer beside it. Calls sits under it (plan 28 section 7) for a paid
+ * account: the kickoff call is booked from Overview, and every later call is booked and read here.
  */
 function requestsLink(count: number | undefined, withCalls: boolean): RailLink {
   return {
@@ -87,13 +85,7 @@ function websiteLink(): RailLink {
 }
 
 export function railSections(input: RailInput): readonly RailSection[] {
-  const requests = requestsLink(input.requestsCount, input.hasAccess && !input.quiet);
-  if (input.quiet) {
-    return [
-      { label: null, links: [OVERVIEW, requests] },
-      { label: "Account", links: [BILLING, SETTINGS] },
-    ];
-  }
+  const requests = requestsLink(input.requestsCount, input.hasAccess);
   const services = [...(input.hasWebsite ? [websiteLink()] : []), ...(input.hasSocial === true ? [SOCIAL] : []), ...(input.hasSearch === true ? [SEARCH] : [])];
   const todo: RailLink = { href: TODO_HREF, label: "To do", icon: "todo", ...(input.todoCount > 0 ? { count: input.todoCount } : {}) };
   return [

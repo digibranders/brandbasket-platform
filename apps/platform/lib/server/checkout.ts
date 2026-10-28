@@ -33,6 +33,7 @@ import { MEMBER_HOME } from "@/lib/membership";
 import { checklistInputFrom } from "@/lib/onboarding/snapshot";
 import { businessDetails } from "@brandbasket/shared/lib/site-config";
 import { getBillingProvider } from "./billing";
+import { billingDetailsMissing } from "./billing-details";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
@@ -76,6 +77,7 @@ const CHANGED_MEANWHILE = "Something changed while we were setting up your payme
 const ALREADY_A_MEMBER = "You’ve already paid for Managed Website. Open your dashboard to carry on.";
 const PAYMENT_UNAVAILABLE = "We couldn’t open your payment just now. Please try again in a minute.";
 const NO_SERVICES = "Choose at least one service to continue.";
+const BILLING_DETAILS_NEEDED = "Add your billing details to pay. Your GST invoice is made out from them and cannot be changed once it is issued.";
 
 /** What was decided under the lock, carried past its commit. */
 interface PlannedCheckout {
@@ -258,6 +260,8 @@ export async function startCheckoutFor(customer: GrantedCustomer, now: Date): Pr
   const limit = await consumeRateLimit(appDb, `checkout:business:${tenant.businessId}`, CHECKOUT_RATE_LIMIT);
   if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
 
+  if (await billingDetailsMissing(customer)) return refused(BILLING_DETAILS_NEEDED);
+
   const snapshot = await withTenantScope(appDb, tenant, readOnboardingSnapshot);
   if (snapshot.project === null) return refused(NOTHING_TO_PAY_FOR);
   if (!snapshot.locked) {
@@ -297,6 +301,7 @@ export async function startMembershipCheckoutFor(
 
   const entry = await withTenantScope(appDb, tenant, (tx) => findBusinessEntry(tx, tenant.businessId));
   if (entry?.kind !== "listing") return refused(ALREADY_A_MEMBER);
+  if (await billingDetailsMissing(customer)) return refused(BILLING_DETAILS_NEEDED);
 
   return openPlanCheckout(customer, now, MEMBER_HOME, tier, readBundleSelection(services));
 }

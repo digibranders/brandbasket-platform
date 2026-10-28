@@ -39,6 +39,8 @@ export interface BookedCall {
   readonly endsAt: Date;
   /** The service's link for this booking, or null when the service has none. */
   readonly inviteeUri: string | null;
+  /** The video meeting's address, when the service reports one at booking time (Cal.com does); null otherwise. */
+  readonly meetingUrl: string | null;
 }
 
 export type BookResult = { readonly ok: true; readonly call: BookedCall } | { readonly ok: false; readonly reason: "taken" | "failed" };
@@ -154,7 +156,7 @@ function calendlyScheduler(token: string, bookingUrl: string): CallScheduler {
           tracking: { utm_source: "dashboard", utm_content: invitee.businessId },
         });
         const startsAt = new Date(startIso);
-        return { ok: true, call: { startsAt, endsAt: new Date(startsAt.getTime() + type.duration * 60_000), inviteeUri: booked.resource.uri } };
+        return { ok: true, call: { startsAt, endsAt: new Date(startsAt.getTime() + type.duration * 60_000), inviteeUri: booked.resource.uri, meetingUrl: null } };
       } catch (error) {
         // Calendly answers a time that was taken a moment ago with a conflict.
         if (!(error instanceof CalendlyError && error.status === 409)) console.error("[call-scheduling] Calendly did not book the call", error instanceof CalendlyError ? error.status : error);
@@ -174,7 +176,14 @@ const CALCOM_SLOTS_VERSION = "2024-09-04";
 const CALCOM_BOOKINGS_VERSION = "2026-02-25";
 
 const calcomSlotsSchema = z.object({ data: z.record(z.string(), z.array(z.object({ start: z.string() }))) });
-const calcomBookingSchema = z.object({ data: z.object({ uid: z.string(), start: z.string(), end: z.string() }) });
+const calcomBookingSchema = z.object({
+  data: z.object({ uid: z.string(), start: z.string(), end: z.string(), meetingUrl: z.string().nullish(), location: z.string().nullish() }),
+});
+
+/** The https address of the meeting a Cal.com booking made, from its own field or its location; null when it has none. */
+function calcomMeetingUrl(data: { readonly meetingUrl?: string | null | undefined; readonly location?: string | null | undefined }): string | null {
+  return [data.meetingUrl, data.location].find((value): value is string => typeof value === "string" && value.startsWith("https://")) ?? null;
+}
 /** The form a Cal.com booking is stored in; only a booking this server made has it, so only that is ever cancelled. */
 const CALCOM_BOOKING_URI = /^https:\/\/api\.cal\.com\/v2\/bookings\/([A-Za-z0-9_-]{1,64})$/;
 
@@ -250,7 +259,7 @@ function calcomScheduler(key: string, page: { readonly username: string; readonl
         });
         return {
           ok: true,
-          call: { startsAt: new Date(booked.data.start), endsAt: new Date(booked.data.end), inviteeUri: calcomBookingUri(booked.data.uid) },
+          call: { startsAt: new Date(booked.data.start), endsAt: new Date(booked.data.end), inviteeUri: calcomBookingUri(booked.data.uid), meetingUrl: calcomMeetingUrl(booked.data) },
         };
       } catch (error) {
         if (!isTakenAnswer(error)) console.error("[call-scheduling] Cal.com did not book the call", error instanceof CalcomError ? `${String(error.status)} ${error.detail}` : error);
@@ -290,7 +299,7 @@ const fakeScheduler: CallScheduler = {
     if (!fakeSlots(now, new Date(now.getTime() + BOOKING_WINDOW_DAYS * DAY_MS)).includes(startsAt.toISOString())) {
       return Promise.resolve({ ok: false, reason: "taken" });
     }
-    return Promise.resolve({ ok: true, call: { startsAt, endsAt: new Date(startsAt.getTime() + FAKE_DURATION_MS), inviteeUri: null } });
+    return Promise.resolve({ ok: true, call: { startsAt, endsAt: new Date(startsAt.getTime() + FAKE_DURATION_MS), inviteeUri: null, meetingUrl: null } });
   },
 };
 

@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import { logoOf } from "@/lib/brand";
-import { firstLookInput, inFirstLook, type ServiceKey } from "@/lib/first-look";
+import type { ServiceKey } from "@/lib/first-look";
 import { railSections } from "@/lib/rail";
 import { getAccountPanel } from "@/lib/server/account-panel";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
@@ -10,7 +10,6 @@ import { ASK_FOR_A_CHANGE_PATH } from "@/lib/requests/links";
 import { requestBrand } from "@/lib/server/request-brand";
 import { loadRequestNeeds } from "@/lib/server/requests";
 import { quietly } from "@/lib/server/quietly";
-import { getSetupCallState } from "@/lib/server/setup-call";
 import { signOut } from "@/lib/server/sign-out";
 import { loadTodo } from "@/lib/server/todo";
 import { PhoneBars } from "./phone-bars";
@@ -28,20 +27,13 @@ const NO_TODO: { readonly open: number; readonly services: readonly ServiceKey[]
 export async function AppShell({ userName, userEmail, children }: AppShellProps): Promise<ReactElement> {
   // A free listing account is let in too: Settings, Billing and the privacy pages are still its own, and a refusal here would send it to a page that no longer exists.
   const { tenant, billing } = await requireCustomerAccess({ listingAccount: "allow" });
-  const [brand, panel, overview, liveWebsite, callState] = await Promise.all([
-    requestBrand(),
-    getAccountPanel(),
-    getProjectOverview(),
-    getLiveWebsite(),
-    getSetupCallState(tenant),
-  ]);
+  const [brand, panel, overview, liveWebsite] = await Promise.all([requestBrand(), getAccountPanel(), getProjectOverview(), getLiveWebsite()]);
   const setupSent = overview.project?.onboardingSubmittedAt != null;
   const websiteSent = liveWebsite !== null || setupSent;
-  const quiet = inFirstLook(firstLookInput({ hasAccess: billing.hasAccess, liveWebsite, project: overview.project, callState }));
-  // To do is for paid accounts past the first look. The count is a convenience: a failed read shows no number rather than
+  // To do is for paid accounts. The count is a convenience: a failed read shows no number rather than
   // taking the shell down. The same cached read says which services were bought, for the rail's Services section.
   const todo =
-    quiet || !billing.hasAccess
+    !billing.hasAccess
       ? NO_TODO
       : await quietly("app-shell", "the To do count", NO_TODO, async () => {
           const { open, services } = await loadTodo(tenant);
@@ -50,7 +42,6 @@ export async function AppShell({ userName, userEmail, children }: AppShellProps)
   // Quotes to answer and changes to check. The loader shows none rather than failing, so the shell always draws.
   const requestsCount = (await loadRequestNeeds(tenant)).length;
   const sections = railSections({
-    quiet,
     hasAccess: billing.hasAccess,
     // An unpaid client still sets up and pays on Check and send: only a paid plan without a website loses the section.
     hasWebsite: !billing.hasAccess || billing.hasWebsite,
