@@ -23,6 +23,8 @@ interface SetupFormProps {
   readonly initialName?: string;
   /** Off for someone choosing a new password for an account that exists: nothing about their name is asked. */
   readonly askName?: boolean;
+  /** The address already has an account: ask for its password to link it, instead of making a new one. */
+  readonly linkExisting?: boolean;
   readonly submitLabel?: string;
   readonly pendingLabel?: string;
 }
@@ -41,6 +43,7 @@ export function SetupForm({
   turnstileAction,
   initialName = "",
   askName = true,
+  linkExisting = false,
   submitLabel = "Create my account",
   pendingLabel = "Creating your account…",
 }: SetupFormProps): ReactElement {
@@ -48,7 +51,7 @@ export function SetupForm({
   const legalLinks = legalLinksFor(brand);
   const [state, formAction, isPending] = useActionState(action, initialSetupFormState);
   const formRef = useRef<HTMLFormElement>(null);
-  const existing = state.status === "error" && state.mode === "verify-existing";
+  const existing = linkExisting || (state.status === "error" && state.mode === "verify-existing");
   useEffect(() => {
     if (isPending || state.status !== "error") return;
     const field = formRef.current?.elements.namedItem(state.field ?? "password");

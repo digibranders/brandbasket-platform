@@ -15,7 +15,7 @@ export function affiliateLinkEmail(input: AffiliateLinkInput): EmailMessage {
   const setupUrl = assertWebUrl(input.setupUrl, "setupUrl");
   const subject = `Set up your ${brand} affiliate account`;
   const greeting = `Hi ${input.name},`;
-  const intro = `You are now an affiliate with ${brand}. Choose a password to open your dashboard, where you see your codes and what you earn.`;
+  const intro = `You are now an affiliate with ${brand}. Open the link to set up your dashboard, where you see your codes and what you earn. If this email already has a ${brand} account, the link adds your affiliate dashboard to it.`;
   const validity = `This link works once and expires in ${input.expiresInDays} days.`;
   const ignore = "If you didn't expect this email, you can ignore it.";
 
@@ -28,7 +28,7 @@ export function affiliateLinkEmail(input: AffiliateLinkInput): EmailMessage {
       title: subject,
       kicker: "Affiliate account",
       heading: subject,
-      body: [receiptParagraph(greeting), receiptParagraph(intro), receiptButton(setupUrl, "Set your password"), receiptParagraph(validity)],
+      body: [receiptParagraph(greeting), receiptParagraph(intro), receiptButton(setupUrl, "Set up your dashboard"), receiptParagraph(validity)],
       footer: [ignore],
     }),
     outboxCopy: withheldLinkCopy(subject, [greeting, intro, validity, ignore]),

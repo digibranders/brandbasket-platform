@@ -27,11 +27,19 @@ describe("customerEventTeamsCard", () => {
     expect(card).not.toContain("Website");
   });
 
-  it("titles a booked kickoff and puts the meeting link after the button that opens the client", () => {
-    const card = customerEventTeamsCard({ ...BASE, event: "kickoff_booked", buttons: [{ label: "Join the call", url: "https://app.cal.com/video/abc" }] });
+  it("titles a booked kickoff and puts a Call now button for the customer's mobile after the button that opens the client", () => {
+    const card = customerEventTeamsCard({ ...BASE, event: "kickoff_booked" });
     expect(JSON.stringify(card)).toContain("Kickoff call booked: Rao Clinic");
     const actions = (card.attachments[0].content.actions ?? []) as { title: string; url: string }[];
-    expect(actions.map((action) => action.title)).toEqual(["Open the client", "Join the call"]);
-    expect(actions[1]?.url).toBe("https://app.cal.com/video/abc");
+    expect(actions.map((action) => action.title)).toEqual(["Open the client", "Call now"]);
+    expect(actions[1]?.url).toBe("tel:+919820011111");
+  });
+
+  it("gives every call event the Call now button, and leaves it off the rest and off a customer with no mobile", () => {
+    const titles = (event: Parameters<typeof customerEventTeamsCard>[0]["event"], phone: string | null) =>
+      ((customerEventTeamsCard({ ...BASE, customer: { ...BASE.customer, phone }, event }).attachments[0].content.actions ?? []) as { title: string }[]).map((action) => action.title);
+    for (const event of ["kickoff_changed", "call_booked", "call_changed"] as const) expect(titles(event, BASE.customer.phone)).toContain("Call now");
+    expect(titles("setup_sent", BASE.customer.phone)).toEqual(["Open the client"]);
+    expect(titles("call_booked", null)).toEqual(["Open the client"]);
   });
 });
