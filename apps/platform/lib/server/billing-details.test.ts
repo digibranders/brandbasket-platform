@@ -1,6 +1,6 @@
 import { findBillingProfile, findBusinessCurrency, getBusinessProfile } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadBillingDetailsView } from "./billing-details";
+import { billingDetailsMissing, loadBillingDetailsView } from "./billing-details";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: () => ({ name: "app-db" }) }));
@@ -53,5 +53,21 @@ describe("loadBillingDetailsView", () => {
 
   it("gives nothing to a client on a dollar plan", async () => {
     expect(await loadBillingDetailsView(customer("USD"))).toBeNull();
+  });
+});
+
+describe("billingDetailsMissing", () => {
+  it("is true for a business billed in rupees with nothing saved", async () => {
+    expect(await billingDetailsMissing(customer("INR"))).toBe(true);
+  });
+
+  it("is false once details are saved", async () => {
+    vi.mocked(findBillingProfile).mockResolvedValue({ legalName: "Riverside" } as never);
+    expect(await billingDetailsMissing(customer("INR"))).toBe(false);
+  });
+
+  it("is false for a business billed in dollars, which gets no tax invoice, without reading any details", async () => {
+    expect(await billingDetailsMissing(customer("USD"))).toBe(false);
+    expect(findBillingProfile).not.toHaveBeenCalled();
   });
 });

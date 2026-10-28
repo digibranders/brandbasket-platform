@@ -5,8 +5,9 @@ import { useActionState, useEffect, useMemo, useRef, useState, type ReactElement
 import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
 import { formatMoney } from "@brandbasket/shared/lib/money";
-import { applyMembershipCode, removeMembershipCode, startMembership } from "@/app/app-host/(protected)/plan/actions";
-import { BillingDetails } from "@/components/panel/billing/billing-details";
+import { applyMembershipCode, removeMembershipCode, startMembership, startMembershipWithBilling } from "@/app/app-host/(protected)/plan/actions";
+import { CheckoutBilling } from "@/components/panel/membership/checkout-billing";
+import { usePanelForm } from "@/components/panel/form/panel-form";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { STACK } from "@/components/v2/classes";
 import { PageHeader } from "@/components/v2/page";
@@ -72,14 +73,25 @@ export function CheckoutLedger({
   const onlyOne = services.length === 1;
   const monthlyOf = (id: MonthlyAddOnId): string => money(bundleLines([id], pricing.currency)[0]?.listCents ?? 0);
 
-  const [payState, payAction, isPending] = useActionState(startMembership, initialMembershipFormState);
-  const opening = useOpeningPayment(isPending, payState);
-  const payError = payState.status === "error" && !isPending ? payState.message : null;
-  const errorRef = useRef<HTMLParagraphElement>(null);
+  // A business billed in rupees pays through the form that also takes its billing details; one billed in dollars gets no tax invoice.
+  const billed = billingDetails !== null;
+  const [usdState, usdAction, usdPending] = useActionState(startMembership, initialMembershipFormState);
+  const { formRef: gstFormRef, statusRef: gstStatusRef, formAction: gstFormAction, controls: gstControls } = usePanelForm(startMembershipWithBilling);
+  const opening = useOpeningPayment(billed ? gstControls.isPending : usdPending, billed ? gstControls.state : usdState);
+  // A problem with a billing field is shown under that field; anything else about paying is shown above the button.
+  const payError = billed
+    ? gstControls.invalidField === null
+      ? gstControls.errorMessage
+      : null
+    : usdState.status === "error" && !usdPending
+      ? usdState.message
+      : null;
+  const ownErrorRef = useRef<HTMLParagraphElement>(null);
+  const errorRef = billed ? gstStatusRef : ownErrorRef;
   // On a phone the Pay button is in the bottom bar and the message is up in the card: bring it into view.
   useEffect(() => {
     if (payError !== null) errorRef.current?.scrollIntoView?.({ block: "nearest" });
-  }, [payError]);
+  }, [payError, errorRef]);
 
   function toggle(id: MonthlyAddOnId): void {
     const next = servicesAfterToggle(services, id);
@@ -91,6 +103,30 @@ export function CheckoutLedger({
   const payLabel = opening ? "Opening payment…" : `Pay ${total}`;
   const payClasses =
     "rounded-[0.625rem] bg-ink font-display font-semibold text-white transition-colors duration-200 hover:bg-ink-raised active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none";
+
+  const payFields = (
+    <>
+      <input type="hidden" name="tier" value={tier} />
+      {services.map((service) => (
+        <input key={service} type="hidden" name="service" value={service} />
+      ))}
+      {billed ? <CheckoutBilling view={billingDetails} controls={gstControls} /> : null}
+      <button
+        type="submit"
+        disabled={opening}
+        aria-busy={opening}
+        aria-describedby={payError === null ? undefined : "membership-error"}
+        className={`mt-4 w-full p-4 text-base max-[860px]:hidden ${payClasses}`}
+      >
+        {payLabel}
+      </button>
+      {payError === null ? null : (
+        <p ref={errorRef} id="membership-error" role="alert" tabIndex={-1} className="mt-4 rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep outline-none">
+          {payError}
+        </p>
+      )}
+    </>
+  );
 
   return (
     <div className={cn(STACK, "max-[860px]:pb-24")}>
@@ -176,26 +212,15 @@ export function CheckoutLedger({
             {summary.adCredit === null ? null : <p className="mt-1 text-right text-[0.8125rem] font-semibold text-sage-deep">{summary.adCredit.label}</p>}
           </div>
 
-          <form id="checkout-pay" action={payAction}>
-            <input type="hidden" name="tier" value={tier} />
-            {services.map((service) => (
-              <input key={service} type="hidden" name="service" value={service} />
-            ))}
-            <button
-              type="submit"
-              disabled={opening}
-              aria-busy={opening}
-              aria-describedby={payError === null ? undefined : "membership-error"}
-              className={`mt-4 w-full p-4 text-base max-[860px]:hidden ${payClasses}`}
-            >
-              {payLabel}
-            </button>
-            {payError === null ? null : (
-              <p ref={errorRef} id="membership-error" role="alert" className="mt-4 rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
-                {payError}
-              </p>
-            )}
-          </form>
+          {billed ? (
+            <form id="checkout-pay" ref={gstFormRef} action={gstFormAction} noValidate>
+              {payFields}
+            </form>
+          ) : (
+            <form id="checkout-pay" action={usdAction}>
+              {payFields}
+            </form>
+          )}
           <p className="mt-3 text-[0.8125rem] text-ink-2">{renewalTerms(summary, { ...pricing, initialTermMonths }, code?.months ?? null)}</p>
 
           <div className="mt-3.5 flex flex-wrap gap-x-[22px] gap-y-1.5 border-t border-line pt-3.5">
@@ -214,14 +239,6 @@ export function CheckoutLedger({
                 />
               </div>
             </details>
-            {billingDetails === null ? null : (
-              <details className="min-w-0 open:basis-full" open={billingDetails.saved !== null}>
-                <summary className={DETAILS_SUMMARY}>Billing details for your GST invoice</summary>
-                <div className="mt-2.5">
-                  <BillingDetails view={billingDetails} variant="ledger" />
-                </div>
-              </details>
-            )}
           </div>
         </section>
 
