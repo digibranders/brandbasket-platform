@@ -1,5 +1,6 @@
 import { canMoveProject, findOpenProjectForStaff, listAssignableSupportStaff } from "@brandbasket/db";
 import type { ReactElement } from "react";
+import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { buttonDanger, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
@@ -43,16 +44,12 @@ export async function ProjectControls({ businessId, notice }: ProjectControlsPro
           <p className="text-sm text-ink-2">The client sees: {project.onHoldReason}</p>
         ) : null}
 
-        <div className="flex flex-wrap gap-2">
-          {canMoveProject("grant-round", project.status) ? (
-            <form action={grantRoundAction}>
-              {ids}
-              <button type="submit" className={buttonSecondary}>
-                Add a round of changes
-              </button>
-            </form>
-          ) : null}
-        </div>
+        {canMoveProject("grant-round", project.status) ? (
+          <form action={grantRoundAction}>
+            {ids}
+            <GatedSubmitButton className={buttonSecondary}>Add a round of changes</GatedSubmitButton>
+          </form>
+        ) : null}
 
         {canMoveProject("grant-round", project.status) ? (
           <p className="text-sm text-ink-2">

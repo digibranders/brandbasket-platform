@@ -112,7 +112,8 @@ export interface StaffProjectRow {
 
 /**
  * Every open build, and every build that went live on or after monthStart, with its business, builder and kickoff
- * call. Earliest promise first; builds with no promise date (not sent yet, or past the first preview) come last.
+ * call. Ordered by the first-preview promise date (sla_due_at, set once and never cleared), so a build past its first
+ * preview keeps its original place; builds with no promise date come last.
  */
 export async function listOpenProjectsForStaff(db: Database, monthStart: Date): Promise<StaffProjectRow[]> {
   return db
@@ -202,7 +203,13 @@ export async function listSetupCallsForStaff(db: Database, from: Date, until: Da
     })
     .from(setupCallBookings)
     .innerJoin(businesses, eq(businesses.id, setupCallBookings.businessId))
-    .where(or(isNull(setupCallBookings.startsAt), and(gte(setupCallBookings.startsAt, from), lt(setupCallBookings.startsAt, until))))
+    // A call staff marked held by phone has no time and already happened, so it is not "booked, time not reported".
+    .where(
+      or(
+        and(isNull(setupCallBookings.startsAt), isNull(setupCallBookings.heldAt)),
+        and(gte(setupCallBookings.startsAt, from), lt(setupCallBookings.startsAt, until)),
+      ),
+    )
     .orderBy(asc(setupCallBookings.startsAt), asc(businesses.name));
 }
 

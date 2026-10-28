@@ -20,17 +20,20 @@ The app at console.brandbasket.in where Brandbasket staff run clients, billing, 
 
 | Path | Holds |
 |---|---|
-| `app/(protected)/` | Console sections: home, clients, leads, invoices, pricing, coupons, referrals, affiliates, ads, deals, support and `support/errors`, outbox, privacy requests, breaches, access log, leaving, geography, directory, settings |
+| `app/(protected)/page.tsx` | Today: the queue of everything that needs a person |
+| `app/(protected)/` | Sections: leads (Enquiries), clients (one route per tab under `[businessId]/`), projects, calls, support (Requests) and `support/errors`, payments, invoices, pricing, coupons, affiliates, ad-credit, deliveries, staff, settings, access-log, privacy-requests, breaches, outbox, search. Dormant and switched off: directory, geography, ads, deals |
 | `app/login/` | Staff sign-in |
 | `app/(protected)/**/actions.ts` | Server actions, beside the page that uses them |
-| `lib/server/` | Console server logic, auth, session, staff access, access log |
-| `lib/*.ts` | Form state, notices and view helpers, most with a `.test.ts` beside them |
-| `components/console/` | Console building blocks |
-| `app/console.css` | Console-only surfaces (glass, Journey motion) |
+| `lib/console-rail.ts` | The rail's sections, items, roles and current-link rule |
+| `lib/server/` | Console server logic: auth, session, staff access, access log, activity (`activity.ts`), rail counts |
+| `lib/*.ts` | Form state, rules and view helpers, most with a `.test.ts` beside them |
+| `components/console/` | Building blocks: buttons, page header, section, figures, filter pills, tables, status pill, notice |
+| `components/console/` (shell) | `console-shell.tsx`, `rail.tsx`, `rail-nav.tsx`, `rail-icon.tsx`, `phone-bar.tsx`, `global-search.tsx` |
+| `app/console.css` | The gold token remap and the reduced-motion rule |
 
 ## UI
 
-Tokens come from `packages/shared/src/styles/theme.css`. Follow `DESIGN.md`, including its "Money" and "Not allowed" sections.
+Tokens come from `packages/shared/src/styles/theme.css` (the `[data-app="console"]` block). Follow `DESIGN.md`, including its "Surfaces", "Money" and "Not allowed" sections. Class strings both apps share live in `packages/shared/src/ui/v2/`.
 
 ## Commands (from this folder)
 
