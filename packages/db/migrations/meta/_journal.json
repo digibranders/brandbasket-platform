@@ -1394,6 +1394,20 @@
       "when": 1793184522440,
       "tag": "0201_website_hosting",
       "breakpoints": true
+    },
+    {
+      "idx": 199,
+      "version": "7",
+      "when": 1793188048126,
+      "tag": "0202_reports_data_layer",
+      "breakpoints": true
+    },
+    {
+      "idx": 200,
+      "version": "7",
+      "when": 1793188065578,
+      "tag": "0203_site_analytics",
+      "breakpoints": true
     }
   ]
 }

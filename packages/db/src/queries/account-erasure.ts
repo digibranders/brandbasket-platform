@@ -40,6 +40,8 @@ import {
   leads,
   listingContent,
   mediaAssets,
+  metricBreakdowns,
+  metricDaily,
   monthlyReports,
   monthlySnapshots,
   onboardingProgress,
@@ -50,6 +52,9 @@ import {
   projectBriefs,
   projectPreviewImages,
   projects,
+  reportDocuments,
+  reportSourceRuns,
+  reportSources,
   serviceSetup,
   setupCallBookings,
   teamCalls,
@@ -57,6 +62,8 @@ import {
   sessions,
   setupInvites,
   siteEvents,
+  siteHits,
+  siteKeys,
   staffMembers,
   subscriptions,
   userPrivacySettings,
@@ -327,6 +334,15 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(deliverables).where(eq(deliverables.businessId, businessId));
     await tx.delete(monthlyReports).where(eq(monthlyReports.businessId, businessId));
     await tx.delete(siteEvents).where(eq(siteEvents.businessId, businessId));
+    // The monthly reports: the pulled numbers, the connected properties and the reports themselves, sent ones too.
+    await tx.delete(reportDocuments).where(eq(reportDocuments.businessId, businessId));
+    await tx.delete(metricDaily).where(eq(metricDaily.businessId, businessId));
+    await tx.delete(metricBreakdowns).where(eq(metricBreakdowns.businessId, businessId));
+    await tx.delete(reportSourceRuns).where(eq(reportSourceRuns.businessId, businessId));
+    await tx.delete(reportSources).where(eq(reportSources.businessId, businessId));
+    // The first-party site analytics: the hits visitors left on the website, and its public tracking key.
+    await tx.delete(siteHits).where(eq(siteHits.businessId, businessId));
+    await tx.delete(siteKeys).where(eq(siteKeys.businessId, businessId));
     // Which hosting project their website ran on. The project itself is the team's to remove on Vercel.
     await tx.delete(websiteHosting).where(eq(websiteHosting.businessId, businessId));
     await tx.delete(domains).where(eq(domains.businessId, businessId));

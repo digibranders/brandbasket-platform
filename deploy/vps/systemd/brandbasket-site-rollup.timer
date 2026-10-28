@@ -1,0 +1,11 @@
+# Starts brandbasket-site-rollup.service once a night at 21:00 UTC (02:30 in India), after the Indian day has ended.
+[Unit]
+Description=Brandbasket nightly site analytics roll-up
+
+[Timer]
+OnCalendar=*-*-* 21:00:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
