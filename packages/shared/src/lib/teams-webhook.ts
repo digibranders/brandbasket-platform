@@ -11,7 +11,7 @@ export type TeamsDestination = (typeof TEAMS_DESTINATIONS)[number];
 export const TEAMS_DESTINATION_INFO: Readonly<Record<TeamsDestination, { readonly label: string; readonly posts: string }>> = {
   enquiries: { label: "Website enquiries", posts: "Every new enquiry from the website's forms." },
   payments: { label: "Payments", posts: "Every payment received (first payment, renewal, reactivation, add-on, one-off charge or one recorded by hand), with the customer's details, and a payment that needs attention or a plan that stops billing." },
-  customers: { label: "Customers and privacy", posts: "New sign-ups, setup details sent, closed accounts and privacy requests." },
+  customers: { label: "Customers and privacy", posts: "New sign-ups, setup details sent, booked or moved calls (with the meeting link), closed accounts and privacy requests." },
   support: { label: "Support, bugs and feedback", posts: "New support requests, bug reports, feedback and suggestions, and a customer's replies." },
   system: { label: "System errors", posts: "Automatic error reports from the dashboard and the console, and billing errors such as a payment event that failed to process, at most one per error every 5 minutes." },
 };

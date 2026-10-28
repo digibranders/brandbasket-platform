@@ -8,6 +8,7 @@ import type { BookCallOptions } from "@/lib/calls/form";
 import { callRows, MAX_UPCOMING_CALLS, nextCallLine, upcomingCount, type CallRow } from "@/lib/calls/rows";
 import { firstLookInput, inFirstLook } from "@/lib/first-look";
 import { kindOptions } from "@/lib/requests/form";
+import { announceCallBooked } from "./call-alert";
 import { bookCallSlot, cancelCallBooking, readSlotStart, readTimeZone } from "./call-scheduling";
 import { getAppDb } from "./db";
 import { loadSetupServices } from "./first-look";
@@ -139,6 +140,16 @@ export async function bookTeamCall(
       }
       await withTenantScope(getAppDb(), tenant, (tx) => cancelTeamCall(tx, { id: previous.id, businessId: tenant.businessId, now }));
     }
+    void announceCallBooked({
+      tenant,
+      kind: "call",
+      startsAt: result.call.startsAt,
+      endsAt: result.call.endsAt,
+      replaced: previous === null ? null : { startsAt: previous.startsAt, endsAt: previous.endsAt },
+      meetingUrl: result.call.meetingUrl,
+      reason: input.reason,
+      note: input.note,
+    });
     return { ok: true, startsAtIso: result.call.startsAt.toISOString(), endsAtIso: result.call.endsAt.toISOString() };
   } catch (error) {
     console.error("[calls] could not book the call", errorLogInfo(error));

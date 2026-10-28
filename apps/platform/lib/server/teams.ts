@@ -64,7 +64,7 @@ export function startBillingErrorAlerts(): void {
  * Tells the Customers channel that a customer signed up, sent their website details or closed the account. Call it after the
  * change has committed. Best-effort: it never throws.
  */
-export async function announceCustomerToTeams(event: Pick<CustomerCardInput, "event" | "facts" | "text"> & { readonly businessId: string }): Promise<void> {
+export async function announceCustomerToTeams(event: Pick<CustomerCardInput, "event" | "facts" | "text" | "buttons"> & { readonly businessId: string }): Promise<void> {
   try {
     await announceCustomerEvent(getStaffDb(), serverEnv().BETTER_AUTH_SECRET, event, serverEnv().ADMIN_ORIGIN);
   } catch (error) {
