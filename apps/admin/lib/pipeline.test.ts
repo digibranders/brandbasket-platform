@@ -5,7 +5,6 @@ import {
   attentionItems,
   clientStage,
   isLeadInPipeline,
-  journeySubjects,
   lateReason,
   type AttentionInput,
 } from "./pipeline";
@@ -237,16 +236,6 @@ describe("add-on purchases in attentionItems", () => {
     expect(attentionBySubject(items).get("oak")?.kind).toBe("payment");
   });
 
-  it("puts a client with a purchase to set up ahead of the others in their stage", () => {
-    const items = attentionItems({ ...noAttention(), addOns: [toContact({ id: "s1", businessId: "b" })] });
-    const journey = journeySubjects(
-      [client("a", "live", NOW), client("b", "live", new Date(NOW.getTime() - 9 * DAY))],
-      [],
-      attentionBySubject(items),
-    );
-    expect(journey.byStage.live.map((subject) => subject.id)).toEqual(["b", "a"]);
-  });
-
   it("never uses a dash in what it says", () => {
     const items = attentionItems({
       ...noAttention(),
@@ -266,68 +255,6 @@ describe("attentionBySubject", () => {
       newLeads: [],
     });
     expect(attentionBySubject(items).get("oak")?.kind).toBe("payment");
-  });
-});
-
-describe("journeySubjects", () => {
-  it("places clients and pipeline leads in their stages and counts the paused", () => {
-    const journey = journeySubjects(
-      [client("a", "onboarding"), client("b", "building"), client("c", "live"), client("d", "on_hold"), client("e", null)],
-      [lead("l1", "new"), lead("l2", "lost"), lead("l3", "paid")],
-      new Map(),
-    );
-    expect(journey.byStage.lead.map((subject) => subject.id)).toEqual(["l1"]);
-    expect(journey.byStage.setup.map((subject) => subject.id).sort()).toEqual(["a", "e"]);
-    expect(journey.byStage.building.map((subject) => subject.id)).toEqual(["b"]);
-    expect(journey.byStage.preview).toEqual([]);
-    expect(journey.byStage.live.map((subject) => subject.id)).toEqual(["c"]);
-    expect(journey.paused).toBe(1);
-  });
-
-  it("draws a sign-up that has not paid yet as a lead: it is not a client until its first payment", () => {
-    const journey = journeySubjects([], [lead("l1", "account_created"), lead("l2", "paid")], new Map());
-    expect(journey.byStage.lead.map((subject) => subject.id)).toEqual(["l1"]);
-    expect(journey.byStage.lead[0]?.statusLabel).toBe("Account created");
-  });
-
-  it("puts anyone who needs attention first in their stage, then the newest", () => {
-    const older = new Date(NOW.getTime() - 5 * DAY);
-    const items = attentionItems({
-      ...noAttention(),
-      waiting: [{ client: client("late", "building", older), dueAt: new Date(NOW.getTime() - DAY - 1), overdue: true }],
-    });
-    const journey = journeySubjects(
-      [client("new", "building", NOW), client("late", "building", older), client("mid", "building", new Date(NOW.getTime() - DAY))],
-      [],
-      attentionBySubject(items),
-    );
-    expect(journey.byStage.building.map((subject) => subject.id)).toEqual(["late", "new", "mid"]);
-  });
-
-  it("puts late and money problems ahead of previews that are merely due", () => {
-    const items = attentionItems({
-      now: NOW,
-      addOns: [],
-      flagged: [{ paymentId: "p1", businessId: "money", businessName: "Money", reason: "already_paid", raisedAt: NOW }],
-      waiting: [
-        { client: client("due", "building", NOW), dueAt: new Date(NOW.getTime() + DAY), overdue: false },
-        { client: client("late", "building", new Date(NOW.getTime() - 9 * DAY)), dueAt: new Date(NOW.getTime() - 2 * DAY), overdue: true },
-      ],
-      newLeads: [],
-    });
-    const journey = journeySubjects(
-      [client("due", "building", NOW), client("late", "building", new Date(NOW.getTime() - 9 * DAY)), client("money", "building", new Date(NOW.getTime() - 20 * DAY))],
-      [],
-      attentionBySubject(items),
-    );
-    expect(journey.byStage.building.map((subject) => subject.id)).toEqual(["money", "late", "due"]);
-  });
-
-  it("links clients and leads to their own pages", () => {
-    const journey = journeySubjects([client("a", "live")], [lead("l1", "agreed")], new Map());
-    expect(journey.byStage.live[0]?.href).toBe("/clients/a");
-    expect(journey.byStage.lead[0]?.href).toBe("/leads/l1");
-    expect(journey.byStage.lead[0]?.statusLabel).toBe("Agreed");
   });
 });
 
