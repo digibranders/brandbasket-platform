@@ -22,8 +22,8 @@ describe("currentTab", () => {
     }
   });
 
-  it("marks Chatbot leads on the chatbot's own pages", () => {
-    for (const path of ["/oyechats", "/oyechats/name", "/oyechats/leads"]) expect(currentTab(path)?.label).toBe("Chatbot leads");
+  it("marks no tab on OyeChats, which has its own page", () => {
+    expect(currentTab("/oyechats")).toBeNull();
   });
 
   it("marks no tab on pages the tabs do not cover", () => {

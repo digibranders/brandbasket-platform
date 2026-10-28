@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CHATBOT_NAME_PATH } from "@/lib/chatbots-view";
 import { isCurrent, linkIsCurrent, menuChildren, railSections, searchRail } from "@/lib/rail";
 import { WEBSITE_PATH } from "@/lib/website/tabs";
 
@@ -13,7 +12,7 @@ describe("railSections", () => {
   it("shows the whole rail from the first day, before the kickoff call", () => {
     expect(shape(FULL)).toEqual([
       [null, ["Overview", "To do", "Requests"]],
-      ["Services", ["Website"]],
+      ["Services", ["Website", "OyeChats"]],
       ["Account", ["Business profile", "Your plan", "Billing", "Settings"]],
     ]);
   });
@@ -29,7 +28,6 @@ describe("railSections", () => {
     expect(website(false)).toMatchObject({ href: WEBSITE_PATH, label: "Website", icon: "website" });
     expect(website(true)?.href).toBe(WEBSITE_PATH);
     expect(website(false)?.children?.map((child) => [child.label, child.href])).toEqual([
-      ["Chatbot name", CHATBOT_NAME_PATH],
       ["Authors", "/content/authors"],
       ["Categories", "/content/categories"],
     ]);
@@ -51,9 +49,14 @@ describe("the Social & Ads and Search links", () => {
   it("lists Website, Social & Ads and Search in that order for a customer with all three", () => {
     expect(services({ hasSocial: true, hasSearch: true })?.links.map((link) => [link.label, link.href, link.icon])).toEqual([
       ["Website", "/website", "website"],
+      ["OyeChats", "/oyechats", "chatbot"],
       ["Social & Ads", "/social", "social"],
       ["Search", "/search", "search"],
     ]);
+  });
+
+  it("has no OyeChats link for a plan without the website: the assistant comes with the site", () => {
+    expect(services({ hasWebsite: false, hasSocial: true })?.links.map((link) => link.label)).not.toContain("OyeChats");
   });
 
   it("has Social & Ads and no Website link for a plan without the website", () => {
@@ -61,7 +64,7 @@ describe("the Social & Ads and Search links", () => {
   });
 
   it("leaves them out when they are not bought, or not said", () => {
-    expect(services({})?.links.map((link) => link.label)).toEqual(["Website"]);
+    expect(services({})?.links.map((link) => link.label)).toEqual(["Website", "OyeChats"]);
     expect(services({ hasWebsite: false })).toBeUndefined();
   });
 
@@ -109,7 +112,14 @@ describe("current link", () => {
     expect(website === undefined ? false : linkIsCurrent(website, "/website/pages")).toBe(true);
     expect(website === undefined ? false : linkIsCurrent(website, "/content/authors")).toBe(true);
     expect(website === undefined ? false : linkIsCurrent(website, "/content/blog/new")).toBe(true);
-    expect(website === undefined ? false : linkIsCurrent(website, "/oyechats/leads")).toBe(true);
+  });
+
+  it("lights OyeChats on its own page and not the Website link", () => {
+    const sections = railSections(FULL);
+    const website = sections[1]?.links[0];
+    const oyechats = sections[1]?.links[1];
+    expect(oyechats === undefined ? false : linkIsCurrent(oyechats, "/oyechats")).toBe(true);
+    expect(website === undefined ? true : linkIsCurrent(website, "/oyechats")).toBe(false);
   });
 });
 
@@ -121,8 +131,6 @@ describe("menuChildren", () => {
     expect(website === undefined ? [] : menuChildren(website).map((child) => child.label)).toEqual([
       "Pages",
       "Blog",
-      "Chatbot leads",
-      "Chatbot name",
       "Authors",
       "Categories",
     ]);
@@ -141,7 +149,7 @@ describe("searchRail", () => {
     const sections = railSections(FULL);
     expect(searchRail(sections, "")[0]?.label).toBe("Ask for a change");
     expect(searchRail(sections, "AUTHORS").map((target) => target.label)).toEqual(["Website: Authors"]);
-    expect(searchRail(sections, "chatbot leads").map((target) => target.href)).toEqual(["/oyechats/leads"]);
+    expect(searchRail(sections, "oyechats").map((target) => target.href)).toEqual(["/oyechats"]);
     expect(searchRail(sections, "website: blog").map((target) => target.href)).toEqual(["/content/blog"]);
   });
 });
@@ -194,9 +202,9 @@ describe("browser safety", () => {
     expect(banned, "rail.ts is bundled into client components").toEqual([]);
   });
 
-  it("points Social & Ads and Search at pages that exist", () => {
+  it("points OyeChats, Social & Ads and Search at pages that exist", () => {
     const services = railSections({ ...FULL, hasSocial: true, hasSearch: true }).find((section) => section.label === "Services");
-    for (const link of (services?.links ?? []).filter((entry) => entry.icon === "social" || entry.icon === "search")) {
+    for (const link of (services?.links ?? []).filter((entry) => entry.icon !== "website")) {
       expect(existsSync(new URL(`../app/app-host/(protected)${link.href}/page.tsx`, import.meta.url)), link.href).toBe(true);
     }
   });

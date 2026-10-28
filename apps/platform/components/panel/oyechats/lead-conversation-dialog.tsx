@@ -59,8 +59,22 @@ export function LeadConversationDialog({ row, onClose }: { readonly row: LeadTab
             <h2 id={titleId} className="panel-section truncate">
               {row.title}
             </h2>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-soft">
+              {row.email === null || row.email === row.title ? null : (
+                <a href={`mailto:${row.email}`} className="underline underline-offset-2 hover:text-ink">
+                  {row.email}
+                </a>
+              )}
+              {row.phone === null || row.phone === row.title ? null : (
+                <a href={`tel:${row.phone.replace(/[^\d+]/g, "")}`} className="underline underline-offset-2 hover:text-ink">
+                  {row.phone}
+                </a>
+              )}
+            </p>
             <p className="mt-1 text-sm text-ink-soft">
-              {[row.lines[0], row.company, row.messages === null ? null : messageCountLabel(row.messages)].filter((part) => part !== null && part !== undefined).join(" · ")}
+              {[row.company, row.warmth === null ? null : `${row.warmth} lead`, row.messages === null ? null : messageCountLabel(row.messages), `Came in ${row.captured}`]
+                .filter((part) => part !== null)
+                .join(" · ")}
             </p>
           </div>
           <button

@@ -3,6 +3,8 @@ import {
   buildLeadRows,
   chatbotStatusLine,
   conversationsAvailable,
+  leadCapturedLabel,
+  leadWarmth,
   CONVERSATION_NOTICES,
   leadContactLines,
   leadInitial,
@@ -73,6 +75,22 @@ describe("leadInitial and messageCountLabel", () => {
   });
 });
 
+describe("leadWarmth", () => {
+  it("names the three ratings OyeChats sends", () => {
+    expect([leadWarmth("sql"), leadWarmth("SAL"), leadWarmth("mql")]).toEqual(["Hot", "Warm", "Cool"]);
+  });
+
+  it("says nothing for a lead that is not rated, or a rating it does not know", () => {
+    expect([leadWarmth(null), leadWarmth("vip")]).toEqual([null, null]);
+  });
+});
+
+describe("leadCapturedLabel", () => {
+  it("gives the day in India time, so a late-evening lead keeps the day the visitor saw", () => {
+    expect(leadCapturedLabel(new Date("2026-10-27T20:00:00Z"))).toBe("28 Oct 2026");
+  });
+});
+
 describe("buildLeadRows", () => {
   const lead = (over: Partial<LeadRowSource>): LeadRowSource => ({
     id: "l1",
@@ -82,6 +100,7 @@ describe("buildLeadRows", () => {
     email: "meera@example.com",
     phone: null,
     company: "Shah Dental",
+    tier: null,
     capturedAt: new Date("2026-10-10T09:00:00Z"),
     ...over,
   });
@@ -91,8 +110,24 @@ describe("buildLeadRows", () => {
     const activity = new Map([["bot-1", new Map([["s1", { messages: 6, lastActiveAt: new Date("2026-10-16T11:00:00Z") }]])]]);
 
     expect(buildLeadRows([lead({})], activity, names)).toEqual([
-      { id: "l1", title: "Meera Shah", lines: ["meera@example.com"], initial: "M", company: "Shah Dental", botName: "Website assistant", messages: 6 },
+      {
+        id: "l1",
+        title: "Meera Shah",
+        lines: ["meera@example.com"],
+        email: "meera@example.com",
+        phone: null,
+        warmth: null,
+        captured: "10 Oct 2026",
+        initial: "M",
+        company: "Shah Dental",
+        botName: "Website assistant",
+        messages: 6,
+      },
     ]);
+  });
+
+  it("carries the lead's warmth", () => {
+    expect(buildLeadRows([lead({ tier: "sql" })], new Map(), names)[0]?.warmth).toBe("Hot");
   });
 
   it("keeps a lead whose conversation could not be read, with no count", () => {

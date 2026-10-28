@@ -8,6 +8,12 @@ import { LeadConversationDialog } from "./lead-conversation-dialog";
 const TH = "py-3 pr-4 text-left text-xs font-medium text-ink-2";
 const TD = "py-3.5 pr-4 align-middle";
 
+const WARMTH_CHIP: Readonly<Record<string, string>> = {
+  Hot: "bg-rattan-wash text-rattan-ink",
+  Warm: "bg-sage-wash text-sage-deep",
+  Cool: "bg-sunken text-ink-2",
+};
+
 function LeadName({ row, showBot }: { readonly row: LeadTableRow; readonly showBot: boolean }): ReactElement {
   return (
     <>
@@ -24,7 +30,8 @@ function LeadName({ row, showBot }: { readonly row: LeadTableRow; readonly showB
 
 /**
  * The leads OyeChats collected, one row per visitor who left their details: a serial number (which carries on from page to
- * page), their name and how many messages they exchanged. Selecting a row opens the conversation in a pop-up.
+ * page), their name, how warm OyeChats rates them, how many messages they exchanged and the day they came. Selecting a row
+ * opens the conversation in a pop-up.
  *
  * While no lead's conversation can be read (no operator key saved yet, or OyeChats cannot be reached) there is nothing to count
  * or open, so the Messages column is left out and the rows are plain; both come back on their own once conversations can be read.
@@ -54,14 +61,20 @@ export function LeadTable({
               <th scope="col" className={cn(TH, "w-14")}>
                 No.
               </th>
-              <th scope="col" className={cn(TH, readable ? undefined : "pr-0")}>
+              <th scope="col" className={TH}>
                 Lead
               </th>
+              <th scope="col" className={cn(TH, "w-24")}>
+                Warmth
+              </th>
               {readable ? (
-                <th scope="col" className={cn(TH, "w-28 pr-0")}>
+                <th scope="col" className={cn(TH, "w-24")}>
                   Messages
                 </th>
               ) : null}
+              <th scope="col" className={cn(TH, "w-28 pr-0")}>
+                Came in
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -72,7 +85,7 @@ export function LeadTable({
                 className={cn("border-b border-line", readable && "cursor-pointer transition-colors duration-200 hover:bg-sunken/60")}
               >
                 <td className={cn(TD, "tabular-nums text-ink-soft")}>{firstNumber + index}</td>
-                <td className={cn(TD, readable ? undefined : "pr-0")}>
+                <td className={TD}>
                   {readable ? (
                     <button
                       type="button"
@@ -87,11 +100,19 @@ export function LeadTable({
                     </div>
                   )}
                 </td>
+                <td className={TD}>
+                  {row.warmth === null ? (
+                    <span className="text-ink-soft">-</span>
+                  ) : (
+                    <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold", WARMTH_CHIP[row.warmth])}>{row.warmth}</span>
+                  )}
+                </td>
                 {readable ? (
-                  <td className={cn(TD, "pr-0 tabular-nums text-ink-soft")} title={row.messages === null ? "Not available right now" : undefined}>
+                  <td className={cn(TD, "tabular-nums text-ink-soft")} title={row.messages === null ? "Not available right now" : undefined}>
                     {row.messages === null ? "-" : row.messages}
                   </td>
                 ) : null}
+                <td className={cn(TD, "pr-0 whitespace-nowrap tabular-nums text-ink-soft")}>{row.captured}</td>
               </tr>
             ))}
           </tbody>
