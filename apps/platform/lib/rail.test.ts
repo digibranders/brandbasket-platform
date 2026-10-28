@@ -17,6 +17,12 @@ describe("railSections", () => {
     ]);
   });
 
+  it("adds an Affiliate link to Account, before Settings, only for someone who is also an affiliate", () => {
+    expect(shape(FULL)[2]?.[1]).not.toContain("Affiliate");
+    expect(shape({ ...FULL, affiliate: true })[2]).toEqual(["Account", ["Business profile", "Your plan", "Billing", "Affiliate", "Settings"]]);
+    expect(railSections({ ...FULL, affiliate: true })[2]?.links.find((link) => link.label === "Affiliate")).toMatchObject({ href: "/affiliate", icon: "affiliate" });
+  });
+
   it("gives an account that has not paid, or has lapsed, no To do link", () => {
     const unpaid = { ...FULL, hasAccess: false };
     expect(shape(unpaid)[0]).toEqual([null, ["Overview", "Requests"]]);

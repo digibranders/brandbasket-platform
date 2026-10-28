@@ -1,3 +1,4 @@
+import { AFFILIATE_PATH } from "@brandbasket/shared/lib/affiliate-links";
 import { ADD_ONS_PATH } from "@brandbasket/shared/lib/billing/add-ons";
 import { CALLS_PATH } from "@/lib/calls/links";
 import { CHATBOT_PATH } from "@/lib/chatbots-view";
@@ -5,7 +6,7 @@ import { ASK_FOR_A_CHANGE_PATH, REQUESTS_PATH } from "@/lib/requests/links";
 import { WEBSITE_PATH, WEBSITE_TABS } from "@/lib/website/tabs";
 
 /** The rail's icons by name; components/v2/rail-icon.tsx draws them. */
-export type RailIcon = "overview" | "requests" | "todo" | "website" | "chatbot" | "social" | "search" | "profile" | "services" | "billing" | "settings";
+export type RailIcon = "overview" | "requests" | "todo" | "website" | "chatbot" | "social" | "search" | "profile" | "services" | "billing" | "settings" | "affiliate";
 
 export interface RailTarget {
   readonly href: string;
@@ -40,6 +41,8 @@ export interface RailInput {
   readonly todoCount: number;
   /** Quotes to answer and changes to check (lib/server/requests.ts loadRequestNeeds). Left out, there is no number. */
   readonly requestsCount?: number;
+  /** The signed-in person is also an affiliate: their coupon page sits in the Account section. */
+  readonly affiliate?: boolean;
 }
 
 const TODO_HREF = "/todo";
@@ -54,6 +57,7 @@ const PROFILE: RailLink = { href: "/details", label: "Business profile", icon: "
 const SERVICES: RailLink = { href: ADD_ONS_PATH, label: "Your plan", icon: "services" };
 const BILLING: RailLink = { href: "/billing", label: "Billing", icon: "billing" };
 const SETTINGS: RailLink = { href: "/settings", label: "Settings", icon: "settings" };
+const AFFILIATE: RailLink = { href: AFFILIATE_PATH, label: "Affiliate", icon: "affiliate" };
 
 /** Ask for a change, the first thing search offers (plan 28 section 2). */
 export const ASK_FOR_A_CHANGE: RailTarget = { href: ASK_FOR_A_CHANGE_PATH, label: "Ask for a change" };
@@ -92,7 +96,7 @@ export function railSections(input: RailInput): readonly RailSection[] {
   return [
     { label: null, links: input.hasAccess ? [OVERVIEW, todo, requests] : [OVERVIEW, requests] },
     ...(services.length > 0 ? [{ label: "Services", links: services }] : []),
-    { label: "Account", links: [PROFILE, SERVICES, BILLING, SETTINGS] },
+    { label: "Account", links: [PROFILE, SERVICES, BILLING, ...(input.affiliate === true ? [AFFILIATE] : []), SETTINGS] },
   ];
 }
 

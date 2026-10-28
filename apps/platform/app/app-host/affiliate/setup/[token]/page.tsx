@@ -5,7 +5,7 @@ import { TurnstileScope } from "@brandbasket/shared/ui/turnstile-scope";
 import { requestBrand } from "@/lib/server/request-brand";
 import { EntryScreen } from "@/components/panel/entry-screen";
 import { SetupForm } from "@/components/panel/setup-form";
-import { findAffiliateInviteForToken } from "@/lib/server/affiliate-setup";
+import { findAffiliateInviteForToken, inviteEmailHasAccount } from "@/lib/server/affiliate-setup";
 import { completeAffiliateSetup } from "./actions";
 
 export const metadata: Metadata = { title: "Open your affiliate account", referrer: "no-referrer" };
@@ -51,6 +51,8 @@ export default async function AffiliateSetupPage({
   }
 
   const choosingNewPassword = invite.userId !== null;
+  // Someone who already has a Brandbasket account is asked for its password, not to make a second account.
+  const linkingExisting = !choosingNewPassword && (await inviteEmailHasAccount(invite.email));
   return (
     <EntryScreen
       title={
@@ -67,7 +69,9 @@ export default async function AffiliateSetupPage({
       lede={
         choosingNewPassword
           ? `Set a new password for ${invite.email}.`
-          : `Finish linking ${invite.email} to your affiliate dashboard.`
+          : linkingExisting
+            ? `${invite.email} already has a ${brand.shortName} account. Enter its password to add your affiliate dashboard to it.`
+            : `Finish linking ${invite.email} to your affiliate dashboard.`
       }
     >
       <TurnstileScope>
@@ -76,9 +80,10 @@ export default async function AffiliateSetupPage({
           token={token}
           turnstileAction="affiliate_setup"
           initialName={invite.name}
-          askName={!choosingNewPassword}
-          submitLabel={choosingNewPassword ? "Save password" : "Create my account"}
-          pendingLabel={choosingNewPassword ? "Saving…" : "Creating your account…"}
+          askName={!choosingNewPassword && !linkingExisting}
+          linkExisting={linkingExisting}
+          submitLabel={choosingNewPassword ? "Save password" : linkingExisting ? "Link my account" : "Create my account"}
+          pendingLabel={choosingNewPassword ? "Saving…" : linkingExisting ? "Linking…" : "Creating your account…"}
         />
       </TurnstileScope>
     </EntryScreen>

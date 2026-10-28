@@ -4,6 +4,7 @@ import { HiddenOnPaths } from "@/components/panel/hidden-on-paths";
 import { MembershipGateShell } from "@/components/panel/membership-gate-shell";
 import { AppShell } from "@/components/v2/app-shell";
 import { accountLabel } from "@/lib/server/account-label";
+import { getAffiliateAccess } from "@/lib/server/affiliate-access";
 import { ensureGeoCatalog } from "@/lib/server/geo-catalog";
 import { getBillingBanner } from "@/lib/server/billing-banner";
 import { getCustomerBusinessEntry, isAwaitingMembership, requireCustomerAccess } from "@/lib/server/customer-access";
@@ -23,9 +24,10 @@ export default async function AppProtectedLayout({ children }: AppProtectedLayou
   // An owner who chose Managed Website and has not paid has one page, the plan's, and no dashboard around it yet.
   if (isAwaitingMembership(entry)) return <MembershipGateShell>{children}</MembershipGateShell>;
   const banner = await getBillingBanner();
+  const isAffiliate = (await getAffiliateAccess()).kind === "granted";
 
   return (
-    <AppShell userName={user.name} userEmail={accountLabel(user)}>
+    <AppShell userName={user.name} userEmail={accountLabel(user)} isAffiliate={isAffiliate}>
       {banner === null ? null : (
         <HiddenOnPaths paths={PAGES_WITH_THEIR_OWN_BANNER}>
           <BillingBanner banner={banner} className="mb-8" />

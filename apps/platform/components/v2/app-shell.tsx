@@ -18,13 +18,15 @@ import { Rail, type AccountMenu } from "./rail";
 interface AppShellProps {
   readonly userName: string;
   readonly userEmail: string;
+  /** Also an affiliate: the rail gets an Affiliate link. */
+  readonly isAffiliate?: boolean;
   readonly children: ReactNode;
 }
 
 const NO_TODO: { readonly open: number; readonly services: readonly ServiceKey[] } = { open: 0, services: [] };
 
 /** The customer dashboard v2: the rail (or the phone bars) around the page. */
-export async function AppShell({ userName, userEmail, children }: AppShellProps): Promise<ReactElement> {
+export async function AppShell({ userName, userEmail, isAffiliate = false, children }: AppShellProps): Promise<ReactElement> {
   // A free listing account is let in too: Settings, Billing and the privacy pages are still its own, and a refusal here would send it to a page that no longer exists.
   const { tenant, billing } = await requireCustomerAccess({ listingAccount: "allow" });
   const [brand, panel, overview, liveWebsite] = await Promise.all([requestBrand(), getAccountPanel(), getProjectOverview(), getLiveWebsite()]);
@@ -50,6 +52,7 @@ export async function AppShell({ userName, userEmail, children }: AppShellProps)
     hasSearch: todo.services.includes("search"),
     todoCount: todo.open,
     requestsCount,
+    affiliate: isAffiliate,
   });
   const logo = logoOf(brand);
   const menu: AccountMenu = {

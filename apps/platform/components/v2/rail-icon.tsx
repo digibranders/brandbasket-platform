@@ -1,5 +1,5 @@
 import type { Icon } from "@phosphor-icons/react";
-import { CheckSquare, ChatText, GearSix, GlobeSimple, MagnifyingGlass, Megaphone, Receipt, SquaresFour, Stack, Storefront } from "@phosphor-icons/react/dist/ssr";
+import { CheckSquare, ChatText, GearSix, GlobeSimple, Handshake, MagnifyingGlass, Megaphone, Receipt, SquaresFour, Stack, Storefront } from "@phosphor-icons/react/dist/ssr";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import type { RailIcon } from "@/lib/rail";
@@ -15,6 +15,7 @@ const ICONS: Readonly<Record<Exclude<RailIcon, "chatbot">, Icon>> = {
   services: Stack,
   billing: Receipt,
   settings: GearSix,
+  affiliate: Handshake,
 };
 
 /**
