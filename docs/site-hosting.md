@@ -30,6 +30,10 @@ A site is only paused if the business has a project that reached `live` and the 
 
 4. If the list is what you expect, `systemctl enable --now brandbasket-site-hosting.timer`.
 
+## Who is told
+
+When the sync pauses a site, the Customers channel in Teams gets a "Website taken offline" card: the customer's name, mobile, email and website, the plan and its price, the plan's status, the date it was paid until, why it ended, when it was paused and the Vercel project, with a button that opens the client in the console. It is posted once, when the pause happens, not on later runs. If the Customers channel has no address set (console Settings), nothing is posted. Unpausing, a refused change and a tripped brake do not post a card; a refused change or a tripped brake fails the job, which emails the team through the existing failure alert.
+
 ## Reading a run
 
 The job prints the report and exits non-zero (so the team gets the failure email) when a person needs to look.

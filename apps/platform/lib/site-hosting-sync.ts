@@ -19,6 +19,8 @@ export interface HostingSyncDeps {
   /** Pauses or unpauses the site's project at the host. Throws, with a message safe to store, when the host refuses. */
   readonly setPaused: (site: HostedSite, paused: boolean) => Promise<void>;
   readonly record: (businessId: string, result: HostingSyncResult) => Promise<void>;
+  /** Tells the team a website was just paused, with the details. Best-effort: a failure here never undoes the pause. */
+  readonly announcePaused?: (site: HostedSite, pausedAt: Date) => Promise<void>;
 }
 
 export interface HostingSyncOptions {
@@ -41,6 +43,14 @@ export interface HostingSyncReport {
   /** Too many pauses were due at once, so none was applied. Needs a person to look. */
   readonly braked: boolean;
   readonly failed: number;
+}
+
+async function announce(deps: HostingSyncDeps, site: HostedSite, pausedAt: Date): Promise<void> {
+  try {
+    await deps.announcePaused?.(site, pausedAt);
+  } catch (error) {
+    console.error("The team could not be told a website was paused.", error instanceof Error ? error.name : "error");
+  }
 }
 
 export async function runSiteHostingSync(deps: HostingSyncDeps, options: HostingSyncOptions): Promise<HostingSyncReport> {
@@ -71,6 +81,7 @@ export async function runSiteHostingSync(deps: HostingSyncDeps, options: Hosting
       await deps.setPaused(site, pausing);
       await deps.record(businessId, { checkedAt: options.now, pausedAt: pausing ? options.now : null, lastError: null });
       items.push({ businessId, status: pausing ? "paused" : "unpaused" });
+      if (pausing) await announce(deps, site, options.now);
     } catch (error) {
       const message = error instanceof Error ? error.message : "The host refused the change.";
       // The host did not change, so what we knew about it stays; only the error is new.

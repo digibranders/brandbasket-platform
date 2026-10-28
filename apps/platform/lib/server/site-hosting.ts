@@ -3,9 +3,11 @@ import { findBillingState, listHostedSites, recordHostingSync } from "@brandbask
 import { summariseBilling } from "@brandbasket/shared/lib/billing/status";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { LEADS_API_TOKEN_MIN_LENGTH } from "@/lib/leads-api";
+import { websitePausedAlert } from "@/lib/site-hosting-alert";
 import { runSiteHostingSync, type HostingSyncDeps, type HostingSyncReport, type SyncSite } from "@/lib/site-hosting-sync";
 import { setVercelProjectPaused } from "@/lib/vercel-projects";
 import { getStaffDb } from "./db";
+import { announceCustomerToTeams } from "./teams";
 
 /**
  * The secret the hourly hosting job sends as `Authorization: Bearer <token>`. Its own secret: it can take websites
@@ -50,6 +52,12 @@ function realDeps(now: Date): HostingSyncDeps {
     },
     setPaused: (site, paused) => setVercelProjectPaused(site, paused, { token: vercelApiToken() }),
     record: (businessId, result) => recordHostingSync(db, businessId, result),
+    announcePaused: async (site, pausedAt) => {
+      // A billing read that fails still announces the pause, with the facts that need no billing.
+      const state = await findBillingState(db, site.businessId).catch(() => null);
+      const { facts, text } = websitePausedAlert({ state, site, pausedAt });
+      await announceCustomerToTeams({ businessId: site.businessId, event: "website_paused", facts, text });
+    },
   };
 }
 
