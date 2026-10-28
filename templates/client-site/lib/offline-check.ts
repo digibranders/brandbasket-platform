@@ -9,9 +9,12 @@ let cached: { readonly offline: boolean; readonly until: number } | null = null;
 
 /**
  * Whether the platform says this site's plan has ended. The proxy runs on every request, so the answer is kept in this
- * server's memory for a minute rather than asked for on each page view and image.
+ * server's memory for a minute rather than asked for on each page view and image. Outside production, with no site token
+ * set, the site is never offline, so it can be built locally without a platform; a production build without one still
+ * fails loudly in brandbasketGet.
  */
 export async function isSiteOffline(now: number = Date.now()): Promise<boolean> {
+  if (process.env.NODE_ENV !== "production" && !process.env.BRANDBASKET_SITE_TOKEN?.trim()) return false;
   if (cached !== null && now < cached.until) return cached.offline;
   const info = await brandbasketGet<unknown>("/api/site/info");
   const offline = info.kind === "offline";
