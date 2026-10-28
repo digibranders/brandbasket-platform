@@ -215,7 +215,7 @@ describe("applyAddOnPayment", () => {
 
     const result = await apply(replacement, "fake_pay_new");
 
-    expect(result).toEqual({ kind: "applied", cancelAtProvider: [{ provider: "fake", providerSubscriptionId: halted.providerSubscriptionId }] });
+    expect(result).toEqual({ kind: "applied", paymentId: expect.any(String), cancelAtProvider: [{ provider: "fake", providerSubscriptionId: halted.providerSubscriptionId }] });
     expect(await findAddOnSubscription(dbs.staff.db, businessId, replacement.id)).toMatchObject({ status: "active" });
     expect(await invoiceCount()).toBe(2);
     expect(await unappliedPayments()).toEqual([]);
@@ -223,7 +223,7 @@ describe("applyAddOnPayment", () => {
 
   it("does nothing a second time for a payment it applied, and cancels nothing again", async () => {
     const row = await addRow();
-    expect(await apply(row, "fake_pay_first")).toEqual({ kind: "applied", cancelAtProvider: [] });
+    expect(await apply(row, "fake_pay_first")).toEqual({ kind: "applied", paymentId: expect.any(String), cancelAtProvider: [] });
 
     const again = await apply(row, "fake_pay_first");
 
@@ -241,6 +241,7 @@ describe("applyAddOnPayment", () => {
     expect(result).toEqual({
       kind: "refused",
       reason: "already_paid",
+      paymentId: expect.any(String),
       cancelAtProvider: [{ provider: "fake", providerSubscriptionId: doubled.providerSubscriptionId }],
     });
     expect(await findAddOnSubscription(dbs.staff.db, businessId, doubled.id)).toMatchObject({ status: "cancelled" });
@@ -273,6 +274,7 @@ describe("applyAddOnPayment", () => {
     expect(result).toEqual({
       kind: "refused",
       reason: "checkout_replaced",
+      paymentId: expect.any(String),
       cancelAtProvider: [{ provider: "fake", providerSubscriptionId: replaced.providerSubscriptionId }],
     });
     expect(await unappliedPayments()).toEqual([{ provider_payment_id: "fake_pay_late", attention_reason: "checkout_replaced" }]);
