@@ -100,7 +100,7 @@ export const metricBreakdowns = pgTable(
     businessId: uuid("business_id")
       .notNull()
       .references(() => businesses.id),
-    source: text("source").$type<ConnectedSource>().notNull(),
+    source: text("source").$type<ReportSource>().notNull(),
     /** The first day of the month. */
     month: date("month", { mode: "string" }).notNull(),
     dimension: text("dimension").notNull(),
@@ -109,7 +109,7 @@ export const metricBreakdowns = pgTable(
   },
   (table) => [
     uniqueIndex("metric_breakdowns_business_source_month_dimension_idx").on(table.businessId, table.source, table.month, table.dimension),
-    check("metric_breakdowns_source_check", sql`${table.source} in ('gsc', 'ga4')`),
+    check("metric_breakdowns_source_check", sql`${table.source} in ('own', 'gsc', 'ga4')`),
     check("metric_breakdowns_month_check", sql`extract(day from ${table.month}) = 1`),
     check("metric_breakdowns_dimension_check", sql`${table.dimension} ~ '^[a-z_]{1,30}$'`),
     check("metric_breakdowns_rows_check", sql`jsonb_typeof(${table.rows}) = 'array' and jsonb_array_length(${table.rows}) <= 100 and pg_column_size(${table.rows}) <= 65536`),

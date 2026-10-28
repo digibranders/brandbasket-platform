@@ -6,7 +6,7 @@ CREATE TABLE "metric_breakdowns" (
 	"dimension" text NOT NULL,
 	"rows" jsonb NOT NULL,
 	"fetched_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "metric_breakdowns_source_check" CHECK ("metric_breakdowns"."source" in ('gsc', 'ga4')),
+	CONSTRAINT "metric_breakdowns_source_check" CHECK ("metric_breakdowns"."source" in ('own', 'gsc', 'ga4')),
 	CONSTRAINT "metric_breakdowns_month_check" CHECK (extract(day from "metric_breakdowns"."month") = 1),
 	CONSTRAINT "metric_breakdowns_dimension_check" CHECK ("metric_breakdowns"."dimension" ~ '^[a-z_]{1,30}$'),
 	CONSTRAINT "metric_breakdowns_rows_check" CHECK (jsonb_typeof("metric_breakdowns"."rows") = 'array' and jsonb_array_length("metric_breakdowns"."rows") <= 100 and pg_column_size("metric_breakdowns"."rows") <= 65536)

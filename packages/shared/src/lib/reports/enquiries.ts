@@ -1,19 +1,20 @@
 /**
  * What counts as an enquiry in a report, in one place so the total can be trusted and compared from month to month.
- * An enquiry is one attempt to contact the business: a form sent, a call tap, a WhatsApp tap, a chatbot lead, a call from
+ * An enquiry is one attempt to contact the business: a form sent, a call tap, a WhatsApp tap, an email tap, a chatbot lead, a call from
  * the Google profile, an ad lead form or message. Directions requests and page views are not enquiries. It counts
  * contacts, not people: someone who contacts the business twice is two.
  *
  * A source that was not measured is left out. It is never counted as zero, because zero would say "we looked and nobody
  * came" when the truth is "we could not see".
  */
-export const ENQUIRY_CHANNELS = ["website_form", "website_call", "website_whatsapp", "chatbot", "google_profile_call", "ad_lead"] as const;
+export const ENQUIRY_CHANNELS = ["website_form", "website_call", "website_whatsapp", "website_email", "chatbot", "google_profile_call", "ad_lead"] as const;
 export type EnquiryChannel = (typeof ENQUIRY_CHANNELS)[number];
 
 export const ENQUIRY_CHANNEL_LABELS: Readonly<Record<EnquiryChannel, string>> = {
   website_form: "Website forms",
   website_call: "Website call taps",
   website_whatsapp: "WhatsApp taps",
+  website_email: "Email taps",
   chatbot: "Chatbot",
   google_profile_call: "Google profile calls",
   ad_lead: "Ads: Meta forms and messages",

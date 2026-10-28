@@ -3,14 +3,15 @@ import { ENQUIRY_CHANNELS, summariseEnquiries } from "./enquiries";
 
 describe("summariseEnquiries", () => {
   it("adds the measured channels and ranks them, biggest first", () => {
-    const summary = summariseEnquiries({ website_form: 12, website_call: 7, website_whatsapp: 2, chatbot: 6, google_profile_call: 41, ad_lead: 38 });
-    expect(summary.total).toBe(106);
+    const summary = summariseEnquiries({ website_form: 12, website_call: 7, website_whatsapp: 2, website_email: 3, chatbot: 6, google_profile_call: 41, ad_lead: 38 });
+    expect(summary.total).toBe(109);
     expect(summary.rows.map((row) => [row.channel, row.count])).toEqual([
       ["google_profile_call", 41],
       ["ad_lead", 38],
       ["website_form", 12],
       ["website_call", 7],
       ["chatbot", 6],
+      ["website_email", 3],
       ["website_whatsapp", 2],
     ]);
     expect(summary.notMeasured).toEqual([]);
@@ -20,7 +21,7 @@ describe("summariseEnquiries", () => {
     const summary = summariseEnquiries({ website_form: 12, website_call: 7, google_profile_call: null });
     expect(summary.total).toBe(19);
     expect(summary.included).toEqual(["website_form", "website_call"]);
-    expect(summary.notMeasured).toEqual(["website_whatsapp", "chatbot", "google_profile_call", "ad_lead"]);
+    expect(summary.notMeasured).toEqual(["website_whatsapp", "website_email", "chatbot", "google_profile_call", "ad_lead"]);
     expect(summary.rows.map((row) => row.channel)).toEqual(["website_form", "website_call"]);
   });
 

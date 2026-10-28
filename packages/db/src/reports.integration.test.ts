@@ -119,6 +119,11 @@ describe("breakdowns", () => {
     expect(await getBreakdown(staff(), businessId, "ga4", MONTH, "query")).toBeNull();
   });
 
+  it("holds our own first-party lists beside Google's", async () => {
+    await upsertBreakdown(staff(), { businessId, source: "own", month: MONTH, dimension: "channel", rows: [{ key: "Google search", visits: 40 }], now: NOW });
+    expect(await getBreakdown(staff(), businessId, "own", MONTH, "channel")).toEqual([{ key: "Google search", visits: 40 }]);
+  });
+
   it("keeps a list to 100 rows", async () => {
     const rows = Array.from({ length: 101 }, (_, index) => ({ key: `q${index}` }));
     expect(await sqlState(() => upsertBreakdown(staff(), { businessId, source: "gsc", month: MONTH, dimension: "query", rows, now: NOW }))).toBe("23514");

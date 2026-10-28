@@ -15332,7 +15332,7 @@
       "checkConstraints": {
         "metric_breakdowns_source_check": {
           "name": "metric_breakdowns_source_check",
-          "value": "\"metric_breakdowns\".\"source\" in ('gsc', 'ga4')"
+          "value": "\"metric_breakdowns\".\"source\" in ('own', 'gsc', 'ga4')"
         },
         "metric_breakdowns_month_check": {
           "name": "metric_breakdowns_month_check",

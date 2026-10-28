@@ -45,7 +45,7 @@ export async function listDailyMetrics(db: Runner, businessId: string, from: str
 
 export interface BreakdownInput {
   readonly businessId: string;
-  readonly source: ConnectedSource;
+  readonly source: ReportSource;
   /** The first day of the month, `YYYY-MM-01`. */
   readonly month: string;
   readonly dimension: string;
@@ -65,7 +65,7 @@ export async function upsertBreakdown(db: Runner, input: BreakdownInput): Promis
 }
 
 /** A month's ranked list, or null when it was never pulled. Staff connection. */
-export async function getBreakdown(db: Runner, businessId: string, source: ConnectedSource, month: string, dimension: string): Promise<readonly Record<string, unknown>[] | null> {
+export async function getBreakdown(db: Runner, businessId: string, source: ReportSource, month: string, dimension: string): Promise<readonly Record<string, unknown>[] | null> {
   const [row] = await db
     .select({ rows: metricBreakdowns.rows })
     .from(metricBreakdowns)
