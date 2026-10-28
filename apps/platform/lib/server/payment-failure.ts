@@ -1,19 +1,15 @@
 import "server-only";
 import type { RazorpayWebhookEvent } from "@brandbasket/billing";
 import { findChargeByProviderOrder, recordFailedPayment, type FailedPaymentOutcome } from "@brandbasket/db";
-import { formatMoney } from "@brandbasket/shared/lib/money";
 import { logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { getStaffDb } from "./db";
-import { serverEnv } from "./env";
-import { alertTeams } from "./teams";
-import { paymentFailedTeamsCard } from "./teams-cards";
 
 export type RazorpayPaymentFailed = Extract<RazorpayWebhookEvent, { readonly kind: "payment-failed" }>;
 
 /**
- * Records a failed Razorpay payment on the client's payments and posts a System card. The business is the charge's (a
+ * Records a failed Razorpay payment on the client's payments. Nothing is posted to Teams: staff are told about money received, never about a payment that failed. The business is the charge's (a
  * failed extra, matched by its order) or the one the payment's notes name. shortcut: a failed subscription renewal
- * whose payment carries neither is not tied to a client, only logged and alerted; fetch the Razorpay invoice by its
+ * whose payment carries neither is not tied to a client, only logged; fetch the Razorpay invoice by its
  * invoice_id when staff ask for those to be matched.
  */
 export async function recordRazorpayPaymentFailure(event: RazorpayPaymentFailed): Promise<void> {
@@ -44,15 +40,4 @@ export async function recordRazorpayPaymentFailure(event: RazorpayPaymentFailed)
       reason: "unmatched-payment-failure",
     });
   }
-  const consolePath = outcome === "recorded" && businessId !== null ? `/clients/${businessId}/billing` : "/payments";
-  await alertTeams(
-    "system",
-    paymentFailedTeamsCard({
-      amount: formatMoney(event.amountCents, event.currency),
-      matched: outcome === "recorded",
-      reason: event.failureReason,
-      providerPaymentId: event.paymentId,
-      consoleUrl: new URL(consolePath, serverEnv().ADMIN_ORIGIN).toString(),
-    }),
-  );
 }

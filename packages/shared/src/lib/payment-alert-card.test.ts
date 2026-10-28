@@ -90,28 +90,21 @@ describe("describePaymentMethod", () => {
 
 describe("planStatusTeamsCard", () => {
   const base = {
-    providerStatus: "pending",
+    providerStatus: "cancelled",
     customer: { name: "Asha Rao", email: "asha@example.com", phone: "+91 98200 11111" },
     business: { name: "Rao Clinic", websiteUrl: null },
     paidThrough: new Date("2026-11-26T12:24:17.000Z"),
     consoleUrl: "https://console.example/clients/biz-1",
   } as const;
 
-  it("names the problem, the customer, when access ends and where to open them", () => {
-    const card = JSON.stringify(planStatusTeamsCard({ ...base, status: "past_due" }));
-    for (const part of ["Payment failed, Razorpay is retrying: Rao Clinic", "Asha Rao", "asha@example.com", "pending", "26 Nov 2026", "Open the client"]) expect(card).toContain(part);
+  it("names the plan, the customer, when access ends and where to open them", () => {
+    const card = JSON.stringify(planStatusTeamsCard({ ...base, status: "cancelled" }));
+    for (const part of ["Plan ended: Rao Clinic", "Asha Rao", "asha@example.com", "cancelled", "26 Nov 2026", "Open the client"]) expect(card).toContain(part);
   });
 
   it("has a Call button for the customer's number", () => {
-    const actions = (planStatusTeamsCard({ ...base, status: "past_due" }).attachments[0].content as { actions: { title: string; url: string }[] }).actions;
+    const actions = (planStatusTeamsCard({ ...base, status: "cancelled" }).attachments[0].content as { actions: { title: string; url: string }[] }).actions;
     expect(actions.map((action) => action.title)).toEqual(["Open the client", "Call now"]);
     expect(actions[1]?.url).toBe("tel:+919820011111");
-  });
-
-  it("words each of the three states differently", () => {
-    const titles = (["past_due", "inactive", "cancelled"] as const).map((status) => JSON.stringify(planStatusTeamsCard({ ...base, status })));
-    expect(new Set(titles).size).toBe(3);
-    expect(titles[1]).toContain("Billing stopped");
-    expect(titles[2]).toContain("Plan ended");
   });
 });

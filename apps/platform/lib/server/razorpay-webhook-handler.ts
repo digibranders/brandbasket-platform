@@ -116,8 +116,8 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       providerStatus,
       now: new Date(),
     });
-    // Staff are told when a plan starts failing to bill or ends, once per change (a redelivery finds the status already set).
-    if (status !== known.status && (status === "past_due" || status === "inactive" || status === "cancelled")) {
+    // Staff are told when a plan ends, once per change (a redelivery finds the status already set). Never about a payment that failed.
+    if (status !== known.status && status === "cancelled") {
       void announcePlanStatusToTeams({ businessId: known.businessId, subscriptionId: known.id, status, providerStatus });
     }
     // The mandate of a kept plan (Keep my plan) is authorised: the account closure is lifted and the plan shows as running.
