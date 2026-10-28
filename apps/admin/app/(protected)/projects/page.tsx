@@ -60,9 +60,10 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps):
   const now = new Date();
   const db = getStaffDb();
   const [rows, staff] = await Promise.all([listOpenProjectsForStaff(db, monthRange(now).start), listAssignableSupportStaff(db)]);
-  const columns = boardColumns(filterByBuilder(rows, builder), now);
+  const shown = filterByBuilder(rows, builder);
+  const columns = boardColumns(shown, now);
   const cards = columns.flatMap((column) => column.cards.map((card) => ({ column: column.label, card })));
-  const open = rows.filter((row) => row.status !== "live").length;
+  const open = shown.filter((row) => row.status !== "live").length;
   const late = cards.filter(({ card }) => card.late).length;
   const dueToday = cards.filter(({ card }) => card.dueSoon).length;
 

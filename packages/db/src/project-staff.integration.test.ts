@@ -203,6 +203,11 @@ describe("listSetupCallsForStaff", () => {
     await dbs.staff.db.update(setupCallBookings).set({ startsAt: new Date("2026-10-01T06:00:00.000Z"), endsAt: new Date("2026-10-01T06:30:00.000Z") });
     expect(await listSetupCallsForStaff(dbs.staff.db, new Date("2026-11-23T00:00:00.000Z"), new Date("2026-12-28T00:00:00.000Z"))).toEqual([]);
   });
+
+  it("leaves out a call staff marked held by phone, which has no time but already happened", async () => {
+    await dbs.staff.db.insert(setupCallBookings).values({ businessId, heldAt: NOW, heldByStaffId: BUILDER });
+    expect(await listSetupCallsForStaff(dbs.staff.db, new Date("2026-11-23T00:00:00.000Z"), new Date("2026-12-28T00:00:00.000Z"))).toEqual([]);
+  });
 });
 
 describe("counts", () => {

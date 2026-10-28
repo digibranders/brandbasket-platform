@@ -36,7 +36,10 @@ function finish(businessId: string, notice: ProjectMoveNotice): never {
   redirect(projectMoveNoticeHref(businessId, notice));
 }
 
-/** Runs a move; a refusal from the database becomes a notice instead of an error page. */
+/**
+ * Runs a move; a refusal from the database becomes a notice instead of an error page. The returned project names the
+ * business the move really changed; callers log and redirect with that, not with the form's business id.
+ */
 async function attempt(businessId: string, move: () => Promise<MovedProject>): Promise<MovedProject> {
   try {
     return await move();
@@ -51,9 +54,9 @@ export async function cancelProjectAction(formData: FormData): Promise<void> {
   const staff = await requireStaffAccess();
   const { businessId, projectId } = readIds(formData);
   if (formData.get("confirm") !== "yes") finish(businessId, "confirm-missing");
-  await attempt(businessId, () => cancelProject(getStaffDb(), projectId));
-  await recordStaffAction(staff, { businessId, kind: "project.cancelled", summary: "Build cancelled", visibleToClient: false });
-  finish(businessId, "cancelled");
+  const moved = await attempt(businessId, () => cancelProject(getStaffDb(), projectId));
+  await recordStaffAction(staff, { businessId: moved.businessId, kind: "project.cancelled", summary: "Build cancelled", visibleToClient: false });
+  finish(moved.businessId, "cancelled");
 }
 
 export async function assignBuilderAction(formData: FormData): Promise<void> {
@@ -61,15 +64,15 @@ export async function assignBuilderAction(formData: FormData): Promise<void> {
   const { businessId, projectId } = readIds(formData);
   const raw = formData.get("builder");
   const builder = typeof raw === "string" && raw !== "" ? raw : null;
-  await attempt(businessId, () => assignProjectBuilder(getStaffDb(), projectId, builder));
-  await recordStaffAction(staff, { businessId, kind: "project.builder_set", summary: builder === null ? "Builder cleared" : "Builder changed", data: { builderId: builder } });
-  finish(businessId, "assigned");
+  const moved = await attempt(businessId, () => assignProjectBuilder(getStaffDb(), projectId, builder));
+  await recordStaffAction(staff, { businessId: moved.businessId, kind: "project.builder_set", summary: builder === null ? "Builder cleared" : "Builder changed", data: { builderId: builder } });
+  finish(moved.businessId, "assigned");
 }
 
 export async function grantRoundAction(formData: FormData): Promise<void> {
   const staff = await requireStaffAccess();
   const { businessId, projectId } = readIds(formData);
-  await attempt(businessId, () => grantRevisionRound(getStaffDb(), projectId));
-  await recordStaffAction(staff, { businessId, kind: "project.round_added", summary: "One more round of changes added", visibleToClient: true });
-  finish(businessId, "round-added");
+  const moved = await attempt(businessId, () => grantRevisionRound(getStaffDb(), projectId));
+  await recordStaffAction(staff, { businessId: moved.businessId, kind: "project.round_added", summary: "One more round of changes added", visibleToClient: true });
+  finish(moved.businessId, "round-added");
 }
