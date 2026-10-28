@@ -25,7 +25,8 @@ export function Section({ title, children, aside, tone = "plain", className, id 
         </h2>
         {aside === undefined ? null : <div className="text-xs font-semibold tabular-nums text-ink-2">{aside}</div>}
       </div>
-      <div className="mt-3 min-w-0">{children}</div>
+      {/* The title's hairline is already above: a list or empty line that opens the section drops its own top rule. */}
+      <div className="mt-3 min-w-0 [&>p:first-child]:mt-0 [&>p:first-child]:border-t-0 [&>p:first-child]:pt-0 [&>ul:first-child]:mt-0 [&>ul:first-child]:border-t-0">{children}</div>
     </section>
   );
 }
