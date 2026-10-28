@@ -17,6 +17,3 @@ export const buttonSmall = `${BASE} h-7 bg-sunken px-2.5 text-xs text-ink hover:
 
 /** Destructive actions: quiet until hovered, so they are never the obvious thing to press. */
 export const buttonDanger = `${BASE} h-9 bg-sunken px-4 text-[0.8125rem] text-error hover:bg-error hover:text-white`;
-
-/** shortcut: the old gold button on glass, kept as the primary look for pages not reworked yet; Phase 9 deletes it. */
-export const buttonGold = buttonPrimary;
