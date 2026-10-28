@@ -37,11 +37,18 @@ describe("website hosting", () => {
   it("saves a project and lists it with whether the business has a live project", async () => {
     await saveWebsiteHosting(dbs.staff.db, { businessId: businessA, vercelProjectId: PROJECT, vercelTeamId: TEAM });
     expect(await listHostedSites(dbs.staff.db, businessA)).toEqual([
-      { businessId: businessA, vercelProjectId: PROJECT, vercelTeamId: TEAM, pausedAt: null, lastError: null, hasLiveProject: false },
+      { businessId: businessA, vercelProjectId: PROJECT, vercelTeamId: TEAM, hostPause: false, pausedAt: null, lastError: null, hasLiveProject: false },
     ]);
 
     await dbs.staff.db.insert(projects).values({ businessId: businessA, status: "live" });
     expect((await listHostedSites(dbs.staff.db, businessA))[0]?.hasLiveProject).toBe(true);
+  });
+
+  it("keeps the host-pause choice when the project is saved again", async () => {
+    await saveWebsiteHosting(dbs.staff.db, { businessId: businessA, vercelProjectId: PROJECT, vercelTeamId: null });
+    await dbs.staff.db.update(websiteHosting).set({ hostPause: true }).where(eq(websiteHosting.businessId, businessA));
+    await saveWebsiteHosting(dbs.staff.db, { businessId: businessA, vercelProjectId: "prj_other", vercelTeamId: null });
+    expect((await listHostedSites(dbs.staff.db, businessA))[0]?.hostPause).toBe(true);
   });
 
   it("does not count a project that is still being built", async () => {

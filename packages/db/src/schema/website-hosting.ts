@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 import { businesses } from "./businesses";
 import { createdAt, updatedAt } from "./columns";
@@ -23,7 +23,13 @@ export const websiteHosting = pgTable(
     vercelProjectId: text("vercel_project_id").notNull(),
     /** The Vercel team id, `team_...`; null when the project sits on the token's own account. */
     vercelTeamId: text("vercel_team_id"),
-    /** When the sync paused the project. Null while the project is running. */
+    /**
+     * Also pause the Vercel project when the website goes offline. Off by default: a paused project shows Vercel's own page
+     * to the business's customers, while the site's proxy already shows the site's own maintenance page. Turn it on only for a
+     * site that cannot show its own (docs/site-hosting.md).
+     */
+    hostPause: boolean("host_pause").notNull().default(false),
+    /** When the sync found the website lapsed and took it offline (and paused the project, if hostPause). Null while it is online. */
     pausedAt: timestamp("paused_at", { withTimezone: true }),
     /** The last time the sync looked at this site, whether or not it changed anything. */
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),

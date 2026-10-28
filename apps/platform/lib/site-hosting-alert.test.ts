@@ -41,23 +41,32 @@ describe("websitePausedAlert", () => {
     plan: { name: "Managed Website", recurringAmountCents: 299_900, currency: "INR" },
   } as unknown as BillingState;
 
-  it("lists the plan, status, paid-until date, reason, time and project", () => {
-    const { facts, text } = websitePausedAlert({ state, site: { vercelProjectId: "prj_abc", vercelTeamId: "team_xyz" }, pausedAt: NOW });
+  it("lists the plan, status, paid-until date, reason, time, project and what is done at the host", () => {
+    const { facts, text } = websitePausedAlert({ state, site: { vercelProjectId: "prj_abc", vercelTeamId: "team_xyz", hostPause: true }, pausedAt: NOW });
     const byName = Object.fromEntries(facts.map((fact) => [fact.name, fact.value]));
     expect(byName["Plan"]).toContain("Managed Website");
     expect(byName["Plan status"]).toBe("Payment failing");
     expect(byName["Paid until"]).toContain("2026");
     expect(byName["Why"]).toContain("next payment did not arrive");
     expect(byName["Paused at"]).toContain("2026");
-    expect(byName["Vercel project"]).toBe("prj_abc (team_xyz)");
+    expect(byName["Hosting project"]).toBe("prj_abc (team_xyz)");
+    expect(byName["At the host"]).toBe("Paused on Vercel");
+    expect(text).toContain("paused on Vercel");
     expect(text).toContain("comes back on its own");
   });
 
+  it("says the website shows its own page when the host is left running", () => {
+    const { text } = websitePausedAlert({ state: null, site: { vercelProjectId: "prj_abc", vercelTeamId: null, hostPause: false }, pausedAt: NOW });
+    expect(text).toContain("maintenance page");
+    expect(text).not.toContain("Vercel");
+  });
+
   it("still reports when the billing state could not be read", () => {
-    const { facts } = websitePausedAlert({ state: null, site: { vercelProjectId: "prj_abc", vercelTeamId: null }, pausedAt: NOW });
+    const { facts } = websitePausedAlert({ state: null, site: { vercelProjectId: "prj_abc", vercelTeamId: null, hostPause: false }, pausedAt: NOW });
     const byName = Object.fromEntries(facts.map((fact) => [fact.name, fact.value]));
     expect(byName["Plan status"]).toBe("No subscription");
-    expect(byName["Vercel project"]).toBe("prj_abc");
+    expect(byName["Hosting project"]).toBe("prj_abc");
+    expect(byName["At the host"]).toContain("maintenance page");
     expect(byName["Plan"]).toBeNull();
   });
 });

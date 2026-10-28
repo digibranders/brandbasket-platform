@@ -52,16 +52,16 @@ function realDeps(now: Date): HostingSyncDeps {
     },
     setPaused: (site, paused) => setVercelProjectPaused(site, paused, { token: vercelApiToken() }),
     record: (businessId, result) => recordHostingSync(db, businessId, result),
-    announcePaused: async (site, pausedAt) => {
-      // A billing read that fails still announces the pause, with the facts that need no billing.
+    announceOffline: async (site, at) => {
+      // A billing read that fails still announces it, with the facts that need no billing.
       const state = await findBillingState(db, site.businessId).catch(() => null);
-      const { facts, text } = websitePausedAlert({ state, site, pausedAt });
+      const { facts, text } = websitePausedAlert({ state, site, pausedAt: at });
       await announceCustomerToTeams({ businessId: site.businessId, event: "website_paused", facts, text });
     },
   };
 }
 
-/** The hourly job's run over every hosted site. */
+/** The hourly job's run over every hosted site: records and announces lapses, and pauses the host only for sites that opted in. */
 export function syncSiteHosting(options: { readonly dryRun: boolean }): Promise<HostingSyncReport> {
   const now = new Date();
   return runSiteHostingSync(realDeps(now), { now, dryRun: options.dryRun });
