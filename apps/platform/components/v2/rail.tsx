@@ -67,7 +67,7 @@ export function Rail({ sections, logo, menu, signOut }: RailProps): ReactElement
                     current ? "bg-white/10 font-semibold text-white" : "text-white/75 hover:bg-white/5 hover:text-white",
                   )}
                 >
-                  <RailIconMark name={link.icon} current={current} />
+                  <RailIconMark name={link.icon} current={current} onDark />
                   {link.label}
                   <CountPill count={link.count} current={current} className="ml-auto" />
                 </Link>
