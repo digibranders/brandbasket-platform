@@ -29,6 +29,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts --target=dev",
     "db:migrate:test": "tsx scripts/migrate.ts --target=test",
+    "db:seed:kickoff": "tsx scripts/seed-kickoff-customers.ts",
     "directory:import-places": "tsx scripts/import-directory-places.ts",
     "directory:import-pincodes": "tsx scripts/import-india-pincodes.ts",
     "directory:backfill-places": "tsx scripts/backfill-directory-places.ts",
@@ -41,6 +42,7 @@
     "uuidv7": "1.2.1"
   },
   "devDependencies": {
+    "@brandbasket/auth": "workspace:*",
     "@types/node": "^24.13.4",
     "@types/pg": "8.23.1",
     "drizzle-kit": "0.31.10",
