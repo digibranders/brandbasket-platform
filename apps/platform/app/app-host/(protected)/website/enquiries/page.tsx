@@ -6,11 +6,13 @@ import { LeadFigures } from "@/components/panel/oyechats/lead-figures";
 import { LeadPagination } from "@/components/panel/oyechats/lead-pagination";
 import { LeadTable } from "@/components/panel/oyechats/lead-table";
 import { NoAssistantYet, OyeChatsHelp } from "@/components/panel/oyechats/oyechats-intro";
+import { SiteContactFigures } from "@/components/panel/oyechats/site-contact-figures";
 import { EmptyState, PageColumns, PageSection } from "@/components/v2/page";
 import { buildLeadRows, readPageParam } from "@/lib/chatbots-view";
 import { loadBotActivity } from "@/lib/server/chatbot-conversations";
 import { LEADS_PER_PAGE, loadLeadsPage } from "@/lib/server/chatbots";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
+import { loadSiteContacts } from "@/lib/server/site-contacts";
 
 export const metadata: Metadata = { title: "Enquiries" };
 
@@ -23,8 +25,23 @@ export const metadata: Metadata = { title: "Enquiries" };
 export default async function OyeChatsPage({ searchParams }: { readonly searchParams: Promise<{ readonly page?: string | string[] }> }): Promise<ReactElement> {
   const customer = await requireWebsiteClient();
   const { page: requested } = await searchParams;
-  const { bots, leads, total, lastWeek, lastMonth, page, pageCount } = await loadLeadsPage(customer, readPageParam(requested));
-  if (bots.length === 0) return <NoAssistantYet />;
+  const [{ bots, leads, total, lastWeek, lastMonth, page, pageCount }, contacts] = await Promise.all([
+    loadLeadsPage(customer, readPageParam(requested)),
+    loadSiteContacts(customer.tenant, new Date()),
+  ]);
+  if (bots.length === 0) {
+    return (
+      <PageColumns
+        main={
+          <>
+            {contacts === null ? null : <SiteContactFigures contacts={contacts} />}
+            <NoAssistantYet />
+          </>
+        }
+        aside={null}
+      />
+    );
+  }
 
   // Message counts come from OyeChats itself. A bot without a key, or OyeChats being down, only means the
   // count shows a dash: the leads Brandbasket already holds are listed regardless.
@@ -35,8 +52,12 @@ export default async function OyeChatsPage({ searchParams }: { readonly searchPa
     <PageColumns
       main={
         <>
-          <LeadFigures total={total} lastWeek={lastWeek} lastMonth={lastMonth} />
-          <PageSection id="leads" title="Leads" aside={<span className="tabular-nums">{total === 1 ? "1 lead" : `${total} leads`}</span>}>
+          {contacts === null ? null : <SiteContactFigures contacts={contacts} />}
+          <PageSection id="leads" title="Website chat" aside={<span>Powered by OyeChats</span>}>
+            <LeadFigures total={total} lastWeek={lastWeek} lastMonth={lastMonth} />
+            <p className="mb-3 mt-6 text-[0.9375rem] font-semibold text-ink">
+              Leads <span className="font-normal tabular-nums text-ink-2">{total === 1 ? "1 lead" : `${total} leads`}</span>
+            </p>
             {total === 0 ? (
               <EmptyState
                 compact

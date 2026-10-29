@@ -85,6 +85,7 @@ export async function loadWebsite(tenant: TenantContext, now: Date): Promise<Web
             slaDueAt: project.slaDueAt,
             previewSentAt: project.previewSentAt,
             launchedAt: project.launchedAt,
+            launchPlannedOn: project.launchPlannedOn,
           },
           events,
           callStartsAt: history?.callStartsAt ?? null,

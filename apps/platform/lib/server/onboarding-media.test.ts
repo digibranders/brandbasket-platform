@@ -4,7 +4,9 @@ import {
   newMediaAssetId,
   OnboardingLockedError,
   PhotoLimitReachedError,
+  recordBrandAsset,
   recordUploadedMedia,
+  removeBrandAsset,
   softDeleteMediaAsset,
   withTenantScope,
   type Database,
@@ -22,7 +24,9 @@ import {
   isOnboardingOpen,
   MEDIA_UPLOAD_RATE_LIMIT,
   PHOTO_LIMIT_MESSAGE,
+  removeBrandImage,
   removeOnboardingImage,
+  storeBrandImage,
   storeOnboardingImage,
 } from "./onboarding-media";
 
@@ -44,7 +48,9 @@ vi.mock("@brandbasket/db", () => {
     newMediaAssetId: vi.fn(),
     OnboardingLockedError: MockOnboardingLockedError,
     PhotoLimitReachedError: MockPhotoLimitReachedError,
+    recordBrandAsset: vi.fn(),
     recordUploadedMedia: vi.fn(),
+    removeBrandAsset: vi.fn(),
     softDeleteMediaAsset: vi.fn(),
     withTenantScope: vi.fn(),
   };
@@ -309,5 +315,38 @@ describe("removeOnboardingImage", () => {
       message: ONBOARDING_LOCKED_MESSAGE,
     });
     expect(storage.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe("brand assets, once the website is built", () => {
+  it("stores an image through the brand asset record, not the onboarding one, so no onboarding has to be open", async () => {
+    vi.mocked(recordBrandAsset).mockImplementation(async (_tx, input) => {
+      events.push(`record brand ${input.id}`);
+      return { asset: { ...asset(input.id, input.purpose), storageKey: input.storageKey }, replacedStorageKeys: [] };
+    });
+    const outcome = await storeBrandImage({ appDb, storage }, tenant, "photo", { bytes: received, filename: "front desk.jpg" });
+    expect(outcome).toMatchObject({ ok: true, asset: { id: NEW_ID, purpose: "photo" } });
+    expect(events).toEqual([`put ${NEW_KEY}`, "begin", `record brand ${NEW_ID}`, "commit"]);
+    expect(recordUploadedMedia).not.toHaveBeenCalled();
+  });
+
+  it("deletes the new file again and says so when the photo limit is reached", async () => {
+    vi.mocked(recordBrandAsset).mockRejectedValue(new PhotoLimitReachedError(20));
+    const outcome = await storeBrandImage({ appDb, storage }, tenant, "photo", { bytes: received, filename: "front desk.jpg" });
+    expect(outcome).toEqual({ ok: false, refusal: "photo-limit", message: PHOTO_LIMIT_MESSAGE });
+    expect(events.filter((event) => event.startsWith("delete"))).toContain(`delete ${NEW_KEY}`);
+  });
+
+  it("removes through the brand asset remove, then deletes the file once that has committed", async () => {
+    vi.mocked(removeBrandAsset).mockResolvedValue(OLD_KEY);
+    expect(await removeBrandImage({ appDb, storage }, tenant, OLD_LOGO_ID)).toEqual({ ok: true });
+    expect(events.slice(0, 2)).toEqual(["begin", "commit"]);
+    expect(events).toEqual(expect.arrayContaining(deletesOf(OLD_KEY)));
+    expect(softDeleteMediaAsset).not.toHaveBeenCalled();
+  });
+
+  it("says the image is already gone when there is no such asset", async () => {
+    vi.mocked(removeBrandAsset).mockResolvedValue(null);
+    expect(await removeBrandImage({ appDb, storage }, tenant, OLD_LOGO_ID)).toMatchObject({ ok: false });
   });
 });

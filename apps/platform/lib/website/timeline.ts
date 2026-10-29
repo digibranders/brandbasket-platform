@@ -14,6 +14,8 @@ export interface TimelineProject {
   readonly slaDueAt: Date | null;
   readonly previewSentAt: Date | null;
   readonly launchedAt: Date | null;
+  /** The day staff plan to go live (`YYYY-MM-DD`), or null while none is set. */
+  readonly launchPlannedOn?: string | null;
 }
 /** One row of project_events, oldest first. */
 export interface TimelineEvent {
@@ -79,6 +81,8 @@ export function liveDate(input: TimelineInput): { readonly liveBy: string; reado
   const { project, events, callStartsAt } = input;
   // A paused build has no promise: the dates come back when it is resumed.
   if (project.status === "on_hold") return null;
+  // A day staff have set is what the customer is told, in place of the working-day estimate below.
+  if (project.launchPlannedOn !== undefined && project.launchPlannedOn !== null && project.status !== "live") return { liveBy: project.launchPlannedOn, approveBy: null };
   if (project.status === "approved") {
     const approvedAt = last(events, "approved");
     return approvedAt === null ? null : { liveBy: addWorkingDays(day(approvedAt), LIVE_AFTER_APPROVAL_WORKING_DAYS), approveBy: null };
