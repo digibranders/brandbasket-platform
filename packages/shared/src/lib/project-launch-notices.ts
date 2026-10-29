@@ -11,7 +11,9 @@ export type ProjectLaunchNotice =
   | "checks-not-allowed"
   | "resent"
   | "resend-failed"
-  | "resend-not-allowed";
+  | "resend-not-allowed"
+  | "address-saved"
+  | "address-unavailable";
 
 /** Fixed messages only: the query parameter picks one, and nothing from it is ever shown. */
 export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { readonly text: string; readonly ok: boolean }>> = {
@@ -40,6 +42,11 @@ export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { read
   },
   "resend-not-allowed": {
     text: "Nothing sent: the launch email can only be sent again within 7 days of going live, with a domain and an owner to email.",
+    ok: false,
+  },
+  "address-saved": { text: "Their free address is saved.", ok: true },
+  "address-unavailable": {
+    text: "No free address could be made. Check the site address setting or add the domain another way.",
     ok: false,
   },
 };

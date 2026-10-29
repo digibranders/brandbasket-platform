@@ -1,7 +1,24 @@
 import "server-only";
 import { z } from "zod";
+import { clientSiteBaseDomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 
 const POSTGRES_PROTOCOL = /^postgresql?$/;
+
+/** Checked by the same rule as the platform (clientSiteBaseDomain), so both apps agree on what is a valid domain. */
+const optionalClientSiteBaseDomain = z
+  .string()
+  .optional()
+  .refine(
+    (value) => {
+      try {
+        clientSiteBaseDomain({ CLIENT_SITE_BASE_DOMAIN: value });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { error: "CLIENT_SITE_BASE_DOMAIN must be a domain such as sites.example.com" },
+  );
 
 /**
  * The staff console's environment.
@@ -30,6 +47,8 @@ const serverEnvSchema = z.object({
     protocol: /^https?$/,
     error: "APP_ORIGIN must be an absolute http:// or https:// URL",
   }),
+  /** The domain free addresses are made on (<name>.<this>). Optional: unset, no free address is offered. */
+  CLIENT_SITE_BASE_DOMAIN: optionalClientSiteBaseDomain,
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
