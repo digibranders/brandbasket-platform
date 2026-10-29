@@ -53,7 +53,7 @@ function copyFor(state: WebsiteState): Copy {
 export function ProgressHome({ state, data }: { readonly state: WebsiteState; readonly data: HomeData }): ReactElement {
   const copy = copyFor(state);
   const endsAt = data.call.booking?.endsAtIso ?? null;
-  const milestones = websiteMilestones(state, { kickoffAt: endsAt === null ? null : new Date(endsAt), firstPreviewDueAt: data.project?.slaDueAt ?? null });
+  const milestones = websiteMilestones(state, { kickoffAt: endsAt === null ? null : new Date(endsAt), firstPreviewDueAt: data.project?.slaDueAt ?? null, launchPlannedOn: data.project?.launchPlannedOn ?? null });
   const action =
     state.kind === "preview_ready" ? (
       <Link href="/website" className={DARK_BUTTON}>

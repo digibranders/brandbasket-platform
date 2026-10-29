@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import Link from "next/link";
 import type { ReactElement } from "react";
 import { findAnnouncement, findBusinessTimeZone, findOwnListing, getBusinessHours, getBusinessProfile, listClosures, withTenantScope } from "@brandbasket/db";
 import { addDays, localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
@@ -9,25 +8,25 @@ import { fromStoredHours, type OpeningHours } from "@brandbasket/shared/lib/onbo
 import { cn } from "@brandbasket/shared/lib/cn";
 import { phoneCountryOptions } from "@brandbasket/shared/server/phone-countries";
 import { savedPhoneStart, visitorPhoneCountry } from "@brandbasket/shared/server/phone-defaults";
-import { SOFT_BUTTON, STACK } from "@/components/v2/classes";
-import { ActionRow, PageFrame, PageSection } from "@/components/v2/page";
+import { STACK } from "@/components/v2/classes";
+import { PageFrame, PageSection } from "@/components/v2/page";
 import { AnnouncementPanel } from "@/components/panel/details/announcement-panel";
 import { ClosuresPanel } from "@/components/panel/details/closures-panel";
+import { BrandAssetsPanel } from "@/components/panel/details/brand-assets-panel";
 import { ContactPanel, type SavedContact } from "@/components/panel/details/contact-panel";
 import { HoursPanel } from "@/components/panel/details/hours-panel";
 import { LivePreviewLayout } from "@/components/panel/live-preview/live-preview-layout";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { loadBrandAssets } from "@/lib/server/brand-assets";
 import { getAppDb } from "@/lib/server/db";
 import { livePreviewSource } from "@/lib/server/live-preview";
+import { removeBrandAssetAction } from "./brand-actions";
 import { addClosureAction, clearAnnouncementAction, deleteClosureAction, saveAnnouncementAction, saveContactAction, saveHoursAction } from "./actions";
 
 export const metadata: Metadata = { title: "Business" };
 
 /** How far ahead a fresh announcement defaults to running, when nothing is saved yet. */
 const DEFAULT_ANNOUNCEMENT_DAYS = 2;
-
-/** Where a customer sends their logo and photos: a note to the team, which takes pictures as attachments. */
-const SEND_ASSETS_HREF = "/requests/new?intent=send_info";
 
 /**
  * The business's own facts. Contact details are every paying customer's to keep current. Hours, holidays and the
@@ -38,6 +37,7 @@ const SEND_ASSETS_HREF = "/requests/new?intent=send_info";
 export default async function DetailsPage(): Promise<ReactElement> {
   const { tenant, billing } = await requireCustomerAccess();
   const hasWebsite = billing.hasWebsite;
+  const assets = await loadBrandAssets(tenant);
 
   const { profile, timeZone, hoursRows, closures, announcement, listing } = await withTenantScope(getAppDb(), tenant, async (tx) => ({
     profile: await getBusinessProfile(tx),
@@ -109,14 +109,7 @@ export default async function DetailsPage(): Promise<ReactElement> {
       ) : null}
 
       <PageSection id="assets" title="Logo and photos">
-        <ActionRow
-          text="Send your logo and photos to the team and we use them in your work."
-          action={
-            <Link href={SEND_ASSETS_HREF} className={SOFT_BUTTON}>
-              Send logo or photos
-            </Link>
-          }
-        />
+        <BrandAssetsPanel assets={assets} remove={removeBrandAssetAction} />
       </PageSection>
     </div>
   );

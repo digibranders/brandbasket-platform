@@ -173,6 +173,21 @@ describe("websiteTimeline", () => {
   });
 });
 
+describe("a launch day set by staff", () => {
+  it("is the date the customer is told, in place of the working-day estimate", () => {
+    const planned = project({ status: "preview", previewSentAt: PREVIEW, launchPlannedOn: "2026-11-12" });
+    expect(liveDate(input({ project: planned, now: PREVIEW }))).toEqual({ liveBy: "2026-11-12", approveBy: null });
+    const steps = websiteTimeline(input({ project: planned, now: PREVIEW }));
+    expect(row(steps, "live").when).toBe("By Thu 12 Nov");
+  });
+
+  it("is not shown for a paused build, which has no promise, and is not used once the website is live", () => {
+    expect(liveDate(input({ project: project({ status: "on_hold", launchPlannedOn: "2026-11-12" }) }))).toBeNull();
+    const live = project({ status: "live", launchedAt: at("2026-11-10T04:30:00.000Z"), launchPlannedOn: "2026-11-12" });
+    expect(row(websiteTimeline(input({ project: live })), "live").when).not.toContain("12 Nov");
+  });
+});
+
 describe("currentStep", () => {
   it("does not count a call in the future as done", () => {
     expect(currentStep(input({ project: project({ status: "onboarding" }), now: BEFORE_CALL }))).toBe(0);

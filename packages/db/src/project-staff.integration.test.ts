@@ -12,8 +12,11 @@ import {
   listSetupCallsForStaff,
   ProjectBuilderNotStaffError,
   ProjectMoveRefusedError,
+  setProjectLaunchPlannedOn,
 } from "./queries/project-staff";
 import { businesses, businessMembers, projects, staffMembers, users, type ProjectStatus } from "./schema";
+import { findLatestProject } from "./queries/projects";
+import { withTenantScope } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
 const OWNER = "owner-1";
@@ -111,6 +114,37 @@ describe("grantRevisionRound", () => {
     await setProjectStatus("building");
     await expect(grantRevisionRound(dbs.staff.db, projectId)).rejects.toBeInstanceOf(ProjectMoveRefusedError);
     expect((await readProject()).revisionRoundsIncluded).toBe(2);
+  });
+});
+
+describe("setProjectLaunchPlannedOn", () => {
+  it("sets the planned launch day on an open build, shows it to staff, and clears it again", async () => {
+    await setProjectStatus("preview");
+    await setProjectLaunchPlannedOn(dbs.staff.db, projectId, "2026-12-05");
+    expect((await readProject()).launchPlannedOn).toBe("2026-12-05");
+    expect((await findOpenProjectForStaff(dbs.staff.db, businessId))?.launchPlannedOn).toBe("2026-12-05");
+    await setProjectLaunchPlannedOn(dbs.staff.db, projectId, null);
+    expect((await readProject()).launchPlannedOn).toBeNull();
+  });
+
+  it("refuses a day that is not a real calendar day, and a build that is finished", async () => {
+    await setProjectStatus("approved");
+    for (const day of ["2026-02-30", "05/12/2026", "2026-13-01", ""]) {
+      await expect(setProjectLaunchPlannedOn(dbs.staff.db, projectId, day)).rejects.toBeInstanceOf(ProjectMoveRefusedError);
+    }
+    expect((await readProject()).launchPlannedOn).toBeNull();
+    await setProjectStatus("cancelled");
+    await expect(setProjectLaunchPlannedOn(dbs.staff.db, projectId, "2026-12-05")).rejects.toBeInstanceOf(ProjectMoveRefusedError);
+  });
+
+  it("is readable by the customer's own role, with no change to what they may write", async () => {
+    await setProjectStatus("approved");
+    await setProjectLaunchPlannedOn(dbs.staff.db, projectId, "2026-12-05");
+    const seen = await withTenantScope(dbs.app.db, { userId: OWNER, businessId }, (tx) => findLatestProject(tx));
+    expect(seen?.launchPlannedOn).toBe("2026-12-05");
+    await expect(
+      withTenantScope(dbs.app.db, { userId: OWNER, businessId }, (tx) => tx.update(projects).set({ launchPlannedOn: "2026-12-31" }).where(eq(projects.id, projectId))),
+    ).rejects.toThrow();
   });
 });
 

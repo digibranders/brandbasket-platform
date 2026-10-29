@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  date,
   foreignKey,
   integer,
   pgEnum,
@@ -49,6 +50,8 @@ export const projects = pgTable(
     onboardingSubmittedAt: timestamp("onboarding_submitted_at", { withTimezone: true }),
     /** First preview promised by this time: 48 hours after submission. */
     slaDueAt: timestamp("sla_due_at", { withTimezone: true }),
+    /** The day staff plan to put the website live, shown to the customer once it is set. A plan, not a promise: null until staff set it. */
+    launchPlannedOn: date("launch_planned_on", { mode: "string" }),
     /** Set together, when staff send a preview: recordProjectPreviewSent. Null until the first one goes out. */
     previewUrl: text("preview_url"),
     previewSentAt: timestamp("preview_sent_at", { withTimezone: true }),

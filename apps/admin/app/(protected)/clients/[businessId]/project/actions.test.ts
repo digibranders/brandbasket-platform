@@ -3,6 +3,8 @@ import {
   cancelProject,
   grantRevisionRound,
   ProjectBuilderNotStaffError,
+  ProjectMoveRefusedError,
+  setProjectLaunchPlannedOn,
 } from "@brandbasket/db";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,6 +15,7 @@ import {
   assignBuilderAction,
   cancelProjectAction,
   grantRoundAction,
+  planLaunchAction,
 } from "./actions";
 
 vi.mock("server-only", () => ({}));
@@ -25,6 +28,7 @@ vi.mock("@brandbasket/db", async () => {
     cancelProject: vi.fn(),
     assignProjectBuilder: vi.fn(),
     grantRevisionRound: vi.fn(),
+    setProjectLaunchPlannedOn: vi.fn(),
   };
 });
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));
@@ -103,5 +107,31 @@ describe("grantRoundAction", () => {
 describe("ids", () => {
   it("refuses a business id that is not a uuid", async () => {
     await expect(cancelProjectAction(form({ businessId: "nope", projectId: PROJECT }))).rejects.toThrow("must be a valid id");
+  });
+});
+
+describe("planLaunchAction", () => {
+  it("saves the day, records it for the team and says it is saved", async () => {
+    vi.mocked(setProjectLaunchPlannedOn).mockResolvedValue(MOVED);
+    await expect(planLaunchAction(form({ ...IDS, launchDay: "2026-12-05" }))).rejects.toThrow("move=launch-planned");
+    expect(setProjectLaunchPlannedOn).toHaveBeenCalledWith(DB, PROJECT, "2026-12-05");
+    expect(recordStaffAction).toHaveBeenCalledWith(STAFF, expect.objectContaining({ businessId: BUSINESS, kind: "project.launch_planned", summary: "Launch day set" }));
+  });
+
+  it("clears the day when the field is empty", async () => {
+    vi.mocked(setProjectLaunchPlannedOn).mockResolvedValue(MOVED);
+    await expect(planLaunchAction(form({ ...IDS, launchDay: "  " }))).rejects.toThrow("move=launch-planned");
+    expect(setProjectLaunchPlannedOn).toHaveBeenCalledWith(DB, PROJECT, null);
+    expect(recordStaffAction).toHaveBeenCalledWith(STAFF, expect.objectContaining({ summary: "Launch day cleared" }));
+  });
+
+  it("refuses text that is not a day, without touching the database", async () => {
+    await expect(planLaunchAction(form({ ...IDS, launchDay: "next week" }))).rejects.toThrow("move=launch-day-invalid");
+    expect(setProjectLaunchPlannedOn).not.toHaveBeenCalled();
+  });
+
+  it("says the build no longer allows it when the database refuses", async () => {
+    vi.mocked(setProjectLaunchPlannedOn).mockRejectedValue(new ProjectMoveRefusedError("plan-launch", PROJECT));
+    await expect(planLaunchAction(form({ ...IDS, launchDay: "2026-12-05" }))).rejects.toThrow("move=refused");
   });
 });

@@ -54,6 +54,8 @@ export interface Project {
   readonly onboardingSubmittedAt: Date | null;
   /** When the first preview is promised by. Null until onboarding is submitted. */
   readonly slaDueAt: Date | null;
+  /** The day staff plan to put the website live (`YYYY-MM-DD`), or null while none is set. */
+  readonly launchPlannedOn: string | null;
   /** Set together, by recordProjectPreviewSent. Null until the first preview goes out. */
   readonly previewUrl: string | null;
   readonly previewSentAt: Date | null;
@@ -72,6 +74,7 @@ export const PROJECT_COLUMNS = {
   status: projects.status,
   onboardingSubmittedAt: projects.onboardingSubmittedAt,
   slaDueAt: projects.slaDueAt,
+  launchPlannedOn: projects.launchPlannedOn,
   previewUrl: projects.previewUrl,
   previewSentAt: projects.previewSentAt,
   onHoldReason: projects.onHoldReason,

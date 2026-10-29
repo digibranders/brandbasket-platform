@@ -5,7 +5,9 @@ import {
   newMediaAssetId,
   OnboardingLockedError,
   PhotoLimitReachedError,
+  recordBrandAsset,
   recordUploadedMedia,
+  removeBrandAsset,
   softDeleteMediaAsset,
   withTenantScope,
   type Database,
@@ -108,11 +110,21 @@ export async function consumeUploadAllowance(appDb: Database, tenant: TenantCont
  * again, so a row never points at a missing file and a file never outlives a failed upload. A new logo replaces the
  * old one in the same transaction, and the old file is removed once that has committed.
  */
-export async function storeOnboardingImage(
+export async function storeOnboardingImage(deps: OnboardingMediaDeps, tenant: TenantContext, purpose: MediaAssetPurpose, upload: ReceivedUpload): Promise<UploadOutcome> {
+  return storeImage(deps, tenant, purpose, upload, recordUploadedMedia);
+}
+
+/** storeOnboardingImage for a business whose website is built: the same checks and the same replacing of a logo, with no onboarding to be open. */
+export async function storeBrandImage(deps: OnboardingMediaDeps, tenant: TenantContext, purpose: MediaAssetPurpose, upload: ReceivedUpload): Promise<UploadOutcome> {
+  return storeImage(deps, tenant, purpose, upload, recordBrandAsset);
+}
+
+async function storeImage(
   deps: OnboardingMediaDeps,
   tenant: TenantContext,
   purpose: MediaAssetPurpose,
   upload: ReceivedUpload,
+  record: typeof recordUploadedMedia,
 ): Promise<UploadOutcome> {
   let processed: ProcessedUpload;
   try {
@@ -129,10 +141,10 @@ export async function storeOnboardingImage(
   const storageKey = mediaStorageKey(tenant.businessId, mediaId, "display");
   await deps.storage.put(storageKey, processed.bytes, processed.mimeType);
 
-  let recorded: Awaited<ReturnType<typeof recordUploadedMedia>>;
+  let recorded: Awaited<ReturnType<typeof record>>;
   try {
     recorded = await withTenantScope(deps.appDb, tenant, (tx) =>
-      recordUploadedMedia(
+      record(
         tx,
         {
           id: mediaId,
@@ -166,14 +178,19 @@ export async function storeOnboardingImage(
 }
 
 /** Removes one of the business's images: the row is soft-deleted, then the file is deleted after that commits. */
-export async function removeOnboardingImage(
-  deps: OnboardingMediaDeps,
-  tenant: TenantContext,
-  mediaId: string,
-): Promise<MediaActionResult> {
+export async function removeOnboardingImage(deps: OnboardingMediaDeps, tenant: TenantContext, mediaId: string): Promise<MediaActionResult> {
+  return removeImage(deps, tenant, mediaId, softDeleteMediaAsset);
+}
+
+/** removeOnboardingImage for a business whose website is built. */
+export async function removeBrandImage(deps: OnboardingMediaDeps, tenant: TenantContext, mediaId: string): Promise<MediaActionResult> {
+  return removeImage(deps, tenant, mediaId, removeBrandAsset);
+}
+
+async function removeImage(deps: OnboardingMediaDeps, tenant: TenantContext, mediaId: string, remove: typeof softDeleteMediaAsset): Promise<MediaActionResult> {
   let storageKey: string | null;
   try {
-    storageKey = await withTenantScope(deps.appDb, tenant, (tx) => softDeleteMediaAsset(tx, mediaId));
+    storageKey = await withTenantScope(deps.appDb, tenant, (tx) => remove(tx, mediaId));
   } catch (error) {
     if (error instanceof OnboardingLockedError) return { ok: false, message: ONBOARDING_LOCKED_MESSAGE };
     throw error;

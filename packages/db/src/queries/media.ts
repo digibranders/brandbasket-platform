@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import type { ScopedTransaction } from "../scope";
 import { mediaAssets, type MediaAssetPurpose, type MediaAssetStatus } from "../schema";
@@ -209,4 +209,72 @@ export async function recordUploadedMedia(
     if (key !== null) replacedStorageKeys.push(key);
   }
   return { asset, replacedStorageKeys };
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Brand assets after the website is built
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * Takes a lock that lasts until the transaction ends and is shared by every brand asset change of one business, so two
+ * uploads run one after the other: the second counts the first's photo, and two new logos never both survive. The project
+ * row is not used because, once the website is built, there is no project in onboarding to lock.
+ */
+async function lockBrandAssets(tx: ScopedTransaction): Promise<string> {
+  const businessId = await currentBusinessId(tx);
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`brand-assets:${businessId}`}, 0))`);
+  return businessId;
+}
+
+/**
+ * recordUploadedMedia for a business whose website is already built: the same rules (a photo is refused with
+ * PhotoLimitReachedError at `maxPhotos`, a new logo replaces the old one), without the onboarding lock, so it works on any
+ * plan at any time. Like the onboarding version it is for the scoped business only.
+ */
+export async function recordBrandAsset(tx: ScopedTransaction, input: NewMediaAsset, limits: UploadLimits): Promise<RecordedUpload> {
+  if (!isUuid(input.id)) throw new Error(`Media asset id must be a UUID, received "${input.id}"`);
+  const businessId = await lockBrandAssets(tx);
+  const existing = await listMediaAssets(tx, input.purpose);
+  if (input.purpose === "photo" && existing.length >= limits.maxPhotos) throw new PhotoLimitReachedError(limits.maxPhotos);
+
+  const rows = await tx
+    .insert(mediaAssets)
+    .values({
+      id: input.id,
+      businessId,
+      purpose: input.purpose,
+      storageKey: input.storageKey,
+      originalFilename: input.originalFilename,
+      mimeType: input.mimeType,
+      bytes: input.bytes,
+      width: input.width,
+      height: input.height,
+      sha256: input.sha256,
+      altText: input.altText,
+      status: "ready",
+      uploadedByUserId: input.uploadedByUserId,
+    })
+    .returning(MEDIA_COLUMNS);
+  const asset = rows[0];
+  if (asset === undefined) throw new Error("Media asset insert returned no row");
+  if (input.purpose !== "logo") return { asset, replacedStorageKeys: [] };
+
+  const replacedStorageKeys: string[] = [];
+  for (const previous of existing) {
+    const key = await removeBrandAsset(tx, previous.id);
+    if (key !== null) replacedStorageKeys.push(key);
+  }
+  return { asset, replacedStorageKeys };
+}
+
+/** softDeleteMediaAsset without the onboarding lock: returns the storage key to delete once the transaction commits, or null when there is no such asset. */
+export async function removeBrandAsset(tx: ScopedTransaction, mediaId: string): Promise<string | null> {
+  const businessId = await lockBrandAssets(tx);
+  if (!isUuid(mediaId)) return null;
+  const rows = await tx
+    .update(mediaAssets)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(mediaAssets.id, mediaId), eq(mediaAssets.businessId, businessId), isNull(mediaAssets.deletedAt)))
+    .returning({ storageKey: mediaAssets.storageKey });
+  return rows[0]?.storageKey ?? null;
 }
