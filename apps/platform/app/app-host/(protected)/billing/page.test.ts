@@ -51,14 +51,14 @@ async function render(searchParams: Record<string, string> = {}): Promise<string
 }
 
 describe("the Billing page", () => {
-  it("puts the plan on the left and the payments in the aside, with no box around any section", async () => {
+  it("puts the plan first and the payments below it, with no box around any section", async () => {
     const html = await render();
     expect(html).toContain(">Plan &amp; billing</h1>");
     expect(html).toContain("[tabs Plan and billing]");
     expect(html).toContain("Your plan, and each month’s bill with its invoices and receipts.");
     expect(html.indexOf("[plan summary]")).toBeGreaterThan(-1);
     expect(html.indexOf("[payments]")).toBeGreaterThan(html.indexOf("[plan summary]"));
-    expect(html).toMatch(/<aside[^>]*>[^<]*\[payments\]/);
+    expect(html).not.toContain("<aside");
     expect(html).not.toContain("rounded-card");
     expect(html).not.toContain("shadow-lift");
   });
