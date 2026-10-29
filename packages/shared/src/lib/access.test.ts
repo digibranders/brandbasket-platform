@@ -67,6 +67,11 @@ describe("staffCan", () => {
     expect(staffCan("finance", "oversight")).toBe(false);
   });
 
+  it("lets admin handle money and read the access log, which finance cannot", () => {
+    expect(staffCan("admin", "money")).toBe(true);
+    expect(staffCan("admin", "oversight")).toBe(true);
+  });
+
   it("keeps the alert destinations (Teams addresses) to admins", () => {
     expect(staffCan("support", "integrations")).toBe(false);
     expect(staffCan("finance", "integrations")).toBe(false);
