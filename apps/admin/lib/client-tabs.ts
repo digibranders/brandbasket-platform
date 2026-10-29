@@ -4,7 +4,7 @@ import { staffCan, type StaffCapability } from "@brandbasket/shared/lib/access";
 /** The client page's tabs, in order. A tab with `needs` is hidden from roles without that capability. */
 export const CLIENT_TABS = [
   { slug: "", label: "Overview" },
-  { slug: "project", label: "Project" },
+  { slug: "project", label: "Delivery" },
   { slug: "billing", label: "Billing", needs: "money" },
   { slug: "services", label: "Services" },
   { slug: "website", label: "Website" },

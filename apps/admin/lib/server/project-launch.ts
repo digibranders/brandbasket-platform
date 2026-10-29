@@ -16,7 +16,7 @@ import { customerEmailTransport } from "./email";
 import type { OwnerNotification } from "./project-preview";
 
 /** How long after going live staff may send the launch email again. */
-const LAUNCH_RESEND_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+export const LAUNCH_RESEND_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export class ProjectLaunchRecipientMissingError extends Error {
   constructor(businessId: string) {

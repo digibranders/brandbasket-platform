@@ -1,5 +1,14 @@
-import { type ClientDetail, type ClientHours, type DomainStatus, type HostedSite, type Plan } from "@brandbasket/db";
+import {
+  LAUNCH_CHECK_KEYS,
+  type ClientDetail,
+  type ClientHours,
+  type DomainStatus,
+  type HostedSite,
+  type LaunchCheckKey,
+  type Plan,
+} from "@brandbasket/db";
 import type { ReactElement } from "react";
+import { LAUNCH_CHECK_LABELS } from "@brandbasket/shared/lib/launch-checks";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
@@ -15,6 +24,7 @@ import {
   MAX_MANUAL_REFERENCE_LENGTH,
 } from "@brandbasket/shared/lib/billing/manual-payment-form";
 import { couponPhrase, type CarriedCodeHint } from "@/lib/manual-reactivation-hint";
+import { launchChecksSentence } from "@/lib/launch-check-state";
 import { firstPaymentAmount, initialTermPhrase, monthlyPaymentAmount } from "@brandbasket/shared/lib/billing/terms";
 import { isPlacementField } from "@brandbasket/shared/lib/directory/placement-form";
 import { formatStoredDate } from "@brandbasket/shared/lib/format";
@@ -31,7 +41,10 @@ import {
   markDomainReadyAction,
   markLiveAction,
   recordManualPaymentAction,
+  resendLaunchEmailAction,
+  resendPreviewEmailAction,
   rotateSiteApiTokenAction,
+  saveLaunchChecksAction,
   saveWebsiteHostingAction,
   sendPreviewAction,
   setWebsiteUrlAction,
@@ -444,6 +457,57 @@ export function SendPreviewForm({ businessId }: { readonly businessId: string })
       </div>
       <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Sending…">
         Send preview
+      </GatedSubmitButton>
+    </form>
+  );
+}
+
+export function ResendPreviewEmailForm({ businessId }: { readonly businessId: string }): ReactElement {
+  return (
+    <form action={resendPreviewEmailAction}>
+      <p className="max-w-xl text-ink-soft">If the customer did not get the email, send it again.</p>
+      <input type="hidden" name="businessId" value={businessId} />
+      <GatedSubmitButton className={`${buttonSecondary} mt-5`} pendingLabel="Sending…">
+        Resend email
+      </GatedSubmitButton>
+    </form>
+  );
+}
+
+export function ResendLaunchEmailForm({ businessId }: { readonly businessId: string }): ReactElement {
+  return (
+    <form action={resendLaunchEmailAction}>
+      <p className="max-w-xl text-ink-soft">If the customer did not get the email, send it again.</p>
+      <input type="hidden" name="businessId" value={businessId} />
+      <GatedSubmitButton className={`${buttonSecondary} mt-5`} pendingLabel="Sending…">
+        Resend email
+      </GatedSubmitButton>
+    </form>
+  );
+}
+
+/** The checks staff tick before a project goes live. `done` is what is already saved; the form opens with those ticked. */
+export function LaunchChecksForm({
+  businessId,
+  done,
+}: {
+  readonly businessId: string;
+  readonly done: readonly LaunchCheckKey[];
+}): ReactElement {
+  return (
+    <form action={saveLaunchChecksAction} className="max-w-xl">
+      <input type="hidden" name="businessId" value={businessId} />
+      <div className="space-y-3">
+        {LAUNCH_CHECK_KEYS.map((key) => (
+          <label key={key} className="flex items-start gap-3 text-sm">
+            <input type="checkbox" name={`check_${key}`} defaultChecked={done.includes(key)} className={checkboxClasses} />
+            <span>{LAUNCH_CHECK_LABELS[key]}</span>
+          </label>
+        ))}
+      </div>
+      <p className="mt-5 text-ink-soft">{launchChecksSentence(done)}</p>
+      <GatedSubmitButton className={`${buttonSecondary} mt-5`} pendingLabel="Saving…">
+        Save checks
       </GatedSubmitButton>
     </form>
   );
