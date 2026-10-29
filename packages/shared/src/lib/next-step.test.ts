@@ -29,8 +29,15 @@ describe("nextStep", () => {
     ).toEqual({ kind: "continue-onboarding", completed: 1, total: 5 });
   });
 
-  it.each(["submitted", "building"] as const)("shows the build and its due date while %s", (status) => {
-    expect(nextStep({ project: project(status, DUE), completedSteps: [], liveWebsite: null })).toEqual({
+  it("shows the send as preparing, with its due date, until staff start the build", () => {
+    expect(nextStep({ project: project("submitted", DUE), completedSteps: [], liveWebsite: null })).toEqual({
+      kind: "preparing",
+      slaDueAt: DUE,
+    });
+  });
+
+  it("shows the build and its due date while building", () => {
+    expect(nextStep({ project: project("building", DUE), completedSteps: [], liveWebsite: null })).toEqual({
       kind: "building",
       slaDueAt: DUE,
     });

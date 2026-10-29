@@ -94,7 +94,7 @@ describe("noticesFrom", () => {
   });
 
   it.each([
-    ["submitted", "building"],
+    ["submitted", "preparing"],
     ["building", "building"],
     ["revisions", "revisions"],
     ["on_hold", "on-hold"],

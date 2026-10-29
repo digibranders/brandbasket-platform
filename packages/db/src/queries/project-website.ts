@@ -68,8 +68,9 @@ export async function setProjectOnHold(db: Runner, input: { readonly businessId:
 }
 
 /**
- * on_hold back to the status before the pause (the latest history row that is not on_hold; submitted comes back as
- * building), clearing the reason. The paused row is locked for the read of its history, so two resumes cannot both land.
+ * on_hold back to exactly the status it was paused from (the latest history row that is not on_hold), clearing the
+ * reason. With no such row it falls back to building. The paused row is locked for the read of its history, so two
+ * resumes cannot both land.
  */
 export async function resumeProject(db: Database, input: { readonly businessId: string }): Promise<Project> {
   return db.transaction(async (tx) => {
@@ -88,7 +89,7 @@ export async function resumeProject(db: Database, input: { readonly businessId: 
       .orderBy(desc(projectEvents.occurredAt), desc(projectEvents.id))
       .limit(1);
     const previous = before[0]?.status;
-    const target: ProjectStatus = previous === undefined || previous === "submitted" ? "building" : previous;
+    const target: ProjectStatus = previous === undefined ? "building" : previous;
 
     const rows = await tx
       .update(projects)

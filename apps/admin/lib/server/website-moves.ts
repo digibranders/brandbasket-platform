@@ -1,5 +1,5 @@
 import "server-only";
-import { addActivityEvent, resumeProject, setProjectBuilding, setProjectOnHold, type Database } from "@brandbasket/db";
+import { addActivityEvent, resumeProject, setProjectBuilding, setProjectOnHold, type Database, type ProjectStatus } from "@brandbasket/db";
 
 /** The database refuses an activity title over 140 characters. */
 const MAX_LINE = 140;
@@ -34,8 +34,15 @@ export async function putOnHold(db: Database, move: WebsiteMove & { readonly rea
   await addWorkingActivity(db, { ...move, title: line.length > MAX_LINE ? `${line.slice(0, MAX_LINE - 1).trimEnd()}…` : line, now });
 }
 
-/** On hold back to the stage before the pause. */
+/** The customer line for each stage a paused build can return to. Any other stage gets the building line. */
+const RESUMED_LINE: Partial<Record<ProjectStatus, string>> = {
+  submitted: "We resumed your website build",
+  preview: "Your website preview is waiting for you again",
+  revisions: "We are making your changes again",
+};
+
+/** On hold back to the stage before the pause. The line says which stage the build is back in. */
 export async function resumeBuilding(db: Database, move: WebsiteMove, now: Date): Promise<void> {
-  await resumeProject(db, { businessId: move.businessId });
-  await addWorkingActivity(db, { ...move, title: "We are building your website again", now });
+  const project = await resumeProject(db, { businessId: move.businessId });
+  await addWorkingActivity(db, { ...move, title: RESUMED_LINE[project.status] ?? "We are building your website again", now });
 }
