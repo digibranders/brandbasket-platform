@@ -46,7 +46,7 @@ const SERVICES: Readonly<
     ],
   },
   search: {
-    title: "Search",
+    title: "Local SEO + AEO",
     fields: [
       { name: "keywordsPageOne", label: "Searches on Google's first page" },
       { name: "keywordsPageOnePrev", label: "Last month's searches on the first page" },
