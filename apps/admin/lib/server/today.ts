@@ -5,6 +5,7 @@ import {
   listAddOnsToContact,
   listClients,
   listErrorIssues,
+  listKickoffBoard,
   listLeads,
   listPaymentsNeedingAttention,
   listSetupCallsBetween,
@@ -34,6 +35,8 @@ import { readSystemHealth, type SystemLine } from "./system-health";
 const ATTENTION_READ_LIMIT = 100;
 /** The support query's page size cap. */
 const NEW_TICKETS_READ_LIMIT = 25;
+/** How far back a kickoff call is still asked about: the Calls page's "Just finished" uses the same window. */
+const KICKOFF_LOOK_BACK_DAYS = 14;
 
 /** One read that may fail without taking the page down: a failure logs, records its label in `failed` when given, and gives `fallback`. */
 async function guarded<T>(label: string, read: () => Promise<T>, fallback: T, failed?: string[]): Promise<T> {
@@ -55,6 +58,8 @@ interface QueueSources {
   readonly newErrors: readonly ErrorIssue[];
   /** Failed deliveries in the last 24 hours; null when the read failed. */
   readonly failedDeliveries: number | null;
+  /** End times of kickoff calls that are over and not marked held; null when the read failed. */
+  readonly kickoffsNeedingOutcome: readonly Date[] | null;
 }
 
 interface QueueRead {
@@ -66,7 +71,7 @@ interface QueueRead {
 async function readQueueSources(now: Date): Promise<QueueRead> {
   const db = getStaffDb();
   const failed: string[] = [];
-  const [clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries] = await Promise.all([
+  const [clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome] = await Promise.all([
     guarded("clients", () => listClients(db), [], failed),
     guarded("leads", () => listLeads(db, {}), [], failed),
     guarded("flagged payments", () => listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }), [], failed),
@@ -74,8 +79,17 @@ async function readQueueSources(now: Date): Promise<QueueRead> {
     guarded("requests needing a reply", async () => (await listSupportTicketsForStaff(db, { queue: "needs_reply", limit: NEW_TICKETS_READ_LIMIT })).items, [], failed),
     guarded("new errors", async () => (await listErrorIssues(db, { status: "new" })).issues, [], failed),
     guarded<number | null>("deliveries", () => countFailedDeliveries24h(now), null, failed),
+    guarded<Date[] | null>(
+      "kickoff calls",
+      async () =>
+        (await listKickoffBoard(db, { now, lookBackDays: KICKOFF_LOOK_BACK_DAYS })).flatMap((row) =>
+          row.heldAt === null && row.endsAt !== null && row.endsAt.getTime() <= now.getTime() ? [row.endsAt] : [],
+        ),
+      null,
+      failed,
+    ),
   ]);
-  return { sources: { clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries }, failed };
+  return { sources: { clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome }, failed };
 }
 
 function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
@@ -91,6 +105,7 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
     unpaidSignups: sources.leads.filter((lead) => lead.status === "account_created"),
     newErrors: sources.newErrors,
     failedDeliveries: sources.failedDeliveries,
+    kickoffsNeedingOutcome: sources.kickoffsNeedingOutcome,
     endOfToday: todayRange(now).end,
   });
 }
