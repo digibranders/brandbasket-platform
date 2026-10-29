@@ -16,8 +16,10 @@ import { changeWebAddress } from "@/lib/server/web-address";
 import { endClientAddOn, markClientAddOnContacted, setClientPressReleaseStatus } from "@/lib/server/add-ons-admin";
 import { getStaffDb } from "@/lib/server/db";
 import { recordStaffAction } from "@/lib/server/activity";
+import { checkSiteAddress } from "@/lib/server/site-check";
 import {
   addChargeAction,
+  checkAddressAction,
   changeWebAddressAction,
   endAddOnAction,
   giveClientTrustedAction,
@@ -63,6 +65,7 @@ vi.mock("@/lib/server/project-launch", () => ({}));
 vi.mock("@/lib/server/project-preview", () => ({}));
 vi.mock("@/lib/server/site-token", () => ({}));
 vi.mock("@/lib/server/activity", () => ({ recordStaffAction: vi.fn() }));
+vi.mock("@/lib/server/site-check", () => ({ checkSiteAddress: vi.fn() }));
 
 const BUSINESS = "01a0f71b-8402-7d48-a90a-207e8c8a882c";
 const STAFF = { user: { id: "staff-1" }, staff: { userId: "staff-1", role: "finance" } } as unknown as GrantedStaff;
@@ -355,5 +358,50 @@ describe("the client's Verified and Trusted tags", () => {
   it("refuses an id that is not one", async () => {
     await expect(giveClientTrustedAction(form({ businessId: "not-an-id" }))).rejects.toThrow("must be a valid id");
     expect(trustDirectoryBusiness).not.toHaveBeenCalled();
+  });
+});
+
+describe("checkAddressAction", () => {
+  const DB = { name: "staff-db" } as unknown as ReturnType<typeof getStaffDb>;
+  const HOST = "shop.example.com";
+
+  beforeEach(() => {
+    vi.mocked(getStaffDb).mockReturnValue(DB);
+    vi.mocked(redirect).mockImplementation((url: string) => {
+      throw new Error(`redirect:${url}`);
+    });
+  });
+
+  it("says to add an address first when the client has none, and checks nothing", async () => {
+    vi.mocked(findClientDetail).mockResolvedValue({ domain: null } as never);
+    await expect(checkAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?launch=check-no-domain`);
+    expect(checkSiteAddress).not.toHaveBeenCalled();
+    expect(recordStaffAction).not.toHaveBeenCalled();
+  });
+
+  it("checks the client's domain, records the result and says it loads", async () => {
+    vi.mocked(findClientDetail).mockResolvedValue({ domain: { hostname: HOST, status: "active" } } as never);
+    vi.mocked(checkSiteAddress).mockResolvedValue({ ok: true, status: 200 });
+    await expect(checkAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?launch=check-ok`);
+    expect(checkSiteAddress).toHaveBeenCalledWith(HOST);
+    expect(recordStaffAction).toHaveBeenCalledWith(
+      STAFF,
+      expect.objectContaining({ businessId: BUSINESS, kind: "project.address_checked", data: expect.objectContaining({ hostname: HOST, ok: true, status: 200 }) }),
+    );
+  });
+
+  it("says the address did not load, with the reason recorded", async () => {
+    vi.mocked(findClientDetail).mockResolvedValue({ domain: { hostname: HOST, status: "active" } } as never);
+    vi.mocked(checkSiteAddress).mockResolvedValue({ ok: false, reason: "tls" });
+    await expect(checkAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?launch=check-failed`);
+    expect(recordStaffAction).toHaveBeenCalledWith(
+      STAFF,
+      expect.objectContaining({ data: expect.objectContaining({ ok: false, reason: "tls", status: null }) }),
+    );
+  });
+
+  it("refuses an id that is not one", async () => {
+    await expect(checkAddressAction(form({ businessId: "not-an-id" }))).rejects.toThrow("must be a valid id");
+    expect(checkSiteAddress).not.toHaveBeenCalled();
   });
 });

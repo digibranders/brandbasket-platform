@@ -1,6 +1,7 @@
 import {
   findBusinessWebsiteUrl,
   findLatestKickoffOutcome,
+  findOpenProjectForStaff,
   findSetupCallBooking,
   listFeedbackForProject,
   listLaunchChecks,
@@ -10,6 +11,7 @@ import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { DOMAIN_CONNECT_NOTICES, readDomainConnectNotice } from "@brandbasket/shared/lib/domain-connect-notices";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
+import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
 import { CUSTOMER_STAGE_HEADLINE } from "@brandbasket/shared/lib/project-customer-line";
 import { PROJECT_LAUNCH_NOTICES, readProjectLaunchNotice } from "@brandbasket/shared/lib/project-launch-notices";
 import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@brandbasket/shared/lib/project-preview-notices";
@@ -21,7 +23,9 @@ import { KickoffCallSection } from "@/components/console/kickoff-call-section";
 import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
 import { WebsiteSection } from "@/components/console/website-section";
+import { billingNeedsAttention } from "@/lib/billing-attention";
 import { buildPanelState } from "@/lib/build-summary";
+import { isPastIncludedRounds } from "@/lib/build-rounds";
 import { clientNextStep, previewLateReason } from "@/lib/client-next-step";
 import { ProjectControls } from "@/components/project-controls";
 import { openClientTab } from "@/lib/server/client-page";
@@ -29,6 +33,7 @@ import { isWebsiteBought } from "@/lib/server/bought-services";
 import { getStaffDb } from "@/lib/server/db";
 import { LAUNCH_RESEND_WINDOW_MS } from "@/lib/server/project-launch";
 import {
+  CheckAddressForm,
   CustomerLink,
   DNS_STATUS_TEXT,
   Facts,
@@ -80,6 +85,9 @@ export default async function ClientProjectPage({
     project === null || nextStep !== "live"
       ? []
       : await listLaunchChecks(getStaffDb(), { projectId: project.id, businessId: client.businessId });
+  const billingAttention = billingNeedsAttention(clientPaymentState(client.billing, now), client.billing);
+  const openBuild = project === null ? null : await findOpenProjectForStaff(getStaffDb(), client.businessId);
+  const roundsPastAllowance = openBuild !== null && isPastIncludedRounds(openBuild.revisionRoundsUsed, openBuild.revisionRoundsIncluded);
   const launchEmailOpen =
     project !== null &&
     project.status === "live" &&
@@ -130,6 +138,7 @@ export default async function ClientProjectPage({
         <Section title="Go live" id="domain" aside="The next step">
           <div className="space-y-8">
             <LaunchChecksForm businessId={client.businessId} done={launchChecks.map((check) => check.key)} />
+            {client.domain === null ? null : <CheckAddressForm businessId={client.businessId} />}
             <GoLivePanel businessId={client.businessId} domain={client.domain} previewUrl={project?.previewUrl ?? null} />
           </div>
         </Section>
@@ -138,6 +147,19 @@ export default async function ClientProjectPage({
         <Section title="Launch email">
           <ResendLaunchEmailForm businessId={client.businessId} />
         </Section>
+      ) : null}
+
+      {billingAttention || roundsPastAllowance ? (
+        <div className="mb-8 space-y-3">
+          {billingAttention ? (
+            <Notice tone="problem">Billing needs attention for this client. The build stage is unchanged. Check Billing before doing more work.</Notice>
+          ) : null}
+          {roundsPastAllowance ? (
+            <Notice tone="problem">
+              This build is past its included rounds of changes. Decide before doing more work; nothing is charged automatically.
+            </Notice>
+          ) : null}
+        </div>
       ) : null}
 
       <Section title="Build">
