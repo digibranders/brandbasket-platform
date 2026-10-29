@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { linkFeedbackTicket, listFeedbackForProject } from "./queries/project-feedback";
+import { findFeedbackLinkForTicket, linkFeedbackTicket, listFeedbackForProject } from "./queries/project-feedback";
 import { businesses, businessMembers, projectFeedbackTickets, projects, supportTickets, users } from "./schema";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
@@ -88,6 +88,19 @@ describe("project feedback tickets", () => {
     await linkFeedbackTicket(dbs.staff.db, { ticketId, projectId, businessId, round: 1 });
 
     expect(await listFeedbackForProject(dbs.staff.db, { projectId, businessId: otherBusinessId })).toEqual([]);
+  });
+
+  it("finds the project, business and round for a linked ticket", async () => {
+    const ticketId = await makeTicket(5, "Preview feedback, round 2: Change the opening line");
+    await linkFeedbackTicket(dbs.staff.db, { ticketId, projectId, businessId, round: 2 });
+
+    expect(await findFeedbackLinkForTicket(dbs.staff.db, ticketId)).toEqual({ projectId, businessId, round: 2 });
+  });
+
+  it("finds nothing for a ticket that was not sent as preview feedback", async () => {
+    const ticketId = await makeTicket(6, "Invoice question");
+
+    expect(await findFeedbackLinkForTicket(dbs.staff.db, ticketId)).toBeNull();
   });
 
   it("removes the link when its ticket is deleted", async () => {
