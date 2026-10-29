@@ -3,6 +3,7 @@ import { check, customType, foreignKey, index, integer, pgTable, primaryKey, tex
 import { uuidv7 } from "uuidv7";
 import { businesses } from "./businesses";
 import { projects, projectStatus } from "./projects";
+import { supportTickets } from "./support";
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
@@ -69,3 +70,33 @@ export const projectPreviewImages = pgTable(
   ],
 );
 export type ProjectPreviewImage = typeof projectPreviewImages.$inferSelect;
+
+/**
+ * The support ticket a customer sent as feedback on a preview, and the revision round it asked for. Written only through the
+ * platform's staff connection when the feedback is sent, so the customer's role has no grant on it. The ticket goes with
+ * its row (`on delete cascade` from support_tickets); the row goes with its project.
+ */
+export const projectFeedbackTickets = pgTable(
+  "project_feedback_tickets",
+  {
+    ticketId: uuid("ticket_id")
+      .primaryKey()
+      .references(() => supportTickets.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id").notNull(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
+    round: integer("round").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("project_feedback_tickets_project_idx").on(table.projectId, table.createdAt),
+    foreignKey({
+      name: "project_feedback_tickets_project_business_fk",
+      columns: [table.projectId, table.businessId],
+      foreignColumns: [projects.id, projects.businessId],
+    }).onDelete("cascade"),
+    check("project_feedback_tickets_round_check", sql`${table.round} >= 1`),
+  ],
+);
+export type ProjectFeedbackTicket = typeof projectFeedbackTickets.$inferSelect;

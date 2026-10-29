@@ -5,6 +5,7 @@ export * from "./queries/support";
 export * from "./queries/change-requests";
 export * from "./queries/change-request-staff";
 export * from "./queries/project-website";
+export * from "./queries/project-feedback";
 export * from "./queries/support-staff";
 export * from "./queries/error-issues";
 export * from "./queries/support-ticket-error-links";

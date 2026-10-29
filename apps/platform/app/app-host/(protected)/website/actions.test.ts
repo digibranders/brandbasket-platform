@@ -1,4 +1,4 @@
-import { createSupportTicketWithOutcome, findLatestProject, ProjectNotAwaitingResponseError, withTenantScope } from "@brandbasket/db";
+import { createSupportTicketWithOutcome, findLatestProject, linkFeedbackTicket, ProjectNotAwaitingResponseError, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb, getStaffDb } from "@/lib/server/db";
@@ -23,7 +23,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@brandbasket/db", () => {
   class ProjectNotAwaitingResponseError extends Error {}
   class SupportQueryError extends Error {}
-  return { ProjectNotAwaitingResponseError, SupportQueryError, createSupportTicketWithOutcome: vi.fn(), findLatestProject: vi.fn(), withTenantScope: vi.fn() };
+  return { ProjectNotAwaitingResponseError, SupportQueryError, createSupportTicketWithOutcome: vi.fn(), findLatestProject: vi.fn(), linkFeedbackTicket: vi.fn(), withTenantScope: vi.fn() };
 });
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("@/lib/server/db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
@@ -82,7 +82,7 @@ describe("sendPreviewFeedbackAction", () => {
     vi.mocked(supportRateLimit).mockResolvedValue(null);
     vi.mocked(getAppDb).mockReturnValue({ kind: "app-db" } as never);
     vi.mocked(withTenantScope).mockImplementation(async (_db, _tenant, work) => work({} as never));
-    vi.mocked(findLatestProject).mockResolvedValue({ status: "preview", revisionRoundsGranted: 1 } as never);
+    vi.mocked(findLatestProject).mockResolvedValue({ id: "project-1", status: "preview", revisionRoundsGranted: 1 } as never);
     vi.mocked(createSupportTicketWithOutcome).mockResolvedValue({ ticket: { id: "ticket-1", displayRef: "FY-1" }, created: true } as never);
     vi.mocked(sendSupportTicketAlert).mockResolvedValue(undefined);
   });
@@ -100,6 +100,11 @@ describe("sendPreviewFeedbackAction", () => {
     });
     expect(input).not.toHaveProperty("changeRequest");
     expect(respondToPreview).toHaveBeenCalledWith(staffDb, { businessId: "business-1", businessName: "Cafe", response: { kind: "revisions" } }, expect.any(Date));
+  });
+
+  it("links the ticket to the project and the round it answers, through the staff connection, before moving the project", async () => {
+    await expect(sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).rejects.toThrow("REDIRECT:/website?response=changes-sent");
+    expect(linkFeedbackTicket).toHaveBeenCalledWith(staffDb, { ticketId: "ticket-1", projectId: "project-1", businessId: "business-1", round: 2 });
   });
 
   it("tells the team once, and not again when the same form is sent twice", async () => {
