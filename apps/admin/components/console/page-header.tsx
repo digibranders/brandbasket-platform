@@ -28,7 +28,7 @@ export function PageHeader({ title, back, lead, meta, action, children }: PageHe
             {meta === undefined ? null : <p className="mt-1.5 text-sm tabular-nums text-ink-2">{meta}</p>}
           </div>
         </div>
-        {action === undefined ? null : <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}
+        {action === undefined ? null : <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{action}</div>}
       </div>
       {children}
     </header>

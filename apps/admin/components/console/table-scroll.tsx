@@ -16,7 +16,7 @@ export function TableScroll({
   readonly className?: string;
 }): ReactElement {
   return (
-    <div role="region" aria-label={label} tabIndex={0} className={cn("overflow-x-auto", className)}>
+    <div role="region" aria-label={label} tabIndex={0} className={cn("relative overflow-x-auto", className)}>
       {children}
     </div>
   );
