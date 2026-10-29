@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { formatMoney } from "@brandbasket/shared/lib/money";
+import { STAFF_STAGE_LABELS, type StaffStage } from "@brandbasket/shared/lib/project-stage";
 import { SearchIcon } from "@brandbasket/shared/ui/icons";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { FilterPills } from "@/components/console/filter-pills";
@@ -11,7 +12,19 @@ import { PageHeader } from "@/components/console/page-header";
 import { StatusPill } from "@/components/console/status-pill";
 import { TABLE, TD, TD_NUM, TD_TIME, TH } from "@/components/console/table";
 import { ServiceTags } from "@/components/service-tags";
-import { CLIENT_ROW_STAGE_LABELS, CLIENT_ROW_STAGE_TONES, clientRowStage, servicesByBusiness, type ClientRowStage } from "@/lib/client-rows";
+import {
+  BUILD_STAGES,
+  buildStageLabel,
+  CLIENT_ROW_STAGE_LABELS,
+  CLIENT_ROW_STAGE_TONES,
+  clientBuildStage,
+  clientRowStage,
+  filterClientRows,
+  parseBuildStage,
+  servicesByBusiness,
+  type ClientRowFilter,
+  type ClientRowStage,
+} from "@/lib/client-rows";
 import { matchesClientSearch } from "@/lib/client-search";
 import { attentionBySubject, attentionItems } from "@/lib/pipeline";
 import { getStaffDb } from "@/lib/server/db";
@@ -27,10 +40,11 @@ function readStage(value: string | string[] | undefined): ClientRowStage | null 
   return (ROW_STAGES as readonly string[]).includes(raw ?? "") ? (raw as ClientRowStage) : null;
 }
 
-/** An address that keeps the filter and the search already chosen when it changes one of them. */
-function clientsHref(stage: ClientRowStage | null, search: string): string {
+/** An address that keeps the filters and the search already chosen when it changes one of them. */
+function clientsHref(filter: ClientRowFilter, search: string): string {
   const query = new URLSearchParams();
-  if (stage !== null) query.set("stage", stage);
+  if (filter.stage !== null) query.set("stage", filter.stage);
+  if (filter.build !== null) query.set("build", filter.build);
   if (search !== "") query.set("q", search);
   const text = query.toString();
   return text === "" ? "/clients" : `/clients?${text}`;
@@ -47,6 +61,7 @@ export default async function ClientsPage({
   await requireStaffAccess();
   const params = await searchParams;
   const stage = readStage(params.stage);
+  const build = parseBuildStage(Array.isArray(params.build) ? params.build[0] : params.build);
   const rawSearch = (Array.isArray(params.q) ? params.q[0] : params.q)?.trim() ?? "";
   const search = rawSearch.toLowerCase();
   const db = getStaffDb();
@@ -61,10 +76,15 @@ export default async function ClientsPage({
   const closing = new Map(closures.map((closure) => [closure.businessId, closure]));
   const attention = attentionBySubject(attentionItems({ flagged, addOns, waiting: clientsWaitingOnUs(clients, now), newLeads: [], now }));
 
-  const rows = clients.map((client) => ({ client, stage: clientRowStage(client, closing.has(client.businessId)) }));
+  const rows = clients.map((client) => ({
+    client,
+    stage: clientRowStage(client, closing.has(client.businessId)),
+    buildStage: clientBuildStage(client),
+  }));
   const found = rows.filter((row) => matchesClientSearch(row.client, search));
-  const visible = stage === null ? found : found.filter((row) => row.stage === stage);
-  const countOf = (option: ClientRowStage): number => found.filter((row) => row.stage === option).length;
+  const visible = filterClientRows(found, { stage, build });
+  const countOf = (option: ClientRowStage | null): number => filterClientRows(found, { stage: option, build }).length;
+  const buildCountOf = (option: StaffStage | null): number => filterClientRows(found, { stage, build: option }).length;
   const paying = rows.filter((row) => row.client.billing.firstPayment !== null).length;
 
   return (
@@ -74,6 +94,7 @@ export default async function ClientsPage({
       <div className="mt-8 space-y-4">
         <form action="/clients" role="search" className="w-full sm:w-80">
           {stage === null ? null : <input type="hidden" name="stage" value={stage} />}
+          {build === null ? null : <input type="hidden" name="build" value={build} />}
           <label htmlFor="clients-search" className="sr-only">
             Search clients
           </label>
@@ -92,12 +113,24 @@ export default async function ClientsPage({
         <FilterPills
           label="Filter by stage"
           options={[
-            { href: clientsHref(null, rawSearch), label: "All", count: found.length, current: stage === null },
+            { href: clientsHref({ stage: null, build }, rawSearch), label: "All", count: countOf(null), current: stage === null },
             ...ROW_STAGES.map((option) => ({
-              href: clientsHref(option, rawSearch),
+              href: clientsHref({ stage: option, build }, rawSearch),
               label: CLIENT_ROW_STAGE_LABELS[option],
               count: countOf(option),
               current: stage === option,
+            })),
+          ]}
+        />
+        <FilterPills
+          label="Build"
+          options={[
+            { href: clientsHref({ stage, build: null }, rawSearch), label: "All", count: buildCountOf(null), current: build === null },
+            ...BUILD_STAGES.map((option) => ({
+              href: clientsHref({ stage, build: option }, rawSearch),
+              label: STAFF_STAGE_LABELS[option],
+              count: buildCountOf(option),
+              current: build === option,
             })),
           ]}
         />
@@ -131,7 +164,8 @@ export default async function ClientsPage({
             </tr>
           </thead>
           <tbody>
-            {visible.map(({ client, stage: rowStage }) => {
+            {visible.map(({ client, stage: rowStage, buildStage }) => {
+              const buildLabel = buildStageLabel(buildStage);
               const needs = attention.get(client.businessId);
               const service = services.get(client.businessId);
               const closure = closing.get(client.businessId);
@@ -142,6 +176,7 @@ export default async function ClientsPage({
                     <Link href={`/clients/${client.businessId}`} className="font-semibold hover:underline">
                       {client.businessName}
                     </Link>
+                    {buildLabel === null ? null : <small className="block text-xs text-ink-2">{buildLabel}</small>}
                     <small className="block text-xs text-ink-2">{client.owner?.name ?? "No owner"}</small>
                   </td>
                   <td className={TD}>
