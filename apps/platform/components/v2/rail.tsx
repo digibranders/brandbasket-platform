@@ -9,7 +9,7 @@ import type { AccountPanel } from "@brandbasket/shared/lib/account-panel";
 import { initialsOf } from "@brandbasket/shared/lib/names";
 import { AccountBar, type AccountBarAccount } from "@brandbasket/shared/ui/panel/account-bar";
 import { WordmarkLogo, type BrandLogo } from "@brandbasket/shared/ui/logo";
-import { isCurrent, linkIsCurrent, type RailSection } from "@/lib/rail";
+import { linkIsCurrent, type RailSection } from "@/lib/rail";
 import { SERVICE_DOT } from "./classes";
 import { CommandSearch } from "./command-search";
 import { CountPill } from "./count-pill";
@@ -70,7 +70,7 @@ export function Rail({ sections, logo, menu, businessName, signOut }: RailProps)
               <Link
                 key={link.href + link.label}
                 href={link.href}
-                aria-current={isCurrent(pathname, link.href) ? "page" : undefined}
+                aria-current={current ? "page" : undefined}
                 className={cn(
                   "flex h-[2.625rem] items-center gap-3 rounded-lg px-3 text-[0.9375rem] transition-colors duration-200",
                   current ? "bg-sunken font-semibold text-ink" : "font-medium text-ink-2 hover:bg-sunken hover:text-ink",

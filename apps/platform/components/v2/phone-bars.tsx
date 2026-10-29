@@ -49,7 +49,7 @@ export function PhoneBars({ sections, logo, menu, signOut }: PhoneBarsProps): Re
         {tabs.map((link) => {
           const current = linkIsCurrent(link, pathname);
           return (
-            <Link key={link.href} href={link.href} aria-current={isCurrent(pathname, link.href) ? "page" : undefined} className={cn("grid min-h-14 content-center justify-items-center gap-0.5 text-xs font-semibold", current ? "text-ink" : "text-ink-2")}>
+            <Link key={link.href} href={link.href} aria-current={current ? "page" : undefined} className={cn("grid min-h-14 content-center justify-items-center gap-0.5 text-xs font-semibold", current ? "text-ink" : "text-ink-2")}>
               <span className="relative">
                 <RailIconMark name={link.icon} current={current} />
                 <CountPill count={link.count} current={current} className="absolute -right-3 -top-1.5" />
@@ -90,7 +90,7 @@ export function PhoneBars({ sections, logo, menu, signOut }: PhoneBarsProps): Re
             <nav key={section.label ?? "main"} aria-label={section.label ?? "Main"} className="grid gap-0.5">
               {section.label === null ? null : <p className="px-3 pb-1 pt-3 text-[0.8125rem] font-medium text-ink-3">{section.label}</p>}
               {section.links.map((link) => {
-                const here = isCurrent(pathname, link.href);
+                const here = linkIsCurrent(link, pathname);
                 const children = menuChildren(link);
                 return (
                   <div key={link.href + link.label}>

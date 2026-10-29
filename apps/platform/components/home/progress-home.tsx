@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { DARK_BUTTON, LIFT, SOFT_BUTTON } from "@/components/v2/classes";
+import { PageColumns } from "@/components/v2/page";
 import { websiteMilestones } from "@/lib/home/milestones";
 import type { ClientHomeState } from "@/lib/home/state";
 import type { HomeData } from "@/lib/server/home";
@@ -73,29 +74,39 @@ export function ProgressHome({ state, data }: { readonly state: WebsiteState; re
         Open Website
       </Link>
     );
+  const notes =
+    data.kickoffNotes === null ? null : (
+      <section aria-labelledby="home-notes" className={`${LIFT} grid content-start gap-2 p-6`}>
+        <h2 id="home-notes" className="font-display text-lg font-semibold text-ink">
+          From your kickoff
+        </h2>
+        <p className="text-base leading-relaxed text-ink">{data.kickoffNotes}</p>
+        <p className="text-[0.8125rem] text-ink-3">Written by your team after the call.</p>
+      </section>
+    );
   return (
-    <>
-      <StatusHero labelId="home-status" word={copy.word} tone={copy.tone} title={copy.title} actions={action}>
-        {copy.text}
-      </StatusHero>
-      {state.kind === "launched" ? null : (
-        <section aria-label="Progress" className={`${LIFT} p-6`}>
-          <Milestones items={milestones} label="Website progress" />
-        </section>
-      )}
-      <Attention items={data.attention} />
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <ActivityList rows={data.overview?.activity ?? []} title="Latest from BrandBasket" />
-        {data.kickoffNotes === null ? null : (
-          <section aria-labelledby="home-notes" className={`${LIFT} grid content-start gap-2 p-6`}>
-            <h2 id="home-notes" className="font-display text-lg font-semibold text-ink">
-              From your kickoff
-            </h2>
-            <p className="text-base leading-relaxed text-ink">{data.kickoffNotes}</p>
-            <p className="text-[0.8125rem] text-ink-3">Written by your team after the call.</p>
-          </section>
-        )}
-      </div>
-    </>
+    <PageColumns
+      main={
+        <>
+          <StatusHero
+            labelId="home-status"
+            word={copy.word}
+            tone={copy.tone}
+            title={copy.title}
+            actions={action}
+            footer={state.kind === "launched" ? undefined : <Milestones items={milestones} label="Website progress" />}
+          >
+            {copy.text}
+          </StatusHero>
+          <Attention items={data.attention} />
+        </>
+      }
+      aside={
+        <>
+          <ActivityList rows={data.overview?.activity ?? []} title="Latest from BrandBasket" />
+          {notes}
+        </>
+      }
+    />
   );
 }

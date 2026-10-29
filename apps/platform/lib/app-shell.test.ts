@@ -41,19 +41,19 @@ beforeEach(() => {
 describe("AppShell's service links", () => {
   it("adds Social & Ads and Local SEO + AEO for the services bought, from the one active-services read", async () => {
     vi.mocked(loadActiveServices).mockResolvedValue(["website", "social", "search"]);
-    expect(labels((await rail()).sections, "Services")).toEqual(["Website", "Social & Ads", "Local SEO + AEO"]);
+    expect(labels((await rail()).sections, "Services")).toEqual(["Website", "Blog", "Social & Ads", "Local SEO + AEO"]);
     expect(loadActiveServices).toHaveBeenCalledTimes(1);
     expect(loadActiveServices).toHaveBeenCalledWith(tenant);
   });
 
   it("adds only the one bought", async () => {
     vi.mocked(loadActiveServices).mockResolvedValue(["website", "search"]);
-    expect(labels((await rail()).sections, "Services")).toEqual(["Website", "Local SEO + AEO"]);
+    expect(labels((await rail()).sections, "Services")).toEqual(["Website", "Blog", "Local SEO + AEO"]);
   });
 
   it("adds none when no service could be read, so the sidebar still draws", async () => {
     vi.mocked(loadActiveServices).mockResolvedValue([]);
-    expect(labels((await rail()).sections, "Services")).toEqual(["Website"]);
+    expect(labels((await rail()).sections, "Services")).toEqual(["Website", "Blog"]);
   });
 });
 

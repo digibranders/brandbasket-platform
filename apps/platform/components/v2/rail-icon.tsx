@@ -1,5 +1,5 @@
 import type { Icon } from "@phosphor-icons/react";
-import { ChatText, CreditCard, GearSix, GlobeSimple, Handshake, House, MapPin, Megaphone, Storefront } from "@phosphor-icons/react/dist/ssr";
+import { Article, ChatText, CreditCard, GearSix, GlobeSimple, Handshake, House, MapPin, Megaphone, Storefront } from "@phosphor-icons/react/dist/ssr";
 import type { ReactElement } from "react";
 import type { RailIcon } from "@/lib/rail";
 
@@ -7,6 +7,7 @@ const ICONS: Readonly<Record<RailIcon, Icon>> = {
   home: House,
   requests: ChatText,
   website: GlobeSimple,
+  blog: Article,
   social: Megaphone,
   search: MapPin,
   business: Storefront,

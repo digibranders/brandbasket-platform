@@ -15,7 +15,7 @@ describe("railSections", () => {
   it("shows Home, the website, Requests, Business and the account from the first day", () => {
     expect(shape(FULL)).toEqual([
       [null, ["Home"]],
-      ["Services", ["Website"]],
+      ["Services", ["Website", "Blog"]],
       ["Manage", ["Requests", "Business"]],
       ["Account", ["Plan & billing", "Settings"]],
     ]);
@@ -45,9 +45,10 @@ describe("railSections", () => {
 describe("the service links", () => {
   const services = (input: Partial<Parameters<typeof railSections>[0]>) => railSections({ ...FULL, ...input }).find((section) => section.label === "Services");
 
-  it("lists Website, Social & Ads and Local SEO + AEO in that order for a customer with all three", () => {
+  it("lists Website, the Blog under it, Social & Ads and Local SEO + AEO in that order for a customer with all three", () => {
     expect(services({ hasSocial: true, hasSearch: true })?.links.map((entry) => [entry.label, entry.href, entry.mark])).toEqual([
       ["Website", "/website", "website"],
+      ["Blog", "/content/blog", undefined],
       ["Social & Ads", "/social", "social"],
       ["Local SEO + AEO", "/search", "search"],
     ]);
@@ -64,7 +65,7 @@ describe("the service links", () => {
   });
 
   it("leaves a service out when it is not bought, or not said", () => {
-    expect(services({})?.links.map((entry) => entry.label)).toEqual(["Website"]);
+    expect(services({})?.links.map((entry) => entry.label)).toEqual(["Website", "Blog"]);
     expect(services({ hasWebsite: false })).toBeUndefined();
   });
 
@@ -88,11 +89,18 @@ describe("current link", () => {
     expect(isCurrent("/contents", "/content")).toBe(false);
   });
 
-  it("marks the website current on every page of its tabs, the enquiries and the blog settings", () => {
+  it("marks the website current on every page of its tabs, and not on the blog's", () => {
     const website = link("Website");
-    for (const path of [WEBSITE_PATH, "/website/pages", "/website/enquiries", "/content/blog/new", "/content/authors", "/content/categories/abc", "/domain"]) {
-      // /domain is not a tab: it is reached from the Overview, so it does not light the link.
-      expect(website === undefined ? false : linkIsCurrent(website, path), path).toBe(path !== "/domain");
+    for (const path of [WEBSITE_PATH, "/website/pages", "/website/enquiries", "/domain", "/content/blog", "/content/authors"]) {
+      // /domain is not a tab: it is reached from the Overview. The blog is its own link.
+      expect(website === undefined ? false : linkIsCurrent(website, path), path).toBe(!["/domain", "/content/blog", "/content/authors"].includes(path));
+    }
+  });
+
+  it("marks the blog current on its posts, the editor, authors and categories, and not on the website's pages", () => {
+    const blog = link("Blog");
+    for (const path of ["/content/blog", "/content/blog/new", "/content/blog/abc", "/content/authors", "/content/authors/new", "/content/categories", "/content/categories/abc", "/website/pages"]) {
+      expect(blog === undefined ? false : linkIsCurrent(blog, path), path).toBe(path !== "/website/pages");
     }
   });
 
@@ -111,9 +119,11 @@ describe("current link", () => {
 });
 
 describe("menuChildren and search", () => {
-  it("lists the website's other tabs, then the blog's authors and categories", () => {
+  it("lists the website's other tabs, and the blog's authors and categories under the blog", () => {
     const website = link("Website");
-    expect(website === undefined ? [] : menuChildren(website).map((child) => child.label)).toEqual(["Pages", "Enquiries", "Blog", "Authors", "Categories"]);
+    const blog = link("Blog");
+    expect(website === undefined ? [] : menuChildren(website).map((child) => child.label)).toEqual(["Pages", "Enquiries"]);
+    expect(blog === undefined ? [] : menuChildren(blog).map((child) => child.label)).toEqual(["Authors", "Categories"]);
   });
 
   it("lists Billing under Plan & billing, and Calls under Requests only for a paid account", () => {
@@ -126,7 +136,7 @@ describe("menuChildren and search", () => {
   it("starts with New request and finds pages inside a group", () => {
     const sections = railSections(FULL);
     expect(searchRail(sections, "")[0]).toEqual({ href: "/requests/new", label: "New request" });
-    expect(searchRail(sections, "AUTHORS").map((target) => target.label)).toEqual(["Website: Authors"]);
+    expect(searchRail(sections, "AUTHORS").map((target) => target.label)).toEqual(["Blog: Authors"]);
     expect(searchRail(sections, "enquiries").map((target) => target.href)).toEqual(["/website/enquiries"]);
     expect(searchRail(sections, "calls").map((target) => target.href)).toEqual(["/requests/calls"]);
     expect(searchRail(sections, "billing").map((target) => target.label)).toEqual(["Plan & billing", "Plan & billing: Billing"]);
@@ -180,5 +190,14 @@ describe("browser safety", () => {
       const exists = existsSync(new URL("page.tsx", `${folder.href}/`)) || existsSync(new URL("route.ts", `${folder.href}/`));
       expect(exists, href).toBe(true);
     }
+  });
+});
+
+describe("the sidebar's current page for assistive technology", () => {
+  it("follows the same rule as the highlight, so a link is current on every page of its tabs", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync(new URL("../components/v2/rail.tsx", import.meta.url), "utf8");
+    expect(source).toContain('aria-current={current ? "page" : undefined}');
+    expect(source).not.toContain("isCurrent(pathname, link.href) ? \"page\"");
   });
 });
