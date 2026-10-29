@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState, type ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { formatTimestamp } from "@brandbasket/shared/lib/format";
-import { openLeadConversationAction, type OpenedConversation } from "@/app/app-host/(protected)/oyechats/actions";
+import { openLeadConversationAction, type OpenedConversation } from "@/app/app-host/(protected)/website/enquiries/actions";
 import { CONVERSATION_NOTICES, MESSAGE_AUTHOR_LABELS, messageCountLabel, type LeadTableRow } from "@/lib/chatbots-view";
 
 type Loaded = { readonly leadId: string; readonly result: OpenedConversation | "failed" };

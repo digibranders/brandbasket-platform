@@ -1,6 +1,7 @@
 import { Globe } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { randomUUID } from "node:crypto";
 import type { ReactElement } from "react";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { cn } from "@brandbasket/shared/lib/cn";
@@ -13,10 +14,11 @@ import { Timeline } from "@/components/website/timeline";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { loadWebsite } from "@/lib/server/website";
 import { addressCardView, siteAddress } from "@/lib/website/address";
+import { roundsLine } from "@/lib/website/progress-view";
 import { readWebsiteNotice, WEBSITE_NOTICES } from "@/lib/website/notices";
 import { askAboutHref } from "@/lib/website/tabs";
 
-export const metadata: Metadata = { title: "Your website" };
+export const metadata: Metadata = { title: "Website" };
 
 interface WebsitePageProps {
   readonly searchParams: Promise<{ readonly response?: string | string[] }>;
@@ -72,6 +74,8 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
               address={address}
               businessName={tenant.businessName}
               liveHostname={live?.hostname ?? null}
+              feedbackKey={randomUUID()}
+              roundsLine={roundsLine(project?.revisionRoundsIncluded ?? 0, project?.revisionRoundsGranted ?? 0)}
             />
           )}
         </>

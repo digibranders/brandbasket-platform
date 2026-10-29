@@ -1,7 +1,7 @@
 import type { ProjectStatus } from "@brandbasket/db";
 import { addWorkingDays, shortDay } from "@/lib/call-dates";
 
-export type ProgressKind = "setup" | "building" | "paused" | "preview" | "revising" | "approved" | "live" | "none";
+export type ProgressKind = "setup" | "kickoff" | "building" | "paused" | "preview" | "revising" | "approved" | "live" | "none";
 
 export interface ProgressInput {
   readonly status: ProjectStatus | null;
@@ -13,6 +13,10 @@ export interface ProgressInput {
   readonly previewDue: string | null;
   /** Day the site is promised live, `YYYY-MM-DD`, or null. */
   readonly liveBy: string | null;
+  /** The customer answered the first questions, so the build starts after the kickoff call and there is no setup checklist to finish. */
+  readonly kickoffFirst: boolean;
+  /** Day of the booked kickoff call, `YYYY-MM-DD`, or null when none is booked. */
+  readonly kickoffDay: string | null;
 }
 
 export interface ProgressView {
@@ -40,6 +44,13 @@ export function progressView(input: ProgressInput): ProgressView {
     case "cancelled":
       return { kind: "none", title: "Nothing is being built right now", line: null };
     case "onboarding":
+      if (input.kickoffFirst) {
+        return {
+          kind: "kickoff",
+          title: "We start after your kickoff call",
+          line: input.kickoffDay === null ? "Book your call and we start building straight after it." : `Your call is on ${shortDay(input.kickoffDay)}. We start building straight after it.`,
+        };
+      }
       return { kind: "setup", title: "Finish your setup", line: "We start building once your setup is in." };
     case "submitted":
     case "building":
@@ -50,7 +61,7 @@ export function progressView(input: ProgressInput): ProgressView {
       return {
         kind: "preview",
         title: "Your preview is ready",
-        line: `Look through it on your phone and on a computer. Then approve it, or tell us what to change. ${roundsLine(input.roundsIncluded, input.roundsGranted)}`,
+        line: "Look through it on your phone and on a computer. Then approve it, or tell us what to change.",
       };
     case "revisions":
       return { kind: "revising", title: "We are making your changes", line: due === null ? null : `Your updated preview will be ready by ${due}.` };

@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 
 vi.mock("@/app/app-host/(protected)/social/actions", () => ({ approvePostsAction: vi.fn() }));
+vi.mock("@/app/app-host/(protected)/setup-actions", () => ({ saveSetupItemAction: vi.fn() }));
 
 import { ApproveBar } from "@/components/social/approve-bar";
 import { PostCard } from "@/components/social/post-card";

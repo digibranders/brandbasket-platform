@@ -17,6 +17,8 @@ import { PaymentsList } from "@/components/panel/billing/payments-list";
 import { NoticeBanner } from "@/components/panel/notice-banner";
 import { DARK_BUTTON } from "@/components/v2/classes";
 import { PageColumns, PageFrame, PageSection } from "@/components/v2/page";
+import { SectionTabs } from "@/components/v2/section-tabs";
+import { PLAN_TABS } from "@/lib/plan/tabs";
 import { PaymentWaiting } from "@/components/panel/payment-waiting";
 import { PaymentMethod } from "@/components/panel/billing/payment-method";
 import { PlanSummary, priceNote } from "@/components/panel/billing/plan-summary";
@@ -34,7 +36,7 @@ import { reactivateAction } from "./actions";
 import { getCustomerBusinessKind, requireCustomerAccess } from "@/lib/server/customer-access";
 import { getProjectOverview } from "@/lib/server/onboarding";
 
-export const metadata: Metadata = { title: "Billing" };
+export const metadata: Metadata = { title: "Plan & billing" };
 
 /** The billing details for a business billed in rupees, or nothing for one that gets no tax invoices. */
 function BillingDetailsSection({ view }: { readonly view: BillingDetailsView | null }): ReactElement | null {
@@ -74,7 +76,7 @@ function BillingFrame({
   readonly payments: ReactNode | null;
 }): ReactElement {
   return (
-    <PageFrame title="Billing" lede={lede}>
+    <PageFrame title="Plan & billing" lede={lede} tabs={<SectionTabs tabs={PLAN_TABS} label="Plan and billing" />}>
       {notices}
       <PageColumns main={main} aside={payments} />
     </PageFrame>

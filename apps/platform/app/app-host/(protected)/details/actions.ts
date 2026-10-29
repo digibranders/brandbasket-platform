@@ -12,6 +12,7 @@ import {
   listEnabledModules,
   replaceOpeningHours,
   saveAnnouncement,
+  saveBusinessContact,
   withTenantScope,
 } from "@brandbasket/db";
 import { parseAnnouncementForm, parseClosureForm } from "@brandbasket/shared/lib/business-facts/forms";
@@ -19,9 +20,10 @@ import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { toStoredHours } from "@brandbasket/shared/lib/onboarding/hours";
 import { closureClashes } from "@/lib/appointments/closure-clashes";
 import { leaveAddedState, type LeaveClash } from "@/lib/appointments/leave-added-state";
-import { parseHoursForm } from "@/lib/onboarding/business-form";
+import { parseContactForm, parseHoursForm } from "@/lib/onboarding/business-form";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
 import { paidCustomerOrNull } from "@/lib/server/blog-access";
+import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { holidayAccessOrNull } from "@/lib/server/holiday-access";
 import { getAppDb } from "@/lib/server/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
@@ -31,6 +33,29 @@ import { closureInPastState, closureNotFoundState } from "./errors";
 /** Thrown inside addClosureAction's transaction when the closure's last day has already passed in the business's
  * own time zone, so the catch block can tell that apart from any other failure. Never leaves this module. */
 class ClosureInPastError extends Error {}
+
+/**
+ * Saves the business's contact details: name, phone, email, address and the areas it serves. They are the customer's own
+ * facts, so any paying customer may keep them current, on any plan. The business comes from the session.
+ */
+export async function saveContactAction(_previous: PanelFormState, formData: FormData): Promise<PanelFormState> {
+  const { user, tenant, billing } = await requireCustomerAccess();
+  if (!billing.hasAccess) return paymentRequiredState(formData);
+
+  const parsed = parseContactForm(formData);
+  if (!parsed.success) return panelFormErrorState(parsed, formData);
+
+  try {
+    await withTenantScope(getAppDb(), tenant, (tx) => saveBusinessContact(tx, parsed.data));
+  } catch (error) {
+    console.error("[details] saveContactAction failed", errorLogInfo(error));
+    await reportUnexpectedPanelError(error, "/details", user.id);
+    return unexpectedErrorState(error, formData);
+  }
+
+  revalidatePath("/details");
+  return panelFormSavedState;
+}
 
 /** Saves the week's opening hours on their own, the same shape onboarding's business step writes but without that
  * step's lock — this runs for a paying customer in their panel, not mid-onboarding, so there is no concurrent

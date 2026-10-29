@@ -3,7 +3,7 @@ import { WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
 
 vi.mock("server-only", () => ({}));
 
-const { GOOGLE_HOST_MESSAGE, GOOGLE_LINK_MESSAGE, parseBusinessForm, parseHoursForm } = await import("./business-form");
+const { GOOGLE_HOST_MESSAGE, GOOGLE_LINK_MESSAGE, parseBusinessForm, parseContactForm, parseHoursForm } = await import("./business-form");
 
 function form(entries: Record<string, string>): FormData {
   const data = new FormData();
@@ -293,5 +293,48 @@ describe("parseHoursForm", () => {
     expect(
       parseHoursForm(form({ "hours.6.mode": "closed", "hours.6.opens": "10:00", "hours.6.closes": "10:00" })),
     ).toEqual({ success: true, data: [{ dayOfWeek: 6, mode: "closed" }] });
+  });
+});
+
+describe("parseContactForm", () => {
+  it("reads the contact facts, trims them, and turns a blank optional one into null", () => {
+    const result = parseContactForm(
+      form({ displayName: "  Bloom Dental ", phone: "", email: "hello@bloom.example", addressLine1: " 12 Market Road ", addressLine2: "", city: "Thane", region: "", postalCode: "400601", country: "India", serviceAreas: "Thane, Mumbai" }),
+    );
+    expect(result).toEqual({
+      success: true,
+      data: {
+        displayName: "Bloom Dental",
+        phone: null,
+        email: "hello@bloom.example",
+        addressLine1: "12 Market Road",
+        addressLine2: null,
+        city: "Thane",
+        region: null,
+        postalCode: "400601",
+        country: "India",
+        serviceAreas: "Thane, Mumbai",
+      },
+    });
+  });
+
+  it("does not read, or return, the profile step's tagline, description, Google link or hours", () => {
+    const result = parseContactForm(form({ displayName: "Bloom Dental", tagline: "Gentle", description: "Long text", googleBusinessUrl: "https://maps.app.goo.gl/x", ...weekHours() }));
+    expect(result.success && Object.keys(result.data).sort()).toEqual(
+      ["addressLine1", "addressLine2", "city", "country", "displayName", "email", "phone", "postalCode", "region", "serviceAreas"].sort(),
+    );
+  });
+
+  it("asks for the business name, and names the field", () => {
+    expect(parseContactForm(form({ displayName: "   " }))).toEqual({ success: false, message: "Tell us your business name.", field: "displayName" });
+  });
+
+  it("refuses an email that is not one, and a service area that is too long, naming the field", () => {
+    expect(parseContactForm(form({ displayName: "Bloom Dental", email: "not-an-email" }))).toMatchObject({ success: false, field: "email" });
+    expect(parseContactForm(form({ displayName: "Bloom Dental", serviceAreas: "x".repeat(301) }))).toEqual({
+      success: false,
+      message: "Keep the areas you serve to 300 characters.",
+      field: "serviceAreas",
+    });
   });
 });

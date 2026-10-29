@@ -53,17 +53,17 @@ export function CommandSearch({ sections, open, onClose, onShortcut }: CommandSe
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search pages"
           aria-label="Search pages"
-          className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-2"
+          className="h-14 flex-1 bg-transparent text-base outline-none placeholder:text-ink-3"
         />
       </form>
       <ul className="max-h-[50vh] overflow-y-auto py-1">
-        {results.length === 0 ? <li className="px-4 py-3 text-sm text-ink-2">Nothing matches that.</li> : null}
+        {results.length === 0 ? <li className="px-4 py-3 text-[0.9375rem] text-ink-2">Nothing matches that.</li> : null}
         {results.map((target) => (
           <li key={`${target.href}:${target.label}`}>
             <Link
               href={target.href}
               onClick={close}
-              className="block px-4 py-2.5 text-sm transition-colors duration-200 hover:bg-sunken focus-visible:bg-sunken focus-visible:outline-offset-[-2px]"
+              className="block px-4 py-3 text-[0.9375rem] transition-colors duration-200 hover:bg-sunken focus-visible:bg-sunken focus-visible:outline-offset-[-2px]"
             >
               {target.label}
             </Link>

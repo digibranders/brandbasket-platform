@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, type ReactElement } from "react";
-import { saveSetupItemAction } from "@/app/app-host/(protected)/todo/actions";
+import { saveSetupItemAction } from "@/app/app-host/(protected)/setup-actions";
 import { SOFT_BUTTON } from "@/components/v2/classes";
 import { initialSetupFormState, SETUP_FIELDS, type SetupFormState, type SetupKey } from "@/lib/service-setup";
 

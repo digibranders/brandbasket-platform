@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { loadSetupServices } from "@/lib/server/first-look";
 import { initialSetupFormState } from "@/lib/service-setup";
-import { saveSetupItemAction } from "./actions";
+import { saveSetupItemAction } from "./setup-actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -36,7 +36,7 @@ beforeEach(() => {
 
 describe("saveSetupItemAction", () => {
   it("throws for an unknown item key and saves nothing", async () => {
-    await expect(saveSetupItemAction(initialSetupFormState, form({ key: "passwords", offers: "x" }))).rejects.toThrow("Unknown To do item.");
+    await expect(saveSetupItemAction(initialSetupFormState, form({ key: "passwords", offers: "x" }))).rejects.toThrow("Unknown setup item.");
     expect(saveServiceSetup).not.toHaveBeenCalled();
   });
 
@@ -96,7 +96,8 @@ describe("saveSetupItemAction", () => {
       answers: { offers: "A free check-up in December" },
       now: expect.any(Date),
     });
-    expect(revalidatePath).toHaveBeenCalledWith("/todo");
+    expect(revalidatePath).toHaveBeenCalledWith("/social");
+    expect(revalidatePath).toHaveBeenCalledWith("/search");
     expect(revalidatePath).toHaveBeenCalledWith("/");
   });
 

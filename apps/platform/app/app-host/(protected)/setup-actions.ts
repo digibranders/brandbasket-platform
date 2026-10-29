@@ -9,13 +9,13 @@ import { loadSetupServices } from "@/lib/server/first-look";
 import { isSetupKey, parseSetupItem, SETUP_FIELDS, SETUP_SERVICE, type SetupFormState } from "@/lib/service-setup";
 
 /**
- * Saves one To do item's answers for the signed-in customer. The business comes from the session, never from the form;
+ * Saves one setup answer, asked on a service page, for the signed-in customer. The business comes from the session, never from the form;
  * only the item's own fields are read from the form. Answers are never logged.
  */
 export async function saveSetupItemAction(_previous: SetupFormState, formData: FormData): Promise<SetupFormState> {
   const { tenant, billing } = await requireCustomerAccess();
   const key = String(formData.get("key") ?? "");
-  if (!isSetupKey(key)) throw new Error("Unknown To do item.");
+  if (!isSetupKey(key)) throw new Error("Unknown setup item.");
 
   const values: Record<string, string> = {};
   for (const field of SETUP_FIELDS[key]) values[field.name] = String(formData.get(field.name) ?? "");
@@ -36,10 +36,11 @@ export async function saveSetupItemAction(_previous: SetupFormState, formData: F
       saveServiceSetup(tx, { businessId: tenant.businessId, service, answers: parsed.answers, now: new Date() }),
     );
   } catch (error) {
-    console.error("[todo] could not save an answer", errorLogInfo(error));
+    console.error("[setup] could not save an answer", errorLogInfo(error));
     return { status: "error", key, field: "", message: "We could not save that. Please try again.", values };
   }
-  revalidatePath("/todo");
+  revalidatePath("/social");
+  revalidatePath("/search");
   revalidatePath("/");
   return { status: "saved", key };
 }

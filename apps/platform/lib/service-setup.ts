@@ -8,6 +8,16 @@
 export const SETUP_KEYS = ["accounts", "offers", "budget", "areas"] as const;
 export type SetupKey = (typeof SETUP_KEYS)[number];
 
+/**
+ * The answers we cannot start without: where to post and advertise, how much to spend, and which areas to work on. "What to
+ * promote" is no longer asked: it comes up on the kickoff call. Only these are asked of the customer after it.
+ */
+export const BLOCKING_SETUP_KEYS: readonly SetupKey[] = ["accounts", "budget", "areas"];
+
+export function isBlockingSetup(key: SetupKey): boolean {
+  return BLOCKING_SETUP_KEYS.includes(key);
+}
+
 /** Which service's saved answers each item lives in (service_setup.service). */
 export const SETUP_SERVICE: Readonly<Record<SetupKey, "social" | "search">> = {
   accounts: "social",

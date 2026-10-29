@@ -1,3 +1,5 @@
+import type { RequestFilter } from "./rows";
+
 /** Where the Requests pages live. Plain strings, so a client component (the rail) can import them. */
 export const REQUESTS_PATH = "/requests";
 export const ASK_FOR_A_CHANGE_PATH = "/requests/new";
@@ -10,17 +12,17 @@ export function requestHref(ticketId: string, notice?: RequestNotice): string {
   return `${REQUESTS_PATH}?open=${ticketId}${notice === undefined ? "" : `&notice=${notice}`}`;
 }
 
-/** A row of the list: the request opened, with the list it sits in kept (Open or Done). */
-export function listRowHref(ticketId: string, filter: "open" | "done"): string {
+/** A row of the list: the request opened, with the list it sits in kept. */
+export function listRowHref(ticketId: string, filter: RequestFilter): string {
   return `${REQUESTS_PATH}?filter=${filter}&open=${ticketId}`;
 }
 
 /** The list on its own, filtered. */
-export function listHref(filter: "open" | "done"): string {
+export function listHref(filter: RequestFilter): string {
   return `${REQUESTS_PATH}?filter=${filter}`;
 }
 
-/** Ask for a change, opened on Social & Ads and naming one post (the page reads the post itself; the address carries only its id). */
+/** A new request, opened on Social & Ads and naming one post (the page reads the post itself; the address carries only its id). */
 export function requestChangeHref(post: { readonly id: string }): string {
   return `${ASK_FOR_A_CHANGE_PATH}?kind=social&about=${post.id}`;
 }

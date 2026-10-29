@@ -6,7 +6,7 @@ import { z } from "zod";
 import { RequestDetail } from "@/components/requests/request-detail";
 import { RequestsView } from "@/components/requests/requests-view";
 import { paymentNoticeLine, readRequestNotice, requestNoticeLine } from "@/lib/requests/notices";
-import { chooseView, includedHeaderLine, requestRows } from "@/lib/requests/rows";
+import { chooseView, requestRows } from "@/lib/requests/rows";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { loadBookCallOptions } from "@/lib/server/calls";
 import { loadRequestDetail, loadRequests } from "@/lib/server/requests";
@@ -43,7 +43,6 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps):
       filter={view.filter}
       selectedId={view.selectedId}
       explicit={view.explicit}
-      includedLine={includedHeaderLine(data.includedUsed, data.includedAllowed)}
       calls={calls}
       detail={
         detail === null ? null : (

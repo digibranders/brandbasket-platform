@@ -5,7 +5,7 @@ import type { ReactElement } from "react";
 import { z } from "zod";
 import { AskForm } from "@/components/requests/ask-form";
 import { PageFrame } from "@/components/v2/page";
-import { aboutLine, kindOptions, readAskDefaults } from "@/lib/requests/form";
+import { aboutLine, intentOptions, readAskDefaults } from "@/lib/requests/form";
 import { includedHeaderLine } from "@/lib/requests/rows";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
@@ -13,7 +13,7 @@ import { loadSetupServices } from "@/lib/server/first-look";
 import { quietly } from "@/lib/server/quietly";
 import { loadRequests } from "@/lib/server/requests";
 
-export const metadata: Metadata = { title: "Ask for a change" };
+export const metadata: Metadata = { title: "New request" };
 
 const one = (value: string | string[] | undefined): string | undefined => (typeof value === "string" ? value : undefined);
 
@@ -34,14 +34,20 @@ export default async function AskForAChangePage({
       ? quietly("requests", "the post to ask about", null, () => withTenantScope(getAppDb(), tenant, (tx) => findDeliverableForBusiness(tx, tenant.businessId, about.data)))
       : null,
   ]);
-  const options = kindOptions(services ?? []);
+  const options = intentOptions(services ?? []);
   const defaults = readAskDefaults(query, options);
   const postLine = post === null || post.kind !== "post" || post.dueOn === null ? null : aboutLine(post.title, post.dueOn);
   const includedLine = data === null ? null : includedHeaderLine(data.includedUsed, data.includedAllowed);
-  const lede = [defaults.fromPreview ? "Your preview is waiting. Tell us what to change." : null, includedLine].filter((line) => line !== null).join(" ");
   return (
-    <PageFrame title="Ask for a change" lede={lede === "" ? undefined : lede} width="form">
-      <AskForm options={options} submissionKey={randomUUID()} defaultKind={defaults.kind ?? undefined} defaultPage={defaults.page} defaultBody={postLine ?? undefined} />
+    <PageFrame title="New request" lede={defaults.fromPreview ? "Your preview is waiting. Tell us what to change." : undefined} width="form">
+      <AskForm
+        options={options}
+        submissionKey={randomUUID()}
+        defaultIntent={defaults.intent ?? undefined}
+        defaultPage={defaults.page}
+        defaultBody={postLine ?? undefined}
+        includedLine={includedLine}
+      />
     </PageFrame>
   );
 }

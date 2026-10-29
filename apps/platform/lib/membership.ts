@@ -1,6 +1,6 @@
 import { chargedAmountCents, gstInsideCents } from "@brandbasket/billing/tax";
 import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { bundleLines, bundleNetCents, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
+import { bundleLines, bundleNetCents, readBundleSelection, WEBSITE_ALONE, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { adCreditCentsAtCheckout, packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
 import { initialTermPhrase } from "@brandbasket/shared/lib/billing/terms";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
@@ -26,6 +26,17 @@ export function membershipPathFor(tier: MembershipTier): string {
 
 /** The plan page's parameter naming its basket of services, comma separated. */
 export const MEMBERSHIP_SERVICES_PARAM = "services";
+
+/**
+ * The services named in a page's address (`?services=managed-website,digital-growth`), as catalogue ids only: the whole
+ * subscription being bought. The website alone when it names none. The questions and the checkout read the basket the same way.
+ */
+export function readSelectedServices(params: Readonly<Record<string, string | string[] | undefined>>): readonly MonthlyAddOnId[] {
+  const raw = params[MEMBERSHIP_SERVICES_PARAM];
+  const text = Array.isArray(raw) ? raw.join(",") : (raw ?? "");
+  const named = readBundleSelection(text.split(","));
+  return named.length === 0 ? WEBSITE_ALONE : named;
+}
 
 /**
  * The plan's page opened on a basket of services (`?services=managed-website,digital-growth`): what the website's basket

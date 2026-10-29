@@ -9,7 +9,7 @@ vi.mock("@/app/app-host/(protected)/requests/actions", () => ({ askForChangeActi
 import { ReplyForm } from "@/components/requests/reply-form";
 import { AskForm } from "@/components/requests/ask-form";
 import { REPLY_MAX_HEIGHT_PX, isSendShortcut, replyHeight } from "@/lib/reply-bar";
-import { kindOptions } from "@/lib/requests/form";
+import { intentOptions } from "@/lib/requests/form";
 
 const PRIVACY = "Hide any personal information before uploading";
 
@@ -51,7 +51,7 @@ it("keeps the Ask for a fix label while a change waits", () => {
   expect(reply("Ask for a fix")).toContain(">Ask for a fix<");
 });
 
-it("the Ask for a change form keeps the full screenshots block", () => {
-  const html = renderToStaticMarkup(createElement(AskForm, { options: kindOptions(["website"]), submissionKey: "ask-key-12345678" })).replaceAll("<!-- -->", "");
+it("the new request form keeps the full screenshots block", () => {
+  const html = renderToStaticMarkup(createElement(AskForm, { options: intentOptions(["website"]), submissionKey: "ask-key-12345678" })).replaceAll("<!-- -->", "");
   for (const kept of ["Screenshots", "Choose files", "or paste screenshots from clipboard", "Up to 3 images, 4 MB each (PNG, JPEG, WebP).", PRIVACY]) expect(html).toContain(kept);
 });
