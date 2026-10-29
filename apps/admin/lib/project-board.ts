@@ -1,4 +1,4 @@
-import type { StaffProjectRow } from "@brandbasket/db";
+import type { ProjectStatus, StaffProjectRow } from "@brandbasket/db";
 import { STAFF_STAGE_LABELS, staffStageOf, type StaffStage } from "@brandbasket/shared/lib/project-stage";
 import { clock, isSameTeamDay, shortDate, weekdayDate } from "./team-time";
 
@@ -97,4 +97,32 @@ export function filterByBuilder(rows: readonly StaffProjectRow[], builder: strin
   if (builder === null) return rows;
   if (builder === "none") return rows.filter((row) => row.builderId === null);
   return rows.filter((row) => row.builderId === builder);
+}
+
+export type ProjectScope = "needs-action" | "late" | "on-hold" | "all";
+
+const SCOPES: readonly ProjectScope[] = ["needs-action", "late", "on-hold", "all"];
+const NEEDS_ACTION_STATUSES: readonly ProjectStatus[] = ["submitted", "building", "revisions", "approved", "on_hold"];
+/** Statuses where the first preview clock runs; sla_due_at is the promise they are late against. */
+const CLOCK_RUNNING_STATUSES: readonly ProjectStatus[] = ["submitted", "building"];
+
+/** The default scope is needs-action, so an unknown or missing value reads as that. */
+export function parseProjectScope(value: string | undefined): ProjectScope {
+  return SCOPES.find((scope) => scope === value) ?? "needs-action";
+}
+
+/** Narrows rows to one quick filter. "late" uses the same clock as the card, so a late card and a late row agree. */
+export function filterByScope(rows: readonly StaffProjectRow[], scope: ProjectScope, now: Date): readonly StaffProjectRow[] {
+  switch (scope) {
+    case "all":
+      return rows;
+    case "needs-action":
+      return rows.filter((row) => NEEDS_ACTION_STATUSES.includes(row.status));
+    case "late":
+      return rows.filter(
+        (row) => CLOCK_RUNNING_STATUSES.includes(row.status) && row.slaDueAt !== null && row.slaDueAt.getTime() < now.getTime(),
+      );
+    case "on-hold":
+      return rows.filter((row) => row.status === "on_hold");
+  }
 }

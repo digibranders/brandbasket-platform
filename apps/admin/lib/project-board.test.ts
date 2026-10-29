@@ -1,6 +1,6 @@
 import type { StaffProjectRow } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
-import { boardColumns, filterByBuilder, type BoardColumnKey } from "./project-board";
+import { boardColumns, filterByBuilder, filterByScope, parseProjectScope, type BoardColumnKey } from "./project-board";
 
 const NOW = new Date("2026-11-30T06:00:00.000Z");
 
@@ -113,5 +113,59 @@ describe("filterByBuilder", () => {
     expect(filterByBuilder(rows, null).map((r) => r.projectId)).toEqual(["a", "b"]);
     expect(filterByBuilder(rows, "s1").map((r) => r.projectId)).toEqual(["a"]);
     expect(filterByBuilder(rows, "none").map((r) => r.projectId)).toEqual(["b"]);
+  });
+});
+
+describe("filterByScope", () => {
+  const EVERY_STATUS: readonly StaffProjectRow[] = (
+    ["onboarding", "submitted", "building", "preview", "revisions", "approved", "live", "on_hold", "cancelled"] as const
+  ).map((status) => row({ projectId: status, status }));
+
+  function idsOf(rows: readonly StaffProjectRow[]): string[] {
+    return rows.map((r) => r.projectId);
+  }
+
+  it("all keeps every row", () => {
+    expect(idsOf(filterByScope(EVERY_STATUS, "all", NOW))).toEqual(idsOf(EVERY_STATUS));
+  });
+
+  it("needs-action keeps the statuses waiting on staff and drops the rest", () => {
+    expect(idsOf(filterByScope(EVERY_STATUS, "needs-action", NOW))).toEqual(["submitted", "building", "revisions", "approved", "on_hold"]);
+  });
+
+  it("on-hold keeps only on_hold rows", () => {
+    expect(idsOf(filterByScope(EVERY_STATUS, "on-hold", NOW))).toEqual(["on_hold"]);
+  });
+
+  it("late keeps submitted and building rows whose first preview promise has passed", () => {
+    const rows = [
+      row({ projectId: "submitted-late", status: "submitted", slaDueAt: new Date("2026-11-28T06:00:00.000Z") }),
+      row({ projectId: "building-late", status: "building", slaDueAt: new Date("2026-11-29T06:00:00.000Z") }),
+      row({ projectId: "building-future", status: "building", slaDueAt: new Date("2026-12-03T06:00:00.000Z") }),
+      row({ projectId: "building-due-now", status: "building", slaDueAt: NOW }),
+      row({ projectId: "building-no-sla", status: "building", slaDueAt: null }),
+      row({ projectId: "revisions-past", status: "revisions", slaDueAt: new Date("2026-11-28T06:00:00.000Z") }),
+      row({ projectId: "preview-past", status: "preview", slaDueAt: new Date("2026-11-28T06:00:00.000Z") }),
+      row({ projectId: "approved-past", status: "approved", slaDueAt: new Date("2026-11-28T06:00:00.000Z") }),
+    ];
+    expect(idsOf(filterByScope(rows, "late", NOW))).toEqual(["submitted-late", "building-late"]);
+  });
+
+  it("late is empty when no submitted or building row has a promise date", () => {
+    expect(filterByScope(EVERY_STATUS, "late", NOW)).toEqual([]);
+  });
+});
+
+describe("parseProjectScope", () => {
+  it.each<[string | undefined, ReturnType<typeof parseProjectScope>]>([
+    [undefined, "needs-action"],
+    ["", "needs-action"],
+    ["bogus", "needs-action"],
+    ["needs-action", "needs-action"],
+    ["late", "late"],
+    ["on-hold", "on-hold"],
+    ["all", "all"],
+  ])("reads %s as %s", (value, scope) => {
+    expect(parseProjectScope(value)).toBe(scope);
   });
 });
