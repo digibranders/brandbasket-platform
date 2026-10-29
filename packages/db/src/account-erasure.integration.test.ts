@@ -70,6 +70,9 @@ async function seedClosedAccount(withSupport = false, withChangeQuote = false): 
   await raw(`insert into directory_claims (id, business_id, listing_key, business_name, phone) values ('${id(7)}', '${businessId}', 'physio/mh/thane/aster-physio', 'Aster Physio', '+919820099999')`);
   await raw(`insert into directory_business_profiles (business_id, street_address, phone) values ('${businessId}', '1 Road', '+919820099999')`);
   await raw(`insert into projects (id, business_id) values ('${id(8)}', '${businessId}')`);
+  await raw(`insert into project_preview_versions (id, project_id, business_id, version, preview_url, sent_at) values ('${id(14)}', '${id(8)}', '${businessId}', 1, 'https://aster-preview.example.com', now())`);
+  await raw(`insert into project_launch_checks (id, project_id, business_id, check_key, checked_by_staff_id) values ('${id(15)}', '${id(8)}', '${businessId}', 'mobile_checked', '${STAFF_ID}')`);
+  await raw(`insert into setup_call_outcomes (id, business_id, outcome, note, recorded_by_staff_id) values ('${id(16)}', '${businessId}', 'completed', 'Went well', '${STAFF_ID}')`);
   await raw(`insert into project_preview_images (project_id, business_id, preview_url, content_type, width, height, image) values ('${id(8)}', '${businessId}', 'https://aster-preview.example.com', 'image/webp', 1280, 800, '\\x01')`);
   await raw(`insert into domains (id, business_id, hostname) values ('${id(9)}', '${businessId}', 'aster.example')`);
   await raw(`insert into email_messages (id, to_address, subject, template, body_text, body_html, transport) values ('${id(10)}', 'meera@example.com', 's', 't', 'b', '<p>b</p>', 'outbox')`);
@@ -217,9 +220,11 @@ describe("eraseClosedAccount", () => {
     expect(outcome.storageKeys.every((key) => key.startsWith(`t/${businessId}/`))).toBe(true);
     expect(outcome.vimeoIds).toEqual(["123456789"]);
 
-    for (const table of ["patients", "practitioners", "leads", "setup_invites", "media_assets", "directory_pictures", "directory_videos", "directory_claims", "directory_business_profiles", "projects", "project_events", "project_preview_images", "domains", "business_members"]) {
+    for (const table of ["patients", "practitioners", "leads", "setup_invites", "media_assets", "directory_pictures", "directory_videos", "directory_claims", "directory_business_profiles", "projects", "project_events", "project_preview_images", "project_preview_versions", "project_launch_checks", "domains", "business_members"]) {
       expect(await count(table, table === "business_members" ? `business_id = '${businessId}'` : "true"), table).toBe(0);
     }
+    // Kickoff outcomes stay: staff cannot delete them (append only), and the business row is kept, so nothing cascades to them.
+    expect(await count("setup_call_outcomes")).toBe(1);
     expect(await count("email_messages", "to_address = 'meera@example.com'")).toBe(0);
     expect(await count("email_messages", "to_address = 'someone-else@example.com'")).toBe(1);
 
@@ -487,10 +492,13 @@ describe("eraseClosedAccount", () => {
 });
 
 describe("what the erase knows about", () => {
-  /** Tables with a foreign key to businesses that the erase keeps on purpose: the books, and ad auction history. */
+  /**
+   * Tables with a foreign key to businesses that the erase keeps: the books, ad auction history, and the kickoff outcomes, which
+   * staff cannot delete (append only) and so the erase leaves in place for now.
+   */
   const KEPT = [
     "account_closures", "add_on_payments", "add_on_subscriptions", "affiliate_earnings", "bundled_add_ons", "charges", "directory_ad_bids",
-    "directory_ad_wins", "directory_promotions", "payments", "plan_upgrades", "press_releases", "subscriptions",
+    "directory_ad_wins", "directory_promotions", "payments", "plan_upgrades", "press_releases", "setup_call_outcomes", "subscriptions",
     "tax_invoices", "webhook_events",
   ];
   /** Tables the erase empties for the business. */
