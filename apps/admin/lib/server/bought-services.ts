@@ -13,7 +13,7 @@ export function listBoughtServices(db: Database, businessId: string): Promise<Se
   return listBoughtSetupServices(db, businessId);
 }
 
-/** Whether this business pays for the Managed Website now, by the same plan and add-on rows as listBoughtServices. Staff connection. */
+/** Whether this business has ever had the Managed Website, in any state (see isWebsiteBoughtFrom). Staff connection. */
 export async function isWebsiteBought(db: Database, businessId: string): Promise<boolean> {
   const [bundled, subscriptions] = await Promise.all([listBundledAddOnsForBusiness(db, businessId), listAddOnSubscriptionsForBusiness(db, businessId)]);
   return isWebsiteBoughtFrom(bundled, subscriptions);

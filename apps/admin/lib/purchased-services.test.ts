@@ -20,25 +20,16 @@ describe("isWebsiteBoughtFrom", () => {
     expect(isWebsiteBoughtFrom(search, [later("digital-growth", "active")])).toBe(false);
   });
 
-  it("is true for a plan line that is pending or active", () => {
-    expect(isWebsiteBoughtFrom([plan("managed-website", "active")], [])).toBe(true);
-    expect(isWebsiteBoughtFrom([plan("managed-website", "pending")], [])).toBe(true);
-  });
-
-  it("is false for a plan line that is removed or has an end requested", () => {
-    expect(isWebsiteBoughtFrom([plan("managed-website", "removed")], [])).toBe(false);
-    expect(isWebsiteBoughtFrom([plan("managed-website", "active", new Date("2026-11-01T00:00:00.000Z"))], [])).toBe(false);
-  });
-
-  it("is true for a website bought later while its subscription is scheduled, active or past due", () => {
-    for (const status of ["scheduled", "active", "past_due"] as const) {
-      expect(isWebsiteBoughtFrom([], [later("managed-website", status)])).toBe(true);
+  it("is true for any managed-website plan line, whatever its state", () => {
+    for (const status of ["pending", "active", "removed"] as const) {
+      expect(isWebsiteBoughtFrom([plan("managed-website", status)], [])).toBe(true);
     }
+    expect(isWebsiteBoughtFrom([plan("managed-website", "active", new Date("2026-11-01T00:00:00.000Z"))], [])).toBe(true);
   });
 
-  it("is false for a later website add that is incomplete, halted or cancelled", () => {
-    for (const status of ["incomplete", "halted", "cancelled"] as const) {
-      expect(isWebsiteBoughtFrom([], [later("managed-website", status)])).toBe(false);
+  it("is true for any managed-website subscription, whatever its state", () => {
+    for (const status of ["scheduled", "active", "past_due", "incomplete", "halted", "cancelled"] as const) {
+      expect(isWebsiteBoughtFrom([], [later("managed-website", status)])).toBe(true);
     }
   });
 });
