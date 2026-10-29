@@ -83,7 +83,7 @@ async function readQueueSources(now: Date): Promise<QueueRead> {
       "kickoff calls",
       async () =>
         (await listKickoffBoard(db, { now, lookBackDays: KICKOFF_LOOK_BACK_DAYS })).flatMap((row) =>
-          row.heldAt === null && row.endsAt !== null && row.endsAt.getTime() <= now.getTime() ? [row.endsAt] : [],
+          row.heldAt === null && row.endsAt !== null && row.endsAt.getTime() <= now.getTime() && (row.projectStatus === null || row.projectStatus === "onboarding") ? [row.endsAt] : [],
         ),
       null,
       failed,

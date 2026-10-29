@@ -133,6 +133,7 @@ describe("kickoff calls needing an outcome in the queue", () => {
       kickoffRow({ businessId: "b-early", endsAt: ENDED_EARLIER }),
       kickoffRow({ businessId: "b-not-yet", endsAt: new Date("2026-11-30T09:00:00.000Z") }),
       kickoffRow({ businessId: "b-held", endsAt: ENDED_EARLIER, heldAt: new Date("2026-11-29T06:00:00.000Z") }),
+      kickoffRow({ businessId: "b-started", endsAt: ENDED_EARLIER, projectStatus: "submitted" }),
     ]);
     const items = await loadTodayItems(NOW);
     expect(listKickoffBoard).toHaveBeenCalledWith({}, { now: NOW, lookBackDays: 14 });
