@@ -2,15 +2,24 @@ import { listKickoffBoard } from "@brandbasket/db";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { addOnById, isAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { buttonDanger, buttonPrimary } from "@/components/console/buttons";
+import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { Section } from "@/components/console/section";
 import { getStaffDb } from "@/lib/server/db";
 import { clock, weekdayDate } from "@/lib/team-time";
-import { completeKickoffAction, kickoffDidNotHappenAction } from "./kickoff-actions";
+import { completeKickoffAction, recordKickoffOutcomeAction } from "./kickoff-actions";
 
 /** How far back a finished call is still asked about. */
 const LOOK_BACK_DAYS = 14;
+
+/** Project statuses from the build's first step on: the website build has started. */
+const BUILD_STARTED_STATUSES: ReadonlySet<string> = new Set(["submitted", "building", "revisions", "preview", "approved"]);
+
+const NO_SHOW_BUTTONS = [
+  { outcome: "customer_no_show", label: "Customer did not attend" },
+  { outcome: "team_no_show", label: "We did not attend" },
+  { outcome: "rescheduled", label: "Call was rescheduled" },
+] as const;
 
 /**
  * Kickoff calls that are over and not marked held. Nothing here is required for a normal call: the customer's Home moves
@@ -52,12 +61,25 @@ export async function KickoffWrapUp({ now }: { readonly now: Date }): Promise<Re
                   </button>
                 </div>
               </form>
-              <form action={kickoffDidNotHappenAction}>
-                <input type="hidden" name="businessId" value={row.businessId} />
-                <button type="submit" className={buttonDanger}>
-                  Did not happen
-                </button>
-              </form>
+              {row.projectStatus !== null && BUILD_STARTED_STATUSES.has(row.projectStatus) ? (
+                <p className="text-sm text-ink-2">
+                  The build started automatically. If the call did not happen, put the build on hold from the client page.{" "}
+                  <Link href={`/clients/${row.businessId}/project`} className="font-semibold text-ink">
+                    Open the client
+                  </Link>
+                </p>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                {NO_SHOW_BUTTONS.map(({ outcome, label }) => (
+                  <form key={outcome} action={recordKickoffOutcomeAction}>
+                    <input type="hidden" name="businessId" value={row.businessId} />
+                    <input type="hidden" name="outcome" value={outcome} />
+                    <button type="submit" className={buttonSecondary}>
+                      {label}
+                    </button>
+                  </form>
+                ))}
+              </div>
             </li>
           ))}
         </ul>

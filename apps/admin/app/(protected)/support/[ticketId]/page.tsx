@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
 import { z } from "zod";
-import { getSupportRequesterContext, getSupportTicketForStaff, listAssignableSupportStaff, listSupportTicketErrors } from "@brandbasket/db";
+import { findFeedbackLinkForTicket, getSupportRequesterContext, getSupportTicketForStaff, listAssignableSupportStaff, listSupportTicketErrors } from "@brandbasket/db";
 import { SUPPORT_STATUS_LABELS } from "@brandbasket/shared/lib/support";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { Notice } from "@/components/console/notice";
@@ -33,7 +33,7 @@ export default async function StaffTicketPage({ params, searchParams }: { readon
   await logStaffAccess({ staffUserId: user.id, action: "support_ticket.view", targetType: "support_ticket", targetId: ticketId });
   if (!z.uuid().safeParse(ticketId).success) notFound();
   const db = getStaffDb();
-  const [detail, requester, staff, errors] = await Promise.all([getSupportTicketForStaff(db, ticketId), getSupportRequesterContext(db, ticketId), listAssignableSupportStaff(db), listSupportTicketErrors(db, ticketId, user.id)]);
+  const [detail, requester, staff, errors, feedback] = await Promise.all([getSupportTicketForStaff(db, ticketId), getSupportRequesterContext(db, ticketId), listAssignableSupportStaff(db), listSupportTicketErrors(db, ticketId, user.id), findFeedbackLinkForTicket(db, ticketId)]);
   if (detail === null) notFound();
   const { ticket } = detail;
   const staffName = (id: string): string => staff.find((person) => person.userId === id)?.name ?? "Staff";
@@ -50,7 +50,7 @@ export default async function StaffTicketPage({ params, searchParams }: { readon
     {opened.success ? <Notice tone={opened.data === "emailed" || opened.data === "replayed" ? "ok" : "problem"} className="mt-4">{OPENED_REQUEST_MESSAGES[opened.data]}</Notice> : null}
     <RequestBanner ticketId={ticket.id} businessId={ticket.businessId} />
     <div className="mt-10">
-      <Section title="Requester"><FactList items={[{ label: "Name", value: requester?.name ?? "Account unavailable" }, { label: "Contact", value: requester?.contact ?? null }, { label: "Business", value: requester?.businessName ?? "No business selected" }, { label: "Received", value: <LocalDateTime iso={ticket.createdAt.toISOString()} variant="timestamp" /> }]} /></Section>
+      <Section title="Requester"><FactList items={[{ label: "Name", value: requester?.name ?? "Account unavailable" }, { label: "Contact", value: requester?.contact ?? null }, { label: "Business", value: requester?.businessName ?? "No business selected" }, { label: "Received", value: <LocalDateTime iso={ticket.createdAt.toISOString()} variant="timestamp" /> }]} />{feedback === null ? null : <p className="mt-5 text-sm">Preview feedback, round {feedback.round} · <Link href={`/clients/${feedback.businessId}/project`} className="text-accent underline">Open the website build</Link></p>}</Section>
       <Section title="Conversation">
         <ol className="space-y-8" aria-label="Ticket conversation">{detail.messages.map((message) => <li key={message.id} className={message.visibility === "internal" ? "border-l-2 border-accent pl-5" : ""}>
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm"><h3 className="font-semibold">{message.authorRole === "staff" ? staffName(message.authorUserId) : requester?.name ?? "Requester"}</h3><span className={message.visibility === "internal" ? "text-accent" : "text-ink-soft"}>{message.visibility === "internal" ? "Internal note · Staff only" : "Public message"}</span><span className="tabular-nums text-ink-soft"><LocalDateTime iso={message.createdAt.toISOString()} variant="timestamp" /></span></div>

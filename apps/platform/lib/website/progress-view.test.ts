@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { ProjectStatus } from "@brandbasket/db";
+import { CUSTOMER_STAGE_HEADLINE } from "@brandbasket/shared/lib/project-customer-line";
 import { progressView, revisionDue, roundsLine, type ProgressInput } from "@/lib/website/progress-view";
 
 function input(overrides: Partial<ProgressInput> = {}): ProgressInput {
@@ -36,6 +38,14 @@ describe("progressView", () => {
       line: "Your first preview will be ready by Mon 2 Nov.",
     });
     expect(progressView(input({ status: "submitted", previewDue: "2026-11-02" })).kind).toBe("building");
+  });
+
+  it("says the send is being prepared, not built, and keeps the same preview line", () => {
+    expect(progressView(input({ status: "submitted", previewDue: "2026-11-02" }))).toEqual({
+      kind: "building",
+      title: "We are preparing your website",
+      line: "Your first preview will be ready by Mon 2 Nov.",
+    });
   });
 
   it("leaves the building line empty when no preview date is known", () => {
@@ -86,6 +96,21 @@ describe("progressView", () => {
 
   it("says the website is live", () => {
     expect(progressView(input({ status: "live" }))).toEqual({ kind: "live", title: "Your website is live", line: null });
+  });
+});
+
+describe("progressView titles", () => {
+  const STATUSES: readonly ProjectStatus[] = ["onboarding", "submitted", "building", "preview", "revisions", "approved", "live", "on_hold", "cancelled"];
+
+  for (const status of STATUSES) {
+    it(`titles ${status} with the customer headline`, () => {
+      // Onboarding has two titles; the kickoff one is the headline, so the check uses a customer whose kickoff comes first.
+      expect(progressView(input({ status, kickoffFirst: status === "onboarding" })).title).toBe(CUSTOMER_STAGE_HEADLINE[status]);
+    });
+  }
+
+  it("titles a customer with no project as nothing being built", () => {
+    expect(progressView(input({ status: null })).title).toBe("Nothing is being built right now");
   });
 });
 

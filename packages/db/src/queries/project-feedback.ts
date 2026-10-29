@@ -16,6 +16,23 @@ export async function linkFeedbackTicket(
     .onConflictDoNothing({ target: projectFeedbackTickets.ticketId });
 }
 
+/** The project, business and round a support ticket was sent as preview feedback for, or null when it was not. */
+export async function findFeedbackLinkForTicket(
+  db: Database,
+  ticketId: string,
+): Promise<{ readonly projectId: string; readonly businessId: string; readonly round: number } | null> {
+  const [link] = await db
+    .select({
+      projectId: projectFeedbackTickets.projectId,
+      businessId: projectFeedbackTickets.businessId,
+      round: projectFeedbackTickets.round,
+    })
+    .from(projectFeedbackTickets)
+    .where(eq(projectFeedbackTickets.ticketId, ticketId))
+    .limit(1);
+  return link ?? null;
+}
+
 /** The feedback sent on one project, newest first. Scoped by the business as well as the project, so a wrong business finds nothing. */
 export async function listFeedbackForProject(
   db: Database,
