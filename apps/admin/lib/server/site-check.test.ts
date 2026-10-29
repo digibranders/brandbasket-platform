@@ -80,10 +80,10 @@ describe("checkSiteAddress: private addresses", () => {
     expect(d.fetch).not.toHaveBeenCalled();
   });
 
-  it("still checks when one of several addresses is public", async () => {
+  it("refuses when any one address is private, even if others are public", async () => {
     const d = deps({ resolve4: async () => ["10.0.0.5", PUBLIC_V4] });
-    await expect(checkSiteAddress("shop.example.com", d)).resolves.toEqual({ ok: true, status: 200 });
-    expect(d.fetch).toHaveBeenCalledTimes(1);
+    await expect(checkSiteAddress("shop.example.com", d)).resolves.toEqual({ ok: false, reason: "private-address" });
+    expect(d.fetch).not.toHaveBeenCalled();
   });
 });
 

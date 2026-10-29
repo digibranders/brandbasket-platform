@@ -66,7 +66,7 @@ export async function checkSiteAddress(hostname: string, deps: Partial<SiteCheck
   const lookups = await Promise.allSettled([resolver.resolve4(hostname), resolver.resolve6(hostname)]);
   const addresses = lookups.flatMap((lookup) => (lookup.status === "fulfilled" ? lookup.value : []));
   if (addresses.length === 0) return { ok: false, reason: "dns" };
-  if (addresses.every(isPrivateAddress)) return { ok: false, reason: "private-address" };
+  if (addresses.some(isPrivateAddress)) return { ok: false, reason: "private-address" };
 
   let response: Response;
   try {
