@@ -1,10 +1,13 @@
-import { findBusinessWebsiteUrl } from "@brandbasket/db";
+import { findBusinessWebsiteUrl, listFeedbackForProject } from "@brandbasket/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { DOMAIN_CONNECT_NOTICES, readDomainConnectNotice } from "@brandbasket/shared/lib/domain-connect-notices";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { PROJECT_LAUNCH_NOTICES, readProjectLaunchNotice } from "@brandbasket/shared/lib/project-launch-notices";
 import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@brandbasket/shared/lib/project-preview-notices";
+import { STAFF_STAGE_LABELS, staffStageOf } from "@brandbasket/shared/lib/project-stage";
+import { SUPPORT_STATUS_LABELS } from "@brandbasket/shared/lib/support";
+import { HairlineList, HairlineRow } from "@/components/console/hairline-list";
 import { KickoffCallSection } from "@/components/console/kickoff-call-section";
 import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
@@ -38,6 +41,8 @@ export default async function ClientProjectPage({
   const late = nextStep === "preview" ? previewLateReason(project, new Date()) : null;
   const logo = client.media.filter((asset) => asset.purpose === "logo");
   const photos = client.media.filter((asset) => asset.purpose === "photo");
+  const feedback =
+    project === null ? [] : await listFeedbackForProject(getStaffDb(), { projectId: project.id, businessId: client.businessId });
 
   return (
     <>
@@ -89,6 +94,7 @@ export default async function ClientProjectPage({
           <>
             <Facts
               items={[
+                { label: "Stage", value: STAFF_STAGE_LABELS[staffStageOf(project.status)] },
                 ...(project.onboardingSubmittedAt === null
                   ? []
                   : [{ label: "Sent to us", value: <When date={project.onboardingSubmittedAt} /> }]),
@@ -111,6 +117,22 @@ export default async function ClientProjectPage({
           </>
         )}
       </Section>
+
+      {feedback.length === 0 ? null : (
+        <Section title="Client feedback">
+          <HairlineList label="Client feedback">
+            {feedback.map((item) => (
+              <HairlineRow
+                key={item.ticketId}
+                href={`/support/${item.ticketId}`}
+                title={item.subject}
+                sub={`${item.displayRef} · Round ${item.round} · ${SUPPORT_STATUS_LABELS[item.status]}`}
+                trail={<When date={item.createdAt} />}
+              />
+            ))}
+          </HairlineList>
+        </Section>
+      )}
 
       <ProjectControls businessId={client.businessId} notice={sp.move} />
 

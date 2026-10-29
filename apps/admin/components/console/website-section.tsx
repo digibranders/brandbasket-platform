@@ -1,5 +1,5 @@
 import type { ProjectStatus } from "@brandbasket/db";
-import { PROJECT_STATUS_LABELS } from "@brandbasket/shared/lib/project-status";
+import { STAFF_STAGE_LABELS, staffStageOf } from "@brandbasket/shared/lib/project-stage";
 import type { ReactElement } from "react";
 import {
   putOnHoldAction,
@@ -37,7 +37,7 @@ function dateFact(label: string, value: Date | null): readonly Fact[] {
 
 function factsOf(project: Project): readonly Fact[] {
   return [
-    { label: "Status", value: PROJECT_STATUS_LABELS[project.status] },
+    { label: "Status", value: STAFF_STAGE_LABELS[staffStageOf(project.status)] },
     ...(project.status === "on_hold" && project.onHoldReason !== null ? [{ label: "Reason", value: project.onHoldReason }] : []),
     ...dateFact("Setup sent", project.onboardingSubmittedAt),
     ...dateFact("First preview due", project.slaDueAt),
