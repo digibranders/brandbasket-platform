@@ -6,6 +6,7 @@ import {
   grantRevisionRound,
   ProjectBuilderNotStaffError,
   ProjectMoveRefusedError,
+  setProjectLaunchPlannedOn,
   type MovedProject,
 } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
@@ -75,4 +76,16 @@ export async function grantRoundAction(formData: FormData): Promise<void> {
   const moved = await attempt(businessId, () => grantRevisionRound(getStaffDb(), projectId));
   await recordStaffAction(staff, { businessId: moved.businessId, kind: "project.round_added", summary: "One more round of changes added", visibleToClient: true });
   finish(moved.businessId, "round-added");
+}
+
+/** Sets the day the website is planned to go live, or clears it. The client sees it once set, so only a real day is accepted. */
+export async function planLaunchAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffAccess();
+  const { businessId, projectId } = readIds(formData);
+  const raw = formData.get("launchDay");
+  const day = typeof raw === "string" && raw.trim() !== "" ? raw.trim() : null;
+  if (day !== null && !/^\d{4}-\d{2}-\d{2}$/.test(day)) finish(businessId, "launch-day-invalid");
+  const moved = await attempt(businessId, () => setProjectLaunchPlannedOn(getStaffDb(), projectId, day));
+  await recordStaffAction(staff, { businessId: moved.businessId, kind: "project.launch_planned", summary: day === null ? "Launch day cleared" : "Launch day set", data: { launchDay: day } });
+  finish(moved.businessId, "launch-planned");
 }

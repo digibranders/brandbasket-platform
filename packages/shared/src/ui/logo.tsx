@@ -30,7 +30,7 @@ interface WordmarkLogoProps {
 /** The Brandbasket logo, as the sign-in screens and the dashboard's sidebar draw it. */
 export function WordmarkLogo({ className, href, tone = "accent", brand }: WordmarkLogoProps): ReactElement {
   return (
-    <Link href={href} aria-label={brand.name} className={cn("inline-flex items-center rounded-md py-1", className)}>
+    <Link href={href} aria-label={brand.name} className={cn("inline-flex min-h-11 items-center rounded-md py-1", className)}>
       {/* A plain img: the file is an SVG, which next/image would only pass through. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img

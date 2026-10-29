@@ -74,6 +74,27 @@ export async function assignProjectBuilder(db: Runner, projectId: string, staffU
   return onlyRow(rows, "assign", projectId);
 }
 
+/** A calendar day, `YYYY-MM-DD`, that really exists. */
+function isCalendarDay(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+/**
+ * Sets the day staff plan to put an open project's website live, or clears it with null. The customer sees it once it is set
+ * (a plan, not a promise), so a day that is not a real calendar day is refused rather than stored.
+ */
+export async function setProjectLaunchPlannedOn(db: Runner, projectId: string, day: string | null): Promise<MovedProject> {
+  if (!isUuid(projectId) || (day !== null && !isCalendarDay(day))) throw new ProjectMoveRefusedError("plan-launch", projectId);
+  const rows = await db
+    .update(projects)
+    .set({ launchPlannedOn: day })
+    .where(and(eq(projects.id, projectId), startsFrom("plan-launch")))
+    .returning(MOVED);
+  return onlyRow(rows, "plan-launch", projectId);
+}
+
 /**
  * Gives the client one more round of changes than their plan includes. The allowance is revision_rounds_included;
  * revision_rounds_granted counts the rounds the client has already asked for (requestProjectRevisions adds to it).
@@ -149,6 +170,8 @@ export interface StaffProjectControls {
   readonly revisionRoundsIncluded: number;
   readonly revisionRoundsUsed: number;
   readonly assignedStaffId: string | null;
+  /** The day staff plan to put the website live (`YYYY-MM-DD`), or null while none is set. */
+  readonly launchPlannedOn: string | null;
 }
 
 /** The business's open build, or null when it has none (live, cancelled, or never started). */
@@ -163,6 +186,7 @@ export async function findOpenProjectForStaff(db: Database, businessId: string):
       revisionRoundsIncluded: projects.revisionRoundsIncluded,
       revisionRoundsUsed: projects.revisionRoundsGranted,
       assignedStaffId: projects.assignedStaffId,
+      launchPlannedOn: projects.launchPlannedOn,
     })
     .from(projects)
     .where(and(eq(projects.businessId, businessId), notInArray(projects.status, [...CLOSED_STATUSES])))
