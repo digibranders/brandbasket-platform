@@ -14,6 +14,8 @@ import {
   PlaceRegistryNotImportedError,
   ProjectNotApprovedError,
   ProjectNotReadyForPreviewError,
+  findBusinessSlug,
+  saveFreeAddressForBusiness,
   saveListingPlacement,
   saveWebsiteHosting,
   setBusinessModule,
@@ -38,7 +40,12 @@ import { isBusinessModule } from "@brandbasket/shared/lib/business-modules";
 import { canonicalTimeZone } from "@brandbasket/shared/lib/calendar/local-date";
 import { parsePlacementForm } from "@brandbasket/shared/lib/directory/placement-form";
 import { domainConnectNoticeHref } from "@brandbasket/shared/lib/domain-connect-notices";
-import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
+import {
+  clientSiteBaseDomain,
+  isTemporarySubdomain,
+  readSubdomainName,
+  temporarySubdomainFor,
+} from "@brandbasket/shared/lib/onboarding/domain-form";
 import { projectLaunchNoticeHref } from "@brandbasket/shared/lib/project-launch-notices";
 import { projectPreviewNoticeHref } from "@brandbasket/shared/lib/project-preview-notices";
 import { parseHostingForm } from "@/lib/hosting-form";
@@ -675,6 +682,37 @@ export async function switchDomainAction(formData: FormData): Promise<void> {
   await recordStaffAction(staff, { businessId, kind: "domain.switched", summary: "Switched the website to the customer's domain", data: { notified } });
   revalidateClient(businessId);
   redirect(domainConnectNoticeHref(businessId, notified === "emailed" ? "switched" : "switched-no-email"));
+}
+
+/**
+ * Gives a business with no domain of its own a free `<name>.<base domain>` address as its primary domain, so its build can
+ * go live. The name is the business's slug. When another business already holds that address, one retry adds a short
+ * disambiguator made from the business id. A business that already has a primary domain keeps it.
+ */
+export async function useFreeAddressAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "Free address's business");
+
+  const baseDomain = clientSiteBaseDomain();
+  if (baseDomain === null) redirect(projectLaunchNoticeHref(businessId, "address-unavailable"));
+
+  const db = getStaffDb();
+  const slug = await findBusinessSlug(db, businessId);
+  if (slug === null) throw new Error(`Business ${businessId} does not exist.`);
+  const reading = readSubdomainName(slug);
+  if (!reading.ok) redirect(projectLaunchNoticeHref(businessId, "address-unavailable"));
+
+  let hostname = temporarySubdomainFor(reading.name);
+  let outcome = await saveFreeAddressForBusiness(db, { businessId, hostname });
+  if (outcome === "taken") {
+    hostname = temporarySubdomainFor(reading.name, businessId.replaceAll("-", "").slice(-6));
+    outcome = await saveFreeAddressForBusiness(db, { businessId, hostname });
+  }
+  if (outcome !== "saved") redirect(projectLaunchNoticeHref(businessId, "address-unavailable"));
+
+  await recordStaffAction(staff, { businessId, kind: "domain.free_address_saved", summary: "Gave a free address", data: { hostname } });
+  revalidateClient(businessId);
+  redirect(projectLaunchNoticeHref(businessId, "address-saved"));
 }
 
 /**
