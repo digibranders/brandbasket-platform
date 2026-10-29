@@ -17,6 +17,8 @@ export interface NextStepInput {
 export type NextStep =
   | { readonly kind: "start-onboarding" }
   | { readonly kind: "continue-onboarding"; readonly completed: number; readonly total: number }
+  /** Sent to us and not started yet. Drawn exactly as building, with its own headline. */
+  | { readonly kind: "preparing"; readonly slaDueAt: Date | null }
   | { readonly kind: "building"; readonly slaDueAt: Date | null }
   | { readonly kind: "on-hold" }
   /** A preview is waiting for the customer, or the changes they asked for are being made. */
@@ -41,6 +43,7 @@ export function nextStep({ project, completedSteps, liveWebsite }: NextStepInput
       return { kind: "continue-onboarding", completed, total: ONBOARDING_STEPS.length };
     }
     case "submitted":
+      return { kind: "preparing", slaDueAt: project.slaDueAt };
     case "building":
       return { kind: "building", slaDueAt: project.slaDueAt };
     case "on_hold":

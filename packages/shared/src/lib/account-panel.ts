@@ -2,6 +2,7 @@ import type { ProjectStatus } from "@brandbasket/db";
 import type { SiteStatus } from "@brandbasket/billing";
 import { PAYMENT_STEP_HREF, type BillingBannerModel } from "@brandbasket/shared/lib/billing/payment-step";
 import type { NextStep } from "@brandbasket/shared/lib/next-step";
+import { CUSTOMER_STAGE_HEADLINE } from "@brandbasket/shared/lib/project-customer-line";
 
 /**
  * One line in the bell's panel.
@@ -87,6 +88,8 @@ export function noticesFrom({ banner, projectStatus, nextStep, requests = [] }: 
       notices.push({ id: "preview-ready", text: "Your preview is ready to review", href: "/website", actionable: true });
       break;
     case "submitted":
+      notices.push({ id: "preparing", text: CUSTOMER_STAGE_HEADLINE.submitted, href: "/website", actionable: false });
+      break;
     case "building":
       notices.push({ id: "building", text: "We’re building your website", href: "/website", actionable: false });
       break;

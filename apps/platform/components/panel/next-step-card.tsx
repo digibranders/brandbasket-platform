@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { cn } from "@brandbasket/shared/lib/cn";
+import { CUSTOMER_STAGE_HEADLINE } from "@brandbasket/shared/lib/project-customer-line";
 import type { NextStep } from "@brandbasket/shared/lib/next-step";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { SOFT_BUTTON } from "@/components/v2/classes";
@@ -104,11 +105,12 @@ export function NextStepCard({ step, buildStageIndex }: NextStepCardProps): Reac
     case "continue-onboarding":
       // Setting up is shown by the kickoff call and checklist on the home screen, not by this card.
       return null;
+    case "preparing":
     case "building":
       return (
         <CardLayout
           eyebrow="In progress"
-          heading="We’re building your website"
+          heading={step.kind === "preparing" ? CUSTOMER_STAGE_HEADLINE.submitted : "We’re building your website"}
           action={{ href: "/project", label: "View progress" }}
           list={buildList}
         >

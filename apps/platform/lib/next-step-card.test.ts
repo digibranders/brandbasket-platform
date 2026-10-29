@@ -3,8 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import { NextStepCard } from "@/components/panel/next-step-card";
 
-const render = (buildStageIndex: number): string =>
-  renderToStaticMarkup(createElement(NextStepCard, { step: { kind: "building", slaDueAt: null }, buildStageIndex })).replaceAll("<!-- -->", "");
+const render = (buildStageIndex: number, kind: "building" | "preparing" = "building"): string =>
+  renderToStaticMarkup(createElement(NextStepCard, { step: { kind, slaDueAt: null }, buildStageIndex })).replaceAll("<!-- -->", "");
 
 it("draws where the build is as a hairline section called What happens next, not a box", () => {
   const html = render(1);
@@ -12,6 +12,12 @@ it("draws where the build is as a hairline section called What happens next, not
   expect(html).toContain("We’re building your website");
   expect(html).toContain('href="/project"');
   expect(html).not.toContain("shadow-lift");
+});
+
+it("says we are preparing the website, not building it, before staff start", () => {
+  const html = render(1, "preparing");
+  expect(html).toContain("We are preparing your website");
+  expect(html).not.toContain("We’re building your website");
 });
 
 it("marks the stage in progress, and the ones before it as done, in words as well as colour", () => {

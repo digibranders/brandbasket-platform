@@ -34,9 +34,21 @@ describe("the staff moves", () => {
   });
 
   it("resume writes the building-again line", async () => {
+    vi.mocked(resumeProject).mockResolvedValue({ status: "building" } as Project);
     await resumeBuilding(db, move, NOW);
     expect(resumeProject).toHaveBeenCalledWith(db, { businessId: "business-1" });
     expect(lines()).toEqual(["We are building your website again"]);
+  });
+
+  it.each([
+    ["submitted", "We resumed your website build"],
+    ["preview", "Your website preview is waiting for you again"],
+    ["revisions", "We are making your changes again"],
+    ["building", "We are building your website again"],
+  ] as const)("resume back to %s writes the line that says where the build is", async (status, title) => {
+    vi.mocked(resumeProject).mockResolvedValue({ status } as Project);
+    await resumeBuilding(db, move, NOW);
+    expect(lines()).toEqual([title]);
   });
 
   it("put on hold writes the reason the database kept, not the raw input", async () => {
