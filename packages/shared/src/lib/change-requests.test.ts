@@ -56,12 +56,12 @@ describe("customerStatus", () => {
     expect(CLOSED_LABEL).toBe("Closed");
   });
 
-  it("gives a question the same words", () => {
+  it("gives a question the same words, and tells the customer when the team is waiting on them", () => {
     expect(SUPPORT_STATUSES.map((status) => [status, ticketStatusWord(status)])).toEqual([
       ["new", "Sent"],
       ["triaged", "In progress"],
       ["in_progress", "In progress"],
-      ["waiting_on_you", "In progress"],
+      ["waiting_on_you", "Waiting for you"],
       ["resolved", "Done"],
       ["closed", "Done"],
     ]);

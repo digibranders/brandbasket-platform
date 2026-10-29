@@ -167,3 +167,15 @@ export async function listSetupCallsBetween(db: Runner, from: Date, to: Date): P
   );
 }
 
+
+/**
+ * The kickoff did not happen (a no-show): forgets the booking so the customer is asked for a new time. A call staff
+ * already marked held is left alone (it happened). True when a booking was removed. Staff connection.
+ */
+export async function clearUnheldKickoffBooking(db: Runner, businessId: string): Promise<boolean> {
+  const rows = await db
+    .delete(setupCallBookings)
+    .where(and(eq(setupCallBookings.businessId, businessId), isNull(setupCallBookings.heldAt)))
+    .returning({ id: setupCallBookings.id });
+  return rows.length > 0;
+}

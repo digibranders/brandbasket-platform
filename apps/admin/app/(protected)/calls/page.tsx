@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/console/page-header";
 import { Section } from "@/components/console/section";
 import { TABLE, TD, TD_TIME, TH } from "@/components/console/table";
 import { groupCalls, type CallLine } from "@/lib/calls-view";
+import { KickoffWrapUp } from "./kickoff-wrap-up";
 import { todayRange } from "@/lib/team-time";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
@@ -56,6 +57,7 @@ export default async function CallsPage(): Promise<ReactElement> {
   return (
     <>
       <PageHeader title="Calls" meta={`${groups.today.length} today · ${groups.upcoming.length} coming up`} />
+      <KickoffWrapUp now={now} />
       <Section title="Today">{groups.today.length === 0 ? <EmptyLine>No calls today.</EmptyLine> : <CallTable lines={groups.today} />}</Section>
       <Section title="Coming up">{groups.upcoming.length === 0 ? <EmptyLine>Nothing booked in the next four weeks.</EmptyLine> : <CallTable lines={groups.upcoming} />}</Section>
       <Section title="Last 7 days">{groups.past.length === 0 ? <EmptyLine>No calls in the last week.</EmptyLine> : <CallTable lines={groups.past} />}</Section>

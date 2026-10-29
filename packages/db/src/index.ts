@@ -269,10 +269,12 @@ export {
   OnboardingLockedError,
   replaceBusinessHours,
   replaceServices,
+  saveBusinessContact,
   saveBusinessProfile,
   savePrimaryDomain,
   saveProjectBrief,
   ServiceNotFoundError,
+  type BusinessContactInput,
   type BusinessHoursInput,
   type BusinessHoursRow,
   type BusinessProfile,
@@ -804,6 +806,7 @@ export {
 export { clearSiteSetting, findSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "./queries/site-settings";
 export {
   clearSetupCallHeld,
+  clearUnheldKickoffBooking,
   findSetupCallBooking,
   listSetupCallsBetween,
   markSetupCallHeld,
@@ -815,6 +818,17 @@ export {
 } from "./queries/setup-calls";
 export * from "./queries/team-calls";
 export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
+export {
+  firstPreviewDueAfterKickoff,
+  KICKOFF_PREVIEW_DUE_HOURS,
+  KICKOFF_SETTLE_HOURS,
+  listKickoffBoard,
+  listKickoffsToStart,
+  markProjectReadyAfterKickoff,
+  type KickoffBoardRow,
+  type KickoffToStart,
+} from "./queries/kickoff-build";
+export { completeClientIntake, findClientIntake, saveClientIntakeAnswers, type ClientIntakeAnswers } from "./queries/client-intakes";
 export { addActivityEvent, listActivityEvents, removeActivityEvent } from "./queries/activity-events";
 export { listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
 export {
