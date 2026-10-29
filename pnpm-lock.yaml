@@ -343,6 +343,9 @@ importers:
         specifier: 1.2.1
         version: 1.2.1
     devDependencies:
+      '@brandbasket/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@types/node':
         specifier: ^24.13.4
         version: 24.13.4
