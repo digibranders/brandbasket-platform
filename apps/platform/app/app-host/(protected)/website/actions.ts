@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupportTicketWithOutcome, findLatestProject, ProjectNotAwaitingResponseError, SupportQueryError, withTenantScope } from "@brandbasket/db";
+import { createSupportTicketWithOutcome, findLatestProject, linkFeedbackTicket, ProjectNotAwaitingResponseError, SupportQueryError, withTenantScope } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
@@ -70,6 +70,7 @@ export async function sendPreviewFeedbackAction(_previous: SupportFormState, for
         { user, businessId: tenant.businessId, businessName: tenant.businessName },
       ).catch((error: unknown) => console.error("[support-alert]", error));
     }
+    await linkFeedbackTicket(getStaffDb(), { ticketId: ticket.id, projectId: project.id, businessId: tenant.businessId, round: project.revisionRoundsGranted + 1 });
     await respond({ kind: "revisions" });
   } catch (error) {
     unstable_rethrow(error);

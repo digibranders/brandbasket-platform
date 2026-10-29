@@ -499,7 +499,7 @@ describe("what the erase knows about", () => {
     "business_hours", "business_members", "business_modules", "business_profiles", "change_requests", "chatbot_leads", "chatbots", "client_intakes", "deliverables", "directory_business_categories", "directory_business_faqs",
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
     "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "metric_breakdowns", "metric_daily", "monthly_reports", "monthly_snapshots", "onboarding_progress",
-    "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_preview_images", "projects", "report_documents", "report_source_runs", "report_sources", "service_setup", "services",
+    "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_feedback_tickets", "project_preview_images", "projects", "report_documents", "report_source_runs", "report_sources", "service_setup", "services",
     "setup_call_bookings", "setup_invites", "site_events", "site_hits", "site_keys", "support_tickets", "team_calls", "website_hosting",
   ];
 
