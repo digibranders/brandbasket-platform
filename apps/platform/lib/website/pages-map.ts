@@ -1,4 +1,4 @@
-import { WEBSITE_BLOG_PATH } from "./tabs";
+import { BLOG_PATH } from "@/lib/blog/tabs";
 
 /** A row that points inside the product, where the thing is changed. `href` is a relative path. */
 export interface ProductRow {
@@ -9,5 +9,5 @@ export interface ProductRow {
 
 export const PRODUCT_ROWS: readonly ProductRow[] = [
   { label: "Opening hours, holidays and the announcement", line: "Updates your website in about a minute.", href: "/details" },
-  { label: "Blog", line: "Write and publish whenever you like.", href: WEBSITE_BLOG_PATH },
+  { label: "Blog", line: "Write and publish whenever you like.", href: BLOG_PATH },
 ];

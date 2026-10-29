@@ -1,4 +1,5 @@
 import { AFFILIATE_PATH } from "@brandbasket/shared/lib/affiliate-links";
+import { BLOG_AUTHORS_PATH, BLOG_CATEGORIES_PATH, BLOG_PATH, BLOG_TABS } from "@/lib/blog/tabs";
 import { CALLS_PATH } from "@/lib/calls/links";
 import type { ServiceKey } from "@/lib/first-look";
 import { BILLING_PATH, PLAN_TABS } from "@/lib/plan/tabs";
@@ -7,7 +8,7 @@ import { sectionTabPaths } from "@/lib/section-tabs";
 import { WEBSITE_PATH, WEBSITE_TABS } from "@/lib/website/tabs";
 
 /** The sidebar's icons by name; components/v2/rail-icon.tsx draws them. */
-export type RailIcon = "home" | "requests" | "website" | "social" | "search" | "business" | "plan" | "settings" | "affiliate";
+export type RailIcon = "home" | "requests" | "website" | "blog" | "social" | "search" | "business" | "plan" | "settings" | "affiliate";
 
 export interface RailTarget {
   readonly href: string;
@@ -73,18 +74,26 @@ function requestsLink(count: number | undefined, withCalls: boolean): RailLink {
   };
 }
 
-/** The website opens on its Overview tab. The other tabs, and the blog's authors and categories, are listed for search. */
+/** The website opens on its Overview tab. The other tabs are listed for search. */
 const WEBSITE: RailLink = {
   href: WEBSITE_PATH,
   label: "Website",
   icon: "website",
   mark: "website",
-  children: [
-    ...WEBSITE_TABS.slice(1).map((tab) => ({ href: tab.href, label: tab.label })),
-    { href: "/content/authors", label: "Authors" },
-    { href: "/content/categories", label: "Categories" },
-  ],
+  children: WEBSITE_TABS.slice(1).map((tab) => ({ href: tab.href, label: tab.label })),
   alsoCurrent: sectionTabPaths(WEBSITE_TABS),
+};
+
+/** The blog is its own link under Website: it opens on the posts, with Authors and Categories as its other tabs. It goes with the website service. */
+const BLOG: RailLink = {
+  href: BLOG_PATH,
+  label: "Blog",
+  icon: "blog",
+  children: [
+    { href: BLOG_AUTHORS_PATH, label: "Authors" },
+    { href: BLOG_CATEGORIES_PATH, label: "Categories" },
+  ],
+  alsoCurrent: sectionTabPaths(BLOG_TABS),
 };
 
 /** Your services and Billing are one link, with the billing page as its second tab. */
@@ -97,7 +106,7 @@ const PLAN: RailLink = {
 };
 
 export function railSections(input: RailInput): readonly RailSection[] {
-  const services = [...(input.hasWebsite ? [WEBSITE] : []), ...(input.hasSocial === true ? [SOCIAL] : []), ...(input.hasSearch === true ? [SEARCH] : [])];
+  const services = [...(input.hasWebsite ? [WEBSITE, BLOG] : []), ...(input.hasSocial === true ? [SOCIAL] : []), ...(input.hasSearch === true ? [SEARCH] : [])];
   return [
     { label: null, links: [HOME] },
     ...(services.length > 0 ? [{ label: "Services", links: services }] : []),

@@ -24,8 +24,8 @@ describe("the search popup", () => {
   });
 
   it("names a page inside a group by the page first and the group after it, instead of 'Website: Authors'", () => {
-    expect(html).not.toContain("Website: Authors");
-    expect(html).toMatch(/Authors<\/span><span[^>]*>Website</);
+    expect(html).not.toContain("Blog: Authors");
+    expect(html).toMatch(/Authors<\/span><span[^>]*>Blog</);
   });
 
   it("keeps every row at least 44px tall and never uses a dash in what it says", () => {
