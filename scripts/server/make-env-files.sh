@@ -62,6 +62,7 @@ RAZORPAY_WEBHOOK_SECRET="$(openssl rand -hex 32)"
 ACCOUNT_ERASE_TOKEN="$(openssl rand -hex 32)"
 SITE_ANALYTICS_TOKEN="$(openssl rand -hex 32)"
 SITE_HOSTING_SYNC_TOKEN="$(openssl rand -hex 32)"
+KICKOFF_SYNC_TOKEN="$(openssl rand -hex 32)"
 
 mkdir -p "$SHARED"
 ( umask 077
@@ -84,6 +85,7 @@ ACCOUNT_CODE_SECRET=$ACCOUNT_CODE_SECRET
 ACCOUNT_ERASE_TOKEN=$ACCOUNT_ERASE_TOKEN
 SITE_ANALYTICS_TOKEN=$SITE_ANALYTICS_TOKEN
 SITE_HOSTING_SYNC_TOKEN=$SITE_HOSTING_SYNC_TOKEN
+KICKOFF_SYNC_TOKEN=$KICKOFF_SYNC_TOKEN
 
 # FILL_ME: Vercel API token (Digibranders team) for the hourly hosting job that pauses a lapsed client's website.
 VERCEL_API_TOKEN=
