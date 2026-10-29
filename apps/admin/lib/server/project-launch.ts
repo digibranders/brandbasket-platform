@@ -24,20 +24,19 @@ export interface LaunchProjectInput {
 
 /**
  * Marks a business's project live (markProjectLive, which is also the check that it's actually approved and ready)
- * and emails the owner their real website address. The database write happens first, the same shape as
- * sendProjectPreview: a business with no owner, or somehow no domain, is a defensive case only — neither should be
- * reachable given the real flow up to here — but if it happens the project is left marked live without an email
- * having gone out, and this throws rather than silently sending nothing.
+ * and emails the owner their real website address. The client is read first: a business with no owner or no domain
+ * throws before anything is written, so the project is never left live with no email and no website address. The
+ * project is marked live only once both are present.
  *
  * Their website address is set to the domain they went live on. An owner who signs in with a mobile number has no email address: the project goes live, nothing is emailed, and the
  * answer says so, so the console can tell staff to call or message them (see sendProjectPreview).
  */
 export async function launchProject(db: Database, input: LaunchProjectInput, now: Date): Promise<OwnerNotification> {
-  await markProjectLive(db, { businessId: input.businessId, now });
-
   const client = await findClientDetail(db, input.businessId);
   if (client === null || client.owner === null) throw new ProjectLaunchRecipientMissingError(input.businessId);
   if (client.domain === null) throw new ProjectLaunchDomainMissingError(input.businessId);
+
+  await markProjectLive(db, { businessId: input.businessId, now });
 
   // From now on their website is at their own address, not the host's: blog previews and links follow it. An address that cannot
   // be stored as one is left as it was; launching never fails over it.

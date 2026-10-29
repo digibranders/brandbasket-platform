@@ -54,7 +54,7 @@ beforeEach(() => {
 });
 
 describe("sendProjectPreview", () => {
-  it("records the preview against the business's project before emailing the owner", async () => {
+  it("reads the client, records the preview against the business's project, then emails the owner", async () => {
     await sendProjectPreview(db, INPUT, NOW);
 
     expect(mockedRecordSent).toHaveBeenCalledWith(db, {
@@ -68,7 +68,7 @@ describe("sendProjectPreview", () => {
       previewUrl: "https://preview.example",
     });
     expect(send).toHaveBeenCalledTimes(1);
-    expect(mockedRecordSent.mock.invocationCallOrder[0]).toBeLessThan(mockedFindClient.mock.invocationCallOrder[0] ?? 0);
+    expect(mockedFindClient.mock.invocationCallOrder[0]).toBeLessThan(mockedRecordSent.mock.invocationCallOrder[0] ?? 0);
   });
 
   it("says the owner was emailed", async () => {
@@ -84,18 +84,18 @@ describe("sendProjectPreview", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("does not look up the client or send an email when recording the preview fails", async () => {
+  it("does not email the owner when recording the preview fails", async () => {
     const refusal = new Error("Business business-1 has no project ready for a preview to be sent.");
     mockedRecordSent.mockRejectedValue(refusal);
 
     await expect(
       sendProjectPreview(db, INPUT, NOW),
     ).rejects.toBe(refusal);
-    expect(mockedFindClient).not.toHaveBeenCalled();
+    expect(mockedActivity).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("throws rather than silently skipping the email when the business has no owner", async () => {
+  it("throws and records nothing when the business has no owner", async () => {
     mockedFindClient.mockResolvedValue({ businessId: "business-1", owner: null } as Awaited<
       ReturnType<typeof findClientDetail>
     >);
@@ -103,6 +103,8 @@ describe("sendProjectPreview", () => {
     await expect(
       sendProjectPreview(db, INPUT, NOW),
     ).rejects.toThrow(ProjectPreviewRecipientMissingError);
+    expect(mockedRecordSent).not.toHaveBeenCalled();
+    expect(mockedActivity).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
   });
 

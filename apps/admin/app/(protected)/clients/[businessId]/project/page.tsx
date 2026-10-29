@@ -9,6 +9,7 @@ import { KickoffCallSection } from "@/components/console/kickoff-call-section";
 import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
 import { WebsiteSection } from "@/components/console/website-section";
+import { buildPanelState } from "@/lib/build-summary";
 import { clientNextStep, previewLateReason } from "@/lib/client-next-step";
 import { ProjectControls } from "@/components/project-controls";
 import { openClientTab } from "@/lib/server/client-page";
@@ -33,6 +34,7 @@ export default async function ClientProjectPage({
   const websiteUrl = await findBusinessWebsiteUrl(getStaffDb(), client.businessId);
   const { project } = client;
   const nextStep = clientNextStep(project);
+  const buildState = buildPanelState(project);
   const late = nextStep === "preview" ? previewLateReason(project, new Date()) : null;
   const logo = client.media.filter((asset) => asset.purpose === "logo");
   const photos = client.media.filter((asset) => asset.purpose === "photo");
@@ -79,15 +81,17 @@ export default async function ClientProjectPage({
       ) : null}
 
       <Section title="Build">
-        {project === null ? (
+        {project === null || buildState === "none" ? (
           <Quiet>No project yet.</Quiet>
-        ) : project.onboardingSubmittedAt === null ? (
-          <Quiet>Still filling in their setup. Nothing has been sent to us yet.</Quiet>
+        ) : buildState === "waiting" ? (
+          <Quiet>Not started. Waiting for the kickoff call.</Quiet>
         ) : (
           <>
             <Facts
               items={[
-                { label: "Sent to us", value: <When date={project.onboardingSubmittedAt} /> },
+                ...(project.onboardingSubmittedAt === null
+                  ? []
+                  : [{ label: "Sent to us", value: <When date={project.onboardingSubmittedAt} /> }]),
                 { label: "First preview due", value: project.slaDueAt === null ? null : <When date={project.slaDueAt} /> },
                 ...(project.previewUrl === null
                   ? []
@@ -101,7 +105,7 @@ export default async function ClientProjectPage({
             />
             {project.status === "revisions" ? (
               <p className="mt-6 max-w-xl border-l-2 border-rattan py-1 pl-4 text-sm leading-relaxed">
-                They asked for changes and were pointed at booking a call to go through what to change.
+                They asked for changes. What they wrote is in Requests.
               </p>
             ) : null}
           </>

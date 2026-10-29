@@ -42,7 +42,7 @@ export default async function AppHomePage(): Promise<ReactElement> {
     // Going live closes the project, so `overview.project` is null from launch onwards and the live site is the only
     // thing that still knows the status.
     const status = liveWebsite === null ? (project?.status ?? null) : "live";
-    const buildStageIndex = status === null ? 0 : projectStageIndex({ status, onboardingSubmittedAt: project?.onboardingSubmittedAt ?? null });
+    const buildStageIndex = status === null ? 0 : projectStageIndex({ status, onboardingSubmittedAt: project?.onboardingSubmittedAt ?? null, previewSentAt: project?.previewSentAt ?? null });
     return <UnpaidHome firstName={firstName(user.name)} banner={banner} step={step} buildStageIndex={buildStageIndex} completedSteps={completed} />;
   }
 

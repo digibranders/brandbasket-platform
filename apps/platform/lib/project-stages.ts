@@ -11,11 +11,13 @@ export const PROJECT_STAGES: readonly TimelineStage[] = [
 export interface ProjectStageInput {
   readonly status: ProjectStatus;
   readonly onboardingSubmittedAt: Date | null;
+  readonly previewSentAt: Date | null;
 }
 
 /**
  * The timeline stage in progress, from the project's status. Returns PROJECT_STAGES.length once the site is live,
- * so every stage shows as done. A build on hold stays at the stage it was paused in: before or after sending.
+ * so every stage shows as done. A paused build stays at the stage it was paused in, worked out from whether a preview
+ * was sent: a pause can only start after the build was sent to us, so it is never before stage 1.
  */
 export function projectStageIndex(project: ProjectStageInput): number {
   switch (project.status) {
@@ -32,6 +34,7 @@ export function projectStageIndex(project: ProjectStageInput): number {
     case "live":
       return PROJECT_STAGES.length;
     case "on_hold":
+      return project.previewSentAt !== null ? 2 : 1;
     case "cancelled":
       return project.onboardingSubmittedAt === null ? 0 : 1;
   }

@@ -20,9 +20,10 @@ function project(overrides: Partial<ClientProject>): ClientProject {
 }
 
 describe("clientNextStep", () => {
-  it("is nothing before setup is sent", () => {
+  it("is nothing while in onboarding, with or without a setup date", () => {
     expect(clientNextStep(null)).toBeNull();
-    expect(clientNextStep(project({ onboardingSubmittedAt: null }))).toBeNull();
+    expect(clientNextStep(project({ status: "onboarding", onboardingSubmittedAt: null }))).toBeNull();
+    expect(clientNextStep(project({ status: "onboarding" }))).toBeNull();
   });
 
   it("is the preview while we build, and going live once approved", () => {
@@ -31,6 +32,22 @@ describe("clientNextStep", () => {
     expect(clientNextStep(project({ status: "revisions" }))).toBe("preview");
     expect(clientNextStep(project({ status: "approved" }))).toBe("live");
     expect(clientNextStep(project({ status: "preview" }))).toBeNull();
+  });
+});
+
+describe("kickoff-first projects (no setup date)", () => {
+  it("are the preview while we build, and going live once approved", () => {
+    expect(clientNextStep(project({ status: "submitted", onboardingSubmittedAt: null }))).toBe("preview");
+    expect(clientNextStep(project({ status: "building", onboardingSubmittedAt: null }))).toBe("preview");
+    expect(clientNextStep(project({ status: "revisions", onboardingSubmittedAt: null }))).toBe("preview");
+    expect(clientNextStep(project({ status: "approved", onboardingSubmittedAt: null }))).toBe("live");
+  });
+
+  it("are nothing once previewed, on hold, live or cancelled", () => {
+    expect(clientNextStep(project({ status: "preview", onboardingSubmittedAt: null }))).toBeNull();
+    expect(clientNextStep(project({ status: "on_hold", onboardingSubmittedAt: null }))).toBeNull();
+    expect(clientNextStep(project({ status: "live", onboardingSubmittedAt: null }))).toBeNull();
+    expect(clientNextStep(project({ status: "cancelled", onboardingSubmittedAt: null }))).toBeNull();
   });
 });
 
@@ -56,6 +73,11 @@ describe("overviewNextStep", () => {
     expect(overviewNextStep({ project: project({}), movingTo: null }, NOW)).toEqual({ label: "Send the preview: preview 2 days late", anchor: null });
     expect(overviewNextStep({ project: project({ slaDueAt: null }), movingTo: null }, NOW)).toEqual({ label: "Send the preview", anchor: null });
     expect(overviewNextStep({ project: project({ status: "approved" }), movingTo: null }, NOW)).toEqual({ label: "Go live", anchor: "domain" });
+  });
+
+  it("names the preview and going live for kickoff-first projects", () => {
+    expect(overviewNextStep({ project: project({ onboardingSubmittedAt: null, slaDueAt: null }), movingTo: null }, NOW)).toEqual({ label: "Send the preview", anchor: null });
+    expect(overviewNextStep({ project: project({ status: "approved", onboardingSubmittedAt: null }), movingTo: null }, NOW)).toEqual({ label: "Go live", anchor: "domain" });
   });
 
   it("is null when nothing waits on us", () => {

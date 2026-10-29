@@ -60,7 +60,7 @@ describe("launchProject", () => {
     expect(mockedSetWebsiteUrl).toHaveBeenCalledWith(db, "business-1", "https://riverside-plumbing.com");
   });
 
-  it("marks the project live before emailing the owner their real website address", async () => {
+  it("reads the client, marks the project live, then emails the owner their real website address", async () => {
     await launchProject(db, { businessId: "business-1" }, NOW);
 
     expect(mockedMarkLive).toHaveBeenCalledWith(db, { businessId: "business-1", now: NOW });
@@ -70,7 +70,7 @@ describe("launchProject", () => {
       websiteUrl: "https://riverside-plumbing.com",
     });
     expect(send).toHaveBeenCalledTimes(1);
-    expect(mockedMarkLive.mock.invocationCallOrder[0]).toBeLessThan(mockedFindClient.mock.invocationCallOrder[0] ?? 0);
+    expect(mockedFindClient.mock.invocationCallOrder[0]).toBeLessThan(mockedMarkLive.mock.invocationCallOrder[0] ?? 0);
   });
 
   it("says the owner was emailed", async () => {
@@ -86,32 +86,48 @@ describe("launchProject", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("does not look up the client or send an email when marking it live fails", async () => {
+  it("saves no website address and sends no email when marking it live fails", async () => {
     const refusal = new Error("Business business-1 has no approved project to launch.");
     mockedMarkLive.mockRejectedValue(refusal);
 
     await expect(launchProject(db, { businessId: "business-1" }, NOW)).rejects.toBe(refusal);
-    expect(mockedFindClient).not.toHaveBeenCalled();
+    expect(mockedSetWebsiteUrl).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("throws rather than silently skipping the email when the business has no owner", async () => {
-    mockedFindClient.mockResolvedValue({ businessId: "business-1", owner: null, domain: null } as Awaited<
-      ReturnType<typeof findClientDetail>
-    >);
+  it("throws and marks nothing live when the business has no owner", async () => {
+    mockedFindClient.mockResolvedValue({
+      businessId: "business-1",
+      owner: null,
+      domain: { hostname: "riverside-plumbing.com", ownerConfirmedAt: NOW },
+    } as Awaited<ReturnType<typeof findClientDetail>>);
 
     await expect(launchProject(db, { businessId: "business-1" }, NOW)).rejects.toThrow(
       ProjectLaunchRecipientMissingError,
     );
+    expect(mockedMarkLive).not.toHaveBeenCalled();
+    expect(mockedSetWebsiteUrl).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("throws rather than silently skipping the email when the business has no domain", async () => {
+  it("throws and marks nothing live when the business has no domain", async () => {
     mockedFindClient.mockResolvedValue(clientReadyToLaunch({ hostname: null }));
 
     await expect(launchProject(db, { businessId: "business-1" }, NOW)).rejects.toThrow(
       ProjectLaunchDomainMissingError,
     );
+    expect(mockedMarkLive).not.toHaveBeenCalled();
+    expect(mockedSetWebsiteUrl).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("throws and marks nothing live when the client cannot be found", async () => {
+    mockedFindClient.mockResolvedValue(null);
+
+    await expect(launchProject(db, { businessId: "business-1" }, NOW)).rejects.toThrow(
+      ProjectLaunchRecipientMissingError,
+    );
+    expect(mockedMarkLive).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
   });
 });

@@ -6,9 +6,12 @@ export type ClientNextStep = "preview" | "live" | null;
 
 const SEND_PREVIEW_STATUSES: ReadonlySet<string> = new Set(PROJECT_STATUSES_PREVIEWABLE);
 
-/** What we owe a client next on their build: the preview while we build, going live once they approved. */
+/**
+ * What we owe a client next on their build: the preview while we build, going live once they approved.
+ * Status decides. onboardingSubmittedAt is only history of the old setup checklist, so kickoff-first projects still get it.
+ */
 export function clientNextStep(project: ClientProject | null): ClientNextStep {
-  if (project === null || project.onboardingSubmittedAt === null) return null;
+  if (project === null) return null;
   if (SEND_PREVIEW_STATUSES.has(project.status)) return "preview";
   return project.status === "approved" ? "live" : null;
 }

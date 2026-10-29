@@ -39,10 +39,8 @@ export async function takePreviewPicture(db: Database, input: { readonly project
 
 /**
  * Records that staff sent a preview link (recordProjectPreviewSent, which is also the check that the project is
- * actually ready for one) and emails the client's owner. The database write happens first: a business with no owner
- * to email is a defensive case only — a project cannot reach a previewable status without one in the real
- * onboarding flow — but if it somehow happens, the project is left marked as having a preview sent without an email
- * having gone out, and this throws rather than silently sending nothing.
+ * actually ready for one) and emails the client's owner. The client is read first: a business with no owner to email
+ * throws before anything is written, so no preview is recorded and no line is added. Only then is the preview recorded.
  *
  * After the write it takes a picture of the link (takePreviewPicture, best effort) and adds the dated "What we did" line;
  * neither can stop the email.
@@ -52,12 +50,12 @@ export async function takePreviewPicture(db: Database, input: { readonly project
  * console can tell staff to call or message them.
  */
 export async function sendProjectPreview(db: Database, input: SendProjectPreviewInput, now: Date): Promise<OwnerNotification> {
+  const client = await findClientDetail(db, input.businessId);
+  if (client === null || client.owner === null) throw new ProjectPreviewRecipientMissingError(input.businessId);
+
   const project = await recordProjectPreviewSent(db, { businessId: input.businessId, previewUrl: input.previewUrl, now });
   await takePreviewPicture(db, { projectId: project.id, businessId: input.businessId, previewUrl: input.previewUrl });
   await addWorkingActivity(db, { businessId: input.businessId, staffId: input.staffId, title: "Your website preview is ready to check", now });
-
-  const client = await findClientDetail(db, input.businessId);
-  if (client === null || client.owner === null) throw new ProjectPreviewRecipientMissingError(input.businessId);
 
   if (client.owner.email === null) return "no-email";
 
