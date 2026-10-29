@@ -23,6 +23,7 @@ export const STAFF_ACCESS_ACTIONS = [
   "directory.view",
   "invoice.view",
   "invoice.export",
+  "invoice.export_zip",
   "payment.list_view",
   "payment.export",
   "breach.view",
