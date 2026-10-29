@@ -14,7 +14,7 @@ import { logStaffAccess, logStaffAccessOrThrow } from "@/lib/server/staff-access
 const NO_STORE = { "Cache-Control": "private, no-store" } as const;
 
 /** Makes Excel read the register as UTF-8, so a customer name in any script opens right. */
-const BYTE_ORDER_MARK = "﻿";
+const BYTE_ORDER_MARK = "\uFEFF";
 
 // shortcut: one request renders at most 500 invoices, split by day beyond that
 const MAX_INVOICES = 500;
