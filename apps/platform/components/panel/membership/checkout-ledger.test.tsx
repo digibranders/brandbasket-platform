@@ -48,6 +48,7 @@ function render(
   initialServices: readonly ("managed-website" | "digital-growth" | "local-seo-aeo")[],
   choosable = true,
   billingDetails: BillingDetailsView | null = null,
+  changeServicesHref: string | null = null,
 ): void {
   act(() => {
     root.render(
@@ -55,6 +56,7 @@ function render(
         tier="managed"
         initialServices={initialServices}
         choosable={choosable}
+        changeServicesHref={changeServicesHref}
         pricing={PRICING}
         initialTermMonths={1}
         code={null}
@@ -166,5 +168,17 @@ describe("CheckoutLedger", () => {
       expect(payForm().querySelector('input[name="addressLine1"]')).toBeNull();
       expect(container.textContent).not.toContain("Billing details");
     });
+  });
+
+  it("keeps the services as they were chosen and points back to the questions' summary to change them", () => {
+    render(["managed-website", "digital-growth"], false, null, "/personalize?services=managed-website,digital-growth&q=summary");
+    expect(container.querySelector("button[aria-pressed]")).toBeNull();
+    expect(container.querySelector('a[href="/personalize?services=managed-website,digital-growth&q=summary"]')?.textContent).toBe("Change services");
+    expect(posted()).toEqual(["managed-website", "digital-growth"]);
+  });
+
+  it("offers no way back when the services cannot be changed anywhere (a plan being bought back)", () => {
+    render(["managed-website"], false);
+    expect(container.textContent).not.toContain("Change services");
   });
 });

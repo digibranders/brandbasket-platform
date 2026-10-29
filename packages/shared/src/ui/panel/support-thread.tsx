@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 const DETAIL_LABELS: Readonly<Record<string, string>> = {
   pageUrl: "Page", stepsToReproduce: "Steps to reproduce", expectedBehavior: "Expected behavior",
   actualBehavior: "What happened", browserDevice: "Browser", invoiceReference: "Invoice or payment reference",
-  requestedChange: "Requested change", accountEmail: "Affected account email",
+  requestedChange: "Requested change", accountEmail: "Affected account email"
 };
 
 export interface SupportThreadEntry {

@@ -6,7 +6,7 @@ import { users } from "../schema/auth";
 import { charges, type ChargeStatus } from "../schema/billing";
 import { businesses } from "../schema/businesses";
 import { changeRequestEvents, changeRequests, type ChangeRequest } from "../schema/change-requests";
-import { supportTickets, type SupportStatus } from "../schema/support";
+import { supportTickets, type SupportCategory, type SupportStatus } from "../schema/support";
 import type { ScopedTransaction } from "../scope";
 import { unreadCondition } from "./support";
 
@@ -132,6 +132,7 @@ export interface RequestListItem {
   readonly displayRef: string;
   readonly subject: string;
   readonly ticketStatus: SupportStatus;
+  readonly category: SupportCategory;
   readonly createdAt: Date;
   readonly lastActivityAt: Date;
   /** The team replied and the customer has not read it yet. */
@@ -175,6 +176,7 @@ export async function listRequestItems(db: ScopedTransaction, userId: string, bu
     displayRef: row.ticket.displayRef,
     subject: row.ticket.subject,
     ticketStatus: row.ticket.status,
+    category: row.ticket.category,
     createdAt: row.ticket.createdAt,
     lastActivityAt: row.ticket.lastActivityAt,
     unread: row.unread,
@@ -269,6 +271,21 @@ export async function listRequestNeeds(db: ScopedTransaction, userId: string, bu
   });
 }
 
+/** A conversation the team has asked the person something in, and is waiting on. */
+export interface WaitingOnYou {
+  readonly ticketId: string;
+  readonly subject: string;
+}
+
+/** The person's conversations the team is waiting on, oldest first. Run inside `withTenantScope`, or with the person's user scope. */
+export async function listWaitingOnYou(db: Runner, userId: string, businessId: string): Promise<WaitingOnYou[]> {
+  return db
+    .select({ ticketId: supportTickets.id, subject: supportTickets.subject })
+    .from(supportTickets)
+    .where(and(ownTicketsOfBusiness(userId, businessId), eq(supportTickets.status, "waiting_on_you")))
+    .orderBy(asc(supportTickets.lastActivityAt), asc(supportTickets.id));
+}
+
 /** A conversation with a reply from the team that the person has not read. */
 export interface UnreadReply {
   readonly ticketId: string;
@@ -330,6 +347,7 @@ export async function listChangeRequestsForBusiness(db: Database, businessId: st
     displayRef: row.ticket.displayRef,
     subject: row.ticket.subject,
     ticketStatus: row.ticket.status,
+    category: row.ticket.category,
     createdAt: row.ticket.createdAt,
     change: toChangeView(row.change, row.chargeStatus),
   }));

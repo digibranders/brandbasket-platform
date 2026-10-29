@@ -30,14 +30,3 @@ export function buildTodo(services: readonly ServiceKey[], doneSteps: readonly O
 export function openCount(items: readonly TodoItem[]): number {
   return items.filter((item) => !item.done).length;
 }
-
-/** The Social and Search answers already given, for the first look's ready list. */
-export function doneSetupOf(items: readonly TodoItem[]): SetupKey[] {
-  return items.flatMap((item) => (item.kind === "form" && item.done ? [item.setup] : []));
-}
-
-/** Where a Social or Search item's form opens: the To do page with that row open (focus) and scrolled to (hash). */
-export function todoItemHref(key: string): string {
-  const id = encodeURIComponent(key);
-  return `/todo?focus=${id}#${id}`;
-}

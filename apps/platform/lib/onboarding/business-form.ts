@@ -3,6 +3,7 @@
  * weekday list, field names and types from business-fields.ts instead.
  */
 import "server-only";
+import type { BusinessContactInput } from "@brandbasket/db";
 import { z } from "zod";
 import { PHONE_COUNTRY_FIELD } from "@brandbasket/shared/lib/phone/fields";
 import { optionalEmail } from "@brandbasket/shared/lib/validation/contact";
@@ -193,4 +194,32 @@ export function parseBusinessForm(formData: FormData): StepParseResult<BusinessS
         .filter((day): day is OpeningHours => day !== null),
     },
   };
+}
+
+const contactSchema = businessSchema.pick({
+  displayName: true,
+  phone: true,
+  email: true,
+  addressLine1: true,
+  addressLine2: true,
+  city: true,
+  region: true,
+  postalCode: true,
+  country: true,
+  serviceAreas: true,
+});
+
+/** The Business page's contact form: the same fields, with the same rules, as the profile step in onboarding, without the tagline, description, link and hours. */
+export function parseContactForm(formData: FormData): StepParseResult<BusinessContactInput> {
+  const result = contactSchema.safeParse({
+    displayName: textField(formData, "displayName"),
+    phone: { country: textField(formData, PHONE_COUNTRY_FIELD), number: textField(formData, "phone") },
+    email: textField(formData, "email"),
+    ...Object.fromEntries(PROFILE_TEXT_FIELDS.filter((name) => name !== "tagline").map((name) => [name, textField(formData, name)])),
+  });
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    return { success: false, message: issue?.message ?? "Check your details and try again.", field: issue === undefined ? null : formFieldOf(issue.path) };
+  }
+  return { success: true, data: result.data };
 }

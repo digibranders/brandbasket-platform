@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { typedSignInIdentifier, type SignInFormState } from "@brandbasket/shared/lib/sign-in-form";
 import { offersChoice } from "@/lib/brand";
 import { parseJoinForm, type JoinCodeStep, type JoinFormState } from "@/lib/join-form";
-import { membershipHrefWithServices, membershipTierForChoice } from "@/lib/membership";
+import { personalizeHref } from "@/lib/intake/links";
+import { membershipTierForChoice } from "@/lib/membership";
 import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 import { LISTING_PAGE_PATH } from "@/lib/server/customer-access";
 import { createListingAccount, requestJoinCode } from "@/lib/server/listing-account";
@@ -76,6 +77,7 @@ export async function joinForListing(previous: JoinFormState, formData: FormData
   const paid = membershipTierForChoice(parsed.data.choice);
   // The website's basket rides along so the plan's page opens on those services; only catalogue ids survive.
   const services = readBundleSelection(String(formData.get("services") ?? "").split(","));
-  if (paid !== null) redirect(membershipHrefWithServices(paid, services));
+  // A new account answers the short questions first; the checkout follows them (and reopens them if they are skipped over).
+  if (paid !== null) redirect(personalizeHref(services));
   redirect(LISTING_PAGE_PATH);
 }

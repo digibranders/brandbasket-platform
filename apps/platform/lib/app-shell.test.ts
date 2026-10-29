@@ -2,8 +2,8 @@ import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "@/components/v2/app-shell";
 import type { RailSection } from "@/lib/rail";
+import { loadActiveServices } from "@/lib/server/active-services";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
-import { getLiveWebsite, getProjectOverview } from "@/lib/server/onboarding";
 import { loadTodo } from "@/lib/server/todo";
 
 vi.mock("server-only", () => ({}));
@@ -14,83 +14,67 @@ vi.mock("@/lib/server/request-brand", () => ({ requestBrand: vi.fn(async () => (
 vi.mock("@/lib/server/account-panel", () => ({ getAccountPanel: vi.fn(async () => ({})) }));
 vi.mock("@/lib/server/sign-out", () => ({ signOut: vi.fn() }));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
-vi.mock("@/lib/server/onboarding", () => ({ getLiveWebsite: vi.fn(), getProjectOverview: vi.fn() }));
+vi.mock("@/lib/server/active-services", () => ({ loadActiveServices: vi.fn() }));
+vi.mock("@/lib/server/requests", () => ({ loadRequestsBadge: vi.fn(async () => 2) }));
 vi.mock("@/lib/server/todo", () => ({ loadTodo: vi.fn() }));
 
 const tenant = { userId: "user-1", businessId: "business-1", businessName: "Cafe", role: "owner" };
-const redirect = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/login;307;" });
 
 function grant(hasAccess: boolean): void {
   vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { name: "Asha" }, tenant, billing: { hasAccess, hasWebsite: true } } as never);
 }
 
-async function railSections(): Promise<readonly RailSection[]> {
+async function rail(): Promise<{ readonly sections: readonly RailSection[]; readonly businessName: string }> {
   const shell = await AppShell({ userName: "Asha", userEmail: "asha@example.com", children: null });
-  const [rail] = (shell.props as { children: ReactElement<{ sections: readonly RailSection[] }>[] }).children;
-  return rail?.props.sections ?? [];
+  const [first] = (shell.props as { children: ReactElement<{ sections: readonly RailSection[]; businessName: string }>[] }).children;
+  return { sections: first?.props.sections ?? [], businessName: first?.props.businessName ?? "" };
 }
 
-const todoLink = (sections: readonly RailSection[]) => sections.flatMap((section) => section.links).find((link) => link.label === "To do");
+const labels = (sections: readonly RailSection[], section: string) => sections.find((entry) => entry.label === section)?.links.map((link) => link.label);
 
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.spyOn(console, "error").mockImplementation(() => undefined);
-  grant(true);
-  vi.mocked(getProjectOverview).mockResolvedValue({ project: null, completed: [] });
-  vi.mocked(getLiveWebsite).mockResolvedValue(null);
-  vi.mocked(loadTodo).mockResolvedValue({ services: [], items: [], open: 3, answers: { social: undefined, search: undefined } });
+  vi.mocked(loadActiveServices).mockResolvedValue(["website"]);
+  vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { name: "Asha" }, tenant, billing: { hasAccess: true, hasWebsite: true } } as never);
 });
 
 describe("AppShell's service links", () => {
-  const serviceLabels = (sections: readonly RailSection[]) => sections.find((section) => section.label === "Services")?.links.map((link) => link.label);
-
-  it("adds Social & Ads and Search for the services bought, from the one To do read", async () => {
-    vi.mocked(loadTodo).mockResolvedValue({ services: ["website", "social", "search"], items: [], open: 0, answers: { social: undefined, search: undefined } });
-    expect(serviceLabels(await railSections())).toEqual(["Website", "OyeChats", "Social & Ads", "Search"]);
-    expect(loadTodo).toHaveBeenCalledTimes(1);
+  it("adds Social & Ads and Local SEO + AEO for the services bought, from the one active-services read", async () => {
+    vi.mocked(loadActiveServices).mockResolvedValue(["website", "social", "search"]);
+    expect(labels((await rail()).sections, "Services")).toEqual(["Website", "Social & Ads", "Local SEO + AEO"]);
+    expect(loadActiveServices).toHaveBeenCalledTimes(1);
+    expect(loadActiveServices).toHaveBeenCalledWith(tenant);
   });
 
   it("adds only the one bought", async () => {
-    vi.mocked(loadTodo).mockResolvedValue({ services: ["website", "search"], items: [], open: 0, answers: { social: undefined, search: undefined } });
-    expect(serviceLabels(await railSections())).toEqual(["Website", "OyeChats", "Search"]);
+    vi.mocked(loadActiveServices).mockResolvedValue(["website", "search"]);
+    expect(labels((await rail()).sections, "Services")).toEqual(["Website", "Local SEO + AEO"]);
   });
 
-  it("adds none for an account with no access", async () => {
-    vi.mocked(loadTodo).mockResolvedValue({ services: ["social", "search"], items: [], open: 0, answers: { social: undefined, search: undefined } });
-    grant(false);
-    expect(serviceLabels(await railSections())).not.toContain("Social & Ads");
+  it("adds none when no service could be read, so the sidebar still draws", async () => {
+    vi.mocked(loadActiveServices).mockResolvedValue([]);
+    expect(labels((await rail()).sections, "Services")).toEqual(["Website"]);
   });
 });
 
-describe("AppShell's To do count", () => {
-  it("shows the number of open items for a paid account, before or after the kickoff call", async () => {
-    expect(todoLink(await railSections())?.count).toBe(3);
-  });
-
-  it("does not read the To do for an account with no access, and gives it no To do link", async () => {
-    grant(false);
-    expect(todoLink(await railSections())).toBeUndefined();
+describe("AppShell no longer waits on the To do", () => {
+  it("never reads it, and has no To do link", async () => {
+    const { sections } = await rail();
     expect(loadTodo).not.toHaveBeenCalled();
-  });
-
-  it("leaves the number out, and logs, when the To do cannot be read", async () => {
-    vi.mocked(loadTodo).mockRejectedValue(new Error("db down"));
-    const link = todoLink(await railSections());
-    expect(link).toBeDefined();
-    expect(link?.count).toBeUndefined();
-    expect(console.error).toHaveBeenCalledWith("[app-shell] could not read the To do count", expect.anything());
-  });
-
-  it("passes on a redirect thrown while reading the To do", async () => {
-    vi.mocked(loadTodo).mockRejectedValue(redirect);
-    await expect(railSections()).rejects.toBe(redirect);
+    expect(sections.flatMap((section) => section.links.map((link) => link.label))).not.toContain("To do");
   });
 });
 
-describe("AppShell's access", () => {
+describe("AppShell's sidebar", () => {
+  it("shows the number of things waiting beside Requests, and names the business", async () => {
+    const { sections, businessName } = await rail();
+    expect(sections.flatMap((section) => section.links).find((link) => link.label === "Requests")?.count).toBe(2);
+    expect(businessName).toBe("Cafe");
+  });
+
   it("lets a free listing account in, so Settings and Billing are not sent to a page that no longer exists", async () => {
-    vi.mocked(loadTodo).mockResolvedValue({ services: ["website"], items: [], open: 0, answers: { social: undefined, search: undefined } });
-    await railSections();
+    grant(false);
+    await rail();
     expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow" });
   });
 });

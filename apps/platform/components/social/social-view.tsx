@@ -3,10 +3,12 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { DARK_BUTTON, LIFT, SECTION_TITLE, SOFT_BUTTON } from "@/components/v2/classes";
+import { ServiceSetupCard } from "@/components/setup/service-setup-card";
 import { EmptyState, PageColumns, PageFrame, PageSection } from "@/components/v2/page";
 import { ASK_FOR_A_CHANGE_PATH } from "@/lib/requests/links";
 import type { NoticeLine } from "@/lib/requests/notices";
 import type { SocialData } from "@/lib/server/social";
+import type { SetupAsk } from "@/lib/setup-asks";
 import type { AdsPanel } from "@/lib/social/ads";
 import { splitPosts, waitingHeadline } from "@/lib/social/week";
 import { ApproveBar } from "./approve-bar";
@@ -17,6 +19,8 @@ interface SocialViewProps {
   readonly data: SocialData;
   readonly notice: NoticeLine | null;
   readonly now: Date;
+  /** What we still need from the customer to start: shown as one card at the top. */
+  readonly setup?: readonly SetupAsk[];
 }
 
 const FIGURE = "font-figure font-semibold tabular-nums text-ink";
@@ -54,7 +58,7 @@ function AdsSection({ ads, month }: { readonly ads: AdsPanel; readonly month: st
 }
 
 /** Social & Ads: the posts waiting for the customer's OK as they will look, then the ad money in plain numbers and this week's posts beside them. */
-export function SocialView({ data, notice, now }: SocialViewProps): ReactElement {
+export function SocialView({ data, notice, now, setup = [] }: SocialViewProps): ReactElement {
   const { waiting, thisWeek } = splitPosts(data.posts, now);
   const reportUrl = data.report !== null && data.report.startsWith("https://") ? data.report : null;
   return (
@@ -70,6 +74,7 @@ export function SocialView({ data, notice, now }: SocialViewProps): ReactElement
         )
       }
     >
+      <ServiceSetupCard asks={setup} />
       {notice === null ? null : (
         <p role={notice.ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", notice.ok ? "text-sage-deep" : "text-error")}>
           {notice.text}

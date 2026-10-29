@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition, type ReactElement } from "react";
-import { renameChatbotAction } from "@/app/app-host/(protected)/oyechats/actions";
+import { renameChatbotAction } from "@/app/app-host/(protected)/website/enquiries/actions";
 import { DARK_BUTTON, SOFT_BUTTON } from "@/components/v2/classes";
 
 /**

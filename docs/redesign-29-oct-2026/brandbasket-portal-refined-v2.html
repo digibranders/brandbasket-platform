@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BrandBasket Portal — Refined Concept</title>
+<style>
+:root{
+  --bg:#eceae6;
+  --surface:#f7f5f1;
+  --paper:#fffdfa;
+  --ink:#141516;
+  --muted:#71736f;
+  --line:#e3dfd7;
+  --dark:#111214;
+  --dark-2:#1b1d20;
+  --gold:#c98b38;
+  --gold-2:#e9c58f;
+  --gold-pale:#fbf3e7;
+  --green:#2f7354;
+  --green-pale:#eaf5ef;
+  --blue:#466b9c;
+  --blue-pale:#eef3fa;
+  --shadow:0 14px 38px rgba(20,22,24,.07);
+  --radius:20px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
+button,input,textarea{font:inherit}
+.app{min-height:100vh;display:grid;grid-template-columns:248px 1fr}
+.sidebar{
+  background:var(--dark);color:#fff;position:sticky;top:0;height:100vh;padding:22px 16px 16px;
+  display:flex;flex-direction:column;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 22px;font-weight:750;font-size:21px;letter-spacing:-.02em}
+.mark{width:28px;height:28px;position:relative}
+.mark:before{content:"";position:absolute;left:0;top:0;width:9px;height:28px;border-radius:3px;background:var(--gold)}
+.mark:after{content:"";position:absolute;left:7px;top:2px;width:17px;height:10px;border-radius:3px;background:white;box-shadow:0 14px 0 white}
+.navlabel{padding:16px 10px 7px;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#6f7378}
+.nav{display:flex;flex-direction:column;gap:5px}
+.nav button{
+  display:flex;align-items:center;gap:11px;border:0;background:transparent;color:#acb0b5;padding:11px 12px;border-radius:11px;text-align:left;cursor:pointer
+}
+.nav button:hover{background:#191b1e;color:white}
+.nav button.active{background:#2a2d31;color:#fff;box-shadow:inset 0 0 0 1px #32363a}
+.nav svg{width:17px;height:17px;stroke-width:1.8}
+.nav .pill{margin-left:auto;font-size:10px;background:#b77a2e;color:#111;padding:3px 6px;border-radius:999px;font-weight:700}
+.sidebar-spacer{flex:1}
+.help{
+  margin:10px 0 12px;padding:12px;border-radius:12px;background:#181a1d;border:1px solid #25282c;color:#d7d8da
+}
+.help strong{font-size:12.5px;display:block;margin-bottom:4px}
+.help span{font-size:11.5px;color:#91959a;line-height:1.45;display:block}
+.profile{
+  display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:12px;background:#1d1f22;border:1px solid #26292d
+}
+.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#30343a;font-weight:700}
+.profile strong{font-size:13px;display:block}
+.profile small{display:block;font-size:11px;color:#8f9398;margin-top:2px}
+.main{padding:14px}
+.workspace{min-height:calc(100vh - 28px);background:var(--surface);border-radius:22px;overflow:hidden;border:1px solid #dfdcd5}
+.topbar{
+  height:68px;display:flex;align-items:center;justify-content:space-between;padding:0 34px;border-bottom:1px solid var(--line);background:rgba(247,245,241,.92);
+  position:sticky;top:0;z-index:5;backdrop-filter:blur(12px)
+}
+.business{display:flex;align-items:center;gap:10px}
+.bizlogo{width:34px;height:34px;border-radius:10px;background:var(--gold-pale);display:grid;place-items:center;color:#81581f;font-weight:800}
+.business strong{font-size:13.5px;display:block}
+.business small{font-size:11.5px;color:var(--muted)}
+.top-actions{display:flex;align-items:center;gap:8px}
+.btn{
+  border:0;border-radius:10px;background:#17181a;color:#fff;padding:10px 14px;font-weight:650;font-size:13px;cursor:pointer
+}
+.btn.secondary{background:#efede8;color:#242527}
+.btn.outline{background:transparent;color:#242527;border:1px solid var(--line)}
+.btn.gold{background:var(--gold);color:#181512}
+.btn.sm{padding:8px 10px;font-size:12px}
+.iconbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;color:#505255}
+.content{padding:32px 34px 44px;max-width:1320px;margin:0 auto}
+.page{display:none}
+.page.active{display:block}
+.pagehead{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:26px}
+h1{font-size:31px;line-height:1.08;letter-spacing:-.035em;margin:0 0 8px}
+h2{font-size:19px;line-height:1.2;letter-spacing:-.02em;margin:0 0 6px}
+h3{font-size:14px;margin:0 0 5px}
+p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.55}
+.kicker{font-size:12px;color:#8c8e8a;margin-bottom:6px}
+.demo-switch{display:flex;gap:4px;background:#e9e6e0;padding:4px;border-radius:11px}
+.demo-switch button{border:0;background:transparent;color:#6f706d;padding:7px 10px;border-radius:8px;font-size:11.5px;cursor:pointer}
+.demo-switch button.active{background:#fff;color:#1b1c1e;box-shadow:0 1px 6px rgba(0,0,0,.08)}
+.grid{display:grid;gap:18px}
+.grid.hero-grid{grid-template-columns:minmax(0,1.6fr) minmax(300px,.72fr)}
+.grid.two{grid-template-columns:1.15fr .85fr}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.hero{padding:28px 30px;position:relative;overflow:hidden}
+.hero:after{
+  content:"";position:absolute;right:-90px;bottom:-120px;width:290px;height:290px;border-radius:50%;
+  background:radial-gradient(circle at center,rgba(201,139,56,.16),rgba(201,139,56,0) 68%)
+}
+.statuschip{display:inline-flex;align-items:center;gap:7px;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:750;background:var(--green-pale);color:var(--green);margin-bottom:13px}
+.statuschip.gold{background:var(--gold-pale);color:#83571e}
+.statuschip.blue{background:var(--blue-pale);color:var(--blue)}
+.hero h2{font-size:27px;margin-bottom:8px}
+.meeting{
+  margin-top:20px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end
+}
+.meeting-main{display:flex;gap:11px;align-items:center;padding:14px 15px;border:1px solid var(--line);border-radius:14px;background:#fbfaf7}
+.calendar-icon{width:38px;height:38px;border-radius:10px;background:#f1eee8;display:grid;place-items:center}
+.meeting-main strong{font-size:14px;display:block}
+.meeting-main span{font-size:12px;color:var(--muted);display:block;margin-top:2px}
+.countdown{display:flex;gap:7px}
+.timebox{min-width:60px;border-radius:12px;background:#17181a;color:white;text-align:center;padding:10px}
+.timebox strong{display:block;font-size:18px;letter-spacing:-.02em}
+.timebox span{font-size:9.5px;color:#a9adb1;text-transform:uppercase;letter-spacing:.08em}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.reassure{margin-top:16px;padding:12px 14px;border:1px solid #ead5b8;background:var(--gold-pale);border-radius:12px;color:#5e4930;font-size:12.5px;line-height:1.5}
+.sidecard{padding:22px}
+.sidecard .person{display:flex;gap:11px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.sidecard .person:last-child{border-bottom:0}
+.personpic{width:38px;height:38px;border-radius:50%;background:#ece9e3;display:grid;place-items:center;font-size:12px;font-weight:700}
+.person strong{font-size:13px;display:block}
+.person span{font-size:11.5px;color:var(--muted)}
+.section{margin-top:22px}
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:12px}
+.section-head .meta{font-size:11.5px;color:var(--muted)}
+.flow{
+  background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:18px 20px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px
+}
+.flow-step{padding:4px 12px 4px 4px;border-right:1px solid var(--line)}
+.flow-step:last-child{border-right:0}
+.flow-step span{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#ece9e3;color:#757875;font-size:10px;font-weight:700;margin-bottom:10px}
+.flow-step.done span{background:#17181a;color:white}
+.flow-step.active span{background:var(--gold);color:#1a1510}
+.flow-step strong{display:block;font-size:12.8px;margin-bottom:4px}
+.flow-step p{font-size:11.8px}
+.optional{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px
+}
+.optional .item{padding:15px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.item .ico{width:31px;height:31px;border-radius:9px;background:#f0ede7;display:grid;place-items:center;margin-bottom:10px}
+.item strong{font-size:12.8px;display:block}
+.item p{font-size:11.7px;margin-top:4px}
+.feed{padding:4px 0}
+.feed-row{display:grid;grid-template-columns:90px 1fr;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+.feed-row:last-child{border-bottom:0}
+.feed-row time{font-size:11.5px;color:#8c8e8a}
+.feed-row strong{font-size:12.8px;display:block;margin-bottom:3px}
+.feed-row p{font-size:11.8px}
+.inline-card{padding:20px}
+.browser{
+  background:#161719;border-radius:16px;padding:9px;box-shadow:0 18px 40px rgba(0,0,0,.12)
+}
+.browserbar{height:28px;border-radius:9px 9px 0 0;background:#25272a;display:flex;align-items:center;gap:5px;padding:0 10px}
+.dot{width:7px;height:7px;border-radius:50%;background:#5d6065}
+.preview{
+  min-height:260px;background:linear-gradient(135deg,#f1efe9,#fff);border-radius:0 0 10px 10px;padding:28px;display:grid;place-items:center;
+  color:#94958f;font-size:12px;text-align:center
+}
+.preview strong{display:block;color:#3a3b3d;font-size:15px;margin-bottom:6px}
+.progress{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:16px}
+.progress .node{padding:11px 10px;border-radius:12px;border:1px solid var(--line);background:#faf9f6}
+.progress .node.done{background:var(--green-pale);border-color:#cee4d7}
+.progress .node.active{background:var(--gold-pale);border-color:#e6c693}
+.node span{font-size:10px;color:#898b87;display:block;margin-bottom:4px}
+.node strong{font-size:11.8px}
+.list{display:flex;flex-direction:column}
+.row{display:flex;justify-content:space-between;gap:20px;padding:13px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row strong{font-size:12.8px}
+.row small{font-size:11.5px;color:var(--muted);display:block;margin-top:3px}
+.badge{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10.5px;font-weight:750;background:#eeece7;color:#5c5e5a}
+.badge.green{background:var(--green-pale);color:var(--green)}
+.badge.gold{background:var(--gold-pale);color:#87591f}
+.badge.blue{background:var(--blue-pale);color:var(--blue)}
+.request-layout{display:grid;grid-template-columns:340px 1fr;gap:18px}
+.requestlist{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:8px}
+.req{
+  padding:14px;border-radius:13px;cursor:pointer;border:1px solid transparent
+}
+.req:hover{background:#f5f3ef}
+.req.active{background:#f1eee8;border-color:#e1ddd5}
+.req-top{display:flex;justify-content:space-between;gap:10px;margin-bottom:4px}
+.req strong{font-size:12.8px}
+.req p{font-size:11.6px}
+.thread{background:var(--paper);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.thread-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:14px}
+.thread-body{padding:20px;min-height:360px}
+.msg{max-width:74%;padding:11px 13px;border-radius:13px;background:#f0eee9;margin-bottom:12px;font-size:12.2px;line-height:1.45}
+.msg.me{margin-left:auto;background:#1d1e20;color:#fff}
+.msg small{display:block;margin-top:6px;font-size:10.5px;opacity:.65}
+.composer{display:flex;gap:8px;padding:14px;border-top:1px solid var(--line);background:#fbfaf8}
+.composer input{flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff}
+.tabs{display:flex;gap:7px;margin-bottom:14px}
+.tab{padding:8px 10px;border-radius:9px;background:#efede8;font-size:11.5px;color:#666}
+.tab.active{background:#1b1c1e;color:white}
+.business-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.sectioncard{padding:20px}
+.sectioncard h2{margin-bottom:14px}
+.divider{height:1px;background:var(--line);margin:4px 0}
+.info{display:flex;justify-content:space-between;gap:16px;padding:12px 0}
+.info strong{font-size:12.7px;display:block}
+.info span{font-size:11.6px;color:var(--muted)}
+.link{font-size:11.7px;font-weight:700;color:#262729;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.planhero{padding:24px 26px}
+.price{font-size:28px;letter-spacing:-.03em;font-weight:800}
+.included{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:14px}
+.included div{padding:12px;border-radius:12px;background:#f8f6f1;border:1px solid var(--line)}
+.included strong{font-size:12px;display:block}
+.included span{font-size:11.4px;color:var(--muted)}
+.settingsgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:1050px){
+  .app{grid-template-columns:84px 1fr}
+  .brand span,.nav button span,.navlabel,.profile .meta,.help{display:none}
+  .brand,.nav button,.profile{justify-content:center}
+  .grid.hero-grid,.grid.two,.request-layout,.business-grid,.settingsgrid{grid-template-columns:1fr}
+  .flow,.optional{grid-template-columns:1fr 1fr}
+}
+@media(max-width:720px){
+  .app{display:block}
+  .sidebar{position:fixed;z-index:20;left:0;right:0;bottom:0;top:auto;height:auto;display:flex;flex-direction:row;padding:8px 8px;gap:4px}
+  .brand,.navlabel,.sidebar-spacer,.help,.profile,.nav.secondary{display:none}
+  .nav.primary{display:flex;flex-direction:row;flex:1}
+  .nav.primary button{flex:1}
+  .main{padding:0 0 70px}
+  .workspace{border-radius:0;min-height:100vh}
+  .topbar{padding:0 18px}
+  .content{padding:24px 18px 36px}
+  .pagehead{flex-direction:column}
+  .meeting{grid-template-columns:1fr}
+  .flow,.optional,.progress,.included{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="mark"></div><span>brandbasket</span></div>
+
+    <div class="nav primary">
+      <div class="navlabel">Workspace</div>
+      <button class="active" data-page="home"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
+      <button data-page="website"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg><span>Website</span></button>
+      <button data-page="requests"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 5h16v12H8l-4 4z"/><path d="M8 9h8M8 13h5"/></svg><span>Requests</span><span class="pill">1</span></button>
+      <button data-page="business"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 10h16v10H4zM3 10l2-6h14l2 6"/><path d="M8 20v-5h8v5"/></svg><span>Business</span></button>
+    </div>
+
+    <div class="nav secondary">
+      <div class="navlabel">Account</div>
+      <button data-page="plan"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 7h16v12H4zM7 4h10v3"/><path d="M8 11h8M8 15h5"/></svg><span>Plan & billing</span></button>
+      <button data-page="settings"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1A8 8 0 0 0 15 6l-.3-2.6h-4L10.5 6A8 8 0 0 0 9 7l-2.4-1-2 3.5L6.6 11a7 7 0 0 0 0 2l-2 1.5 2 3.5L9 17a8 8 0 0 0 1.5 1l.3 2.6h4L15 18a8 8 0 0 0 1.5-1l2.4 1 2-3.5-2-1.5a7 7 0 0 0 .1-1z"/></svg><span>Settings</span></button>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+    <div class="help"><strong>Need help?</strong><span>Send us a message and we’ll route it to the right person.</span></div>
+    <div class="profile"><div class="avatar">G</div><div class="meta"><strong>Gaurav</strong><small>Something</small></div></div>
+  </aside>
+
+  <main class="main">
+    <div class="workspace">
+      <header class="topbar">
+        <div class="business"><div class="bizlogo">S</div><div><strong>Something</strong><small>Managed Website</small></div></div>
+        <div class="top-actions"><button class="btn outline sm">Contact support</button><button class="iconbtn">◔</button></div>
+      </header>
+
+      <div class="content">
+        <section id="home" class="page active">
+          <div class="pagehead">
+            <div><div class="kicker">Thursday, 29 October</div><h1>Good morning, Gaurav.</h1><p>Here’s where your BrandBasket website stands today.</p></div>
+            <div class="demo-switch"><button class="active" data-state="kickoff">Kickoff</button><button data-state="build">Building</button><button data-state="live">Live</button></div>
+          </div>
+
+          <div id="state-kickoff">
+            <div class="grid hero-grid">
+              <div class="card hero">
+                <div class="statuschip">✓ Kickoff confirmed</div>
+                <h2>Your kickoff is booked.</h2>
+                <p>We’ll use the call to understand your business, your customers, and the direction you want us to take.</p>
+                <div class="meeting">
+                  <div class="meeting-main"><div class="calendar-icon">◷</div><div><strong>Today · 3:30 PM</strong><span>30 minutes · video meeting</span></div></div>
+                  <div class="countdown"><div class="timebox"><strong>03</strong><span>hrs</span></div><div class="timebox"><strong>18</strong><span>min</span></div></div>
+                </div>
+                <div class="actions"><button class="btn">Join meeting</button><button class="btn secondary">Add to calendar</button><button class="btn outline">Reschedule</button></div>
+                <div class="reassure"><strong>You don’t need to prepare anything.</strong> If you already have a logo, photos, or websites you like, keep them handy. If not, that’s completely fine.</div>
+              </div>
+
+              <div class="card sidecard">
+                <h2>Your BrandBasket team</h2>
+                <p style="margin-bottom:6px">The people handling your website.</p>
+                <div class="person"><div class="personpic">AK</div><div><strong>Ayesha Khan</strong><span>Project coordinator</span></div></div>
+                <div class="person"><div class="personpic">RS</div><div><strong>Rohan Shah</strong><span>Website designer</span></div></div>
+                <div style="margin-top:14px"><button class="btn outline sm">Message your team</button></div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-head"><div><h2>What happens next</h2><p>One simple path from kickoff to launch.</p></div></div>
+              <div class="flow">
+                <div class="flow-step done"><span>1</span><strong>Kickoff</strong><p>We understand the business and goals.</p></div>
+                <div class="flow-step active"><span>2</span><strong>We build</strong><p>Design, content, and structure come together.</p></div>
+                <div class="flow-step"><span>3</span><strong>You review</strong><p>See the first version and share feedback.</p></div>
+                <div class="flow-step"><span>4</span><strong>We launch</strong><p>Your website goes live and stays managed.</p></div>
+              </div>
+            </div>
+
+            <div class="grid two section">
+              <div>
+                <div class="section-head"><div><h2>If you already have these</h2><p>Helpful for the meeting, but entirely optional.</p></div></div>
+                <div class="optional">
+                  <div class="item"><div class="ico">B</div><strong>Business basics</strong><p>What you do, who you serve, and how the business works.</p></div>
+                  <div class="item"><div class="ico">L</div><strong>Logo or branding</strong><p>Any logo, color palette, or existing brand material.</p></div>
+                  <div class="item"><div class="ico">P</div><strong>Photos</strong><p>Team, place, products, services, or previous work.</p></div>
+                  <div class="item"><div class="ico">↗</div><strong>Websites you like</strong><p>Any styles or layouts you’d like us to understand.</p></div>
+                </div>
+              </div>
+
+              <div class="card inline-card">
+                <div class="section-head"><div><h2>What we’ll cover</h2><p>We’ll guide the conversation.</p></div></div>
+                <div class="list">
+                  <div class="row"><div><strong>Your business</strong><small>What you do and who you serve</small></div><span>01</span></div>
+                  <div class="row"><div><strong>Your website goal</strong><small>What you want visitors to understand or do</small></div><span>02</span></div>
+                  <div class="row"><div><strong>Look and feel</strong><small>The style and personality that suits you</small></div><span>03</span></div>
+                  <div class="row"><div><strong>Next steps</strong><small>What happens after the call</small></div><span>04</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="state-build" style="display:none">
+            <div class="grid hero-grid">
+              <div class="card hero">
+                <div class="statuschip gold">● In progress</div>
+                <h2>We’re building your website.</h2>
+                <p>Your kickoff is complete. The design team is now turning your brief into the first version.</p>
+                <div class="progress">
+                  <div class="node done"><span>1</span><strong>Kickoff</strong></div>
+                  <div class="node active"><span>2</span><strong>Design & content</strong></div>
+                  <div class="node"><span>3</span><strong>Preview</strong></div>
+                  <div class="node"><span>4</span><strong>Feedback</strong></div>
+                  <div class="node"><span>5</span><strong>Launch</strong></div>
+                </div>
+                <div class="reassure"><strong>Nothing needed from you right now.</strong> We’ll contact you only if we genuinely need something to move forward.</div>
+              </div>
+
+              <div class="card sidecard">
+                <h2>Next milestone</h2>
+                <p style="margin-bottom:14px">Your first website preview.</p>
+                <div class="row"><div><strong>Expected by</strong><small>Tuesday</small></div><strong>3 Nov</strong></div>
+                <div class="row"><div><strong>Current stage</strong><small>Design & content</small></div><span class="badge gold">In progress</span></div>
+                <div class="row"><div><strong>Website size</strong><small>Up to 10 pages</small></div><span>Included</span></div>
+              </div>
+            </div>
+
+            <div class="grid two section">
+              <div class="card inline-card">
+                <div class="section-head"><div><h2>Latest from BrandBasket</h2><p>A simple record of what we’ve done for you.</p></div></div>
+                <div class="feed">
+                  <div class="feed-row"><time>Today</time><div><strong>Homepage design started</strong><p>Your kickoff notes and preferences have been handed to the design team.</p></div></div>
+                  <div class="feed-row"><time>Yesterday</time><div><strong>Kickoff completed</strong><p>Your business goals, ideal customer, and design direction were recorded.</p></div></div>
+                  <div class="feed-row"><time>28 Oct</time><div><strong>Managed Website activated</strong><p>Your BrandBasket service became active.</p></div></div>
+                </div>
+              </div>
+              <div class="card inline-card">
+                <div class="section-head"><div><h2>Do we need anything?</h2><p>Only genuine blockers appear here.</p></div></div>
+                <div style="padding:18px;border:1px dashed #d8d4cc;border-radius:14px;background:#fbfaf8">
+                  <span class="badge green">All good</span>
+                  <h3 style="margin-top:10px">We have everything we need.</h3>
+                  <p>You don’t need to complete any forms or check any other page right now.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="state-live" style="display:none">
+            <div class="grid hero-grid">
+              <div class="card hero">
+                <div class="statuschip">✓ Website live</div>
+                <h2>Your website is live and managed.</h2>
+                <p>BrandBasket is taking care of hosting, SSL, maintenance, and your included website updates.</p>
+                <div class="actions"><button class="btn">Visit website</button><button class="btn secondary" data-page-jump="requests">Request an update</button></div>
+                <div class="progress" style="grid-template-columns:repeat(4,1fr)">
+                  <div class="node done"><span>Status</span><strong>Live</strong></div>
+                  <div class="node done"><span>SSL</span><strong>Active</strong></div>
+                  <div class="node"><span>Requests</span><strong>1 open</strong></div>
+                  <div class="node"><span>Renewal</span><strong>28 Nov</strong></div>
+                </div>
+              </div>
+              <div class="card sidecard">
+                <h2>Service health</h2>
+                <div class="row"><div><strong>Website</strong><small>Last checked today</small></div><span class="badge green">Healthy</span></div>
+                <div class="row"><div><strong>Hosting</strong><small>Managed by BrandBasket</small></div><span class="badge green">Active</span></div>
+                <div class="row"><div><strong>SSL</strong><small>Auto-managed</small></div><span class="badge green">Active</span></div>
+              </div>
+            </div>
+
+            <div class="grid two section">
+              <div class="card inline-card">
+                <div class="section-head"><div><h2>Recent BrandBasket activity</h2><p>Your ongoing service in one place.</p></div></div>
+                <div class="feed">
+                  <div class="feed-row"><time>Today</time><div><strong>Website health check completed</strong><p>No action required.</p></div></div>
+                  <div class="feed-row"><time>27 Oct</time><div><strong>Opening hours updated</strong><p>The change is live on your Contact page.</p></div></div>
+                  <div class="feed-row"><time>21 Oct</time><div><strong>Festival announcement published</strong><p>The banner was scheduled and will remove itself automatically.</p></div></div>
+                </div>
+              </div>
+              <div class="card inline-card">
+                <h2>Need something changed?</h2>
+                <p>Tell us what you need. We’ll handle the update and keep the conversation in Requests.</p>
+                <div class="actions"><button class="btn" data-page-jump="requests">New request</button></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="website" class="page">
+          <div class="pagehead"><div><div class="kicker">Service</div><h1>Your website</h1><p>See the website we’re building, what stage it’s in, and what changes have been made.</p></div><button class="btn">Open website</button></div>
+
+          <div class="grid two">
+            <div class="card inline-card">
+              <div class="browser">
+                <div class="browserbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                <div class="preview"><div><strong>Your website preview will appear here</strong>Once the first version is ready, you’ll be able to open it, review it, and send feedback from this page.</div></div>
+              </div>
+            </div>
+            <div class="card inline-card">
+              <div class="statuschip gold">● Design & content</div>
+              <h2>First preview expected by 3 November</h2>
+              <p>Your kickoff is complete and the design team is currently working on the first version.</p>
+              <div class="progress" style="grid-template-columns:1fr;margin-top:16px">
+                <div class="node done"><span>Completed</span><strong>Kickoff and project brief</strong></div>
+                <div class="node active"><span>Now</span><strong>Design and content</strong></div>
+                <div class="node"><span>Next</span><strong>Preview and feedback</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid two section">
+            <div class="card inline-card">
+              <div class="section-head"><div><h2>Pages</h2><p>What’s planned for your website.</p></div><span class="badge">6 pages</span></div>
+              <div class="list">
+                <div class="row"><div><strong>Home</strong><small>Primary landing page</small></div><span class="badge gold">In progress</span></div>
+                <div class="row"><div><strong>About</strong><small>Your business story</small></div><span class="badge">Planned</span></div>
+                <div class="row"><div><strong>Services</strong><small>Main services and offers</small></div><span class="badge gold">In progress</span></div>
+                <div class="row"><div><strong>Contact</strong><small>Calls, WhatsApp, location, and enquiry</small></div><span class="badge">Planned</span></div>
+              </div>
+            </div>
+
+            <div class="card inline-card">
+              <div class="section-head"><div><h2>Website details</h2><p>Managed by BrandBasket.</p></div></div>
+              <div class="list">
+                <div class="row"><div><strong>Domain</strong><small>something.in</small></div><span class="badge blue">Pending setup</span></div>
+                <div class="row"><div><strong>Hosting</strong><small>Managed by BrandBasket</small></div><span>Included</span></div>
+                <div class="row"><div><strong>SSL</strong><small>Configured at launch</small></div><span>Included</span></div>
+                <div class="row"><div><strong>Primary action</strong><small>Call / WhatsApp enquiry</small></div><span></span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="requests" class="page">
+          <div class="pagehead"><div><div class="kicker">Support</div><h1>Requests</h1><p>Talk to BrandBasket, send information, request a website update, or report a problem.</p></div><button class="btn">New request</button></div>
+
+          <div class="request-layout">
+            <div class="requestlist">
+              <div class="tabs"><span class="tab active">Open</span><span class="tab">Completed</span></div>
+              <div class="req active"><div class="req-top"><strong>Update contact number</strong><span class="badge gold">In progress</span></div><p>Website · Last reply 32 min ago</p></div>
+              <div class="req"><div class="req-top"><strong>Diwali opening hours</strong><span class="badge blue">Waiting for you</span></div><p>Business · Yesterday</p></div>
+            </div>
+
+            <div class="thread">
+              <div class="thread-head"><div><h2>Update contact number</h2><p>Website · Opened today</p></div><span class="badge gold">In progress</span></div>
+              <div class="thread-body">
+                <div class="msg me">Please change the main contact number on the website to +91 98XXXXXX21.<small>You · 10:18 AM</small></div>
+                <div class="msg">Got it. We’ll update the number anywhere it appears and let you know once it’s live.<small>Ayesha · BrandBasket · 10:24 AM</small></div>
+              </div>
+              <div class="composer"><input placeholder="Reply to BrandBasket…"/><button class="btn">Send</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="business" class="page">
+          <div class="pagehead"><div><div class="kicker">Your information</div><h1>Business</h1><p>The information BrandBasket uses across your website and managed services.</p></div><button class="btn">Edit business details</button></div>
+          <div class="business-grid">
+            <div class="card sectioncard">
+              <h2>Business details</h2>
+              <div class="info"><div><strong>Business name</strong><span>Something</span></div><span class="link">Edit</span></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Phone</strong><span>+91 98XXXXXX21</span></div><span class="link">Edit</span></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Email</strong><span>hello@something.in</span></div><span class="link">Edit</span></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Address</strong><span>Thane, Maharashtra</span></div><span class="link">Edit</span></div>
+            </div>
+
+            <div class="card sectioncard">
+              <h2>Opening hours</h2>
+              <div class="info"><div><strong>Monday – Friday</strong><span>9:00 AM – 7:00 PM</span></div><span class="link">Edit</span></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Saturday</strong><span>10:00 AM – 4:00 PM</span></div><span class="link">Edit</span></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Sunday</strong><span>Closed</span></div><span class="link">Edit</span></div>
+            </div>
+
+            <div class="card sectioncard">
+              <div class="section-head"><div><h2>Brand assets</h2><p>Existing material we can use.</p></div><button class="btn outline sm">Manage</button></div>
+              <div class="included">
+                <div><strong>Logo</strong><span>1 file</span></div>
+                <div><strong>Photos</strong><span>8 files</span></div>
+                <div><strong>Brand colors</strong><span>Not set</span></div>
+                <div><strong>Reference links</strong><span>2 saved</span></div>
+              </div>
+            </div>
+
+            <div class="card sectioncard">
+              <div class="section-head"><div><h2>Announcements & holidays</h2><p>Temporary changes that may affect your website.</p></div><button class="btn outline sm">Add</button></div>
+              <div class="row"><div><strong>Diwali closure</strong><small>31 Oct – 2 Nov · Website banner enabled</small></div><span class="badge green">Scheduled</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="plan" class="page">
+          <div class="pagehead"><div><div class="kicker">Account</div><h1>Plan & billing</h1><p>What you’re paying for, what’s included, and your billing history.</p></div></div>
+          <div class="grid two">
+            <div class="card planhero">
+              <div class="statuschip">✓ Active</div>
+              <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start">
+                <div><h2>Managed Website</h2><p>Your active BrandBasket service.</p></div>
+                <div style="text-align:right"><div class="price">₹2,999</div><p>/month</p></div>
+              </div>
+              <div class="included">
+                <div><strong>Website</strong><span>Up to 10 pages</span></div>
+                <div><strong>Hosting & SSL</strong><span>Managed</span></div>
+                <div><strong>Maintenance</strong><span>Ongoing</span></div>
+                <div><strong>Website updates</strong><span>Included monthly</span></div>
+              </div>
+            </div>
+
+            <div class="card sectioncard">
+              <h2>Next payment</h2>
+              <div class="info"><div><strong>₹2,999</strong><span>GST included</span></div><strong>28 Nov 2026</strong></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Payment method</strong><span>UPI ending 9320</span></div><span class="link">Change</span></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Billing details</strong><span>Something · Maharashtra</span></div><span class="link">Edit</span></div>
+            </div>
+          </div>
+
+          <div class="card sectioncard section">
+            <div class="section-head"><div><h2>Other BrandBasket services</h2><p>Available if you need them. They do not clutter your sidebar until activated.</p></div></div>
+            <div class="included">
+              <div><strong>Social Media & Ads</strong><span>Managed social content and advertising support.</span></div>
+              <div><strong>Local SEO + AEO</strong><span>Local search and AI answer optimization.</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="settings" class="page">
+          <div class="pagehead"><div><div class="kicker">Account</div><h1>Settings</h1><p>Account details, notifications, security, and preferences.</p></div></div>
+          <div class="settingsgrid">
+            <div class="card sectioncard">
+              <h2>Account</h2>
+              <div class="info"><div><strong>Name</strong><span>Gaurav</span></div><span class="link">Edit</span></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Email</strong><span>gaurav@fynix.digital</span></div><span class="link">Edit</span></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Phone</strong><span>+91 98XXXXXX21</span></div><span class="link">Edit</span></div>
+            </div>
+
+            <div class="card sectioncard">
+              <h2>Notifications</h2>
+              <div class="info"><div><strong>Meeting reminders</strong><span>Email before booked meetings</span></div><span class="badge green">On</span></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Project updates</strong><span>Important website updates</span></div><span class="badge green">On</span></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Request replies</strong><span>When BrandBasket responds</span></div><span class="badge green">On</span></div>
+            </div>
+
+            <div class="card sectioncard">
+              <h2>Login & security</h2>
+              <div class="info"><div><strong>Password</strong><span>Last changed 3 months ago</span></div><button class="btn outline sm">Change</button></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Active sessions</strong><span>2 signed-in devices</span></div><span class="link">Review</span></div>
+            </div>
+
+            <div class="card sectioncard">
+              <h2>Preferences</h2>
+              <div class="info"><div><strong>Timezone</strong><span>India Standard Time</span></div><span class="link">Change</span></div>
+              <div class="divider"></div>
+              <div class="info"><div><strong>Language</strong><span>English</span></div><span class="link">Change</span></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const navButtons=[...document.querySelectorAll('[data-page]')];
+const pages=[...document.querySelectorAll('.page')];
+function showPage(id){
+  pages.forEach(p=>p.classList.toggle('active',p.id===id));
+  navButtons.forEach(b=>b.classList.toggle('active',b.dataset.page===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+navButtons.forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
+document.querySelectorAll('[data-page-jump]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.pageJump)));
+
+const stateButtons=[...document.querySelectorAll('[data-state]')];
+const panels={kickoff:document.getElementById('state-kickoff'),build:document.getElementById('state-build'),live:document.getElementById('state-live')};
+stateButtons.forEach(b=>b.addEventListener('click',()=>{
+  stateButtons.forEach(x=>x.classList.toggle('active',x===b));
+  Object.entries(panels).forEach(([k,el])=>el.style.display=k===b.dataset.state?'block':'none');
+}));
+</script>
+</body>
+</html>

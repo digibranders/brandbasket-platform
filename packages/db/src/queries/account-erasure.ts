@@ -56,6 +56,7 @@ import {
   reportSourceRuns,
   reportSources,
   serviceSetup,
+  clientIntakes,
   setupCallBookings,
   teamCalls,
   services,
@@ -328,6 +329,7 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(setupCallBookings).where(eq(setupCallBookings.businessId, businessId));
     await tx.delete(teamCalls).where(eq(teamCalls.businessId, businessId));
     await tx.delete(serviceSetup).where(eq(serviceSetup.businessId, businessId));
+    await tx.delete(clientIntakes).where(eq(clientIntakes.businessId, businessId));
     await tx.delete(activityEvents).where(eq(activityEvents.businessId, businessId));
     await tx.delete(businessActivity).where(eq(businessActivity.businessId, businessId));
     await tx.delete(monthlySnapshots).where(eq(monthlySnapshots.businessId, businessId));

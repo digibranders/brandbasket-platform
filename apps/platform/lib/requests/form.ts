@@ -8,18 +8,9 @@ import { dueLabel } from "@/lib/social/week";
 export const KIND_LABELS: Readonly<Record<ChangeKind, string>> = {
   website: "Website",
   social: "Social & Ads",
-  search: "Search",
+  search: "Local SEO + AEO",
   billing: "Billing",
   other: "Something else",
-};
-
-/** The support category each kind files under, so the team's existing inbox and alerts say something sensible. */
-export const KIND_CATEGORY: Readonly<Record<ChangeKind, SupportCategory>> = {
-  website: "website_change",
-  billing: "billing",
-  social: "other",
-  search: "other",
-  other: "other",
 };
 
 const KIND_ORDER: readonly ChangeKind[] = ["website", "social", "search", "billing", "other"];
@@ -30,10 +21,118 @@ export function kindOptions(services: readonly ServiceKey[]): readonly { readonl
   return KIND_ORDER.filter((kind) => !SERVICE_KINDS.includes(kind) || services.includes(kind as ServiceKey)).map((value) => ({ value, label: KIND_LABELS[value] }));
 }
 
-/** The kind to start on: the one asked for in the address when this customer is offered it, else the first choice. */
-export function pickKind(requested: string | undefined, options: readonly { readonly value: ChangeKind }[]): ChangeKind | undefined {
-  return options.find((option) => option.value === requested)?.value ?? options[0]?.value;
+/**
+ * What a customer is trying to do, which is how the new request form asks. A change to a website or a question about a
+ * service opens a change request (a quote and a state); everything else is a plain conversation with the team.
+ */
+export const REQUEST_INTENTS = ["website_update", "social_request", "search_request", "question", "send_info", "not_working", "billing"] as const;
+export type RequestIntent = (typeof REQUEST_INTENTS)[number];
+
+interface IntentRule {
+  readonly label: string;
+  readonly hint: string;
+  /** The support category it files under, so the team's inbox and alerts say something sensible. */
+  readonly category: SupportCategory;
+  /** The change request it opens, or null for a plain conversation. */
+  readonly change: ChangeKind | null;
+  /** The service the customer must have to be offered it. */
+  readonly service: ServiceKey | null;
+  readonly bodyLabel: string;
+  readonly placeholder: string;
 }
+
+const INTENT_RULES: Readonly<Record<RequestIntent, IntentRule>> = {
+  website_update: {
+    label: "Change my website",
+    hint: "Text, photos, prices or a new page.",
+    category: "website_change",
+    change: "website",
+    service: "website",
+    bodyLabel: "What do you want changed?",
+    placeholder: "Tell us what to change. A screenshot helps.",
+  },
+  social_request: {
+    label: "Ask about my social media or ads",
+    hint: "A post, a page or your ads.",
+    category: "other",
+    change: "social",
+    service: "social",
+    bodyLabel: "What do you need?",
+    placeholder: "Tell us what you need.",
+  },
+  search_request: {
+    label: "Ask about Local SEO + AEO",
+    hint: "Your Google listing, reviews or search results.",
+    category: "other",
+    change: "search",
+    service: "search",
+    bodyLabel: "What do you need?",
+    placeholder: "Tell us what you need.",
+  },
+  question: {
+    label: "Ask a question",
+    hint: "We reply here.",
+    category: "support",
+    change: null,
+    service: null,
+    bodyLabel: "What would you like to know?",
+    placeholder: "Ask your question.",
+  },
+  send_info: {
+    label: "Send us information",
+    hint: "Details, files or photos for your work.",
+    category: "general",
+    change: null,
+    service: null,
+    bodyLabel: "What are you sending?",
+    placeholder: "Tell us what this is for. Attach photos below.",
+  },
+  not_working: {
+    label: "Something is not working",
+    hint: "A page, a form or a link that is broken.",
+    category: "bug",
+    change: null,
+    service: null,
+    bodyLabel: "What is not working?",
+    placeholder: "Tell us what you see and where. A screenshot helps.",
+  },
+  billing: {
+    label: "Billing or my plan",
+    hint: "A payment, an invoice or your services.",
+    category: "billing",
+    change: null,
+    service: null,
+    bodyLabel: "What do you need to know?",
+    placeholder: "Tell us what you need.",
+  },
+};
+
+export function intentRule(intent: RequestIntent): IntentRule {
+  return INTENT_RULES[intent];
+}
+
+export interface IntentOption {
+  readonly value: RequestIntent;
+  readonly label: string;
+  readonly hint: string;
+}
+
+/** The intents a customer is offered: those about a service only when they have bought it, then the rest. */
+export function intentOptions(services: readonly ServiceKey[]): readonly IntentOption[] {
+  return REQUEST_INTENTS.filter((intent) => {
+    const service = INTENT_RULES[intent].service;
+    return service === null || services.includes(service);
+  }).map((value) => ({ value, label: INTENT_RULES[value].label, hint: INTENT_RULES[value].hint }));
+}
+
+/** Old `?kind=` links (the Pages tab, a post's Change link, the help link) land on the intent that means the same. */
+const INTENT_OF_KIND: Readonly<Record<ChangeKind, RequestIntent>> = {
+  website: "website_update",
+  social: "social_request",
+  search: "search_request",
+  billing: "billing",
+  other: "question",
+};
 
 /** What the box starts with when Ask for a change is opened from a post: `About the post "Year-end check-up" (Tue 1 Dec): `. */
 export function aboutLine(title: string, dueOn: string): string {
@@ -74,35 +173,37 @@ export function titleFromText(text: string): string {
 /** The page's limit on the Which page box (the form's maxLength and parseAskForm agree). */
 const PAGE_FIELD_LIMIT = 200;
 
-/** What the Ask for a change page starts with when a link came with it (the Pages tab, the preview's Ask for changes). */
+/** What the new request page starts with when a link came with it (the Pages tab, a post's Change link, the preview's Ask for changes). */
 export interface AskDefaults {
-  /** The kind to start on, only when this customer may pick it. */
-  readonly kind: ChangeKind | null;
+  /** The intent to start on, only when this customer may pick it. */
+  readonly intent: RequestIntent | null;
   readonly page: string;
   /** Whether the customer came from the preview, so the page says the preview is waiting. */
   readonly fromPreview: boolean;
 }
 
-/** Reads the link's query. Repeated or unknown values are ignored, never shown. */
+/** Reads the link's query: `intent`, or the older `kind`. Repeated or unknown values are ignored, never shown. */
 export function readAskDefaults(
   searchParams: Readonly<Record<string, string | string[] | undefined>>,
-  options: readonly { readonly value: ChangeKind }[],
+  options: readonly { readonly value: RequestIntent }[],
 ): AskDefaults {
   const single = (name: string): string | null => {
     const value = searchParams[name];
     return typeof value === "string" ? value : null;
   };
-  const offered = options.find((option) => option.value === single("kind"));
+  const kind = (Object.keys(INTENT_OF_KIND) as ChangeKind[]).find((key) => key === single("kind"));
+  const asked = single("intent") ?? (kind === undefined ? null : INTENT_OF_KIND[kind]);
+  const offered = options.find((option) => option.value === asked);
   return {
-    kind: offered?.value ?? null,
+    intent: offered?.value ?? null,
     page: (single("page") ?? "").trim().slice(0, PAGE_FIELD_LIMIT),
     fromPreview: single("from") === "preview",
   };
 }
 
-/** What the form sends, once checked. `kind` is one the customer may pick. */
+/** What the form sends, once checked. `intent` is one the customer may pick. */
 export interface AskForChangeInput {
-  readonly kind: ChangeKind;
+  readonly intent: RequestIntent;
   readonly page: string | null;
   readonly body: string;
   readonly attachmentIds: readonly string[];
@@ -114,13 +215,14 @@ export type AskParse =
   | { readonly success: false; readonly field: string; readonly message: string };
 
 const SUBMISSION_KEY_MESSAGE = "Your request could not be sent. Refresh the page and try again.";
+const BODY_MESSAGE = "Tell us a little more, in at least 10 characters.";
 
-/** Reads the Ask for a change form. Every message here reaches the customer. */
-export function parseAskForm(form: FormData, allowedKinds: readonly ChangeKind[]): AskParse {
+/** Reads the new request form. Every message here reaches the customer. */
+export function parseAskForm(form: FormData, allowed: readonly RequestIntent[]): AskParse {
   const schema = z.strictObject({
-    kind: z.string("Choose what this is about.").refine((value): value is ChangeKind => (allowedKinds as readonly string[]).includes(value), "Choose what this is about."),
+    intent: z.string("Choose what this is about.").refine((value): value is RequestIntent => (allowed as readonly string[]).includes(value), "Choose what this is about."),
     page: z.string().trim().max(200, "Keep the page to 200 characters or fewer.").optional(),
-    body: z.string("Say what you want changed.").trim().min(10, "Say what you want changed, in at least 10 characters.").regex(/[\p{L}\p{N}]/u, "Say what you want changed, in at least 10 characters.").max(5000, "Keep it to 5,000 characters or fewer."),
+    body: z.string(BODY_MESSAGE).trim().min(10, BODY_MESSAGE).regex(/[\p{L}\p{N}]/u, BODY_MESSAGE).max(5000, "Keep it to 5,000 characters or fewer."),
     attachmentIds: z
       .array(z.uuid("One of the screenshots could not be used. Remove it and try again."))
       .max(SUPPORT_ATTACHMENT_LIMIT, `Attach up to ${SUPPORT_ATTACHMENT_LIMIT} screenshots.`)
@@ -128,7 +230,7 @@ export function parseAskForm(form: FormData, allowedKinds: readonly ChangeKind[]
     submissionKey: z.string(SUBMISSION_KEY_MESSAGE).trim().regex(/^[A-Za-z0-9_-]{8,128}$/, SUBMISSION_KEY_MESSAGE),
   });
   const parsed = schema.safeParse({
-    kind: form.get("kind"),
+    intent: form.get("intent"),
     page: form.get("page") ?? undefined,
     body: form.get("body"),
     attachmentIds: form.getAll("attachmentIds"),
@@ -138,6 +240,6 @@ export function parseAskForm(form: FormData, allowedKinds: readonly ChangeKind[]
     const issue = parsed.error.issues[0];
     return { success: false, field: String(issue?.path[0] ?? ""), message: issue?.message ?? "Check what you wrote and try again." };
   }
-  const { kind, page, body, attachmentIds, submissionKey } = parsed.data;
-  return { success: true, data: { kind: kind as ChangeKind, page: kind === "website" && page !== undefined && page !== "" ? page : null, body, attachmentIds, submissionKey } };
+  const { intent, page, body, attachmentIds, submissionKey } = parsed.data;
+  return { success: true, data: { intent: intent as RequestIntent, page: intent === "website_update" && page !== undefined && page !== "" ? page : null, body, attachmentIds, submissionKey } };
 }

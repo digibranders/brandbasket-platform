@@ -1,4 +1,4 @@
-import { findSetupCallBooking, listActivityForBusiness, listAssignableSupportStaff } from "@brandbasket/db";
+import { findClientIntake, findSetupCallBooking, listActivityForBusiness, listAssignableSupportStaff } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -6,6 +6,7 @@ import type { ReactElement } from "react";
 import { staffCan } from "@brandbasket/shared/lib/access";
 import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
+import { intakeServicesOf, summaryRows } from "@brandbasket/shared/lib/intake/questions";
 import { ANSWER_STEPS, stepInfo } from "@brandbasket/shared/lib/onboarding/steps";
 import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
 import { TickIcon } from "@brandbasket/shared/ui/icons";
@@ -41,11 +42,12 @@ export default async function ClientOverviewPage({
   const db = getStaffDb();
   const now = new Date();
   const seesMoney = staffCan(granted.staff.role, "money");
-  const [booking, recent, staff, addOns] = await Promise.all([
+  const [booking, recent, staff, addOns, intake] = await Promise.all([
     findSetupCallBooking(db, client.businessId),
     listActivityForBusiness(db, client.businessId, RECENT_SHOWN),
     listAssignableSupportStaff(db),
     seesMoney ? loadClientAddOns(client.businessId, now) : Promise.resolve(null),
+    findClientIntake(db, client.businessId),
   ]);
   const next = overviewNextStep(client, now);
   const projectHref = clientTabHref(client.businessId, "project");
@@ -125,6 +127,29 @@ export default async function ClientOverviewPage({
             <BillingFacts client={client} state={clientPaymentState(client.billing, now)} packageFacts={addOns.package} />
           </Section>
         )}
+
+        <Section title="What they told us" aside={intake === null ? undefined : intake.completedAt === null ? "Not finished" : "Answered before paying"}>
+          {intake === null ? (
+            <Quiet>Not asked. They signed up before the short questions existed, or have not reached them.</Quiet>
+          ) : (
+            <Facts
+              items={summaryRows(
+                intakeServicesOf(intake.askedForServices),
+                {
+                  businessType: intake.businessType,
+                  businessSubtype: intake.businessSubtype,
+                  primaryGoal: intake.primaryGoal,
+                  websiteState: intake.websiteState,
+                  existingWebsiteUrl: intake.existingWebsiteUrl,
+                  primaryAction: intake.primaryAction,
+                  designDirection: intake.designDirection,
+                  socialChannels: intake.socialChannels,
+                  searchScope: intake.searchScope,
+                },
+              ).map((row) => ({ label: row.label, value: row.value ?? <span className="text-ink-2">Not answered</span> }))}
+            />
+          )}
+        </Section>
 
         <Section title="Setup answers" aside={`${ANSWER_STEPS.filter((step) => done.has(step)).length} of ${ANSWER_STEPS.length} done`}>
           <ul className="grid gap-y-3">

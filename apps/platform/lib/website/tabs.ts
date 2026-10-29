@@ -1,26 +1,26 @@
+import { CHATBOT_PATH } from "@/lib/chatbots-view";
+import { currentSectionTab, type SectionTab } from "@/lib/section-tabs";
+
 export const WEBSITE_PATH = "/website";
 export const WEBSITE_PAGES_PATH = "/website/pages";
 export const WEBSITE_PREVIEW_IMAGE_PATH = "/website/preview-image";
 /** Paths owned by other pages that the tabs point at. Plain strings. */
 export const WEBSITE_BLOG_PATH = "/content/blog";
 
-export interface WebsiteTab {
-  readonly href: string;
-  readonly label: string;
-  /** Other paths (and the pages under them) that belong to this tab, so it stays marked there. */
-  readonly alsoOwns?: readonly string[];
-}
+export type WebsiteTab = SectionTab;
+
 export const WEBSITE_TABS: readonly WebsiteTab[] = [
-  { href: WEBSITE_PATH, label: "Progress" },
+  { href: WEBSITE_PATH, label: "Overview", exact: true },
   { href: WEBSITE_PAGES_PATH, label: "Pages" },
+  // The website chat and its leads.
+  { href: CHATBOT_PATH, label: "Enquiries" },
   // Authors and categories are blog settings.
   { href: WEBSITE_BLOG_PATH, label: "Blog", alsoOwns: ["/content/authors", "/content/categories"] },
 ];
 
-/** The tab a path belongs to: Progress only on /website itself; the others on their own path, the pages under it and what they also own. */
+/** The tab a path belongs to: Overview only on /website itself; the others on their own path, the pages under it and what they also own. */
 export function currentTab(pathname: string): WebsiteTab | null {
-  const under = (base: string): boolean => pathname === base || pathname.startsWith(`${base}/`);
-  return WEBSITE_TABS.find((tab) => (tab.href === WEBSITE_PATH ? pathname === WEBSITE_PATH : [tab.href, ...(tab.alsoOwns ?? [])].some(under))) ?? null;
+  return currentSectionTab(WEBSITE_TABS, pathname);
 }
 
 /** The Ask for a change form with Website chosen and a page filled in, for the preview's "Ask for changes" and the Pages tab. */

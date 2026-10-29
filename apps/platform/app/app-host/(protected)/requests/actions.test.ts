@@ -32,7 +32,7 @@ function form(fields: Record<string, string>): FormData {
   return data;
 }
 
-const GOOD = { kind: "website", page: "Home", body: "Add an Implants page. Same style as the root canal page.", submissionKey: KEY };
+const GOOD = { intent: "website_update", page: "Home", body: "Add an Implants page. Same style as the root canal page.", submissionKey: KEY };
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -67,30 +67,42 @@ describe("askForChangeAction", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/");
   });
 
-  it("files a Billing request under billing and keeps no page", async () => {
-    await askForChangeAction(INITIAL_SUPPORT_STATE, form({ kind: "billing", page: "Home", body: "Put my GST number on the invoice.", submissionKey: KEY }));
+  it("files a billing query as a plain conversation under billing, with no change request and no page", async () => {
+    await askForChangeAction(INITIAL_SUPPORT_STATE, form({ intent: "billing", page: "Home", body: "Put my GST number on the invoice.", submissionKey: KEY }));
     const input = vi.mocked(createSupportTicketWithOutcome).mock.calls[0]?.[1];
-    expect(input).toMatchObject({ category: "billing", changeRequest: { kind: "billing", page: null } });
+    expect(input).toMatchObject({ category: "billing" });
+    expect(input).not.toHaveProperty("changeRequest");
     expect(input).not.toHaveProperty("details");
   });
 
-  it("offers only the services the customer bought", async () => {
-    const state = await askForChangeAction(INITIAL_SUPPORT_STATE, form({ kind: "social", body: "Change the wording of my ad.", submissionKey: KEY }));
-    expect(state).toMatchObject({ status: "error", field: "kind", message: "Choose what this is about." });
-    expect(createSupportTicketWithOutcome).not.toHaveBeenCalled();
-    vi.mocked(loadSetupServices).mockResolvedValue(["website", "social"]);
-    expect((await askForChangeAction(INITIAL_SUPPORT_STATE, form({ kind: "social", body: "Change the wording of my ad.", submissionKey: KEY }))).status).toBe("saved");
+  it("files a question, a note and a fault as plain conversations in their own categories", async () => {
+    for (const [intent, category] of [["question", "support"], ["send_info", "general"], ["not_working", "bug"]] as const) {
+      vi.mocked(createSupportTicketWithOutcome).mockClear();
+      await askForChangeAction(INITIAL_SUPPORT_STATE, form({ intent, body: "Please look at this for me, thank you.", submissionKey: KEY }));
+      const input = vi.mocked(createSupportTicketWithOutcome).mock.calls[0]?.[1];
+      expect(input).toMatchObject({ category });
+      expect(input).not.toHaveProperty("changeRequest");
+    }
   });
 
-  it("offers only Billing and Something else when the services cannot be read", async () => {
+  it("opens a change request for a social request, once the customer has the service", async () => {
+    const state = await askForChangeAction(INITIAL_SUPPORT_STATE, form({ intent: "social_request", body: "Change the wording of my ad.", submissionKey: KEY }));
+    expect(state).toMatchObject({ status: "error", field: "intent", message: "Choose what this is about." });
+    expect(createSupportTicketWithOutcome).not.toHaveBeenCalled();
+    vi.mocked(loadSetupServices).mockResolvedValue(["website", "social"]);
+    expect((await askForChangeAction(INITIAL_SUPPORT_STATE, form({ intent: "social_request", body: "Change the wording of my ad.", submissionKey: KEY }))).status).toBe("saved");
+    expect(vi.mocked(createSupportTicketWithOutcome).mock.calls[0]?.[1]).toMatchObject({ category: "other", changeRequest: { kind: "social", page: null } });
+  });
+
+  it("offers only the intents that need no service when the services cannot be read", async () => {
     vi.mocked(loadSetupServices).mockResolvedValue(null);
     expect((await askForChangeAction(INITIAL_SUPPORT_STATE, form(GOOD))).status).toBe("error");
-    expect((await askForChangeAction(INITIAL_SUPPORT_STATE, form({ kind: "other", body: "Something else entirely, please.", submissionKey: KEY }))).status).toBe("saved");
+    expect((await askForChangeAction(INITIAL_SUPPORT_STATE, form({ intent: "question", body: "Something else entirely, please.", submissionKey: KEY }))).status).toBe("saved");
   });
 
   it("returns what was wrong with the form and sends nothing", async () => {
     const state = await askForChangeAction(INITIAL_SUPPORT_STATE, form({ ...GOOD, body: "Short" }));
-    expect(state).toMatchObject({ status: "error", field: "body", message: "Say what you want changed, in at least 10 characters." });
+    expect(state).toMatchObject({ status: "error", field: "body", message: "Tell us a little more, in at least 10 characters." });
     expect(createSupportTicketWithOutcome).not.toHaveBeenCalled();
     expect(supportRateLimit).not.toHaveBeenCalled();
   });

@@ -1,19 +1,16 @@
 import { FileText, ListChecks, MagnifyingGlass, MapPin, ChartLineUp } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { cn } from "@brandbasket/shared/lib/cn";
-import { DARK_BUTTON, LIFT, SECTION_TITLE, SOFT_BUTTON } from "@/components/v2/classes";
+import { DARK_BUTTON, SOFT_BUTTON } from "@/components/v2/classes";
+import { ServiceSetupCard } from "@/components/setup/service-setup-card";
 import { EmptyState, PageColumns, PageFrame, PageSection } from "@/components/v2/page";
 import { ASK_FOR_A_CHANGE_PATH } from "@/lib/requests/links";
 import type { SearchData } from "@/lib/server/search";
+import type { SetupAsk } from "@/lib/setup-asks";
 import { dueLabel } from "@/lib/social/week";
-import { todoItemHref, type TodoItem } from "@/lib/todo";
 
 const ROW = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-line py-3 last:border-b-0";
 const EXTERNAL_LINK = "underline underline-offset-[3px]";
-
-/** A website item opens its page; a Social or Search item opens its form on the To do page (as Overview does). */
-const itemHref = (item: TodoItem): string => (item.kind === "link" ? item.href : todoItemHref(item.key));
 
 /** Staff type these addresses in; only a real https address becomes a link. */
 function httpsUrl(value: string | null): string | null {
@@ -25,14 +22,14 @@ function httpsUrl(value: string | null): string | null {
   }
 }
 
-/** The Search page: what waits on the customer, the figure, the pages and listings finished this month. */
-export function SearchView({ data }: { readonly data: SearchData }): ReactElement {
-  const { summary, waiting, report, month } = data;
+/** The Search page: what we need from the customer, the figure, the pages and listings finished this month. */
+export function SearchView({ data, setup = [] }: { readonly data: SearchData; readonly setup?: readonly SetupAsk[] }): ReactElement {
+  const { summary, report, month } = data;
   const reportUrl = httpsUrl(report);
-  const nothingYet = waiting.length === 0 && summary.pageOne === null && summary.pages.length === 0 && summary.listings.length === 0;
+  const nothingYet = summary.pageOne === null && summary.pages.length === 0 && summary.listings.length === 0;
   return (
     <PageFrame
-      title="Search"
+      title="Local SEO + AEO"
       lede={
         summary.pageOne === null
           ? "How you appear in Google searches, and the work we do on it."
@@ -49,6 +46,7 @@ export function SearchView({ data }: { readonly data: SearchData }): ReactElemen
         )
       }
     >
+      <ServiceSetupCard asks={setup} />
       {nothingYet ? (
         <EmptyState
           icon={MagnifyingGlass}
@@ -64,27 +62,6 @@ export function SearchView({ data }: { readonly data: SearchData }): ReactElemen
         <PageColumns
           main={
             <>
-              {waiting.length === 0 ? null : (
-                <section aria-labelledby="search-waiting-title" className={cn(LIFT, "p-4 sm:p-5")}>
-                  <h2 id="search-waiting-title" className={SECTION_TITLE}>
-                    Waiting on you
-                  </h2>
-                  <ul>
-                    {waiting.map((item, index) => (
-                      <li key={item.key} className={ROW}>
-                        <span className="min-w-0">
-                          <span className="block text-[0.84375rem] font-semibold text-ink">{item.label}</span>
-                          <span className="block text-xs text-ink-2">{item.hint}</span>
-                        </span>
-                        <Link href={itemHref(item)} aria-label={`Open ${item.label}`} className={index === 0 ? DARK_BUTTON : SOFT_BUTTON}>
-                          Open
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-
               <PageSection id="search-pages" title={`Pages we improved in ${month}`} flush={summary.pages.length > 0}>
                 {summary.pages.length === 0 ? (
                   <EmptyState compact icon={ListChecks} title="No pages finished yet this month." text="Each page we improve appears here, with a link to it, once it is finished." />

@@ -55,29 +55,12 @@ function NextPaymentCaption({
   );
 }
 
-function PeriodBar({ progress, children }: { readonly progress: PeriodProgress; readonly children: ReactNode }): ReactElement {
-  const percent = Math.round((progress.elapsedDays / progress.totalDays) * 100);
-  return (
-    <div className="mt-6">
-      <p className="font-figure text-xs font-medium tabular-nums text-ink">
-        {progress.elapsedDays} of {progress.totalDays} days
-      </p>
-      <div
-        role="progressbar"
-        aria-label="Days used in this billing period"
-        aria-valuemin={0}
-        aria-valuemax={progress.totalDays}
-        aria-valuenow={progress.elapsedDays}
-        className="mt-2 h-1.5 overflow-hidden rounded-full bg-sunken"
-      >
-        <div className="h-full rounded-full bg-rattan transition-[width] duration-700" style={{ width: `${percent}%` }} />
-      </div>
-      <p className="mt-2 text-xs tabular-nums text-ink-2">{children}</p>
-    </div>
-  );
+/** The next payment in one plain line, in place of a bar of days used: the customer wants the date and the amount, not a gauge. */
+function NextPaymentLine({ children }: { readonly children: ReactNode }): ReactElement {
+  return <p className="mt-5 text-[0.9375rem] tabular-nums text-ink-2">{children}</p>;
 }
 
-/** The plan: name, price per month, how far through the paid period the customer is, and what it includes. The page's one raised card. */
+/** The plan: name, price per month, the next payment, and what it includes. The page's one raised card. */
 export function PlanSummary({ plan, subscription, now, hasWebsite }: PlanSummaryProps): ReactElement {
   const price = renewalCharge(plan, nextDiscountCents(subscription), nextBundledNetCents(subscription));
   const progress = billingPeriodProgress(subscription, now);
@@ -101,9 +84,9 @@ export function PlanSummary({ plan, subscription, now, hasWebsite }: PlanSummary
       </div>
 
       {progress === null ? null : (
-        <PeriodBar progress={progress}>
+        <NextPaymentLine>
           <NextPaymentCaption plan={plan} subscription={subscription} progress={progress} />
-        </PeriodBar>
+        </NextPaymentLine>
       )}
 
       {hasWebsite ? (

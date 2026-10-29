@@ -9,6 +9,7 @@ import {
   listRequestItems,
   listRequestNeeds,
   listUnreadReplies,
+  listWaitingOnYou,
   withTenantScope,
   type ChangeEventView,
   type ChangeView,
@@ -18,6 +19,7 @@ import {
   type SupportMessage,
   type SupportTicket,
   type UnreadReply,
+  type WaitingOnYou,
 } from "@brandbasket/db";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { includedEditsAllowed, monthBoundsIst } from "@brandbasket/shared/lib/change-requests";
@@ -54,6 +56,19 @@ export const loadRequestNeeds = cache(
   async (tenant: TenantContext): Promise<readonly RequestNeed[]> =>
     quietly("requests", "the requests waiting on you", [] as readonly RequestNeed[], () => withTenantScope(getAppDb(), tenant, (tx) => listRequestNeeds(tx, tenant.userId, tenant.businessId))),
 );
+
+/** Conversations where the team has asked the person something and is waiting on the answer. A failed read shows none. */
+export const loadWaitingOnYou = cache(
+  async (tenant: TenantContext): Promise<readonly WaitingOnYou[]> =>
+    quietly("requests", "the conversations waiting on you", [] as readonly WaitingOnYou[], () => withTenantScope(getAppDb(), tenant, (tx) => listWaitingOnYou(tx, tenant.userId, tenant.businessId))),
+);
+
+/** What waits on the customer across Requests: quotes to answer, changes to check, and questions from the team. One conversation counts once. */
+export const loadRequestsBadge = cache(async (tenant: TenantContext): Promise<number> => {
+  const [needs, waiting] = await Promise.all([loadRequestNeeds(tenant), loadWaitingOnYou(tenant)]);
+  const counted = new Set(needs.map((need) => need.ticketId));
+  return needs.length + waiting.filter((item) => !counted.has(item.ticketId)).length;
+});
 
 /** Replies from the team the person has not read, for the bell. A failed read shows none. */
 export const loadUnreadReplies = cache(

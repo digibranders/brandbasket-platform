@@ -11,6 +11,7 @@ vi.mock("@/lib/server/add-ons", () => ({ loadAddOnsPage: vi.fn() }));
 vi.mock("@/lib/server/charges", () => ({ listOpenCustomerCharges: vi.fn() }));
 vi.mock("@/lib/server/request-brand", () => ({ requestBrand: vi.fn(async () => ({ name: "Brandbasket", contactEmail: "support@brandbasket.in" })) }));
 vi.mock("@/components/panel/add-ons/add-on-row", () => ({ AddOnRow: ({ addOn }: { addOn: { id: string } }) => `[row ${addOn.id}]` }));
+vi.mock("@/components/v2/section-tabs", () => ({ SectionTabs: ({ label }: { label: string }) => `[tabs ${label}]` }));
 vi.mock("@/components/panel/payment-waiting", () => ({ PaymentWaiting: () => "[waiting]" }));
 
 beforeEach(() => {
@@ -30,10 +31,12 @@ async function render(searchParams: Record<string, string> = {}): Promise<string
   return renderToStaticMarkup(await ServicesPage({ searchParams: Promise.resolve(searchParams) })).replaceAll("<!-- -->", "");
 }
 
-describe("the Your plan page", () => {
-  it("is titled Your plan, as the rail names it, and lists each service as a row", async () => {
+describe("the Plan & billing page, Your services tab", () => {
+  it("is titled Plan & billing, as the sidebar names it, with its tabs, and lists each service as a row", async () => {
     const html = await render();
-    expect(html).toContain(">Your plan</h1>");
+    expect(html).toContain(">Plan &amp; billing</h1>");
+    expect(html).toContain("[tabs Plan and billing]");
+    expect(html).not.toContain(">Your plan</h1>");
     expect(html).not.toContain(">Services</h1>");
     for (const id of ["managed-website", "digital-growth", "local-seo-aeo"]) expect(html).toContain(`[row ${id}]`);
     expect(html).toContain("divide-y divide-line");

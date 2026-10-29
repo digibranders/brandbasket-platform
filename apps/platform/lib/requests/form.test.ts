@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { aboutLine, kindOptions, parseAskForm, pickKind, titleFromText } from "./form";
+import { aboutLine, intentOptions, intentRule, kindOptions, parseAskForm, REQUEST_INTENTS, titleFromText } from "./form";
 
 const KEY = "ask-key-12345678";
-const ALL = ["website", "social", "search", "billing", "other"] as const;
+const ALL = REQUEST_INTENTS;
 
 function form(fields: Record<string, string | string[]>): FormData {
   const data = new FormData();
@@ -18,18 +18,33 @@ describe("kindOptions", () => {
   });
 });
 
-describe("pickKind", () => {
-  const options = kindOptions(["website", "social"]);
-
-  it("takes the requested kind when it is offered", () => {
-    expect(pickKind("social", options)).toBe("social");
+describe("intentOptions", () => {
+  it("offers an intent about a service only when the customer bought it, then the rest", () => {
+    expect(intentOptions(["website", "social"]).map((option) => option.value)).toEqual(["website_update", "social_request", "question", "send_info", "not_working", "billing"]);
+    expect(intentOptions([]).map((option) => option.value)).toEqual(["question", "send_info", "not_working", "billing"]);
+    expect(intentOptions(["search", "website", "social"]).map((option) => option.value)).toEqual(REQUEST_INTENTS);
   });
 
-  it("falls back to the first choice for a kind that is not offered, is unknown or is missing", () => {
-    expect(pickKind("search", options)).toBe("website");
-    expect(pickKind("nonsense", options)).toBe("website");
-    expect(pickKind(undefined, options)).toBe("website");
-    expect(pickKind("social", [])).toBeUndefined();
+  it("gives every choice a label and a hint", () => {
+    for (const option of intentOptions(["website", "social", "search"])) {
+      expect(option.label).not.toBe("");
+      expect(option.hint).not.toBe("");
+    }
+  });
+});
+
+describe("intentRule", () => {
+  it("opens a change request only for a change to a service the customer has", () => {
+    expect(REQUEST_INTENTS.filter((intent) => intentRule(intent).change !== null)).toEqual(["website_update", "social_request", "search_request"]);
+    expect(intentRule("website_update").change).toBe("website");
+    expect(intentRule("search_request").change).toBe("search");
+  });
+
+  it("keeps a question, a note, a fault and a billing query as plain conversations in their own category", () => {
+    expect(intentRule("question")).toMatchObject({ change: null, category: "support" });
+    expect(intentRule("send_info")).toMatchObject({ change: null, category: "general" });
+    expect(intentRule("not_working")).toMatchObject({ change: null, category: "bug" });
+    expect(intentRule("billing")).toMatchObject({ change: null, category: "billing" });
   });
 });
 
@@ -83,51 +98,51 @@ describe("titleFromText", () => {
 
 describe("parseAskForm", () => {
   it("reads a good form", () => {
-    const parsed = parseAskForm(form({ kind: "website", page: " Home ", body: " Add an Implants page, like the root canal page. ", submissionKey: KEY }), ALL);
-    expect(parsed).toEqual({ success: true, data: { kind: "website", page: "Home", body: "Add an Implants page, like the root canal page.", attachmentIds: [], submissionKey: KEY } });
+    const parsed = parseAskForm(form({ intent: "website_update", page: " Home ", body: " Add an Implants page, like the root canal page. ", submissionKey: KEY }), ALL);
+    expect(parsed).toEqual({ success: true, data: { intent: "website_update", page: "Home", body: "Add an Implants page, like the root canal page.", attachmentIds: [], submissionKey: KEY } });
   });
 
   it("keeps a page only for a website change", () => {
-    const parsed = parseAskForm(form({ kind: "billing", page: "Home", body: "Put my GST number on the invoice.", submissionKey: KEY }), ALL);
+    const parsed = parseAskForm(form({ intent: "billing", page: "Home", body: "Put my GST number on the invoice.", submissionKey: KEY }), ALL);
     expect(parsed.success && parsed.data.page).toBe(null);
   });
 
-  it("refuses a kind the customer may not pick, in a message they can read", () => {
-    expect(parseAskForm(form({ kind: "social", body: "Change my ad wording please.", submissionKey: KEY }), ["website", "billing", "other"])).toEqual({
+  it("refuses an intent the customer may not pick, in a message they can read", () => {
+    expect(parseAskForm(form({ intent: "social_request", body: "Change my ad wording please.", submissionKey: KEY }), ["website_update", "billing", "question"])).toEqual({
       success: false,
-      field: "kind",
+      field: "intent",
       message: "Choose what this is about.",
     });
-    expect(parseAskForm(form({ body: "Change my ad wording please.", submissionKey: KEY }), ALL)).toMatchObject({ success: false, field: "kind" });
+    expect(parseAskForm(form({ body: "Change my ad wording please.", submissionKey: KEY }), ALL)).toMatchObject({ success: false, field: "intent" });
   });
 
   it("asks for more words, and caps them", () => {
-    expect(parseAskForm(form({ kind: "other", body: "Short", submissionKey: KEY }), ALL)).toEqual({ success: false, field: "body", message: "Say what you want changed, in at least 10 characters." });
-    expect(parseAskForm(form({ kind: "other", body: "x".repeat(5001), submissionKey: KEY }), ALL)).toMatchObject({ success: false, field: "body" });
+    expect(parseAskForm(form({ intent: "question", body: "Short", submissionKey: KEY }), ALL)).toEqual({ success: false, field: "body", message: "Tell us a little more, in at least 10 characters." });
+    expect(parseAskForm(form({ intent: "question", body: "x".repeat(5001), submissionKey: KEY }), ALL)).toMatchObject({ success: false, field: "body" });
   });
 
   it("asks for more words when the text has no letter or digit", () => {
-    const tooShort = { success: false, field: "body", message: "Say what you want changed, in at least 10 characters." };
-    expect(parseAskForm(form({ kind: "other", body: "??????????", submissionKey: KEY }), ALL)).toEqual(tooShort);
-    expect(parseAskForm(form({ kind: "other", body: " . . . . . . . . . . . ", submissionKey: KEY }), ALL)).toEqual(tooShort);
-    expect(parseAskForm(form({ kind: "other", body: "1234567890", submissionKey: KEY }), ALL)).toMatchObject({ success: true });
-    expect(parseAskForm(form({ kind: "other", body: "नमस्ते कृपया बदलें", submissionKey: KEY }), ALL)).toMatchObject({ success: true });
+    const tooShort = { success: false, field: "body", message: "Tell us a little more, in at least 10 characters." };
+    expect(parseAskForm(form({ intent: "question", body: "??????????", submissionKey: KEY }), ALL)).toEqual(tooShort);
+    expect(parseAskForm(form({ intent: "question", body: " . . . . . . . . . . . ", submissionKey: KEY }), ALL)).toEqual(tooShort);
+    expect(parseAskForm(form({ intent: "question", body: "1234567890", submissionKey: KEY }), ALL)).toMatchObject({ success: true });
+    expect(parseAskForm(form({ intent: "question", body: "नमस्ते कृपया बदलें", submissionKey: KEY }), ALL)).toMatchObject({ success: true });
   });
 
   it("allows up to three distinct screenshots", () => {
     const ids = ["0192f3c4-0000-7000-8000-000000000001", "0192f3c4-0000-7000-8000-000000000002", "0192f3c4-0000-7000-8000-000000000003"];
-    expect(parseAskForm(form({ kind: "other", body: "Please look at these three pictures.", attachmentIds: ids, submissionKey: KEY }), ALL)).toMatchObject({ success: true });
-    expect(parseAskForm(form({ kind: "other", body: "Please look at these pictures.", attachmentIds: [...ids, "0192f3c4-0000-7000-8000-000000000004"], submissionKey: KEY }), ALL)).toEqual({
+    expect(parseAskForm(form({ intent: "question", body: "Please look at these three pictures.", attachmentIds: ids, submissionKey: KEY }), ALL)).toMatchObject({ success: true });
+    expect(parseAskForm(form({ intent: "question", body: "Please look at these pictures.", attachmentIds: [...ids, "0192f3c4-0000-7000-8000-000000000004"], submissionKey: KEY }), ALL)).toEqual({
       success: false,
       field: "attachmentIds",
       message: "Attach up to 3 screenshots.",
     });
-    expect(parseAskForm(form({ kind: "other", body: "Please look at these pictures.", attachmentIds: [ids[0] ?? "", ids[0] ?? ""], submissionKey: KEY }), ALL)).toMatchObject({ success: false, message: "Choose each screenshot once." });
-    expect(parseAskForm(form({ kind: "other", body: "Please look at this picture.", attachmentIds: ["not-an-id"], submissionKey: KEY }), ALL)).toMatchObject({ success: false });
+    expect(parseAskForm(form({ intent: "question", body: "Please look at these pictures.", attachmentIds: [ids[0] ?? "", ids[0] ?? ""], submissionKey: KEY }), ALL)).toMatchObject({ success: false, message: "Choose each screenshot once." });
+    expect(parseAskForm(form({ intent: "question", body: "Please look at this picture.", attachmentIds: ["not-an-id"], submissionKey: KEY }), ALL)).toMatchObject({ success: false });
   });
 
   it("refuses a missing or odd submission key without showing the customer a schema message", () => {
-    expect(parseAskForm(form({ kind: "other", body: "Please look at this for me." }), ALL)).toEqual({ success: false, field: "submissionKey", message: "Your request could not be sent. Refresh the page and try again." });
-    expect(parseAskForm(form({ kind: "other", body: "Please look at this for me.", submissionKey: "a b" }), ALL)).toMatchObject({ success: false, field: "submissionKey" });
+    expect(parseAskForm(form({ intent: "question", body: "Please look at this for me." }), ALL)).toEqual({ success: false, field: "submissionKey", message: "Your request could not be sent. Refresh the page and try again." });
+    expect(parseAskForm(form({ intent: "question", body: "Please look at this for me.", submissionKey: "a b" }), ALL)).toMatchObject({ success: false, field: "submissionKey" });
   });
 });

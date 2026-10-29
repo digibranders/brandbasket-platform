@@ -36,6 +36,9 @@ export function getAppDb(): Database {
  *   with and whether the package offer is given up. They write nothing. The business id comes only from the session; the
  *   provider callbacks in billing.ts look a subscription or charge up by the provider's own id, to tell whose webhook or
  *   confirmation it is.
+ * - lib/server/kickoff-sync.ts, the scheduled job that starts a website build once its kickoff call is over. It takes no
+ *   input but the clock; it writes only a project's status and first-preview date and one "What we did" line, and is reached
+ *   only through app/api/internal/start-builds-after-kickoff, which needs its own secret.
  * - app/api/site/info/route.ts and app/api/site/events/route.ts, because the site token has already proven the business, so
  *   there is no customer session to scope a connection under -- and the public role can't read the module settings and
  *   services these need before they read anything.

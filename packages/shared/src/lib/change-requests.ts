@@ -56,15 +56,20 @@ export function customerStepIndex(state: ChangeState): number | null {
   return word === CLOSED_LABEL ? null : CUSTOMER_STATUSES.indexOf(word);
 }
 
-/** A question (a ticket with no change details) uses the same words: new is Sent, being worked on is In progress, resolved or closed is Done. */
-export function ticketStatusWord(status: SupportStatus): CustomerStatus {
+/** The word a ticket wears when the team has asked the customer something and is waiting for the answer. Not one of the five steps of a change. */
+export const WAITING_FOR_YOU = "Waiting for you";
+export type TicketStatusWord = CustomerStatus | typeof WAITING_FOR_YOU;
+
+/** A question (a ticket with no change details) uses the same words: new is Sent, being worked on is In progress, resolved or closed is Done, and a question to the customer is Waiting for you. */
+export function ticketStatusWord(status: SupportStatus): TicketStatusWord {
   switch (status) {
     case "new":
       return "Sent";
     case "triaged":
     case "in_progress":
-    case "waiting_on_you":
       return "In progress";
+    case "waiting_on_you":
+      return WAITING_FOR_YOU;
     case "resolved":
     case "closed":
       return "Done";
