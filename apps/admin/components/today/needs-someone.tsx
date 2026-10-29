@@ -1,11 +1,11 @@
 import type { Icon } from "@phosphor-icons/react";
-import { Bug, ChatText, CreditCard, EnvelopeSimple, HourglassMedium, Stack, UserPlus } from "@phosphor-icons/react/dist/ssr";
+import { Bug, ChatText, CreditCard, EnvelopeSimple, HourglassMedium, PlugsConnected, Stack, UserPlus } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { buttonSmall } from "@/components/console/buttons";
 import { LIFT } from "@/components/console/classes";
-import { actionLabel, dueLabel, type DueTone, type TodayItem, type TodayKind } from "@/lib/today-queue";
+import { actionLabel, dueLabel, groupTodayQueue, type DueTone, type TodayItem, type TodayKind } from "@/lib/today-queue";
 
 const ICONS: Readonly<Record<TodayKind, Icon>> = {
   payment: CreditCard,
@@ -16,6 +16,7 @@ const ICONS: Readonly<Record<TodayKind, Icon>> = {
   request: ChatText,
   signup: UserPlus,
   error: Bug,
+  delivery: PlugsConnected,
 };
 
 const DUE_TONES: Readonly<Record<DueTone, string>> = {
@@ -44,28 +45,33 @@ export function NeedsSomeone({ items, now, endOfToday }: NeedsSomeoneProps): Rea
       {items.length === 0 ? (
         <p className="px-4 py-6 text-sm text-ink-2">Nothing needs anyone right now.</p>
       ) : (
-        <ul>
-          {items.map((item) => {
-            const due = dueLabel(item.dueAt, now, endOfToday);
-            const Mark = ICONS[item.kind];
-            return (
-              <li
-                key={item.key}
-                className="grid grid-cols-[1.375rem_minmax(0,1fr)_auto_auto] items-center gap-3 border-t border-line px-4 py-2.5 first:border-t-0"
-              >
-                <Mark size={18} aria-hidden="true" className={due.tone === "late" ? "text-error" : "text-ink-2"} />
-                <span className="min-w-0">
-                  <span className="block truncate text-[0.84375rem] font-semibold text-ink">{item.title}</span>
-                  <span className="block truncate text-xs text-ink-2">{item.detail}</span>
-                </span>
-                <span className={cn("whitespace-nowrap font-figure text-xs", DUE_TONES[due.tone])}>{due.text}</span>
-                <Link href={item.href} className={buttonSmall}>
-                  {actionLabel(item.kind)}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        groupTodayQueue(items, now, endOfToday).map((group) => (
+          <div key={group.heading} className="border-t border-line first-of-type:border-t-0">
+            <h3 className="px-4 pt-3 pb-1 font-sans text-xs font-semibold text-ink-2">{group.heading}</h3>
+            <ul>
+              {group.items.map((item) => {
+                const due = dueLabel(item.dueAt, now, endOfToday);
+                const Mark = ICONS[item.kind];
+                return (
+                  <li
+                    key={item.key}
+                    className="grid grid-cols-[1.375rem_minmax(0,1fr)_auto_auto] items-center gap-3 border-t border-line px-4 py-2.5 first:border-t-0"
+                  >
+                    <Mark size={18} aria-hidden="true" className={due.tone === "late" ? "text-error" : "text-ink-2"} />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[0.84375rem] font-semibold text-ink">{item.title}</span>
+                      <span className="block truncate text-xs text-ink-2">{item.detail}</span>
+                    </span>
+                    <span className={cn("whitespace-nowrap font-figure text-xs", DUE_TONES[due.tone])}>{due.text}</span>
+                    <Link href={item.href} className={buttonSmall}>
+                      {actionLabel(item.kind)}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))
       )}
     </section>
   );

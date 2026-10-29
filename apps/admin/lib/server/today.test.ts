@@ -12,6 +12,7 @@ import {
   type Lead,
 } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { countFailedDeliveries24h } from "./deliveries";
 import { readSystemHealth } from "./system-health";
 import { countTodayItems, loadTodayItems, loadTodayPage } from "./today";
 
@@ -34,6 +35,7 @@ vi.mock("@brandbasket/db", async () => {
 });
 vi.mock("./db", () => ({ getStaffDb: () => ({}) }));
 vi.mock("./system-health", () => ({ readSystemHealth: vi.fn() }));
+vi.mock("./deliveries", () => ({ countFailedDeliveries24h: vi.fn() }));
 
 const NOW = new Date("2026-11-30T06:00:00.000Z");
 
@@ -57,6 +59,7 @@ beforeEach(() => {
   vi.mocked(countActiveErrorIssues).mockResolvedValue(0);
   vi.mocked(listSetupCallsBetween).mockResolvedValue([]);
   vi.mocked(readSystemHealth).mockResolvedValue([]);
+  vi.mocked(countFailedDeliveries24h).mockResolvedValue(0);
 });
 
 afterEach(() => {
@@ -75,6 +78,30 @@ describe("loadTodayItems", () => {
     await loadTodayItems(NOW);
     expect(listSupportTicketsForStaff).toHaveBeenCalledWith({}, { queue: "needs_reply", limit: 25 });
     expect(listErrorIssues).toHaveBeenCalledWith({}, { status: "new" });
+  });
+});
+
+describe("failed deliveries in the queue", () => {
+  it("adds one item when deliveries failed in the last 24 hours", async () => {
+    vi.mocked(countFailedDeliveries24h).mockResolvedValue(2);
+    const items = await loadTodayItems(NOW);
+    expect(countFailedDeliveries24h).toHaveBeenCalledWith(NOW);
+    expect(items.filter((item) => item.kind === "delivery")).toEqual([
+      { key: "deliveries:failed", kind: "delivery", href: "/deliveries", title: "2 deliveries failed", detail: "", dueAt: null },
+    ]);
+  });
+
+  it("adds no item when none failed", async () => {
+    const items = await loadTodayItems(NOW);
+    expect(items.some((item) => item.kind === "delivery")).toBe(false);
+  });
+
+  it("names deliveries as failed and adds no item when the count cannot be read", async () => {
+    vi.mocked(countFailedDeliveries24h).mockRejectedValue(new Error("database down"));
+    const page = await loadTodayPage(NOW);
+    expect(page.failed).toEqual(["deliveries"]);
+    expect(page.items.some((item) => item.kind === "delivery")).toBe(false);
+    expect(page.items.map((item) => item.key)).toEqual(["lead:lead-1"]);
   });
 });
 
