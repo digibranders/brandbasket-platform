@@ -12,6 +12,8 @@ export type RailIcon = "home" | "requests" | "website" | "social" | "search" | "
 export interface RailTarget {
   readonly href: string;
   readonly label: string;
+  /** The icon of the sidebar link the target belongs to, for search results. New request has none. */
+  readonly icon?: RailIcon;
 }
 
 export interface RailLink extends RailTarget {
@@ -134,8 +136,8 @@ export function railTargets(sections: readonly RailSection[]): readonly RailTarg
     ASK_FOR_A_CHANGE,
     ...sections.flatMap((section) =>
       section.links.flatMap((link) => [
-        { href: link.href, label: link.label },
-        ...menuChildren(link).map((child) => ({ href: child.href, label: `${link.label}: ${child.label}` })),
+        { href: link.href, label: link.label, icon: link.icon },
+        ...menuChildren(link).map((child) => ({ href: child.href, label: `${link.label}: ${child.label}`, icon: link.icon })),
       ]),
     ),
   ];
