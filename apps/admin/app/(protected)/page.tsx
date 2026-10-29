@@ -11,6 +11,7 @@ import { CallsToday } from "@/components/today/calls-today";
 import { NeedsSomeone } from "@/components/today/needs-someone";
 import { Systems } from "@/components/today/systems";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { loadTodayPage } from "@/lib/server/today";
 import { greeting, todayRange } from "@/lib/team-time";
 import { todaySummary } from "@/lib/today-queue";
@@ -20,6 +21,7 @@ export const metadata: Metadata = { title: "Today" };
 /** Everything that needs a person, the business at a glance, today's calls and whether every system is working. */
 export default async function TodayPage(): Promise<ReactElement> {
   const { user } = await requireStaffAccess();
+  await logStaffAccess({ staffUserId: user.id, action: "today.view", targetType: "today" });
   const now = new Date();
   const endOfToday = todayRange(now).end;
   const today = await loadTodayPage(now);

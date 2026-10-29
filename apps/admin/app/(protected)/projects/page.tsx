@@ -11,6 +11,7 @@ import { monthRange } from "@/lib/team-time";
 import { boardColumns, filterByBuilder, filterByScope, parseProjectScope, type BoardCard, type ProjectScope } from "@/lib/project-board";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { TableScroll } from "@/components/console/table-scroll";
 
@@ -55,7 +56,8 @@ function Card({ card }: { readonly card: BoardCard }): ReactElement {
 
 /** Every website build on one board, with its builder and the date its first preview is promised by. */
 export default async function ProjectsPage({ searchParams }: ProjectsPageProps): Promise<ReactElement> {
-  await requireStaffAccess();
+  const { user } = await requireStaffAccess();
+  await logStaffAccess({ staffUserId: user.id, action: "projects.list", targetType: "projects" });
   const query = await searchParams;
   const view = one(query.view) === "list" ? "list" : "board";
   const builder = one(query.builder);

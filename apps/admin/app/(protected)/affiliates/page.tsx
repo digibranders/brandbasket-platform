@@ -22,6 +22,7 @@ import { StatusPill } from "@/components/console/status-pill";
 import { describeAffiliateReward, describeRewardCycles } from "@/lib/server/affiliate-admin";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Affiliates" };
@@ -45,7 +46,8 @@ function owedByCurrency(rows: readonly { readonly totals: readonly AffiliateTota
 }
 
 export default async function AffiliatesPage(): Promise<ReactElement> {
-  await requireStaffCan("money");
+  const { user } = await requireStaffCan("money");
+  await logStaffAccess({ staffUserId: user.id, action: "affiliates.list", targetType: "affiliates" });
   const affiliates = await listAffiliates(getStaffDb(), LIST_LIMIT);
   const members = affiliates.reduce((total, affiliate) => total + affiliate.members, 0);
   const owed = owedByCurrency(affiliates);

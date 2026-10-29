@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/console/page-header";
 import { StatusDot } from "@/components/console/status-dot";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 
 export const metadata: Metadata = { title: "Coupons" };
 
@@ -31,7 +32,8 @@ function retiredReason(
 }
 
 export default async function CouponsPage(): Promise<ReactElement> {
-  await requireStaffCan("money");
+  const { user } = await requireStaffCan("money");
+  await logStaffAccess({ staffUserId: user.id, action: "coupons.list", targetType: "coupons" });
   const codes = await listReferralCodes(getStaffDb(), "coupon", LIST_LIMIT);
   const now = new Date();
   const usable = codes.filter((code) => retiredReason(code, code.redemptions, now) === null).length;

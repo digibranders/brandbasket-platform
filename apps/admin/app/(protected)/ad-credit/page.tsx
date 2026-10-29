@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/console/page-header";
 import { adCreditDueRows } from "@/lib/ad-credit-due";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 
 export const metadata: Metadata = { title: "Ad credit due" };
 
@@ -15,7 +16,8 @@ export const metadata: Metadata = { title: "Ad credit due" };
  * paid subscription is listed, and a business that drops a service, cancels or asks to close drops off at once.
  */
 export default async function AdCreditDuePage(): Promise<ReactElement> {
-  await requireStaffAccess();
+  const { user } = await requireStaffAccess();
+  await logStaffAccess({ staffUserId: user.id, action: "ad_credit.list", targetType: "ad_credit" });
   const rows = adCreditDueRows(await listAdCreditDue(getStaffDb(), new Date()));
 
   return (

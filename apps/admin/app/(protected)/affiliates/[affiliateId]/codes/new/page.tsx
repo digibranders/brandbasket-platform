@@ -6,6 +6,7 @@ import { NewReferralCodeForm } from "@/components/referral-code-form";
 import { findAffiliate } from "@/lib/server/affiliate-admin";
 import { priceBases } from "@/lib/server/price-bases";
 import { requireStaffCan } from "@/lib/server/staff-role";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { createAffiliateCodeAction } from "./actions";
 
 export const metadata: Metadata = { title: "New code" };
@@ -15,8 +16,9 @@ interface NewAffiliateCodePageProps {
 }
 
 export default async function NewAffiliateCodePage({ params }: NewAffiliateCodePageProps): Promise<ReactElement> {
-  await requireStaffCan("money");
+  const { user } = await requireStaffCan("money");
   const { affiliateId } = await params;
+  await logStaffAccess({ staffUserId: user.id, action: "affiliates.new_code", targetType: "affiliate", targetId: affiliateId });
   const affiliate = await findAffiliate(affiliateId);
   if (affiliate === null) notFound();
 

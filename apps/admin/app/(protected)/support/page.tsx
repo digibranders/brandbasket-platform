@@ -16,6 +16,7 @@ import { replyClock, waitingLabel, type WaitingTone } from "@/lib/reply-clock";
 import { readRequestFilters, requestsHref } from "@/lib/requests-filters";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { STAFF_SUPPORT_CATEGORY_LABELS } from "@/lib/support-admin-state";
 import { TableScroll } from "@/components/console/table-scroll";
 
@@ -30,6 +31,7 @@ interface RequestsPageProps {
 
 export default async function RequestsPage({ searchParams }: RequestsPageProps): Promise<ReactElement> {
   const { user } = await requireStaffAccess();
+  await logStaffAccess({ staffUserId: user.id, action: "support.list", targetType: "support_tickets" });
   const filters = readRequestFilters(await searchParams);
   const db = getStaffDb();
   const [page, counts, staff] = await Promise.all([

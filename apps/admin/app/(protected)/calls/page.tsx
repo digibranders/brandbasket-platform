@@ -11,6 +11,7 @@ import { KickoffWrapUp } from "./kickoff-wrap-up";
 import { todayRange } from "@/lib/team-time";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Calls" };
@@ -51,7 +52,8 @@ function CallTable({ lines }: { readonly lines: readonly CallLine[] }): ReactEle
 
 /** Every kickoff call: today first, then what is coming, then the last week, with how far each client got in setup. */
 export default async function CallsPage(): Promise<ReactElement> {
-  await requireStaffAccess();
+  const { user } = await requireStaffAccess();
+  await logStaffAccess({ staffUserId: user.id, action: "calls.list", targetType: "calls" });
   const now = new Date();
   const { start } = todayRange(now);
   const calls = await listSetupCallsForStaff(getStaffDb(), new Date(start.getTime() - PAST_DAYS * DAY_MS), new Date(start.getTime() + AHEAD_DAYS * DAY_MS));

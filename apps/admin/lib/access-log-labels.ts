@@ -35,6 +35,21 @@ export const ACTION_LABELS: Readonly<Record<StaffAccessAction, string>> = {
   "staff.role_change": "Changed a staff role",
   "staff.deactivate": "Switched off a staff member",
   "staff.reactivate": "Switched a staff member back on",
+  "today.view": "Opened Today",
+  "clients.list": "Opened the clients list",
+  "leads.list": "Opened enquiries",
+  "calls.list": "Opened calls",
+  "projects.list": "Opened projects",
+  "leaving.list": "Opened leaving feedback",
+  "support.list": "Opened requests",
+  "support.new": "Opened the new request form",
+  "outbox.list": "Opened the outbox",
+  "ad_credit.list": "Opened ad credit due",
+  "affiliates.list": "Opened affiliates",
+  "affiliates.detail": "Opened an affiliate",
+  "affiliates.new_code": "Opened the new affiliate code form",
+  "coupons.list": "Opened coupons",
+  "coupons.detail": "Opened a coupon",
 };
 
 export function actionLabel(action: string): string {
