@@ -20,7 +20,7 @@ export interface HomeData {
   readonly services: readonly ServiceKey[];
   readonly call: SetupCallState;
   /** The project's own facts the progress screens say in words: the first preview's due date, and when the preview went out. */
-  readonly project: { readonly slaDueAt: Date | null; readonly previewSentAt: Date | null } | null;
+  readonly project: { readonly slaDueAt: Date | null; readonly previewSentAt: Date | null; readonly launchPlannedOn: string | null } | null;
   /** What the customer told us before paying, as rows that were answered. */
   readonly intake: readonly IntakeSummaryRow[];
   /** What staff wrote about what was agreed on the call, or null. */
@@ -54,7 +54,7 @@ export async function loadHome(tenant: TenantContext, billing: CustomerBilling, 
     live,
   });
   const layout = homeLayoutOf(state);
-  const base = { state, services, call, project: project === null ? null : { slaDueAt: project.slaDueAt, previewSentAt: project.previewSentAt }, kickoffNotes: call.booking?.summary ?? null };
+  const base = { state, services, call, project: project === null ? null : { slaDueAt: project.slaDueAt, previewSentAt: project.previewSentAt, launchPlannedOn: project.launchPlannedOn }, kickoffNotes: call.booking?.summary ?? null };
   if (layout === "billing") return { ...base, intake: [], attention: [], overview: null };
 
   const [{ answers }, needs, waiting] = await Promise.all([loadIntake(tenant), loadRequestNeeds(tenant), loadWaitingOnYou(tenant)]);

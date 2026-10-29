@@ -42,7 +42,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { name: "Asha Rao", email: "asha@example.com" }, tenant, billing: { hasAccess: true } } as never);
   vi.mocked(getBillingBanner).mockResolvedValue(null);
-  vi.mocked(getProjectOverview).mockResolvedValue({ project: { status: "onboarding", slaDueAt: null, onboardingSubmittedAt: null, previewSentAt: null }, completed: ["business"] } as never);
+  vi.mocked(getProjectOverview).mockResolvedValue({ project: { status: "onboarding", slaDueAt: null, onboardingSubmittedAt: null, previewSentAt: null, launchPlannedOn: null }, completed: ["business"] } as never);
   vi.mocked(getLiveWebsite).mockResolvedValue(null);
 });
 
@@ -95,7 +95,7 @@ describe("before the kickoff", () => {
 
 describe("while the website is built", () => {
   it("says the first preview date from the project, and that nothing is needed", async () => {
-    const html = await renderHome(home({ kind: "building", dueAt: new Date("2026-11-01T06:30:00Z") }, { project: { slaDueAt: new Date("2026-11-01T06:30:00Z"), previewSentAt: null } }));
+    const html = await renderHome(home({ kind: "building", dueAt: new Date("2026-11-01T06:30:00Z") }, { project: { slaDueAt: new Date("2026-11-01T06:30:00Z"), previewSentAt: null, launchPlannedOn: null } }));
     expect(html).toContain("We are building your website");
     expect(html).toContain("Your first preview will be ready by Sun 1 Nov");
     expect(html).toContain("Nothing needed from you right now");

@@ -12,6 +12,7 @@ import {
   assignBuilderAction,
   cancelProjectAction,
   grantRoundAction,
+  planLaunchAction,
 } from "@/app/(protected)/clients/[businessId]/project/actions";
 
 interface ProjectControlsProps {
@@ -55,6 +56,20 @@ export async function ProjectControls({ businessId, notice }: ProjectControlsPro
           <p className="text-sm text-ink-2">
             Rounds of changes used: <span className="font-figure tabular-nums">{project.revisionRoundsUsed} of {project.revisionRoundsIncluded}</span>
           </p>
+        ) : null}
+
+        {canMoveProject("plan-launch", project.status) ? (
+          <form action={planLaunchAction} className="grid max-w-md gap-2">
+            {ids}
+            <label htmlFor="launchDay" className={labelClasses}>
+              Planned launch day
+            </label>
+            <input id="launchDay" name="launchDay" type="date" defaultValue={project.launchPlannedOn ?? ""} className={fieldClasses} />
+            <p className="text-sm text-ink-2">The client sees this on their website page once it is set. Leave it empty to show no day.</p>
+            <button type="submit" className={`${buttonSecondary} justify-self-start`}>
+              Save launch day
+            </button>
+          </form>
         ) : null}
 
         {canMoveProject("assign", project.status) ? (

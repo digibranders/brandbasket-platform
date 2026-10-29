@@ -8,7 +8,9 @@ import {
   listMediaAssets,
   newMediaAssetId,
   PhotoLimitReachedError,
+  recordBrandAsset,
   recordUploadedMedia,
+  removeBrandAsset,
   softDeleteMediaAsset,
   updateMediaAltText,
   type NewMediaAsset,
@@ -440,6 +442,56 @@ describe("saving and reading every step", () => {
     expect(await asTenant("A", (tx) => findMediaAsset(tx, media.id))).toBeNull();
     expect(await asTenant("A", (tx) => softDeleteMediaAsset(tx, media.id))).toBeNull();
     expect(await dbs.staff.db.select({ id: mediaAssets.id }).from(mediaAssets)).toHaveLength(1);
+  });
+});
+
+describe("brand assets after the website is built", () => {
+  const LIMITS = { maxPhotos: 20 };
+  const logo = (): NewMediaAsset => ({ ...mediaInput(USER_A, businessA), purpose: "logo" });
+
+  beforeEach(async () => {
+    // The project has left onboarding, which refuses the onboarding uploads.
+    await asTenant("A", (tx) => submitProject(tx, { projectId: projectA, now: SUBMITTED_AT }));
+  });
+
+  it("records a photo and a logo, which the onboarding path would refuse", async () => {
+    await expect(asTenant("A", (tx) => recordUploadedMedia(tx, mediaInput(USER_A, businessA), LIMITS))).rejects.toBeInstanceOf(OnboardingLockedError);
+    const photo = await asTenant("A", (tx) => recordBrandAsset(tx, mediaInput(USER_A, businessA), LIMITS));
+    const mark = await asTenant("A", (tx) => recordBrandAsset(tx, logo(), LIMITS));
+    expect(photo.asset.purpose).toBe("photo");
+    expect(mark.asset.purpose).toBe("logo");
+    expect(await asTenant("A", (tx) => listMediaAssets(tx, "photo"))).toHaveLength(1);
+  });
+
+  it("replaces the logo and hands back the replaced file", async () => {
+    const first = await asTenant("A", (tx) => recordBrandAsset(tx, logo(), LIMITS));
+    const second = await asTenant("A", (tx) => recordBrandAsset(tx, logo(), LIMITS));
+    expect(second.replacedStorageKeys).toEqual([first.asset.storageKey]);
+    expect((await asTenant("A", (tx) => listMediaAssets(tx, "logo"))).map((asset) => asset.id)).toEqual([second.asset.id]);
+  });
+
+  it("refuses a photo over the limit", async () => {
+    for (let index = 0; index < 2; index += 1) await asTenant("A", (tx) => recordBrandAsset(tx, mediaInput(USER_A, businessA), { maxPhotos: 2 }));
+    await expect(asTenant("A", (tx) => recordBrandAsset(tx, mediaInput(USER_A, businessA), { maxPhotos: 2 }))).rejects.toBeInstanceOf(PhotoLimitReachedError);
+  });
+
+  it("keeps a business to its photo limit when two uploads start together", async () => {
+    for (let index = 0; index < 19; index += 1) await asTenant("A", (tx) => recordBrandAsset(tx, mediaInput(USER_A, businessA), LIMITS));
+    const results = await Promise.allSettled([
+      asTenant("A", (tx) => recordBrandAsset(tx, mediaInput(USER_A, businessA), LIMITS)),
+      asTenant("A", (tx) => recordBrandAsset(tx, mediaInput(USER_A, businessA), LIMITS)),
+    ]);
+    expect(results.map((result) => result.status).sort()).toEqual(["fulfilled", "rejected"]);
+    expect(await asTenant("A", (tx) => listMediaAssets(tx, "photo"))).toHaveLength(20);
+  });
+
+  it("removes only the business's own asset, and says so when there is none", async () => {
+    const photo = await asTenant("A", (tx) => recordBrandAsset(tx, mediaInput(USER_A, businessA), LIMITS));
+    expect(await asTenant("B", (tx) => removeBrandAsset(tx, photo.asset.id))).toBeNull();
+    expect(await asTenant("A", (tx) => removeBrandAsset(tx, photo.asset.id))).toBe(photo.asset.storageKey);
+    expect(await asTenant("A", (tx) => removeBrandAsset(tx, photo.asset.id))).toBeNull();
+    expect(await asTenant("A", (tx) => removeBrandAsset(tx, "not-an-id"))).toBeNull();
+    expect(await asTenant("A", (tx) => listMediaAssets(tx, "photo"))).toEqual([]);
   });
 });
 

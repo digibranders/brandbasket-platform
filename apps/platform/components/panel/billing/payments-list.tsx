@@ -57,7 +57,7 @@ function RowTitle({ title }: { readonly title: string }): ReactElement {
 function ReceiptLink({ row }: { readonly row: ReceiptRow }): ReactElement | null {
   if (!row.downloadable) return null;
   return (
-    <a href={receiptDownloadHref([row.id])} download className="text-[0.8125rem] font-semibold text-ink underline underline-offset-[3px] transition-colors duration-200 hover:text-ink-2">
+    <a href={receiptDownloadHref([row.id])} download className="inline-flex min-h-11 items-center text-[0.8125rem] font-semibold text-ink underline underline-offset-[3px] transition-colors duration-200 hover:text-ink-2">
       Receipt<span className="sr-only"> for {row.title}</span>
     </a>
   );
@@ -134,7 +134,7 @@ function MonthHeading({ month }: { readonly month: BillingMonth }): ReactElement
           <span className="font-figure tabular-nums text-ink">{month.total}</span>
         </span>
         {ids.length === 0 ? null : (
-          <a href={receiptDownloadHref(ids)} download className="font-semibold text-ink underline underline-offset-[3px] transition-colors duration-200 hover:text-ink-2">
+          <a href={receiptDownloadHref(ids)} download className="inline-flex min-h-11 items-center font-semibold text-ink underline underline-offset-[3px] transition-colors duration-200 hover:text-ink-2">
             Download month<span className="sr-only"> {month.label}</span>
           </a>
         )}
@@ -191,7 +191,7 @@ export function PaymentsList({ months, emptyBody = DEFAULT_EMPTY_BODY }: Payment
       title="Payments"
       aside={
         hasDownloads ? (
-          <a href={receiptDownloadHref(null)} download className="inline-flex items-center gap-1.5 font-semibold text-ink underline underline-offset-[3px] transition-colors duration-200 hover:text-ink-2">
+          <a href={receiptDownloadHref(null)} download className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-ink underline underline-offset-[3px] transition-colors duration-200 hover:text-ink-2">
             <DownloadSimple size={14} aria-hidden="true" />
             Download all<span className="sr-only"> invoices and receipts</span>
           </a>

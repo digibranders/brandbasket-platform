@@ -1,0 +1,12 @@
+# Starts brandbasket-kickoff-builds.service every 15 minutes, so a build starts soon after a kickoff call has ended and the
+# staff's two-hour window to write notes has passed (docs/kickoff-builds.md).
+[Unit]
+Description=Brandbasket start website builds after kickoff calls
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

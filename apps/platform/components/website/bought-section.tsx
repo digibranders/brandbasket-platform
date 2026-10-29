@@ -15,7 +15,7 @@ export function BoughtSection({ rows, payment }: { readonly rows: readonly Bough
       title="What you bought"
       aside={
         payment === null ? undefined : (
-          <a href={payment.receiptHref} className="font-semibold text-ink underline underline-offset-[3px]">
+          <a href={payment.receiptHref} className="inline-flex min-h-11 items-center font-semibold text-ink underline underline-offset-[3px]">
             Receipt
           </a>
         )

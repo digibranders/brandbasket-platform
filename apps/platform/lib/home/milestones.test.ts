@@ -30,4 +30,12 @@ describe("websiteMilestones", () => {
     const items = websiteMilestones({ kind: "on_hold", reason: "x" }, input);
     expect(items[1]).toMatchObject({ state: "now", note: "Paused" });
   });
+
+  it("shows the day staff plan to go live, once they set one, and nothing when none is set", () => {
+    const planned = { ...input, launchPlannedOn: "2026-11-05" };
+    expect(websiteMilestones({ kind: "approved" }, planned)[4]?.note).toBe("Planned for Thu 5 Nov");
+    expect(websiteMilestones({ kind: "building", dueAt: input.firstPreviewDueAt }, planned)[4]?.note).toBe("Planned for Thu 5 Nov");
+    expect(websiteMilestones({ kind: "building", dueAt: input.firstPreviewDueAt }, input)[4]?.note).toBeNull();
+    expect(websiteMilestones({ kind: "approved" }, input)[4]?.note).toBe("Launch next");
+  });
 });

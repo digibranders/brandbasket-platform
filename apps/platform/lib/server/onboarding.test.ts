@@ -67,6 +67,7 @@ const PROJECT: Project = {
   status: "onboarding",
   onboardingSubmittedAt: null,
   slaDueAt: null,
+  launchPlannedOn: null,
   previewUrl: null,
   previewSentAt: null,
   onHoldReason: null,

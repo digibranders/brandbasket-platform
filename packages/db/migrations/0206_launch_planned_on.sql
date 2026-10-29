@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "launch_planned_on" date;

@@ -245,7 +245,9 @@ export {
   listMediaAssets,
   newMediaAssetId,
   PhotoLimitReachedError,
+  recordBrandAsset,
   recordUploadedMedia,
+  removeBrandAsset,
   softDeleteMediaAsset,
   updateMediaAltText,
   type MediaAsset,
@@ -324,6 +326,7 @@ export {
 export { canMoveProject, PROJECT_MOVE_FROM, type ProjectMove } from "./queries/project-moves";
 export {
   assignProjectBuilder,
+  setProjectLaunchPlannedOn,
   cancelProject,
   countCallsBetween,
   countLateProjects,

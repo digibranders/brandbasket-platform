@@ -1,7 +1,7 @@
 import type { ProjectStatus } from "../schema";
 
 /** The moves staff make by hand on a build. Starting, holding and resuming it are the website build's own (website-actions). */
-export type ProjectMove = "cancel" | "assign" | "grant-round";
+export type ProjectMove = "cancel" | "assign" | "grant-round" | "plan-launch";
 
 const OPEN_STATUSES: readonly ProjectStatus[] = ["onboarding", "submitted", "building", "preview", "revisions", "approved", "on_hold"];
 
@@ -13,6 +13,7 @@ export const PROJECT_MOVE_FROM: Readonly<Record<ProjectMove, readonly ProjectSta
   cancel: OPEN_STATUSES,
   assign: OPEN_STATUSES,
   "grant-round": ["preview", "revisions", "approved"],
+  "plan-launch": OPEN_STATUSES,
 };
 
 export function canMoveProject(move: ProjectMove, status: ProjectStatus): boolean {
