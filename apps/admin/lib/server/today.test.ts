@@ -104,4 +104,31 @@ describe("loadTodayPage", () => {
     const page = await loadTodayPage(NOW);
     expect(page.figures.map((figure) => figure.value)).toEqual(["1", "0", "₹0", "0", "0", "0"]);
   });
+
+  it("reports no failed sources when every queue source reads", async () => {
+    const page = await loadTodayPage(NOW);
+    expect(page.failed).toEqual([]);
+  });
+
+  it("names the failed source and keeps the other items", async () => {
+    vi.mocked(listClients).mockRejectedValue(new Error("database down"));
+    const page = await loadTodayPage(NOW);
+    expect(page.failed).toEqual(["clients"]);
+    expect(page.items.map((item) => item.key)).toEqual(["lead:lead-1"]);
+  });
+
+  it("names all six queue sources and leaves the queue empty when every one fails", async () => {
+    vi.mocked(listClients).mockRejectedValue(new Error("down"));
+    vi.mocked(listLeads).mockRejectedValue(new Error("down"));
+    vi.mocked(listPaymentsNeedingAttention).mockRejectedValue(new Error("down"));
+    vi.mocked(listAddOnsToContact).mockRejectedValue(new Error("down"));
+    vi.mocked(listSupportTicketsForStaff).mockRejectedValue(new Error("down"));
+    vi.mocked(listErrorIssues).mockRejectedValue(new Error("down"));
+    const page = await loadTodayPage(NOW);
+    expect(page.items).toEqual([]);
+    expect(page.failed).toHaveLength(6);
+    expect(page.failed).toEqual(
+      expect.arrayContaining(["clients", "leads", "flagged payments", "add-ons to contact", "requests needing a reply", "new errors"]),
+    );
+  });
 });

@@ -34,12 +34,13 @@ const ATTENTION_READ_LIMIT = 100;
 /** The support query's page size cap. */
 const NEW_TICKETS_READ_LIMIT = 25;
 
-/** One read that may fail without taking the page down: a failure logs and gives `fallback`. */
-async function guarded<T>(label: string, read: () => Promise<T>, fallback: T): Promise<T> {
+/** One read that may fail without taking the page down: a failure logs, records its label in `failed` when given, and gives `fallback`. */
+async function guarded<T>(label: string, read: () => Promise<T>, fallback: T, failed?: string[]): Promise<T> {
   try {
     return await read();
   } catch (error) {
     console.error(`[today] could not read ${label}`, errorLogInfo(error));
+    failed?.push(label);
     return fallback;
   }
 }
@@ -53,17 +54,24 @@ interface QueueSources {
   readonly newErrors: readonly ErrorIssue[];
 }
 
-async function readQueueSources(): Promise<QueueSources> {
+interface QueueRead {
+  readonly sources: QueueSources;
+  /** Labels of the sources that failed to read, in the order they failed. */
+  readonly failed: readonly string[];
+}
+
+async function readQueueSources(): Promise<QueueRead> {
   const db = getStaffDb();
+  const failed: string[] = [];
   const [clients, leads, flagged, addOns, newTickets, newErrors] = await Promise.all([
-    guarded("clients", () => listClients(db), []),
-    guarded("leads", () => listLeads(db, {}), []),
-    guarded("flagged payments", () => listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }), []),
-    guarded("add-ons to contact", () => listAddOnsToContact(db, ATTENTION_READ_LIMIT), []),
-    guarded("requests needing a reply", async () => (await listSupportTicketsForStaff(db, { queue: "needs_reply", limit: NEW_TICKETS_READ_LIMIT })).items, []),
-    guarded("new errors", async () => (await listErrorIssues(db, { status: "new" })).issues, []),
+    guarded("clients", () => listClients(db), [], failed),
+    guarded("leads", () => listLeads(db, {}), [], failed),
+    guarded("flagged payments", () => listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }), [], failed),
+    guarded("add-ons to contact", () => listAddOnsToContact(db, ATTENTION_READ_LIMIT), [], failed),
+    guarded("requests needing a reply", async () => (await listSupportTicketsForStaff(db, { queue: "needs_reply", limit: NEW_TICKETS_READ_LIMIT })).items, [], failed),
+    guarded("new errors", async () => (await listErrorIssues(db, { status: "new" })).issues, [], failed),
   ]);
-  return { clients, leads, flagged, addOns, newTickets, newErrors };
+  return { sources: { clients, leads, flagged, addOns, newTickets, newErrors }, failed };
 }
 
 function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
@@ -84,7 +92,7 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
 
 /** Everything that needs a person right now, late first. */
 export async function loadTodayItems(now: Date): Promise<readonly TodayItem[]> {
-  return queueFrom(await readQueueSources(), now);
+  return queueFrom((await readQueueSources()).sources, now);
 }
 
 /** The rail's Today count: the length of the queue. */
@@ -94,6 +102,8 @@ export async function countTodayItems(): Promise<number> {
 
 export interface TodayPage {
   readonly items: readonly TodayItem[];
+  /** Labels of queue sources that failed to read, so the page can say the queue may be incomplete. */
+  readonly failed: readonly string[];
   readonly figures: readonly FigureItem[];
   readonly calls: readonly BookedCall[];
   readonly systems: readonly SystemLine[];
@@ -104,7 +114,7 @@ export async function loadTodayPage(now: Date): Promise<TodayPage> {
   const db = getStaffDb();
   const month = monthRange(now);
   const today = todayRange(now);
-  const [sources, collected, ticketCounts, activeErrors, calls, systems] = await Promise.all([
+  const [queue, collected, ticketCounts, activeErrors, calls, systems] = await Promise.all([
     readQueueSources(),
     guarded("money collected", () => sumCapturedPaymentsBetween(db, month.start, month.end), []),
     guarded<Readonly<Record<SupportStatus, number>> | null>("request counts", () => countSupportTicketsByStatus(db), null),
@@ -112,8 +122,10 @@ export async function loadTodayPage(now: Date): Promise<TodayPage> {
     guarded("calls today", () => listSetupCallsBetween(db, today.start, today.end), []),
     readSystemHealth(now),
   ]);
+  const { sources } = queue;
   return {
     items: queueFrom(sources, now),
+    failed: queue.failed,
     figures: businessFigures(figuresInput({ leads: sources.leads, clients: sources.clients, collected, ticketCounts, activeErrors }, now)),
     calls,
     systems,
