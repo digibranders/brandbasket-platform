@@ -25,6 +25,7 @@ import { labelClasses } from "@/components/console/field-styles";
 import { Quiet, Section } from "@/components/console/section";
 import { adminBrand } from "@/lib/brand";
 import { clientListingKey, readClientTagNotice } from "@/lib/client-tags";
+import { isWebsiteBought } from "@/lib/server/bought-services";
 import { openClientTab } from "@/lib/server/client-page";
 import { getStaffDb } from "@/lib/server/db";
 import { serverEnv } from "@/lib/server/env";
@@ -45,7 +46,7 @@ export default async function ClientWebsitePage({
   const sp = await searchParams;
   const db = getStaffDb();
   const renderedAt = new Date();
-  const [siteApiToken, siteKey, lastEventAt, websiteUrl, hostedSites, timeZone, enabledModules, appointmentCounts, listingPlacement, listingLive, promotions] = await Promise.all([
+  const [siteApiToken, siteKey, lastEventAt, websiteUrl, hostedSites, timeZone, enabledModules, appointmentCounts, listingPlacement, listingLive, promotions, websiteBought] = await Promise.all([
     getSiteApiToken(client.businessId),
     getSiteKey(db, client.businessId),
     lastSiteHitAt(db, client.businessId),
@@ -57,6 +58,7 @@ export default async function ClientWebsitePage({
     findListingPlacement(db, client.businessId),
     hasLiveProject(db, client.businessId),
     listUpcomingDirectoryPromotions(db, client.businessId, renderedAt),
+    isWebsiteBought(db, client.businessId),
   ]);
   const websiteNotice = sp.website === "saved" || sp.website === "invalid" ? sp.website : null;
   const hostingNotice = sp.hosting === "saved" || sp.hosting === "invalid" ? sp.hosting : null;
@@ -85,19 +87,23 @@ export default async function ClientWebsitePage({
       <Section title="Their website">
         <div className="max-w-2xl space-y-8">
           <WebsiteUrlBlock businessId={client.businessId} websiteUrl={websiteUrl} notice={websiteNotice} />
-          <HostingBlock businessId={client.businessId} hosting={hostedSites[0] ?? null} notice={hostingNotice} />
-          <div>
-            <h3 className={labelClasses}>Site API token</h3>
-            <div className="mt-2">
-              <SiteApiTokenBlock businessId={client.businessId} token={siteApiToken} />
-            </div>
-          </div>
-          <div>
-            <h3 className={labelClasses}>Site tracking</h3>
-            <div className="mt-2">
-              <TrackingBlock businessId={client.businessId} siteKey={siteKey?.key ?? null} appOrigin={serverEnv().APP_ORIGIN} lastEventAt={lastEventAt} />
-            </div>
-          </div>
+          {websiteBought ? (
+            <>
+              <HostingBlock businessId={client.businessId} hosting={hostedSites[0] ?? null} notice={hostingNotice} />
+              <div>
+                <h3 className={labelClasses}>Site API token</h3>
+                <div className="mt-2">
+                  <SiteApiTokenBlock businessId={client.businessId} token={siteApiToken} />
+                </div>
+              </div>
+              <div>
+                <h3 className={labelClasses}>Site tracking</h3>
+                <div className="mt-2">
+                  <TrackingBlock businessId={client.businessId} siteKey={siteKey?.key ?? null} appOrigin={serverEnv().APP_ORIGIN} lastEventAt={lastEventAt} />
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
       </Section>
 

@@ -16,6 +16,7 @@ import { buildPanelState } from "@/lib/build-summary";
 import { clientNextStep, previewLateReason } from "@/lib/client-next-step";
 import { ProjectControls } from "@/components/project-controls";
 import { openClientTab } from "@/lib/server/client-page";
+import { isWebsiteBought } from "@/lib/server/bought-services";
 import { getStaffDb } from "@/lib/server/db";
 import { CustomerLink, DNS_STATUS_TEXT, Facts, GoLivePanel, MoveDomainPanel, SendPreviewForm, When } from "../parts";
 
@@ -34,7 +35,7 @@ export default async function ClientProjectPage({
   const previewNotice = readProjectPreviewNotice(sp.preview);
   const launchNotice = readProjectLaunchNotice(sp.launch);
   const dnsNotice = readDomainConnectNotice(sp.dns);
-  const websiteUrl = await findBusinessWebsiteUrl(getStaffDb(), client.businessId);
+  const [websiteUrl, websiteBought] = await Promise.all([findBusinessWebsiteUrl(getStaffDb(), client.businessId), isWebsiteBought(getStaffDb(), client.businessId)]);
   const { project } = client;
   const nextStep = clientNextStep(project);
   const buildState = buildPanelState(project);
@@ -134,7 +135,7 @@ export default async function ClientProjectPage({
         </Section>
       )}
 
-      <ProjectControls businessId={client.businessId} notice={sp.move} />
+      {websiteBought ? <ProjectControls businessId={client.businessId} notice={sp.move} /> : null}
 
       <Section title="Domain" id={client.movingTo === null && nextStep !== "live" ? "domain" : undefined}>
         {client.domain === null ? (
@@ -221,7 +222,7 @@ export default async function ClientProjectPage({
         )}
       </Section>
       <KickoffCallSection businessId={client.businessId} />
-      <WebsiteSection businessId={client.businessId} staffId={granted.user.id} notice={sp.build} />
+      {websiteBought ? <WebsiteSection businessId={client.businessId} staffId={granted.user.id} notice={sp.build} /> : null}
     </>
   );
 }
