@@ -30,6 +30,7 @@ import { attentionBySubject, attentionItems } from "@/lib/pipeline";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { clientsWaitingOnUs } from "@/lib/waiting-clients";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Clients" };
 
@@ -152,59 +153,61 @@ export default async function ClientsPage({
               : "Nobody here right now."}
         </EmptyLine>
       ) : (
-        <table className={`${TABLE} mt-6`}>
-          <thead>
-            <tr>
-              <th className={TH}>Business</th>
-              <th className={TH}>Services</th>
-              <th className={TH}>Stage</th>
-              <th className={`${TH} text-right`}>Monthly</th>
-              <th className={TH}>Next</th>
-              <th className={TH}>Paid through</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map(({ client, stage: rowStage, buildStage }) => {
-              const buildLabel = buildStageLabel(buildStage);
-              const needs = attention.get(client.businessId);
-              const service = services.get(client.businessId);
-              const closure = closing.get(client.businessId);
-              const paidThrough = client.billing.subscription?.paidThroughAt ?? null;
-              return (
-                <tr key={client.businessId}>
-                  <td className={TD}>
-                    <Link href={`/clients/${client.businessId}`} className="font-semibold hover:underline">
-                      {client.businessName}
-                    </Link>
-                    {buildLabel === null ? null : <small className="block text-xs text-ink-2">{buildLabel}</small>}
-                    <small className="block text-xs text-ink-2">{client.owner?.name ?? "No owner"}</small>
-                  </td>
-                  <td className={TD}>
-                    <ServiceTags addOns={service?.addOns ?? []} />
-                  </td>
-                  <td className={TD}>
-                    <StatusPill tone={CLIENT_ROW_STAGE_TONES[rowStage]}>{CLIENT_ROW_STAGE_LABELS[rowStage]}</StatusPill>
-                  </td>
-                  <td className={TD_NUM}>{service === undefined || service.monthlyCents === 0 ? "None" : formatMoney(service.monthlyCents, client.currency)}</td>
-                  <td className={TD}>
-                    {closure !== undefined ? (
-                      <>
-                        Erased on <LocalDate iso={closure.eraseAfter.toISOString()} /> unless restored
-                      </>
-                    ) : needs !== undefined ? (
-                      <b className="font-semibold">{needs.kind === "add-on" ? "Add-on to set up" : needs.reason}</b>
-                    ) : rowStage === "not-paid" ? (
-                      <span className="text-ink-2">Follow up on sign-up</span>
-                    ) : (
-                      <span className="text-ink-2">None</span>
-                    )}
-                  </td>
-                  <td className={TD_TIME}>{paidThrough === null ? "None" : <LocalDate iso={paidThrough.toISOString()} />}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <TableScroll label="Clients" className="mt-6">
+          <table className={TABLE}>
+            <thead>
+              <tr>
+                <th className={TH}>Business</th>
+                <th className={TH}>Services</th>
+                <th className={TH}>Stage</th>
+                <th className={`${TH} text-right`}>Monthly</th>
+                <th className={TH}>Next</th>
+                <th className={TH}>Paid through</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map(({ client, stage: rowStage, buildStage }) => {
+                const buildLabel = buildStageLabel(buildStage);
+                const needs = attention.get(client.businessId);
+                const service = services.get(client.businessId);
+                const closure = closing.get(client.businessId);
+                const paidThrough = client.billing.subscription?.paidThroughAt ?? null;
+                return (
+                  <tr key={client.businessId}>
+                    <td className={TD}>
+                      <Link href={`/clients/${client.businessId}`} className="font-semibold hover:underline">
+                        {client.businessName}
+                      </Link>
+                      {buildLabel === null ? null : <small className="block text-xs text-ink-2">{buildLabel}</small>}
+                      <small className="block text-xs text-ink-2">{client.owner?.name ?? "No owner"}</small>
+                    </td>
+                    <td className={TD}>
+                      <ServiceTags addOns={service?.addOns ?? []} />
+                    </td>
+                    <td className={TD}>
+                      <StatusPill tone={CLIENT_ROW_STAGE_TONES[rowStage]}>{CLIENT_ROW_STAGE_LABELS[rowStage]}</StatusPill>
+                    </td>
+                    <td className={TD_NUM}>{service === undefined || service.monthlyCents === 0 ? "None" : formatMoney(service.monthlyCents, client.currency)}</td>
+                    <td className={TD}>
+                      {closure !== undefined ? (
+                        <>
+                          Erased on <LocalDate iso={closure.eraseAfter.toISOString()} /> unless restored
+                        </>
+                      ) : needs !== undefined ? (
+                        <b className="font-semibold">{needs.kind === "add-on" ? "Add-on to set up" : needs.reason}</b>
+                      ) : rowStage === "not-paid" ? (
+                        <span className="text-ink-2">Follow up on sign-up</span>
+                      ) : (
+                        <span className="text-ink-2">None</span>
+                      )}
+                    </td>
+                    <td className={TD_TIME}>{paidThrough === null ? "None" : <LocalDate iso={paidThrough.toISOString()} />}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableScroll>
       )}
     </>
   );

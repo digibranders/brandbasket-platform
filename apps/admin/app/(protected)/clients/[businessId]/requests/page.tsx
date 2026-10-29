@@ -13,6 +13,7 @@ import { readCallsNotice } from "@/lib/call-form";
 import { readMailOutcome, readRequestActionNotice } from "@/lib/request-notices";
 import { openClientTab } from "@/lib/server/client-page";
 import { getStaffDb } from "@/lib/server/db";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Client requests" };
 
@@ -39,33 +40,35 @@ export default async function ClientRequestsPage({
       {page.items.length === 0 ? (
         <EmptyLine>No requests from this client.</EmptyLine>
       ) : (
-        <table className={TABLE}>
-          <thead>
-            <tr>
-              <th className={TH}>Request</th>
-              <th className={TH}>Category</th>
-              <th className={TH}>Status</th>
-              <th className={TH}>Last activity</th>
-            </tr>
-          </thead>
-          <tbody>
-            {page.items.map((ticket) => (
-              <tr key={ticket.id}>
-                <td className={TD}>
-                  <Link href={`/support/${ticket.id}`} className="font-semibold hover:underline">
-                    {ticket.subject}
-                  </Link>
-                  <small className="block text-xs text-ink-2">{ticket.displayRef}</small>
-                </td>
-                <td className={TD}>{SUPPORT_CATEGORY_LABELS[ticket.category]}</td>
-                <td className={TD}>{SUPPORT_STATUS_LABELS[ticket.status]}</td>
-                <td className={TD_TIME}>
-                  <LocalDateTime iso={ticket.lastActivityAt.toISOString()} variant="timestamp" />
-                </td>
+        <TableScroll label="Requests">
+          <table className={TABLE}>
+            <thead>
+              <tr>
+                <th className={TH}>Request</th>
+                <th className={TH}>Category</th>
+                <th className={TH}>Status</th>
+                <th className={TH}>Last activity</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {page.items.map((ticket) => (
+                <tr key={ticket.id}>
+                  <td className={TD}>
+                    <Link href={`/support/${ticket.id}`} className="font-semibold hover:underline">
+                      {ticket.subject}
+                    </Link>
+                    <small className="block text-xs text-ink-2">{ticket.displayRef}</small>
+                  </td>
+                  <td className={TD}>{SUPPORT_CATEGORY_LABELS[ticket.category]}</td>
+                  <td className={TD}>{SUPPORT_STATUS_LABELS[ticket.status]}</td>
+                  <td className={TD_TIME}>
+                    <LocalDateTime iso={ticket.lastActivityAt.toISOString()} variant="timestamp" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
       )}
     </Section>
     </>
