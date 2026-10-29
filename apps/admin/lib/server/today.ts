@@ -27,6 +27,7 @@ import { monthRange, todayRange } from "@/lib/team-time";
 import { todayQueue, type TodayItem } from "@/lib/today-queue";
 import { clientsWaitingOnUs } from "@/lib/waiting-clients";
 import { getStaffDb } from "./db";
+import { countFailedDeliveries24h } from "./deliveries";
 import { readSystemHealth, type SystemLine } from "./system-health";
 
 /** Far more flagged payments and add-ons than are ever open at once, so none is left out. */
@@ -52,6 +53,8 @@ interface QueueSources {
   readonly addOns: readonly AddOnToContact[];
   readonly newTickets: readonly SupportTicket[];
   readonly newErrors: readonly ErrorIssue[];
+  /** Failed deliveries in the last 24 hours; null when the read failed. */
+  readonly failedDeliveries: number | null;
 }
 
 interface QueueRead {
@@ -60,18 +63,19 @@ interface QueueRead {
   readonly failed: readonly string[];
 }
 
-async function readQueueSources(): Promise<QueueRead> {
+async function readQueueSources(now: Date): Promise<QueueRead> {
   const db = getStaffDb();
   const failed: string[] = [];
-  const [clients, leads, flagged, addOns, newTickets, newErrors] = await Promise.all([
+  const [clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries] = await Promise.all([
     guarded("clients", () => listClients(db), [], failed),
     guarded("leads", () => listLeads(db, {}), [], failed),
     guarded("flagged payments", () => listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }), [], failed),
     guarded("add-ons to contact", () => listAddOnsToContact(db, ATTENTION_READ_LIMIT), [], failed),
     guarded("requests needing a reply", async () => (await listSupportTicketsForStaff(db, { queue: "needs_reply", limit: NEW_TICKETS_READ_LIMIT })).items, [], failed),
     guarded("new errors", async () => (await listErrorIssues(db, { status: "new" })).issues, [], failed),
+    guarded<number | null>("deliveries", () => countFailedDeliveries24h(now), null, failed),
   ]);
-  return { sources: { clients, leads, flagged, addOns, newTickets, newErrors }, failed };
+  return { sources: { clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries }, failed };
 }
 
 function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
@@ -86,13 +90,14 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
     newTickets: sources.newTickets,
     unpaidSignups: sources.leads.filter((lead) => lead.status === "account_created"),
     newErrors: sources.newErrors,
+    failedDeliveries: sources.failedDeliveries,
     endOfToday: todayRange(now).end,
   });
 }
 
 /** Everything that needs a person right now, late first. */
 export async function loadTodayItems(now: Date): Promise<readonly TodayItem[]> {
-  return queueFrom((await readQueueSources()).sources, now);
+  return queueFrom((await readQueueSources(now)).sources, now);
 }
 
 /** The rail's Today count: the length of the queue. */
@@ -115,7 +120,7 @@ export async function loadTodayPage(now: Date): Promise<TodayPage> {
   const month = monthRange(now);
   const today = todayRange(now);
   const [queue, collected, ticketCounts, activeErrors, calls, systems] = await Promise.all([
-    readQueueSources(),
+    readQueueSources(now),
     guarded("money collected", () => sumCapturedPaymentsBetween(db, month.start, month.end), []),
     guarded<Readonly<Record<SupportStatus, number>> | null>("request counts", () => countSupportTicketsByStatus(db), null),
     guarded("open errors", () => countActiveErrorIssues(db), 0),
