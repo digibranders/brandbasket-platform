@@ -12,6 +12,7 @@ import { boardColumns, filterByBuilder, filterByScope, parseProjectScope, type B
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { cn } from "@brandbasket/shared/lib/cn";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Projects" };
 
@@ -117,32 +118,34 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps):
           ))}
         </div>
       ) : (
-        <table className={cn(TABLE, "mt-8")}>
-          <thead>
-            <tr>
-              <th className={TH}>Business</th>
-              <th className={TH}>Stage</th>
-              <th className={TH}>Note</th>
-              <th className={TH}>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cards.map(({ column, card }) => (
-              <tr key={card.row.projectId}>
-                <td className={TD}>
-                  <Link href={`/clients/${card.row.businessId}/project`} className="font-semibold text-ink">
-                    {card.row.businessName}
-                  </Link>
-                </td>
-                <td className={TD}>
-                  <StatusPill tone={card.late ? "problem" : card.row.status === "on_hold" ? "todo" : card.row.status === "live" ? "done" : "progress"}>{column}</StatusPill>
-                </td>
-                <td className={`${TD} text-ink-2`}>{card.note}</td>
-                <td className={TD_TIME}>{card.due}</td>
+        <TableScroll label="Projects" className="mt-8">
+          <table className={TABLE}>
+            <thead>
+              <tr>
+                <th className={TH}>Business</th>
+                <th className={TH}>Stage</th>
+                <th className={TH}>Note</th>
+                <th className={TH}>Date</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {cards.map(({ column, card }) => (
+                <tr key={card.row.projectId}>
+                  <td className={TD}>
+                    <Link href={`/clients/${card.row.businessId}/project`} className="font-semibold text-ink">
+                      {card.row.businessName}
+                    </Link>
+                  </td>
+                  <td className={TD}>
+                    <StatusPill tone={card.late ? "problem" : card.row.status === "on_hold" ? "todo" : card.row.status === "live" ? "done" : "progress"}>{column}</StatusPill>
+                  </td>
+                  <td className={`${TD} text-ink-2`}>{card.note}</td>
+                  <td className={TD_TIME}>{card.due}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
       )}
     </>
   );
