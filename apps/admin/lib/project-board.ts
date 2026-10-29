@@ -1,9 +1,16 @@
 import type { StaffProjectRow } from "@brandbasket/db";
+import { STAFF_STAGE_LABELS, staffStageOf, type StaffStage } from "@brandbasket/shared/lib/project-stage";
 import { clock, isSameTeamDay, shortDate, weekdayDate } from "./team-time";
 
-type ProjectStatus = StaffProjectRow["status"];
-
-export type BoardColumnKey = "setting-up" | "building" | "preview" | "changes" | "on-hold" | "live";
+export type BoardColumnKey =
+  | "waiting-kickoff"
+  | "ready"
+  | "building"
+  | "awaiting-review"
+  | "changes"
+  | "approved"
+  | "on-hold"
+  | "live";
 
 export interface BoardCard {
   readonly row: StaffProjectRow;
@@ -22,21 +29,23 @@ export interface BoardColumn {
 }
 
 const COLUMNS: readonly { readonly key: BoardColumnKey; readonly label: string }[] = [
-  { key: "setting-up", label: "Waiting for call" },
-  { key: "building", label: "Building" },
-  { key: "preview", label: "Preview sent" },
-  { key: "changes", label: "Changes" },
-  { key: "on-hold", label: "On hold" },
+  { key: "waiting-kickoff", label: STAFF_STAGE_LABELS.waiting_for_kickoff },
+  { key: "ready", label: STAFF_STAGE_LABELS.ready_to_start },
+  { key: "building", label: STAFF_STAGE_LABELS.building },
+  { key: "awaiting-review", label: STAFF_STAGE_LABELS.awaiting_review },
+  { key: "changes", label: STAFF_STAGE_LABELS.changes_requested },
+  { key: "approved", label: STAFF_STAGE_LABELS.approved },
+  { key: "on-hold", label: STAFF_STAGE_LABELS.on_hold },
   { key: "live", label: "Live this month" },
 ];
 
-const COLUMN_OF: Readonly<Record<ProjectStatus, BoardColumnKey | null>> = {
-  onboarding: "setting-up",
-  submitted: "building",
+const COLUMN_OF_STAGE: Readonly<Record<StaffStage, BoardColumnKey | null>> = {
+  waiting_for_kickoff: "waiting-kickoff",
+  ready_to_start: "ready",
   building: "building",
-  preview: "preview",
-  approved: "preview",
-  revisions: "changes",
+  awaiting_review: "awaiting-review",
+  changes_requested: "changes",
+  approved: "approved",
   on_hold: "on-hold",
   live: "live",
   cancelled: null,
@@ -74,12 +83,12 @@ function card(row: StaffProjectRow, now: Date): BoardCard {
   }
 }
 
-/** The six board columns in order, each card placed by status. Cancelled builds are not shown. Rows keep their order. */
+/** The eight board columns in order, each card placed by its staff stage. Cancelled builds are not shown. Rows keep their order. */
 export function boardColumns(rows: readonly StaffProjectRow[], now: Date): readonly BoardColumn[] {
   return COLUMNS.map(({ key, label }) => ({
     key,
     label,
-    cards: rows.filter((row) => COLUMN_OF[row.status] === key).map((row) => card(row, now)),
+    cards: rows.filter((row) => COLUMN_OF_STAGE[staffStageOf(row.status)] === key).map((row) => card(row, now)),
   }));
 }
 

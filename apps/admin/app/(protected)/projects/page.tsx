@@ -90,7 +90,7 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps):
           <EmptyLine>No builds to show.</EmptyLine>
         </div>
       ) : view === "board" ? (
-        <div className="mt-8 grid grid-cols-6 items-start gap-3">
+        <div className="mt-8 grid grid-cols-8 items-start gap-3">
           {columns.map((column) => (
             <section key={column.key} aria-label={column.label}>
               <h2 className="mb-2 flex justify-between border-b border-line pb-2 text-[0.8125rem] font-semibold text-ink">

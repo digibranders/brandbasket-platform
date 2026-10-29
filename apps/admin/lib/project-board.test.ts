@@ -1,6 +1,6 @@
 import type { StaffProjectRow } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
-import { boardColumns, filterByBuilder } from "./project-board";
+import { boardColumns, filterByBuilder, type BoardColumnKey } from "./project-board";
 
 const NOW = new Date("2026-11-30T06:00:00.000Z");
 
@@ -24,22 +24,38 @@ function row(overrides: Partial<StaffProjectRow>): StaffProjectRow {
 }
 
 describe("boardColumns", () => {
-  it("always returns the six columns in order, with the mock's labels", () => {
-    expect(boardColumns([], NOW).map((column) => column.label)).toEqual([
-      "Waiting for call",
-      "Building",
-      "Preview sent",
-      "Changes",
-      "On hold",
-      "Live this month",
+  it("always returns the eight columns in order, with the staff stage labels", () => {
+    expect(boardColumns([], NOW).map((column) => [column.key, column.label])).toEqual([
+      ["waiting-kickoff", "Waiting for kickoff"],
+      ["ready", "Ready to start"],
+      ["building", "Building"],
+      ["awaiting-review", "Awaiting client review"],
+      ["changes", "Changes requested"],
+      ["approved", "Approved, ready to launch"],
+      ["on-hold", "On hold"],
+      ["live", "Live this month"],
     ]);
   });
 
-  it("marks a build past its preview date as late, and one due today as due today", () => {
+  it.each<[StaffProjectRow["status"], BoardColumnKey]>([
+    ["onboarding", "waiting-kickoff"],
+    ["submitted", "ready"],
+    ["building", "building"],
+    ["preview", "awaiting-review"],
+    ["revisions", "changes"],
+    ["approved", "approved"],
+    ["on_hold", "on-hold"],
+    ["live", "live"],
+  ])("puts a %s build in the %s column", (status, key) => {
+    const columns = boardColumns([row({ projectId: "p", status })], NOW);
+    expect(columns.filter((column) => column.cards.length > 0).map((column) => column.key)).toEqual([key]);
+  });
+
+  it("marks a build past its due date as late, and one due today as due today", () => {
     const columns = boardColumns(
       [
         row({ projectId: "late", slaDueAt: new Date("2026-11-28T06:00:00.000Z"), builderName: "Rohit" }),
-        row({ projectId: "today", status: "submitted", slaDueAt: new Date("2026-11-30T12:30:00.000Z") }),
+        row({ projectId: "today", slaDueAt: new Date("2026-11-30T12:30:00.000Z") }),
         row({ projectId: "later", slaDueAt: new Date("2026-12-03T06:00:00.000Z"), builderName: "Ananya" }),
       ],
       NOW,
@@ -49,6 +65,14 @@ describe("boardColumns", () => {
       ["late", "Rohit", "due 28 Nov", true, false],
       ["today", "No builder", "due today", false, true],
       ["later", "Ananya", "due 3 Dec", false, false],
+    ]);
+  });
+
+  it("keeps the same due note for a submitted build, which now sits in Ready to start", () => {
+    const columns = boardColumns([row({ projectId: "submitted", status: "submitted", slaDueAt: new Date("2026-11-30T12:30:00.000Z") })], NOW);
+    const ready = columns.find((column) => column.key === "ready");
+    expect(ready?.cards.map((card) => [card.row.projectId, card.note, card.due, card.late, card.dueSoon])).toEqual([
+      ["submitted", "No builder", "due today", false, true],
     ]);
   });
 
