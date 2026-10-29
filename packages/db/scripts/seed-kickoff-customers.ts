@@ -21,7 +21,8 @@ import { businessMembers, users } from "../src/schema";
  * already has a business. Nothing is ever deleted.
  */
 
-const DEV_DATABASE_NAME = "brandbasket_platform";
+/** The shared dev database and the throwaway preview copy. Never a database with any other name. */
+const SEEDABLE_DATABASES: readonly string[] = ["brandbasket_platform", "brandbasket_platform_preview"];
 const LOCAL_HOSTS: ReadonlySet<string> = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
@@ -76,8 +77,8 @@ function assertLocalDevDatabase(connectionString: string): void {
   if (!LOCAL_HOSTS.has(url.hostname)) {
     throw new Error(`Refusing to seed: the database host is "${url.hostname}", not localhost, 127.0.0.1 or ::1.`);
   }
-  if (url.pathname !== `/${DEV_DATABASE_NAME}`) {
-    throw new Error(`Refusing to seed: the database is not ${DEV_DATABASE_NAME}.`);
+  if (!SEEDABLE_DATABASES.some((name) => url.pathname === `/${name}`)) {
+    throw new Error(`Refusing to seed: the database is not one of ${SEEDABLE_DATABASES.join(", ")}.`);
   }
   if (url.searchParams.has("host")) {
     throw new Error("Refusing to seed: the connection URL has a host query parameter, which can redirect it.");
