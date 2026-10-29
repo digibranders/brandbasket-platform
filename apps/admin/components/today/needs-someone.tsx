@@ -1,5 +1,5 @@
 import type { Icon } from "@phosphor-icons/react";
-import { Bug, ChatText, CreditCard, EnvelopeSimple, HourglassMedium, PlugsConnected, Stack, UserPlus } from "@phosphor-icons/react/dist/ssr";
+import { Bug, ChatText, CreditCard, EnvelopeSimple, HourglassMedium, Phone, PlugsConnected, Stack, UserPlus } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
@@ -17,6 +17,7 @@ const ICONS: Readonly<Record<TodayKind, Icon>> = {
   signup: UserPlus,
   error: Bug,
   delivery: PlugsConnected,
+  kickoff: Phone,
 };
 
 const DUE_TONES: Readonly<Record<DueTone, string>> = {

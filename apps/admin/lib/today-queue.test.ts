@@ -10,7 +10,7 @@ function attention(item: Partial<AttentionItem> & Pick<AttentionItem, "key" | "k
   return { subjectId: "subject", href: "/clients/subject", name: "Om Sweets", reason: "reason", ...item };
 }
 
-const EMPTY: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, endOfToday: END_OF_TODAY };
+const EMPTY: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, kickoffsNeedingOutcome: null, endOfToday: END_OF_TODAY };
 
 describe("todayQueue", () => {
   it("puts the latest first, then what is due soonest, with every kind", () => {
@@ -24,6 +24,7 @@ describe("todayQueue", () => {
       unpaidSignups: [{ id: "lead-kumar", businessName: "Kumar Opticals", createdAt: new Date("2026-11-29T00:00:00.000Z") }],
       newErrors: [],
       failedDeliveries: null,
+      kickoffsNeedingOutcome: null,
       endOfToday: END_OF_TODAY,
     });
     expect(queue.map((item) => item.key)).toEqual(["overdue:om", "request:ticket-1", "lead:green", "due:fitzone", "signup:lead-kumar"]);
@@ -112,6 +113,32 @@ describe("failed deliveries", () => {
   it("adds nothing when none failed or the count could not be read", () => {
     expect(todayQueue({ ...EMPTY, failedDeliveries: 0 })).toEqual([]);
     expect(todayQueue({ ...EMPTY, failedDeliveries: null })).toEqual([]);
+  });
+});
+
+describe("kickoff calls needing an outcome", () => {
+  it("adds one item that links to the Calls page, due at the earliest end time", () => {
+    const queue = todayQueue({
+      ...EMPTY,
+      kickoffsNeedingOutcome: [new Date("2026-11-30T05:00:00.000Z"), new Date("2026-11-29T05:00:00.000Z")],
+    });
+    expect(queue).toEqual([
+      { key: "kickoff:needs-outcome", kind: "kickoff", href: "/calls", title: "2 kickoff calls need an outcome", detail: "", dueAt: new Date("2026-11-29T05:00:00.000Z") },
+    ]);
+  });
+
+  it("says 1 kickoff call in the singular", () => {
+    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [new Date("2026-11-30T05:00:00.000Z")] })[0]?.title).toBe("1 kickoff call needs an outcome");
+  });
+
+  it("is overdue, so it groups under Overdue", () => {
+    const queue = todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [new Date("2026-11-30T05:00:00.000Z")] });
+    expect(groupTodayQueue(queue, NOW, END_OF_TODAY).map((group) => group.heading)).toEqual(["Overdue"]);
+  });
+
+  it("adds nothing at zero or when the read failed", () => {
+    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [] })).toEqual([]);
+    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: null })).toEqual([]);
   });
 });
 
