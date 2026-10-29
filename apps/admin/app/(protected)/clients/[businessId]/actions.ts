@@ -6,6 +6,7 @@ import {
   findClientDetail,
   findListingPlacement,
   InvalidWebsiteUrlError,
+  LAUNCH_CHECK_KEYS,
   ListingAddressTakenError,
   ListingPlaceFixedError,
   ListingPlaceTakenError,
@@ -59,8 +60,20 @@ import { addClientCharge, markClientChargePaid, waiveClientCharge } from "@/lib/
 import { getStaffDb } from "@/lib/server/db";
 import { DomainReadyRecipientMissingError, markDomainReady, type DomainReadyOutcome } from "@/lib/server/domain-ready";
 import { DomainSwitchRecipientMissingError, switchDomain } from "@/lib/server/domain-switch";
-import { ProjectLaunchDomainMissingError, ProjectLaunchRecipientMissingError, launchProject } from "@/lib/server/project-launch";
-import { ProjectPreviewRecipientMissingError, sendProjectPreview, type OwnerNotification } from "@/lib/server/project-preview";
+import {
+  ProjectLaunchChecksMissingError,
+  ProjectLaunchDomainMissingError,
+  ProjectLaunchRecipientMissingError,
+  launchProject,
+  resendLaunchEmail,
+  saveLaunchChecks,
+} from "@/lib/server/project-launch";
+import {
+  ProjectPreviewRecipientMissingError,
+  resendPreviewEmail,
+  sendProjectPreview,
+  type OwnerNotification,
+} from "@/lib/server/project-preview";
 import { rotateSiteApiToken } from "@/lib/server/site-token";
 import { recordStaffAction } from "@/lib/server/activity";
 import { placeIdForAddress } from "@/lib/server/page-address";
@@ -199,7 +212,21 @@ export async function sendPreviewAction(formData: FormData): Promise<void> {
 
   await recordStaffAction(staff, { businessId, kind: "project.preview_sent", summary: "Sent the preview", data: { previewUrl: parsedUrl.data, notified } });
   revalidateClient(businessId);
-  redirect(projectPreviewNoticeHref(businessId, notified === "emailed" ? "sent" : "sent-no-email"));
+  redirect(projectPreviewNoticeHref(businessId, notified === "emailed" ? "sent" : notified === "no-email" ? "sent-no-email" : "sent-email-failed"));
+}
+
+/** Sends the customer the preview email again, to the link already on their dashboard. The project's stage does not change. */
+export async function resendPreviewEmailAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "Resend a preview email's business");
+
+  const result = await resendPreviewEmail(getStaffDb(), { businessId });
+  if (result === "not-allowed") redirect(projectPreviewNoticeHref(businessId, "resend-not-allowed"));
+
+  await recordStaffAction(staff, { businessId, kind: "project.preview_email_resent", summary: "Sent the preview email again", data: { result } });
+  revalidateClient(businessId);
+  if (result === "email-failed") redirect(projectPreviewNoticeHref(businessId, "resend-failed"));
+  redirect(projectPreviewNoticeHref(businessId, result === "emailed" ? "resent" : "sent-no-email"));
 }
 
 /** Marks a business live once its build is approved and actually deployed to its real address. */
@@ -214,12 +241,41 @@ export async function markLiveAction(formData: FormData): Promise<void> {
     if (error instanceof ProjectNotApprovedError) redirect(projectLaunchNoticeHref(businessId, "not-approved"));
     if (error instanceof ProjectLaunchRecipientMissingError) redirect(projectLaunchNoticeHref(businessId, "no-owner"));
     if (error instanceof ProjectLaunchDomainMissingError) redirect(projectLaunchNoticeHref(businessId, "no-domain"));
+    if (error instanceof ProjectLaunchChecksMissingError) redirect(projectLaunchNoticeHref(businessId, "checks-missing"));
     throw error;
   }
 
   await recordStaffAction(staff, { businessId, kind: "project.marked_live", summary: "Marked the website live", data: { notified } });
   revalidateClient(businessId);
-  redirect(projectLaunchNoticeHref(businessId, notified === "emailed" ? "launched" : "launched-no-email"));
+  redirect(projectLaunchNoticeHref(businessId, notified === "emailed" ? "launched" : notified === "no-email" ? "launched-no-email" : "launched-email-failed"));
+}
+
+/** Saves the launch checks the staff member ticked on the form. A check is ticked when its `check_<key>` field is present. */
+export async function saveLaunchChecksAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "Launch checks' business");
+  const ticked = LAUNCH_CHECK_KEYS.filter((key) => formData.has(`check_${key}`));
+
+  const result = await saveLaunchChecks(getStaffDb(), { businessId, staffId: staff.user.id, ticked, now: new Date() });
+  if (result === "not-allowed") redirect(projectLaunchNoticeHref(businessId, "checks-not-allowed"));
+
+  await recordStaffAction(staff, { businessId, kind: "project.launch_checks_saved", summary: "Saved the launch checks", data: { checks: ticked } });
+  revalidateClient(businessId);
+  redirect(projectLaunchNoticeHref(businessId, "checks-saved"));
+}
+
+/** Sends the customer their website-live email again. Allowed for a week after the site went live. */
+export async function resendLaunchEmailAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "Resend a launch email's business");
+
+  const result = await resendLaunchEmail(getStaffDb(), { businessId });
+  if (result === "not-allowed") redirect(projectLaunchNoticeHref(businessId, "resend-not-allowed"));
+
+  await recordStaffAction(staff, { businessId, kind: "project.launch_email_resent", summary: "Sent the launch email again", data: { result } });
+  revalidateClient(businessId);
+  if (result === "email-failed") redirect(projectLaunchNoticeHref(businessId, "resend-failed"));
+  redirect(projectLaunchNoticeHref(businessId, result === "emailed" ? "resent" : "launched-no-email"));
 }
 
 /**

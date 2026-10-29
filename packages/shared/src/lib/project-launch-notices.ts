@@ -1,5 +1,17 @@
-/** What the client page says after an admin marks a project live. */
-export type ProjectLaunchNotice = "launched" | "launched-no-email" | "not-approved" | "no-owner" | "no-domain";
+/** What the client page says after an admin marks a project live, saves its launch checks, or resends the launch email. */
+export type ProjectLaunchNotice =
+  | "launched"
+  | "launched-no-email"
+  | "launched-email-failed"
+  | "not-approved"
+  | "no-owner"
+  | "no-domain"
+  | "checks-missing"
+  | "checks-saved"
+  | "checks-not-allowed"
+  | "resent"
+  | "resend-failed"
+  | "resend-not-allowed";
 
 /** Fixed messages only: the query parameter picks one, and nothing from it is ever shown. */
 export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { readonly text: string; readonly ok: boolean }>> = {
@@ -8,9 +20,28 @@ export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { read
     text: "Live. This owner signs in with a mobile number and has no email, so nothing was emailed: call or message them with their website address.",
     ok: true,
   },
+  "launched-email-failed": {
+    text: "The website is marked live, but the email to the customer did not send. Use Resend email below.",
+    ok: false,
+  },
   "not-approved": { text: "Nothing changed: this business hasn’t approved a preview yet.", ok: false },
   "no-owner": { text: "Nothing changed: this business has no owner account to email.", ok: false },
   "no-domain": { text: "Nothing changed: this business has no domain to launch it on.", ok: false },
+  "checks-missing": { text: "Tick every launch check before going live.", ok: false },
+  "checks-saved": { text: "Launch checks saved.", ok: true },
+  "checks-not-allowed": {
+    text: "Nothing saved: launch checks can only be ticked while the project is approved.",
+    ok: false,
+  },
+  resent: { text: "The launch email was sent again.", ok: true },
+  "resend-failed": {
+    text: "The launch email still did not send. Try again in a few minutes, or call or message the customer.",
+    ok: false,
+  },
+  "resend-not-allowed": {
+    text: "Nothing sent: the launch email can only be sent again within 7 days of going live, with a domain and an owner to email.",
+    ok: false,
+  },
 };
 
 export function projectLaunchNoticeHref(businessId: string, notice: ProjectLaunchNotice): string {
